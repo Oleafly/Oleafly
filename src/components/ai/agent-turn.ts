@@ -78,7 +78,7 @@ export function fileAttachmentText(part: {
       return `Attached file "${name}":\n\n${truncateText(text, ATTACHMENT_MAX_CHARS)}`;
     }
   }
-  return `[The attachment "${name}" (${mediaType || "unknown type"}) could not be included. Only text based files are supported here; ask the user to paste the relevant content instead.]`;
+  return `[The attachment "${name}" (${mediaType || "unknown type"}) could not be included. Only text based files are supported here. Ask the user to paste the relevant content instead.]`;
 }
 
 function toolUsePart(part: Record<string, unknown>): AgentContentPart {
@@ -180,6 +180,7 @@ export async function runAgentHarness(args: {
     },
     {
       onEvent: (event) => {
+        if (args.signal.aborted) return;
         handlers.onActivity();
         switch (event.kind) {
           case "stepStart":
@@ -218,6 +219,7 @@ export async function runAgentHarness(args: {
         }
       },
       onToolRequest: async (call) => {
+        if (args.signal.aborted) return { output: "" };
         endReasoning();
         names.set(call.id, call.name);
         let parsed: unknown = {};
@@ -244,6 +246,7 @@ export async function runAgentHarness(args: {
           }
         }
 
+        if (args.signal.aborted) return { output: "" };
         handlers.onToolResult({ id: call.id, name: call.name, output });
         handlers.onThinking("Processing result…");
         const images = args.takePendingImages?.() ?? [];

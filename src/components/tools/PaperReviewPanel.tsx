@@ -23,12 +23,20 @@ function isLatexPath(path: string): boolean {
   return path.toLowerCase().endsWith(".tex");
 }
 
-/** Lightweight review renderer — avoids pulling remark-gfm into the literature chunk. */
+function withOccurrenceKeys(values: string[]) {
+  const counts = new Map<string, number>();
+  return values.map((value) => {
+    const occurrence = counts.get(value) ?? 0;
+    counts.set(value, occurrence + 1);
+    return { key: `${value}\u0000${occurrence}`, value };
+  });
+}
+
 function ReviewMarkdown({ text }: { text: string }) {
-  const blocks = text.split(/\n{2,}/);
+  const blocks = withOccurrenceKeys(text.split(/\n{2,}/));
   return (
     <div className="space-y-3 text-sm leading-relaxed">
-      {blocks.map((block, index) => {
+      {blocks.map(({ key, value: block }) => {
         const trimmed = block.trim();
         if (!trimmed) return null;
         if (/^#{1,3}\s+/.test(trimmed)) {
@@ -36,17 +44,19 @@ function ReviewMarkdown({ text }: { text: string }) {
           const title = trimmed.replace(/^#{1,3}\s+/, "");
           const Tag = (`h${Math.min(level + 1, 4)}` as "h2" | "h3" | "h4");
           return (
-            <Tag key={index} className="font-semibold tracking-tight">
+            <Tag key={key} className="font-semibold tracking-tight">
               {title}
             </Tag>
           );
         }
         if (/^[-*]\s+/m.test(trimmed)) {
-          const items = trimmed.split(/\n/).filter((line) => line.trim());
+          const items = withOccurrenceKeys(
+            trimmed.split(/\n/).filter((line) => line.trim()),
+          );
           return (
-            <ul key={index} className="list-disc space-y-1 pl-5">
-              {items.map((line, itemIndex) => (
-                <li key={itemIndex}>
+            <ul key={key} className="list-disc space-y-1 pl-5">
+              {items.map(({ key: itemKey, value: line }) => (
+                <li key={itemKey}>
                   {line.replace(/^[-*]\s+/, "").replace(/\*\*(.+?)\*\*/g, "$1")}
                 </li>
               ))}
@@ -54,7 +64,7 @@ function ReviewMarkdown({ text }: { text: string }) {
           );
         }
         return (
-          <p key={index} className="whitespace-pre-wrap">
+          <p key={key} className="whitespace-pre-wrap">
             {trimmed.replace(/\*\*(.+?)\*\*/g, "$1")}
           </p>
         );

@@ -793,7 +793,7 @@ export function lintLatexText(text: string): Diagnostic[] {
         open.from,
         open.to,
         "error",
-        `Unclosed math delimiter ${open.delimiter}; expected ${matchingMathClose(open.delimiter)}`,
+        `Unclosed math delimiter ${open.delimiter}. Expected ${matchingMathClose(open.delimiter)}`,
       ),
     );
   }

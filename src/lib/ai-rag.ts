@@ -117,7 +117,7 @@ export function formatRagContext(chunks: RagChunk[]): string {
       `[${i + 1}] ${c.path}:${c.startLine}-${c.endLine} (score ${c.score.toFixed(1)})\n${c.text}`,
   );
   return [
-    "### Retrieved project excerpts (keyword RAG; verify with tools before editing)",
+    "### Retrieved project excerpts (keyword RAG, verify with tools before editing)",
     ...blocks,
   ].join("\n\n");
 }

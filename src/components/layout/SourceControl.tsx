@@ -19,9 +19,7 @@ import {
   gitAheadBehind,
   gitCommit,
   gitCurrentBranch,
-  gitDiscard,
   gitGetRemote,
-  gitPull,
   gitPush,
   gitRemoveRemote,
   gitStage,
@@ -112,10 +110,9 @@ export function SourceControl() {
     setBusy(true);
     setStatus(null);
     try {
-      const res = await gitPull(projectId);
-      setStatus({ ok: true, text: res });
+      const message = await useFilesStore.getState().pullFromGit();
+      setStatus({ ok: true, text: message });
       await refresh();
-      await refreshTree();
     } catch (e) {
       setStatus({ ok: false, text: String(e) });
     } finally {
@@ -146,9 +143,8 @@ export function SourceControl() {
   const discard = async (path: string) => {
     if (!projectId) return;
     try {
-      await gitDiscard(projectId, path);
+      await useFilesStore.getState().discardFromGit(path);
       await refresh();
-      await refreshTree();
       notifyGitChanged();
     } catch (e) {
       setStatus({ ok: false, text: String(e) });

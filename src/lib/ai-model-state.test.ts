@@ -6,6 +6,7 @@ import {
   enabledModels,
   mergeFetchedModels,
   pickActiveModel,
+  reconcileActiveModel,
   restoreSeedModels,
   seedProviderModels,
   setModelEnabled,
@@ -34,7 +35,7 @@ describe("seedProviderModels", () => {
 });
 
 describe("mergeFetchedModels", () => {
-  it("keeps existing entries (enabled state and name) and appends new ones as fetched", () => {
+  it("keeps listed entries (enabled state and name) and appends new ones as fetched", () => {
     const existing = [stored("a", false), stored("b")];
     const merged = mergeFetchedModels(existing, [
       { id: "a", name: "A renamed" },
@@ -42,7 +43,6 @@ describe("mergeFetchedModels", () => {
     ]);
     expect(merged).toEqual([
       { id: "a", name: "a", enabled: false, source: "builtin" },
-      { id: "b", name: "b", enabled: true, source: "builtin" },
       { id: "c", name: "C", enabled: true, source: "fetched" },
     ]);
   });
@@ -131,11 +131,28 @@ describe("reconciling a refreshed model list", () => {
     expect(next.map((m) => m.id)).toEqual(["my-private-model", "glm-5.2"]);
   });
 
-  it("keeps a built-in seed the provider does not list", () => {
+  it("drops a built-in seed the provider no longer lists", () => {
     const next = mergeFetchedModels([stored("glm-5.2", "builtin")], [
       { id: "glm-4.6", name: "GLM-4.6" },
     ]);
-    expect(next.map((m) => m.id)).toEqual(["glm-5.2", "glm-4.6"]);
+    expect(next.map((m) => m.id)).toEqual(["glm-4.6"]);
+  });
+
+  it("removes absent built-in and fetched models while retaining custom models", () => {
+    const next = mergeFetchedModels(
+      [
+        stored("old-builtin", "builtin"),
+        stored("old-fetched", "fetched"),
+        stored("private", "custom", false),
+      ],
+      [],
+    );
+    expect(next).toEqual([stored("private", "custom", false)]);
+  });
+
+  it("does not treat unsupported or failed discovery as an authoritative empty list", () => {
+    const existing = [stored("catalog-default", "builtin"), stored("private", "custom")];
+    expect(mergeFetchedModels(existing, null)).toBe(existing);
   });
 
   it("preserves the enabled state of a model that survives", () => {
@@ -176,5 +193,19 @@ describe("choosing the active model after a key is saved", () => {
 
   it("keeps the catalog default when the provider listed nothing", () => {
     expect(pickActiveModel([], "glm-5.2")).toBe("glm-5.2");
+  });
+
+  it("replaces a selected model removed by live discovery with an enabled survivor", () => {
+    const models = [stored("disabled", false), stored("available")];
+    expect(reconcileActiveModel(models, "deprecated", "catalog-default")).toBe("available");
+  });
+
+  it("keeps a selected model that remains enabled", () => {
+    const models = [stored("selected"), stored("other")];
+    expect(reconcileActiveModel(models, "selected", "other")).toBe("selected");
+  });
+
+  it("clears the selection when discovery leaves no enabled model", () => {
+    expect(reconcileActiveModel([stored("disabled", false)], "gone", "disabled")).toBe("");
   });
 });

@@ -5,14 +5,15 @@ use std::process::Command;
 
 use crate::config;
 use crate::paths;
-use crate::proc::NoConsole;
+use crate::proc::{output_contained, NoConsole};
 
 fn project_root(project_id: &str) -> Result<PathBuf, String> {
     paths::project_dir(project_id)
 }
 
 fn run_git(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String> {
-    Command::new("git")
+    let mut command = Command::new("git");
+    command
         .no_console()
         .args(args)
         .current_dir(root)
@@ -24,9 +25,8 @@ fn run_git(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String
         // repo operations land on the real repository during `cargo test`.
         .env_remove("GIT_DIR")
         .env_remove("GIT_WORK_TREE")
-        .env_remove("GIT_INDEX_FILE")
-        .output()
-        .map_err(|e| format!("failed to run git: {e}"))
+        .env_remove("GIT_INDEX_FILE");
+    output_contained(&mut command).map_err(|e| format!("failed to run git: {e}"))
 }
 
 /// Initialize a git repo in the project (idempotent) with a sensible identity.
@@ -192,14 +192,51 @@ pub async fn git_log(project_id: String) -> Result<Vec<GitCommit>, String> {
 }
 
 #[tauri::command]
-pub async fn git_restore(project_id: String, oid: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        let root = ensure_repo(&project_id)?;
-        run_git(&root, &["checkout", &oid, "--", "."])?;
+pub async fn git_restore(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    oid: String,
+    expected_generation: Option<u64>,
+) -> Result<crate::project::ProjectStateChanged, String> {
+    validate_git_oid(&oid)?;
+    let operation_id = project_id.clone();
+    let mutation = crate::project::mutate_project_worktree(
+        &state,
+        project_id.clone(),
+        expected_generation,
+        move |_| {
+            let root = ensure_repo(&operation_id)?;
+            restore_worktree(&root, &oid)?;
+            Ok(((), true))
+        },
+    )
+    .await?;
+    let outcome = mutation.value;
+    let event = crate::project::publish_project_state_changed(
+        &app,
+        &state,
+        &project_id,
+        mutation.project,
+        "git-restore",
+        true,
+        Some(mutation.generation),
+    );
+    outcome?;
+    event
+}
+
+fn validate_git_oid(oid: &str) -> Result<(), String> {
+    if (4..=64).contains(&oid.len()) && oid.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         Ok(())
-    })
-    .await
-    .map_err(|e| e.to_string())?
+    } else {
+        Err("invalid Git commit id".into())
+    }
+}
+
+fn restore_worktree(root: &PathBuf, oid: &str) -> Result<(), String> {
+    validate_git_oid(oid)?;
+    ok_or_err(run_git(root, &["checkout", oid, "--", "."])?)
 }
 
 fn out_to_string(out: &std::process::Output) -> String {
@@ -318,13 +355,13 @@ fn run_git_authed(
         "credential.useHttpPath=false",
     ];
     full.extend_from_slice(args);
-    Command::new("git")
+    let mut command = Command::new("git");
+    command
         .no_console()
         .args(&full)
         .current_dir(root)
-        .env("OLEAFLY_GH_TOKEN", token)
-        .output()
-        .map_err(|e| format!("failed to run git: {e}"))
+        .env("OLEAFLY_GH_TOKEN", token);
+    output_contained(&mut command).map_err(|e| format!("failed to run git: {e}"))
 }
 
 #[tauri::command]
@@ -465,30 +502,64 @@ pub async fn git_push(project_id: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn git_pull(project_id: String) -> Result<String, String> {
-    let root = ensure_repo(&project_id)?;
+pub async fn git_pull(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    expected_generation: Option<u64>,
+) -> Result<GitPullResult, String> {
     let cfg = config::read_config()?;
-    let remote_out = run_git(&root, &["remote", "get-url", "origin"])?;
-    let remote = String::from_utf8_lossy(&remote_out.stdout)
+    let token = cfg.github_token;
+    let operation_id = project_id.clone();
+    let mutation = crate::project::mutate_project_worktree(
+        &state,
+        project_id.clone(),
+        expected_generation,
+        move |_| {
+            let root = ensure_repo(&operation_id)?;
+            Ok((pull_origin(&root, &token)?, true))
+        },
+    )
+    .await?;
+    let outcome = mutation.value;
+    let event = crate::project::publish_project_state_changed(
+        &app,
+        &state,
+        &project_id,
+        mutation.project,
+        "git-pull",
+        true,
+        Some(mutation.generation),
+    )?;
+    Ok(GitPullResult {
+        message: outcome?,
+        state: event,
+    })
+}
+
+fn pull_origin(root: &PathBuf, token: &str) -> Result<String, String> {
+    let remote_out = run_git(root, &["remote", "get-url", "origin"])?;
+    if String::from_utf8_lossy(&remote_out.stdout)
         .trim()
-        .to_string();
-    if remote.is_empty() {
+        .is_empty()
+    {
         return Err("No remote 'origin' set for this project.".into());
     }
-    let branch = current_branch(&root)?;
-    // Pull from `origin` directly. With a token, auth comes from the env-backed
-    // credential helper; without one, this still works for public repos (and
-    // SSH remotes use the user's keys). Either way git updates the tracking ref.
+    let branch = current_branch(root)?;
     let pull_args = ["pull", "--no-rebase", "origin", branch.as_str()];
-    let out = if cfg.github_token.is_empty() {
-        run_git(&root, &pull_args)?
+    let output = if token.is_empty() {
+        run_git(root, &pull_args)?
     } else {
-        run_git_authed(&root, &cfg.github_token, &pull_args)?
+        run_git_authed(root, token, &pull_args)?
     };
-    if !out.status.success() {
-        return Err(out_to_string(&out));
-    }
+    ok_or_err(output)?;
     Ok(format!("Pulled origin/{branch}"))
+}
+
+#[derive(Serialize)]
+pub struct GitPullResult {
+    pub message: String,
+    pub state: crate::project::ProjectStateChanged,
 }
 
 #[derive(Serialize)]
@@ -586,10 +657,40 @@ pub async fn git_diff(
 }
 
 #[tauri::command]
-pub fn git_discard(project_id: String, path: String) -> Result<(), String> {
-    let root = ensure_repo(&project_id)?;
-    run_git(&root, &["checkout", "--", &path])?;
-    Ok(())
+pub async fn git_discard(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    path: String,
+    expected_generation: Option<u64>,
+) -> Result<crate::project::ProjectStateChanged, String> {
+    let operation_id = project_id.clone();
+    let mutation = crate::project::mutate_project_worktree(
+        &state,
+        project_id.clone(),
+        expected_generation,
+        move |_| {
+            let root = ensure_repo(&operation_id)?;
+            ok_or_err(run_git(
+                &root,
+                &["--literal-pathspecs", "checkout", "--", &path],
+            )?)?;
+            Ok(((), true))
+        },
+    )
+    .await?;
+    let outcome = mutation.value;
+    let event = crate::project::publish_project_state_changed(
+        &app,
+        &state,
+        &project_id,
+        mutation.project,
+        "git-discard",
+        true,
+        Some(mutation.generation),
+    );
+    outcome?;
+    event
 }
 
 #[tauri::command]
@@ -764,8 +865,8 @@ pub async fn git_show(project_id: String, rev: String, path: String) -> Result<S
 mod tests {
     use super::{
         auto_commit_update_in, commit_index, is_allowed_remote_url, parse_status_porcelain,
-        read_version_labels_at, run_git, sanitize_url, show, stage, stage_all, unstage,
-        unstage_all, update_message,
+        read_version_labels_at, restore_worktree, run_git, sanitize_url, show, stage, stage_all,
+        unstage, unstage_all, update_message, validate_git_oid,
     };
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -779,6 +880,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         run_git(&dir, &["init", "--quiet"]).unwrap();
+        run_git(&dir, &["config", "core.autocrlf", "false"]).unwrap();
         run_git(&dir, &["symbolic-ref", "HEAD", "refs/heads/main"]).unwrap();
         run_git(&dir, &["config", "user.email", "t@t"]).unwrap();
         run_git(&dir, &["config", "user.name", "t"]).unwrap();
@@ -787,6 +889,33 @@ mod tests {
 
     fn write(root: &Path, name: &str, content: &str) {
         std::fs::write(root.join(name), content).unwrap();
+    }
+
+    #[test]
+    fn commit_ids_accept_hex_and_reject_revision_syntax() {
+        assert!(validate_git_oid("a1b2").is_ok());
+        assert!(validate_git_oid(&"f".repeat(64)).is_ok());
+        for invalid in ["abc", "HEAD", "abcd^", "abcd:path", "../abcd"] {
+            assert!(validate_git_oid(invalid).is_err(), "{invalid}");
+        }
+    }
+
+    #[test]
+    fn restore_replaces_tracked_content_without_interpreting_revision_syntax() {
+        let root = temp_repo();
+        write(&root, "main.tex", "first\n");
+        stage_all(&root).unwrap();
+        assert!(commit_index(&root, "first").unwrap());
+        let first =
+            String::from_utf8_lossy(&run_git(&root, &["rev-parse", "HEAD"]).unwrap().stdout)
+                .trim()
+                .to_string();
+        write(&root, "main.tex", "second\n");
+        restore_worktree(&root, &first).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(root.join("main.tex")).unwrap(),
+            "first\n"
+        );
     }
 
     fn status(root: &PathBuf) -> Vec<super::GitFileChange> {

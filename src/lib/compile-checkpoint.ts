@@ -34,6 +34,11 @@ export interface CompileSuccessCheckpoint {
   completedAt: number;
 }
 
+export interface CompileSucceededEvent {
+  projectStateRevision: number;
+  checkpoint: CompileSuccessCheckpoint;
+}
+
 export function sameCompileOutput(
   left: CompileSuccessCheckpoint | null,
   right: CompileSuccessCheckpoint | null,
@@ -143,6 +148,19 @@ export function isCompileSuccessCheckpoint(
     typeof candidate.completedAt === "number" &&
     Number.isSafeInteger(candidate.completedAt) &&
     candidate.completedAt > 0
+  );
+}
+
+export function isCompileSucceededEvent(
+  value: unknown,
+): value is CompileSucceededEvent {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<CompileSucceededEvent>;
+  return (
+    typeof candidate.projectStateRevision === "number" &&
+    Number.isSafeInteger(candidate.projectStateRevision) &&
+    candidate.projectStateRevision >= 0 &&
+    isCompileSuccessCheckpoint(candidate.checkpoint)
   );
 }
 

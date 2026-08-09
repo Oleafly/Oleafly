@@ -4,7 +4,7 @@
 # instead of after a push. Mirrors .github/workflows/ci.yml exactly:
 #
 #   Frontend: pnpm lint  |  pnpm build (tsc -b + vite build)  |  pnpm test
-#   Rust:     cargo fmt --check  |  cargo clippy -D warnings  |  cargo test --lib
+#   Rust:     cargo fmt --all  |  cargo clippy --workspace  |  cargo test --workspace
 #   Docs:     docsite build (sync docs/ -> Starlight -> astro build)
 #
 # Only the areas you touched run, so a frontend-only commit skips the Rust
@@ -25,7 +25,7 @@ fail() {
 }
 
 # Frontend gate: any app source or frontend config file.
-if printf '%s\n' "$staged" | grep -qE '^(src/|package\.json|pnpm-lock\.yaml|tsconfig|vite\.config|biome\.json|index\.html)'; then
+if printf '%s\n' "$staged" | grep -qE '^(src/|packages/|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|tsconfig|vite\.config|vitest|biome\.json|index\.html)'; then
   echo "→ frontend: lint"
   pnpm lint || fail "biome lint"
   echo "→ frontend: typecheck + build"
@@ -34,14 +34,14 @@ if printf '%s\n' "$staged" | grep -qE '^(src/|package\.json|pnpm-lock\.yaml|tsco
   pnpm test || fail "vitest"
 fi
 
-# Rust gate: anything under the Tauri crate.
-if printf '%s\n' "$staged" | grep -qE '^src-tauri/'; then
+# Rust gate: any workspace crate or workspace configuration.
+if printf '%s\n' "$staged" | grep -qE '^(src-tauri/|crates/|Cargo\.(toml|lock)$|\.cargo/)'; then
   echo "→ rust: fmt check"
-  cargo fmt --manifest-path src-tauri/Cargo.toml --check || fail "cargo fmt"
+  cargo fmt --all -- --check || fail "cargo fmt"
   echo "→ rust: clippy"
-  cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings || fail "cargo clippy"
+  cargo clippy --workspace --all-targets -- -D warnings || fail "cargo clippy"
   echo "→ rust: tests"
-  cargo test --manifest-path src-tauri/Cargo.toml --lib || fail "cargo test"
+  cargo test --workspace --all-targets || fail "cargo test"
 fi
 
 # Docs-site gate: any authored docs or docsite source. Builds the Starlight

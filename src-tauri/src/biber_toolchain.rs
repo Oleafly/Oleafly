@@ -46,32 +46,61 @@ pub fn compile_path_dirs() -> Vec<PathBuf> {
 }
 
 /// Build a PATH value with toolchain directories first.
+#[cfg(test)]
 pub fn compile_path_env() -> std::ffi::OsString {
-    let dirs = compile_path_dirs();
-    let mut path = std::env::var_os("PATH").unwrap_or_default();
-    if dirs.is_empty() {
-        return path;
-    }
-    #[cfg(windows)]
-    let sep = std::ffi::OsString::from(";");
-    #[cfg(not(windows))]
-    let sep = std::ffi::OsString::from(":");
+    compile_path_env_with_inherited(std::env::var_os("PATH").as_deref(), None, None)
+}
 
-    let mut prefix = std::ffi::OsString::new();
-    for (index, dir) in dirs.iter().enumerate() {
-        if index > 0 {
-            prefix.push(&sep);
+pub fn tool_path_env(preferred_executable: &Path) -> std::ffi::OsString {
+    compile_path_env_with_inherited(
+        std::env::var_os("PATH").as_deref(),
+        preferred_executable.parent(),
+        None,
+    )
+}
+
+pub fn compile_path_env_for(
+    preferred_executable: &Path,
+    excluded_project_root: &Path,
+) -> std::ffi::OsString {
+    compile_path_env_with_inherited(
+        std::env::var_os("PATH").as_deref(),
+        preferred_executable.parent(),
+        Some(excluded_project_root),
+    )
+}
+
+fn compile_path_env_with_inherited(
+    inherited: Option<&std::ffi::OsStr>,
+    preferred_dir: Option<&Path>,
+    excluded_root: Option<&Path>,
+) -> std::ffi::OsString {
+    let mut dirs = Vec::new();
+    let mut add = |dir: PathBuf| {
+        if dir.is_absolute() && !excluded_root.is_some_and(|root| path_is_within(&dir, root)) {
+            push_unique(&mut dirs, dir);
         }
-        prefix.push(dir.as_os_str());
+    };
+    if let Some(preferred) = preferred_dir {
+        add(preferred.to_path_buf());
     }
-    if !path.is_empty() {
-        prefix.push(&sep);
-        prefix.push(&path);
-        path = prefix;
-    } else {
-        path = prefix;
+    for dir in compile_path_dirs() {
+        add(dir);
     }
-    path
+    if let Some(inherited) = inherited {
+        for dir in std::env::split_paths(inherited) {
+            if dir.is_absolute() {
+                add(dir);
+            }
+        }
+    }
+    std::env::join_paths(dirs).unwrap_or_default()
+}
+
+fn path_is_within(path: &Path, root: &Path) -> bool {
+    let resolved_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    let resolved_root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    resolved_path == resolved_root || resolved_path.starts_with(&resolved_root)
 }
 
 /// True when the compile produced a biblatex control file that still needs Biber.
@@ -258,6 +287,42 @@ This means that your biber (2.20) and biblatex (3.17) versions are incompatible.
     fn compile_path_env_is_non_empty() {
         let env = compile_path_env();
         assert!(!env.is_empty());
+    }
+
+    #[test]
+    fn compiler_path_drops_current_directory_and_relative_entries() {
+        let directory = tempfile::tempdir().unwrap();
+        let absolute = directory.path().to_owned();
+        let inherited = std::env::join_paths([PathBuf::from("."), absolute.clone()]).unwrap();
+        let hardened = compile_path_env_with_inherited(Some(&inherited), None, None);
+        let entries: Vec<_> = std::env::split_paths(&hardened).collect();
+        assert!(entries.iter().all(|entry| entry.is_absolute()));
+        assert!(entries.contains(&absolute));
+        assert!(!entries.contains(&PathBuf::from(".")));
+    }
+
+    #[test]
+    fn compiler_path_prefers_selected_distribution_and_excludes_project() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        let project_bin = root.join("project/bin");
+        let distro_a = root.join("distro-a/bin");
+        let distro_b = root.join("distro-b/bin");
+        std::fs::create_dir_all(&project_bin).unwrap();
+        std::fs::create_dir_all(&distro_a).unwrap();
+        std::fs::create_dir_all(&distro_b).unwrap();
+        let inherited = std::env::join_paths([project_bin.clone(), distro_a.clone()]).unwrap();
+        let preferred = distro_b.join(crate::tex_distro::exe("latexmk"));
+        let hardened = compile_path_env_with_inherited(
+            Some(&inherited),
+            preferred.parent(),
+            Some(&root.join("project")),
+        );
+        let entries: Vec<_> = std::env::split_paths(&hardened).collect();
+        assert_eq!(entries.first(), Some(&distro_b));
+        assert!(entries.contains(&distro_a));
+        assert!(!entries.contains(&project_bin));
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

@@ -106,12 +106,18 @@ export function PrepExport() {
 
           <div className="mt-2.5 border-t border-sidebar-border pt-2.5">
             {hasEngine ? (
-              <button type="button"
-                onClick={() => void compileTaggedAndVerify()}
-                className="inline-flex items-center gap-1.5 rounded border border-input px-2 py-1 text-xs hover:bg-accent"
-              >
-                <FileCheck2 className="size-3.5" /> Compile tagged and verify
-              </button>
+              <div className="space-y-1.5">
+                <button type="button"
+                  onClick={() => void compileTaggedAndVerify()}
+                  className="inline-flex items-center gap-1.5 rounded border border-input px-2 py-1 text-xs hover:bg-accent"
+                >
+                  <FileCheck2 className="size-3.5" /> Compile tagged and verify
+                </button>
+                <p className="flex items-start gap-1 text-[11px] leading-relaxed text-muted-foreground">
+                  <AlertTriangle className="mt-0.5 size-3 shrink-0 text-amber-600 dark:text-amber-500" />
+                  System LuaLaTeX can read local files. Run it only for a project you trust.
+                </p>
+              </div>
             ) : (
               <p className="text-[11px] leading-relaxed text-muted-foreground">
                 To produce the tagged PDF in the app, enable an engine in Settings, LaTeX Engine. Or compile the prepared

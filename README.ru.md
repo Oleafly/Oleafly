@@ -487,7 +487,7 @@ Oleafly открыто разрабатывают
    ```bash
    pnpm build
    pnpm test
-   cargo test --manifest-path src-tauri/Cargo.toml --lib
+   cargo test --workspace --all-targets
    ```
 
 О проблемах безопасности, пожалуйста, сообщайте приватно, как описано в

@@ -94,7 +94,7 @@ import {
 import { pickSavePath } from "@/lib/native-file-dialog";
 import {
   openPreviewWindow,
-  type PreviewWindowState,
+  type PreviewWindowStateInput,
 } from "@/lib/preview-window";
 import type { CompileSuccessCheckpoint } from "@/lib/compile-checkpoint";
 import type {
@@ -245,7 +245,7 @@ function languageServiceStartupStage(
       return {
         id: "language-service",
         label: "Language service",
-        detail: "Not required; using local analysis",
+        detail: "Not required. Using local analysis.",
         status: "skipped",
       };
     case "unsupported":
@@ -263,7 +263,7 @@ function languageServiceStartupStage(
         label: "Language service",
         detail:
           state.languageReason ||
-          "Unavailable; local analysis remains available",
+          "Unavailable. Local analysis remains available.",
         status: "skipped",
       };
     case "not_run":
@@ -404,7 +404,7 @@ function compileStartupStage(
         state.compileFailureReason ||
         (state.compileStatus === "unavailable"
           ? "Compiler unavailable"
-          : "Compile failed; open Logs for details"),
+          : "Compile failed. Open Logs for details."),
       status: "error",
     };
   }
@@ -573,7 +573,7 @@ function previewWindowState(
   >["lastAttemptIdentity"],
   checkpoint: CompileSuccessCheckpoint | null,
   message: string | null,
-): PreviewWindowState | undefined {
+): PreviewWindowStateInput | undefined {
   const resolvedIdentity =
     identity ??
     (checkpoint
@@ -802,7 +802,7 @@ export function PreviewPane() {
   const displayedBytes = viewerDocument?.bytes ?? null;
   const currentRevisionExplanation = pdfIsStale
     ? displayedCheckpoint
-      ? `Showing project revision ${displayedCheckpoint.projectRevision}; the active project is revision ${projectRevision}.`
+      ? `Showing project revision ${displayedCheckpoint.projectRevision}. The active project is revision ${projectRevision}.`
       : "The displayed PDF has no verified compile identity for the active revision."
     : null;
   const startupStages = documentStartupStages({
@@ -1630,7 +1630,7 @@ export function PreviewPane() {
         {
           disabled: !displayedBytes,
           busy: rotationPending,
-          tooltip: `Rotate PDF clockwise (90°); currently ${rotation}°`,
+          tooltip: `Rotate PDF clockwise (90°). Currently ${rotation}°`,
         },
       ),
     );
@@ -1858,7 +1858,7 @@ export function PreviewPane() {
                     type="button"
                     onClick={() => void recompile()}
                     data-testid="preview-stale-badge"
-                    aria-label="Stale, non-current preview; recompile"
+                    aria-label="Stale, non-current preview. Recompile."
                     className="flex h-7 items-center justify-center gap-1.5 rounded-full border border-neutral-300 bg-neutral-100 px-2.5 text-[11px] font-semibold text-neutral-700 shadow-sm transition-colors hover:bg-neutral-200 dark:border-neutral-700 dark:bg-[#181818] dark:text-neutral-300 dark:hover:bg-[#222222]"
                   >
                     <span

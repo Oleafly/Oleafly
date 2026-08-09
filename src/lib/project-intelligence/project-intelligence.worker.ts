@@ -76,13 +76,13 @@ function validateAnalyzeRequest(
     request.knownFiles.length >
     PROJECT_INTELLIGENCE_LIMITS.maxKnownFiles
   ) {
-    return `Project has ${request.knownFiles.length} files; the safe worker limit is ${PROJECT_INTELLIGENCE_LIMITS.maxKnownFiles}.`;
+    return `Project has ${request.knownFiles.length} files. The safe worker limit is ${PROJECT_INTELLIGENCE_LIMITS.maxKnownFiles}.`;
   }
   if (
     request.upserts.length >
     PROJECT_INTELLIGENCE_LIMITS.maxSourceFiles
   ) {
-    return `Request has ${request.upserts.length} source files; the safe worker limit is ${PROJECT_INTELLIGENCE_LIMITS.maxSourceFiles}.`;
+    return `Request has ${request.upserts.length} source files. The safe worker limit is ${PROJECT_INTELLIGENCE_LIMITS.maxSourceFiles}.`;
   }
   const paths = [
     ...request.knownFiles,
@@ -117,7 +117,7 @@ function validateAnalyzeRequest(
       upsert.text.length >
       PROJECT_INTELLIGENCE_LIMITS.maxFileCharacters
     ) {
-      return `${upsert.file} has ${upsert.text.length} characters; the safe per-file worker limit is ${PROJECT_INTELLIGENCE_LIMITS.maxFileCharacters}.`;
+      return `${upsert.file} has ${upsert.text.length} characters. The safe per-file worker limit is ${PROJECT_INTELLIGENCE_LIMITS.maxFileCharacters}.`;
     }
   }
   return null;
@@ -318,7 +318,7 @@ function analyze(
     return errorResponse(
       request,
       "input_limit",
-      `Project analysis requires ${sourceFiles.length} source files and ${characterCount} characters; safe limits are ${PROJECT_INTELLIGENCE_LIMITS.maxSourceFiles} files and ${PROJECT_INTELLIGENCE_LIMITS.maxProjectCharacters} characters.`,
+      `Project analysis requires ${sourceFiles.length} source files and ${characterCount} characters. Safe limits are ${PROJECT_INTELLIGENCE_LIMITS.maxSourceFiles} files and ${PROJECT_INTELLIGENCE_LIMITS.maxProjectCharacters} characters.`,
       false,
     );
   }
@@ -332,7 +332,7 @@ function analyze(
     return errorResponse(
       request,
       "result_limit",
-      `Project analysis produced ${itemCount} records; the safe result limit is ${PROJECT_INTELLIGENCE_LIMITS.maxResultItems}.`,
+      `Project analysis produced ${itemCount} records. The safe result limit is ${PROJECT_INTELLIGENCE_LIMITS.maxResultItems}.`,
       false,
     );
   }
@@ -367,7 +367,7 @@ function analyze(
     return errorResponse(
       request,
       "result_limit",
-      `Project analysis produced ${outputItemCount} output records; the safe result limit is ${PROJECT_INTELLIGENCE_LIMITS.maxResultItems}.`,
+      `Project analysis produced ${outputItemCount} output records. The safe result limit is ${PROJECT_INTELLIGENCE_LIMITS.maxResultItems}.`,
       false,
     );
   }

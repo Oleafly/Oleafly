@@ -1,28 +1,82 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard};
+use std::time::Duration;
 
+use futures_util::future::AbortHandle;
+#[cfg(test)]
+use futures_util::future::Abortable;
 use oleafly_agent::{
     AgentEvent, CompletionRequest, CompletionResponse, ProviderConfig, RunConfig, ToolOutput,
 };
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::config::AppConfig;
+
+mod registry;
+use registry::{acquire_request_slot, cancel_all_requests, cancel_request, run_registered};
+#[cfg(test)]
+use registry::{begin_request, finish_request};
+
+const MAX_EARLY_CANCELLATIONS: usize = 256;
+const MAX_RUN_STEPS: u32 = 50;
+const MAX_RUN_RETRIES: u32 = 4;
+const MIN_RETRY_BASE_MS: u64 = 100;
+const MAX_RETRY_BASE_MS: u64 = 10_000;
+const MAX_TOOL_EXECUTION_DURATION: Duration = Duration::from_secs(5 * 60);
+const MAX_CONCURRENT_AGENT_REQUESTS: usize = 8;
 
 fn lock_or_recover<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
+struct ActiveRequest {
+    generation: u64,
+    handle: AbortHandle,
+}
+
+struct PendingTool {
+    generation: u64,
+    sender: tokio::sync::oneshot::Sender<ToolOutput>,
+}
+
 #[derive(Default)]
+struct RequestRegistry {
+    active: HashMap<String, ActiveRequest>,
+    early_cancellations: VecDeque<String>,
+    next_generation: u64,
+    session_id: Option<String>,
+}
+
 pub struct AgentState {
     client: Mutex<Option<reqwest::Client>>,
-    running: Mutex<HashMap<String, tauri::async_runtime::JoinHandle<()>>>,
-    pending_tools: Mutex<HashMap<String, tokio::sync::oneshot::Sender<ToolOutput>>>,
+    requests: Mutex<RequestRegistry>,
+    pending_tools: Mutex<HashMap<String, PendingTool>>,
+    request_slots: std::sync::Arc<tokio::sync::Semaphore>,
+}
+
+impl Default for AgentState {
+    fn default() -> Self {
+        Self {
+            client: Mutex::new(None),
+            requests: Mutex::new(RequestRegistry::default()),
+            pending_tools: Mutex::new(HashMap::new()),
+            request_slots: std::sync::Arc::new(tokio::sync::Semaphore::new(
+                MAX_CONCURRENT_AGENT_REQUESTS,
+            )),
+        }
+    }
 }
 
 impl AgentState {
-    fn client(&self) -> reqwest::Client {
+    fn client(&self) -> Result<reqwest::Client, String> {
         let mut slot = lock_or_recover(&self.client);
-        slot.get_or_insert_with(oleafly_agent::build_client).clone()
+        if let Some(client) = slot.as_ref() {
+            return Ok(client.clone());
+        }
+        let client = oleafly_agent::build_client().map_err(tagged)?;
+        *slot = Some(client.clone());
+        Ok(client)
     }
 }
 
@@ -35,6 +89,20 @@ pub fn provider_config(cfg: &AppConfig) -> ProviderConfig {
             .ai_keys
             .iter()
             .map(|(k, v)| (k.clone(), v.clone()))
+            .collect(),
+        enabled_models: cfg
+            .ai_provider_models
+            .iter()
+            .map(|(provider, models)| {
+                (
+                    provider.clone(),
+                    models
+                        .iter()
+                        .filter(|model| model.enabled && !model.id.trim().is_empty())
+                        .map(|model| model.id.clone())
+                        .collect(),
+                )
+            })
             .collect(),
         custom: cfg
             .ai_custom_providers
@@ -74,37 +142,28 @@ pub async fn agent_complete(
     request: CompletionRequest,
     provider_override: Option<ProviderOverride>,
 ) -> Result<CompletionResponse, String> {
-    let resolved = resolve_off_thread(provider_override).await?;
-    let client = state.client();
-
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    let handle = tauri::async_runtime::spawn(async move {
-        let result = oleafly_agent::complete(&client, &resolved, &request).await;
-        let _ = tx.send(result);
-    });
-
-    register(&state, &request_id, handle);
-    let outcome = rx.await;
-    unregister(&state, &request_id);
-
-    match outcome {
-        Ok(result) => result.map_err(tagged),
-        Err(_) => Err(tagged(oleafly_agent::AgentError::Cancelled)),
-    }
+    let agent_state = state.inner();
+    run_registered(agent_state, &request_id, |_| async move {
+        oleafly_agent::validate_completion_request(&request).map_err(tagged)?;
+        let resolved = resolve_off_thread(provider_override).await?;
+        let client = agent_state.client()?;
+        oleafly_agent::complete(&client, &resolved, &request)
+            .await
+            .map_err(tagged)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn agent_cancel_all(state: State<'_, AgentState>) {
-    for (_, handle) in lock_or_recover(&state.running).drain() {
-        handle.abort();
-    }
+pub fn agent_cancel_all(state: State<'_, AgentState>, session_id: String) {
+    cancel_all_requests(state.inner(), &session_id);
     lock_or_recover(&state.pending_tools).clear();
 }
 
 #[tauri::command]
 pub fn agent_cancel(state: State<'_, AgentState>, request_id: String) {
-    if let Some(handle) = lock_or_recover(&state.running).remove(&request_id) {
-        handle.abort();
+    if let Some(generation) = cancel_request(state.inner(), &request_id) {
+        drop_pending_tools(state.inner(), &request_id, Some(generation));
     }
 }
 
@@ -116,28 +175,19 @@ pub async fn agent_stream(
     provider_override: Option<ProviderOverride>,
     on_event: tauri::ipc::Channel<oleafly_agent::AgentEvent>,
 ) -> Result<(), String> {
-    let resolved = resolve_off_thread(provider_override).await?;
-    let client = state.client();
-
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    let sink = on_event.clone();
-    let handle = tauri::async_runtime::spawn(async move {
-        let outcome = oleafly_agent::stream_completion(&client, &resolved, &request, |event| {
-            let _ = sink.send(event);
+    let agent_state = state.inner();
+    run_registered(agent_state, &request_id, |_| async move {
+        oleafly_agent::validate_completion_request(&request).map_err(tagged)?;
+        let resolved = resolve_off_thread(provider_override).await?;
+        let client = agent_state.client()?;
+        oleafly_agent::stream_completion(&client, &resolved, &request, |event| {
+            let _ = on_event.send(event);
         })
-        .await;
-        let _ = tx.send(outcome.map(|_| ()));
-    });
-
-    register(&state, &request_id, handle);
-    let outcome = rx.await;
-    unregister(&state, &request_id);
-
-    match outcome {
-        Ok(Ok(())) => Ok(()),
-        Ok(Err(error)) => Err(tagged(error)),
-        Err(_) => Err(tagged(oleafly_agent::AgentError::Cancelled)),
-    }
+        .await
+        .map(|_| ())
+        .map_err(tagged)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -150,16 +200,16 @@ pub async fn agent_run(
     provider_override: Option<ProviderOverride>,
     on_event: tauri::ipc::Channel<AgentEvent>,
 ) -> Result<oleafly_agent::RunOutcome, String> {
-    let resolved = resolve_off_thread(provider_override).await?;
-    let client = state.client();
-    let config = config.unwrap_or_default();
-
-    let sink = on_event.clone();
-    let run_tool = webview_tool_runner(app.clone(), request_id.clone(), on_event.clone());
-
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    let task = tauri::async_runtime::spawn(async move {
-        let outcome = oleafly_agent::run_agent(
+    let agent_state = state.inner();
+    let config = sanitized_run_config(config);
+    let run_id = request_id.clone();
+    run_registered(agent_state, &request_id, |generation| async move {
+        oleafly_agent::validate_completion_request(&request).map_err(tagged)?;
+        let resolved = resolve_off_thread(provider_override).await?;
+        let client = agent_state.client()?;
+        let sink = on_event.clone();
+        let run_tool = webview_tool_runner(app, run_id, generation, on_event);
+        oleafly_agent::run_agent(
             &client,
             &resolved,
             request,
@@ -169,50 +219,90 @@ pub async fn agent_run(
                 let _ = sink.send(event);
             },
         )
-        .await;
-        let _ = tx.send(outcome);
-    });
-
-    register(&state, &request_id, task);
-    let outcome = rx.await;
-    unregister(&state, &request_id);
-    drop_pending_tools(&state, &request_id);
-
-    match outcome {
-        Ok(Ok(result)) => Ok(result),
-        Ok(Err(error)) => Err(tagged(error)),
-        Err(_) => Err(tagged(oleafly_agent::AgentError::Cancelled)),
-    }
+        .await
+        .map_err(tagged)
+    })
+    .await
 }
 
 fn webview_tool_runner(
     app: tauri::AppHandle,
     request_id: String,
+    generation: u64,
     tool_sink: tauri::ipc::Channel<AgentEvent>,
 ) -> oleafly_agent::ToolRunner {
+    let sequence = std::sync::Arc::new(AtomicU64::new(0));
     std::sync::Arc::new(move |call| {
         let tool_sink = tool_sink.clone();
         let handle = app.clone();
         let run_id = request_id.clone();
+        let reply_id = tool_reply_id(
+            generation,
+            sequence.fetch_add(1, Ordering::Relaxed),
+            &call.id,
+        );
         Box::pin(async move {
-            let key = tool_key(&run_id, &call.id);
+            let key = tool_key(&run_id, &reply_id);
             let (tx, rx) = tokio::sync::oneshot::channel();
             {
-                use tauri::Manager;
                 let state = handle.state::<AgentState>();
-                lock_or_recover(&state.pending_tools).insert(key.clone(), tx);
+                lock_or_recover(&state.pending_tools).insert(
+                    key.clone(),
+                    PendingTool {
+                        generation,
+                        sender: tx,
+                    },
+                );
             }
-            let _ = tool_sink.send(AgentEvent::ToolRequest {
-                id: call.id.clone(),
-                name: call.name.clone(),
-                arguments: call.arguments.clone(),
-            });
-            match rx.await {
+            let _guard = PendingToolGuard {
+                handle: handle.clone(),
+                key: key.clone(),
+                generation,
+            };
+            if tool_sink
+                .send(AgentEvent::ToolRequest {
+                    id: reply_id,
+                    name: call.name.clone(),
+                    arguments: call.arguments.clone(),
+                })
+                .is_err()
+            {
+                return tool_error("the tool request could not be delivered");
+            }
+            match await_tool_result(rx, MAX_TOOL_EXECUTION_DURATION).await {
                 Ok(output) => output,
-                Err(_) => ToolOutput::text("{\"error\":\"the tool was not executed\"}"),
+                Err(message) => tool_error(message),
             }
         })
     })
+}
+
+async fn await_tool_result(
+    receiver: tokio::sync::oneshot::Receiver<ToolOutput>,
+    timeout: Duration,
+) -> Result<ToolOutput, &'static str> {
+    match tokio::time::timeout(timeout, receiver).await {
+        Ok(Ok(output)) => Ok(output),
+        Ok(Err(_)) => Err("the tool was not executed"),
+        Err(_) => Err("the tool execution timed out"),
+    }
+}
+
+fn tool_error(message: &str) -> ToolOutput {
+    ToolOutput::text(serde_json::json!({ "error": message }).to_string())
+}
+
+struct PendingToolGuard {
+    handle: tauri::AppHandle,
+    key: String,
+    generation: u64,
+}
+
+impl Drop for PendingToolGuard {
+    fn drop(&mut self) {
+        let state = self.handle.state::<AgentState>();
+        remove_pending_tool(state.inner(), &self.key, self.generation);
+    }
 }
 
 #[tauri::command]
@@ -223,8 +313,11 @@ pub fn agent_tool_result(
     output: ToolOutput,
 ) {
     let key = tool_key(&request_id, &call_id);
-    if let Some(sender) = lock_or_recover(&state.pending_tools).remove(&key) {
-        let _ = sender.send(output);
+    let pending = { lock_or_recover(&state.pending_tools).remove(&key) };
+    if let Some(pending) = pending {
+        let _ = pending
+            .sender
+            .send(oleafly_agent::bound_tool_output(output));
     }
 }
 
@@ -232,9 +325,39 @@ fn tool_key(request_id: &str, call_id: &str) -> String {
     format!("{request_id}\u{1f}{call_id}")
 }
 
-fn drop_pending_tools(state: &State<'_, AgentState>, request_id: &str) {
+fn tool_reply_id(generation: u64, sequence: u64, provider_call_id: &str) -> String {
+    format!("tool-{generation}-{sequence}-{provider_call_id}")
+}
+
+fn remove_pending_tool(state: &AgentState, key: &str, generation: u64) {
+    let mut pending = lock_or_recover(&state.pending_tools);
+    let owned = pending
+        .get(key)
+        .map(|tool| tool.generation == generation)
+        .unwrap_or(false);
+    if owned {
+        pending.remove(key);
+    }
+}
+
+fn drop_pending_tools(state: &AgentState, request_id: &str, generation: Option<u64>) {
     let prefix = format!("{request_id}\u{1f}");
-    lock_or_recover(&state.pending_tools).retain(|key, _| !key.starts_with(&prefix));
+    lock_or_recover(&state.pending_tools).retain(|key, tool| {
+        let matching_generation = generation
+            .map(|generation| generation == tool.generation)
+            .unwrap_or(true);
+        !(key.starts_with(&prefix) && matching_generation)
+    });
+}
+
+fn sanitized_run_config(config: Option<RunConfig>) -> RunConfig {
+    let mut config = config.unwrap_or_default();
+    config.max_steps = config.max_steps.clamp(1, MAX_RUN_STEPS);
+    config.max_retries = config.max_retries.min(MAX_RUN_RETRIES);
+    config.retry_base_ms = config
+        .retry_base_ms
+        .clamp(MIN_RETRY_BASE_MS, MAX_RETRY_BASE_MS);
+    config
 }
 
 fn endpoint_override_allowed(
@@ -261,6 +384,7 @@ pub async fn agent_list_models(
     key: Option<String>,
     base_url: Option<String>,
 ) -> Result<Vec<oleafly_agent::ModelInfo>, String> {
+    let _request_slot = acquire_request_slot(state.inner())?;
     let cfg = tauri::async_runtime::spawn_blocking(crate::config::read_config)
         .await
         .map_err(|e| e.to_string())??;
@@ -288,9 +412,10 @@ pub async fn agent_list_models(
         }
     }
 
-    let resolved = oleafly_agent::provider::resolve_specific(&projected, &provider_id, "")
+    let resolved = oleafly_agent::provider::resolve_for_model_listing(&projected, &provider_id)
         .map_err(|e| e.to_string())?;
-    oleafly_agent::list_models(&state.client(), &resolved)
+    let client = state.client()?;
+    oleafly_agent::list_models(&client, &resolved)
         .await
         .map_err(|e| format!("[{}] {e}", e.kind()))
 }
@@ -309,113 +434,6 @@ fn resolve_for(
     .map_err(|e| e.to_string())
 }
 
-fn register(
-    state: &State<'_, AgentState>,
-    request_id: &str,
-    handle: tauri::async_runtime::JoinHandle<()>,
-) {
-    if let Some(previous) = lock_or_recover(&state.running).insert(request_id.to_string(), handle) {
-        previous.abort();
-    }
-}
-
-fn unregister(state: &State<'_, AgentState>, request_id: &str) {
-    lock_or_recover(&state.running).remove(request_id);
-}
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn config_with(provider: &str, keys: &[(&str, &str)]) -> AppConfig {
-        AppConfig {
-            ai_provider: provider.into(),
-            ai_keys: keys
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-                .collect(),
-            ..AppConfig::default()
-        }
-    }
-
-    fn with_custom(provider: &str, key: &str, base_url: &str) -> ProviderConfig {
-        let mut cfg = provider_config(&config_with(provider, &[(provider, key)]));
-        cfg.custom.push(oleafly_agent::CustomProvider {
-            id: provider.into(),
-            base_url: base_url.into(),
-            key_optional: false,
-        });
-        cfg
-    }
-
-    #[test]
-    fn a_stored_key_never_travels_to_a_caller_chosen_endpoint() {
-        let cfg = with_custom("gateway", "sk-stored", "https://gateway.example.com/v1");
-        assert!(!endpoint_override_allowed(
-            &cfg,
-            "gateway",
-            false,
-            &Some("https://attacker.example.com/v1".into())
-        ));
-    }
-
-    #[test]
-    fn supplying_the_key_with_the_endpoint_is_allowed() {
-        let cfg = with_custom("gateway", "sk-stored", "https://gateway.example.com/v1");
-        assert!(endpoint_override_allowed(
-            &cfg,
-            "gateway",
-            true,
-            &Some("https://new.example.com/v1".into())
-        ));
-    }
-
-    #[test]
-    fn a_provider_with_no_stored_key_may_name_its_endpoint() {
-        let cfg = provider_config(&AppConfig::default());
-        assert!(endpoint_override_allowed(
-            &cfg,
-            "brand-new",
-            false,
-            &Some("http://127.0.0.1:8000/v1".into())
-        ));
-    }
-
-    #[test]
-    fn listing_without_an_endpoint_override_is_always_allowed() {
-        let cfg = with_custom("gateway", "sk-stored", "https://gateway.example.com/v1");
-        assert!(endpoint_override_allowed(&cfg, "gateway", false, &None));
-    }
-
-    #[test]
-    fn provider_config_carries_every_field_resolution_depends_on() {
-        let cfg = AppConfig {
-            ai_model: "claude-3-5-haiku-20241022".into(),
-            ai_api_key: "legacy".into(),
-            ai_custom_providers: vec![crate::config::CustomProvider {
-                id: "local".into(),
-                name: "Local".into(),
-                base_url: "http://127.0.0.1:8000/v1".into(),
-                key_optional: true,
-            }],
-            ..config_with("anthropic", &[("anthropic", "sk-ant")])
-        };
-
-        let projected = provider_config(&cfg);
-        assert_eq!(projected.provider, "anthropic");
-        assert_eq!(projected.model, "claude-3-5-haiku-20241022");
-        assert_eq!(projected.legacy_key, "legacy");
-        assert_eq!(projected.keys.get("anthropic").unwrap(), "sk-ant");
-        assert_eq!(projected.custom[0].base_url, "http://127.0.0.1:8000/v1");
-        assert!(projected.custom[0].key_optional);
-    }
-
-    #[test]
-    fn a_configured_key_resolves_end_to_end_from_app_config() {
-        let cfg = config_with("groq", &[("groq", "gsk-1")]);
-        let resolved = oleafly_agent::resolve(&provider_config(&cfg)).unwrap();
-        assert_eq!(resolved.provider_id, "groq");
-        assert_eq!(resolved.model_id, "llama-3.3-70b-versatile");
-        assert_eq!(resolved.credential, "gsk-1");
-    }
-}
+#[path = "agent_tests.rs"]
+mod tests;

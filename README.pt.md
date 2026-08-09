@@ -487,7 +487,7 @@ produto criterioso são bem-vindos.
    ```bash
    pnpm build
    pnpm test
-   cargo test --manifest-path src-tauri/Cargo.toml --lib
+   cargo test --workspace --all-targets
    ```
 
 Por favor, relate problemas de segurança de forma privada, conforme descrito em

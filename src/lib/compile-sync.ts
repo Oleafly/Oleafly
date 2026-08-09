@@ -1,13 +1,14 @@
 import { readCompiledPdf } from "@/lib/tauri";
 import {
   fingerprintCompileOutput,
-  isCompileSuccessCheckpoint,
+  isCompileSucceededEvent,
   isNewerCompileCheckpoint,
   nextSuccessfulCompileTimestamp,
 } from "@/lib/compile-checkpoint";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
+import { currentProjectStateRevision } from "@/lib/project-state-revision";
 
 /**
  * Apply a successful compile produced by another window only when the event
@@ -18,23 +19,29 @@ export async function applyRemoteCompileSuccess(
   payload: unknown,
   selfProducerId: string,
 ): Promise<boolean> {
-  if (!isCompileSuccessCheckpoint(payload)) return false;
-  if (payload.producerId === selfProducerId) return false;
+  if (!isCompileSucceededEvent(payload)) return false;
+  if (
+    payload.projectStateRevision !== currentProjectStateRevision() ||
+    payload.checkpoint.producerId === selfProducerId
+  ) {
+    return false;
+  }
+  const checkpoint = payload.checkpoint;
 
   const files = useFilesStore.getState();
   if (
-    files.projectId !== payload.projectId ||
-    files.mainDoc !== payload.mainDocument ||
+    files.projectId !== checkpoint.projectId ||
+    files.mainDoc !== checkpoint.mainDocument ||
     useProjectAnalysisStore.getState().snapshot.identity.projectId !==
-      payload.projectId ||
+      checkpoint.projectId ||
     useProjectAnalysisStore.getState().snapshot.identity.projectRevision !==
-      payload.projectRevision
+      checkpoint.projectRevision
   ) {
     return false;
   }
   if (
     !isNewerCompileCheckpoint(
-      payload,
+      checkpoint,
       useCompileStore.getState().lastCompileCheckpoint,
     )
   ) {
@@ -42,22 +49,23 @@ export async function applyRemoteCompileSuccess(
   }
 
   try {
-    const bytes = new Uint8Array(await readCompiledPdf(payload.projectId));
+    const bytes = new Uint8Array(await readCompiledPdf(checkpoint.projectId));
     const currentFiles = useFilesStore.getState();
     if (
-      currentFiles.projectId !== payload.projectId ||
-      currentFiles.mainDoc !== payload.mainDocument ||
+      payload.projectStateRevision !== currentProjectStateRevision() ||
+      currentFiles.projectId !== checkpoint.projectId ||
+      currentFiles.mainDoc !== checkpoint.mainDocument ||
       useProjectAnalysisStore.getState().snapshot.identity.projectId !==
-        payload.projectId ||
+        checkpoint.projectId ||
       useProjectAnalysisStore.getState().snapshot.identity.projectRevision !==
-        payload.projectRevision ||
-      fingerprintCompileOutput(bytes) !== payload.outputId
+        checkpoint.projectRevision ||
+      fingerprintCompileOutput(bytes) !== checkpoint.outputId
     ) {
       return false;
     }
 
     const compile = useCompileStore.getState();
-    if (!isNewerCompileCheckpoint(payload, compile.lastCompileCheckpoint)) {
+    if (!isNewerCompileCheckpoint(checkpoint, compile.lastCompileCheckpoint)) {
       return false;
     }
     useCompileStore.setState({
@@ -65,22 +73,22 @@ export async function applyRemoteCompileSuccess(
       phase: "idle",
       pdfBytes: bytes,
       lastAttemptIdentity: {
-        projectId: payload.projectId,
-        mainDocument: payload.mainDocument,
-        projectRevision: payload.projectRevision,
-        requestGeneration: payload.requestGeneration,
+        projectId: checkpoint.projectId,
+        mainDocument: checkpoint.mainDocument,
+        projectRevision: checkpoint.projectRevision,
+        requestGeneration: checkpoint.requestGeneration,
       },
       failureReason: null,
       errors: [],
       log:
-        payload.outputKind === "tagged"
+        checkpoint.outputKind === "tagged"
           ? "Tagged PDF compiled successfully in another window."
           : "PDF compiled successfully in another window.",
       lastCompiledAt: nextSuccessfulCompileTimestamp(
         compile.lastCompiledAt,
-        payload.completedAt,
+        checkpoint.completedAt,
       ),
-      lastCompileCheckpoint: payload,
+      lastCompileCheckpoint: checkpoint,
       // Source contents are intentionally runtime-local and are not sent over
       // the cross-window event. Keep remote output revision-gated until this
       // window performs its own compile.
@@ -90,13 +98,13 @@ export async function applyRemoteCompileSuccess(
       .then((module) =>
         module.refreshPreviewWindow({
           identity: {
-            projectId: payload.projectId,
-            mainDocument: payload.mainDocument,
-            projectRevision: payload.projectRevision,
-            requestGeneration: payload.requestGeneration,
+            projectId: checkpoint.projectId,
+            mainDocument: checkpoint.mainDocument,
+            projectRevision: checkpoint.projectRevision,
+            requestGeneration: checkpoint.requestGeneration,
           },
           status: "success",
-          checkpoint: payload,
+          checkpoint,
         }),
       )
       .catch(() => {});

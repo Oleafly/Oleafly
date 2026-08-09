@@ -144,6 +144,14 @@ const HOST: EditorHost = {
   useActivePath: () => useFilesStore((s) => s.activePath),
   getActivePath: () => useFilesStore.getState().activePath,
   useDocVersion: () => useFilesStore((s) => s.docVersion),
+  useCompletionSyntax: (path) => {
+    const sourceFormat = useFilesStore((s) => s.engine.source_format);
+    if (path?.toLowerCase().endsWith(".bib")) return "bibtex";
+    if (sourceFormat === "latex" || sourceFormat === "markdown" || sourceFormat === "typst") {
+      return sourceFormat;
+    }
+    return "generic";
+  },
   getContent: (path) => useFilesStore.getState().files[path]?.content ?? "",
   setContent: (path, content) => useFilesStore.getState().setContent(path, content),
   useSettings: () => ({
@@ -220,6 +228,7 @@ export function CodeMirrorEditor({ active = true }: { active?: boolean }) {
         languageServiceCompletion,
         ...projectCompletionSourcesForPath(path),
       ]}
+      extraGhostCompletionSourcesForPath={projectCompletionSourcesForPath}
       extraKeymap={EXTRA_KEYMAP}
     />
   );

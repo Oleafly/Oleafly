@@ -6,6 +6,7 @@ export const LATEX_ENGINE: DocumentEngineDescriptor = {
   source_format: "latex",
   main_document: "main.tex",
   source_extensions: ["tex", "ltx", "latex"],
+  allow_shell_escape: false,
   capabilities: {
     produces_pdf: true,
     supports_synctex: true,
@@ -26,6 +27,7 @@ export const UNKNOWN_ENGINE: DocumentEngineDescriptor = {
   source_format: "unknown",
   main_document: "",
   source_extensions: [],
+  allow_shell_escape: false,
   capabilities: {
     produces_pdf: false,
     supports_synctex: false,

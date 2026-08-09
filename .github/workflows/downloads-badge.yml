@@ -18,6 +18,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: downloads-badge
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-24.04
@@ -31,8 +35,9 @@ jobs:
           branch="badges"
           path=".github/badges/downloads.json"
 
-          total=$(gh api "repos/${repo}/releases?per_page=100" \
-            --jq '[.[].assets[] | select(.name != "latest.json") | select(.name | endswith(".sig") | not) | .download_count] | add // 0')
+          total=$(gh api --paginate "repos/${repo}/releases?per_page=100" \
+            --jq '.[] | .assets[] | select(.name != "latest.json") | select(.name | endswith(".sig") | not) | .download_count' \
+            | awk '{ sum += $1 } END { print sum + 0 }')
           json=$(printf '{"schemaVersion":1,"label":"Downloads","message":"%s","color":"22c55e"}\n' "$total")
 
           # Create the badges branch from main on first run.

@@ -7,11 +7,18 @@ allowBuilds:
 # Force the transitive nanoid (via hunspell-asm) to a patched version.
 # GHSA-mwcw-c2x4-8c55: predictable results in nanoid < 3.3.8.
 # GHSA-2v37-7h3g-55p8: custom generators loop forever on size zero, < 3.3.17.
-# Force the transitive postcss (via vite) to a patched version.
-# GHSA-r28c-9q8g-f849: source-map path traversal in postcss <= 8.5.17.
+# Force transitive build and test dependencies to patched versions.
 overrides:
   nanoid@<3.3.17: "3.3.17"
-  postcss@<8.5.18: ">=8.5.18"
+  # GHSA-6g55-p6wh-862q: source map disclosure in postcss < 8.5.23.
+  postcss@<8.5.23: "8.5.23"
+  # GHSA-g9mf-h72j-4rw9 and related advisories fixed in undici 7.29.0.
+  undici@<7.29.0: "7.29.0"
+  # GHSA-c4c3-pg64-4m4v, GHSA-6x64-9x62-f2gx,
+  # GHSA-3rrr-jr9j-h3q3, GHSA-2v8p-3f2j-5mp7, GHSA-rhh3-jpg6-66xh.
+  mermaid@<11.16.1: "11.16.1"
+  # GHSA-55q2-fjhq-7xh7: detached DOM subtree XSS in DOMPurify <= 3.4.12.
+  dompurify@<3.4.13: "3.4.13"
   # Held at 6.7.0: 6.7.1 correlated with large-editor scroll-probe failures
   # in the e2e chaos test (CI twice, locally not fully reproducible). The
   # override also guarantees a single copy — duplicate @codemirror/state

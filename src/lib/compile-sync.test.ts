@@ -23,6 +23,17 @@ import { applyRemoteCompileSuccess } from "./compile-sync";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
+import {
+  currentProjectStateRevision,
+  recordProjectStateRevision,
+} from "./project-state-revision";
+
+function remoteEvent(checkpointValue: ReturnType<typeof checkpoint>) {
+  return {
+    projectStateRevision: currentProjectStateRevision(),
+    checkpoint: checkpointValue,
+  };
+}
 
 function checkpoint(
   bytes: Uint8Array,
@@ -66,7 +77,7 @@ describe("cross-window successful output synchronization", () => {
     mocks.readCompiledPdf.mockResolvedValue(bytes.buffer);
 
     await expect(
-      applyRemoteCompileSuccess(payload, "main-window"),
+      applyRemoteCompileSuccess(remoteEvent(payload), "main-window"),
     ).resolves.toBe(true);
 
     const state = useCompileStore.getState();
@@ -94,7 +105,7 @@ describe("cross-window successful output synchronization", () => {
     mocks.readCompiledPdf.mockResolvedValue(priorBytes.buffer);
 
     await expect(
-      applyRemoteCompileSuccess(announced, "main-window"),
+      applyRemoteCompileSuccess(remoteEvent(announced), "main-window"),
     ).resolves.toBe(false);
 
     const state = useCompileStore.getState();
@@ -113,10 +124,13 @@ describe("cross-window successful output synchronization", () => {
     });
 
     await expect(
-      applyRemoteCompileSuccess(checkpoint(new Uint8Array([7]), 7), "main-window"),
+      applyRemoteCompileSuccess(
+        remoteEvent(checkpoint(new Uint8Array([7]), 7)),
+        "main-window",
+      ),
     ).resolves.toBe(false);
     await expect(
-      applyRemoteCompileSuccess(current, "main-window"),
+      applyRemoteCompileSuccess(remoteEvent(current), "main-window"),
     ).resolves.toBe(false);
     expect(mocks.readCompiledPdf).not.toHaveBeenCalled();
   });
@@ -126,10 +140,26 @@ describe("cross-window successful output synchronization", () => {
 
     await expect(
       applyRemoteCompileSuccess(
-        { ...stale, projectRevision: stale.projectRevision + 1 },
+        remoteEvent({
+          ...stale,
+          projectRevision: stale.projectRevision + 1,
+        }),
         "main-window",
       ),
     ).resolves.toBe(false);
+    expect(mocks.readCompiledPdf).not.toHaveBeenCalled();
+  });
+
+  it("rejects a delayed success from before the latest project-state mutation", async () => {
+    const bytes = new Uint8Array([5]);
+    const staleEvent = remoteEvent(checkpoint(bytes, 5));
+    recordProjectStateRevision(staleEvent.projectStateRevision + 1);
+    mocks.readCompiledPdf.mockResolvedValue(bytes.buffer);
+
+    await expect(
+      applyRemoteCompileSuccess(staleEvent, "main-window"),
+    ).resolves.toBe(false);
+
     expect(mocks.readCompiledPdf).not.toHaveBeenCalled();
   });
 
@@ -137,7 +167,7 @@ describe("cross-window successful output synchronization", () => {
     const bytes = new Uint8Array([3]);
     const valid = checkpoint(bytes, 3);
     await expect(
-      applyRemoteCompileSuccess(valid, valid.producerId),
+      applyRemoteCompileSuccess(remoteEvent(valid), valid.producerId),
     ).resolves.toBe(false);
     await expect(
       applyRemoteCompileSuccess(
@@ -147,13 +177,13 @@ describe("cross-window successful output synchronization", () => {
     ).resolves.toBe(false);
     await expect(
       applyRemoteCompileSuccess(
-        { ...valid, projectId: "other-project" },
+        remoteEvent({ ...valid, projectId: "other-project" }),
         "main-window",
       ),
     ).resolves.toBe(false);
     await expect(
       applyRemoteCompileSuccess(
-        { ...valid, mainDocument: "other.tex" },
+        remoteEvent({ ...valid, mainDocument: "other.tex" }),
         "main-window",
       ),
     ).resolves.toBe(false);

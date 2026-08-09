@@ -52,4 +52,16 @@ describe("mcp approval store", () => {
     await expect(p1).resolves.toBe(true);
     await expect(p2).resolves.toBe(false);
   });
+
+  it("cancels every pending approval and clears session approval", async () => {
+    useMcpApprovalStore.getState().setSessionAutoApprove(true);
+    const pending = useMcpApprovalStore.getState().request(req("delete_file"));
+    expect(useMcpApprovalStore.getState().queue).toHaveLength(1);
+
+    useMcpApprovalStore.getState().cancelAll();
+
+    await expect(pending).resolves.toBe(false);
+    expect(useMcpApprovalStore.getState().queue).toEqual([]);
+    expect(useMcpApprovalStore.getState().sessionAutoApprove).toBe(false);
+  });
 });

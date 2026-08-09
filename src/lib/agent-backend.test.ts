@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getEventListeners } from "node:events";
 
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -92,6 +93,17 @@ describe("cancellation", () => {
     expect(mocks.invoke).toHaveBeenCalledWith("agent_cancel", expect.anything());
   });
 
+  it("removes abort listeners after normally settled requests", async () => {
+    mocks.invoke.mockResolvedValue(reply("done"));
+    const controller = new AbortController();
+
+    for (let index = 0; index < 12; index += 1) {
+      await completeText({ user: `request ${index}`, signal: controller.signal });
+    }
+
+    expect(getEventListeners(controller.signal, "abort")).toHaveLength(0);
+  });
+
   it("reports a genuine provider failure as an error, not an abort", async () => {
     mocks.invoke.mockRejectedValue("The provider returned 401. Incorrect API key provided");
     await expect(completeText({ user: "hi" })).rejects.toThrow(/401/);
@@ -169,5 +181,33 @@ describe("streaming", () => {
     controller.abort();
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
     expect(mocks.invoke).toHaveBeenCalledWith("agent_cancel", expect.anything());
+  });
+
+  it("ignores channel events that arrive after cancellation", async () => {
+    const captured: {
+      channel?: { onmessage: ((event: AgentEvent) => void) | null };
+    } = {};
+    mocks.invoke.mockImplementation((command: string, args: Record<string, unknown>) => {
+      if (command === "agent_cancel") return Promise.resolve();
+      if (command === "agent_stream") {
+        captured.channel = args.onEvent as typeof captured.channel;
+        return new Promise(() => {});
+      }
+      return Promise.resolve();
+    });
+    const controller = new AbortController();
+    const seen: AgentEvent[] = [];
+    const pending = streamViaBackend(
+      { messages: [] },
+      (event) => seen.push(event),
+      controller.signal,
+    );
+    await vi.waitFor(() => expect(captured.channel).toBeDefined());
+
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    captured.channel?.onmessage?.({ kind: "textDelta", text: "late" });
+
+    expect(seen).toEqual([]);
   });
 });

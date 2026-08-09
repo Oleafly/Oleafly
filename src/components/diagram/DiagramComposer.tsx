@@ -113,8 +113,8 @@ const HOST: DiagramHost = {
   writeProjectBytes,
   insertAtCursor,
   getMainDoc: () => useFilesStore.getState().mainDoc,
-  applyExternalWrite: (path, content) =>
-    useFilesStore.getState().applyExternalWrite(path, content),
+  applyExternalWrite: (projectId, path, content) =>
+    useFilesStore.getState().applyExternalWrite(projectId, path, content),
   saveActive: () => useFilesStore.getState().saveActive(),
   refreshTree: () => useFilesStore.getState().refreshTree(),
   createImageProject,

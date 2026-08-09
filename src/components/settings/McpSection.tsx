@@ -16,7 +16,7 @@ import {
   type AppConfig,
   type McpStatus,
 } from "@/lib/tauri";
-import { refreshMcpRegistry } from "@/lib/mcp-bridge";
+import { refreshMcpRegistry, revokeMcpBridgeCalls } from "@/lib/mcp-bridge";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { cn } from "@/lib/utils";
 
@@ -252,6 +252,7 @@ export function McpSection() {
     setError(null);
     const next = { ...cfg, ...patch };
     try {
+      revokeMcpBridgeCalls();
       await setConfig(next);
       setCfg(next);
       await refreshMcpRegistry();
@@ -268,7 +269,12 @@ export function McpSection() {
     setRevealed(false);
     setRestartConfirmation(null);
     try {
-      const s = await mcpSetEnabled(next);
+      if (!next) revokeMcpBridgeCalls();
+      let s = await mcpSetEnabled(next);
+      if (next) {
+        await refreshMcpRegistry();
+        s = await mcpStatus();
+      }
       setStatus(s);
       setCfg({
         ...cfg,
@@ -277,8 +283,7 @@ export function McpSection() {
       });
       useMcpActivityStore.getState().setServerRunning(!!s.running);
       if (next) {
-        await refreshMcpRegistry();
-        await loadToken(true);
+        await loadToken(s.running);
       } else {
         setToken(null);
       }
@@ -298,17 +303,19 @@ export function McpSection() {
     setError(null);
     setRevealed(false);
     try {
-      const s = await mcpRestartServer();
-      setStatus(s);
+      revokeMcpBridgeCalls();
+      const restarting = await mcpRestartServer();
+      await refreshMcpRegistry();
+      const ready = await mcpStatus();
+      setStatus(ready);
       setCfg({
         ...cfg,
         mcp_enabled: true,
-        mcp_port: s.port ?? cfg.mcp_port,
+        mcp_port: ready.port ?? restarting.port ?? cfg.mcp_port,
       });
-      useMcpActivityStore.getState().setServerRunning(!!s.running);
-      setRestartConfirmation(s.url);
-      await refreshMcpRegistry();
-      await loadToken(true);
+      useMcpActivityStore.getState().setServerRunning(ready.running);
+      setRestartConfirmation(ready.url);
+      await loadToken(ready.running);
     } catch (e) {
       setError(String(e));
       await load();
@@ -340,7 +347,9 @@ export function McpSection() {
     setBusy(true);
     setError(null);
     try {
+      revokeMcpBridgeCalls();
       await mcpRegenerateToken();
+      await refreshMcpRegistry();
       setConfirmRegen(false);
       if (status?.running) {
         const info = await mcpConnectionInfo();

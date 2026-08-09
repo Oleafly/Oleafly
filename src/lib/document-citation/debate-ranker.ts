@@ -22,7 +22,7 @@ Score guide:
 
 First, write one sentence identifying what specific claims or methods in the paragraph need citations (the NEEDS line). Then evaluate each paper using its actual number.
 
-Output exactly this structure — no preamble, no extra text. Use the actual paper numbers (1, 2, 3, ...):
+Output exactly this structure with no preamble or extra text. Use the actual paper numbers (1, 2, 3, ...):
 
 NEEDS: The paragraph introduces graph neural networks for molecule generation and needs citations for the GNN architecture and the generation task itself.
 

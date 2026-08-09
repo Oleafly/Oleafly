@@ -20,77 +20,92 @@ import "@/styles/globals.css";
 
 markBootStage("entry-evaluated");
 
-reapOrphanAgentRuns();
+type WindowView = "main" | "update" | "preview";
 
-// Must run before the shell mounts and reads the registry.
-registerContributions();
-markBootStage("contributions-registered");
-// Awaited, not floating: the e2e devtools hooks used to be installed
-// synchronously as side effects of eagerly imported modules, and specs call
-// them as soon as the library paints. Resolving this before the app renders
-// keeps that guarantee. Production drops the whole branch.
-if (import.meta.env.DEV) {
+function currentWindowView(): WindowView {
+  const view = new URLSearchParams(window.location.search).get("view");
+  if (view === "update" || view === "preview") return view;
+  return "main";
+}
+
+function installErrorLogging(): void {
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = event.reason;
+    const message = reason?.stack || reason?.message || String(reason);
+    void appendAppLog(`Unhandled promise rejection: ${message}`).catch(() => {});
+  });
+  window.addEventListener("error", (event) => {
+    const message = event.error?.stack || event.message || String(event.error);
+    void appendAppLog(`Uncaught error: ${message}`).catch(() => {});
+  });
+}
+
+async function installDevelopmentProbe(): Promise<void> {
+  if (!import.meta.env.DEV) return;
   const { installE2ePdfProbe } = await import("@/lib/e2e-probe");
   installE2ePdfProbe();
 }
 
-// Log otherwise-invisible failures so they can be diagnosed from a bug report.
-window.addEventListener("unhandledrejection", (e) => {
-  const reason = e.reason;
-  const msg = reason?.stack || reason?.message || String(reason);
-  void appendAppLog(`Unhandled promise rejection: ${msg}`).catch(() => {});
-});
-window.addEventListener("error", (e) => {
-  const msg = e.error?.stack || e.message || String(e.error);
-  void appendAppLog(`Uncaught error: ${msg}`).catch(() => {});
-});
-
-const viewParam = new URLSearchParams(window.location.search).get("view");
-const isUpdateWindow = viewParam === "update";
-const isPreviewWindow = viewParam === "preview";
-
-if (!isUpdateWindow && !isPreviewWindow) {
-  installDesktopViewportGuard();
-}
-
-// The update window is transparent so its rounded card defines the window
-// shape; clear the opaque page background the main app sets.
-if (isUpdateWindow) {
-  for (const el of [document.documentElement, document.body]) {
-    el.style.background = "transparent";
+function prepareWindow(view: WindowView): void {
+  if (view === "main") {
+    installDesktopViewportGuard();
+    return;
   }
-}
-
-// Secondary windows never show the splash; drop it before their render.
-if (isUpdateWindow || isPreviewWindow) {
+  if (view === "update") {
+    document.documentElement.style.background = "transparent";
+    document.body.style.background = "transparent";
+  }
   dismissBootSplash();
 }
 
-const root = document.getElementById("root");
-if (!root) throw new Error("Oleafly root element is missing");
+function WindowContent({ view }: { view: WindowView }) {
+  if (view === "update") {
+    return (
+      <ThemeProvider>
+        <UpdateWindow />
+      </ThemeProvider>
+    );
+  }
+  if (view === "preview") {
+    return (
+      <ThemeProvider>
+        <PreviewWindow />
+        <Toaster />
+      </ThemeProvider>
+    );
+  }
+  return (
+    <>
+      <App />
+      <Toaster />
+      <DevContextMenu />
+      <IndexKeeper />
+      <RenameDialog />
+      <AddCitationDialog />
+    </>
+  );
+}
 
-createRoot(root).render(
-  <StrictMode>
-    <ErrorBoundary>
-      {isUpdateWindow ? (
-        <ThemeProvider>
-          <UpdateWindow />
-        </ThemeProvider>
-      ) : isPreviewWindow ? (
-        <ThemeProvider>
-          <PreviewWindow />
-          <Toaster />
-        </ThemeProvider>
-      ) : (
-        <>
-          <App />
-          <Toaster />
-          <DevContextMenu />
-          <IndexKeeper />
-          <RenameDialog />
-          <AddCitationDialog />
-        </>
-      )}
-    </ErrorBoundary>
-  </StrictMode>,
-);
+async function bootstrap(): Promise<void> {
+  const view = currentWindowView();
+  if (view === "main") await reapOrphanAgentRuns();
+  registerContributions();
+  markBootStage("contributions-registered");
+  await installDevelopmentProbe();
+  installErrorLogging();
+  prepareWindow(view);
+  const root = document.getElementById("root");
+  if (!root) throw new Error("Oleafly root element is missing");
+  createRoot(root).render(
+    <StrictMode>
+      <ErrorBoundary>
+        <WindowContent view={view} />
+      </ErrorBoundary>
+    </StrictMode>,
+  );
+}
+
+void bootstrap().catch((error) => {
+  const message = error instanceof Error ? error.stack || error.message : String(error);
+  void appendAppLog(`Application bootstrap failed: ${message}`).catch(() => {});
+});

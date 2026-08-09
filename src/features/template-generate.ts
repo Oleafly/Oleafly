@@ -22,7 +22,7 @@ const SYSTEM = [
   "source is a COMPLETE compilable document with placeholder content a user edits.",
   "For LaTeX it must compile under Tectonic without shell escape. Never use em dashes.",
   "LaTeX safety rules: if you use any color expression (e.g. blue!50!black) you MUST load xcolor",
-  "before it is referenced; prefer no colors at all. Stick to widely available packages",
+  "before it is referenced. Prefer no colors at all. Stick to widely available packages",
   "(geometry, graphicx, hyperref, xcolor, booktabs, enumitem, titlesec, caption, microtype,",
   "amsmath, lipsum). Every environment and command you reference must be defined.",
 ].join(" ");

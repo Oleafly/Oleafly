@@ -11,13 +11,14 @@ import {
   writeFileContent,
   createFile,
   deleteFile,
-  renameFile,
+  renameFile as renameFileCmd,
   listFiles,
   searchProject,
   compileIsolated,
   readIsolatedPdf,
   readProjectBytes,
   writeProjectBytes,
+  projectMutationGeneration,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
@@ -39,13 +40,102 @@ import {
 
 export type { ToolApprovalRequest, ConfirmFn } from "@oleafly/ai-tools";
 
+function recordMutationResult(projectId: string, result: unknown): void {
+  const generation =
+    result && typeof result === "object" && "generation" in result
+      ? (result as { generation?: unknown }).generation
+      : undefined;
+  if (typeof generation === "number" && Number.isSafeInteger(generation)) {
+    useFilesStore.getState().recordMutationGeneration(projectId, generation);
+  }
+}
+
+function mutationAllowed(
+  projectId: string,
+  allowed: () => boolean,
+): boolean {
+  return useFilesStore.getState().projectId === projectId && allowed();
+}
+
+async function currentDiskContent(projectId: string, path: string): Promise<string> {
+  const cached = useFilesStore.getState().files[path]?.content;
+  return cached ?? readFileContent(projectId, path);
+}
+
+const insertAtCursorHost: AiToolsHost["insertAtCursor"] = async (
+  projectId,
+  text,
+  allowed = () => true,
+) => {
+  if (!mutationAllowed(projectId, allowed)) return false;
+  if (getEditorView()) {
+    insertAtCursor(text);
+    return true;
+  }
+  const files = useFilesStore.getState();
+  const path = files.activePath || files.mainDoc || "main.tex";
+  const expectedGeneration = await files.prepareExternalMutation(projectId);
+  const current = await currentDiskContent(projectId, path);
+  if (!mutationAllowed(projectId, allowed)) return false;
+  const documentEnd = current.lastIndexOf("\\end{document}");
+  const at = documentEnd >= 0 ? documentEnd : current.length;
+  const next = `${current.slice(0, at)}${text}\n${current.slice(at)}`;
+  const result = await writeFileContent(projectId, path, next, expectedGeneration);
+  recordMutationResult(projectId, result);
+  return useFilesStore.getState().applyExternalWrite(projectId, path, next);
+};
+
+const replaceRangeHost: AiToolsHost["replaceRange"] = async (
+  projectId,
+  from,
+  to,
+  text,
+  allowed = () => true,
+) => {
+  if (!mutationAllowed(projectId, allowed)) return false;
+  if (getEditorView()) {
+    replaceRangeInEditor(from, to, text);
+    return true;
+  }
+  const files = useFilesStore.getState();
+  const path = files.activePath || files.mainDoc || "main.tex";
+  const expectedGeneration = await files.prepareExternalMutation(projectId);
+  const current = await currentDiskContent(projectId, path);
+  if (!mutationAllowed(projectId, allowed)) return false;
+  const start = Math.max(0, Math.min(from, current.length));
+  const end = Math.max(start, Math.min(to, current.length));
+  const next = `${current.slice(0, start)}${text}${current.slice(end)}`;
+  const result = await writeFileContent(projectId, path, next, expectedGeneration);
+  recordMutationResult(projectId, result);
+  return useFilesStore.getState().applyExternalWrite(projectId, path, next);
+};
+
 const HOST: AiToolsHost = {
   getProjectId: () => useFilesStore.getState().projectId,
   readFileContent,
-  writeFileContent,
-  createFile,
-  deleteFile,
-  renameFile,
+  writeFileContent: async (projectId, path, content, expectedGeneration) => {
+    const result = await writeFileContent(projectId, path, content, expectedGeneration);
+    recordMutationResult(projectId, result);
+    return result;
+  },
+  createFile: async (projectId, path, isDir, expectedGeneration) => {
+    const result = await createFile(projectId, path, isDir, expectedGeneration);
+    recordMutationResult(projectId, result);
+    return result;
+  },
+  deleteFile: async (projectId, path, expectedGeneration) => {
+    const result = await deleteFile(projectId, path, expectedGeneration);
+    recordMutationResult(projectId, result);
+    return result;
+  },
+  renameFile: async (projectId, from, to, expectedGeneration) => {
+    const path = await renameFileCmd(projectId, from, to, "error", expectedGeneration);
+    const generation = await projectMutationGeneration(projectId).catch(() => null);
+    if (generation !== null) {
+      useFilesStore.getState().recordMutationGeneration(projectId, generation);
+    }
+    return { path, ...(generation === null ? {} : { generation }) };
+  },
   setMainDoc: async (projectId, path) => {
     const files = useFilesStore.getState();
     if (files.projectId !== projectId) throw new Error("Project changed before setting main document");
@@ -54,29 +144,54 @@ const HOST: AiToolsHost = {
   },
   listFiles,
   searchProject,
-  // NB: the figure-pipeline services are referenced lazily (arrow wrappers)
-  // so test mocks of @/lib/tauri that omit them don't fail at module init.
   readProjectBytes: (projectId, path) => readProjectBytes(projectId, path),
-  writeProjectBytes: (projectId, relPath, b64) => writeProjectBytes(projectId, relPath, b64),
-  applyExternalWrite: (path, content) => {
-    useFilesStore.getState().applyExternalWrite(path, content);
-    void import("@/lib/cross-window").then((m) =>
-      m.notifyProjectFilesChanged(useFilesStore.getState().projectId, [path]),
-    );
+  writeProjectBytes: async (projectId, relPath, b64, expectedGeneration) => {
+    const result = await writeProjectBytes(projectId, relPath, b64, expectedGeneration);
+    recordMutationResult(projectId, result);
+    return result;
   },
-  applyExternalRename: (from, to) => {
-    useFilesStore.getState().applyExternalRename(from, to);
+  prepareExternalMutation: (projectId) =>
+    useFilesStore.getState().prepareExternalMutation(projectId),
+  applyExternalWrite: (projectId, path, content) => {
+    const files = useFilesStore.getState();
+    if (files.projectId !== projectId) return false;
+    const applied = files.applyExternalWrite(projectId, path, content);
+    const finalContent = applied
+      ? content
+      : useFilesStore.getState().files[path]?.content ?? content;
     void import("@/lib/cross-window").then((m) =>
-      m.notifyProjectFilesChanged(useFilesStore.getState().projectId, [from, to]),
+      m.notifyProjectFilesChanged(projectId, [path], {
+        kind: "write",
+        path,
+        content: finalContent,
+      }),
     );
+    return applied;
   },
-  applyExternalDelete: (path) => {
-    useFilesStore.getState().applyExternalDelete(path);
+  applyExternalRename: (projectId, from, to) => {
+    const files = useFilesStore.getState();
+    if (files.projectId !== projectId) return false;
+    const applied = files.applyExternalRename(projectId, from, to);
+    if (!applied) return false;
     void import("@/lib/cross-window").then((m) =>
-      m.notifyProjectFilesChanged(useFilesStore.getState().projectId, [path]),
+      m.notifyProjectFilesChanged(projectId, [from, to], { kind: "rename", from, to }),
     );
+    return true;
   },
-  refreshTree: () => useFilesStore.getState().refreshTree(),
+  applyExternalDelete: (projectId, path) => {
+    const files = useFilesStore.getState();
+    if (files.projectId !== projectId) return false;
+    const applied = files.applyExternalDelete(projectId, path);
+    void import("@/lib/cross-window").then((m) =>
+      m.notifyProjectFilesChanged(projectId, [path], { kind: "delete", path }),
+    );
+    return applied;
+  },
+  refreshTree: async (projectId) => {
+    const files = useFilesStore.getState();
+    if (files.projectId !== projectId) return;
+    await files.refreshTree();
+  },
   recompile: () => useCompileStore.getState().recompile(),
   getCompileLog: () => useCompileStore.getState().log,
   getPdfBytes: () => useCompileStore.getState().pdfBytes,
@@ -100,37 +215,8 @@ const HOST: AiToolsHost = {
   setLastFigurePreview,
   getLastFigurePreview,
   getFigureInsertTarget,
-  insertAtCursor: async (projectId, text) => {
-    if (getEditorView()) {
-      insertAtCursor(text);
-      return true;
-    }
-    const files = useFilesStore.getState();
-    const path = files.activePath || files.mainDoc || "main.tex";
-    const current = files.files[path]?.content ?? (await readFileContent(projectId, path));
-    const documentEnd = current.lastIndexOf("\\end{document}");
-    const at = documentEnd >= 0 ? documentEnd : current.length;
-    const next = `${current.slice(0, at)}${text}\n${current.slice(at)}`;
-    await writeFileContent(projectId, path, next);
-    useFilesStore.getState().applyExternalWrite(path, next);
-    return true;
-  },
-  replaceRange: async (projectId, from, to, text) => {
-    if (getEditorView()) {
-      replaceRangeInEditor(from, to, text);
-      return true;
-    }
-    const files = useFilesStore.getState();
-    const path = files.activePath || files.mainDoc || "main.tex";
-    if (!path) return false;
-    const current = files.files[path]?.content ?? (await readFileContent(projectId, path));
-    const start = Math.max(0, Math.min(from, current.length));
-    const end = Math.max(start, Math.min(to, current.length));
-    const next = `${current.slice(0, start)}${text}${current.slice(end)}`;
-    await writeFileContent(projectId, path, next);
-    useFilesStore.getState().applyExternalWrite(path, next);
-    return true;
-  },
+  insertAtCursor: insertAtCursorHost,
+  replaceRange: replaceRangeHost,
   getAgentTodos: () => useAgentTodoStore.getState().todos,
   setAgentTodos: (todos) =>
     useAgentTodoStore.getState().setTodos(
@@ -185,6 +271,7 @@ export function initAiPdfCaptureFlag(): void {
 export function createOleaflyTools(opts?: {
   confirm?: ConfirmFn;
   onImage?: (dataUrl: string) => void;
+  mutationAllowed?: () => boolean;
 }) {
   return createOleaflyToolsCore(HOST, opts);
 }
@@ -192,6 +279,7 @@ export function createOleaflyTools(opts?: {
 export function createFigureTools(opts?: {
   confirm?: ConfirmFn;
   onImage?: (dataUrl: string) => void;
+  mutationAllowed?: () => boolean;
 }) {
   return createFigureToolsCore(HOST, opts);
 }

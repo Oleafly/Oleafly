@@ -38,7 +38,7 @@ export async function refineWithAi(): Promise<void> {
       "Improve main.tex to match the originals: fix display math, rebuild tables as tabular, and repair layout. Never invent content that is not visible in the page images.",
       "Work loop: edit main.tex with write_file, then compile. If compilation fails, read the log and fix. Stop after at most 3 compile attempts and report remaining issues.",
       pages < result.report.pages
-        ? `Only the first ${pages} pages are attached; leave later pages as they are.`
+        ? `Only the first ${pages} pages are attached. Leave later pages as they are.`
         : "",
     ]
       .filter(Boolean)

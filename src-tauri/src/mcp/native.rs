@@ -1,27 +1,33 @@
 use serde_json::{json, Value};
 
 const MAX_SEARCH_RESULTS: usize = 20;
+const MAX_SEARCH_QUERY_BYTES: usize = 1_024;
 const MAX_READ_LINES: usize = 800;
 const MAX_READ_CHARS: usize = 40_000;
-
+const MAX_READ_FILE_BYTES: usize = 16 * 1024 * 1024;
 const READ_ONLY: &[&str] = &["read_file", "list_files", "search_project"];
-const AUTO_APPROVABLE: &[&str] = &[
+
+const MUTATING: &[&str] = &[
     "write_file",
     "replace_in_file",
     "create_file",
     "rename_file",
+    "delete_file",
+    "set_main_doc",
+    "insert_figure",
+    "toggle_theme",
+    "open_project",
+    "update_todos",
+    "remember_note",
+    "forget_note",
 ];
-const ALWAYS_CONFIRM: &[&str] = &["delete_file"];
 
-pub fn handles(name: &str, approval_policy: &str) -> bool {
-    if READ_ONLY.contains(&name) {
-        return true;
-    }
-    match approval_policy {
-        "trust" => AUTO_APPROVABLE.contains(&name) || ALWAYS_CONFIRM.contains(&name),
-        "auto_writes" => AUTO_APPROVABLE.contains(&name),
-        _ => false,
-    }
+pub fn is_mutating(name: &str) -> bool {
+    MUTATING.contains(&name)
+}
+
+pub fn handles(name: &str, _approval_policy: &str) -> bool {
+    READ_ONLY.contains(&name)
 }
 
 fn arg<'a>(arguments: &'a Value, key: &str) -> Option<&'a str> {
@@ -29,42 +35,48 @@ fn arg<'a>(arguments: &'a Value, key: &str) -> Option<&'a str> {
 }
 
 pub fn resolve_project(arguments: &Value, reported: Option<String>) -> Result<String, String> {
-    if let Some(explicit) = arg(arguments, "project_id") {
-        crate::paths::validate_project_id(explicit)?;
-        return Ok(explicit.to_string());
-    }
-    if let Some(open) = reported.filter(|p| !p.is_empty()) {
-        return Ok(open);
-    }
-    most_recent_project()
+    let projects = crate::paths::projects_root()?;
+    resolve_project_in(&projects, arguments, reported)
 }
 
-fn most_recent_project() -> Result<String, String> {
-    let root = crate::paths::projects_root()?;
-    let mut best: Option<(std::time::SystemTime, String)> = None;
-    for entry in std::fs::read_dir(&root)
-        .map_err(|e| e.to_string())?
-        .flatten()
-    {
-        let Ok(name) = entry.file_name().into_string() else {
-            continue;
-        };
-        if crate::paths::validate_project_id(&name).is_err() {
-            continue;
-        }
-        if !entry.path().join("project.json").is_file() {
-            continue;
-        }
-        let modified = entry
-            .metadata()
-            .and_then(|m| m.modified())
-            .unwrap_or(std::time::UNIX_EPOCH);
-        if best.as_ref().map(|(t, _)| modified > *t).unwrap_or(true) {
-            best = Some((modified, name));
-        }
+fn resolve_project_in(
+    projects_root: &std::path::Path,
+    arguments: &Value,
+    reported: Option<String>,
+) -> Result<String, String> {
+    if arguments.get("project_id").is_some() {
+        return Err("project_id is not accepted. Native tools use the open project".into());
     }
-    best.map(|(_, name)| name)
-        .ok_or_else(|| "no project is open and none was found on disk".to_string())
+    let root = projects_root
+        .canonicalize()
+        .map_err(|e| format!("could not resolve the projects directory: {e}"))?;
+    let project_id = reported
+        .filter(|project| !project.is_empty())
+        .ok_or_else(|| "no project is open in Oleafly".to_string())?;
+    crate::paths::validate_project_id(&project_id)?;
+    validate_open_project(&root, &project_id)?;
+    Ok(project_id)
+}
+
+fn validate_open_project(root: &std::path::Path, project_id: &str) -> Result<(), String> {
+    let candidate = root.join(project_id);
+    let metadata = std::fs::symlink_metadata(&candidate)
+        .map_err(|_| "the open project is no longer available".to_string())?;
+    if !metadata.is_dir() || metadata.file_type().is_symlink() {
+        return Err("the open project is not a real directory".into());
+    }
+    let resolved = candidate
+        .canonicalize()
+        .map_err(|_| "the open project is no longer available".to_string())?;
+    if resolved.parent() != Some(root) {
+        return Err("the open project escapes the project library".into());
+    }
+    let metadata = std::fs::symlink_metadata(resolved.join("project.json"))
+        .map_err(|_| "the open project metadata is no longer available".to_string())?;
+    if !metadata.is_file() || metadata.file_type().is_symlink() {
+        return Err("the open project metadata is not a real file".into());
+    }
+    Ok(())
 }
 
 fn required<'a>(arguments: &'a Value, key: &str) -> Result<&'a str, String> {
@@ -75,130 +87,114 @@ fn payload(value: Value) -> Value {
     json!({ "content": [{ "type": "text", "text": value.to_string() }] })
 }
 
-pub async fn call(project_id: &str, name: &str, arguments: &Value) -> Result<Value, String> {
+pub struct CallOutcome {
+    pub result: Value,
+    pub change: Option<Value>,
+}
+
+fn outcome(result: Value, change: Option<Value>) -> CallOutcome {
+    CallOutcome { result, change }
+}
+
+struct TextPage {
+    content: String,
+    lines_returned: usize,
+    total_lines: usize,
+    truncated: bool,
+}
+
+fn text_page(body: &str, offset: usize, take: usize, max_chars: usize) -> TextPage {
+    let total_lines = body.lines().count();
+    let start = offset.saturating_sub(1).min(total_lines);
+    let lines_returned = total_lines.saturating_sub(start).min(take);
+    let mut content = String::new();
+    let mut chars = 0usize;
+    let mut char_truncated = false;
+
+    'lines: for (index, line) in body.lines().skip(start).take(take).enumerate() {
+        if index > 0 {
+            if chars == max_chars {
+                char_truncated = true;
+                break;
+            }
+            content.push('\n');
+            chars += 1;
+        }
+        for ch in line.chars() {
+            if chars == max_chars {
+                char_truncated = true;
+                break 'lines;
+            }
+            content.push(ch);
+            chars += 1;
+        }
+    }
+
+    TextPage {
+        content,
+        lines_returned,
+        total_lines,
+        truncated: char_truncated || start + lines_returned < total_lines,
+    }
+}
+
+pub async fn call(project_id: &str, name: &str, arguments: &Value) -> Result<CallOutcome, String> {
+    if !READ_ONLY.contains(&name) {
+        return Err(format!(
+            "{name} is not available without the Oleafly interface"
+        ));
+    }
     match name {
-        "read_file" => read_file(project_id, arguments),
-        "write_file" => write_file(project_id, arguments).await,
-        "replace_in_file" => replace_in_file(project_id, arguments).await,
-        "create_file" => create_file(project_id, arguments),
-        "delete_file" => delete_file(project_id, arguments),
-        "rename_file" => rename_file(project_id, arguments),
-        "list_files" => list_files(project_id).await,
-        "search_project" => search_project(project_id, arguments).await,
+        "read_file" => read_file(project_id, arguments).map(|result| outcome(result, None)),
+        "list_files" => list_files(project_id)
+            .await
+            .map(|result| outcome(result, None)),
+        "search_project" => search_project(project_id, arguments)
+            .await
+            .map(|result| outcome(result, None)),
         other => Err(format!("{other} is not handled natively")),
     }
 }
 
 fn read_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
     let path = required(arguments, "path")?;
-    let body = crate::project::read_file(project_id.to_string(), path.to_string())?;
-    let all: Vec<&str> = body.lines().collect();
+    let body = crate::project::read_file_limited(project_id, path, MAX_READ_FILE_BYTES)?;
     let offset = arguments
         .get("offset")
         .and_then(|v| v.as_u64())
         .unwrap_or(1)
-        .max(1) as usize;
-    let start = (offset - 1).min(all.len());
+        .max(1);
+    let offset = usize::try_from(offset).unwrap_or(usize::MAX);
     let take = arguments
         .get("limit")
         .and_then(|v| v.as_u64())
         .filter(|v| *v > 0)
-        .map(|v| v as usize)
+        .and_then(|v| usize::try_from(v).ok())
         .unwrap_or(MAX_READ_LINES)
         .min(MAX_READ_LINES);
-    let slice: Vec<&str> = all.iter().skip(start).take(take).copied().collect();
-    let mut content = slice.join("\n");
-    let mut truncated = start + slice.len() < all.len();
-    if content.chars().count() > MAX_READ_CHARS {
-        content = content.chars().take(MAX_READ_CHARS).collect();
-        truncated = true;
-    }
+    let page = text_page(&body, offset, take, MAX_READ_CHARS);
     Ok(payload(json!({
         "path": path,
         "offset": offset,
-        "lines_returned": slice.len(),
-        "total_lines": all.len(),
-        "truncated": truncated,
-        "content": content,
+        "lines_returned": page.lines_returned,
+        "total_lines": page.total_lines,
+        "truncated": page.truncated,
+        "content": page.content,
     })))
 }
 
-async fn write_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
-    let path = required(arguments, "path")?;
-    let content = required(arguments, "content")?;
-    crate::project::write_file(
-        project_id.to_string(),
-        path.to_string(),
-        content.to_string(),
-    )
-    .await?;
-    Ok(payload(
-        json!({ "success": true, "path": path, "bytes": content.len() }),
-    ))
-}
-
-async fn replace_in_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
-    let path = required(arguments, "path")?;
-    let find = required(arguments, "find")?;
-    let replace = required(arguments, "replace")?;
-    let all = arguments
-        .get("replace_all")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-
-    let body = crate::project::read_file(project_id.to_string(), path.to_string())?;
-    if !body.contains(find) {
-        return Err(format!("no match for the search text in {path}"));
-    }
-    let updated = if all {
-        body.replace(find, replace)
-    } else {
-        body.replacen(find, replace, 1)
-    };
-    let replacements = if all { body.matches(find).count() } else { 1 };
-    crate::project::write_file(project_id.to_string(), path.to_string(), updated).await?;
-    Ok(payload(
-        json!({ "success": true, "path": path, "replacements": replacements }),
-    ))
-}
-
-fn create_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
-    let path = required(arguments, "path")?;
-    let is_dir = arguments
-        .get("is_dir")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-    crate::project::create_file(project_id.to_string(), path.to_string(), is_dir)?;
-    Ok(payload(
-        json!({ "success": true, "path": path, "is_dir": is_dir }),
-    ))
-}
-
-fn delete_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
-    let path = required(arguments, "path")?;
-    crate::project::delete_file(project_id.to_string(), path.to_string())?;
-    Ok(payload(json!({ "success": true, "path": path })))
-}
-
-fn rename_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
-    let from = required(arguments, "from")?;
-    let to = required(arguments, "to")?;
-    crate::project::rename_file(
-        project_id.to_string(),
-        from.to_string(),
-        to.to_string(),
-        None,
-    )?;
-    Ok(payload(json!({ "success": true, "from": from, "to": to })))
-}
-
 async fn list_files(project_id: &str) -> Result<Value, String> {
-    let entries = crate::project::list_files(project_id.to_string()).await?;
-    let files: Vec<Value> = entries
+    let listing = crate::project::list_files_bounded(project_id.to_string()).await?;
+    let files: Vec<Value> = listing
+        .entries
         .iter()
         .map(|e| json!({ "path": e.path, "is_dir": e.is_dir }))
         .collect();
-    Ok(payload(json!({ "files": files })))
+    Ok(payload(json!({
+        "files": files,
+        "scanned_entries": listing.scanned_entries,
+        "truncated": listing.truncated,
+    })))
 }
 
 async fn search_project(project_id: &str, arguments: &Value) -> Result<Value, String> {
@@ -206,9 +202,16 @@ async fn search_project(project_id: &str, arguments: &Value) -> Result<Value, St
     if query.is_empty() {
         return Err("query must not be empty".into());
     }
-    let hits = crate::project::search_project(project_id.to_string(), query.to_string()).await?;
-    let total = hits.len();
-    let results: Vec<Value> = hits
+    if query.len() > MAX_SEARCH_QUERY_BYTES {
+        return Err(format!(
+            "query exceeds the {MAX_SEARCH_QUERY_BYTES}-byte search limit"
+        ));
+    }
+    let search =
+        crate::project::search_project_bounded(project_id.to_string(), query.to_string()).await?;
+    let total = search.hits.len();
+    let results: Vec<Value> = search
+        .hits
         .into_iter()
         .take(MAX_SEARCH_RESULTS)
         .map(|hit| {
@@ -221,7 +224,14 @@ async fn search_project(project_id: &str, arguments: &Value) -> Result<Value, St
             })
         })
         .collect();
-    Ok(payload(json!({ "results": results, "total": total })))
+    Ok(payload(json!({
+        "results": results,
+        "total": total,
+        "scanned_entries": search.scanned_entries,
+        "scanned_files": search.scanned_files,
+        "scanned_bytes": search.scanned_bytes,
+        "truncated": search.truncated,
+    })))
 }
 
 #[cfg(test)]
@@ -238,48 +248,53 @@ mod tests {
     }
 
     #[test]
-    fn the_default_policy_sends_every_change_to_the_app_to_be_approved() {
+    fn native_mutations_always_require_a_renderer() {
+        for name in [
+            "write_file",
+            "replace_in_file",
+            "create_file",
+            "rename_file",
+        ] {
+            assert!(!handles(name, "ask"), "{name} under ask");
+            assert!(!handles(name, "auto_writes"), "{name} under auto_writes");
+            assert!(!handles(name, "trust"), "{name} under trust");
+        }
+        assert!(!handles("delete_file", "auto_writes"));
+        assert!(!handles("delete_file", "trust"));
+    }
+
+    #[tokio::test]
+    async fn the_native_dispatch_entry_point_rejects_interface_only_mutations() {
         for name in [
             "write_file",
             "replace_in_file",
             "create_file",
             "rename_file",
             "delete_file",
+            "set_main_doc",
+            "insert_figure",
+            "toggle_theme",
+            "open_project",
+            "update_todos",
+            "remember_note",
+            "forget_note",
         ] {
-            assert!(
-                !handles(name, "ask"),
-                "{name} must be approved before it runs"
-            );
+            let error = match call("unused", name, &json!({})).await {
+                Ok(_) => panic!("{name} unexpectedly ran natively"),
+                Err(error) => error,
+            };
+            assert!(error.contains("Oleafly interface"), "{name}: {error}");
         }
     }
 
     #[test]
-    fn auto_writes_still_stops_at_a_delete() {
-        for name in [
-            "write_file",
-            "replace_in_file",
-            "create_file",
-            "rename_file",
-        ] {
-            assert!(handles(name, "auto_writes"), "{name} is auto approvable");
+    fn read_only_mode_can_reject_every_mutating_tool_server_side() {
+        for name in MUTATING {
+            assert!(is_mutating(name), "{name}");
         }
-        assert!(
-            !handles("delete_file", "auto_writes"),
-            "a delete always needs a click"
-        );
-    }
-
-    #[test]
-    fn trust_permits_every_change_including_a_delete() {
-        for name in ["write_file", "delete_file", "rename_file"] {
-            assert!(handles(name, "trust"), "{name} under trust");
+        for name in READ_ONLY {
+            assert!(!is_mutating(name), "{name}");
         }
-    }
-
-    #[test]
-    fn an_unknown_policy_is_treated_as_the_strictest_one() {
-        assert!(!handles("write_file", ""));
-        assert!(!handles("write_file", "nonsense"));
     }
 
     #[test]
@@ -297,41 +312,89 @@ mod tests {
         }
     }
 
+    fn project_root() -> std::path::PathBuf {
+        tempfile::Builder::new()
+            .prefix("oleafly-native-scope-")
+            .tempdir()
+            .unwrap()
+            .keep()
+    }
+
     #[test]
-    fn an_explicit_project_argument_wins_over_whatever_is_open() {
+    fn an_explicit_project_argument_cannot_override_the_open_project() {
+        let root = project_root();
+        std::fs::create_dir(root.join("swift-violet-fox")).unwrap();
         let arguments = json!({ "project_id": "swift-violet-fox" });
-        assert_eq!(
-            resolve_project(&arguments, Some("other-project".into())).unwrap(),
-            "swift-violet-fox"
-        );
+        std::fs::create_dir(root.join("other-project")).unwrap();
+        assert!(resolve_project_in(&root, &arguments, Some("other-project".into())).is_err());
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
     fn a_traversal_project_id_is_refused() {
+        let root = project_root();
         let arguments = json!({ "project_id": "../../etc" });
-        assert!(resolve_project(&arguments, None).is_err());
+        assert!(resolve_project_in(&root, &arguments, None).is_err());
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
     fn the_open_project_is_used_when_the_call_names_none() {
+        let root = project_root();
+        let project = root.join("open-one");
+        std::fs::create_dir(&project).unwrap();
+        std::fs::write(project.join("project.json"), "{}").unwrap();
         assert_eq!(
-            resolve_project(&json!({}), Some("open-one".into())).unwrap(),
+            resolve_project_in(&root, &json!({}), Some("open-one".into())).unwrap(),
             "open-one"
         );
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
-    fn a_blank_reported_project_does_not_count_as_open() {
-        match resolve_project(&json!({}), Some(String::new())) {
-            Ok(id) => assert!(!id.is_empty()),
-            Err(error) => assert!(!error.is_empty()),
+    fn native_calls_require_a_reported_open_project() {
+        let root = project_root();
+        for project_id in ["older", "newer"] {
+            let project = root.join(project_id);
+            std::fs::create_dir(&project).unwrap();
+            std::fs::write(project.join("project.json"), "{}").unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(10));
         }
+        assert!(resolve_project_in(&root, &json!({}), Some(String::new())).is_err());
+        assert!(resolve_project_in(&root, &json!({}), None).is_err());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn a_reported_project_must_exist_and_is_never_created_implicitly() {
+        let root = project_root();
+        let missing = root.join("missing-project");
+        let error =
+            resolve_project_in(&root, &json!({}), Some("missing-project".into())).unwrap_err();
+        assert!(error.contains("no longer available"));
+        assert!(!missing.exists());
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
     fn a_missing_required_argument_is_named_in_the_error() {
         let err = required(&json!({}), "path").unwrap_err();
         assert!(err.contains("path"));
+    }
+
+    #[test]
+    fn file_pages_bound_output_without_collecting_every_line() {
+        let page = text_page("one\ntwo\nthree", 2, 2, 5);
+
+        assert_eq!(page.content, "two\nt");
+        assert_eq!(page.lines_returned, 2);
+        assert_eq!(page.total_lines, 3);
+        assert!(page.truncated);
+
+        let past_end = text_page("one\ntwo", usize::MAX, 10, 100);
+        assert!(past_end.content.is_empty());
+        assert_eq!(past_end.lines_returned, 0);
+        assert!(!past_end.truncated);
     }
 
     #[test]

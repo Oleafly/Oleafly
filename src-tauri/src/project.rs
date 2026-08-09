@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use crate::paths;
 use crate::proc::NoConsole;
-use crate::sandbox::{atomic_write, guard_export_dest, is_root_delete, resolve, AtomicFile};
+use crate::sandbox::{atomic_write, guard_export_dest, resolve, AtomicFile};
 
 /// Public path resolver (sandbox). Re-exported so call sites keep importing
 /// `crate::project::resolve_in_project`.
@@ -84,6 +85,8 @@ pub struct ProjectMeta {
     /// source, which stays the default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
+    #[serde(default)]
+    pub allow_shell_escape: bool,
     /// Book-cover color (hex). Empty means "unset" so the UI falls back to its
     /// default. Stored on disk so a project's color survives across machines.
     #[serde(default)]
@@ -98,6 +101,224 @@ pub struct ProjectMeta {
     pub hidden: bool,
     #[serde(default)]
     pub forked_from: Option<String>,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectStateChanged {
+    pub project_id: String,
+    pub revision: u64,
+    pub reason: String,
+    pub files_changed: bool,
+    pub mutation_generation: Option<u64>,
+    pub project: ProjectMeta,
+    pub engine: crate::document_engine::EngineDescriptor,
+}
+
+pub(crate) fn publish_project_state_changed(
+    app: &tauri::AppHandle,
+    state: &crate::state::AppState,
+    project_id: &str,
+    project: ProjectMeta,
+    reason: &str,
+    files_changed: bool,
+    mutation_generation: Option<u64>,
+) -> Result<ProjectStateChanged, String> {
+    use tauri::Emitter as _;
+
+    let mut engine = crate::document_engine::descriptor_for(&project.engine, &project.main_doc)?;
+    engine.tex_flavor = project.tex_flavor.clone();
+    engine.allow_shell_escape = project.allow_shell_escape;
+    let revision = state
+        .project_state_revision
+        .fetch_add(1, Ordering::SeqCst)
+        .wrapping_add(1);
+    let payload = ProjectStateChanged {
+        project_id: project_id.to_string(),
+        revision,
+        reason: reason.to_string(),
+        files_changed,
+        mutation_generation,
+        project,
+        engine,
+    };
+    let _ = app.emit("project-state-changed", &payload);
+    Ok(payload)
+}
+
+const SHELL_ESCAPE_TRUST_VERSION: u8 = 1;
+
+#[derive(Serialize, Deserialize)]
+struct ShellEscapeTrustRecord {
+    version: u8,
+    project_id: String,
+    project_identity: String,
+}
+
+fn shell_escape_trust_path(project_id: &str) -> Result<PathBuf, String> {
+    paths::validate_project_id(project_id)?;
+    Ok(paths::shell_escape_trust_root()?.join(format!("{project_id}.json")))
+}
+
+#[cfg(windows)]
+fn windows_directory_identity(directory: &Path) -> Result<(u32, u64), String> {
+    use std::os::windows::fs::OpenOptionsExt as _;
+    use std::os::windows::io::AsRawHandle as _;
+    use windows_sys::Win32::Storage::FileSystem::{
+        GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_FLAG_BACKUP_SEMANTICS,
+    };
+
+    let directory = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+        .open(directory)
+        .map_err(|e| format!("failed to open project identity: {e}"))?;
+    let mut information = BY_HANDLE_FILE_INFORMATION::default();
+    let succeeded = unsafe {
+        GetFileInformationByHandle(
+            directory.as_raw_handle(),
+            std::ptr::addr_of_mut!(information),
+        )
+    };
+    if succeeded == 0 {
+        return Err(format!(
+            "failed to read project identity: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+    let file_index =
+        (u64::from(information.nFileIndexHigh) << 32) | u64::from(information.nFileIndexLow);
+    Ok((information.dwVolumeSerialNumber, file_index))
+}
+
+fn shell_escape_project_identity(project_id: &str) -> Result<String, String> {
+    use sha2::{Digest, Sha256};
+
+    let directory = paths::project_dir(project_id)?;
+    let metadata = std::fs::symlink_metadata(&directory)
+        .map_err(|e| format!("failed to inspect project identity: {e}"))?;
+    let mut digest = Sha256::new();
+    digest.update(b"oleafly-latex-shell-trust-v1\0");
+    digest.update(project_id.as_bytes());
+    digest.update([0]);
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStrExt as _;
+        use std::os::unix::fs::MetadataExt as _;
+        digest.update(directory.as_os_str().as_bytes());
+        digest.update(metadata.dev().to_le_bytes());
+        digest.update(metadata.ino().to_le_bytes());
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt as _;
+        use std::os::windows::fs::MetadataExt as _;
+        let (volume_serial_number, file_index) = windows_directory_identity(&directory)?;
+        for unit in directory.as_os_str().encode_wide() {
+            digest.update(unit.to_le_bytes());
+        }
+        digest.update(volume_serial_number.to_le_bytes());
+        digest.update(file_index.to_le_bytes());
+        digest.update(metadata.creation_time().to_le_bytes());
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        digest.update(directory.to_string_lossy().as_bytes());
+        let created = metadata
+            .created()
+            .ok()
+            .and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|value| value.as_nanos())
+            .unwrap_or_default();
+        digest.update(created.to_le_bytes());
+    }
+
+    Ok(format!("{:x}", digest.finalize()))
+}
+
+#[cfg(windows)]
+fn trust_record_is_reparse_point(metadata: &std::fs::Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt as _;
+    metadata.file_attributes() & 0x400 != 0
+}
+
+#[cfg(not(windows))]
+fn trust_record_is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
+    false
+}
+
+fn shell_escape_trusted(project_id: &str) -> Result<bool, String> {
+    let expected_identity = shell_escape_project_identity(project_id)?;
+    let path = shell_escape_trust_path(project_id)?;
+    let metadata = match std::fs::symlink_metadata(&path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(format!("failed to inspect local shell trust: {error}")),
+    };
+    if !metadata.is_file()
+        || metadata.file_type().is_symlink()
+        || trust_record_is_reparse_point(&metadata)
+    {
+        return Ok(false);
+    }
+    let raw = std::fs::read_to_string(&path)
+        .map_err(|e| format!("failed to read local shell trust: {e}"))?;
+    let record: ShellEscapeTrustRecord = match serde_json::from_str(&raw) {
+        Ok(record) => record,
+        Err(_) => return Ok(false),
+    };
+    Ok(record.version == SHELL_ESCAPE_TRUST_VERSION
+        && record.project_id == project_id
+        && record.project_identity == expected_identity)
+}
+
+fn write_shell_escape_trust(project_id: &str) -> Result<(), String> {
+    let record = ShellEscapeTrustRecord {
+        version: SHELL_ESCAPE_TRUST_VERSION,
+        project_id: project_id.to_string(),
+        project_identity: shell_escape_project_identity(project_id)?,
+    };
+    let path = shell_escape_trust_path(project_id)?;
+    if let Ok(metadata) = std::fs::symlink_metadata(&path) {
+        if !metadata.is_file()
+            || metadata.file_type().is_symlink()
+            || trust_record_is_reparse_point(&metadata)
+        {
+            return Err("local shell trust path is not a regular file".into());
+        }
+    }
+    let bytes = serde_json::to_vec_pretty(&record).map_err(|e| e.to_string())?;
+    let transaction = AtomicFile::new(&path)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(
+            transaction.staging_path(),
+            std::fs::Permissions::from_mode(0o600),
+        )
+        .map_err(|e| format!("failed to protect local shell trust: {e}"))?;
+    }
+    #[cfg(windows)]
+    crate::fsperm::harden_file(transaction.staging_path());
+    std::fs::write(transaction.staging_path(), bytes)
+        .map_err(|e| format!("failed to write local shell trust: {e}"))?;
+    transaction.commit()?;
+    crate::fsperm::harden_file(&path);
+    Ok(())
+}
+
+fn revoke_shell_escape_trust(project_id: &str) -> Result<(), String> {
+    let path = shell_escape_trust_path(project_id)?;
+    match std::fs::symlink_metadata(&path) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("failed to inspect local shell trust: {error}")),
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {
+            Err("local shell trust path is unexpectedly a directory".into())
+        }
+        Ok(_) => std::fs::remove_file(&path)
+            .map_err(|e| format!("failed to revoke local shell trust: {e}")),
+    }
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]
@@ -134,11 +355,47 @@ pub enum FileConflictStrategy {
 pub enum RenameFileResult {
     Renamed {
         path: String,
+        generation: u64,
     },
     Conflict {
         destination: String,
         suggested_destination: String,
+        generation: u64,
     },
+}
+
+impl RenameFileResult {
+    fn with_generation(self, generation: u64) -> Self {
+        match self {
+            Self::Renamed { path, .. } => Self::Renamed { path, generation },
+            Self::Conflict {
+                destination,
+                suggested_destination,
+                ..
+            } => Self::Conflict {
+                destination,
+                suggested_destination,
+                generation,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct FileMutationResult {
+    pub generation: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CopyFileResult {
+    pub path: String,
+    pub generation: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ImportPathsResult {
+    pub paths: Vec<String>,
+    pub generation: u64,
 }
 
 #[derive(Serialize)]
@@ -182,6 +439,7 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
             forked_from: None,
             tex: None,
             tex_flavor: None,
+            allow_shell_escape: false,
         });
     }
     let s = std::fs::read_to_string(&p).map_err(|e| format!("failed to read project.json: {e}"))?;
@@ -193,7 +451,21 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
     if meta.engine.is_empty() {
         meta.engine = default_engine();
     }
+    normalize_loaded_tex_flavor(&mut meta)?;
+    meta.allow_shell_escape =
+        meta.engine == "latexmk" && shell_escape_trusted(project_id).unwrap_or(false);
     Ok(meta)
+}
+
+fn normalize_loaded_tex_flavor(meta: &mut ProjectMeta) -> Result<(), String> {
+    if meta.engine != "latexmk" {
+        meta.tex_flavor = None;
+        meta.allow_shell_escape = false;
+        return Ok(());
+    }
+    meta.tex_flavor = validate_tex_flavor(&meta.engine, meta.tex_flavor.as_deref())
+        .map_err(|error| format!("invalid project.json: {error}"))?;
+    Ok(())
 }
 
 pub fn write_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
@@ -222,7 +494,12 @@ pub(crate) fn ensure_compile_meta_unchanged(
 }
 
 fn write_meta_at(path: &Path, meta: &ProjectMeta) -> Result<(), String> {
-    let s = serde_json::to_string_pretty(meta).map_err(|e| e.to_string())?;
+    let mut disk_meta = serde_json::to_value(meta).map_err(|e| e.to_string())?;
+    disk_meta
+        .as_object_mut()
+        .ok_or("project metadata did not serialize as an object")?
+        .remove("allow_shell_escape");
+    let s = serde_json::to_string_pretty(&disk_meta).map_err(|e| e.to_string())?;
     atomic_write(path, s.as_bytes()).map_err(|e| format!("failed to write project.json: {e}"))
 }
 
@@ -231,9 +508,9 @@ fn write_meta_at(path: &Path, meta: &ProjectMeta) -> Result<(), String> {
 /// tree and matches SyncTeX files by splitting on "/", so paths must be
 /// normalized here or subfolders won't nest and lookups mismatch on Windows.
 fn rel_slash(root: &Path, path: &Path) -> String {
-    path.strip_prefix(root)
-        .unwrap_or(path)
-        .to_string_lossy()
+    let relative = path.strip_prefix(root).unwrap_or(path);
+    normalize_relative(relative)
+        .unwrap_or_else(|| relative.to_string_lossy().into_owned())
         .replace('\\', "/")
 }
 
@@ -290,80 +567,1026 @@ pub async fn list_files(project_id: String) -> Result<Vec<FileEntry>, String> {
     .map_err(|e| e.to_string())?
 }
 
+const MCP_LIST_RESULT_LIMIT: usize = 2_000;
+const MCP_LIST_ENTRY_SCAN_LIMIT: usize = 10_000;
+const MCP_SCAN_DEADLINE: std::time::Duration = std::time::Duration::from_secs(2);
+
+pub(crate) struct BoundedFileList {
+    pub entries: Vec<FileEntry>,
+    pub scanned_entries: usize,
+    pub truncated: bool,
+}
+
+#[derive(Clone, Copy)]
+struct FileListLimits {
+    max_results: usize,
+    max_entries: usize,
+    deadline: std::time::Instant,
+}
+
+struct ScanCancellation {
+    cancelled: Arc<AtomicBool>,
+    armed: bool,
+}
+
+impl ScanCancellation {
+    fn new() -> (Self, Arc<AtomicBool>) {
+        let cancelled = Arc::new(AtomicBool::new(false));
+        (
+            Self {
+                cancelled: Arc::clone(&cancelled),
+                armed: true,
+            },
+            cancelled,
+        )
+    }
+
+    fn disarm(&mut self) {
+        self.armed = false;
+    }
+}
+
+impl Drop for ScanCancellation {
+    fn drop(&mut self) {
+        if self.armed {
+            self.cancelled.store(true, Ordering::Release);
+        }
+    }
+}
+
+fn scan_should_stop(cancelled: &AtomicBool, deadline: std::time::Instant) -> bool {
+    cancelled.load(Ordering::Acquire) || std::time::Instant::now() >= deadline
+}
+
+fn bounded_list_walk(
+    root: &Path,
+    dir: &Path,
+    out: &mut BoundedFileList,
+    limits: FileListLimits,
+    cancelled: &AtomicBool,
+    depth: usize,
+) -> Result<(), String> {
+    if scan_should_stop(cancelled, limits.deadline)
+        || out.entries.len() >= limits.max_results
+        || out.scanned_entries >= limits.max_entries
+    {
+        out.truncated = true;
+        return Ok(());
+    }
+    if depth >= MAX_WALK_DEPTH {
+        out.truncated = true;
+        return Ok(());
+    }
+
+    let mut items = Vec::new();
+    for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
+        if scan_should_stop(cancelled, limits.deadline) || out.scanned_entries >= limits.max_entries
+        {
+            out.truncated = true;
+            break;
+        }
+        out.scanned_entries += 1;
+        if let Ok(entry) = entry {
+            items.push(entry);
+        }
+    }
+    items.sort_by_key(|entry| entry.file_name());
+    for entry in items {
+        if scan_should_stop(cancelled, limits.deadline) || out.entries.len() >= limits.max_results {
+            out.truncated = true;
+            break;
+        }
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name == ".oleafly" || name == ".git" {
+            continue;
+        }
+        let file_type = match entry.file_type() {
+            Ok(file_type) if !file_type.is_symlink() => file_type,
+            _ => continue,
+        };
+        let path = entry.path();
+        out.entries.push(FileEntry {
+            path: rel_slash(root, &path),
+            is_dir: file_type.is_dir(),
+        });
+        if file_type.is_dir() {
+            bounded_list_walk(root, &path, out, limits, cancelled, depth + 1)?;
+            if out.truncated {
+                break;
+            }
+        }
+    }
+    Ok(())
+}
+
+pub(crate) async fn list_files_bounded(project_id: String) -> Result<BoundedFileList, String> {
+    let (mut cancellation, cancelled) = ScanCancellation::new();
+    let limits = FileListLimits {
+        max_results: MCP_LIST_RESULT_LIMIT,
+        max_entries: MCP_LIST_ENTRY_SCAN_LIMIT,
+        deadline: std::time::Instant::now() + MCP_SCAN_DEADLINE,
+    };
+    let result =
+        tauri::async_runtime::spawn_blocking(move || -> Result<BoundedFileList, String> {
+            let root = paths::project_dir(&project_id)?;
+            let mut out = BoundedFileList {
+                entries: Vec::new(),
+                scanned_entries: 0,
+                truncated: false,
+            };
+            bounded_list_walk(&root, &root, &mut out, limits, &cancelled, 0)?;
+            Ok(out)
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    cancellation.disarm();
+    result
+}
+
 #[tauri::command]
 pub fn read_file(project_id: String, path: String) -> Result<String, String> {
     let p = resolve(&project_id, &path)?;
     std::fs::read_to_string(&p).map_err(|e| format!("failed to read {path}: {e}"))
 }
 
-#[tauri::command]
-pub async fn write_file(project_id: String, path: String, content: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        let p = resolve(&project_id, &path)?;
-        if let Some(parent) = p.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+pub(crate) fn read_file_limited(
+    project_id: &str,
+    path: &str,
+    max_bytes: usize,
+) -> Result<String, String> {
+    let resolved = resolve(project_id, path)?;
+    read_utf8_limited(&resolved, max_bytes)
+        .map_err(|error| format!("failed to read {path}: {error}"))
+}
+
+fn read_utf8_limited(path: &Path, max_bytes: usize) -> Result<String, String> {
+    use std::io::Read;
+
+    let file = std::fs::File::open(path).map_err(|error| error.to_string())?;
+    let mut bytes = Vec::with_capacity(max_bytes.min(64 * 1024));
+    file.take(max_bytes.saturating_add(1) as u64)
+        .read_to_end(&mut bytes)
+        .map_err(|error| error.to_string())?;
+    if bytes.len() > max_bytes {
+        return Err(format!("file exceeds the {max_bytes}-byte read limit"));
+    }
+    String::from_utf8(bytes).map_err(|_| "file is not valid UTF-8 text".to_string())
+}
+
+#[cfg(test)]
+mod bounded_read_tests {
+    use super::read_utf8_limited;
+
+    #[test]
+    fn limited_reads_reject_oversized_files_before_returning_content() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("bounded-read.txt");
+        std::fs::write(&path, b"12345").unwrap();
+
+        assert_eq!(read_utf8_limited(&path, 5).unwrap(), "12345");
+        assert!(read_utf8_limited(&path, 4)
+            .unwrap_err()
+            .contains("read limit"));
+        let _ = std::fs::remove_file(path);
+    }
+}
+
+const MAX_COORDINATED_PROJECTS: usize = 128;
+const MAX_PENDING_MUTATIONS_PER_PROJECT: usize = 256;
+const MAX_TRACKED_MUTATION_SCOPES: usize = 16_384;
+static NEXT_MUTATION_GENERATION: AtomicU64 = AtomicU64::new(1);
+
+fn current_mutation_watermark() -> u64 {
+    NEXT_MUTATION_GENERATION
+        .load(Ordering::Acquire)
+        .saturating_sub(1)
+}
+
+fn portable_scope_path(path: String) -> String {
+    path.split('/')
+        .map(|component| component.to_lowercase())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+struct MutationScope {
+    path: String,
+    descendants: bool,
+}
+
+impl MutationScope {
+    fn file(path: String) -> Self {
+        Self {
+            path: portable_scope_path(path),
+            descendants: false,
         }
-        atomic_write(&p, content.as_bytes()).map_err(|e| format!("failed to write {path}: {e}"))
+    }
+
+    fn subtree(path: String) -> Self {
+        Self {
+            path: portable_scope_path(path),
+            descendants: true,
+        }
+    }
+
+    fn intersects(&self, other: &Self) -> bool {
+        self.path == other.path
+            || (self.descendants && path_is_within(&other.path, &self.path))
+            || (other.descendants && path_is_within(&self.path, &other.path))
+    }
+}
+
+fn path_is_within(path: &str, root: &str) -> bool {
+    root.is_empty()
+        || path
+            .strip_prefix(root)
+            .is_some_and(|suffix| suffix.starts_with('/'))
+}
+
+fn mutation_relative_path(path: &str, allow_root: bool) -> Result<String, String> {
+    let path_value = Path::new(path);
+    if path.contains('\\')
+        || path_value.is_absolute()
+        || path_value.components().any(|component| {
+            matches!(
+                component,
+                std::path::Component::ParentDir
+                    | std::path::Component::RootDir
+                    | std::path::Component::Prefix(_)
+            )
+        })
+    {
+        return Err(format!("illegal path: {path}"));
+    }
+    let normalized = normalize_relative(path_value)
+        .ok_or_else(|| format!("illegal path: {path}"))?
+        .replace('\\', "/");
+    if !allow_root && normalized.is_empty() {
+        return Err("a project file path must not be empty".into());
+    }
+    if reserved_project_metadata_path(&normalized) {
+        return Err(
+            "project.json is managed by Oleafly and cannot be changed as a project file".into(),
+        );
+    }
+    if reserved_project_internal_path(&normalized) {
+        return Err(
+            ".git and .oleafly are managed internally and cannot be changed as project files"
+                .into(),
+        );
+    }
+    Ok(normalized)
+}
+
+fn reserved_project_metadata_path(path: &str) -> bool {
+    path.eq_ignore_ascii_case("project.json")
+}
+
+fn reserved_project_internal_path(path: &str) -> bool {
+    path.split('/').next().is_some_and(|component| {
+        component.eq_ignore_ascii_case(".git") || component.eq_ignore_ascii_case(".oleafly")
+    })
+}
+
+fn mutation_parent_path(path: &str) -> String {
+    path.rsplit_once('/')
+        .map_or_else(String::new, |(parent, _)| parent.to_string())
+}
+
+#[derive(Default)]
+struct ProjectMutationState {
+    committed_generation: u64,
+    compacted_through: u64,
+    pending: HashMap<u64, Vec<MutationScope>>,
+    committed_scopes: HashMap<MutationScope, u64>,
+}
+
+struct ProjectMutationCoordinator {
+    operation: Mutex<()>,
+    metadata: Mutex<()>,
+    state: Mutex<ProjectMutationState>,
+}
+
+impl ProjectMutationCoordinator {
+    fn new(compacted_floor: u64) -> Self {
+        Self {
+            operation: Mutex::new(()),
+            metadata: Mutex::new(()),
+            state: Mutex::new(ProjectMutationState {
+                committed_generation: compacted_floor,
+                compacted_through: compacted_floor,
+                ..ProjectMutationState::default()
+            }),
+        }
+    }
+}
+
+struct MutationRegistryEntry {
+    coordinator: Arc<ProjectMutationCoordinator>,
+    last_used: u64,
+}
+
+#[derive(Default)]
+struct MutationRegistry {
+    clock: u64,
+    projects: HashMap<String, MutationRegistryEntry>,
+}
+
+fn mutation_registry() -> &'static Mutex<MutationRegistry> {
+    static REGISTRY: OnceLock<Mutex<MutationRegistry>> = OnceLock::new();
+    REGISTRY.get_or_init(|| Mutex::new(MutationRegistry::default()))
+}
+
+fn lock_unpoisoned<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+fn project_mutation_coordinator(
+    project_id: &str,
+) -> Result<Arc<ProjectMutationCoordinator>, String> {
+    paths::validate_project_id(project_id)?;
+    let registry_key = project_id.to_ascii_lowercase();
+    let mut registry = lock_unpoisoned(mutation_registry());
+    registry.clock = registry.clock.saturating_add(1);
+    let now = registry.clock;
+    if let Some(entry) = registry.projects.get_mut(&registry_key) {
+        entry.last_used = now;
+        return Ok(Arc::clone(&entry.coordinator));
+    }
+    if registry.projects.len() >= MAX_COORDINATED_PROJECTS {
+        let eviction = registry
+            .projects
+            .iter()
+            .filter(|(_, entry)| Arc::strong_count(&entry.coordinator) == 1)
+            .min_by_key(|(_, entry)| entry.last_used)
+            .map(|(project_id, _)| project_id.clone());
+        let Some(eviction) = eviction else {
+            return Err(format!(
+                "too many projects have active file mutations (limit {MAX_COORDINATED_PROJECTS})"
+            ));
+        };
+        registry.projects.remove(&eviction);
+    }
+    let coordinator = Arc::new(ProjectMutationCoordinator::new(current_mutation_watermark()));
+    registry.projects.insert(
+        registry_key,
+        MutationRegistryEntry {
+            coordinator: Arc::clone(&coordinator),
+            last_used: now,
+        },
+    );
+    Ok(coordinator)
+}
+
+fn with_project_metadata<T>(
+    project_id: &str,
+    operation: impl FnOnce() -> Result<T, String>,
+) -> Result<T, String> {
+    let coordinator = project_mutation_coordinator(project_id)?;
+    let _metadata = lock_unpoisoned(&coordinator.metadata);
+    operation()
+}
+
+struct MutationAdmission {
+    coordinator: Arc<ProjectMutationCoordinator>,
+    generation: u64,
+    scopes: Vec<MutationScope>,
+    commit_scopes: Vec<MutationScope>,
+    expected_generation: Option<u64>,
+    finished: bool,
+}
+
+fn admit_mutation(
+    project_id: &str,
+    scopes: Vec<MutationScope>,
+    expected_generation: Option<u64>,
+) -> Result<MutationAdmission, String> {
+    admit_mutation_with_commit(project_id, scopes.clone(), scopes, expected_generation)
+}
+
+fn admit_mutation_with_commit(
+    project_id: &str,
+    scopes: Vec<MutationScope>,
+    commit_scopes: Vec<MutationScope>,
+    expected_generation: Option<u64>,
+) -> Result<MutationAdmission, String> {
+    let coordinator = project_mutation_coordinator(project_id)?;
+    let generation = NEXT_MUTATION_GENERATION
+        .fetch_update(Ordering::AcqRel, Ordering::Acquire, |current| {
+            current.checked_add(1)
+        })
+        .map_err(|_| "project mutation generation is exhausted".to_string())?;
+    {
+        let mut state = lock_unpoisoned(&coordinator.state);
+        if state.pending.len() >= MAX_PENDING_MUTATIONS_PER_PROJECT {
+            return Err(format!(
+                "too many file mutations are pending for this project (limit {MAX_PENDING_MUTATIONS_PER_PROJECT})"
+            ));
+        }
+        state.pending.insert(generation, scopes.clone());
+    }
+    Ok(MutationAdmission {
+        coordinator,
+        generation,
+        scopes,
+        commit_scopes,
+        expected_generation,
+        finished: false,
+    })
+}
+
+fn latest_overlapping_generation(
+    scopes: &HashMap<MutationScope, u64>,
+    requested: &[MutationScope],
+    after: u64,
+) -> Option<u64> {
+    scopes
+        .iter()
+        .filter(|(scope, generation)| {
+            **generation > after
+                && requested
+                    .iter()
+                    .any(|requested| requested.intersects(scope))
+        })
+        .map(|(_, generation)| *generation)
+        .max()
+}
+
+fn latest_pending_overlap(
+    state: &ProjectMutationState,
+    requested: &[MutationScope],
+    after: u64,
+) -> Option<u64> {
+    state
+        .pending
+        .iter()
+        .filter(|(generation, scopes)| {
+            **generation > after
+                && scopes.iter().any(|scope| {
+                    requested
+                        .iter()
+                        .any(|requested| requested.intersects(scope))
+                })
+        })
+        .map(|(generation, _)| *generation)
+        .max()
+}
+
+fn mutation_conflict(current: u64, detail: &str) -> String {
+    format!("mutation conflict at generation {current}: {detail}")
+}
+
+impl MutationAdmission {
+    fn preflight(&self, state: &ProjectMutationState) -> Result<(), String> {
+        if self.generation <= state.compacted_through {
+            return Err(mutation_conflict(
+                state.committed_generation,
+                "the operation was admitted before compacted mutation history",
+            ));
+        }
+        if let Some(expected) = self.expected_generation {
+            if expected > state.committed_generation {
+                return Err(mutation_conflict(
+                    state.committed_generation,
+                    "expectedGeneration is newer than the authoritative project generation",
+                ));
+            }
+            if expected < state.compacted_through {
+                return Err(mutation_conflict(
+                    state.committed_generation,
+                    "the expected generation predates retained mutation history",
+                ));
+            }
+            if latest_overlapping_generation(&state.committed_scopes, &self.scopes, expected)
+                .is_some()
+            {
+                return Err(mutation_conflict(
+                    state.committed_generation,
+                    "the target changed after expectedGeneration",
+                ));
+            }
+        }
+        if latest_overlapping_generation(&state.committed_scopes, &self.scopes, self.generation)
+            .is_some()
+        {
+            return Err(mutation_conflict(
+                state.committed_generation,
+                "a newer delete, rename, or write already committed",
+            ));
+        }
+        if latest_pending_overlap(state, &self.scopes, self.generation).is_some() {
+            return Err(mutation_conflict(
+                state.committed_generation,
+                "a newer overlapping operation is already admitted",
+            ));
+        }
+        Ok(())
+    }
+
+    fn remove_pending(&mut self, state: &mut ProjectMutationState) {
+        state.pending.remove(&self.generation);
+        self.finished = true;
+    }
+
+    fn record_commit(&mut self, state: &mut ProjectMutationState) {
+        state.committed_generation = state.committed_generation.max(self.generation);
+        let new_scopes = self
+            .commit_scopes
+            .iter()
+            .filter(|scope| !state.committed_scopes.contains_key(*scope))
+            .count();
+        if state.committed_scopes.len().saturating_add(new_scopes) > MAX_TRACKED_MUTATION_SCOPES {
+            state.committed_scopes.clear();
+            state.compacted_through = state.committed_generation;
+        }
+        for scope in &self.commit_scopes {
+            state
+                .committed_scopes
+                .insert(scope.clone(), self.generation);
+        }
+        self.remove_pending(state);
+    }
+
+    fn run<T>(self, operation: impl FnOnce() -> Result<T, String>) -> Result<(T, u64), String> {
+        self.run_with_change_status(|| operation().map(|value| (value, true)))
+    }
+
+    fn run_with_change_status<T>(
+        mut self,
+        operation: impl FnOnce() -> Result<(T, bool), String>,
+    ) -> Result<(T, u64), String> {
+        let coordinator = Arc::clone(&self.coordinator);
+        let _operation = lock_unpoisoned(&coordinator.operation);
+        {
+            let state = lock_unpoisoned(&coordinator.state);
+            self.preflight(&state)?;
+        }
+
+        let (value, changed) = operation()?;
+        if !changed {
+            let generation = {
+                let mut state = lock_unpoisoned(&coordinator.state);
+                self.remove_pending(&mut state);
+                state.committed_generation
+            };
+            return Ok((value, generation));
+        }
+        let mut state = lock_unpoisoned(&coordinator.state);
+        self.record_commit(&mut state);
+        Ok((value, self.generation))
+    }
+}
+
+impl Drop for MutationAdmission {
+    fn drop(&mut self) {
+        if !self.finished {
+            let mut state = lock_unpoisoned(&self.coordinator.state);
+            state.pending.remove(&self.generation);
+            self.finished = true;
+        }
+    }
+}
+
+#[tauri::command]
+pub fn project_mutation_generation(project_id: String) -> Result<u64, String> {
+    let coordinator = project_mutation_coordinator(&project_id)?;
+    let generation = lock_unpoisoned(&coordinator.state).committed_generation;
+    Ok(generation)
+}
+
+pub(crate) struct ProjectWorktreeMutation<T> {
+    pub value: Result<T, String>,
+    pub project: ProjectMeta,
+    pub generation: u64,
+}
+
+pub(crate) async fn mutate_project_worktree<T, F>(
+    state: &crate::state::AppState,
+    project_id: String,
+    expected_generation: Option<u64>,
+    operation: F,
+) -> Result<ProjectWorktreeMutation<T>, String>
+where
+    T: Send + 'static,
+    F: FnOnce(&Path) -> Result<(T, bool), String> + Send + 'static,
+{
+    paths::validate_project_id(&project_id)?;
+    let admission = admit_mutation(
+        &project_id,
+        vec![MutationScope::subtree(String::new())],
+        expected_generation,
+    )?;
+    let _compile = state.compile_lock.lock().await;
+    let _figure_compile = state.figure_compile_lock.lock().await;
+    tauri::async_runtime::spawn_blocking(move || {
+        let ((value, project), generation) = admission.run_with_change_status(|| {
+            with_project_metadata(&project_id, || {
+                let root = paths::project_dir(&project_id)?;
+                let pre_state = read_meta(&project_id)?;
+                revoke_shell_escape_trust(&project_id)?;
+                let (mut value, changed) = match operation(&root) {
+                    Ok((value, changed)) => (Ok(value), changed || pre_state.allow_shell_escape),
+                    Err(error) => (Err(error), true),
+                };
+                let project = match reconcile_external_worktree_meta(&project_id, &pre_state) {
+                    Ok(project) => project,
+                    Err(reconcile_error) => {
+                        value = Err(match value {
+                            Ok(_) => format!(
+                                "worktree mutation completed, but project metadata reconciliation failed: {reconcile_error}"
+                            ),
+                            Err(operation_error) => format!(
+                                "{operation_error}. Project metadata reconciliation also failed: {reconcile_error}"
+                            ),
+                        });
+                        let mut fallback = pre_state;
+                        fallback.allow_shell_escape = false;
+                        fallback
+                    }
+                };
+                Ok(((value, project), changed))
+            })
+        })?;
+        Ok(ProjectWorktreeMutation {
+            value,
+            project,
+            generation,
+        })
+    })
+    .await
+    .map_err(|error| format!("worktree mutation task failed: {error}"))?
+}
+
+#[tauri::command]
+pub async fn write_file(
+    project_id: String,
+    path: String,
+    content: String,
+    expected_generation: Option<u64>,
+) -> Result<FileMutationResult, String> {
+    let relative = mutation_relative_path(&path, false)?;
+    let admission = admit_mutation(
+        &project_id,
+        vec![MutationScope::file(relative)],
+        expected_generation,
+    )?;
+    tauri::async_runtime::spawn_blocking(move || -> Result<FileMutationResult, String> {
+        let (_, generation) = admission.run(|| {
+            let p = resolve(&project_id, &path)?;
+            if let Some(parent) = p.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            atomic_write(&p, content.as_bytes()).map_err(|e| format!("failed to write {path}: {e}"))
+        })?;
+        Ok(FileMutationResult { generation })
     })
     .await
     .map_err(|e| format!("file write task failed: {e}"))?
 }
 
-#[tauri::command]
-pub fn create_file(project_id: String, path: String, is_dir: bool) -> Result<(), String> {
-    let p = resolve(&project_id, &path)?;
-    if is_dir {
-        std::fs::create_dir_all(&p).map_err(|e| e.to_string())
-    } else {
-        if let Some(parent) = p.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-        if p.exists() {
-            return Err(format!("{path} already exists"));
-        }
-        atomic_write(&p, &[]).map_err(|e| e.to_string())
+pub(crate) struct ProjectFileWrite {
+    project_id: String,
+    path: String,
+    admission: MutationAdmission,
+}
+
+pub(crate) fn admit_project_file_write(
+    project_id: String,
+    path: String,
+    expected_generation: Option<u64>,
+) -> Result<ProjectFileWrite, String> {
+    let relative = mutation_relative_path(&path, false)?;
+    let admission = admit_mutation(
+        &project_id,
+        vec![MutationScope::file(relative)],
+        expected_generation,
+    )?;
+    Ok(ProjectFileWrite {
+        project_id,
+        path,
+        admission,
+    })
+}
+
+impl ProjectFileWrite {
+    pub(crate) fn write(self, bytes: &[u8]) -> Result<FileMutationResult, String> {
+        let project_id = self.project_id;
+        let path = self.path;
+        let (_, generation) = self.admission.run(|| {
+            let target = resolve(&project_id, &path)?;
+            if let Some(parent) = target.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            atomic_write(&target, bytes).map_err(|e| format!("failed to write {path}: {e}"))
+        })?;
+        Ok(FileMutationResult { generation })
     }
 }
 
 #[tauri::command]
-pub fn delete_file(project_id: String, path: String) -> Result<(), String> {
-    let root = paths::project_dir(&project_id)?;
-    if is_root_delete(&root, &path) {
+pub fn create_file(
+    project_id: String,
+    path: String,
+    is_dir: bool,
+    expected_generation: Option<u64>,
+) -> Result<FileMutationResult, String> {
+    let relative = mutation_relative_path(&path, false)?;
+    let scope = if is_dir {
+        MutationScope::subtree(relative)
+    } else {
+        MutationScope::file(relative)
+    };
+    let admission = admit_mutation(&project_id, vec![scope], expected_generation)?;
+    let (_, generation) = admission.run(|| {
+        let p = resolve(&project_id, &path)?;
+        if is_dir {
+            std::fs::create_dir_all(&p).map_err(|e| e.to_string())
+        } else {
+            if let Some(parent) = p.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            if p.exists() {
+                return Err(format!("{path} already exists"));
+            }
+            atomic_write(&p, &[]).map_err(|e| e.to_string())
+        }
+    })?;
+    Ok(FileMutationResult { generation })
+}
+
+#[tauri::command]
+pub fn delete_file(
+    project_id: String,
+    path: String,
+    expected_generation: Option<u64>,
+) -> Result<FileMutationResult, String> {
+    let deleted_rel = mutation_relative_path(&path, true)?;
+    if deleted_rel.is_empty() {
         return Err("refusing to delete project root".into());
     }
-    let p = resolve(&project_id, &path)?;
-    if p.is_dir() {
-        std::fs::remove_dir_all(&p)
-    } else {
-        std::fs::remove_file(&p)
-    }
-    .map_err(|e| format!("failed to delete {path}: {e}"))
+    let admission = admit_mutation(
+        &project_id,
+        vec![MutationScope::subtree(deleted_rel.clone())],
+        expected_generation,
+    )?;
+    let (_, generation) = admission.run(|| {
+        with_project_metadata(&project_id, || {
+            let p = resolve(&project_id, &path)?;
+            let meta = read_meta(&project_id)?;
+            if deletion_removes_main_document(&meta.main_doc, &deleted_rel) {
+                return Err(
+                    "cannot delete the configured main document. Select another main document first"
+                        .into(),
+                );
+            }
+            if p.is_dir() {
+                std::fs::remove_dir_all(&p)
+            } else {
+                std::fs::remove_file(&p)
+            }
+            .map_err(|e| format!("failed to delete {path}: {e}"))
+        })
+    })?;
+    Ok(FileMutationResult { generation })
+}
+
+fn deletion_removes_main_document(main_doc: &str, deleted_rel: &str) -> bool {
+    main_doc == deleted_rel
+        || main_doc
+            .strip_prefix(deleted_rel)
+            .is_some_and(|suffix| suffix.starts_with('/'))
 }
 
 #[tauri::command]
-pub fn rename_file(
+pub async fn rename_file(
+    app: tauri::AppHandle,
     project_id: String,
     from: String,
     to: String,
     conflict_strategy: Option<FileConflictStrategy>,
+    expected_generation: Option<u64>,
+    state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<RenameFileResult, String> {
-    static FILE_MOVE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-    let _guard = FILE_MOVE_LOCK
-        .get_or_init(|| Mutex::new(()))
-        .lock()
-        .map_err(|_| "file move lock is unavailable".to_string())?;
-    let root = paths::project_dir(&project_id)?;
-    let src = resolve(&project_id, &from)?;
-    let dst = resolve(&project_id, &to)?;
-    rename_path_in_project(
-        &root,
-        &src,
-        &dst,
-        &to,
-        conflict_strategy.unwrap_or_default(),
+    let result = rename_file_synchronized(
+        &state,
+        project_id.clone(),
+        from,
+        to,
+        conflict_strategy,
+        expected_generation,
     )
+    .await?;
+    if matches!(result, RenameFileResult::Renamed { .. }) {
+        if let Ok(meta) = read_meta(&project_id) {
+            let _ = publish_project_state_changed(
+                &app,
+                &state,
+                &project_id,
+                meta,
+                "file-renamed",
+                true,
+                project_mutation_generation(project_id.clone()).ok(),
+            );
+        }
+    }
+    Ok(result)
 }
 
+async fn rename_file_synchronized(
+    state: &crate::state::AppState,
+    project_id: String,
+    from: String,
+    to: String,
+    conflict_strategy: Option<FileConflictStrategy>,
+    expected_generation: Option<u64>,
+) -> Result<RenameFileResult, String> {
+    let _compile = state.compile_lock.lock().await;
+    tauri::async_runtime::spawn_blocking(move || {
+        rename_file_blocking(project_id, from, to, conflict_strategy, expected_generation)
+    })
+    .await
+    .map_err(|error| format!("file rename task failed: {error}"))?
+}
+
+pub(crate) fn rename_file_blocking(
+    project_id: String,
+    from: String,
+    to: String,
+    conflict_strategy: Option<FileConflictStrategy>,
+    expected_generation: Option<u64>,
+) -> Result<RenameFileResult, String> {
+    let source_rel = mutation_relative_path(&from, false)?;
+    let destination_rel = mutation_relative_path(&to, false)?;
+    let destination_scope = MutationScope::subtree(mutation_parent_path(&destination_rel));
+    let admission = admit_mutation(
+        &project_id,
+        vec![MutationScope::subtree(source_rel), destination_scope],
+        expected_generation,
+    )?;
+    let strategy = conflict_strategy.unwrap_or_default();
+    let (result, generation) = admission.run_with_change_status(|| {
+        with_project_metadata(&project_id, || {
+            let root = paths::project_dir(&project_id)?;
+            let meta = read_meta(&project_id)?;
+            let src = resolve(&project_id, &from)?;
+            let dst = resolve(&project_id, &to)?;
+            let result = rename_path_and_update_meta(
+                Some(&project_id),
+                &root,
+                &src,
+                &dst,
+                &destination_rel,
+                strategy,
+                meta,
+            )?;
+            let changed = matches!(result, RenameFileResult::Renamed { .. });
+            Ok((result, changed))
+        })
+    })?;
+    Ok(result.with_generation(generation))
+}
+
+enum MoveRollback {
+    Simple {
+        current: PathBuf,
+        original: PathBuf,
+        case_only: bool,
+    },
+    Replaced {
+        current: PathBuf,
+        original: PathBuf,
+        backup: PathBuf,
+        replaced_original: PathBuf,
+    },
+}
+
+struct MoveTransaction {
+    result: RenameFileResult,
+    rollback: Option<MoveRollback>,
+}
+
+impl MoveTransaction {
+    fn commit(self) -> RenameFileResult {
+        if let Some(MoveRollback::Replaced { backup, .. }) = &self.rollback {
+            let _ = remove_path(backup);
+        }
+        self.result
+    }
+
+    fn rollback(self) -> Result<(), String> {
+        let Some(rollback) = self.rollback else {
+            return Ok(());
+        };
+        match rollback {
+            MoveRollback::Simple {
+                current,
+                original,
+                case_only,
+            } => {
+                if case_only {
+                    rename_case_only(&current, &original)
+                } else {
+                    rename_exclusive(&current, &original)
+                        .map_err(|e| format!("failed to roll back move: {e}"))
+                }
+            }
+            MoveRollback::Replaced {
+                current,
+                original,
+                backup,
+                replaced_original,
+            } => {
+                rename_exclusive(&current, &original)
+                    .map_err(|e| format!("failed to restore the moved source: {e}"))?;
+                rename_exclusive(&backup, &replaced_original)
+                    .map_err(|e| format!("failed to restore the replaced destination: {e}"))
+            }
+        }
+    }
+}
+
+fn remap_main_document(main_doc: &str, from: &str, to: &str) -> Option<String> {
+    if main_doc == from {
+        return Some(to.to_string());
+    }
+    let suffix = main_doc.strip_prefix(from)?.strip_prefix('/')?;
+    Some(format!("{to}/{suffix}"))
+}
+
+fn rename_path_and_update_meta(
+    project_id: Option<&str>,
+    root: &Path,
+    src: &Path,
+    requested_dst: &Path,
+    requested_rel: &str,
+    strategy: FileConflictStrategy,
+    mut meta: ProjectMeta,
+) -> Result<RenameFileResult, String> {
+    let source_rel = rel_slash(root, src);
+    let transaction = stage_rename_path(root, src, requested_dst, requested_rel, strategy)?;
+    let actual_destination = match &transaction.result {
+        RenameFileResult::Renamed { path, .. } => path.clone(),
+        RenameFileResult::Conflict { .. } => return Ok(transaction.commit()),
+    };
+    let Some(main_doc) = remap_main_document(&meta.main_doc, &source_rel, &actual_destination)
+    else {
+        return Ok(transaction.commit());
+    };
+    if main_doc == meta.main_doc {
+        return Ok(transaction.commit());
+    }
+
+    let selected_engine = match engine_for_main_document(&meta.engine, &main_doc) {
+        Ok(engine) => engine,
+        Err(error) => {
+            let rollback = transaction.rollback();
+            return Err(match rollback {
+                Ok(()) => format!("move would make the main document invalid and was rolled back: {error}"),
+                Err(rollback_error) => format!(
+                    "move would make the main document invalid: {error}. Rollback also failed: {rollback_error}"
+                ),
+            });
+        }
+    };
+    let leaves_latexmk = meta.engine == "latexmk" && selected_engine != "latexmk";
+    if leaves_latexmk {
+        if let Some(project_id) = project_id {
+            if let Err(error) = revoke_shell_escape_trust(project_id) {
+                let rollback = transaction.rollback();
+                return Err(match rollback {
+                    Ok(()) => format!(
+                        "failed to revoke shell-command consent. The move was rolled back: {error}"
+                    ),
+                    Err(rollback_error) => format!(
+                        "failed to revoke shell-command consent: {error}. Rollback also failed: {rollback_error}"
+                    ),
+                });
+            }
+        }
+        meta.allow_shell_escape = false;
+    }
+    if selected_engine != meta.engine && selected_engine != "latexmk" {
+        meta.tex_flavor = None;
+    }
+    meta.engine = selected_engine;
+    meta.main_doc = main_doc;
+    if let Err(error) = write_meta_at(&root.join("project.json"), &meta) {
+        let rollback = transaction.rollback();
+        return Err(match rollback {
+            Ok(()) => format!("failed to update the main document after the move. The move was rolled back: {error}"),
+            Err(rollback_error) => format!(
+                "failed to update the main document after the move: {error}. Rollback also failed: {rollback_error}"
+            ),
+        });
+    }
+    Ok(transaction.commit())
+}
+
+#[cfg(test)]
 fn rename_path_in_project(
     root: &Path,
     src: &Path,
@@ -371,6 +1594,16 @@ fn rename_path_in_project(
     requested_rel: &str,
     strategy: FileConflictStrategy,
 ) -> Result<RenameFileResult, String> {
+    Ok(stage_rename_path(root, src, requested_dst, requested_rel, strategy)?.commit())
+}
+
+fn stage_rename_path(
+    root: &Path,
+    src: &Path,
+    requested_dst: &Path,
+    requested_rel: &str,
+    strategy: FileConflictStrategy,
+) -> Result<MoveTransaction, String> {
     if src == root || requested_dst == root {
         return Err("refusing to move the project root".into());
     }
@@ -383,8 +1616,12 @@ fn rename_path_in_project(
         return Err("cannot move a folder into itself".into());
     }
     if src == requested_dst {
-        return Ok(RenameFileResult::Renamed {
-            path: requested_rel.to_string(),
+        return Ok(MoveTransaction {
+            result: RenameFileResult::Renamed {
+                path: requested_rel.to_string(),
+                generation: 0,
+            },
+            rollback: None,
         });
     }
 
@@ -396,8 +1633,16 @@ fn rename_path_in_project(
     if let Some(existing) = collision.as_ref() {
         if same_entry(src, existing) {
             rename_case_only(src, requested_dst)?;
-            return Ok(RenameFileResult::Renamed {
-                path: requested_rel.to_string(),
+            return Ok(MoveTransaction {
+                result: RenameFileResult::Renamed {
+                    path: requested_rel.to_string(),
+                    generation: 0,
+                },
+                rollback: Some(MoveRollback::Simple {
+                    current: requested_dst.to_path_buf(),
+                    original: src.to_path_buf(),
+                    case_only: true,
+                }),
             });
         }
     }
@@ -405,40 +1650,68 @@ fn rename_path_in_project(
     let destination = match (collision, strategy) {
         (Some(_), FileConflictStrategy::Error) => {
             let suggested = unique_destination(requested_dst, source_meta.is_dir())?;
-            return Ok(RenameFileResult::Conflict {
-                destination: requested_rel.to_string(),
-                suggested_destination: rel_slash(root, &suggested),
+            return Ok(MoveTransaction {
+                result: RenameFileResult::Conflict {
+                    destination: requested_rel.to_string(),
+                    suggested_destination: rel_slash(root, &suggested),
+                    generation: 0,
+                },
+                rollback: None,
             });
         }
         (Some(_), FileConflictStrategy::KeepBoth) => {
             unique_destination(requested_dst, source_meta.is_dir())?
         }
         (Some(existing), FileConflictStrategy::Replace) => {
-            replace_path(root, src, &existing, requested_dst)?;
-            return Ok(RenameFileResult::Renamed {
-                path: requested_rel.to_string(),
+            let rollback = stage_replace_path(root, src, &existing, requested_dst)?;
+            return Ok(MoveTransaction {
+                result: RenameFileResult::Renamed {
+                    path: requested_rel.to_string(),
+                    generation: 0,
+                },
+                rollback: Some(rollback),
             });
         }
         (None, _) => requested_dst.to_path_buf(),
     };
 
     match rename_exclusive(src, &destination) {
-        Ok(()) => Ok(RenameFileResult::Renamed {
-            path: rel_slash(root, &destination),
+        Ok(()) => Ok(MoveTransaction {
+            result: RenameFileResult::Renamed {
+                path: rel_slash(root, &destination),
+                generation: 0,
+            },
+            rollback: Some(MoveRollback::Simple {
+                current: destination,
+                original: src.to_path_buf(),
+                case_only: false,
+            }),
         }),
         Err(_error) if portable_collision(&destination)?.is_some() => {
             if strategy == FileConflictStrategy::KeepBoth {
                 let retry = unique_destination(&destination, source_meta.is_dir())?;
                 rename_exclusive(src, &retry)
                     .map_err(|e| format!("move failed after choosing a unique name: {e}"))?;
-                Ok(RenameFileResult::Renamed {
-                    path: rel_slash(root, &retry),
+                Ok(MoveTransaction {
+                    result: RenameFileResult::Renamed {
+                        path: rel_slash(root, &retry),
+                        generation: 0,
+                    },
+                    rollback: Some(MoveRollback::Simple {
+                        current: retry,
+                        original: src.to_path_buf(),
+                        case_only: false,
+                    }),
                 })
             } else {
                 let suggested = unique_destination(&destination, source_meta.is_dir())?;
-                Ok(RenameFileResult::Conflict {
-                    destination: rel_slash(root, &destination),
-                    suggested_destination: rel_slash(root, &suggested),
+                Ok(MoveTransaction {
+                    result: RenameFileResult::Conflict {
+                        destination: rel_slash(root, &destination),
+                        suggested_destination: rel_slash(root, &suggested),
+                        generation: 0,
+                    },
+                    rollback: None,
                 })
             }
         }
@@ -563,7 +1836,12 @@ fn rename_case_only(src: &Path, dst: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn replace_path(root: &Path, src: &Path, existing: &Path, dst: &Path) -> Result<(), String> {
+fn stage_replace_path(
+    root: &Path,
+    src: &Path,
+    existing: &Path,
+    dst: &Path,
+) -> Result<MoveRollback, String> {
     let backup_root = root.join(".oleafly").join("move-backups");
     ensure_private_directory(root, &backup_root)?;
     let backup = unique_temporary_path(&backup_root, "replaced")?;
@@ -580,11 +1858,12 @@ fn replace_path(root: &Path, src: &Path, existing: &Path, dst: &Path) -> Result<
         });
     }
 
-    // The requested move already succeeded. A cleanup failure must not report
-    // the operation as failed and tempt the caller to repeat it; the backup is
-    // kept under the app-private directory and can be removed later.
-    let _ = remove_path(&backup);
-    Ok(())
+    Ok(MoveRollback::Replaced {
+        current: dst.to_path_buf(),
+        original: src.to_path_buf(),
+        backup,
+        replaced_original: existing.to_path_buf(),
+    })
 }
 
 fn ensure_private_directory(root: &Path, directory: &Path) -> Result<(), String> {
@@ -726,12 +2005,30 @@ fn rename_exclusive(src: &Path, dst: &Path) -> std::io::Result<()> {
 /// binaries like PDFs); folders are copied recursively (symlinks skipped, with
 /// an explicit depth error). Async + spawn_blocking keeps large copies off UI.
 #[tauri::command]
-pub async fn copy_file(project_id: String, from: String, to: String) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
-        let root = paths::project_dir(&project_id)?;
-        let src = resolve(&project_id, &from)?;
-        let requested_dst = resolve(&project_id, &to)?;
-        copy_path_in_project(&root, &src, &requested_dst)
+pub async fn copy_file(
+    project_id: String,
+    from: String,
+    to: String,
+    expected_generation: Option<u64>,
+) -> Result<CopyFileResult, String> {
+    let source_rel = mutation_relative_path(&from, false)?;
+    let destination_rel = mutation_relative_path(&to, false)?;
+    let source_scope = MutationScope::subtree(source_rel);
+    let destination_scope = MutationScope::subtree(mutation_parent_path(&destination_rel));
+    let admission = admit_mutation_with_commit(
+        &project_id,
+        vec![source_scope, destination_scope.clone()],
+        vec![destination_scope],
+        expected_generation,
+    )?;
+    tauri::async_runtime::spawn_blocking(move || -> Result<CopyFileResult, String> {
+        let (path, generation) = admission.run(|| {
+            let root = paths::project_dir(&project_id)?;
+            let src = resolve(&project_id, &from)?;
+            let requested_dst = resolve(&project_id, &to)?;
+            copy_path_in_project(&root, &src, &requested_dst)
+        })?;
+        Ok(CopyFileResult { path, generation })
     })
     .await
     .map_err(|e| e.to_string())?
@@ -788,17 +2085,27 @@ pub async fn save_file_base64(
     project_id: String,
     path: String,
     data: String,
-) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+    expected_generation: Option<u64>,
+) -> Result<FileMutationResult, String> {
+    let relative = mutation_relative_path(&path, false)?;
+    let admission = admit_mutation(
+        &project_id,
+        vec![MutationScope::file(relative)],
+        expected_generation,
+    )?;
+    tauri::async_runtime::spawn_blocking(move || -> Result<FileMutationResult, String> {
         use base64::{engine::general_purpose::STANDARD, Engine};
-        let p = resolve(&project_id, &path)?;
-        if let Some(parent) = p.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
         let bytes = STANDARD
             .decode(data.trim())
             .map_err(|e| format!("invalid base64: {e}"))?;
-        atomic_write(&p, &bytes).map_err(|e| format!("failed to write {path}: {e}"))
+        let (_, generation) = admission.run(|| {
+            let p = resolve(&project_id, &path)?;
+            if let Some(parent) = p.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            atomic_write(&p, &bytes).map_err(|e| format!("failed to write {path}: {e}"))
+        })?;
+        Ok(FileMutationResult { generation })
     })
     .await
     .map_err(|e| e.to_string())?
@@ -858,35 +2165,57 @@ async fn set_main_doc_synchronized(
     // switch therefore happens wholly before or wholly after a compile, never
     // between its final identity check and revision allocation.
     let _guard = state.compile_lock.lock().await;
-    set_main_doc_unlocked(project_id, main_doc)
+    tauri::async_runtime::spawn_blocking(move || {
+        let coordinator = project_mutation_coordinator(&project_id)?;
+        let _operation = lock_unpoisoned(&coordinator.operation);
+        set_main_doc_unlocked(project_id, main_doc)
+    })
+    .await
+    .map_err(|error| format!("main-document update task failed: {error}"))?
 }
 
 #[tauri::command]
 pub async fn set_main_doc(
+    app: tauri::AppHandle,
     state: tauri::State<'_, crate::state::AppState>,
     project_id: String,
     main_doc: String,
 ) -> Result<ProjectMeta, String> {
-    set_main_doc_synchronized(&state, project_id, main_doc).await
+    let meta = set_main_doc_synchronized(&state, project_id.clone(), main_doc).await?;
+    let _ = publish_project_state_changed(
+        &app,
+        &state,
+        &project_id,
+        meta.clone(),
+        "main-document-changed",
+        false,
+        project_mutation_generation(project_id.clone()).ok(),
+    );
+    Ok(meta)
 }
 
 fn set_main_doc_unlocked(project_id: String, main_doc: String) -> Result<ProjectMeta, String> {
-    let main_doc = main_doc.trim().to_string();
-    if main_doc.is_empty() {
-        return Err("main document path cannot be empty".into());
-    }
-    // Reject traversal / absolute paths and require the file to exist inside
-    // the project before we persist it as the compile entry point.
-    let resolved = resolve(&project_id, &main_doc)?;
-    if !resolved.is_file() {
-        return Err(format!("main document not found: {main_doc}"));
-    }
-    let mut meta = read_meta(&project_id)?;
-    let selected_engine = engine_for_main_document(&meta.engine, &main_doc)?;
-    meta.main_doc = main_doc;
-    meta.engine = selected_engine;
-    write_meta(&project_id, &meta)?;
-    Ok(meta)
+    with_project_metadata(&project_id, || {
+        let main_doc = main_doc.trim().to_string();
+        if main_doc.is_empty() {
+            return Err("main document path cannot be empty".into());
+        }
+        let resolved = resolve(&project_id, &main_doc)?;
+        if !resolved.is_file() {
+            return Err(format!("main document not found: {main_doc}"));
+        }
+        let mut meta = read_meta(&project_id)?;
+        let selected_engine = engine_for_main_document(&meta.engine, &main_doc)?;
+        meta.main_doc = main_doc;
+        if selected_engine != "latexmk" {
+            revoke_shell_escape_trust(&project_id)?;
+            meta.tex_flavor = None;
+            meta.allow_shell_escape = false;
+        }
+        meta.engine = selected_engine;
+        write_meta(&project_id, &meta)?;
+        Ok(meta)
+    })
 }
 
 /// Pin a project's compile engine in `project.json` (e.g. "xetex" for the
@@ -895,25 +2224,90 @@ fn set_main_doc_unlocked(project_id: String, main_doc: String) -> Result<Project
 /// final identity check and its revision allocation.
 #[tauri::command]
 pub async fn set_project_engine(
+    app: tauri::AppHandle,
     state: tauri::State<'_, crate::state::AppState>,
     project_id: String,
     engine: String,
     flavor: Option<String>,
 ) -> Result<ProjectMeta, String> {
     let _guard = state.compile_lock.lock().await;
+    let meta = set_project_engine_unlocked(&project_id, &engine, flavor.as_deref())?;
+    let _ = publish_project_state_changed(
+        &app,
+        &state,
+        &project_id,
+        meta.clone(),
+        "engine-changed",
+        false,
+        project_mutation_generation(project_id.clone()).ok(),
+    );
+    Ok(meta)
+}
+
+fn set_project_engine_unlocked(
+    project_id: &str,
+    engine: &str,
+    flavor: Option<&str>,
+) -> Result<ProjectMeta, String> {
     let engine = engine.trim().to_string();
     if engine.is_empty() {
         return Err("engine name cannot be empty".into());
     }
-    let flavor = validate_tex_flavor(&engine, flavor.as_deref())?;
-    let mut meta = read_meta(&project_id)?;
-    // Reject engines that cannot compile the current main document before
-    // persisting anything.
-    crate::document_engine::engine_for(&engine, &meta.main_doc)?;
-    meta.engine = engine;
-    meta.tex_flavor = flavor;
-    write_meta(&project_id, &meta)?;
+    let flavor = validate_tex_flavor(&engine, flavor)?;
+    with_project_metadata(project_id, || {
+        let mut meta = read_meta(project_id)?;
+        crate::document_engine::engine_for(&engine, &meta.main_doc)?;
+        meta.engine = engine;
+        meta.tex_flavor = flavor;
+        if meta.engine != "latexmk" {
+            revoke_shell_escape_trust(project_id)?;
+            meta.allow_shell_escape = false;
+        }
+        write_meta(project_id, &meta)?;
+        Ok(meta)
+    })
+}
+
+#[tauri::command]
+pub async fn set_project_shell_escape(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    allow_shell_escape: bool,
+) -> Result<ProjectMeta, String> {
+    let _guard = state.compile_lock.lock().await;
+    let meta = set_project_shell_escape_unlocked(&project_id, allow_shell_escape)?;
+    let _ = publish_project_state_changed(
+        &app,
+        &state,
+        &project_id,
+        meta.clone(),
+        "shell-trust-changed",
+        false,
+        project_mutation_generation(project_id.clone()).ok(),
+    );
     Ok(meta)
+}
+
+fn set_project_shell_escape_unlocked(
+    project_id: &str,
+    allow_shell_escape: bool,
+) -> Result<ProjectMeta, String> {
+    with_project_metadata(project_id, || {
+        let mut meta = read_meta(project_id)?;
+        if allow_shell_escape && meta.engine != "latexmk" {
+            return Err(
+                "shell escape can only be enabled for the system TeX (latexmk) engine".into(),
+            );
+        }
+        if allow_shell_escape {
+            write_shell_escape_trust(project_id)?;
+        } else {
+            revoke_shell_escape_trust(project_id)?;
+        }
+        meta.allow_shell_escape = allow_shell_escape;
+        Ok(meta)
+    })
 }
 
 /// Normalize the per-project compiler choice. "auto" and empty mean
@@ -940,19 +2334,22 @@ fn epoch_seconds() -> f64 {
         .unwrap_or(0.0)
 }
 
-fn collect_tex_spec() -> Option<TexSpec> {
-    let active = crate::tex_distro::list_distributions()
-        .into_iter()
-        .find(|d| d.latexmk.is_some())?;
+async fn collect_tex_spec() -> Result<Option<TexSpec>, String> {
+    let Some(active) = crate::tex_distro::active_latexmk_distribution() else {
+        return Ok(None::<TexSpec>);
+    };
     // No tlmgr (e.g. MiKTeX, which installs packages on the fly) still yields
     // a distribution pin; the package map just stays empty.
-    let packages = crate::latex_engine::tlmgr_installed_versions().unwrap_or_default();
-    Some(TexSpec {
+    let packages = match active.tlmgr.as_deref() {
+        Some(tlmgr) => crate::latex_engine::tlmgr_installed_versions_at(tlmgr).await?,
+        None => std::collections::BTreeMap::new(),
+    };
+    Ok(Some(TexSpec {
         distribution: active.kind,
         distribution_label: active.label,
         packages,
         recorded_at: epoch_seconds(),
-    })
+    }))
 }
 
 /// Capture the local TeX distribution + tlmgr package versions into the
@@ -963,18 +2360,18 @@ pub async fn record_project_tex_spec(
     state: tauri::State<'_, crate::state::AppState>,
     project_id: String,
 ) -> Result<Option<TexSpec>, String> {
-    let spec = tauri::async_runtime::spawn_blocking(collect_tex_spec)
-        .await
-        .map_err(|e| e.to_string())?;
+    let spec = collect_tex_spec().await?;
     let Some(spec) = spec else { return Ok(None) };
     let _guard = state.compile_lock.lock().await;
-    let mut meta = read_meta(&project_id)?;
-    if meta.engine != "latexmk" {
-        return Ok(None);
-    }
-    meta.tex = Some(spec.clone());
-    write_meta(&project_id, &meta)?;
-    Ok(Some(spec))
+    with_project_metadata(&project_id, || {
+        let mut meta = read_meta(&project_id)?;
+        if meta.engine != "latexmk" {
+            return Ok(None);
+        }
+        meta.tex = Some(spec.clone());
+        write_meta(&project_id, &meta)?;
+        Ok(Some(spec))
+    })
 }
 
 /// How this machine compares against the project's reproducibility pin.
@@ -992,46 +2389,49 @@ pub struct TexStatus {
 /// a recorded spec only). Coauthors get prompted from this on project open.
 #[tauri::command]
 pub async fn project_tex_status(project_id: String) -> Result<Option<TexStatus>, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let meta = read_meta(&project_id)?;
-        if meta.engine != "latexmk" {
-            return Ok(None);
-        }
-        let Some(spec) = meta.tex else {
-            return Ok(None);
-        };
-        let active = crate::tex_distro::list_distributions()
-            .into_iter()
-            .find(|d| d.latexmk.is_some());
-        let local_label = active.as_ref().map(|d| d.label.clone());
-        let can_install = active.as_ref().is_some_and(|d| d.tlmgr.is_some());
-        let missing_packages = if can_install && !spec.packages.is_empty() {
-            let installed = crate::latex_engine::tlmgr_installed_versions()
-                .map(|versions| {
-                    versions
-                        .into_keys()
-                        .collect::<std::collections::BTreeSet<_>>()
-                })
-                .unwrap_or_default();
+    let prepared = tauri::async_runtime::spawn_blocking(
+        move || -> Result<Option<(TexSpec, Option<crate::tex_distro::TexDistribution>)>, String> {
+            let meta = read_meta(&project_id)?;
+            if meta.engine != "latexmk" {
+                return Ok(None);
+            }
+            let Some(spec) = meta.tex else {
+                return Ok(None);
+            };
+            let active = crate::tex_distro::active_latexmk_distribution();
+            Ok(Some((spec, active)))
+        },
+    )
+    .await
+    .map_err(|e| e.to_string())??;
+    let Some((spec, active)) = prepared else {
+        return Ok(None);
+    };
+    let local_label = active.as_ref().map(|d| d.label.clone());
+    let active_tlmgr = active.as_ref().and_then(|d| d.tlmgr.as_deref());
+    let can_install = active_tlmgr.is_some();
+    let missing_packages = match active_tlmgr {
+        Some(tlmgr) if !spec.packages.is_empty() => {
+            let installed = crate::latex_engine::tlmgr_installed_versions_at(tlmgr)
+                .await?
+                .into_keys()
+                .collect::<std::collections::BTreeSet<_>>();
             spec.packages
                 .keys()
                 .filter(|name| !installed.contains(*name))
                 .cloned()
                 .collect()
-        } else {
-            Vec::new()
-        };
-        let distribution_differs = local_label.as_deref() != Some(spec.distribution_label.as_str());
-        Ok(Some(TexStatus {
-            pinned_label: spec.distribution_label,
-            local_label,
-            distribution_differs,
-            missing_packages,
-            can_install_missing: can_install,
-        }))
-    })
-    .await
-    .map_err(|e| e.to_string())?
+        }
+        _ => Vec::new(),
+    };
+    let distribution_differs = local_label.as_deref() != Some(spec.distribution_label.as_str());
+    Ok(Some(TexStatus {
+        pinned_label: spec.distribution_label,
+        local_label,
+        distribution_differs,
+        missing_packages,
+        can_install_missing: can_install,
+    }))
 }
 
 /// Record a successful compile's provenance under `.oleafly/builds/`.
@@ -1112,6 +2512,113 @@ fn engine_for_main_document(current_engine: &str, main_doc: &str) -> Result<Stri
     Ok(selected)
 }
 
+fn engine_for_untrusted_project(main_doc: &str) -> Result<String, String> {
+    engine_for_main_document(&default_engine(), main_doc)
+}
+
+fn project_main_file_is_usable(project_id: &str, main_doc: &str) -> bool {
+    resolve(project_id, main_doc).is_ok_and(|path| path.is_file())
+        && engine_for_untrusted_project(main_doc).is_ok()
+}
+
+fn main_document_family(path: &str) -> u8 {
+    match Path::new(path)
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(str::to_ascii_lowercase)
+        .as_deref()
+    {
+        Some("tex" | "ltx" | "latex") => 0,
+        Some("typ") => 1,
+        Some("md" | "markdown") => 2,
+        _ => 3,
+    }
+}
+
+fn infer_external_main_document(root: &Path, preferred: &str) -> Result<String, String> {
+    let preferred_family = main_document_family(preferred);
+    let cancelled = AtomicBool::new(false);
+    let limits = FileListLimits {
+        max_results: MCP_LIST_RESULT_LIMIT,
+        max_entries: MCP_LIST_ENTRY_SCAN_LIMIT,
+        deadline: std::time::Instant::now() + MCP_SCAN_DEADLINE,
+    };
+    let mut listing = BoundedFileList {
+        entries: Vec::new(),
+        scanned_entries: 0,
+        truncated: false,
+    };
+    bounded_list_walk(root, root, &mut listing, limits, &cancelled, 0)?;
+    let mut candidates: Vec<String> = listing
+        .entries
+        .into_iter()
+        .filter(|entry| !entry.is_dir && engine_for_untrusted_project(&entry.path).is_ok())
+        .map(|entry| entry.path)
+        .collect();
+    candidates.sort_by_key(|candidate| {
+        let family = main_document_family(candidate);
+        let filename = candidate
+            .rsplit('/')
+            .next()
+            .unwrap_or(candidate)
+            .to_ascii_lowercase();
+        let has_document_class =
+            family == 0 && read_head_for_import(&root.join(candidate)).contains("\\documentclass");
+        (
+            family != preferred_family,
+            !has_document_class,
+            !matches!(
+                filename.as_str(),
+                "main.tex" | "main.ltx" | "main.latex" | "main.typ" | "main.md" | "main.markdown"
+            ),
+            candidate.matches('/').count(),
+            candidate.to_ascii_lowercase(),
+        )
+    });
+    candidates.into_iter().next().ok_or_else(|| {
+        if listing.truncated {
+            "project metadata is invalid and no supported main document was found within the bounded worktree scan".into()
+        } else {
+            "project metadata is invalid and the worktree has no supported main document".into()
+        }
+    })
+}
+
+fn reconcile_external_worktree_meta(
+    project_id: &str,
+    previous: &ProjectMeta,
+) -> Result<ProjectMeta, String> {
+    let root = paths::project_dir(project_id)?;
+    let mut meta = read_meta(project_id).unwrap_or_else(|_| previous.clone());
+    meta.allow_shell_escape = false;
+    if meta.name.trim().is_empty() {
+        meta.name = previous.name.clone();
+    }
+    if !project_main_file_is_usable(project_id, &meta.main_doc) {
+        meta.main_doc = if project_main_file_is_usable(project_id, &previous.main_doc) {
+            previous.main_doc.clone()
+        } else {
+            infer_external_main_document(&root, &previous.main_doc)?
+        };
+    }
+
+    let requested_engine = if meta.engine == "latexmk" && previous.engine != "latexmk" {
+        engine_for_untrusted_project(&meta.main_doc)?
+    } else {
+        engine_for_main_document(&meta.engine, &meta.main_doc)
+            .and_then(|engine| {
+                crate::document_engine::engine_for(&engine, &meta.main_doc).map(|_| engine)
+            })
+            .unwrap_or(engine_for_untrusted_project(&meta.main_doc)?)
+    };
+    meta.engine = requested_engine;
+    if meta.engine != "latexmk" {
+        meta.tex_flavor = None;
+    }
+    write_meta(project_id, &meta)?;
+    read_meta(project_id)
+}
+
 #[tauri::command]
 pub fn create_markdown_project(name: String) -> Result<String, String> {
     let root = paths::projects_root()?;
@@ -1136,6 +2643,7 @@ fn create_markdown_project_in(root: &Path, name: String) -> Result<String, Strin
                 forked_from: None,
                 tex: None,
                 tex_flavor: None,
+                allow_shell_escape: false,
             },
         )
     })?;
@@ -1144,14 +2652,16 @@ fn create_markdown_project_in(root: &Path, name: String) -> Result<String, Strin
 
 #[tauri::command]
 pub fn rename_project(project_id: String, name: String) -> Result<ProjectMeta, String> {
-    let trimmed = name.trim();
-    if trimmed.is_empty() {
-        return Err("Project name cannot be empty".into());
-    }
-    let mut meta = read_meta(&project_id)?;
-    meta.name = trimmed.to_string();
-    write_meta(&project_id, &meta)?;
-    Ok(meta)
+    with_project_metadata(&project_id, || {
+        let trimmed = name.trim();
+        if trimmed.is_empty() {
+            return Err("Project name cannot be empty".into());
+        }
+        let mut meta = read_meta(&project_id)?;
+        meta.name = trimmed.to_string();
+        write_meta(&project_id, &meta)?;
+        Ok(meta)
+    })
 }
 
 #[tauri::command]
@@ -1163,10 +2673,12 @@ pub fn get_project(project_id: String) -> Result<ProjectMeta, String> {
 /// across machines (previously kept only in the browser's localStorage).
 #[tauri::command]
 pub fn set_project_color(project_id: String, color: String) -> Result<ProjectMeta, String> {
-    let mut meta = read_meta(&project_id)?;
-    meta.color = color;
-    write_meta(&project_id, &meta)?;
-    Ok(meta)
+    with_project_metadata(&project_id, || {
+        let mut meta = read_meta(&project_id)?;
+        meta.color = color;
+        write_meta(&project_id, &meta)?;
+        Ok(meta)
+    })
 }
 
 /// Open the webview devtools. Only does anything in debug builds (`tauri dev`),
@@ -1311,6 +2823,7 @@ pub fn create_project(name: String) -> Result<String, String> {
                 forked_from: None,
                 tex: None,
                 tex_flavor: None,
+                allow_shell_escape: false,
             },
         )
     })?;
@@ -1392,6 +2905,7 @@ pub fn create_project_from_pdf_conversion(
                 forked_from: None,
                 tex: None,
                 tex_flavor: None,
+                allow_shell_escape: false,
             },
         )?;
         rename_exclusive(&staging, &destination)
@@ -1431,6 +2945,7 @@ fn create_typst_project_in(root: &Path, name: String) -> Result<String, String> 
                 forked_from: None,
                 tex: None,
                 tex_flavor: None,
+                allow_shell_escape: false,
             },
         )
     })?;
@@ -1488,30 +3003,16 @@ fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<
             extract_zip_for_import(&source, &dir)?;
         }
         flatten_single_root_folder(&dir)?;
-        // An Oleafly-exported archive round-trips: keep its project.json when
-        // it still points at a real file. Overleaf archives have none.
         let existing = read_import_meta(&dir);
-        let meta = match existing {
+        let mut meta = match existing {
             Some(mut meta) if dir.join(&meta.main_doc).is_file() => {
                 meta.name = project_name.clone();
                 meta
             }
             _ => {
                 let main_doc = infer_main_document(&dir)?;
-                let mut engine = engine_for_main_document(&default_engine(), &main_doc)
-                    .unwrap_or_else(|_| default_engine());
-                // Overleaf parity out of the box: imported LaTeX projects use
-                // the full latexmk toolchain when a system TeX is available.
-                // Journal classes routinely rely on tools and pdfTeX
-                // primitives the bundled Tectonic (XeTeX-class) cannot
-                // provide, and Overleaf compiles them with pdfLaTeX. Without
-                // a system TeX the project stays on Tectonic and the scan /
-                // compile-failure flows offer the switch.
-                if engine == default_engine()
-                    && crate::tex_distro::find_tex_tool("latexmk").is_some()
-                {
-                    engine = "latexmk".to_string();
-                }
+                let engine =
+                    engine_for_untrusted_project(&main_doc).unwrap_or_else(|_| default_engine());
                 ProjectMeta {
                     name: project_name.clone(),
                     main_doc,
@@ -1520,6 +3021,10 @@ fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<
                 }
             }
         };
+        meta.engine =
+            engine_for_untrusted_project(&meta.main_doc).unwrap_or_else(|_| default_engine());
+        meta.tex_flavor = None;
+        meta.allow_shell_escape = false;
         write_meta_at(&dir.join("project.json"), &meta)
     })?;
     Ok(id)
@@ -1825,6 +3330,7 @@ fn create_image_project_in(
                 forked_from: None,
                 tex: None,
                 tex_flavor: None,
+                allow_shell_escape: false,
             },
         )
     })?;
@@ -1872,6 +3378,7 @@ pub fn create_diagram_project(name: String, source: String) -> Result<String, St
                 forked_from: None,
                 tex: None,
                 tex_flavor: None,
+                allow_shell_escape: false,
             },
         )
     })?;
@@ -1880,26 +3387,31 @@ pub fn create_diagram_project(name: String, source: String) -> Result<String, St
 
 #[tauri::command]
 pub fn get_or_create_scratch_project() -> Result<String, String> {
-    let dir = paths::project_dir(SCRATCH_PROJECT_ID)?;
-    let meta_file = dir.join("project.json");
-    if !meta_file.exists() {
-        std::fs::write(dir.join("main.tex"), DEFAULT_MAIN_DIAGRAM).map_err(|e| e.to_string())?;
-        write_meta_at(
-            &meta_file,
-            &ProjectMeta {
-                name: "Diagram Composer Scratch".to_string(),
-                main_doc: default_main_doc(),
-                engine: default_engine(),
-                color: String::new(),
-                kind: "diagram".into(),
-                exports: Vec::new(),
-                hidden: true,
-                forked_from: None,
-                tex: None,
-                tex_flavor: None,
-            },
-        )?;
-    }
+    let dir = paths::create_project_dir(SCRATCH_PROJECT_ID)?;
+    with_project_metadata(SCRATCH_PROJECT_ID, || {
+        let meta_file = dir.join("project.json");
+        if !meta_file.exists() {
+            atomic_write(&dir.join("main.tex"), DEFAULT_MAIN_DIAGRAM.as_bytes())
+                .map_err(|e| e.to_string())?;
+            write_meta_at(
+                &meta_file,
+                &ProjectMeta {
+                    name: "Diagram Composer Scratch".to_string(),
+                    main_doc: default_main_doc(),
+                    engine: default_engine(),
+                    color: String::new(),
+                    kind: "diagram".into(),
+                    exports: Vec::new(),
+                    hidden: true,
+                    forked_from: None,
+                    tex: None,
+                    tex_flavor: None,
+                    allow_shell_escape: false,
+                },
+            )?;
+        }
+        Ok(())
+    })?;
     Ok(SCRATCH_PROJECT_ID.to_string())
 }
 
@@ -2046,27 +3558,29 @@ pub fn export_pdf(
         allow.push_back(canon);
     }
 
-    let mut meta = read_meta(&project_id)?;
-    let filename = Path::new(&dest)
-        .file_name()
-        .and_then(|s| s.to_str())
-        .unwrap_or("export.pdf")
-        .to_string();
-    let date = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs_f64())
-        .unwrap_or(0.0);
-    meta.exports.push(ExportRecord {
-        date,
-        filename,
-        path: dest,
-    });
-    if meta.exports.len() > 50 {
-        meta.exports.drain(0..meta.exports.len() - 50);
-    }
     // The artifact is already durably published. Export-history bookkeeping is
     // best-effort so a metadata failure never reports a false export failure.
-    let _ = write_meta(&project_id, &meta);
+    let _ = with_project_metadata(&project_id, || {
+        let mut meta = read_meta(&project_id)?;
+        let filename = Path::new(&dest)
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("export.pdf")
+            .to_string();
+        let date = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs_f64())
+            .unwrap_or(0.0);
+        meta.exports.push(ExportRecord {
+            date,
+            filename,
+            path: dest,
+        });
+        if meta.exports.len() > 50 {
+            meta.exports.drain(0..meta.exports.len() - 50);
+        }
+        write_meta(&project_id, &meta)
+    });
     Ok(())
 }
 
@@ -2206,25 +3720,27 @@ pub async fn export_document(
         allow.push_back(canon);
     }
 
-    let mut meta = read_meta(&project_id)?;
-    let filename = Path::new(&dest)
-        .file_name()
-        .and_then(|s| s.to_str())
-        .unwrap_or(dest.as_str())
-        .to_string();
-    let date = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs_f64())
-        .unwrap_or(0.0);
-    meta.exports.push(ExportRecord {
-        date,
-        filename,
-        path: dest,
+    let _ = with_project_metadata(&project_id, || {
+        let mut meta = read_meta(&project_id)?;
+        let filename = Path::new(&dest)
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or(dest.as_str())
+            .to_string();
+        let date = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs_f64())
+            .unwrap_or(0.0);
+        meta.exports.push(ExportRecord {
+            date,
+            filename,
+            path: dest,
+        });
+        if meta.exports.len() > 50 {
+            meta.exports.drain(0..meta.exports.len() - 50);
+        }
+        write_meta(&project_id, &meta)
     });
-    if meta.exports.len() > 50 {
-        meta.exports.drain(0..meta.exports.len() - 50);
-    }
-    let _ = write_meta(&project_id, &meta);
     Ok(())
 }
 
@@ -2327,6 +3843,7 @@ pub async fn create_project_from_docx(name: String, data_base64: String) -> Resu
                 forked_from: None,
                 tex: None,
                 tex_flavor: None,
+                allow_shell_escape: false,
             },
         )?;
         rename_exclusive(&staging, &destination)
@@ -2609,7 +4126,8 @@ pub fn create_project_from_template(
     let dir = root.join(&id);
     create_project_transaction(&dir, || {
         let manifest = crate::templates::instantiate(&app, &template_id, &dir)?;
-        crate::document_engine::engine_for(&manifest.engine, &manifest.main_doc)?;
+        let engine = engine_for_untrusted_project(&manifest.main_doc)?;
+        crate::document_engine::engine_for(&engine, &manifest.main_doc)?;
         crate::assets::stage_template_fonts(&app, &manifest, &dir)?;
         let color = color
             .filter(|c| !c.is_empty())
@@ -2620,7 +4138,7 @@ pub fn create_project_from_template(
             &ProjectMeta {
                 name,
                 main_doc: manifest.main_doc,
-                engine: manifest.engine,
+                engine,
                 color,
                 kind: manifest.kind.unwrap_or_default(),
                 exports: Vec::new(),
@@ -2628,6 +4146,7 @@ pub fn create_project_from_template(
                 forked_from: None,
                 tex: None,
                 tex_flavor: None,
+                allow_shell_escape: false,
             },
         )
     })?;
@@ -2644,6 +4163,29 @@ pub struct SearchHit {
 }
 
 const SEARCH_LIMIT: usize = 200;
+const MCP_SEARCH_RESULT_LIMIT: usize = 20;
+const MCP_SEARCH_ENTRY_SCAN_LIMIT: usize = 5_000;
+const MCP_SEARCH_FILE_SCAN_LIMIT: usize = 2_000;
+const MCP_SEARCH_FILE_BYTE_LIMIT: usize = 2 * 1024 * 1024;
+const MCP_SEARCH_TOTAL_BYTE_LIMIT: usize = 32 * 1024 * 1024;
+
+pub(crate) struct BoundedSearch {
+    pub hits: Vec<SearchHit>,
+    pub scanned_entries: usize,
+    pub scanned_files: usize,
+    pub scanned_bytes: usize,
+    pub truncated: bool,
+}
+
+#[derive(Clone, Copy)]
+struct SearchLimits {
+    max_results: usize,
+    max_entries: usize,
+    max_files: usize,
+    max_file_bytes: usize,
+    max_total_bytes: usize,
+    deadline: std::time::Instant,
+}
 
 fn is_searchable(name: &str) -> bool {
     let n = name.to_lowercase();
@@ -2725,6 +4267,149 @@ fn search_walk(
                     return;
                 }
             }
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn bounded_search_walk(
+    project_id: &str,
+    project_name: &str,
+    root: &Path,
+    dir: &Path,
+    query_lower: &str,
+    out: &mut BoundedSearch,
+    limits: SearchLimits,
+    cancelled: &AtomicBool,
+    depth: usize,
+) {
+    if scan_should_stop(cancelled, limits.deadline)
+        || out.hits.len() >= limits.max_results
+        || out.scanned_entries >= limits.max_entries
+        || out.scanned_files >= limits.max_files
+        || out.scanned_bytes >= limits.max_total_bytes
+    {
+        out.truncated = true;
+        return;
+    }
+    if depth >= MAX_WALK_DEPTH {
+        out.truncated = true;
+        return;
+    }
+    let entries = match std::fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(_) => return,
+    };
+    let mut items = Vec::new();
+    for entry in entries {
+        if scan_should_stop(cancelled, limits.deadline) || out.scanned_entries >= limits.max_entries
+        {
+            out.truncated = true;
+            break;
+        }
+        out.scanned_entries += 1;
+        if let Ok(entry) = entry {
+            items.push(entry);
+        }
+    }
+    items.sort_by_key(|entry| entry.file_name());
+
+    for entry in items {
+        if scan_should_stop(cancelled, limits.deadline) || out.hits.len() >= limits.max_results {
+            out.truncated = true;
+            break;
+        }
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name == ".oleafly" || name == ".git" {
+            continue;
+        }
+        let file_type = match entry.file_type() {
+            Ok(file_type) if !file_type.is_symlink() => file_type,
+            _ => continue,
+        };
+        let path = entry.path();
+        if file_type.is_dir() {
+            bounded_search_walk(
+                project_id,
+                project_name,
+                root,
+                &path,
+                query_lower,
+                out,
+                limits,
+                cancelled,
+                depth + 1,
+            );
+            if out.truncated {
+                break;
+            }
+            continue;
+        }
+        if !is_searchable(&name) {
+            continue;
+        }
+        if out.scanned_files >= limits.max_files || out.scanned_bytes >= limits.max_total_bytes {
+            out.truncated = true;
+            break;
+        }
+        out.scanned_files += 1;
+        let metadata = match std::fs::symlink_metadata(&path) {
+            Ok(metadata) if metadata.is_file() && !metadata.file_type().is_symlink() => metadata,
+            _ => continue,
+        };
+        if metadata.len() > limits.max_file_bytes as u64 {
+            out.truncated = true;
+            continue;
+        }
+        let remaining = limits.max_total_bytes.saturating_sub(out.scanned_bytes);
+        let read_limit = limits.max_file_bytes.min(remaining);
+        if read_limit == 0 {
+            out.truncated = true;
+            break;
+        }
+        let mut bytes = Vec::with_capacity((metadata.len() as usize).min(read_limit));
+        let read = std::fs::File::open(&path).and_then(|file| {
+            use std::io::Read as _;
+            file.take(read_limit.saturating_add(1) as u64)
+                .read_to_end(&mut bytes)
+        });
+        if read.is_err() {
+            continue;
+        }
+        out.scanned_bytes = out
+            .scanned_bytes
+            .saturating_add(bytes.len().min(read_limit));
+        if bytes.len() > read_limit {
+            out.truncated = true;
+            continue;
+        }
+        let text = match String::from_utf8(bytes) {
+            Ok(text) => text,
+            Err(_) => continue,
+        };
+        let relative = rel_slash(root, &path);
+        for (index, line) in text.lines().enumerate() {
+            if scan_should_stop(cancelled, limits.deadline) {
+                out.truncated = true;
+                break;
+            }
+            if line.to_lowercase().contains(query_lower) {
+                out.hits.push(SearchHit {
+                    project_id: project_id.to_string(),
+                    project_name: project_name.to_string(),
+                    path: relative.clone(),
+                    line: u32::try_from(index.saturating_add(1)).unwrap_or(u32::MAX),
+                    preview: line.trim().chars().take(160).collect(),
+                });
+                if out.hits.len() >= limits.max_results {
+                    out.truncated = true;
+                    break;
+                }
+            }
+        }
+        if out.truncated {
+            break;
         }
     }
 }
@@ -2815,6 +4500,63 @@ pub async fn search_project(project_id: String, query: String) -> Result<Vec<Sea
     .map_err(|e| e.to_string())?
 }
 
+pub(crate) async fn search_project_bounded(
+    project_id: String,
+    query: String,
+) -> Result<BoundedSearch, String> {
+    let (mut cancellation, cancelled) = ScanCancellation::new();
+    let limits = SearchLimits {
+        max_results: MCP_SEARCH_RESULT_LIMIT,
+        max_entries: MCP_SEARCH_ENTRY_SCAN_LIMIT,
+        max_files: MCP_SEARCH_FILE_SCAN_LIMIT,
+        max_file_bytes: MCP_SEARCH_FILE_BYTE_LIMIT,
+        max_total_bytes: MCP_SEARCH_TOTAL_BYTE_LIMIT,
+        deadline: std::time::Instant::now() + MCP_SCAN_DEADLINE,
+    };
+    let result = tauri::async_runtime::spawn_blocking(move || -> Result<BoundedSearch, String> {
+        let query = query.trim();
+        if query.is_empty() {
+            return Ok(BoundedSearch {
+                hits: Vec::new(),
+                scanned_entries: 0,
+                scanned_files: 0,
+                scanned_bytes: 0,
+                truncated: false,
+            });
+        }
+        let root = paths::project_dir(&project_id)?;
+        let meta = read_meta(&project_id).unwrap_or_default();
+        let project_name = if meta.name.is_empty() {
+            project_id.clone()
+        } else {
+            meta.name
+        };
+        let mut out = BoundedSearch {
+            hits: Vec::new(),
+            scanned_entries: 0,
+            scanned_files: 0,
+            scanned_bytes: 0,
+            truncated: false,
+        };
+        bounded_search_walk(
+            &project_id,
+            &project_name,
+            &root,
+            &root,
+            &query.to_lowercase(),
+            &mut out,
+            limits,
+            &cancelled,
+            0,
+        );
+        Ok(out)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    cancellation.disarm();
+    result
+}
+
 /// Zip a project's source files (excluding `.oleafly`, `.git`) to `dest`.
 #[tauri::command]
 pub async fn download_project_zip(project_id: String, dest: String) -> Result<(), String> {
@@ -2889,8 +4631,9 @@ pub async fn duplicate_project(project_id: String, new_name: String) -> Result<S
         let src = paths::project_dir(&project_id)?;
         let new_id = unique_random_slug(&root)?;
         let dst = root.join(&new_id);
-        copy_dir_recursive(&src, &dst, 0)?;
-        if let Ok(mut meta) = read_meta(&new_id) {
+        let duplicated = (|| -> Result<(), String> {
+            copy_dir_recursive(&src, &dst, 0)?;
+            let mut meta = read_meta(&new_id)?;
             let source_name = if meta.name.is_empty() {
                 project_id.clone()
             } else {
@@ -2898,7 +4641,17 @@ pub async fn duplicate_project(project_id: String, new_name: String) -> Result<S
             };
             meta.name = new_name;
             meta.forked_from = Some(source_name);
-            let _ = write_meta(&new_id, &meta);
+            meta.allow_shell_escape = false;
+            write_meta(&new_id, &meta)
+        })();
+        if let Err(error) = duplicated {
+            let cleanup = std::fs::remove_dir_all(&dst);
+            return Err(match cleanup {
+                Ok(()) => error,
+                Err(cleanup_error) => {
+                    format!("{error}. Failed to remove incomplete duplicate: {cleanup_error}")
+                }
+            });
         }
         Ok(new_id)
     })
@@ -2940,17 +4693,32 @@ pub async fn import_paths_into_project(
     project_id: String,
     dest_dir: String,
     source_paths: Vec<String>,
-) -> Result<Vec<String>, String> {
-    tauri::async_runtime::spawn_blocking(move || -> Result<Vec<String>, String> {
-        static FILE_IMPORT_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        let _guard = FILE_IMPORT_LOCK
-            .get_or_init(|| Mutex::new(()))
-            .lock()
-            .map_err(|_| "file import lock is unavailable".to_string())?;
-        let dest_parent = resolve(&project_id, &dest_dir)?;
-        let project_root = paths::project_dir(&project_id)?;
-        let sources: Vec<PathBuf> = source_paths.iter().map(PathBuf::from).collect();
-        import_paths_transactional(&project_root, &dest_parent, &sources)
+    expected_generation: Option<u64>,
+) -> Result<ImportPathsResult, String> {
+    if source_paths.is_empty() {
+        let generation = project_mutation_generation(project_id)?;
+        return Ok(ImportPathsResult {
+            paths: Vec::new(),
+            generation,
+        });
+    }
+    let destination_rel = mutation_relative_path(&dest_dir, true)?;
+    let destination_scope = MutationScope::subtree(destination_rel);
+    let conflict_scopes = vec![MutationScope::subtree(String::new())];
+    let admission = admit_mutation_with_commit(
+        &project_id,
+        conflict_scopes,
+        vec![destination_scope],
+        expected_generation,
+    )?;
+    tauri::async_runtime::spawn_blocking(move || -> Result<ImportPathsResult, String> {
+        let (paths, generation) = admission.run(|| {
+            let dest_parent = resolve(&project_id, &dest_dir)?;
+            let project_root = paths::project_dir(&project_id)?;
+            let sources: Vec<PathBuf> = source_paths.iter().map(PathBuf::from).collect();
+            import_paths_transactional(&project_root, &dest_parent, &sources)
+        })?;
+        Ok(ImportPathsResult { paths, generation })
     })
     .await
     .map_err(|e| e.to_string())?
@@ -3074,6 +4842,19 @@ where
             .and_then(|value| value.to_str())
             .ok_or_else(|| format!("invalid source path: {}", source.display()))?;
         let destination = unique_import_dest(dest_parent, name, &mut reserved)?;
+        let destination_rel = rel_slash(project_root, &destination);
+        if reserved_project_metadata_path(&destination_rel) {
+            return Err(
+                "project.json is managed by Oleafly and cannot be imported as a project file"
+                    .into(),
+            );
+        }
+        if reserved_project_internal_path(&destination_rel) {
+            return Err(
+                ".git and .oleafly are managed internally and cannot be imported as project files"
+                    .into(),
+            );
+        }
         plans.push((source.clone(), metadata.is_dir(), destination));
     }
     if plans.is_empty() {
@@ -3133,7 +4914,6 @@ where
         .collect())
 }
 
-/// Clear the build cache (forces a clean rebuild on next compile).
 #[tauri::command]
 pub fn clear_build_cache(project_id: String) -> Result<(), String> {
     let build = paths::build_dir(&project_id)?;
@@ -3145,53 +4925,99 @@ pub fn clear_build_cache(project_id: String) -> Result<(), String> {
     Ok(())
 }
 
-/// Delete a project (removes its directory entirely).
 #[tauri::command]
-pub async fn delete_project(project_id: String) -> Result<(), String> {
+pub async fn delete_project(
+    project_id: String,
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<(), String> {
+    delete_project_synchronized(&state, project_id).await
+}
+
+async fn delete_project_synchronized(
+    state: &crate::state::AppState,
+    project_id: String,
+) -> Result<(), String> {
+    paths::validate_project_id(&project_id)?;
+    let admission = admit_mutation(
+        &project_id,
+        vec![MutationScope::subtree(String::new())],
+        None,
+    )?;
+    let _compile = state.compile_lock.lock().await;
+    let _figure_compile = state.figure_compile_lock.lock().await;
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        paths::validate_project_id(&project_id)?;
-        let root = paths::projects_root()?;
-        let dir = root.join(&project_id);
-        if !dir.exists() {
-            return Ok(());
-        }
-        std::fs::remove_dir_all(&dir).map_err(|e| format!("failed to delete project: {e}"))
+        let ((), _) = admission.run_with_change_status(|| {
+            with_project_metadata(&project_id, || {
+                let root = paths::projects_root()?
+                    .canonicalize()
+                    .map_err(|error| format!("failed to resolve projects root: {error}"))?;
+                let dir = root.join(&project_id);
+                match std::fs::symlink_metadata(&dir) {
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                        revoke_shell_escape_trust(&project_id)?;
+                        return Ok(((), false));
+                    }
+                    Err(error) => {
+                        return Err(format!(
+                            "failed to inspect project before deletion: {error}"
+                        ));
+                    }
+                    Ok(metadata) if !metadata.is_dir() || metadata.file_type().is_symlink() => {
+                        return Err(
+                            "refusing to delete a project path that is not a real directory"
+                                .to_string(),
+                        );
+                    }
+                    Ok(_) => {}
+                }
+                let verified = paths::project_dir(&project_id)?;
+                revoke_shell_escape_trust(&project_id)?;
+                std::fs::remove_dir_all(&verified)
+                    .map_err(|e| format!("failed to delete project: {e}"))?;
+                Ok(((), true))
+            })
+        })?;
+        Ok(())
     })
     .await
     .map_err(|e| e.to_string())?
 }
-
-// Path-sandbox unit tests live in `sandbox.rs`.
 
 #[cfg(test)]
 mod tests {
     use super::{
         copy_path_in_project, create_diagram_project, create_image_project_in,
         create_markdown_project_in, create_project_from_pdf_conversion, create_project_transaction,
-        create_typst_project, create_typst_project_in, download_project_zip, duplicate_project,
-        engine_for_main_document, extract_pandoc, flatten_single_root_folder,
-        get_or_create_scratch_project, import_paths_transactional, import_paths_transactional_with,
-        import_skip, infer_main_document, list_projects, normalize_relative, pandoc_asset_for,
-        pandoc_version_supported, read_meta, rel_slash, rename_exclusive, rename_path_in_project,
-        search_docs, set_main_doc_synchronized, tex_root_magic_target, validate_conversion_export,
-        validate_tex_flavor, write_meta_at, FileConflictStrategy, PdfConversionFigure, ProjectMeta,
-        RenameFileResult, TexSpec, SCRATCH_PROJECT_ID,
+        create_typst_project_in, download_project_zip, duplicate_project, engine_for_main_document,
+        extract_pandoc, flatten_single_root_folder, get_or_create_scratch_project,
+        import_paths_transactional, import_paths_transactional_with, import_skip,
+        infer_main_document, list_projects, normalize_loaded_tex_flavor, normalize_relative,
+        pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash, rename_exclusive,
+        rename_path_in_project, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
+        tex_root_magic_target, validate_conversion_export, validate_tex_flavor, write_meta_at,
+        FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta, RenameFileResult,
+        TexSpec, SCRATCH_PROJECT_ID,
     };
     use std::io::Write;
     use std::path::Path;
     use std::sync::Arc;
 
     fn test_dir(label: &str) -> std::path::PathBuf {
-        let path = std::env::temp_dir().join(format!(
-            "oleafly-{label}-{}-{}",
+        tempfile::Builder::new()
+            .prefix(&format!("oleafly-{label}-"))
+            .tempdir()
+            .unwrap()
+            .keep()
+    }
+
+    fn mutation_project_id(label: &str) -> String {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        format!(
+            "mutation-{label}-{}-{}",
             std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        std::fs::create_dir_all(&path).unwrap();
-        path
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        )
     }
 
     fn zip_with_member(path: &Path, member: &str, contents: &[u8]) {
@@ -3211,11 +5037,472 @@ mod tests {
             rel_slash(root, &root.join("sections").join("intro.tex")),
             "sections/intro.tex"
         );
-        // A component holding a literal backslash (what Windows' path separator
-        // becomes via `to_string_lossy`) must be normalized to a forward slash,
-        // or the frontend file tree (which splits on "/") breaks on Windows.
         let win_like = Path::new("/proj/sections\\intro.tex");
         assert_eq!(rel_slash(root, win_like), "sections/intro.tex");
+    }
+
+    #[test]
+    fn mutation_paths_use_one_portable_normalized_wire_format() {
+        assert_eq!(
+            super::mutation_relative_path("chapters/./one.tex", false).unwrap(),
+            "chapters/one.tex"
+        );
+        assert!(super::mutation_relative_path("../outside.tex", false).is_err());
+        assert!(super::mutation_relative_path("..\\outside.tex", false).is_err());
+        assert!(super::mutation_relative_path("chapters\\one.tex", false).is_err());
+        assert!(super::mutation_relative_path("", false).is_err());
+        assert_eq!(super::mutation_relative_path("./", true).unwrap(), "");
+        assert!(super::mutation_relative_path("project.json", false).is_err());
+        assert!(super::mutation_relative_path("PROJECT.JSON", false).is_err());
+        assert_eq!(
+            super::mutation_relative_path("notes/project.json", false).unwrap(),
+            "notes/project.json"
+        );
+    }
+
+    #[test]
+    fn mutation_scopes_and_project_ids_alias_case_portably() {
+        let upper_file = MutationScope::file("Chapters/Main.TEX".into());
+        let lower_file = MutationScope::file("chapters/main.tex".into());
+        let lower_parent = MutationScope::subtree("chapters".into());
+        assert!(upper_file.intersects(&lower_file));
+        assert!(upper_file.intersects(&lower_parent));
+
+        let upper = super::project_mutation_coordinator("Portable-Project").unwrap();
+        let lower = super::project_mutation_coordinator("portable-project").unwrap();
+        assert!(Arc::ptr_eq(&upper, &lower));
+    }
+
+    #[test]
+    fn coordinator_eviction_retains_a_fail_closed_generation_floor() {
+        let project_id = mutation_project_id("eviction-target");
+        let stale_generation = super::project_mutation_generation(project_id.clone()).unwrap();
+        let admission = super::admit_mutation(
+            &project_id,
+            vec![MutationScope::file("main.tex".into())],
+            Some(stale_generation),
+        )
+        .unwrap();
+        let (_, committed_generation) = admission.run(|| Ok::<(), String>(())).unwrap();
+        let before = Arc::downgrade(&super::project_mutation_coordinator(&project_id).unwrap());
+
+        for index in 0..=super::MAX_COORDINATED_PROJECTS {
+            let id = mutation_project_id(&format!("eviction-{index}"));
+            super::project_mutation_generation(id).unwrap();
+        }
+
+        assert!(
+            before.upgrade().is_none(),
+            "the target coordinator was not evicted"
+        );
+        let after = super::project_mutation_coordinator(&project_id).unwrap();
+        assert!(super::lock_unpoisoned(&after.state).committed_generation >= committed_generation);
+        let stale = super::admit_mutation(
+            &project_id,
+            vec![MutationScope::file("MAIN.TEX".into())],
+            Some(stale_generation),
+        )
+        .unwrap();
+        assert!(stale
+            .run(|| Ok::<(), String>(()))
+            .unwrap_err()
+            .contains("mutation conflict"));
+    }
+
+    #[test]
+    fn bounded_file_listing_enforces_result_entry_and_cancellation_limits() {
+        let root = test_dir("bounded-list");
+        for index in 0..8 {
+            std::fs::write(root.join(format!("file-{index}.tex")), "body").unwrap();
+        }
+        let cancelled = std::sync::atomic::AtomicBool::new(false);
+        let mut listing = super::BoundedFileList {
+            entries: Vec::new(),
+            scanned_entries: 0,
+            truncated: false,
+        };
+        super::bounded_list_walk(
+            &root,
+            &root,
+            &mut listing,
+            super::FileListLimits {
+                max_results: 3,
+                max_entries: 5,
+                deadline: std::time::Instant::now() + std::time::Duration::from_secs(1),
+            },
+            &cancelled,
+            0,
+        )
+        .unwrap();
+        assert_eq!(listing.entries.len(), 3);
+        assert!(listing.scanned_entries <= 5);
+        assert!(listing.truncated);
+
+        cancelled.store(true, std::sync::atomic::Ordering::Release);
+        let mut cancelled_listing = super::BoundedFileList {
+            entries: Vec::new(),
+            scanned_entries: 0,
+            truncated: false,
+        };
+        super::bounded_list_walk(
+            &root,
+            &root,
+            &mut cancelled_listing,
+            super::FileListLimits {
+                max_results: 100,
+                max_entries: 100,
+                deadline: std::time::Instant::now() + std::time::Duration::from_secs(1),
+            },
+            &cancelled,
+            0,
+        )
+        .unwrap();
+        assert!(cancelled_listing.entries.is_empty());
+        assert!(cancelled_listing.truncated);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn bounded_search_enforces_aggregate_result_and_byte_limits() {
+        let root = test_dir("bounded-search");
+        for index in 0..6 {
+            std::fs::write(root.join(format!("file-{index}.tex")), "needle\n").unwrap();
+        }
+        let cancelled = std::sync::atomic::AtomicBool::new(false);
+        let mut search = super::BoundedSearch {
+            hits: Vec::new(),
+            scanned_entries: 0,
+            scanned_files: 0,
+            scanned_bytes: 0,
+            truncated: false,
+        };
+        super::bounded_search_walk(
+            "project",
+            "Project",
+            &root,
+            &root,
+            "needle",
+            &mut search,
+            super::SearchLimits {
+                max_results: 2,
+                max_entries: 20,
+                max_files: 20,
+                max_file_bytes: 64,
+                max_total_bytes: 64,
+                deadline: std::time::Instant::now() + std::time::Duration::from_secs(1),
+            },
+            &cancelled,
+            0,
+        );
+        assert_eq!(search.hits.len(), 2);
+        assert!(search.scanned_files <= 2);
+        assert!(search.scanned_bytes <= 64);
+        assert!(search.truncated);
+
+        let large = test_dir("bounded-search-bytes");
+        std::fs::write(large.join("large.tex"), "needle".repeat(100)).unwrap();
+        let mut byte_limited = super::BoundedSearch {
+            hits: Vec::new(),
+            scanned_entries: 0,
+            scanned_files: 0,
+            scanned_bytes: 0,
+            truncated: false,
+        };
+        super::bounded_search_walk(
+            "project",
+            "Project",
+            &large,
+            &large,
+            "needle",
+            &mut byte_limited,
+            super::SearchLimits {
+                max_results: 20,
+                max_entries: 20,
+                max_files: 20,
+                max_file_bytes: 1_024,
+                max_total_bytes: 16,
+                deadline: std::time::Instant::now() + std::time::Duration::from_secs(1),
+            },
+            &cancelled,
+            0,
+        );
+        assert!(byte_limited.hits.is_empty());
+        assert!(byte_limited.scanned_bytes <= 16);
+        assert!(byte_limited.truncated);
+        std::fs::remove_dir_all(root).unwrap();
+        std::fs::remove_dir_all(large).unwrap();
+    }
+
+    #[test]
+    fn paused_write_cannot_recreate_a_renamed_path_but_a_new_write_can() {
+        let root = test_dir("mutation-rename-tombstone");
+        let old = root.join("draft.tex");
+        let new = root.join("final.tex");
+        std::fs::write(&old, "original").unwrap();
+        let project_id = mutation_project_id("rename");
+
+        let stale_write = super::admit_mutation(
+            &project_id,
+            vec![MutationScope::file("draft.tex".into())],
+            None,
+        )
+        .unwrap();
+        let rename = super::admit_mutation(
+            &project_id,
+            vec![
+                MutationScope::subtree("draft.tex".into()),
+                MutationScope::subtree("final.tex".into()),
+            ],
+            None,
+        )
+        .unwrap();
+        rename
+            .run(|| std::fs::rename(&old, &new).map_err(|error| error.to_string()))
+            .unwrap();
+
+        let error = stale_write
+            .run(|| std::fs::write(&old, "stale").map_err(|error| error.to_string()))
+            .unwrap_err();
+        assert!(error.contains("mutation conflict"));
+        assert!(
+            !old.exists(),
+            "the stale autosave must not recreate the source"
+        );
+        assert_eq!(std::fs::read_to_string(&new).unwrap(), "original");
+
+        let corrective = super::admit_mutation(
+            &project_id,
+            vec![MutationScope::file("draft.tex".into())],
+            None,
+        )
+        .unwrap();
+        corrective
+            .run(|| std::fs::write(&old, "restored").map_err(|error| error.to_string()))
+            .unwrap();
+        assert_eq!(std::fs::read_to_string(&old).unwrap(), "restored");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn paused_write_cannot_recreate_a_deleted_subtree() {
+        let root = test_dir("mutation-delete-tombstone");
+        let folder = root.join("chapters");
+        let file = folder.join("one.tex");
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::write(&file, "original").unwrap();
+        let project_id = mutation_project_id("delete");
+
+        let stale_write = super::admit_mutation(
+            &project_id,
+            vec![MutationScope::file("chapters/one.tex".into())],
+            None,
+        )
+        .unwrap();
+        let delete = super::admit_mutation(
+            &project_id,
+            vec![MutationScope::subtree("chapters".into())],
+            None,
+        )
+        .unwrap();
+        delete
+            .run(|| std::fs::remove_dir_all(&folder).map_err(|error| error.to_string()))
+            .unwrap();
+
+        let error = stale_write
+            .run(|| {
+                std::fs::create_dir_all(&folder).map_err(|error| error.to_string())?;
+                std::fs::write(&file, "stale").map_err(|error| error.to_string())
+            })
+            .unwrap_err();
+        assert!(error.contains("mutation conflict"));
+        assert!(!folder.exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn project_deletion_rejects_queued_and_late_writes_without_resurrection() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("project-delete-coordinator");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = mutation_project_id("delete-project");
+        let project_dir = data.join("projects").join(&project_id);
+        std::fs::create_dir_all(&project_dir).unwrap();
+        std::fs::write(project_dir.join("main.tex"), "original").unwrap();
+        write_meta_at(
+            &project_dir.join("project.json"),
+            &ProjectMeta {
+                name: "Delete race".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+        super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        let trust_path = super::shell_escape_trust_path(&project_id).unwrap();
+        assert!(trust_path.is_file());
+
+        let queued = super::admit_mutation(
+            &project_id,
+            vec![MutationScope::file("main.tex".into())],
+            None,
+        )
+        .unwrap();
+        let state = crate::state::AppState::default();
+        super::delete_project_synchronized(&state, project_id.clone())
+            .await
+            .unwrap();
+        assert!(!project_dir.exists());
+        assert!(!trust_path.exists());
+
+        let queued_error = queued
+            .run(|| {
+                let path = crate::sandbox::resolve(&project_id, "main.tex")?;
+                std::fs::write(path, "stale").map_err(|error| error.to_string())
+            })
+            .unwrap_err();
+        assert!(queued_error.contains("mutation conflict"));
+
+        let late_error =
+            super::write_file(project_id.clone(), "main.tex".into(), "late".into(), None)
+                .await
+                .unwrap_err();
+        assert!(late_error.contains("does not exist"));
+        assert!(!project_dir.exists());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn edit_admitted_during_external_write_runs_after_the_committed_external_write() {
+        let root = test_dir("mutation-overlap");
+        let file = root.join("main.tex");
+        std::fs::write(&file, "initial").unwrap();
+        let project_id = mutation_project_id("overlap");
+        let external = super::admit_mutation(
+            &project_id,
+            vec![MutationScope::file("main.tex".into())],
+            None,
+        )
+        .unwrap();
+        let (started_tx, started_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let external_file = file.clone();
+        let worker = std::thread::spawn(move || {
+            external.run(|| {
+                started_tx.send(()).unwrap();
+                release_rx.recv().unwrap();
+                std::fs::write(&external_file, "external").map_err(|error| error.to_string())
+            })
+        });
+        started_rx.recv().unwrap();
+
+        let local = super::admit_mutation(
+            &project_id,
+            vec![MutationScope::file("main.tex".into())],
+            None,
+        )
+        .unwrap();
+        release_tx.send(()).unwrap();
+        let (_, external_generation) = worker.join().unwrap().unwrap();
+        local
+            .run(|| std::fs::write(&file, "local").map_err(|error| error.to_string()))
+            .unwrap();
+        assert!(external_generation > 0);
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "local");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn expected_generation_rejects_stale_overlap_and_allows_corrective_write() {
+        let root = test_dir("mutation-precondition");
+        let file = root.join("main.tex");
+        let project_id = mutation_project_id("precondition");
+        let baseline = super::project_mutation_generation(project_id.clone()).unwrap();
+
+        let external = super::admit_mutation(
+            &project_id,
+            vec![MutationScope::file("main.tex".into())],
+            Some(baseline),
+        )
+        .unwrap();
+        let (_, external_generation) = external
+            .run(|| std::fs::write(&file, "external").map_err(|error| error.to_string()))
+            .unwrap();
+
+        let stale = super::admit_mutation(
+            &project_id,
+            vec![MutationScope::file("main.tex".into())],
+            Some(baseline),
+        )
+        .unwrap();
+        assert!(stale
+            .run(|| std::fs::write(&file, "stale").map_err(|error| error.to_string()))
+            .unwrap_err()
+            .contains("target changed"));
+
+        let corrective = super::admit_mutation(
+            &project_id,
+            vec![MutationScope::file("main.tex".into())],
+            Some(external_generation),
+        )
+        .unwrap();
+        corrective
+            .run(|| std::fs::write(&file, "local").map_err(|error| error.to_string()))
+            .unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "local");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn concurrent_main_document_change_and_parent_rename_do_not_lose_metadata() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("metadata-rename-race");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = mutation_project_id("metadata");
+        let root = data.join("projects").join(&project_id);
+        std::fs::create_dir_all(root.join("chapters")).unwrap();
+        std::fs::write(root.join("chapters/main.tex"), "main").unwrap();
+        std::fs::write(root.join("alternate.tex"), "alternate").unwrap();
+        write_meta_at(
+            &root.join("project.json"),
+            &ProjectMeta {
+                name: "Race".into(),
+                main_doc: "chapters/main.tex".into(),
+                engine: "xetex".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+
+        let coordinator = super::project_mutation_coordinator(&project_id).unwrap();
+        let held = super::lock_unpoisoned(&coordinator.metadata);
+        let (ready_tx, ready_rx) = std::sync::mpsc::channel();
+        let rename_id = project_id.clone();
+        let rename_ready = ready_tx.clone();
+        let rename = std::thread::spawn(move || {
+            rename_ready.send(()).unwrap();
+            super::rename_file_blocking(rename_id, "chapters".into(), "moved".into(), None, None)
+        });
+        let main_id = project_id.clone();
+        let main = std::thread::spawn(move || {
+            ready_tx.send(()).unwrap();
+            set_main_doc_unlocked(main_id, "alternate.tex".into())
+        });
+        ready_rx.recv().unwrap();
+        ready_rx.recv().unwrap();
+        drop(held);
+
+        rename.join().unwrap().unwrap();
+        main.join().unwrap().unwrap();
+        let meta = super::read_meta(&project_id).unwrap();
+        assert_eq!(meta.main_doc, "alternate.tex");
+        assert!(root.join("moved/main.tex").is_file());
+        assert!(!root.join("chapters").exists());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
     }
 
     #[test]
@@ -3276,6 +5563,61 @@ mod tests {
             );
         }
         std::fs::remove_dir_all(root.as_path()).unwrap();
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn copy_and_import_commands_share_authoritative_destination_generation() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("coordinated-copy-import");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = mutation_project_id("copy-import");
+        let project = data.join("projects").join(&project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        std::fs::write(project.join("draft.tex"), "draft").unwrap();
+        let external = data.join("external.tex");
+        std::fs::write(&external, "external").unwrap();
+        let baseline = super::project_mutation_generation(project_id.clone()).unwrap();
+
+        let copied = super::copy_file(
+            project_id.clone(),
+            "draft.tex".into(),
+            "draft copy.tex".into(),
+            Some(baseline),
+        )
+        .await
+        .unwrap();
+        assert_eq!(copied.path, "draft copy.tex");
+        assert!(copied.generation > baseline);
+
+        let imported = super::import_paths_into_project(
+            project_id.clone(),
+            String::new(),
+            vec![external.to_string_lossy().into_owned()],
+            Some(copied.generation),
+        )
+        .await
+        .unwrap();
+        assert_eq!(imported.paths, ["external.tex"]);
+        assert!(imported.generation > copied.generation);
+        assert_eq!(
+            std::fs::read_to_string(project.join("external.tex")).unwrap(),
+            "external"
+        );
+
+        let stale = super::copy_file(
+            project_id,
+            "draft.tex".into(),
+            "another.tex".into(),
+            Some(baseline),
+        )
+        .await
+        .unwrap_err();
+        assert!(stale.contains("mutation conflict"));
+        assert!(!project.join("another.tex").exists());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
     }
 
     #[test]
@@ -3523,11 +5865,170 @@ mod tests {
             RenameFileResult::Conflict {
                 destination: "paper.tex".into(),
                 suggested_destination: "paper (2).tex".into(),
+                generation: 0,
             }
         );
         assert_eq!(std::fs::read_to_string(src).unwrap(), "new draft");
         assert_eq!(std::fs::read_to_string(dst).unwrap(), "published");
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn main_document_file_rename_is_persisted_for_restart() {
+        let root = test_dir("rename-main-file");
+        let src = root.join("draft.tex");
+        let dst = root.join("final.tex");
+        std::fs::write(&src, "document").unwrap();
+        let meta = ProjectMeta {
+            main_doc: "draft.tex".into(),
+            engine: "xetex".into(),
+            ..ProjectMeta::default()
+        };
+        write_meta_at(&root.join("project.json"), &meta).unwrap();
+
+        let result = super::rename_path_and_update_meta(
+            None,
+            &root,
+            &src,
+            &dst,
+            "final.tex",
+            FileConflictStrategy::Error,
+            meta,
+        )
+        .unwrap();
+
+        assert!(matches!(
+            result,
+            RenameFileResult::Renamed { ref path, .. } if path == "final.tex"
+        ));
+        let restarted: ProjectMeta =
+            serde_json::from_str(&std::fs::read_to_string(root.join("project.json")).unwrap())
+                .unwrap();
+        assert_eq!(restarted.main_doc, "final.tex");
+        assert!(dst.is_file());
+        assert!(!src.exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn parent_rename_persists_collision_resolved_main_document_path() {
+        let root = test_dir("rename-main-parent");
+        let src = root.join("chapters");
+        let requested = root.join("renamed");
+        std::fs::create_dir(&src).unwrap();
+        std::fs::write(src.join("main.tex"), "document").unwrap();
+        std::fs::create_dir(&requested).unwrap();
+        let meta = ProjectMeta {
+            main_doc: "chapters/main.tex".into(),
+            engine: "xetex".into(),
+            ..ProjectMeta::default()
+        };
+        write_meta_at(&root.join("project.json"), &meta).unwrap();
+
+        let result = super::rename_path_and_update_meta(
+            None,
+            &root,
+            &src,
+            &requested,
+            "renamed",
+            FileConflictStrategy::KeepBoth,
+            meta,
+        )
+        .unwrap();
+
+        assert!(matches!(
+            result,
+            RenameFileResult::Renamed { ref path, .. } if path == "renamed (2)"
+        ));
+        let restarted: ProjectMeta =
+            serde_json::from_str(&std::fs::read_to_string(root.join("project.json")).unwrap())
+                .unwrap();
+        assert_eq!(restarted.main_doc, "renamed (2)/main.tex");
+        assert!(root.join("renamed (2)/main.tex").is_file());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn case_only_main_document_rename_is_persisted() {
+        let root = test_dir("rename-main-case");
+        let src = root.join("Paper.tex");
+        let dst = root.join("paper.tex");
+        std::fs::write(&src, "document").unwrap();
+        let meta = ProjectMeta {
+            main_doc: "Paper.tex".into(),
+            engine: "xetex".into(),
+            ..ProjectMeta::default()
+        };
+        write_meta_at(&root.join("project.json"), &meta).unwrap();
+
+        super::rename_path_and_update_meta(
+            None,
+            &root,
+            &src,
+            &dst,
+            "paper.tex",
+            FileConflictStrategy::Error,
+            meta,
+        )
+        .unwrap();
+
+        let restarted: ProjectMeta =
+            serde_json::from_str(&std::fs::read_to_string(root.join("project.json")).unwrap())
+                .unwrap();
+        assert_eq!(restarted.main_doc, "paper.tex");
+        assert!(dst.is_file());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn failed_main_document_metadata_commit_rolls_back_the_move() {
+        let root = test_dir("rename-main-rollback");
+        let src = root.join("draft.tex");
+        let dst = root.join("final.tex");
+        std::fs::write(&src, "document").unwrap();
+        std::fs::create_dir(root.join("project.json")).unwrap();
+        let meta = ProjectMeta {
+            main_doc: "draft.tex".into(),
+            engine: "xetex".into(),
+            ..ProjectMeta::default()
+        };
+
+        let error = super::rename_path_and_update_meta(
+            None,
+            &root,
+            &src,
+            &dst,
+            "final.tex",
+            FileConflictStrategy::Error,
+            meta,
+        )
+        .unwrap_err();
+
+        assert!(error.contains("rolled back"));
+        assert!(src.is_file());
+        assert!(!dst.exists());
+        assert_eq!(std::fs::read_to_string(src).unwrap(), "document");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn main_document_delete_guard_is_segment_aware() {
+        assert!(super::deletion_removes_main_document(
+            "chapters/main.tex",
+            "chapters/main.tex"
+        ));
+        assert!(super::deletion_removes_main_document(
+            "chapters/main.tex",
+            "chapters"
+        ));
+        assert!(!super::deletion_removes_main_document(
+            "chapters-old/main.tex",
+            "chapters"
+        ));
+        assert!(!super::deletion_removes_main_document(
+            "chapters/main.tex",
+            "chapter"
+        ));
     }
 
     #[test]
@@ -3551,6 +6052,7 @@ mod tests {
             result,
             RenameFileResult::Renamed {
                 path: "paper (2).tex".into(),
+                generation: 0,
             }
         );
         assert!(!src.exists());
@@ -3583,6 +6085,7 @@ mod tests {
             result,
             RenameFileResult::Renamed {
                 path: "paper.tex".into(),
+                generation: 0,
             }
         );
         assert!(!src.exists());
@@ -3633,6 +6136,7 @@ mod tests {
             result,
             RenameFileResult::Renamed {
                 path: "paper.tex".into(),
+                generation: 0,
             }
         );
         assert_eq!(std::fs::read_to_string(dst).unwrap(), "paper");
@@ -3742,6 +6246,60 @@ mod tests {
         std::fs::remove_dir_all(root).unwrap();
     }
 
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn main_document_rename_waits_for_an_active_compile() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("main-doc-rename-compile-race");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = "rename-compile-race";
+        let project_dir = root.join("projects").join(project_id);
+        std::fs::create_dir_all(project_dir.join("chapters")).unwrap();
+        std::fs::write(project_dir.join("chapters/main.tex"), "main").unwrap();
+        write_meta_at(
+            &project_dir.join("project.json"),
+            &ProjectMeta {
+                name: "Rename compile race".into(),
+                main_doc: "chapters/main.tex".into(),
+                engine: "xetex".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+
+        let state = Arc::new(crate::state::AppState::default());
+        let compile_guard = state.compile_lock.lock().await;
+        let rename_state = Arc::clone(&state);
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel();
+        let rename = tokio::spawn(async move {
+            let _ = started_tx.send(());
+            super::rename_file_synchronized(
+                rename_state.as_ref(),
+                project_id.into(),
+                "chapters".into(),
+                "moved".into(),
+                None,
+                None,
+            )
+            .await
+        });
+        started_rx.await.unwrap();
+        tokio::task::yield_now().await;
+
+        assert!(!rename.is_finished());
+        assert!(project_dir.join("chapters/main.tex").is_file());
+        assert_eq!(read_meta(project_id).unwrap().main_doc, "chapters/main.tex");
+
+        drop(compile_guard);
+        let result = rename.await.unwrap().unwrap();
+        assert!(matches!(result, RenameFileResult::Renamed { .. }));
+        assert!(project_dir.join("moved/main.tex").is_file());
+        assert_eq!(read_meta(project_id).unwrap().main_doc, "moved/main.tex");
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn typst_project_metadata_round_trips() {
         let meta = ProjectMeta {
@@ -3755,8 +6313,10 @@ mod tests {
             forked_from: None,
             tex: None,
             tex_flavor: None,
+            allow_shell_escape: false,
         };
         let json = serde_json::to_string(&meta).unwrap();
+        assert!(json.contains("\"allow_shell_escape\":false"));
         let decoded: ProjectMeta = serde_json::from_str(&json).unwrap();
         assert_eq!(decoded.main_doc, "chapters/main.typ");
         assert_eq!(decoded.engine, "typst");
@@ -3974,6 +6534,7 @@ mod tests {
             forked_from: None,
             tex: None,
             tex_flavor: None,
+            allow_shell_escape: false,
         };
 
         let valid = projects.join("valid-project");
@@ -4022,6 +6583,7 @@ mod tests {
                         forked_from: None,
                         tex: None,
                         tex_flavor: None,
+                        allow_shell_escape: false,
                     },
                 )
                 .unwrap();
@@ -4137,13 +6699,361 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("duplicate-project-fork");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let source_id = create_typst_project("Original Paper".to_string()).unwrap();
+        let source_id = super::create_project("Original Paper".to_string()).unwrap();
+        super::set_project_engine_unlocked(&source_id, "latexmk", None).unwrap();
+        super::set_project_shell_escape_unlocked(&source_id, true).unwrap();
+        assert!(read_meta(&source_id).unwrap().allow_shell_escape);
         let fork_id = duplicate_project(source_id, "Original Paper (copy)".to_string())
             .await
             .unwrap();
         let meta = read_meta(&fork_id).unwrap();
         assert_eq!(meta.name, "Original Paper (copy)");
         assert_eq!(meta.forked_from.as_deref(), Some("Original Paper"));
+        assert!(!meta.allow_shell_escape);
+        assert!(!std::fs::read_to_string(
+            crate::paths::project_dir(&fork_id)
+                .unwrap()
+                .join("project.json")
+        )
+        .unwrap()
+        .contains("allow_shell_escape"));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn shell_escape_consent_is_device_local_and_project_json_cannot_grant_it() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("shell-trust-local");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_project("Untrusted Paper".into()).unwrap();
+        let project = crate::paths::project_dir(&project_id).unwrap();
+
+        std::fs::write(
+            project.join("project.json"),
+            r#"{
+  "name": "Untrusted Paper",
+  "main_doc": "main.tex",
+  "engine": "latexmk",
+  "allow_shell_escape": true
+}"#,
+        )
+        .unwrap();
+        assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
+
+        let trusted = super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        assert!(trusted.allow_shell_escape);
+        assert!(read_meta(&project_id).unwrap().allow_shell_escape);
+
+        let renamed = super::rename_project(project_id.clone(), "Trusted Paper".into()).unwrap();
+        assert!(renamed.allow_shell_escape);
+        assert!(!std::fs::read_to_string(project.join("project.json"))
+            .unwrap()
+            .contains("allow_shell_escape"));
+        assert!(read_meta(&project_id).unwrap().allow_shell_escape);
+
+        super::set_project_engine_unlocked(&project_id, "xetex", None).unwrap();
+        assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
+        super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
+        assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
+        assert!(super::set_project_shell_escape_unlocked(&project_id, true).is_ok());
+        assert!(super::set_project_shell_escape_unlocked(&project_id, false).is_ok());
+        assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn generic_and_agent_file_mutations_cannot_change_project_metadata_or_internals() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("reserved-project-metadata");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_project("Reserved Metadata".into()).unwrap();
+
+        let write_error =
+            super::write_file(project_id.clone(), "project.json".into(), "{}".into(), None)
+                .await
+                .unwrap_err();
+        assert!(write_error.contains("managed by Oleafly"));
+        assert!(
+            super::admit_project_file_write(project_id.clone(), "PROJECT.JSON".into(), None,)
+                .err()
+                .unwrap()
+                .contains("managed by Oleafly")
+        );
+        assert!(
+            super::create_file(project_id.clone(), "project.json".into(), false, None,)
+                .unwrap_err()
+                .contains("managed by Oleafly")
+        );
+        assert!(
+            super::delete_file(project_id.clone(), "project.json".into(), None)
+                .unwrap_err()
+                .contains("managed by Oleafly")
+        );
+        assert!(super::rename_file_blocking(
+            project_id.clone(),
+            "main.tex".into(),
+            "project.json".into(),
+            None,
+            None,
+        )
+        .unwrap_err()
+        .contains("managed by Oleafly"));
+        assert!(super::copy_file(
+            project_id.clone(),
+            "main.tex".into(),
+            "project.json".into(),
+            None,
+        )
+        .await
+        .unwrap_err()
+        .contains("managed by Oleafly"));
+
+        for internal in [".oleafly/build/marker", ".GIT/config"] {
+            assert!(super::write_file(
+                project_id.clone(),
+                internal.into(),
+                "untrusted".into(),
+                None,
+            )
+            .await
+            .unwrap_err()
+            .contains("managed internally"));
+            assert!(
+                super::admit_project_file_write(project_id.clone(), internal.into(), None)
+                    .err()
+                    .unwrap()
+                    .contains("managed internally")
+            );
+        }
+
+        assert!(crate::paths::project_dir(&project_id)
+            .unwrap()
+            .join("project.json")
+            .is_file());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn external_worktree_mutation_is_compile_serialized_and_revokes_trust() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("external-worktree-trust");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_project("Git Trust".into()).unwrap();
+        super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        let state = Arc::new(crate::state::AppState::default());
+
+        let compile_guard = state.compile_lock.lock().await;
+        let worker_state = Arc::clone(&state);
+        let worker_id = project_id.clone();
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel();
+        let worker = tokio::spawn(async move {
+            super::mutate_project_worktree(&worker_state, worker_id, None, move |project| {
+                let _ = started_tx.send(());
+                std::fs::write(
+                    project.join("project.json"),
+                    r#"{"name":"Git Trust","main_doc":"main.tex","engine":"xetex"}"#,
+                )
+                .map_err(|error| error.to_string())?;
+                Ok(((), true))
+            })
+            .await
+        });
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(50), started_rx)
+                .await
+                .is_err()
+        );
+        drop(compile_guard);
+        let changed = worker.await.unwrap().unwrap();
+        changed.value.unwrap();
+        assert_eq!(changed.project.engine, "xetex");
+        assert!(!changed.project.allow_shell_escape);
+        assert!(!super::shell_escape_trust_path(&project_id)
+            .unwrap()
+            .exists());
+
+        let changed_back =
+            super::mutate_project_worktree(&state, project_id.clone(), None, move |project| {
+                std::fs::write(
+                    project.join("project.json"),
+                    r#"{"name":"Git Trust","main_doc":"main.tex","engine":"latexmk"}"#,
+                )
+                .map_err(|error| error.to_string())?;
+                Ok(((), true))
+            })
+            .await
+            .unwrap();
+        changed_back.value.unwrap();
+        assert_eq!(changed_back.project.engine, "xetex");
+        assert!(!changed_back.project.allow_shell_escape);
+
+        super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        let before_failure = super::project_mutation_generation(project_id.clone()).unwrap();
+        let failed = super::mutate_project_worktree(
+            &state,
+            project_id.clone(),
+            None,
+            move |_project| -> Result<((), bool), String> {
+                Err("simulated conflicting pull".into())
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            failed.value.unwrap_err(),
+            "simulated conflicting pull".to_string()
+        );
+        assert!(failed.generation > before_failure);
+        assert!(!failed.project.allow_shell_escape);
+        assert!(!super::shell_escape_trust_path(&project_id)
+            .unwrap()
+            .exists());
+
+        let repaired = super::mutate_project_worktree(
+            &state,
+            project_id.clone(),
+            None,
+            move |project| -> Result<((), bool), String> {
+                std::fs::write(project.join("project.json"), "{malformed")
+                    .map_err(|error| error.to_string())?;
+                Ok(((), true))
+            },
+        )
+        .await
+        .unwrap();
+        repaired.value.unwrap();
+        assert_eq!(repaired.project.main_doc, "main.tex");
+        assert_eq!(repaired.project.engine, "latexmk");
+        assert!(!repaired.project.allow_shell_escape);
+        assert!(serde_json::from_str::<serde_json::Value>(
+            &std::fs::read_to_string(
+                crate::paths::project_dir(&project_id)
+                    .unwrap()
+                    .join("project.json")
+            )
+            .unwrap()
+        )
+        .is_ok());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn main_document_rename_away_from_latexmk_revokes_shell_trust() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("shell-trust-main-rename");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_project("Rename Trust".into()).unwrap();
+        super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        assert!(read_meta(&project_id).unwrap().allow_shell_escape);
+
+        super::rename_file_blocking(
+            project_id.clone(),
+            "main.tex".into(),
+            "main.md".into(),
+            None,
+            None,
+        )
+        .unwrap();
+        let markdown = read_meta(&project_id).unwrap();
+        assert_eq!(markdown.engine, "markdown");
+        assert!(!markdown.allow_shell_escape);
+        assert!(!super::shell_escape_trust_path(&project_id)
+            .unwrap()
+            .exists());
+
+        super::rename_file_blocking(
+            project_id.clone(),
+            "main.md".into(),
+            "main.tex".into(),
+            None,
+            None,
+        )
+        .unwrap();
+        super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
+        assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn imported_project_metadata_cannot_import_shell_escape_consent() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("shell-trust-import-data");
+        let source = test_dir("shell-trust-import-source");
+        std::fs::write(
+            source.join("main.tex"),
+            "\\documentclass{article}\\begin{document}x\\end{document}",
+        )
+        .unwrap();
+        std::fs::write(
+            source.join("project.json"),
+            r#"{
+  "name": "Crafted",
+  "main_doc": "main.tex",
+  "engine": "latexmk",
+  "allow_shell_escape": true
+}"#,
+        )
+        .unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+
+        let imported =
+            super::import_overleaf_project_blocking(None, &source.to_string_lossy()).unwrap();
+        let meta = read_meta(&imported).unwrap();
+        assert_eq!(meta.engine, super::default_engine());
+        assert!(!meta.allow_shell_escape);
+        let raw = std::fs::read_to_string(
+            crate::paths::project_dir(&imported)
+                .unwrap()
+                .join("project.json"),
+        )
+        .unwrap();
+        assert!(!raw.contains("allow_shell_escape"));
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+        std::fs::remove_dir_all(source).unwrap();
+    }
+
+    #[test]
+    fn recreated_project_slug_does_not_inherit_shell_escape_trust() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("shell-trust-identity");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_project("Original".into()).unwrap();
+        super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        assert!(read_meta(&project_id).unwrap().allow_shell_escape);
+
+        let projects = crate::paths::projects_root().unwrap();
+        let original = projects.join(&project_id);
+        let displaced = projects.join(format!("{project_id}-old-identity"));
+        std::fs::rename(&original, &displaced).unwrap();
+        std::fs::create_dir(&original).unwrap();
+        std::fs::write(original.join("main.tex"), "\\documentclass{article}").unwrap();
+        write_meta_at(
+            &original.join("project.json"),
+            &ProjectMeta {
+                name: "Replacement".into(),
+                engine: "latexmk".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+        assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
+
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -4325,5 +7235,39 @@ mod tests {
         // An explicit compiler is meaningless off latexmk, and typos fail.
         assert!(validate_tex_flavor("xetex", Some("pdflatex")).is_err());
         assert!(validate_tex_flavor("latexmk", Some("pdftex")).is_err());
+    }
+
+    #[test]
+    fn loaded_latexmk_metadata_normalizes_or_rejects_compiler_pins() {
+        let mut normalized: ProjectMeta = serde_json::from_str(
+            r#"{"name":"Paper","engine":"latexmk","tex_flavor":" lualatex "}"#,
+        )
+        .unwrap();
+        normalize_loaded_tex_flavor(&mut normalized).unwrap();
+        assert_eq!(normalized.tex_flavor.as_deref(), Some("lualatex"));
+
+        let mut auto: ProjectMeta =
+            serde_json::from_str(r#"{"name":"Paper","engine":"latexmk","tex_flavor":" auto "}"#)
+                .unwrap();
+        normalize_loaded_tex_flavor(&mut auto).unwrap();
+        assert_eq!(auto.tex_flavor, None);
+
+        let mut malformed: ProjectMeta =
+            serde_json::from_str(r#"{"name":"Paper","engine":"latexmk","tex_flavor":"pdftex"}"#)
+                .unwrap();
+        let error = normalize_loaded_tex_flavor(&mut malformed).unwrap_err();
+        assert!(error.contains("invalid project.json"));
+        assert!(error.contains("unknown compiler: pdftex"));
+    }
+
+    #[test]
+    fn loaded_non_latexmk_metadata_clears_legacy_stale_compiler_pin() {
+        let mut legacy: ProjectMeta =
+            serde_json::from_str(r#"{"name":"Paper","engine":"xetex","tex_flavor":"lualatex"}"#)
+                .unwrap();
+
+        normalize_loaded_tex_flavor(&mut legacy).unwrap();
+
+        assert_eq!(legacy.tex_flavor, None);
     }
 }

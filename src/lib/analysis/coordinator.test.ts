@@ -300,7 +300,7 @@ describe("ProjectAnalysisCoordinator", () => {
       store.getState().snapshot.features.completion,
     ).toMatchObject({
       status: "not_run",
-      reason: "Project content changed; analysis has not run",
+      reason: "Project content changed. Analysis has not run.",
     });
     coordinator.dispose();
   });

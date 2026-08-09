@@ -19,6 +19,10 @@ import {
   type CompletionRequestGuard,
 } from "./completion-request";
 import { validateXparseArgumentSpecification } from "./latex-xparse";
+import {
+  boundedCompletionContext,
+  shouldRunCompletionSource,
+} from "./completion-trigger";
 
 let bibKeysProvider: () => string[] = () => [];
 export function setBibKeysProvider(fn: () => string[]) {
@@ -923,6 +927,7 @@ function referenceCitationCompletions(
 export function latexReferenceCitationCompletions(
   context: CompletionContext,
 ): CompletionResult | null {
+  if (!shouldRunCompletionSource(context, "latex")) return null;
   const source = context.state.doc.toString();
   if (!isLatexCompletionPosition(source, context.pos)) return null;
   return referenceCitationCompletions(
@@ -934,6 +939,7 @@ export function latexReferenceCitationCompletions(
 export function latexCompletions(
   context: CompletionContext
 ): CompletionResult | null {
+  if (!shouldRunCompletionSource(context, "latex")) return null;
   const source = context.state.doc.toString();
   if (!isLatexCompletionPosition(source, context.pos)) return null;
   const guard = createCompletionRequestGuard(context);
@@ -969,6 +975,7 @@ function commandCompletions(
 export function latexCommandCompletions(
   context: CompletionContext,
 ): CompletionResult | null {
+  if (!shouldRunCompletionSource(context, "latex")) return null;
   const source = context.state.doc.toString();
   if (!isLatexCompletionPosition(source, context.pos)) return null;
   const guard = createCompletionRequestGuard(context);
@@ -981,11 +988,11 @@ export function latexCommandCompletions(
 export function slashCompletions(
   context: CompletionContext
 ): CompletionResult | null {
+  if (!shouldRunCompletionSource(context, "latex")) return null;
   const source = context.state.doc.toString();
   if (!isLatexCompletionPosition(source, context.pos)) return null;
   const guard = createCompletionRequestGuard(context);
-  const line = context.state.doc.lineAt(context.pos);
-  const before = line.text.slice(0, context.pos - line.from);
+  const before = boundedCompletionContext(context.state, context.pos);
   const m = before.match(/\/([a-zA-Z]*)$/);
   if (!m) return null;
   const slash: Completion[] = [

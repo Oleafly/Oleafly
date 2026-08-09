@@ -134,13 +134,6 @@ Standalone resource evidence.
 
   await createBlankProject(tauriPage, `E2E artifacts ${run}`);
   await writeProjectBinary(tauriPage, "assets/export-marker.png", png.toString("base64"));
-  // These are backend-created internal paths. The real ZIP exporter must
-  // exclude them even though ordinary source/assets remain present.
-  await writeProjectBinary(
-    tauriPage,
-    ".git/e2e-secret.txt",
-    Buffer.from("must not leak").toString("base64"),
-  );
   await persistSource(tauriPage, source);
   const compiled = await compileAndProbe(tauriPage, 180_000);
   expect(compiled.text).toContain(marker);

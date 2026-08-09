@@ -45,3 +45,26 @@ describe("useSettingsStore layout presets", () => {
     expect(useSettingsStore.getState().hideEditorArea).toBe(false);
   });
 });
+
+describe("useSettingsStore reset", () => {
+  it("restores and persists every editor-behavior default", () => {
+    const settings = useSettingsStore.getState();
+    settings.setEditorAutocomplete(false);
+    settings.setEditorAutoCloseBrackets(false);
+    settings.setEditorGhostCompletion(false);
+    settings.setEditorNonBlinkingCursor(true);
+
+    settings.resetToDefaults();
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      editorAutocomplete: true,
+      editorAutoCloseBrackets: true,
+      editorGhostCompletion: true,
+      editorNonBlinkingCursor: false,
+    });
+    expect(localStorage.getItem("oleafly.editor.autocomplete")).toBe("1");
+    expect(localStorage.getItem("oleafly.editor.closeBrackets")).toBe("1");
+    expect(localStorage.getItem("oleafly.editor.ghostCompletion")).toBe("1");
+    expect(localStorage.getItem("oleafly.editor.solidCursor")).toBe("0");
+  });
+});

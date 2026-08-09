@@ -744,6 +744,10 @@ export async function openProject(page: Page & { getByText(t: string): { click()
   ) as unknown as Parameters<typeof expect>[0];
   await expect(library).toBeVisible({ timeout: 30_000 });
   await page.click(`button[aria-label=${JSON.stringify(`Open ${name}`)}]`);
+  const workspace = page.locator("[data-e2e-project-id]") as unknown as Parameters<
+    typeof expect
+  >[0];
+  await expect(workspace).toBeVisible({ timeout: 30_000 });
 }
 
 // Creating or clicking a file updates the tree before the editor finishes

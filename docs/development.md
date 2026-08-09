@@ -5,7 +5,7 @@ What you need to work on Oleafly. The app is a [Tauri 2](https://tauri.app) proj
 ## Repo layout
 
 ```
-localeaf/
+oleafly-desktop/
 ├── src/                    React app shell (stores, Tauri client, UI kit, port adapters)
 │   ├── components/         ui (shadcn-style), layout, editor glue, preview panes, ai
 │   ├── contributions/      registers rail tabs / commands / AI toolsets into the registry
@@ -21,7 +21,7 @@ localeaf/
 │   ├── resources/          templates, licenses, and pinned runtime archives
 │   └── tauri.conf.json
 ├── scripts/fetch-tectonic.sh
-│   ├── fetch-biber.sh
+├── scripts/fetch-biber.sh
 ├── scripts/fetch-typst.sh
 ├── scripts/fetch-language-servers.mjs
 └── docs/
@@ -29,7 +29,7 @@ localeaf/
 
 The frontend is a pnpm workspace: feature engines live in `packages/*` behind
 injected ports, and the app shell wires them together. Read
-[Architecture](Architecture.md) before touching `packages/`: it
+[Architecture](architecture.md) before touching `packages/`: it
 covers the port pattern, the contribution registry, and the alias wiring.
 
 ## Prerequisites
@@ -47,7 +47,7 @@ covers the port pattern, the contribution registry, and the alias wiring.
 ./scripts/fetch-biber.sh all        # pinned Biber 2.17 (biblatex / tectonic-biber)
 ./scripts/fetch-typst.sh all
 pnpm install
-pnpm language-servers:fetch         # current-host policy; see note below
+pnpm language-servers:fetch         # current-host policy, see note below
 pnpm tauri dev
 ```
 
@@ -81,16 +81,16 @@ pnpm build                                # frontend typecheck (noUnusedLocals/P
 pnpm test                                 # vitest across src/ and packages/
 pnpm language-servers:test                # manifest, checksum, target, URL, and license policy
 pnpm audit --prod --audit-level high      # registry-backed npm advisory check
-cd src-tauri && cargo check               # backend compiles
-cd src-tauri && cargo deny check           # Rust advisories, licenses, and sources
+cargo check --workspace                   # all Rust crates compile
+cargo deny --manifest-path src-tauri/Cargo.toml check  # workspace advisories, licenses, and sources
 ```
 
 The two audit commands require registry/network access. CI records their
 current results on every code change. An offline local run cannot certify that
 the dependency graph is advisory-free.
 
-For user-facing changes, also run the end-to-end suite (real app, real
-compiles; see [e2e/README.md](../e2e/README.md)):
+For user-facing changes, also run the end-to-end suite (real app and real
+compiles, see [e2e/README.md](../e2e/README.md)):
 
 ```bash
 pnpm test:e2e:app                         # builds + launches the app, runs Playwright, tears down
@@ -127,7 +127,7 @@ TexLab 5.26.0 and Tinymist 0.15.2 have a separate machine-readable manifest,
 secure Node fetcher, and distribution policy. Neither language server is a
 Tauri `externalBin`. TexLab resolves from its consent-gated, checksum-pinned
 app-local-data installation. Tinymist's target-specific upstream archive is a
-Tauri resource; Rust verifies and extracts it atomically into the same
+Tauri resource. Rust verifies and extracts it atomically into the same
 versioned app-local-data layout on first use. Keeping the archive immutable is
 important because macOS and Windows signing may modify executable bytes. See
 [Language-server toolchain](language-server-toolchain.md) for the target
@@ -150,7 +150,7 @@ engine capability becomes truthful. Do not add extension-based UI exceptions.
 
 Oleafly stores app-managed state beneath the user's `~/.oleafly/` directory.
 The application keeps preferences separate from owner-only encrypted
-credentials; do not copy, publish, or commit files from this directory. The
+credentials. Do not copy, publish, or commit files from this directory. The
 directory also contains project folders (each with its own `.git` repository)
 and the application log. Exact credential filenames and key material are
 intentionally omitted from public documentation.
@@ -161,7 +161,7 @@ intentionally omitted from public documentation.
 - Add a Tauri command → declare in `src-tauri/src/*.rs`, register in `src-tauri/src/lib.rs`, wrap in `src/lib/tauri.ts`.
 - Add a document engine → implement `DocumentEngine` in `src-tauri/src/document_engine.rs`, expose truthful capabilities, add a checksum-pinned sidecar fetch/smoke path, then consume the descriptor in UI controls.
 - Add a project template → drop a folder with a `template.json` manifest into `src-tauri/resources/templates/` (engine-general template metadata remains planned work).
-- Add a tool for the AI → `packages/ai-tools/src/tools.ts`; app services it needs go through `AiToolsHost` (adapter in `src/lib/ai-tools.ts`).
+- Add a tool for the AI → `packages/ai-tools/src/tools.ts`. App services it needs go through `AiToolsHost` (adapter in `src/lib/ai-tools.ts`).
 - Add a rail tab / palette or omnibar command / AI toolset → register it in `src/contributions/` (see [Architecture](architecture.md#the-contribution-registry)).
 
 ## Sync and GitHub internals
@@ -172,10 +172,16 @@ OAuth device flow runs server-side in Rust (`src-tauri/src/github.rs`) because t
 
 - TypeScript: follow what's already there. No comments unless asked. Respect `noUnusedLocals`/`noUnusedParameters`.
 - Rust: idiomatic, small commands, friendly error strings.
-- UI: Tailwind v4 + Geist tokens; reuse the `Button`/`Tooltip`/`Select` primitives.
+- UI: Tailwind v4 + Geist tokens. Reuse the `Button`/`Tooltip`/`Select` primitives.
+- User-facing copy: prefer short sentences. Do not use em dashes or semicolons
+  in labels, status text, errors, accessibility text, tool descriptions, or AI
+  prompts. Syntax examples and source-language snippets are exempt.
 
 ## Releasing
 
-Packaging targets macOS Apple Silicon, Windows x64, and Linux x64, each with
-matching Tectonic and Typst sidecars fetched and smoke-tested in CI. Signing and
-notarization are deferred until the maintainer explicitly reopens that work.
+Packaging targets macOS Apple Silicon, Windows x64, Linux x64, and Linux ARM64.
+Each target gets matching Tectonic, Biber, Typst, and language-server resources
+that are fetched and smoke-tested in CI. A tag produces a complete draft.
+Publishing is a separate manual workflow run and is blocked until the live
+Anthropic and Google real-app contracts pass. See [Auto-updates](updates.md)
+for required secrets, optional model variables, signing, and publication.

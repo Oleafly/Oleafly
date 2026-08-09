@@ -362,6 +362,9 @@ export function PreviewWindow({
   const lastReadyDocumentRef =
     useRef<DetachedPreviewDocument | null>(harnessDocument);
   const artifactLoadGenerationRef = useRef(0);
+  const projectStateRevisionRef = useRef(
+    initialContext.state?.projectStateRevision ?? 0,
+  );
   const scaleRef = useRef(scale);
   const userAdjustedZoomRef = useRef(false);
   projectIdRef.current = projectId;
@@ -423,6 +426,13 @@ export function PreviewWindow({
   const acceptCompileState = useCallback(
     (candidate: unknown) => {
       if (!isPreviewWindowState(candidate)) return;
+      if (
+        candidate.projectStateRevision <
+        projectStateRevisionRef.current
+      ) {
+        return;
+      }
+      projectStateRevisionRef.current = candidate.projectStateRevision;
       if (candidate.identity.projectId !== projectIdRef.current) {
         retargetProject(candidate.identity.projectId);
       }
@@ -473,10 +483,38 @@ export function PreviewWindow({
         }
       },
     );
+    const projectStateListener = listen<{ projectId?: string; revision?: number }>(
+      "project-state-changed",
+      (event) => {
+        const revision = event.payload?.revision;
+        if (
+          event.payload?.projectId !== projectIdRef.current ||
+          typeof revision !== "number" ||
+          !Number.isSafeInteger(revision) ||
+          revision <= projectStateRevisionRef.current
+        ) {
+          return;
+        }
+        projectStateRevisionRef.current = revision;
+        ++artifactLoadGenerationRef.current;
+        compileStateRef.current = null;
+        previewDocumentRef.current = null;
+        lastReadyDocumentRef.current = null;
+        setCompileState(null);
+        setPreviewDocument(null);
+        setArtifactLoading(false);
+        setArtifactFailure(null);
+        setRetainedLoadFailure(null);
+        setPdfLoadState(INITIAL_LOAD_STATE);
+        setSearchState(INITIAL_SEARCH_STATE);
+        setOutlineState(INITIAL_OUTLINE_STATE);
+      },
+    );
     return () => {
       ++artifactLoadGenerationRef.current;
       void refreshListener.then((unlisten) => unlisten());
       void projectListener.then((unlisten) => unlisten());
+      void projectStateListener.then((unlisten) => unlisten());
     };
   }, [acceptCompileState, disableNativeBridge, retargetProject]);
 
