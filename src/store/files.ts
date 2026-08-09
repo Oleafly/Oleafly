@@ -620,6 +620,165 @@ async function openProjectTransition(
   }
 }
 
+type ProjectMetadataState = Pick<
+  FilesStore,
+  "projectName" | "projectKind" | "mainDoc" | "engine" | "engineLoaded" | "engineError"
+>;
+
+interface ReloadedProjectFiles {
+  loaded: Map<string, string>;
+  attempted: Set<string>;
+}
+
+const BINARY_RELOAD_EXTENSIONS = new Set([
+  "pdf",
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "webp",
+  "svg",
+  "eps",
+  "zip",
+  "gz",
+  "ttf",
+  "otf",
+  "woff",
+  "woff2",
+]);
+
+function projectMetadataState(event: ProjectStateChanged): ProjectMetadataState {
+  return {
+    projectName: event.project.name,
+    projectKind: event.project.kind ?? "",
+    mainDoc: event.project.main_doc,
+    engine: event.engine,
+    engineLoaded: true,
+    engineError: null,
+  };
+}
+
+function projectStateEventIsValid(event: ProjectStateChanged, get: FilesGet): boolean {
+  if (get().projectId !== event.projectId) return false;
+  if (!Number.isSafeInteger(event.revision) || event.revision <= lastProjectStateRevision) {
+    return false;
+  }
+  return (
+    event.mutationGeneration === null ||
+    (Number.isSafeInteger(event.mutationGeneration) && event.mutationGeneration >= 0)
+  );
+}
+
+function admitProjectStateEvent(event: ProjectStateChanged): number {
+  const revision = event.revision;
+  lastProjectStateRevision = revision;
+  recordProjectStateRevision(revision);
+  mainDocSeq++;
+  invalidateAllPendingFileOpens();
+  if (event.mutationGeneration !== null) {
+    rememberMutationGeneration(event.projectId, event.mutationGeneration);
+  }
+  void import("@/store/compile").then(({ useCompileStore }) => {
+    if (lastProjectStateRevision === revision) useCompileStore.getState().reset();
+  });
+  return revision;
+}
+
+function projectRevisionIsCurrent(projectId: string, revision: number, get: FilesGet): boolean {
+  return get().projectId === projectId && lastProjectStateRevision === revision;
+}
+
+function isBinaryReloadPath(path: string): boolean {
+  const dot = path.lastIndexOf(".");
+  return dot >= 0 && BINARY_RELOAD_EXTENSIONS.has(path.slice(dot + 1).toLowerCase());
+}
+
+async function loadChangedProjectFiles(
+  projectId: string,
+  captured: Record<string, FileState>,
+  filePaths: Set<string>,
+): Promise<ReloadedProjectFiles> {
+  const loaded = new Map<string, string>();
+  const attempted = new Set<string>();
+  await Promise.all(
+    Object.entries(captured).map(async ([path, file]) => {
+      if (file.dirty || !filePaths.has(path) || isBinaryReloadPath(path)) return;
+      attempted.add(path);
+      const content = await readFileContent(projectId, path).catch(() => null);
+      if (content !== null) loaded.set(path, content);
+    }),
+  );
+  return { loaded, attempted };
+}
+
+function reconcileProjectFile(
+  path: string,
+  current: FileState,
+  captured: Record<string, FileState>,
+  filePaths: Set<string>,
+  reloaded: ReloadedProjectFiles,
+  removedDirty: string[],
+): FileState | undefined {
+  if (!filePaths.has(path)) {
+    if (current.dirty) removedDirty.push(path);
+    return current.dirty ? current : undefined;
+  }
+  const previous = captured[path];
+  if (!previous || current.dirty || current.content !== previous.content) return current;
+  const content = reloaded.loaded.get(path);
+  if (content !== undefined) return { content, dirty: false };
+  return reloaded.attempted.has(path) ? undefined : current;
+}
+
+function reconciledProjectState(
+  state: FilesStore,
+  metadata: ProjectMetadataState,
+  tree: FileEntry[],
+  captured: Record<string, FileState>,
+  reloaded: ReloadedProjectFiles,
+  removedDirty: string[],
+): Partial<FilesStore> {
+  const filePaths = new Set(tree.filter((entry) => !entry.is_dir).map((entry) => entry.path));
+  const files: Record<string, FileState> = {};
+  for (const [path, current] of Object.entries(state.files)) {
+    const file = reconcileProjectFile(
+      path,
+      current,
+      captured,
+      filePaths,
+      reloaded,
+      removedDirty,
+    );
+    if (file) files[path] = file;
+  }
+  const retained = (path: string) => filePaths.has(path) || files[path]?.dirty;
+  const openTabs = state.openTabs.filter(retained);
+  return {
+    ...metadata,
+    tree,
+    files,
+    openTabs,
+    tabOrder: Object.fromEntries(Object.entries(state.tabOrder).filter(([path]) => retained(path))),
+    activePath:
+      state.activePath && retained(state.activePath) ? state.activePath : (openTabs.at(-1) ?? null),
+    docVersion: state.docVersion + 1,
+  };
+}
+
+function restoreRemovedDirtyFiles(paths: string[], get: FilesGet): void {
+  if (paths.length === 0) return;
+  toast.info(
+    "A project update removed files with unsaved edits. Oleafly kept your edits and is restoring those files.",
+  );
+  for (const path of paths) {
+    pendingSaves.add(path);
+    void get()
+      .saveFile(path)
+      .then(() => get().refreshTree())
+      .catch(() => scheduleAutosave(get));
+  }
+}
+
 const EMPTY_PROJECT_STATE = {
   projectId: null,
   projectName: "",
@@ -1310,134 +1469,34 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   applyProjectStateChanged: async (event) => {
     const projectId = event.projectId;
-    if (
-      get().projectId !== projectId ||
-      !Number.isSafeInteger(event.revision) ||
-      event.revision <= lastProjectStateRevision
-    ) {
-      return false;
-    }
-    if (
-      event.mutationGeneration !== null &&
-      (!Number.isSafeInteger(event.mutationGeneration) || event.mutationGeneration < 0)
-    ) {
-      return false;
-    }
-
-    const revision = event.revision;
-    lastProjectStateRevision = revision;
-    recordProjectStateRevision(revision);
-    mainDocSeq++;
-    invalidateAllPendingFileOpens();
-    if (event.mutationGeneration !== null) {
-      rememberMutationGeneration(projectId, event.mutationGeneration);
-    }
-    void import("@/store/compile").then(({ useCompileStore }) => {
-      if (lastProjectStateRevision === revision) useCompileStore.getState().reset();
-    });
-
-    const metadataState = {
-      projectName: event.project.name,
-      projectKind: event.project.kind ?? "",
-      mainDoc: event.project.main_doc,
-      engine: event.engine,
-      engineLoaded: true,
-      engineError: null,
-    };
+    if (!projectStateEventIsValid(event, get)) return false;
+    const revision = admitProjectStateEvent(event);
+    const metadata = projectMetadataState(event);
     if (!event.filesChanged) {
-      if (get().projectId === projectId && lastProjectStateRevision === revision) {
-        set(metadataState);
-      }
+      if (projectRevisionIsCurrent(projectId, revision, get)) set(metadata);
       return true;
     }
-
     fileReloadRevision++;
-
-    const before = get();
+    const captured = get().files;
     try {
       const tree = await listFiles(projectId);
-      if (get().projectId !== projectId || lastProjectStateRevision !== revision) return false;
+      if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
       const filePaths = new Set(
         tree.filter((entry) => !entry.is_dir).map((entry) => entry.path),
       );
-      const captured = before.files;
-      const loaded = new Map<string, string>();
-      const attempted = new Set<string>();
-      await Promise.all(
-        Object.entries(captured).map(async ([path, file]) => {
-          if (
-            file.dirty ||
-            !filePaths.has(path) ||
-            /\.(pdf|png|jpe?g|gif|webp|svg|eps|zip|gz|ttf|otf|woff2?)$/i.test(path)
-          ) {
-            return;
-          }
-          attempted.add(path);
-          const content = await readFileContent(projectId, path).catch(() => null);
-          if (content !== null) loaded.set(path, content);
-        }),
-      );
-      if (get().projectId !== projectId || lastProjectStateRevision !== revision) return false;
-
+      const reloaded = await loadChangedProjectFiles(projectId, captured, filePaths);
+      if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
       const removedDirty: string[] = [];
       set((state) => {
-        if (state.projectId !== projectId || lastProjectStateRevision !== revision) return {};
-        const files: Record<string, FileState> = {};
-        for (const [path, current] of Object.entries(state.files)) {
-          if (!filePaths.has(path)) {
-            if (current.dirty) {
-              files[path] = current;
-              removedDirty.push(path);
-            }
-            continue;
-          }
-          const old = captured[path];
-          const reloaded = loaded.get(path);
-          if (!old || current.dirty || current.content !== old.content) {
-            files[path] = current;
-          } else if (reloaded !== undefined) {
-            files[path] = { content: reloaded, dirty: false };
-          } else if (!attempted.has(path)) {
-            files[path] = current;
-          }
-        }
-        const retained = (path: string) => filePaths.has(path) || files[path]?.dirty;
-        const openTabs = state.openTabs.filter(retained);
-        const tabOrder = Object.fromEntries(
-          Object.entries(state.tabOrder).filter(([path]) => retained(path)),
-        );
-        const activePath =
-          state.activePath && retained(state.activePath)
-            ? state.activePath
-            : (openTabs.at(-1) ?? null);
-        return {
-          ...metadataState,
-          tree,
-          files,
-          openTabs,
-          tabOrder,
-          activePath,
-          docVersion: state.docVersion + 1,
-        };
+        if (!projectRevisionIsCurrent(projectId, revision, () => state)) return {};
+        return reconciledProjectState(state, metadata, tree, captured, reloaded, removedDirty);
       });
-
-      if (removedDirty.length > 0) {
-        toast.info(
-          "A project update removed files with unsaved edits. Oleafly kept your edits and is restoring those files.",
-        );
-        for (const path of removedDirty) {
-          pendingSaves.add(path);
-          void get()
-            .saveFile(path)
-            .then(() => get().refreshTree())
-            .catch(() => scheduleAutosave(get));
-        }
-      }
+      restoreRemovedDirtyFiles(removedDirty, get);
       scheduleAutosave(get);
       return true;
     } catch (error) {
-      if (get().projectId !== projectId || lastProjectStateRevision !== revision) return false;
-      set(metadataState);
+      if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
+      set(metadata);
       void get().refreshTree();
       notifyError(
         "reload project after external change",
