@@ -279,11 +279,18 @@ fn inspect_zip(file: std::fs::File, policy: ArchiveMemberPolicy<'_>) -> Result<(
             .enclosed_name()
             .ok_or_else(|| "TinyTeX archive contains an unsafe member path.".to_string())?;
         let kind = if entry.is_dir() { "directory" } else { "file" };
-        let symbolic_link = entry
-            .unix_mode()
-            .is_some_and(|mode| mode & 0o170000 == 0o120000);
-        if symbolic_link {
-            return Err("TinyTeX ZIP contains an unsupported symbolic link.".into());
+        if let Some(mode) = entry.unix_mode() {
+            let file_type = mode & 0o170000;
+            if file_type == 0o120000 {
+                return Err("TinyTeX ZIP contains an unsupported symbolic link.".into());
+            }
+            if !matches!(file_type, 0 | 0o040000 | 0o100000) {
+                return Err(format!(
+                    "TinyTeX ZIP member {} has an unsupported file type.",
+                    path.display()
+                ));
+            }
+            validate_tar_mode(&path, mode)?;
         }
         manifest.record(kind, &path, entry.size(), None)?;
     }
@@ -358,6 +365,7 @@ fn extract_zip_entry<R: std::io::Read>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write as _;
 
     fn policy() -> ArchiveMemberPolicy<'static> {
         ArchiveMemberPolicy {
@@ -409,5 +417,20 @@ mod tests {
         assert!(validate_tar_mode(Path::new("TinyTeX/file"), 0o755).is_ok());
         assert!(validate_tar_mode(Path::new("TinyTeX/file"), 0o4755).is_err());
         assert!(validate_tar_mode(Path::new("TinyTeX/file"), 0o777).is_err());
+    }
+
+    #[test]
+    fn zip_members_with_unsafe_unix_permissions_are_rejected() {
+        let directory = tempfile::tempdir().unwrap();
+        let archive = directory.path().join("unsafe.zip");
+        let file = std::fs::File::create(&archive).unwrap();
+        let mut writer = zip::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default().unix_permissions(0o4777);
+        writer.start_file("TinyTeX/tool", options).unwrap();
+        writer.write_all(b"x").unwrap();
+        writer.finish().unwrap();
+
+        let error = inspect_zip(std::fs::File::open(archive).unwrap(), policy()).unwrap_err();
+        assert!(error.contains("unsafe permissions"), "{error}");
     }
 }

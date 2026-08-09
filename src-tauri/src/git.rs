@@ -5,14 +5,15 @@ use std::process::Command;
 
 use crate::config;
 use crate::paths;
-use crate::proc::NoConsole;
+use crate::proc::{output_contained, NoConsole};
 
 fn project_root(project_id: &str) -> Result<PathBuf, String> {
     paths::project_dir(project_id)
 }
 
 fn run_git(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String> {
-    Command::new("git")
+    let mut command = Command::new("git");
+    command
         .no_console()
         .args(args)
         .current_dir(root)
@@ -24,9 +25,8 @@ fn run_git(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String
         // repo operations land on the real repository during `cargo test`.
         .env_remove("GIT_DIR")
         .env_remove("GIT_WORK_TREE")
-        .env_remove("GIT_INDEX_FILE")
-        .output()
-        .map_err(|e| format!("failed to run git: {e}"))
+        .env_remove("GIT_INDEX_FILE");
+    output_contained(&mut command).map_err(|e| format!("failed to run git: {e}"))
 }
 
 /// Initialize a git repo in the project (idempotent) with a sensible identity.
@@ -355,13 +355,13 @@ fn run_git_authed(
         "credential.useHttpPath=false",
     ];
     full.extend_from_slice(args);
-    Command::new("git")
+    let mut command = Command::new("git");
+    command
         .no_console()
         .args(&full)
         .current_dir(root)
-        .env("OLEAFLY_GH_TOKEN", token)
-        .output()
-        .map_err(|e| format!("failed to run git: {e}"))
+        .env("OLEAFLY_GH_TOKEN", token);
+    output_contained(&mut command).map_err(|e| format!("failed to run git: {e}"))
 }
 
 #[tauri::command]

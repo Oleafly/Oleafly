@@ -146,30 +146,31 @@ test.describe("MCP without the webview", () => {
     expect(parsed.total).toBeGreaterThanOrEqual(1);
   });
 
-  test("writes and replaces after the renderer disconnects", async ({ tauriPage }) => {
+  test("rejects every mutation after the renderer disconnects", async ({ tauriPage }) => {
     await disconnectRenderer(tauriPage);
     try {
-      await rpc(tauriPage, connection, "tools/call", {
-        name: "write_file",
-        arguments: { path: "native-write.tex", content: "alpha beta alpha\n" },
-      });
+      for (const [name, arguments_] of [
+        ["write_file", { path: "native-write.tex", content: "must not exist\n" }],
+        ["replace_in_file", { path: "headless.tex", find: "One", replace: "Two" }],
+        ["create_file", { path: "native-created.tex" }],
+        ["rename_file", { from: "headless.tex", to: "renamed.tex" }],
+        ["delete_file", { path: "headless.tex" }],
+      ] as const) {
+        const payload = (await rpc(tauriPage, connection, "tools/call", {
+          name,
+          arguments: arguments_,
+        })) as { result?: { isError?: boolean } };
+        expect(payload.result?.isError, `${name} must require the renderer`).toBe(true);
+        expect(resultText(payload)).toMatch(/active Oleafly window|approval/i);
+      }
 
-      const replaced = await rpc(tauriPage, connection, "tools/call", {
-        name: "replace_in_file",
-        arguments: {
-          path: "native-write.tex",
-          find: "alpha",
-          replace: "gamma",
-          replace_all: true,
-        },
+      const listed = await rpc(tauriPage, connection, "tools/call", {
+        name: "list_files",
+        arguments: {},
       });
-      expect(JSON.parse(resultText(replaced)).replacements).toBe(2);
-
-      const read = await rpc(tauriPage, connection, "tools/call", {
-        name: "read_file",
-        arguments: { path: "native-write.tex" },
-      });
-      expect(JSON.parse(resultText(read)).content).toBe("gamma beta gamma");
+      expect(resultText(listed)).toContain("headless.tex");
+      expect(resultText(listed)).not.toContain("native-write.tex");
+      expect(resultText(listed)).not.toContain("native-created.tex");
     } finally {
       await reconnectRenderer(tauriPage);
     }
@@ -206,7 +207,7 @@ test.describe("MCP without the webview", () => {
     expect(resultText(payload)).toContain("MCPHEADLESSMARKER");
   });
 
-  test("a native write refreshes an already-open editor buffer", async ({ tauriPage }) => {
+  test("a renderer-approved write refreshes an already-open editor buffer", async ({ tauriPage }) => {
     await tauriPage.evaluate(`
       import("/src/store/files.ts").then(({ useFilesStore }) =>
         useFilesStore.getState().openFile("headless.tex")

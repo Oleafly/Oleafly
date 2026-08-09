@@ -78,6 +78,23 @@ pub(super) fn bounded_activity_tool_name(name: &str) -> String {
     name.chars().take(MAX_ACTIVITY_TOOL_NAME_CHARS).collect()
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum ToolRoute {
+    Native,
+    Renderer,
+    RejectNoRenderer,
+}
+
+pub(super) fn tool_route(name: &str, policy: &str, renderer_is_fresh: bool) -> ToolRoute {
+    if crate::mcp::native::handles(name, policy) {
+        ToolRoute::Native
+    } else if renderer_is_fresh {
+        ToolRoute::Renderer
+    } else {
+        ToolRoute::RejectNoRenderer
+    }
+}
+
 struct NativeActivity {
     app: AppHandle,
     activity_id: String,
@@ -281,14 +298,16 @@ async fn handle_forward_call(
         return json_tool_error(id, "tool disabled by read-only mode");
     }
     let renderer_is_fresh = renderer_session_is_fresh(state, renderer_session);
-    let prefer_native = !crate::mcp::native::is_mutating(&name) || !renderer_is_fresh;
-    if prefer_native && crate::mcp::native::handles(&name, &policy) {
-        return run_native_call(app, state, epoch, id, name, arguments).await;
+    match tool_route(&name, &policy, renderer_is_fresh) {
+        ToolRoute::Native => run_native_call(app, state, epoch, id, name, arguments).await,
+        ToolRoute::Renderer => {
+            forward_to_renderer(app, state, epoch, renderer_session, id, name, arguments).await
+        }
+        ToolRoute::RejectNoRenderer => json_tool_error(
+            id,
+            "this tool requires an active Oleafly window and user approval",
+        ),
     }
-    if !renderer_is_fresh {
-        return json_tool_error(id, "this tool requires an active Oleafly window");
-    }
-    forward_to_renderer(app, state, epoch, renderer_session, id, name, arguments).await
 }
 
 async fn run_native_call(

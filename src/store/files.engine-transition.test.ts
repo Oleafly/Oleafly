@@ -925,7 +925,6 @@ describe("delete and autosave coordination", () => {
         openTabs: ["target.tex", "notes.tex"],
         activePath: "target.tex",
       });
-      useFilesStore.getState().setContent("target.tex", "new target");
       useFilesStore.getState().setContent("notes.tex", "new notes");
 
       const deleting = useFilesStore.getState().deleteEntry("target.tex");
@@ -1003,33 +1002,23 @@ describe("delete and autosave coordination", () => {
     expect(useFilesStore.getState().files["main.tex"].content).toBe("replacement");
   });
 
-  it("restores a deleted subtree's dirty autosave when deletion fails", async () => {
-    vi.useFakeTimers();
-    try {
-      const failure = new Error("permission denied");
-      mocks.deleteFile.mockRejectedValue(failure);
-      useFilesStore.setState({
-        projectId: "project",
-        files: { "target.tex": { content: "unsaved", dirty: false } },
-        openTabs: ["target.tex"],
-        activePath: "target.tex",
-      });
-      useFilesStore.getState().setContent("target.tex", "must survive");
+  it("refuses to delete a subtree that contains an unsaved buffer", async () => {
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "target.tex": { content: "must survive", dirty: true } },
+      openTabs: ["target.tex"],
+      activePath: "target.tex",
+    });
 
-      await expect(
-        useFilesStore.getState().deleteEntry("target.tex"),
-      ).rejects.toBe(failure);
-      await vi.advanceTimersByTimeAsync(1_500);
+    await expect(useFilesStore.getState().deleteEntry("target.tex")).rejects.toThrow(
+      "Save or close the unsaved file before deleting: target.tex",
+    );
 
-      expect(mocks.writeFileContent).toHaveBeenCalledWith(
-        "project",
-        "target.tex",
-        "must survive",
-        expect.any(Number),
-      );
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(mocks.deleteFile).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().files["target.tex"]).toEqual({
+      content: "must survive",
+      dirty: true,
+    });
   });
 });
 

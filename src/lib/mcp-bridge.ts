@@ -347,34 +347,38 @@ export function buildMcpToolRegistry(opts: {
 
 // ---- runtime wiring ----
 
-let registry: Record<string, McpToolEntry> = {};
-let registryReady = false;
-let registryBuildChain: Promise<void> = Promise.resolve();
-// Images captured by figure tools during the current call (onImage callback).
-let pendingImages: string[] = [];
-let pendingImageChars = 0;
+const bridgeCalls = {
+  registry: {} as Record<string, McpToolEntry>,
+  registryReady: false,
+  registryBuildChain: Promise.resolve() as Promise<void>,
+  // Images captured by figure tools during the current call (onImage callback).
+  pendingImages: [] as string[],
+  pendingImageChars: 0,
+  // Serialize tool execution just like the in-app chat; parallel writes to the
+  // same file would race.
+  executionChain: Promise.resolve() as Promise<void>,
+  queuedCalls: 0,
+  generation: 0,
+  activeGeneration: null as number | null,
+  activeKey: null as string | null,
+  admittedKeys: new Set<string>(),
+  cancelledKeys: new Set<string>(),
+  nativeActivityLogs: new Map<string, number>(),
+};
 const MAX_IMAGE_CHARS = 12 * 1024 * 1024;
 const MAX_AGGREGATE_IMAGE_CHARS = 16 * 1024 * 1024;
-// Serialize tool execution: the in-app chat runs tools serially too, and
-// parallel writes to the same file would race.
-let chain: Promise<void> = Promise.resolve();
-let queuedCalls = 0;
 const MAX_QUEUED_CALLS = 4;
-let bridgeGeneration = 0;
-let activeCallGeneration: number | null = null;
-let activeCallKey: string | null = null;
-const admittedCallKeys = new Set<string>();
-const cancelledCallKeys = new Set<string>();
-const nativeActivityLogs = new Map<string, number>();
-let bridgeListenersReady: Promise<void> | null = null;
-let bridgeStartupReady: Promise<void> | null = null;
-let rendererSessionReady: Promise<number> | null = null;
+const rendererRuntime = {
+  listenersReady: null as Promise<void> | null,
+  startupReady: null as Promise<void> | null,
+  sessionReady: null as Promise<number> | null,
+  heartbeatTimer: null as number | null,
+  heartbeatInFlight: false,
+  superseded: false,
+  pageLifecycleInstalled: false,
+  latestServerEpoch: 0,
+};
 let rendererSession: number | null = null;
-let rendererHeartbeatTimer: number | null = null;
-let rendererHeartbeatInFlight = false;
-let rendererSuperseded = false;
-let rendererPageLifecycleInstalled = false;
-let latestServerEpoch = 0;
 const RENDERER_HEARTBEAT_MS = 5_000;
 
 function nativeActivityKey(epoch: number, activityId: string): string {
@@ -386,50 +390,50 @@ function toolCallKey(rendererSession: number, epoch: number, callId: number): st
 }
 
 function cancelNativeActivityLogs(epoch?: number): void {
-  for (const [key, logId] of nativeActivityLogs) {
+  for (const [key, logId] of bridgeCalls.nativeActivityLogs) {
     if (epoch !== undefined && !key.startsWith(`${epoch}:`)) continue;
     useMcpActivityStore.getState().endCall(logId, {
       ok: false,
       summary: "cancelled because the MCP server stopped",
     });
-    nativeActivityLogs.delete(key);
+    bridgeCalls.nativeActivityLogs.delete(key);
   }
 }
 
 const confirm: ConfirmFn = async (req) => {
-  const generation = activeCallGeneration;
-  const callKey = activeCallKey;
+  const generation = bridgeCalls.activeGeneration;
+  const callKey = bridgeCalls.activeKey;
   const approved = await useMcpApprovalStore.getState().request(req);
   return (
     approved &&
     generation !== null &&
-    generation === bridgeGeneration &&
+    generation === bridgeCalls.generation &&
     callKey !== null &&
-    callKey === activeCallKey &&
-    !cancelledCallKeys.has(callKey)
+    callKey === bridgeCalls.activeKey &&
+    !bridgeCalls.cancelledKeys.has(callKey)
   );
 };
 
 function mutationAllowed(): boolean {
   return (
-    activeCallGeneration !== null &&
-    activeCallGeneration === bridgeGeneration &&
-    activeCallKey !== null &&
-    !cancelledCallKeys.has(activeCallKey)
+    bridgeCalls.activeGeneration !== null &&
+    bridgeCalls.activeGeneration === bridgeCalls.generation &&
+    bridgeCalls.activeKey !== null &&
+    !bridgeCalls.cancelledKeys.has(bridgeCalls.activeKey)
   );
 }
 
 function invalidateMcpBridgeCalls(preserveRegistry: boolean): void {
-  bridgeGeneration += 1;
-  activeCallGeneration = null;
-  activeCallKey = null;
-  cancelledCallKeys.clear();
+  bridgeCalls.generation += 1;
+  bridgeCalls.activeGeneration = null;
+  bridgeCalls.activeKey = null;
+  bridgeCalls.cancelledKeys.clear();
   if (!preserveRegistry) {
-    registryReady = false;
-    registry = {};
+    bridgeCalls.registryReady = false;
+    bridgeCalls.registry = {};
   }
-  pendingImages = [];
-  pendingImageChars = 0;
+  bridgeCalls.pendingImages = [];
+  bridgeCalls.pendingImageChars = 0;
   useMcpApprovalStore.getState().cancelAll();
 }
 
@@ -438,16 +442,16 @@ export function revokeMcpBridgeCalls(): void {
 }
 
 function stopRendererHeartbeat(): void {
-  if (rendererHeartbeatTimer !== null) {
-    window.clearInterval(rendererHeartbeatTimer);
-    rendererHeartbeatTimer = null;
+  if (rendererRuntime.heartbeatTimer !== null) {
+    window.clearInterval(rendererRuntime.heartbeatTimer);
+    rendererRuntime.heartbeatTimer = null;
   }
 }
 
 function supersedeRendererSession(): void {
-  rendererSuperseded = true;
+  rendererRuntime.superseded = true;
   rendererSession = null;
-  rendererSessionReady = null;
+  rendererRuntime.sessionReady = null;
   stopRendererHeartbeat();
   revokeMcpBridgeCalls();
 }
@@ -471,28 +475,28 @@ export function confirmForPolicy(policy: string, request: ConfirmFn): ConfirmFn 
 function captureImage(dataUrl: string): void {
   if (
     dataUrl.length > MAX_IMAGE_CHARS ||
-    pendingImageChars + dataUrl.length > MAX_AGGREGATE_IMAGE_CHARS
+    bridgeCalls.pendingImageChars + dataUrl.length > MAX_AGGREGATE_IMAGE_CHARS
   ) {
     return;
   }
-  pendingImages.push(dataUrl);
-  pendingImageChars += dataUrl.length;
+  bridgeCalls.pendingImages.push(dataUrl);
+  bridgeCalls.pendingImageChars += dataUrl.length;
 }
 
 function rebuildRegistry(): Promise<void> {
-  const generation = bridgeGeneration;
+  const generation = bridgeCalls.generation;
   const session = rendererSession;
-  registryReady = false;
-  registry = {};
-  const build = registryBuildChain
+  bridgeCalls.registryReady = false;
+  bridgeCalls.registry = {};
+  const build = bridgeCalls.registryBuildChain
     .catch(() => {})
     .then(() => buildRegistry(generation, session));
-  registryBuildChain = build.catch(() => {});
+  bridgeCalls.registryBuildChain = build.catch(() => {});
   return build;
 }
 
 function bridgeSessionIsCurrent(generation: number, session: number | null): session is number {
-  return generation === bridgeGeneration && session !== null && session === rendererSession;
+  return generation === bridgeCalls.generation && session !== null && session === rendererSession;
 }
 
 async function buildRegistry(generation: number, session: number | null): Promise<void> {
@@ -521,8 +525,8 @@ async function buildRegistry(generation: number, session: number | null): Promis
     throw error;
   }
   if (!bridgeSessionIsCurrent(generation, session)) return;
-  registry = nextRegistry;
-  registryReady = true;
+  bridgeCalls.registry = nextRegistry;
+  bridgeCalls.registryReady = true;
 }
 
 export async function refreshMcpRegistry(): Promise<void> {
@@ -543,10 +547,10 @@ async function handleCall(payload: {
 }, generation: number): Promise<void> {
   const callKey = toolCallKey(payload.rendererSession, payload.epoch, payload.callId);
   if (
-    generation !== bridgeGeneration ||
+    generation !== bridgeCalls.generation ||
     payload.rendererSession !== rendererSession ||
-    !registryReady ||
-    cancelledCallKeys.has(callKey)
+    !bridgeCalls.registryReady ||
+    bridgeCalls.cancelledKeys.has(callKey)
   ) {
     await mcpToolResult(
       payload.callId,
@@ -555,12 +559,12 @@ async function handleCall(payload: {
     ).catch(() => {});
     return;
   }
-  activeCallGeneration = generation;
-  activeCallKey = callKey;
+  bridgeCalls.activeGeneration = generation;
+  bridgeCalls.activeKey = callKey;
   const args = payload.arguments ?? {};
   const toolName = payload.name.slice(0, 128);
   const logId = useMcpActivityStore.getState().beginCall(toolName, args);
-  const tool = payload.name.length <= 128 ? registry[payload.name] : undefined;
+  const tool = payload.name.length <= 128 ? bridgeCalls.registry[payload.name] : undefined;
   let result: McpResult;
   let summary: string | undefined;
   try {
@@ -568,31 +572,31 @@ async function handleCall(payload: {
       result = toMcpResult({ error: `tool not available: ${toolName}` }, []);
       summary = `tool not available: ${toolName}`;
     } else {
-      pendingImages = [];
-      pendingImageChars = 0;
+      bridgeCalls.pendingImages = [];
+      bridgeCalls.pendingImageChars = 0;
       try {
         const validationError = validateToolInput(rawSchemaOf(tool.inputSchema), args);
         let raw = validationError
           ? { error: `Invalid tool arguments: ${validationError}` }
           : await tool.execute(args);
-        if (cancelledCallKeys.has(callKey)) {
+        if (bridgeCalls.cancelledKeys.has(callKey)) {
           raw = { error: "MCP request was cancelled before the tool completed." };
-          pendingImages = [];
-          pendingImageChars = 0;
+          bridgeCalls.pendingImages = [];
+          bridgeCalls.pendingImageChars = 0;
         }
-        result = toMcpResult(raw, pendingImages);
+        result = toMcpResult(raw, bridgeCalls.pendingImages);
         const textResult = result.content.find((part) => part.type === "text");
         summary = summarizeMcpResult(textResult?.text, result.isError);
       } catch (e) {
         result = toMcpResult({ error: String(e) }, []);
         summary = String(e);
       }
-      pendingImages = [];
-      pendingImageChars = 0;
+      bridgeCalls.pendingImages = [];
+      bridgeCalls.pendingImageChars = 0;
     }
   } finally {
-    if (activeCallGeneration === generation) activeCallGeneration = null;
-    if (activeCallKey === callKey) activeCallKey = null;
+    if (bridgeCalls.activeGeneration === generation) bridgeCalls.activeGeneration = null;
+    if (bridgeCalls.activeKey === callKey) bridgeCalls.activeKey = null;
   }
   useMcpActivityStore.getState().endCall(logId, {
     ok: !result.isError,
@@ -603,8 +607,8 @@ async function handleCall(payload: {
 }
 
 async function ensureMcpListeners(): Promise<void> {
-  if (!bridgeListenersReady) {
-    bridgeListenersReady = (async () => {
+  if (!rendererRuntime.listenersReady) {
+    rendererRuntime.listenersReady = (async () => {
       const unlisteners: UnlistenFn[] = [];
       const install = async <T>(name: string, handler: EventCallback<T>) => {
         unlisteners.push(await listen<T>(name, handler));
@@ -618,13 +622,13 @@ async function ensureMcpListeners(): Promise<void> {
           arguments: Record<string, unknown>;
         }>("mcp:tool-call", (event) => {
           if (event.payload.rendererSession !== rendererSession) return;
-          const generation = bridgeGeneration;
-          if (!registryReady || queuedCalls >= MAX_QUEUED_CALLS) {
+          const generation = bridgeCalls.generation;
+          if (!bridgeCalls.registryReady || bridgeCalls.queuedCalls >= MAX_QUEUED_CALLS) {
             void mcpToolResult(
               event.payload.callId,
               toMcpResult(
                 {
-                  error: registryReady
+                  error: bridgeCalls.registryReady
                     ? "MCP tool queue is full. Retry after current calls finish."
                     : "MCP tools are being refreshed. Retry shortly.",
                 },
@@ -639,15 +643,15 @@ async function ensureMcpListeners(): Promise<void> {
             event.payload.epoch,
             event.payload.callId,
           );
-          admittedCallKeys.add(callKey);
-          queuedCalls += 1;
-          chain = chain
+          bridgeCalls.admittedKeys.add(callKey);
+          bridgeCalls.queuedCalls += 1;
+          bridgeCalls.executionChain = bridgeCalls.executionChain
             .then(() => handleCall(event.payload, generation))
             .catch(() => {})
             .finally(() => {
-              queuedCalls -= 1;
-              admittedCallKeys.delete(callKey);
-              cancelledCallKeys.delete(callKey);
+              bridgeCalls.queuedCalls -= 1;
+              bridgeCalls.admittedKeys.delete(callKey);
+              bridgeCalls.cancelledKeys.delete(callKey);
             });
         });
         await install<{
@@ -662,24 +666,24 @@ async function ensureMcpListeners(): Promise<void> {
             event.payload.epoch,
             event.payload.callId,
           );
-          if (!admittedCallKeys.has(callKey)) return;
-          cancelledCallKeys.add(callKey);
-          if (activeCallKey === callKey) {
-            activeCallGeneration = null;
-            activeCallKey = null;
-            pendingImages = [];
-            pendingImageChars = 0;
+          if (!bridgeCalls.admittedKeys.has(callKey)) return;
+          bridgeCalls.cancelledKeys.add(callKey);
+          if (bridgeCalls.activeKey === callKey) {
+            bridgeCalls.activeGeneration = null;
+            bridgeCalls.activeKey = null;
+            bridgeCalls.pendingImages = [];
+            bridgeCalls.pendingImageChars = 0;
             useMcpApprovalStore.getState().cancelAll();
           }
         });
         await install<{ epoch: number }>("mcp:server-started", (event) => {
-          if (event.payload.epoch < latestServerEpoch) return;
-          latestServerEpoch = event.payload.epoch;
+          if (event.payload.epoch < rendererRuntime.latestServerEpoch) return;
+          rendererRuntime.latestServerEpoch = event.payload.epoch;
           useMcpActivityStore.getState().setServerRunning(true);
         });
         await install<{ epoch: number }>("mcp:server-stopped", (event) => {
-          if (event.payload.epoch < latestServerEpoch) return;
-          latestServerEpoch = event.payload.epoch;
+          if (event.payload.epoch < rendererRuntime.latestServerEpoch) return;
+          rendererRuntime.latestServerEpoch = event.payload.epoch;
           revokeMcpBridgeCalls();
           cancelNativeActivityLogs(event.payload.epoch);
           useMcpActivityStore.getState().setServerRunning(false);
@@ -713,8 +717,8 @@ async function ensureMcpListeners(): Promise<void> {
           (event) => {
             const { activityId, epoch, name } = event.payload;
             const key = nativeActivityKey(epoch, activityId);
-            if (nativeActivityLogs.has(key)) return;
-            nativeActivityLogs.set(key, useMcpActivityStore.getState().beginCall(name, {}));
+            if (bridgeCalls.nativeActivityLogs.has(key)) return;
+            bridgeCalls.nativeActivityLogs.set(key, useMcpActivityStore.getState().beginCall(name, {}));
           },
         );
         await install<{
@@ -726,9 +730,9 @@ async function ensureMcpListeners(): Promise<void> {
         }>("mcp:native-tool-finished", (event) => {
           const { activityId, epoch, ok, cancelled } = event.payload;
           const key = nativeActivityKey(epoch, activityId);
-          const logId = nativeActivityLogs.get(key);
+          const logId = bridgeCalls.nativeActivityLogs.get(key);
           if (logId === undefined) return;
-          nativeActivityLogs.delete(key);
+          bridgeCalls.nativeActivityLogs.delete(key);
           useMcpActivityStore.getState().endCall(logId, {
             ok,
             summary: cancelled ? "cancelled" : ok ? "ok" : "error",
@@ -739,31 +743,31 @@ async function ensureMcpListeners(): Promise<void> {
         throw error;
       }
     })().catch((error) => {
-      bridgeListenersReady = null;
+      rendererRuntime.listenersReady = null;
       throw error;
     });
   }
-  await bridgeListenersReady;
+  await rendererRuntime.listenersReady;
 }
 
 async function heartbeatRendererSession(session: number): Promise<void> {
-  if (rendererHeartbeatInFlight || rendererSession !== session) return;
-  rendererHeartbeatInFlight = true;
+  if (rendererRuntime.heartbeatInFlight || rendererSession !== session) return;
+  rendererRuntime.heartbeatInFlight = true;
   try {
     await mcpRendererHeartbeat(session);
-    if (rendererSession === session && !registryReady) await rebuildRegistry();
+    if (rendererSession === session && !bridgeCalls.registryReady) await rebuildRegistry();
   } catch (error) {
     if (rendererSession === session && isStaleRendererError(error)) {
       supersedeRendererSession();
     }
   } finally {
-    rendererHeartbeatInFlight = false;
+    rendererRuntime.heartbeatInFlight = false;
   }
 }
 
 function startRendererHeartbeat(session: number): void {
   stopRendererHeartbeat();
-  rendererHeartbeatTimer = window.setInterval(() => {
+  rendererRuntime.heartbeatTimer = window.setInterval(() => {
     void heartbeatRendererSession(session);
   }, RENDERER_HEARTBEAT_MS);
 }
@@ -772,15 +776,15 @@ async function disconnectRendererSession(): Promise<void> {
   const session = rendererSession;
   if (session === null) return;
   rendererSession = null;
-  rendererSessionReady = null;
-  bridgeStartupReady = null;
+  rendererRuntime.sessionReady = null;
+  rendererRuntime.startupReady = null;
   stopRendererHeartbeat();
   await mcpEndRendererSession(session);
 }
 
 function installRendererPageLifecycle(): void {
-  if (rendererPageLifecycleInstalled) return;
-  rendererPageLifecycleInstalled = true;
+  if (rendererRuntime.pageLifecycleInstalled) return;
+  rendererRuntime.pageLifecycleInstalled = true;
   window.addEventListener("pagehide", (event) => {
     if (event.persisted) return;
     void disconnectRendererSession().catch(() => {});
@@ -788,11 +792,11 @@ function installRendererPageLifecycle(): void {
 }
 
 async function ensureRendererSession(): Promise<number> {
-  if (rendererSuperseded) throw new Error("This renderer no longer owns the MCP session");
+  if (rendererRuntime.superseded) throw new Error("This renderer no longer owns the MCP session");
   if (rendererSession !== null) return rendererSession;
-  if (!rendererSessionReady) {
+  if (!rendererRuntime.sessionReady) {
     revokeMcpBridgeCalls();
-    rendererSessionReady = mcpBeginRendererSession()
+    rendererRuntime.sessionReady = mcpBeginRendererSession()
       .then((session) => {
         if (!Number.isSafeInteger(session) || session <= 0) {
           throw new Error("The MCP backend returned an invalid renderer session");
@@ -803,11 +807,11 @@ async function ensureRendererSession(): Promise<number> {
         return session;
       })
       .catch((error) => {
-        rendererSessionReady = null;
+        rendererRuntime.sessionReady = null;
         throw error;
       });
   }
-  return rendererSessionReady;
+  return rendererRuntime.sessionReady;
 }
 
 async function initializeMcpBridge(): Promise<void> {
@@ -844,12 +848,12 @@ export async function startMcpBridge(): Promise<() => void> {
     w.__mcpStopHeartbeat = stopRendererHeartbeat;
   }
 
-  if (!bridgeStartupReady) {
-    bridgeStartupReady = initializeMcpBridge().catch((error) => {
-      bridgeStartupReady = null;
+  if (!rendererRuntime.startupReady) {
+    rendererRuntime.startupReady = initializeMcpBridge().catch((error) => {
+      rendererRuntime.startupReady = null;
       throw error;
     });
   }
-  await bridgeStartupReady;
+  await rendererRuntime.startupReady;
   return () => {};
 }

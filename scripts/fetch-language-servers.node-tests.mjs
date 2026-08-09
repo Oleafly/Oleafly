@@ -846,6 +846,12 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
   );
   assertTinymistFetchBeforeBuild(
     ciWorkflow,
+    "rust-windows",
+    "x86_64-pc-windows-msvc",
+    cargoBuildPattern,
+  );
+  assertTinymistFetchBeforeBuild(
+    ciWorkflow,
     "e2e",
     "aarch64-apple-darwin",
     e2eBuildPattern,
@@ -867,7 +873,7 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
     /^run: node scripts\/fetch-language-servers\.mjs --server tinymist --target (?:\$\{\{ matrix\.rust_target \}\}|aarch64-apple-darwin|aarch64-unknown-linux-gnu|x86_64-unknown-linux-gnu|x86_64-pc-windows-msvc) --install-mode resource$/;
   for (const [name, workflow, expectedFetchCount] of [
     ["release", releaseWorkflow, 2],
-    ["CI", ciWorkflow, 4],
+    ["CI", ciWorkflow, 5],
   ]) {
     const fetchCommands = workflow
       .split("\n")
