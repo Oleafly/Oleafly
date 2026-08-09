@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { NewEntryInput } from "./FileTree";
+import { NewEntryInput, RenameEntryInput } from "./FileTree";
 
 const handlers = {
   onChange: vi.fn(),
@@ -50,5 +50,68 @@ describe("NewEntryInput accessibility", () => {
         name: "New folder name in folder chapters/drafts",
       }),
     ).toHaveAttribute("placeholder", "New folder name");
+  });
+
+  it("submits only once when Enter removes and blurs the field", () => {
+    const onSubmit = vi.fn();
+    render(
+      <NewEntryInput
+        mode="file"
+        value="notes.tex"
+        depth={0}
+        parentPath=""
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    const input = screen.getByRole("textbox", { name: "New file name in project root" });
+    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.blur(input);
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
+});
+
+describe("RenameEntryInput", () => {
+  it("submits only once when Enter removes and blurs the field", () => {
+    const onSubmit = vi.fn();
+    render(
+      <RenameEntryInput
+        value="renamed.tex"
+        depth={0}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Rename file" });
+    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.blur(input);
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
+  it("cancels without submitting when Escape removes and blurs the field", () => {
+    const onSubmit = vi.fn();
+    const onCancel = vi.fn();
+    render(
+      <RenameEntryInput
+        value="renamed.tex"
+        depth={0}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+
+    const input = screen.getByRole("textbox", { name: "Rename file" });
+    fireEvent.keyDown(input, { key: "Escape" });
+    fireEvent.blur(input);
+
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });
