@@ -114,6 +114,8 @@ Get-Content -LiteralPath '$escapedLog' -Wait -Tail 0 |
 }
 
 function Run-Playwright([string]$label, [string[]]$selection) {
+  $safeLabel = $label -replace "[^A-Za-z0-9._-]", "-"
+  $outputDir = "test-results/$safeLabel"
   $script:heartbeat = Start-OutputProcess @"
 `$started = Get-Date
 while (`$true) {
@@ -123,7 +125,7 @@ while (`$true) {
 }
 "@
   Write-Host "e2e: starting $label at $((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))"
-  & pnpm exec playwright test -c e2e/playwright.config.ts @playwrightArgs @selection | Out-Host
+  & pnpm exec playwright test -c e2e/playwright.config.ts "--output=$outputDir" @playwrightArgs @selection | Out-Host
   $status = $LASTEXITCODE
 
   if ($null -ne $script:heartbeat -and -not $script:heartbeat.HasExited) {
@@ -139,14 +141,15 @@ while (`$true) {
 }
 
 function Preserve-AppLog([string]$label) {
-  New-Item -ItemType Directory -Force -Path test-results | Out-Null
   $safeLabel = $label -replace "[^A-Za-z0-9._-]", "-"
+  $resultDir = Join-Path "test-results" $safeLabel
+  New-Item -ItemType Directory -Force -Path $resultDir | Out-Null
   if ($null -ne $script:log -and (Test-Path $script:log)) {
-    Copy-Item $script:log (Join-Path "test-results" "app-$safeLabel.log") -Force
+    Copy-Item $script:log (Join-Path $resultDir "app.log") -Force
   }
   $userLog = Join-Path $script:dataDir "app.log"
   if (Test-Path $userLog) {
-    Copy-Item $userLog (Join-Path "test-results" "user-app-$safeLabel.log") -Force
+    Copy-Item $userLog (Join-Path $resultDir "user-app.log") -Force
   }
 }
 

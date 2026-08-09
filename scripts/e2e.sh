@@ -174,13 +174,16 @@ SKIPPED_LIST="$(mktemp)"
 run_playwright() {
   local label="$1"
   shift
+  local safe_label="${label//[^A-Za-z0-9._-]/-}"
+  local output_dir="test-results/$safe_label"
   echo "e2e: starting ${label} at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   start_heartbeat "$label"
   local status=0
   local captured
   captured="$(mktemp)"
   # pipefail is set, so this still reports Playwright's status, not tee's.
-  pnpm exec playwright test -c e2e/playwright.config.ts "$@" 2>&1 | tee "$captured" || status=$?
+  pnpm exec playwright test -c e2e/playwright.config.ts \
+    "--output=$output_dir" "$@" 2>&1 | tee "$captured" || status=$?
   stop_heartbeat
   # A skipped test is not coverage. Collect them so the final summary can say
   # so out loud instead of letting "0 failed" imply everything was exercised.

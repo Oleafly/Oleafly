@@ -48,6 +48,9 @@ test("a LaTeX error surfaces as an error status, and fixing it recovers", async 
     await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "error", {
       timeout: 90_000,
     });
+    // A failed compile intentionally keeps the last good PDF visible. Open the
+    // log pane explicitly before asserting its actions.
+    await tauriPage.getByText("Logs", { exact: true }).click();
     await expect(tauriPage.getByText("Copy log")).toBeVisible();
     await expect(tauriPage.getByText("Ask AI", { exact: true })).toBeVisible();
     await tauriPage.getByText("Ask AI", { exact: true }).click();
