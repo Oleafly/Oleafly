@@ -5,16 +5,7 @@ const MAX_SEARCH_QUERY_BYTES: usize = 1_024;
 const MAX_READ_LINES: usize = 800;
 const MAX_READ_CHARS: usize = 40_000;
 const MAX_READ_FILE_BYTES: usize = 16 * 1024 * 1024;
-const MAX_MUTATED_FILE_BYTES: usize = 16 * 1024 * 1024;
-
 const READ_ONLY: &[&str] = &["read_file", "list_files", "search_project"];
-
-const NATIVE_MUTATING: &[&str] = &[
-    "write_file",
-    "replace_in_file",
-    "create_file",
-    "rename_file",
-];
 
 const MUTATING: &[&str] = &[
     "write_file",
@@ -35,15 +26,8 @@ pub fn is_mutating(name: &str) -> bool {
     MUTATING.contains(&name)
 }
 
-pub fn handles(name: &str, approval_policy: &str) -> bool {
-    if READ_ONLY.contains(&name) {
-        return true;
-    }
-    match approval_policy {
-        "trust" => NATIVE_MUTATING.contains(&name),
-        "auto_writes" => NATIVE_MUTATING.contains(&name) && name != "delete_file",
-        _ => false,
-    }
+pub fn handles(name: &str, _approval_policy: &str) -> bool {
+    READ_ONLY.contains(&name)
 }
 
 fn arg<'a>(arguments: &'a Value, key: &str) -> Option<&'a str> {
@@ -99,34 +83,8 @@ fn required<'a>(arguments: &'a Value, key: &str) -> Result<&'a str, String> {
     arg(arguments, key).ok_or_else(|| format!("missing required argument: {key}"))
 }
 
-fn required_nonempty<'a>(arguments: &'a Value, key: &str) -> Result<&'a str, String> {
-    let value = required(arguments, key)?;
-    if value.is_empty() {
-        return Err(format!("{key} must not be empty"));
-    }
-    Ok(value)
-}
-
 fn payload(value: Value) -> Value {
     json!({ "content": [{ "type": "text", "text": value.to_string() }] })
-}
-
-fn replacement_output_size(
-    body_bytes: usize,
-    find_bytes: usize,
-    replace_bytes: usize,
-    replacements: usize,
-) -> Result<usize, String> {
-    let removed = find_bytes
-        .checked_mul(replacements)
-        .ok_or_else(|| "replacement size overflow".to_string())?;
-    let inserted = replace_bytes
-        .checked_mul(replacements)
-        .ok_or_else(|| "replacement size overflow".to_string())?;
-    body_bytes
-        .checked_sub(removed)
-        .and_then(|remaining| remaining.checked_add(inserted))
-        .ok_or_else(|| "replacement size overflow".to_string())
 }
 
 pub struct CallOutcome {
@@ -181,30 +139,13 @@ fn text_page(body: &str, offset: usize, take: usize, max_chars: usize) -> TextPa
 }
 
 pub async fn call(project_id: &str, name: &str, arguments: &Value) -> Result<CallOutcome, String> {
-    if !READ_ONLY.contains(&name) && !NATIVE_MUTATING.contains(&name) {
+    if !READ_ONLY.contains(&name) {
         return Err(format!(
             "{name} is not available without the Oleafly interface"
         ));
     }
     match name {
         "read_file" => read_file(project_id, arguments).map(|result| outcome(result, None)),
-        "write_file" => {
-            let result = write_file(project_id, arguments).await?;
-            Ok(outcome(result, mutation_event(name, arguments, None)))
-        }
-        "replace_in_file" => {
-            let (result, content) = replace_in_file(project_id, arguments).await?;
-            Ok(outcome(
-                result,
-                mutation_event(name, arguments, Some(content)),
-            ))
-        }
-        "create_file" => create_file(project_id, arguments)
-            .map(|result| outcome(result, mutation_event(name, arguments, None))),
-        "delete_file" => delete_file(project_id, arguments)
-            .map(|result| outcome(result, mutation_event(name, arguments, None))),
-        "rename_file" => rename_file(project_id, arguments)
-            .map(|result| outcome(result, mutation_event(name, arguments, None))),
         "list_files" => list_files(project_id)
             .await
             .map(|result| outcome(result, None)),
@@ -240,153 +181,6 @@ fn read_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
         "truncated": page.truncated,
         "content": page.content,
     })))
-}
-
-async fn write_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
-    let path = required(arguments, "path")?;
-    let content = required(arguments, "content")?;
-    if content.len() > MAX_MUTATED_FILE_BYTES {
-        return Err(format!(
-            "content exceeds the {MAX_MUTATED_FILE_BYTES}-byte write limit"
-        ));
-    }
-    crate::project::write_file(
-        project_id.to_string(),
-        path.to_string(),
-        content.to_string(),
-        None,
-    )
-    .await?;
-    Ok(payload(
-        json!({ "success": true, "path": path, "bytes": content.len() }),
-    ))
-}
-
-async fn replace_in_file(project_id: &str, arguments: &Value) -> Result<(Value, String), String> {
-    let path = required(arguments, "path")?;
-    let find = required_nonempty(arguments, "find")?;
-    let replace = required(arguments, "replace")?;
-    let all = arguments
-        .get("replace_all")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-
-    let body = crate::project::read_file_limited(project_id, path, MAX_READ_FILE_BYTES)?;
-    let replacements = replacement_count(&body, find, all, path)?;
-    validate_replacement_size(&body, find, replace, replacements)?;
-    let updated = if all {
-        body.replace(find, replace)
-    } else {
-        body.replacen(find, replace, 1)
-    };
-    crate::project::write_file(
-        project_id.to_string(),
-        path.to_string(),
-        updated.clone(),
-        None,
-    )
-    .await?;
-    Ok((
-        payload(json!({ "success": true, "path": path, "replacements": replacements })),
-        updated,
-    ))
-}
-
-fn replacement_count(body: &str, find: &str, all: bool, path: &str) -> Result<usize, String> {
-    let occurrences = body.matches(find).count();
-    if occurrences == 0 {
-        return Err(format!("no match for the search text in {path}"));
-    }
-    Ok(if all { occurrences } else { 1 })
-}
-
-fn validate_replacement_size(
-    body: &str,
-    find: &str,
-    replace: &str,
-    replacements: usize,
-) -> Result<(), String> {
-    let output_bytes =
-        replacement_output_size(body.len(), find.len(), replace.len(), replacements)?;
-    if output_bytes > MAX_MUTATED_FILE_BYTES {
-        return Err(format!(
-            "replacement would exceed the {MAX_MUTATED_FILE_BYTES}-byte write limit"
-        ));
-    }
-    Ok(())
-}
-
-fn mutation_event(name: &str, arguments: &Value, content: Option<String>) -> Option<Value> {
-    match name {
-        "write_file" | "replace_in_file" => {
-            let content = content.or_else(|| arg(arguments, "content").map(str::to_string))?;
-            Some(json!({
-                "kind": "write",
-                "path": arg(arguments, "path")?,
-                "content": content,
-            }))
-        }
-        "create_file" => Some(json!({
-            "kind": "create",
-            "path": arg(arguments, "path")?,
-        })),
-        "delete_file" => Some(json!({
-            "kind": "delete",
-            "path": arg(arguments, "path")?,
-        })),
-        "rename_file" => Some(json!({
-            "kind": "rename",
-            "from": arg(arguments, "from")?,
-            "to": arg(arguments, "to")?,
-        })),
-        _ => None,
-    }
-}
-
-fn create_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
-    let path = required(arguments, "path")?;
-    let is_dir = arguments
-        .get("is_dir")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-    crate::project::create_file(project_id.to_string(), path.to_string(), is_dir, None)?;
-    Ok(payload(
-        json!({ "success": true, "path": path, "is_dir": is_dir }),
-    ))
-}
-
-fn delete_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
-    let path = required(arguments, "path")?;
-    crate::project::delete_file(project_id.to_string(), path.to_string(), None)?;
-    Ok(payload(json!({ "success": true, "path": path })))
-}
-
-fn rename_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
-    let from = required(arguments, "from")?;
-    let to = required(arguments, "to")?;
-    let result = crate::project::rename_file_blocking(
-        project_id.to_string(),
-        from.to_string(),
-        to.to_string(),
-        None,
-        None,
-    )?;
-    rename_result(from, result)
-}
-
-fn rename_result(from: &str, result: crate::project::RenameFileResult) -> Result<Value, String> {
-    match result {
-        crate::project::RenameFileResult::Renamed { path, .. } => Ok(payload(
-            json!({ "success": true, "from": from, "to": path }),
-        )),
-        crate::project::RenameFileResult::Conflict {
-            destination,
-            suggested_destination,
-            ..
-        } => Err(format!(
-            "a file or folder already exists at {destination}. Try {suggested_destination}"
-        )),
-    }
 }
 
 async fn list_files(project_id: &str) -> Result<Value, String> {
@@ -454,7 +248,7 @@ mod tests {
     }
 
     #[test]
-    fn native_mutations_follow_the_headless_approval_policy() {
+    fn native_mutations_always_require_a_renderer() {
         for name in [
             "write_file",
             "replace_in_file",
@@ -462,8 +256,8 @@ mod tests {
             "rename_file",
         ] {
             assert!(!handles(name, "ask"), "{name} under ask");
-            assert!(handles(name, "auto_writes"), "{name} under auto_writes");
-            assert!(handles(name, "trust"), "{name} under trust");
+            assert!(!handles(name, "auto_writes"), "{name} under auto_writes");
+            assert!(!handles(name, "trust"), "{name} under trust");
         }
         assert!(!handles("delete_file", "auto_writes"));
         assert!(!handles("delete_file", "trust"));
@@ -472,6 +266,11 @@ mod tests {
     #[tokio::test]
     async fn the_native_dispatch_entry_point_rejects_interface_only_mutations() {
         for name in [
+            "write_file",
+            "replace_in_file",
+            "create_file",
+            "rename_file",
+            "delete_file",
             "set_main_doc",
             "insert_figure",
             "toggle_theme",
@@ -584,22 +383,6 @@ mod tests {
     }
 
     #[test]
-    fn an_empty_replacement_search_is_rejected() {
-        let err = required_nonempty(&json!({ "find": "" }), "find").unwrap_err();
-        assert!(err.contains("must not be empty"));
-    }
-
-    #[test]
-    fn replacement_growth_is_checked_before_allocating_the_output() {
-        assert_eq!(replacement_output_size(12, 2, 4, 3).unwrap(), 18);
-        assert!(
-            replacement_output_size(MAX_MUTATED_FILE_BYTES, 1, 2, 1).unwrap()
-                > MAX_MUTATED_FILE_BYTES
-        );
-        assert!(replacement_output_size(usize::MAX, 1, 2, 1).is_err());
-    }
-
-    #[test]
     fn file_pages_bound_output_without_collecting_every_line() {
         let page = text_page("one\ntwo\nthree", 2, 2, 5);
 
@@ -612,45 +395,6 @@ mod tests {
         assert!(past_end.content.is_empty());
         assert_eq!(past_end.lines_returned, 0);
         assert!(!past_end.truncated);
-    }
-
-    #[test]
-    fn mutation_events_describe_the_files_the_webview_must_reconcile() {
-        assert_eq!(
-            mutation_event(
-                "write_file",
-                &json!({ "path": "main.tex", "content": "body" }),
-                None,
-            )
-            .unwrap(),
-            json!({ "kind": "write", "path": "main.tex", "content": "body" })
-        );
-        assert_eq!(
-            mutation_event(
-                "rename_file",
-                &json!({ "from": "old.tex", "to": "new.tex" }),
-                None,
-            )
-            .unwrap(),
-            json!({ "kind": "rename", "from": "old.tex", "to": "new.tex" })
-        );
-        assert!(mutation_event("read_file", &json!({ "path": "main.tex" }), None).is_none());
-    }
-
-    #[test]
-    fn a_rename_collision_is_not_reported_as_a_successful_move() {
-        let error = rename_result(
-            "draft.tex",
-            crate::project::RenameFileResult::Conflict {
-                destination: "final.tex".into(),
-                suggested_destination: "final 2.tex".into(),
-                generation: 0,
-            },
-        )
-        .unwrap_err();
-
-        assert!(error.contains("final.tex"));
-        assert!(error.contains("final 2.tex"));
     }
 
     #[test]

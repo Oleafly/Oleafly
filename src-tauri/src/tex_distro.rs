@@ -120,24 +120,25 @@ fn compose_tex_bin_dirs(
     user_tinytex: Vec<PathBuf>,
     generic: Vec<PathBuf>,
 ) -> Vec<PathBuf> {
-    let system: Vec<_> = system
+    let (complete_system, incomplete_system): (Vec<_>, Vec<_>) = system
         .into_iter()
-        .filter(|dir| bin_dir_has_complete_tex(dir))
-        .collect();
+        .partition(|dir| bin_dir_has_complete_tex(dir));
     let (inherited_tinytex, inherited_system): (Vec<_>, Vec<_>) = inherited
         .into_iter()
         .partition(|dir| bin_dir_is_tinytex(dir));
-    let inherited_system: Vec<_> = inherited_system
-        .into_iter()
-        .filter(|dir| bin_dir_has_complete_tex(dir))
-        .collect();
+    let (complete_inherited_system, incomplete_inherited_system): (Vec<_>, Vec<_>) =
+        inherited_system
+            .into_iter()
+            .partition(|dir| bin_dir_has_complete_tex(dir));
     let mut dirs = Vec::new();
     for tier in [
-        system,
-        inherited_system,
+        complete_system,
+        complete_inherited_system,
         managed,
         user_tinytex,
         inherited_tinytex,
+        incomplete_system,
+        incomplete_inherited_system,
         generic,
     ] {
         for dir in tier {
@@ -706,7 +707,7 @@ mod tests {
     }
 
     #[test]
-    fn an_incomplete_system_install_does_not_outrank_managed_tinytex() {
+    fn an_incomplete_system_install_remains_available_below_managed_tinytex() {
         let root = test_dir("incomplete-system");
         let incomplete = root.join("system/bin");
         let managed = root.join(".oleafly/tinytex/bin/host");
@@ -714,13 +715,30 @@ mod tests {
         create_tool(&managed, "latexmk");
 
         let dirs = compose_tex_bin_dirs(
-            vec![incomplete],
+            vec![incomplete.clone()],
             Vec::new(),
             vec![managed.clone()],
             Vec::new(),
             Vec::new(),
         );
-        assert_eq!(dirs, vec![managed]);
+        assert_eq!(dirs, vec![managed, incomplete]);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_platform_discovery_selects_the_windows_bin_directory() {
+        let root = test_dir("windows-platform");
+        let bin = root.join("TinyTeX/bin");
+        let windows = bin.join("windows");
+        let linux = bin.join("x86_64-linux");
+        std::fs::create_dir_all(&windows).unwrap();
+        std::fs::create_dir_all(&linux).unwrap();
+
+        let mut dirs = Vec::new();
+        push_platform_bins_for(&mut dirs, &bin, "windows", "x86_64");
+        assert_eq!(dirs, vec![windows]);
 
         std::fs::remove_dir_all(root).unwrap();
     }

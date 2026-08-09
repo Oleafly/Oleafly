@@ -54,6 +54,63 @@ impl NoConsole for tokio::process::Command {
     }
 }
 
+/// Run a synchronous command while applying the same Windows Job Object
+/// containment used by async compiler and language-server children.
+pub fn output_contained(command: &mut Command) -> std::io::Result<std::process::Output> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED);
+        let mut child = command.spawn()?;
+        let pid = child.id();
+        let _containment = match contain_process_tree(pid) {
+            Ok(containment) => containment,
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(error);
+            }
+        };
+        child.wait_with_output()
+    }
+    #[cfg(not(windows))]
+    {
+        command.output()
+    }
+}
+
+/// Spawn a short-lived platform helper without blocking the Tauri command.
+/// The reaper owns the containment guard until the helper exits.
+pub fn spawn_contained(command: &mut Command) -> std::io::Result<()> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED);
+        let mut child = command.spawn()?;
+        let pid = child.id();
+        let containment = match contain_process_tree(pid) {
+            Ok(containment) => containment,
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(error);
+            }
+        };
+        std::thread::Builder::new()
+            .name("oleafly-child-reaper".into())
+            .spawn(move || {
+                let _containment = containment;
+                let _ = child.wait();
+            })?;
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        command.spawn()?;
+        Ok(())
+    }
+}
+
 pub fn isolate_process_tree(command: &mut tokio::process::Command) {
     #[cfg(unix)]
     unsafe {
@@ -129,6 +186,10 @@ pub fn contain_process_tree(pid: u32) -> std::io::Result<ProcessTreeGuard> {
         job: assign_process_to_new_job(pid)?,
     };
     if let Err(error) = resume_suspended_process(pid) {
+        // Closing a kill-on-close Job Object also terminates the child that is
+        // still suspended. Be explicit here so this error path cannot regress
+        // into leaking either the HANDLE or the child process.
+        drop(guard);
         return Err(error);
     }
     Ok(guard)
@@ -322,5 +383,19 @@ mod windows_tests {
             .expect("Job Object did not terminate the child")
             .expect("wait for terminated child");
         assert!(!status.success());
+    }
+
+    #[test]
+    fn synchronous_commands_run_inside_a_job_object() {
+        let output = output_contained(
+            Command::new("cmd.exe")
+                .args(["/D", "/S", "/C", "echo contained"])
+                .stdin(Stdio::null())
+                .stderr(Stdio::null()),
+        )
+        .expect("run contained synchronous child");
+
+        assert!(output.status.success());
+        assert!(String::from_utf8_lossy(&output.stdout).contains("contained"));
     }
 }

@@ -187,6 +187,38 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+  rust-windows:
+    name: Rust tests (Windows Job Objects)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> src-tauri/target
+
+      - name: Fetch compiler sidecars
+        shell: bash
+        run: |
+          bash scripts/fetch-tectonic.sh x86_64-pc-windows-msvc
+          bash scripts/fetch-biber.sh x86_64-pc-windows-msvc
+          bash scripts/fetch-typst.sh x86_64-pc-windows-msvc
+
+      - name: Stage checksum-pinned Tinymist resource archive
+        run: node scripts/fetch-language-servers.mjs --server tinymist --target x86_64-pc-windows-msvc --install-mode resource
+
+      - name: Run the native Windows test suite
+        run: cargo test --workspace --all-targets
+
   cargo-deny:
     # RustSec advisories plus a permissive-only license gate for everything
     # compiled into the shipped binary. Policy lives in src-tauri/deny.toml.

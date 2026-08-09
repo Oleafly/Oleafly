@@ -225,58 +225,8 @@ pub fn atomic_write(destination: &Path, bytes: &[u8]) -> Result<(), String> {
     transaction.commit()
 }
 
-#[cfg(not(windows))]
 fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
-    std::fs::rename(source, destination)
-}
-
-#[cfg(any(windows, test))]
-fn is_retryable_windows_replace_error_code(code: Option<i32>) -> bool {
-    // ERROR_ACCESS_DENIED can be returned while Defender or an indexer has a
-    // transient handle. The remaining values are the documented sharing,
-    // locking, and mapped-file conflicts emitted when a compiler is still
-    // releasing the destination.
-    matches!(code, Some(5 | 32 | 33 | 1224))
-}
-
-#[cfg(windows)]
-fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
-    use std::os::windows::ffi::OsStrExt;
-    use std::time::Duration;
-    use windows_sys::Win32::Storage::FileSystem::{
-        MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
-    };
-
-    const RETRY_DELAYS_MS: [u64; 9] = [10, 20, 40, 80, 160, 320, 500, 500, 500];
-    let source: Vec<u16> = source.as_os_str().encode_wide().chain(Some(0)).collect();
-    let destination: Vec<u16> = destination
-        .as_os_str()
-        .encode_wide()
-        .chain(Some(0))
-        .collect();
-
-    for attempt in 0..=RETRY_DELAYS_MS.len() {
-        let result = unsafe {
-            MoveFileExW(
-                source.as_ptr(),
-                destination.as_ptr(),
-                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
-            )
-        };
-        if result != 0 {
-            return Ok(());
-        }
-
-        let error = std::io::Error::last_os_error();
-        if attempt == RETRY_DELAYS_MS.len()
-            || !is_retryable_windows_replace_error_code(error.raw_os_error())
-        {
-            return Err(error);
-        }
-        std::thread::sleep(Duration::from_millis(RETRY_DELAYS_MS[attempt]));
-    }
-
-    unreachable!("the bounded Windows replacement loop always returns")
+    atomicwrites::replace_atomic(source, destination)
 }
 
 /// Best-effort directory fsync after a successful rename. Never fails the
@@ -359,17 +309,6 @@ mod tests {
         let ok = root.join("out.pdf");
         assert!(guard_export_dest(&ok.to_string_lossy()).is_ok());
         std::fs::remove_dir_all(&root).ok();
-    }
-
-    #[test]
-    fn classifies_only_transient_windows_replace_errors_as_retryable() {
-        for code in [5, 32, 33, 1224] {
-            assert!(is_retryable_windows_replace_error_code(Some(code)));
-        }
-        for code in [2, 3, 87, 112] {
-            assert!(!is_retryable_windows_replace_error_code(Some(code)));
-        }
-        assert!(!is_retryable_windows_replace_error_code(None));
     }
 
     #[test]

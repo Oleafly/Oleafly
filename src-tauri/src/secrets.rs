@@ -19,43 +19,8 @@ struct SecretLock {
     _guard: MutexGuard<'static, ()>,
 }
 
-#[cfg(unix)]
 fn lock_file(file: &std::fs::File) -> Result<(), String> {
-    use std::os::fd::AsRawFd;
-    if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) } == 0 {
-        Ok(())
-    } else {
-        Err(format!(
-            "failed to lock secret store: {}",
-            std::io::Error::last_os_error()
-        ))
-    }
-}
-
-#[cfg(windows)]
-fn lock_file(file: &std::fs::File) -> Result<(), String> {
-    use std::os::windows::io::AsRawHandle;
-    use windows_sys::Win32::Storage::FileSystem::{LockFileEx, LOCKFILE_EXCLUSIVE_LOCK};
-    use windows_sys::Win32::System::IO::OVERLAPPED;
-    let mut overlapped = OVERLAPPED::default();
-    let result = unsafe {
-        LockFileEx(
-            file.as_raw_handle() as _,
-            LOCKFILE_EXCLUSIVE_LOCK,
-            0,
-            u32::MAX,
-            u32::MAX,
-            &mut overlapped,
-        )
-    };
-    if result == 0 {
-        Err(format!(
-            "failed to lock secret store: {}",
-            std::io::Error::last_os_error()
-        ))
-    } else {
-        Ok(())
-    }
+    fs4::FileExt::lock(file).map_err(|error| format!("failed to lock secret store: {error}"))
 }
 
 fn lock_secrets(parent: &Path) -> Result<SecretLock, String> {
@@ -209,35 +174,8 @@ fn write_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
     })
 }
 
-#[cfg(not(windows))]
 fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
-    std::fs::rename(source, destination)
-}
-
-#[cfg(windows)]
-fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
-    use std::os::windows::ffi::OsStrExt;
-    use windows_sys::Win32::Storage::FileSystem::{
-        MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
-    };
-    let source: Vec<u16> = source.as_os_str().encode_wide().chain(Some(0)).collect();
-    let destination: Vec<u16> = destination
-        .as_os_str()
-        .encode_wide()
-        .chain(Some(0))
-        .collect();
-    let result = unsafe {
-        MoveFileExW(
-            source.as_ptr(),
-            destination.as_ptr(),
-            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
-        )
-    };
-    if result == 0 {
-        Err(std::io::Error::last_os_error())
-    } else {
-        Ok(())
-    }
+    atomicwrites::replace_atomic(source, destination)
 }
 
 fn load_or_create_key(path: &Path) -> Result<[u8; 32], String> {

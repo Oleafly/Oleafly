@@ -149,8 +149,8 @@ window.
 Your MCP client (Claude Desktop, Claude Code, and others) already asks you to approve tool use on its side before it ever calls Oleafly. Oleafly's own approval is a second, deeper gate that shows the actual change, and it is the one that still protects you after you click "Always allow" in the client. Choose how much of it you want with the **approval policy** in Settings:
 
 - **Confirm every change** (default): every write, rename, and delete shows an approval card in Oleafly (with a red/green diff when content rewrites, a rendered image for figures). The card floats as "External agent request (MCP)".
-- **Auto-approve edits, confirm deletes**: writes and renames apply immediately. Deletes still show a card. **Always allow writes** on a card sets this for the current session. After the renderer disconnects, approved edit types continue natively but deletes remain unavailable because they still require confirmation.
-- **Trust this connection**: backend writes and renames do not prompt. Deletion still requires a connected window. Use this only when you trust the client and its own approval controls.
+- **Auto-approve edits, confirm deletes**: writes and renames apply immediately while an Oleafly window owns the renderer session. Deletes still show a card. **Always allow writes** on a card sets this for the current session.
+- **Trust this connection**: mutating tools do not prompt, but still require an active Oleafly renderer to enforce the policy. Use this only when you trust the client and its own approval controls.
 - **Read-only mode** (separate toggle) removes mutating tools from `tools/list` entirely, so an external app can read and compile but never modify files, whatever the policy.
 - **Bearer token**: 256-bit random value stored in authenticated encrypted
   local storage under `~/.oleafly/`. `get_config` never sends the token to the
@@ -172,7 +172,7 @@ A cloud chat service cannot reach `127.0.0.1` on your machine. Use **Claude Desk
 | HTTP 401 | Token mismatch (e.g. after Regenerate). Copy the new token into the client. |
 | HTTP 403 | Client sent an `Origin` header or a non-loopback `Host`. Use a native MCP client, not a browser tab. |
 | Call timed out | Each tool call waits up to **5 minutes** (300 s) for compiles or for you to click Approve. Approve or reject pending cards, or retry. |
-| Tool requires an active window | The tool needs UI state or confirmation. Open an Oleafly window and retry. Native file tools remain available without the renderer when their approval policy permits the operation. |
+| Tool requires an active window | The tool mutates state or needs UI context. Open an Oleafly window and retry. Only bounded read-only file tools remain available without the renderer. |
 | Cannot connect | The Oleafly application process must be running with MCP enabled. The server does not run after the application quits. |
 
 ## Non-goals (for now)

@@ -129,10 +129,9 @@ pub fn reveal_in_dir(path: String, state: State<'_, AppState>) -> Result<(), Str
     let path = canonical.to_string_lossy().to_string();
     #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("open")
-            .no_console()
-            .args(["-R", &path])
-            .spawn()
+        let mut command = std::process::Command::new("open");
+        command.no_console().args(["-R", &path]);
+        crate::proc::spawn_contained(&mut command)
             .map_err(|e| format!("failed to open Finder: {e}"))?;
     }
     #[cfg(target_os = "windows")]
@@ -146,10 +145,9 @@ pub fn reveal_in_dir(path: String, state: State<'_, AppState>) -> Result<(), Str
             .map(|rest| format!(r"\\{rest}"))
             .or_else(|| path.strip_prefix(r"\\?\").map(str::to_string))
             .unwrap_or_else(|| path.clone());
-        std::process::Command::new("explorer")
-            .no_console()
-            .arg(format!("/select,{display}"))
-            .spawn()
+        let mut command = std::process::Command::new("explorer");
+        command.no_console().arg(format!("/select,{display}"));
+        crate::proc::spawn_contained(&mut command)
             .map_err(|e| format!("failed to open Explorer: {e}"))?;
     }
     #[cfg(all(unix, not(target_os = "macos")))]
@@ -158,10 +156,9 @@ pub fn reveal_in_dir(path: String, state: State<'_, AppState>) -> Result<(), Str
             .parent()
             .map(|d| d.to_string_lossy().into_owned())
             .unwrap_or(path.clone());
-        std::process::Command::new("xdg-open")
-            .no_console()
-            .arg(&dir)
-            .spawn()
+        let mut command = std::process::Command::new("xdg-open");
+        command.no_console().arg(&dir);
+        crate::proc::spawn_contained(&mut command)
             .map_err(|e| format!("failed to open file manager: {e}"))?;
     }
     Ok(())

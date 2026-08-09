@@ -83,6 +83,27 @@ fn unreadable_configuration_disables_every_mutating_tool() {
 }
 
 #[test]
+fn no_renderer_rejects_mutations_under_every_approval_policy() {
+    for policy in ["ask", "auto_writes", "trust"] {
+        for name in [
+            "write_file",
+            "replace_in_file",
+            "create_file",
+            "rename_file",
+            "delete_file",
+        ] {
+            assert_eq!(
+                tool_route(name, policy, false),
+                ToolRoute::RejectNoRenderer,
+                "{name} under {policy}"
+            );
+        }
+    }
+    assert_eq!(tool_route("read_file", "trust", false), ToolRoute::Native);
+    assert_eq!(tool_route("write_file", "trust", true), ToolRoute::Renderer);
+}
+
+#[test]
 fn readiness_waits_for_both_start_and_nonempty_registration_in_either_order() {
     let epoch = 7;
 

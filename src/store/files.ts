@@ -1058,12 +1058,20 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (!isDir) await get().openFile(path);
   },
 
-  deleteEntry: async (path) => {
+  deleteEntry: (path) => enqueueProjectTransition(async () => {
     const { projectId } = get();
     if (!projectId) return;
 
     const isDeletedPath = (candidate: string) =>
       candidate === path || candidate.startsWith(`${path}/`);
+    const unsaved = Object.entries(get().files)
+      .filter(([candidate, file]) => isDeletedPath(candidate) && file.dirty)
+      .map(([candidate]) => candidate);
+    if (unsaved.length > 0) {
+      throw new Error(
+        `Save or close the unsaved file${unsaved.length === 1 ? "" : "s"} before deleting: ${unsaved.join(", ")}`,
+      );
+    }
     // A queued autosave must not recreate a file after the backend removes it.
     // Let already-running writes settle, discard queued snapshots for the
     // deleted subtree, and then perform the delete.
@@ -1088,7 +1096,8 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       if (writes.length > 0) await Promise.allSettled(writes);
       if (get().projectId !== projectId) return;
 
-      const result = await apiDeleteFile(projectId, path);
+      const expectedGeneration = await refreshMutationGeneration(projectId);
+      const result = await apiDeleteFile(projectId, path, expectedGeneration);
       if (Number.isSafeInteger(result?.generation)) {
         rememberMutationGeneration(projectId, result.generation);
       }
@@ -1130,17 +1139,25 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       }
       scheduleAutosave(get);
     }
-  },
+  }),
 
-  renameEntry: async (from, to, conflictStrategy = "error") => {
+  renameEntry: (from, to, conflictStrategy = "error") => enqueueProjectTransition(async () => {
     const { projectId } = get();
     if (!projectId) return to;
     const previousMainDoc = get().mainDoc;
     // A pending write to the old path could otherwise recreate it after the
     // filesystem move. Drain all dirty buffers through the per-path queue first.
     await flushDirtyBuffers(projectId, get);
-    const destination = await apiRenameFile(projectId, from, to, conflictStrategy);
-    void refreshMutationGeneration(projectId).catch(() => {});
+    await drainProjectWrites(projectId);
+    const expectedGeneration = await refreshMutationGeneration(projectId);
+    const destination = await apiRenameFile(
+      projectId,
+      from,
+      to,
+      conflictStrategy,
+      expectedGeneration,
+    );
+    await refreshMutationGeneration(projectId);
     // Follow the moved/renamed path in memory so an open tab, its buffer, the
     // active file, and the main-doc pointer don't go stale (also handles folder
     // moves, which carry every descendant path with them).
@@ -1205,9 +1222,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
     await get().refreshTree();
     return destination;
-  },
+  }),
 
-  copyEntry: async (path, isDir = false) => {
+  copyEntry: (path, isDir = false) => enqueueProjectTransition(async () => {
     const { projectId } = get();
     if (!projectId) return;
     const slash = path.lastIndexOf("/");
@@ -1220,7 +1237,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const ext = dot > 0 ? file.slice(dot) : "";
     const to = dir ? `${dir}/${base} copy${ext}` : `${base} copy${ext}`;
     try {
-      const result = await apiCopyFile(projectId, path, to);
+      await drainProjectWrites(projectId);
+      const expectedGeneration = await refreshMutationGeneration(projectId);
+      const result = await apiCopyFile(projectId, path, to, expectedGeneration);
       if (Number.isSafeInteger(result?.generation)) {
         rememberMutationGeneration(projectId, result.generation);
       }
@@ -1228,13 +1247,20 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     } catch (e) {
       notifyError("copy file", e, `Could not copy "${path}".`);
     }
-  },
+  }),
 
-  importPaths: async (destDir, sourcePaths) => {
+  importPaths: (destDir, sourcePaths) => enqueueProjectTransition(async () => {
     const { projectId } = get();
     if (!projectId || sourcePaths.length === 0) return;
     try {
-      const result = await apiImportPathsIntoProject(projectId, destDir, sourcePaths);
+      await drainProjectWrites(projectId);
+      const expectedGeneration = await refreshMutationGeneration(projectId);
+      const result = await apiImportPathsIntoProject(
+        projectId,
+        destDir,
+        sourcePaths,
+        expectedGeneration,
+      );
       if (Number.isSafeInteger(result?.generation)) {
         rememberMutationGeneration(projectId, result.generation);
       }
@@ -1242,7 +1268,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     } catch (e) {
       notifyError("import files", e, "Could not import. See the app log for details.");
     }
-  },
+  }),
 
   prepareExternalMutation: async (projectId) => {
     if (get().projectId !== projectId) {

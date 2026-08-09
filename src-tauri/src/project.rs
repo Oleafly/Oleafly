@@ -2138,7 +2138,13 @@ async fn set_main_doc_synchronized(
     // switch therefore happens wholly before or wholly after a compile, never
     // between its final identity check and revision allocation.
     let _guard = state.compile_lock.lock().await;
-    set_main_doc_unlocked(project_id, main_doc)
+    tauri::async_runtime::spawn_blocking(move || {
+        let coordinator = project_mutation_coordinator(&project_id)?;
+        let _operation = lock_unpoisoned(&coordinator.operation);
+        set_main_doc_unlocked(project_id, main_doc)
+    })
+    .await
+    .map_err(|error| format!("main-document update task failed: {error}"))?
 }
 
 #[tauri::command]

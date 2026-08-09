@@ -392,8 +392,7 @@ jobs:
           gh release upload "$TAG" latest.json --repo "$GITHUB_REPOSITORY" --clobber
 
   provider-live:
-    name: Live Anthropic and Google contracts
-    if: ${{ inputs.publish == true }}
+    name: Release-candidate live provider contracts
     runs-on: macos-14
     timeout-minutes: 45
     permissions:
@@ -529,7 +528,7 @@ jobs:
   # artifact and updater-feed checks as a publish - it just never flips live.
   draft-ready:
     name: Draft is complete (not published)
-    needs: [build, finalize-updater]
+    needs: [build, finalize-updater, provider-live]
     if: ${{ always() && inputs.publish != true }}
     runs-on: ubuntu-22.04
     permissions:
@@ -546,8 +545,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${{ needs.build.result }}" != "success" ] || [ "${{ needs['finalize-updater'].result }}" != "success" ]; then
-            echo "build or updater finalization did not succeed; the draft is incomplete" >&2
+          if [ "${{ needs.build.result }}" != "success" ] || [ "${{ needs['finalize-updater'].result }}" != "success" ] || [ "${{ needs['provider-live'].result }}" != "success" ]; then
+            echo "build, updater finalization, or live-provider validation did not succeed; the draft is incomplete" >&2
             exit 1
           fi
           assets="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
