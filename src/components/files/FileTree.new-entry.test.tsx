@@ -72,6 +72,29 @@ describe("NewEntryInput accessibility", () => {
 
     expect(onSubmit).toHaveBeenCalledOnce();
   });
+
+  it("cancels without submitting when Escape removes and blurs the field", () => {
+    const onSubmit = vi.fn();
+    const onCancel = vi.fn();
+    render(
+      <NewEntryInput
+        mode="file"
+        value="notes.tex"
+        depth={0}
+        parentPath=""
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+
+    const input = screen.getByRole("textbox", { name: "New file name in project root" });
+    fireEvent.keyDown(input, { key: "Escape" });
+    fireEvent.blur(input);
+
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });
 
 describe("RenameEntryInput", () => {
