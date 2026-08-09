@@ -1,10 +1,12 @@
 # Self-contained e2e run for Windows. A full suite launches a fresh real app
 # for every spec while retaining one throwaway data directory across the run.
-# Usage: powershell -File scripts/e2e.ps1 [--suite-max-failures=N] [playwright args...]
+# Usage: powershell -File scripts/e2e.ps1 [--suite-max-failures=N] [--shard=K/N] [playwright args...]
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 
 $suiteMaxFailures = 0
+$shardIndex = 0
+$shardTotal = 0
 $playwrightArgs = [System.Collections.Generic.List[string]]::new()
 for ($index = 0; $index -lt $args.Count; $index++) {
   $argument = [string]$args[$index]
@@ -16,6 +18,14 @@ for ($index = 0; $index -lt $args.Count; $index++) {
       throw "--suite-max-failures requires a non-negative integer"
     }
     $suiteMaxFailures = [int]$args[$index]
+  } elseif ($argument -match "^--shard=(\d+)/(\d+)$") {
+    $shardIndex = [int]$Matches[1]
+    $shardTotal = [int]$Matches[2]
+    if ($shardIndex -lt 1 -or $shardIndex -gt $shardTotal) {
+      throw "--shard must look like K/N with 1 <= K <= N (e.g. 2/4)"
+    }
+  } elseif ($argument -like "--shard*") {
+    throw "--shard must look like K/N (e.g. 2/4)"
   } else {
     $playwrightArgs.Add($argument)
   }
@@ -172,6 +182,25 @@ try {
     $code = 0
     $failures = 0
     $specs = Get-ChildItem -Path "e2e/tests" -Filter "*.spec.ts" | Sort-Object Name
+    if ($shardTotal -gt 0) {
+      # Round-robin split for parallel CI runners, matching scripts/e2e.sh.
+      # Every shard gets 02-create-compile first: it creates the shared
+      # "E2E Doc" project and warms the compile path later specs assume.
+      $anchor = "02-create-compile.spec.ts"
+      $selected = [System.Collections.Generic.List[object]]::new()
+      foreach ($spec in $specs) {
+        if ($spec.Name -eq $anchor) { $selected.Add($spec) }
+      }
+      $position = 0
+      foreach ($spec in $specs) {
+        if ($spec.Name -ne $anchor -and ($position % $shardTotal) -eq ($shardIndex - 1)) {
+          $selected.Add($spec)
+        }
+        $position++
+      }
+      $specs = $selected
+      Write-Host "e2e: shard $shardIndex/$shardTotal runs $($specs.Count) spec file(s)"
+    }
     foreach ($spec in $specs) {
       $label = $spec.Name
       $specPath = "e2e/tests/$($spec.Name)"
