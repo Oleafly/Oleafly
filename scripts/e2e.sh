@@ -174,8 +174,6 @@ SKIPPED_LIST="$(mktemp)"
 run_playwright() {
   local label="$1"
   shift
-  local safe_label="${label//[^A-Za-z0-9._-]/-}"
-  local output_dir="test-results/$safe_label"
   echo "e2e: starting ${label} at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   start_heartbeat "$label"
   local status=0
@@ -183,8 +181,9 @@ run_playwright() {
   captured="$(mktemp)"
   # pipefail is set, so this still reports Playwright's status, not tee's.
   pnpm exec playwright test -c e2e/playwright.config.ts \
-    "--output=$output_dir" "$@" 2>&1 | tee "$captured" || status=$?
+    "$@" 2>&1 | tee "$captured" || status=$?
   stop_heartbeat
+  preserve_run_artifacts "$label"
   # A skipped test is not coverage. Collect them so the final summary can say
   # so out loud instead of letting "0 failed" imply everything was exercised.
   local skipped
@@ -200,6 +199,26 @@ run_playwright() {
     echo "e2e: failed ${label} with exit code ${status}" >&2
   fi
   return "$status"
+}
+
+preserve_run_artifacts() {
+  local label="$1"
+  local safe_label="${label//[^A-Za-z0-9._-]/-}"
+  local result_dir="e2e-artifacts/$safe_label"
+  rm -rf "$result_dir"
+  mkdir -p "$result_dir"
+  if [ -d test-results ]; then
+    while IFS= read -r file; do
+      local relative="${file#test-results/}"
+      local destination="$result_dir/playwright/$relative"
+      mkdir -p "$(dirname "$destination")"
+      cp "$file" "$destination"
+    done < <(find test-results -type f \( -name error-context.md -o -name trace.zip -o -name '*.log' \))
+  fi
+  [ -z "$LOG" ] || cp "$LOG" "$result_dir/app.log" 2>/dev/null || true
+  if [ -n "$DATA_DIR" ] && [ -f "$DATA_DIR/app.log" ]; then
+    cp "$DATA_DIR/app.log" "$result_dir/user-app.log" 2>/dev/null || true
+  fi
 }
 
 # The suite launches an app per spec file. If a previous app has not released

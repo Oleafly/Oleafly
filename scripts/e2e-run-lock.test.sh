@@ -73,10 +73,14 @@ case "$powershell_launcher" in
   *) exit 1 ;;
 esac
 case "$launcher" in
-  *'local output_dir="test-results/$safe_label"'*'"--output=$output_dir"'*) ;;
+  *'preserve_run_artifacts "$label"'*'local result_dir="e2e-artifacts/$safe_label"'*'find test-results -type f'*) ;;
   *) exit 1 ;;
 esac
 case "$powershell_launcher" in
-  *'$outputDir = "test-results/$safeLabel"'*'"--output=$outputDir"'*'$resultDir = Join-Path "test-results" $safeLabel'*) ;;
+  *'Preserve-RunArtifacts $label'*'$resultDir = Join-Path "e2e-artifacts" $safeLabel'*'Get-ChildItem -Path "test-results" -Recurse -File'*) ;;
   *) exit 1 ;;
+esac
+case "$launcher$powershell_launcher" in
+  *'--output='*) exit 1 ;;
+  *) ;;
 esac

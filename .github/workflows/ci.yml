@@ -455,6 +455,9 @@ jobs:
             test-results/**/error-context.md
             test-results/**/trace.zip
             test-results/**/*.log
+            e2e-artifacts/**/error-context.md
+            e2e-artifacts/**/trace.zip
+            e2e-artifacts/**/*.log
             e2e-debug/**
           retention-days: 7
           if-no-files-found: ignore
@@ -595,6 +598,9 @@ jobs:
             test-results/**/error-context.md
             test-results/**/trace.zip
             test-results/**/*.log
+            e2e-artifacts/**/error-context.md
+            e2e-artifacts/**/trace.zip
+            e2e-artifacts/**/*.log
           retention-days: 7
           if-no-files-found: ignore
 
@@ -724,5 +730,8 @@ jobs:
             test-results/**/error-context.md
             test-results/**/trace.zip
             test-results/**/*.log
+            e2e-artifacts/**/error-context.md
+            e2e-artifacts/**/trace.zip
+            e2e-artifacts/**/*.log
           retention-days: 7
           if-no-files-found: ignore
