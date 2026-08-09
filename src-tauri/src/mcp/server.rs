@@ -470,5 +470,8 @@ use discovery::write_discovery_file_at;
 use discovery::{ensure_token, remove_discovery_file_checked, write_discovery_file};
 pub use discovery::{remove_discovery_file, rewrite_discovery_file};
 #[cfg(test)]
+#[path = "server_pending_tests.rs"]
+mod pending_tests;
+#[cfg(test)]
 #[path = "server_tests.rs"]
 mod tests;

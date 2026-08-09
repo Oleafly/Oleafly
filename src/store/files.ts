@@ -378,6 +378,97 @@ async function flushDirtyBuffers(projectId: string, get: () => FilesStore): Prom
   }
 }
 
+function assertNoUnsavedBuffers(
+  get: () => FilesStore,
+  isDeletedPath: (candidate: string) => boolean,
+): void {
+  const unsaved = Object.entries(get().files)
+    .filter(([candidate, file]) => isDeletedPath(candidate) && file.dirty)
+    .map(([candidate]) => candidate);
+  if (unsaved.length > 0) {
+    throw new Error(
+      `Save or close the unsaved file${unsaved.length === 1 ? "" : "s"} before deleting: ${unsaved.join(", ")}`,
+    );
+  }
+}
+
+// A queued autosave must not recreate a file after the backend removes it.
+// Let already-running writes settle, discard queued snapshots for the
+// deleted subtree, and then perform the delete.
+function discardQueuedSavesUnder(
+  projectId: string,
+  isDeletedPath: (candidate: string) => boolean,
+): { discardedPending: Set<string>; writes: Promise<number>[] } {
+  stopAutosaveTimer();
+  const discardedPending = new Set<string>();
+  for (const pendingPath of [...pendingSaves]) {
+    if (isDeletedPath(pendingPath)) {
+      pendingSaves.delete(pendingPath);
+      discardedPending.add(pendingPath);
+    }
+  }
+  const writes = [...pendingWrites.entries()]
+    .filter(([key]) => isDeletedPath(key.slice(projectId.length + 1)))
+    .map(([, write]) => write);
+  return { discardedPending, writes };
+}
+
+function pruneDeletedPaths(s: FilesStore, isDeletedPath: (candidate: string) => boolean) {
+  const files = Object.fromEntries(
+    Object.entries(s.files).filter(([candidate]) => !isDeletedPath(candidate)),
+  );
+  const tabOrder = Object.fromEntries(
+    Object.entries(s.tabOrder).filter(([candidate]) => !isDeletedPath(candidate)),
+  );
+  const openTabs = s.openTabs.filter((candidate) => !isDeletedPath(candidate));
+  const deletedActive = !!s.activePath && isDeletedPath(s.activePath);
+  return {
+    files,
+    tabOrder,
+    openTabs,
+    activePath: deletedActive ? (openTabs.at(-1) ?? null) : s.activePath,
+  };
+}
+
+function restoreDiscardedSaves(
+  get: () => FilesStore,
+  projectId: string,
+  discardedPending: Set<string>,
+): void {
+  const current = get();
+  if (current.projectId !== projectId) return;
+  for (const pendingPath of discardedPending) {
+    if (current.files[pendingPath]?.dirty) pendingSaves.add(pendingPath);
+  }
+}
+
+async function reopenMainDocAfterDelete(
+  get: () => FilesStore,
+  projectId: string,
+  isDeletedPath: (candidate: string) => boolean,
+): Promise<void> {
+  const current = get();
+  if (
+    current.projectId === projectId &&
+    !current.activePath &&
+    !isDeletedPath(current.mainDoc)
+  ) {
+    await current.openFile(current.mainDoc);
+  }
+}
+
+// Only split off an extension for files; a folder name is copied whole (so
+// "v1.0" doesn't become "v1 copy.0").
+function copyDestinationFor(path: string, isDir: boolean): string {
+  const slash = path.lastIndexOf("/");
+  const dir = slash >= 0 ? path.slice(0, slash) : "";
+  const file = slash >= 0 ? path.slice(slash + 1) : path;
+  const dot = isDir ? -1 : file.lastIndexOf(".");
+  const base = dot > 0 ? file.slice(0, dot) : file;
+  const ext = dot > 0 ? file.slice(dot) : "";
+  return dir ? `${dir}/${base} copy${ext}` : `${base} copy${ext}`;
+}
+
 function enqueueProjectTransition<T>(operation: () => Promise<T>): Promise<T> {
   const queued = projectTransition.catch(() => {}).then(operation);
   projectTransition = queued.then(
@@ -1064,33 +1155,10 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
     const isDeletedPath = (candidate: string) =>
       candidate === path || candidate.startsWith(`${path}/`);
-    const unsaved = Object.entries(get().files)
-      .filter(([candidate, file]) => isDeletedPath(candidate) && file.dirty)
-      .map(([candidate]) => candidate);
-    if (unsaved.length > 0) {
-      throw new Error(
-        `Save or close the unsaved file${unsaved.length === 1 ? "" : "s"} before deleting: ${unsaved.join(", ")}`,
-      );
-    }
-    // A queued autosave must not recreate a file after the backend removes it.
-    // Let already-running writes settle, discard queued snapshots for the
-    // deleted subtree, and then perform the delete.
-    stopAutosaveTimer();
-    const discardedPending = new Set<string>();
-    for (const pendingPath of [...pendingSaves]) {
-      if (isDeletedPath(pendingPath)) {
-        pendingSaves.delete(pendingPath);
-        discardedPending.add(pendingPath);
-      }
-    }
+    assertNoUnsavedBuffers(get, isDeletedPath);
+    const { discardedPending, writes } = discardQueuedSavesUnder(projectId, isDeletedPath);
     // Deleting one subtree must not suspend autosave for unrelated buffers.
     scheduleAutosave(get);
-    const writes = [...pendingWrites.entries()]
-      .filter(([key]) => {
-        const pendingPath = key.slice(projectId.length + 1);
-        return isDeletedPath(pendingPath);
-      })
-      .map(([, write]) => write);
     let deleted = false;
     try {
       if (writes.length > 0) await Promise.allSettled(writes);
@@ -1104,39 +1172,11 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       deleted = true;
       if (get().projectId !== projectId) return;
 
-      set((s) => {
-        if (s.projectId !== projectId) return {};
-        const files = Object.fromEntries(
-          Object.entries(s.files).filter(([candidate]) => !isDeletedPath(candidate)),
-        );
-        const tabOrder = Object.fromEntries(
-          Object.entries(s.tabOrder).filter(([candidate]) => !isDeletedPath(candidate)),
-        );
-        const openTabs = s.openTabs.filter((candidate) => !isDeletedPath(candidate));
-        const deletedActive = !!s.activePath && isDeletedPath(s.activePath);
-        return {
-          files,
-          tabOrder,
-          openTabs,
-          activePath: deletedActive ? (openTabs.at(-1) ?? null) : s.activePath,
-        };
-      });
+      set((s) => (s.projectId === projectId ? pruneDeletedPaths(s, isDeletedPath) : {}));
       await get().refreshTree();
-      const current = get();
-      if (
-        current.projectId === projectId &&
-        !current.activePath &&
-        !isDeletedPath(current.mainDoc)
-      ) {
-        await current.openFile(current.mainDoc);
-      }
+      await reopenMainDocAfterDelete(get, projectId, isDeletedPath);
     } finally {
-      if (!deleted && get().projectId === projectId) {
-        const current = get();
-        for (const pendingPath of discardedPending) {
-          if (current.files[pendingPath]?.dirty) pendingSaves.add(pendingPath);
-        }
-      }
+      if (!deleted) restoreDiscardedSaves(get, projectId, discardedPending);
       scheduleAutosave(get);
     }
   }),
@@ -1227,15 +1267,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   copyEntry: (path, isDir = false) => enqueueProjectTransition(async () => {
     const { projectId } = get();
     if (!projectId) return;
-    const slash = path.lastIndexOf("/");
-    const dir = slash >= 0 ? path.slice(0, slash) : "";
-    const file = slash >= 0 ? path.slice(slash + 1) : path;
-    // Only split off an extension for files; a folder name is copied whole (so
-    // "v1.0" doesn't become "v1 copy.0").
-    const dot = isDir ? -1 : file.lastIndexOf(".");
-    const base = dot > 0 ? file.slice(0, dot) : file;
-    const ext = dot > 0 ? file.slice(dot) : "";
-    const to = dir ? `${dir}/${base} copy${ext}` : `${base} copy${ext}`;
+    const to = copyDestinationFor(path, isDir);
     try {
       await drainProjectWrites(projectId);
       const expectedGeneration = await refreshMutationGeneration(projectId);
