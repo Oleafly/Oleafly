@@ -219,7 +219,9 @@ jobs:
         run: node scripts/fetch-language-servers.mjs --server tinymist --target x86_64-pc-windows-msvc --install-mode resource
 
       - name: Run the native Windows test suite
-        run: cargo test --workspace --all-targets
+        env:
+          OLEAFLY_EMBED_TEST_MANIFEST: "1"
+        run: cargo test --workspace --lib
 
   cargo-deny:
     # RustSec advisories plus a permissive-only license gate for everything

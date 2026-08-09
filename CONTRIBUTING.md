@@ -77,6 +77,15 @@ pnpm test                    # frontend unit tests (Vitest)
 cargo test --workspace --all-targets  # Rust workspace tests
 ```
 
+On Windows, run the Rust tests as
+`OLEAFLY_EMBED_TEST_MANIFEST=1 cargo test --workspace --lib` (PowerShell:
+`$env:OLEAFLY_EMBED_TEST_MANIFEST="1"`). The variable makes the build script
+link a Common Controls v6 manifest into test binaries; without it they exit
+with `STATUS_ENTRYPOINT_NOT_FOUND` before running, because only the packaged
+app binary receives the manifest that Tauri normally embeds. Leave the
+variable unset for `cargo build` and `pnpm tauri` commands so the app binary
+keeps its single embedded manifest.
+
 Backend logic that touches the filesystem, git, or user paths **must** have a
 test. The path-sandboxing helpers (`resolve_within`, `validate_project_id`) and
 log/URL parsers are covered in `#[cfg(test)]` modules - extend them when you
