@@ -35,6 +35,12 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   reporter: [["list"]],
+  // Playwright enables diff capture in CI and fetches the PR base SHA for
+  // every invocation. On Windows that three-second fetch can time out without
+  // terminating the child process, eventually overflowing Playwright's stdout
+  // buffer before any test starts. The list reporter does not consume the
+  // source diff, so keep commit metadata while skipping that remote operation.
+  captureGitInfo: { diff: false },
   // Trace on failure is small and debuggable; video is off (the driver's macOS
   // screencast bloated failure artifacts to hundreds of MB and ate runner disk).
   use: { trace: "retain-on-failure", video: "off", screenshot: "only-on-failure" },
