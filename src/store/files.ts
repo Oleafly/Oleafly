@@ -39,6 +39,7 @@ import {
 } from "@/lib/tauri";
 import { UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { flushAutoCommit, scheduleAutoCommit } from "@/lib/auto-commit";
+import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { scanImportCompatibility } from "@oleafly/latex";
 import { cancelProofreading } from "@/lib/proofreading/client";
@@ -402,8 +403,8 @@ async function scanOpenProjectCompatibility(
     if (seq !== openSeq) return;
     const findings = scanImportCompatibility({ texFiles, latexmkrc });
     showCompatibilityFindings(id, findings, get);
-  } catch {
-    return;
+  } catch (error) {
+    void logError("scan project compatibility", error);
   }
 }
 
@@ -425,15 +426,25 @@ async function loadCompatibilityInputs(
     .slice(0, 40);
   const texFiles: Array<{ path: string; content: string }> = [];
   for (const path of texPaths) {
-    const content = get().files[path]?.content ?? (await readFileContent(id, path).catch(() => ""));
+    const content =
+      get().files[path]?.content ?? (await readCompatibilityInput(id, path)) ?? "";
     if (seq !== openSeq) break;
     if (content) texFiles.push({ path, content });
   }
   const rcName = ["latexmkrc", ".latexmkrc"].find((name) =>
     tree.some((entry) => !entry.is_dir && entry.path === name),
   );
-  const latexmkrc = rcName ? await readFileContent(id, rcName).catch(() => null) : null;
+  const latexmkrc = rcName ? await readCompatibilityInput(id, rcName) : null;
   return { texFiles, latexmkrc };
+}
+
+async function readCompatibilityInput(id: string, path: string): Promise<string | null> {
+  try {
+    return await readFileContent(id, path);
+  } catch (error) {
+    void logError("scan project compatibility", error);
+    return null;
+  }
 }
 
 function isTexSourcePath(path: string): boolean {
@@ -592,7 +603,8 @@ async function preloadBibliographies(
       set((state) => ({
         files: { ...state.files, [bibliography.path]: { content, dirty: false } },
       }));
-    } catch {
+    } catch (error) {
+      void logError("preload bibliography", error);
     }
   }
 }

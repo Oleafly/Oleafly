@@ -1085,10 +1085,10 @@ impl MutationAdmission {
     }
 
     fn run<T>(self, operation: impl FnOnce() -> Result<T, String>) -> Result<(T, u64), String> {
-        self.run_maybe(|| operation().map(|value| (value, true)))
+        self.run_with_change_status(|| operation().map(|value| (value, true)))
     }
 
-    fn run_maybe<T>(
+    fn run_with_change_status<T>(
         mut self,
         operation: impl FnOnce() -> Result<(T, bool), String>,
     ) -> Result<(T, u64), String> {
@@ -1156,7 +1156,7 @@ where
     let _compile = state.compile_lock.lock().await;
     let _figure_compile = state.figure_compile_lock.lock().await;
     tauri::async_runtime::spawn_blocking(move || {
-        let ((value, project), generation) = admission.run_maybe(|| {
+        let ((value, project), generation) = admission.run_with_change_status(|| {
             with_project_metadata(&project_id, || {
                 let root = paths::project_dir(&project_id)?;
                 let pre_state = read_meta(&project_id)?;
@@ -1401,7 +1401,7 @@ pub(crate) fn rename_file_blocking(
         expected_generation,
     )?;
     let strategy = conflict_strategy.unwrap_or_default();
-    let (result, generation) = admission.run_maybe(|| {
+    let (result, generation) = admission.run_with_change_status(|| {
         with_project_metadata(&project_id, || {
             let root = paths::project_dir(&project_id)?;
             let meta = read_meta(&project_id)?;
@@ -4913,7 +4913,7 @@ async fn delete_project_synchronized(
     let _compile = state.compile_lock.lock().await;
     let _figure_compile = state.figure_compile_lock.lock().await;
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        let ((), _) = admission.run_maybe(|| {
+        let ((), _) = admission.run_with_change_status(|| {
             with_project_metadata(&project_id, || {
                 let root = paths::projects_root()?
                     .canonicalize()
