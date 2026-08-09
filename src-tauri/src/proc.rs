@@ -11,7 +11,7 @@
 //! `no_console()` is a no-op on macOS and Linux, where a spawned child has no
 //! console window to hide; those platforms compile the trivial branch.
 
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 /// `CREATE_NO_WINDOW` (winbase.h): the child runs without allocating a console.
 #[cfg(windows)]
@@ -57,6 +57,14 @@ impl NoConsole for tokio::process::Command {
 /// Run a synchronous command while applying the same Windows Job Object
 /// containment used by async compiler and language-server children.
 pub fn output_contained(command: &mut Command) -> std::io::Result<std::process::Output> {
+    // `Command::output` configures these streams for the caller, but the
+    // Windows path has to use `spawn` so the suspended child can be assigned
+    // to its Job Object before it starts. Reproduce `output` semantics before
+    // spawning or `wait_with_output` has no pipes to collect.
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -341,7 +349,6 @@ pub async fn terminate_process_tree(pid: u32) {
 #[cfg(all(test, windows))]
 mod windows_tests {
     use super::*;
-    use std::process::Stdio;
     use std::time::Duration;
 
     #[tokio::test]
@@ -387,15 +394,16 @@ mod windows_tests {
 
     #[test]
     fn synchronous_commands_run_inside_a_job_object() {
-        let output = output_contained(
-            Command::new("cmd.exe")
-                .args(["/D", "/S", "/C", "echo contained"])
-                .stdin(Stdio::null())
-                .stderr(Stdio::null()),
-        )
+        let output = output_contained(Command::new("cmd.exe").args([
+            "/D",
+            "/S",
+            "/C",
+            "echo contained-out & echo contained-err 1>&2",
+        ]))
         .expect("run contained synchronous child");
 
         assert!(output.status.success());
-        assert!(String::from_utf8_lossy(&output.stdout).contains("contained"));
+        assert!(String::from_utf8_lossy(&output.stdout).contains("contained-out"));
+        assert!(String::from_utf8_lossy(&output.stderr).contains("contained-err"));
     }
 }
