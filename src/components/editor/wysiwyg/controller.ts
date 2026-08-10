@@ -3,6 +3,10 @@ import type { Editor } from "@tiptap/react";
 let editor: Editor | null = null;
 let visible = false;
 let setVisibility: ((visible: boolean) => void) | null = null;
+let flushPendingEdits: (() => void) | null = null;
+// Distinguishes two mounts of the same project across close/reopen. Project ID
+// alone cannot reject a late cleanup from the earlier mount.
+let projectSessionGeneration = 0;
 let projectNavigation: {
   goToDefinition: () => boolean;
   findReferences: () => boolean;
@@ -30,6 +34,23 @@ export function setWysiwygVisibilityController(
   controller: ((visible: boolean) => void) | null,
 ) {
   setVisibility = controller;
+}
+
+export function setWysiwygFlushController(controller: (() => void) | null) {
+  flushPendingEdits = controller;
+}
+
+export function flushWysiwygPendingEdits() {
+  flushPendingEdits?.();
+}
+
+export function invalidateWysiwygProjectSession() {
+  flushPendingEdits = null;
+  projectSessionGeneration++;
+}
+
+export function getWysiwygProjectSessionGeneration(): number {
+  return projectSessionGeneration;
 }
 
 /**

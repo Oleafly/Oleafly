@@ -141,7 +141,8 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
     15_000,
   );
   // Reopening the project runs the import scan against the Tectonic engine.
-  await tauriPage.click('[title="Back to library"]');
+  // openProject owns the library transition. Clicking Home here as well races
+  // its readiness check against the outgoing workspace.
   await openProject(tauriPage, "minted-gap");
   await waitLong(
     tauriPage,

@@ -519,8 +519,19 @@ export function NewEntryInput({
 }) {
   const inputRef = useInitialFocus<HTMLInputElement>();
   const inputId = useId();
+  const finalizedRef = useRef(false);
   const entryKind = mode === "dir" ? "folder" : "file";
   const destination = parentPath ? `folder ${parentPath}` : "project root";
+  const submitOnce = () => {
+    if (finalizedRef.current) return;
+    finalizedRef.current = true;
+    onSubmit();
+  };
+  const cancelOnce = () => {
+    if (finalizedRef.current) return;
+    finalizedRef.current = true;
+    onCancel();
+  };
   return (
     <div style={{ paddingLeft: `${depth * 12 + 8}px` }} className="py-0.5">
       <label htmlFor={inputId} className="sr-only">
@@ -531,13 +542,58 @@ export function NewEntryInput({
         ref={inputRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onBlur={onSubmit}
+        onBlur={submitOnce}
         onKeyDown={(e) => {
-          if (e.key === "Enter") onSubmit();
-          if (e.key === "Escape") onCancel();
+          if (e.key === "Enter") submitOnce();
+          if (e.key === "Escape") cancelOnce();
         }}
         placeholder={mode === "dir" ? "New folder name" : "New file name"}
         className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+      />
+    </div>
+  );
+}
+
+export function RenameEntryInput({
+  value,
+  depth,
+  onChange,
+  onSubmit,
+  onCancel,
+}: {
+  value: string;
+  depth: number;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+}) {
+  const inputRef = useInitialFocus<HTMLInputElement>();
+  const finalizedRef = useRef(false);
+  const submitOnce = () => {
+    if (finalizedRef.current) return;
+    finalizedRef.current = true;
+    onSubmit();
+  };
+  const cancelOnce = () => {
+    if (finalizedRef.current) return;
+    finalizedRef.current = true;
+    onCancel();
+  };
+
+  return (
+    <div style={{ paddingLeft: `${depth * 12 + 0}px` }} className="py-0.5">
+      <Input
+        ref={inputRef}
+        aria-label="Rename file"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={submitOnce}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") submitOnce();
+          if (e.key === "Escape") cancelOnce();
+        }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none"
       />
     </div>
   );
@@ -549,7 +605,6 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
   const isSelected = ctx.selected === node.path;
   const isMain = ctx.mainDoc === node.path;
   const isRenaming = ctx.renamePath === node.path;
-  const renameInputRef = useInitialFocus<HTMLInputElement>(isRenaming);
   const isDropTarget = ctx.dragOver === node.path && node.isDir;
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -679,21 +734,13 @@ function TreeRow({ node, depth, ctx }: { node: TreeNode; depth: number; ctx: Tre
   return (
     <div>
       {isRenaming ? (
-        <div style={{ paddingLeft: `${depth * 12 + 0}px` }} className="py-0.5">
-          <Input
-            ref={renameInputRef}
-            aria-label="Rename file"
-            value={ctx.renameValue}
-            onChange={(e) => ctx.onChangeRename(e.target.value)}
-            onBlur={() => ctx.onCommitRename(node.path)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") ctx.onCommitRename(node.path);
-              if (e.key === "Escape") ctx.onCancelRename();
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none"
-          />
-        </div>
+        <RenameEntryInput
+          value={ctx.renameValue}
+          depth={depth}
+          onChange={ctx.onChangeRename}
+          onSubmit={() => ctx.onCommitRename(node.path)}
+          onCancel={ctx.onCancelRename}
+        />
       ) : (
         <ContextMenu>
           <ContextMenuTrigger asChild>{content}</ContextMenuTrigger>

@@ -54,15 +54,15 @@ test("history modal opens from the palette", async ({ tauriPage }) => {
     `Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Version History')`,
     10_000,
   );
-  await tauriPage.click('[aria-label="Close"]');
+  await tauriPage.click('[aria-label="Close version history"]');
 });
 
 test("help popover leads to the About dialog", async ({ tauriPage }) => {
   await tauriPage.focus('[aria-label="Help"]');
   await tauriPage.press('[aria-label="Help"]', "Enter");
   await tauriPage.getByText("Contact us").press("Enter");
-  await expect(tauriPage.locator('[aria-label="Close"]')).toBeVisible();
-  await tauriPage.click('[aria-label="Close"]');
+  await expect(tauriPage.locator('[aria-label="Close About dialog"]')).toBeVisible();
+  await tauriPage.click('[aria-label="Close About dialog"]');
 });
 
 test("shortcuts reference filters as you search", async ({ tauriPage }) => {
