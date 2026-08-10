@@ -17,10 +17,6 @@ import {
 } from "../helpers";
 
 async function openRowAction(page: Page, path: string, action: string) {
-  await page.waitForFunction(
-    `document.querySelectorAll('[role="menuitem"]').length === 0`,
-    5_000,
-  );
   const opened = await page.evaluate<boolean>(
     `(() => {
       const row = document.querySelector(
@@ -38,26 +34,26 @@ async function openRowAction(page: Page, path: string, action: string) {
   );
   expect(opened).toBe(true);
   await page.waitForFunction(
-    `Array.from(document.querySelectorAll('[role="menuitem"]')).some(
-      item => item.textContent?.trim() === ${JSON.stringify(action)}
-    )`,
+    `Array.from(document.querySelectorAll('[role="menuitem"]')).some(item => {
+      const rect = item.getBoundingClientRect();
+      return item.textContent?.trim() === ${JSON.stringify(action)} && rect.width > 0 && rect.height > 0;
+    })`,
     10_000,
   );
-  const selected = await page.evaluate<boolean>(
+  const focused = await page.evaluate<boolean>(
     `(() => {
-      const candidates = Array.from(document.querySelectorAll('[role="menuitem"]'))
-        .filter(item => item.textContent?.trim() === ${JSON.stringify(action)})
-        .filter(item => {
-          const rect = item.getBoundingClientRect();
-          return rect.width > 0 && rect.height > 0;
-        });
-      const item = candidates.at(-1);
+      const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find(candidate => {
+        const rect = candidate.getBoundingClientRect();
+        return candidate.textContent?.trim() === ${JSON.stringify(action)} &&
+          rect.width > 0 && rect.height > 0;
+      });
       if (!(item instanceof HTMLElement)) return false;
-      item.click();
-      return true;
+      item.focus();
+      return document.activeElement === item;
     })()`,
   );
-  expect(selected).toBe(true);
+  expect(focused).toBe(true);
+  await page.press('[role="menuitem"]:focus', "Enter");
 }
 
 async function createEntry(

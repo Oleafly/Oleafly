@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   setMainDocCmd: vi.fn(),
   setProjectShellEscapeCmd: vi.fn(),
   deleteFile: vi.fn(),
+  importPathsIntoProject: vi.fn(),
   resetCompile: vi.fn(),
   flushAutoCommit: vi.fn(),
   scheduleAutoCommit: vi.fn(),
@@ -47,6 +48,7 @@ vi.mock("@/lib/tauri", () => ({
   setMainDocCmd: mocks.setMainDocCmd,
   setProjectShellEscapeCmd: mocks.setProjectShellEscapeCmd,
   deleteFile: mocks.deleteFile,
+  importPathsIntoProject: mocks.importPathsIntoProject,
   listProjects: vi.fn(async () => []),
   mcpSetActiveProject: mocks.mcpSetActiveProject,
 }));
@@ -130,6 +132,10 @@ beforeEach(async () => {
   mocks.setMainDocCmd.mockReset();
   mocks.setProjectShellEscapeCmd.mockReset();
   mocks.deleteFile.mockReset().mockResolvedValue(undefined);
+  mocks.importPathsIntoProject.mockReset().mockResolvedValue({
+    paths: ["imports/source"],
+    generation: 1,
+  });
   mocks.resetCompile.mockReset();
   mocks.mcpSetActiveProject.mockReset().mockResolvedValue(undefined);
   mocks.flushWysiwygPendingEdits.mockReset();
@@ -690,6 +696,25 @@ describe("transactional project transitions", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("retries an additive import after a stale generation conflict", async () => {
+    mocks.projectMutationGeneration
+      .mockReset()
+      .mockResolvedValueOnce(7)
+      .mockResolvedValueOnce(8);
+    mocks.importPathsIntoProject
+      .mockRejectedValueOnce(
+        new Error("mutation conflict at generation 8: the target changed after expectedGeneration"),
+      )
+      .mockResolvedValueOnce({ paths: ["imports/source"], generation: 9 });
+    useFilesStore.setState({ projectId: "project" });
+
+    await useFilesStore.getState().importPaths("imports", ["/tmp/source"]);
+
+    expect(mocks.importPathsIntoProject).toHaveBeenCalledTimes(2);
+    expect(mocks.importPathsIntoProject.mock.calls.map((call) => call[3])).toEqual([7, 8]);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 });
 
