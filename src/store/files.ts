@@ -572,7 +572,8 @@ function showCompatibilityFindings(
   const blockers = findings.filter((finding) => finding.level === "blocker");
   if (blockers.length > 0) {
     const extra = blockers.length > 1 ? ` (+${blockers.length - 1} more)` : "";
-    toast.info(
+    toast.infoUnique(
+      `engine-compatibility:${id}`,
       `${blockers[0].title}${extra}`,
       {
         label: "Choose engine…",

@@ -155,6 +155,10 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
     `[...document.querySelectorAll("button")].some((b) => (b.textContent ?? "").includes("Choose engine"))`,
     20_000,
   );
+  const actions = await tauriPage.evaluate<number>(
+    `[...document.querySelectorAll("button")].filter((b) => (b.textContent ?? "").includes("Choose engine")).length`,
+  );
+  expect(actions).toBe(1);
   await tauriPage.getByText("Choose engine").click();
   await waitLong(
     tauriPage,
