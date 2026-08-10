@@ -28,6 +28,18 @@ interface EditorPaintProbe {
   largestFoldMarkerHeight: number;
 }
 
+function editorPaintIsReady(paint: EditorPaintProbe): boolean {
+  return (
+    paint.sourceMatchesStore &&
+    paint.sourceLength > 100 &&
+    paint.visibleNonblankLines > 0 &&
+    paint.unobscuredTextSamples > 0 &&
+    paint.foldMarkerCount > 0 &&
+    paint.largestFoldMarkerWidth <= 16 &&
+    paint.largestFoldMarkerHeight <= 16
+  );
+}
+
 async function editorPaintProbe(page: Page): Promise<EditorPaintProbe> {
   return await page.evaluate<EditorPaintProbe>(
     `Promise.all([
@@ -202,21 +214,20 @@ test("a persisted Visual document paints source on its first forced-source mount
     await openProject(tauriPage, projectName);
     await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-    await expect
-      .poll(async () => {
-        const paint = await editorPaintProbe(tauriPage);
-        return (
-          paint.sourceMatchesStore &&
-          paint.sourceLength > 100 &&
-          paint.visibleNonblankLines > 0 &&
-          paint.unobscuredTextSamples > 0 &&
-          paint.foldMarkerCount > 0 &&
-          paint.largestFoldMarkerWidth <= 16 &&
-          paint.largestFoldMarkerHeight <= 16
-        );
-      }, { timeout: 20_000 })
-      .toBe(true);
-    const paint = await editorPaintProbe(tauriPage);
+    let paint = await editorPaintProbe(tauriPage);
+    try {
+      await expect
+        .poll(async () => {
+          paint = await editorPaintProbe(tauriPage);
+          return editorPaintIsReady(paint);
+        }, { timeout: 20_000 })
+        .toBe(true);
+    } catch (error) {
+      throw new Error(
+        `editor paint invariants did not settle: ${JSON.stringify(paint)}`,
+        { cause: error },
+      );
+    }
     expect(paint.sourceLength).toBeGreaterThan(100);
     expect(paint.visibleNonblankLines).toBeGreaterThan(0);
     expect(paint.unobscuredTextSamples).toBeGreaterThan(0);

@@ -35,7 +35,9 @@ import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
 import { editorRedo, editorUndo } from "@/components/editor/cm/controller";
 import {
+  getWysiwygProjectSessionGeneration,
   setWysiwygEditor,
+  setWysiwygFlushController,
   setWysiwygProjectNavigation,
   setWysiwygVisible,
 } from "./controller";
@@ -434,6 +436,7 @@ function VisualProofreadingPopover({
 }
 
 export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
+  const projectId = useFilesStore((s) => s.projectId);
   const activePath = useFilesStore((s) => s.activePath);
   const docVersion = useFilesStore((s) => s.docVersion);
   const saveFile = useFilesStore((s) => s.saveFile);
@@ -441,10 +444,13 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
   const frontmatterRef = useRef("");
   const activePathRef = useRef<string | null>(null);
   activePathRef.current = activePath;
+  const projectIdRef = useRef<string | null>(null);
+  projectIdRef.current = projectId;
   const wysiwygRef = useRef(wysiwyg);
   wysiwygRef.current = wysiwyg;
   const intelligenceRevisionRef = useRef("");
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const visualDirtyRef = useRef(false);
   const preambleRef = useRef("");
   const lastSyncedTextRef = useRef<string | null>(null);
   const lastSyncedPathRef = useRef<string | null>(null);
@@ -484,9 +490,23 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
   ].join(":");
   intelligenceRevisionRef.current = `${activePath ?? ""}:${intelligenceRevision}`;
 
-  const flush = useCallback((editorInstance: Editor) => {
-    const path = activePathRef.current;
-    if (!path) return;
+  const flush = useCallback((
+    editorInstance: Editor,
+    target = {
+      path: activePathRef.current,
+      projectId: projectIdRef.current,
+    },
+  ): boolean => {
+    const { path, projectId: targetProjectId } = target;
+    const filesState = useFilesStore.getState();
+    if (
+      !path ||
+      filesState.projectId !== targetProjectId ||
+      !filesState.files[path] ||
+      !visualDirtyRef.current
+    ) {
+      return false;
+    }
     const json = editorInstance.getJSON();
     let nextSource: string;
     if (isMarkdownPath(path)) {
@@ -502,7 +522,9 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
     }
     lastSyncedTextRef.current = nextSource;
     lastSyncedPathRef.current = path;
-    useFilesStore.getState().setContent(path, nextSource, { bumpVersion: true });
+    visualDirtyRef.current = false;
+    filesState.setContent(path, nextSource, { bumpVersion: true });
+    return true;
   }, []);
   const editor = useEditor({
     extensions: [
@@ -533,6 +555,7 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
       },
     },
     onUpdate: ({ editor: editorInstance }) => {
+      visualDirtyRef.current = true;
       if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
       flushTimerRef.current = setTimeout(() => flush(editorInstance), FLUSH_DEBOUNCE_MS);
     },
@@ -574,6 +597,18 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
 
   useEffect(() => {
     setWysiwygEditor(editor ?? null);
+    setWysiwygFlushController(
+      editor
+        ? () => {
+            if (flushTimerRef.current) {
+              clearTimeout(flushTimerRef.current);
+              flushTimerRef.current = null;
+            }
+            if (!wysiwygRef.current) return;
+            flush(editor);
+          }
+        : null,
+    );
     setWysiwygProjectNavigation(
       editor
         ? {
@@ -584,9 +619,10 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
     );
     return () => {
       setWysiwygProjectNavigation(null);
+      setWysiwygFlushController(null);
       setWysiwygEditor(null);
     };
-  }, [editor]);
+  }, [editor, flush]);
 
   useEffect(() => {
     setWysiwygVisible(wysiwyg);
@@ -664,6 +700,7 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
     }
     lastSyncedTextRef.current = raw;
     lastSyncedPathRef.current = activePath;
+    visualDirtyRef.current = false;
     if (isMarkdownPath(activePath)) {
       const { doc, frontmatter } = parseMarkdownBody(raw, {
         preservedInlineRanges: markdownMathRanges(raw),
@@ -699,21 +736,29 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
   useEffect(() => {
     if (!editor || !activePath) return;
     const path = activePath;
+    const sourceProjectId = projectId;
+    const sourceSessionGeneration = getWysiwygProjectSessionGeneration();
     return () => {
       if (flushTimerRef.current) {
         clearTimeout(flushTimerRef.current);
         flushTimerRef.current = null;
       }
       if (!wysiwygRef.current) return;
-      activePathRef.current = path;
-      flush(editor);
-      void saveFile(path);
+      if (
+        sourceSessionGeneration !== getWysiwygProjectSessionGeneration()
+      ) {
+        return;
+      }
+      if (flush(editor, { path, projectId: sourceProjectId })) {
+        void saveFile(path);
+      }
     };
-  }, [editor, activePath, saveFile, flush]);
+  }, [editor, activePath, projectId, saveFile, flush]);
 
   const onPreambleChange = (value: string) => {
     setPreamble(value);
     preambleRef.current = value;
+    visualDirtyRef.current = true;
     if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
     flushTimerRef.current = setTimeout(() => {
       if (editor) flush(editor);

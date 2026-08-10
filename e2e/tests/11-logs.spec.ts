@@ -23,6 +23,19 @@ async function recoverDocument(tauriPage: Page) {
   }
 }
 
+async function showCompileLogs(tauriPage: Page) {
+  const logsOpen = await tauriPage.evaluate<boolean>(
+    `document.querySelector('[data-tour="project-compile-logs"] button')?.getAttribute('aria-pressed') === 'true'`,
+  );
+  if (!logsOpen) {
+    await tauriPage.click('[aria-label="Show compile logs"]');
+  }
+  await expect(tauriPage.locator('[aria-label="Show PDF preview"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+}
+
 test("the Logs tab shows the real compile log", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -30,7 +43,7 @@ test("the Logs tab shows the real compile log", async ({ tauriPage }) => {
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 90_000,
   });
-  await tauriPage.getByText("Logs").click();
+  await showCompileLogs(tauriPage);
   const logText = await tauriPage.evaluate<string>(`document.body.innerText`);
   expect(logText).toContain("tex"); // tectonic's log mentions the entry file
 });
@@ -48,6 +61,9 @@ test("a LaTeX error surfaces as an error status, and fixing it recovers", async 
     await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "error", {
       timeout: 90_000,
     });
+    // A failed compile can retain either the previous preview tab or the Logs
+    // tab from an earlier test, so converge on Logs instead of toggling it.
+    await showCompileLogs(tauriPage);
     await expect(tauriPage.getByText("Copy log")).toBeVisible();
     await expect(tauriPage.getByText("Ask AI", { exact: true })).toBeVisible();
     await tauriPage.getByText("Ask AI", { exact: true }).click();

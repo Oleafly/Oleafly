@@ -52,6 +52,24 @@ import {
 import { useSettingsStore } from "@/store/settings";
 import { nextTabSeq } from "@/store/tab-order";
 import { recordProjectStateRevision } from "@/lib/project-state-revision";
+import {
+  flushWysiwygPendingEdits,
+  invalidateWysiwygProjectSession,
+} from "@/components/editor/wysiwyg/controller";
+
+// CodeMirror's document model is LF-based on every platform. Canonicalize
+// backend text before publishing it to the shared store so Windows CRLF files
+// cannot leave the visible editor and store permanently out of sync.
+function normalizeTextContent(content: string): string {
+  return content.replace(/\r\n?/gu, "\n");
+}
+
+async function readCanonicalFileContent(
+  projectId: string,
+  path: string,
+): Promise<string> {
+  return normalizeTextContent(await readFileContent(projectId, path));
+}
 
 // Pin the user's global default engine onto a freshly created project. Only
 // LaTeX projects can take the latexmk pin; anything else (Typst templates,
@@ -531,7 +549,7 @@ async function loadCompatibilityInputs(
 
 async function readCompatibilityInput(id: string, path: string): Promise<string | null> {
   try {
-    return await readFileContent(id, path);
+    return await readCanonicalFileContent(id, path);
   } catch (error) {
     void logError("scan project compatibility", error);
     return null;
@@ -595,6 +613,7 @@ async function prepareProjectSwitch(
   if (previousProjectId) {
     set({ loading: true });
     try {
+      flushWysiwygPendingEdits();
       await flushDirtyBuffers(previousProjectId, get);
     } catch (error) {
       set({ loading: false });
@@ -619,6 +638,7 @@ async function prepareProjectSwitch(
 }
 
 function beginProjectOpen(id: string, shouldContinue: () => boolean, set: FilesSet, get: FilesGet) {
+  invalidateWysiwygProjectSession();
   const seq = ++openSeq;
   invalidateAllPendingFileOpens();
   mainDocSeq++;
@@ -689,7 +709,7 @@ async function preloadBibliographies(
   const bibliographies = tree.filter((entry) => !entry.is_dir && entry.path.endsWith(".bib"));
   for (const bibliography of bibliographies) {
     try {
-      const content = await readFileContent(id, bibliography.path);
+      const content = await readCanonicalFileContent(id, bibliography.path);
       if (superseded()) return;
       set((state) => ({
         files: { ...state.files, [bibliography.path]: { content, dirty: false } },
@@ -807,7 +827,7 @@ async function loadChangedProjectFiles(
     Object.entries(captured).map(async ([path, file]) => {
       if (file.dirty || !filePaths.has(path) || isBinaryReloadPath(path)) return;
       attempted.add(path);
-      const content = await readFileContent(projectId, path).catch(() => null);
+      const content = await readCanonicalFileContent(projectId, path).catch(() => null);
       if (content !== null) loaded.set(path, content);
     }),
   );
@@ -936,6 +956,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (projectId) {
       set({ loading: true });
       try {
+        flushWysiwygPendingEdits();
         await flushDirtyBuffers(projectId, get);
       } catch (error) {
         set({ loading: false });
@@ -956,6 +977,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     cancelProofreading("source");
     cancelProofreading("visual");
     await mcpSetActiveProject(null).catch(() => {});
+    invalidateWysiwygProjectSession();
     resetMutationGeneration();
     set(EMPTY_PROJECT_STATE);
   }),
@@ -1022,7 +1044,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const isBinary = /\.(pdf|png|jpe?g|gif|webp|svg|eps|zip|gz|ttf|otf|woff2?)$/i.test(path);
     if (!files[path] && !isBinary) {
       try {
-        const content = await readFileContent(projectId, path);
+        const content = await readCanonicalFileContent(projectId, path);
         if (
           get().projectId !== projectId ||
           fileOpenEpoch !== epoch ||
@@ -1330,6 +1352,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   // listeners can re-apply without echoing forever.
   applyExternalWrite: (projectId, path, content) => {
     if (get().projectId !== projectId) return false;
+    const canonicalContent = normalizeTextContent(content);
     void refreshMutationGeneration(projectId).catch(() => {});
     const currentFile = get().files[path];
     if (currentFile?.dirty) {
@@ -1381,22 +1404,22 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     set((s) => {
       const activatesPath = !s.activePath || s.activePath === path;
       return {
-        files: { ...s.files, [path]: { content, dirty: false } },
+        files: { ...s.files, [path]: { content: canonicalContent, dirty: false } },
         openTabs: s.openTabs.includes(path) ? s.openTabs : [...s.openTabs, path],
         activePath: s.activePath || path,
         docVersion: activatesPath ? s.docVersion + 1 : s.docVersion,
       };
     });
     if (mustFollowPendingWrite) {
-      void enqueueWrite(projectId, path, content).catch((error) => {
+      void enqueueWrite(projectId, path, canonicalContent).catch((error) => {
         if (
           get().projectId === projectId &&
-          get().files[path]?.content === content
+          get().files[path]?.content === canonicalContent
         ) {
           set((s) => ({
             files: {
               ...s.files,
-              [path]: { content, dirty: true },
+              [path]: { content: canonicalContent, dirty: true },
             },
           }));
           pendingSaves.add(path);

@@ -183,7 +183,7 @@ export function HistoryModal() {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            aria-label="Close"
+            aria-label="Close version history"
             className="ml-auto flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <X className="size-4" />

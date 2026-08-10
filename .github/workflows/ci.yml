@@ -16,8 +16,9 @@ on:
       - "**.md"
       - "docs/**"
       - ".github/badges/**"
-  # Nightly full sweep: the macOS/Windows e2e jobs run only here and on manual
-  # dispatch (pre-release), keeping per-push feedback fast via Linux shards.
+  # Nightly full sweep. Every e2e lane also runs per push and PR: standard
+  # runners are free on a public repository, and gating the desktop lanes to
+  # nightly hid a total macOS failure for days.
   schedule:
     - cron: "0 9 * * *"
   workflow_dispatch:
@@ -323,12 +324,8 @@ jobs:
     # compiles) on macOS. Tests that need credentials (GitHub PAT, AI keys) skip
     # automatically when their E2E_* env vars are absent, so CI runs the ungated
     # tests.
-    # Slow lane: nightly + manual pre-release only. Per-push signal comes from
-    # the sharded Linux lane; billed macOS minutes stay for the runs that gate
-    # releases.
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     name: E2E (real app, macOS, shard ${{ matrix.shard }}/4)
-    runs-on: macos-14
+    runs-on: macos-15
     # Sharded like the Linux lane. Serially the suite needs more than the
     # ceiling below, so an unsharded run was killed mid-suite and reported
     # nothing about the specs it never reached.
@@ -458,6 +455,9 @@ jobs:
             test-results/**/error-context.md
             test-results/**/trace.zip
             test-results/**/*.log
+            e2e-artifacts/**/error-context.md
+            e2e-artifacts/**/trace.zip
+            e2e-artifacts/**/*.log
             e2e-debug/**
           retention-days: 7
           if-no-files-found: ignore
@@ -598,6 +598,9 @@ jobs:
             test-results/**/error-context.md
             test-results/**/trace.zip
             test-results/**/*.log
+            e2e-artifacts/**/error-context.md
+            e2e-artifacts/**/trace.zip
+            e2e-artifacts/**/*.log
           retention-days: 7
           if-no-files-found: ignore
 
@@ -605,8 +608,6 @@ jobs:
     # The same suite on Windows (WebView2 + Rust + Tectonic). The plugin
     # serves TCP there (no unix sockets); e2e/fixtures.ts connects over TCP
     # via its own fixture, and scripts/e2e.ps1 is the launcher.
-    # Slow lane: nightly + manual pre-release only (see the macOS job note).
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     name: E2E (real app, Windows, shard ${{ matrix.shard }}/4)
     runs-on: windows-2022
     # Sharded like the Linux lane: serially this suite passed 246 tests and was
@@ -729,5 +730,8 @@ jobs:
             test-results/**/error-context.md
             test-results/**/trace.zip
             test-results/**/*.log
+            e2e-artifacts/**/error-context.md
+            e2e-artifacts/**/trace.zip
+            e2e-artifacts/**/*.log
           retention-days: 7
           if-no-files-found: ignore

@@ -72,3 +72,15 @@ case "$powershell_launcher" in
   *'@selection | Out-Host'*'Get-ChildItem -Path "e2e/tests" -Filter "*.spec.ts"'*'$specPath = "e2e/tests/$($spec.Name)"'*'Run-Playwright $label @($specPath)'*"Stop-App"*) ;;
   *) exit 1 ;;
 esac
+case "$launcher" in
+  *'preserve_run_artifacts "$label"'*'local result_dir="e2e-artifacts/$safe_label"'*'find test-results -type f'*) ;;
+  *) exit 1 ;;
+esac
+case "$powershell_launcher" in
+  *'Preserve-RunArtifacts $label'*'$resultDir = Join-Path "e2e-artifacts" $safeLabel'*'Get-ChildItem -Path "test-results" -Recurse -File'*) ;;
+  *) exit 1 ;;
+esac
+case "$launcher$powershell_launcher" in
+  *'--output='*) exit 1 ;;
+  *) ;;
+esac
