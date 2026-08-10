@@ -258,6 +258,68 @@ describe("ghost completion suggestions", () => {
 });
 
 describe("accepting and dismissing", () => {
+  it("routes a Tab keydown through the editor keymap", async () => {
+    const view = mount("\\alp", [sourceOf(["\\alpha"])]);
+    caretToEnd(view);
+    await settle();
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Tab",
+      code: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    view.contentDOM.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(view.state.doc.toString()).toBe("\\alpha");
+    expect(pendingGhostCompletion(view)).toBeNull();
+    view.destroy();
+  });
+
+  it("routes Tab to the highlighted completion while the popup is active", async () => {
+    const source = sourceOf([
+      { label: "\\alpha", apply: "\\alpha{}" },
+      "\\alphabet",
+    ]);
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: "\\alp",
+        selection: { anchor: 4 },
+        extensions: [
+          ghostCompletion([source]),
+          autocompletion({
+            override: [source],
+            activateOnTyping: false,
+            interactionDelay: 0,
+          }),
+        ],
+      }),
+      parent: document.body,
+    });
+    view.focus();
+
+    expect(startCompletion(view)).toBe(true);
+    await vi.waitFor(() => expect(completionStatus(view.state)).toBe("active"));
+    await settle();
+    expect(pendingGhostCompletion(view)).toBe("ha{}");
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Tab",
+      code: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    view.contentDOM.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    // The completion's apply value wins over its label, proving that Tab
+    // delegates to CodeMirror instead of merely inserting the ghost text.
+    expect(view.state.doc.toString()).toBe("\\alpha{}");
+    expect(completionStatus(view.state)).toBeNull();
+    view.destroy();
+  });
+
   it("Tab inserts the suggestion and leaves the cursor after it", async () => {
     const view = mount("\\alp", [sourceOf(["\\alpha"])]);
     caretToEnd(view);
