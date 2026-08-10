@@ -1,4 +1,5 @@
 import { degrees, PDFDocument, PDFName, PDFNumber, StandardFonts } from "pdf-lib";
+import type { TauriPage } from "@srsholmes/tauri-playwright";
 import { test, expect } from "../fixtures";
 import {
   createBlankProject,
@@ -44,6 +45,90 @@ function expectCssSubpixel(
     delta,
     `${context}: expected ${expected}, received ${actual}, delta ${delta}`,
   ).toBeLessThanOrEqual(0.125);
+}
+
+async function openVisibleMenu(page: TauriPage, triggerSelector: string): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const marked = await page.evaluate<boolean>(
+      `(() => {
+        document.querySelectorAll('[data-e2e-menu-trigger]').forEach(
+          candidate => candidate.removeAttribute('data-e2e-menu-trigger')
+        );
+        const trigger = Array.from(document.querySelectorAll(${JSON.stringify(triggerSelector)}))
+          .find(candidate => candidate.getClientRects().length > 0);
+        if (!(trigger instanceof HTMLElement)) return false;
+        trigger.setAttribute('data-e2e-menu-trigger', 'true');
+        return true;
+      })()`,
+    );
+    expect(marked).toBe(true);
+    await page.focus('[data-e2e-menu-trigger="true"]');
+    await page.press('[data-e2e-menu-trigger="true"]', "ArrowDown");
+    try {
+      await page.waitForFunction(
+        `Array.from(document.querySelectorAll('[role="menu"]')).some(
+          candidate => candidate.getClientRects().length > 0
+        )`,
+        2_000,
+      );
+      return;
+    } catch {
+      // Native bridge key delivery can race a toolbar re-render. Re-resolve
+      // the visible trigger and retry only while no menu is actually visible.
+    }
+  }
+  await expect(page.getByRole("menu")).toBeVisible();
+}
+
+async function pressVisibleMenuItem(
+  page: TauriPage,
+  label: string,
+  key: "Enter" | "ArrowRight",
+): Promise<void> {
+  const focused = await page.evaluate<boolean>(
+    `(() => {
+      document.querySelectorAll('[data-e2e-menu-item]').forEach(
+        candidate => candidate.removeAttribute('data-e2e-menu-item')
+      );
+      const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find(candidate => {
+        return candidate.textContent?.trim() === ${JSON.stringify(label)} &&
+          candidate.getClientRects().length > 0;
+      });
+      if (!(item instanceof HTMLElement)) return false;
+      item.setAttribute('data-e2e-menu-item', 'true');
+      item.focus();
+      return document.activeElement === item;
+    })()`,
+  );
+  expect(focused).toBe(true);
+  if (key === "ArrowRight") {
+    await page.press('[data-e2e-menu-item="true"]', key);
+    return;
+  }
+  await page.evaluate(
+    `(() => {
+      const item = document.querySelector('[data-e2e-menu-item="true"]');
+      if (!(item instanceof HTMLElement)) return false;
+      const init = {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        button: 0,
+        buttons: 1,
+        pointerId: 1,
+        pointerType: "mouse",
+        isPrimary: true,
+      };
+      item.dispatchEvent(new PointerEvent("pointerdown", init));
+      item.dispatchEvent(new PointerEvent("pointerup", { ...init, buttons: 0 }));
+      item.click();
+      return true;
+    })()`,
+  );
+  await page.waitForFunction(
+    `!document.querySelector('[role="menu"][data-state="open"]')`,
+    5_000,
+  );
 }
 
 async function expectedTextGeometry(
@@ -442,42 +527,9 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     );
   }
 
-  await tauriPage.evaluate(`(() => {
-    const trigger = document.querySelector('[aria-haspopup="menu"][aria-label^="Zoom "]');
-    if (!(trigger instanceof HTMLElement)) throw new Error('Zoom menu trigger not found');
-    trigger.dispatchEvent(new KeyboardEvent('keydown', {
-      bubbles: true,
-      cancelable: true,
-      key: 'Enter',
-      code: 'Enter',
-    }));
-    return true;
-  })()`);
-  await expect(tauriPage.getByRole("menu")).toBeVisible();
-  await tauriPage.evaluate(`new Promise((resolve, reject) => {
-    const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find(
-      (candidate) => candidate.textContent?.trim() === '100%'
-    );
-    if (!(item instanceof HTMLElement)) {
-      reject(new Error('100% zoom menu item not found'));
-      return;
-    }
-    item.click();
-    requestAnimationFrame(() => requestAnimationFrame(resolve));
-  })`);
-  // The bridge click changes the controlled zoom value but does not synthesize
-  // Radix's pointer-up dismissal. Escape closes the popup and restores body
-  // hit testing before the caret-at-point assertions below.
-  await tauriPage.evaluate(`(() => {
-    const menu = document.querySelector('[role="menu"]');
-    menu?.dispatchEvent(new KeyboardEvent('keydown', {
-      bubbles: true,
-      cancelable: true,
-      key: 'Escape',
-      code: 'Escape',
-    }));
-    return true;
-  })()`);
+  const zoomTriggerSelector = '[aria-haspopup="menu"][aria-label^="Zoom "]';
+  await openVisibleMenu(tauriPage, zoomTriggerSelector);
+  await pressVisibleMenuItem(tauriPage, "100%", "Enter");
   await tauriPage.waitForFunction(
     `getComputedStyle(document.body).pointerEvents !== "none"`,
     5_000,
@@ -522,48 +574,11 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
   if (await inlineNext.isVisible()) {
     await inlineNext.click();
   } else {
-    await tauriPage.evaluate(
-      `(() => {
-        const trigger = document.querySelector('[aria-label="More preview controls"]');
-        if (!(trigger instanceof HTMLElement)) return false;
-        trigger.focus();
-        trigger.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-        return true;
-      })()`,
-    );
-    await tauriPage.waitForFunction(
-      `[...document.querySelectorAll('[role="menuitem"]')].some(
-        (el) => /^Page \\d+ of \\d+$/.test((el.textContent || "").trim()),
-      )`,
-      10_000,
-    );
-    await tauriPage.evaluate(
-      `(() => {
-        const trigger = [...document.querySelectorAll('[role="menuitem"]')].find(
-          (el) => /^Page \\d+ of \\d+$/.test((el.textContent || "").trim()),
-        );
-        trigger?.click();
-        return !!trigger;
-      })()`,
-    );
-    await tauriPage.waitForFunction(
-      `[...document.querySelectorAll('[role="menuitem"]')].some(
-        (el) => (el.textContent || "").trim() === "Next page",
-      )`,
-      10_000,
-    );
-    await tauriPage.evaluate(
-      `(() => {
-        const item = [...document.querySelectorAll('[role="menuitem"]')].find(
-          (el) => (el.textContent || "").trim() === "Next page",
-        );
-        item?.click();
-        return !!item;
-      })()`,
-    );
-    await tauriPage.evaluate(
-      `document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`,
-    );
+    await openVisibleMenu(tauriPage, '[aria-label="More preview controls"]');
+    const pageSubmenu = tauriPage.getByText("Page 1 of 2", { exact: true });
+    await expect(pageSubmenu).toBeVisible();
+    await pressVisibleMenuItem(tauriPage, "Page 1 of 2", "ArrowRight");
+    await pressVisibleMenuItem(tauriPage, "Next page", "Enter");
   }
   try {
     await tauriPage.waitForFunction(
@@ -736,7 +751,7 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     [1, "GEOMETRY PAGE ONE"],
     [2, "ROTATED USER UNIT PAGE"],
   ] as const) {
-    const hit = await tauriPage.evaluate<string>(`(async () => {
+    await tauriPage.evaluate(`(() => {
       const page = document.querySelector('[data-page="${pageNumber}"]');
       const span = Array.from(page?.querySelectorAll('.textLayer span') || []).find(
         (candidate) => candidate.textContent?.includes(${JSON.stringify(marker)})
@@ -745,38 +760,48 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
         throw new Error('Missing marker for page ${pageNumber}');
       }
       span.scrollIntoView({ block: 'center', inline: 'center' });
-      await new Promise((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve(undefined)))
+      return true;
+    })()`);
+    await tauriPage.waitForFunction(
+      `(() => {
+        const page = document.querySelector('[data-page="${pageNumber}"]');
+        const span = Array.from(page?.querySelectorAll('.textLayer span') || []).find(
+          (candidate) => candidate.textContent?.includes(${JSON.stringify(marker)})
+        );
+        if (!(span instanceof HTMLElement)) return false;
+        const rect = span.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      })()`,
+      10_000,
+    );
+    const hit = await tauriPage.evaluate<string>(`(() => {
+      const currentPage = document.querySelector('[data-page="${pageNumber}"]');
+      const currentSpan = Array.from(currentPage?.querySelectorAll('.textLayer span') || []).find(
+        (candidate) => candidate.textContent?.includes(${JSON.stringify(marker)})
       );
-      const rect = span.getBoundingClientRect();
+      if (!(currentSpan instanceof HTMLElement)) {
+        throw new Error('Marker was not rendered after scrolling page ${pageNumber}');
+      }
+      const rect = currentSpan.getBoundingClientRect();
       const range = document.caretRangeFromPoint?.(
         rect.left + rect.width / 2,
         rect.top + rect.height / 2
       );
-      return range?.startContainer.parentElement?.closest('.textLayer span')?.textContent || '';
+      const container = range?.startContainer;
+      const element = container instanceof Element ? container : container?.parentElement;
+      return element?.closest('.textLayer span')?.textContent || '';
     })()`);
     expect(hit).toContain(marker);
   }
 
-  await tauriPage.evaluate(`(() => {
-    const trigger = document.querySelector('[aria-haspopup="menu"][aria-label^="Zoom "]');
-    if (!(trigger instanceof HTMLElement)) throw new Error('Zoom menu trigger not found');
-    trigger.dispatchEvent(new KeyboardEvent('keydown', {
-      bubbles: true,
-      cancelable: true,
-      key: 'Enter',
-      code: 'Enter',
-    }));
-    return true;
-  })()`);
-  await expect(tauriPage.getByRole("menu")).toBeVisible();
+  await openVisibleMenu(tauriPage, zoomTriggerSelector);
   const transient = await tauriPage.evaluate<PageGeometry[]>(`(async () => {
     const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find(
       (candidate) => candidate.textContent?.trim() === '200%'
     );
     if (!(item instanceof HTMLElement)) throw new Error('200% zoom item not found');
     item.click();
-    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
     return ${inspectPages};
   })()`);
 

@@ -1499,17 +1499,6 @@ export function PreviewPane() {
               className="h-7 min-w-14 gap-1 px-1.5 text-xs tabular-nums text-muted-foreground"
               aria-label={`Zoom ${Math.round(scale * 100)} percent`}
               disabled={!displayedBytes}
-              onKeyDown={(event) => {
-                if (
-                  event.key !== "Enter" &&
-                  event.key !== " " &&
-                  event.key !== "ArrowDown"
-                ) {
-                  return;
-                }
-                event.preventDefault();
-                setZoomMenuOpen(true);
-              }}
             >
               {Math.round(scale * 100)}%
               <ChevronDown data-icon="inline-end" />
