@@ -40,7 +40,7 @@ async function openRowAction(page: Page, path: string, action: string) {
     })`,
     10_000,
   );
-  const focused = await page.evaluate<boolean>(
+  const pressed = await page.evaluate<boolean>(
     `(() => {
       const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find(candidate => {
         const rect = candidate.getBoundingClientRect();
@@ -48,12 +48,27 @@ async function openRowAction(page: Page, path: string, action: string) {
           rect.width > 0 && rect.height > 0;
       });
       if (!(item instanceof HTMLElement)) return false;
-      item.focus();
-      return document.activeElement === item;
+      const init = {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        button: 0,
+        buttons: 1,
+        pointerId: 1,
+        pointerType: "mouse",
+        isPrimary: true,
+      };
+      item.dispatchEvent(new PointerEvent("pointerdown", init));
+      item.dispatchEvent(new PointerEvent("pointerup", { ...init, buttons: 0 }));
+      item.click();
+      return true;
     })()`,
   );
-  expect(focused).toBe(true);
-  await page.press('[role="menuitem"]:focus', "Enter");
+  expect(pressed).toBe(true);
+  await page.waitForFunction(
+    `!document.querySelector('[role="menu"][data-state="open"]')`,
+    5_000,
+  );
 }
 
 async function createEntry(
@@ -63,6 +78,8 @@ async function createEntry(
   parent?: string,
 ) {
   const placeholder = mode === "file" ? "New file name" : "New folder name";
+  const destination = parent ? `folder ${parent}` : "project root";
+  const inputLabel = `New ${mode === "file" ? "file" : "folder"} name in ${destination}`;
   // The tree refresh that follows a preceding import/create re-renders the
   // toolbar and rows, which can swallow the opening click or unmount the
   // inline input between its appearance and the commit. Reopen and retry
@@ -80,7 +97,10 @@ async function createEntry(
     }
     const appeared = await page
       .waitForFunction(
-        `!!document.querySelector('input[placeholder=${JSON.stringify(placeholder)}]')`,
+        `Array.from(document.querySelectorAll('label')).some(label =>
+          label.textContent?.trim() === ${JSON.stringify(inputLabel)} &&
+          label.control instanceof HTMLInputElement
+        )`,
         5_000,
       )
       .then(() => true)
@@ -89,9 +109,10 @@ async function createEntry(
       appeared &&
       (await page.evaluate<boolean>(
         `(() => {
-          const input = document.querySelector(
-            'input[placeholder=${JSON.stringify(placeholder)}]'
+          const label = Array.from(document.querySelectorAll('label')).find(
+            candidate => candidate.textContent?.trim() === ${JSON.stringify(inputLabel)}
           );
+          const input = label instanceof HTMLLabelElement ? label.control : null;
           if (!(input instanceof HTMLInputElement)) return false;
           const set = Object.getOwnPropertyDescriptor(
             HTMLInputElement.prototype, "value"
@@ -105,6 +126,11 @@ async function createEntry(
         })()`,
       ));
     if (committed) break;
+    await page.evaluate(
+      `document.querySelector('input[placeholder=${JSON.stringify(placeholder)}]')?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+      )`,
+    );
     if (Date.now() > commitDeadline) {
       throw new Error(`createEntry(${name}): the inline input never committed`);
     }
