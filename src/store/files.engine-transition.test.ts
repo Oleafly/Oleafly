@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   logError: vi.fn(),
   notifyError: vi.fn(),
   toastInfo: vi.fn(),
+  toastInfoUnique: vi.fn(),
   toastSuccess: vi.fn(),
   setMainDocCmd: vi.fn(),
   setProjectShellEscapeCmd: vi.fn(),
@@ -59,7 +60,11 @@ vi.mock("@/lib/auto-commit", () => ({
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({
   notifyError: mocks.notifyError,
-  toast: { info: mocks.toastInfo, success: mocks.toastSuccess },
+  toast: {
+    info: mocks.toastInfo,
+    infoUnique: mocks.toastInfoUnique,
+    success: mocks.toastSuccess,
+  },
 }));
 vi.mock("@/store/diff", () => ({ useDiffStore: { getState: () => ({ clearActiveDiff: vi.fn() }) } }));
 vi.mock("@/store/tab-order", () => ({ nextTabSeq: () => 1 }));
@@ -96,6 +101,7 @@ beforeEach(async () => {
   mocks.notifyError.mockReset();
   mocks.logError.mockReset().mockResolvedValue(undefined);
   mocks.toastInfo.mockReset();
+  mocks.toastInfoUnique.mockReset();
   mocks.toastSuccess.mockReset();
   mocks.writeFileContent.mockReset().mockResolvedValue(undefined);
   mocks.flushAutoCommit.mockReset();
@@ -923,6 +929,24 @@ describe("MCP active-project synchronization", () => {
 });
 
 describe("best-effort project loading diagnostics", () => {
+  it("publishes one keyed engine prompt for a compatibility blocker", async () => {
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+    mocks.readFileContent.mockResolvedValue(
+      String.raw`\documentclass{article}\usepackage{minted}\begin{document}\end{document}`,
+    );
+
+    await useFilesStore.getState().openProject("project");
+
+    await vi.waitFor(() =>
+      expect(mocks.toastInfoUnique).toHaveBeenCalledWith(
+        "engine-compatibility:project",
+        expect.any(String),
+        expect.objectContaining({ label: "Choose engine…" }),
+        true,
+      ),
+    );
+  });
+
   it("logs bibliography preload failures without blocking the project", async () => {
     const failure = new Error("bibliography read failed");
     mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);

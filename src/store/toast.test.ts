@@ -11,6 +11,7 @@ describe("keyed toasts", () => {
     const firstAction = vi.fn();
     const latestAction = vi.fn();
 
+    toast.infoUnique("unrelated", "Keep this toast");
     const firstId = toast.infoUnique(
       "engine-compatibility:project-1",
       "Choose a compatible engine",
@@ -25,7 +26,8 @@ describe("keyed toasts", () => {
     );
 
     expect(latestId).toBe(firstId);
-    expect(useToastStore.getState().toasts).toHaveLength(1);
-    expect(useToastStore.getState().toasts[0]?.action?.onClick).toBe(latestAction);
+    expect(useToastStore.getState().toasts).toHaveLength(2);
+    expect(useToastStore.getState().toasts[0]?.message).toBe("Keep this toast");
+    expect(useToastStore.getState().toasts[1]?.action?.onClick).toBe(latestAction);
   });
 });

@@ -44,7 +44,9 @@ function seededLines(count: number): number[] {
 
 interface Coherence {
   readonly visibleLines: number;
+  readonly visibleGutters: number;
   readonly maxGutterDelta: number;
+  readonly misalignedGutters: number;
   readonly documentScrollLeak: boolean;
   readonly currentLine: number;
   readonly docLines: number;
@@ -78,11 +80,15 @@ async function coherence(
       const gutters = Array.from(
         view.dom.querySelectorAll(".cm-lineNumbers .cm-gutterElement"),
       ).filter(
-        (element) =>
-          /^\\d+$/.test(element.textContent?.trim() ?? "") &&
-          element.style.visibility !== "hidden",
+        (element) => {
+          const rect = element.getBoundingClientRect();
+          return /^\\d+$/.test(element.textContent?.trim() ?? "") &&
+            element.style.visibility !== "hidden" &&
+            rect.top >= viewport.top &&
+            rect.bottom <= viewport.bottom;
+        },
       );
-      const deltas = gutters.flatMap((gutter) => {
+      const gutterGeometry = gutters.flatMap((gutter) => {
         const lineNumber = Number(gutter.textContent?.trim());
         if (!Number.isInteger(lineNumber) || lineNumber < 1 || lineNumber > view.state.doc.lines) {
           return [];
@@ -94,11 +100,19 @@ async function coherence(
             : domPosition.node.parentElement;
         const line = element?.closest?.(".cm-line");
         if (!line) return [];
-        return [Math.abs(gutter.getBoundingClientRect().top - line.getBoundingClientRect().top)];
+        const gutterRect = gutter.getBoundingClientRect();
+        const lineRect = line.getBoundingClientRect();
+        return [{
+          delta: Math.abs(gutterRect.top - lineRect.top),
+          overlaps: Math.min(gutterRect.bottom, lineRect.bottom) >
+            Math.max(gutterRect.top, lineRect.top),
+        }];
       });
       return {
         visibleLines: visible.length,
-        maxGutterDelta: Math.max(0, ...deltas),
+        visibleGutters: gutters.length,
+        maxGutterDelta: Math.max(0, ...gutterGeometry.map(({ delta }) => delta)),
+        misalignedGutters: gutterGeometry.filter(({ overlaps }) => !overlaps).length,
         documentScrollLeak:
           (document.scrollingElement?.scrollTop ?? 0) !== 0 ||
           (document.scrollingElement?.scrollLeft ?? 0) !== 0,
@@ -111,10 +125,9 @@ async function coherence(
 
 // The editor legitimately re-measures for a frame or two after a change, so a
 // single immediate reading cannot tell "still settling" apart from "broken".
-// Poll until the layout is coherent and only fail if it never gets there - that
-// keeps the tight 1.5px gutter bound meaningful instead of trading it for a
-// looser threshold or a fixed sleep that would hide a real drift.
-const GUTTER_TOLERANCE = 1.5;
+// Poll until each fully visible gutter label overlaps the exact logical line
+// named by that label. This catches a one-row shift without relying on a magic
+// pixel tolerance that changes with font rasterization and device scale.
 
 async function expectCoherent(
   page: Parameters<typeof expectDesktopShellAnchored>[0],
@@ -125,7 +138,8 @@ async function expectCoherent(
   while (
     Date.now() < deadline &&
     (state.visibleLines === 0 ||
-      state.maxGutterDelta > GUTTER_TOLERANCE ||
+      state.visibleGutters === 0 ||
+      state.misalignedGutters > 0 ||
       state.documentScrollLeak)
   ) {
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -138,12 +152,14 @@ async function expectCoherent(
     state.visibleLines,
     `${context}: viewport never painted a line (seed ${SEED})`,
   ).toBeGreaterThan(0);
-  // The gutter must end up pinned to its rows; lasting drift is the visible
-  // symptom of a virtualised editor rendering against a stale measurement.
   expect(
-    state.maxGutterDelta,
-    `${context}: line numbers never re-aligned with their lines (seed ${SEED})`,
-  ).toBeLessThanOrEqual(GUTTER_TOLERANCE);
+    state.visibleGutters,
+    `${context}: viewport never painted a line number (seed ${SEED})`,
+  ).toBeGreaterThan(0);
+  expect(
+    state.misalignedGutters,
+    `${context}: ${state.misalignedGutters} line number(s) did not overlap their rows; max top delta ${state.maxGutterDelta}px (seed ${SEED})`,
+  ).toBe(0);
   expect(
     state.documentScrollLeak,
     `${context}: the page scrolled instead of the editor (seed ${SEED})`,
@@ -319,20 +335,20 @@ test("a burst of edits at scattered lines survives undo", async ({
     `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) =>
       getEditorView()?.state.doc.length ?? -1)`,
   );
-  await tauriPage.evaluate(
-    `import("/src/components/editor/cm/controller.ts").then(async ({ getEditorView }) => {
-      ${FRAME_HELPER}
-      const view = getEditorView();
-      if (!view) throw new Error("editor is unavailable");
-      for (const target of ${JSON.stringify(targets)}) {
-        const line = view.state.doc.line(Math.min(target, view.state.doc.lines));
-        // Separate dispatches so each becomes its own undo entry.
-        view.dispatch({ changes: { from: line.from, insert: "BURST " } });
-        await nextFrame();
-      }
-      return true;
-    })`,
-  );
+  // Exercise the app's isolated edit boundary one action at a time. Waiting a
+  // frame does not split CodeMirror history groups; raw dispatches here used
+  // to let repeated undo walk into the fixture's initial document load.
+  for (const target of targets) {
+    await tauriPage.evaluate(
+      `import("/src/components/editor/cm/controller.ts").then(({ getEditorView, replaceRange }) => {
+        const view = getEditorView();
+        if (!view) throw new Error("editor is unavailable");
+        const line = view.state.doc.line(Math.min(${target}, view.state.doc.lines));
+        replaceRange(line.from, line.from, "BURST ");
+        return true;
+      })`,
+    );
+  }
   const during = await tauriPage.evaluate<number>(
     `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) =>
       getEditorView()?.state.doc.length ?? -1)`,
@@ -342,20 +358,21 @@ test("a burst of edits at scattered lines survives undo", async ({
 
   // Uses the app's own undo entry point rather than CodeMirror's command, so
   // this exercises the path the toolbar and keyboard shortcut actually take.
-  await tauriPage.evaluate(
-    `import("/src/components/editor/cm/controller.ts").then(async ({ editorUndo }) => {
-      ${FRAME_HELPER}
-      for (let i = 0; i < ${targets.length}; i++) {
-        editorUndo();
-        await nextFrame();
-      }
-      return true;
-    })`,
+  const undoLengths: number[] = [];
+  for (let i = 0; i < targets.length; i++) {
+    undoLengths.push(
+      await tauriPage.evaluate<number>(
+        `import("/src/components/editor/cm/controller.ts").then(({ editorUndo, getEditorView }) => {
+          editorUndo();
+          return getEditorView()?.state.doc.length ?? -1;
+        })`,
+      ),
+    );
+  }
+  expect(undoLengths).toEqual(
+    Array.from({ length: targets.length }, (_, index) => during - (index + 1) * 6),
   );
-  const after = await tauriPage.evaluate<number>(
-    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) =>
-      getEditorView()?.state.doc.length ?? -1)`,
-  );
+  const after = undoLengths.at(-1) ?? -1;
   expect(after, `undo did not restore the document (seed ${SEED})`).toBe(before);
   await expectCoherent(tauriPage, "after undoing the burst");
 });
