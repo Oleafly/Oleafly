@@ -18,10 +18,12 @@ const mocks = vi.hoisted(() => ({
   logError: vi.fn(),
   notifyError: vi.fn(),
   toastInfo: vi.fn(),
+  toastInfoUnique: vi.fn(),
   toastSuccess: vi.fn(),
   setMainDocCmd: vi.fn(),
   setProjectShellEscapeCmd: vi.fn(),
   deleteFile: vi.fn(),
+  importPathsIntoProject: vi.fn(),
   resetCompile: vi.fn(),
   flushAutoCommit: vi.fn(),
   scheduleAutoCommit: vi.fn(),
@@ -47,6 +49,7 @@ vi.mock("@/lib/tauri", () => ({
   setMainDocCmd: mocks.setMainDocCmd,
   setProjectShellEscapeCmd: mocks.setProjectShellEscapeCmd,
   deleteFile: mocks.deleteFile,
+  importPathsIntoProject: mocks.importPathsIntoProject,
   listProjects: vi.fn(async () => []),
   mcpSetActiveProject: mocks.mcpSetActiveProject,
 }));
@@ -57,7 +60,11 @@ vi.mock("@/lib/auto-commit", () => ({
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({
   notifyError: mocks.notifyError,
-  toast: { info: mocks.toastInfo, success: mocks.toastSuccess },
+  toast: {
+    info: mocks.toastInfo,
+    infoUnique: mocks.toastInfoUnique,
+    success: mocks.toastSuccess,
+  },
 }));
 vi.mock("@/store/diff", () => ({ useDiffStore: { getState: () => ({ clearActiveDiff: vi.fn() }) } }));
 vi.mock("@/store/tab-order", () => ({ nextTabSeq: () => 1 }));
@@ -94,6 +101,7 @@ beforeEach(async () => {
   mocks.notifyError.mockReset();
   mocks.logError.mockReset().mockResolvedValue(undefined);
   mocks.toastInfo.mockReset();
+  mocks.toastInfoUnique.mockReset();
   mocks.toastSuccess.mockReset();
   mocks.writeFileContent.mockReset().mockResolvedValue(undefined);
   mocks.flushAutoCommit.mockReset();
@@ -130,6 +138,10 @@ beforeEach(async () => {
   mocks.setMainDocCmd.mockReset();
   mocks.setProjectShellEscapeCmd.mockReset();
   mocks.deleteFile.mockReset().mockResolvedValue(undefined);
+  mocks.importPathsIntoProject.mockReset().mockResolvedValue({
+    paths: ["imports/source"],
+    generation: 1,
+  });
   mocks.resetCompile.mockReset();
   mocks.mcpSetActiveProject.mockReset().mockResolvedValue(undefined);
   mocks.flushWysiwygPendingEdits.mockReset();
@@ -691,6 +703,25 @@ describe("transactional project transitions", () => {
       vi.useRealTimers();
     }
   });
+
+  it("retries an additive import after a stale generation conflict", async () => {
+    mocks.projectMutationGeneration
+      .mockReset()
+      .mockResolvedValueOnce(7)
+      .mockResolvedValueOnce(8);
+    mocks.importPathsIntoProject
+      .mockRejectedValueOnce(
+        new Error("mutation conflict at generation 8: the target changed after expectedGeneration"),
+      )
+      .mockResolvedValueOnce({ paths: ["imports/source"], generation: 9 });
+    useFilesStore.setState({ projectId: "project" });
+
+    await useFilesStore.getState().importPaths("imports", ["/tmp/source"]);
+
+    expect(mocks.importPathsIntoProject).toHaveBeenCalledTimes(2);
+    expect(mocks.importPathsIntoProject.mock.calls.map((call) => call[3])).toEqual([7, 8]);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
 });
 
 describe("external filesystem reconciliation", () => {
@@ -898,6 +929,24 @@ describe("MCP active-project synchronization", () => {
 });
 
 describe("best-effort project loading diagnostics", () => {
+  it("publishes one keyed engine prompt for a compatibility blocker", async () => {
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+    mocks.readFileContent.mockResolvedValue(
+      String.raw`\documentclass{article}\usepackage{minted}\begin{document}\end{document}`,
+    );
+
+    await useFilesStore.getState().openProject("project");
+
+    await vi.waitFor(() =>
+      expect(mocks.toastInfoUnique).toHaveBeenCalledWith(
+        "engine-compatibility:project",
+        expect.any(String),
+        expect.objectContaining({ label: "Choose engine…" }),
+        true,
+      ),
+    );
+  });
+
   it("logs bibliography preload failures without blocking the project", async () => {
     const failure = new Error("bibliography read failed");
     mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);

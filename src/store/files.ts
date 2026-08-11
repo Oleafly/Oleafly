@@ -572,7 +572,8 @@ function showCompatibilityFindings(
   const blockers = findings.filter((finding) => finding.level === "blocker");
   if (blockers.length > 0) {
     const extra = blockers.length > 1 ? ` (+${blockers.length - 1} more)` : "";
-    toast.info(
+    toast.infoUnique(
+      `engine-compatibility:${id}`,
       `${blockers[0].title}${extra}`,
       {
         label: "Choose engine…",
@@ -1308,13 +1309,30 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (!projectId || sourcePaths.length === 0) return;
     try {
       await drainProjectWrites(projectId);
-      const expectedGeneration = await refreshMutationGeneration(projectId);
-      const result = await apiImportPathsIntoProject(
-        projectId,
-        destDir,
-        sourcePaths,
-        expectedGeneration,
-      );
+      let expectedGeneration = await refreshMutationGeneration(projectId);
+      let result: Awaited<ReturnType<typeof apiImportPathsIntoProject>>;
+      try {
+        result = await apiImportPathsIntoProject(
+          projectId,
+          destDir,
+          sourcePaths,
+          expectedGeneration,
+        );
+      } catch (error) {
+        // Imports are additive and the backend rejects a stale generation
+        // before publishing anything. A save can be admitted in the narrow
+        // window between our generation read and import admission, so retry
+        // that safe preflight conflict once against the new authoritative
+        // generation instead of dropping the user's chosen import.
+        if (!String(error).includes("mutation conflict at generation")) throw error;
+        expectedGeneration = await refreshMutationGeneration(projectId);
+        result = await apiImportPathsIntoProject(
+          projectId,
+          destDir,
+          sourcePaths,
+          expectedGeneration,
+        );
+      }
       if (Number.isSafeInteger(result?.generation)) {
         rememberMutationGeneration(projectId, result.generation);
       }

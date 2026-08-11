@@ -1,4 +1,5 @@
 import {
+  acceptCompletion,
   CompletionContext,
   selectedCompletion,
   completionStatus,
@@ -32,8 +33,9 @@ import {
 // sources.
 //
 // While the completion popup is open the ghost mirrors the highlighted option
-// instead of guessing separately, so the two surfaces can never disagree, and
-// Tab is left to the popup's own handler.
+// instead of guessing separately, so the two surfaces can never disagree. Tab
+// delegates to CodeMirror's completion command so guarded applies and snippets
+// keep their native behavior.
 
 const GHOST_CLASS = "cm-ghostCompletion";
 
@@ -251,10 +253,10 @@ function computeGhost(
 
 /** Insert the pending ghost suggestion. Bound to Tab. */
 export function acceptGhostCompletion(view: EditorView): boolean {
-  // With the popup open the ghost is only a preview of the highlighted option,
-  // so Tab belongs to the popup: its own handler runs the option's apply and
-  // expands snippets, which inserting the label here would not.
-  if (completionStatus(view.state) === "active") return false;
+  // CodeMirror's built-in completion keymap accepts with Enter, not Tab. Route
+  // Tab through its command explicitly when the popup is active; inserting the
+  // ghost text ourselves would bypass guarded applies and snippet expansion.
+  if (completionStatus(view.state) === "active") return acceptCompletion(view);
   const ghost = view.state.field(ghostField, false);
   if (!ghost || ghost.pos !== view.state.selection.main.head) return false;
   view.dispatch({

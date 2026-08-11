@@ -25,7 +25,7 @@ export function Toaster() {
     const current = new Map(toasts.map((t) => [t.id, t]));
     for (const [id, t] of current) {
       const prev = seenRef.current.get(id);
-      if (prev && prev.message === t.message && prev.kind === t.kind) continue;
+      if (prev === t) continue;
       const show =
         t.kind === "error"
           ? sonnerToast.error
