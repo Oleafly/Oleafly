@@ -468,6 +468,10 @@ code. End-user task guides are maintained separately from this public index.
 
 ## Contributing
 
+<div align="center">
+  <img src="docs/assets/oleafly-club.png" alt="The Oleafly Club: an open-source research community celebrating drafts, revisions, tests, and successful submissions" width="92%" />
+</div>
+
 Oleafly is built in the open by
 [Prajwal S Venkateshmurthy](https://github.com/prajwalsvenkatesh) and
 contributors. Bug reports, fixes, templates, documentation, and careful
