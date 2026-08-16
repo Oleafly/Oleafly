@@ -40,7 +40,9 @@ esac
 ARCHIVE="$CACHE_DIR/$ASSET"
 if [[ ! -f "$ARCHIVE" ]] || [[ "$(checksum "$ARCHIVE")" != "$SHA" ]]; then
   rm -f "$ARCHIVE"
-  curl -fSL --proto '=https' --retry 5 --retry-delay 3 --retry-connrefused \
+  curl -fSL --proto '=https' --connect-timeout 30 \
+    --speed-limit 1024 --speed-time 60 \
+    --retry 5 --retry-delay 3 --retry-connrefused \
     -o "$TMP/download" "https://github.com/jgm/pandoc/releases/download/$VERSION/$ASSET"
   ACTUAL="$(checksum "$TMP/download")"
   if [[ "$ACTUAL" != "$SHA" ]]; then

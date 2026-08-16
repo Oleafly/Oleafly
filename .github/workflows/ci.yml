@@ -37,6 +37,7 @@ jobs:
   markdown-platform-smoke:
     name: Markdown smoke (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       matrix:
         include:
@@ -83,6 +84,7 @@ jobs:
   frontend:
     name: Frontend (typecheck + build)
     runs-on: ubuntu-22.04
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
 
@@ -146,6 +148,7 @@ jobs:
   rust:
     name: Rust (test + clippy)
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -278,6 +281,7 @@ jobs:
   rust-windows:
     name: Rust tests (Windows Job Objects)
     runs-on: windows-2022
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
 
@@ -316,6 +320,7 @@ jobs:
     # compiled into the shipped binary. Policy lives in src-tauri/deny.toml.
     name: Rust (cargo-deny audit)
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
 
@@ -333,6 +338,7 @@ jobs:
       (github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
