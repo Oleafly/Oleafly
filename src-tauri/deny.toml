@@ -1,6 +1,6 @@
-# cargo-deny policy: RustSec advisories and a permissive-only license gate
-# (the app bundles its dependencies into a shipped desktop binary).
-# Run: cargo deny check  (from src-tauri/)
+# cargo-deny policy for the full Rust workspace.
+# Run from the repository root:
+# cargo deny --workspace --all-features --config src-tauri/deny.toml check
 
 [graph]
 all-features = false
@@ -51,6 +51,8 @@ confidence-threshold = 0.8
 exceptions = [
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-agent" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-cli" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-core" },
 ]
 
 [bans]

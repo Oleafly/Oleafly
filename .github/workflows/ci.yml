@@ -319,8 +319,8 @@ jobs:
         run: cargo test -p oleafly-cli --test cli
 
   cargo-deny:
-    # RustSec advisories plus a permissive-only license gate for everything
-    # compiled into the shipped binary. Policy lives in src-tauri/deny.toml.
+    # RustSec advisories plus a permissive-only license gate for the Rust workspace.
+    # Policy lives in src-tauri/deny.toml.
     name: Rust (cargo-deny audit)
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -330,8 +330,9 @@ jobs:
       - name: Run cargo-deny
         uses: EmbarkStudios/cargo-deny-action@v2
         with:
-          manifest-path: src-tauri/Cargo.toml
+          manifest-path: Cargo.toml
           command: check
+          arguments: --workspace --all-features --config src-tauri/deny.toml
 
   sonarqube:
     name: SonarQube Cloud

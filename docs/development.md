@@ -101,7 +101,7 @@ pnpm language-servers:test                # manifest, checksum, target, URL, and
 pnpm audit --prod --audit-level high      # registry-backed npm advisory check
 cargo check --workspace                   # all Rust crates compile
 cargo test -p oleafly-core -p oleafly-cli --all-targets  # shared core and CLI
-cargo deny --manifest-path src-tauri/Cargo.toml check  # workspace advisories, licenses, and sources
+cargo deny --workspace --all-features --config src-tauri/deny.toml check  # Rust advisories, licenses, and sources
 ```
 
 The two audit commands require registry/network access. CI records their
