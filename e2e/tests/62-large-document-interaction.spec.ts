@@ -167,6 +167,30 @@ async function expectCoherent(
   await expectDesktopShellAnchored(page);
 }
 
+// Opening a project always compiles it, independently of the auto-compile
+// preference. Probing paint while Tectonic saturates a 2-core runner measures
+// the compiler, and the second compile's save-before-compile races the first
+// one's hold on main.tex.
+async function settleOpenCompile(
+  page: Parameters<typeof openProject>[0],
+): Promise<void> {
+  const QUIET_POLLS_REQUIRED = 4;
+  const POLL_INTERVAL_MS = 500;
+  const deadline = Date.now() + 180_000;
+  let quietPolls = 0;
+  let status = "unknown";
+  while (Date.now() < deadline) {
+    status = await page.evaluate<string>(
+      `import("/src/store/compile.ts").then(({ useCompileStore }) =>
+        useCompileStore.getState().status)`,
+    );
+    quietPolls = status === "compiling" ? 0 : quietPolls + 1;
+    if (quietPolls >= QUIET_POLLS_REQUIRED) return;
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+  }
+  throw new Error(`the open-compile never settled (last status ${status})`);
+}
+
 async function openLargeBook(
   page: Parameters<typeof openProject>[0],
 ): Promise<void> {
@@ -179,6 +203,7 @@ async function openLargeBook(
   if (exists) {
     await openProject(page, PROJECT);
     await expect(page.locator(".cm-content")).toBeVisible({ timeout: 30_000 });
+    await settleOpenCompile(page);
     return;
   }
   const fixture = buildLargeLatexBookProject();
@@ -200,6 +225,7 @@ async function openLargeBook(
   }
   await replaceEditorSource(page, fixture.source);
   await expect(page.locator(".cm-content")).toBeVisible({ timeout: 30_000 });
+  await settleOpenCompile(page);
 }
 
 async function gotoLine(

@@ -320,6 +320,34 @@ describe("accepting and dismissing", () => {
     view.destroy();
   });
 
+  it("accepts the visible ghost when the popup refuses inside its interaction delay", async () => {
+    const source = sourceOf(["\\alpha"]);
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: "\\alp",
+        selection: { anchor: 4 },
+        extensions: [
+          ghostCompletion([source]),
+          autocompletion({
+            override: [source],
+            activateOnTyping: false,
+            interactionDelay: 10_000,
+          }),
+        ],
+      }),
+      parent: document.body,
+    });
+    view.focus();
+
+    expect(startCompletion(view)).toBe(true);
+    await vi.waitFor(() => expect(completionStatus(view.state)).toBe("active"));
+    await settle();
+
+    expect(acceptGhostCompletion(view)).toBe(true);
+    expect(view.state.doc.toString()).toBe("\\alpha");
+    view.destroy();
+  });
+
   it("Tab inserts the suggestion and leaves the cursor after it", async () => {
     const view = mount("\\alp", [sourceOf(["\\alpha"])]);
     caretToEnd(view);

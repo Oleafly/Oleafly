@@ -903,7 +903,12 @@ test("superseded PDF work cannot restore stale text after a document switch", as
 
   await tauriPage.evaluate(`(async () => {
     await ${oldExpression};
-    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+    await new Promise((resolve) => {
+      let settled = false;
+      const finish = () => { if (!settled) { settled = true; resolve(undefined); } };
+      requestAnimationFrame(finish);
+      setTimeout(finish, 100);
+    });
     await ${newExpression};
     return true;
   })()`);

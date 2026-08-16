@@ -44,10 +44,41 @@ jobs:
             target: aarch64-unknown-linux-gnu
     steps:
       - uses: actions/checkout@v7
+
+      - name: Cache Tectonic sidecar
+        id: cache-tectonic-md
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/tectonic-*
+          key: tectonic-${{ matrix.target }}-${{ hashFiles('scripts/fetch-tectonic.sh') }}
+
       - name: Fetch Tectonic sidecar
+        if: steps.cache-tectonic-md.outputs.cache-hit != 'true'
         run: bash scripts/fetch-tectonic.sh ${{ matrix.target }}
+
+      - name: Cache Pandoc archive
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/target/e2e-sidecars/pandoc-*
+          key: pandoc-${{ matrix.target }}-${{ hashFiles('scripts/smoke-markdown.sh') }}
+
+      - name: Restore Tectonic packages for the Markdown smoke
+        id: tectonic-pkgs-md
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/Tectonic
+          key: tectonic-pkgs-md-v1-${{ matrix.target }}-${{ hashFiles('scripts/fixtures/markdown-smoke.md', 'scripts/fetch-tectonic.sh') }}
+          restore-keys: tectonic-pkgs-md-v1-${{ matrix.target }}-
+
       - name: Smoke-test managed Pandoc with packaged Tectonic input
         run: bash scripts/smoke-markdown.sh ${{ matrix.target }}
+
+      - name: Save Tectonic packages for the Markdown smoke
+        if: steps.tectonic-pkgs-md.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/Tectonic
+          key: tectonic-pkgs-md-v1-${{ matrix.target }}-${{ hashFiles('scripts/fixtures/markdown-smoke.md', 'scripts/fetch-tectonic.sh') }}
 
   frontend:
     name: Frontend (typecheck + build)
@@ -189,8 +220,29 @@ jobs:
       - name: Smoke-test Typst sidecar
         run: bash scripts/smoke-typst.sh x86_64-unknown-linux-gnu
 
+      - name: Cache Pandoc archive
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/target/e2e-sidecars/pandoc-*
+          key: pandoc-${{ runner.os }}-x86_64-${{ hashFiles('scripts/smoke-markdown.sh') }}
+
+      - name: Restore Tectonic packages for the Markdown smoke
+        id: tectonic-pkgs-rust
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/Tectonic
+          key: tectonic-pkgs-md-v1-x86_64-unknown-linux-gnu-${{ hashFiles('scripts/fixtures/markdown-smoke.md', 'scripts/fetch-tectonic.sh') }}
+          restore-keys: tectonic-pkgs-md-v1-x86_64-unknown-linux-gnu-
+
       - name: Smoke-test managed Pandoc with bundled Tectonic
         run: bash scripts/smoke-markdown.sh x86_64-unknown-linux-gnu
+
+      - name: Save Tectonic packages for the Markdown smoke
+        if: steps.tectonic-pkgs-rust.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/Tectonic
+          key: tectonic-pkgs-md-v1-x86_64-unknown-linux-gnu-${{ hashFiles('scripts/fixtures/markdown-smoke.md', 'scripts/fetch-tectonic.sh') }}
 
       - name: Install cargo-llvm-cov
         if: github.event_name == 'push' || github.event_name == 'pull_request'

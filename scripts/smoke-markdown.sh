@@ -4,6 +4,8 @@ set -euo pipefail
 TARGET="${1:?usage: smoke-markdown.sh <target-triple>}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="3.9.0.2"
+CACHE_DIR="${OLEAFLY_SIDECAR_CACHE_DIR:-$ROOT/src-tauri/target/e2e-sidecars}"
+mkdir -p "$CACHE_DIR"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -35,11 +37,19 @@ case "$TARGET" in
   *) echo "unsupported Markdown smoke target: $TARGET" >&2; exit 1 ;;
 esac
 
-curl -fSL --retry 5 --retry-delay 3 --retry-connrefused \
-  -o "$TMP/archive" "https://github.com/jgm/pandoc/releases/download/$VERSION/$ASSET"
-ACTUAL="$(checksum "$TMP/archive")"
-test "$ACTUAL" = "$SHA"
-if [[ "$KIND" == tar ]]; then tar xzf "$TMP/archive" -C "$TMP"; else unzip -q "$TMP/archive" -d "$TMP"; fi
+ARCHIVE="$CACHE_DIR/$ASSET"
+if [[ ! -f "$ARCHIVE" ]] || [[ "$(checksum "$ARCHIVE")" != "$SHA" ]]; then
+  rm -f "$ARCHIVE"
+  curl -fSL --proto '=https' --retry 5 --retry-delay 3 --retry-connrefused \
+    -o "$TMP/download" "https://github.com/jgm/pandoc/releases/download/$VERSION/$ASSET"
+  ACTUAL="$(checksum "$TMP/download")"
+  if [[ "$ACTUAL" != "$SHA" ]]; then
+    echo "checksum mismatch for $ASSET: expected $SHA, got $ACTUAL" >&2
+    exit 1
+  fi
+  mv "$TMP/download" "$ARCHIVE"
+fi
+if [[ "$KIND" == tar ]]; then tar xzf "$ARCHIVE" -C "$TMP"; else unzip -q "$ARCHIVE" -d "$TMP"; fi
 "$TMP/$PANDOC" --version | grep -F "pandoc $VERSION"
 if [[ "$TARGET" == x86_64-pc-windows-msvc ]]; then
   ENGINE="$TMP/tectonic.exe"
