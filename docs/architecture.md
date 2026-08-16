@@ -8,8 +8,8 @@ making document engines, filesystem policy, and external integrations explicit.
 
 | Area | Responsibility |
 | --- | --- |
-| `crates/oleafly-core/` | Shared project manifest, path safety, build preparation, and native process policy |
-| `crates/oleafly-cli/` | The `oleaflyc` command-line adapter and output contracts |
+| `crates/oleafly-core/` | Shared project manifest, path safety, and build-directory policy |
+| `crates/oleafly-cli/` | The `oleaflyc` commands, native compiler adapter, and output contracts |
 | `crates/oleafly-agent/` | Provider-neutral agent runtime |
 | `src/` | Application shell, stores, Tauri adapters, contributions, and UI |
 | `packages/editor/` | Engine-neutral editor and language-service primitives |
@@ -59,9 +59,10 @@ tests runnable without a desktop runtime and prevents dependency cycles.
 
 ## Compilation boundary
 
-`oleafly-core` owns project manifests, safe path resolution, build-directory
-policy, tool discovery, and contained native process execution. The desktop
-and `oleaflyc` are adapters over that shared core.
+`oleafly-core` owns project manifests, safe path resolution, and
+build-directory preparation. The desktop and `oleaflyc` are adapters over that
+shared workspace policy. Each adapter owns its runtime-specific compiler
+execution and diagnostics.
 
 Within the desktop adapter, `DocumentEngine` is the capability contract for
 LaTeX, Typst, and Markdown. It declares source extensions, formatting profile,

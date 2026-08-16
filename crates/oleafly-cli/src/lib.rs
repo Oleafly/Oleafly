@@ -386,7 +386,7 @@ async fn watch_build(
             }
         } else {
             eprintln!(
-                "Build failed in {} ms; waiting for changes",
+                "Build failed in {} ms. Waiting for changes",
                 result.compile_time_ms
             );
         }

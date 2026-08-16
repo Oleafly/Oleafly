@@ -4,7 +4,10 @@ use sha2::{Digest, Sha256};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 use std::time::{Duration, Instant};
 use tokio::io::AsyncReadExt;
 
@@ -12,6 +15,7 @@ const OUTPUT_STEM: &str = "_oleafly_entry";
 const MAX_LOG_BYTES: usize = 1024 * 1024;
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(300);
 type LogCallback = dyn Fn(&str) + Send + Sync;
+static ALIAS_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct BuildOptions {
@@ -22,12 +26,34 @@ pub struct BuildOptions {
 
 #[derive(Clone, Debug)]
 pub struct PreparedBuild {
-    pub project_root: PathBuf,
-    pub main_document: String,
-    pub source_path: PathBuf,
-    pub build_directory: PathBuf,
-    pub engine: Engine,
-    pub tex_flavor: Option<String>,
+    pub(crate) project_root: PathBuf,
+    pub(crate) main_document: String,
+    pub(crate) source_path: PathBuf,
+    pub(crate) build_directory: PathBuf,
+    pub(crate) engine: Engine,
+    pub(crate) tex_flavor: Option<String>,
+}
+
+impl PreparedBuild {
+    pub fn project_root(&self) -> &Path {
+        &self.project_root
+    }
+
+    pub fn source_path(&self) -> &Path {
+        &self.source_path
+    }
+
+    pub fn build_directory(&self) -> &Path {
+        &self.build_directory
+    }
+
+    pub fn engine(&self) -> Engine {
+        self.engine
+    }
+
+    pub fn main_document(&self) -> &str {
+        &self.main_document
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -134,7 +160,7 @@ impl NativeCompiler {
         self.build_prepared(&prepared, options).await
     }
 
-    pub async fn build_prepared(
+    async fn build_prepared(
         &self,
         build: &PreparedBuild,
         options: BuildOptions,
@@ -184,6 +210,7 @@ impl NativeCompiler {
             reject_project_local_tool(&executable, &build.project_root)?;
         }
         let output = build.build_directory.join(format!("{OUTPUT_STEM}.pdf"));
+        let mut compiler_alias = None;
         let (arguments, produced_output) = match build.engine {
             Engine::Tectonic => {
                 let stem = build
@@ -208,8 +235,10 @@ impl NativeCompiler {
                     )
                 })?;
                 reject_project_local_tool(tectonic, &build.project_root)?;
+                let (engine_path, alias) = pandoc_engine_path(tectonic)?;
+                compiler_alias = alias;
                 (
-                    markdown_arguments(build, &output, tectonic)?,
+                    markdown_arguments(build, &output, &engine_path)?,
                     output.clone(),
                 )
             }
@@ -218,6 +247,7 @@ impl NativeCompiler {
             executable,
             arguments,
             produced_output,
+            _compiler_alias: compiler_alias,
         })
     }
 }
@@ -226,6 +256,73 @@ struct BuildCommand {
     executable: PathBuf,
     arguments: Vec<OsString>,
     produced_output: PathBuf,
+    _compiler_alias: Option<CompilerAlias>,
+}
+
+struct CompilerAlias {
+    directory: PathBuf,
+    executable: PathBuf,
+}
+
+impl CompilerAlias {
+    fn create(source: &Path, name: &str) -> Result<Self> {
+        let temporary_root = std::env::temp_dir();
+        for _ in 0..100 {
+            let sequence = ALIAS_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+            let directory = temporary_root.join(format!(
+                "oleafly-compiler-{}-{sequence}",
+                std::process::id()
+            ));
+            match std::fs::create_dir(&directory) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => return Err(error.into()),
+            }
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                if let Err(error) =
+                    std::fs::set_permissions(&directory, std::fs::Permissions::from_mode(0o700))
+                {
+                    let _ = std::fs::remove_dir(&directory);
+                    return Err(error.into());
+                }
+            }
+            let executable = directory.join(executable_name(name));
+            if std::fs::hard_link(source, &executable).is_err() {
+                if let Err(error) = std::fs::copy(source, &executable) {
+                    let _ = std::fs::remove_dir(&directory);
+                    return Err(error.into());
+                }
+            }
+            return Ok(Self {
+                directory,
+                executable,
+            });
+        }
+        Err(Error::new(
+            ErrorKind::Io,
+            "failed to allocate a private compiler alias",
+        ))
+    }
+}
+
+impl Drop for CompilerAlias {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.executable);
+        let _ = std::fs::remove_dir(&self.directory);
+    }
+}
+
+fn pandoc_engine_path(tectonic: &Path) -> Result<(PathBuf, Option<CompilerAlias>)> {
+    if tectonic
+        .file_stem()
+        .is_some_and(|value| value.eq_ignore_ascii_case("tectonic"))
+    {
+        return Ok((tectonic.to_path_buf(), None));
+    }
+    let alias = CompilerAlias::create(tectonic, "tectonic")?;
+    Ok((alias.executable.clone(), Some(alias)))
 }
 
 impl Workspace {
@@ -246,7 +343,7 @@ fn missing_tool(engine: Engine) -> Error {
     Error::new(
         ErrorKind::MissingTool,
         format!(
-            "{} was not found; install it or set {}",
+            "{} was not found. Install it or set {}",
             engine.tool_name(),
             tool_env(engine.tool_name())
         ),
@@ -531,7 +628,10 @@ fn discover_bibliographies(root: &Path) -> Result<Vec<PathBuf>> {
             }
             let path = entry.path();
             if file_type.is_dir() {
-                if entry.file_name() != ".oleafly" {
+                if !matches!(
+                    entry.file_name().to_str(),
+                    Some(".git" | ".oleafly" | "node_modules" | "target")
+                ) {
                     walk(root, &path, depth + 1, output)?;
                 }
             } else if file_type.is_file()
@@ -818,6 +918,65 @@ mod tests {
         assert_eq!(prepared.engine, Engine::Tectonic);
         assert!(prepared.source_path.ends_with("main.tex"));
         assert!(prepared.build_directory.ends_with(".oleafly/build"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn bibliography_discovery_does_not_follow_links() {
+        use std::os::unix::fs::symlink;
+
+        let directory = TempDir::new().unwrap();
+        let outside = TempDir::new().unwrap();
+        std::fs::write(outside.path().join("outside.bib"), "@book{outside}").unwrap();
+        symlink(outside.path(), directory.path().join("linked")).unwrap();
+        std::fs::write(directory.path().join("inside.bib"), "@book{inside}").unwrap();
+        let found = discover_bibliographies(directory.path()).unwrap();
+        assert_eq!(found, vec![PathBuf::from("inside.bib")]);
+    }
+
+    #[test]
+    fn output_cleanup_is_narrow() {
+        let directory = TempDir::new().unwrap();
+        for extension in ["pdf", "log", "synctex.gz"] {
+            std::fs::write(
+                directory.path().join(format!("{OUTPUT_STEM}.{extension}")),
+                "generated",
+            )
+            .unwrap();
+        }
+        std::fs::write(directory.path().join("keep.pdf"), "keep").unwrap();
+        clear_outputs(directory.path()).unwrap();
+        assert!(directory.path().join("keep.pdf").is_file());
+        assert!(!directory.path().join(format!("{OUTPUT_STEM}.pdf")).exists());
+    }
+
+    #[test]
+    fn output_fingerprint_includes_length_and_contents() {
+        let directory = TempDir::new().unwrap();
+        let first = directory.path().join("first.pdf");
+        let second = directory.path().join("second.pdf");
+        std::fs::write(&first, "one").unwrap();
+        std::fs::write(&second, "two").unwrap();
+        let first_id = fingerprint_file(&first).unwrap();
+        let second_id = fingerprint_file(&second).unwrap();
+        assert!(first_id.starts_with("pdf-sha256:3:"));
+        assert_ne!(first_id, second_id);
+    }
+
+    #[test]
+    fn pandoc_engine_alias_uses_a_recognized_executable_name() {
+        let directory = TempDir::new().unwrap();
+        let source = directory.path().join(executable_name("tectonic-target"));
+        std::fs::write(&source, "compiler").unwrap();
+        let (path, alias) = pandoc_engine_path(&source).unwrap();
+        assert_eq!(
+            path.file_name().and_then(|value| value.to_str()),
+            Some(executable_name("tectonic").as_str())
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), b"compiler");
+        let alias_directory = path.parent().unwrap().to_path_buf();
+        drop(alias);
+        assert!(!alias_directory.exists());
     }
 
     #[test]

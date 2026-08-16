@@ -63,7 +63,7 @@ impl Workspace {
             return Err(Error::new(
                 ErrorKind::NotInitialized,
                 format!(
-                    "{} is not an Oleafly project; run `oleaflyc init` first",
+                    "{} is not an Oleafly project. Run `oleaflyc init` first",
                     root.display()
                 ),
             ));
@@ -494,7 +494,7 @@ fn discover_main_document(root: &Path) -> Result<Option<String>> {
         1 => Ok(found.into_iter().next()),
         _ => Err(Error::new(
             ErrorKind::InvalidInput,
-            "multiple possible main documents found; pass --main",
+            "multiple possible main documents found. Pass --main",
         )),
     }
 }
@@ -629,6 +629,24 @@ mod tests {
         assert_eq!(error.kind(), ErrorKind::UnsafePath);
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn workspace_rejects_a_source_symlink_escape() {
+        use std::os::unix::fs::symlink;
+
+        let directory = TempDir::new().unwrap();
+        let outside = TempDir::new().unwrap();
+        std::fs::write(outside.path().join("paper.tex"), "outside").unwrap();
+        symlink(outside.path(), directory.path().join("linked")).unwrap();
+        std::fs::write(
+            directory.path().join(MANIFEST_NAME),
+            r#"{"main_doc":"linked/paper.tex","engine":"xetex"}"#,
+        )
+        .unwrap();
+        let error = Workspace::open(directory.path()).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::UnsafePath);
+    }
+
     #[test]
     fn clean_removes_only_the_build_directory() {
         let directory = TempDir::new().unwrap();
@@ -665,7 +683,7 @@ mod tests {
         )
         .unwrap();
         assert!(!directory.path().join(MANIFEST_NAME).exists());
-        assert_eq!(workspace.prepare_build().unwrap().engine, Engine::Typst);
+        assert_eq!(workspace.prepare_build().unwrap().engine(), Engine::Typst);
     }
 
     #[test]

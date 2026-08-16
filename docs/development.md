@@ -7,8 +7,8 @@ What you need to work on Oleafly. The app is a [Tauri 2](https://tauri.app) proj
 ```
 oleafly-desktop/
 ├── crates/
-│   ├── oleafly-core/       shared Rust project, path, build, and process policy
-│   ├── oleafly-cli/        oleaflyc command-line adapter
+│   ├── oleafly-core/       shared Rust project, path, and build-directory policy
+│   ├── oleafly-cli/        oleaflyc commands and native compiler adapter
 │   └── oleafly-agent/      provider-neutral agent runtime
 ├── src/                    React app shell (stores, Tauri client, UI kit, port adapters)
 │   ├── components/         ui (shadcn-style), layout, editor glue, preview panes, ai

@@ -255,8 +255,8 @@ pub async fn compile_project(
     let prepared = workspace
         .prepare_build()
         .map_err(|error| error.to_string())?;
-    let project_dir = prepared.project_root;
-    let build_dir = prepared.build_directory;
+    let project_dir = prepared.project_root().to_path_buf();
+    let build_dir = prepared.build_directory().to_path_buf();
     let options = crate::document_engine::CompileOptions {
         offline: core_options.offline,
         fast: core_options.fast,
@@ -267,7 +267,7 @@ pub async fn compile_project(
             .and_then(crate::document_engine::LatexmkFlavor::parse),
         allow_shell_escape: meta.allow_shell_escape,
     };
-    let engine = crate::document_engine::engine_for(prepared.engine.as_str(), &main_doc)?;
+    let engine = crate::document_engine::engine_for(prepared.engine().as_str(), &main_doc)?;
     let prepared_spec = crate::document_engine::prepare_compile_spec(
         engine.id(),
         build_dir.clone(),
@@ -679,10 +679,10 @@ mod tests {
         };
         let workspace = desktop_workspace(directory.path(), &meta).unwrap();
         let prepared = workspace.prepare_build().unwrap();
-        assert_eq!(prepared.engine, oleafly_core::Engine::Typst);
-        assert_eq!(prepared.main_document, "paper.typ");
-        assert!(prepared.source_path.ends_with("paper.typ"));
-        assert!(prepared.build_directory.ends_with(".oleafly/build"));
+        assert_eq!(prepared.engine(), oleafly_core::Engine::Typst);
+        assert_eq!(prepared.main_document(), "paper.typ");
+        assert!(prepared.source_path().ends_with("paper.typ"));
+        assert!(prepared.build_directory().ends_with(".oleafly/build"));
     }
 
     #[test]
