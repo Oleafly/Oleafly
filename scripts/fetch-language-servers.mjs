@@ -355,7 +355,8 @@ export function assertWindowsReparseQuerySafe(path, query) {
 
 // Absolute path: resolving fsutil through PATH would let a writable directory
 // earlier in PATH decide which binary vets the reparse point.
-const FSUTIL = String.raw`${process.env.SystemRoot ?? String.raw`C:\Windows`}\System32\fsutil.exe`;
+const DEFAULT_SYSTEM_ROOT = String.raw`C:\Windows`;
+const FSUTIL = String.raw`${process.env.SystemRoot ?? DEFAULT_SYSTEM_ROOT}\System32\fsutil.exe`;
 
 function assertNoWindowsReparsePoint(path, platform = process.platform) {
   if (platform !== "win32") return;
