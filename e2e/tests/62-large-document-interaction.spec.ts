@@ -23,10 +23,6 @@ import {
 
 const PROJECT = "E2E Large Interaction";
 
-const SKIP_WINDOWS_PAINT = process.platform === "win32";
-const SKIP_WINDOWS_PAINT_REASON =
-  "WebView2 paint sync makes the eval probe time out on the Windows CI runner";
-
 // Varies per run so repeated runs explore different lines, and is printed so a
 // failure can be replayed exactly.
 const SEED = Number(process.env.E2E_INTERACTION_SEED ?? Date.now() % 100_000);
@@ -171,6 +167,30 @@ async function expectCoherent(
   await expectDesktopShellAnchored(page);
 }
 
+// Opening a project always compiles it, independently of the auto-compile
+// preference. Probing paint while Tectonic saturates a 2-core runner measures
+// the compiler, and the second compile's save-before-compile races the first
+// one's hold on main.tex.
+async function settleOpenCompile(
+  page: Parameters<typeof openProject>[0],
+): Promise<void> {
+  const QUIET_POLLS_REQUIRED = 4;
+  const POLL_INTERVAL_MS = 500;
+  const deadline = Date.now() + 180_000;
+  let quietPolls = 0;
+  let status = "unknown";
+  while (Date.now() < deadline) {
+    status = await page.evaluate<string>(
+      `import("/src/store/compile.ts").then(({ useCompileStore }) =>
+        useCompileStore.getState().status)`,
+    );
+    quietPolls = status === "compiling" ? 0 : quietPolls + 1;
+    if (quietPolls >= QUIET_POLLS_REQUIRED) return;
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+  }
+  throw new Error(`the open-compile never settled (last status ${status})`);
+}
+
 async function openLargeBook(
   page: Parameters<typeof openProject>[0],
 ): Promise<void> {
@@ -183,6 +203,7 @@ async function openLargeBook(
   if (exists) {
     await openProject(page, PROJECT);
     await expect(page.locator(".cm-content")).toBeVisible({ timeout: 30_000 });
+    await settleOpenCompile(page);
     return;
   }
   const fixture = buildLargeLatexBookProject();
@@ -204,6 +225,7 @@ async function openLargeBook(
   }
   await replaceEditorSource(page, fixture.source);
   await expect(page.locator(".cm-content")).toBeVisible({ timeout: 30_000 });
+  await settleOpenCompile(page);
 }
 
 async function gotoLine(
@@ -242,7 +264,6 @@ test("seeded jumps across the whole document keep the gutter aligned", async ({
 test("the first and last lines both render without a blank viewport", async ({
   tauriPage,
 }) => {
-  test.skip(SKIP_WINDOWS_PAINT, SKIP_WINDOWS_PAINT_REASON);
   for (const line of [1, 2, LARGE_BOOK_LINE_COUNT - 1, LARGE_BOOK_LINE_COUNT, 1]) {
     await gotoLine(tauriPage, line);
     await expectCoherent(tauriPage, `at extreme line ${line}`);
@@ -252,7 +273,6 @@ test("the first and last lines both render without a blank viewport", async ({
 test("scrolling that never settles still leaves the editor painted", async ({
   tauriPage,
 }) => {
-  test.skip(SKIP_WINDOWS_PAINT, SKIP_WINDOWS_PAINT_REASON);
   // Deliberately does not wait for the editor to settle between moves: each
   // scroll interrupts the previous render, which is what a user flicking a
   // trackpad actually produces.
@@ -292,7 +312,6 @@ test("scrolling that never settles still leaves the editor painted", async ({
 test("an edit made during fast scrolling lands on the intended line", async ({
   tauriPage,
 }) => {
-  test.skip(SKIP_WINDOWS_PAINT, SKIP_WINDOWS_PAINT_REASON);
   const target = seededLines(1)[0];
   const marker = `INTERACTIONMARKER${SEED}`;
   await tauriPage.evaluate(
@@ -337,7 +356,6 @@ test("an edit made during fast scrolling lands on the intended line", async ({
 test("a burst of edits at scattered lines survives undo", async ({
   tauriPage,
 }) => {
-  test.skip(SKIP_WINDOWS_PAINT, SKIP_WINDOWS_PAINT_REASON);
   const targets = seededLines(6);
   const before = await tauriPage.evaluate<number>(
     `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) =>

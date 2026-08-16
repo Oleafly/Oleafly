@@ -256,7 +256,7 @@ export function acceptGhostCompletion(view: EditorView): boolean {
   // CodeMirror's built-in completion keymap accepts with Enter, not Tab. Route
   // Tab through its command explicitly when the popup is active; inserting the
   // ghost text ourselves would bypass guarded applies and snippet expansion.
-  if (completionStatus(view.state) === "active") return acceptCompletion(view);
+  if (completionStatus(view.state) === "active" && acceptCompletion(view)) return true;
   const ghost = view.state.field(ghostField, false);
   if (!ghost || ghost.pos !== view.state.selection.main.head) return false;
   view.dispatch({

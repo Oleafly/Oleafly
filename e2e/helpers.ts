@@ -1094,13 +1094,19 @@ export async function fillCommandPalette(
       input.focus();
       return new Promise((resolve) => {
         let attempts = 0;
+        const nextFrame = (run) => {
+          let settled = false;
+          const finish = () => { if (!settled) { settled = true; run(); } };
+          requestAnimationFrame(finish);
+          setTimeout(finish, 100);
+        };
         const update = () => {
           window.dispatchEvent(new CustomEvent("oleafly:e2e-command-query", {
             detail: ${JSON.stringify(text)},
           }));
-          requestAnimationFrame(() => {
+          nextFrame(() => {
             if (input.value === ${JSON.stringify(text)}) {
-              requestAnimationFrame(() => resolve(true));
+              nextFrame(() => resolve(true));
               return;
             }
             attempts += 1;

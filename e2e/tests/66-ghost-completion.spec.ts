@@ -144,10 +144,6 @@ test("a dim suggestion appears while typing a command", async ({
 });
 
 test("Tab accepts the suggestion into the document", async ({ tauriPage }) => {
-  test.skip(
-    process.platform === "win32",
-    "the accepted suggestion does not land in the document on the Windows CI runner",
-  );
   test.setTimeout(240_000);
   await openGhostProject(tauriPage);
   await toggleSetting(tauriPage, "Inline suggestion", true);
