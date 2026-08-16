@@ -88,7 +88,10 @@ cargo run -p oleafly-cli --bin oleaflyc -- project info --json
 `oleaflyc` uses the current directory unless `-C <path>` is provided. It also
 supports `watch`, `clean`, and `doctor`. Human-readable output is the default;
 `--json` provides structured output, and watch mode emits newline-delimited
-JSON events.
+JSON events. Build and watch stop compilers after 300 seconds by default; pass
+`--timeout <seconds>` to override that limit. The CLI always disables TeX shell
+escape. The desktop can enable shell escape only through its explicit,
+device-local trust flow for the system TeX engine.
 
 ### Checks before opening a PR
 
@@ -120,7 +123,7 @@ pnpm test:e2e:app                         # builds + launches the app, runs Play
 1. The frontend loads the backend `project_engine` descriptor and its capability flags, then calls `compileProject(projectId, mainDoc, offline)` through Tauri IPC.
 2. `oleafly-core` validates the workspace, resolves the source inside the project root, and prepares the isolated build directory.
 3. The desktop adapter dispatches through `DocumentEngine`. UI code must not infer engine behavior from a filename. The `oleaflyc` adapter invokes its native compiler runner through the same shared workspace policy.
-4. LaTeX writes `_oleafly_entry.tex` and invokes Tectonic with `--synctex --keep-logs --print` and, when requested, `--only-cached`.
+4. The desktop LaTeX adapter writes `_oleafly_entry.tex` and invokes Tectonic with `--synctex --keep-logs --print` and, when requested, `--only-cached`. The CLI invokes the selected source directly and normalizes its PDF output to `_oleafly_entry.pdf`.
 5. Typst invokes the pinned Typst CLI directly against the selected `.typ` main document with short diagnostics and an explicit PDF output path.
 6. Markdown invokes Pandoc directly against `.md`/`.markdown`, with an explicit
    output path and `--pdf-engine=<absolute bundled Tectonic path>`. Pandoc's

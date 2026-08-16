@@ -45,7 +45,7 @@ impl Workspace {
             source_path: self.main_document_path()?,
             build_directory: self.build_dir()?,
             engine: self.manifest().engine()?,
-            tex_flavor: self.manifest().tex_flavor.clone(),
+            tex_flavor: self.manifest().normalized_tex_flavor()?,
         })
     }
 }

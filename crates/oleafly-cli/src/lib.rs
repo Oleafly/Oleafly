@@ -17,6 +17,7 @@ const EXIT_PROJECT: u8 = 3;
 const EXIT_ENVIRONMENT: u8 = 4;
 const EXIT_BUILD: u8 = 5;
 const WATCH_DEBOUNCE: Duration = Duration::from_millis(300);
+const DEFAULT_TIMEOUT_SECONDS: u64 = 300;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -77,6 +78,14 @@ pub struct BuildCommand {
     pub fast: bool,
     #[arg(long, help = "Stop after the first document error")]
     pub halt_on_error: bool,
+    #[arg(
+        long = "timeout",
+        default_value_t = DEFAULT_TIMEOUT_SECONDS,
+        value_name = "SECONDS",
+        value_parser = clap::value_parser!(u64).range(1..),
+        help = "Stop a compiler that exceeds this duration"
+    )]
+    pub timeout_seconds: u64,
 }
 
 #[derive(Debug, Subcommand)]
@@ -165,8 +174,24 @@ pub async fn run(cli: Cli) -> u8 {
     let command_name = command_name(&cli.command);
     let result = match cli.command {
         Command::Init(command) => run_init(&cli.project, command, reporter),
-        Command::Build(command) => run_build(&cli.project, command.into(), reporter).await,
-        Command::Watch(command) => run_watch(&cli.project, command.into(), reporter).await,
+        Command::Build(command) => {
+            run_build(
+                &cli.project,
+                command.into(),
+                Duration::from_secs(command.timeout_seconds),
+                reporter,
+            )
+            .await
+        }
+        Command::Watch(command) => {
+            run_watch(
+                &cli.project,
+                command.into(),
+                Duration::from_secs(command.timeout_seconds),
+                reporter,
+            )
+            .await
+        }
         Command::Clean => run_clean(&cli.project, reporter),
         Command::Doctor => run_doctor(&cli.project, reporter),
         Command::Project {
@@ -213,9 +238,14 @@ fn run_init(path: &Path, command: InitCommand, reporter: Reporter) -> Result<u8,
     Ok(EXIT_SUCCESS)
 }
 
-async fn run_build(path: &Path, options: BuildOptions, reporter: Reporter) -> Result<u8, Error> {
+async fn run_build(
+    path: &Path,
+    options: BuildOptions,
+    timeout: Duration,
+    reporter: Reporter,
+) -> Result<u8, Error> {
     let workspace = Workspace::open(path)?;
-    let result = compile(&workspace, options, reporter).await?;
+    let result = compile(&workspace, options, timeout, reporter).await?;
     report_build(&result, reporter, "build")?;
     Ok(if result.ok { EXIT_SUCCESS } else { EXIT_BUILD })
 }
@@ -223,11 +253,13 @@ async fn run_build(path: &Path, options: BuildOptions, reporter: Reporter) -> Re
 async fn compile(
     workspace: &Workspace,
     options: BuildOptions,
+    timeout: Duration,
     reporter: Reporter,
 ) -> Result<BuildResult, Error> {
     let tools = BuildTools::discover(workspace.root());
     NativeCompiler::new(tools)
         .with_log(reporter.compiler_log())
+        .with_timeout(timeout)
         .build(workspace, options)
         .await
 }
@@ -274,13 +306,31 @@ fn run_doctor(path: &Path, reporter: Reporter) -> Result<u8, Error> {
     let tools = BuildTools::discover(workspace.root());
     let mut report = workspace.doctor();
     for (name, path) in tools.required_for_engine(workspace.manifest().engine()?) {
-        report.checks.push(match path {
-            Some(path) => DoctorCheck {
+        let rejected = tools.rejected_override(name);
+        report.checks.push(match (path, rejected) {
+            (Some(path), Some((variable, rejected))) => DoctorCheck {
+                name: format!("compiler_{name}"),
+                status: DoctorStatus::Warning,
+                message: format!(
+                    "using {}; refused {variable}={} because project-local compiler paths are not allowed",
+                    path.display(),
+                    rejected.display()
+                ),
+            },
+            (Some(path), None) => DoctorCheck {
                 name: format!("compiler_{name}"),
                 status: DoctorStatus::Pass,
                 message: path.display().to_string(),
             },
-            None => DoctorCheck {
+            (None, Some((variable, rejected))) => DoctorCheck {
+                name: format!("compiler_{name}"),
+                status: DoctorStatus::Fail,
+                message: format!(
+                    "{variable}={} was refused because project-local compiler paths are not allowed",
+                    rejected.display()
+                ),
+            },
+            (None, None) => DoctorCheck {
                 name: format!("compiler_{name}"),
                 status: DoctorStatus::Fail,
                 message: format!("{name} was not found"),
@@ -317,18 +367,37 @@ fn run_project_info(path: &Path, reporter: Reporter) -> Result<u8, Error> {
         println!("Name: {}", info.name);
         println!("Root: {}", info.root.display());
         println!("Main document: {}", info.main_document);
-        println!("Engine: {}", info.engine.canonical_name());
+        let manifest_engine = workspace.manifest().engine.trim();
+        if manifest_engine.eq_ignore_ascii_case(info.engine.canonical_name()) {
+            println!("Engine: {manifest_engine}");
+        } else {
+            let manifest_engine = if manifest_engine.is_empty() {
+                "<default>"
+            } else {
+                manifest_engine
+            };
+            println!(
+                "Engine: {} (project.json: {manifest_engine})",
+                info.engine.canonical_name()
+            );
+        }
         println!("Build directory: {}", info.build_directory.display());
     }
     Ok(EXIT_SUCCESS)
 }
 
-async fn run_watch(path: &Path, options: BuildOptions, reporter: Reporter) -> Result<u8, Error> {
+async fn run_watch(
+    path: &Path,
+    options: BuildOptions,
+    timeout: Duration,
+    reporter: Reporter,
+) -> Result<u8, Error> {
     let workspace = Workspace::open(path)?;
+    let workspace_root = workspace.root().to_path_buf();
     let (sender, mut receiver) = mpsc::unbounded_channel();
     let mut watcher = create_watcher(sender)?;
     watcher
-        .watch(workspace.root(), RecursiveMode::Recursive)
+        .watch(&workspace_root, RecursiveMode::Recursive)
         .map_err(notify_error)?;
     reporter.value(json!({
         "ok": true,
@@ -336,9 +405,9 @@ async fn run_watch(path: &Path, options: BuildOptions, reporter: Reporter) -> Re
         "project": workspace.info()?
     }))?;
     if !reporter.json {
-        println!("Watching {}", workspace.root().display());
+        println!("Watching {}", workspace_root.display());
     }
-    if !watch_build(&workspace, options, reporter).await? {
+    if !watch_build(&workspace_root, options, timeout, reporter).await? {
         return Ok(EXIT_SUCCESS);
     }
     loop {
@@ -352,7 +421,7 @@ async fn run_watch(path: &Path, options: BuildOptions, reporter: Reporter) -> Re
             })?,
         };
         match event {
-            Ok(event) if relevant_event(&event, workspace.root()) => {}
+            Ok(event) if relevant_event(&event, &workspace_root) => {}
             Ok(_) => continue,
             Err(error) => {
                 emit_watch_error(reporter, &error)?;
@@ -365,7 +434,7 @@ async fn run_watch(path: &Path, options: BuildOptions, reporter: Reporter) -> Re
                 emit_watch_error(reporter, &error)?;
             }
         }
-        if !watch_build(&workspace, options, reporter).await? {
+        if !watch_build(&workspace_root, options, timeout, reporter).await? {
             return Ok(EXIT_SUCCESS);
         }
     }
@@ -381,16 +450,37 @@ fn create_watcher(
 }
 
 async fn watch_build(
-    workspace: &Workspace,
+    path: &Path,
     options: BuildOptions,
+    timeout: Duration,
     reporter: Reporter,
 ) -> Result<bool, Error> {
     reporter.value(json!({"ok": true, "event": "build_started"}))?;
     let result = tokio::select! {
-        result = compile(workspace, options, reporter) => result?,
+        result = async {
+            let workspace = Workspace::open(path)?;
+            compile(&workspace, options, timeout, reporter).await
+        } => result,
         signal = tokio::signal::ctrl_c() => {
             signal.map_err(|error| Error::new(ErrorKind::Io, error.to_string()))?;
             return Ok(false);
+        }
+    };
+    let result = match result {
+        Ok(result) => result,
+        Err(error) => {
+            reporter.value(json!({
+                "ok": false,
+                "event": "build_error",
+                "error": {
+                    "kind": error.kind(),
+                    "message": error.message()
+                }
+            }))?;
+            if !reporter.json {
+                eprintln!("Build error: {error}. Waiting for changes");
+            }
+            return Ok(true);
         }
     };
     reporter.value(json!({"ok": result.ok, "event": "build_finished", "build": result}))?;
@@ -501,6 +591,16 @@ mod tests {
     }
 
     #[test]
+    fn build_timeout_is_explicit_and_nonzero() {
+        let cli = Cli::try_parse_from(["oleaflyc", "build", "--timeout", "900"]).unwrap();
+        let Command::Build(command) = cli.command else {
+            panic!("expected build command");
+        };
+        assert_eq!(command.timeout_seconds, 900);
+        assert!(Cli::try_parse_from(["oleaflyc", "watch", "--timeout", "0"]).is_err());
+    }
+
+    #[test]
     fn watcher_ignores_generated_and_dependency_trees() {
         let root = Path::new("workspace");
         assert!(ignored_path(&root.join(".oleafly/build/out.pdf"), root));
@@ -554,6 +654,7 @@ mod tests {
                 offline: true,
                 fast: true,
                 halt_on_error: true,
+                timeout_seconds: DEFAULT_TIMEOUT_SECONDS,
             }),
             BuildOptions {
                 offline: true,
@@ -573,6 +674,7 @@ mod tests {
             offline: false,
             fast: false,
             halt_on_error: false,
+            timeout_seconds: DEFAULT_TIMEOUT_SECONDS,
         };
         assert_eq!(command_name(&init()), "init");
         assert_eq!(command_name(&Command::Build(build())), "build");

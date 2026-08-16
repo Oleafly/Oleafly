@@ -278,6 +278,14 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+      - name: Install minimum supported Rust toolchain
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
+        with:
+          toolchain: 1.77.0
+
+      - name: Check core and CLI against the Rust 1.77 MSRV
+        run: cargo +1.77.0 check -p oleafly-core -p oleafly-cli --all-targets
+
   rust-windows:
     name: Rust tests (Windows Job Objects)
     runs-on: windows-2022

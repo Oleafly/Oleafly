@@ -789,6 +789,30 @@ mod tests {
     }
 
     #[test]
+    fn desktop_tex_flavor_defaults_share_the_cli_build_contract() {
+        for (engine, flavor, expected) in [
+            ("latexmk", " auto ", None),
+            ("latexmk", " xelatex ", Some("xelatex")),
+            ("xetex", "lualatex", None),
+        ] {
+            let directory = TempDir::new().unwrap();
+            std::fs::write(
+                directory.path().join("main.tex"),
+                "\\documentclass{article}",
+            )
+            .unwrap();
+            std::fs::write(
+                directory.path().join(MANIFEST_NAME),
+                format!(r#"{{"main_doc":"main.tex","engine":"{engine}","tex_flavor":"{flavor}"}}"#),
+            )
+            .unwrap();
+
+            let workspace = Workspace::open(directory.path()).unwrap();
+            assert_eq!(workspace.prepare_build().unwrap().tex_flavor(), expected);
+        }
+    }
+
+    #[test]
     fn doctor_does_not_create_project_data() {
         let directory = TempDir::new().unwrap();
         let workspace = Workspace::init(directory.path(), InitOptions::default()).unwrap();

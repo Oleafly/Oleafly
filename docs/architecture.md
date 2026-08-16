@@ -59,10 +59,11 @@ tests runnable without a desktop runtime and prevents dependency cycles.
 
 ## Compilation boundary
 
-`oleafly-core` owns project manifests, safe path resolution, and
-build-directory preparation. The desktop and `oleaflyc` are adapters over that
-shared workspace policy. Each adapter owns its runtime-specific compiler
-execution and diagnostics.
+`oleafly-core` owns the portable project manifest model, project-relative main
+document resolution, and `.oleafly/build` preparation used by both adapters.
+The desktop retains its broader application sandbox for stored projects,
+figures, and exports. The desktop and `oleaflyc` each own their runtime-specific
+compiler execution and diagnostics.
 
 Within the desktop adapter, `DocumentEngine` is the capability contract for
 LaTeX, Typst, and Markdown. It declares source extensions, formatting profile,

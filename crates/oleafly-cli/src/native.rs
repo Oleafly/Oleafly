@@ -2,6 +2,7 @@ use crate::process;
 use oleafly_core::{Engine, Error, ErrorKind, PreparedBuild, Result, Workspace};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -66,15 +67,32 @@ pub struct BuildTools {
     pub latexmk: Option<PathBuf>,
     pub typst: Option<PathBuf>,
     pub pandoc: Option<PathBuf>,
+    rejected_overrides: BTreeMap<&'static str, ToolRejection>,
 }
 
 impl BuildTools {
     pub fn discover(workspace_root: &Path) -> Self {
+        let tectonic = discover_tool("tectonic", "OLEAFLY_TECTONIC", workspace_root);
+        let latexmk = discover_tool("latexmk", "OLEAFLY_LATEXMK", workspace_root);
+        let typst = discover_tool("typst", "OLEAFLY_TYPST", workspace_root);
+        let pandoc = discover_pandoc(workspace_root);
+        let mut rejected_overrides = BTreeMap::new();
+        for (name, resolution) in [
+            ("tectonic", &tectonic),
+            ("latexmk", &latexmk),
+            ("typst", &typst),
+            ("pandoc", &pandoc),
+        ] {
+            if let Some(rejection) = &resolution.rejected_override {
+                rejected_overrides.insert(name, rejection.clone());
+            }
+        }
         Self {
-            tectonic: discover_tool("tectonic", "OLEAFLY_TECTONIC", workspace_root),
-            latexmk: discover_tool("latexmk", "OLEAFLY_LATEXMK", workspace_root),
-            typst: discover_tool("typst", "OLEAFLY_TYPST", workspace_root),
-            pandoc: discover_pandoc(workspace_root),
+            tectonic: tectonic.executable,
+            latexmk: latexmk.executable,
+            typst: typst.executable,
+            pandoc: pandoc.executable,
+            rejected_overrides,
         }
     }
 
@@ -98,6 +116,31 @@ impl BuildTools {
             ],
         }
     }
+
+    pub fn rejected_override(&self, name: &str) -> Option<(&str, &Path)> {
+        self.rejected_overrides
+            .get(name)
+            .map(|rejection| (rejection.variable, rejection.path.as_path()))
+    }
+
+    fn missing_for_engine(&self, engine: Engine) -> Error {
+        let name = engine.tool_name();
+        match self.rejected_override(name) {
+            Some((variable, path)) => rejected_tool(variable, path),
+            None => missing_tool(engine),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct ToolRejection {
+    variable: &'static str,
+    path: PathBuf,
+}
+
+struct ToolResolution {
+    executable: Option<PathBuf>,
+    rejected_override: Option<ToolRejection>,
 }
 
 #[derive(Clone)]
@@ -118,6 +161,11 @@ impl NativeCompiler {
 
     pub fn with_log(mut self, log: CompilerLog) -> Self {
         self.log = log;
+        self
+    }
+
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
         self
     }
 
@@ -170,7 +218,7 @@ impl NativeCompiler {
         let executable = self
             .tools
             .for_engine(build.engine())
-            .ok_or_else(|| missing_tool(build.engine()))?
+            .ok_or_else(|| self.tools.missing_for_engine(build.engine()))?
             .to_path_buf();
         if executable.is_absolute() {
             reject_project_local_tool(&executable, build.project_root())?;
@@ -302,6 +350,16 @@ fn missing_tool(engine: Engine) -> Error {
     )
 }
 
+fn rejected_tool(variable: &str, path: &Path) -> Error {
+    Error::new(
+        ErrorKind::MissingTool,
+        format!(
+            "{variable}={} was refused because project-local compiler paths are not allowed",
+            path.display()
+        ),
+    )
+}
+
 fn tool_env(name: &str) -> String {
     format!("OLEAFLY_{}", name.to_ascii_uppercase())
 }
@@ -314,11 +372,8 @@ fn executable_name(name: &str) -> String {
     }
 }
 
-fn discover_tool(name: &str, variable: &str, workspace_root: &Path) -> Option<PathBuf> {
+fn discover_tool(name: &str, variable: &'static str, workspace_root: &Path) -> ToolResolution {
     let mut candidates = Vec::new();
-    if let Some(value) = std::env::var_os(variable).filter(|value| !value.is_empty()) {
-        candidates.push(PathBuf::from(value));
-    }
     if let Ok(current) = std::env::current_exe() {
         if let Some(parent) = current.parent() {
             candidates.push(parent.join(executable_name(name)));
@@ -330,16 +385,11 @@ fn discover_tool(name: &str, variable: &str, workspace_root: &Path) -> Option<Pa
             std::env::split_paths(&path).map(|directory| directory.join(executable_name(name))),
         );
     }
-    candidates
-        .into_iter()
-        .find_map(|candidate| resolve_executable(candidate, workspace_root))
+    discover_from_candidates(variable, candidates, workspace_root)
 }
 
-fn discover_pandoc(workspace_root: &Path) -> Option<PathBuf> {
+fn discover_pandoc(workspace_root: &Path) -> ToolResolution {
     let mut candidates = Vec::new();
-    if let Some(value) = std::env::var_os("OLEAFLY_PANDOC").filter(|value| !value.is_empty()) {
-        candidates.push(PathBuf::from(value));
-    }
     if let Ok(current) = std::env::current_exe() {
         if let Some(parent) = current.parent() {
             candidates.push(parent.join(executable_name("pandoc")));
@@ -364,17 +414,58 @@ fn discover_pandoc(workspace_root: &Path) -> Option<PathBuf> {
             std::env::split_paths(&path).map(|directory| directory.join(executable_name("pandoc"))),
         );
     }
-    candidates
-        .into_iter()
-        .find_map(|candidate| resolve_executable(candidate, workspace_root))
+    discover_from_candidates("OLEAFLY_PANDOC", candidates, workspace_root)
 }
 
-fn resolve_executable(candidate: PathBuf, workspace_root: &Path) -> Option<PathBuf> {
-    if !is_executable_file(&candidate) {
-        return None;
+fn discover_from_candidates(
+    variable: &'static str,
+    candidates: impl IntoIterator<Item = PathBuf>,
+    workspace_root: &Path,
+) -> ToolResolution {
+    let mut rejected_override = None;
+    if let Some(value) = std::env::var_os(variable).filter(|value| !value.is_empty()) {
+        match resolve_executable(PathBuf::from(value), workspace_root) {
+            CandidateResolution::Safe(path) => {
+                return ToolResolution {
+                    executable: Some(path),
+                    rejected_override: None,
+                };
+            }
+            CandidateResolution::ProjectLocal(path) => {
+                rejected_override = Some(ToolRejection { variable, path });
+            }
+            CandidateResolution::Missing => {}
+        }
     }
-    let candidate = candidate.canonicalize().ok()?;
-    (!candidate.starts_with(workspace_root)).then_some(candidate)
+    ToolResolution {
+        executable: candidates.into_iter().find_map(|candidate| {
+            match resolve_executable(candidate, workspace_root) {
+                CandidateResolution::Safe(path) => Some(path),
+                CandidateResolution::Missing | CandidateResolution::ProjectLocal(_) => None,
+            }
+        }),
+        rejected_override,
+    }
+}
+
+enum CandidateResolution {
+    Missing,
+    Safe(PathBuf),
+    ProjectLocal(PathBuf),
+}
+
+fn resolve_executable(candidate: PathBuf, workspace_root: &Path) -> CandidateResolution {
+    if !is_executable_file(&candidate) {
+        return CandidateResolution::Missing;
+    }
+    let Ok(candidate) = candidate.canonicalize() else {
+        return CandidateResolution::Missing;
+    };
+    if candidate.starts_with(workspace_root) {
+        CandidateResolution::ProjectLocal(candidate)
+    } else {
+        CandidateResolution::Safe(candidate)
+    }
 }
 
 #[cfg(unix)]
@@ -1042,6 +1133,7 @@ mod tests {
             latexmk: Some(latexmk.clone()),
             typst: Some(typst.clone()),
             pandoc: Some(pandoc.clone()),
+            ..BuildTools::default()
         };
         let compiler = NativeCompiler::new(tools.clone());
         let options = BuildOptions {

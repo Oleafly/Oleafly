@@ -3,7 +3,7 @@
 # cargo deny --workspace --all-features --config src-tauri/deny.toml check
 
 [graph]
-all-features = false
+all-features = true
 
 [advisories]
 yanked = "warn"

@@ -177,6 +177,20 @@ impl ProjectManifest {
         Engine::from_manifest(&self.engine, &self.main_doc)
     }
 
+    pub fn normalized_tex_flavor(&self) -> Result<Option<String>> {
+        if self.engine()? != Engine::Latexmk {
+            return Ok(None);
+        }
+        match self.tex_flavor.as_deref().map(str::trim) {
+            None | Some("") | Some("auto") => Ok(None),
+            Some(flavor @ ("pdflatex" | "xelatex" | "lualatex")) => Ok(Some(flavor.to_string())),
+            Some(flavor) => Err(Error::new(
+                ErrorKind::InvalidManifest,
+                format!("unsupported tex_flavor `{flavor}`"),
+            )),
+        }
+    }
+
     pub fn validate(&self) -> Result<()> {
         if self.main_doc.trim().is_empty() {
             return Err(Error::new(
@@ -184,21 +198,7 @@ impl ProjectManifest {
                 "project.json has an empty main_doc",
             ));
         }
-        let engine = self.engine()?;
-        if engine != Engine::Latexmk && self.tex_flavor.is_some() {
-            return Err(Error::new(
-                ErrorKind::InvalidManifest,
-                "tex_flavor requires the latexmk engine",
-            ));
-        }
-        if let Some(flavor) = self.tex_flavor.as_deref() {
-            if !matches!(flavor, "pdflatex" | "xelatex" | "lualatex") {
-                return Err(Error::new(
-                    ErrorKind::InvalidManifest,
-                    format!("unsupported tex_flavor `{flavor}`"),
-                ));
-            }
-        }
+        self.normalized_tex_flavor()?;
         Ok(())
     }
 }

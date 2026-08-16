@@ -5,14 +5,14 @@ description = "Command-line interface for Oleafly projects"
 license = "AGPL-3.0-or-later"
 publish = false
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.77"
 
 [[bin]]
 name = "oleaflyc"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4.6", features = ["derive"] }
+clap = { version = "=4.5.50", features = ["derive"] }
 notify = "8.2"
 oleafly-core = { path = "../oleafly-core" }
 serde = { version = "1", features = ["derive"] }
@@ -40,4 +40,4 @@ windows-sys = { version = "0.61", features = [
 ] }
 
 [dev-dependencies]
-tempfile = "3.27"
+tempfile = "=3.20.0"
