@@ -1,0 +1,646 @@
+use crate::{Engine, Error, ErrorKind, ProjectManifest, Result};
+use serde::Serialize;
+use std::collections::BTreeSet;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::path::{Component, Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+
+const MANIFEST_NAME: &str = "project.json";
+const INTERNAL_DIR: &str = ".oleafly";
+const BUILD_DIR: &str = "build";
+const MAX_DISCOVERY_DEPTH: usize = 64;
+static WRITE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Clone, Debug)]
+pub struct Workspace {
+    root: PathBuf,
+    manifest: ProjectManifest,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct InitOptions {
+    pub name: Option<String>,
+    pub main_document: Option<String>,
+    pub engine: Option<Engine>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct ProjectInfo {
+    pub root: PathBuf,
+    pub name: String,
+    pub main_document: String,
+    pub engine: Engine,
+    pub build_directory: PathBuf,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DoctorStatus {
+    Pass,
+    Warning,
+    Fail,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct DoctorCheck {
+    pub name: String,
+    pub status: DoctorStatus,
+    pub message: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct DoctorReport {
+    pub ok: bool,
+    pub checks: Vec<DoctorCheck>,
+}
+
+impl Workspace {
+    pub fn open(path: impl AsRef<Path>) -> Result<Self> {
+        let root = canonical_directory(path.as_ref())?;
+        let manifest_path = root.join(MANIFEST_NAME);
+        if !manifest_path.is_file() {
+            return Err(Error::new(
+                ErrorKind::NotInitialized,
+                format!(
+                    "{} is not an Oleafly project; run `oleaflyc init` first",
+                    root.display()
+                ),
+            ));
+        }
+        let content = std::fs::read_to_string(&manifest_path).map_err(|error| {
+            Error::new(
+                ErrorKind::Io,
+                format!("failed to read {}: {error}", manifest_path.display()),
+            )
+        })?;
+        let manifest: ProjectManifest = serde_json::from_str(&content).map_err(|error| {
+            Error::new(
+                ErrorKind::InvalidManifest,
+                format!("invalid {}: {error}", manifest_path.display()),
+            )
+        })?;
+        manifest.validate()?;
+        let workspace = Self { root, manifest };
+        workspace.resolve(&workspace.manifest.main_doc)?;
+        Ok(workspace)
+    }
+
+    pub fn init(path: impl AsRef<Path>, options: InitOptions) -> Result<Self> {
+        let input = path.as_ref();
+        if !input.exists() {
+            std::fs::create_dir_all(input).map_err(|error| {
+                Error::new(
+                    ErrorKind::Io,
+                    format!("failed to create {}: {error}", input.display()),
+                )
+            })?;
+        }
+        let root = canonical_directory(input)?;
+        let manifest_path = root.join(MANIFEST_NAME);
+        if manifest_path.exists() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("{} already exists", manifest_path.display()),
+            ));
+        }
+        let main_document = match options.main_document {
+            Some(value) => normalize_relative(&value)?,
+            None => discover_main_document(&root)?.unwrap_or_else(|| "main.tex".to_string()),
+        };
+        let engine = options
+            .engine
+            .map_or_else(|| Engine::infer(&main_document), Ok)?;
+        if !engine.accepts(&main_document) {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "engine `{}` cannot compile `{main_document}`",
+                    engine.as_str()
+                ),
+            ));
+        }
+        let main_path = resolve_within(&root, &main_document)?;
+        if !main_path.exists() {
+            if let Some(parent) = main_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            write_new_file(&main_path, starter_document(engine))?;
+        } else if !main_path.is_file() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("main document is not a file: {}", main_path.display()),
+            ));
+        }
+        let default_name = root
+            .file_name()
+            .and_then(|value| value.to_str())
+            .filter(|value| !value.is_empty())
+            .unwrap_or("Oleafly project")
+            .to_string();
+        let manifest = ProjectManifest {
+            name: options.name.unwrap_or(default_name),
+            main_doc: main_document,
+            engine: engine.as_str().to_string(),
+            ..ProjectManifest::default()
+        };
+        manifest.validate()?;
+        write_json_new(&manifest_path, &manifest)?;
+        Self::open(root)
+    }
+
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
+
+    pub fn manifest(&self) -> &ProjectManifest {
+        &self.manifest
+    }
+
+    pub fn info(&self) -> Result<ProjectInfo> {
+        Ok(ProjectInfo {
+            root: self.root.clone(),
+            name: self.manifest.name.clone(),
+            main_document: self.manifest.main_doc.clone(),
+            engine: self.manifest.engine()?,
+            build_directory: self.build_dir_path(),
+        })
+    }
+
+    pub fn resolve(&self, relative: &str) -> Result<PathBuf> {
+        resolve_within(&self.root, relative)
+    }
+
+    pub fn main_document_path(&self) -> Result<PathBuf> {
+        let path = self.resolve(&self.manifest.main_doc)?;
+        if !path.is_file() {
+            return Err(Error::new(
+                ErrorKind::InvalidManifest,
+                format!("main document does not exist: {}", path.display()),
+            ));
+        }
+        Ok(path)
+    }
+
+    pub fn build_dir(&self) -> Result<PathBuf> {
+        secure_build_directory(&self.root, true)
+    }
+
+    pub fn build_dir_path(&self) -> PathBuf {
+        self.root.join(INTERNAL_DIR).join(BUILD_DIR)
+    }
+
+    pub fn clean(&self) -> Result<bool> {
+        let internal = self.root.join(INTERNAL_DIR);
+        if !internal.exists() {
+            return Ok(false);
+        }
+        let internal_meta = std::fs::symlink_metadata(&internal)?;
+        if !internal_meta.is_dir() || internal_meta.file_type().is_symlink() {
+            return Err(Error::new(
+                ErrorKind::UnsafePath,
+                format!(
+                    "project data is not a real directory: {}",
+                    internal.display()
+                ),
+            ));
+        }
+        let build = internal.join(BUILD_DIR);
+        if !build.exists() {
+            return Ok(false);
+        }
+        let build_meta = std::fs::symlink_metadata(&build)?;
+        if !build_meta.is_dir() || build_meta.file_type().is_symlink() {
+            return Err(Error::new(
+                ErrorKind::UnsafePath,
+                format!("build path is not a real directory: {}", build.display()),
+            ));
+        }
+        std::fs::remove_dir_all(&build).map_err(|error| {
+            Error::new(
+                ErrorKind::Io,
+                format!("failed to remove {}: {error}", build.display()),
+            )
+        })?;
+        Ok(true)
+    }
+
+    pub fn doctor(&self, tool: Option<&Path>) -> DoctorReport {
+        let mut checks = Vec::new();
+        checks.push(DoctorCheck {
+            name: "manifest".to_string(),
+            status: DoctorStatus::Pass,
+            message: format!("{} is valid", self.root.join(MANIFEST_NAME).display()),
+        });
+        match self.main_document_path() {
+            Ok(path) => checks.push(DoctorCheck {
+                name: "main_document".to_string(),
+                status: DoctorStatus::Pass,
+                message: path.display().to_string(),
+            }),
+            Err(error) => checks.push(DoctorCheck {
+                name: "main_document".to_string(),
+                status: DoctorStatus::Fail,
+                message: error.to_string(),
+            }),
+        }
+        match validate_build_location(&self.root) {
+            Ok(()) => checks.push(DoctorCheck {
+                name: "build_directory".to_string(),
+                status: DoctorStatus::Pass,
+                message: self.build_dir_path().display().to_string(),
+            }),
+            Err(error) => checks.push(DoctorCheck {
+                name: "build_directory".to_string(),
+                status: DoctorStatus::Fail,
+                message: error.to_string(),
+            }),
+        }
+        let engine = self.manifest.engine();
+        match (engine, tool) {
+            (Ok(engine), Some(path)) => checks.push(DoctorCheck {
+                name: "compiler".to_string(),
+                status: DoctorStatus::Pass,
+                message: format!("{}: {}", engine.tool_name(), path.display()),
+            }),
+            (Ok(engine), None) => checks.push(DoctorCheck {
+                name: "compiler".to_string(),
+                status: DoctorStatus::Fail,
+                message: format!("{} was not found", engine.tool_name()),
+            }),
+            (Err(error), _) => checks.push(DoctorCheck {
+                name: "compiler".to_string(),
+                status: DoctorStatus::Fail,
+                message: error.to_string(),
+            }),
+        }
+        DoctorReport {
+            ok: checks
+                .iter()
+                .all(|check| check.status != DoctorStatus::Fail),
+            checks,
+        }
+    }
+}
+
+fn canonical_directory(path: &Path) -> Result<PathBuf> {
+    let metadata = std::fs::metadata(path).map_err(|error| {
+        Error::new(
+            ErrorKind::InvalidInput,
+            format!("cannot inspect {}: {error}", path.display()),
+        )
+    })?;
+    if !metadata.is_dir() {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!("workspace is not a directory: {}", path.display()),
+        ));
+    }
+    path.canonicalize().map_err(|error| {
+        Error::new(
+            ErrorKind::Io,
+            format!("cannot resolve {}: {error}", path.display()),
+        )
+    })
+}
+
+fn normalize_relative(value: &str) -> Result<String> {
+    if value.contains('\\') {
+        return Err(Error::new(
+            ErrorKind::UnsafePath,
+            format!("project paths must use forward slashes: {value}"),
+        ));
+    }
+    let path = Path::new(value);
+    if value.trim().is_empty()
+        || path.is_absolute()
+        || path.components().any(|component| {
+            matches!(
+                component,
+                Component::ParentDir | Component::RootDir | Component::Prefix(_)
+            )
+        })
+    {
+        return Err(Error::new(
+            ErrorKind::UnsafePath,
+            format!("illegal project path: {value}"),
+        ));
+    }
+    Ok(path
+        .components()
+        .filter_map(|component| match component {
+            Component::Normal(value) => Some(value.to_string_lossy()),
+            Component::CurDir => None,
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("/"))
+}
+
+fn resolve_within(root: &Path, relative: &str) -> Result<PathBuf> {
+    let normalized = normalize_relative(relative)?;
+    let joined = root.join(normalized);
+    let real_root = root.canonicalize()?;
+    let mut anchor = joined.as_path();
+    while !anchor.exists() {
+        anchor = anchor.parent().ok_or_else(|| {
+            Error::new(
+                ErrorKind::UnsafePath,
+                format!("illegal project path: {relative}"),
+            )
+        })?;
+    }
+    let real_anchor = anchor.canonicalize()?;
+    if !real_anchor.starts_with(&real_root) {
+        return Err(Error::new(
+            ErrorKind::UnsafePath,
+            format!("project path escapes the workspace: {relative}"),
+        ));
+    }
+    Ok(joined)
+}
+
+fn secure_build_directory(root: &Path, create: bool) -> Result<PathBuf> {
+    let internal = root.join(INTERNAL_DIR);
+    ensure_real_directory(&internal, create, "project data")?;
+    let build = internal.join(BUILD_DIR);
+    ensure_real_directory(&build, create, "build")?;
+    let canonical_root = root.canonicalize()?;
+    let canonical_build = build.canonicalize()?;
+    if !canonical_build.starts_with(canonical_root.join(INTERNAL_DIR)) {
+        return Err(Error::new(
+            ErrorKind::UnsafePath,
+            "build directory escapes the workspace",
+        ));
+    }
+    Ok(canonical_build)
+}
+
+fn validate_build_location(root: &Path) -> Result<()> {
+    let internal = root.join(INTERNAL_DIR);
+    match std::fs::symlink_metadata(&internal) {
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {}
+        Ok(_) => {
+            return Err(Error::new(
+                ErrorKind::UnsafePath,
+                format!(
+                    "project data path is not a real directory: {}",
+                    internal.display()
+                ),
+            ))
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error.into()),
+    }
+    let build = internal.join(BUILD_DIR);
+    match std::fs::symlink_metadata(&build) {
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => Ok(()),
+        Ok(_) => Err(Error::new(
+            ErrorKind::UnsafePath,
+            format!("build path is not a real directory: {}", build.display()),
+        )),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn ensure_real_directory(path: &Path, create: bool, label: &str) -> Result<()> {
+    match std::fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => Ok(()),
+        Ok(_) => Err(Error::new(
+            ErrorKind::UnsafePath,
+            format!("{label} path is not a real directory: {}", path.display()),
+        )),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound && create => {
+            std::fs::create_dir(path).map_err(|error| {
+                Error::new(
+                    ErrorKind::Io,
+                    format!("failed to create {}: {error}", path.display()),
+                )
+            })
+        }
+        Err(error) => Err(Error::new(
+            ErrorKind::Io,
+            format!("failed to inspect {}: {error}", path.display()),
+        )),
+    }
+}
+
+fn discover_main_document(root: &Path) -> Result<Option<String>> {
+    for preferred in ["main.tex", "main.typ", "main.md"] {
+        if root.join(preferred).is_file() {
+            return Ok(Some(preferred.to_string()));
+        }
+    }
+    let mut found = BTreeSet::new();
+    discover_sources(root, root, 0, &mut found)?;
+    match found.len() {
+        0 => Ok(None),
+        1 => Ok(found.into_iter().next()),
+        _ => Err(Error::new(
+            ErrorKind::InvalidInput,
+            "multiple possible main documents found; pass --main",
+        )),
+    }
+}
+
+fn discover_sources(
+    root: &Path,
+    directory: &Path,
+    depth: usize,
+    found: &mut BTreeSet<String>,
+) -> Result<()> {
+    if depth > MAX_DISCOVERY_DEPTH {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            "source discovery exceeded the maximum directory depth",
+        ));
+    }
+    let entries = std::fs::read_dir(directory)?;
+    for entry in entries {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        if file_type.is_symlink() {
+            continue;
+        }
+        let path = entry.path();
+        if file_type.is_dir() {
+            let name = entry.file_name();
+            if !matches!(
+                name.to_str(),
+                Some(".git" | ".oleafly" | "node_modules" | "target")
+            ) {
+                discover_sources(root, &path, depth + 1, found)?;
+            }
+        } else if file_type.is_file() {
+            let relative = path
+                .strip_prefix(root)
+                .map_err(|_| Error::new(ErrorKind::UnsafePath, "source escaped the workspace"))?;
+            let value = relative
+                .components()
+                .map(|component| component.as_os_str().to_string_lossy())
+                .collect::<Vec<_>>()
+                .join("/");
+            if Engine::infer(&value).is_ok() {
+                found.insert(value);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn starter_document(engine: Engine) -> &'static [u8] {
+    match engine {
+        Engine::Tectonic | Engine::Latexmk => {
+            b"\\documentclass{article}\n\\begin{document}\nHello from Oleafly.\n\\end{document}\n"
+        }
+        Engine::Typst => b"= Hello from Oleafly\n",
+        Engine::Markdown => b"# Hello from Oleafly\n",
+    }
+}
+
+fn write_new_file(path: &Path, bytes: &[u8]) -> Result<()> {
+    let mut file = OpenOptions::new().write(true).create_new(true).open(path)?;
+    file.write_all(bytes)?;
+    file.sync_all()?;
+    Ok(())
+}
+
+fn write_json_new(path: &Path, value: &ProjectManifest) -> Result<()> {
+    let bytes = serde_json::to_vec_pretty(value)?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| Error::new(ErrorKind::InvalidInput, "manifest path has no parent"))?;
+    let sequence = WRITE_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+    let staging = parent.join(format!(
+        ".project.json.{}.{}.tmp",
+        std::process::id(),
+        sequence
+    ));
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&staging)?;
+    if let Err(error) = (|| -> std::io::Result<()> {
+        file.write_all(&bytes)?;
+        file.write_all(b"\n")?;
+        file.sync_all()?;
+        std::fs::hard_link(&staging, path)?;
+        std::fs::remove_file(&staging)?;
+        #[cfg(unix)]
+        std::fs::File::open(parent)?.sync_all()?;
+        Ok(())
+    })() {
+        let _ = std::fs::remove_file(&staging);
+        return Err(error.into());
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn init_creates_a_compatible_project_without_overwriting() {
+        let directory = TempDir::new().unwrap();
+        let workspace = Workspace::init(directory.path(), InitOptions::default()).unwrap();
+        assert_eq!(workspace.manifest().main_doc, "main.tex");
+        assert_eq!(workspace.manifest().engine, "xetex");
+        assert!(directory.path().join("main.tex").is_file());
+        let error = Workspace::init(directory.path(), InitOptions::default()).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::InvalidInput);
+    }
+
+    #[test]
+    fn init_refuses_ambiguous_source_discovery() {
+        let directory = TempDir::new().unwrap();
+        std::fs::write(directory.path().join("paper.tex"), "").unwrap();
+        std::fs::write(directory.path().join("notes.md"), "").unwrap();
+        let error = Workspace::init(directory.path(), InitOptions::default()).unwrap_err();
+        assert!(error.to_string().contains("multiple possible"));
+    }
+
+    #[test]
+    fn workspace_rejects_manifest_traversal() {
+        let directory = TempDir::new().unwrap();
+        std::fs::write(
+            directory.path().join(MANIFEST_NAME),
+            r#"{"main_doc":"../escape.tex","engine":"xetex"}"#,
+        )
+        .unwrap();
+        let error = Workspace::open(directory.path()).unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::UnsafePath);
+    }
+
+    #[test]
+    fn clean_removes_only_the_build_directory() {
+        let directory = TempDir::new().unwrap();
+        let workspace = Workspace::init(directory.path(), InitOptions::default()).unwrap();
+        let build = workspace.build_dir().unwrap();
+        std::fs::write(build.join("output.pdf"), "pdf").unwrap();
+        std::fs::write(directory.path().join(INTERNAL_DIR).join("keep"), "keep").unwrap();
+        assert!(workspace.clean().unwrap());
+        assert!(!build.exists());
+        assert!(directory.path().join(INTERNAL_DIR).join("keep").exists());
+        assert!(!workspace.clean().unwrap());
+    }
+
+    #[test]
+    fn doctor_does_not_create_project_data() {
+        let directory = TempDir::new().unwrap();
+        let workspace = Workspace::init(directory.path(), InitOptions::default()).unwrap();
+        let report = workspace.doctor(None);
+        assert!(!report.ok);
+        assert!(!directory.path().join(INTERNAL_DIR).exists());
+    }
+
+    #[test]
+    fn concurrent_initialization_has_one_winner() {
+        use std::sync::{Arc, Barrier};
+        use std::thread;
+
+        let directory = TempDir::new().unwrap();
+        let barrier = Arc::new(Barrier::new(3));
+        let workers = (0..2)
+            .map(|_| {
+                let root = directory.path().to_path_buf();
+                let barrier = Arc::clone(&barrier);
+                thread::spawn(move || {
+                    barrier.wait();
+                    Workspace::init(root, InitOptions::default())
+                })
+            })
+            .collect::<Vec<_>>();
+        barrier.wait();
+        let results = workers
+            .into_iter()
+            .map(|worker| worker.join().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(results.iter().filter(|result| result.is_ok()).count(), 1);
+        Workspace::open(directory.path()).unwrap();
+        let staging = std::fs::read_dir(directory.path())
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .any(|entry| entry.file_name().to_string_lossy().ends_with(".tmp"));
+        assert!(!staging);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn build_directory_refuses_symlink_escape() {
+        use std::os::unix::fs::symlink;
+        let directory = TempDir::new().unwrap();
+        let outside = TempDir::new().unwrap();
+        let workspace = Workspace::init(directory.path(), InitOptions::default()).unwrap();
+        std::fs::create_dir(directory.path().join(INTERNAL_DIR)).unwrap();
+        symlink(
+            outside.path(),
+            directory.path().join(INTERNAL_DIR).join(BUILD_DIR),
+        )
+        .unwrap();
+        let error = workspace.build_dir().unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::UnsafePath);
+    }
+}
