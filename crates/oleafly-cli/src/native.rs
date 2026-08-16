@@ -861,6 +861,11 @@ mod tests {
     use oleafly_core::InitOptions;
     use tempfile::TempDir;
 
+    #[test]
+    fn debug_build_records_the_compilation_target() {
+        assert!(option_env!("OLEAFLY_BUILD_TARGET").is_some_and(|target| !target.is_empty()));
+    }
+
     #[cfg(unix)]
     #[test]
     fn bibliography_discovery_does_not_follow_links() {
