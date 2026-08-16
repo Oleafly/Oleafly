@@ -1,0 +1,21 @@
+[package]
+name = "oleafly-cli"
+version = "0.1.0"
+description = "Command-line interface for Oleafly projects"
+license = "AGPL-3.0-or-later"
+edition = "2021"
+rust-version = "1.85"
+
+[[bin]]
+name = "oleaflyc"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.6", features = ["derive"] }
+notify = "8.2"
+oleafly-core = { path = "../oleafly-core" }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "sync", "time"] }
+
+[dev-dependencies]
+tempfile = "3.27"

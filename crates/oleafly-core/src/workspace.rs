@@ -1,4 +1,4 @@
-use crate::{Engine, Error, ErrorKind, ProjectManifest, Result};
+use crate::{BuildTools, Engine, Error, ErrorKind, ProjectManifest, Result};
 use serde::Serialize;
 use std::collections::BTreeSet;
 use std::fs::OpenOptions;
@@ -225,7 +225,7 @@ impl Workspace {
         Ok(true)
     }
 
-    pub fn doctor(&self, tool: Option<&Path>) -> DoctorReport {
+    pub fn doctor(&self, tools: &BuildTools) -> DoctorReport {
         let mut checks = Vec::new();
         checks.push(DoctorCheck {
             name: "manifest".to_string(),
@@ -256,19 +256,24 @@ impl Workspace {
                 message: error.to_string(),
             }),
         }
-        let engine = self.manifest.engine();
-        match (engine, tool) {
-            (Ok(engine), Some(path)) => checks.push(DoctorCheck {
-                name: "compiler".to_string(),
-                status: DoctorStatus::Pass,
-                message: format!("{}: {}", engine.tool_name(), path.display()),
-            }),
-            (Ok(engine), None) => checks.push(DoctorCheck {
-                name: "compiler".to_string(),
-                status: DoctorStatus::Fail,
-                message: format!("{} was not found", engine.tool_name()),
-            }),
-            (Err(error), _) => checks.push(DoctorCheck {
+        match self.manifest.engine() {
+            Ok(engine) => {
+                for (name, path) in tools.required_for_engine(engine) {
+                    checks.push(match path {
+                        Some(path) => DoctorCheck {
+                            name: format!("compiler_{name}"),
+                            status: DoctorStatus::Pass,
+                            message: path.display().to_string(),
+                        },
+                        None => DoctorCheck {
+                            name: format!("compiler_{name}"),
+                            status: DoctorStatus::Fail,
+                            message: format!("{name} was not found"),
+                        },
+                    });
+                }
+            }
+            Err(error) => checks.push(DoctorCheck {
                 name: "compiler".to_string(),
                 status: DoctorStatus::Fail,
                 message: error.to_string(),
@@ -591,7 +596,7 @@ mod tests {
     fn doctor_does_not_create_project_data() {
         let directory = TempDir::new().unwrap();
         let workspace = Workspace::init(directory.path(), InitOptions::default()).unwrap();
-        let report = workspace.doctor(None);
+        let report = workspace.doctor(&BuildTools::default());
         assert!(!report.ok);
         assert!(!directory.path().join(INTERNAL_DIR).exists());
     }

@@ -82,6 +82,15 @@ impl Engine {
         }
     }
 
+    pub const fn canonical_name(self) -> &'static str {
+        match self {
+            Self::Tectonic => "tectonic",
+            Self::Latexmk => "latexmk",
+            Self::Typst => "typst",
+            Self::Markdown => "markdown",
+        }
+    }
+
     pub const fn tool_name(self) -> &'static str {
         match self {
             Self::Tectonic => "tectonic",

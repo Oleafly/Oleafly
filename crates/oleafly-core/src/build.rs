@@ -90,6 +90,18 @@ impl BuildTools {
             Engine::Markdown => self.pandoc.as_deref(),
         }
     }
+
+    pub fn required_for_engine(&self, engine: Engine) -> Vec<(&'static str, Option<&Path>)> {
+        match engine {
+            Engine::Tectonic => vec![("tectonic", self.tectonic.as_deref())],
+            Engine::Latexmk => vec![("latexmk", self.latexmk.as_deref())],
+            Engine::Typst => vec![("typst", self.typst.as_deref())],
+            Engine::Markdown => vec![
+                ("pandoc", self.pandoc.as_deref()),
+                ("tectonic", self.tectonic.as_deref()),
+            ],
+        }
+    }
 }
 
 #[derive(Clone)]
