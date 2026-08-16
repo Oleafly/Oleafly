@@ -484,6 +484,7 @@ fn exit_for_error(error: &Error) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use notify::event::{AccessKind, CreateKind, ModifyKind, RemoveKind};
 
     #[test]
     fn parser_accepts_every_initial_command() {
@@ -508,6 +509,101 @@ mod tests {
     }
 
     #[test]
+    fn watcher_rebuilds_only_for_relevant_project_events() {
+        let root = Path::new("workspace");
+        for kind in [
+            EventKind::Any,
+            EventKind::Create(CreateKind::Any),
+            EventKind::Modify(ModifyKind::Any),
+            EventKind::Remove(RemoveKind::Any),
+        ] {
+            assert!(relevant_event(
+                &Event::new(kind).add_path(root.join("chapters/one.tex")),
+                root
+            ));
+        }
+        assert!(relevant_event(&Event::new(EventKind::Any), root));
+        assert!(!relevant_event(
+            &Event::new(EventKind::Access(AccessKind::Any)).add_path(root.join("chapters/one.tex")),
+            root
+        ));
+        assert!(!relevant_event(
+            &Event::new(EventKind::Modify(ModifyKind::Any))
+                .add_path(root.join(".oleafly/build/out.pdf")),
+            root
+        ));
+        assert!(!relevant_event(
+            &Event::new(EventKind::Modify(ModifyKind::Any))
+                .add_path(PathBuf::from("another-project/paper.tex")),
+            root
+        ));
+    }
+
+    #[test]
+    fn command_mappings_preserve_the_public_cli_contract() {
+        for (cli_engine, engine) in [
+            (CliEngine::Tectonic, Engine::Tectonic),
+            (CliEngine::Latexmk, Engine::Latexmk),
+            (CliEngine::Typst, Engine::Typst),
+            (CliEngine::Markdown, Engine::Markdown),
+        ] {
+            assert_eq!(Engine::from(cli_engine), engine);
+        }
+        assert_eq!(
+            BuildOptions::from(BuildCommand {
+                offline: true,
+                fast: true,
+                halt_on_error: true,
+            }),
+            BuildOptions {
+                offline: true,
+                fast: true,
+                halt_on_error: true,
+            }
+        );
+
+        let init = || {
+            Command::Init(InitCommand {
+                name: None,
+                main: None,
+                engine: None,
+            })
+        };
+        let build = || BuildCommand {
+            offline: false,
+            fast: false,
+            halt_on_error: false,
+        };
+        assert_eq!(command_name(&init()), "init");
+        assert_eq!(command_name(&Command::Build(build())), "build");
+        assert_eq!(command_name(&Command::Watch(build())), "watch");
+        assert_eq!(command_name(&Command::Clean), "clean");
+        assert_eq!(command_name(&Command::Doctor), "doctor");
+        assert_eq!(
+            command_name(&Command::Project {
+                command: ProjectCommand::Info,
+            }),
+            "project info"
+        );
+    }
+
+    #[test]
+    fn adapter_errors_keep_context_and_stable_kinds() {
+        let watcher = notify_error(notify::Error::generic("backend unavailable"));
+        assert_eq!(watcher.kind(), ErrorKind::Io);
+        assert!(watcher.message().contains("backend unavailable"));
+
+        let output = output_error(std::io::Error::other("closed"));
+        assert_eq!(output.kind(), ErrorKind::Io);
+        assert!(output.message().contains("failed to write output"));
+
+        let serde_error = serde_json::from_str::<Value>("{").unwrap_err();
+        let json = json_output_error(serde_error);
+        assert_eq!(json.kind(), ErrorKind::Io);
+        assert!(json.message().contains("failed to serialize output"));
+    }
+
+    #[test]
     fn error_exit_codes_are_stable() {
         assert_eq!(
             exit_for_error(&Error::new(ErrorKind::MissingTool, "missing")),
@@ -521,5 +617,13 @@ mod tests {
             exit_for_error(&Error::new(ErrorKind::InvalidManifest, "invalid")),
             EXIT_PROJECT
         );
+        for kind in [
+            ErrorKind::InvalidInput,
+            ErrorKind::NotInitialized,
+            ErrorKind::UnsafePath,
+            ErrorKind::Io,
+        ] {
+            assert_eq!(exit_for_error(&Error::new(kind, "project")), EXIT_PROJECT);
+        }
     }
 }

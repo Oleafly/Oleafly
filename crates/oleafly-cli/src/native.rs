@@ -14,6 +14,7 @@ use tokio::io::AsyncReadExt;
 
 const OUTPUT_STEM: &str = "_oleafly_entry";
 const MAX_LOG_BYTES: usize = 1024 * 1024;
+const LOG_TRUNCATION_MARKER: &str = "\n[Oleafly: compiler output truncated]\n";
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(300);
 type LogCallback = dyn Fn(&str) + Send + Sync;
 static ALIAS_SEQUENCE: AtomicU64 = AtomicU64::new(0);
@@ -726,19 +727,42 @@ where
 }
 
 fn append_bounded(output: &mut String, bytes: &[u8]) {
+    if bytes.is_empty() {
+        return;
+    }
     if output.len() >= MAX_LOG_BYTES {
+        if !output.ends_with(LOG_TRUNCATION_MARKER) {
+            let content_limit = MAX_LOG_BYTES.saturating_sub(LOG_TRUNCATION_MARKER.len());
+            let boundary = (0..=content_limit)
+                .rev()
+                .find(|index| output.is_char_boundary(*index))
+                .unwrap_or(0);
+            output.truncate(boundary);
+            output.push_str(LOG_TRUNCATION_MARKER);
+        }
         return;
     }
     let text = String::from_utf8_lossy(bytes);
     let remaining = MAX_LOG_BYTES - output.len();
+    if text.len() <= remaining {
+        output.push_str(&text);
+        return;
+    }
+    let content_limit = MAX_LOG_BYTES.saturating_sub(LOG_TRUNCATION_MARKER.len());
+    if output.len() > content_limit {
+        let boundary = (0..=content_limit)
+            .rev()
+            .find(|index| output.is_char_boundary(*index))
+            .unwrap_or(0);
+        output.truncate(boundary);
+    }
+    let remaining = content_limit - output.len();
     let boundary = (0..=remaining.min(text.len()))
         .rev()
         .find(|index| text.is_char_boundary(*index))
         .unwrap_or(0);
     output.push_str(&text[..boundary]);
-    if boundary < text.len() {
-        output.push_str("\n[Oleafly: compiler output truncated]\n");
-    }
+    output.push_str(LOG_TRUNCATION_MARKER);
 }
 
 fn clear_outputs(build_directory: &Path) -> Result<()> {
@@ -858,8 +882,63 @@ fn parse_tex_errors(log: &str) -> Vec<BuildError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use oleafly_core::InitOptions;
+    use oleafly_core::{InitOptions, ProjectManifest};
+    use std::sync::Mutex;
     use tempfile::TempDir;
+
+    fn workspace_for_engine(
+        directory: &TempDir,
+        engine: Engine,
+        tex_flavor: Option<&str>,
+    ) -> Workspace {
+        let main_document = engine.default_main_document();
+        std::fs::write(directory.path().join(main_document), "document").unwrap();
+        Workspace::from_manifest(
+            directory.path(),
+            ProjectManifest {
+                name: "Compiler contract".into(),
+                main_doc: main_document.into(),
+                engine: engine.as_str().into(),
+                tex_flavor: tex_flavor.map(str::to_string),
+                ..ProjectManifest::default()
+            },
+        )
+        .unwrap()
+    }
+
+    fn arguments(command: &BuildCommand) -> Vec<String> {
+        command
+            .arguments
+            .iter()
+            .map(|value| value.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    fn compiler_fixture(directory: &TempDir, failure: bool) -> PathBuf {
+        let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/compiler.rs");
+        let output = directory.path().join(executable_name(if failure {
+            "fixture-failure"
+        } else {
+            "fixture-success"
+        }));
+        let mut command = std::process::Command::new(
+            std::env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc")),
+        );
+        command
+            .args(["--edition=2021", "-o"])
+            .arg(&output)
+            .arg(source);
+        if failure {
+            command.args(["--cfg", "fixture_failure"]);
+        }
+        let result = command.output().unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        output.canonicalize().unwrap()
+    }
 
     #[test]
     fn debug_build_records_the_compilation_target() {
@@ -934,10 +1013,293 @@ mod tests {
     }
 
     #[test]
+    fn latexmk_flavor_honors_magic_comments_and_safe_default() {
+        let directory = TempDir::new().unwrap();
+        let source = directory.path().join("main.tex");
+        for (content, expected) in [
+            ("% !TeX program = xelatex", "-xelatex"),
+            ("% !TeX engine = lualatex", "-lualatex"),
+            ("% !TeX program = pdflatex", "-pdf"),
+            ("\\documentclass{article}", "-pdf"),
+        ] {
+            std::fs::write(&source, content).unwrap();
+            assert_eq!(detect_latexmk_flavor(&source).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn compiler_commands_preserve_every_engine_contract() {
+        let tools_directory = TempDir::new().unwrap();
+        let tectonic = tools_directory.path().join(executable_name("tectonic"));
+        let latexmk = tools_directory.path().join(executable_name("latexmk"));
+        let typst = tools_directory.path().join(executable_name("typst"));
+        let pandoc = tools_directory.path().join(executable_name("pandoc"));
+        for tool in [&tectonic, &latexmk, &typst, &pandoc] {
+            std::fs::write(tool, "tool").unwrap();
+        }
+        let tools = BuildTools {
+            tectonic: Some(tectonic.clone()),
+            latexmk: Some(latexmk.clone()),
+            typst: Some(typst.clone()),
+            pandoc: Some(pandoc.clone()),
+        };
+        let compiler = NativeCompiler::new(tools.clone());
+        let options = BuildOptions {
+            offline: true,
+            fast: true,
+            halt_on_error: true,
+        };
+
+        let tectonic_directory = TempDir::new().unwrap();
+        let tectonic_workspace = workspace_for_engine(&tectonic_directory, Engine::Tectonic, None);
+        let tectonic_build = tectonic_workspace.prepare_build().unwrap();
+        let tectonic_command = compiler.command(&tectonic_build, options).unwrap();
+        let tectonic_arguments = arguments(&tectonic_command);
+        assert_eq!(tectonic_command.executable, tectonic);
+        assert!(tectonic_arguments
+            .windows(2)
+            .any(|pair| pair == ["-X", "compile"]));
+        assert!(tectonic_arguments
+            .iter()
+            .any(|value| value == "--only-cached"));
+        assert!(tectonic_arguments
+            .windows(2)
+            .any(|pair| pair == ["--reruns", "0"]));
+        assert!(!tectonic_arguments
+            .iter()
+            .any(|value| value == "continue-on-errors"));
+        assert!(tectonic_command.produced_output.ends_with("main.pdf"));
+
+        let latexmk_directory = TempDir::new().unwrap();
+        let latexmk_workspace =
+            workspace_for_engine(&latexmk_directory, Engine::Latexmk, Some("lualatex"));
+        let latexmk_build = latexmk_workspace.prepare_build().unwrap();
+        let latexmk_command = compiler.command(&latexmk_build, options).unwrap();
+        let latexmk_arguments = arguments(&latexmk_command);
+        assert_eq!(latexmk_command.executable, latexmk);
+        assert!(latexmk_arguments
+            .iter()
+            .any(|value| value == "-no-shell-escape"));
+        assert!(latexmk_arguments.iter().any(|value| value == "-lualatex"));
+        assert!(latexmk_arguments
+            .iter()
+            .any(|value| value == "-halt-on-error"));
+        assert!(latexmk_arguments
+            .iter()
+            .any(|value| value == "-latexoption=--nosocket"));
+        assert!(latexmk_arguments
+            .iter()
+            .any(|value| value == "-jobname=_oleafly_entry"));
+
+        let typst_directory = TempDir::new().unwrap();
+        let typst_workspace = workspace_for_engine(&typst_directory, Engine::Typst, None);
+        let typst_build = typst_workspace.prepare_build().unwrap();
+        let typst_command = compiler.command(&typst_build, options).unwrap();
+        let typst_arguments = arguments(&typst_command);
+        assert_eq!(typst_command.executable, typst);
+        assert_eq!(&typst_arguments[..3], ["--color", "never", "compile"]);
+        assert!(typst_arguments
+            .windows(2)
+            .any(|pair| pair == ["--diagnostic-format", "short"]));
+        assert!(typst_command
+            .produced_output
+            .ends_with("_oleafly_entry.pdf"));
+
+        let markdown_directory = TempDir::new().unwrap();
+        let markdown_workspace = workspace_for_engine(&markdown_directory, Engine::Markdown, None);
+        std::fs::create_dir(markdown_directory.path().join("references")).unwrap();
+        std::fs::write(
+            markdown_directory.path().join("references/library.bib"),
+            "@book{source}",
+        )
+        .unwrap();
+        std::fs::create_dir(markdown_directory.path().join("node_modules")).unwrap();
+        std::fs::write(
+            markdown_directory.path().join("node_modules/ignored.bib"),
+            "@book{ignored}",
+        )
+        .unwrap();
+        let markdown_build = markdown_workspace.prepare_build().unwrap();
+        let markdown_command = compiler.command(&markdown_build, options).unwrap();
+        let markdown_arguments = arguments(&markdown_command);
+        assert_eq!(markdown_command.executable, pandoc);
+        assert!(markdown_arguments.iter().any(|value| value == "--citeproc"));
+        let bibliography = PathBuf::from("references").join("library.bib");
+        assert!(markdown_arguments
+            .iter()
+            .any(|value| value == &format!("--bibliography={}", bibliography.display())));
+        assert!(!markdown_arguments
+            .iter()
+            .any(|value| value.contains("ignored.bib")));
+        assert!(markdown_arguments
+            .iter()
+            .any(|value| value == &format!("--pdf-engine={}", tectonic.display())));
+
+        for engine in [
+            Engine::Tectonic,
+            Engine::Latexmk,
+            Engine::Typst,
+            Engine::Markdown,
+        ] {
+            assert_eq!(
+                tools.for_engine(engine),
+                match engine {
+                    Engine::Tectonic => Some(tectonic.as_path()),
+                    Engine::Latexmk => Some(latexmk.as_path()),
+                    Engine::Typst => Some(typst.as_path()),
+                    Engine::Markdown => Some(pandoc.as_path()),
+                }
+            );
+        }
+        assert_eq!(tools.required_for_engine(Engine::Tectonic).len(), 1);
+        assert_eq!(tools.required_for_engine(Engine::Latexmk).len(), 1);
+        assert_eq!(tools.required_for_engine(Engine::Typst).len(), 1);
+        assert_eq!(tools.required_for_engine(Engine::Markdown).len(), 2);
+    }
+
+    #[test]
+    fn compiler_commands_reject_unsafe_or_incomplete_toolchains() {
+        let project = TempDir::new().unwrap();
+        let workspace = workspace_for_engine(&project, Engine::Tectonic, None);
+        let prepared = workspace.prepare_build().unwrap();
+        let local_tool = project.path().join(executable_name("tectonic"));
+        std::fs::write(&local_tool, "tool").unwrap();
+        let error = match NativeCompiler::new(BuildTools {
+            tectonic: Some(local_tool),
+            ..BuildTools::default()
+        })
+        .command(&prepared, BuildOptions::default())
+        {
+            Ok(_) => panic!("project-local compiler was accepted"),
+            Err(error) => error,
+        };
+        assert_eq!(error.kind(), ErrorKind::UnsafePath);
+
+        let tools_directory = TempDir::new().unwrap();
+        let pandoc = tools_directory.path().join(executable_name("pandoc"));
+        std::fs::write(&pandoc, "tool").unwrap();
+        let markdown_project = TempDir::new().unwrap();
+        let markdown = workspace_for_engine(&markdown_project, Engine::Markdown, None);
+        let error = match NativeCompiler::new(BuildTools {
+            pandoc: Some(pandoc),
+            ..BuildTools::default()
+        })
+        .command(&markdown.prepare_build().unwrap(), BuildOptions::default())
+        {
+            Ok(_) => panic!("incomplete Markdown toolchain was accepted"),
+            Err(error) => error,
+        };
+        assert_eq!(error.kind(), ErrorKind::MissingTool);
+        assert!(error.to_string().contains("both pandoc and tectonic"));
+    }
+
+    #[test]
     fn tex_errors_include_line_numbers() {
         let errors = parse_tex_errors("! Undefined control sequence.\nl.42 \\badcommand");
         assert_eq!(errors[0].line, Some(42));
         assert_eq!(errors[0].kind, "error");
+    }
+
+    #[test]
+    fn diagnostics_preserve_each_engines_user_visible_shape() {
+        let typst = parse_errors(
+            Engine::Typst,
+            "paper.typ:7:2: error: broken\nC:\\paper.typ:8:3: warning: careful\nnoise",
+        );
+        assert_eq!(typst.len(), 2);
+        assert_eq!(typst[0].file.as_deref(), Some("paper.typ"));
+        assert_eq!(typst[0].line, Some(7));
+        assert_eq!(typst[1].kind, "warning");
+
+        let markdown = parse_errors(
+            Engine::Markdown,
+            "warning: missing title\npandoc: failed to render\nordinary output",
+        );
+        assert_eq!(markdown.len(), 2);
+        assert_eq!(markdown[0].kind, "warning");
+        assert_eq!(markdown[1].kind, "error");
+
+        let tectonic = parse_errors(
+            Engine::Tectonic,
+            "! First error\nl.12 \\first\n! Second error\nwithout a line",
+        );
+        assert_eq!(tectonic[0].line, Some(12));
+        assert_eq!(tectonic[1].line, None);
+        assert_eq!(parse_errors(Engine::Latexmk, "normal output"), Vec::new());
+    }
+
+    #[test]
+    fn compiler_output_is_utf8_safe_and_bounded() {
+        let mut output = "x".repeat(MAX_LOG_BYTES - 1);
+        append_bounded(&mut output, "éclair".as_bytes());
+        assert_eq!(output.len(), MAX_LOG_BYTES);
+        assert!(output.ends_with(LOG_TRUNCATION_MARKER));
+        assert!(!output.contains('é'));
+        let length = output.len();
+        append_bounded(&mut output, b"ignored");
+        assert_eq!(output.len(), length);
+
+        let mut exact = "x".repeat(MAX_LOG_BYTES);
+        append_bounded(&mut exact, b"");
+        assert!(!exact.ends_with(LOG_TRUNCATION_MARKER));
+        append_bounded(&mut exact, b"overflow");
+        assert_eq!(exact.len(), MAX_LOG_BYTES);
+        assert!(exact.ends_with(LOG_TRUNCATION_MARKER));
+    }
+
+    #[test]
+    fn output_cleanup_is_idempotent() {
+        let directory = TempDir::new().unwrap();
+        let missing = directory.path().join("missing.pdf");
+        remove_if_exists(&missing).unwrap();
+        std::fs::write(&missing, "generated").unwrap();
+        remove_if_exists(&missing).unwrap();
+        assert!(!missing.exists());
+    }
+
+    #[tokio::test]
+    async fn native_build_publishes_success_and_clears_failed_output() {
+        let tools_directory = TempDir::new().unwrap();
+        let project = TempDir::new().unwrap();
+        let workspace = workspace_for_engine(&project, Engine::Tectonic, None);
+        let success_compiler = NativeCompiler::new(BuildTools {
+            tectonic: Some(compiler_fixture(&tools_directory, false)),
+            ..BuildTools::default()
+        });
+
+        let result = success_compiler
+            .build(&workspace, BuildOptions::default())
+            .await
+            .unwrap();
+        assert!(result.ok);
+        assert!(result.log.contains("fixture-ok"));
+        assert!(result.errors.is_empty());
+        assert!(result
+            .output
+            .as_ref()
+            .is_some_and(|path| path.ends_with("_oleafly_entry.pdf") && path.is_file()));
+        assert!(result
+            .output_id
+            .as_deref()
+            .is_some_and(|value| value.starts_with("pdf-sha256:")));
+
+        let failed_compiler = NativeCompiler::new(BuildTools {
+            tectonic: Some(compiler_fixture(&tools_directory, true)),
+            ..BuildTools::default()
+        });
+        let result = failed_compiler
+            .build(&workspace, BuildOptions::default())
+            .await
+            .unwrap();
+        assert!(!result.ok);
+        assert_eq!(result.output, None);
+        assert_eq!(result.output_id, None);
+        assert_eq!(result.errors.len(), 1);
+        assert_eq!(result.errors[0].message, "Fixture failure");
+        assert!(!workspace
+            .build_dir_path()
+            .join("_oleafly_entry.pdf")
+            .exists());
     }
 
     #[tokio::test]
@@ -961,17 +1323,23 @@ mod tests {
             OsString::from("--nocapture"),
         ];
         let working_directory = TempDir::new().unwrap();
+        let captured = Arc::new(Mutex::new(String::new()));
+        let captured_output = Arc::clone(&captured);
+        let sink = CompilerLog::new(move |value| {
+            captured_output.lock().unwrap().push_str(value);
+        });
         let (output, status) = run_command(
             &executable,
             &arguments,
             working_directory.path(),
             Duration::from_secs(5),
-            &CompilerLog::default(),
+            &sink,
         )
         .await
         .unwrap();
         assert_eq!(status, Some(0));
         assert!(output.contains("core-ok"));
+        assert!(captured.lock().unwrap().contains("core-ok"));
     }
 
     #[test]

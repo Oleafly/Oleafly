@@ -626,6 +626,100 @@ mod tests {
     }
 
     #[test]
+    fn init_discovers_one_nested_source_and_ignores_generated_trees() {
+        let directory = TempDir::new().unwrap();
+        std::fs::create_dir_all(directory.path().join("chapters")).unwrap();
+        std::fs::write(directory.path().join("chapters/paper.typ"), "= Existing").unwrap();
+        for ignored in [".git", ".oleafly", "node_modules", "target"] {
+            std::fs::create_dir(directory.path().join(ignored)).unwrap();
+            std::fs::write(directory.path().join(ignored).join("ignored.tex"), "").unwrap();
+        }
+
+        let workspace = Workspace::init(
+            directory.path(),
+            InitOptions {
+                name: Some("Nested paper".into()),
+                ..InitOptions::default()
+            },
+        )
+        .unwrap();
+
+        assert_eq!(workspace.manifest().name, "Nested paper");
+        assert_eq!(workspace.manifest().main_doc, "chapters/paper.typ");
+        assert_eq!(workspace.manifest().engine().unwrap(), Engine::Typst);
+        assert_eq!(
+            std::fs::read_to_string(directory.path().join("chapters/paper.typ")).unwrap(),
+            "= Existing"
+        );
+    }
+
+    #[test]
+    fn init_validates_custom_document_before_writing_project_files() {
+        let directory = TempDir::new().unwrap();
+        let error = Workspace::init(
+            directory.path(),
+            InitOptions {
+                main_document: Some("paper.md".into()),
+                engine: Some(Engine::Typst),
+                ..InitOptions::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::InvalidInput);
+        assert!(!directory.path().join(MANIFEST_NAME).exists());
+        assert!(!directory.path().join("paper.md").exists());
+
+        std::fs::create_dir(directory.path().join("paper.typ")).unwrap();
+        let error = Workspace::init(
+            directory.path(),
+            InitOptions {
+                main_document: Some("paper.typ".into()),
+                ..InitOptions::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::InvalidInput);
+        assert!(!directory.path().join(MANIFEST_NAME).exists());
+    }
+
+    #[test]
+    fn init_creates_a_missing_nested_workspace() {
+        let directory = TempDir::new().unwrap();
+        let root = directory.path().join("projects/paper");
+        let workspace = Workspace::init(
+            &root,
+            InitOptions {
+                main_document: Some("src/main.md".into()),
+                ..InitOptions::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(workspace.root(), root.canonicalize().unwrap());
+        assert!(root.join("src/main.md").is_file());
+    }
+
+    #[test]
+    fn open_reports_non_directories_and_invalid_manifests() {
+        let directory = TempDir::new().unwrap();
+        let file = directory.path().join("not-a-directory");
+        std::fs::write(&file, "file").unwrap();
+        assert_eq!(
+            Workspace::open(&file).unwrap_err().kind(),
+            ErrorKind::InvalidInput
+        );
+        assert_eq!(
+            Workspace::open(directory.path()).unwrap_err().kind(),
+            ErrorKind::NotInitialized
+        );
+
+        std::fs::write(directory.path().join(MANIFEST_NAME), "not json").unwrap();
+        assert_eq!(
+            Workspace::open(directory.path()).unwrap_err().kind(),
+            ErrorKind::InvalidManifest
+        );
+    }
+
+    #[test]
     fn workspace_rejects_manifest_traversal() {
         let directory = TempDir::new().unwrap();
         std::fs::write(
@@ -705,6 +799,71 @@ mod tests {
             .iter()
             .all(|check| check.status == DoctorStatus::Pass));
         assert!(!directory.path().join(INTERNAL_DIR).exists());
+    }
+
+    #[test]
+    fn doctor_reports_missing_source_and_an_unsafe_build_path() {
+        let directory = TempDir::new().unwrap();
+        let workspace = Workspace::init(directory.path(), InitOptions::default()).unwrap();
+        std::fs::remove_file(workspace.main_document_path().unwrap()).unwrap();
+        std::fs::create_dir(directory.path().join(INTERNAL_DIR)).unwrap();
+        std::fs::write(
+            directory.path().join(INTERNAL_DIR).join(BUILD_DIR),
+            "not a directory",
+        )
+        .unwrap();
+
+        let report = workspace.doctor();
+        assert!(!report.ok);
+        assert_eq!(
+            report
+                .checks
+                .iter()
+                .filter(|check| check.status == DoctorStatus::Fail)
+                .count(),
+            2
+        );
+        assert_eq!(
+            workspace.build_dir().unwrap_err().kind(),
+            ErrorKind::UnsafePath
+        );
+        assert_eq!(workspace.clean().unwrap_err().kind(), ErrorKind::UnsafePath);
+    }
+
+    #[test]
+    fn project_data_must_be_a_real_directory() {
+        let directory = TempDir::new().unwrap();
+        let workspace = Workspace::init(directory.path(), InitOptions::default()).unwrap();
+        std::fs::write(directory.path().join(INTERNAL_DIR), "not a directory").unwrap();
+
+        assert_eq!(
+            workspace.build_dir().unwrap_err().kind(),
+            ErrorKind::UnsafePath
+        );
+        assert_eq!(workspace.clean().unwrap_err().kind(), ErrorKind::UnsafePath);
+        assert!(!workspace.doctor().ok);
+    }
+
+    #[test]
+    fn project_paths_are_normalized_and_confined() {
+        assert_eq!(
+            normalize_relative("./chapters/one.tex").unwrap(),
+            "chapters/one.tex"
+        );
+        for unsafe_path in ["", "   ", "../escape.tex", "chapters\\one.tex"] {
+            assert_eq!(
+                normalize_relative(unsafe_path).unwrap_err().kind(),
+                ErrorKind::UnsafePath
+            );
+        }
+
+        let absolute = std::env::current_dir().unwrap().join("paper.tex");
+        assert_eq!(
+            normalize_relative(&absolute.to_string_lossy())
+                .unwrap_err()
+                .kind(),
+            ErrorKind::UnsafePath
+        );
     }
 
     #[test]
