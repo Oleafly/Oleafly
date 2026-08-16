@@ -952,22 +952,31 @@ mod tests {
         assert_eq!(error.kind(), ErrorKind::MissingTool);
     }
 
-    #[cfg(unix)]
     #[tokio::test]
     async fn contained_command_captures_output() {
-        let shell = PathBuf::from("/bin/sh").canonicalize().unwrap();
-        let arguments = [OsString::from("-c"), OsString::from("printf core-ok")];
+        let executable = std::env::current_exe().unwrap();
+        let arguments = [
+            OsString::from("--exact"),
+            OsString::from("native::tests::contained_command_child"),
+            OsString::from("--nocapture"),
+        ];
+        let working_directory = TempDir::new().unwrap();
         let (output, status) = run_command(
-            &shell,
+            &executable,
             &arguments,
-            Path::new("/"),
+            working_directory.path(),
             Duration::from_secs(5),
             &CompilerLog::default(),
         )
         .await
         .unwrap();
         assert_eq!(status, Some(0));
-        assert_eq!(output, "core-ok");
+        assert!(output.contains("core-ok"));
+    }
+
+    #[test]
+    fn contained_command_child() {
+        print!("core-ok");
     }
 
     #[cfg(unix)]
@@ -986,29 +995,5 @@ mod tests {
         .unwrap_err();
         assert_eq!(error.kind(), ErrorKind::Build);
         assert!(error.to_string().contains("timed out"));
-    }
-
-    #[cfg(windows)]
-    #[tokio::test]
-    async fn contained_command_captures_output() {
-        let system_root = std::env::var_os("SystemRoot").unwrap();
-        let command = PathBuf::from(system_root).join("System32/cmd.exe");
-        let arguments = [
-            OsString::from("/D"),
-            OsString::from("/S"),
-            OsString::from("/C"),
-            OsString::from("echo core-ok"),
-        ];
-        let (output, status) = run_command(
-            &command,
-            &arguments,
-            Path::new("C:\\"),
-            Duration::from_secs(5),
-            &CompilerLog::default(),
-        )
-        .await
-        .unwrap();
-        assert_eq!(status, Some(0));
-        assert!(output.contains("core-ok"));
     }
 }
