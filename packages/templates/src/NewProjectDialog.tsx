@@ -77,6 +77,26 @@ function nameHint(t: TemplateInfo | null): string {
   return NAME_HINT_BY_ID[t.id] ?? NAME_HINT_BY_CATEGORY[t.category] ?? "My Project";
 }
 
+// "All" first, then AI Generated, then the curated order, then anything new
+// alphabetically so an unrecognised category still lands somewhere sensible.
+export function orderedCategories(
+  templates: readonly Pick<TemplateInfo, "category">[],
+): string[] {
+  const present = new Set(templates.map((t) => t.category || "Other"));
+  const ordered = CATEGORY_ORDER.filter(
+    (c) => present.has(c) && c !== "AI Generated",
+  );
+  const rest = [...present]
+    .filter((c) => !CATEGORY_ORDER.includes(c) && c !== "AI Generated")
+    .sort((a, b) => a.localeCompare(b));
+  return [
+    "All",
+    ...(present.has("AI Generated") ? ["AI Generated"] : []),
+    ...ordered,
+    ...rest,
+  ];
+}
+
 export function compilerLabel(template: TemplateInfo): string {
   if (template.document_engine === "unknown") return "Unknown compiler";
   if (template.document_engine === "typst") return "Typst";
@@ -347,14 +367,7 @@ export function NewProjectDialog({
     }
   }, [step, open]);
 
-  const categories = useMemo(() => {
-    const present = new Set(templates.map((t) => t.category || "Other"));
-    const ordered = CATEGORY_ORDER.filter((c) => present.has(c) && c !== "AI Generated");
-    const rest = [...present]
-      .filter((c) => !CATEGORY_ORDER.includes(c) && c !== "AI Generated")
-      .sort((a, b) => a.localeCompare(b));
-    return ["All", ...(present.has("AI Generated") ? ["AI Generated"] : []), ...ordered, ...rest];
-  }, [templates]);
+  const categories = useMemo(() => orderedCategories(templates), [templates]);
 
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();

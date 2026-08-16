@@ -316,3 +316,16 @@ describe("live transcripts", () => {
     expect(useChatsStore.getState().live["same-live-chat"]?.[0].content).toBe("streaming");
   });
 });
+
+describe("chats store create", () => {
+  it("mints a unique, prefixed id for every new chat", () => {
+    const first = useChatsStore.getState().create("P", "head1");
+    const second = useChatsStore.getState().create("P", "head1");
+
+    for (const chat of [first, second]) {
+      expect(chat.id).toMatch(/^chat_\d+_[0-9a-f-]{6}$/);
+      expect(chat.projectId).toBe("P");
+    }
+    expect(first.id).not.toBe(second.id);
+  });
+});

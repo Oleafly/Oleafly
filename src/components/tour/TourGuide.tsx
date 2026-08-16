@@ -44,7 +44,7 @@ const KBD_CHIP = "h-4 min-w-4 px-1 text-[10px]";
 // evenly than sampling would, and keeps their layout stable between renders.
 const GOLDEN_RATIO_CONJUGATE = 0.618033988749895;
 
-function scatter(index: number, offset: number): number {
+export function scatter(index: number, offset: number): number {
   return ((index + 1) * GOLDEN_RATIO_CONJUGATE + offset) % 1;
 }
 

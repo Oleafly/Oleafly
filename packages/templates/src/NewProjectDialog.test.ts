@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { compilerLabel, wrappedModalFocus } from "./NewProjectDialog";
+import { compilerLabel, orderedCategories, wrappedModalFocus } from "./NewProjectDialog";
 import { visibleFocusable } from "./modal-coordinator";
 import type { TemplateInfo } from "./types";
 
@@ -45,3 +45,36 @@ describe("compilerLabel", () => {
     expect(compilerLabel(template("markdown", "markdown"))).toBe("Pandoc");
   });
 });
+
+describe("orderedCategories", () => {
+  const of = (...categories: string[]) => categories.map((category) => ({ category }));
+
+  it("always leads with All", () => {
+    expect(orderedCategories(of("Blank"))[0]).toBe("All");
+  });
+
+  it("keeps the curated order rather than sorting it alphabetically", () => {
+    const result = orderedCategories(of("Assignments", "Blank", "CVs & Resumes"));
+    expect(result).toEqual(["All", "Blank", "CVs & Resumes", "Assignments"]);
+  });
+
+  it("puts AI Generated directly after All, ahead of the curated order", () => {
+    const result = orderedCategories(of("Blank", "AI Generated"));
+    expect(result).toEqual(["All", "AI Generated", "Blank"]);
+  });
+
+  it("appends unrecognised categories alphabetically after the curated ones", () => {
+    const result = orderedCategories(of("Zebra", "Blank", "Aardvark"));
+    expect(result).toEqual(["All", "Blank", "Aardvark", "Zebra"]);
+  });
+
+  it("treats a blank category as Other and de-duplicates", () => {
+    const result = orderedCategories(of("", "", "Blank"));
+    expect(result).toEqual(["All", "Blank", "Other"]);
+  });
+
+  it("lists only the categories actually present", () => {
+    expect(orderedCategories(of("Blank"))).not.toContain("Assignments");
+  });
+});
+

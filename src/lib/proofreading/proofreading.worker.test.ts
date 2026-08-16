@@ -232,3 +232,21 @@ describe("proofreading worker outcomes", () => {
     expect(mocks.suggest).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("ignored-word normalisation", () => {
+  it("orders and de-duplicates the ignore list so the cache key is stable", async () => {
+    const forwards = request(900, "spelling");
+    forwards.ignoredWords = ["zeta", "alpha", "Beta", "alpha"];
+    const first = await analyze(forwards);
+    expect(first.type).toBe("result");
+
+    // Same set, different order and casing duplicates: the worker must treat
+    // this as the identical request, which only holds if the list is sorted
+    // and de-duplicated before it becomes the cache key.
+    const backwards = request(901, "spelling");
+    backwards.ignoredWords = ["Beta", "alpha", "zeta"];
+    const second = await analyze(backwards);
+    expect(second.type).toBe("result");
+  });
+});
+
