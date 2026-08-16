@@ -16,6 +16,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 oleafly-agent = { path = "../crates/oleafly-agent" }
+oleafly-core = { path = "../crates/oleafly-core" }
 tauri = { version = "2", features = ["macos-private-api"] }
 tokio = { version = "1", features = ["time", "sync", "macros", "process", "io-util"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }

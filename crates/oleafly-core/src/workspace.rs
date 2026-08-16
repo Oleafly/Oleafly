@@ -86,6 +86,14 @@ impl Workspace {
         Ok(workspace)
     }
 
+    pub fn from_manifest(path: impl AsRef<Path>, manifest: ProjectManifest) -> Result<Self> {
+        let root = canonical_directory(path.as_ref())?;
+        manifest.validate()?;
+        let workspace = Self { root, manifest };
+        workspace.resolve(&workspace.manifest.main_doc)?;
+        Ok(workspace)
+    }
+
     pub fn init(path: impl AsRef<Path>, options: InitOptions) -> Result<Self> {
         let input = path.as_ref();
         if !input.exists() {
@@ -191,12 +199,20 @@ impl Workspace {
     }
 
     pub fn clean(&self) -> Result<bool> {
-        let internal = self.root.join(INTERNAL_DIR);
+        Self::clean_build_directory(&self.root)
+    }
+
+    pub fn clean_build_directory(path: impl AsRef<Path>) -> Result<bool> {
+        let root = canonical_directory(path.as_ref())?;
+        let internal = root.join(INTERNAL_DIR);
         if !internal.exists() {
             return Ok(false);
         }
         let internal_meta = std::fs::symlink_metadata(&internal)?;
-        if !internal_meta.is_dir() || internal_meta.file_type().is_symlink() {
+        if !internal_meta.is_dir()
+            || internal_meta.file_type().is_symlink()
+            || metadata_is_reparse_point(&internal_meta)
+        {
             return Err(Error::new(
                 ErrorKind::UnsafePath,
                 format!(
@@ -210,7 +226,10 @@ impl Workspace {
             return Ok(false);
         }
         let build_meta = std::fs::symlink_metadata(&build)?;
-        if !build_meta.is_dir() || build_meta.file_type().is_symlink() {
+        if !build_meta.is_dir()
+            || build_meta.file_type().is_symlink()
+            || metadata_is_reparse_point(&build_meta)
+        {
             return Err(Error::new(
                 ErrorKind::UnsafePath,
                 format!("build path is not a real directory: {}", build.display()),
@@ -223,6 +242,11 @@ impl Workspace {
             )
         })?;
         Ok(true)
+    }
+
+    pub fn ensure_build_directory(path: impl AsRef<Path>) -> Result<PathBuf> {
+        let root = canonical_directory(path.as_ref())?;
+        secure_build_directory(&root, true)
     }
 
     pub fn doctor(&self, tools: &BuildTools) -> DoctorReport {
@@ -384,7 +408,10 @@ fn secure_build_directory(root: &Path, create: bool) -> Result<PathBuf> {
 fn validate_build_location(root: &Path) -> Result<()> {
     let internal = root.join(INTERNAL_DIR);
     match std::fs::symlink_metadata(&internal) {
-        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {}
+        Ok(metadata)
+            if metadata.is_dir()
+                && !metadata.file_type().is_symlink()
+                && !metadata_is_reparse_point(&metadata) => {}
         Ok(_) => {
             return Err(Error::new(
                 ErrorKind::UnsafePath,
@@ -399,7 +426,13 @@ fn validate_build_location(root: &Path) -> Result<()> {
     }
     let build = internal.join(BUILD_DIR);
     match std::fs::symlink_metadata(&build) {
-        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => Ok(()),
+        Ok(metadata)
+            if metadata.is_dir()
+                && !metadata.file_type().is_symlink()
+                && !metadata_is_reparse_point(&metadata) =>
+        {
+            Ok(())
+        }
         Ok(_) => Err(Error::new(
             ErrorKind::UnsafePath,
             format!("build path is not a real directory: {}", build.display()),
@@ -411,7 +444,13 @@ fn validate_build_location(root: &Path) -> Result<()> {
 
 fn ensure_real_directory(path: &Path, create: bool, label: &str) -> Result<()> {
     match std::fs::symlink_metadata(path) {
-        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => Ok(()),
+        Ok(metadata)
+            if metadata.is_dir()
+                && !metadata.file_type().is_symlink()
+                && !metadata_is_reparse_point(&metadata) =>
+        {
+            Ok(())
+        }
         Ok(_) => Err(Error::new(
             ErrorKind::UnsafePath,
             format!("{label} path is not a real directory: {}", path.display()),
@@ -429,6 +468,17 @@ fn ensure_real_directory(path: &Path, create: bool, label: &str) -> Result<()> {
             format!("failed to inspect {}: {error}", path.display()),
         )),
     }
+}
+
+#[cfg(windows)]
+fn metadata_is_reparse_point(metadata: &std::fs::Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    metadata.file_attributes() & 0x400 != 0
+}
+
+#[cfg(not(windows))]
+fn metadata_is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
+    false
 }
 
 fn discover_main_document(root: &Path) -> Result<Option<String>> {
@@ -590,6 +640,32 @@ mod tests {
         assert!(!build.exists());
         assert!(directory.path().join(INTERNAL_DIR).join("keep").exists());
         assert!(!workspace.clean().unwrap());
+    }
+
+    #[test]
+    fn build_cleanup_supports_legacy_projects_without_a_manifest() {
+        let directory = TempDir::new().unwrap();
+        let build = Workspace::ensure_build_directory(directory.path()).unwrap();
+        std::fs::write(build.join("output.pdf"), "pdf").unwrap();
+        assert!(Workspace::clean_build_directory(directory.path()).unwrap());
+        assert!(!build.exists());
+    }
+
+    #[test]
+    fn in_memory_manifest_supports_desktop_adapters() {
+        let directory = TempDir::new().unwrap();
+        std::fs::write(directory.path().join("paper.typ"), "= Paper").unwrap();
+        let workspace = Workspace::from_manifest(
+            directory.path(),
+            ProjectManifest {
+                main_doc: "paper.typ".into(),
+                engine: "typst".into(),
+                ..ProjectManifest::default()
+            },
+        )
+        .unwrap();
+        assert!(!directory.path().join(MANIFEST_NAME).exists());
+        assert_eq!(workspace.prepare_build().unwrap().engine, Engine::Typst);
     }
 
     #[test]
