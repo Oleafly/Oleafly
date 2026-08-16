@@ -318,23 +318,6 @@ jobs:
       - name: Run the oleaflyc command tests
         run: cargo test -p oleafly-cli --test cli
 
-  rust-macos:
-    name: Rust CLI tests (macOS)
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: . -> src-tauri/target
-
-      - name: Run shared core and oleaflyc tests
-        run: cargo test -p oleafly-core -p oleafly-cli --all-targets
-
   cargo-deny:
     # RustSec advisories plus a permissive-only license gate for everything
     # compiled into the shipped binary. Policy lives in src-tauri/deny.toml.
@@ -473,6 +456,10 @@ jobs:
 
       - name: Stage checksum-pinned Tinymist resource archive
         run: node scripts/fetch-language-servers.mjs --server tinymist --target aarch64-apple-darwin --install-mode resource
+
+      - name: Run shared core and oleaflyc tests
+        if: matrix.shard == 1
+        run: cargo test -p oleafly-core -p oleafly-cli --all-targets
 
       - name: Smoke-test Typst sidecar
         run: bash scripts/smoke-typst.sh aarch64-apple-darwin
