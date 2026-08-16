@@ -1,9 +1,10 @@
+mod native;
+mod process;
+
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use native::{BuildOptions, BuildResult, BuildTools, CompilerLog, NativeCompiler};
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use oleafly_core::{
-    BuildOptions, BuildResult, BuildTools, CompilerLog, DoctorStatus, Engine, Error, ErrorKind,
-    InitOptions, NativeCompiler, Workspace,
-};
+use oleafly_core::{DoctorCheck, DoctorStatus, Engine, Error, ErrorKind, InitOptions, Workspace};
 use serde_json::{json, Value};
 use std::ffi::OsStr;
 use std::io::Write;
@@ -271,7 +272,25 @@ fn run_clean(path: &Path, reporter: Reporter) -> Result<u8, Error> {
 fn run_doctor(path: &Path, reporter: Reporter) -> Result<u8, Error> {
     let workspace = Workspace::open(path)?;
     let tools = BuildTools::discover(workspace.root());
-    let report = workspace.doctor(&tools);
+    let mut report = workspace.doctor();
+    for (name, path) in tools.required_for_engine(workspace.manifest().engine()?) {
+        report.checks.push(match path {
+            Some(path) => DoctorCheck {
+                name: format!("compiler_{name}"),
+                status: DoctorStatus::Pass,
+                message: path.display().to_string(),
+            },
+            None => DoctorCheck {
+                name: format!("compiler_{name}"),
+                status: DoctorStatus::Fail,
+                message: format!("{name} was not found"),
+            },
+        });
+    }
+    report.ok = report
+        .checks
+        .iter()
+        .all(|check| check.status != DoctorStatus::Fail);
     reporter.value(json!({"ok": report.ok, "command": "doctor", "report": report}))?;
     if !reporter.json {
         for check in &report.checks {

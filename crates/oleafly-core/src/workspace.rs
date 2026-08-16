@@ -1,4 +1,4 @@
-use crate::{BuildTools, Engine, Error, ErrorKind, ProjectManifest, Result};
+use crate::{Engine, Error, ErrorKind, ProjectManifest, Result};
 use serde::Serialize;
 use std::collections::BTreeSet;
 use std::fs::OpenOptions;
@@ -249,7 +249,7 @@ impl Workspace {
         secure_build_directory(&root, true)
     }
 
-    pub fn doctor(&self, tools: &BuildTools) -> DoctorReport {
+    pub fn doctor(&self) -> DoctorReport {
         let mut checks = Vec::new();
         checks.push(DoctorCheck {
             name: "manifest".to_string(),
@@ -276,29 +276,6 @@ impl Workspace {
             }),
             Err(error) => checks.push(DoctorCheck {
                 name: "build_directory".to_string(),
-                status: DoctorStatus::Fail,
-                message: error.to_string(),
-            }),
-        }
-        match self.manifest.engine() {
-            Ok(engine) => {
-                for (name, path) in tools.required_for_engine(engine) {
-                    checks.push(match path {
-                        Some(path) => DoctorCheck {
-                            name: format!("compiler_{name}"),
-                            status: DoctorStatus::Pass,
-                            message: path.display().to_string(),
-                        },
-                        None => DoctorCheck {
-                            name: format!("compiler_{name}"),
-                            status: DoctorStatus::Fail,
-                            message: format!("{name} was not found"),
-                        },
-                    });
-                }
-            }
-            Err(error) => checks.push(DoctorCheck {
-                name: "compiler".to_string(),
                 status: DoctorStatus::Fail,
                 message: error.to_string(),
             }),
@@ -690,8 +667,12 @@ mod tests {
     fn doctor_does_not_create_project_data() {
         let directory = TempDir::new().unwrap();
         let workspace = Workspace::init(directory.path(), InitOptions::default()).unwrap();
-        let report = workspace.doctor(&BuildTools::default());
-        assert!(!report.ok);
+        let report = workspace.doctor();
+        assert!(report.ok);
+        assert!(report
+            .checks
+            .iter()
+            .all(|check| check.status == DoctorStatus::Pass));
         assert!(!directory.path().join(INTERNAL_DIR).exists());
     }
 

@@ -203,10 +203,12 @@ pub async fn compile_project(
     fast: Option<bool>,
     halt_on_error: Option<bool>,
 ) -> Result<CompileResult, String> {
-    let core_options = oleafly_core::BuildOptions {
+    let options = crate::document_engine::CompileOptions {
         offline: offline.unwrap_or(false),
         fast: fast.unwrap_or(false),
         halt_on_error: halt_on_error.unwrap_or(false),
+        latex_flavor: None,
+        allow_shell_escape: false,
     };
     let ticket = state
         .compile_ticket
@@ -258,14 +260,12 @@ pub async fn compile_project(
     let project_dir = prepared.project_root().to_path_buf();
     let build_dir = prepared.build_directory().to_path_buf();
     let options = crate::document_engine::CompileOptions {
-        offline: core_options.offline,
-        fast: core_options.fast,
-        halt_on_error: core_options.halt_on_error,
         latex_flavor: meta
             .tex_flavor
             .as_deref()
             .and_then(crate::document_engine::LatexmkFlavor::parse),
         allow_shell_escape: meta.allow_shell_escape,
+        ..options
     };
     let engine = crate::document_engine::engine_for(prepared.engine().as_str(), &main_doc)?;
     let prepared_spec = crate::document_engine::prepare_compile_spec(
