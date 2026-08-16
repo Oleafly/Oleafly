@@ -206,7 +206,7 @@ function sourceSnapshotMatchesCurrent(
 ): boolean {
   const paths = currentSourcePaths(projectId);
   if (!paths) return false;
-  const snapshotPaths = Object.keys(snapshot.texts).sort();
+  const snapshotPaths = Object.keys(snapshot.texts).sort((a, b) => Number(a > b) - Number(a < b));
   if (!samePaths(paths, snapshotPaths)) return false;
 
   const indexed = useIndexStore.getState();
@@ -380,13 +380,23 @@ const suggestedPackagesByProject = new Map<string, string>();
  * "install via tlmgr and recompile" toast. This closes the gap between a
  * minimal TinyTeX and what a journal template actually loads.
  */
+// Identifies a set of missing packages independently of the order the log
+// happened to mention them in, so the same gap is only ever offered once.
+export function packageSuggestionSignature(
+  packages: readonly string[],
+): string {
+  return [...new Set(packages)]
+    .sort((a, b) => Number(a > b) - Number(a < b))
+    .join(",");
+}
+
 function maybeSuggestMissingPackages(log: string): void {
   const files = useFilesStore.getState();
   const projectId = files.projectId;
   if (files.engine.id !== "latexmk" || !projectId) return;
   const packages = missingLatexPackages(log);
   if (packages.length === 0) return;
-  const signature = [...packages].sort().join(",");
+  const signature = packageSuggestionSignature(packages);
   if (suggestedPackagesByProject.get(projectId) === signature) return;
   suggestedPackagesByProject.set(projectId, signature);
   void (async () => {

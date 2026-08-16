@@ -85,6 +85,14 @@ async function applyDefaultLatexEngine(projectId: string): Promise<void> {
 }
 
 // Compare this machine against a latexmk project's TeX pin. Missing pinned
+// Identifies a set of missing packages independently of the order the backend
+// reported them in, so reopening a project with the same gap stays quiet.
+export function texGapSignature(missing: readonly string[]): string {
+  return [...new Set(missing)]
+    .sort((a, b) => Number(a > b) - Number(a < b))
+    .join(",");
+}
+
 // packages get an actionable toast; a differing distribution gets a one-time
 // heads-up. Both remember what was shown so reopening a project stays quiet.
 async function checkTexPinStatus(
@@ -124,7 +132,7 @@ async function checkTexPinStatus(
     return;
   }
   if (missing.length > 0 && status.can_install_missing) {
-    const fresh = remember(`oleafly.texGap.${projectId}`, [...missing].sort().join(","));
+    const fresh = remember(`oleafly.texGap.${projectId}`, texGapSignature(missing));
     if (!fresh) return;
     toast.info(
       `This project pins ${missing.length} LaTeX package${missing.length === 1 ? "" : "s"} that ${missing.length === 1 ? "is" : "are"} not installed here.`,

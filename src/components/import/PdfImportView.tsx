@@ -57,7 +57,7 @@ function PdfDropzoneLanding() {
       <div className="w-full max-w-xl">
         {/* biome-ignore lint/a11y/noStaticElementInteractions: click/drag are supplementary; the browse button below remains keyboard accessible */}
         {/* biome-ignore lint/a11y/useKeyWithClickEvents: the browse button inside provides the keyboard path */}
-        <div
+        <div // NOSONAR - the browse button inside is the keyboard path; a tab stop here would duplicate it
           data-testid="pdf-dropzone"
           className={cn(
             "flex cursor-pointer flex-col items-center gap-4 rounded-xl border-2 border-dashed px-8 py-14 text-center transition-colors",

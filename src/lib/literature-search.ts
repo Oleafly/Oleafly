@@ -717,7 +717,7 @@ function storage(): Storage | null {
 function cacheKey(options: LiteratureSearchOptions): string {
   return JSON.stringify({
     query: options.query.trim().toLowerCase(),
-    sources: [...options.sources].sort(),
+    sources: [...options.sources].sort((a, b) => Number(a > b) - Number(a < b)),
     limit: options.limit ?? 12,
     yearFrom: options.yearFrom ?? null,
     yearTo: options.yearTo ?? null,

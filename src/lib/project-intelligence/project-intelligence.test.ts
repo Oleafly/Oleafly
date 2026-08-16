@@ -1020,3 +1020,27 @@ ta}`;
     }
   });
 });
+
+describe("project-wide package and class rollup", () => {
+  it("orders classes and packages by code point across every file", () => {
+    const value = snapshot({
+      "main.tex": "\\documentclass{scrartcl}\n\\usepackage{xcolor}\n\\usepackage{amsmath}\n",
+      "poster.tex": "\\documentclass{beamer}\n\\usepackage{tikz}\n",
+      "notes.tex": "\\documentclass{article}\n\\usepackage{amsmath}\n",
+    });
+
+    expect(value.documentClasses).toEqual(["article", "beamer", "scrartcl"]);
+    expect(value.detectedPackages).toEqual(["amsmath", "tikz", "xcolor"]);
+  });
+
+  it("de-duplicates a class or package used by several files", () => {
+    const value = snapshot({
+      "a.tex": "\\documentclass{article}\n\\usepackage{amsmath}\n",
+      "b.tex": "\\documentclass{article}\n\\usepackage{amsmath}\n",
+    });
+
+    expect(value.documentClasses).toEqual(["article"]);
+    expect(value.detectedPackages).toEqual(["amsmath"]);
+  });
+});
+

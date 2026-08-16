@@ -543,7 +543,7 @@ export function DeadlinesView() {
   const subs = useMemo(
     () =>
       [...new Set((venues ?? []).map((venue) => venue.sub).filter(Boolean))]
-        .sort(),
+        .sort((a, b) => a.localeCompare(b)),
     [venues],
   );
   const shown = useMemo(

@@ -9,6 +9,7 @@ import {
   shouldSuppressTourKey,
   terminalTourAction,
   autoSkipAction,
+  scatter,
   toJoyrideStep,
   tourArrowSide,
   tourDotWindowStart,
@@ -209,5 +210,34 @@ describe("terminal tour lifecycle", () => {
     expect(store.getState().activeTourId).toBeNull();
     expect(store.getState().activeStepIndex).toBe(0);
     expect(store.getState().tours.settings.status).toBe("completed");
+  });
+});
+
+describe("sparkle scatter", () => {
+  it("stays inside the unit interval for every sparkle", () => {
+    for (let i = 0; i < 10; i++) {
+      for (const offset of [0, 0.11, 0.37, 0.73]) {
+        const value = scatter(i, offset);
+        expect(value).toBeGreaterThanOrEqual(0);
+        expect(value).toBeLessThan(1);
+      }
+    }
+  });
+
+  it("is deterministic, so the layout does not move between renders", () => {
+    const once = Array.from({ length: 10 }, (_, i) => scatter(i, 0.37));
+    const again = Array.from({ length: 10 }, (_, i) => scatter(i, 0.37));
+    expect(again).toEqual(once);
+  });
+
+  it("spreads the sparkles instead of clumping them", () => {
+    const sorted = Array.from({ length: 10 }, (_, i) => scatter(i, 0)).sort(
+      (a, b) => a - b,
+    );
+    // A golden-ratio sequence keeps every neighbouring pair apart; random
+    // sampling regularly produces near-duplicates.
+    for (let i = 1; i < sorted.length; i++) {
+      expect(sorted[i] - sorted[i - 1]).toBeGreaterThan(0.02);
+    }
   });
 });

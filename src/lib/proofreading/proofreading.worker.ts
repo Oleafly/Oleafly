@@ -331,7 +331,7 @@ async function syncGrammarDictionary(
     ...new Set([...BUILTIN_PROOFREADING_WORDS, ...ignored]),
   ]
     .filter((word) => /^[\p{L}'’-]+$/u.test(word))
-    .sort();
+    .sort((a, b) => Number(a > b) - Number(a < b));
   const key = words.join("\0");
   if (key === grammarDictionaryKey) return;
   try {
@@ -636,7 +636,7 @@ async function analyze(
 
   const normalizedIgnored = [
     ...new Set(request.ignoredWords.map(normalizeWord).filter(Boolean)),
-  ].sort();
+  ].sort((a, b) => Number(a > b) - Number(a < b));
   const ignoredKey = normalizedIgnored.join("\0");
   const key = cacheKey(request, ignoredKey);
   const cached = readCache(key, request.text, ignoredKey);

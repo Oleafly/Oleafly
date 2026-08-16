@@ -93,7 +93,7 @@ export async function openUpdateWindow(opts: { manual?: boolean } = {}): Promise
     await existing.setFocus();
     return;
   }
-  new WebviewWindow(UPDATE_WINDOW_LABEL, {
+  const window = new WebviewWindow(UPDATE_WINDOW_LABEL, {
     url: `index.html?view=update${opts.manual ? "&manual=1" : ""}`,
     title: "Oleafly Update",
     width: 600,
@@ -105,6 +105,9 @@ export async function openUpdateWindow(opts: { manual?: boolean } = {}): Promise
     // (macOS draws its shadow around the opaque rounded content).
     transparent: true,
     focus: true,
+  });
+  void window.once("tauri://error", (event) => {
+    void logError("updater", event.payload);
   });
 }
 

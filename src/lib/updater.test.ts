@@ -10,14 +10,34 @@ vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => state.tauri }));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check }));
 vi.mock("@tauri-apps/plugin-process", () => ({ relaunch }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ ask: vi.fn(), message: vi.fn() }));
-vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
+vi.mock("@/lib/log", () => ({ logError }));
 
-import { findUpdate, installUpdate } from "./updater";
+const { logError } = vi.hoisted(() => ({ logError: vi.fn() }));
+const { WebviewWindow, getByLabel, once, setFocus } = vi.hoisted(() => {
+  const once = vi.fn();
+  const setFocus = vi.fn();
+  const getByLabel = vi.fn();
+  const WebviewWindow = vi.fn(
+    class {
+      once = once;
+    },
+  );
+  (WebviewWindow as unknown as { getByLabel: unknown }).getByLabel = getByLabel;
+  return { WebviewWindow, getByLabel, once, setFocus };
+});
+vi.mock("@tauri-apps/api/webviewWindow", () => ({ WebviewWindow }));
+
+import { findUpdate, installUpdate, openUpdateWindow } from "./updater";
 
 beforeEach(() => {
   state.tauri = true;
   check.mockReset();
   relaunch.mockReset();
+  logError.mockReset();
+  WebviewWindow.mockClear();
+  getByLabel.mockReset();
+  once.mockReset();
+  setFocus.mockReset();
 });
 
 describe("findUpdate", () => {
@@ -88,3 +108,51 @@ describe("installUpdate", () => {
     expect(relaunch).not.toHaveBeenCalled();
   });
 });
+
+describe("openUpdateWindow", () => {
+  it("does nothing in the browser dev server", async () => {
+    state.tauri = false;
+    await openUpdateWindow();
+    expect(getByLabel).not.toHaveBeenCalled();
+    expect(WebviewWindow).not.toHaveBeenCalled();
+  });
+
+  it("focuses the window that is already open instead of making a second one", async () => {
+    getByLabel.mockResolvedValue({ setFocus });
+    await openUpdateWindow();
+    expect(setFocus).toHaveBeenCalledTimes(1);
+    expect(WebviewWindow).not.toHaveBeenCalled();
+  });
+
+  it("creates the window and carries the manual flag into its url", async () => {
+    getByLabel.mockResolvedValue(null);
+    await openUpdateWindow({ manual: true });
+    expect(WebviewWindow).toHaveBeenCalledTimes(1);
+    const [label, options] = WebviewWindow.mock.calls[0] as unknown as [
+      string,
+      { url: string },
+    ];
+    expect(label).toBe("update");
+    expect(options.url).toContain("manual=1");
+  });
+
+  it("omits the manual flag on the automatic path", async () => {
+    getByLabel.mockResolvedValue(null);
+    await openUpdateWindow();
+    const [, options] = WebviewWindow.mock.calls[0] as unknown as [string, { url: string }];
+    expect(options.url).not.toContain("manual=1");
+  });
+
+  it("reports a window that fails to open instead of failing silently", async () => {
+    getByLabel.mockResolvedValue(null);
+    await openUpdateWindow();
+    const [event, handler] = once.mock.calls[0] as unknown as [
+      string,
+      (e: { payload: unknown }) => void,
+    ];
+    expect(event).toBe("tauri://error");
+    handler({ payload: "no display" });
+    expect(logError).toHaveBeenCalledWith("updater", "no display");
+  });
+});
+

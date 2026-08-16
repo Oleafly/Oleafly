@@ -236,7 +236,7 @@ async function readAll(pid: string): Promise<StoredChat[]> {
 }
 
 function newId() {
-  return `chat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return `chat_${Date.now()}_${crypto.randomUUID().slice(0, 6)}`;
 }
 
 function titleFrom(text: string) {

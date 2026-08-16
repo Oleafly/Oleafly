@@ -50,7 +50,7 @@ export function dismissEngineHint(
     const previous = localStorage.getItem(dismissKey(projectId));
     const merged = new Set(previous ? previous.split(",").filter(Boolean) : []);
     for (const finding of findings) merged.add(finding.id);
-    localStorage.setItem(dismissKey(projectId), [...merged].sort().join(","));
+    localStorage.setItem(dismissKey(projectId), [...merged].sort((a, b) => Number(a > b) - Number(a < b)).join(","));
   } catch {
     /* best-effort memory */
   }

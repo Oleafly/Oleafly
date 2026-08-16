@@ -96,7 +96,7 @@ export function generateCiteKey(fields: Record<string, string>, existing: Set<st
   const year = (fields.year ?? "").match(/\d{4}/)?.[0] ?? "";
   const word = firstTitleWord(fields.title ?? "");
   let base = `${family}${year}${word}`;
-  if (!base) base = `ref${year || ""}` || "ref";
+  if (!base) base = `ref${year}`;
   let key = base;
   let n = 0;
   while (existing.has(key)) {

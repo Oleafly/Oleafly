@@ -40,14 +40,35 @@ RUN ARCH="$(dpkg --print-architecture)" \
          amd64) NODE_ARCH=x64 ;; \
          *) echo "unsupported arch $ARCH" >&2; exit 1 ;; \
        esac \
-    && curl -fsSL "https://nodejs.org/dist/v22.20.0/node-v22.20.0-linux-${NODE_ARCH}.tar.xz" \
+    && case "$NODE_ARCH" in \
+         arm64) NODE_SHA=06907b9c088ce62305bc1530e5c1ae1510245114645768f7750c349c5b6fe667 ;; \
+         x64)   NODE_SHA=00bbd05e306ea68b6e13e17360d0e2f680b493ef95f2fea1c4296ff7437530bc ;; \
+       esac \
+    && curl --proto '=https' --tlsv1.2 -fsSL \
+       "https://nodejs.org/dist/v22.20.0/node-v22.20.0-linux-${NODE_ARCH}.tar.xz" \
        -o /tmp/node.tar.xz \
+    && echo "${NODE_SHA}  /tmp/node.tar.xz" | sha256sum -c - \
     && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
     && rm /tmp/node.tar.xz \
     && corepack enable
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-      | sh -s -- -y --default-toolchain stable --profile minimal
+# rustup-init is pinned and checksum-verified rather than piped from sh.rustup.rs
+# into a shell, so the build cannot execute an artifact it has not authenticated.
+RUN ARCH="$(dpkg --print-architecture)" \
+    && case "$ARCH" in \
+         arm64) RUST_TARGET=aarch64-unknown-linux-gnu; \
+                RUSTUP_SHA=9732d6c5e2a098d3521fca8145d826ae0aaa067ef2385ead08e6feac88fa5792 ;; \
+         amd64) RUST_TARGET=x86_64-unknown-linux-gnu; \
+                RUSTUP_SHA=4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10 ;; \
+         *) echo "unsupported arch $ARCH" >&2; exit 1 ;; \
+       esac \
+    && curl --proto '=https' --tlsv1.2 -fsSL \
+       "https://static.rust-lang.org/rustup/archive/1.29.0/${RUST_TARGET}/rustup-init" \
+       -o /tmp/rustup-init \
+    && echo "${RUSTUP_SHA}  /tmp/rustup-init" | sha256sum -c - \
+    && chmod +x /tmp/rustup-init \
+    && /tmp/rustup-init -y --default-toolchain stable --profile minimal \
+    && rm /tmp/rustup-init
 
 WORKDIR /work
 CMD ["bash"]
