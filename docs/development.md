@@ -6,6 +6,10 @@ What you need to work on Oleafly. The app is a [Tauri 2](https://tauri.app) proj
 
 ```
 oleafly-desktop/
+├── crates/
+│   ├── oleafly-core/       shared Rust project, path, build, and process policy
+│   ├── oleafly-cli/        oleaflyc command-line adapter
+│   └── oleafly-agent/      provider-neutral agent runtime
 ├── src/                    React app shell (stores, Tauri client, UI kit, port adapters)
 │   ├── components/         ui (shadcn-style), layout, editor glue, preview panes, ai
 │   ├── contributions/      registers rail tabs / commands / AI toolsets into the registry
@@ -72,6 +76,20 @@ pnpm build              # typecheck + build the frontend (tsc -b && vite build)
 pnpm tauri build        # produce a distributable bundle
 ```
 
+The command-line adapter is source-only for now. Run it from the workspace:
+
+```bash
+cargo run -p oleafly-cli --bin oleaflyc -- --help
+cargo run -p oleafly-cli --bin oleaflyc -- init
+cargo run -p oleafly-cli --bin oleaflyc -- build
+cargo run -p oleafly-cli --bin oleaflyc -- project info --json
+```
+
+`oleaflyc` uses the current directory unless `-C <path>` is provided. It also
+supports `watch`, `clean`, and `doctor`. Human-readable output is the default;
+`--json` provides structured output, and watch mode emits newline-delimited
+JSON events.
+
 ### Checks before opening a PR
 
 Make sure both pass:
@@ -82,6 +100,7 @@ pnpm test                                 # vitest across src/ and packages/
 pnpm language-servers:test                # manifest, checksum, target, URL, and license policy
 pnpm audit --prod --audit-level high      # registry-backed npm advisory check
 cargo check --workspace                   # all Rust crates compile
+cargo test -p oleafly-core -p oleafly-cli --all-targets  # shared core and CLI
 cargo deny --manifest-path src-tauri/Cargo.toml check  # workspace advisories, licenses, and sources
 ```
 
@@ -99,10 +118,11 @@ pnpm test:e2e:app                         # builds + launches the app, runs Play
 ## How a compile works
 
 1. The frontend loads the backend `project_engine` descriptor and its capability flags, then calls `compileProject(projectId, mainDoc, offline)` through Tauri IPC.
-2. Rust dispatches through `DocumentEngine`. UI code must not infer engine behavior from a filename.
-3. LaTeX writes `_oleafly_entry.tex` and invokes Tectonic with `--synctex --keep-logs --print` and, when requested, `--only-cached`.
-4. Typst invokes the pinned Typst CLI directly against the selected `.typ` main document with short diagnostics and an explicit PDF output path.
-5. Markdown invokes Pandoc directly against `.md`/`.markdown`, with an explicit
+2. `oleafly-core` validates the workspace, resolves the source inside the project root, and prepares the isolated build directory.
+3. The desktop adapter dispatches through `DocumentEngine`. UI code must not infer engine behavior from a filename. The `oleaflyc` adapter invokes its native compiler runner through the same shared workspace policy.
+4. LaTeX writes `_oleafly_entry.tex` and invokes Tectonic with `--synctex --keep-logs --print` and, when requested, `--only-cached`.
+5. Typst invokes the pinned Typst CLI directly against the selected `.typ` main document with short diagnostics and an explicit PDF output path.
+6. Markdown invokes Pandoc directly against `.md`/`.markdown`, with an explicit
    output path and `--pdf-engine=<absolute bundled Tectonic path>`. Pandoc's
    manual explicitly supports a full PDF-engine path. Do not replace this with
    an implicit system `pdflatex`, since packaged Oleafly must not depend on an
@@ -132,8 +152,8 @@ versioned app-local-data layout on first use. Keeping the archive immutable is
 important because macOS and Windows signing may modify executable bytes. See
 [Language-server toolchain](language-server-toolchain.md) for the target
 matrix, integrity checks, CLI modes, and license obligations.
-6. All engines stream normalized log/error events. Rust returns compile metadata through JSON IPC. The PDF itself is fetched separately as raw binary IPC rather than embedded as base64 in the result.
-7. The frontend renders PDF bytes with pdf.js and publishes normalized diagnostics to CodeMirror.
+7. All engines stream normalized log/error events. Rust returns compile metadata through JSON IPC. The PDF itself is fetched separately as raw binary IPC rather than embedded as base64 in the result.
+8. The frontend renders PDF bytes with pdf.js and publishes normalized diagnostics to CodeMirror.
 
 Engine descriptors model compilation policy plus formatting/source-preflight
 profiles and feature/export/template-kind sets. Frontend consumers use the

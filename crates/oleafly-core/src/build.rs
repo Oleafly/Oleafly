@@ -340,6 +340,7 @@ fn is_executable_file(path: &Path) -> bool {
     path.is_file()
 }
 
+#[cfg(debug_assertions)]
 fn development_sidecars(name: &str) -> Vec<PathBuf> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../src-tauri/binaries");
     let mut candidates = Vec::new();
@@ -351,6 +352,11 @@ fn development_sidecars(name: &str) -> Vec<PathBuf> {
     }
     candidates.push(root.join(executable_name(name)));
     candidates
+}
+
+#[cfg(not(debug_assertions))]
+fn development_sidecars(_name: &str) -> Vec<PathBuf> {
+    Vec::new()
 }
 
 fn is_within(path: &Path, root: &Path) -> bool {

@@ -52,6 +52,9 @@ Installers land in `src-tauri/target/release/bundle/`.
 ## Project layout
 
 ```
+crates/oleafly-core/  shared Rust project, build, and process policy
+crates/oleafly-cli/   oleaflyc command-line adapter
+crates/oleafly-agent/ provider-neutral agent runtime
 src/                 React + TypeScript frontend
   components/         UI (editor, pdf, ai, layout, files, …)
   lib/               framework-agnostic helpers (ai-providers, github, …)

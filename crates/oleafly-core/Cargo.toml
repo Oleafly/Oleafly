@@ -3,6 +3,7 @@ name = "oleafly-core"
 version = "0.1.0"
 description = "Shared project and build execution for Oleafly"
 license = "AGPL-3.0-or-later"
+publish = false
 edition = "2021"
 rust-version = "1.77"
 

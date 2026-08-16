@@ -446,7 +446,24 @@ pnpm tauri dev
 ```
 
 See the [development guide](docs/development.md) for prerequisites, platform
-setup, and production builds.
+setup, production builds, and the source-only command-line workflow.
+
+### Command line
+
+`oleaflyc` manages Oleafly projects without launching the desktop app. It is
+currently available from this repository and is not published as a standalone
+package.
+
+```bash
+cargo run -p oleafly-cli --bin oleaflyc -- init
+cargo run -p oleafly-cli --bin oleaflyc -- doctor
+cargo run -p oleafly-cli --bin oleaflyc -- build
+cargo run -p oleafly-cli --bin oleaflyc -- watch
+cargo run -p oleafly-cli --bin oleaflyc -- project info --json
+```
+
+Commands use the current directory by default. Pass `-C <path>` to manage a
+different project directory. Run `oleaflyc --help` for the complete interface.
 
 ## Documentation
 
@@ -458,7 +475,7 @@ code. End-user task guides are maintained separately from this public index.
 | [Product-engineering catalog](docs/README.md) | Feature inventories and engineering contracts |
 | [Feature reference](docs/features.md) | The product surface and supported workflows |
 | [Document engines](docs/document-engines.md) | LaTeX, Typst, and Markdown capabilities |
-| [Product architecture](docs/Architecture.md) | System boundaries, package ownership, and extension points |
+| [Product architecture](docs/architecture.md) | System boundaries, package ownership, and extension points |
 | [Development](docs/development.md) | Local setup, tests, and contribution workflow |
 | [Language-server toolchain](docs/language-server-toolchain.md) | Fetching, integrity, and distribution policy |
 | [MCP integration](docs/mcp.md) | External clients, access tokens, and approval policies |

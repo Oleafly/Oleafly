@@ -98,3 +98,39 @@ fn uninitialized_directories_fail_with_a_structured_error() {
     assert_eq!(value["ok"], false);
     assert_eq!(value["error"]["kind"], "not_initialized");
 }
+
+#[test]
+fn doctor_and_build_report_a_missing_compiler_consistently() {
+    let directory = TempDir::new().unwrap();
+    assert!(
+        run(&["init", "--engine", "latexmk"], Some(directory.path()))
+            .status
+            .success()
+    );
+
+    for command_name in ["doctor", "build"] {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_oleaflyc"));
+        let output = command
+            .args(["--json", command_name])
+            .current_dir(directory.path())
+            .env("PATH", "")
+            .env("OLEAFLY_LATEXMK", directory.path().join("missing"))
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(4));
+        let value = json(&output);
+        assert_eq!(value["ok"], false);
+        assert_eq!(value["command"], command_name);
+    }
+}
+
+#[test]
+fn project_info_has_a_human_readable_contract() {
+    let directory = TempDir::new().unwrap();
+    assert!(run(&["init"], Some(directory.path())).status.success());
+    let output = run(&["project", "info"], Some(directory.path()));
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Main document: main.tex"));
+    assert!(stdout.contains("Engine: tectonic"));
+}
