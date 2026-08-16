@@ -182,7 +182,7 @@ export function modelToTikz(model: DiagramModel): string {
   const containers = containerNodes.map((n) => nodeToTikz(n, defs));
   const nodesById = new Map(model.nodes.map((node) => [node.id, node]));
   const edges = model.edges.map((edge) => edgeToTikz(edge, nodesById));
-  const defLines = [...defs].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const defLines = [...defs].sort((a, b) => Number(a > b) - Number(a < b));
   const nodeBody = nodes.map((l) => `  ${l}`).join("\n");
   const backgroundLines = [...containers, ...edges];
   const edgeBody = backgroundLines.length

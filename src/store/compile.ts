@@ -206,7 +206,7 @@ function sourceSnapshotMatchesCurrent(
 ): boolean {
   const paths = currentSourcePaths(projectId);
   if (!paths) return false;
-  const snapshotPaths = Object.keys(snapshot.texts).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const snapshotPaths = Object.keys(snapshot.texts).sort((a, b) => Number(a > b) - Number(a < b));
   if (!samePaths(paths, snapshotPaths)) return false;
 
   const indexed = useIndexStore.getState();
@@ -386,7 +386,7 @@ function maybeSuggestMissingPackages(log: string): void {
   if (files.engine.id !== "latexmk" || !projectId) return;
   const packages = missingLatexPackages(log);
   if (packages.length === 0) return;
-  const signature = [...packages].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)).join(",");
+  const signature = [...packages].sort((a, b) => Number(a > b) - Number(a < b)).join(",");
   if (suggestedPackagesByProject.get(projectId) === signature) return;
   suggestedPackagesByProject.set(projectId, signature);
   void (async () => {

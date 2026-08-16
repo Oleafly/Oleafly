@@ -298,7 +298,7 @@ export function extract(source, pkgName) {
 
   if (optNames.length) {
     const pkgId = `\\usepackage/${pkgName}#c`;
-    const all = [...new Set(optNames)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    const all = [...new Set(optNames)].sort((a, b) => Number(a > b) - Number(a < b));
     const consumerNames = [...consumers.keys()].map((n) => `\\${n}`);
     const id = consumerNames.length ? `${consumerNames.join(",")},${pkgId}` : pkgId;
     args.push(id);
@@ -313,8 +313,8 @@ export function extract(source, pkgName) {
 
   return {
     args,
-    deps: [...deps].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
-    envs: [...envs].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)).map((name) => ({ name })),
+    deps: [...deps].sort((a, b) => Number(a > b) - Number(a < b)),
+    envs: [...envs].sort((a, b) => Number(a > b) - Number(a < b)).map((name) => ({ name })),
     keys,
     macros: macroList,
   };
@@ -427,7 +427,7 @@ async function main() {
   // Document classes are catalogued the same way and addressed as class-<name>.
   const targets = only
     ? [only]
-    : [...[...sty.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)), ...[...cls.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)).map((n) => `class-${n}`)];
+    : [...[...sty.keys()].sort((a, b) => Number(a > b) - Number(a < b)), ...[...cls.keys()].sort((a, b) => Number(a > b) - Number(a < b)).map((n) => `class-${n}`)];
   if (!toStdout) await mkdir(outDir, { recursive: true });
 
   let written = 0;

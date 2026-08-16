@@ -211,7 +211,7 @@ function candidateTargetFiles(
       }
     }
   }
-  return [...candidates].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return [...candidates].sort((a, b) => Number(a > b) - Number(a < b));
 }
 
 function resolveEdge(
@@ -477,7 +477,7 @@ export function assembleProjectIntelligence(
       .filter((file): file is string => file !== null),
   );
   const knownByLower = new Map<string, string[]>();
-  for (const file of [...known].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))) {
+  for (const file of [...known].sort((a, b) => Number(a > b) - Number(a < b))) {
     const lower = file.toLowerCase();
     knownByLower.set(lower, [...(knownByLower.get(lower) ?? []), file]);
   }
@@ -643,7 +643,7 @@ export function assembleProjectIntelligence(
           .map((ref) => ref.name),
       ),
     ),
-  ].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  ].sort((a, b) => Number(a > b) - Number(a < b));
   const documentClasses = [
     ...new Set(
       Object.values(orderedFiles).flatMap((file) =>
@@ -652,7 +652,7 @@ export function assembleProjectIntelligence(
           .map((ref) => ref.name),
       ),
     ),
-  ].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  ].sort((a, b) => Number(a > b) - Number(a < b));
 
   return {
     protocolVersion: 1,

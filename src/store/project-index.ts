@@ -153,7 +153,7 @@ function currentKnownFiles(extraPath?: string): string[] {
     ? normalizeProjectPath(extraPath)
     : null;
   if (normalizedExtra) paths.add(normalizedExtra);
-  return [...paths].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return [...paths].sort((a, b) => Number(a > b) - Number(a < b));
 }
 
 function sourcePathsFromKnown(
@@ -478,7 +478,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       ]),
     ]
       .filter((path) => !removedPaths.has(path))
-      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+      .sort((a, b) => Number(a > b) - Number(a < b));
     const sourcePaths = new Set(sourcePathsFromKnown(knownFiles));
     const removals = [...workerKnownSourceFiles].filter(
       (path) => !sourcePaths.has(path),
