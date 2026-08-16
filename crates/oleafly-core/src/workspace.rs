@@ -112,13 +112,22 @@ impl Workspace {
                 format!("{} already exists", manifest_path.display()),
             ));
         }
-        let main_document = match options.main_document {
-            Some(value) => normalize_relative(&value)?,
-            None => discover_main_document(&root)?.unwrap_or_else(|| "main.tex".to_string()),
+        let discovered = match options.main_document {
+            Some(value) => Some(normalize_relative(&value)?),
+            None => discover_main_document(&root)?,
         };
-        let engine = options
-            .engine
-            .map_or_else(|| Engine::infer(&main_document), Ok)?;
+        let (main_document, engine) = match discovered {
+            Some(main_document) => {
+                let engine = options
+                    .engine
+                    .map_or_else(|| Engine::infer(&main_document), Ok)?;
+                (main_document, engine)
+            }
+            None => {
+                let engine = options.engine.unwrap_or(Engine::Tectonic);
+                (engine.default_main_document().to_string(), engine)
+            }
+        };
         if !engine.accepts(&main_document) {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
@@ -583,6 +592,28 @@ mod tests {
         assert!(directory.path().join("main.tex").is_file());
         let error = Workspace::init(directory.path(), InitOptions::default()).unwrap_err();
         assert_eq!(error.kind(), ErrorKind::InvalidInput);
+    }
+
+    #[test]
+    fn init_uses_the_selected_engines_default_document() {
+        for (engine, document) in [
+            (Engine::Tectonic, "main.tex"),
+            (Engine::Latexmk, "main.tex"),
+            (Engine::Typst, "main.typ"),
+            (Engine::Markdown, "main.md"),
+        ] {
+            let directory = TempDir::new().unwrap();
+            let workspace = Workspace::init(
+                directory.path(),
+                InitOptions {
+                    engine: Some(engine),
+                    ..InitOptions::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(workspace.manifest().main_doc, document);
+            assert!(directory.path().join(document).is_file());
+        }
     }
 
     #[test]

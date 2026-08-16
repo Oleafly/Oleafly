@@ -35,6 +35,29 @@ fn initializes_the_current_directory_and_reports_json() {
 }
 
 #[test]
+fn init_uses_the_selected_engine_document_type() {
+    for (engine, document) in [
+        ("tectonic", "main.tex"),
+        ("latexmk", "main.tex"),
+        ("typst", "main.typ"),
+        ("markdown", "main.md"),
+    ] {
+        let directory = TempDir::new().unwrap();
+        let output = run(
+            &["--json", "init", "--engine", engine],
+            Some(directory.path()),
+        );
+        assert!(
+            output.status.success(),
+            "{engine}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(json(&output)["project"]["main_document"], document);
+        assert!(directory.path().join(document).is_file());
+    }
+}
+
+#[test]
 fn manages_an_arbitrary_project_directory() {
     let directory = TempDir::new().unwrap();
     let path = directory.path().to_str().unwrap();

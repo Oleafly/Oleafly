@@ -91,6 +91,14 @@ impl Engine {
         }
     }
 
+    pub const fn default_main_document(self) -> &'static str {
+        match self {
+            Self::Tectonic | Self::Latexmk => "main.tex",
+            Self::Typst => "main.typ",
+            Self::Markdown => "main.md",
+        }
+    }
+
     pub const fn tool_name(self) -> &'static str {
         match self {
             Self::Tectonic => "tectonic",
