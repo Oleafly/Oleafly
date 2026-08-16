@@ -24,8 +24,8 @@ function exactKeys(
   value: Record<string, unknown>,
   expected: readonly string[],
 ): boolean {
-  const actual = Object.keys(value).sort();
-  const sortedExpected = [...expected].sort();
+  const actual = Object.keys(value).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const sortedExpected = [...expected].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   return (
     actual.length === sortedExpected.length &&
     actual.every((key, index) => key === sortedExpected[index])

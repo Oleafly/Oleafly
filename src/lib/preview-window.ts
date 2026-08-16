@@ -7,6 +7,7 @@ import {
 } from "@/lib/compile-checkpoint";
 import type { CompileRequestIdentity } from "@/store/compile";
 import { currentProjectStateRevision } from "@/lib/project-state-revision";
+import { logError } from "@/lib/log";
 
 const PREVIEW_WINDOW_LABEL = "preview";
 
@@ -144,7 +145,7 @@ export async function openPreviewWindow(
   if (stampedState) {
     query.set("state", JSON.stringify(stampedState));
   }
-  new WebviewWindow(PREVIEW_WINDOW_LABEL, {
+  const preview = new WebviewWindow(PREVIEW_WINDOW_LABEL, {
     url: `index.html?${query.toString()}`,
     title: `Preview: ${title || "Oleafly"}`,
     width: 720,
@@ -152,6 +153,9 @@ export async function openPreviewWindow(
     resizable: true,
     center: true,
     focus: true,
+  });
+  void preview.once("tauri://error", (event) => {
+    void logError("preview-window", event.payload);
   });
 }
 

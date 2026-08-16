@@ -352,7 +352,7 @@ export function NewProjectDialog({
     const ordered = CATEGORY_ORDER.filter((c) => present.has(c) && c !== "AI Generated");
     const rest = [...present]
       .filter((c) => !CATEGORY_ORDER.includes(c) && c !== "AI Generated")
-      .sort();
+      .sort((a, b) => a.localeCompare(b));
     return ["All", ...(present.has("AI Generated") ? ["AI Generated"] : []), ...ordered, ...rest];
   }, [templates]);
 
@@ -435,7 +435,7 @@ export function NewProjectDialog({
         }
       }}
     >
-      <div
+      <div // NOSONAR - the only handler is a stopPropagation guard, and Escape (line ~309) is the modal's keyboard path
         ref={dialogRef}
         role="dialog"
         aria-modal="true"

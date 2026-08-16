@@ -138,7 +138,7 @@ export function optionKeysForCatalog(
   const keys = keysForLookup(catalog, (lookup) =>
     lookup.startsWith(marker),
   );
-  return [...new Set([...(catalog.options ?? []), ...keys])].sort();
+  return [...new Set([...(catalog.options ?? []), ...keys])].sort((a, b) => a.localeCompare(b));
 }
 
 /** Key=value keys accepted inside the arguments of `\<command>{...}`. */
@@ -154,5 +154,5 @@ export function keyvalKeysForCommand(
         lookup === marker || lookup.startsWith(`${marker}/`),
     ),
   );
-  return [...new Set(keys)].sort();
+  return [...new Set(keys)].sort((a, b) => a.localeCompare(b));
 }

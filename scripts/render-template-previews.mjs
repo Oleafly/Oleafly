@@ -108,10 +108,29 @@ function pandocBinary() {
   return null;
 }
 
+// Resolved to an absolute path up front: an unqualified name would let a
+// writable directory earlier in PATH supply the binary.
+function pdftoppmBinary() {
+  const candidates = [
+    "/opt/homebrew/bin/pdftoppm",
+    "/usr/local/bin/pdftoppm",
+    "/usr/bin/pdftoppm",
+  ];
+  for (const cmd of candidates) {
+    try {
+      execFileSync(cmd, ["-v"], { stdio: "ignore" });
+      return cmd;
+    } catch {
+      // try the next candidate
+    }
+  }
+  return null;
+}
+
 // Rasterize page 1 of a PDF to <dir>/preview.png (width 600px, white background).
-function rasterize(pdfPath, work, dir) {
+function rasterize(pdftoppm, pdfPath, work, dir) {
   execFileSync(
-    "pdftoppm",
+    pdftoppm,
     ["-png", "-f", "1", "-l", "1", "-scale-to-x", "600", "-scale-to-y", "-1", pdfPath, join(work, "preview")],
     { stdio: "pipe" },
   );
@@ -121,15 +140,6 @@ function rasterize(pdfPath, work, dir) {
   const dest = join(dir, "preview.png");
   copyFileSync(join(work, out), dest);
   return Math.round(statSync(dest).size / 1024);
-}
-
-function which(cmd) {
-  try {
-    execFileSync(process.platform === "win32" ? "where" : "which", [cmd], { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 async function render(id, tools) {
@@ -181,7 +191,7 @@ async function render(id, tools) {
     }
 
     if (!existsSync(pdf)) throw new Error("no PDF produced");
-    const kb = rasterize(pdf, work, dir);
+    const kb = rasterize(tools.pdftoppm, pdf, work, dir);
     return { id, status: "ok", reason: `${kb} KB` };
   } catch (e) {
     return { id, status: "fail", reason: String(e.message || e).slice(0, 200) };
@@ -191,7 +201,8 @@ async function render(id, tools) {
 }
 
 async function main() {
-  if (!which("pdftoppm")) {
+  const pdftoppm = pdftoppmBinary();
+  if (!pdftoppm) {
     console.error("pdftoppm not found. Install poppler-utils (macOS: brew install poppler).");
     process.exit(1);
   }
@@ -199,6 +210,7 @@ async function main() {
     tectonic: tectonicBinary(),
     typst: sidecarBinary("typst"),
     pandoc: pandocBinary(),
+    pdftoppm,
   };
   const only = process.argv.slice(2);
   const ids = readdirSync(templatesDir).filter((f) => statSync(join(templatesDir, f)).isDirectory());

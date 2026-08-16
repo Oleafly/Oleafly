@@ -40,6 +40,14 @@ let requestQuitConfirm: (() => void) | null = null;
 
 const KBD_CHIP = "h-4 min-w-4 px-1 text-[10px]";
 
+// Golden-ratio low-discrepancy sequence: spreads the decorative sparkles more
+// evenly than sampling would, and keeps their layout stable between renders.
+const GOLDEN_RATIO_CONJUGATE = 0.618033988749895;
+
+function scatter(index: number, offset: number): number {
+  return ((index + 1) * GOLDEN_RATIO_CONJUGATE + offset) % 1;
+}
+
 function ChordHint({ variant, back }: { variant?: "primary"; back?: boolean }) {
   const chipClass =
     variant === "primary"
@@ -490,10 +498,10 @@ function Welcome({ onStart }: { onStart: () => void }) {
     () =>
       Array.from({ length: 10 }, (_, i) => ({
         key: `sparkle-${i}`,
-        left: Math.floor(Math.random() * 27) * 16 - 1,
-        top: Math.floor(Math.random() * 9) * 16 - 1,
-        duration: 2.3 + Math.random() * 3.1,
-        delay: Math.random() * 4.7,
+        left: Math.floor(scatter(i, 0) * 27) * 16 - 1,
+        top: Math.floor(scatter(i, 0.37) * 9) * 16 - 1,
+        duration: 2.3 + scatter(i, 0.11) * 3.1,
+        delay: scatter(i, 0.73) * 4.7,
       })),
     [],
   );

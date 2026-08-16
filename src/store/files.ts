@@ -124,7 +124,7 @@ async function checkTexPinStatus(
     return;
   }
   if (missing.length > 0 && status.can_install_missing) {
-    const fresh = remember(`oleafly.texGap.${projectId}`, [...missing].sort().join(","));
+    const fresh = remember(`oleafly.texGap.${projectId}`, [...missing].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)).join(","));
     if (!fresh) return;
     toast.info(
       `This project pins ${missing.length} LaTeX package${missing.length === 1 ? "" : "s"} that ${missing.length === 1 ? "is" : "are"} not installed here.`,

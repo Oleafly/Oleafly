@@ -353,9 +353,13 @@ export function assertWindowsReparseQuerySafe(path, query) {
   }
 }
 
+// Absolute path: resolving fsutil through PATH would let a writable directory
+// earlier in PATH decide which binary vets the reparse point.
+const FSUTIL = `${process.env.SystemRoot ?? "C:\\Windows"}\\System32\\fsutil.exe`;
+
 function assertNoWindowsReparsePoint(path, platform = process.platform) {
   if (platform !== "win32") return;
-  const query = spawnSync("fsutil", ["reparsepoint", "query", path], {
+  const query = spawnSync(FSUTIL, ["reparsepoint", "query", path], {
     encoding: "utf8",
     timeout: 10_000,
     windowsHide: true,

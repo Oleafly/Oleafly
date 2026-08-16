@@ -53,9 +53,8 @@ export function emptyModel(): DiagramModel {
   return { version: 1, nodes: [], edges: [] };
 }
 
-// Runs in the app (not a workflow), so Math.random is fine here.
 let counter = 0;
 export function newId(prefix = "n"): string {
   counter += 1;
-  return `${prefix}${counter}_${Math.random().toString(36).slice(2, 7)}`;
+  return `${prefix}${counter}_${crypto.randomUUID().slice(0, 5)}`;
 }

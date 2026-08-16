@@ -220,7 +220,7 @@ class MessageReader {
 
   flush() {
     for (const waiter of [...this.waiters]) {
-      const index = this.messages.findIndex(waiter.predicate);
+      const index = this.messages.findIndex((message) => waiter.predicate(message));
       if (index < 0) continue;
       const [message] = this.messages.splice(index, 1);
       this.waiters.splice(this.waiters.indexOf(waiter), 1);
@@ -230,7 +230,7 @@ class MessageReader {
   }
 
   waitFor(predicate, label) {
-    const existing = this.messages.findIndex(predicate);
+    const existing = this.messages.findIndex((message) => predicate(message));
     if (existing >= 0) {
       const [message] = this.messages.splice(existing, 1);
       return Promise.resolve(message);

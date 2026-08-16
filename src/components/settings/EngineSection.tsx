@@ -267,7 +267,7 @@ export function EngineSection() {
                   disabled={!hasEngine || !!busyPkg}
                   className={cn(
                     "inline-flex w-16 items-center justify-center gap-1 rounded border px-2 py-1 text-xs disabled:opacity-40",
-                    on ? "border-input hover:bg-accent" : "border-input hover:bg-accent",
+                    "border-input hover:bg-accent",
                   )}
                 >
                   {busy ? <Loader2 className="size-3 animate-spin" /> : on ? <X className="size-3" /> : null}

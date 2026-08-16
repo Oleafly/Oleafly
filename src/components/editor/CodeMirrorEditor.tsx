@@ -53,9 +53,9 @@ function sourceProofreadingContextKey(
     settings.dictionaryLocale,
     settings.showRegionalism,
     settings.showWordChoice,
-    [...dictionary.global].sort(),
+    [...dictionary.global].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
     projectId
-      ? [...(dictionary.ignored[projectId] ?? [])].sort()
+      ? [...(dictionary.ignored[projectId] ?? [])].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
       : [],
   ]);
 }
