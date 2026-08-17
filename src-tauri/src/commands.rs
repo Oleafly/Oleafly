@@ -267,7 +267,7 @@ pub async fn compile_project(
         allow_shell_escape: meta.allow_shell_escape,
         ..options
     };
-    let engine = crate::document_engine::engine_for(prepared.engine().as_str(), &main_doc)?;
+    let engine = crate::document_engine::engine_for(prepared.engine().manifest_name(), &main_doc)?;
     let prepared_spec = crate::document_engine::prepare_compile_spec(
         engine.id(),
         build_dir.clone(),

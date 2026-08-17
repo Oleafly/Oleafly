@@ -1,3 +1,4 @@
+use crate::tree::{slash_path, walk_source_tree};
 use crate::{Engine, Error, ErrorKind, ProjectManifest, Result};
 use serde::Serialize;
 use std::collections::BTreeSet;
@@ -9,7 +10,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 const MANIFEST_NAME: &str = "project.json";
 const INTERNAL_DIR: &str = ".oleafly";
 const BUILD_DIR: &str = "build";
-const MAX_DISCOVERY_DEPTH: usize = 64;
 static WRITE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Debug)]
@@ -133,7 +133,7 @@ impl Workspace {
                 ErrorKind::InvalidInput,
                 format!(
                     "engine `{}` cannot compile `{main_document}`",
-                    engine.as_str()
+                    engine.manifest_name()
                 ),
             ));
         }
@@ -158,7 +158,7 @@ impl Workspace {
         let manifest = ProjectManifest {
             name: options.name.unwrap_or(default_name),
             main_doc: main_document,
-            engine: engine.as_str().to_string(),
+            engine: engine.manifest_name().to_string(),
             ..ProjectManifest::default()
         };
         manifest.validate()?;
@@ -217,32 +217,15 @@ impl Workspace {
         if !internal.exists() {
             return Ok(false);
         }
-        let internal_meta = std::fs::symlink_metadata(&internal)?;
-        if !internal_meta.is_dir()
-            || internal_meta.file_type().is_symlink()
-            || metadata_is_reparse_point(&internal_meta)
-        {
-            return Err(Error::new(
-                ErrorKind::UnsafePath,
-                format!(
-                    "project data is not a real directory: {}",
-                    internal.display()
-                ),
-            ));
+        if !metadata_is_real_directory(&std::fs::symlink_metadata(&internal)?) {
+            return Err(unsafe_directory("project data", &internal));
         }
         let build = internal.join(BUILD_DIR);
         if !build.exists() {
             return Ok(false);
         }
-        let build_meta = std::fs::symlink_metadata(&build)?;
-        if !build_meta.is_dir()
-            || build_meta.file_type().is_symlink()
-            || metadata_is_reparse_point(&build_meta)
-        {
-            return Err(Error::new(
-                ErrorKind::UnsafePath,
-                format!("build path is not a real directory: {}", build.display()),
-            ));
+        if !metadata_is_real_directory(&std::fs::symlink_metadata(&build)?) {
+            return Err(unsafe_directory("build path", &build));
         }
         std::fs::remove_dir_all(&build).map_err(|error| {
             Error::new(
@@ -393,36 +376,14 @@ fn secure_build_directory(root: &Path, create: bool) -> Result<PathBuf> {
 
 fn validate_build_location(root: &Path) -> Result<()> {
     let internal = root.join(INTERNAL_DIR);
-    match std::fs::symlink_metadata(&internal) {
-        Ok(metadata)
-            if metadata.is_dir()
-                && !metadata.file_type().is_symlink()
-                && !metadata_is_reparse_point(&metadata) => {}
-        Ok(_) => {
-            return Err(Error::new(
-                ErrorKind::UnsafePath,
-                format!(
-                    "project data path is not a real directory: {}",
-                    internal.display()
-                ),
-            ))
-        }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
-        Err(error) => return Err(error.into()),
-    }
-    let build = internal.join(BUILD_DIR);
-    match std::fs::symlink_metadata(&build) {
-        Ok(metadata)
-            if metadata.is_dir()
-                && !metadata.file_type().is_symlink()
-                && !metadata_is_reparse_point(&metadata) =>
-        {
-            Ok(())
-        }
-        Ok(_) => Err(Error::new(
-            ErrorKind::UnsafePath,
-            format!("build path is not a real directory: {}", build.display()),
-        )),
+    validate_existing_directory(&internal, "project data path")?;
+    validate_existing_directory(&internal.join(BUILD_DIR), "build path")
+}
+
+fn validate_existing_directory(path: &Path, label: &str) -> Result<()> {
+    match std::fs::symlink_metadata(path) {
+        Ok(metadata) if metadata_is_real_directory(&metadata) => Ok(()),
+        Ok(_) => Err(unsafe_directory(label, path)),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(error) => Err(error.into()),
     }
@@ -430,17 +391,8 @@ fn validate_build_location(root: &Path) -> Result<()> {
 
 fn ensure_real_directory(path: &Path, create: bool, label: &str) -> Result<()> {
     match std::fs::symlink_metadata(path) {
-        Ok(metadata)
-            if metadata.is_dir()
-                && !metadata.file_type().is_symlink()
-                && !metadata_is_reparse_point(&metadata) =>
-        {
-            Ok(())
-        }
-        Ok(_) => Err(Error::new(
-            ErrorKind::UnsafePath,
-            format!("{label} path is not a real directory: {}", path.display()),
-        )),
+        Ok(metadata) if metadata_is_real_directory(&metadata) => Ok(()),
+        Ok(_) => Err(unsafe_directory(&format!("{label} path"), path)),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound && create => {
             std::fs::create_dir(path).map_err(|error| {
                 Error::new(
@@ -454,6 +406,17 @@ fn ensure_real_directory(path: &Path, create: bool, label: &str) -> Result<()> {
             format!("failed to inspect {}: {error}", path.display()),
         )),
     }
+}
+
+fn metadata_is_real_directory(metadata: &std::fs::Metadata) -> bool {
+    metadata.is_dir() && !metadata.file_type().is_symlink() && !metadata_is_reparse_point(metadata)
+}
+
+fn unsafe_directory(label: &str, path: &Path) -> Error {
+    Error::new(
+        ErrorKind::UnsafePath,
+        format!("{label} is not a real directory: {}", path.display()),
+    )
 }
 
 #[cfg(windows)]
@@ -474,7 +437,7 @@ fn discover_main_document(root: &Path) -> Result<Option<String>> {
         }
     }
     let mut found = BTreeSet::new();
-    discover_sources(root, root, 0, &mut found)?;
+    discover_sources(root, &mut found)?;
     match found.len() {
         0 => Ok(None),
         1 => Ok(found.into_iter().next()),
@@ -485,49 +448,14 @@ fn discover_main_document(root: &Path) -> Result<Option<String>> {
     }
 }
 
-fn discover_sources(
-    root: &Path,
-    directory: &Path,
-    depth: usize,
-    found: &mut BTreeSet<String>,
-) -> Result<()> {
-    if depth > MAX_DISCOVERY_DEPTH {
-        return Err(Error::new(
-            ErrorKind::InvalidInput,
-            "source discovery exceeded the maximum directory depth",
-        ));
-    }
-    let entries = std::fs::read_dir(directory)?;
-    for entry in entries {
-        let entry = entry?;
-        let file_type = entry.file_type()?;
-        if file_type.is_symlink() {
-            continue;
+fn discover_sources(root: &Path, found: &mut BTreeSet<String>) -> Result<()> {
+    walk_source_tree(root, "source discovery", &mut |relative, _| {
+        let value = slash_path(relative);
+        if Engine::infer(&value).is_ok() {
+            found.insert(value);
         }
-        let path = entry.path();
-        if file_type.is_dir() {
-            let name = entry.file_name();
-            if !matches!(
-                name.to_str(),
-                Some(".git" | ".oleafly" | "node_modules" | "target")
-            ) {
-                discover_sources(root, &path, depth + 1, found)?;
-            }
-        } else if file_type.is_file() {
-            let relative = path
-                .strip_prefix(root)
-                .map_err(|_| Error::new(ErrorKind::UnsafePath, "source escaped the workspace"))?;
-            let value = relative
-                .components()
-                .map(|component| component.as_os_str().to_string_lossy())
-                .collect::<Vec<_>>()
-                .join("/");
-            if Engine::infer(&value).is_ok() {
-                found.insert(value);
-            }
-        }
-    }
-    Ok(())
+        Ok(())
+    })
 }
 
 fn starter_document(engine: Engine) -> &'static [u8] {
@@ -630,7 +558,7 @@ mod tests {
         let directory = TempDir::new().unwrap();
         std::fs::create_dir_all(directory.path().join("chapters")).unwrap();
         std::fs::write(directory.path().join("chapters/paper.typ"), "= Existing").unwrap();
-        for ignored in [".git", ".oleafly", "node_modules", "target"] {
+        for ignored in crate::GENERATED_DIRECTORIES {
             std::fs::create_dir(directory.path().join(ignored)).unwrap();
             std::fs::write(directory.path().join(ignored).join("ignored.tex"), "").unwrap();
         }

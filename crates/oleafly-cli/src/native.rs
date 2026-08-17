@@ -1,5 +1,7 @@
 use crate::process;
-use oleafly_core::{Engine, Error, ErrorKind, PreparedBuild, Result, Workspace};
+use oleafly_core::{
+    slash_path, walk_source_tree, Engine, Error, ErrorKind, PreparedBuild, Result, Workspace,
+};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -350,13 +352,17 @@ fn missing_tool(engine: Engine) -> Error {
     )
 }
 
+pub fn rejected_override_message(variable: &str, path: &Path) -> String {
+    format!(
+        "{variable}={} was refused because project-local compiler paths are not allowed",
+        path.display()
+    )
+}
+
 fn rejected_tool(variable: &str, path: &Path) -> Error {
     Error::new(
         ErrorKind::MissingTool,
-        format!(
-            "{variable}={} was refused because project-local compiler paths are not allowed",
-            path.display()
-        ),
+        rejected_override_message(variable, path),
     )
 }
 
@@ -364,7 +370,7 @@ fn tool_env(name: &str) -> String {
     format!("OLEAFLY_{}", name.to_ascii_uppercase())
 }
 
-fn executable_name(name: &str) -> String {
+pub fn executable_name(name: &str) -> String {
     if cfg!(windows) {
         format!("{name}.exe")
     } else {
@@ -656,48 +662,18 @@ fn markdown_arguments(
 }
 
 fn discover_bibliographies(root: &Path) -> Result<Vec<PathBuf>> {
-    fn walk(root: &Path, directory: &Path, depth: usize, output: &mut Vec<PathBuf>) -> Result<()> {
-        if depth > 64 {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                "bibliography search exceeded the maximum directory depth",
-            ));
-        }
-        for entry in std::fs::read_dir(directory)? {
-            let entry = entry?;
-            let file_type = entry.file_type()?;
-            if file_type.is_symlink() {
-                continue;
-            }
-            let path = entry.path();
-            if file_type.is_dir() {
-                if !matches!(
-                    entry.file_name().to_str(),
-                    Some(".git" | ".oleafly" | "node_modules" | "target")
-                ) {
-                    walk(root, &path, depth + 1, output)?;
-                }
-            } else if file_type.is_file()
-                && path
-                    .extension()
-                    .is_some_and(|value| value.eq_ignore_ascii_case("bib"))
-            {
-                output.push(path.strip_prefix(root).unwrap_or(&path).to_path_buf());
-            }
+    let mut output = Vec::new();
+    walk_source_tree(root, "bibliography search", &mut |relative, absolute| {
+        if absolute
+            .extension()
+            .is_some_and(|value| value.eq_ignore_ascii_case("bib"))
+        {
+            output.push(relative.to_path_buf());
         }
         Ok(())
-    }
-    let mut output = Vec::new();
-    walk(root, root, 0, &mut output)?;
+    })?;
     output.sort();
     Ok(output)
-}
-
-fn slash_path(path: &Path) -> String {
-    path.components()
-        .map(|component| component.as_os_str().to_string_lossy())
-        .collect::<Vec<_>>()
-        .join("/")
 }
 
 async fn run_command(
@@ -821,39 +797,32 @@ fn append_bounded(output: &mut String, bytes: &[u8]) {
     if bytes.is_empty() {
         return;
     }
+    let content_limit = MAX_LOG_BYTES.saturating_sub(LOG_TRUNCATION_MARKER.len());
     if output.len() >= MAX_LOG_BYTES {
         if !output.ends_with(LOG_TRUNCATION_MARKER) {
-            let content_limit = MAX_LOG_BYTES.saturating_sub(LOG_TRUNCATION_MARKER.len());
-            let boundary = (0..=content_limit)
-                .rev()
-                .find(|index| output.is_char_boundary(*index))
-                .unwrap_or(0);
-            output.truncate(boundary);
+            output.truncate(floor_char_boundary(output, content_limit));
             output.push_str(LOG_TRUNCATION_MARKER);
         }
         return;
     }
     let text = String::from_utf8_lossy(bytes);
-    let remaining = MAX_LOG_BYTES - output.len();
-    if text.len() <= remaining {
+    if text.len() <= MAX_LOG_BYTES - output.len() {
         output.push_str(&text);
         return;
     }
-    let content_limit = MAX_LOG_BYTES.saturating_sub(LOG_TRUNCATION_MARKER.len());
     if output.len() > content_limit {
-        let boundary = (0..=content_limit)
-            .rev()
-            .find(|index| output.is_char_boundary(*index))
-            .unwrap_or(0);
-        output.truncate(boundary);
+        output.truncate(floor_char_boundary(output, content_limit));
     }
-    let remaining = content_limit - output.len();
-    let boundary = (0..=remaining.min(text.len()))
-        .rev()
-        .find(|index| text.is_char_boundary(*index))
-        .unwrap_or(0);
+    let boundary = floor_char_boundary(&text, content_limit - output.len());
     output.push_str(&text[..boundary]);
     output.push_str(LOG_TRUNCATION_MARKER);
+}
+
+fn floor_char_boundary(text: &str, limit: usize) -> usize {
+    (0..=limit.min(text.len()))
+        .rev()
+        .find(|index| text.is_char_boundary(*index))
+        .unwrap_or(0)
 }
 
 fn clear_outputs(build_directory: &Path) -> Result<()> {
@@ -989,7 +958,7 @@ mod tests {
             ProjectManifest {
                 name: "Compiler contract".into(),
                 main_doc: main_document.into(),
-                engine: engine.as_str().into(),
+                engine: engine.manifest_name().into(),
                 tex_flavor: tex_flavor.map(str::to_string),
                 ..ProjectManifest::default()
             },
@@ -1006,29 +975,7 @@ mod tests {
     }
 
     fn compiler_fixture(directory: &TempDir, failure: bool) -> PathBuf {
-        let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/compiler.rs");
-        let output = directory.path().join(executable_name(if failure {
-            "fixture-failure"
-        } else {
-            "fixture-success"
-        }));
-        let mut command = std::process::Command::new(
-            std::env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc")),
-        );
-        command
-            .args(["--edition=2021", "-o"])
-            .arg(&output)
-            .arg(source);
-        if failure {
-            command.args(["--cfg", "fixture_failure"]);
-        }
-        let result = command.output().unwrap();
-        assert!(
-            result.status.success(),
-            "{}",
-            String::from_utf8_lossy(&result.stderr)
-        );
-        output.canonicalize().unwrap()
+        crate::support::compiler_fixture(directory.path(), failure)
     }
 
     #[test]

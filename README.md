@@ -450,9 +450,9 @@ setup, production builds, and the source-only command-line workflow.
 
 ### Command line
 
-`oleaflyc` manages Oleafly projects without launching the desktop app. It is
-currently available from this repository and is not published as a standalone
-package.
+`oleaflyc` manages Oleafly projects without launching the desktop app. It
+builds from source in this repository and is not published as a standalone
+package yet.
 
 ```bash
 cargo run -p oleafly-cli --bin oleaflyc -- init
@@ -462,8 +462,8 @@ cargo run -p oleafly-cli --bin oleaflyc -- watch
 cargo run -p oleafly-cli --bin oleaflyc -- project info --json
 ```
 
-Commands use the current directory by default. Pass `-C <path>` to manage a
-different project directory. Run `oleaflyc --help` for the complete interface.
+Commands run against the current directory. Pass `-C <path>` to point at
+another project. Run `oleaflyc --help` for the full command list.
 
 ## Documentation
 

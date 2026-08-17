@@ -85,13 +85,13 @@ cargo run -p oleafly-cli --bin oleaflyc -- build
 cargo run -p oleafly-cli --bin oleaflyc -- project info --json
 ```
 
-`oleaflyc` uses the current directory unless `-C <path>` is provided. It also
-supports `watch`, `clean`, and `doctor`. Human-readable output is the default;
-`--json` provides structured output, and watch mode emits newline-delimited
-JSON events. Build and watch stop compilers after 300 seconds by default; pass
-`--timeout <seconds>` to override that limit. The CLI always disables TeX shell
-escape. The desktop can enable shell escape only through its explicit,
-device-local trust flow for the system TeX engine.
+`oleaflyc` works on the current directory unless you pass `-C <path>`. It also
+has `watch`, `clean`, and `doctor`. Output is human-readable by default.
+`--json` switches to structured output, and watch mode prints newline-delimited
+JSON events. Build and watch kill a compiler after 300 seconds unless you pass
+`--timeout <seconds>`. The CLI never turns on TeX shell escape. Only the
+desktop can, and only through its device-local trust prompt for the system TeX
+engine.
 
 ### Checks before opening a PR
 

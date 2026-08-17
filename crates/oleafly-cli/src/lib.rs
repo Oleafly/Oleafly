@@ -1,16 +1,28 @@
+extern crate self as oleafly_cli;
+
 mod native;
 mod process;
 
+#[cfg(test)]
+#[path = "../tests/support/mod.rs"]
+mod support;
+
 use clap::{Args, Parser, Subcommand, ValueEnum};
-use native::{BuildOptions, BuildResult, BuildTools, CompilerLog, NativeCompiler};
+use native::{
+    rejected_override_message, BuildOptions, BuildResult, BuildTools, CompilerLog, NativeCompiler,
+};
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use oleafly_core::{DoctorCheck, DoctorStatus, Engine, Error, ErrorKind, InitOptions, Workspace};
+use oleafly_core::{
+    is_generated_directory, DoctorCheck, DoctorStatus, Engine, Error, ErrorKind, InitOptions,
+    Workspace,
+};
 use serde_json::{json, Value};
-use std::ffi::OsStr;
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
 use tokio::sync::mpsc;
+
+pub use native::executable_name;
 
 const EXIT_SUCCESS: u8 = 0;
 const EXIT_PROJECT: u8 = 3;
@@ -126,6 +138,23 @@ impl From<BuildCommand> for BuildOptions {
 }
 
 #[derive(Clone, Copy)]
+struct BuildRequest {
+    options: BuildOptions,
+    timeout: Duration,
+    reporter: Reporter,
+}
+
+impl BuildRequest {
+    fn new(command: BuildCommand, reporter: Reporter) -> Self {
+        Self {
+            options: command.into(),
+            timeout: Duration::from_secs(command.timeout_seconds),
+            reporter,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
 struct Reporter {
     json: bool,
 }
@@ -175,22 +204,10 @@ pub async fn run(cli: Cli) -> u8 {
     let result = match cli.command {
         Command::Init(command) => run_init(&cli.project, command, reporter),
         Command::Build(command) => {
-            run_build(
-                &cli.project,
-                command.into(),
-                Duration::from_secs(command.timeout_seconds),
-                reporter,
-            )
-            .await
+            run_build(&cli.project, BuildRequest::new(command, reporter)).await
         }
         Command::Watch(command) => {
-            run_watch(
-                &cli.project,
-                command.into(),
-                Duration::from_secs(command.timeout_seconds),
-                reporter,
-            )
-            .await
+            run_watch(&cli.project, BuildRequest::new(command, reporter)).await
         }
         Command::Clean => run_clean(&cli.project, reporter),
         Command::Doctor => run_doctor(&cli.project, reporter),
@@ -238,29 +255,19 @@ fn run_init(path: &Path, command: InitCommand, reporter: Reporter) -> Result<u8,
     Ok(EXIT_SUCCESS)
 }
 
-async fn run_build(
-    path: &Path,
-    options: BuildOptions,
-    timeout: Duration,
-    reporter: Reporter,
-) -> Result<u8, Error> {
+async fn run_build(path: &Path, request: BuildRequest) -> Result<u8, Error> {
     let workspace = Workspace::open(path)?;
-    let result = compile(&workspace, options, timeout, reporter).await?;
-    report_build(&result, reporter, "build")?;
+    let result = compile(&workspace, request).await?;
+    report_build(&result, request.reporter, "build")?;
     Ok(if result.ok { EXIT_SUCCESS } else { EXIT_BUILD })
 }
 
-async fn compile(
-    workspace: &Workspace,
-    options: BuildOptions,
-    timeout: Duration,
-    reporter: Reporter,
-) -> Result<BuildResult, Error> {
+async fn compile(workspace: &Workspace, request: BuildRequest) -> Result<BuildResult, Error> {
     let tools = BuildTools::discover(workspace.root());
     NativeCompiler::new(tools)
-        .with_log(reporter.compiler_log())
-        .with_timeout(timeout)
-        .build(workspace, options)
+        .with_log(request.reporter.compiler_log())
+        .with_timeout(request.timeout)
+        .build(workspace, request.options)
         .await
 }
 
@@ -312,9 +319,9 @@ fn run_doctor(path: &Path, reporter: Reporter) -> Result<u8, Error> {
                 name: format!("compiler_{name}"),
                 status: DoctorStatus::Warning,
                 message: format!(
-                    "using {}; refused {variable}={} because project-local compiler paths are not allowed",
+                    "Using {}. {}",
                     path.display(),
-                    rejected.display()
+                    rejected_override_message(variable, rejected)
                 ),
             },
             (Some(path), None) => DoctorCheck {
@@ -325,10 +332,7 @@ fn run_doctor(path: &Path, reporter: Reporter) -> Result<u8, Error> {
             (None, Some((variable, rejected))) => DoctorCheck {
                 name: format!("compiler_{name}"),
                 status: DoctorStatus::Fail,
-                message: format!(
-                    "{variable}={} was refused because project-local compiler paths are not allowed",
-                    rejected.display()
-                ),
+                message: rejected_override_message(variable, rejected),
             },
             (None, None) => DoctorCheck {
                 name: format!("compiler_{name}"),
@@ -386,12 +390,8 @@ fn run_project_info(path: &Path, reporter: Reporter) -> Result<u8, Error> {
     Ok(EXIT_SUCCESS)
 }
 
-async fn run_watch(
-    path: &Path,
-    options: BuildOptions,
-    timeout: Duration,
-    reporter: Reporter,
-) -> Result<u8, Error> {
+async fn run_watch(path: &Path, request: BuildRequest) -> Result<u8, Error> {
+    let reporter = request.reporter;
     let workspace = Workspace::open(path)?;
     let workspace_root = workspace.root().to_path_buf();
     let (sender, mut receiver) = mpsc::unbounded_channel();
@@ -407,7 +407,7 @@ async fn run_watch(
     if !reporter.json {
         println!("Watching {}", workspace_root.display());
     }
-    if !watch_build(&workspace_root, options, timeout, reporter).await? {
+    if !watch_build(&workspace_root, request).await? {
         return Ok(EXIT_SUCCESS);
     }
     loop {
@@ -434,7 +434,7 @@ async fn run_watch(
                 emit_watch_error(reporter, &error)?;
             }
         }
-        if !watch_build(&workspace_root, options, timeout, reporter).await? {
+        if !watch_build(&workspace_root, request).await? {
             return Ok(EXIT_SUCCESS);
         }
     }
@@ -449,17 +449,13 @@ fn create_watcher(
     .map_err(notify_error)
 }
 
-async fn watch_build(
-    path: &Path,
-    options: BuildOptions,
-    timeout: Duration,
-    reporter: Reporter,
-) -> Result<bool, Error> {
+async fn watch_build(path: &Path, request: BuildRequest) -> Result<bool, Error> {
+    let reporter = request.reporter;
     reporter.value(json!({"ok": true, "event": "build_started"}))?;
     let result = tokio::select! {
         result = async {
             let workspace = Workspace::open(path)?;
-            compile(&workspace, options, timeout, reporter).await
+            compile(&workspace, request).await
         } => result,
         signal = tokio::signal::ctrl_c() => {
             signal.map_err(|error| Error::new(ErrorKind::Io, error.to_string()))?;
@@ -520,16 +516,9 @@ fn relevant_event(event: &Event, root: &Path) -> bool {
 fn ignored_path(path: &Path, root: &Path) -> bool {
     path.strip_prefix(root).is_ok_and(|relative| {
         relative.components().any(
-            |component| matches!(component, Component::Normal(value) if ignored_component(value)),
+            |component| matches!(component, Component::Normal(value) if is_generated_directory(value)),
         )
     })
-}
-
-fn ignored_component(value: &OsStr) -> bool {
-    value == OsStr::new(".oleafly")
-        || value == OsStr::new(".git")
-        || value == OsStr::new("node_modules")
-        || value == OsStr::new("target")
 }
 
 fn emit_watch_error(reporter: Reporter, error: &notify::Error) -> Result<(), Error> {

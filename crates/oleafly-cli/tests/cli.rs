@@ -1,7 +1,8 @@
+mod support;
+
 use serde_json::Value;
-use std::ffi::OsString;
 use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Child, Command, Output, Stdio};
 use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
@@ -20,29 +21,8 @@ fn json(output: &Output) -> Value {
     serde_json::from_slice(&output.stdout).unwrap()
 }
 
-fn executable_name(name: &str) -> String {
-    if cfg!(windows) {
-        format!("{name}.exe")
-    } else {
-        name.to_string()
-    }
-}
-
 fn compiler_fixture(directory: &TempDir) -> PathBuf {
-    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/compiler.rs");
-    let output = directory.path().join(executable_name("fixture-success"));
-    let result = Command::new(std::env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc")))
-        .args(["--edition=2021", "-o"])
-        .arg(&output)
-        .arg(source)
-        .output()
-        .unwrap();
-    assert!(
-        result.status.success(),
-        "{}",
-        String::from_utf8_lossy(&result.stderr)
-    );
-    output.canonicalize().unwrap()
+    support::compiler_fixture(directory.path(), false)
 }
 
 struct ChildGuard(Child);
@@ -293,7 +273,9 @@ fn watch_recovers_from_environment_errors_and_reloads_the_manifest() {
     assert!(run(&["init", "--engine", "latexmk"], Some(project.path()))
         .status
         .success());
-    let compiler = tools.path().join(executable_name("fixture-success"));
+    let compiler = tools
+        .path()
+        .join(oleafly_cli::executable_name("fixture-success"));
     let child = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
         .args(["--json", "watch"])
         .current_dir(project.path())

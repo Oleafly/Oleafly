@@ -31,7 +31,7 @@ impl Engine {
                 ErrorKind::InvalidManifest,
                 format!(
                     "engine `{}` cannot compile `{main_document}`",
-                    engine.as_str()
+                    engine.manifest_name()
                 ),
             ));
         }
@@ -73,7 +73,7 @@ impl Engine {
         }
     }
 
-    pub const fn as_str(self) -> &'static str {
+    pub const fn manifest_name(self) -> &'static str {
         match self {
             Self::Tectonic => "xetex",
             Self::Latexmk => "latexmk",
