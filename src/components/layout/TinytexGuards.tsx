@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "@tauri-apps/api/core";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { installPhaseLabel, useEngineStore } from "@/store/engine";
-import { confirmQuitDuringInstall } from "@/lib/tauri";
+import { cancelQuitFlush, confirmQuitDuringInstall } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 
 /**
@@ -58,7 +58,12 @@ export function TinytexGuards() {
             notifyError("quit during install", error),
           );
         }}
-        onCancel={() => setQuitAsked(false)}
+        onCancel={() => {
+          setQuitAsked(false);
+          // This dialog can be reached after the quit flush confirmed; staying
+          // must re-arm the flush gate or the next quit would skip saving.
+          void cancelQuitFlush().catch(() => {});
+        }}
       />
       <ConfirmationDialog
         open={waitNoticeOpen && installing}

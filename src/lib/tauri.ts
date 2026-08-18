@@ -66,6 +66,21 @@ export const getProjectEngine = (projectId: string) =>
 export const readCompiledPdf = (projectId: string) =>
   invoke<ArrayBuffer>("read_compiled_pdf", { projectId });
 
+export interface ValidatedCompileFingerprint {
+  main_document: string;
+  engine_id: string;
+  output_id: string;
+  output_revision: number;
+  compiled_at_ms: number;
+}
+
+/** Null means the persisted record is missing or stale: compile normally. */
+export const validateCompileFingerprint = (projectId: string, mainDoc: string) =>
+  invoke<ValidatedCompileFingerprint | null>("validate_compile_fingerprint", {
+    projectId,
+    mainDoc,
+  });
+
 export const compileTex = (
   projectId: string,
   mainDoc: string,
@@ -223,12 +238,32 @@ export const writeFileContent = (
   expectedGeneration?: number,
 ) => invoke<FileMutationResult>("write_file", { projectId, path, content, expectedGeneration });
 
-export const createFile = (
+export type CreateFileResult =
+  | { status: "created"; path: string; generation: number }
+  | {
+      status: "conflict";
+      destination: string;
+      suggested_destination: string;
+      generation: number;
+    };
+
+export async function createFile(
   projectId: string,
   path: string,
   isDir: boolean,
+  conflictStrategy: FileConflictStrategy = "error",
   expectedGeneration?: number,
-) => invoke<FileMutationResult>("create_file", { projectId, path, isDir, expectedGeneration });
+): Promise<{ path: string; generation: number }> {
+  const result = await invoke<CreateFileResult>("create_file", {
+    projectId,
+    path,
+    isDir,
+    conflictStrategy,
+    expectedGeneration,
+  });
+  if (result.status === "conflict") throw new FileConflictError(result);
+  return { path: result.path, generation: result.generation };
+}
 
 export const deleteFile = (projectId: string, path: string, expectedGeneration?: number) =>
   invoke<FileMutationResult>("delete_file", { projectId, path, expectedGeneration });
@@ -609,6 +644,11 @@ export const tinytexInstallState = () =>
 // The user confirmed quitting mid-install; the app exits immediately.
 export const confirmQuitDuringInstall = () =>
   invoke<void>("confirm_quit_during_install");
+// The quit flush finished (or was overridden): let the quit/restart through.
+export const confirmQuitFlush = (restart: boolean) =>
+  invoke<void>("confirm_quit_flush", { restart });
+// The user chose to stay after a blocked quit; the next quit flushes again.
+export const cancelQuitFlush = () => invoke<void>("cancel_quit_flush");
 export const deleteTinytex = () => invoke<void>("delete_tinytex");
 export const tlmgrInstalled = () => invoke<string[]>("tlmgr_installed");
 export const tlmgrInstall = (packages: string[]) => invoke<string>("tlmgr_install", { packages });

@@ -60,6 +60,7 @@ import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
 import { AboutModal } from "@/components/layout/AboutModal";
 import { EnginePickerModal } from "@/components/layout/EnginePickerModal";
 import { TinytexGuards } from "@/components/layout/TinytexGuards";
+import { QuitGuard } from "@/components/layout/QuitGuard";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 import type { ProjectStateChanged } from "@/lib/tauri";
@@ -603,7 +604,18 @@ function AppContent() {
     const requestedProjectRevision =
       analysisIdentity.projectRevision;
     openCompileInFlightRef.current = requestedProjectId;
-    void recompile().finally(() => {
+    const compileOrRestore = async () => {
+      // Reopen fast path: when the persisted compile fingerprint still
+      // matches the sources on disk, seed the preview from the already-built
+      // PDF and skip the compile entirely.
+      const restored = await useCompileStore
+        .getState()
+        .restoreFromDisk(requestedProjectId, requestedMainDocument)
+        .catch(() => false);
+      if (restored) return undefined;
+      return recompile();
+    };
+    void compileOrRestore().finally(() => {
       const files = useFilesStore.getState();
       const analysis =
         useProjectAnalysisStore.getState().snapshot.identity;
@@ -673,6 +685,7 @@ function AppContent() {
         <ExternalToolApprovals />
         <EnginePickerModal />
         <TinytexGuards />
+        <QuitGuard />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>
@@ -787,6 +800,7 @@ function AppContent() {
         <ExternalToolApprovals />
         <EnginePickerModal />
         <TinytexGuards />
+        <QuitGuard />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>

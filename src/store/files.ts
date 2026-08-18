@@ -198,6 +198,13 @@ interface FilesStore {
   refreshProjects: () => Promise<void>;
   openProject: (id: string, shouldContinue?: () => boolean) => Promise<void>;
   closeProject: () => Promise<void>;
+  /**
+   * Durably write every dirty buffer of the open project before the app
+   * quits. Serialized with project transitions; rejects (and leaves buffers
+   * dirty) when a save fails so the caller can block the quit. Does not tear
+   * down project state — the window closes right after.
+   */
+  flushForQuit: () => Promise<void>;
   createProject: (name: string) => Promise<void>;
   importProject: (path: string) => Promise<string>;
   createTypstProject: (name: string) => Promise<void>;
@@ -216,7 +223,11 @@ interface FilesStore {
   bumpDocVersion: () => void;
   saveActive: () => Promise<void>;
   saveFile: (path: string) => Promise<void>;
-  createFile: (path: string, isDir: boolean) => Promise<void>;
+  createFile: (
+    path: string,
+    isDir: boolean,
+    conflictStrategy?: FileConflictStrategy,
+  ) => Promise<void>;
   deleteEntry: (path: string) => Promise<void>;
   renameEntry: (from: string, to: string, conflictStrategy?: FileConflictStrategy) => Promise<string>;
   copyEntry: (path: string, isDir?: boolean) => Promise<void>;
@@ -991,6 +1002,14 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     set(EMPTY_PROJECT_STATE);
   }),
 
+  flushForQuit: () => enqueueProjectTransition(async () => {
+    const projectId = get().projectId;
+    if (!projectId) return;
+    flushWysiwygPendingEdits();
+    await flushDirtyBuffers(projectId, get);
+    flushAutoCommit();
+  }),
+
   createProject: async (name) => {
     const id = await apiCreateProject(name);
     await applyDefaultLatexEngine(id);
@@ -1134,6 +1153,10 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const { projectId, files } = get();
     const state = files[path];
     if (!projectId || !state) return;
+    // A clean buffer has nothing to persist. Writing it anyway bumps the
+    // project mtime, invalidates the library thumbnail cache, and schedules
+    // a phantom auto-commit for a no-op.
+    if (!state.dirty) return;
     const written = state.content;
     const reloadRevision = fileReloadRevision;
     try {
@@ -1169,15 +1192,16 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     scheduleAutoCommit(projectId);
   },
 
-  createFile: async (path, isDir) => {
+  createFile: async (path, isDir, conflictStrategy = "error") => {
     const { projectId } = get();
     if (!projectId) return;
-    const result = await apiCreateFile(projectId, path, isDir);
+    const result = await apiCreateFile(projectId, path, isDir, conflictStrategy);
     if (Number.isSafeInteger(result?.generation)) {
       rememberMutationGeneration(projectId, result.generation);
     }
     await get().refreshTree();
-    if (!isDir) await get().openFile(path);
+    // keep_both may have diverted to a sibling name; open what was created.
+    if (!isDir) await get().openFile(result.path);
   },
 
   deleteEntry: (path) => enqueueProjectTransition(async () => {

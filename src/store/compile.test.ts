@@ -4,6 +4,7 @@ import { LATEX_ENGINE } from "@/lib/document-engine";
 const mocks = vi.hoisted(() => ({
   compileProject: vi.fn(),
   readCompiledPdf: vi.fn(),
+  validateCompileFingerprint: vi.fn(),
   readFileContent: vi.fn(),
   cancelCompile: vi.fn(),
   clearBuildDir: vi.fn(),
@@ -40,6 +41,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/tauri", () => ({
   compileProject: mocks.compileProject,
   readCompiledPdf: mocks.readCompiledPdf,
+  validateCompileFingerprint: mocks.validateCompileFingerprint,
   readFileContent: mocks.readFileContent,
   cancelCompile: mocks.cancelCompile,
   clearBuildDir: mocks.clearBuildDir,
@@ -106,6 +108,7 @@ function checkpoint(bytes: Uint8Array, outputRevision: number) {
 beforeEach(() => {
   mocks.compileProject.mockReset();
   mocks.readCompiledPdf.mockReset();
+  mocks.validateCompileFingerprint.mockReset().mockResolvedValue(null);
   mocks.readFileContent.mockReset().mockResolvedValue("\\documentclass{article}\n");
   mocks.cancelCompile.mockReset().mockResolvedValue(true);
   mocks.clearBuildDir.mockReset().mockResolvedValue(undefined);
@@ -588,6 +591,81 @@ describe("compile output lifecycle", () => {
     pendingSave.resolve();
     await compiling;
     expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
+});
+
+describe("restore from the on-disk compile fingerprint", () => {
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7 restored");
+  const pdfBuffer = () => pdfBytes.buffer.slice(0) as ArrayBuffer;
+  const validRecord = () => ({
+    main_document: "main.tex",
+    engine_id: "latex",
+    output_id: fingerprintCompileOutput(pdfBytes),
+    output_revision: 57,
+    compiled_at_ms: 1_000,
+  });
+
+  it("seeds the preview and checkpoint without compiling", async () => {
+    mocks.validateCompileFingerprint.mockResolvedValue(validRecord());
+    mocks.readCompiledPdf.mockResolvedValue(pdfBuffer());
+
+    const restored = await useCompileStore.getState().restoreFromDisk("project", "main.tex");
+
+    expect(restored).toBe(true);
+    const state = useCompileStore.getState();
+    expect(state.status).toBe("success");
+    expect(state.pdfBytes).toEqual(pdfBytes);
+    expect(state.lastCompileCheckpoint?.outputRevision).toBe(57);
+    expect(state.lastCompileCheckpoint?.outputId).toBe(fingerprintCompileOutput(pdfBytes));
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
+
+  it("stays idle and reads no PDF when the fingerprint is invalid", async () => {
+    mocks.validateCompileFingerprint.mockResolvedValue(null);
+
+    const restored = await useCompileStore.getState().restoreFromDisk("project", "main.tex");
+
+    expect(restored).toBe(false);
+    expect(useCompileStore.getState().status).toBe("idle");
+    expect(useCompileStore.getState().pdfBytes).toBeNull();
+    expect(mocks.readCompiledPdf).not.toHaveBeenCalled();
+  });
+
+  it("rejects a PDF on disk that is not the fingerprinted output", async () => {
+    mocks.validateCompileFingerprint.mockResolvedValue({
+      ...validRecord(),
+      output_id: "pdf-v1:9:deadbeefdeadbeef",
+    });
+    mocks.readCompiledPdf.mockResolvedValue(pdfBuffer());
+
+    const restored = await useCompileStore.getState().restoreFromDisk("project", "main.tex");
+
+    expect(restored).toBe(false);
+    expect(useCompileStore.getState().status).toBe("idle");
+    expect(useCompileStore.getState().pdfBytes).toBeNull();
+  });
+
+  it("never overwrites an existing checkpoint", async () => {
+    useCompileStore.setState({
+      lastCompileCheckpoint: {
+        version: 1,
+        projectId: "project",
+        mainDocument: "main.tex",
+        projectRevision: 0,
+        requestGeneration: 0,
+        outputKind: "standard",
+        producerId: "latex",
+        outputRevision: 3,
+        outputId: "pdf-v1:1:aa",
+        completedAt: 10,
+      },
+    });
+
+    const restored = await useCompileStore.getState().restoreFromDisk("project", "main.tex");
+
+    expect(restored).toBe(false);
+    expect(mocks.validateCompileFingerprint).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().lastCompileCheckpoint?.outputRevision).toBe(3);
   });
 });
 

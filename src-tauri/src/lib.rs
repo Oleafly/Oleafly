@@ -4,6 +4,7 @@ mod biber_toolchain;
 mod chats;
 mod citation;
 mod commands;
+mod compile_fingerprint;
 mod config;
 mod connectors;
 mod deadlines;
@@ -21,6 +22,7 @@ mod ollama;
 mod paths;
 mod proc;
 mod project;
+mod quit_gate;
 mod sandbox;
 mod secrets;
 mod state;
@@ -76,9 +78,21 @@ pub fn run() {
         // close through after `confirm_quit_during_install`.
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if latex_engine::install_in_progress() && !latex_engine::quit_confirmed() {
+                use tauri::Emitter;
+                // Secondary windows (PDF preview) hold no editor buffers and
+                // must close freely; the quit gates guard the main window only.
+                if window.label() != "main" {
+                    return;
+                }
+                // Dirty-buffer flush comes first: confirming the TinyTeX
+                // dialog exits immediately, so reaching it before the flush
+                // could discard unsaved edits. `confirm_quit_flush` re-enters
+                // the TinyTeX gate itself once the flush is done.
+                if !quit_gate::flush_confirmed() {
                     api.prevent_close();
-                    use tauri::Emitter;
+                    let _ = window.emit("quit-flush-requested", false);
+                } else if latex_engine::install_in_progress() && !latex_engine::quit_confirmed() {
+                    api.prevent_close();
                     let _ = window.emit("tinytex-quit-blocked", ());
                 }
             }
@@ -162,6 +176,7 @@ pub fn run() {
             commands::cancel_compile,
             commands::clear_build_dir,
             commands::read_compiled_pdf,
+            commands::validate_compile_fingerprint,
             commands::compile_isolated,
             commands::read_isolated_pdf,
             commands::read_project_bytes,
@@ -196,6 +211,8 @@ pub fn run() {
             latex_engine::latex_engine_info,
             latex_engine::tinytex_install_state,
             latex_engine::confirm_quit_during_install,
+            quit_gate::confirm_quit_flush,
+            quit_gate::cancel_quit_flush,
             tex_distro::tex_distributions,
             latex_engine::has_tagging_engine,
             latex_engine::install_tinytex,

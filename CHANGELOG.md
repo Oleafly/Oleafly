@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Quitting can no longer lose your last edits.** Closing the window, Cmd+Q,
+  and Restart now wait for every unsaved file to reach disk before the app
+  exits, exactly like switching or closing a project. If a save fails, the app
+  stays open, shows what went wrong, and leaves the choice between Stay and
+  Quit anyway to you. The quit confirmation for a running TinyTeX install now
+  comes after this save step, so confirming it can't throw away unsaved work.
+  The separate PDF preview window still closes freely.
+- **Creating a file with a taken name now says so — on every platform.**
+  Creating a file or folder whose name is already in use gets the same
+  conflict dialog as rename, with a suggested "name (2)" alternative. Names
+  that differ only by capitalization count as taken too, because they compile
+  on Linux and then break the project on macOS and Windows. Creating never
+  replaces an existing file. Previously a duplicate name failed with no
+  visible message at all.
+
+### Changed
+
+- **Reopening a project no longer recompiles unchanged work.** Every
+  successful compile records what it was built from: the engine, the main
+  document, and a content hash of every source file. On the next open,
+  Oleafly checks that record, and when nothing changed the preview comes
+  straight from the already-built PDF instead of waiting for a full compile.
+  Saving a file with no changes is skipped too, which stops pointless
+  library-thumbnail refreshes and empty automatic history commits.
+
 ### Security
 
 - **Provider API keys no longer reach the editor process.** Every AI call now

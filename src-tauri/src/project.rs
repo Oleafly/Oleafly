@@ -381,6 +381,96 @@ impl RenameFileResult {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Serialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum CreateFileResult {
+    Created {
+        path: String,
+        generation: u64,
+    },
+    Conflict {
+        destination: String,
+        suggested_destination: String,
+        generation: u64,
+    },
+}
+
+impl CreateFileResult {
+    fn with_generation(self, generation: u64) -> Self {
+        match self {
+            Self::Created { path, .. } => Self::Created { path, generation },
+            Self::Conflict {
+                destination,
+                suggested_destination,
+                ..
+            } => Self::Conflict {
+                destination,
+                suggested_destination,
+                generation,
+            },
+        }
+    }
+}
+
+/// Create a file or folder inside the project with the same portable
+/// collision rules as rename/copy: names that differ only by case collide on
+/// every platform, conflicts are structured and non-destructive, and
+/// `KeepBoth` diverts to the suggested sibling. Create never replaces.
+fn create_path_in_project(
+    root: &Path,
+    requested: &Path,
+    requested_rel: &str,
+    is_dir: bool,
+    strategy: FileConflictStrategy,
+) -> Result<CreateFileResult, String> {
+    if let Some(parent) = requested.parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+    }
+    let target = match portable_collision(requested)? {
+        None => requested.to_path_buf(),
+        Some(existing) => {
+            let exact_case = existing
+                .file_name()
+                .and_then(|name| name.to_str())
+                .zip(requested.file_name().and_then(|name| name.to_str()))
+                .is_some_and(|(found, wanted)| found == wanted);
+            if is_dir && exact_case && existing.is_dir() {
+                // The folder is already there with the identical name:
+                // creating it again is a harmless merge, like `mkdir -p`.
+                return Ok(CreateFileResult::Created {
+                    path: requested_rel.to_string(),
+                    generation: 0,
+                });
+            }
+            match strategy {
+                FileConflictStrategy::Error => {
+                    let suggestion = unique_destination(requested, is_dir)?;
+                    return Ok(CreateFileResult::Conflict {
+                        destination: requested_rel.to_string(),
+                        suggested_destination: rel_slash(root, &suggestion),
+                        generation: 0,
+                    });
+                }
+                FileConflictStrategy::KeepBoth => unique_destination(requested, is_dir)?,
+                FileConflictStrategy::Replace => {
+                    return Err("creating cannot replace an existing file or folder".to_string());
+                }
+            }
+        }
+    };
+    if is_dir {
+        std::fs::create_dir_all(&target).map_err(|e| e.to_string())?;
+    } else {
+        atomic_write(&target, &[]).map_err(|e| e.to_string())?;
+    }
+    Ok(CreateFileResult::Created {
+        path: rel_slash(root, &target),
+        generation: 0,
+    })
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct FileMutationResult {
     pub generation: u64,
@@ -1292,30 +1382,21 @@ pub fn create_file(
     project_id: String,
     path: String,
     is_dir: bool,
+    conflict_strategy: Option<FileConflictStrategy>,
     expected_generation: Option<u64>,
-) -> Result<FileMutationResult, String> {
+) -> Result<CreateFileResult, String> {
     let relative = mutation_relative_path(&path, false)?;
-    let scope = if is_dir {
-        MutationScope::subtree(relative)
-    } else {
-        MutationScope::file(relative)
-    };
+    // KeepBoth may divert to a sibling name, so the admission scope covers the
+    // whole parent rather than the single requested path.
+    let scope = MutationScope::subtree(mutation_parent_path(&relative));
     let admission = admit_mutation(&project_id, vec![scope], expected_generation)?;
-    let (_, generation) = admission.run(|| {
-        let p = resolve(&project_id, &path)?;
-        if is_dir {
-            std::fs::create_dir_all(&p).map_err(|e| e.to_string())
-        } else {
-            if let Some(parent) = p.parent() {
-                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-            }
-            if p.exists() {
-                return Err(format!("{path} already exists"));
-            }
-            atomic_write(&p, &[]).map_err(|e| e.to_string())
-        }
+    let strategy = conflict_strategy.unwrap_or_default();
+    let (result, generation) = admission.run(|| {
+        let root = paths::project_dir(&project_id)?;
+        let requested = resolve(&project_id, &path)?;
+        create_path_in_project(&root, &requested, &path, is_dir, strategy)
     })?;
-    Ok(FileMutationResult { generation })
+    Ok(result.with_generation(generation))
 }
 
 #[tauri::command]
@@ -4987,16 +5068,16 @@ async fn delete_project_synchronized(
 mod tests {
     use super::{
         copy_path_in_project, create_diagram_project, create_image_project_in,
-        create_markdown_project_in, create_project_from_pdf_conversion, create_project_transaction,
-        create_typst_project_in, download_project_zip, duplicate_project, engine_for_main_document,
-        extract_pandoc, flatten_single_root_folder, get_or_create_scratch_project,
-        import_paths_transactional, import_paths_transactional_with, import_skip,
-        infer_main_document, list_projects, normalize_loaded_tex_flavor, normalize_relative,
-        pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash, rename_exclusive,
-        rename_path_in_project, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
-        tex_root_magic_target, validate_conversion_export, validate_tex_flavor, write_meta_at,
-        FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta, RenameFileResult,
-        TexSpec, SCRATCH_PROJECT_ID,
+        create_markdown_project_in, create_path_in_project, create_project_from_pdf_conversion,
+        create_project_transaction, create_typst_project_in, download_project_zip,
+        duplicate_project, engine_for_main_document, extract_pandoc, flatten_single_root_folder,
+        get_or_create_scratch_project, import_paths_transactional, import_paths_transactional_with,
+        import_skip, infer_main_document, list_projects, normalize_loaded_tex_flavor,
+        normalize_relative, pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash,
+        rename_exclusive, rename_path_in_project, search_docs, set_main_doc_synchronized,
+        set_main_doc_unlocked, tex_root_magic_target, validate_conversion_export,
+        validate_tex_flavor, write_meta_at, CreateFileResult, FileConflictStrategy, MutationScope,
+        PdfConversionFigure, ProjectMeta, RenameFileResult, TexSpec, SCRATCH_PROJECT_ID,
     };
     use std::io::Write;
     use std::path::Path;
@@ -5846,6 +5927,155 @@ mod tests {
         );
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn create_conflicts_with_a_case_variant_sibling_on_any_platform() {
+        let root = test_dir("create-case-conflict");
+        std::fs::write(root.join("Paper.tex"), "published").unwrap();
+
+        let result = create_path_in_project(
+            &root,
+            &root.join("paper.tex"),
+            "paper.tex",
+            false,
+            FileConflictStrategy::Error,
+        )
+        .unwrap();
+
+        assert_eq!(
+            result,
+            CreateFileResult::Conflict {
+                destination: "paper.tex".into(),
+                suggested_destination: "paper (2).tex".into(),
+                generation: 0,
+            }
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("Paper.tex")).unwrap(),
+            "published"
+        );
+        assert!(!root.join("paper (2).tex").exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn create_conflict_is_non_destructive_for_an_exact_existing_file() {
+        let root = test_dir("create-exact-conflict");
+        std::fs::write(root.join("notes.tex"), "keep me").unwrap();
+
+        let result = create_path_in_project(
+            &root,
+            &root.join("notes.tex"),
+            "notes.tex",
+            false,
+            FileConflictStrategy::Error,
+        )
+        .unwrap();
+
+        assert!(matches!(result, CreateFileResult::Conflict { .. }));
+        assert_eq!(
+            std::fs::read_to_string(root.join("notes.tex")).unwrap(),
+            "keep me"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn create_keep_both_writes_the_suggested_sibling() {
+        let root = test_dir("create-keep-both");
+        std::fs::write(root.join("notes.tex"), "keep me").unwrap();
+
+        let result = create_path_in_project(
+            &root,
+            &root.join("notes.tex"),
+            "notes.tex",
+            false,
+            FileConflictStrategy::KeepBoth,
+        )
+        .unwrap();
+
+        assert_eq!(
+            result,
+            CreateFileResult::Created {
+                path: "notes (2).tex".into(),
+                generation: 0,
+            }
+        );
+        assert!(root.join("notes (2).tex").is_file());
+        assert_eq!(
+            std::fs::read_to_string(root.join("notes.tex")).unwrap(),
+            "keep me"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn create_never_replaces_an_existing_entry() {
+        let root = test_dir("create-no-replace");
+        std::fs::write(root.join("notes.tex"), "keep me").unwrap();
+
+        let result = create_path_in_project(
+            &root,
+            &root.join("notes.tex"),
+            "notes.tex",
+            false,
+            FileConflictStrategy::Replace,
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            std::fs::read_to_string(root.join("notes.tex")).unwrap(),
+            "keep me"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn creating_an_existing_folder_with_identical_case_merges() {
+        let root = test_dir("create-dir-merge");
+        std::fs::create_dir(root.join("figures")).unwrap();
+
+        let result = create_path_in_project(
+            &root,
+            &root.join("figures"),
+            "figures",
+            true,
+            FileConflictStrategy::Error,
+        )
+        .unwrap();
+
+        assert_eq!(
+            result,
+            CreateFileResult::Created {
+                path: "figures".into(),
+                generation: 0,
+            }
+        );
+        assert!(root.join("figures").is_dir());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn creating_a_folder_conflicts_with_a_case_variant_entry() {
+        let root = test_dir("create-dir-case-conflict");
+        std::fs::write(root.join("Results"), "a file").unwrap();
+
+        let result = create_path_in_project(
+            &root,
+            &root.join("results"),
+            "results",
+            true,
+            FileConflictStrategy::Error,
+        )
+        .unwrap();
+
+        assert!(matches!(result, CreateFileResult::Conflict { .. }));
+        assert_eq!(
+            std::fs::read_to_string(root.join("Results")).unwrap(),
+            "a file"
+        );
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
@@ -6784,7 +7014,7 @@ mod tests {
                 .contains("managed by Oleafly")
         );
         assert!(
-            super::create_file(project_id.clone(), "project.json".into(), false, None,)
+            super::create_file(project_id.clone(), "project.json".into(), false, None, None)
                 .unwrap_err()
                 .contains("managed by Oleafly")
         );
