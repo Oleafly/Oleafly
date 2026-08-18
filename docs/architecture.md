@@ -8,6 +8,9 @@ making document engines, filesystem policy, and external integrations explicit.
 
 | Area | Responsibility |
 | --- | --- |
+| `crates/oleafly-core/` | Shared project manifest, path safety, and build-directory policy |
+| `crates/oleafly-cli/` | The `oleaflyc` commands, native compiler adapter, and output contracts |
+| `crates/oleafly-agent/` | Provider-neutral agent runtime |
 | `src/` | Application shell, stores, Tauri adapters, contributions, and UI |
 | `packages/editor/` | Engine-neutral editor and language-service primitives |
 | `packages/latex/` | LaTeX parsing, masking, and source operations |
@@ -56,10 +59,17 @@ tests runnable without a desktop runtime and prevents dependency cycles.
 
 ## Compilation boundary
 
-`DocumentEngine` is the single capability contract for LaTeX, Typst, and
-Markdown. It declares source extensions, formatting profile, compile policy,
-SyncTeX/offline/isolated-compile capabilities, and conversion exports. The UI
-must not infer engine behavior from a filename extension.
+`oleafly-core` owns the portable project manifest, project-relative resolution
+of the main document, and `.oleafly/build` preparation. Both adapters use it.
+The desktop keeps its wider application sandbox for stored projects, figures,
+and exports. Compiler execution and diagnostics stay with each adapter: the
+desktop runs engines inside that sandbox, and `oleaflyc` runs them directly
+against the project directory it was pointed at.
+
+Within the desktop adapter, `DocumentEngine` is the capability contract for
+LaTeX, Typst, and Markdown. It declares source extensions, formatting profile,
+compile policy, SyncTeX/offline/isolated-compile capabilities, and conversion
+exports. The UI must not infer engine behavior from a filename extension.
 
 ## Security boundary
 

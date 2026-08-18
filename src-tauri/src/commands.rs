@@ -182,12 +182,11 @@ pub async fn cancel_compile(state: State<'_, AppState>) -> Result<bool, String> 
 #[tauri::command]
 pub async fn clear_build_dir(project_id: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        let build_dir = paths::build_dir(&project_id)?;
-        if build_dir.exists() {
-            std::fs::remove_dir_all(&build_dir)
-                .map_err(|error| format!("failed to clear build directory: {error}"))?;
-        }
-        std::fs::create_dir_all(&build_dir)
+        let project_dir = paths::project_dir(&project_id)?;
+        oleafly_core::Workspace::clean_build_directory(&project_dir)
+            .map_err(|error| format!("failed to clear build directory: {error}"))?;
+        oleafly_core::Workspace::ensure_build_directory(&project_dir)
+            .map(|_| ())
             .map_err(|error| format!("failed to recreate build directory: {error}"))
     })
     .await
@@ -208,7 +207,6 @@ pub async fn compile_project(
         offline: offline.unwrap_or(false),
         fast: fast.unwrap_or(false),
         halt_on_error: halt_on_error.unwrap_or(false),
-        // The project's pinned compiler is applied after the meta read below.
         latex_flavor: None,
         allow_shell_escape: false,
     };
@@ -254,14 +252,13 @@ pub async fn compile_project(
     }
 
     let project_dir = paths::project_dir(&project_id)?;
-    let build_dir = paths::build_dir(&project_id)?;
-    let source_path = crate::project::resolve_in_project(&project_id, &main_doc)?;
-    if !source_path.exists() {
-        return Err(format!(
-            "main document not found: {main_doc} (in project {project_id})"
-        ));
-    }
     let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
+    let workspace = desktop_workspace(&project_dir, &meta)?;
+    let prepared = workspace
+        .prepare_build()
+        .map_err(|error| error.to_string())?;
+    let project_dir = prepared.project_root().to_path_buf();
+    let build_dir = prepared.build_directory().to_path_buf();
     let options = crate::document_engine::CompileOptions {
         latex_flavor: meta
             .tex_flavor
@@ -270,7 +267,7 @@ pub async fn compile_project(
         allow_shell_escape: meta.allow_shell_escape,
         ..options
     };
-    let engine = crate::document_engine::engine_for(&meta.engine, &main_doc)?;
+    let engine = crate::document_engine::engine_for(prepared.engine().manifest_name(), &main_doc)?;
     let prepared_spec = crate::document_engine::prepare_compile_spec(
         engine.id(),
         build_dir.clone(),
@@ -425,6 +422,23 @@ pub async fn validate_compile_fingerprint(
             log,
         }
     }))
+}
+
+fn desktop_workspace(
+    project_dir: &std::path::Path,
+    meta: &crate::project::ProjectMeta,
+) -> Result<oleafly_core::Workspace, String> {
+    oleafly_core::Workspace::from_manifest(
+        project_dir,
+        oleafly_core::ProjectManifest {
+            name: meta.name.clone(),
+            main_doc: meta.main_doc.clone(),
+            engine: meta.engine.clone(),
+            tex_flavor: meta.tex_flavor.clone(),
+            ..oleafly_core::ProjectManifest::default()
+        },
+    )
+    .map_err(|error| error.to_string())
 }
 
 /// Write base64-decoded bytes to an absolute path chosen by the user (e.g. a
@@ -733,6 +747,24 @@ mod tests {
         assert_eq!(latest.get("project"), Some(&2));
         assert!(take_latest_compile_ticket(&mut latest, "project", 2));
         assert!(latest.is_empty());
+    }
+
+    #[test]
+    fn desktop_build_adapter_uses_the_core_workspace_contract() {
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(directory.path().join("paper.typ"), "= Paper").unwrap();
+        let meta = crate::project::ProjectMeta {
+            name: "Paper".into(),
+            main_doc: "paper.typ".into(),
+            engine: "typst".into(),
+            ..crate::project::ProjectMeta::default()
+        };
+        let workspace = desktop_workspace(directory.path(), &meta).unwrap();
+        let prepared = workspace.prepare_build().unwrap();
+        assert_eq!(prepared.engine(), oleafly_core::Engine::Typst);
+        assert_eq!(prepared.main_document(), "paper.typ");
+        assert!(prepared.source_path().ends_with("paper.typ"));
+        assert!(prepared.build_directory().ends_with(".oleafly/build"));
     }
 
     #[test]
