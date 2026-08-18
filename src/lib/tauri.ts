@@ -72,6 +72,8 @@ export interface ValidatedCompileFingerprint {
   output_id: string;
   output_revision: number;
   compiled_at_ms: number;
+  /** Log of the fingerprinted compile; restores the logs pane on reopen. */
+  log: string;
 }
 
 /** Null means the persisted record is missing or stale: compile normally. */

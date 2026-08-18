@@ -348,10 +348,12 @@ pub async fn compile_project(
             let fp_project = project_id.clone();
             let fp_main = main_doc.clone();
             let fp_engine = meta.engine.clone();
+            let fp_log = result.log.clone();
             tauri::async_runtime::spawn_blocking(move || {
                 let Ok(root) = paths::project_dir(&fp_project) else {
                     return;
                 };
+                let _ = crate::compile_fingerprint::write_compile_log(&root, &fp_log);
                 let Ok(sources) = crate::compile_fingerprint::source_hashes(&root) else {
                     return;
                 };
@@ -387,6 +389,9 @@ pub struct ValidatedCompileFingerprint {
     pub output_id: String,
     pub output_revision: u64,
     pub compiled_at_ms: u64,
+    /// The log of the fingerprinted compile, so a restored preview can also
+    /// restore the logs pane. Empty when the record predates log persistence.
+    pub log: String,
 }
 
 /// Check whether the persisted compile fingerprint still matches the current
@@ -403,10 +408,11 @@ pub async fn validate_compile_fingerprint(
     let root = paths::project_dir(&project_id)?;
     let validated = tauri::async_runtime::spawn_blocking(move || {
         crate::compile_fingerprint::validate_fingerprint(&root, &main_doc, &meta.engine)
+            .map(|record| (crate::compile_fingerprint::read_compile_log(&root), record))
     })
     .await
     .map_err(|e| e.to_string())?;
-    Ok(validated.map(|record| {
+    Ok(validated.map(|(log, record)| {
         state
             .compile_output_revision
             .fetch_max(record.output_revision, std::sync::atomic::Ordering::SeqCst);
@@ -416,6 +422,7 @@ pub async fn validate_compile_fingerprint(
             output_id: record.output_id,
             output_revision: record.output_revision,
             compiled_at_ms: record.compiled_at_ms,
+            log,
         }
     }))
 }

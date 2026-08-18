@@ -603,6 +603,7 @@ describe("restore from the on-disk compile fingerprint", () => {
     output_id: fingerprintCompileOutput(pdfBytes),
     output_revision: 57,
     compiled_at_ms: 1_000,
+    log: "Output written on main.pdf (2 pages).",
   });
 
   it("seeds the preview and checkpoint without compiling", async () => {
@@ -617,6 +618,8 @@ describe("restore from the on-disk compile fingerprint", () => {
     expect(state.pdfBytes).toEqual(pdfBytes);
     expect(state.lastCompileCheckpoint?.outputRevision).toBe(57);
     expect(state.lastCompileCheckpoint?.outputId).toBe(fingerprintCompileOutput(pdfBytes));
+    // The logs pane must not come back empty after a restored open.
+    expect(state.log).toBe("Output written on main.pdf (2 pages).");
     expect(mocks.compileProject).not.toHaveBeenCalled();
   });
 

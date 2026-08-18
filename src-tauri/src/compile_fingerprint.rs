@@ -125,9 +125,44 @@ fn stream_sha256(path: &Path) -> Result<String, String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
+/// Persist the compile log next to the fingerprint so a restored preview can
+/// also restore the logs pane instead of leaving it empty.
+pub fn write_compile_log(project_root: &Path, log: &str) -> Result<(), String> {
+    let path = compile_log_path(project_root);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(&path, log).map_err(|e| e.to_string())
+}
+
+/// The log recorded with the last successful compile; empty when absent.
+pub fn read_compile_log(project_root: &Path) -> String {
+    std::fs::read_to_string(compile_log_path(project_root)).unwrap_or_default()
+}
+
+fn compile_log_path(project_root: &Path) -> PathBuf {
+    project_root
+        .join(".oleafly")
+        .join("build")
+        .join("compile-log.txt")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_compile_log_round_trips_beside_the_fingerprint() {
+        let root = test_root("log-roundtrip");
+
+        assert_eq!(read_compile_log(&root), "", "missing log must read empty");
+        write_compile_log(&root, "This is pdfTeX\nOutput written on main.pdf").unwrap();
+        assert_eq!(
+            read_compile_log(&root),
+            "This is pdfTeX\nOutput written on main.pdf"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     fn test_root(name: &str) -> PathBuf {
         let root = std::env::temp_dir().join(format!("oleafly-fp-{name}-{}", std::process::id()));

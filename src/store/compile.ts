@@ -562,6 +562,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       pdfBytes: bytes,
       failureReason: null,
       errors: [],
+      log: validated.log,
       lastCompiledAt: checkpoint.completedAt,
       lastCompileCheckpoint: checkpoint,
     });
