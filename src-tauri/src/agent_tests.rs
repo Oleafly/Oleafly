@@ -341,3 +341,32 @@ fn stale_request_cleanup_cannot_remove_replacement_tools() {
     drop_pending_tools(&state, "same", Some(2));
     assert!(!lock_or_recover(&state.pending_tools).contains_key(&key));
 }
+
+#[tokio::test]
+async fn non_native_tools_fall_through_to_the_webview_runner() {
+    assert!(
+        native_agent_tool("some-project", "write_file", "{}")
+            .await
+            .is_none(),
+        "mutating tools must keep using the webview path"
+    );
+    assert!(native_agent_tool("some-project", "compile", "{}")
+        .await
+        .is_none());
+}
+
+#[tokio::test]
+async fn a_failing_native_tool_answers_natively_instead_of_falling_through() {
+    let output = native_agent_tool("../not-a-project", "read_file", "{\"path\":\"main.tex\"}")
+        .await
+        .expect("read_file is native and must answer natively even on failure");
+    assert!(output.output.contains("error"), "got: {}", output.output);
+}
+
+#[tokio::test]
+async fn malformed_native_arguments_become_a_tool_error_not_a_fallthrough() {
+    let output = native_agent_tool("../not-a-project", "read_file", "not json")
+        .await
+        .expect("native tools must not fall through on bad arguments");
+    assert!(output.output.contains("error"));
+}

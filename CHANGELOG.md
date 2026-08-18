@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on Linux and then break the project on macOS and Windows. Creating never
   replaces an existing file. Previously a duplicate name failed with no
   visible message at all.
+- **Agent runs stay pinned to their project.** A run that outlives a project
+  switch can no longer touch the newly opened project: every tool call is
+  checked against the project the run started in and refused with a clear
+  error instead of executing there. Read-only project tools (read file, list
+  files, search) also run directly in the backend now, using the same native
+  handlers as the MCP server, so they answer without a webview round trip and
+  keep working while the window is busy.
 
 ### Changed
 

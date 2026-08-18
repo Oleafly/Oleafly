@@ -905,11 +905,21 @@ ${sandboxedCustom}`;
       let reasoningStartedAt: number | null = null;
       let stepContent = "";
       let stepBlocks: ChatMessage["reasoningBlocks"] = [];
+      // Pin the run to the project it started in. Tools resolve their
+      // project at execute time, so without this guard a run surviving a
+      // project switch would silently write into the newly opened project.
+      const runProjectId = useFilesStore.getState().projectId;
       const outcome = await runAgentHarness({
         system: effectiveSystem,
         messages: apiMessages,
         tools,
         signal: ac.signal,
+        projectId: runProjectId,
+        guardToolCall: () => {
+          const current = useFilesStore.getState().projectId;
+          if (current === runProjectId) return null;
+          return `The open project changed while this run was active. The tool was not executed to protect the newly opened project. Ask the user to re-run the request in the project it applies to.`;
+        },
         providerOverride: { provider_id: provider, model_id: model },
         takePendingImages: () =>
           modelSupportsVision(provider, model) ? pendingImagesRef.current.splice(0) : [],
