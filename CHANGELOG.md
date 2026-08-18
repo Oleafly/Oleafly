@@ -33,13 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Reopening a project no longer recompiles unchanged work.** Every
-  successful compile records what it was built from: the engine, the main
-  document, and a content hash of every source file. On the next open,
-  Oleafly checks that record, and when nothing changed the preview comes
-  straight from the already-built PDF instead of waiting for a full compile.
-  Saving a file with no changes is skipped too, which stops pointless
-  library-thumbnail refreshes and empty automatic history commits.
+- **Saving a file with no changes is now a no-op.** A clean buffer is no
+  longer rewritten to disk, which stops pointless library-thumbnail
+  refreshes and empty automatic history commits that every compile-on-open
+  used to cause. Successful compiles also record a fingerprint of what they
+  were built from (engine, main document, source hashes) as groundwork for
+  skipping unchanged recompiles in a later release.
 
 ## [0.3.6] - 2026-08-09
 

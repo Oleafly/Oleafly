@@ -226,6 +226,8 @@ function VHandle({
 }
 
 const AUTO_COMPILE_DEBOUNCE_MS = 2500;
+// Deactivated for 0.3.7 — see the comment at its use in the on-open effect.
+const RESTORE_PREVIEW_FROM_FINGERPRINT = false;
 
 function AppContent() {
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -605,14 +607,20 @@ function AppContent() {
       analysisIdentity.projectRevision;
     openCompileInFlightRef.current = requestedProjectId;
     const compileOrRestore = async () => {
-      // Reopen fast path: when the persisted compile fingerprint still
-      // matches the sources on disk, seed the preview from the already-built
-      // PDF and skip the compile entirely.
-      const restored = await useCompileStore
-        .getState()
-        .restoreFromDisk(requestedProjectId, requestedMainDocument)
-        .catch(() => false);
-      if (restored) return undefined;
+      // Reopen fast path: seed the preview from the persisted compile
+      // fingerprint and skip the on-open compile. DEACTIVATED for 0.3.7:
+      // e2e caught that skipping the on-open compile breaks subsystems that
+      // depended on it (logs pane, library thumbnails, the engine-gap
+      // picker) and its activation depends on a write-vs-teardown race.
+      // The fingerprint keeps being written and validated server-side; the
+      // restore flips on once those flows are covered end to end.
+      if (RESTORE_PREVIEW_FROM_FINGERPRINT) {
+        const restored = await useCompileStore
+          .getState()
+          .restoreFromDisk(requestedProjectId, requestedMainDocument)
+          .catch(() => false);
+        if (restored) return undefined;
+      }
       return recompile();
     };
     void compileOrRestore().finally(() => {
