@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Saving a file with no changes is skipped too, which stops pointless
   library-thumbnail refreshes and empty automatic history commits.
 
+## [0.3.6] - 2026-08-09
+
 ### Security
 
 - **Provider API keys no longer reach the editor process.** Every AI call now
@@ -1340,7 +1342,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.6...HEAD
+[0.3.6]: https://github.com/Oleafly/Oleafly/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/Oleafly/Oleafly/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/Oleafly/Oleafly/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/Oleafly/Oleafly/compare/v0.3.2...v0.3.3
