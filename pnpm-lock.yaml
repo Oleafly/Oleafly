@@ -313,6 +313,8 @@ importers:
         specifier: workspace:*
         version: link:../latex
 
+  packages/backend-port: {}
+
   packages/diagram:
     dependencies:
       '@codemirror/autocomplete':
