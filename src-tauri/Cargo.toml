@@ -64,7 +64,7 @@ windows-sys = { version = "0.61", features = [
 [target.'cfg(target_os = "linux")'.dependencies]
 # Streaming decoder for TinyTeX's official Linux ARM64 .tar.xz. Static linking
 # avoids a runtime liblzma dependency; disabling defaults avoids bindgen.
-liblzma = { version = "=0.4.7", default-features = false, features = ["static"] }
+liblzma = { version = "=0.4.8", default-features = false, features = ["static"] }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
