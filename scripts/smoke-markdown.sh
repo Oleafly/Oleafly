@@ -60,7 +60,19 @@ else
   ENGINE="$TMP/tectonic"
   ln -s "$ROOT/$TECTONIC" "$ENGINE"
 fi
-"$TMP/$PANDOC" --from=markdown --standalone \
+# Tectonic fetches TeX packages from relay.fullyjustified.net on a cold cache,
+# and that host rate-limits CI runners (HTTP 429). Retry with a pause long
+# enough to leave the rate-limit window instead of failing the whole build.
+attempt=1
+until "$TMP/$PANDOC" --from=markdown --standalone \
   "--pdf-engine=$ENGINE" --output="$TMP/smoke.pdf" -- \
-  "$ROOT/scripts/fixtures/markdown-smoke.md"
+  "$ROOT/scripts/fixtures/markdown-smoke.md"; do
+  if [[ "$attempt" -ge 4 ]]; then
+    echo "markdown smoke compile failed after $attempt attempts" >&2
+    exit 1
+  fi
+  attempt=$((attempt + 1))
+  echo "compile failed (transient bundle fetch?); attempt $attempt after 75s" >&2
+  sleep 75
+done
 test -s "$TMP/smoke.pdf"

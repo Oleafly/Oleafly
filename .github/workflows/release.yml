@@ -186,6 +186,20 @@ jobs:
         shell: bash
         run: bash scripts/smoke-typst.sh ${{ matrix.rust_target }}
 
+      # The Markdown smoke compile makes Tectonic fetch TeX packages from
+      # relay.fullyjustified.net, which rate-limits GitHub runners (HTTP 429).
+      # Restoring the package cache keeps warm runs off that host entirely;
+      # the key scheme matches ci.yml so the Linux job can reuse CI's cache.
+      - name: Cache Tectonic packages for the Markdown smoke test
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/Tectonic
+            ~/Library/Caches/Tectonic
+            ~\AppData\Local\TectonicProject\Tectonic
+          key: tectonic-pkgs-md-v1-${{ matrix.rust_target }}-${{ hashFiles('scripts/fixtures/markdown-smoke.md', 'scripts/fetch-tectonic.sh') }}
+          restore-keys: tectonic-pkgs-md-v1-${{ matrix.rust_target }}-
+
       - name: Smoke-test managed Pandoc with packaged Tectonic input
         shell: bash
         run: bash scripts/smoke-markdown.sh ${{ matrix.rust_target }}
