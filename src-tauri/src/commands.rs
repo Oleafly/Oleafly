@@ -339,9 +339,11 @@ pub async fn compile_project(
         // are hashed at compile end; an edit made *during* this compile can
         // make the record claim currency for a slightly newer source set,
         // which at worst shows that same one-compile-stale preview on reopen.
-        if let (Some(output_id), Some(output_revision)) =
-            (result.output_id.clone(), result.output_revision)
-        {
+        if let (true, Some(output_id), Some(output_revision)) = (
+            crate::compile_fingerprint::PERSIST_ENABLED,
+            result.output_id.clone(),
+            result.output_revision,
+        ) {
             let fp_project = project_id.clone();
             let fp_main = main_doc.clone();
             let fp_engine = meta.engine.clone();

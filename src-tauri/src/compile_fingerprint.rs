@@ -17,6 +17,15 @@ use std::path::{Path, PathBuf};
 
 pub const FINGERPRINT_VERSION: u32 = 1;
 
+/// Persistence switch for 0.3.7: OFF, together with the frontend restore
+/// flag. The post-compile hash walk is unbounded (every project file, no
+/// byte/count/time cap, detached and overlappable) and, hashed after the
+/// compile, can describe sources newer than the PDF. It provides no user
+/// value while restore is disabled. Activation requires: one coalesced,
+/// cancellable latest-compile-wins task over the exact compiled snapshot,
+/// with size bounds — then flip this and the App.tsx flag together.
+pub const PERSIST_ENABLED: bool = false;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompileFingerprint {
     pub version: u32,
