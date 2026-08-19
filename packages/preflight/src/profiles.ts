@@ -106,8 +106,32 @@ export function submissionProfile(id: SubmissionProfileId): SubmissionProfile {
   return SUBMISSION_PROFILES[id];
 }
 
+export function extractDocumentClass(source: string): string | null {
+  const command = "\\documentclass";
+  let searchFrom = 0;
+  while (searchFrom < source.length) {
+    const commandAt = source.indexOf(command, searchFrom);
+    if (commandAt < 0) return null;
+    let cursor = commandAt + command.length;
+    while (cursor < source.length && /\s/.test(source[cursor])) cursor++;
+    if (source[cursor] === "[") {
+      const optionsEnd = source.indexOf("]", cursor + 1);
+      if (optionsEnd < 0) return null;
+      cursor = optionsEnd + 1;
+      while (cursor < source.length && /\s/.test(source[cursor])) cursor++;
+    }
+    if (source[cursor] === "{") {
+      const classEnd = source.indexOf("}", cursor + 1);
+      if (classEnd < 0) return null;
+      return source.slice(cursor + 1, classEnd).trim() || null;
+    }
+    searchFrom = commandAt + command.length;
+  }
+  return null;
+}
+
 export function detectSubmissionProfile(source: string): SubmissionProfileId {
-  const className = /\\documentclass\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/.exec(source)?.[1]?.trim().toLowerCase();
+  const className = extractDocumentClass(source)?.toLowerCase();
   if (className === "ieeetran") return "ieee";
   if (className === "acmart") return "acm";
   if (className && /(?:thesis|dissertation|memoir|book)/.test(className)) return "thesis";

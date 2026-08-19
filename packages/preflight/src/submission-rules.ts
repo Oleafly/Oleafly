@@ -1,5 +1,5 @@
 import { maskComments } from "./mask";
-import { submissionProfile, type SubmissionProfileId } from "./profiles";
+import { extractDocumentClass, submissionProfile, type SubmissionProfileId } from "./profiles";
 import type { Finding, PdfFacts, ProjectContext, ProjectFile } from "./types";
 
 const SOURCE_EXTENSIONS = new Set([".tex", ".ltx", ".sty", ".cls"]);
@@ -7,7 +7,7 @@ const GRAPHICS_EXTENSIONS = ["", ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".ps",
 const INPUT_EXTENSIONS = ["", ".tex"];
 const PORTABLE_NAME = /^[A-Za-z0-9_+.,=/-]+$/;
 const GENERATED_FILE = /(?:^|\/)(?:[^/]+\.(?:aux|log|out|toc|fls|fdb_latexmk|synctex(?:\.gz)?))$/i;
-const SENSITIVE_FILE = /(?:^|\/)(?:\.env(?:\..*)?|id_(?:rsa|ed25519)|[^/]+\.(?:pem|key|p12|pfx))$/i;
+const SENSITIVE_EXTENSIONS = new Set([".pem", ".key", ".p12", ".pfx"]);
 
 function extension(path: string): string {
   const name = path.split("/").pop() ?? path;
@@ -28,6 +28,17 @@ function normalize(path: string): string {
     else parts.push(part);
   }
   return parts.join("/");
+}
+
+function isSensitiveFile(path: string): boolean {
+  const name = (normalize(path).split("/").pop() ?? "").toLowerCase();
+  return (
+    name === ".env" ||
+    name.startsWith(".env.") ||
+    name === "id_rsa" ||
+    name === "id_ed25519" ||
+    SENSITIVE_EXTENSIONS.has(extension(name))
+  );
 }
 
 function referencedCandidates(sourceFile: string, target: string, extensions: readonly string[]): string[] {
@@ -57,7 +68,7 @@ function sourceCorpus(project: ProjectContext): string {
 }
 
 function documentClass(source: string): string | null {
-  return /\\documentclass\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/.exec(source)?.[1]?.trim() ?? null;
+  return extractDocumentClass(source);
 }
 
 function checkProjectReferences(project: ProjectContext, profileId: SubmissionProfileId): Finding[] {
@@ -130,7 +141,7 @@ function checkFiguresAndTables(project: ProjectContext): Finding[] {
             "submission-missing-caption",
             "submission",
             "warning",
-            `${match[1].replace("*", "")} without a caption`,
+            `${match[1].replaceAll("*", "")} without a caption`,
             "Publication figures and tables should have a numbered, descriptive caption so they can be referenced and understood independently.",
             file.path,
           ),
@@ -159,7 +170,7 @@ function checkPrivacy(project: ProjectContext, pdf: PdfFacts | undefined, anonym
   const out: Finding[] = [];
 
   for (const file of project.files) {
-    if (SENSITIVE_FILE.test(file.path)) {
+    if (isSensitiveFile(file.path)) {
       out.push(
         make(
           "privacy-sensitive-file",

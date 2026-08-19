@@ -5,7 +5,6 @@ import {
   openProject,
   pressGlobal,
   typeInEditorAfter,
-  waitLong,
   type Page,
 } from "../helpers";
 
@@ -39,7 +38,7 @@ test.beforeEach(async ({ tauriPage }) => {
   }
 });
 
-async function contextMenuAction(page: Page & { getByText(t: string): { click(): Promise<void> } }, item: string) {
+async function contextMenuAction(page: Page, item: string) {
   await page.evaluate(
     `(() => {
       const el = document.querySelector('.cm-content');
@@ -55,15 +54,13 @@ async function contextMenuAction(page: Page & { getByText(t: string): { click():
   // behind the intermittent "dialog never opened" on loaded macOS runners.
   // Wait for the item to exist before clicking; report the miss so callers
   // with retry loops can try again cleanly.
-  const appeared = await waitLong(
-    page,
-    `[...document.querySelectorAll('[role="menuitem"]')].some((i) => (i.textContent ?? "").includes(${JSON.stringify(item)}))`,
-    3_000,
-  )
+  const menuItem = page.getByText(item, { exact: true });
+  const appeared = await expect(menuItem)
+    .toBeVisible({ timeout: 3_000 })
     .then(() => true)
     .catch(() => false);
   if (!appeared) return false;
-  await page.getByText(item).click();
+  await menuItem.click();
   return true;
 }
 

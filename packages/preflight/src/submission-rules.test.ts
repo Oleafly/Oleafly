@@ -91,6 +91,18 @@ describe("venue PDF requirements", () => {
 });
 
 describe("privacy and blind review", () => {
+  it("detects sensitive files by basename without scanning paths with a broad expression", () => {
+    const ids = runSubmissionRules({
+      project: project(cleanArticle, [
+        { path: "private/.env.production" },
+        { path: "keys/id_ed25519" },
+        { path: "certificates/signing.P12" },
+      ]),
+      profileId: "generic",
+    }).map((finding) => finding.id);
+    expect(ids.filter((id) => id === "privacy-sensitive-file")).toHaveLength(3);
+  });
+
   it("detects secrets without echoing them into finding text", () => {
     const token = `sk-${"a".repeat(32)}`;
     const findings = runSubmissionRules({

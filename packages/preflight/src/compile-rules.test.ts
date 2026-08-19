@@ -45,6 +45,22 @@ describe("compile preflight rules", () => {
     expect(ids).toContain("compile-rerun-required");
   });
 
+  it("detects line-oriented glyph, reference, and destination warnings", () => {
+    const ids = runCompileRules({
+      status: "success",
+      log: [
+        "Missing character: There is no Ω in font CMR10!",
+        "LaTeX Warning: Reference `sec:missing' on page 2 undefined on input line 18.",
+        "pdfTeX warning: destination with the same identifier (name{page.1}) has been already used, duplicate ignored",
+      ].join("\n"),
+    }).map((finding) => finding.id);
+    expect(ids).toEqual(expect.arrayContaining([
+      "compile-missing-glyph",
+      "compile-unresolved-references",
+      "compile-duplicate-destination",
+    ]));
+  });
+
   it("reports mixed PDF media sizes", () => {
     const findings = runCompileRules(undefined, pdf({
       pageCount: 2,

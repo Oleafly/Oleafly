@@ -27,6 +27,8 @@ function distinctPageSizes(pdf: PdfFacts): string[] {
 export function runCompileRules(context?: CompileContext, pdf?: PdfFacts): Finding[] {
   const out: Finding[] = [];
   const log = context?.log ?? "";
+  const logLines = log.split("\n");
+  const lowerLog = log.toLowerCase();
 
   if (context?.status === "error") {
     out.push(
@@ -52,7 +54,10 @@ export function runCompileRules(context?: CompileContext, pdf?: PdfFacts): Findi
     );
   }
 
-  const missingGlyphs = [...log.matchAll(/Missing character:\s*There is no\s+([^\n]+?)(?:\s+in font|!|\n)/gi)];
+  const missingGlyphs = logLines.filter((line) => {
+    const lower = line.toLowerCase();
+    return lower.includes("missing character:") && lower.includes("there is no ");
+  });
   if (missingGlyphs.length > 0) {
     out.push(
       finding(
@@ -64,7 +69,14 @@ export function runCompileRules(context?: CompileContext, pdf?: PdfFacts): Findi
     );
   }
 
-  if (/There were undefined references|Reference [`'].*[`'] on page .* undefined|undefined citations?/i.test(log)) {
+  const hasUndefinedReference =
+    lowerLog.includes("there were undefined references") ||
+    lowerLog.includes("undefined citation") ||
+    logLines.some((line) => {
+      const lower = line.toLowerCase();
+      return lower.includes("reference ") && lower.includes(" on page ") && lower.includes(" undefined");
+    });
+  if (hasUndefinedReference) {
     out.push(
       finding(
         "compile-unresolved-references",
@@ -86,7 +98,11 @@ export function runCompileRules(context?: CompileContext, pdf?: PdfFacts): Findi
     );
   }
 
-  if (/destination with the same identifier .* duplicate ignored/i.test(log)) {
+  const hasDuplicateDestination = logLines.some((line) => {
+    const lower = line.toLowerCase();
+    return lower.includes("destination with the same identifier") && lower.includes("duplicate ignored");
+  });
+  if (hasDuplicateDestination) {
     out.push(
       finding(
         "compile-duplicate-destination",
