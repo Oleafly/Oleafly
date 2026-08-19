@@ -430,45 +430,49 @@ fn create_path_in_project(
     }
     let target = match portable_collision(requested)? {
         None => requested.to_path_buf(),
-        Some(existing) => {
-            let exact_case = existing
-                .file_name()
-                .and_then(|name| name.to_str())
-                .zip(requested.file_name().and_then(|name| name.to_str()))
-                .is_some_and(|(found, wanted)| found == wanted);
-            if is_dir && exact_case && existing.is_dir() {
-                // The folder is already there with the identical name:
-                // creating it again is a harmless merge, like `mkdir -p`.
-                return Ok(CreateFileResult::Created {
-                    path: requested_rel.to_string(),
+        Some(_existing) => match strategy {
+            FileConflictStrategy::Error => {
+                let suggestion = unique_destination(requested, is_dir)?;
+                return Ok(CreateFileResult::Conflict {
+                    destination: requested_rel.to_string(),
+                    suggested_destination: rel_slash(root, &suggestion),
                     generation: 0,
                 });
             }
-            match strategy {
-                FileConflictStrategy::Error => {
-                    let suggestion = unique_destination(requested, is_dir)?;
-                    return Ok(CreateFileResult::Conflict {
-                        destination: requested_rel.to_string(),
-                        suggested_destination: rel_slash(root, &suggestion),
-                        generation: 0,
-                    });
-                }
-                FileConflictStrategy::KeepBoth => unique_destination(requested, is_dir)?,
-                FileConflictStrategy::Replace => {
-                    return Err("creating cannot replace an existing file or folder".to_string());
-                }
+            FileConflictStrategy::KeepBoth => unique_destination(requested, is_dir)?,
+            FileConflictStrategy::Replace => {
+                return Err("creating cannot replace an existing file or folder".to_string());
             }
-        }
+        },
     };
-    if is_dir {
-        std::fs::create_dir_all(&target).map_err(|e| e.to_string())?;
+    // OS-level exclusive create: the collision check above cannot see a file
+    // that a cloud-sync client or another process drops in between check and
+    // write, so the write itself must refuse to replace. An AlreadyExists
+    // race resolves as the same structured conflict as a detected collision.
+    let created = if is_dir {
+        std::fs::create_dir(&target)
     } else {
-        atomic_write(&target, &[]).map_err(|e| e.to_string())?;
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&target)
+            .map(|_| ())
+    };
+    match created {
+        Ok(()) => Ok(CreateFileResult::Created {
+            path: rel_slash(root, &target),
+            generation: 0,
+        }),
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            let suggestion = unique_destination(&target, is_dir)?;
+            Ok(CreateFileResult::Conflict {
+                destination: rel_slash(root, &target),
+                suggested_destination: rel_slash(root, &suggestion),
+                generation: 0,
+            })
+        }
+        Err(error) => Err(error.to_string()),
     }
-    Ok(CreateFileResult::Created {
-        path: rel_slash(root, &target),
-        generation: 0,
-    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -6032,8 +6036,8 @@ mod tests {
     }
 
     #[test]
-    fn creating_an_existing_folder_with_identical_case_merges() {
-        let root = test_dir("create-dir-merge");
+    fn creating_an_existing_folder_reports_a_structured_conflict() {
+        let root = test_dir("create-dir-conflict");
         std::fs::create_dir(root.join("figures")).unwrap();
 
         let result = create_path_in_project(
@@ -6045,14 +6049,40 @@ mod tests {
         )
         .unwrap();
 
+        assert!(
+            matches!(result, CreateFileResult::Conflict { .. }),
+            "an existing folder is a taken name, not a silent merge"
+        );
+        assert!(root.join("figures").is_dir());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn keep_both_survives_the_suggested_name_also_being_taken() {
+        let root = test_dir("create-suggestion-taken");
+        std::fs::write(root.join("notes.tex"), "original").unwrap();
+        std::fs::write(root.join("notes (2).tex"), "already claimed").unwrap();
+
+        let result = create_path_in_project(
+            &root,
+            &root.join("notes.tex"),
+            "notes.tex",
+            false,
+            FileConflictStrategy::KeepBoth,
+        )
+        .unwrap();
+
         assert_eq!(
             result,
             CreateFileResult::Created {
-                path: "figures".into(),
+                path: "notes (3).tex".into(),
                 generation: 0,
             }
         );
-        assert!(root.join("figures").is_dir());
+        assert_eq!(
+            std::fs::read_to_string(root.join("notes (2).tex")).unwrap(),
+            "already claimed"
+        );
         std::fs::remove_dir_all(root).unwrap();
     }
 
