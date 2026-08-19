@@ -383,3 +383,41 @@ fn native_dispatch_requires_the_pinned_project_to_still_be_active() {
         "no active project (home screen) refuses native dispatch"
     );
 }
+
+#[allow(clippy::await_holding_lock)] // env-lock fixture, same as the project tests
+#[tokio::test]
+async fn native_read_file_answers_with_project_content() {
+    let _env_guard = crate::paths::data_dir_env_lock();
+    let root = std::env::temp_dir().join(format!("oleafly-native-read-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).unwrap();
+    std::env::set_var("OLEAFLY_DATA_DIR", &root);
+    let project_id = crate::project::create_project("Native Read".into()).unwrap();
+
+    let output = native_agent_tool(&project_id, "read_file", "{\"path\":\"main.tex\"}")
+        .await
+        .expect("read_file is native");
+    assert!(
+        output.output.contains("documentclass"),
+        "expected the template main.tex content, got: {}",
+        output.output
+    );
+
+    let validated = crate::commands::ValidatedCompileFingerprint::from_record(
+        "the log".into(),
+        crate::compile_fingerprint::CompileFingerprint {
+            version: crate::compile_fingerprint::FINGERPRINT_VERSION,
+            main_document: "main.tex".into(),
+            engine_id: "latex".into(),
+            output_id: "pdf-v1:1:aa".into(),
+            output_revision: 3,
+            compiled_at_ms: 9,
+            sources: Default::default(),
+        },
+    );
+    assert_eq!(validated.log, "the log");
+    assert_eq!(validated.output_revision, 3);
+
+    std::env::remove_var("OLEAFLY_DATA_DIR");
+    std::fs::remove_dir_all(root).unwrap();
+}

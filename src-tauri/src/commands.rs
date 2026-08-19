@@ -388,6 +388,22 @@ pub struct ValidatedCompileFingerprint {
     pub log: String,
 }
 
+impl ValidatedCompileFingerprint {
+    pub(crate) fn from_record(
+        log: String,
+        record: crate::compile_fingerprint::CompileFingerprint,
+    ) -> Self {
+        ValidatedCompileFingerprint {
+            main_document: record.main_document,
+            engine_id: record.engine_id,
+            output_id: record.output_id,
+            output_revision: record.output_revision,
+            compiled_at_ms: record.compiled_at_ms,
+            log,
+        }
+    }
+}
+
 /// Check whether the persisted compile fingerprint still matches the current
 /// sources, main document, and engine. `None` means "compile normally".
 /// A valid record also seeds the session's output-revision counter, so new
@@ -409,14 +425,7 @@ pub async fn validate_compile_fingerprint(
         state
             .compile_output_revision
             .fetch_max(record.output_revision, std::sync::atomic::Ordering::SeqCst);
-        ValidatedCompileFingerprint {
-            main_document: record.main_document,
-            engine_id: record.engine_id,
-            output_id: record.output_id,
-            output_revision: record.output_revision,
-            compiled_at_ms: record.compiled_at_ms,
-            log,
-        }
+        ValidatedCompileFingerprint::from_record(log, record)
     }))
 }
 

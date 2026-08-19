@@ -97,6 +97,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_cancel_command_re_arms_both_flags() {
+        mark_flush_confirmed();
+        mark_restart_pending();
+
+        cancel_quit_flush();
+
+        assert!(!flush_confirmed());
+        assert!(!restart_pending());
+    }
+
+    #[test]
     fn confirmed_quits_resolve_to_defer_restart_or_exit() {
         clear_flush_confirmed();
         assert_eq!(
