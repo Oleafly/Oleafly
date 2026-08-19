@@ -107,7 +107,7 @@ cleanup() {
   fi
   # The per-run data dir is ~200MB of disposable app data; leaking one per
   # run once filled a developer machine's /tmp with tens of gigabytes.
-  if [ -n "$DATA_DIR" ] && [ -z "${OLEAFLY_E2E_REUSE_DATA_DIR:-}" ]; then
+  if [[ -n "$DATA_DIR" && -z "${OLEAFLY_E2E_REUSE_DATA_DIR:-}" ]]; then
     rm -rf "$DATA_DIR" 2>/dev/null || true
   fi
   if [ -n "$LOG" ]; then

@@ -274,3 +274,46 @@ test("dragging into a folder uses the same collision-safe Keep both flow", async
   await expect(tauriPage.locator(`[data-path=${JSON.stringify(nested)}]`)).toBeVisible();
   await expect(tauriPage.locator(`[data-path=${JSON.stringify(nestedKept)}]`)).toBeVisible();
 });
+
+test("creating a taken name offers Keep both and never offers Replace", async ({
+  tauriPage,
+}) => {
+  const run = Date.now().toString(36);
+  const taken = `create-collision-${run}.tex`;
+  const kept = `create-collision-${run} (2).tex`;
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await openRailTab(tauriPage, "Source Tree");
+
+  await createRootEntry(tauriPage, taken, "file");
+  await typeInEditorAtStart(tauriPage, `% original-${run}\n`);
+
+  // Creating the same name again must surface the structured conflict
+  // dialog rather than silently failing (the old behavior) or replacing.
+  await tauriPage.click('[data-path="main.tex"]');
+  await tauriPage.click('[title="New file (in the selected folder)"]');
+  await tauriPage.fill('input[placeholder="New file name"]', taken);
+  await tauriPage.press('input[placeholder="New file name"]', "Enter");
+
+  const conflict = tauriPage.locator('[role="alertdialog"][aria-label="File move conflict"]');
+  await expect(conflict).toBeVisible({ timeout: 10_000 });
+  await expect(conflict.getByText("Replace", { exact: true })).toHaveCount(0);
+
+  // Cancel leaves the original untouched.
+  await conflict.getByText("Cancel", { exact: true }).click();
+  await tauriPage.click(`[data-path=${JSON.stringify(taken)}]`);
+  await expect(tauriPage.locator(".cm-content")).toContainText(`original-${run}`);
+
+  // Keep both creates the suggested sibling and opens it.
+  await tauriPage.click('[data-path="main.tex"]');
+  await tauriPage.click('[title="New file (in the selected folder)"]');
+  await tauriPage.fill('input[placeholder="New file name"]', taken);
+  await tauriPage.press('input[placeholder="New file name"]', "Enter");
+  await expect(conflict).toBeVisible({ timeout: 10_000 });
+  await conflict.getByText("Keep both", { exact: true }).click();
+  await expect(tauriPage.locator(`[data-path=${JSON.stringify(kept)}]`)).toBeVisible({
+    timeout: 15_000,
+  });
+  await tauriPage.click(`[data-path=${JSON.stringify(taken)}]`);
+  await expect(tauriPage.locator(".cm-content")).toContainText(`original-${run}`);
+});
