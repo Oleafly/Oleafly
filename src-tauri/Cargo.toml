@@ -45,7 +45,7 @@ sha2 = "0.10"
 # repository metadata. These requests stay in Rust so tokens never enter the
 # webview and the CSP does not need to allow GitHub API origins.
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
-rand = "0.8"
+rand = "0.10"
 ring = "0.17"
 libc = "0.2"
 serde_yaml = "0.9"
