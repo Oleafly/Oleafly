@@ -374,7 +374,21 @@ export async function compileAndWait(
       state.status === "error" &&
       (observedCompiling || Date.now() - attemptStartedAt > 2_000)
     ) {
-      throw new Error("semantic fixture failed to compile");
+      const diagnostics = await page
+        .evaluate<string>(
+          `import("/src/store/compile.ts").then(({ useCompileStore }) => {
+            const compile = useCompileStore.getState();
+            return JSON.stringify({
+              failureReason: compile.failureReason,
+              errors: compile.errors,
+              log: (compile.log || "").slice(-12000),
+            }, null, 2);
+          })`,
+        )
+        .catch(() => "compile diagnostics unavailable");
+      throw new Error(
+        `semantic fixture failed to compile\n${diagnostics}`,
+      );
     }
     // A project-open effect can reset a just-started manual compile. If no
     // compile state becomes observable, retry the real toolbar control instead
