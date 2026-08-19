@@ -17,7 +17,7 @@ notify = "8.2"
 oleafly-core = { path = "../oleafly-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sha2 = "0.10"
+sha2 = "0.11"
 tokio = { version = "1", features = [
   "io-util",
   "macros",

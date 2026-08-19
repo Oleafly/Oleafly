@@ -40,7 +40,7 @@ tar = "0.4"
 futures-util = "0.3"
 fs4 = "1.1"
 atomicwrites = "0.4"
-sha2 = "0.10"
+sha2 = "0.11"
 # Async HTTP client for GitHub OAuth, repository operations, and public
 # repository metadata. These requests stay in Rust so tokens never enter the
 # webview and the CSP does not need to allow GitHub API origins.
