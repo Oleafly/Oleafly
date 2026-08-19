@@ -29,6 +29,15 @@ fn run_git(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String
     output_contained(&mut command).map_err(|e| format!("failed to run git: {e}"))
 }
 
+fn ensure_git_identity(root: &PathBuf) -> Result<(), String> {
+    let email = run_git(root, &["config", "user.email"])?;
+    if String::from_utf8_lossy(&email.stdout).trim().is_empty() {
+        ok_or_err(run_git(root, &["config", "user.email", "oleafly@local"])?)?;
+        ok_or_err(run_git(root, &["config", "user.name", "Oleafly"])?)?;
+    }
+    Ok(())
+}
+
 /// Initialize a git repo in the project (idempotent) with a sensible identity.
 fn ensure_repo(project_id: &str) -> Result<PathBuf, String> {
     let root = project_root(project_id)?;
@@ -38,11 +47,7 @@ fn ensure_repo(project_id: &str) -> Result<PathBuf, String> {
         // user's git `init.defaultBranch`, so the first commit and push agree.
         let _ = run_git(&root, &["symbolic-ref", "HEAD", "refs/heads/main"]);
         std::fs::write(root.join(".gitignore"), ".oleafly/\n").map_err(|e| e.to_string())?;
-        let email = run_git(&root, &["config", "user.email"])?;
-        if String::from_utf8_lossy(&email.stdout).trim().is_empty() {
-            let _ = run_git(&root, &["config", "user.email", "oleafly@local"]);
-            let _ = run_git(&root, &["config", "user.name", "Oleafly"]);
-        }
+        ensure_git_identity(&root)?;
     }
     Ok(root)
 }
@@ -360,8 +365,101 @@ fn run_git_authed(
         .no_console()
         .args(&full)
         .current_dir(root)
-        .env("OLEAFLY_GH_TOKEN", token);
+        .env("OLEAFLY_GH_TOKEN", token)
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE");
     output_contained(&mut command).map_err(|e| format!("failed to run git: {e}"))
+}
+
+/// Attach the authenticated repository history to content imported through the
+/// guarded archive path. Resetting only the index keeps the archive import's
+/// path and symlink protections intact while placing the worktree on top of the
+/// real remote history.
+pub(crate) fn attach_imported_repository_history(
+    project_id: &str,
+    remote_url: &str,
+    default_branch: &str,
+    token: &str,
+) -> Result<(), String> {
+    if !is_allowed_remote_url(remote_url) {
+        return Err("GitHub returned an unsupported repository URL.".into());
+    }
+    let root = project_root(project_id)?;
+    attach_imported_repository_history_at(&root, remote_url, default_branch, |root, refspec| {
+        ok_or_err(run_git_authed(
+            root,
+            token,
+            &["fetch", "--no-tags", "origin", refspec],
+        )?)
+    })
+}
+
+fn attach_imported_repository_history_at<F>(
+    root: &PathBuf,
+    remote_url: &str,
+    default_branch: &str,
+    fetch: F,
+) -> Result<(), String>
+where
+    F: FnOnce(&PathBuf, &str) -> Result<(), String>,
+{
+    if root.join(".git").exists() {
+        return Err("The imported project already has repository history.".into());
+    }
+
+    let local_ref = format!("refs/heads/{default_branch}");
+    let remote_ref = format!("refs/remotes/origin/{default_branch}");
+    let refspec = format!("+refs/heads/{default_branch}:{remote_ref}");
+    if !run_git(root, &["check-ref-format", &local_ref])?
+        .status
+        .success()
+    {
+        return Err("GitHub returned an invalid default branch.".into());
+    }
+
+    ok_or_err(run_git(root, &["init", "--quiet"])?)?;
+    let result = (|| -> Result<(), String> {
+        ensure_git_identity(root)?;
+        ok_or_err(run_git(root, &["remote", "add", "origin", remote_url])?)?;
+        fetch(root, &refspec)?;
+        ok_or_err(run_git(root, &["symbolic-ref", "HEAD", &local_ref])?)?;
+        ok_or_err(run_git(root, &["reset", "--mixed", &remote_ref, "--"])?)?;
+        let upstream = format!("--set-upstream-to={remote_ref}");
+        ok_or_err(run_git(root, &["branch", &upstream, "--", default_branch])?)?;
+
+        let exclude = root.join(".git").join("info").join("exclude");
+        let current = std::fs::read_to_string(&exclude).unwrap_or_default();
+        if !current.lines().any(|line| line.trim() == ".oleafly/") {
+            use std::io::Write;
+            let mut file = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&exclude)
+                .map_err(|error| format!("could not update repository excludes: {error}"))?;
+            if !current.is_empty() && !current.ends_with('\n') {
+                writeln!(file).map_err(|error| error.to_string())?;
+            }
+            writeln!(file, ".oleafly/").map_err(|error| error.to_string())?;
+        }
+
+        // project.json and any archive-safety normalization become one local
+        // commit above the imported branch, leaving future pulls mergeable.
+        let status = run_git(root, &["status", "--porcelain"])?;
+        if !status.stdout.is_empty() {
+            ok_or_err(run_git(root, &["add", "-A"])?)?;
+            ok_or_err(run_git(
+                root,
+                &["commit", "--quiet", "-m", "Prepare project for Oleafly"],
+            )?)?;
+        }
+        Ok(())
+    })();
+
+    if result.is_err() {
+        let _ = std::fs::remove_dir_all(root.join(".git"));
+    }
+    result
 }
 
 #[tauri::command]
@@ -864,9 +962,10 @@ pub async fn git_show(project_id: String, rev: String, path: String) -> Result<S
 #[cfg(test)]
 mod tests {
     use super::{
-        auto_commit_update_in, commit_index, is_allowed_remote_url, parse_status_porcelain,
-        read_version_labels_at, restore_worktree, run_git, sanitize_url, show, stage, stage_all,
-        unstage, unstage_all, update_message, validate_git_oid,
+        attach_imported_repository_history_at, auto_commit_update_in, commit_index,
+        is_allowed_remote_url, ok_or_err, parse_status_porcelain, read_version_labels_at,
+        restore_worktree, run_git, sanitize_url, show, stage, stage_all, unstage, unstage_all,
+        update_message, validate_git_oid,
     };
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -884,6 +983,17 @@ mod tests {
         run_git(&dir, &["symbolic-ref", "HEAD", "refs/heads/main"]).unwrap();
         run_git(&dir, &["config", "user.email", "t@t"]).unwrap();
         run_git(&dir, &["config", "user.name", "t"]).unwrap();
+        dir
+    }
+
+    fn temp_dir(label: &str) -> PathBuf {
+        let n = COUNTER.fetch_add(1, Ordering::SeqCst);
+        let dir = std::env::temp_dir().join(format!(
+            "oleafly-git-{label}-test-{}-{n}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
         dir
     }
 
@@ -916,6 +1026,45 @@ mod tests {
             std::fs::read_to_string(root.join("main.tex")).unwrap(),
             "first\n"
         );
+    }
+
+    #[test]
+    fn imported_repository_history_keeps_the_remote_lineage_and_a_clean_worktree() {
+        let remote = temp_repo();
+        write(&remote, "main.tex", "remote content\n");
+        stage_all(&remote).unwrap();
+        assert!(commit_index(&remote, "Remote base").unwrap());
+
+        let imported = temp_dir("history-import");
+        write(&imported, "main.tex", "remote content\n");
+        write(&imported, "project.json", "{}\n");
+        let remote_url = remote.to_string_lossy().into_owned();
+        attach_imported_repository_history_at(&imported, &remote_url, "main", |root, refspec| {
+            ok_or_err(run_git(root, &["fetch", "--no-tags", "origin", refspec])?)
+        })
+        .unwrap();
+
+        let messages = run_git(&imported, &["log", "--reverse", "--format=%s"]).unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&messages.stdout)
+                .lines()
+                .collect::<Vec<_>>(),
+            ["Remote base", "Prepare project for Oleafly"]
+        );
+        let upstream = run_git(
+            &imported,
+            &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        )
+        .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&upstream.stdout).trim(),
+            "origin/main"
+        );
+        assert!(status(&imported).is_empty());
+        assert!(std::fs::read_to_string(imported.join(".git/info/exclude"))
+            .unwrap()
+            .lines()
+            .any(|line| line == ".oleafly/"));
     }
 
     fn status(root: &PathBuf) -> Vec<super::GitFileChange> {

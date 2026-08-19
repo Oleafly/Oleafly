@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   setMainDocCmd: vi.fn(),
   setProjectShellEscapeCmd: vi.fn(),
   deleteFile: vi.fn(),
+  createFile: vi.fn(),
   importPathsIntoProject: vi.fn(),
   resetCompile: vi.fn(),
   flushAutoCommit: vi.fn(),
@@ -49,6 +50,7 @@ vi.mock("@/lib/tauri", () => ({
   setMainDocCmd: mocks.setMainDocCmd,
   setProjectShellEscapeCmd: mocks.setProjectShellEscapeCmd,
   deleteFile: mocks.deleteFile,
+  createFile: mocks.createFile,
   importPathsIntoProject: mocks.importPathsIntoProject,
   listProjects: vi.fn(async () => []),
   mcpSetActiveProject: mocks.mcpSetActiveProject,
@@ -138,6 +140,7 @@ beforeEach(async () => {
   mocks.setMainDocCmd.mockReset();
   mocks.setProjectShellEscapeCmd.mockReset();
   mocks.deleteFile.mockReset().mockResolvedValue(undefined);
+  mocks.createFile.mockReset().mockResolvedValue({ path: "new.tex", generation: 1 });
   mocks.importPathsIntoProject.mockReset().mockResolvedValue({
     paths: ["imports/source"],
     generation: 1,
@@ -721,6 +724,175 @@ describe("transactional project transitions", () => {
     expect(mocks.importPathsIntoProject).toHaveBeenCalledTimes(2);
     expect(mocks.importPathsIntoProject.mock.calls.map((call) => call[3])).toEqual([7, 8]);
     expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+});
+
+describe("create collision contract", () => {
+  it("opens the file the backend actually created when keep-both diverts the name", async () => {
+    mocks.createFile.mockResolvedValue({ path: "notes (2).tex", generation: 3 });
+    useFilesStore.setState({ projectId: "project" });
+
+    await useFilesStore.getState().createFile("notes.tex", false, "keep_both");
+
+    expect(mocks.createFile).toHaveBeenCalledWith("project", "notes.tex", false, "keep_both");
+    expect(useFilesStore.getState().activePath).toBe("notes (2).tex");
+  });
+
+  it("propagates a create conflict without opening anything", async () => {
+    const conflict = Object.assign(new Error("A file or folder already exists at notes.tex."), {
+      name: "FileConflictError",
+      destination: "notes.tex",
+      suggestedDestination: "notes (2).tex",
+    });
+    mocks.createFile.mockRejectedValue(conflict);
+    useFilesStore.setState({ projectId: "project" });
+
+    await expect(useFilesStore.getState().createFile("notes.tex", false)).rejects.toBe(conflict);
+
+    expect(useFilesStore.getState().activePath).toBeNull();
+  });
+});
+
+describe("clean-buffer saves", () => {
+  it("does not write a buffer that has no unsaved changes", async () => {
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "main.tex": { content: "unchanged", dirty: false } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+
+    await useFilesStore.getState().saveFile("main.tex");
+    await useFilesStore.getState().saveActive();
+
+    // A no-op write bumps the project mtime, invalidates the library
+    // thumbnail cache, and schedules a phantom auto-commit.
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("still writes a dirty buffer", async () => {
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "main.tex": { content: "edited", dirty: true } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+
+    await useFilesStore.getState().saveFile("main.tex");
+
+    expect(mocks.writeFileContent).toHaveBeenCalledWith(
+      "project",
+      "main.tex",
+      "edited",
+      expect.any(Number),
+    );
+  });
+});
+
+describe("transactional quit flush", () => {
+  it("writes every dirty buffer before the quit flush resolves", async () => {
+    const first = deferred<void>();
+    const second = deferred<void>();
+    mocks.writeFileContent.mockImplementation(
+      (_projectId: string, path: string) =>
+        path === "main.tex" ? first.promise : second.promise,
+    );
+    useFilesStore.setState({
+      projectId: "project",
+      files: {
+        "main.tex": { content: "main changes", dirty: true },
+        "notes.tex": { content: "notes changes", dirty: true },
+      },
+      openTabs: ["main.tex", "notes.tex"],
+      activePath: "main.tex",
+    });
+
+    let settled = false;
+    const flushing = useFilesStore
+      .getState()
+      .flushForQuit()
+      .finally(() => {
+        settled = true;
+      });
+    await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(2));
+    expect(settled).toBe(false);
+
+    first.resolve();
+    second.resolve();
+    await flushing;
+
+    expect(mocks.flushWysiwygPendingEdits).toHaveBeenCalledTimes(1);
+    expect(mocks.writeFileContent).toHaveBeenCalledWith(
+      "project",
+      "main.tex",
+      "main changes",
+      expect.any(Number),
+    );
+    expect(mocks.writeFileContent).toHaveBeenCalledWith(
+      "project",
+      "notes.tex",
+      "notes changes",
+      expect.any(Number),
+    );
+    expect(mocks.flushAutoCommit).toHaveBeenCalledTimes(1);
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+    expect(useFilesStore.getState().files["notes.tex"].dirty).toBe(false);
+    // Quitting must not tear down project state itself; the window closes next.
+    expect(useFilesStore.getState().projectId).toBe("project");
+  });
+
+  it("rejects and keeps buffers dirty when a quit-flush save fails", async () => {
+    const failure = new Error("disk full");
+    mocks.writeFileContent.mockRejectedValue(failure);
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "main.tex": { content: "must survive", dirty: true } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+
+    await expect(useFilesStore.getState().flushForQuit()).rejects.toBe(failure);
+
+    expect(useFilesStore.getState().projectId).toBe("project");
+    expect(useFilesStore.getState().files["main.tex"]).toEqual({
+      content: "must survive",
+      dirty: true,
+    });
+    expect(mocks.flushAutoCommit).not.toHaveBeenCalled();
+  });
+
+  it("resolves without writing when no project is open", async () => {
+    await useFilesStore.getState().flushForQuit();
+
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("runs behind an in-flight project transition instead of interleaving with it", async () => {
+    const write = deferred<void>();
+    mocks.writeFileContent.mockImplementation(() => write.promise);
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "main.tex": { content: "closing changes", dirty: true } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+
+    const closing = useFilesStore.getState().closeProject();
+    let flushing: Promise<void>;
+    try {
+      flushing = useFilesStore.getState().flushForQuit();
+      await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(1));
+    } finally {
+      // Always unblock the close so a failing assertion cannot wedge the
+      // module-level transition queue for every later test.
+      write.resolve();
+    }
+    await closing;
+    await flushing;
+
+    // The close's flush already saved the buffer; a serialized quit flush finds
+    // nothing left to write instead of double-writing into a half-closed state.
+    expect(mocks.writeFileContent).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -6,6 +6,7 @@ import {
   compileProject,
   readCompiledPdf,
   readFileContent,
+  validateCompileFingerprint,
   type CompileError,
   type CompileResult,
 } from "@/lib/tauri";
@@ -286,6 +287,14 @@ export interface CompileState {
   recompile: (
     options?: { fromScratch?: boolean },
   ) => Promise<CompileResult | undefined>;
+  /**
+   * Seed the preview and success checkpoint from the persisted compile
+   * fingerprint plus the already-built PDF on disk, skipping the on-open
+   * compile entirely. Returns false (leaving the store untouched) whenever
+   * the record is missing/stale, the store already holds a checkpoint, or
+   * the on-disk PDF is not the fingerprinted output.
+   */
+  restoreFromDisk: (projectId: string, mainDoc: string) => Promise<boolean>;
 }
 
 export type CompileMode = "normal" | "fast";
@@ -519,6 +528,47 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       compileTimeMs: null,
     });
   },
+  restoreFromDisk: async (projectId, mainDoc) => {
+    // Only seed a fresh store: once any compile has produced a checkpoint in
+    // this session, disk state is older by definition.
+    if (get().lastCompileCheckpoint || get().status !== "idle") return false;
+    const validated = await validateCompileFingerprint(projectId, mainDoc).catch(() => null);
+    if (!validated || validated.main_document !== mainDoc) return false;
+    const buffer = await readCompiledPdf(projectId).catch(() => null);
+    if (!buffer) return false;
+    const bytes = new Uint8Array(buffer);
+    // The PDF on disk must be the exact output the fingerprint describes.
+    if (fingerprintCompileOutput(bytes) !== validated.output_id) return false;
+    if (!Number.isSafeInteger(validated.output_revision) || validated.output_revision <= 0) {
+      return false;
+    }
+    const files = useFilesStore.getState();
+    if (files.projectId !== projectId || get().lastCompileCheckpoint) return false;
+    const checkpoint = createCompileSuccessCheckpoint({
+      projectId,
+      mainDocument: mainDoc,
+      // The record was validated against the sources on disk, which are
+      // exactly what this freshly opened project loaded.
+      projectRevision: projectRevisionFor(projectId),
+      outputKind: "standard",
+      producerId: currentCompileProducerId(),
+      outputRevision: validated.output_revision,
+      outputId: validated.output_id,
+      previousCompletedAt: get().lastCompiledAt,
+    });
+    set({
+      status: "success",
+      phase: "idle",
+      pdfBytes: bytes,
+      failureReason: null,
+      errors: [],
+      log: validated.log,
+      lastCompiledAt: checkpoint.completedAt,
+      lastCompileCheckpoint: checkpoint,
+    });
+    return true;
+  },
+
   recompile: async (options) => {
     // Compiles share one build dir, so never run two at once. A request made
     // mid-compile queues exactly one rerun so a manual Cmd+Enter during the

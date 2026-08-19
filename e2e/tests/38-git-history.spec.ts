@@ -1,8 +1,8 @@
 import { test, expect } from "../fixtures";
 import {
   compileAndWait,
+  createBlankProject,
   fillCommandPalette,
-  openGallery,
   pressGlobal,
   typeInEditorAfter,
   type Page,
@@ -81,11 +81,7 @@ test("auto-commit history: restore rolls the document back and forward (no token
 }) => {
   test.setTimeout(300_000);
 
-  await openGallery(tauriPage);
-  await tauriPage.click('[data-testid="template-card-blank"]');
-  await tauriPage.fill("#new-project-name", NAME);
-  await tauriPage.click('[data-testid="create-project"]');
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await createBlankProject(tauriPage, NAME);
 
   const commitsBeforeBase = await tauriPage.evaluate<number>(
     `window.__gitCommitCount?.() ?? Promise.resolve(0)`,

@@ -12,7 +12,8 @@ const make = (
   title: string,
   detail: string,
   range?: { from: number; to: number },
-): Finding => ({ id, lens, severity, title, detail, ...range });
+  certainty?: Finding["certainty"],
+): Finding => ({ id, lens, severity, title, detail, ...range, ...(certainty ? { certainty } : {}) });
 
 function documentClass(text: string): { opts: string; name: string; from: number; to: number } | null {
   const m = /\\documentclass\s*(?:\[([^\]]*)\])?\s*\{([^}]*)\}/.exec(text);
@@ -28,11 +29,20 @@ const multiColumn: Rule = (text) => {
     return [
       make(
         "multi-column",
-        "both",
+        "ats",
         "error",
         "Two-column layout",
-        "Parsers read left to right across the page, so a two-column layout interleaves the columns into scrambled text, and screen readers lose the reading order. Prefer a single-column layout for anything that must be parsed.",
+        "Resume parsers commonly linearize two columns in the wrong order. Prefer a single-column layout for documents that must be parsed by an ATS.",
         dc ? { from: dc.from, to: dc.to } : undefined,
+      ),
+      make(
+        "multi-column-reading-order-risk",
+        "a11y",
+        "info",
+        "Verify the two-column reading order",
+        "Multi-column publishing layouts can be accessible when the PDF tag tree preserves the intended sequence. Compile and confirm the actual reader order instead of treating the visual columns alone as a failure.",
+        dc ? { from: dc.from, to: dc.to } : undefined,
+        "advisory",
       ),
     ];
   }
@@ -43,11 +53,20 @@ const multiColumn: Rule = (text) => {
     return [
       make(
         "multi-column",
-        "both",
+        "ats",
         "error",
         "Multi-column layout",
-        "Multi-column output is read across columns by parsers and screen readers, scrambling the text order. Use a single column for parseable content.",
+        "Resume parsers commonly linearize columns in the wrong order. Use a single column for ATS-facing documents.",
         { from: hit.index, to: hit.index + hit[0].length },
+      ),
+      make(
+        "multi-column-reading-order-risk",
+        "a11y",
+        "info",
+        "Verify the multi-column reading order",
+        "Columns are not automatically inaccessible, but their tag and content order must remain meaningful. Compile and inspect the actual reader sequence.",
+        { from: hit.index, to: hit.index + hit[0].length },
+        "advisory",
       ),
     ];
   }
@@ -63,8 +82,10 @@ const noGlyphToUnicode: Rule = (text) => {
       "no-glyphtounicode",
       "both",
       "warning",
-      "No Unicode glyph map",
-      "Without a glyph-to-Unicode map, ligatures like 'ffi' extract as garbled text ('o ce' for 'office'), which breaks both copy-paste for parsers and screen-reader output. Add \\input{glyphtounicode} and \\pdfgentounicode=1, or load the cmap package.",
+      "Unicode extraction map is not declared",
+      "Some pdfTeX font workflows need a glyph-to-Unicode map for reliable extraction, while modern Unicode engines may not. Compile and verify the extracted reader text; for pdfTeX, add \\input{glyphtounicode} and \\pdfgentounicode=1 or load cmap.",
+      undefined,
+      "advisory",
     ),
   ];
 };
@@ -83,6 +104,7 @@ const iconNearContact: Rule = (text) => {
           "Icon next to contact info",
           "Font icons (like \\faPhone or \\faEnvelope) render as glyphs a parser reads as unknown characters and a screen reader cannot label, so the contact detail beside them can be lost. Make sure the email or phone is also present as plain selectable text.",
           { from: offset + icon.index, to: offset + icon.index + icon[0].length },
+          "advisory",
         ),
       );
     }
@@ -92,17 +114,35 @@ const iconNearContact: Rule = (text) => {
 };
 
 const layoutTable: Rule = (text) => {
-  const m = /\\begin\{(tabular\*?|tabularx|tikzpicture)\}/.exec(text);
-  if (!m) return [];
+  const tabular = /\\begin\{(tabular\*?|tabularx)\}/.exec(text);
+  const tikz = /\\begin\{tikzpicture\}/.exec(text);
   return [
-    make(
-      "layout-table",
-      "both",
-      "warning",
-      "Table or TikZ used for layout",
-      "Content inside tabular or TikZ is often dropped entirely by resume parsers and carries no structure for screen readers. If you are using it to place text side by side, switch to a linear layout.",
-      { from: m.index, to: m.index + m[0].length },
-    ),
+    ...(tabular
+      ? [
+          make(
+            "layout-table",
+            "ats",
+            "warning",
+            "Table content may not parse as resume fields",
+            "ATS tools often flatten tabular content unpredictably. Avoid using a table to position resume text side by side; real research data tables are evaluated separately in Accessibility.",
+            { from: tabular.index, to: tabular.index + tabular[0].length },
+            "advisory",
+          ),
+        ]
+      : []),
+    ...(tikz
+      ? [
+          make(
+            "layout-table",
+            "both",
+            "warning",
+            "TikZ content needs a semantic alternative",
+            "TikZ draws visual content without exposing its meaning as normal text. Provide an accessible description for publication output and avoid it for ATS-facing resume content.",
+            { from: tikz.index, to: tikz.index + tikz[0].length },
+            "advisory",
+          ),
+        ]
+      : []),
   ];
 };
 
@@ -120,8 +160,9 @@ const contactInHeader: Rule = (text) => {
           "ats",
           "warning",
           "Contact info in the page header",
-          "Parsers skip page headers and footers a quarter to a third of the time, so contact details placed there often disappear. Put your email and phone in the document body.",
+          "Some resume parsers omit page headers and footers. Put your email and phone in the document body so the extracted text preserves them.",
           { from: m.index, to: m.index + m[0].length },
+          "advisory",
         ),
       );
     }
@@ -269,6 +310,7 @@ const nonstandardHeadings: Rule = (text) => {
         `Nonstandard section heading: "${t.label}"`,
         "Parsers map sections by recognizing standard headings like Experience, Education, and Skills. A creative title can leave that section uncategorized. Consider a conventional heading.",
         { from: t.from, to: t.to },
+        "advisory",
       ),
     );
 };
@@ -281,9 +323,10 @@ const colorOnly: Rule = (text) => {
       "color-only",
       "a11y",
       "info",
-      "Color used to convey meaning",
-      "Color is not perceivable by everyone and is stripped from the text a parser reads, so anything communicated only by color is lost. Pair it with text, weight, or an icon that also has a label.",
+      "Check that color is not the only cue",
+      "Preflight found colored content but cannot determine its meaning automatically. If color distinguishes status or categories, pair it with text, shape, weight, or another perceivable cue.",
       { from: m.index, to: m.index + m[0].length },
+      "advisory",
     ),
   ];
 };
@@ -299,6 +342,7 @@ const readingOrderRisk: Rule = (text) => {
       "Layout that can disturb reading order",
       "Margin notes and wrapped figures place content outside the main flow, so parsers and screen readers may read it out of order. Check the reading order in the preview below after compiling.",
       { from: m.index, to: m.index + m[0].length },
+      "advisory",
     ),
   ];
 };

@@ -86,7 +86,7 @@ export function reconstructPdfPageText(values: readonly unknown[]): Reconstructe
         finiteNumber(value.transform[3]),
       )),
     );
-    const item = { str: value.str, x, y, width };
+    const item = { str: value.str, x, y, width, height };
     items.push(item);
 
     const geometryLineBreak =

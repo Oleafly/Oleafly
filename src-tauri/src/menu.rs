@@ -54,13 +54,23 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
             }
         }
         "restart_app" => {
-            app.request_restart();
+            // A restart tears the webview down exactly like a quit, so it
+            // must flush dirty buffers first; the frontend calls
+            // `confirm_quit_flush { restart: true }` when the flush is done.
+            if !crate::quit_gate::flush_confirmed() {
+                let _ = app.emit("quit-flush-requested", true);
+            } else {
+                app.request_restart();
+            }
         }
         "quit_app" => {
-            // Cmd+Q during a TinyTeX install goes through the same confirm
-            // flow as a window close: the frontend shows the dialog and calls
-            // `confirm_quit_during_install` if the user really means it.
-            if crate::latex_engine::install_in_progress() && !crate::latex_engine::quit_confirmed()
+            // Cmd+Q flushes dirty buffers first (`quit-flush-requested`);
+            // the TinyTeX install confirm then runs from `confirm_quit_flush`
+            // so confirming it can no longer discard unsaved edits.
+            if !crate::quit_gate::flush_confirmed() {
+                let _ = app.emit("quit-flush-requested", false);
+            } else if crate::latex_engine::install_in_progress()
+                && !crate::latex_engine::quit_confirmed()
             {
                 let _ = app.emit("tinytex-quit-blocked", ());
             } else {

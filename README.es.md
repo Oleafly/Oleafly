@@ -479,7 +479,7 @@ de este índice público.
 ## Cómo contribuir
 
 Oleafly se desarrolla en abierto por
-[Prajwal S Venkateshmurthy](https://github.com/prajwalsvenkatesh) y sus
+[Prajwal S Venkateshmurthy](https://github.com/prajwal-svm) y sus
 colaboradores. Los informes de errores, las correcciones, las plantillas, la
 documentación y los comentarios cuidadosos sobre el producto son bienvenidos.
 

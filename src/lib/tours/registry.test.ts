@@ -70,6 +70,7 @@ describe("tour registry", () => {
       "ai-connect-provider",
       "ai-provider-model",
       "ai-prompts",
+      "ai-persona",
       "ai-input",
       "ai-attachments",
       "ai-history",

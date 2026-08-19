@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { strToU8, zipSync } from "fflate";
@@ -25,41 +25,57 @@ function writeZip(name: string, entries: Record<string, string>): string {
   return zipPath;
 }
 
-// Radix dropdown triggers and menu items react to pointer events, not to a
-// synthetic element.click() (same pattern as 28-ai-chat.spec.ts).
-function pressWithPointer(selectorExpr: string): string {
+function pressWithMousePointer(selectorExpression: string): string {
   return `(() => {
-    const el = ${selectorExpr};
-    if (!el) return false;
-    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 1 }));
-    el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, pointerId: 1 }));
-    el.click();
+    const element = ${selectorExpression};
+    if (!(element instanceof HTMLElement) || element.matches(':disabled')) return false;
+    element.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, cancelable: true, pointerId: 1, pointerType: 'mouse', button: 0,
+    }));
+    element.dispatchEvent(new MouseEvent('mousedown', {
+      bubbles: true, cancelable: true, button: 0,
+    }));
+    element.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true, cancelable: true, pointerId: 1, pointerType: 'mouse', button: 0,
+    }));
+    element.dispatchEvent(new MouseEvent('mouseup', {
+      bubbles: true, cancelable: true, button: 0,
+    }));
+    element.dispatchEvent(new MouseEvent('click', {
+      bubbles: true, cancelable: true, button: 0,
+    }));
     return true;
   })()`;
 }
 
-async function importZip(page: Page, zipPath: string) {
+async function chooseExistingProject(page: Page, triggerTestId: string) {
+  const opened = await page.evaluate<boolean>(
+    pressWithMousePointer(
+      `document.querySelector('[data-testid=${JSON.stringify(triggerTestId)}]')`,
+    ),
+  );
+  if (!opened) throw new Error("import trigger unavailable");
+  await waitLong(
+    page,
+    `[...document.querySelectorAll('[role="menuitem"]')].some((element) => element.textContent?.trim() === 'Existing project (.zip)')`,
+    10_000,
+  );
+  const selected = await page.evaluate<boolean>(
+    pressWithMousePointer(
+      `[...document.querySelectorAll('[role="menuitem"]')].find((element) => element.textContent?.trim() === 'Existing project (.zip)')`,
+    ),
+  );
+  if (!selected) throw new Error("existing-project import option unavailable");
+}
+
+async function importZip(page: Page, zipPath: string, triggerTestId = "import-project-button") {
   await waitLong(
     page,
     `!!document.querySelector('[data-testid="library"][data-projects-loaded="true"]')`,
     30_000,
   );
   await setNextImportPaths(page, [zipPath]);
-  const opened = await page.evaluate<boolean>(
-    pressWithPointer(`document.querySelector('[data-testid="import-project-button"]')`),
-  );
-  if (!opened) throw new Error("import dropdown trigger not found");
-  await waitLong(
-    page,
-    `[...document.querySelectorAll('[role="menuitem"]')].some((i) => (i.textContent ?? "").includes("Overleaf ZIP"))`,
-    10_000,
-  );
-  const clicked = await page.evaluate<boolean>(
-    pressWithPointer(
-      `[...document.querySelectorAll('[role="menuitem"]')].find((i) => (i.textContent ?? "").includes("Overleaf ZIP"))`,
-    ),
-  );
-  if (!clicked) throw new Error("Overleaf ZIP menu item not found");
+  await chooseExistingProject(page, triggerTestId);
   await waitLong(
     page,
     `!!document.querySelector('[data-tour="project-editor"] .cm-content')`,
@@ -184,47 +200,27 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
   expect(state.allowShellEscape).toBe(false);
 });
 
-test("a plain folder imports with the main document inferred", async ({
-  tauriPage,
-}) => {
-  test.setTimeout(120_000);
-  const dir = mkdtempSync(join(tmpdir(), "oleafly-ovl-folder-"));
-  writeFileSync(
-    join(dir, "report.tex"),
-    "\\documentclass{article}\n\\begin{document}Folder import.\\input{sections/intro}\\end{document}\n",
-  );
-  mkdirSync(join(dir, "sections"));
-  writeFileSync(join(dir, "sections", "intro.tex"), "Intro section.\n");
+test("the unified import chooser exposes every supported project source", async ({ tauriPage }) => {
   await waitLong(
     tauriPage,
     `!!document.querySelector('[data-testid="library"][data-projects-loaded="true"]')`,
     30_000,
   );
-  await setNextImportPaths(tauriPage, [dir]);
   const opened = await tauriPage.evaluate<boolean>(
-    pressWithPointer(`document.querySelector('[data-testid="import-project-button"]')`),
-  );
-  if (!opened) throw new Error("import dropdown trigger not found");
-  await waitLong(
-    tauriPage,
-    `[...document.querySelectorAll('[role="menuitem"]')].some((i) => (i.textContent ?? "").includes("Project folder"))`,
-    10_000,
-  );
-  const clicked = await tauriPage.evaluate<boolean>(
-    pressWithPointer(
-      `[...document.querySelectorAll('[role="menuitem"]')].find((i) => (i.textContent ?? "").includes("Project folder"))`,
+    pressWithMousePointer(
+      `document.querySelector('[data-testid="import-project-button"]')`,
     ),
   );
-  if (!clicked) throw new Error("Project folder menu item not found");
+  if (!opened) throw new Error("import trigger unavailable");
   await waitLong(
     tauriPage,
-    `!!document.querySelector('[data-tour="project-editor"] .cm-content')`,
-    45_000,
+    `['Existing project (.zip)', 'Word document', 'Markdown document', 'GitHub repo'].every(
+      (label) => [...document.querySelectorAll('[role="menuitem"]')].some(
+        (element) => element.textContent?.trim() === label
+      )
+    )`,
+    10_000,
   );
-  const state = await projectState(tauriPage);
-  // Root-level \documentclass file beats the section fragment.
-  expect(state.main).toBe("report.tex");
-  expect(state.paths).toContain("sections/intro.tex");
 });
 
 test("the template chooser imports an Overleaf ZIP from its header button", async ({
@@ -238,7 +234,7 @@ test("the template chooser imports an Overleaf ZIP from its header button", asyn
   await openGallery(tauriPage);
   // The path must be queued before the click: the picker opens immediately.
   await setNextImportPaths(tauriPage, [zipPath]);
-  await tauriPage.click('[data-testid="import-from-overleaf"]');
+  await chooseExistingProject(tauriPage, "import-from-overleaf");
   await waitLong(
     tauriPage,
     `!!document.querySelector('[data-tour="project-editor"] .cm-content')`,

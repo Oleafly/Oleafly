@@ -20,7 +20,7 @@ const EDIT = `histedit${RUN}`;
 // Caller must already have the Git rail open so compile auto-commit is
 // suspended (see auto-commit.ts `sourceControlOpen`).
 async function commitAll(page: import("../helpers").Page, message: string) {
-  await openRailTab(page, "Git");
+  await openRailTab(page, "Source Control");
   // Stage all is hover-revealed (opacity-0): the plugin's own click waits for
   // visibility and never fires, so click the real button via the DOM. Keep
   // refreshing + staging until the STAGED section is actually visible.

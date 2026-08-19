@@ -27,6 +27,22 @@ pub fn openai_tools(tools: &[ToolSchema]) -> Value {
     )
 }
 
+pub fn openai_responses_tools(tools: &[ToolSchema]) -> Value {
+    Value::Array(
+        tools
+            .iter()
+            .map(|tool| {
+                json!({
+                    "type": "function",
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.input_schema,
+                })
+            })
+            .collect(),
+    )
+}
+
 pub fn anthropic_tools(tools: &[ToolSchema]) -> Value {
     Value::Array(
         tools
@@ -98,6 +114,15 @@ mod tests {
         assert_eq!(out[0]["type"], "function");
         assert_eq!(out[0]["function"]["name"], "read_file");
         assert_eq!(out[0]["function"]["parameters"]["required"][0], "path");
+    }
+
+    #[test]
+    fn openai_responses_puts_function_fields_at_the_top_level() {
+        let out = openai_responses_tools(&sample());
+        assert_eq!(out[0]["type"], "function");
+        assert_eq!(out[0]["name"], "read_file");
+        assert_eq!(out[0]["parameters"]["required"][0], "path");
+        assert!(out[0].get("function").is_none());
     }
 
     #[test]

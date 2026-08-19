@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openGallery, openProject } from "../helpers";
+import { createBlankProject, openProject } from "../helpers";
 
 async function expectPdfCanvas(tauriPage: Parameters<typeof openProject>[0], timeout: number) {
   try {
@@ -21,11 +21,7 @@ async function expectPdfCanvas(tauriPage: Parameters<typeof openProject>[0], tim
 }
 
 test("create a project from the Blank template", async ({ tauriPage }) => {
-  await openGallery(tauriPage);
-  await tauriPage.click('[data-testid="template-card-blank"]');
-  await tauriPage.fill("#new-project-name", "E2E Doc");
-  await tauriPage.click('[data-testid="create-project"]');
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await createBlankProject(tauriPage, "E2E Doc");
   await expect(tauriPage.getByTestId("error-boundary")).not.toBeVisible();
 });
 

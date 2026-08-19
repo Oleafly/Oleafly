@@ -60,6 +60,7 @@ import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
 import { AboutModal } from "@/components/layout/AboutModal";
 import { EnginePickerModal } from "@/components/layout/EnginePickerModal";
 import { TinytexGuards } from "@/components/layout/TinytexGuards";
+import { QuitGuard } from "@/components/layout/QuitGuard";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 import type { ProjectStateChanged } from "@/lib/tauri";
@@ -225,6 +226,8 @@ function VHandle({
 }
 
 const AUTO_COMPILE_DEBOUNCE_MS = 2500;
+// Deactivated for 0.3.7 — see the comment at its use in the on-open effect.
+const RESTORE_PREVIEW_FROM_FINGERPRINT = false;
 
 function AppContent() {
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -603,7 +606,24 @@ function AppContent() {
     const requestedProjectRevision =
       analysisIdentity.projectRevision;
     openCompileInFlightRef.current = requestedProjectId;
-    void recompile().finally(() => {
+    const compileOrRestore = async () => {
+      // Reopen fast path: seed the preview from the persisted compile
+      // fingerprint and skip the on-open compile. DEACTIVATED for 0.3.7:
+      // e2e caught that skipping the on-open compile breaks subsystems that
+      // depended on it (logs pane, library thumbnails, the engine-gap
+      // picker) and its activation depends on a write-vs-teardown race.
+      // The fingerprint keeps being written and validated server-side; the
+      // restore flips on once those flows are covered end to end.
+      if (RESTORE_PREVIEW_FROM_FINGERPRINT) {
+        const restored = await useCompileStore
+          .getState()
+          .restoreFromDisk(requestedProjectId, requestedMainDocument)
+          .catch(() => false);
+        if (restored) return undefined;
+      }
+      return recompile();
+    };
+    void compileOrRestore().finally(() => {
       const files = useFilesStore.getState();
       const analysis =
         useProjectAnalysisStore.getState().snapshot.identity;
@@ -673,6 +693,7 @@ function AppContent() {
         <ExternalToolApprovals />
         <EnginePickerModal />
         <TinytexGuards />
+        <QuitGuard />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>
@@ -787,6 +808,7 @@ function AppContent() {
         <ExternalToolApprovals />
         <EnginePickerModal />
         <TinytexGuards />
+        <QuitGuard />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>

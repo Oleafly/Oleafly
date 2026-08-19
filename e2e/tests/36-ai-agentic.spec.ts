@@ -24,7 +24,7 @@ test("AI settings shows the agent tool catalog and PDF capture toggle", async ({
 test("agent plan checklist renders from the todos store", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Chat / AI Assistant");
+  await openRailTab(tauriPage, "Research Assistant");
   await expect(tauriPage.getByTestId("ai-chat-float")).toBeVisible({ timeout: 10_000 });
 
   await tauriPage.evaluate(`window.__agentTodosSet?.([
@@ -33,7 +33,13 @@ test("agent plan checklist renders from the todos store", async ({ tauriPage }) 
     { id: "3", content: "E2E plan step C", status: "pending" },
   ])`);
 
-  await expect(tauriPage.getByTestId("agent-todos")).toBeVisible({ timeout: 5_000 });
+  const plan = tauriPage.getByTestId("agent-todos");
+  await expect(plan).toBeVisible({ timeout: 5_000 });
+  await expect(tauriPage.getByText("E2E plan step A")).toHaveCount(0);
+
+  // Use a direct selector here: the Tauri bridge's role locator does not
+  // preserve aria-expanded when it serializes this button.
+  await tauriPage.click('[data-testid="agent-todos"] > button');
   await expect(tauriPage.getByText("E2E plan step A")).toBeVisible();
   await expect(tauriPage.getByText("E2E plan step B")).toBeVisible();
   await expect(tauriPage.getByText("E2E plan step C")).toBeVisible();
@@ -49,7 +55,7 @@ test("agent plan checklist renders from the todos store", async ({ tauriPage }) 
 test("agent sticky memory persists to storage and reloads on reopen", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Chat / AI Assistant");
+  await openRailTab(tauriPage, "Research Assistant");
 
   await tauriPage.evaluate(`window.__agentMemoryClear?.()`);
 
@@ -98,7 +104,7 @@ test("agent sticky memory persists to storage and reloads on reopen", async ({ t
 test("agent handoff hook is available and stores a prompt", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Chat / AI Assistant");
+  await openRailTab(tauriPage, "Research Assistant");
 
   const marker = `E2E handoff prompt ${Date.now().toString(36)}`;
   const hasHook = await tauriPage.evaluate<boolean>(

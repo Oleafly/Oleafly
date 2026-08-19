@@ -1,8 +1,10 @@
 import {
+  BookPlus,
   BookOpenText,
   Braces,
   ListRestart,
   SearchCode,
+  Upload,
   X,
 } from "lucide-react";
 import {
@@ -19,6 +21,8 @@ import {
   PanelState,
   type IntelligenceTreeNode,
 } from "@/components/layout/IntelligenceTree";
+import { ImportReferenceLibraryDialog } from "@/components/layout/ImportReferenceLibraryDialog";
+import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   buildCitationNodes,
@@ -258,6 +262,7 @@ export function ReferencesPanel() {
   const query = useReferencesStore((state) => state.query);
   const focusRequest = useReferencesStore((state) => state.focusRequest);
   const clearQuery = useReferencesStore((state) => state.clear);
+  const [importOpen, setImportOpen] = useState(false);
   const [view, setView] = useState<ReferencePanelView>(
     query ? "results" : "citations",
   );
@@ -321,16 +326,29 @@ export function ReferencesPanel() {
   ];
 
   return (
-    <section
-      aria-label="References (Shift-F12)"
-      aria-busy={intelligenceState.status === "running"}
-      className="flex h-full min-h-0 flex-col"
-    >
-      <header className="flex h-9 shrink-0 items-center gap-2 border-b border-sidebar-border px-2.5">
+    <>
+      <section
+        aria-label="References (Shift-F12)"
+        aria-busy={intelligenceState.status === "running"}
+        className="flex h-full min-h-0 flex-col"
+      >
+        <header className="flex h-9 shrink-0 items-center gap-2 border-b border-sidebar-border px-2.5">
         <SearchCode aria-hidden className="size-3.5 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75">
           References
         </span>
+        {view === "citations" && projectId ? (
+          <Tooltip label="Import reference library" side="bottom">
+            <button
+              type="button"
+              aria-label="Import references"
+              onClick={() => setImportOpen(true)}
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <Upload aria-hidden className="size-3.5" />
+            </button>
+          </Tooltip>
+        ) : null}
         {issues > 0 ? (
           <span
             role="status"
@@ -453,7 +471,17 @@ export function ReferencesPanel() {
               <PanelState
                 state="empty"
                 title="No citations yet"
-                detail="Add a bibliography entry or citation to begin the project catalog."
+                detail="Import a reference library or add a citation to begin."
+                action={
+                  <Button
+                    size="sm"
+                    onClick={() => setImportOpen(true)}
+                    className="h-8 gap-1.5 rounded-full px-3.5 text-[11px] shadow-sm"
+                  >
+                    <BookPlus aria-hidden className="size-3.5" />
+                    Import reference library
+                  </Button>
+                }
               />
             )
           ) : symbolNodes.length ? (
@@ -481,7 +509,12 @@ export function ReferencesPanel() {
             projectId={projectId}
           />
         )}
-      </div>
-    </section>
+        </div>
+      </section>
+      <ImportReferenceLibraryDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+      />
+    </>
   );
 }

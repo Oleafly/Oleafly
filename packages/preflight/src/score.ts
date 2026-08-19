@@ -1,4 +1,4 @@
-import type { Finding, Severity } from "./types";
+import { CHECK_IDS, type CheckId, type CheckScores, type Finding, type Severity } from "./types";
 
 export const POINTS: Record<Severity, number> = {
   error: 15,
@@ -8,15 +8,19 @@ export const POINTS: Record<Severity, number> = {
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 
-export function computeScores(findings: Finding[]): { ats: number; a11y: number; refs: number } {
-  let ats = 100;
-  let a11y = 100;
-  let refs = 100;
+export function findingAppliesTo(finding: Finding, check: CheckId): boolean {
+  if (finding.lens === "both") return check === "ats" || check === "a11y";
+  return finding.lens === check;
+}
+
+export function computeScores(findings: Finding[]): CheckScores {
+  const scores = Object.fromEntries(CHECK_IDS.map((id) => [id, 100])) as CheckScores;
   for (const f of findings) {
     const cost = POINTS[f.severity];
-    if (f.lens === "ats" || f.lens === "both") ats -= cost;
-    if (f.lens === "a11y" || f.lens === "both") a11y -= cost;
-    if (f.lens === "refs") refs -= cost;
+    for (const check of CHECK_IDS) {
+      if (findingAppliesTo(f, check)) scores[check] -= cost;
+    }
   }
-  return { ats: clamp(ats), a11y: clamp(a11y), refs: clamp(refs) };
+  for (const check of CHECK_IDS) scores[check] = clamp(scores[check]);
+  return scores;
 }

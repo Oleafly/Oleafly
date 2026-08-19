@@ -25,6 +25,7 @@
       "@oleafly/latex": ["./packages/latex/src/index.ts"],
       "@oleafly/wysiwyg": ["./packages/wysiwyg/src/index.ts"],
       "@oleafly/ai-core": ["./packages/ai-core/src/index.ts"],
+      "@oleafly/backend-port": ["./packages/backend-port/src/index.ts"],
       "@oleafly/diagram": ["./packages/diagram/src/index.ts"],
       "@oleafly/editor": ["./packages/editor/src/index.ts"],
       "@oleafly/editor/diagnostic-card": ["./packages/editor/src/diagnostic-card.ts"],

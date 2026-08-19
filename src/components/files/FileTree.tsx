@@ -40,7 +40,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useFilesStore } from "@/store/files";
 import { FileIcon } from "@/components/files/fileIcon";
-import { logError } from "@/lib/log";
 import { isFileConflictError } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -154,11 +153,21 @@ export function FileTree() {
   const [renamePath, setRenamePath] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [dragOver, setDragOver] = useState<string | null>(null);
-  const [conflict, setConflict] = useState<{
-    from: string;
-    to: string;
-    suggestedDestination: string;
-  } | null>(null);
+  const [conflict, setConflict] = useState<
+    | {
+        op: "rename";
+        from: string;
+        to: string;
+        suggestedDestination: string;
+      }
+    | {
+        op: "create";
+        to: string;
+        isDir: boolean;
+        suggestedDestination: string;
+      }
+    | null
+  >(null);
   const [resolvingConflict, setResolvingConflict] = useState(false);
   const closeConflict = () => {
     if (!resolvingConflict) setConflict(null);
@@ -189,7 +198,7 @@ export function FileTree() {
       return await renameEntry(from, to);
     } catch (error) {
       if (isFileConflictError(error)) {
-        setConflict({ from, to, suggestedDestination: error.suggestedDestination });
+        setConflict({ op: "rename", from, to, suggestedDestination: error.suggestedDestination });
       } else {
         notifyError(
           `${action} file`,
@@ -206,10 +215,15 @@ export function FileTree() {
     if (!pending) return;
     setResolvingConflict(true);
     try {
-      const destination = await renameEntry(pending.from, pending.to, strategy);
-      setConflict(null);
-      const parent = parentOf(destination);
-      if (parent) expand(parent);
+      if (pending.op === "create") {
+        await createFile(pending.to, pending.isDir, strategy);
+        setConflict(null);
+      } else {
+        const destination = await renameEntry(pending.from, pending.to, strategy);
+        setConflict(null);
+        const parent = parentOf(destination);
+        if (parent) expand(parent);
+      }
     } catch (error) {
       if (isFileConflictError(error)) {
         setConflict({
@@ -263,7 +277,16 @@ export function FileTree() {
       await createFile(path, mode === "dir");
       if (mode === "dir") expand(path);
     } catch (e) {
-      void logError("create file", e);
+      if (isFileConflictError(e)) {
+        setConflict({
+          op: "create",
+          to: path,
+          isDir: mode === "dir",
+          suggestedDestination: e.suggestedDestination,
+        });
+      } else {
+        notifyError("create file", e, `Could not create "${path}".`);
+      }
     }
   };
 
@@ -464,7 +487,9 @@ export function FileTree() {
               <span className="font-medium text-foreground">
                 {conflict.suggestedDestination}
               </span>
-              {", or replace the existing destination. Oleafly will not replace it unless you choose Replace."}
+              {conflict.op === "rename"
+                ? ", or replace the existing destination. Oleafly will not replace it unless you choose Replace."
+                : ". Creating never replaces an existing file."}
             </p>
             <div className="mt-5 flex flex-wrap justify-end gap-2">
               <Button
@@ -484,14 +509,16 @@ export function FileTree() {
               >
                 Keep both
               </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => void resolveConflict("replace")}
-                disabled={resolvingConflict}
-              >
-                Replace
-              </Button>
+              {conflict.op === "rename" && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => void resolveConflict("replace")}
+                  disabled={resolvingConflict}
+                >
+                  Replace
+                </Button>
+              )}
             </div>
           </div>
         </div>

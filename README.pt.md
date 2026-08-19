@@ -475,7 +475,7 @@ deste índice público.
 ## Contribuindo
 
 O Oleafly é construído abertamente por
-[Prajwal S Venkateshmurthy](https://github.com/prajwalsvenkatesh) e
+[Prajwal S Venkateshmurthy](https://github.com/prajwal-svm) e
 colaboradores. Relatos de bugs, correções, modelos, documentação e feedback de
 produto criterioso são bem-vindos.
 

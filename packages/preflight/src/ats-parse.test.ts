@@ -82,6 +82,12 @@ describe("atsParseFindings", () => {
     expect(f.some((x) => x.id === "ats-no-email")).toBe(true);
   });
 
+  it("flags a resume whose extracted text has no plausible name", () => {
+    const noName = RESUME.replace("Jane Doe\n", "");
+    const f = atsParseFindings(simulateAtsParse(noName));
+    expect(f.some((x) => x.id === "ats-no-name")).toBe(true);
+  });
+
   it("flags a resume with no detectable Experience section", () => {
     const noExp = RESUME.replace("Experience\n", "").replace("Acme Corp, Software Engineer, 2020-2024", "");
     const f = atsParseFindings(simulateAtsParse(noExp));

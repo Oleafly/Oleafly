@@ -381,6 +381,100 @@ impl RenameFileResult {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Serialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum CreateFileResult {
+    Created {
+        path: String,
+        generation: u64,
+    },
+    Conflict {
+        destination: String,
+        suggested_destination: String,
+        generation: u64,
+    },
+}
+
+impl CreateFileResult {
+    fn with_generation(self, generation: u64) -> Self {
+        match self {
+            Self::Created { path, .. } => Self::Created { path, generation },
+            Self::Conflict {
+                destination,
+                suggested_destination,
+                ..
+            } => Self::Conflict {
+                destination,
+                suggested_destination,
+                generation,
+            },
+        }
+    }
+}
+
+/// Create a file or folder inside the project with the same portable
+/// collision rules as rename/copy: names that differ only by case collide on
+/// every platform, conflicts are structured and non-destructive, and
+/// `KeepBoth` diverts to the suggested sibling. Create never replaces.
+fn create_path_in_project(
+    root: &Path,
+    requested: &Path,
+    requested_rel: &str,
+    is_dir: bool,
+    strategy: FileConflictStrategy,
+) -> Result<CreateFileResult, String> {
+    if let Some(parent) = requested.parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+    }
+    let target = match portable_collision(requested)? {
+        None => requested.to_path_buf(),
+        Some(_existing) => match strategy {
+            FileConflictStrategy::Error => {
+                let suggestion = unique_destination(requested, is_dir)?;
+                return Ok(CreateFileResult::Conflict {
+                    destination: requested_rel.to_string(),
+                    suggested_destination: rel_slash(root, &suggestion),
+                    generation: 0,
+                });
+            }
+            FileConflictStrategy::KeepBoth => unique_destination(requested, is_dir)?,
+            FileConflictStrategy::Replace => {
+                return Err("creating cannot replace an existing file or folder".to_string());
+            }
+        },
+    };
+    // OS-level exclusive create: the collision check above cannot see a file
+    // that a cloud-sync client or another process drops in between check and
+    // write, so the write itself must refuse to replace. An AlreadyExists
+    // race resolves as the same structured conflict as a detected collision.
+    let created = if is_dir {
+        std::fs::create_dir(&target)
+    } else {
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&target)
+            .map(|_| ())
+    };
+    match created {
+        Ok(()) => Ok(CreateFileResult::Created {
+            path: rel_slash(root, &target),
+            generation: 0,
+        }),
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            let suggestion = unique_destination(&target, is_dir)?;
+            Ok(CreateFileResult::Conflict {
+                destination: rel_slash(root, &target),
+                suggested_destination: rel_slash(root, &suggestion),
+                generation: 0,
+            })
+        }
+        Err(error) => Err(error.to_string()),
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct FileMutationResult {
     pub generation: u64,
@@ -1292,30 +1386,21 @@ pub fn create_file(
     project_id: String,
     path: String,
     is_dir: bool,
+    conflict_strategy: Option<FileConflictStrategy>,
     expected_generation: Option<u64>,
-) -> Result<FileMutationResult, String> {
+) -> Result<CreateFileResult, String> {
     let relative = mutation_relative_path(&path, false)?;
-    let scope = if is_dir {
-        MutationScope::subtree(relative)
-    } else {
-        MutationScope::file(relative)
-    };
+    // KeepBoth may divert to a sibling name, so the admission scope covers the
+    // whole parent rather than the single requested path.
+    let scope = MutationScope::subtree(mutation_parent_path(&relative));
     let admission = admit_mutation(&project_id, vec![scope], expected_generation)?;
-    let (_, generation) = admission.run(|| {
-        let p = resolve(&project_id, &path)?;
-        if is_dir {
-            std::fs::create_dir_all(&p).map_err(|e| e.to_string())
-        } else {
-            if let Some(parent) = p.parent() {
-                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-            }
-            if p.exists() {
-                return Err(format!("{path} already exists"));
-            }
-            atomic_write(&p, &[]).map_err(|e| e.to_string())
-        }
+    let strategy = conflict_strategy.unwrap_or_default();
+    let (result, generation) = admission.run(|| {
+        let root = paths::project_dir(&project_id)?;
+        let requested = resolve(&project_id, &path)?;
+        create_path_in_project(&root, &requested, &path, is_dir, strategy)
     })?;
-    Ok(FileMutationResult { generation })
+    Ok(result.with_generation(generation))
 }
 
 #[tauri::command]
@@ -3030,6 +3115,26 @@ fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<
     Ok(id)
 }
 
+pub(crate) fn import_project_zip_bytes(name: String, bytes: &[u8]) -> Result<String, String> {
+    let root = paths::projects_root()?;
+    let archive = unique_temporary_path(&root, ".oleafly-repository-import")?;
+    atomic_write(&archive, bytes)
+        .map_err(|error| format!("could not stage the repository archive: {error}"))?;
+    let result = import_overleaf_project_blocking(Some(name), &archive.to_string_lossy());
+    let _ = std::fs::remove_file(archive);
+    result
+}
+
+pub(crate) fn discard_project_after_failed_import(project_id: &str) -> Result<(), String> {
+    paths::validate_project_id(project_id)?;
+    let project = paths::projects_root()?.join(project_id);
+    if project.exists() {
+        std::fs::remove_dir_all(project)
+            .map_err(|error| format!("could not remove the incomplete project: {error}"))?;
+    }
+    Ok(())
+}
+
 fn read_import_meta(dir: &Path) -> Option<ProjectMeta> {
     let raw = std::fs::read_to_string(dir.join("project.json")).ok()?;
     serde_json::from_str::<ProjectMeta>(&raw).ok()
@@ -3791,45 +3896,60 @@ fn docx_pandoc_args() -> Vec<String> {
     ]
 }
 
+fn markdown_pandoc_args() -> Vec<String> {
+    vec![
+        "--from=markdown".into(),
+        "--to=latex".into(),
+        "--standalone".into(),
+        "-o".into(),
+        "main.tex".into(),
+        "--".into(),
+        "source.md".into(),
+    ]
+}
+
+fn validate_docx_bytes(bytes: &[u8]) -> Result<(), String> {
+    if bytes.len() < 4 || &bytes[0..2] != b"PK" {
+        return Err("not a .docx file (missing zip container signature)".into());
+    }
+    Ok(())
+}
+
 fn decode_docx_base64(data: &str) -> Result<Vec<u8>, String> {
     use base64::{engine::general_purpose::STANDARD, Engine};
     let bytes = STANDARD
         .decode(data.trim())
         .map_err(|e| format!("invalid base64: {e}"))?;
-    if bytes.len() < 4 || &bytes[0..2] != b"PK" {
-        return Err("not a .docx file (missing zip container signature)".into());
-    }
+    validate_docx_bytes(&bytes)?;
     Ok(bytes)
 }
 
-/// Create a LaTeX project from an uploaded .docx. The bytes are written inside
-/// the new project dir and pandoc runs there, so no external path is read.
-#[tauri::command]
-pub async fn create_project_from_docx(name: String, data_base64: String) -> Result<String, String> {
-    let bytes = decode_docx_base64(&data_base64)?;
+async fn create_project_from_pandoc_source(
+    name: String,
+    source_name: &str,
+    bytes: Vec<u8>,
+    args: Vec<String>,
+) -> Result<String, String> {
     let pandoc = tauri::async_runtime::spawn_blocking(find_pandoc)
         .await
         .map_err(|e| e.to_string())?
         .ok_or_else(|| {
-            "pandoc is not installed. Install pandoc to import Word documents.".to_string()
+            "pandoc is not installed. Install pandoc to import this document.".to_string()
         })?;
     let root = paths::projects_root()?;
     let id = unique_random_slug(&root)?;
     let destination = root.join(&id);
-    let staging = create_unique_temporary_directory(&root, ".oleafly-docx-import")?;
+    let staging = create_unique_temporary_directory(&root, ".oleafly-document-import")?;
     let result: Result<(), String> = async {
-        atomic_write(&staging.join("source.docx"), &bytes)
-            .map_err(|e| format!("failed to write source.docx: {e}"))?;
-        let (log, code) = crate::document_engine::run_supervised_external(
-            Path::new(&pandoc),
-            &docx_pandoc_args(),
-            &staging,
-        )
-        .await?;
+        atomic_write(&staging.join(source_name), &bytes)
+            .map_err(|e| format!("failed to write {source_name}: {e}"))?;
+        let (log, code) =
+            crate::document_engine::run_supervised_external(Path::new(&pandoc), &args, &staging)
+                .await?;
         if code != Some(0) {
             return Err(format!("pandoc failed: {}", log.trim()));
         }
-        let _ = std::fs::remove_file(staging.join("source.docx"));
+        let _ = std::fs::remove_file(staging.join(source_name));
         write_meta_at(
             &staging.join("project.json"),
             &ProjectMeta {
@@ -3850,13 +3970,59 @@ pub async fn create_project_from_docx(name: String, data_base64: String) -> Resu
             .map_err(|e| format!("could not publish the imported project: {e}"))
     }
     .await;
-    if let Err(e) = result {
+    if let Err(error) = result {
         if staging.exists() {
             let _ = std::fs::remove_dir_all(&staging);
         }
-        return Err(e);
+        return Err(error);
     }
     Ok(id)
+}
+
+/// Create a LaTeX project from an uploaded .docx. The bytes are written inside
+/// the new project dir and pandoc runs there, so no external path is read.
+#[tauri::command]
+pub async fn create_project_from_docx(name: String, data_base64: String) -> Result<String, String> {
+    let bytes = decode_docx_base64(&data_base64)?;
+    create_project_from_pandoc_source(name, "source.docx", bytes, docx_pandoc_args()).await
+}
+
+/// Import a user-selected Word or Markdown file as a new LaTeX project.
+/// The extension selects the pandoc reader; both paths publish atomically.
+#[tauri::command]
+pub async fn import_document(path: String) -> Result<String, String> {
+    let source = PathBuf::from(&path);
+    if !source.is_file() {
+        return Err(format!("import source not found: {path}"));
+    }
+    let extension = source
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let name = source
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or("Imported document")
+        .to_string();
+    let read_path = source.clone();
+    let bytes = tauri::async_runtime::spawn_blocking(move || std::fs::read(read_path))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| format!("failed to read {path}: {e}"))?;
+
+    match extension.as_str() {
+        "docx" => {
+            validate_docx_bytes(&bytes)?;
+            create_project_from_pandoc_source(name, "source.docx", bytes, docx_pandoc_args()).await
+        }
+        "md" | "markdown" => {
+            create_project_from_pandoc_source(name, "source.md", bytes, markdown_pandoc_args())
+                .await
+        }
+        _ => Err("Choose a .docx, .md, or .markdown file.".into()),
+    }
 }
 
 /// Whether a usable pandoc is already available (system or our cache).
@@ -4987,16 +5153,17 @@ async fn delete_project_synchronized(
 mod tests {
     use super::{
         copy_path_in_project, create_diagram_project, create_image_project_in,
-        create_markdown_project_in, create_project_from_pdf_conversion, create_project_transaction,
-        create_typst_project_in, download_project_zip, duplicate_project, engine_for_main_document,
-        extract_pandoc, flatten_single_root_folder, get_or_create_scratch_project,
-        import_paths_transactional, import_paths_transactional_with, import_skip,
+        create_markdown_project_in, create_path_in_project, create_project_from_pdf_conversion,
+        create_project_transaction, create_typst_project_in, discard_project_after_failed_import,
+        download_project_zip, duplicate_project, engine_for_main_document, extract_pandoc,
+        flatten_single_root_folder, get_or_create_scratch_project, import_paths_transactional,
+        import_paths_transactional_with, import_project_zip_bytes, import_skip,
         infer_main_document, list_projects, normalize_loaded_tex_flavor, normalize_relative,
         pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash, rename_exclusive,
         rename_path_in_project, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
         tex_root_magic_target, validate_conversion_export, validate_tex_flavor, write_meta_at,
-        FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta, RenameFileResult,
-        TexSpec, SCRATCH_PROJECT_ID,
+        CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta,
+        RenameFileResult, TexSpec, SCRATCH_PROJECT_ID,
     };
     use std::io::Write;
     use std::path::Path;
@@ -5027,6 +5194,55 @@ mod tests {
             .unwrap();
         zip.write_all(contents).unwrap();
         zip.finish().unwrap();
+    }
+
+    #[test]
+    fn repository_archive_bytes_use_the_guarded_import_and_can_be_discarded() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("repository-bytes-import");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let archive = data.join("repository.zip");
+        zip_with_member(&archive, "owner-repo/main.tex", b"\\documentclass{article}");
+        let bytes = std::fs::read(&archive).unwrap();
+
+        let project_id = import_project_zip_bytes("Research repository".into(), &bytes).unwrap();
+        let project = crate::paths::project_dir(&project_id).unwrap();
+        assert!(project.join("main.tex").is_file());
+        assert!(project.join("project.json").is_file());
+        assert!(!std::fs::read_dir(crate::paths::projects_root().unwrap())
+            .unwrap()
+            .flatten()
+            .any(|entry| entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".oleafly-repository-import")));
+
+        discard_project_after_failed_import(&project_id).unwrap();
+        assert!(!project.exists());
+        discard_project_after_failed_import(&project_id).unwrap();
+        assert!(discard_project_after_failed_import("../escape").is_err());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn invalid_repository_archive_bytes_leave_no_staging_file() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("repository-bytes-invalid");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+
+        assert!(import_project_zip_bytes("Broken repository".into(), b"not a zip").is_err());
+        assert!(!std::fs::read_dir(crate::paths::projects_root().unwrap())
+            .unwrap()
+            .flatten()
+            .any(|entry| entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".oleafly-repository-import")));
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
     }
 
     #[test]
@@ -5849,6 +6065,218 @@ mod tests {
     }
 
     #[test]
+    fn create_file_command_round_trips_conflict_and_keep_both() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("create-command-roundtrip");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_project("Create Command".into()).unwrap();
+
+        let created =
+            super::create_file(project_id.clone(), "notes.tex".into(), false, None, None).unwrap();
+        assert!(
+            matches!(created, CreateFileResult::Created { ref path, .. } if path == "notes.tex")
+        );
+
+        let conflict =
+            super::create_file(project_id.clone(), "notes.tex".into(), false, None, None).unwrap();
+        assert!(matches!(
+            conflict,
+            CreateFileResult::Conflict { ref suggested_destination, .. }
+                if suggested_destination == "notes (2).tex"
+        ));
+
+        let kept = super::create_file(
+            project_id.clone(),
+            "notes.tex".into(),
+            false,
+            Some(FileConflictStrategy::KeepBoth),
+            None,
+        )
+        .unwrap();
+        assert!(
+            matches!(kept, CreateFileResult::Created { ref path, .. } if path == "notes (2).tex")
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn create_conflicts_with_a_case_variant_sibling_on_any_platform() {
+        let root = test_dir("create-case-conflict");
+        std::fs::write(root.join("Paper.tex"), "published").unwrap();
+
+        let result = create_path_in_project(
+            &root,
+            &root.join("paper.tex"),
+            "paper.tex",
+            false,
+            FileConflictStrategy::Error,
+        )
+        .unwrap();
+
+        assert_eq!(
+            result,
+            CreateFileResult::Conflict {
+                destination: "paper.tex".into(),
+                suggested_destination: "paper (2).tex".into(),
+                generation: 0,
+            }
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("Paper.tex")).unwrap(),
+            "published"
+        );
+        assert!(!root.join("paper (2).tex").exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn create_conflict_is_non_destructive_for_an_exact_existing_file() {
+        let root = test_dir("create-exact-conflict");
+        std::fs::write(root.join("notes.tex"), "keep me").unwrap();
+
+        let result = create_path_in_project(
+            &root,
+            &root.join("notes.tex"),
+            "notes.tex",
+            false,
+            FileConflictStrategy::Error,
+        )
+        .unwrap();
+
+        assert!(matches!(result, CreateFileResult::Conflict { .. }));
+        assert_eq!(
+            std::fs::read_to_string(root.join("notes.tex")).unwrap(),
+            "keep me"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn create_keep_both_writes_the_suggested_sibling() {
+        let root = test_dir("create-keep-both");
+        std::fs::write(root.join("notes.tex"), "keep me").unwrap();
+
+        let result = create_path_in_project(
+            &root,
+            &root.join("notes.tex"),
+            "notes.tex",
+            false,
+            FileConflictStrategy::KeepBoth,
+        )
+        .unwrap();
+
+        assert_eq!(
+            result,
+            CreateFileResult::Created {
+                path: "notes (2).tex".into(),
+                generation: 0,
+            }
+        );
+        assert!(root.join("notes (2).tex").is_file());
+        assert_eq!(
+            std::fs::read_to_string(root.join("notes.tex")).unwrap(),
+            "keep me"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn create_never_replaces_an_existing_entry() {
+        let root = test_dir("create-no-replace");
+        std::fs::write(root.join("notes.tex"), "keep me").unwrap();
+
+        let result = create_path_in_project(
+            &root,
+            &root.join("notes.tex"),
+            "notes.tex",
+            false,
+            FileConflictStrategy::Replace,
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            std::fs::read_to_string(root.join("notes.tex")).unwrap(),
+            "keep me"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn creating_an_existing_folder_reports_a_structured_conflict() {
+        let root = test_dir("create-dir-conflict");
+        std::fs::create_dir(root.join("figures")).unwrap();
+
+        let result = create_path_in_project(
+            &root,
+            &root.join("figures"),
+            "figures",
+            true,
+            FileConflictStrategy::Error,
+        )
+        .unwrap();
+
+        assert!(
+            matches!(result, CreateFileResult::Conflict { .. }),
+            "an existing folder is a taken name, not a silent merge"
+        );
+        assert!(root.join("figures").is_dir());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn keep_both_survives_the_suggested_name_also_being_taken() {
+        let root = test_dir("create-suggestion-taken");
+        std::fs::write(root.join("notes.tex"), "original").unwrap();
+        std::fs::write(root.join("notes (2).tex"), "already claimed").unwrap();
+
+        let result = create_path_in_project(
+            &root,
+            &root.join("notes.tex"),
+            "notes.tex",
+            false,
+            FileConflictStrategy::KeepBoth,
+        )
+        .unwrap();
+
+        assert_eq!(
+            result,
+            CreateFileResult::Created {
+                path: "notes (3).tex".into(),
+                generation: 0,
+            }
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("notes (2).tex")).unwrap(),
+            "already claimed"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn creating_a_folder_conflicts_with_a_case_variant_entry() {
+        let root = test_dir("create-dir-case-conflict");
+        std::fs::write(root.join("Results"), "a file").unwrap();
+
+        let result = create_path_in_project(
+            &root,
+            &root.join("results"),
+            "results",
+            true,
+            FileConflictStrategy::Error,
+        )
+        .unwrap();
+
+        assert!(matches!(result, CreateFileResult::Conflict { .. }));
+        assert_eq!(
+            std::fs::read_to_string(root.join("Results")).unwrap(),
+            "a file"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn rename_conflict_is_non_destructive_and_suggests_a_portable_name() {
         let root = test_dir("rename-conflict");
         let src = root.join("draft.tex");
@@ -6488,6 +6916,17 @@ mod tests {
     }
 
     #[test]
+    fn markdown_pandoc_args_enable_pandoc_markdown_extensions() {
+        let args = super::markdown_pandoc_args();
+        assert!(args.contains(&"--from=markdown".to_string()));
+        assert!(!args.contains(&"--from=gfm".to_string()));
+        assert!(args.contains(&"--to=latex".to_string()));
+        assert!(args.contains(&"--standalone".to_string()));
+        assert!(args.windows(2).any(|pair| pair == ["-o", "main.tex"]));
+        assert_eq!(args.last().unwrap(), "source.md");
+    }
+
+    #[test]
     fn docx_base64_must_decode_and_look_like_zip() {
         use base64::{engine::general_purpose::STANDARD, Engine};
         assert!(super::decode_docx_base64("not base64 ???").is_err());
@@ -6784,7 +7223,7 @@ mod tests {
                 .contains("managed by Oleafly")
         );
         assert!(
-            super::create_file(project_id.clone(), "project.json".into(), false, None,)
+            super::create_file(project_id.clone(), "project.json".into(), false, None, None)
                 .unwrap_err()
                 .contains("managed by Oleafly")
         );

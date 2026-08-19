@@ -81,7 +81,7 @@ test("connect an AI provider through the settings UI", async ({ tauriPage }) => 
   await tauriPage.click('[aria-label="Close settings"]');
 
   // The chat panel now offers the real input instead of the onboarding gate.
-  await openRailTab(tauriPage, "Chat / AI Assistant");
+  await openRailTab(tauriPage, "Research Assistant");
   await expect(
     tauriPage.locator('[data-tour="ai-assistant"][data-tour-configured="true"]'),
   ).toBeVisible({ timeout: 10_000 });

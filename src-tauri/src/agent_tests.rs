@@ -341,3 +341,83 @@ fn stale_request_cleanup_cannot_remove_replacement_tools() {
     drop_pending_tools(&state, "same", Some(2));
     assert!(!lock_or_recover(&state.pending_tools).contains_key(&key));
 }
+
+#[tokio::test]
+async fn non_native_tools_fall_through_to_the_webview_runner() {
+    assert!(
+        native_agent_tool("some-project", "write_file", "{}")
+            .await
+            .is_none(),
+        "mutating tools must keep using the webview path"
+    );
+    assert!(native_agent_tool("some-project", "compile", "{}")
+        .await
+        .is_none());
+}
+
+#[tokio::test]
+async fn a_failing_native_tool_answers_natively_instead_of_falling_through() {
+    let output = native_agent_tool("../not-a-project", "read_file", "{\"path\":\"main.tex\"}")
+        .await
+        .expect("read_file is native and must answer natively even on failure");
+    assert!(output.output.contains("error"), "got: {}", output.output);
+}
+
+#[tokio::test]
+async fn malformed_native_arguments_become_a_tool_error_not_a_fallthrough() {
+    let output = native_agent_tool("../not-a-project", "read_file", "not json")
+        .await
+        .expect("native tools must not fall through on bad arguments");
+    assert!(output.output.contains("error"));
+}
+
+#[test]
+fn native_dispatch_requires_the_pinned_project_to_still_be_active() {
+    assert!(native_dispatch_allowed("proj-a", Some("proj-a")));
+    assert!(
+        !native_dispatch_allowed("proj-a", Some("proj-b")),
+        "a run surviving a project switch must not read the old project natively"
+    );
+    assert!(
+        !native_dispatch_allowed("proj-a", None),
+        "no active project (home screen) refuses native dispatch"
+    );
+}
+
+#[allow(clippy::await_holding_lock)] // env-lock fixture, same as the project tests
+#[tokio::test]
+async fn native_read_file_answers_with_project_content() {
+    let _env_guard = crate::paths::data_dir_env_lock();
+    let root = std::env::temp_dir().join(format!("oleafly-native-read-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).unwrap();
+    std::env::set_var("OLEAFLY_DATA_DIR", &root);
+    let project_id = crate::project::create_project("Native Read".into()).unwrap();
+
+    let output = native_agent_tool(&project_id, "read_file", "{\"path\":\"main.tex\"}")
+        .await
+        .expect("read_file is native");
+    assert!(
+        output.output.contains("documentclass"),
+        "expected the template main.tex content, got: {}",
+        output.output
+    );
+
+    let validated = crate::commands::ValidatedCompileFingerprint::from_record(
+        "the log".into(),
+        crate::compile_fingerprint::CompileFingerprint {
+            version: crate::compile_fingerprint::FINGERPRINT_VERSION,
+            main_document: "main.tex".into(),
+            engine_id: "latex".into(),
+            output_id: "pdf-v1:1:aa".into(),
+            output_revision: 3,
+            compiled_at_ms: 9,
+            sources: Default::default(),
+        },
+    );
+    assert_eq!(validated.log, "the log");
+    assert_eq!(validated.output_revision, 3);
+
+    std::env::remove_var("OLEAFLY_DATA_DIR");
+    std::fs::remove_dir_all(root).unwrap();
+}

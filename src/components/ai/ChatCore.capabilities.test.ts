@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { buildAiToolInventory, buildToolContinuation, resolveChatTools } from "./ChatCore";
+import {
+  buildAiToolInventory,
+  buildToolContinuation,
+  resolveChatTools,
+  resolveResponseInstructions,
+} from "./ChatCore";
 
 describe("AI capability inventory", () => {
   it("omits source-map and figure tools when unavailable", () => {
@@ -51,5 +56,38 @@ describe("AI tool continuation", () => {
         input: { path: "main.tex" },
       },
     ]);
+  });
+});
+
+describe("persona instructions", () => {
+  const personas = [
+    {
+      id: "research-writer",
+      name: "Research Writer",
+      color: "ocean",
+      prompt: "Use a formal academic style.",
+    },
+  ];
+
+  it("uses the default instructions when no persona is active", () => {
+    expect(
+      resolveResponseInstructions(personas, null, "Keep responses brief."),
+    ).toBe("Keep responses brief.");
+  });
+
+  it("replaces the default instructions when a persona is active", () => {
+    expect(
+      resolveResponseInstructions(
+        personas,
+        "research-writer",
+        "Keep responses brief.",
+      ),
+    ).toBe("Use a formal academic style.");
+  });
+
+  it("never falls back to the default instructions for a stale persona selection", () => {
+    expect(
+      resolveResponseInstructions(personas, "missing-persona", "Keep responses brief."),
+    ).toBe("");
   });
 });

@@ -27,9 +27,15 @@ const { WebviewWindow, getByLabel, once, setFocus } = vi.hoisted(() => {
 });
 vi.mock("@tauri-apps/api/webviewWindow", () => ({ WebviewWindow }));
 
+const { flushForQuit } = vi.hoisted(() => ({ flushForQuit: vi.fn(async () => {}) }));
+vi.mock("@/store/files", () => ({
+  useFilesStore: { getState: () => ({ flushForQuit }) },
+}));
+
 import { findUpdate, installUpdate, openUpdateWindow } from "./updater";
 
 beforeEach(() => {
+  flushForQuit.mockReset().mockResolvedValue(undefined);
   state.tauri = true;
   check.mockReset();
   relaunch.mockReset();
@@ -95,6 +101,36 @@ describe("installUpdate", () => {
     await installUpdate(update as any, (p) => percents.push(p));
     expect(percents).toEqual([0, 100]);
     expect(relaunch).toHaveBeenCalledOnce();
+  });
+
+  it("flushes dirty buffers durably before relaunching", async () => {
+    let resolveFlush!: () => void;
+    flushForQuit.mockImplementation(
+      () => new Promise<void>((resolve) => { resolveFlush = resolve; }),
+    );
+    const update = {
+      downloadAndInstall: vi.fn(async (cb: (e: unknown) => void) => {
+        cb({ event: "Finished", data: {} });
+      }),
+    };
+    // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
+    const installing = installUpdate(update as any);
+    await vi.waitFor(() => expect(flushForQuit).toHaveBeenCalledTimes(1));
+    expect(relaunch).not.toHaveBeenCalled();
+
+    resolveFlush();
+    await installing;
+    expect(relaunch).toHaveBeenCalledOnce();
+  });
+
+  it("blocks the relaunch when the pre-restart flush fails", async () => {
+    flushForQuit.mockRejectedValue(new Error("disk full"));
+    const update = {
+      downloadAndInstall: vi.fn(async () => {}),
+    };
+    // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
+    await expect(installUpdate(update as any)).rejects.toThrow("disk full");
+    expect(relaunch).not.toHaveBeenCalled();
   });
 
   it("propagates a download failure and does not relaunch", async () => {

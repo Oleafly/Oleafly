@@ -3,9 +3,9 @@ import {
   caretIn,
   caretLineIncludes,
   clickToolbarControl,
+  createBlankProject,
   typeInEditorAfter,
   typeInEditorAtStart,
-  openGallery,
   openRailTab,
   type Page,
   pressGlobal,
@@ -29,10 +29,7 @@ async function openBlankProject(
   if (exists) {
     await page.getByText(name).click();
   } else {
-    await openGallery(page);
-    await page.click('[data-testid="template-card-blank"]');
-    await page.fill("#new-project-name", name);
-    await page.click('[data-testid="create-project"]');
+    await createBlankProject(page, name);
   }
   // Windows WebView2 cold-mounts the editor slower than macOS/Linux; a fixed
   // 20s wait times out on a loaded runner. Poll longer, and if the editor

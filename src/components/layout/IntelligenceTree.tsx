@@ -31,6 +31,7 @@ import {
   type MouseEvent,
   type KeyboardEvent,
   type Ref,
+  type ReactNode,
 } from "react";
 import { FileIcon } from "@/components/files/fileIcon";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -660,10 +661,12 @@ export function PanelState({
   state,
   title,
   detail,
+  action,
 }: {
   state: "pending" | "partial" | "error" | "unsupported" | "empty";
   title: string;
   detail: string;
+  action?: ReactNode;
 }) {
   const isPending = state === "pending";
   const StateIcon =
@@ -696,6 +699,7 @@ export function PanelState({
       <p className="mt-1 max-w-60 text-[11px] leading-relaxed text-muted-foreground">
         {detail}
       </p>
+      {action ? <div className="mt-3">{action}</div> : null}
     </div>
   );
 }

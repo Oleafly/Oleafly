@@ -214,6 +214,7 @@ export async function runViaBackend(
   signal?: AbortSignal,
   config?: AgentRunConfig,
   providerOverride?: ProviderOverride,
+  projectId?: string | null,
 ): Promise<AgentRunOutcome> {
   const channel = new Channel<AgentEvent>();
   let replyTo = "";
@@ -249,6 +250,8 @@ export async function runViaBackend(
         request,
         config: config ?? null,
         providerOverride: providerOverride ?? null,
+        // Pins native tool dispatch to the project the run started in.
+        projectId: projectId ?? null,
         onEvent: channel,
       },
       signal,

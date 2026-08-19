@@ -1,10 +1,10 @@
 import { test, expect } from "../fixtures";
 import {
   caretIn,
+  createBlankProject,
   ensureAiConnected,
   fillTextarea,
   newChat,
-  openGallery,
   openProject,
   type Page,
 } from "../helpers";
@@ -34,11 +34,7 @@ test("figure mode generates, previews, and inserts a real TikZ figure", async ({
   test.setTimeout(480_000);
 
   const projectName = `E2E Figure ${RUN}`;
-  await openGallery(tauriPage);
-  await tauriPage.click('[data-testid="template-card-blank"]');
-  await tauriPage.fill("#new-project-name", projectName);
-  await tauriPage.click('[data-testid="create-project"]');
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await createBlankProject(tauriPage, projectName);
 
   // Caret must sit in the prose, not the preamble, or the insertion breaks the document.
   await caretIn(tauriPage, "here.", 1, "end");

@@ -10,7 +10,7 @@ use crate::complete::{CompletionRequest, Usage};
 use crate::error::{AgentError, Result};
 use crate::event::AgentEvent;
 use crate::message::{ContentPart, Message, Role};
-use crate::provider::Resolved;
+use crate::provider::{Resolved, Wire};
 use crate::stream::{stream_completion, StreamOutcome, ToolCall, MAX_STREAM_TOOL_CALLS};
 
 const MAX_RETRY_DELAY_MS: u64 = 60_000;
@@ -24,7 +24,10 @@ const MAX_TOOL_IMAGE_DATA_URL_BYTES: usize = 14 * 1024 * 1024;
 const MAX_TOOL_OUTPUT_IMAGE_BYTES: usize = 84 * 1024 * 1024;
 const MAX_TOOL_RESULT_BATCH_BYTES: usize = 96 * 1024 * 1024;
 const MAX_AGENT_HISTORY_BYTES: usize = 128 * 1024 * 1024;
-const MAX_AGENT_CONTEXT_CHARS: usize = 100_000;
+// Keep the character guard within the serialized-history ceiling while leaving
+// room for every individually permitted text tool result. A fixed 100k guard
+// could reject an ordinary multi-step run after only a handful of searches.
+const MAX_AGENT_CONTEXT_CHARS: usize = MAX_AGENT_HISTORY_BYTES / 4;
 const MAX_AGENT_IMAGES: usize = 12;
 const MAX_AGENT_MESSAGES: usize = 128;
 const MAX_TOOL_DEFINITIONS: usize = 128;
@@ -615,6 +618,7 @@ where
             return Ok(finish_without_tools(result, &outcome));
         }
         append_tool_turns(
+            resolved,
             &mut request,
             &mut history,
             outcome,
@@ -666,6 +670,7 @@ fn finish_without_tools(mut result: RunOutcome, outcome: &StreamOutcome) -> RunO
 }
 
 async fn append_tool_turns<F>(
+    resolved: &Resolved,
     request: &mut CompletionRequest,
     history: &mut HistoryBudget,
     outcome: StreamOutcome,
@@ -676,21 +681,39 @@ where
     F: FnMut(AgentEvent) + Send,
 {
     validate_tool_calls_per_turn(outcome.tool_calls.len())?;
+    let mut responses_input = if matches!(resolved.wire, Wire::OpenAiResponses { .. }) {
+        Some(match &request.openai_responses_input {
+            Some(input) => input.clone(),
+            None => crate::wire::openai_responses_input(&request.messages)?,
+        })
+    } else {
+        None
+    };
     let new_tool_calls = outcome.tool_calls.len();
     let assistant = assistant_turn(&outcome);
     history.append_message(&assistant, new_tool_calls)?;
     request.messages.push(assistant);
     let results = run_tools(outcome.tool_calls, run_tool, on_event).await?;
     let results = results_turn(results);
+    if let Some(input) = &mut responses_input {
+        input.extend(outcome.response_items);
+        input.extend(crate::wire::openai_responses_input(std::slice::from_ref(
+            &results,
+        ))?);
+        request.openai_responses_input = responses_input;
+    }
     history.append_message(&results, 0)?;
     request.messages.push(results);
+    *history = HistoryBudget::new(request)?;
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::provider::OPENAI_BASE;
     use crate::stream::ToolCall;
+    use serde_json::json;
 
     #[test]
     fn an_assistant_turn_carries_text_then_every_call() {
@@ -721,6 +744,119 @@ mod tests {
             message.content[2],
             ContentPart::ToolUse { ref id, .. } if id == "b"
         ));
+    }
+
+    #[tokio::test]
+    async fn many_bounded_tool_results_do_not_abort_at_the_context_guard() {
+        let resolved = Resolved {
+            provider_id: "openai".into(),
+            model_id: "arbitrary-compatible-model".into(),
+            credential: "key".into(),
+            auth: Some("key".into()),
+            wire: Wire::OpenAiResponses {
+                base_url: OPENAI_BASE.into(),
+            },
+        };
+        let mut request = CompletionRequest::prompt("system", "find papers to cite");
+        let mut history = HistoryBudget::new(&request).unwrap();
+        let runner: ToolRunner =
+            Arc::new(|_| Box::pin(async { ToolOutput::text("x".repeat(12_000)) }));
+        let mut events = Vec::new();
+
+        for index in 0..9 {
+            let call_id = format!("call_{index}");
+            let outcome = StreamOutcome {
+                tool_calls: vec![ToolCall {
+                    id: call_id.clone(),
+                    name: "literature_search".into(),
+                    arguments: r#"{"query":"wildfire detection"}"#.into(),
+                }],
+                response_items: vec![json!({
+                    "type": "function_call",
+                    "id": format!("fc_{index}"),
+                    "call_id": call_id,
+                    "name": "literature_search",
+                    "arguments": r#"{"query":"wildfire detection"}"#,
+                })],
+                ..Default::default()
+            };
+
+            append_tool_turns(
+                &resolved,
+                &mut request,
+                &mut history,
+                outcome,
+                &runner,
+                &mut |event| events.push(event),
+            )
+            .await
+            .expect("individually bounded tool results should not abort a valid multi-step run");
+        }
+
+        assert_eq!(history.tool_calls, 9);
+        assert!(request.openai_responses_input.is_some());
+    }
+
+    #[tokio::test]
+    async fn responses_tool_turns_replay_provider_items_and_local_outputs_statelessly() {
+        let resolved = Resolved {
+            provider_id: "openai".into(),
+            model_id: "arbitrary-compatible-model".into(),
+            credential: "key".into(),
+            auth: Some("key".into()),
+            wire: Wire::OpenAiResponses {
+                base_url: OPENAI_BASE.into(),
+            },
+        };
+        let mut request = CompletionRequest::prompt("system", "read the file");
+        let mut history = HistoryBudget::new(&request).unwrap();
+        let outcome = StreamOutcome {
+            tool_calls: vec![ToolCall {
+                id: "call_1".into(),
+                name: "read_file".into(),
+                arguments: "{}".into(),
+            }],
+            response_items: vec![
+                json!({
+                    "type": "reasoning",
+                    "id": "rs_1",
+                    "encrypted_content": "opaque",
+                }),
+                json!({
+                    "type": "function_call",
+                    "id": "fc_1",
+                    "call_id": "call_1",
+                    "name": "read_file",
+                    "arguments": "{}",
+                }),
+            ],
+            ..Default::default()
+        };
+        let runner: ToolRunner = Arc::new(|_| Box::pin(async { ToolOutput::text("contents") }));
+        let mut events = Vec::new();
+
+        append_tool_turns(
+            &resolved,
+            &mut request,
+            &mut history,
+            outcome,
+            &runner,
+            &mut |event| events.push(event),
+        )
+        .await
+        .unwrap();
+
+        let input = request.openai_responses_input.unwrap();
+        assert_eq!(input[0]["type"], "message");
+        assert_eq!(input[1]["type"], "reasoning");
+        assert_eq!(input[1]["encrypted_content"], "opaque");
+        assert_eq!(input[2]["type"], "function_call");
+        assert_eq!(input[3]["type"], "function_call_output");
+        assert_eq!(input[3]["call_id"], "call_1");
+        assert_eq!(input[3]["output"], "contents");
+        assert!(events
+            .iter()
+            .any(|event| matches!(event, AgentEvent::ToolOutcome { id, .. } if id == "call_1")));
     }
 
     #[test]
@@ -958,6 +1094,12 @@ mod tests {
             ..Default::default()
         };
         assert!(validate_completion_request(&excessive_images).is_err());
+    }
+
+    #[test]
+    fn aggregate_context_guard_can_hold_all_permitted_text_tool_results() {
+        let maximum_tool_output_chars = MAX_AGENT_TOOL_CALLS * MAX_TOOL_OUTPUT_TEXT_BYTES;
+        assert!(MAX_AGENT_CONTEXT_CHARS >= maximum_tool_output_chars);
     }
 
     #[test]

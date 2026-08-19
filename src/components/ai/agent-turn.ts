@@ -160,11 +160,31 @@ export async function runAgentHarness(args: {
   providerOverride?: { provider_id: string; model_id: string };
   takePendingImages?: () => string[];
   imageInstruction?: string;
+  /** The project this run is pinned to; enables native backend tool dispatch. */
+  projectId?: string | null;
+  /**
+   * Run-context guard, called before every tool execution. Returning a
+   * message refuses the call with a structured error instead of executing —
+   * the mechanism that keeps a run pinned to the project it started in.
+   */
+  guardToolCall?: (call: HarnessToolCall) => string | null;
   handlers: HarnessHandlers;
 }): Promise<AgentRunOutcome> {
   const { handlers } = args;
   const names = new Map<string, string>();
+  // Tools the webview executed itself (via onToolRequest); their toolOutcome
+  // events must not render a second call/result pair.
+  const locallyExecuted = new Set<string>();
+  const callArguments = new Map<string, unknown>();
   let reasoningOpen = false;
+
+  const parseJson = (raw: string): unknown => {
+    try {
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return raw;
+    }
+  };
 
   const endReasoning = () => {
     if (!reasoningOpen) return;
@@ -208,6 +228,27 @@ export async function runAgentHarness(args: {
             names.set(event.id, event.name);
             handlers.onThinking(`Running ${event.name}…`);
             break;
+          case "toolCallEnd":
+            callArguments.set(event.id, parseJson(event.arguments));
+            break;
+          case "toolOutcome": {
+            // Natively executed tools never reach onToolRequest; render them
+            // from the loop's own outcome event instead.
+            if (locallyExecuted.has(event.id)) break;
+            const name = names.get(event.id) ?? "tool";
+            handlers.onToolCall({
+              id: event.id,
+              name,
+              args: callArguments.get(event.id) ?? {},
+            });
+            handlers.onToolResult({
+              id: event.id,
+              name,
+              output: parseJson(event.output),
+            });
+            handlers.onThinking("Processing result…");
+            break;
+          }
           case "usage":
             handlers.onUsage(event.usage);
             break;
@@ -221,6 +262,11 @@ export async function runAgentHarness(args: {
       onToolRequest: async (call) => {
         if (args.signal.aborted) return { output: "" };
         endReasoning();
+        // The request id is namespaced (tool-{gen}-{seq}-{providerId}) while
+        // the loop's toolOutcome event carries the bare provider id; record
+        // both so the outcome of a locally executed tool is not re-rendered.
+        locallyExecuted.add(call.id);
+        locallyExecuted.add(call.id.replace(/^tool-\d+-\d+-/, ""));
         names.set(call.id, call.name);
         let parsed: unknown = {};
         try {
@@ -235,8 +281,11 @@ export async function runAgentHarness(args: {
           | { execute?: (input: unknown) => Promise<unknown> }
           | undefined;
 
+        const refusal = args.guardToolCall?.({ id: call.id, name: call.name, args: parsed });
         let output: unknown;
-        if (!tool?.execute) {
+        if (refusal) {
+          output = { error: refusal };
+        } else if (!tool?.execute) {
           output = { error: `Unknown tool: ${call.name}` };
         } else {
           try {
@@ -260,5 +309,6 @@ export async function runAgentHarness(args: {
     args.signal,
     args.config,
     args.providerOverride,
+    args.projectId ?? null,
   );
 }

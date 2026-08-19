@@ -14,6 +14,7 @@ import {
   ExternalLink,
   FlaskConical,
   FolderOpen,
+  GitFork,
   Github,
   // Globe, (only used by the commented-out Author row)
   GraduationCap,
@@ -28,6 +29,7 @@ import {
   ScrollText,
   Settings,
   Sparkles,
+  Star,
   TriangleAlert,
   X,
 } from "lucide-react";
@@ -76,6 +78,11 @@ import { startTour } from "@/lib/tour";
 import { TOUR_IDS } from "@/lib/tours/registry";
 import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
+import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
+import {
+  githubGetPublicRepoStats,
+  type GitHubRepoStats,
+} from "@/lib/github";
 
 type Section =
   | "appearance"
@@ -1089,8 +1096,22 @@ const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
 function HelpSection() {
   const [version, setVersion] = useState("");
   const [copied, setCopied] = useState(false);
+  const [repoStats, setRepoStats] = useState<GitHubRepoStats | null>(null);
   useEffect(() => {
     void appVersion().then(setVersion).catch(() => setVersion(""));
+  }, []);
+  useEffect(() => {
+    let active = true;
+    void githubGetPublicRepoStats("Oleafly/Oleafly")
+      .then((stats) => {
+        if (active) setRepoStats(stats);
+      })
+      .catch(() => {
+        /* Keep the project link useful when offline or rate-limited. */
+      });
+    return () => {
+      active = false;
+    };
   }, []);
   const ext = (url: string) => () => void openExternal(url);
 
@@ -1141,17 +1162,53 @@ function HelpSection() {
 
   return (
     <div className="space-y-5">
-      <div className="relative min-h-14">
+      <div className="flex items-start gap-2 px-1">
+        <OleaflyAssistantMascot className="size-20" />
+        <div
+          role="note"
+          aria-label="Support Oleafly"
+          className="relative mt-1 min-w-0 flex-1 rounded-xl border border-border bg-[color-mix(in_srgb,var(--accent)_35%,var(--background))] px-3 py-2.5 text-left text-[11px] leading-relaxed text-muted-foreground"
+        >
+          <span
+            aria-hidden="true"
+            className="absolute -left-1.5 top-5 z-10 size-3 rotate-45 border-b border-l border-border bg-[color-mix(in_srgb,var(--accent)_35%,var(--background))]"
+          />
+          <span
+            aria-hidden="true"
+            className="absolute -left-px top-[18px] z-20 h-4 w-1 bg-[color-mix(in_srgb,var(--accent)_35%,var(--background))]"
+          />
+          <span className="relative z-30">
+            If Oleafly helps your work, consider{" "}
+            <button
+              type="button"
+              onClick={ext(REPO_URL)}
+              className="font-medium text-foreground underline decoration-muted-foreground/50 underline-offset-2 hover:text-primary"
+            >
+              starring the project on GitHub
+            </button>
+            . It helps others discover it and supports continued development.
+          </span>
+        </div>
+      </div>
+
+      <div
+        data-testid="about-oleafly-section"
+        className="relative min-h-14 rounded-md border p-4"
+      >
         <img
           data-testid="about-oleafly-logo"
           src="/oleafly-tile-gradient.png"
           alt="Oleafly"
-          className="absolute -top-2 right-0 size-14 rounded-xl"
+          className="absolute right-4 top-4 size-14 rounded-xl"
         />
-        <h3 className="pr-20 text-sm font-semibold">About Oleafly</h3>
+        <div className="flex items-baseline gap-2 pr-20">
+          <h3 className="text-sm font-semibold">Oleafly</h3>
+          {version && (
+            <span className="text-[11px] text-muted-foreground">v{version}</span>
+          )}
+        </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          An open-source workspace for research and technical writing.
-          {version && <span className="ml-1">· v{version}</span>}
+          An open-source modern workspace for all your research work.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
           <UpdateChecker />
@@ -1189,6 +1246,28 @@ function HelpSection() {
         >
           <Github className="size-4 shrink-0 text-muted-foreground" />
           <span className="flex-1 truncate">GitHub</span>
+          {repoStats && (
+            <span className="flex shrink-0 items-center gap-3 text-[11px] tabular-nums text-muted-foreground">
+              <span
+                role="img"
+                className="inline-flex items-center gap-1"
+                aria-label={`${repoStats.stars.toLocaleString()} GitHub stars`}
+                title="GitHub stars"
+              >
+                <Star aria-hidden="true" className="size-3.5" />
+                {repoStats.stars.toLocaleString()}
+              </span>
+              <span
+                role="img"
+                className="inline-flex items-center gap-1"
+                aria-label={`${repoStats.forks.toLocaleString()} GitHub forks`}
+                title="GitHub forks"
+              >
+                <GitFork aria-hidden="true" className="size-3.5" />
+                {repoStats.forks.toLocaleString()}
+              </span>
+            </span>
+          )}
           <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
         </button>
       </div>

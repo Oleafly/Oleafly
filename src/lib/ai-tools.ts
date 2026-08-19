@@ -119,7 +119,9 @@ const HOST: AiToolsHost = {
     return result;
   },
   createFile: async (projectId, path, isDir, expectedGeneration) => {
-    const result = await createFile(projectId, path, isDir, expectedGeneration);
+    // The agent gets the strict contract: a collision is a structured error
+    // it must resolve by choosing a different name, never a silent overwrite.
+    const result = await createFile(projectId, path, isDir, "error", expectedGeneration);
     recordMutationResult(projectId, result);
     return result;
   },

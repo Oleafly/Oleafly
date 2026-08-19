@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Bookmark, BookmarkCheck, GitCommitVertical, GitFork } from "lucide-react";
+import { Bookmark, BookmarkCheck, GitFork } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -150,16 +150,9 @@ export function Book({
             <div className="relative z-10 flex flex-1 flex-col justify-end p-3">
               {engine && (
                 <span
-                  className="mb-1 flex items-center gap-1 text-[9px] font-semibold uppercase leading-none tracking-wide opacity-55"
+                  className="mb-1 text-[9px] font-semibold uppercase leading-none tracking-wide opacity-55"
                   style={{ color: ink }}
                 >
-                  <Tooltip label={forkedFrom ? `Forked from ${forkedFrom}` : "Not forked"} side="top">
-                    {forkedFrom ? (
-                      <GitFork className="size-2.5" />
-                    ) : (
-                      <GitCommitVertical className="size-2.5" />
-                    )}
-                  </Tooltip>
                   {engine}
                 </span>
               )}
@@ -206,7 +199,25 @@ export function Book({
         </button>
       )}
       <div className="mt-2.5 px-0.5">
-        {kind && <div className="text-xs capitalize text-muted-foreground">{kind}</div>}
+        {kind && (
+          <div className="flex items-center gap-1.5 text-xs capitalize text-muted-foreground">
+            <span>{kind}</span>
+            {forkedFrom ? (
+              <>
+                <span aria-hidden>•</span>
+                <Tooltip label={`Forked from ${forkedFrom}`} side="top">
+                  <span
+                    role="img"
+                    aria-label={`Forked from ${forkedFrom}`}
+                    className="inline-flex"
+                  >
+                    <GitFork aria-hidden className="size-3" />
+                  </span>
+                </Tooltip>
+              </>
+            ) : null}
+          </div>
+        )}
         {date && <div className="mt-0.5 text-xs text-muted-foreground">{date}</div>}
       </div>
     </div>

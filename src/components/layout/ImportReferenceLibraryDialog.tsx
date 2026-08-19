@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { BookMarked, Library, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,12 +8,60 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { addCitations, parseCitationFile, type BatchImportResult } from "@/features/citation";
-import { toast, notifyError } from "@/lib/toast";
+import {
+  addCitations,
+  parseCitationFile,
+  type BatchImportResult,
+} from "@/features/citation";
+import { notifyError, toast } from "@/lib/toast";
+
+function ZoteroLogo() {
+  return (
+    <svg
+      data-testid="zotero-logo"
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-5"
+    >
+      <path
+        fill="#cc2936"
+        d="M4 3.75h16v3.1L9.15 17H20v3.25H4v-3.1L14.85 7H4z"
+      />
+    </svg>
+  );
+}
+
+function EndNoteLogo() {
+  return (
+    <svg
+      data-testid="endnote-logo"
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-5"
+    >
+      <rect x="2" y="2" width="20" height="20" rx="4.5" fill="#c82035" />
+      <text
+        x="4.15"
+        y="16.1"
+        fill="white"
+        fontFamily="Arial, sans-serif"
+        fontSize="12.5"
+        fontWeight="700"
+        letterSpacing="-0.8"
+      >
+        en
+      </text>
+    </svg>
+  );
+}
 
 function summarize(result: BatchImportResult): string {
-  const parts = [`${result.imported} reference${result.imported === 1 ? "" : "s"} imported`];
-  if (result.duplicates) parts.push(`${result.duplicates} already in your library`);
+  const parts = [
+    `${result.imported} reference${result.imported === 1 ? "" : "s"} imported`,
+  ];
+  if (result.duplicates) {
+    parts.push(`${result.duplicates} already in the bibliography`);
+  }
   return parts.join(", ");
 }
 
@@ -27,12 +75,22 @@ interface UploadCardProps {
   busy: boolean;
 }
 
-function UploadCard({ icon, title, description, accept, buttonLabel, onFile, busy }: UploadCardProps) {
+function UploadCard({
+  icon,
+  title,
+  description,
+  accept,
+  buttonLabel,
+  onFile,
+  busy,
+}: UploadCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className="rounded-lg border p-4">
       <div className="flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent">{icon}</span>
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent">
+          {icon}
+        </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">{title}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
@@ -51,9 +109,9 @@ function UploadCard({ icon, title, description, accept, buttonLabel, onFile, bus
             type="file"
             accept={accept}
             className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
               if (file) void onFile(file);
             }}
           />
@@ -63,7 +121,13 @@ function UploadCard({ icon, title, description, accept, buttonLabel, onFile, bus
   );
 }
 
-export function ConnectSourcesDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function ImportReferenceLibraryDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const [busy, setBusy] = useState(false);
 
   const handleUpload = async (file: File) => {
@@ -86,8 +150,8 @@ export function ConnectSourcesDialog({ open, onOpenChange }: { open: boolean; on
       }
       toast.success(summarize(result));
       if (result.imported) onOpenChange(false);
-    } catch (e) {
-      notifyError("import references", e, "Could not read that file.");
+    } catch (error) {
+      notifyError("import references", error, "Could not read that file.");
     } finally {
       setBusy(false);
     }
@@ -97,35 +161,35 @@ export function ConnectSourcesDialog({ open, onOpenChange }: { open: boolean; on
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Connect sources</DialogTitle>
-          <DialogDescription>Import your reference library so Oleafly AI can cite from it</DialogDescription>
+          <DialogTitle>Import reference library</DialogTitle>
+          <DialogDescription>
+            Add references from a citation manager or bibliography file to
+            this project.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <UploadCard
-            icon={<Library className="size-4 text-muted-foreground" />}
+            icon={<ZoteroLogo />}
             title="Zotero"
-            description={
-              <>
-                In Zotero, choose File → Export Library → Zotero RDF, then upload the file here.
-              </>
-            }
+            description="In Zotero, select File → Export Library → Zotero RDF. Then choose the exported file."
             accept=".rdf"
-            buttonLabel="Upload Zotero RDF export"
+            buttonLabel="Choose Zotero RDF file"
             onFile={handleUpload}
             busy={busy}
           />
           <UploadCard
-            icon={<BookMarked className="size-4 text-muted-foreground" />}
-            title="EndNote, RIS or BibTeX"
-            description="Upload an EndNote XML, RIS, or .bib export and the references go straight into your bibliography."
+            icon={<EndNoteLogo />}
+            title="EndNote, RIS, or BibTeX"
+            description="Choose an EndNote XML, RIS, or BibTeX file. Oleafly adds the references to the project bibliography."
             accept=".xml,.ris,.bib"
-            buttonLabel="Upload .xml, .ris or .bib file"
+            buttonLabel="Choose XML, RIS, or BibTeX file"
             onFile={handleUpload}
             busy={busy}
           />
         </div>
         <p className="text-center text-xs text-muted-foreground">
-          After importing, ask Oleafly AI things like "cite the Smith 2023 paper from my library".
+          References with a DOI that already exists in the bibliography are
+          skipped.
         </p>
       </DialogContent>
     </Dialog>

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip } from "@/components/ui/tooltip";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGithubStore } from "@/store/github";
 import { gitAutoCommit, gitPush, gitSetRemote } from "@/lib/tauri";
 import {
@@ -144,7 +145,7 @@ export function PublishToGitHubDialog({
         tabIndex={-1}
         className="relative flex h-[min(560px,88vh)] w-[min(620px,94vw)] flex-col overflow-hidden rounded-xl border bg-sidebar text-sidebar-foreground shadow-2xl"
       >
-        <div className="flex h-12 shrink-0 items-center justify-between border-b px-4">
+        <div className="flex h-12 shrink-0 items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <Github className="size-4" />
             <h2 id="publish-github-title" className="text-sm font-semibold">Publish to GitHub</h2>
@@ -172,56 +173,54 @@ export function PublishToGitHubDialog({
           </div>
         ) : (
           <>
-            <div className="flex shrink-0 gap-1 border-b px-3 py-2">
-              {(["new", "existing"] as const).map((t) => (
-                <button type="button"
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={cn(
-                    "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                    tab === t
-                      ? "bg-accent text-foreground"
-                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-                  )}
-                >
-                  {t === "new" ? "Create new repository" : "Link existing"}
-                </button>
-              ))}
-            </div>
+            <Tabs
+              value={tab}
+              onValueChange={(value) => setTab(value as "new" | "existing")}
+              className="shrink-0"
+            >
+              <div className="flex justify-center px-4 py-2">
+                <TabsList>
+                  <TabsTrigger value="new">Create new repository</TabsTrigger>
+                  <TabsTrigger value="existing">Link existing</TabsTrigger>
+                </TabsList>
+              </div>
+            </Tabs>
 
-            <div className="min-h-0 flex-1 overflow-auto p-4 text-sm">
+            <div className="min-h-0 flex-1 overflow-auto px-4 pt-1 pb-4 text-sm">
               {tab === "new" ? (
-                <div className="space-y-3">
-                  <label htmlFor="publish-repository-name" className="block space-y-1.5">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Repository name
-                    </span>
-                    <Input
-                      id="publish-repository-name"
-                      value={repoName}
-                      onChange={(e) => setRepoName(e.target.value)}
-                      aria-label="Repository name"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
-                    />
-                  </label>
-                  <label htmlFor="publish-private-repository" className="flex cursor-pointer items-center justify-between rounded-md border bg-card p-3">
-                    <span className="flex items-center gap-2">
-                      <Lock className="size-4 text-muted-foreground" />
-                      <span className="text-xs">
-                        Private
-                        <span className="ml-1 text-muted-foreground">
-                          (recommended)
+                <div className="flex h-full flex-col">
+                  <div className="space-y-3">
+                    <label htmlFor="publish-repository-name" className="block space-y-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Repository name
+                      </span>
+                      <Input
+                        id="publish-repository-name"
+                        value={repoName}
+                        onChange={(e) => setRepoName(e.target.value)}
+                        aria-label="Repository name"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
+                      />
+                    </label>
+                    <label htmlFor="publish-private-repository" className="flex cursor-pointer items-center justify-between rounded-md border bg-card p-3">
+                      <span className="flex items-center gap-2">
+                        <Lock className="size-4 text-muted-foreground" />
+                        <span className="text-xs">
+                          Private
+                          <span className="ml-1 text-muted-foreground">
+                            (recommended)
+                          </span>
                         </span>
                       </span>
-                    </span>
-                    <Checkbox
-                      id="publish-private-repository"
-                      checked={isPrivate}
-                      onCheckedChange={(checked) => setIsPrivate(checked === true)}
-                    />
-                  </label>
+                      <Checkbox
+                        id="publish-private-repository"
+                        checked={isPrivate}
+                        onCheckedChange={(checked) => setIsPrivate(checked === true)}
+                      />
+                    </label>
+                  </div>
                   <Button
-                    className="w-full"
+                    className="mt-auto ml-auto px-5"
                     disabled={busy || !repoName.trim()}
                     onClick={() => void publishNew()}
                   >
@@ -235,13 +234,14 @@ export function PublishToGitHubDialog({
                 </div>
               ) : (
                 <div className="flex h-full flex-col gap-2">
-                  <div className="flex items-center gap-2 rounded-md border px-2">
-                    <Search className="size-3.5 text-muted-foreground" />
+                  <div className="flex items-center gap-2 rounded-md border px-3 transition-colors focus-within:ring-1 focus-within:ring-ring">
+                    <Search className="size-3.5 shrink-0 text-muted-foreground" />
                     <Input
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder="Search your repositories…"
-                      className="h-10 flex-1 bg-transparent text-xs outline-none"
+                      aria-label="Search repositories"
+                      className="h-10 flex-1 rounded-none border-0 bg-transparent px-0 text-xs shadow-none outline-none focus-visible:ring-0"
                     />
                   </div>
                   <div className="min-h-0 flex-1 overflow-auto rounded-md border">

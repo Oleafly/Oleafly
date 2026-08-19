@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "@tauri-apps/api/core";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { installPhaseLabel, useEngineStore } from "@/store/engine";
-import { confirmQuitDuringInstall } from "@/lib/tauri";
+import { cancelQuitFlush, confirmQuitDuringInstall } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 
 /**
@@ -38,9 +38,16 @@ export function TinytexGuards() {
   }, []);
 
   // The install finished (or failed) while the dialog was up: quitting is no
-  // longer destructive, so stop asking.
+  // longer destructive, so stop asking — and re-arm the quit flush gate. The
+  // quit attempt that opened this dialog already confirmed its flush; if the
+  // user now stays and keeps editing, the next quit must flush again.
   useEffect(() => {
-    if (!installing) setQuitAsked(false);
+    if (!installing) {
+      setQuitAsked((asked) => {
+        if (asked) void cancelQuitFlush().catch(() => {});
+        return false;
+      });
+    }
   }, [installing]);
 
   const phaseLabel = installPhaseLabel(installPhase, progress).replace(/…$/, "");
@@ -58,7 +65,12 @@ export function TinytexGuards() {
             notifyError("quit during install", error),
           );
         }}
-        onCancel={() => setQuitAsked(false)}
+        onCancel={() => {
+          setQuitAsked(false);
+          // This dialog can be reached after the quit flush confirmed; staying
+          // must re-arm the flush gate or the next quit would skip saving.
+          void cancelQuitFlush().catch(() => {});
+        }}
       />
       <ConfirmationDialog
         open={waitNoticeOpen && installing}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { FolderInput, Loader2 } from "lucide-react";
 import {
   NewProjectDialog as NewProjectDialogCore,
   type TemplatesHost,
@@ -11,10 +12,8 @@ import { TemplateGenerateModal } from "@/components/library/TemplateGenerateModa
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
-import { pickOpenPath } from "@/lib/native-file-dialog";
-import { notifyError } from "@/lib/toast";
-import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { ProjectImportMenu } from "@/components/library/ProjectImportMenu";
 import {
   Select,
   SelectContent,
@@ -107,29 +106,34 @@ export function NewProjectDialog(props: {
     setSettingsOpen(true);
     props.onClose();
   };
-  // Import an Overleaf ZIP export instead of starting from a template. The
-  // dialog closes first so the imported project's editor is what appears.
-  const importFromOverleaf = async () => {
-    const selection = await pickOpenPath({
-      multiple: false,
-      filters: [{ name: "ZIP archive", extensions: ["zip"] }],
-      title: "Import Overleaf project (ZIP)",
-    });
-    if (typeof selection !== "string") return;
-    props.onClose();
-    try {
-      // Success feedback comes from the store's single import toast.
-      await useFilesStore.getState().importProject(selection);
-    } catch (error) {
-      notifyError("import project", error);
-    }
-  };
   return (
     <>
       <NewProjectDialogCore
         {...props}
         onGenerateWithAi={canGenerate ? () => setGenerateOpen(true) : undefined}
-        onImportProject={() => void importFromOverleaf()}
+        importControl={
+          <ProjectImportMenu
+            align="end"
+            onImportSelected={props.onClose}
+            trigger={(busy) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                className="gap-2"
+                data-testid="import-from-overleaf"
+                data-tour-hide
+              >
+                {busy ? (
+                  <Loader2 className="size-5 animate-spin" />
+                ) : (
+                  <FolderInput className="size-5" />
+                )}
+                Import
+              </Button>
+            )}
+          />
+        }
         onOpenTemplateDownloads={openTemplateDownloads}
         host={HOST}
         kit={KIT}

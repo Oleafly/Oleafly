@@ -834,9 +834,11 @@ WYSRAWANCHOR
     '[aria-label="Cite from project"]',
     "Cite from project",
   );
-  await tauriPage
-    .getByText("Find and add a new citation…", { exact: true })
-    .click();
+  await clickPortalButton(
+    tauriPage,
+    `candidate.textContent?.trim() === "Find and add a new citation…"`,
+    "Find and add a new citation",
+  );
   await expect(
     tauriPage.locator(
       'input[placeholder="DOI, arXiv id, URL, or a paper title…"]',

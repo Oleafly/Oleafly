@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openGallery } from "../helpers";
+import { createProjectFromTemplate } from "../helpers";
 
 // Templates differ in class, packages, and layout, so this is the suite's
 // regression net for "we changed something and a template broke".
@@ -30,15 +30,7 @@ const TEX_TEMPLATES = [
 const NETWORK_TEMPLATES = ["modern-resume"];
 
 async function createFromTemplate(page: import("../helpers").Page, id: string, name: string) {
-  await openGallery(page);
-  const card = page.locator(`[data-testid="template-card-${id}"]`);
-  await expect(card).toBeVisible({ timeout: 30_000 });
-  await page.click(`[data-testid="template-card-${id}"]`, { timeout: 30_000 });
-  await expect(page.locator("#new-project-name")).toBeVisible({ timeout: 10_000 });
-  await page.fill("#new-project-name", name);
-  await expect(page.getByTestId("create-project")).toBeEnabled({ timeout: 10_000 });
-  await page.click('[data-testid="create-project"]');
-  await expect(page.locator(".cm-content")).toBeVisible({ timeout: 60_000 });
+  await createProjectFromTemplate(page, id, name);
 }
 
 async function compileClean(page: import("../helpers").Page) {

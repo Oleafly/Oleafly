@@ -41,7 +41,7 @@ test("settings modal opens with all sections", async ({ tauriPage }) => {
   }
   await openSettings(tauriPage, "help");
   await expect(tauriPage.locator('[data-testid="about-oleafly-logo"]')).toBeVisible();
-  await expect(tauriPage.getByText("About Oleafly", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByTestId("about-oleafly-section")).toContainText("Oleafly");
   await tauriPage.click('[aria-label="Close settings"]');
 });
 

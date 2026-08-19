@@ -2,6 +2,8 @@ import { memo, useState } from "react";
 import { AlertCircle, AlertTriangle, ChevronRight, CornerDownLeft, Info } from "lucide-react";
 import type { Finding, Severity } from "@oleafly/preflight";
 import { gotoRange } from "@/components/editor/cm/controller";
+import { revealSourceEditor } from "@/components/editor/wysiwyg/controller";
+import { useFilesStore } from "@/store/files";
 import { cn } from "@/lib/utils";
 
 const SEV: Record<Severity, { icon: typeof Info; color: string; label: string }> = {
@@ -15,6 +17,9 @@ const LENS_LABEL: Record<Finding["lens"], string> = {
   a11y: "Accessibility",
   both: "ATS + Accessibility",
   refs: "References",
+  compile: "Compile",
+  submission: "Submission",
+  privacy: "Privacy",
 };
 
 export const FindingRow = memo(function FindingRow({ finding }: { finding: Finding }) {
@@ -25,6 +30,14 @@ export const FindingRow = memo(function FindingRow({ finding }: { finding: Findi
     typeof finding.from === "number" && typeof finding.to === "number"
       ? { from: finding.from, to: finding.to }
       : null;
+  const jumpToSource = async () => {
+    if (!sourceRange) return;
+    if (finding.file && useFilesStore.getState().activePath !== finding.file) {
+      await useFilesStore.getState().openFile(finding.file);
+    }
+    revealSourceEditor();
+    requestAnimationFrame(() => gotoRange(sourceRange.from, sourceRange.to));
+  };
 
   return (
     <div className="rounded-md border border-sidebar-border bg-black/[0.03] dark:bg-background">
@@ -38,6 +51,9 @@ export const FindingRow = memo(function FindingRow({ finding }: { finding: Findi
           <span className="mt-0.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
             <span>{LENS_LABEL[finding.lens]}</span>
             {finding.page != null && <span>· p.{finding.page}</span>}
+            {finding.file && <span className="truncate">· {finding.file}</span>}
+            {finding.certainty === "advisory" && <span>· Review</span>}
+            {finding.certainty === "manual" && <span>· Manual</span>}
           </span>
         </span>
         <ChevronRight className={cn("mt-0.5 size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")} />
@@ -47,7 +63,7 @@ export const FindingRow = memo(function FindingRow({ finding }: { finding: Findi
           <p className="text-xs leading-relaxed text-muted-foreground">{finding.detail}</p>
           {sourceRange && (
             <button type="button"
-              onClick={() => gotoRange(sourceRange.from, sourceRange.to)}
+              onClick={() => void jumpToSource()}
               className="mt-2 inline-flex items-center gap-1.5 rounded border border-input px-2 py-1 text-xs hover:bg-accent"
             >
               <CornerDownLeft className="size-3" /> Jump to source

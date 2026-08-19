@@ -12,7 +12,26 @@ const f = (lens: Finding["lens"], severity: Finding["severity"]): Finding => ({
 
 describe("computeScores", () => {
   it("is a perfect 100 across lenses with no findings", () => {
-    expect(computeScores([])).toEqual({ ats: 100, a11y: 100, refs: 100 });
+    expect(computeScores([])).toEqual({
+      ats: 100,
+      compile: 100,
+      a11y: 100,
+      refs: 100,
+      submission: 100,
+      privacy: 100,
+    });
+  });
+
+  it("keeps the new publication checks isolated from each other", () => {
+    const scores = computeScores([
+      f("compile", "error"),
+      f("submission", "warning"),
+      f("privacy", "info"),
+    ]);
+    expect(scores.compile).toBe(100 - POINTS.error);
+    expect(scores.submission).toBe(100 - POINTS.warning);
+    expect(scores.privacy).toBe(100 - POINTS.info);
+    expect(scores.refs).toBe(100);
   });
 
   it("a refs-lens finding only affects the refs score", () => {

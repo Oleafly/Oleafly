@@ -8,6 +8,7 @@ interface ConfirmationDialogProps {
   title: string;
   description: string;
   confirmLabel: string;
+  cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
   destructive?: boolean;
@@ -18,6 +19,7 @@ export function ConfirmationDialog({
   title,
   description,
   confirmLabel,
+  cancelLabel,
   onConfirm,
   onCancel,
   destructive = false,
@@ -79,7 +81,7 @@ export function ConfirmationDialog({
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onCancel} data-modal-initial-focus>
-            Cancel
+            {cancelLabel ?? "Cancel"}
             <Kbd className="h-4 min-w-4 px-1 text-[10px]">esc</Kbd>
           </Button>
           <Button

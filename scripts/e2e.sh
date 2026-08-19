@@ -107,7 +107,7 @@ cleanup() {
   fi
   # The per-run data dir is ~200MB of disposable app data; leaking one per
   # run once filled a developer machine's /tmp with tens of gigabytes.
-  if [ -n "$DATA_DIR" ]; then
+  if [[ -n "$DATA_DIR" && -z "${OLEAFLY_E2E_REUSE_DATA_DIR:-}" ]]; then
     rm -rf "$DATA_DIR" 2>/dev/null || true
   fi
   if [ -n "$LOG" ]; then
@@ -121,7 +121,7 @@ trap 'exit 143' TERM
 
 bash scripts/ensure-e2e-sidecars.sh
 
-DATA_DIR="$(mktemp -d /tmp/oleafly-e2e.XXXXXX)"
+DATA_DIR="${OLEAFLY_E2E_REUSE_DATA_DIR:-$(mktemp -d /tmp/oleafly-e2e.XXXXXX)}"
 LOG="$(mktemp /tmp/oleafly-e2e-log.XXXXXX)"
 # Export so Playwright specs can read discovery files (e.g. mcp.json) written
 # into the same throwaway data dir the app uses.

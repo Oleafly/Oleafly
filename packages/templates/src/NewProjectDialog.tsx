@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -217,6 +217,7 @@ export function NewProjectDialog({
   onClose,
   onCreate,
   onGenerateWithAi,
+  importControl,
   onImportProject,
   onOpenTemplateDownloads,
   host,
@@ -232,7 +233,9 @@ export function NewProjectDialog({
   onClose: () => void;
   onCreate: (name: string, templateId: string, color: string) => void | Promise<void>;
   onGenerateWithAi?: () => void;
-  /** Import an existing project (Overleaf ZIP / folder) instead of a template. */
+  /** App-owned import menu, used when multiple import sources are available. */
+  importControl?: ReactNode;
+  /** Backward-compatible single import action. */
   onImportProject?: () => void;
   onOpenTemplateDownloads?: () => void;
   host: TemplatesHost;
@@ -466,16 +469,16 @@ export function NewProjectDialog({
             {step === 1 ? "Choose a template" : "Name your project"}
           </h2>
           <div className="flex items-center gap-2">
-            {step === 1 && onImportProject && (
+            {step === 1 && importControl}
+            {step === 1 && !importControl && onImportProject && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-lime-600 hover:text-lime-600"
                 data-testid="import-from-overleaf"
                 data-tour-hide
                 onClick={onImportProject}
               >
-                <FolderInput className="size-3.5" /> Import an existing project
+                <FolderInput className="size-3.5" /> Import
               </Button>
             )}
             {step === 1 && onGenerateWithAi && (

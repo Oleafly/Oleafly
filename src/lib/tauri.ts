@@ -1,6 +1,49 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
+import type {
+  AheadBehind,
+  AppConfig,
+  CompileResult,
+  ComponentInfo,
+  CopyFileResult,
+  CreateFileResult,
+  DocumentEngineDescriptor,
+  EngineInfo,
+  FigureCacheResult,
+  FileConflictStrategy,
+  FileEntry,
+  FileMutationResult,
+  GitCommit,
+  GitFileChange,
+  GitHubRepo,
+  GitHubRepoStats,
+  GitHubUser,
+  GitPullResult,
+  ImportPathsResult,
+  McpConnectionInfo,
+  McpStatus,
+  PackInfo,
+  Prerequisite,
+  ProjectInfo,
+  ProjectMeta,
+  ProjectStateChanged,
+  ProviderModel,
+  RenameFileResult,
+  SearchHit,
+  SynctexHit,
+  SynctexRect,
+  TaggedCompileResult,
+  TemplateInfo,
+  TexDistribution,
+  TexFlavor,
+  TexSpec,
+  TexStatus,
+  TinytexInstallState,
+  ValidatedCompileFingerprint,
+} from "@oleafly/backend-port";
+export type * from "@oleafly/backend-port";
+
 export const reloadViews = () => invoke<void>("reload_views");
 
 export const focusCurrentWindow = async () => {
@@ -8,57 +51,11 @@ export const focusCurrentWindow = async () => {
   await window.setFocus();
 };
 
-export interface CompileError {
-  line: number | null;
-  file: string | null;
-  message: string;
-  kind: string;
-  explanation: string | null;
-}
 
-export interface CompileResult {
-  ok: boolean;
-  has_pdf: boolean;
-  output_id: string | null;
-  output_revision: number | null;
-  log: string;
-  errors: CompileError[];
-  synctex_path: string | null;
-  out_dir: string | null;
-  compile_time_ms: number;
-  /// True when the user stopped this compile, as opposed to it failing.
-  stopped?: boolean;
-}
 
-export interface EngineCapabilities {
-  produces_pdf: boolean;
-  supports_synctex: boolean;
-  supports_offline: boolean;
-  supports_isolated_compile: boolean;
-  formatting_profile: "latex" | "typst" | "markdown" | "none";
-  source_preflight_profile: "latex" | "none";
-  features: EngineFeature[];
-  conversion_exports: Array<"docx" | "html" | "md" | "txt" | "pptx" | "epub">;
-  template_kinds: Array<"document" | "image">;
-  compiler_prerequisite: "pandoc" | "system_tex" | null;
-}
-export type EngineFeature = "citations" | "document_index";
 
-export interface DocumentEngineDescriptor {
-  id: DocumentEngineId;
-  label: string;
-  source_format: "latex" | "typst" | "markdown" | "unknown";
-  main_document: string;
-  source_extensions: string[];
-  capabilities: EngineCapabilities;
-  /** Pinned latexmk compiler; absent means auto-detect from the source. */
-  tex_flavor?: TexFlavor;
-  allow_shell_escape: boolean;
-}
 
-export type TexFlavor = "pdflatex" | "xelatex" | "lualatex";
 
-export type DocumentEngineId = "latex" | "latexmk" | "typst" | "markdown" | "unknown";
 
 export const getProjectEngine = (projectId: string) =>
   invoke<DocumentEngineDescriptor>("project_engine", { projectId });
@@ -66,53 +63,24 @@ export const getProjectEngine = (projectId: string) =>
 export const readCompiledPdf = (projectId: string) =>
   invoke<ArrayBuffer>("read_compiled_pdf", { projectId });
 
+
+/** Null means the persisted record is missing or stale: compile normally. */
+export const validateCompileFingerprint = (projectId: string, mainDoc: string) =>
+  invoke<ValidatedCompileFingerprint | null>("validate_compile_fingerprint", {
+    projectId,
+    mainDoc,
+  });
+
 export const compileTex = (
   projectId: string,
   mainDoc: string,
   source: string
 ) => invoke<CompileResult>("compile_tex", { projectId, mainDoc, source });
 
-export interface FileEntry {
-  path: string;
-  is_dir: boolean;
-}
 
-export interface ProjectMeta {
-  name: string;
-  main_doc: string;
-  engine: string;
-  color?: string;
-  kind?: string;
-  tex?: TexSpec | null;
-  allow_shell_escape: boolean;
-}
 
-export interface ProjectStateChanged {
-  projectId: string;
-  revision: number;
-  reason: string;
-  filesChanged: boolean;
-  mutationGeneration: number | null;
-  project: ProjectMeta;
-  engine: DocumentEngineDescriptor;
-}
 
-// Reproducibility pin for latexmk projects (stored in project.json so it
-// travels with git and every coauthor sees the same spec).
-export interface TexSpec {
-  distribution: string;
-  distribution_label: string;
-  packages: Record<string, string>;
-  recorded_at: number;
-}
 
-export interface TexStatus {
-  pinned_label: string;
-  local_label: string | null;
-  distribution_differs: boolean;
-  missing_packages: string[];
-  can_install_missing: boolean;
-}
 
 // Capture the local distro + tlmgr package versions into the project pin.
 export const recordProjectTexSpec = (projectId: string) =>
@@ -127,24 +95,6 @@ export const importOverleafProjectCmd = (path: string, name?: string) =>
 export const projectTexStatus = (projectId: string) =>
   invoke<TexStatus | null>("project_tex_status", { projectId });
 
-export interface ProjectInfo {
-  id: string;
-  name: string;
-  main_doc: string;
-  engine?: string;
-  kind: string;
-  created_at: number;
-  updated_at: number;
-  color?: string;
-  has_preview: boolean;
-  exports: {
-    date: number;
-    filename: string;
-    path: string;
-    format: string;
-  }[];
-  forked_from: string | null;
-}
 
 export const compileProject = (
   projectId: string,
@@ -179,9 +129,6 @@ export const readIsolatedPdf = (projectId: string) =>
 export const readProjectBytes = (projectId: string, relPath: string) =>
   invoke<ArrayBuffer>("read_project_bytes", { projectId, relPath });
 
-export interface FileMutationResult {
-  generation: number;
-}
 
 export const projectMutationGeneration = (projectId: string) =>
   invoke<number>("project_mutation_generation", { projectId });
@@ -223,26 +170,26 @@ export const writeFileContent = (
   expectedGeneration?: number,
 ) => invoke<FileMutationResult>("write_file", { projectId, path, content, expectedGeneration });
 
-export const createFile = (
+export async function createFile(
   projectId: string,
   path: string,
   isDir: boolean,
+  conflictStrategy: FileConflictStrategy = "error",
   expectedGeneration?: number,
-) => invoke<FileMutationResult>("create_file", { projectId, path, isDir, expectedGeneration });
+): Promise<{ path: string; generation: number }> {
+  const result = await invoke<CreateFileResult>("create_file", {
+    projectId,
+    path,
+    isDir,
+    conflictStrategy,
+    expectedGeneration,
+  });
+  if (result.status === "conflict") throw new FileConflictError(result);
+  return { path: result.path, generation: result.generation };
+}
 
 export const deleteFile = (projectId: string, path: string, expectedGeneration?: number) =>
   invoke<FileMutationResult>("delete_file", { projectId, path, expectedGeneration });
-
-export type FileConflictStrategy = "error" | "keep_both" | "replace";
-
-export type RenameFileResult =
-  | { status: "renamed"; path: string; generation: number }
-  | {
-      status: "conflict";
-      destination: string;
-      suggested_destination: string;
-      generation: number;
-    };
 
 export class FileConflictError extends Error {
   readonly destination: string;
@@ -277,10 +224,6 @@ export async function renameFile(
   return result.path;
 }
 
-export interface CopyFileResult {
-  path: string;
-  generation: number;
-}
 
 export const copyFile = (
   projectId: string,
@@ -289,10 +232,6 @@ export const copyFile = (
   expectedGeneration?: number,
 ) => invoke<CopyFileResult>("copy_file", { projectId, from, to, expectedGeneration });
 
-export interface ImportPathsResult {
-  paths: string[];
-  generation: number;
-}
 
 export const importPathsIntoProject = (
   projectId: string,
@@ -319,6 +258,9 @@ export const readFileBase64 = (projectId: string, path: string) =>
 
 export const createProjectFromDocx = (name: string, dataBase64: string) =>
   invoke<string>("create_project_from_docx", { name, dataBase64 });
+
+export const importDocument = (path: string) =>
+  invoke<string>("import_document", { path });
 
 export const appendAppLog = (message: string) =>
   invoke<void>("append_app_log", { message });
@@ -383,10 +325,6 @@ export const createDiagramProject = (name: string, source: string) =>
 export const getOrCreateScratchProject = () =>
   invoke<string>("get_or_create_scratch_project");
 
-export interface FigureCacheResult {
-  hash: string;
-  alreadyCached: boolean;
-}
 
 export const saveFigureToCache = async (
   name: string,
@@ -400,38 +338,9 @@ export const saveFigureToCache = async (
   return { hash: result.hash, alreadyCached: result.already_cached };
 };
 
-export interface TemplateLicense {
-  spdx: string;
-  author: string;
-  url: string;
-}
 
-export interface TemplateRequires {
-  packages: string[];
-  fonts: string[];
-  engine: string; // "tectonic" | "luatex"
-}
 
-export type AtsProfile = "friendly" | "design-forward" | null;
 
-export interface TemplateInfo {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  engine: string; // "xetex" | "luatex"
-  document_engine: DocumentEngineId;
-  ats_profile: AtsProfile;
-  layout: string | null;
-  pages: string | null;
-  default_color: string | null;
-  license: TemplateLicense | null;
-  requires: TemplateRequires;
-  has_preview: boolean;
-  assets_ready: boolean;
-  order: number;
-  source: string;
-}
 
 export const saveCustomTemplate = (
   slug: string,
@@ -458,33 +367,8 @@ export const setProjectColor = (projectId: string, color: string) =>
 
 // --- Downloadable assets (font packs) ---
 
-export interface ComponentInfo {
-  id: string;
-  label: string;
-  description: string;
-  approx_bytes: number;
-  license: TemplateLicense | null;
-  installed: boolean;
-  kind: string;
-}
 
-export interface Prerequisite {
-  id: string;
-  label: string;
-  approx_bytes: number;
-  installed: boolean;
-}
 
-// Emitted on the "asset-progress" event while a font pack downloads.
-export interface AssetProgress {
-  component: string;
-  label: string;
-  file: string;
-  index: number;
-  total: number;
-  received: number;
-  file_total: number | null;
-}
 
 export const listFontComponents = () => invoke<ComponentInfo[]>("list_font_components");
 
@@ -502,16 +386,6 @@ export const templatePrerequisites = (templateId: string) =>
 export const ensureTemplateAssets = (templateId: string) =>
   invoke<void>("ensure_template_assets", { templateId });
 
-export interface PackInfo {
-  id: string;
-  label: string;
-  description: string;
-  category: string;
-  approx_bytes: number;
-  count: number;
-  license_summary: string;
-  installed: boolean;
-}
 
 export const listTemplatePacks = () => invoke<PackInfo[]>("list_template_packs");
 
@@ -527,12 +401,6 @@ export const readDeadlines = () => invoke<string>("read_deadlines");
 
 export const refreshDeadlines = () => invoke<void>("refresh_deadlines");
 
-export interface GitCommit {
-  oid: string;
-  short: string;
-  time: number;
-  message: string;
-}
 
 export const gitAutoCommit = (projectId: string, message: string) =>
   invoke<boolean>("git_auto_commit", { projectId, message });
@@ -568,36 +436,11 @@ export const downloadPandoc = () => invoke<string>("download_pandoc");
 
 // --- Optional LuaLaTeX engine (tagged / accessible export) ---
 
-export interface EngineInfo {
-  kind: "system" | "tinytex" | "none";
-  lualatex: string | null;
-  tlmgr: string | null;
-  version: string | null;
-  latexmk: string | null;
-}
 
-export interface TexDistribution {
-  kind: "oleafly-tinytex" | "mactex" | "texlive" | "miktex" | "tinytex" | "other";
-  label: string;
-  bin_dir: string;
-  latexmk: string | null;
-  tlmgr: string | null;
-}
 
 export const texDistributions = () => invoke<TexDistribution[]>("tex_distributions");
 
-export interface TaggedCompileResult {
-  success: boolean;
-  has_pdf: boolean;
-  output_id: string | null;
-  output_revision: number | null;
-  log: string;
-}
 
-export interface TinytexInstallState {
-  installing: boolean;
-  partial_download_bytes: number;
-}
 
 export const latexEngineInfo = () => invoke<EngineInfo>("latex_engine_info");
 export const hasTaggingEngine = () => invoke<boolean>("has_tagging_engine");
@@ -609,6 +452,11 @@ export const tinytexInstallState = () =>
 // The user confirmed quitting mid-install; the app exits immediately.
 export const confirmQuitDuringInstall = () =>
   invoke<void>("confirm_quit_during_install");
+// The quit flush finished (or was overridden): let the quit/restart through.
+export const confirmQuitFlush = (restart: boolean) =>
+  invoke<void>("confirm_quit_flush", { restart });
+// The user chose to stay after a blocked quit; the next quit flushes again.
+export const cancelQuitFlush = () => invoke<void>("cancel_quit_flush");
 export const deleteTinytex = () => invoke<void>("delete_tinytex");
 export const tlmgrInstalled = () => invoke<string[]>("tlmgr_installed");
 export const tlmgrInstall = (packages: string[]) => invoke<string>("tlmgr_install", { packages });
@@ -646,13 +494,6 @@ export const getConnectorKey = (connectorId: string) =>
 export const setConnectorKey = (connectorId: string, value: string) =>
   invoke<void>("set_connector_key", { connectorId, value });
 
-export interface SearchHit {
-  project_id: string;
-  project_name: string;
-  path: string;
-  line: number;
-  preview: string;
-}
 
 export const searchDocs = (query: string) =>
   invoke<SearchHit[]>("search_docs", { query });
@@ -662,51 +503,7 @@ export const searchDocs = (query: string) =>
 export const searchProject = (projectId: string, query: string) =>
   invoke<SearchHit[]>("search_project", { projectId, query });
 
-export interface StoredModel {
-  id: string;
-  name: string;
-  enabled: boolean;
-  source: "builtin" | "fetched" | "custom";
-}
-export interface CustomProvider {
-  id: string;
-  name: string;
-  baseURL: string;
-  keyOptional?: boolean;
-}
-export interface Persona {
-  id: string;
-  name: string;
-  color: string;
-  prompt: string;
-}
 
-export interface AppConfig {
-  // Always empty when read via `get_config` - the token never leaves the
-  // Rust core. Use `github_connected` for presence; set it via `ghSetToken`.
-  github_token: string;
-  github_user: string;
-  github_connected: boolean;
-  ai_api_key: string;
-  ai_provider: string;
-  ai_model: string;
-  // provider id -> API key (or host URL for Ollama).
-  ai_keys: Record<string, string>;
-  // User-authored extra instructions, sandboxed into the AI system prompt.
-  ai_system_prompt: string;
-  ai_pdf_capture: boolean;
-  // provider id -> per-model enable/source state (seeded from the static catalog).
-  ai_provider_models: Record<string, StoredModel[]>;
-  ai_custom_providers: CustomProvider[];
-  ai_personas: Persona[];
-  mcp_enabled: boolean;
-  mcp_port: number;
-  mcp_read_only: boolean;
-  // "ask" (confirm every change), "auto_writes" (auto-approve edits, still
-  // confirm deletes), or "trust" (never prompt in Oleafly; rely on the MCP
-  // client's own approval, deletes included).
-  mcp_approval_policy: string;
-}
 
 export const getConfig = () => invoke<AppConfig>("get_config");
 export const setConfig = (config: AppConfig) =>
@@ -714,17 +511,7 @@ export const setConfig = (config: AppConfig) =>
 
 // --- MCP server (token only via mcp_connection_info while running) ---
 
-export interface McpStatus {
-  running: boolean;
-  port: number | null;
-  url: string | null;
-  enabled: boolean;
-}
 
-export interface McpConnectionInfo {
-  url: string;
-  token: string;
-}
 
 export const mcpStatus = () => invoke<McpStatus>("mcp_status");
 export const mcpSetEnabled = (enabled: boolean) =>
@@ -760,10 +547,6 @@ export const mcpRegisterTools = (
 export const REDACTED_MARKER = "__stored__";
 export const redactedSecretMarker = () => invoke<string>("redacted_secret_marker");
 
-export interface ProviderModel {
-  id: string;
-  name: string;
-}
 
 export const agentListModels = (args: {
   providerId: string;
@@ -793,19 +576,7 @@ export const mcpToolResult = (
 
 // --- GitHub (token stays in the Rust core; these never take/return it) ---
 
-export interface GitHubUser {
-  login: string;
-  name: string | null;
-  avatar_url: string;
-  html_url: string;
-}
 
-export interface GitHubRepo {
-  full_name: string;
-  html_url: string;
-  clone_url: string;
-  private: boolean;
-}
 
 export const ghCurrentUser = () => invoke<GitHubUser>("gh_current_user");
 export const ghSetToken = (token: string) =>
@@ -814,6 +585,10 @@ export const ghClearToken = () => invoke<void>("gh_clear_token");
 export const ghListRepos = () => invoke<GitHubRepo[]>("gh_list_repos");
 export const ghCreateRepo = (name: string, isPrivate: boolean) =>
   invoke<GitHubRepo>("gh_create_repo", { name, private: isPrivate });
+export const ghPublicRepoStats = (fullName: string) =>
+  invoke<GitHubRepoStats>("gh_public_repo_stats", { fullName });
+export const ghImportRepo = (fullName: string) =>
+  invoke<string>("gh_import_repo", { fullName });
 
 export const gitSetRemote = (projectId: string, url: string) =>
   invoke<void>("git_set_remote", { projectId, url });
@@ -824,29 +599,15 @@ export const gitGetRemote = (projectId: string) =>
 export const gitCurrentBranch = (projectId: string) =>
   invoke<string>("git_current_branch", { projectId });
 
-export interface AheadBehind {
-  ahead: number;
-  behind: number;
-  has_upstream: boolean;
-}
 
 export const gitAheadBehind = (projectId: string) =>
   invoke<AheadBehind>("git_ahead_behind", { projectId });
 
 export const gitPush = (projectId: string) =>
   invoke<string>("git_push", { projectId });
-export interface GitPullResult {
-  message: string;
-  state: ProjectStateChanged;
-}
 export const gitPull = (projectId: string, expectedGeneration: number) =>
   invoke<GitPullResult>("git_pull", { projectId, expectedGeneration });
 
-export interface GitFileChange {
-  path: string;
-  status: string;
-  staged: boolean;
-}
 
 export const gitStatus = (projectId: string) =>
   invoke<GitFileChange[]>("git_status", { projectId });
@@ -914,19 +675,7 @@ export function uint8ToBase64(bytes: Uint8Array): string {
   return btoa(s);
 }
 
-export interface SynctexRect {
-  page: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
 
-export interface SynctexHit {
-  file: string;
-  line: number;
-  column: number;
-}
 
 export const synctexForward = (
   projectId: string,

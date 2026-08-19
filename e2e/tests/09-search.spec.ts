@@ -9,7 +9,7 @@ import {
 test("project search finds text across the project", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Project search");
+  await openRailTab(tauriPage, "Search Project");
   await tauriPage.fill('input[placeholder="Find in project…"]', "Introduction");
   await expect(tauriPage.getByText("section{Introduction}")).toBeVisible({ timeout: 15_000 });
 });

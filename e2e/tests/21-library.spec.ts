@@ -190,7 +190,12 @@ test("bookmark filter shows only bookmarked projects", async ({ tauriPage }) => 
   );
   if (!clicked) throw new Error("no project book found to bookmark");
 
-  await tauriPage.click('[aria-label="Show bookmarked only"]');
+  const bookmarkFilter = tauriPage.locator('[aria-label="Show bookmarked only"]');
+  await bookmarkFilter.click();
+  await expect(tauriPage.locator('[aria-label="Show all projects"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await tauriPage.waitForFunction(
     `document.querySelectorAll('[aria-label="Remove from favorites"]').length >= 1
       && document.querySelectorAll('[aria-label="Add to favorites"]').length === 0`,
@@ -200,7 +205,11 @@ test("bookmark filter shows only bookmarked projects", async ({ tauriPage }) => 
   await tauriPage.click('[aria-label="Remove from favorites"]');
   await expect(tauriPage.getByText("No bookmarks yet")).toBeVisible({ timeout: 5_000 });
 
-  await tauriPage.click('[aria-label="Show bookmarked only"]');
+  await tauriPage.click('[aria-label="Show all projects"]');
+  await expect(tauriPage.locator('[aria-label="Show bookmarked only"]')).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
   await tauriPage.waitForFunction(
     `document.querySelectorAll('[aria-label="Add to favorites"]').length >= 1`,
     10_000,

@@ -1,4 +1,4 @@
-import type { Finding } from "./types";
+import type { Finding, PdfFacts } from "./types";
 import { extractEmail, extractPhoneNumber } from "./contact";
 import {
   ATS_SECTION_DEFINITIONS,
@@ -36,7 +36,9 @@ export function simulateAtsParse(text: string): AtsParse {
   const email = extractEmail(text);
   const phone = extractPhoneNumber(text);
   const links = Array.from(new Set(text.match(URL) ?? []));
-  const name = nonEmpty.find(looksLikeName) ?? null;
+  const firstSection = lines.findIndex((line) => matchResumeSectionHeading(line) !== null);
+  const headerLines = firstSection >= 0 ? lines.slice(0, firstSection) : nonEmpty.slice(0, 5);
+  const name = headerLines.find(looksLikeName) ?? null;
   const matchedSections = new Set(lines.map(matchResumeSectionHeading).filter(Boolean));
 
   const sections = ATS_SECTION_DEFINITIONS.map((section) => ({
@@ -56,10 +58,22 @@ export function simulateAtsParse(text: string): AtsParse {
   return { isResume, name, email, phone, links, sections };
 }
 
-export function atsParseFindings(parse: AtsParse): Finding[] {
+export function atsParseFindings(parse: AtsParse, pdf?: PdfFacts): Finding[] {
   if (!parse.isResume) return [];
   const out: Finding[] = [];
   const has = (name: string) => parse.sections.find((s) => s.name === name)?.present;
+
+  if (!parse.name) {
+    out.push({
+      id: "ats-no-name",
+      lens: "ats",
+      severity: "error",
+      title: "A parser could not identify your name",
+      detail:
+        "No plausible person name was found in the extracted text. Keep your name as plain text near the start of the document, outside page headers, graphics, and positioned text boxes.",
+      certainty: "verified",
+    });
+  }
 
   if (!parse.email) {
     out.push({
@@ -89,6 +103,18 @@ export function atsParseFindings(parse: AtsParse): Finding[] {
       title: "A parser did not detect a Work Experience section",
       detail:
         "No standard Experience heading was found, so a parser may not group your roles into work history. Use a conventional heading like Experience or Work Experience as real, selectable text.",
+    });
+  }
+
+  if (pdf && pdf.pageCount > 2) {
+    out.push({
+      id: "ats-long-resume",
+      lens: "ats",
+      severity: "info",
+      title: `Resume is ${pdf.pageCount} pages long`,
+      detail:
+        "Many hiring workflows expect one or two pages, although senior, academic, and government CVs can be longer. Confirm that this length fits the role and document type.",
+      certainty: "advisory",
     });
   }
 

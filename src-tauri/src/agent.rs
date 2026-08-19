@@ -191,6 +191,7 @@ pub async fn agent_stream(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)] // Tauri command surface; each arg is IPC-named.
 pub async fn agent_run(
     state: State<'_, AgentState>,
     app: tauri::AppHandle,
@@ -198,17 +199,21 @@ pub async fn agent_run(
     request: CompletionRequest,
     config: Option<RunConfig>,
     provider_override: Option<ProviderOverride>,
+    project_id: Option<String>,
     on_event: tauri::ipc::Channel<AgentEvent>,
 ) -> Result<oleafly_agent::RunOutcome, String> {
     let agent_state = state.inner();
     let config = sanitized_run_config(config);
     let run_id = request_id.clone();
+    // The run is pinned to the project it started in; an invalid id disables
+    // native dispatch rather than failing the run.
+    let pinned_project = project_id.filter(|id| crate::paths::validate_project_id(id).is_ok());
     run_registered(agent_state, &request_id, |generation| async move {
         oleafly_agent::validate_completion_request(&request).map_err(tagged)?;
         let resolved = resolve_off_thread(provider_override).await?;
         let client = agent_state.client()?;
         let sink = on_event.clone();
-        let run_tool = webview_tool_runner(app, run_id, generation, on_event);
+        let run_tool = composite_tool_runner(app, run_id, generation, on_event, pinned_project);
         oleafly_agent::run_agent(
             &client,
             &resolved,
@@ -223,6 +228,77 @@ pub async fn agent_run(
         .map_err(tagged)
     })
     .await
+}
+
+/// Execute a backend-capable tool natively, without a webview round trip.
+///
+/// `Some(output)` means the tool was answered natively — including native
+/// failures, which must NOT fall through to the webview (the two paths could
+/// diverge). `None` means the tool is not native and the webview runner owns
+/// it. Native coverage is the read-only set shared with the MCP server;
+/// mutating tools keep the webview path until the approval flow moves.
+async fn native_agent_tool(
+    project_id: &str,
+    name: &str,
+    arguments_json: &str,
+) -> Option<oleafly_agent::ToolOutput> {
+    if !crate::mcp::native::handles(name, "") {
+        return None;
+    }
+    let arguments: serde_json::Value = match serde_json::from_str(arguments_json) {
+        Ok(value) => value,
+        Err(_) => return Some(tool_error("the tool arguments were not valid JSON")),
+    };
+    match crate::mcp::native::call(project_id, name, &arguments).await {
+        Ok(outcome) => Some(oleafly_agent::ToolOutput::text(outcome.result.to_string())),
+        Err(error) => Some(tool_error(&error)),
+    }
+}
+
+/// A run stays pinned to the project it started in; native dispatch is only
+/// allowed while that project is still the active one. This mirrors the
+/// webview-side run guard, so a run surviving a project switch cannot read
+/// the old project's files into the model from either path.
+fn native_dispatch_allowed(pinned: &str, active_project: Option<&str>) -> bool {
+    active_project == Some(pinned)
+}
+
+fn composite_tool_runner(
+    app: tauri::AppHandle,
+    request_id: String,
+    generation: u64,
+    tool_sink: tauri::ipc::Channel<AgentEvent>,
+    project_id: Option<String>,
+) -> oleafly_agent::ToolRunner {
+    let handle = app.clone();
+    let webview = webview_tool_runner(app, request_id, generation, tool_sink);
+    std::sync::Arc::new(move |call| {
+        let webview = webview.clone();
+        let project = project_id.clone();
+        let handle = handle.clone();
+        Box::pin(async move {
+            if let Some(project) = project.as_deref() {
+                if crate::mcp::native::handles(&call.name, "") {
+                    let active = {
+                        let state = handle.state::<crate::mcp::server::McpState>();
+                        let guard = state.active_project.lock().await;
+                        guard.clone()
+                    };
+                    if !native_dispatch_allowed(project, active.as_deref()) {
+                        return tool_error(
+                            "the open project changed while this run was active; \
+                             the tool was not executed",
+                        );
+                    }
+                }
+                if let Some(output) = native_agent_tool(project, &call.name, &call.arguments).await
+                {
+                    return output;
+                }
+            }
+            webview(call).await
+        })
+    })
 }
 
 fn webview_tool_runner(
@@ -385,6 +461,21 @@ pub async fn agent_list_models(
     base_url: Option<String>,
 ) -> Result<Vec<oleafly_agent::ModelInfo>, String> {
     let _request_slot = acquire_request_slot(state.inner())?;
+    let (client, resolved) =
+        model_listing_request(state.inner(), provider_id, key, base_url).await?;
+    let available = oleafly_agent::list_models(&client, &resolved)
+        .await
+        .map_err(|e| format!("[{}] {e}", e.kind()))?;
+    crate::ai_model_registry::filter_supported_models(&client, &resolved.provider_id, available)
+        .await
+}
+
+async fn model_listing_request(
+    state: &AgentState,
+    provider_id: String,
+    key: Option<String>,
+    base_url: Option<String>,
+) -> Result<(reqwest::Client, oleafly_agent::Resolved), String> {
     let cfg = tauri::async_runtime::spawn_blocking(crate::config::read_config)
         .await
         .map_err(|e| e.to_string())??;
@@ -415,9 +506,7 @@ pub async fn agent_list_models(
     let resolved = oleafly_agent::provider::resolve_for_model_listing(&projected, &provider_id)
         .map_err(|e| e.to_string())?;
     let client = state.client()?;
-    oleafly_agent::list_models(&client, &resolved)
-        .await
-        .map_err(|e| format!("[{}] {e}", e.kind()))
+    Ok((client, resolved))
 }
 
 fn resolve_for(

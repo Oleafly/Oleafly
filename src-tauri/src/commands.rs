@@ -333,6 +333,40 @@ pub async fn compile_project(
                 record_time,
             );
         });
+        // Persist the compile fingerprint so reopening the project can skip
+        // an unchanged recompile. Best-effort and off the command path: a
+        // missing or stale record only costs one recompile on open. Sources
+        // are hashed at compile end; an edit made *during* this compile can
+        // make the record claim currency for a slightly newer source set,
+        // which at worst shows that same one-compile-stale preview on reopen.
+        if let (true, Some(output_id), Some(output_revision)) = (
+            crate::compile_fingerprint::PERSIST_ENABLED,
+            result.output_id.clone(),
+            result.output_revision,
+        ) {
+            let fp_project = project_id.clone();
+            let fp_main = main_doc.clone();
+            let fp_engine = meta.engine.clone();
+            let fp_log = result.log.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                let Ok(root) = paths::project_dir(&fp_project) else {
+                    return;
+                };
+                let compiled_at_ms = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|elapsed| elapsed.as_millis() as u64)
+                    .unwrap_or(0);
+                let _ = crate::compile_fingerprint::persist_after_compile(
+                    &root,
+                    &fp_main,
+                    &fp_engine,
+                    &output_id,
+                    output_revision,
+                    compiled_at_ms,
+                    &fp_log,
+                );
+            });
+        }
     }
     #[cfg(debug_assertions)]
     eprintln!(
@@ -340,6 +374,59 @@ pub async fn compile_project(
         result.ok, result.compile_time_ms
     );
     Ok(result)
+}
+
+#[derive(serde::Serialize)]
+pub struct ValidatedCompileFingerprint {
+    pub main_document: String,
+    pub engine_id: String,
+    pub output_id: String,
+    pub output_revision: u64,
+    pub compiled_at_ms: u64,
+    /// The log of the fingerprinted compile, so a restored preview can also
+    /// restore the logs pane. Empty when the record predates log persistence.
+    pub log: String,
+}
+
+impl ValidatedCompileFingerprint {
+    pub(crate) fn from_record(
+        log: String,
+        record: crate::compile_fingerprint::CompileFingerprint,
+    ) -> Self {
+        ValidatedCompileFingerprint {
+            main_document: record.main_document,
+            engine_id: record.engine_id,
+            output_id: record.output_id,
+            output_revision: record.output_revision,
+            compiled_at_ms: record.compiled_at_ms,
+            log,
+        }
+    }
+}
+
+/// Check whether the persisted compile fingerprint still matches the current
+/// sources, main document, and engine. `None` means "compile normally".
+/// A valid record also seeds the session's output-revision counter, so new
+/// compiles this session always outrank the restored one.
+#[tauri::command]
+pub async fn validate_compile_fingerprint(
+    state: State<'_, AppState>,
+    project_id: String,
+    main_doc: String,
+) -> Result<Option<ValidatedCompileFingerprint>, String> {
+    let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
+    let root = paths::project_dir(&project_id)?;
+    let validated = tauri::async_runtime::spawn_blocking(move || {
+        crate::compile_fingerprint::validated_with_log(&root, &main_doc, &meta.engine)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(validated.map(|(log, record)| {
+        state
+            .compile_output_revision
+            .fetch_max(record.output_revision, std::sync::atomic::Ordering::SeqCst);
+        ValidatedCompileFingerprint::from_record(log, record)
+    }))
 }
 
 fn desktop_workspace(

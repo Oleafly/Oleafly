@@ -4,6 +4,9 @@ use crate::error::{AgentError, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Wire {
+    OpenAiResponses {
+        base_url: String,
+    },
     OpenAiChat {
         base_url: String,
         reasoning_content: bool,
@@ -226,6 +229,9 @@ fn enabled_model(cfg: &ProviderConfig, provider_id: &str) -> Option<String> {
 
 pub fn wire_for(provider_id: &str, credential: &str, custom_base: Option<&str>) -> Wire {
     match provider_id {
+        "openai" => Wire::OpenAiResponses {
+            base_url: OPENAI_BASE.to_string(),
+        },
         "anthropic" => Wire::Anthropic {
             base_url: ANTHROPIC_BASE.to_string(),
         },
@@ -399,7 +405,7 @@ mod tests {
         };
         let r = resolve(&cfg).unwrap();
         match r.wire {
-            Wire::OpenAiChat { base_url, .. } => {
+            Wire::OpenAiResponses { base_url } => {
                 assert!(
                     !base_url.contains("attacker"),
                     "catalog base was overridden: {base_url}"
@@ -877,9 +883,8 @@ mod tests {
         );
         assert_eq!(
             wire_for("openai", "k", None),
-            Wire::OpenAiChat {
+            Wire::OpenAiResponses {
                 base_url: OPENAI_BASE.into(),
-                reasoning_content: false
             }
         );
         assert!(matches!(

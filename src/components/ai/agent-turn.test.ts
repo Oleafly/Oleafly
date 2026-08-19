@@ -120,7 +120,11 @@ describe("tool schemas", () => {
   });
 });
 
-function harness(events: AgentEvent[], tools: ToolSet = {}) {
+function harness(
+  events: AgentEvent[],
+  tools: ToolSet = {},
+  extra: Partial<Parameters<typeof runAgentHarness>[0]> = {},
+) {
   const posted: { callId: string; output: unknown }[] = [];
   mocks.invoke.mockImplementation(async (command: string, args: Record<string, unknown>) => {
     if (command === "agent_tool_result") {
@@ -159,6 +163,7 @@ function harness(events: AgentEvent[], tools: ToolSet = {}) {
         tools,
         signal: new AbortController().signal,
         handlers,
+        ...extra,
       }),
   };
 }
@@ -219,6 +224,86 @@ describe("harness", () => {
     );
     await h.run();
     expect(h.posted[0].output).toEqual({ output: '{"error":"disk full"}', images: [] });
+  });
+
+  it("refuses to execute a tool when the run guard reports a context change", async () => {
+    const execute = vi.fn(async () => ({ ok: true }));
+    const h = harness(
+      [{ kind: "toolRequest", id: "c1", name: "write_file", arguments: '{"path":"a.tex"}' }],
+      { write_file: { execute } } as unknown as ToolSet,
+      {
+        guardToolCall: () =>
+          "The project changed while this run was active. The tool was not executed.",
+      },
+    );
+    await h.run();
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(String((h.posted[0].output as { output: string }).output)).toContain(
+      "project changed",
+    );
+    expect(h.handlers.onToolResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "c1",
+        output: expect.objectContaining({ error: expect.stringContaining("project changed") }),
+      }),
+    );
+  });
+
+  it("executes normally when the run guard passes", async () => {
+    const execute = vi.fn(async () => ({ ok: true }));
+    const h = harness(
+      [{ kind: "toolRequest", id: "c1", name: "read_file", arguments: "{}" }],
+      { read_file: { execute } } as unknown as ToolSet,
+      { guardToolCall: () => null },
+    );
+    await h.run();
+
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders a natively executed tool from loop events without executing locally", async () => {
+    const execute = vi.fn(async () => ({ ok: true }));
+    const h = harness(
+      [
+        { kind: "toolCallStart", id: "n1", name: "read_file" },
+        { kind: "toolCallEnd", id: "n1", arguments: '{"path":"main.tex"}' },
+        { kind: "toolOutcome", id: "n1", output: '{"content":"hello"}' },
+      ],
+      { read_file: { execute } } as unknown as ToolSet,
+    );
+    await h.run();
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(h.posted).toEqual([]);
+    expect(h.handlers.onToolCall).toHaveBeenCalledWith({
+      id: "n1",
+      name: "read_file",
+      args: { path: "main.tex" },
+    });
+    expect(h.handlers.onToolResult).toHaveBeenCalledWith({
+      id: "n1",
+      name: "read_file",
+      output: { content: "hello" },
+    });
+  });
+
+  it("does not double-render a tool the webview executed itself", async () => {
+    const execute = vi.fn(async () => ({ ok: true }));
+    // The webview request id is namespaced (tool-{gen}-{seq}-{providerId});
+    // the loop's outcome event carries the bare provider id.
+    const h = harness(
+      [
+        { kind: "toolRequest", id: "tool-1-0-c1", name: "write_file", arguments: "{}" },
+        { kind: "toolCallStart", id: "c1", name: "write_file" },
+        { kind: "toolOutcome", id: "c1", output: '{"ok":true}' },
+      ],
+      { write_file: { execute } } as unknown as ToolSet,
+    );
+    await h.run();
+
+    expect(h.handlers.onToolCall).toHaveBeenCalledTimes(1);
+    expect(h.handlers.onToolResult).toHaveBeenCalledTimes(1);
   });
 
   it("reports an unknown tool rather than hanging the harness", async () => {

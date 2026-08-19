@@ -170,6 +170,155 @@ fn openai_usage_is_reported_when_the_provider_sends_it() {
 }
 
 #[test]
+fn responses_text_reasoning_and_usage_stream_through_the_common_events() {
+    let raw = concat!(
+        "event: response.reasoning_summary_text.delta\n",
+        "data: {\"type\":\"response.reasoning_summary_text.delta\",\"delta\":\"think\"}\n\n",
+        "event: response.output_text.delta\n",
+        "data: {\"type\":\"response.output_text.delta\",\"delta\":\"answer\"}\n\n",
+        "event: response.output_item.done\n",
+        "data: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"reasoning\",\"id\":\"rs_1\",\"encrypted_content\":\"opaque\"}}\n\n",
+        "event: response.completed\n",
+        "data: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":21,\"output_tokens\":8}}}\n\n",
+    );
+    let (events, translator) = run(WireKind::OpenAiResponses, raw);
+    assert_eq!(reasoning_of(&events), "think");
+    assert_eq!(text_of(&events), "answer");
+    assert_eq!(
+        translator.usage(),
+        Usage {
+            input: 21,
+            output: 8
+        }
+    );
+    assert_eq!(translator.stop_reason().as_deref(), Some("completed"));
+    assert_eq!(translator.response_items()[0]["type"], "reasoning");
+    assert_eq!(
+        translator.response_items()[0]["encrypted_content"],
+        "opaque"
+    );
+}
+
+#[test]
+fn responses_function_argument_events_reassemble_into_a_tool_call() {
+    let raw = concat!(
+        "event: response.output_item.added\n",
+        "data: {\"type\":\"response.output_item.added\",\"output_index\":2,\"item\":{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"read_file\",\"arguments\":\"\"}}\n\n",
+        "event: response.function_call_arguments.delta\n",
+        "data: {\"type\":\"response.function_call_arguments.delta\",\"output_index\":2,\"delta\":\"{\\\"pa\"}\n\n",
+        "event: response.function_call_arguments.delta\n",
+        "data: {\"type\":\"response.function_call_arguments.delta\",\"output_index\":2,\"delta\":\"th\\\":\\\"main.tex\\\"}\"}\n\n",
+        "event: response.function_call_arguments.done\n",
+        "data: {\"type\":\"response.function_call_arguments.done\",\"output_index\":2,\"arguments\":\"{\\\"path\\\":\\\"main.tex\\\"}\"}\n\n",
+        "event: response.output_item.done\n",
+        "data: {\"type\":\"response.output_item.done\",\"output_index\":2,\"item\":{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"read_file\",\"arguments\":\"{\\\"path\\\":\\\"main.tex\\\"}\"}}\n\n",
+        "event: response.completed\n",
+        "data: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":4,\"output_tokens\":3}}}\n\n",
+    );
+    let (events, translator) = run(WireKind::OpenAiResponses, raw);
+    assert!(events
+        .iter()
+        .any(|event| matches!(event, AgentEvent::ToolCallStart { id, name } if id == "call_1" && name == "read_file")));
+    let calls = translator.tool_calls();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].id, "call_1");
+    assert_eq!(calls[0].name, "read_file");
+    assert_eq!(calls[0].arguments, "{\"path\":\"main.tex\"}");
+    assert_eq!(translator.response_items()[0]["call_id"], "call_1");
+}
+
+#[test]
+fn responses_done_empty_and_malformed_events_are_handled_explicitly() {
+    let (events, translator) = run(
+        WireKind::OpenAiResponses,
+        "data:   \n\ndata: not-json\n\ndata: [DONE]\n\n",
+    );
+    assert!(matches!(events.last(), Some(AgentEvent::Done { .. })));
+    assert!(matches!(translator.error(), Some(AgentError::Decode(_))));
+}
+
+#[test]
+fn responses_function_done_can_supply_the_unstreamed_argument_remainder() {
+    let raw = concat!(
+        "event: response.output_item.added\n",
+        "data: {\"output_index\":1,\"item\":{\"type\":\"function_call\",\"id\":\"fc_2\",\"name\":\"read_file\"}}\n\n",
+        "event: response.function_call_arguments.delta\n",
+        "data: {\"output_index\":1,\"delta\":\"{\\\"path\\\"\"}\n\n",
+        "event: response.function_call_arguments.done\n",
+        "data: {\"output_index\":1,\"arguments\":\"{\\\"path\\\":\\\"main.tex\\\"}\"}\n\n",
+    );
+    let (_, translator) = run(WireKind::OpenAiResponses, raw);
+    assert_eq!(
+        translator.tool_calls()[0].arguments,
+        "{\"path\":\"main.tex\"}"
+    );
+}
+
+#[test]
+fn responses_completion_falls_back_to_the_full_output_array() {
+    let raw = concat!(
+        "event: response.output_item.added\n",
+        "data: {\"output_index\":0,\"item\":{\"type\":\"message\"}}\n\n",
+        "event: response.completed\n",
+        "data: {\"response\":{\"output\":[{\"type\":\"message\",\"id\":\"msg_1\"}]}}\n\n",
+    );
+    let (_, translator) = run(WireKind::OpenAiResponses, raw);
+    assert_eq!(translator.response_items()[0]["id"], "msg_1");
+    assert_eq!(translator.stop_reason().as_deref(), Some("completed"));
+}
+
+#[test]
+fn responses_incomplete_preserves_the_provider_reason_or_uses_a_safe_default() {
+    let (_, with_reason) = run(
+        WireKind::OpenAiResponses,
+        "event: response.incomplete\ndata: {\"response\":{\"incomplete_details\":{\"reason\":\"max_output_tokens\"}}}\n\n",
+    );
+    assert_eq!(
+        with_reason.stop_reason().as_deref(),
+        Some("max_output_tokens")
+    );
+
+    let (_, without_reason) = run(
+        WireKind::OpenAiResponses,
+        "event: response.incomplete\ndata: {\"response\":{}}\n\n",
+    );
+    assert_eq!(without_reason.stop_reason().as_deref(), Some("incomplete"));
+}
+
+#[test]
+fn responses_refusals_reasoning_and_terminal_errors_use_common_events() {
+    let raw = concat!(
+        "event: response.refusal.delta\ndata: {\"delta\":\"cannot comply\"}\n\n",
+        "event: response.reasoning_text.delta\ndata: {\"delta\":\"checked policy\"}\n\n",
+        "event: response.failed\ndata: {\"response\":{\"error\":{\"message\":\"request failed\"}}}\n\n",
+    );
+    let (events, mut translator) = run(WireKind::OpenAiResponses, raw);
+    assert_eq!(text_of(&events), "cannot comply");
+    assert_eq!(reasoning_of(&events), "checked policy");
+    assert!(matches!(
+        translator.error(),
+        Some(AgentError::Provider { status: 400, .. })
+    ));
+    assert!(translator.take_error().is_some());
+    assert!(translator.error().is_none());
+
+    let (_, fallback) = run(WireKind::OpenAiResponses, "event: error\ndata: {}\n\n");
+    assert!(fallback
+        .error()
+        .expect("terminal response error")
+        .to_string()
+        .contains("OpenAI response stream failed"));
+}
+
+#[test]
+fn responses_wire_selects_the_responses_translator() {
+    let wire = Wire::OpenAiResponses {
+        base_url: crate::provider::OPENAI_BASE.into(),
+    };
+    assert_eq!(WireKind::from(&wire), WireKind::OpenAiResponses);
+}
+
+#[test]
 fn streamed_usage_counters_saturate_instead_of_wrapping() {
     let raw = "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":18446744073709551615,\"completion_tokens\":18446744073709551615}}\n\ndata: [DONE]\n\n";
     let (_, translator) = run(WireKind::OpenAi, raw);
@@ -438,6 +587,20 @@ fn stream_bodies_ask_for_streaming_and_usage_only_where_supported() {
     };
     let body = stream_body(&custom, &req).unwrap();
     assert_eq!(body["stream"], true);
+    assert!(body.get("stream_options").is_none());
+
+    let responses = Resolved {
+        provider_id: "openai".into(),
+        model_id: "any-model".into(),
+        credential: "k".into(),
+        auth: Some("k".into()),
+        wire: Wire::OpenAiResponses {
+            base_url: crate::provider::OPENAI_BASE.into(),
+        },
+    };
+    let body = stream_body(&responses, &req).unwrap();
+    assert_eq!(body["stream"], true);
+    assert_eq!(body["store"], false);
     assert!(body.get("stream_options").is_none());
 }
 

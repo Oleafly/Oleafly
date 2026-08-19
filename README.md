@@ -76,7 +76,7 @@ hundred-page thesis:
 | Compile | Bundled LaTeX and Typst engines, Markdown through Pandoc, parsed errors, logs, and offline cached builds |
 | Inspect | A fast PDF preview, page and zoom controls, two-page layouts, color inversion, and bidirectional SyncTeX |
 | Revise | Autosave, real Git history, diffs, restore, and GitHub sync |
-| Submit | ATS and accessibility preflight, reference checks, reader-view extraction, and several export formats |
+| Submit | Compile, publication, accessibility, reference, privacy, and ATS checks, plus reader-view extraction and several export formats |
 | Get help | An optional project-aware AI assistant, local Ollama models, hosted providers, and MCP clients |
 
 If you like Overleaf's write-and-preview loop but want compilation, files, Git,
@@ -276,13 +276,15 @@ figure you insert is real vector source you can keep editing.
 
 ### Check the document before someone else does
 
-Preflight looks at both source and compiled output. It catches broken
-references, missing assets, duplicate labels, reading-order problems, missing
-metadata, inaccessible figure patterns, and resume layouts that are difficult
-for applicant tracking systems to parse.
+Preflight checks the whole project, the latest compiler log, and the compiled
+PDF. Its six independent checks cover compile and layout problems, publication
+profiles for conferences and journals, ATS parsing, accessibility, references
+and assets, and privacy for blind review. Findings say whether they are verified
+from the document or advisory and in need of author review.
 
-It also shows the text a parser or screen reader can extract. These checks are
-practical submission guidance, not a formal accessibility certification.
+The reader view opens the PDF's extracted text page by page, close to what a
+screen reader or automated parser receives. Preflight is practical submission
+guidance, not a guarantee of acceptance or a formal accessibility certificate.
 
 <div align="center">
 
@@ -490,7 +492,7 @@ code. End-user task guides are maintained separately from this public index.
 </div>
 
 Oleafly is built in the open by
-[Prajwal S Venkateshmurthy](https://github.com/prajwalsvenkatesh) and
+[Prajwal S Venkateshmurthy](https://github.com/prajwal-svm) and
 contributors. Bug reports, fixes, templates, documentation, and careful
 product feedback are welcome.
 

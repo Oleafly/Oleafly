@@ -57,6 +57,12 @@ export async function installUpdate(
         break;
     }
   });
+  // Relaunch tears the webview down exactly like a quit, so it must go
+  // through the same durable flush as window close, Cmd+Q, and Restart. A
+  // failed save blocks the relaunch (the installed update simply applies on
+  // the next start) instead of discarding the user's last edits.
+  const { useFilesStore } = await import("@/store/files");
+  await useFilesStore.getState().flushForQuit();
   await relaunch();
 }
 

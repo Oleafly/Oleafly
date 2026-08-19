@@ -485,7 +485,7 @@ de cet index public.
 ## Contribuer
 
 Oleafly est développé au grand jour par
-[Prajwal S Venkateshmurthy](https://github.com/prajwalsvenkatesh) et les
+[Prajwal S Venkateshmurthy](https://github.com/prajwal-svm) et les
 contributeurs. Rapports de bugs, correctifs, modèles, documentation et retours
 produit réfléchis sont les bienvenus.
 

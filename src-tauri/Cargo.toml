@@ -41,10 +41,9 @@ futures-util = "0.3"
 fs4 = "1.1"
 atomicwrites = "0.4"
 sha2 = "0.10"
-# Async HTTP client for the GitHub OAuth device flow, which can't be called
-# from the webview (CORS). The API endpoints on api.github.com are still called
-# directly from the frontend; only the OAuth endpoints run here. Commands are
-# async + single-shot so they never block the webview thread.
+# Async HTTP client for GitHub OAuth, repository operations, and public
+# repository metadata. These requests stay in Rust so tokens never enter the
+# webview and the CSP does not need to allow GitHub API origins.
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
 rand = "0.8"
 ring = "0.17"

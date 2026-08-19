@@ -13,7 +13,7 @@ import {
   FilePlus2,
   History,
   Layers,
-  Library,
+  IndentIncrease as ListIndentIncrease,
   MessageSquareQuote,
   Mic,
   Paperclip,
@@ -56,6 +56,8 @@ import { useSettingsStore } from "@/store/settings";
 import { useChatsStore, type ChatMessage, type StoredChat } from "@/store/chats";
 import { objectKey } from "@/lib/react-key";
 import { registerAiToolsets } from "@/contributions/ai-toolsets";
+import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
+import { useAutoSizeTextarea } from "@/components/ai/use-auto-size-textarea";
 
 registerAiToolsets();
 import { useAgentTodoStore } from "@/store/agent-todos";
@@ -66,7 +68,6 @@ import { packChatHistory } from "@/lib/ai-context-pack";
 import { estimateUsd, formatUsd } from "@/lib/ai-pricing";
 import { formatRagContext, retrieveProjectChunks } from "@/lib/ai-rag";
 import { ChatHistoryModal } from "@/components/ai/ChatHistoryModal";
-import { ConnectSourcesDialog } from "@/components/ai/ConnectSourcesDialog";
 import { PROMPT_CATEGORIES } from "@/components/ai/prompt-shortcuts";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
@@ -81,6 +82,7 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import {
+  AgentPlan,
   Shimmer,
   InfoHint,
   MessageItem,
@@ -119,6 +121,15 @@ const FIGURE_SUGGESTION_ICONS: Record<string, LucideIcon> = {
   "Draw a compiler pipeline: lexer, parser, AST, optimizer, code generator": Workflow,
   "Diagram a data preprocessing flow ending in a training loop": Filter,
 };
+
+export function resolveResponseInstructions(
+  personas: Persona[],
+  activePersonaId: string | null,
+  defaultInstructions: string,
+): string {
+  if (activePersonaId === null) return defaultInstructions;
+  return personas.find((persona) => persona.id === activePersonaId)?.prompt ?? "";
+}
 
 const CODE_EDIT_TOOLS = new Set([
   "write_file",
@@ -225,7 +236,6 @@ export function ChatCore() {
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [connectSourcesOpen, setConnectSourcesOpen] = useState(false);
   const [currentHead, setCurrentHead] = useState<string | null>(null);
   const [quotaWarning, setQuotaWarning] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<
@@ -259,6 +269,9 @@ export function ChatCore() {
   // this session (null = use customPrompt instead).
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [activePersonaId, setActivePersonaId] = useState<string | null>(null);
+  const activePersona = activePersonaId
+    ? personas.find((persona) => persona.id === activePersonaId) ?? null
+    : null;
   // Always-current snapshot so `send` (a useCallback) reads the latest list
   // without depending on it.
   const attachmentsRef = useRef<PendingAttachment[]>(attachments);
@@ -274,14 +287,18 @@ export function ChatCore() {
   const cfgRef = useRef<AppConfig | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the controlled value changes the textarea's intrinsic scrollHeight even though it is read through the DOM ref
-  useEffect(() => {
-    const t = textareaRef.current;
-    if (!t) return;
-    t.style.height = "auto";
-    t.style.height = `${Math.min(t.scrollHeight, 128)}px`;
-  }, [input]);
+  const composerInputShellRef = useRef<HTMLDivElement>(null);
+  const composerPlaceholder = !engineLoaded
+    ? "Document engine unavailable. AI editing disabled"
+    : figureMode
+      ? "Describe a figure to draw…"
+      : "Ask AI to help with your document…";
+  useAutoSizeTextarea(
+    textareaRef,
+    composerInputShellRef,
+    input,
+    composerPlaceholder,
+  );
 
   const MAX_ATTACH = 6;
   const MAX_ATTACH_BYTES = 10 * 1024 * 1024;
@@ -392,7 +409,13 @@ export function ChatCore() {
         const saved = cfg.ai_provider || "openai";
         setCustomPrompt(cfg.ai_system_prompt || "");
         customPromptRef.current = cfg.ai_system_prompt || "";
-        setPersonas(cfg.ai_personas ?? []);
+        const nextPersonas = cfg.ai_personas ?? [];
+        setPersonas(nextPersonas);
+        setActivePersonaId((current) =>
+          current && nextPersonas.some((persona) => persona.id === current)
+            ? current
+            : null,
+        );
         const keys = { ...(cfg.ai_keys ?? {}) };
         // Fold the legacy single key into the map so it counts as configured.
         if (cfg.ai_api_key && !keys[saved]) keys[saved] = cfg.ai_api_key;
@@ -789,10 +812,11 @@ export function ChatCore() {
 
     // An active persona replaces the user's default custom instructions for
     // this request; otherwise fall back to those default instructions.
-    const activePersona = activePersonaIdRef.current
-      ? personasRef.current.find((p) => p.id === activePersonaIdRef.current) ?? null
-      : null;
-    const requestCustomPrompt = activePersona ? activePersona.prompt : customPromptRef.current;
+    const requestCustomPrompt = resolveResponseInstructions(
+      personasRef.current,
+      activePersonaIdRef.current,
+      customPromptRef.current,
+    );
     const sandboxedCustom = requestCustomPrompt.trim()
       ? `
 
@@ -905,11 +929,21 @@ ${sandboxedCustom}`;
       let reasoningStartedAt: number | null = null;
       let stepContent = "";
       let stepBlocks: ChatMessage["reasoningBlocks"] = [];
+      // Pin the run to the project it started in. Tools resolve their
+      // project at execute time, so without this guard a run surviving a
+      // project switch would silently write into the newly opened project.
+      const runProjectId = useFilesStore.getState().projectId;
       const outcome = await runAgentHarness({
         system: effectiveSystem,
         messages: apiMessages,
         tools,
         signal: ac.signal,
+        projectId: runProjectId,
+        guardToolCall: () => {
+          const current = useFilesStore.getState().projectId;
+          if (current === runProjectId) return null;
+          return `The open project changed while this run was active. The tool was not executed to protect the newly opened project. Ask the user to re-run the request in the project it applies to.`;
+        },
         providerOverride: { provider_id: provider, model_id: model },
         takePendingImages: () =>
           modelSupportsVision(provider, model) ? pendingImagesRef.current.splice(0) : [],
@@ -1352,43 +1386,11 @@ ${sandboxedCustom}`;
       )}
 
       {/* Visible even keyless so e2e/hooks can assert it */}
-      {agentTodos.length > 0 && (
-        <div className="shrink-0 border-b bg-black/[0.03] px-3 py-2 dark:bg-black/20" data-testid="agent-todos">
-          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Plan
-          </p>
-          <ul className="space-y-1">
-            {agentTodos.map((t) => (
-              <li key={t.id} className="flex items-start gap-1.5 text-[11px] leading-snug">
-                <span
-                  className={cn(
-                    "mt-[0.4em] size-1.5 shrink-0 rounded-full",
-                    t.status === "completed" && "bg-emerald-500",
-                    t.status === "in_progress" && "bg-primary",
-                    t.status === "pending" && "bg-muted-foreground/40",
-                    t.status === "cancelled" && "bg-muted-foreground/20",
-                  )}
-                />
-                <span
-                  className={cn(
-                    t.status === "completed" && "text-muted-foreground line-through",
-                    t.status === "cancelled" && "text-muted-foreground/60 line-through",
-                    t.status === "in_progress" && "font-medium text-foreground",
-                  )}
-                >
-                  {t.content}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {agentTodos.length > 0 && <AgentPlan todos={agentTodos} />}
 
       {!apiKey && (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-foreground text-background">
-            <Sparkles className="size-6" />
-          </span>
+          <OleaflyAssistantMascot />
           <div className="space-y-1">
             <div className="text-sm font-medium">Connect an AI provider to continue</div>
             <p className="mx-auto max-w-[18rem] text-xs text-muted-foreground">
@@ -1416,9 +1418,7 @@ ${sandboxedCustom}`;
           <div ref={scrollRef} onScroll={onMessagesScroll} className="h-full overflow-auto px-3 py-3">
             {messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-2">
-                <span className="flex size-12 items-center justify-center rounded-full bg-foreground text-background">
-                  <Sparkles className="size-6" />
-                </span>
+                <OleaflyAssistantMascot />
                 {figureMode ? (
                   <p className="text-sm text-muted-foreground">
                     Describe a figure and I will draw, compile, and refine it.
@@ -1438,26 +1438,16 @@ ${sandboxedCustom}`;
                       <button
                         type="button"
                         key={s}
+                        title={s}
                         onClick={() => void send(s)}
-                        className="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-left text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/70"
+                        className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-left text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/70"
                       >
                         {Icon && <Icon className="size-3.5 shrink-0" />}
-                        {s}
+                        <span className="min-w-0 truncate">{s}</span>
                       </button>
                     );
                   })}
                 </div>
-
-                {!figureMode && (
-                  <button
-                    type="button"
-                    onClick={() => setConnectSourcesOpen(true)}
-                    className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <Library className="size-3.5" />
-                    Import your Zotero or EndNote library
-                  </button>
-                )}
 
                 {chats.length > 0 && (
                   <div className="mt-2 flex w-full max-w-[300px] flex-col gap-0.5">
@@ -1595,7 +1585,7 @@ ${sandboxedCustom}`;
               items={attachments}
               onRemove={(id) => setAttachments((a) => a.filter((x) => x.id !== id))}
             />
-            <div className="rounded-lg bg-background p-2">
+            <div ref={composerInputShellRef} className="rounded-lg bg-background p-2">
               <Input
                 ref={fileInputRef}
                 type="file"
@@ -1610,13 +1600,13 @@ ${sandboxedCustom}`;
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(input); } }}
-                placeholder={!engineLoaded ? "Document engine unavailable. AI editing disabled" : figureMode ? "Describe a figure to draw…" : "Ask AI to help with your document…"}
+                placeholder={composerPlaceholder}
                 disabled={!engineLoaded}
                 rows={1}
                 className="max-h-32 min-h-[24px] w-full resize-none rounded-md border-0 bg-transparent px-1 text-sm shadow-none outline-none placeholder:text-muted-foreground"
               />
               <div className="mt-1.5 flex items-center justify-between gap-1">
-                <div className="flex shrink-0 items-center gap-0.5">
+                <div className="flex min-w-0 items-center gap-0.5">
                   <button
                     data-tour="ai-attachments"
                     type="button"
@@ -1648,12 +1638,13 @@ ${sandboxedCustom}`;
                     >
                     <Popover
                       align="left"
-                      ariaLabel="Prompts"
-                      triggerClassName="gap-1 px-2 text-xs font-medium"
+                      ariaLabel="Prompt shortcuts"
+                      triggerClassName="ai-composer-prompts-trigger gap-1 px-2 text-xs font-medium"
                       className="max-h-96 w-80 overflow-y-auto p-1.5"
                       trigger={
                         <>
-                          Prompts
+                          <ListIndentIncrease className="ai-composer-prompts-icon hidden size-4 shrink-0" />
+                          <span className="ai-composer-prompts-value">Prompts</span>
                           <ChevronDown className="size-3.5" />
                         </>
                       }
@@ -1693,14 +1684,52 @@ ${sandboxedCustom}`;
                           </div>
                         </div>
                       ))}
-                      <div className="mt-1 border-t py-2 pt-2.5">
-                        <span className="block px-2.5 pb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                          Personas
-                        </span>
+                    </Popover>
+                    </span>
+                  )}
+                  {!figureMode && (
+                    <span
+                      data-tour="ai-persona"
+                      className="ai-composer-persona inline-flex min-w-0"
+                    >
+                      <Popover
+                        align="left"
+                        ariaLabel={
+                          activePersona
+                            ? `Persona. ${activePersona.name} active and replacing default instructions.`
+                            : "Choose persona"
+                        }
+                        triggerClassName="ai-composer-persona-trigger max-w-40 gap-1.5 px-2 text-xs font-medium"
+                        className="max-h-64 w-64 overflow-y-auto p-1.5"
+                        trigger={
+                          <>
+                            {activePersona ? (
+                              <Tooltip
+                                side="top"
+                                label={`${activePersona.name} is active and replaces your default instructions.`}
+                              >
+                                <span
+                                  data-testid="ai-active-persona-indicator"
+                                  className="size-2.5 shrink-0 rounded-full ring-1 ring-background"
+                                  style={{
+                                    background: personaGradient(activePersona.color),
+                                  }}
+                                />
+                              </Tooltip>
+                            ) : (
+                              <span className="size-2.5 shrink-0 rounded-full border border-muted-foreground/50" />
+                            )}
+                            <span className="ai-composer-persona-value truncate">
+                              {activePersona?.name ?? "Persona"}
+                            </span>
+                            <ChevronDown className="size-3.5 shrink-0" />
+                          </>
+                        }
+                      >
                         {personas.length === 0 ? (
                           <button
                             type="button"
-                            data-testid="ai-prompts-create-persona"
+                            data-testid="ai-persona-create"
                             onClick={() => {
                               setSettingsInitialSection("ai");
                               setSettingsScrollTarget("ai-personas");
@@ -1715,7 +1744,7 @@ ${sandboxedCustom}`;
                           <div className="space-y-0.5">
                             <button
                               type="button"
-                              data-testid="ai-prompts-persona-none"
+                              data-testid="ai-persona-none"
                               onClick={() => setActivePersonaId(null)}
                               className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
                             >
@@ -1729,7 +1758,7 @@ ${sandboxedCustom}`;
                               <button
                                 type="button"
                                 key={persona.id}
-                                data-testid={`ai-prompts-persona-${persona.name}`}
+                                data-testid={`ai-persona-${persona.name}`}
                                 onClick={() => setActivePersonaId(persona.id)}
                                 className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
                               >
@@ -1747,8 +1776,7 @@ ${sandboxedCustom}`;
                             ))}
                           </div>
                         )}
-                      </div>
-                    </Popover>
+                      </Popover>
                     </span>
                   )}
                 </div>
@@ -1819,7 +1847,6 @@ ${sandboxedCustom}`;
           if (id === activeChatId) newChat();
         }}
       />
-      <ConnectSourcesDialog open={connectSourcesOpen} onOpenChange={setConnectSourcesOpen} />
     </div>
   );
 }

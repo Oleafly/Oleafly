@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "providers": {
+    "openai": [
+      "gpt-4o",
+      "gpt-4o-2024-05-13",
+      "gpt-4o-2024-08-06",
+      "gpt-4o-2024-11-20",
+      "gpt-4o-mini",
+      "gpt-4o-mini-2024-07-18",
+      "gpt-4.1",
+      "gpt-4.1-2025-04-14",
+      "gpt-4.1-mini",
+      "gpt-4.1-mini-2025-04-14",
+      "gpt-4.1-nano",
+      "gpt-4.1-nano-2025-04-14",
+      "o3",
+      "o3-2025-04-16",
+      "o3-mini",
+      "o3-mini-2025-01-31",
+      "o4-mini",
+      "o4-mini-2025-04-16",
+      "gpt-5",
+      "gpt-5-2025-08-07",
+      "gpt-5-mini",
+      "gpt-5-mini-2025-08-07",
+      "gpt-5-nano",
+      "gpt-5-nano-2025-08-07",
+      "gpt-5-pro",
+      "gpt-5-pro-2025-10-06",
+      "gpt-5.1",
+      "gpt-5.1-2025-11-13",
+      "gpt-5.2",
+      "gpt-5.2-2025-12-11",
+      "gpt-5.2-pro",
+      "gpt-5.2-pro-2026-01-15",
+      "gpt-5.3-codex",
+      "gpt-5.4",
+      "gpt-5.4-pro",
+      "gpt-5.4-pro-2026-03-05",
+      "gpt-5.4-mini",
+      "gpt-5.4-mini-2026-03-17",
+      "gpt-5.4-nano",
+      "gpt-5.4-nano-2026-03-17",
+      "gpt-5.5",
+      "gpt-5.5-2026-04-23",
+      "gpt-5.5-pro",
+      "gpt-5.5-pro-2026-04-23",
+      "gpt-5.6-sol",
+      "gpt-5.6-terra",
+      "gpt-5.6-luna"
+    ],
+    "anthropic": [
+      "claude-opus-4-1-20250805",
+      "claude-opus-4-20250514",
+      "claude-sonnet-4-20250514",
+      "claude-3-7-sonnet-20250219",
+      "claude-3-5-sonnet-20241022",
+      "claude-3-5-haiku-20241022"
+    ],
+    "google": [
+      "gemini-2.5-pro",
+      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite",
+      "gemini-2.0-flash",
+      "gemini-2.0-flash-lite"
+    ],
+    "ollama": [
+      "llama3.2:3b",
+      "llama3.2:latest"
+    ],
+    "zai": [
+      "glm-5.2",
+      "glm-4.6",
+      "glm-4.5-air",
+      "glm-4.5"
+    ],
+    "groq": [
+      "llama-3.3-70b-versatile",
+      "llama-3.1-8b-instant"
+    ],
+    "openrouter": [
+      "openai/gpt-4o-mini",
+      "anthropic/claude-3.5-sonnet",
+      "google/gemini-flash-1.5",
+      "meta-llama/llama-3.3-70b-instruct"
+    ],
+    "deepseek": [
+      "deepseek-chat",
+      "deepseek-reasoner"
+    ],
+    "mistral": [
+      "mistral-large-latest",
+      "codestral-latest",
+      "mistral-small-latest"
+    ],
+    "xai": [
+      "grok-2",
+      "grok-beta"
+    ],
+    "perplexity": [
+      "sonar",
+      "sonar-pro",
+      "sonar-reasoning"
+    ]
+  }
+}

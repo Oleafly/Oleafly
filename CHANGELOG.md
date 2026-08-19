@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Preflight now covers publication submission, not only resumes and
+  accessibility.** Six independent checks inspect compile and layout quality,
+  publication requirements, ATS extraction, accessibility, references and
+  assets, and privacy for blind review. Publication rules use separate profiles
+  for general submissions, arXiv, IEEE, ACM, journals, and theses. Findings are
+  marked verified, advisory, or manual so a heuristic is never presented as a
+  proven failure. The reader view now opens from the panel header in a page-by-
+  page modal.
+- **Project import accepts ZIP, folders, Markdown, Word, and linked GitHub
+  repositories from one menu.** Markdown and Word files are converted with
+  Pandoc's full Markdown syntax, including attributes and fenced divisions,
+  before the new LaTeX project opens. Reference libraries can be imported from
+  Zotero RDF, EndNote XML, RIS, or BibTeX in the References panel.
+- **AI personas and searchable model selection.** Research Writer, Document
+  Editor, and Critical Reviewer provide useful starting points. The active
+  persona is visible in the composer and replaces the default instructions for
+  that run. Long model lists can be searched without stretching the menu.
+- **Version history has a Git timeline and editable labels.** Commit IDs can be
+  copied, labeled versions have their own view, and removing a label leaves the
+  underlying commit untouched.
+
+### Changed
+
+- **First-party OpenAI requests use the Responses API.** Tool calls replay the
+  provider's reasoning and function-call items without server-side storage.
+  OpenAI-compatible custom providers keep their declared wire format.
+- **OpenAI model discovery uses a maintained compatibility catalog.** Oleafly
+  intersects the provider's live model list with its shipped registry, which
+  keeps audio, embedding, image-only, and other incompatible endpoints out of
+  chat while still allowing a user to add a model ID explicitly.
+- Project controls, import menus, chat history, Git history, scrollbars, and
+  narrow AI composer layouts have been tightened for the desktop interface.
+- **Saving a file with no changes is now a no-op.** A clean buffer is no
+  longer rewritten to disk, which stops pointless library-thumbnail
+  refreshes and empty automatic history commits that every compile-on-open
+  used to cause. Successful compiles also record a fingerprint of what they
+  were built from (engine, main document, source hashes) as groundwork for
+  skipping unchanged recompiles in a later release.
+
+### Fixed
+
+- **Quitting can no longer lose your last edits.** Closing the window, Cmd+Q,
+  and Restart now wait for every unsaved file to reach disk before the app
+  exits, exactly like switching or closing a project. If a save fails, the app
+  stays open, shows what went wrong, and leaves the choice between Stay and
+  Quit anyway to you. The quit confirmation for a running TinyTeX install now
+  comes after this save step, so confirming it can't throw away unsaved work.
+  The separate PDF preview window still closes freely.
+- **Creating a file with a taken name now says so — on every platform.**
+  Creating a file or folder whose name is already in use gets the same
+  conflict dialog as rename, with a suggested "name (2)" alternative. Names
+  that differ only by capitalization count as taken too, because they compile
+  on Linux and then break the project on macOS and Windows. Creating never
+  replaces an existing file. Previously a duplicate name failed with no
+  visible message at all.
+- **Agent runs stay pinned to their project.** A run that outlives a project
+  switch can no longer touch the newly opened project: every tool call is
+  checked against the project the run started in and refused with a clear
+  error instead of executing there. Read-only project tools (read file, list
+  files, search) also run directly in the backend now, using the same native
+  handlers as the MCP server, so they answer without a webview round trip and
+  keep working while the window is busy.
+- **Long OpenAI agent runs no longer stop at the old 100,000-character safety
+  guard.** The aggregate budget now matches the documented per-tool limits and
+  retains the provider items needed for later tool turns.
+
+## [0.3.6] - 2026-08-09
+
 ### Security
 
 - **Provider API keys no longer reach the editor process.** Every AI call now
@@ -1306,7 +1376,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.6...HEAD
+[0.3.6]: https://github.com/Oleafly/Oleafly/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/Oleafly/Oleafly/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/Oleafly/Oleafly/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/Oleafly/Oleafly/compare/v0.3.2...v0.3.3

@@ -1237,7 +1237,12 @@ export function PreviewPane() {
       </Tooltip>
     ),
     renderMenu: () => (
-      <DropdownMenuItem key={id} disabled={options.disabled} onSelect={onClick}>
+      <DropdownMenuItem
+        key={id}
+        aria-label={label}
+        disabled={options.disabled}
+        onSelect={onClick}
+      >
         <Icon className="size-4" />
         {label}
       </DropdownMenuItem>

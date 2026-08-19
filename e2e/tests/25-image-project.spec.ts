@@ -1,17 +1,12 @@
 import { test, expect } from "../fixtures";
-import { openGallery } from "../helpers";
+import { createProjectFromTemplate } from "../helpers";
 
 test("image project: tailored UI and a real figure compile", async ({ tauriPage }) => {
-  await openGallery(tauriPage);
-  await expect(tauriPage.getByTestId("template-gallery")).toBeVisible();
-  await tauriPage.click('[data-testid="template-card-diagram"]');
-  await tauriPage.fill("#new-project-name", "E2E Image");
-  await tauriPage.click('[data-testid="create-project"]');
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await createProjectFromTemplate(tauriPage, "diagram", "E2E Image");
 
   // Preflight and the diagram composer are document-only features.
   await expect(
-    tauriPage.locator('[aria-label="Preflight (ATS + accessibility)"]'),
+    tauriPage.locator('[aria-label="Preflight Checks"]'),
   ).toBeHidden();
   await expect(tauriPage.locator('[aria-label="Insert diagram"]')).toBeHidden();
 

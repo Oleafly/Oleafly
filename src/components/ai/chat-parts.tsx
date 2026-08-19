@@ -1,8 +1,9 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useId, useRef, useState } from "react";
 import {
   Brain,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Copy,
   Info,
@@ -12,6 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import type { ChatMessage, ToolEntry } from "@/store/chats";
+import type { AgentTodo } from "@/store/agent-todos";
 import { Markdown } from "@/components/ui/markdown";
 import { Popover } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -26,6 +28,65 @@ export function InfoHint({ message }: { message: string }) {
     <Popover ariaLabel={message} trigger={<Info className="size-4" />} className="w-60 p-2.5">
       <p className="text-[11px] leading-relaxed text-muted-foreground">{message}</p>
     </Popover>
+  );
+}
+
+export function AgentPlan({ todos }: { todos: AgentTodo[] }) {
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+
+  return (
+    <div
+      className="shrink-0 border-b bg-black/[0.03] dark:bg-black/20"
+      data-testid="agent-todos"
+    >
+      <button
+        type="button"
+        aria-controls={listId}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center px-3 py-2 text-left transition-colors hover:bg-black/[0.035] dark:hover:bg-white/[0.035]"
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Plan
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className={cn(
+            "ml-auto size-3.5 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+
+      {open && (
+        <ul id={listId} className="space-y-1 px-3 pb-2">
+          {todos.map((todo) => (
+            <li key={todo.id} className="flex items-start gap-1.5 text-[11px] leading-snug">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "mt-[0.4em] size-1.5 shrink-0 rounded-full",
+                  todo.status === "completed" && "bg-emerald-500",
+                  todo.status === "in_progress" && "bg-primary",
+                  todo.status === "pending" && "bg-muted-foreground/40",
+                  todo.status === "cancelled" && "bg-muted-foreground/20",
+                )}
+              />
+              <span
+                className={cn(
+                  todo.status === "completed" && "text-muted-foreground line-through",
+                  todo.status === "cancelled" && "text-muted-foreground/60 line-through",
+                  todo.status === "in_progress" && "font-medium text-foreground",
+                )}
+              >
+                {todo.content}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -95,7 +156,7 @@ export function ToolBadge({ tc }: { tc: ToolEntry }) {
         </span>
       </button>
       {expanded && tc.output && (
-        <pre className="max-h-40 overflow-auto border-t px-2.5 py-1.5 font-mono text-[10px] text-muted-foreground">
+        <pre className="max-h-40 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words border-t px-2.5 py-1.5 font-mono text-[10px] text-muted-foreground">
           {tc.output}
         </pre>
       )}
@@ -204,7 +265,7 @@ export function ReasoningBlock({
       {open && (
         <pre
           ref={scrollRef}
-          className="max-h-56 overflow-auto whitespace-pre-wrap break-words border-t px-2.5 py-1.5 font-sans text-[11px] leading-relaxed text-muted-foreground"
+          className="max-h-56 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words border-t px-2.5 py-1.5 font-sans text-[11px] leading-relaxed text-muted-foreground"
         >
           {text}
         </pre>

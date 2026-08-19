@@ -53,6 +53,7 @@
       "resources/font-packs.json",
       "resources/template-packs.json",
       "resources/deadlines-seed.json",
+      "resources/deadlines-extra.json",
       "resources/licenses/**/*",
       "resources/language-servers/**/*"
     ],

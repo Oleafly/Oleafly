@@ -62,7 +62,7 @@ async function connectOllama(page: Page, host = HOST) {
 }
 
 async function openChat(page: Page) {
-  await openRailTab(page, "Chat / AI Assistant");
+  await openRailTab(page, "Research Assistant");
   await expect(page.locator(TA)).toBeVisible({ timeout: 10_000 });
 }
 
