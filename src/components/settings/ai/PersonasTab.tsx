@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { AppConfig, Persona } from "@/lib/tauri";
 import { personaGradient } from "@/lib/persona-colors";
+import { STARTER_PERSONAS, type StarterPersona } from "@/lib/starter-personas";
 import { CreatePersonaDialog } from "./CreatePersonaDialog";
 
 export interface PersonasTabProps {
@@ -17,7 +18,17 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Persona | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Persona | null>(null);
+  const [addingStarterId, setAddingStarterId] = useState<string | null>(null);
   const personas = cfg.ai_personas ?? [];
+  const availableStarters = STARTER_PERSONAS.filter(
+    (starter) =>
+      !personas.some(
+        (persona) =>
+          persona.id === starter.id ||
+          persona.name.trim().toLocaleLowerCase() ===
+            starter.name.toLocaleLowerCase(),
+      ),
+  );
 
   const openCreate = () => {
     setEditing(null);
@@ -50,14 +61,32 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
     }
   };
 
+  const addStarterPersona = async (starter: StarterPersona) => {
+    setAddingStarterId(starter.id);
+    setMsg(null);
+    try {
+      const persona: Persona = {
+        id: starter.id,
+        name: starter.name,
+        color: starter.color,
+        prompt: starter.prompt,
+      };
+      await persist({ ...cfg, ai_personas: [...personas, persona] });
+    } catch (e) {
+      setMsg({ ok: false, text: `Could not add ${starter.name}. ${String(e)}` });
+    } finally {
+      setAddingStarterId(null);
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
           <p className="font-medium">Personas</p>
           <p className="text-xs text-muted-foreground">
-            Named, colored prompts you can switch on from the chat panel instead of your
-            default custom instructions.
+            Reusable instructions for how the assistant should work. Choose one in chat
+            for a task. While selected, it replaces your default instructions.
           </p>
         </div>
         <Button size="sm" data-testid="ai-create-persona" data-tour="ai-create-persona" onClick={openCreate}>
@@ -68,7 +97,7 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
 
       {personas.length === 0 ? (
         <p data-testid="ai-personas-empty" className="text-xs text-muted-foreground">
-          No personas yet. Create one to get started.
+          No personas added yet.
         </p>
       ) : (
         <div className="space-y-1">
@@ -109,6 +138,51 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
           ))}
         </div>
       )}
+
+      {availableStarters.length > 0 ? (
+        <div className="space-y-2 pt-2">
+          <div>
+            <p className="text-xs font-medium">Suggested personas</p>
+            <p className="text-xs text-muted-foreground">
+              Start with one of these, then edit its instructions to fit your workflow.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            {availableStarters.map((starter) => {
+              const isAdding = addingStarterId === starter.id;
+              return (
+                <div
+                  key={starter.id}
+                  data-testid={`ai-starter-persona-${starter.id}`}
+                  className="flex items-center gap-3 rounded-md border border-border px-3 py-2.5"
+                >
+                  <span
+                    className="size-3 shrink-0 rounded-full"
+                    style={{ background: personaGradient(starter.color) }}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-medium">{starter.name}</span>
+                    <span className="block text-xs leading-relaxed text-muted-foreground">
+                      {starter.description}
+                    </span>
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    aria-label={`Add ${starter.name} persona`}
+                    disabled={addingStarterId !== null}
+                    onClick={() => void addStarterPersona(starter)}
+                  >
+                    {isAdding ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                    Add persona
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <CreatePersonaDialog
         open={dialogOpen}

@@ -1,4 +1,5 @@
-import type { Finding, PdfExtractionStatus, PositionedText } from "./types";
+import { submissionProfile, type SubmissionProfileId } from "./profiles";
+import type { Finding, PdfExtractionStatus, PdfFacts, PositionedText } from "./types";
 
 // Rows within this many PDF units of each other count as the same visual line.
 const ROW_TOLERANCE = 3;
@@ -82,6 +83,67 @@ export function checkSelectability(pages: PositionedText[][]): Finding[] {
   return out;
 }
 
+export function outputGeometryFindings(pages: PositionedText[][], facts?: PdfFacts): Finding[] {
+  const out: Finding[] = [];
+  let tinyRuns = 0;
+  let measuredRuns = 0;
+  pages.forEach((items, pageIdx) => {
+    const page = facts?.pages[pageIdx];
+    let outside = false;
+    for (const item of items) {
+      if (!item.str.trim()) continue;
+      if (item.height && item.height > 0) {
+        measuredRuns++;
+        if (item.height < 7) tinyRuns++;
+      }
+      if (
+        page &&
+        page.rotation % 360 === 0 &&
+        (item.x < -1 || item.x + item.width > page.width + 1 || item.y < -1 || item.y > page.height + 1)
+      ) {
+        outside = true;
+      }
+    }
+    if (outside) {
+      out.push({
+        id: "output-clipped-content",
+        lens: "compile",
+        severity: "error",
+        title: "Text extends outside the page",
+        detail:
+          "Selectable text lies beyond this page's media box and may be clipped or missing in print and publisher processing. Inspect wide equations, tables, URLs, and positioned content.",
+        page: pageIdx + 1,
+        certainty: "verified",
+      });
+    }
+  });
+  if (measuredRuns >= 20 && tinyRuns / measuredRuns >= 0.05) {
+    out.push({
+      id: "output-small-text",
+      lens: "a11y",
+      severity: "warning",
+      title: "Very small text detected",
+      detail:
+        `${tinyRuns} text runs measure below approximately 7 pt. Small type is difficult to read in print and at normal zoom. Confirm that the venue permits it and increase nonessentially small labels or footnotes.`,
+      certainty: "advisory",
+    });
+  }
+  return out;
+}
+
+function navigationFindings(facts: PdfFacts | undefined, profileId: SubmissionProfileId): Finding[] {
+  if (!facts || facts.pageCount < 10 || facts.outlineCount > 0 || submissionProfile(profileId).pdf.forbidBookmarks) return [];
+  return [{
+    id: "pdf-no-bookmarks",
+    lens: "a11y",
+    severity: "warning",
+    title: "Long PDF has no bookmarks",
+    detail:
+      "Long documents should expose a hierarchical bookmark outline so keyboard and assistive-technology users can navigate sections without reading every page in sequence.",
+    certainty: "verified",
+  }];
+}
+
 export function catalogFindings(
   meta: { lang?: string | null; title?: string | null; tagged?: boolean | null },
   extraction?: Pick<PdfExtractionStatus, "metadata" | "markInfo">,
@@ -124,12 +186,16 @@ export function runPdfRules(
   pages: PositionedText[][],
   meta?: { lang?: string | null; title?: string | null; tagged?: boolean | null },
   extraction?: Pick<PdfExtractionStatus, "metadata" | "markInfo">,
+  facts?: PdfFacts,
+  profileId: SubmissionProfileId = "generic",
 ): Finding[] {
   const text = pages.map((p) => p.map((it) => it.str).join("")).join("\n");
   return [
     ...analyzeReadingOrder(pages),
     ...detectGarbledText(text),
     ...checkSelectability(pages),
+    ...outputGeometryFindings(pages, facts),
     ...(meta ? catalogFindings(meta, extraction) : []),
+    ...navigationFindings(facts, profileId),
   ];
 }

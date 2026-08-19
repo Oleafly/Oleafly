@@ -420,8 +420,13 @@ export function SourceControl() {
             )}
           </>
         )}
+      </div>
 
-        <div className="mt-3 flex flex-col gap-2 border-t border-sidebar-border pt-3">
+      <div
+        data-testid="source-control-actions"
+        className="shrink-0 border-t border-sidebar-border bg-sidebar p-2"
+      >
+        <div className="flex flex-col gap-2">
           <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}

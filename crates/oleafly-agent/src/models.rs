@@ -18,6 +18,7 @@ pub struct ModelInfo {
 
 pub(crate) fn models_url(resolved: &Resolved) -> String {
     let base = match &resolved.wire {
+        Wire::OpenAiResponses { base_url } => base_url,
         Wire::OpenAiChat { base_url, .. } => base_url,
         Wire::Anthropic { base_url } => base_url,
         Wire::Google { base_url } => base_url,
@@ -114,9 +115,8 @@ mod tests {
     #[test]
     fn each_provider_is_asked_at_its_own_models_endpoint() {
         assert_eq!(
-            models_url(&resolved(Wire::OpenAiChat {
+            models_url(&resolved(Wire::OpenAiResponses {
                 base_url: OPENAI_BASE.into(),
-                reasoning_content: false
             })),
             "https://api.openai.com/v1/models"
         );
@@ -148,9 +148,8 @@ mod tests {
 
     #[test]
     fn an_openai_shaped_listing_parses() {
-        let wire = Wire::OpenAiChat {
+        let wire = Wire::OpenAiResponses {
             base_url: OPENAI_BASE.into(),
-            reasoning_content: false,
         };
         let body = json!({
             "object": "list",
@@ -199,9 +198,8 @@ mod tests {
 
     #[test]
     fn an_empty_listing_is_an_error_rather_than_an_empty_picker() {
-        let wire = Wire::OpenAiChat {
+        let wire = Wire::OpenAiResponses {
             base_url: OPENAI_BASE.into(),
-            reasoning_content: false,
         };
         assert!(parse_models(&wire, &json!({ "data": [] })).is_err());
         assert!(parse_models(&wire, &json!({})).is_err());

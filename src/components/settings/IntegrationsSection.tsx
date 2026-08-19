@@ -21,9 +21,13 @@ export function IntegrationsSection() {
   );
 
   useEffect(() => {
-    if (scrollTarget !== "citation-search") return;
-    setTab("citation-search");
-    setScrollTarget(null);
+    if (scrollTarget === "github") {
+      setTab("github");
+      setScrollTarget(null);
+    } else if (scrollTarget === "citation-search") {
+      setTab("citation-search");
+      setScrollTarget(null);
+    }
   }, [scrollTarget, setScrollTarget]);
 
   return (

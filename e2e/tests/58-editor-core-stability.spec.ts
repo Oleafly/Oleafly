@@ -94,11 +94,7 @@ async function activatePreviewControl(
   const revealExpression = `(() => {
     const trigger = document.querySelector('[aria-label="More preview controls"]');
     if (!trigger) return "missing";
-    if (trigger.getAttribute('aria-expanded') !== 'true') {
-      trigger.click();
-      return "opening";
-    }
-    return "open";
+    return trigger.getAttribute('aria-expanded') === 'true' ? "open" : "closed";
   })()`;
   const deadline = Date.now() + 15_000;
   // Captured the first time the control is actually present. Comparing against
@@ -111,6 +107,14 @@ async function activatePreviewControl(
     if (baseline !== null && current !== "absent" && current !== baseline) return;
     if (current === "absent") {
       last = await page.evaluate<string>(revealExpression);
+      if (last === "closed") {
+        // Radix DropdownMenu opens from pointer input. HTMLElement.click()
+        // skips that path, which made the overflow-only CI layout loop forever
+        // even though the row was correctly rendered and labelled. Exercise
+        // the same pointer sequence a user does through the bridge instead.
+        await page.click('[aria-label="More preview controls"]');
+        last = "opening";
+      }
     } else {
       baseline ??= current;
       last = await page.evaluate<string>(clickDirectExpression);
@@ -740,6 +744,7 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
     ]).then(([compile, settings]) => {
       compile.useCompileStore.getState().setAutoCompile(false);
       settings.useSettingsStore.getState().setViewMode("split");
+      settings.useSettingsStore.getState().setEditorAutocomplete(true);
       settings.useSettingsStore.getState().setHarper(true);
       if (!settings.useSettingsStore.getState().spellcheck) {
         settings.useSettingsStore.getState().toggleSpellcheck();
@@ -1098,8 +1103,12 @@ test("all core intelligence surfaces agree on one real project revision", async 
   const name = `E2E Editor Core ${Date.now().toString(36)}`;
   await createBlankProject(tauriPage, name);
   await tauriPage.evaluate(
-    `import("/src/store/compile.ts").then(({ useCompileStore }) => {
-      useCompileStore.getState().setAutoCompile(false);
+    `Promise.all([
+      import("/src/store/compile.ts"),
+      import("/src/store/settings.ts"),
+    ]).then(([compile, settings]) => {
+      compile.useCompileStore.getState().setAutoCompile(false);
+      settings.useSettingsStore.getState().setEditorAutocomplete(true);
       return true;
     })`,
   );

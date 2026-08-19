@@ -13,7 +13,7 @@ import {
 test("git panel shows local status directly, without a GitHub connection gate", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Git");
+  await openRailTab(tauriPage, "Source Control");
   await expect(tauriPage.getByText("Connect GitHub to continue")).toHaveCount(0);
   // The Remote section (and Push/Pull) only ever rendered behind the old
   // GitHub-connection gate; their presence here proves the panel now shows
@@ -62,7 +62,7 @@ test("stage, diff, and commit with a connected account", async ({ tauriPage }) =
   // leave nothing to stage.
   await typeInEditorAfter(tauriPage, "here.", " gitmarker");
 
-  await openRailTab(tauriPage, "Git");
+  await openRailTab(tauriPage, "Source Control");
   // The autosave may still be landing and the panel refreshes on mount, not
   // on file saves, so refresh until the change shows. (Auto-commit is
   // suspended while this panel is open, so the change stays uncommitted.)
@@ -80,7 +80,7 @@ test("stage, diff, and commit with a connected account", async ({ tauriPage }) =
     15_000,
   );
 
-  await openRailTab(tauriPage, "Git");
+  await openRailTab(tauriPage, "Source Control");
   // "Stage all" is hover-revealed (opacity-0), so Playwright's click waits
   // forever for visibility; click the DOM button directly instead. Keep
   // refreshing + staging until STAGED is visible since the autosave and the
@@ -174,7 +174,7 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
         "delete it manually or grant the token the delete_repo scope",
     );
   }
-  await openRailTab(tauriPage, "Git");
+  await openRailTab(tauriPage, "Source Control");
   await tauriPage.getByText("Unlink", { exact: true }).click();
   await expect(tauriPage.getByText("Publish to GitHub")).toBeVisible({ timeout: 10_000 });
 });

@@ -449,7 +449,7 @@ pnpm tauri dev
 ## 参与贡献
 
 Oleafly 由
-[Prajwal S Venkateshmurthy](https://github.com/prajwalsvenkatesh) 和
+[Prajwal S Venkateshmurthy](https://github.com/prajwal-svm) 和
 众多贡献者公开开发。欢迎提交错误报告、修复、模板、文档，
 以及经过深思的产品反馈。
 

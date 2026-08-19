@@ -17,6 +17,7 @@ import type {
   GitCommit,
   GitFileChange,
   GitHubRepo,
+  GitHubRepoStats,
   GitHubUser,
   GitPullResult,
   ImportPathsResult,
@@ -257,6 +258,9 @@ export const readFileBase64 = (projectId: string, path: string) =>
 
 export const createProjectFromDocx = (name: string, dataBase64: string) =>
   invoke<string>("create_project_from_docx", { name, dataBase64 });
+
+export const importDocument = (path: string) =>
+  invoke<string>("import_document", { path });
 
 export const appendAppLog = (message: string) =>
   invoke<void>("append_app_log", { message });
@@ -581,6 +585,10 @@ export const ghClearToken = () => invoke<void>("gh_clear_token");
 export const ghListRepos = () => invoke<GitHubRepo[]>("gh_list_repos");
 export const ghCreateRepo = (name: string, isPrivate: boolean) =>
   invoke<GitHubRepo>("gh_create_repo", { name, private: isPrivate });
+export const ghPublicRepoStats = (fullName: string) =>
+  invoke<GitHubRepoStats>("gh_public_repo_stats", { fullName });
+export const ghImportRepo = (fullName: string) =>
+  invoke<string>("gh_import_repo", { fullName });
 
 export const gitSetRemote = (projectId: string, url: string) =>
   invoke<void>("git_set_remote", { projectId, url });

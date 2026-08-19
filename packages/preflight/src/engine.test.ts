@@ -72,4 +72,55 @@ describe("runPreflight", () => {
     const r = runPreflight({ source: "x" });
     expect(typeof r.ranAt).toBe("number");
   });
+
+  it("reports partial submission coverage until a PDF is available", () => {
+    const source = "\\documentclass{article}\\begin{abstract}A\\end{abstract}";
+    const project = { mainFile: "main.tex", files: [{ path: "main.tex", content: source }] };
+    const sourceOnly = runPreflight({ source, project, submissionProfile: "generic" });
+    expect(sourceOnly.coverage.submission).toBe("partial");
+    expect(sourceOnly.submissionScore).not.toBeNull();
+    expect(sourceOnly.coverage.privacy).toBe("evaluated");
+  });
+
+  it("keeps venue-profile failures out of unrelated scores", () => {
+    const source = "\\documentclass{article}\\begin{abstract}A\\end{abstract}\\begin{IEEEkeywords}x\\end{IEEEkeywords}";
+    const report = runPreflight({
+      source,
+      project: { mainFile: "main.tex", files: [{ path: "main.tex", content: source }] },
+      submissionProfile: "ieee",
+    });
+    expect(report.findings).toContainEqual(expect.objectContaining({ id: "submission-document-class" }));
+    expect(report.scores.submission).toBeLessThan(100);
+    expect(report.scores.refs).toBe(100);
+  });
+
+  it("checks every loaded LaTeX source file and records its path", () => {
+    const main = "\\documentclass{article}\\input{glyphtounicode}\\pdfgentounicode=1\\usepackage[english]{babel}\\hypersetup{pdftitle={Paper}}";
+    const report = runPreflight({
+      source: main,
+      project: {
+        mainFile: "main.tex",
+        files: [
+          { path: "main.tex", content: main },
+          { path: "sections/results.tex", content: "\\includegraphics{plot.png}\\cite{missing}" },
+          { path: "sections/plot.png" },
+        ],
+      },
+      refs: {
+        definedLabels: [],
+        bibKeys: [],
+        bibLoaded: true,
+        projectFiles: ["main.tex", "sections/results.tex", "sections/plot.png"],
+        duplicateDois: [],
+      },
+    });
+    expect(report.findings).toContainEqual(expect.objectContaining({
+      id: "figure-alt",
+      file: "sections/results.tex",
+    }));
+    expect(report.findings).toContainEqual(expect.objectContaining({
+      id: "refs-undefined-cite",
+      file: "sections/results.tex",
+    }));
+  });
 });

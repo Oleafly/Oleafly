@@ -758,6 +758,42 @@
   }
 }
 
+/* Use one compact, overlay-like scrollbar treatment throughout the desktop
+   WebView. macOS can switch native scrollers from overlay to persistent when
+   its automatic input-device preference changes; keeping the thumb transparent
+   until its own scroll surface is hovered preserves Oleafly's quiet layout. */
+:where(body, body *) {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+:where(body, body *):hover {
+  scrollbar-color: color-mix(in srgb, var(--muted-foreground) 42%, transparent) transparent;
+}
+
+:where(body, body *)::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+:where(body, body *)::-webkit-scrollbar-track,
+:where(body, body *)::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+:where(body, body *)::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: transparent;
+}
+
+:where(body, body *):hover::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted-foreground) 42%, transparent);
+}
+
+:where(body, body *):hover::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--muted-foreground) 62%, transparent);
+}
+
 /* Thin (0.5px) borders app-wide. Unlayered so they override Tailwind's
    layered 1px border utilities. Only affects elements that already use a
    border utility (elements without one keep their default 0 width). */
@@ -1255,6 +1291,53 @@ body[data-tour-active] [data-tour-hide] {
 }
 
 /*
+ * The empty-state mascot gives the writer a quick double blink once per quiet
+ * interval. Both frames stay in the document so the blink never waits on an
+ * image request; only the closed-eye layer's opacity changes.
+ */
+@keyframes oleafly-assistant-blink {
+  0%,
+  76%,
+  78.25%,
+  80.5%,
+  100% {
+    opacity: 0;
+  }
+
+  77%,
+  79.25% {
+    opacity: 1;
+  }
+}
+
+@keyframes oleafly-assistant-hover-blink {
+  0%,
+  18%,
+  72%,
+  100% {
+    opacity: 0;
+  }
+
+  32%,
+  58% {
+    opacity: 1;
+  }
+}
+
+.oleafly-assistant-mascot-blink {
+  opacity: 0;
+  animation: oleafly-assistant-blink 7.2s linear infinite;
+}
+
+/*
+ * Entering any shared mascot instance prompts one immediate blink. Leaving
+ * removes this animation name, so entering again always starts a fresh blink.
+ */
+.oleafly-assistant-mascot:hover .oleafly-assistant-mascot-blink {
+  animation: oleafly-assistant-hover-blink 320ms linear 1;
+}
+
+/*
  * A restrained animated spectrum for tool-approval prompts. The prompt
  * surface remains opaque while the existing two-pixel chrome exposes the
  * moving background as its border.
@@ -1290,8 +1373,36 @@ body[data-tour-active] [data-tour-hide] {
   animation: ai-tool-approval-border-shine var(--ai-tool-approval-border-duration) linear infinite;
 }
 
-@container ai-chat (max-width: 22rem) {
-  .ai-composer-prompts {
+@container ai-chat (max-width: 30rem) {
+  .ai-composer-prompts .ai-composer-prompts-trigger {
+    width: 1.75rem;
+    min-width: 1.75rem;
+    max-width: 1.75rem;
+    justify-content: center;
+    gap: 0;
+    padding-inline: 0;
+  }
+
+  .ai-composer-prompts-icon {
+    display: block;
+  }
+
+  .ai-composer-prompts-value,
+  .ai-composer-prompts .ai-composer-prompts-trigger > svg:last-child {
+    display: none;
+  }
+
+  .ai-composer-persona .ai-composer-persona-trigger {
+    width: 1.75rem;
+    min-width: 1.75rem;
+    max-width: 1.75rem;
+    justify-content: center;
+    gap: 0;
+    padding-inline: 0;
+  }
+
+  .ai-composer-persona-value,
+  .ai-composer-persona .ai-composer-persona-trigger > svg:last-child {
     display: none;
   }
 
@@ -1311,6 +1422,12 @@ body[data-tour-active] [data-tour-hide] {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .oleafly-assistant-mascot-blink,
+  .oleafly-assistant-mascot:hover .oleafly-assistant-mascot-blink {
+    animation: none;
+    opacity: 0;
+  }
+
   .ai-tool-approval-chrome {
     animation: none;
     background-position: 50% 50%;

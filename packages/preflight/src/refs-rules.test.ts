@@ -55,6 +55,19 @@ describe("duplicate labels", () => {
   it("does not flag distinct labels", () => {
     expect(has("\\label{a}\\label{b}", ctx(), "refs-duplicate-label")).toBe(false);
   });
+  it("reports labels duplicated across project files", () => {
+    const out = runRefsRules("", ctx({
+      duplicateLabels: [{ label: "fig:result", files: ["a.tex", "b.tex"] }],
+    }));
+    expect(out).toContainEqual(expect.objectContaining({ id: "refs-project-duplicate-label", severity: "error" }));
+  });
+
+  it("reports unreferenced numbered objects as advisory", () => {
+    const out = runRefsRules("", ctx({
+      unreferencedLabels: [{ label: "fig:unused", file: "main.tex" }],
+    }));
+    expect(out).toContainEqual(expect.objectContaining({ id: "refs-unreferenced-floats", certainty: "advisory" }));
+  });
 });
 
 describe("duplicate bib entries", () => {
@@ -67,6 +80,33 @@ describe("duplicate bib entries", () => {
   });
   it("does not fire when there are no duplicates", () => {
     expect(runRefsRules("", ctx()).some((x) => x.id === "refs-duplicate-bib")).toBe(false);
+  });
+});
+
+describe("bibliography quality", () => {
+  it("summarizes incomplete required fields by entry type", () => {
+    const out = runRefsRules("", ctx({
+      bibEntries: [{ key: "paper", type: "article", fields: { title: "A useful paper", year: "2026" } }],
+    }));
+    expect(out).toContainEqual(expect.objectContaining({ id: "refs-incomplete-metadata", severity: "warning" }));
+  });
+
+  it("detects malformed DOIs and title duplicates", () => {
+    const out = runRefsRules("", ctx({
+      bibEntries: [
+        { key: "a", type: "misc", fields: { title: "A sufficiently long duplicate research title", year: "2026", doi: "not-a-doi" } },
+        { key: "b", type: "misc", fields: { title: "A sufficiently long duplicate research title", year: "2026" } },
+      ],
+    }));
+    expect(out.map((finding) => finding.id)).toContain("refs-malformed-doi");
+    expect(out.map((finding) => finding.id)).toContain("refs-duplicate-title");
+  });
+
+  it("reports uncited entries only when whole-project citation data is available", () => {
+    const entry = { key: "unused", type: "misc", fields: { title: "Unused source", year: "2026" } };
+    expect(runRefsRules("", ctx({ bibEntries: [entry] })).some((finding) => finding.id === "refs-uncited-entries")).toBe(false);
+    expect(runRefsRules("", ctx({ bibEntries: [entry], allCitedKeys: [] })).some((finding) => finding.id === "refs-uncited-entries")).toBe(true);
+    expect(runRefsRules("", ctx({ bibEntries: [entry], allCitedKeys: ["*"] })).some((finding) => finding.id === "refs-uncited-entries")).toBe(false);
   });
 });
 

@@ -1,8 +1,8 @@
 import { test, expect } from "../fixtures";
 import {
+  compileAndProbe,
   createBlankProject,
   editorSource,
-  expectCompiledPdfContains,
   openProject,
   openRailTab,
   setEditorContent,
@@ -20,8 +20,20 @@ test("preflight categories render and a single check runs independently", async 
   });
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 30_000 });
 
-  await openRailTab(tauriPage, "Preflight (ATS + accessibility)");
-  const runButton = tauriPage.locator('[aria-label^="Run "]:not(:disabled)').first();
+  await openRailTab(tauriPage, "Preflight Checks");
+  for (const label of [
+    "Compile & layout",
+    "Submission readiness",
+    "ATS readiness",
+    "Accessibility",
+    "References & assets",
+    "Privacy & blind review",
+  ]) {
+    await expect(tauriPage.getByText(label, { exact: true })).toBeVisible();
+  }
+  const runButton = tauriPage.locator(
+    '[aria-label="Run Accessibility"]:not(:disabled)',
+  );
   await expect(runButton).toBeVisible();
 
   await runButton.click();
@@ -72,19 +84,11 @@ Example University.
 `,
   );
 
-  await expect(tauriPage.getByTestId("compile-button")).toBeEnabled({
-    timeout: 120_000,
-  });
-  await tauriPage.getByTestId("compile-button").click();
-  await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute(
-    "data-severity",
-    "ok",
-    { timeout: 120_000 },
-  );
   // The blank template can still be completing its on-open compile when the
-  // replacement is queued. Prove that the latest source—not the prior green
-  // status—reached the PDF before exercising Preflight.
-  await expectCompiledPdfContains(tauriPage, "GitHub Projects", 120_000);
+  // replacement is queued. The shared helper retries that race and proves the
+  // latest source, not a prior green status, reached the PDF.
+  const probe = await compileAndProbe(tauriPage, 120_000);
+  expect(probe.text).toContain("GitHub Projects");
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({
     timeout: 30_000,
   });
@@ -98,7 +102,7 @@ Example University.
   expect(source).toContain("\\section*{GitHub Projects}");
   expect(looksLikeResume).toBe(true);
 
-  await openRailTab(tauriPage, "Preflight (ATS + accessibility)");
+  await openRailTab(tauriPage, "Preflight Checks");
   await expect(tauriPage.getByTestId("preflight-panel")).toHaveAttribute(
     "data-running",
     "false",
@@ -133,6 +137,44 @@ Example University.
     "aria-label",
     "Projects: detected",
   );
-  await tauriPage.getByText("Show what the reader sees").click();
-  await expect(tauriPage.locator("pre").getByText("GitHub Projects")).toBeVisible();
+  const readerState = await tauriPage.evaluate<{
+    pageCount: number;
+    reportHasPdf: boolean;
+    reportHasAtsParse: boolean;
+    outputIsCurrent: boolean;
+    pdfByteLength: number;
+    compileStatus: string;
+  }>(
+    `Promise.all([
+      import("/src/store/preflight.ts"),
+      import("/src/store/compile.ts"),
+    ]).then(([preflight, compile]) => {
+      const preflightState = preflight.usePreflightStore.getState();
+      const compileState = compile.useCompileStore.getState();
+      return {
+        pageCount: preflightState.pageText.length,
+        reportHasPdf: preflightState.report?.hasPdf === true,
+        reportHasAtsParse: preflightState.report?.atsParse !== undefined,
+        outputIsCurrent: compile.isCompileCheckpointCurrent(
+          compileState.lastCompileCheckpoint,
+        ),
+        pdfByteLength: compileState.pdfBytes?.byteLength ?? 0,
+        compileStatus: compileState.status,
+      };
+    })`,
+  );
+  expect(readerState).toMatchObject({
+    reportHasPdf: true,
+    reportHasAtsParse: true,
+    outputIsCurrent: true,
+    compileStatus: "success",
+  });
+  expect(readerState.pageCount).toBeGreaterThan(0);
+  expect(readerState.pdfByteLength).toBeGreaterThan(0);
+  const readerButton = tauriPage.getByTestId("preflight-reader-button");
+  await expect(readerButton).toBeEnabled();
+  await readerButton.click();
+  const readerDialog = tauriPage.getByTestId("preflight-reader-dialog");
+  await expect(readerDialog).toBeVisible();
+  await expect(readerDialog.locator("pre")).toContainText("GitHub Projects");
 });

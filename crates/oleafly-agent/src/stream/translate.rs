@@ -12,6 +12,7 @@ use crate::stream::{ToolCall, MAX_STREAM_TOOL_CALLS};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WireKind {
     OpenAi,
+    OpenAiResponses,
     Anthropic,
     Google,
 }
@@ -19,6 +20,7 @@ pub enum WireKind {
 impl From<&Wire> for WireKind {
     fn from(wire: &Wire) -> Self {
         match wire {
+            Wire::OpenAiResponses { .. } => WireKind::OpenAiResponses,
             Wire::OpenAiChat { .. } => WireKind::OpenAi,
             Wire::Anthropic { .. } => WireKind::Anthropic,
             Wire::Google { .. } => WireKind::Google,
@@ -36,6 +38,7 @@ pub struct Translator {
     done: bool,
     synthetic: i64,
     error: Option<AgentError>,
+    response_items: BTreeMap<i64, Value>,
 }
 
 impl Translator {
@@ -50,6 +53,7 @@ impl Translator {
             done: false,
             synthetic: 0,
             error: None,
+            response_items: BTreeMap::new(),
         }
     }
 
@@ -72,6 +76,7 @@ impl Translator {
     pub fn translate(&mut self, event: &SseEvent) -> Vec<AgentEvent> {
         match self.kind {
             WireKind::OpenAi => self.openai(event),
+            WireKind::OpenAiResponses => self.openai_responses(event),
             WireKind::Anthropic => self.anthropic(event),
             WireKind::Google => self.google(event),
         }
@@ -98,6 +103,10 @@ impl Translator {
 
     pub fn stop_reason(&self) -> Option<String> {
         self.stop_reason.clone()
+    }
+
+    pub fn response_items(&self) -> Vec<Value> {
+        self.response_items.values().cloned().collect()
     }
 
     fn start_call(&mut self, index: i64, id: String, name: String) -> Vec<AgentEvent> {
@@ -230,6 +239,138 @@ impl Translator {
             .filter(|a| !a.is_empty())
         {
             out.extend(self.push_args(index, fragment));
+        }
+        out
+    }
+
+    fn openai_responses(&mut self, event: &SseEvent) -> Vec<AgentEvent> {
+        if event.data.trim() == "[DONE]" {
+            return self.finish();
+        }
+        if event.data.trim().is_empty() {
+            return Vec::new();
+        }
+        let Ok(value) = serde_json::from_str::<Value>(&event.data) else {
+            return self.decode_failure(&event.data);
+        };
+        let kind = event
+            .event
+            .as_deref()
+            .or_else(|| value.get("type").and_then(|kind| kind.as_str()))
+            .unwrap_or_default();
+        let index = value
+            .get("output_index")
+            .and_then(|index| index.as_i64())
+            .unwrap_or(0);
+        let mut out = Vec::new();
+
+        match kind {
+            "response.output_text.delta" | "response.refusal.delta" => {
+                if let Some(text) = nonempty(value.get("delta")) {
+                    out.push(AgentEvent::TextDelta { text });
+                }
+            }
+            "response.reasoning_summary_text.delta" | "response.reasoning_text.delta" => {
+                if let Some(text) = nonempty(value.get("delta")) {
+                    out.push(AgentEvent::ReasoningDelta { text });
+                }
+            }
+            "response.output_item.added" => {
+                if value.pointer("/item/type").and_then(|kind| kind.as_str())
+                    == Some("function_call")
+                {
+                    let id = value
+                        .pointer("/item/call_id")
+                        .and_then(|id| id.as_str())
+                        .or_else(|| value.pointer("/item/id").and_then(|id| id.as_str()))
+                        .unwrap_or_default()
+                        .to_string();
+                    let name = value
+                        .pointer("/item/name")
+                        .and_then(|name| name.as_str())
+                        .unwrap_or_default()
+                        .to_string();
+                    if !name.is_empty() {
+                        out.extend(self.start_call(index, id, name));
+                    }
+                }
+            }
+            "response.function_call_arguments.delta" => {
+                if let Some(delta) = value
+                    .get("delta")
+                    .and_then(|delta| delta.as_str())
+                    .filter(|delta| !delta.is_empty())
+                {
+                    out.extend(self.push_args(index, delta));
+                }
+            }
+            "response.function_call_arguments.done" => {
+                if let Some(arguments) = value.get("arguments").and_then(|args| args.as_str()) {
+                    let existing = self
+                        .open
+                        .get(&index)
+                        .map(|call| call.arguments.as_str())
+                        .unwrap_or_default();
+                    if let Some(remainder) = arguments.strip_prefix(existing) {
+                        if !remainder.is_empty() {
+                            out.extend(self.push_args(index, remainder));
+                        }
+                    }
+                }
+                out.extend(self.close_call(index));
+            }
+            "response.output_item.done" => {
+                if let Some(item) = value.get("item") {
+                    self.response_items.insert(index, item.clone());
+                }
+                out.extend(self.close_call(index));
+            }
+            "response.completed" | "response.incomplete" => {
+                if self.response_items.is_empty() {
+                    if let Some(items) = value
+                        .pointer("/response/output")
+                        .and_then(|output| output.as_array())
+                    {
+                        self.response_items.extend(
+                            items
+                                .iter()
+                                .enumerate()
+                                .map(|(index, item)| (index as i64, item.clone())),
+                        );
+                    }
+                }
+                if let Some(usage) = value.pointer("/response/usage") {
+                    self.usage = Usage {
+                        input: u32_at(usage, "input_tokens"),
+                        output: u32_at(usage, "output_tokens"),
+                    };
+                    out.push(AgentEvent::Usage { usage: self.usage });
+                }
+                self.stop_reason = Some(if kind == "response.completed" {
+                    "completed".into()
+                } else {
+                    value
+                        .pointer("/response/incomplete_details/reason")
+                        .and_then(|reason| reason.as_str())
+                        .unwrap_or("incomplete")
+                        .to_string()
+                });
+                out.extend(self.finish());
+            }
+            "response.failed" | "error" => {
+                let message = value
+                    .pointer("/response/error/message")
+                    .or_else(|| value.pointer("/error/message"))
+                    .and_then(|message| message.as_str())
+                    .unwrap_or("OpenAI response stream failed")
+                    .to_string();
+                self.done = true;
+                self.error = Some(AgentError::Provider {
+                    status: 400,
+                    message,
+                });
+            }
+            _ => {}
         }
         out
     }

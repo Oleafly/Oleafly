@@ -461,6 +461,21 @@ pub async fn agent_list_models(
     base_url: Option<String>,
 ) -> Result<Vec<oleafly_agent::ModelInfo>, String> {
     let _request_slot = acquire_request_slot(state.inner())?;
+    let (client, resolved) =
+        model_listing_request(state.inner(), provider_id, key, base_url).await?;
+    let available = oleafly_agent::list_models(&client, &resolved)
+        .await
+        .map_err(|e| format!("[{}] {e}", e.kind()))?;
+    crate::ai_model_registry::filter_supported_models(&client, &resolved.provider_id, available)
+        .await
+}
+
+async fn model_listing_request(
+    state: &AgentState,
+    provider_id: String,
+    key: Option<String>,
+    base_url: Option<String>,
+) -> Result<(reqwest::Client, oleafly_agent::Resolved), String> {
     let cfg = tauri::async_runtime::spawn_blocking(crate::config::read_config)
         .await
         .map_err(|e| e.to_string())??;
@@ -491,9 +506,7 @@ pub async fn agent_list_models(
     let resolved = oleafly_agent::provider::resolve_for_model_listing(&projected, &provider_id)
         .map_err(|e| e.to_string())?;
     let client = state.client()?;
-    oleafly_agent::list_models(&client, &resolved)
-        .await
-        .map_err(|e| format!("[{}] {e}", e.kind()))
+    Ok((client, resolved))
 }
 
 fn resolve_for(

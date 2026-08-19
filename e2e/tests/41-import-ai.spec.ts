@@ -68,7 +68,7 @@ test("refine with AI creates the project and hands off to the agent", async ({ t
   );
   await tauriPage.click('[data-testid="import-refine"]');
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 60_000 });
-  await openRailTab(tauriPage, "Chat / AI Assistant");
+  await openRailTab(tauriPage, "Research Assistant");
   const deadline = Date.now() + 60_000;
   while (server.requestCount() <= before) {
     if (Date.now() > deadline) throw new Error("agent handoff never reached the model");

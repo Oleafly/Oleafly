@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openGallery, openSettings, waitLong } from "../helpers";
+import { finishProjectCreation, openGallery, openSettings, waitLong } from "../helpers";
 import { startPackFixtureServer } from "../pack-fixture-server";
 
 // The Rust side fetches the catalog from OLEAFLY_PACKS_BASE_URL, which
@@ -50,6 +50,5 @@ test("installing a pack adds its templates to the gallery", async ({ tauriPage }
   );
   await tauriPage.click('[data-testid="template-card-fixture-article"]');
   await tauriPage.fill("#new-project-name", "Pack Doc");
-  await tauriPage.click('[data-testid="create-project"]');
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 30_000 });
+  await finishProjectCreation(tauriPage);
 });

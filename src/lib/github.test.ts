@@ -6,6 +6,8 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke, isTauri: () => true }));
 
 import {
   githubCreateRepo,
+  githubImportRepo,
+  githubGetPublicRepoStats,
   githubListRepos,
   githubGetUser,
   saveGithubToken,
@@ -29,6 +31,27 @@ describe("github.ts command bindings", () => {
     invoke.mockResolvedValue([]);
     await githubListRepos();
     expect(invoke).toHaveBeenCalledWith("gh_list_repos");
+  });
+
+  it("githubImportRepo passes the selected repository name to the native importer", async () => {
+    invoke.mockResolvedValue("imported-project");
+    await expect(githubImportRepo("oleafly/example-paper")).resolves.toBe(
+      "imported-project",
+    );
+    expect(invoke).toHaveBeenCalledWith("gh_import_repo", {
+      fullName: "oleafly/example-paper",
+    });
+  });
+
+  it("githubGetPublicRepoStats loads public star and fork counts through Rust", async () => {
+    invoke.mockResolvedValue({ stars: 42, forks: 7 });
+
+    await expect(
+      githubGetPublicRepoStats("Oleafly/Oleafly"),
+    ).resolves.toEqual({ stars: 42, forks: 7 });
+    expect(invoke).toHaveBeenCalledWith("gh_public_repo_stats", {
+      fullName: "Oleafly/Oleafly",
+    });
   });
 
   it("githubGetUser calls gh_current_user and takes NO token argument", async () => {

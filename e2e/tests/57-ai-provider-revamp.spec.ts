@@ -40,19 +40,18 @@ async function confirmDialog(page: Page, label: string) {
   await expect(dialog).toBeHidden({ timeout: 8_000 });
 }
 
-async function openPromptsMenu(page: Page) {
+async function openPersonaMenu(page: Page) {
   await page.evaluate(
     `(() => {
-      const btn = Array.from(document.querySelectorAll('button'))
-        .find(b => (b.textContent || '').trim().startsWith('Prompts'));
-      if (!btn) throw new Error('Prompts trigger not found');
+      const btn = document.querySelector('[data-tour="ai-persona"] button');
+      if (!btn) throw new Error('Persona trigger not found');
       btn.click();
       return 1;
     })()`,
   );
   await waitLong(
     page,
-    `!!document.querySelector('[data-testid="ai-prompts-create-persona"], [data-testid="ai-prompts-persona-none"]')`,
+    `!!document.querySelector('[data-testid="ai-persona-create"], [data-testid="ai-persona-none"]')`,
     8_000,
   );
 }
@@ -160,39 +159,62 @@ test("instructions tab hosts the tools list and a working default-model picker",
   expect(disclosureExpanded).toBe("false");
 
   const trigger = page.locator('[data-testid="ai-default-model"] [aria-label="AI model"]');
-  await trigger.focus();
-  await trigger.press("Enter");
-  await waitLong(page, `document.querySelectorAll('[role="option"]').length > 0`, 8_000);
   await page.evaluate(
     `(() => {
-      const el = Array.from(document.querySelectorAll('[role="option"]'))
-        .find(o => (o.textContent || '').includes('Sonar Pro'));
-      if (!el) throw new Error('Sonar Pro option not found');
-      for (const type of ['pointerdown', 'pointerup']) {
-        el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1 }));
-      }
-      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-      return 1;
+      const button = document.querySelector('[data-testid="ai-default-model"] [aria-label="AI model"]');
+      if (!(button instanceof HTMLButtonElement)) throw new Error('default model trigger unavailable');
+      button.dispatchEvent(new PointerEvent('pointerdown', {
+        bubbles: true, cancelable: true, pointerId: 1, pointerType: 'mouse', button: 0,
+      }));
+      button.dispatchEvent(new MouseEvent('mousedown', {
+        bubbles: true, cancelable: true, button: 0,
+      }));
+      button.dispatchEvent(new PointerEvent('pointerup', {
+        bubbles: true, cancelable: true, pointerId: 1, pointerType: 'mouse', button: 0,
+      }));
+      button.dispatchEvent(new MouseEvent('mouseup', {
+        bubbles: true, cancelable: true, button: 0,
+      }));
+      button.dispatchEvent(new MouseEvent('click', {
+        bubbles: true, cancelable: true, button: 0,
+      }));
+      return true;
     })()`,
   );
-  await expect(trigger).toContainText("Sonar Pro", { timeout: 8_000 });
+  await waitLong(page, `!!document.querySelector('[cmdk-input]')`, 8_000);
+  await page.locator("[cmdk-input]").fill("Sonar");
+  await waitLong(
+    page,
+    `[...document.querySelectorAll('[cmdk-item]')].some((item) => item.textContent?.trim().endsWith('Sonar'))`,
+    8_000,
+  );
+  await page.evaluate(
+    `(() => {
+      const item = [...document.querySelectorAll('[cmdk-item]')]
+        .find((element) => element.textContent?.trim().endsWith('Sonar'));
+      if (!(item instanceof HTMLElement)) throw new Error('Sonar option unavailable');
+      item.click();
+      return true;
+    })()`,
+  );
+  await expect(trigger).toContainText("Sonar", { timeout: 8_000 });
 
   await page.click('[aria-label="Close settings"]');
 });
 
-test("personas: deep link from prompts menu, create, switch in chat", async ({ tauriPage }) => {
+test("personas: deep link from persona menu, create, switch in chat", async ({ tauriPage }) => {
   const page = tauriPage;
   await createBlankProject(page, "ai-revamp-e2e");
-  await openRailTab(page, "Chat / AI Assistant");
+  await openRailTab(page, "Research Assistant");
   await waitLong(
     page,
     `!!document.querySelector('textarea[placeholder*="Ask AI"], textarea[placeholder*="Describe a figure"]')`,
     15_000,
   );
 
-  await openPromptsMenu(page);
-  await expect(page.locator('[data-testid="ai-prompts-create-persona"]')).toBeVisible();
-  await page.click('[data-testid="ai-prompts-create-persona"]');
+  await openPersonaMenu(page);
+  await expect(page.locator('[data-testid="ai-persona-create"]')).toBeVisible();
+  await page.click('[data-testid="ai-persona-create"]');
   await expect(page.locator('[data-testid="ai-create-persona"]')).toBeVisible({ timeout: 10_000 });
 
   await page.click('[data-testid="ai-create-persona"]');
@@ -205,13 +227,13 @@ test("personas: deep link from prompts menu, create, switch in chat", async ({ t
   });
   await page.click('[aria-label="Close settings"]');
 
-  await openPromptsMenu(page);
-  await expect(page.locator('[data-testid="ai-prompts-persona-Copyeditor"]')).toBeVisible();
-  await page.click('[data-testid="ai-prompts-persona-Copyeditor"]');
+  await openPersonaMenu(page);
+  await expect(page.locator('[data-testid="ai-persona-Copyeditor"]')).toBeVisible();
+  await page.click('[data-testid="ai-persona-Copyeditor"]');
 
-  await openPromptsMenu(page);
+  await openPersonaMenu(page);
   await expect(
-    page.locator('[data-testid="ai-prompts-persona-Copyeditor"] svg'),
+    page.locator('[data-testid="ai-persona-Copyeditor"] svg'),
   ).toBeVisible();
-  await page.click('[data-testid="ai-prompts-persona-none"]');
+  await page.click('[data-testid="ai-persona-none"]');
 });

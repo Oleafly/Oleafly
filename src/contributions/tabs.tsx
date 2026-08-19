@@ -26,7 +26,7 @@ export function registerRailTabs() {
   });
   registerRailTab({
     id: "search",
-    label: "Project search",
+    label: "Search Project",
     icon: Search,
     section: "explore",
     order: 20,
@@ -34,7 +34,7 @@ export function registerRailTabs() {
   });
   registerRailTab({
     id: "source",
-    label: "Git",
+    label: "Source Control",
     icon: GitBranch,
     section: "explore",
     order: 30,
@@ -43,11 +43,11 @@ export function registerRailTabs() {
   });
   registerRailTab({
     id: "preflight",
-    label: "Preflight (ATS + accessibility)",
+    label: "Preflight Checks",
     icon: ShieldCheck,
     section: "review",
     order: 40,
-    // Preflight (ATS + accessibility) targets documents, not single figures.
+    // Preflight checks target documents, not single figures.
     when: (ctx) => ctx.projectKind !== "image" && ctx.projectKind !== "diagram",
     panel: PreflightPanel,
   });
@@ -61,7 +61,7 @@ export function registerRailTabs() {
   });
   registerRailTab({
     id: "ai",
-    label: "Chat / AI Assistant",
+    label: "Research Assistant",
     icon: Sparkles,
     section: "assist",
     order: 60,

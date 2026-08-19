@@ -15,11 +15,12 @@ Oleafly loads one backend-owned engine descriptor when a project opens. The fron
 | Conversion exports | DOCX, HTML, Markdown, text, plus PPTX/EPUB where relevant | None | DOCX, HTML, text, plus PPTX/EPUB where relevant |
 | Bundled blank template | Yes | Yes | Yes |
 
-Typst and Markdown source checks are intentionally not simulated with LaTeX regular expressions. Output-level PDF, structure, accessibility, and ATS checks remain shared whenever a compiled PDF is available.
+Typst and Markdown source checks are intentionally not simulated with LaTeX regular expressions. Compile-log and PDF checks remain shared when the engine provides those inputs. LaTeX projects also receive source-level submission, reference, accessibility, privacy, and ATS checks.
 
-Preflight reports coverage separately from findings. ATS and accessibility are
-`not_run` until a compiled PDF exists, and unsupported source checks are marked
-`unsupported`. These states have no numeric score and never appear as 100% or
-“No problems found.”
+Preflight reports coverage separately for compile, submission, ATS,
+accessibility, references, and privacy. A check is `not_run` when its required
+input is missing, `partial` when source checks ran without a current PDF, and
+`unsupported` when the active engine does not provide the needed source facts.
+These states never appear as a verified 100% result.
 
 The New Project gallery includes engine-tagged templates and an engine filter. All project types use transactional creation: if template copy, engine validation, asset staging, or metadata writing fails, the partial project directory is removed.

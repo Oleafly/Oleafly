@@ -13,7 +13,7 @@ surface is designed to provide without duplicating task walkthroughs.
 | Citations and literature metadata | [Citations](Citations.md) |
 | Templates and diagrams | [Templates](Templates.md), [Diagram composer](DiagramComposer.md) |
 | Compilation and conversion | [Compilation engines](CompilationEngines.md), [Export](Export.md) |
-| Document quality and accessibility | [Preflight](Preflight.md) |
+| Compile, submission, accessibility, reference, privacy, and ATS checks | [Preflight](Preflight.md) |
 | Release and update operations | [Releasing](releasing.md), [Code signing](signing.md), [Auto-updates](updates.md) |
 
 ## Product boundary

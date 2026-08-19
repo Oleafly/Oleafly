@@ -397,7 +397,7 @@ export const tourRegistry = {
         target: '[data-tour="ai-create-persona"]',
         kind: "informational",
         title: "Create personas",
-        content: "Named prompt presets with a color, switchable from the chat's Prompts menu. Try a copyeditor, a reviewer, or a LaTeX purist.",
+        content: "Named instruction sets with a color, switchable from the chat's Persona menu. Try a copyeditor, a reviewer, or a LaTeX purist.",
         waitForTarget: true,
         placement: "bottom-end",
       },
@@ -406,7 +406,7 @@ export const tourRegistry = {
   ai: {
     id: "ai",
     label: "AI Assistant",
-    version: 3,
+    version: 4,
     contexts: ["ai"],
     priority: 40,
     steps: [
@@ -439,8 +439,16 @@ export const tourRegistry = {
         id: "ai-prompts",
         target: '[data-tour="ai-prompts"]',
         kind: "informational",
-        title: "Prompts and personas",
-        content: "Ready-made prompts for common edits. At the bottom, switch personas: named instruction sets you create in Settings.",
+        title: "Prompt shortcuts",
+        content: "Choose a ready-made prompt to place it in the chat input.",
+        waitForTarget: true,
+      },
+      {
+        id: "ai-persona",
+        target: '[data-tour="ai-persona"]',
+        kind: "informational",
+        title: "Persona",
+        content: "Choose how the assistant should work. An active persona replaces your default instructions until you turn it off.",
         waitForTarget: true,
       },
       {

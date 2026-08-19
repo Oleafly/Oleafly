@@ -433,9 +433,9 @@ export async function expectCompiledPdfEmpty(page: Page, timeoutMs = 90_000) {
 export async function createBlankProject(page: Page, name: string) {
   await openGallery(page);
   await page.click('[data-testid="template-card-blank"]');
+  await expect(page.locator("#new-project-name")).toBeVisible({ timeout: 20_000 });
   await page.fill("#new-project-name", name);
-  await page.click('[data-testid="create-project"]');
-  await expect(page.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await finishProjectCreation(page);
 }
 
 export async function createProjectFromTemplate(
@@ -445,9 +445,74 @@ export async function createProjectFromTemplate(
 ) {
   await openGallery(page);
   await page.click(`[data-testid="template-card-${templateId}"]`);
+  await expect(page.locator("#new-project-name")).toBeVisible({ timeout: 20_000 });
   await page.fill("#new-project-name", name);
-  await page.click('[data-testid="create-project"]');
-  await expect(page.locator(".cm-content")).toBeVisible({ timeout: 30_000 });
+  await finishProjectCreation(page);
+}
+
+export async function finishProjectCreation(page: Page) {
+  const createButton = page.locator('[data-testid="create-project"]');
+  await expect(createButton).toBeEnabled({ timeout: 20_000 });
+
+  // A bridge click can occasionally land during the details step's React
+  // commit and be discarded. Observe the actual product states and retry only
+  // while the same enabled Create button is still visible. Once creation has
+  // started the button becomes disabled, so this cannot submit a second
+  // project. Waiting for the editor also covers the native create/open work on
+  // a loaded macOS runner instead of treating 20 seconds as a product failure.
+  const deadline = Date.now() + 60_000;
+  let lastClickAt = 0;
+  let lastState: unknown = null;
+  for (;;) {
+    const state = await page.evaluate<{
+      editorVisible: boolean;
+      dialogVisible: boolean;
+      createEnabled: boolean;
+      createVisible: boolean;
+      notice: string;
+    }>(`(() => {
+      const visible = (element) => {
+        if (!(element instanceof HTMLElement)) return false;
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== "none"
+          && style.visibility !== "hidden"
+          && rect.width > 0
+          && rect.height > 0;
+      };
+      const editor = document.querySelector(".cm-content");
+      const dialog = document.querySelector('[data-testid="template-gallery"]');
+      const create = document.querySelector('[data-testid="create-project"]');
+      const notice = Array.from(document.querySelectorAll('[role="alert"]'))
+        .map((element) => element.textContent?.trim() ?? "")
+        .filter(Boolean)
+        .join(" | ");
+      return {
+        editorVisible: visible(editor),
+        dialogVisible: visible(dialog),
+        createEnabled: create instanceof HTMLButtonElement && !create.disabled,
+        createVisible: visible(create),
+        notice,
+      };
+    })()`);
+    lastState = state;
+    if (state.editorVisible) return;
+
+    if (
+      state.dialogVisible &&
+      state.createVisible &&
+      state.createEnabled &&
+      Date.now() - lastClickAt >= 1_500
+    ) {
+      await page.click('[data-testid="create-project"]');
+      lastClickAt = Date.now();
+    }
+
+    if (Date.now() > deadline) {
+      throw new Error(`project creation never opened the editor: ${JSON.stringify(lastState)}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
 }
 
 export async function setEditorContent(page: Page, text: string) {
@@ -888,7 +953,7 @@ export async function ensureGithubConnected(page: Page) {
     );
   }
   await page.click('[aria-label="Close settings"]');
-  await openRailTab(page, "Git");
+  await openRailTab(page, "Source Control");
 }
 
 // Every interaction with the card must be scoped to it: OpenAI and Z.AI
@@ -926,7 +991,7 @@ export function inProviderCard(snippet: string): string {
 export async function ensureAiConnected(page: Page) {
   const token = process.env.E2E_AI_TOKEN;
   if (!token) throw new Error("ensureAiConnected: E2E_AI_TOKEN not set");
-  await openRailTab(page, "Chat / AI Assistant");
+  await openRailTab(page, "Research Assistant");
   const ready = await page.evaluate<boolean>(
     `!!document.querySelector('textarea[placeholder*="Ask AI"], textarea[placeholder*="Describe a figure"]')`,
   );
@@ -984,7 +1049,7 @@ export async function ensureAiConnected(page: Page) {
     );
   }
   await page.click('[aria-label="Close settings"]');
-  await openRailTab(page, "Chat / AI Assistant");
+  await openRailTab(page, "Research Assistant");
   await page.waitForFunction(
     `!!document.querySelector('textarea[placeholder*="Ask AI"], textarea[placeholder*="Describe a figure"]')`,
     10_000,

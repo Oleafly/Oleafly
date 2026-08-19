@@ -30,7 +30,7 @@ async function connectAndOpenChat(page: Page) {
     `window.__aiConnect?.("ollama", ${JSON.stringify(server.url)}, "llama3.2") ?? false`,
   );
   expect(ok, "__aiConnect devtools hook must be present").toBe(true);
-  await openRailTab(page, "Chat / AI Assistant");
+  await openRailTab(page, "Research Assistant");
   await expect(page.locator(TA)).toBeVisible({ timeout: 10_000 });
 }
 

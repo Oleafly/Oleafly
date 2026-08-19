@@ -19,6 +19,12 @@ fn openai() -> Resolved {
     })
 }
 
+fn openai_responses() -> Resolved {
+    resolved(Wire::OpenAiResponses {
+        base_url: OPENAI_BASE.into(),
+    })
+}
+
 fn vision_request() -> CompletionRequest {
     CompletionRequest {
         system: Some("transcribe".into()),
@@ -170,6 +176,69 @@ fn openai_puts_tool_calls_on_the_assistant_and_results_in_their_own_messages() {
     assert_eq!(result["tool_call_id"], "call_1");
     assert_eq!(result["content"], "\\documentclass{article}");
     assert_eq!(messages.len(), 4);
+}
+
+#[test]
+fn responses_api_preserves_messages_function_calls_and_outputs_in_order() {
+    let body = openai_responses_body(&openai_responses(), &tool_turn()).unwrap();
+    let input = body["input"].as_array().unwrap();
+
+    assert_eq!(body["instructions"], "sys");
+    assert_eq!(body["store"], false);
+    assert_eq!(body["include"][0], "reasoning.encrypted_content");
+    assert_eq!(input[0]["type"], "message");
+    assert_eq!(input[0]["role"], "user");
+    assert_eq!(input[0]["content"][0]["type"], "input_text");
+    assert_eq!(input[1]["role"], "assistant");
+    assert_eq!(input[1]["content"][0]["type"], "output_text");
+    assert_eq!(input[2]["type"], "function_call");
+    assert_eq!(input[2]["call_id"], "call_1");
+    assert_eq!(input[2]["name"], "read_file");
+    assert_eq!(input[3]["type"], "function_call_output");
+    assert_eq!(input[3]["call_id"], "call_1");
+    assert_eq!(body["tools"][0]["type"], "function");
+    assert_eq!(body["tools"][0]["name"], "read_file");
+    assert!(body["tools"][0].get("function").is_none());
+}
+
+#[test]
+fn responses_api_replays_opaque_provider_items_for_stateless_tool_continuations() {
+    let mut request = CompletionRequest::prompt("sys", "this generic history is replaced");
+    request.openai_responses_input = Some(vec![json!({
+        "type": "reasoning",
+        "id": "rs_1",
+        "encrypted_content": "opaque",
+    })]);
+    let body = openai_responses_body(&openai_responses(), &request).unwrap();
+    assert_eq!(body["input"].as_array().unwrap().len(), 1);
+    assert_eq!(body["input"][0]["type"], "reasoning");
+    assert_eq!(body["input"][0]["encrypted_content"], "opaque");
+}
+
+#[test]
+fn responses_api_uses_input_images_and_renames_the_token_limit() {
+    let mut request = vision_request();
+    request.max_tokens = Some(123);
+    let body = openai_responses_body(&openai_responses(), &request).unwrap();
+    assert_eq!(body["input"][0]["content"][1]["type"], "input_image");
+    assert_eq!(
+        body["input"][0]["content"][1]["image_url"],
+        "data:image/png;base64,AAAB"
+    );
+    assert_eq!(body["max_output_tokens"], 123);
+    assert!(body.get("max_tokens").is_none());
+}
+
+#[test]
+fn official_openai_requests_use_the_responses_endpoint() {
+    let client = reqwest::Client::new();
+    let request = request_builder(&client, &openai_responses(), true)
+        .build()
+        .unwrap();
+    assert_eq!(
+        request.url().as_str(),
+        "https://api.openai.com/v1/responses"
+    );
 }
 
 #[test]

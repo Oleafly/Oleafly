@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
 import { assembleProjectIntelligence } from "@/lib/project-intelligence/assemble";
@@ -141,5 +141,66 @@ describe("navigation panels reject stale source ranges", () => {
       screen.getByText("Current analysis failed safely."),
     ).toBeInTheDocument();
     expect(screen.queryByText(/STALE-CITATION/u)).toBeNull();
+  });
+});
+
+describe("reference library import", () => {
+  it("opens from the Citations tab instead of the AI Assistant", () => {
+    const snapshot = assembleProjectIntelligence({
+      identity: {
+        projectId: "project",
+        projectRevision: 1,
+        requestGeneration: 1,
+      },
+      files: {
+        "main.tex": analyzeProjectFile(
+          "main.tex",
+          String.raw`\documentclass{article}\begin{document}Paper\end{document}`,
+          1,
+        ),
+      },
+      knownFiles: ["main.tex"],
+      mainDocument: "main.tex",
+      stats: {
+        fileCount: 1,
+        characterCount: 58,
+        parsedFileCount: 1,
+        reusedFileCount: 0,
+        durationMs: 0,
+      },
+    });
+    useFilesStore.setState({
+      projectId: "project",
+      projectName: "Paper",
+      activePath: "main.tex",
+      files: {
+        "main.tex": {
+          content: String.raw`\documentclass{article}\begin{document}Paper\end{document}`,
+          dirty: false,
+        },
+      },
+    });
+    useIndexStore.setState({
+      intelligenceState: {
+        status: "success",
+        identity: snapshot.identity,
+        data: snapshot,
+        stale: false,
+      },
+    });
+
+    render(<ReferencesPanel />);
+
+    expect(
+      screen.getByRole("button", { name: "Import references" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Import reference library" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Import references" }));
+    expect(
+      screen.getByRole("dialog", { name: "Import reference library" }),
+    ).toBeInTheDocument();
   });
 });

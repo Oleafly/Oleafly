@@ -478,7 +478,7 @@ Code. Aufgabenorientierte Anleitungen für Endnutzer werden getrennt von diesem
 ## Mitwirken
 
 Oleafly wird offen entwickelt, von
-[Prajwal S Venkateshmurthy](https://github.com/prajwalsvenkatesh) und
+[Prajwal S Venkateshmurthy](https://github.com/prajwal-svm) und
 Mitwirkenden. Fehlerberichte, Fixes, Vorlagen, Dokumentation und durchdachtes
 Produktfeedback sind willkommen.
 

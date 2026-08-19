@@ -92,7 +92,7 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
         <DialogHeader>
           <DialogTitle>{editing ? "Edit persona" : "Create persona"}</DialogTitle>
           <DialogDescription>
-            A named, colored prompt you can switch on from the chat panel.
+            Set reusable instructions for how the assistant should work.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -133,7 +133,7 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
           </div>
           <div className="space-y-1">
             <label htmlFor="persona-prompt" className="text-xs font-medium text-muted-foreground">
-              Prompt
+              Instructions
             </label>
             <Textarea
               id="persona-prompt"
@@ -141,7 +141,7 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: C
               value={form.prompt}
               onChange={(e) => setForm((f) => ({ ...f, prompt: e.target.value }))}
               rows={5}
-              placeholder="Reply in at most two sentences."
+              placeholder="Review my writing for clarity and list the most important issues first."
               className="w-full resize-y rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>

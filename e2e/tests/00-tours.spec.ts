@@ -363,7 +363,7 @@ test("AI and Diagram tours select their eligible context without sending or comp
 }) => {
   await loadTours(tauriPage, { ai: "pending", diagram: "pending" });
   await createBlankProject(tauriPage, `Tour Context ${Date.now()}`);
-  await openRailTab(tauriPage, "Chat / AI Assistant");
+  await openRailTab(tauriPage, "Research Assistant");
   await tauriPage.waitForFunction(
     `document.querySelector("#react-joyride-portal h2")?.textContent === "AI Assistant"`,
     30_000,

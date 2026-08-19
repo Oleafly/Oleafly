@@ -10,6 +10,7 @@ import {
   cancelQuitFlush,
   confirmQuitFlush,
   createFile,
+  importDocument,
   isFileConflictError,
   renameFile,
   validateCompileFingerprint,
@@ -81,6 +82,19 @@ describe("quit and fingerprint bridges", () => {
     expect(mocks.invoke).toHaveBeenCalledWith("validate_compile_fingerprint", {
       projectId: "project",
       mainDoc: "main.tex",
+    });
+  });
+});
+
+describe("document import bridge", () => {
+  it("passes the selected document path to the native converter", async () => {
+    mocks.invoke.mockResolvedValue("converted-project");
+
+    await expect(importDocument("/tmp/paper.md")).resolves.toBe(
+      "converted-project",
+    );
+    expect(mocks.invoke).toHaveBeenCalledWith("import_document", {
+      path: "/tmp/paper.md",
     });
   });
 });

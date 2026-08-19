@@ -6,7 +6,7 @@ import { openProject, openRailTab } from "../helpers";
 test("connect-a-provider leads to Settings -> AI", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Chat / AI Assistant");
+  await openRailTab(tauriPage, "Research Assistant");
   await expect(tauriPage.getByText("Connect an AI provider")).toBeVisible();
   await expect(tauriPage.locator('[aria-label="PDF View"]')).toHaveAttribute(
     "aria-pressed",
@@ -29,7 +29,7 @@ test("connect-a-provider leads to Settings -> AI", async ({ tauriPage }) => {
 test("keyless panel offers the Ollama path into settings", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Chat / AI Assistant");
+  await openRailTab(tauriPage, "Research Assistant");
   // Header chat controls (figure mode, history, send) are provider-gated;
   // keyless users get the two setup paths.
   await expect(tauriPage.getByText("Run a local model with Ollama")).toBeVisible();
@@ -49,7 +49,7 @@ test("a stale provider preference does not recommend or expand that provider", a
   );
   expect(configured, "__aiConnect devtools hook must be present").toBe(true);
 
-  await openRailTab(tauriPage, "Chat / AI Assistant");
+  await openRailTab(tauriPage, "Research Assistant");
   await expect(tauriPage.getByText("Connect an AI provider")).toBeVisible();
   await tauriPage.getByText("Connect a provider").click();
 

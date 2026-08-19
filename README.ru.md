@@ -475,7 +475,7 @@ pnpm tauri dev
 ## Участие в разработке
 
 Oleafly открыто разрабатывают
-[Prajwal S Venkateshmurthy](https://github.com/prajwalsvenkatesh) и участники
+[Prajwal S Venkateshmurthy](https://github.com/prajwal-svm) и участники
 сообщества. Мы рады сообщениям об ошибках, исправлениям, шаблонам,
 документации и вдумчивой обратной связи о продукте.
 

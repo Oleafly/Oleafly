@@ -4,7 +4,7 @@ use crate::complete::CompletionRequest;
 use crate::error::Result;
 use crate::message::{parse_arguments, parse_data_url, ContentPart, Message, Role};
 use crate::provider::{Resolved, Wire};
-use crate::tool::{anthropic_tools, google_tools, openai_tools};
+use crate::tool::{anthropic_tools, google_tools, openai_responses_tools, openai_tools};
 
 pub(crate) const DEFAULT_MAX_TOKENS: u32 = 4096;
 
@@ -104,6 +104,101 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
     }
     if !req.tools.is_empty() {
         body["tools"] = openai_tools(&req.tools);
+    }
+    Ok(body)
+}
+
+fn responses_message(message: &Message, parts: &[&ContentPart]) -> Result<Option<Value>> {
+    let mut content = Vec::new();
+    for part in parts {
+        match part {
+            ContentPart::Text { text } => content.push(match message.role {
+                Role::User => json!({ "type": "input_text", "text": text }),
+                Role::Assistant => json!({ "type": "output_text", "text": text }),
+            }),
+            ContentPart::Image { image } => {
+                parse_data_url(image)?;
+                content.push(json!({ "type": "input_image", "image_url": image }));
+            }
+            _ => {}
+        }
+    }
+    if content.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(json!({
+        "type": "message",
+        "role": role_str(message.role),
+        "content": content,
+    })))
+}
+
+pub(crate) fn openai_responses_input(messages: &[Message]) -> Result<Vec<Value>> {
+    let mut input = Vec::new();
+    for message in messages {
+        let mut visible: Vec<&ContentPart> = Vec::new();
+        for part in &message.content {
+            match part {
+                ContentPart::Text { .. } | ContentPart::Image { .. } => visible.push(part),
+                ContentPart::ToolUse {
+                    id,
+                    name,
+                    arguments,
+                } => {
+                    if let Some(item) = responses_message(message, &visible)? {
+                        input.push(item);
+                    }
+                    visible.clear();
+                    input.push(json!({
+                        "type": "function_call",
+                        "call_id": id,
+                        "name": name,
+                        "arguments": arguments,
+                    }));
+                }
+                ContentPart::ToolResult { id, output, .. } => {
+                    if let Some(item) = responses_message(message, &visible)? {
+                        input.push(item);
+                    }
+                    visible.clear();
+                    input.push(json!({
+                        "type": "function_call_output",
+                        "call_id": id,
+                        "output": output,
+                    }));
+                }
+            }
+        }
+        if let Some(item) = responses_message(message, &visible)? {
+            input.push(item);
+        }
+    }
+    Ok(input)
+}
+
+pub(crate) fn openai_responses_body(resolved: &Resolved, req: &CompletionRequest) -> Result<Value> {
+    let input = match &req.openai_responses_input {
+        Some(input) => input.clone(),
+        None => openai_responses_input(&req.messages)?,
+    };
+
+    let mut body = json!({
+        "model": resolved.model_id,
+        "input": input,
+        "include": ["reasoning.encrypted_content"],
+        "store": false,
+    });
+    if let Some(system) = req.system.as_ref().filter(|system| !system.is_empty()) {
+        body["instructions"] = json!(system);
+    }
+    if let Some(temperature) = req.temperature {
+        body["temperature"] = json!(temperature);
+    }
+    if let Some(max_tokens) = req.max_tokens {
+        body["max_output_tokens"] = json!(max_tokens);
+    }
+    if !req.tools.is_empty() {
+        body["tools"] = openai_responses_tools(&req.tools);
     }
     Ok(body)
 }
@@ -242,7 +337,9 @@ pub(crate) fn auth_headers(resolved: &Resolved) -> reqwest::header::HeaderMap {
         return headers;
     };
     let (name, value) = match resolved.wire {
-        Wire::OpenAiChat { .. } => ("authorization", format!("Bearer {token}")),
+        Wire::OpenAiResponses { .. } | Wire::OpenAiChat { .. } => {
+            ("authorization", format!("Bearer {token}"))
+        }
         Wire::Anthropic { .. } => ("x-api-key", token.to_string()),
         Wire::Google { .. } => ("x-goog-api-key", token.to_string()),
     };
@@ -262,6 +359,9 @@ pub fn request_builder(
     streaming: bool,
 ) -> reqwest::RequestBuilder {
     let builder = match &resolved.wire {
+        Wire::OpenAiResponses { base_url } => {
+            client.post(format!("{}/responses", base_url.trim_end_matches('/')))
+        }
         Wire::OpenAiChat { base_url, .. } => client.post(format!(
             "{}/chat/completions",
             base_url.trim_end_matches('/')
@@ -287,6 +387,7 @@ pub fn request_builder(
 
 pub fn wire_body(resolved: &Resolved, req: &CompletionRequest) -> Result<serde_json::Value> {
     match &resolved.wire {
+        Wire::OpenAiResponses { .. } => openai_responses_body(resolved, req),
         Wire::OpenAiChat { .. } => openai_body(resolved, req),
         Wire::Anthropic { .. } => anthropic_body(resolved, req),
         Wire::Google { .. } => google_body(req),

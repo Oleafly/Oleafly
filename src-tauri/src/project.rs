@@ -3115,6 +3115,26 @@ fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<
     Ok(id)
 }
 
+pub(crate) fn import_project_zip_bytes(name: String, bytes: &[u8]) -> Result<String, String> {
+    let root = paths::projects_root()?;
+    let archive = unique_temporary_path(&root, ".oleafly-repository-import")?;
+    atomic_write(&archive, bytes)
+        .map_err(|error| format!("could not stage the repository archive: {error}"))?;
+    let result = import_overleaf_project_blocking(Some(name), &archive.to_string_lossy());
+    let _ = std::fs::remove_file(archive);
+    result
+}
+
+pub(crate) fn discard_project_after_failed_import(project_id: &str) -> Result<(), String> {
+    paths::validate_project_id(project_id)?;
+    let project = paths::projects_root()?.join(project_id);
+    if project.exists() {
+        std::fs::remove_dir_all(project)
+            .map_err(|error| format!("could not remove the incomplete project: {error}"))?;
+    }
+    Ok(())
+}
+
 fn read_import_meta(dir: &Path) -> Option<ProjectMeta> {
     let raw = std::fs::read_to_string(dir.join("project.json")).ok()?;
     serde_json::from_str::<ProjectMeta>(&raw).ok()
@@ -3876,45 +3896,60 @@ fn docx_pandoc_args() -> Vec<String> {
     ]
 }
 
+fn markdown_pandoc_args() -> Vec<String> {
+    vec![
+        "--from=markdown".into(),
+        "--to=latex".into(),
+        "--standalone".into(),
+        "-o".into(),
+        "main.tex".into(),
+        "--".into(),
+        "source.md".into(),
+    ]
+}
+
+fn validate_docx_bytes(bytes: &[u8]) -> Result<(), String> {
+    if bytes.len() < 4 || &bytes[0..2] != b"PK" {
+        return Err("not a .docx file (missing zip container signature)".into());
+    }
+    Ok(())
+}
+
 fn decode_docx_base64(data: &str) -> Result<Vec<u8>, String> {
     use base64::{engine::general_purpose::STANDARD, Engine};
     let bytes = STANDARD
         .decode(data.trim())
         .map_err(|e| format!("invalid base64: {e}"))?;
-    if bytes.len() < 4 || &bytes[0..2] != b"PK" {
-        return Err("not a .docx file (missing zip container signature)".into());
-    }
+    validate_docx_bytes(&bytes)?;
     Ok(bytes)
 }
 
-/// Create a LaTeX project from an uploaded .docx. The bytes are written inside
-/// the new project dir and pandoc runs there, so no external path is read.
-#[tauri::command]
-pub async fn create_project_from_docx(name: String, data_base64: String) -> Result<String, String> {
-    let bytes = decode_docx_base64(&data_base64)?;
+async fn create_project_from_pandoc_source(
+    name: String,
+    source_name: &str,
+    bytes: Vec<u8>,
+    args: Vec<String>,
+) -> Result<String, String> {
     let pandoc = tauri::async_runtime::spawn_blocking(find_pandoc)
         .await
         .map_err(|e| e.to_string())?
         .ok_or_else(|| {
-            "pandoc is not installed. Install pandoc to import Word documents.".to_string()
+            "pandoc is not installed. Install pandoc to import this document.".to_string()
         })?;
     let root = paths::projects_root()?;
     let id = unique_random_slug(&root)?;
     let destination = root.join(&id);
-    let staging = create_unique_temporary_directory(&root, ".oleafly-docx-import")?;
+    let staging = create_unique_temporary_directory(&root, ".oleafly-document-import")?;
     let result: Result<(), String> = async {
-        atomic_write(&staging.join("source.docx"), &bytes)
-            .map_err(|e| format!("failed to write source.docx: {e}"))?;
-        let (log, code) = crate::document_engine::run_supervised_external(
-            Path::new(&pandoc),
-            &docx_pandoc_args(),
-            &staging,
-        )
-        .await?;
+        atomic_write(&staging.join(source_name), &bytes)
+            .map_err(|e| format!("failed to write {source_name}: {e}"))?;
+        let (log, code) =
+            crate::document_engine::run_supervised_external(Path::new(&pandoc), &args, &staging)
+                .await?;
         if code != Some(0) {
             return Err(format!("pandoc failed: {}", log.trim()));
         }
-        let _ = std::fs::remove_file(staging.join("source.docx"));
+        let _ = std::fs::remove_file(staging.join(source_name));
         write_meta_at(
             &staging.join("project.json"),
             &ProjectMeta {
@@ -3935,13 +3970,59 @@ pub async fn create_project_from_docx(name: String, data_base64: String) -> Resu
             .map_err(|e| format!("could not publish the imported project: {e}"))
     }
     .await;
-    if let Err(e) = result {
+    if let Err(error) = result {
         if staging.exists() {
             let _ = std::fs::remove_dir_all(&staging);
         }
-        return Err(e);
+        return Err(error);
     }
     Ok(id)
+}
+
+/// Create a LaTeX project from an uploaded .docx. The bytes are written inside
+/// the new project dir and pandoc runs there, so no external path is read.
+#[tauri::command]
+pub async fn create_project_from_docx(name: String, data_base64: String) -> Result<String, String> {
+    let bytes = decode_docx_base64(&data_base64)?;
+    create_project_from_pandoc_source(name, "source.docx", bytes, docx_pandoc_args()).await
+}
+
+/// Import a user-selected Word or Markdown file as a new LaTeX project.
+/// The extension selects the pandoc reader; both paths publish atomically.
+#[tauri::command]
+pub async fn import_document(path: String) -> Result<String, String> {
+    let source = PathBuf::from(&path);
+    if !source.is_file() {
+        return Err(format!("import source not found: {path}"));
+    }
+    let extension = source
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let name = source
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or("Imported document")
+        .to_string();
+    let read_path = source.clone();
+    let bytes = tauri::async_runtime::spawn_blocking(move || std::fs::read(read_path))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| format!("failed to read {path}: {e}"))?;
+
+    match extension.as_str() {
+        "docx" => {
+            validate_docx_bytes(&bytes)?;
+            create_project_from_pandoc_source(name, "source.docx", bytes, docx_pandoc_args()).await
+        }
+        "md" | "markdown" => {
+            create_project_from_pandoc_source(name, "source.md", bytes, markdown_pandoc_args())
+                .await
+        }
+        _ => Err("Choose a .docx, .md, or .markdown file.".into()),
+    }
 }
 
 /// Whether a usable pandoc is already available (system or our cache).
@@ -5073,15 +5154,16 @@ mod tests {
     use super::{
         copy_path_in_project, create_diagram_project, create_image_project_in,
         create_markdown_project_in, create_path_in_project, create_project_from_pdf_conversion,
-        create_project_transaction, create_typst_project_in, download_project_zip,
-        duplicate_project, engine_for_main_document, extract_pandoc, flatten_single_root_folder,
-        get_or_create_scratch_project, import_paths_transactional, import_paths_transactional_with,
-        import_skip, infer_main_document, list_projects, normalize_loaded_tex_flavor,
-        normalize_relative, pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash,
-        rename_exclusive, rename_path_in_project, search_docs, set_main_doc_synchronized,
-        set_main_doc_unlocked, tex_root_magic_target, validate_conversion_export,
-        validate_tex_flavor, write_meta_at, CreateFileResult, FileConflictStrategy, MutationScope,
-        PdfConversionFigure, ProjectMeta, RenameFileResult, TexSpec, SCRATCH_PROJECT_ID,
+        create_project_transaction, create_typst_project_in, discard_project_after_failed_import,
+        download_project_zip, duplicate_project, engine_for_main_document, extract_pandoc,
+        flatten_single_root_folder, get_or_create_scratch_project, import_paths_transactional,
+        import_paths_transactional_with, import_project_zip_bytes, import_skip,
+        infer_main_document, list_projects, normalize_loaded_tex_flavor, normalize_relative,
+        pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash, rename_exclusive,
+        rename_path_in_project, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
+        tex_root_magic_target, validate_conversion_export, validate_tex_flavor, write_meta_at,
+        CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta,
+        RenameFileResult, TexSpec, SCRATCH_PROJECT_ID,
     };
     use std::io::Write;
     use std::path::Path;
@@ -5112,6 +5194,55 @@ mod tests {
             .unwrap();
         zip.write_all(contents).unwrap();
         zip.finish().unwrap();
+    }
+
+    #[test]
+    fn repository_archive_bytes_use_the_guarded_import_and_can_be_discarded() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("repository-bytes-import");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let archive = data.join("repository.zip");
+        zip_with_member(&archive, "owner-repo/main.tex", b"\\documentclass{article}");
+        let bytes = std::fs::read(&archive).unwrap();
+
+        let project_id = import_project_zip_bytes("Research repository".into(), &bytes).unwrap();
+        let project = crate::paths::project_dir(&project_id).unwrap();
+        assert!(project.join("main.tex").is_file());
+        assert!(project.join("project.json").is_file());
+        assert!(!std::fs::read_dir(crate::paths::projects_root().unwrap())
+            .unwrap()
+            .flatten()
+            .any(|entry| entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".oleafly-repository-import")));
+
+        discard_project_after_failed_import(&project_id).unwrap();
+        assert!(!project.exists());
+        discard_project_after_failed_import(&project_id).unwrap();
+        assert!(discard_project_after_failed_import("../escape").is_err());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn invalid_repository_archive_bytes_leave_no_staging_file() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("repository-bytes-invalid");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+
+        assert!(import_project_zip_bytes("Broken repository".into(), b"not a zip").is_err());
+        assert!(!std::fs::read_dir(crate::paths::projects_root().unwrap())
+            .unwrap()
+            .flatten()
+            .any(|entry| entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".oleafly-repository-import")));
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
     }
 
     #[test]
@@ -6782,6 +6913,17 @@ mod tests {
         let o = args.iter().position(|a| a == "-o").unwrap();
         assert_eq!(args[o + 1], "main.tex");
         assert_eq!(args.last().unwrap(), "source.docx");
+    }
+
+    #[test]
+    fn markdown_pandoc_args_enable_pandoc_markdown_extensions() {
+        let args = super::markdown_pandoc_args();
+        assert!(args.contains(&"--from=markdown".to_string()));
+        assert!(!args.contains(&"--from=gfm".to_string()));
+        assert!(args.contains(&"--to=latex".to_string()));
+        assert!(args.contains(&"--standalone".to_string()));
+        assert!(args.windows(2).any(|pair| pair == ["-o", "main.tex"]));
+        assert_eq!(args.last().unwrap(), "source.md");
     }
 
     #[test]

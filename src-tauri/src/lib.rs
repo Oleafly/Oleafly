@@ -1,4 +1,5 @@
 mod agent;
+mod ai_model_registry;
 mod assets;
 mod biber_toolchain;
 mod chats;
@@ -189,6 +190,8 @@ pub fn run() {
             github::gh_clear_token,
             github::gh_list_repos,
             github::gh_create_repo,
+            github::gh_public_repo_stats,
+            github::gh_import_repo,
             ollama::ollama_list_models,
             synctex::synctex_forward,
             synctex::synctex_inverse,
@@ -251,6 +254,7 @@ pub fn run() {
             templates::template_preview,
             project::create_project_from_template,
             project::create_project_from_docx,
+            project::import_document,
             assets::list_font_components,
             assets::install_font_component,
             assets::remove_font_component,

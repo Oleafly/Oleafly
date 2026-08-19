@@ -5,11 +5,14 @@ import {
   ghClearToken,
   ghListRepos,
   ghCreateRepo,
+  ghPublicRepoStats,
+  ghImportRepo,
   type GitHubUser,
   type GitHubRepo,
+  type GitHubRepoStats,
 } from "@/lib/tauri";
 
-export type { GitHubUser, GitHubRepo };
+export type { GitHubUser, GitHubRepo, GitHubRepoStats };
 
 // The GitHub token lives only in the Rust core. Every authenticated call below
 // delegates to a Tauri command that reads the token server-side, so the webview
@@ -26,6 +29,26 @@ export function githubCreateRepo(name: string, isPrivate: boolean): Promise<GitH
 // Most recently updated first.
 export function githubListRepos(): Promise<GitHubRepo[]> {
   return ghListRepos();
+}
+
+export function githubImportRepo(fullName: string): Promise<string> {
+  return ghImportRepo(fullName);
+}
+
+const publicRepoStatsCache = new Map<string, Promise<GitHubRepoStats>>();
+
+export function githubGetPublicRepoStats(
+  fullName: string,
+): Promise<GitHubRepoStats> {
+  const cached = publicRepoStatsCache.get(fullName);
+  if (cached) return cached;
+
+  const request = ghPublicRepoStats(fullName).catch((error) => {
+    publicRepoStatsCache.delete(fullName);
+    throw error;
+  });
+  publicRepoStatsCache.set(fullName, request);
+  return request;
 }
 
 export function saveGithubToken(token: string): Promise<GitHubUser> {

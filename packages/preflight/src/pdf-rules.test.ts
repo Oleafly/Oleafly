@@ -4,6 +4,7 @@ import {
   detectGarbledText,
   checkSelectability,
   catalogFindings,
+  outputGeometryFindings,
   runPdfRules,
 } from "./pdf-rules";
 import type { PositionedText } from "./types";
@@ -67,6 +68,61 @@ describe("catalogFindings", () => {
   it("does not add the not-tagged note when the PDF is tagged", () => {
     expect(catalogFindings({ lang: "en", title: "CV", tagged: true }).some((f) => f.id === "pdf-tagged")).toBe(false);
   });
+  it("reports failed metadata and MarkInfo inspection without inventing a verdict", () => {
+    const findings = catalogFindings(
+      { lang: null, title: null, tagged: null },
+      { metadata: "failed", markInfo: "failed" },
+    );
+    expect(findings.map((finding) => finding.id)).toEqual([
+      "pdf-metadata-extraction-failed",
+      "pdf-mark-info-extraction-failed",
+    ]);
+  });
+});
+
+describe("outputGeometryFindings", () => {
+  it("finds clipped text and a meaningful amount of very small type", () => {
+    const page = Array.from({ length: 20 }, (_, index) =>
+      ({ str: "x", x: index === 0 ? -2 : 10, y: 10, width: 4, height: index < 2 ? 6 : 10 }),
+    );
+    const findings = outputGeometryFindings([page], {
+      version: "1.7",
+      pageCount: 1,
+      pages: [{ width: 100, height: 100, rotation: 0 }],
+      outlineCount: 0,
+      linkCount: 0,
+      attachmentCount: 0,
+      formFieldCount: 0,
+      restricted: false,
+      author: null,
+      creator: null,
+      producer: null,
+      fonts: [],
+    });
+    expect(findings.map((finding) => finding.id)).toEqual([
+      "output-clipped-content",
+      "output-small-text",
+    ]);
+  });
+
+  it("ignores unmeasured text and rotated page geometry", () => {
+    const page = [{ str: "x", x: -10, y: -10, width: 2 }];
+    const findings = outputGeometryFindings([page], {
+      version: null,
+      pageCount: 1,
+      pages: [{ width: 100, height: 100, rotation: 90 }],
+      outlineCount: 0,
+      linkCount: 0,
+      attachmentCount: 0,
+      formFieldCount: 0,
+      restricted: null,
+      author: null,
+      creator: null,
+      producer: null,
+      fonts: [],
+    });
+    expect(findings).toHaveLength(0);
+  });
 });
 
 describe("runPdfRules", () => {
@@ -77,5 +133,28 @@ describe("runPdfRules", () => {
     expect(ids.has("pdf-reading-order")).toBe(true);
     expect(ids.has("pdf-garbled")).toBe(true);
     expect(ids.has("pdf-lang-title")).toBe(true);
+  });
+
+  it("requires bookmarks for long documents unless the publication profile forbids them", () => {
+    const facts = {
+      version: "1.7",
+      pageCount: 12,
+      pages: [],
+      outlineCount: 0,
+      linkCount: 0,
+      attachmentCount: 0,
+      formFieldCount: 0,
+      restricted: false,
+      author: null,
+      creator: null,
+      producer: null,
+      fonts: [],
+    };
+    expect(runPdfRules([], undefined, undefined, facts, "generic").map((finding) => finding.id))
+      .toContain("pdf-no-bookmarks");
+    expect(runPdfRules([], undefined, undefined, facts, "ieee").map((finding) => finding.id))
+      .not.toContain("pdf-no-bookmarks");
+    expect(runPdfRules([], undefined, undefined, { ...facts, outlineCount: 1 }, "generic"))
+      .toHaveLength(0);
   });
 });

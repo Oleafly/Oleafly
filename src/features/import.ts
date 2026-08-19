@@ -11,6 +11,7 @@ import { useFilesStore } from "@/store/files";
 import { useImportStore } from "@/store/import";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { ensurePandoc } from "@/features/pandoc";
+import { CONVERSION_NOTICE } from "@/features/import-copy";
 
 const ZIP_EXPORT_ERROR_MESSAGE = "Could not save ZIP archive.";
 
@@ -131,7 +132,7 @@ export async function handlePickedFile(file: File): Promise<void> {
       const id = await createProjectFromDocx(baseName(file.name), bytesToBase64(bytes));
       await useFilesStore.getState().refreshProjects();
       await useFilesStore.getState().openProject(id);
-      toast.success("Imported Word document");
+      toast.success(CONVERSION_NOTICE);
     } else if (lower.endsWith(".pdf")) {
       await useImportStore
         .getState()

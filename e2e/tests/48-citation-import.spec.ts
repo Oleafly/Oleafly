@@ -2,9 +2,9 @@ import { test, expect } from "../fixtures";
 import { openProject, openRailTab } from "../helpers";
 
 // The native bridge cannot drive a real <input type="file"> file picker, so
-// this exercises the same parse-by-extension + addCitations path the Connect
-// Sources dialog (src/components/ai/ConnectSourcesDialog.tsx) uses, through
-// the DEV-only window.__importCitationFile hook (src/features/citation.ts).
+// this exercises the same parse-by-extension + addCitations path the Import
+// Reference Library dialog uses, through the DEV-only
+// window.__importCitationFile hook (src/features/citation.ts).
 
 const RIS = `TY  - JOUR
 AU  - Smith, Jane
@@ -49,7 +49,7 @@ test("importing a RIS file adds a citation to the project's .bib, deduping a rep
 }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Chat / AI Assistant");
+  await openRailTab(tauriPage, "Research Assistant");
 
   const hookReady = await tauriPage.evaluate<boolean>(
     `typeof window.__importCitationFile === "function"`,
@@ -70,7 +70,7 @@ test("importing EndNote XML and BibTeX both land in the same library, RDF and un
 }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Chat / AI Assistant");
+  await openRailTab(tauriPage, "Research Assistant");
 
   const endnoteResult = await importCitationFile(tauriPage, "refs.xml", ENDNOTE_XML);
   expect((endnoteResult as { imported: number }).imported).toBe(1);

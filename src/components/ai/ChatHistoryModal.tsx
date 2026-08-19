@@ -50,15 +50,16 @@ export function ChatHistoryModal({
         tabIndex={-1}
         aria-modal="true"
         aria-labelledby="chat-history-title"
-        className="relative flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl border bg-sidebar text-sidebar-foreground shadow-2xl"
+        className="relative flex h-[min(30rem,80vh)] w-full max-w-lg flex-col rounded-xl border bg-popover text-popover-foreground shadow-2xl"
       >
-        <div className="flex h-11 shrink-0 items-center justify-between border-b px-4">
-          <h2 id="chat-history-title" className="text-sm font-semibold">Chat history</h2>
+        <div className="flex shrink-0 items-center gap-2 p-4">
+          <MessageSquareQuote className="size-4" />
+          <h2 id="chat-history-title" className="text-base font-semibold">Chat history</h2>
           <button
             type="button"
             data-modal-initial-focus
             onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="ml-auto flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             aria-label="Close"
           >
             <X className="size-4" />

@@ -8,7 +8,9 @@ use crate::message::Message;
 use crate::provider::{Resolved, Wire};
 use crate::tool::ToolSchema;
 
-pub(crate) use crate::wire::{anthropic_body, auth_headers, google_body, openai_body};
+pub(crate) use crate::wire::{
+    anthropic_body, auth_headers, google_body, openai_body, openai_responses_body,
+};
 pub use crate::wire::{request_builder, wire_body};
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(180);
@@ -33,6 +35,11 @@ pub struct CompletionRequest {
     pub idle_timeout_ms: Option<u64>,
     #[serde(default)]
     pub tools: Vec<ToolSchema>,
+    /// Internal stateless Responses API continuation. Renderer input is always
+    /// ignored; the Rust agent builds this only from provider-returned items.
+    #[doc(hidden)]
+    #[serde(default, skip_deserializing, skip_serializing_if = "Option::is_none")]
+    pub openai_responses_input: Option<Vec<Value>>,
 }
 
 impl CompletionRequest {
@@ -85,6 +92,32 @@ pub(crate) fn parse_openai(body: &Value) -> Result<(String, Usage)> {
     let usage = Usage {
         input: as_u32(body.pointer("/usage/prompt_tokens")),
         output: as_u32(body.pointer("/usage/completion_tokens")),
+    };
+    Ok((text, usage))
+}
+
+pub(crate) fn parse_openai_responses(body: &Value) -> Result<(String, Usage)> {
+    let output = body
+        .get("output")
+        .and_then(|output| output.as_array())
+        .ok_or_else(|| AgentError::Decode("response carried no output items".into()))?;
+    let text = output
+        .iter()
+        .filter(|item| item.get("type").and_then(|kind| kind.as_str()) == Some("message"))
+        .filter_map(|item| item.get("content").and_then(|content| content.as_array()))
+        .flatten()
+        .filter_map(
+            |part| match part.get("type").and_then(|kind| kind.as_str()) {
+                Some("output_text") => part.get("text").and_then(|text| text.as_str()),
+                Some("refusal") => part.get("refusal").and_then(|text| text.as_str()),
+                _ => None,
+            },
+        )
+        .collect::<Vec<_>>()
+        .join("");
+    let usage = Usage {
+        input: as_u32(body.pointer("/usage/input_tokens")),
+        output: as_u32(body.pointer("/usage/output_tokens")),
     };
     Ok((text, usage))
 }
@@ -261,6 +294,7 @@ pub async fn complete(
     let body: Value =
         serde_json::from_slice(&raw).map_err(|e| AgentError::Decode(e.to_string()))?;
     let (text, usage) = match &resolved.wire {
+        Wire::OpenAiResponses { .. } => parse_openai_responses(&body)?,
         Wire::OpenAiChat { .. } => parse_openai(&body)?,
         Wire::Anthropic { .. } => parse_anthropic(&body)?,
         Wire::Google { .. } => parse_google(&body)?,
@@ -292,6 +326,33 @@ mod tests {
             Usage {
                 input: 12,
                 output: 3
+            }
+        );
+    }
+
+    #[test]
+    fn responses_reply_and_usage_are_read_from_output_items() {
+        let body = json!({
+            "output": [
+                { "type": "reasoning", "summary": [] },
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [
+                        { "type": "output_text", "text": "part one " },
+                        { "type": "output_text", "text": "part two" }
+                    ]
+                }
+            ],
+            "usage": { "input_tokens": 17, "output_tokens": 5 }
+        });
+        let (text, usage) = parse_openai_responses(&body).unwrap();
+        assert_eq!(text, "part one part two");
+        assert_eq!(
+            usage,
+            Usage {
+                input: 17,
+                output: 5
             }
         );
     }

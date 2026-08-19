@@ -1,7 +1,7 @@
 import * as pdfjsLib from "pdfjs-dist";
 import workerSrc from "@oleafly/preview/pdf.worker?worker&url";
 import { reconstructPdfPageText } from "./pdf-text";
-import type { PdfExtractionStatus, PositionedText } from "./types";
+import type { PdfExtractionStatus, PdfFacts, PositionedText } from "./types";
 import type { StructNode, StructDoc } from "./structure";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -14,6 +14,7 @@ export interface PdfExtract {
   tagged: boolean | null;
   struct: StructDoc;
   extraction: PdfExtractionStatus;
+  facts: PdfFacts;
 }
 
 function recordOf(value: unknown): Record<string, unknown> | null {
@@ -45,6 +46,8 @@ function normStruct(node: unknown): StructNode | null {
 }
 
 export async function extractForPreflight(bytes: Uint8Array): Promise<PdfExtract> {
+  const header = new TextDecoder("ascii").decode(bytes.slice(0, 16));
+  const version = /%PDF-(\d+\.\d+)/.exec(header)?.[1] ?? null;
   const loadingTask = pdfjsLib.getDocument({ data: bytes.slice() });
   try {
     const doc = await loadingTask.promise;
@@ -53,11 +56,43 @@ export async function extractForPreflight(bytes: Uint8Array): Promise<PdfExtract
     const pageText: string[] = [];
     const structRoots: StructNode[] = [];
     const structureFailedPages: number[] = [];
+    const pageFacts: PdfFacts["pages"] = [];
+    let linkCount = 0;
+    let formFieldCount = 0;
+    const fontFacts = new Map<string, boolean | null>();
+    const inspectedFontIds = new Set<string>();
     for (let p = 1; p <= doc.numPages; p++) {
       const page = await doc.getPage(p);
       try {
-        const tc = await page.getTextContent();
+        const [tc, annotations] = await Promise.all([
+          page.getTextContent(),
+          page.getAnnotations({ intent: "display" }),
+        ]);
+        const viewport = page.getViewport({ scale: 1 });
+        pageFacts.push({ width: viewport.width, height: viewport.height, rotation: viewport.rotation });
+        for (const annotation of annotations) {
+          if (annotation.subtype === "Link") linkCount++;
+          if (annotation.subtype === "Widget") formFieldCount++;
+        }
         const reconstructed = reconstructPdfPageText(tc.items);
+        for (const item of tc.items) {
+          if (!("str" in item) || inspectedFontIds.has(item.fontName)) continue;
+          inspectedFontIds.add(item.fontName);
+          let embedded: boolean | null = null;
+          let name = item.fontName;
+          try {
+            const font = page.commonObjs.get(item.fontName) as {
+              name?: unknown;
+              data?: unknown;
+              missingFile?: unknown;
+            };
+            if (typeof font.name === "string" && font.name.trim()) name = font.name.trim();
+            if (font.data instanceof Uint8Array || font.data instanceof ArrayBuffer) embedded = true;
+            else if (font.missingFile === true) embedded = false;
+          } catch {
+          }
+          fontFacts.set(name, embedded);
+        }
         pages.push(reconstructed.items);
         pageText.push(reconstructed.text);
 
@@ -79,6 +114,9 @@ export async function extractForPreflight(bytes: Uint8Array): Promise<PdfExtract
     let lang: string | null = null;
     let title: string | null = null;
     let marked: boolean | null = null;
+    let author: string | null = null;
+    let creator: string | null = null;
+    let producer: string | null = null;
     let metadataStatus: PdfExtractionStatus["metadata"] = "ok";
     let markInfoStatus: PdfExtractionStatus["markInfo"] = "ok";
     try {
@@ -92,6 +130,9 @@ export async function extractForPreflight(bytes: Uint8Array): Promise<PdfExtract
         stringProperty(metadata.info, "Lang") ??
         metadata.metadata?.get("dc:language")?.trim() ??
         null;
+      author = stringProperty(metadata.info, "Author") ?? metadata.metadata?.get("dc:creator")?.trim() ?? null;
+      creator = stringProperty(metadata.info, "Creator");
+      producer = stringProperty(metadata.info, "Producer");
     } catch {
       metadataStatus = "failed";
     }
@@ -124,7 +165,40 @@ export async function extractForPreflight(bytes: Uint8Array): Promise<PdfExtract
       structureFailedPages,
     };
 
-    return { pages, pageText, lang, title, tagged, struct, extraction };
+    let outlineCount = 0;
+    try {
+      const outline = await doc.getOutline();
+      const count = (items: NonNullable<typeof outline>): number =>
+        items.reduce((total, item) => total + 1 + count(item.items), 0);
+      outlineCount = outline ? count(outline) : 0;
+    } catch {
+    }
+    let attachmentCount = 0;
+    try {
+      attachmentCount = Object.keys((await doc.getAttachments()) ?? {}).length;
+    } catch {
+    }
+    let restricted: boolean | null = null;
+    try {
+      restricted = (await doc.getPermissions()) !== null;
+    } catch {
+    }
+    const facts: PdfFacts = {
+      version,
+      pageCount: doc.numPages,
+      pages: pageFacts,
+      outlineCount,
+      linkCount,
+      attachmentCount,
+      formFieldCount,
+      restricted,
+      author,
+      creator,
+      producer,
+      fonts: [...fontFacts].map(([name, embedded]) => ({ name, embedded })),
+    };
+
+    return { pages, pageText, lang, title, tagged, struct, extraction, facts };
   } finally {
     try {
       await loadingTask.destroy();

@@ -4,8 +4,8 @@ use futures_util::StreamExt;
 use serde_json::Value;
 
 use crate::complete::{
-    anthropic_body, google_body, openai_body, read_provider_error, request_error,
-    CompletionRequest, Usage,
+    anthropic_body, google_body, openai_body, openai_responses_body, read_provider_error,
+    request_error, CompletionRequest, Usage,
 };
 use crate::error::{AgentError, Result};
 use crate::event::AgentEvent;
@@ -36,6 +36,7 @@ pub struct StreamOutcome {
     pub usage: Usage,
     pub tool_calls: Vec<ToolCall>,
     pub stop_reason: Option<String>,
+    pub(crate) response_items: Vec<Value>,
 }
 
 #[derive(Debug, Default)]
@@ -160,6 +161,11 @@ fn stream_deadline(req: &CompletionRequest) -> Duration {
 
 fn stream_body(resolved: &Resolved, req: &CompletionRequest) -> Result<Value> {
     match &resolved.wire {
+        Wire::OpenAiResponses { .. } => {
+            let mut body = openai_responses_body(resolved, req)?;
+            body["stream"] = Value::Bool(true);
+            Ok(body)
+        }
         Wire::OpenAiChat { .. } => {
             let mut body = openai_body(resolved, req)?;
             body["stream"] = Value::Bool(true);
@@ -302,6 +308,7 @@ fn finalize<F: FnMut(AgentEvent)>(
     }
     outcome.usage = translator.usage();
     outcome.tool_calls = translator.tool_calls();
+    outcome.response_items = translator.response_items();
     outcome.stop_reason = translator.stop_reason();
     Ok(outcome)
 }

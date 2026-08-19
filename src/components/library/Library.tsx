@@ -17,13 +17,6 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { pickOpenPath } from "@/lib/native-file-dialog";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
@@ -85,6 +78,7 @@ import {
   type ProjectInfo,
 } from "@/lib/tauri";
 import { projectDateTime, projectModifiedLabel } from "@/lib/project-format";
+import { ProjectImportMenu } from "@/components/library/ProjectImportMenu";
 
 const thumbCache = new Map<string, string | null>();
 const MAX_THUMBNAILS = 64;
@@ -218,33 +212,6 @@ export function Library() {
   const page = useHomeViewStore((s) => s.page);
   const projects = useFilesStore((s) => s.projects);
   const projectsLoaded = useFilesStore((s) => s.projectsLoaded);
-  const importProject = useFilesStore((s) => s.importProject);
-  const [importing, setImporting] = useState(false);
-
-  // Overleaf ZIP export or plain folder → new project. The backend infers the
-  // main document (magic comment > \documentclass scoring > lone .tex).
-  const runImport = async (kind: "zip" | "folder") => {
-    const selection = await pickOpenPath(
-      kind === "zip"
-        ? {
-            multiple: false,
-            filters: [{ name: "ZIP archive", extensions: ["zip"] }],
-            title: "Import Overleaf project (ZIP)",
-          }
-        : { multiple: false, directory: true, title: "Import project folder" },
-    );
-    if (typeof selection !== "string") return;
-    setImporting(true);
-    try {
-      // Success feedback (including which engine was chosen) comes from the
-      // store's single import toast.
-      await importProject(selection);
-    } catch (error) {
-      notifyError("import project", error);
-    } finally {
-      setImporting(false);
-    }
-  };
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const openProject = useFilesStore((s) => s.openProject);
   const favs = useFavoritesStore((s) => s.favs);
@@ -258,7 +225,6 @@ export function Library() {
   const bgPattern = useSettingsStore((s) => s.bgPattern);
   const [forkTarget, setForkTarget] = useState<{ id: string; name: string } | null>(null);
   const [forkName, setForkName] = useState("");
-  const [onlyFavs, setOnlyFavs] = useState(false);
   const [filters, setFilters] = useState<ProjectFilters>(DEFAULT_PROJECT_FILTERS);
   const [detailsProject, setDetailsProject] = useState<ProjectInfo | null>(null);
   const [historyProject, setHistoryProject] = useState<ProjectInfo | null>(null);
@@ -358,11 +324,13 @@ export function Library() {
       }).length,
     [filters],
   );
+  const bookmarkedOnly = filters.bookmark === "yes";
+  const bookmarkIsOnlyActiveFilter =
+    bookmarkedOnly && activeFilterCount === 1;
   const visibleProjects = useMemo(
     () =>
       projects.filter((project) => {
         const bookmarked = favs.includes(project.id);
-        if (onlyFavs && !bookmarked) return false;
         if (
           filters.metadata.trim() &&
           !projectMetadataText(project).includes(filters.metadata.trim().toLowerCase())
@@ -385,7 +353,7 @@ export function Library() {
         if (!isWithinDays(project.updated_at, filters.modified)) return false;
         return true;
       }),
-    [projects, favs, onlyFavs, filters],
+    [projects, favs, filters],
   );
 
   // Returning to the library refetches, so externally created or edited
@@ -456,32 +424,26 @@ export function Library() {
 
         </div>
         <div data-tauri-drag-region className="flex items-center justify-end gap-1.5">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          <ProjectImportMenu
+            align="end"
+            triggerTooltip="Import"
+            trigger={(busy) => (
               <Button
                 data-testid="import-project-button"
                 variant="ghost"
-                size="sm"
-                disabled={importing}
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
+                size="icon"
+                disabled={busy}
+                aria-label="Import"
+                className="text-muted-foreground hover:text-foreground"
               >
-                {importing ? (
+                {busy ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <FolderInput className="size-4" />
                 )}
-                <span className="text-xs">{importing ? "Importing…" : "Import"}</span>
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => void runImport("zip")}>
-                Overleaf ZIP…
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void runImport("folder")}>
-                Project folder…
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            )}
+          />
           {projects.length > 0 && (
             <>
               <Tooltip label="Advanced project filters">
@@ -635,24 +597,35 @@ export function Library() {
                   </p>
                 </Popover>
               </Tooltip>
-              <Tooltip label={onlyFavs ? "Show all projects" : "Show bookmarked only"}>
+              <Tooltip label={bookmarkedOnly ? "Show all projects" : "Show bookmarked only"}>
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label="Show bookmarked only"
-                  aria-pressed={onlyFavs}
+                  aria-label={bookmarkedOnly ? "Show all projects" : "Show bookmarked only"}
+                  aria-pressed={bookmarkedOnly}
                   className={cn(
-                    "relative hover:text-foreground",
-                    onlyFavs ? "text-amber-500 hover:text-amber-500" : "text-muted-foreground"
+                    "hover:text-foreground",
+                    bookmarkedOnly
+                      ? "text-amber-500 hover:text-amber-500"
+                      : "text-muted-foreground"
                   )}
-                  onClick={() => setOnlyFavs((v) => !v)}
+                  onClick={() =>
+                    setFilters((current) => ({
+                      ...current,
+                      bookmark: current.bookmark === "yes" ? "all" : "yes",
+                    }))
+                  }
                 >
-                  <Bookmark className={cn("size-4", onlyFavs && "fill-current")} />
-                  {favs.length > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground">
-                      {favs.length}
-                    </span>
-                  )}
+                  <span className="relative inline-flex">
+                    <Bookmark
+                      className={cn("size-4", bookmarkedOnly && "fill-current")}
+                    />
+                    {favs.length > 0 && (
+                      <span className="absolute -right-2 -top-2 flex size-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground">
+                        {favs.length}
+                      </span>
+                    )}
+                  </span>
                 </Button>
               </Tooltip>
             </>
@@ -688,13 +661,19 @@ export function Library() {
                   >
                     <Plus className="size-4" /> Create your first project
                   </Button>
-                  <Button
-                    variant="outline"
-                    disabled={importing}
-                    onClick={() => void runImport("zip")}
-                  >
-                    <FolderInput className="size-4" /> Import an existing project
-                  </Button>
+                  <ProjectImportMenu
+                    align="center"
+                    trigger={(busy) => (
+                      <Button variant="outline" disabled={busy}>
+                        {busy ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <FolderInput className="size-4" />
+                        )}
+                        Import
+                      </Button>
+                    )}
+                  />
                 </div>
               </EmptyContent>
             </Empty>
@@ -717,17 +696,17 @@ export function Library() {
             <Empty className="min-h-[60vh]">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
-                  {onlyFavs && activeFilterCount === 0 ? (
+                  {bookmarkIsOnlyActiveFilter ? (
                     <BookmarkX className="size-6" />
                   ) : (
                     <SearchX className="size-6" />
                   )}
                 </EmptyMedia>
                 <EmptyTitle>
-                  {onlyFavs && activeFilterCount === 0 ? "No bookmarks yet" : "No matches"}
+                  {bookmarkIsOnlyActiveFilter ? "No bookmarks yet" : "No matches"}
                 </EmptyTitle>
                 <EmptyDescription>
-                  {onlyFavs && activeFilterCount === 0
+                  {bookmarkIsOnlyActiveFilter
                     ? "Hover a book and click its bookmark to add one."
                     : "No projects match the current filters."}
                 </EmptyDescription>
