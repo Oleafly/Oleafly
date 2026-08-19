@@ -47,6 +47,7 @@
     "@lezer/highlight": "^1.2.3",
     "@lobehub/icons": "^5.15.0",
     "@oleafly/ai-core": "workspace:*",
+    "@oleafly/backend-port": "workspace:*",
     "@oleafly/ai-tools": "workspace:*",
     "@oleafly/diagram": "workspace:*",
     "@oleafly/editor": "workspace:*",

@@ -10,6 +10,7 @@ export default defineConfig({
       "@oleafly/latex": path.resolve(__dirname, "./packages/latex/src"),
       "@oleafly/wysiwyg": path.resolve(__dirname, "./packages/wysiwyg/src"),
       "@oleafly/ai-core": path.resolve(__dirname, "./packages/ai-core/src"),
+      "@oleafly/backend-port": path.resolve(__dirname, "./packages/backend-port/src"),
       "@oleafly/diagram": path.resolve(__dirname, "./packages/diagram/src"),
       "@oleafly/editor": path.resolve(__dirname, "./packages/editor/src"),
       "@oleafly/ai-tools": path.resolve(__dirname, "./packages/ai-tools/src"),
