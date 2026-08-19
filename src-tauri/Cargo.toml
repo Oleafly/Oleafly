@@ -1,6 +1,6 @@
 [package]
 name = "oleafly"
-version = "0.3.6"
+version = "0.3.7"
 description = "Oleafly - the intelligent research workspace, free, local-first, 100% open source"
 authors = ["Prajwal Murthy and contributors"]
 license = "AGPL-3.0-or-later"
