@@ -302,6 +302,7 @@ test("creating a taken name offers Keep both and never offers Replace", async ({
   // Cancel leaves the original untouched.
   await conflict.getByText("Cancel", { exact: true }).click();
   await tauriPage.click(`[data-path=${JSON.stringify(taken)}]`);
+  await waitEditorShowsFile(tauriPage, taken);
   await expect(tauriPage.locator(".cm-content")).toContainText(`original-${run}`);
 
   // Keep both creates the suggested sibling and opens it.
@@ -315,5 +316,6 @@ test("creating a taken name offers Keep both and never offers Replace", async ({
     timeout: 15_000,
   });
   await tauriPage.click(`[data-path=${JSON.stringify(taken)}]`);
+  await waitEditorShowsFile(tauriPage, taken);
   await expect(tauriPage.locator(".cm-content")).toContainText(`original-${run}`);
 });

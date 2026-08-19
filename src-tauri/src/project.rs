@@ -5934,6 +5934,43 @@ mod tests {
     }
 
     #[test]
+    fn create_file_command_round_trips_conflict_and_keep_both() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("create-command-roundtrip");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_project("Create Command".into()).unwrap();
+
+        let created =
+            super::create_file(project_id.clone(), "notes.tex".into(), false, None, None).unwrap();
+        assert!(
+            matches!(created, CreateFileResult::Created { ref path, .. } if path == "notes.tex")
+        );
+
+        let conflict =
+            super::create_file(project_id.clone(), "notes.tex".into(), false, None, None).unwrap();
+        assert!(matches!(
+            conflict,
+            CreateFileResult::Conflict { ref suggested_destination, .. }
+                if suggested_destination == "notes (2).tex"
+        ));
+
+        let kept = super::create_file(
+            project_id.clone(),
+            "notes.tex".into(),
+            false,
+            Some(FileConflictStrategy::KeepBoth),
+            None,
+        )
+        .unwrap();
+        assert!(
+            matches!(kept, CreateFileResult::Created { ref path, .. } if path == "notes (2).tex")
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn create_conflicts_with_a_case_variant_sibling_on_any_platform() {
         let root = test_dir("create-case-conflict");
         std::fs::write(root.join("Paper.tex"), "published").unwrap();

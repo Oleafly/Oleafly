@@ -45,6 +45,26 @@ pub fn clear_flush_confirmed() {
     RESTART_PENDING.store(false, Ordering::SeqCst);
 }
 
+/// What a confirmed quit does next. Deferral outranks intent: a pending
+/// install gate takes over the teardown (keeping the recorded intent), and
+/// only then does restart-vs-exit apply.
+#[derive(Debug, PartialEq, Eq)]
+pub enum QuitAction {
+    Exit,
+    Restart,
+    DeferToInstallGate,
+}
+
+pub fn resolve_quit_action(install_gate_pending: bool) -> QuitAction {
+    if install_gate_pending {
+        QuitAction::DeferToInstallGate
+    } else if restart_pending() {
+        QuitAction::Restart
+    } else {
+        QuitAction::Exit
+    }
+}
+
 /// The frontend finished (or overrode) the quit flush. Passes the quit
 /// through, deferring to the TinyTeX install dialog when one is still
 /// required; `restart` relaunches instead of exiting.
@@ -54,17 +74,15 @@ pub fn confirm_quit_flush(app: tauri::AppHandle, restart: Option<bool>) {
     if restart.unwrap_or(false) {
         mark_restart_pending();
     }
-    if crate::latex_engine::install_in_progress() && !crate::latex_engine::quit_confirmed() {
-        use tauri::Emitter;
-        // The TinyTeX confirm takes over; the restart intent stays recorded
-        // so its pass-through restarts instead of exiting.
-        let _ = app.emit("tinytex-quit-blocked", ());
-        return;
-    }
-    if restart_pending() {
-        app.request_restart();
-    } else {
-        app.exit(0);
+    let install_gate_pending =
+        crate::latex_engine::install_in_progress() && !crate::latex_engine::quit_confirmed();
+    match resolve_quit_action(install_gate_pending) {
+        QuitAction::DeferToInstallGate => {
+            use tauri::Emitter;
+            let _ = app.emit("tinytex-quit-blocked", ());
+        }
+        QuitAction::Restart => app.request_restart(),
+        QuitAction::Exit => app.exit(0),
     }
 }
 
@@ -77,6 +95,22 @@ pub fn cancel_quit_flush() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn confirmed_quits_resolve_to_defer_restart_or_exit() {
+        clear_flush_confirmed();
+        assert_eq!(
+            resolve_quit_action(true),
+            QuitAction::DeferToInstallGate,
+            "a pending install gate always defers, whatever the intent"
+        );
+        assert_eq!(resolve_quit_action(false), QuitAction::Exit);
+
+        mark_restart_pending();
+        assert_eq!(resolve_quit_action(false), QuitAction::Restart);
+        assert_eq!(resolve_quit_action(true), QuitAction::DeferToInstallGate);
+        clear_flush_confirmed();
+    }
 
     #[test]
     fn restart_intent_survives_a_deferred_confirm_and_cancel_clears_it() {

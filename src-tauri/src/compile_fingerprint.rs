@@ -149,6 +149,43 @@ pub fn read_compile_log(project_root: &Path) -> String {
     std::fs::read_to_string(compile_log_path(project_root)).unwrap_or_default()
 }
 
+/// Everything a successful compile persists, in one call: the compile log and
+/// the source fingerprint. Runs off-thread from the compile command.
+pub fn persist_after_compile(
+    project_root: &Path,
+    main_document: &str,
+    engine_id: &str,
+    output_id: &str,
+    output_revision: u64,
+    compiled_at_ms: u64,
+    log: &str,
+) -> Result<(), String> {
+    write_compile_log(project_root, log)?;
+    let sources = source_hashes(project_root)?;
+    write_fingerprint(
+        project_root,
+        &CompileFingerprint {
+            version: FINGERPRINT_VERSION,
+            main_document: main_document.to_string(),
+            engine_id: engine_id.to_string(),
+            output_id: output_id.to_string(),
+            output_revision,
+            compiled_at_ms,
+            sources,
+        },
+    )
+}
+
+/// Validation plus the recorded log, as the frontend consumes them together.
+pub fn validated_with_log(
+    project_root: &Path,
+    current_main_document: &str,
+    current_engine_id: &str,
+) -> Option<(String, CompileFingerprint)> {
+    validate_fingerprint(project_root, current_main_document, current_engine_id)
+        .map(|record| (read_compile_log(project_root), record))
+}
+
 fn compile_log_path(project_root: &Path) -> PathBuf {
     project_root
         .join(".oleafly")
@@ -159,6 +196,35 @@ fn compile_log_path(project_root: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn persist_after_compile_round_trips_through_validated_with_log() {
+        let root = test_root("persist-roundtrip");
+
+        persist_after_compile(
+            &root,
+            "main.tex",
+            "latex",
+            "pdf-v1:9:aa",
+            7,
+            1_234,
+            "the log",
+        )
+        .unwrap();
+
+        let (log, record) = validated_with_log(&root, "main.tex", "latex")
+            .expect("unchanged sources must validate");
+        assert_eq!(log, "the log");
+        assert_eq!(record.output_revision, 7);
+        assert_eq!(record.output_id, "pdf-v1:9:aa");
+
+        std::fs::write(root.join("main.tex"), "edited").unwrap();
+        assert!(
+            validated_with_log(&root, "main.tex", "latex").is_none(),
+            "an edit after persisting must invalidate"
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn the_compile_log_round_trips_beside_the_fingerprint() {

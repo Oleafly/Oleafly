@@ -352,24 +352,19 @@ pub async fn compile_project(
                 let Ok(root) = paths::project_dir(&fp_project) else {
                     return;
                 };
-                let _ = crate::compile_fingerprint::write_compile_log(&root, &fp_log);
-                let Ok(sources) = crate::compile_fingerprint::source_hashes(&root) else {
-                    return;
-                };
                 let compiled_at_ms = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .map(|elapsed| elapsed.as_millis() as u64)
                     .unwrap_or(0);
-                let record = crate::compile_fingerprint::CompileFingerprint {
-                    version: crate::compile_fingerprint::FINGERPRINT_VERSION,
-                    main_document: fp_main,
-                    engine_id: fp_engine,
-                    output_id,
+                let _ = crate::compile_fingerprint::persist_after_compile(
+                    &root,
+                    &fp_main,
+                    &fp_engine,
+                    &output_id,
                     output_revision,
                     compiled_at_ms,
-                    sources,
-                };
-                let _ = crate::compile_fingerprint::write_fingerprint(&root, &record);
+                    &fp_log,
+                );
             });
         }
     }
@@ -406,8 +401,7 @@ pub async fn validate_compile_fingerprint(
     let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
     let root = paths::project_dir(&project_id)?;
     let validated = tauri::async_runtime::spawn_blocking(move || {
-        crate::compile_fingerprint::validate_fingerprint(&root, &main_doc, &meta.engine)
-            .map(|record| (crate::compile_fingerprint::read_compile_log(&root), record))
+        crate::compile_fingerprint::validated_with_log(&root, &main_doc, &meta.engine)
     })
     .await
     .map_err(|e| e.to_string())?;
