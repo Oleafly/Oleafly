@@ -13,6 +13,18 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static FLUSH_CONFIRMED: AtomicBool = AtomicBool::new(false);
+static RESTART_PENDING: AtomicBool = AtomicBool::new(false);
+
+/// True when the pending quit is a restart, not an exit. Retained while
+/// another gate (the TinyTeX install confirm) defers the teardown, so the
+/// eventual pass-through does what the user asked for.
+pub fn restart_pending() -> bool {
+    RESTART_PENDING.load(Ordering::SeqCst)
+}
+
+pub fn mark_restart_pending() {
+    RESTART_PENDING.store(true, Ordering::SeqCst);
+}
 
 /// True once the frontend reported that every dirty buffer is durably saved
 /// (or the user explicitly chose to quit anyway).
@@ -26,9 +38,11 @@ pub fn mark_flush_confirmed() {
 }
 
 /// The user chose to stay after a blocked quit: forget the confirmation so
-/// the next quit attempt flushes again (new edits may exist by then).
+/// the next quit attempt flushes again (new edits may exist by then), and
+/// drop any pending restart intent with it.
 pub fn clear_flush_confirmed() {
     FLUSH_CONFIRMED.store(false, Ordering::SeqCst);
+    RESTART_PENDING.store(false, Ordering::SeqCst);
 }
 
 /// The frontend finished (or overrode) the quit flush. Passes the quit
@@ -37,12 +51,17 @@ pub fn clear_flush_confirmed() {
 #[tauri::command]
 pub fn confirm_quit_flush(app: tauri::AppHandle, restart: Option<bool>) {
     mark_flush_confirmed();
+    if restart.unwrap_or(false) {
+        mark_restart_pending();
+    }
     if crate::latex_engine::install_in_progress() && !crate::latex_engine::quit_confirmed() {
         use tauri::Emitter;
+        // The TinyTeX confirm takes over; the restart intent stays recorded
+        // so its pass-through restarts instead of exiting.
         let _ = app.emit("tinytex-quit-blocked", ());
         return;
     }
-    if restart.unwrap_or(false) {
+    if restart_pending() {
         app.request_restart();
     } else {
         app.exit(0);
@@ -58,6 +77,25 @@ pub fn cancel_quit_flush() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn restart_intent_survives_a_deferred_confirm_and_cancel_clears_it() {
+        clear_flush_confirmed();
+        assert!(!restart_pending(), "no restart intent by default");
+
+        mark_flush_confirmed();
+        mark_restart_pending();
+        assert!(
+            restart_pending(),
+            "a restart-flavored quit must keep its intent while another gate defers it"
+        );
+
+        clear_flush_confirmed();
+        assert!(
+            !restart_pending(),
+            "staying in the app must clear the restart intent with the flush confirmation"
+        );
+    }
 
     #[test]
     fn flush_gate_starts_closed_then_follows_confirm_and_cancel() {

@@ -406,11 +406,16 @@ pub fn quit_confirmed() -> bool {
     QUIT_CONFIRMED.load(Ordering::SeqCst)
 }
 
-/// The user confirmed the "quit during install?" dialog: let the close through.
+/// The user confirmed the "quit during install?" dialog: let the close
+/// through — as a restart when that is what started this quit sequence.
 #[tauri::command]
 pub fn confirm_quit_during_install(app: tauri::AppHandle) {
     QUIT_CONFIRMED.store(true, Ordering::SeqCst);
-    app.exit(0);
+    if crate::quit_gate::restart_pending() {
+        app.request_restart();
+    } else {
+        app.exit(0);
+    }
 }
 
 struct TinytexMutationGuard {

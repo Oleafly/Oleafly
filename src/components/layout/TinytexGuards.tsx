@@ -38,9 +38,16 @@ export function TinytexGuards() {
   }, []);
 
   // The install finished (or failed) while the dialog was up: quitting is no
-  // longer destructive, so stop asking.
+  // longer destructive, so stop asking — and re-arm the quit flush gate. The
+  // quit attempt that opened this dialog already confirmed its flush; if the
+  // user now stays and keeps editing, the next quit must flush again.
   useEffect(() => {
-    if (!installing) setQuitAsked(false);
+    if (!installing) {
+      setQuitAsked((asked) => {
+        if (asked) void cancelQuitFlush().catch(() => {});
+        return false;
+      });
+    }
   }, [installing]);
 
   const phaseLabel = installPhaseLabel(installPhase, progress).replace(/…$/, "");
