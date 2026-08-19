@@ -45,15 +45,27 @@ async function importZip(page: Page, zipPath: string) {
     30_000,
   );
   await setNextImportPaths(page, [zipPath]);
-  const opened = await page.evaluate<boolean>(
-    pressWithPointer(`document.querySelector('[data-testid="import-project-button"]')`),
-  );
-  if (!opened) throw new Error("import dropdown trigger not found");
-  await waitLong(
-    page,
-    `[...document.querySelectorAll('[role="menuitem"]')].some((i) => (i.textContent ?? "").includes("Overleaf ZIP"))`,
-    10_000,
-  );
+  // A single trigger click can land before the dropdown is interactive on a
+  // loaded runner, in which case the portal menu never opens and no amount
+  // of waiting helps — so retry the trigger itself (same pattern as the F2
+  // rename loop in 23-code-intel).
+  let menuVisible = false;
+  for (let attempt = 0; attempt < 5 && !menuVisible; attempt++) {
+    const opened = await page.evaluate<boolean>(
+      pressWithPointer(`document.querySelector('[data-testid="import-project-button"]')`),
+    );
+    if (!opened) throw new Error("import dropdown trigger not found");
+    menuVisible = await waitLong(
+      page,
+      `[...document.querySelectorAll('[role="menuitem"]')].some((i) => (i.textContent ?? "").includes("Overleaf ZIP"))`,
+      4_000,
+    )
+      .then(() => true)
+      .catch(() => false);
+  }
+  if (!menuVisible) {
+    throw new Error("Overleaf ZIP menu never opened after 5 trigger attempts");
+  }
   const clicked = await page.evaluate<boolean>(
     pressWithPointer(
       `[...document.querySelectorAll('[role="menuitem"]')].find((i) => (i.textContent ?? "").includes("Overleaf ZIP"))`,
