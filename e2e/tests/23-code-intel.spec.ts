@@ -5,6 +5,7 @@ import {
   openProject,
   pressGlobal,
   typeInEditorAfter,
+  waitLong,
   type Page,
 } from "../helpers";
 
@@ -49,7 +50,21 @@ async function contextMenuAction(page: Page & { getByText(t: string): { click():
       return 1;
     })()`,
   );
+  // Clicking before the portal menu mounts hits nothing, and re-dispatching
+  // contextmenu onto an already-open menu toggles it closed — the oscillation
+  // behind the intermittent "dialog never opened" on loaded macOS runners.
+  // Wait for the item to exist before clicking; report the miss so callers
+  // with retry loops can try again cleanly.
+  const appeared = await waitLong(
+    page,
+    `[...document.querySelectorAll('[role="menuitem"]')].some((i) => (i.textContent ?? "").includes(${JSON.stringify(item)}))`,
+    3_000,
+  )
+    .then(() => true)
+    .catch(() => false);
+  if (!appeared) return false;
   await page.getByText(item).click();
+  return true;
 }
 
 test("go-to-definition on a \\ref jumps to its \\label", async ({ tauriPage }) => {
@@ -92,11 +107,13 @@ test("F2 opens the rename-symbol dialog and cancel leaves the doc untouched", as
   const dialog = tauriPage.locator('[role="dialog"][aria-labelledby="rename-title"]');
   for (let attempt = 0; ; attempt++) {
     await caretIn(tauriPage, "sec:e2eintro", 2);
-    await contextMenuAction(tauriPage, "Rename symbol");
-    const opened = await expect(dialog)
-      .toBeVisible({ timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false);
+    const acted = await contextMenuAction(tauriPage, "Rename symbol");
+    const opened =
+      acted &&
+      (await expect(dialog)
+        .toBeVisible({ timeout: 5_000 })
+        .then(() => true)
+        .catch(() => false));
     if (opened) break;
     if (attempt >= 3) throw new Error("rename dialog never opened");
   }
