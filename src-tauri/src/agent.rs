@@ -255,6 +255,14 @@ async fn native_agent_tool(
     }
 }
 
+/// A run stays pinned to the project it started in; native dispatch is only
+/// allowed while that project is still the active one. This mirrors the
+/// webview-side run guard, so a run surviving a project switch cannot read
+/// the old project's files into the model from either path.
+fn native_dispatch_allowed(pinned: &str, active_project: Option<&str>) -> bool {
+    active_project == Some(pinned)
+}
+
 fn composite_tool_runner(
     app: tauri::AppHandle,
     request_id: String,
@@ -262,12 +270,27 @@ fn composite_tool_runner(
     tool_sink: tauri::ipc::Channel<AgentEvent>,
     project_id: Option<String>,
 ) -> oleafly_agent::ToolRunner {
+    let handle = app.clone();
     let webview = webview_tool_runner(app, request_id, generation, tool_sink);
     std::sync::Arc::new(move |call| {
         let webview = webview.clone();
         let project = project_id.clone();
+        let handle = handle.clone();
         Box::pin(async move {
             if let Some(project) = project.as_deref() {
+                if crate::mcp::native::handles(&call.name, "") {
+                    let active = {
+                        let state = handle.state::<crate::mcp::server::McpState>();
+                        let guard = state.active_project.lock().await;
+                        guard.clone()
+                    };
+                    if !native_dispatch_allowed(project, active.as_deref()) {
+                        return tool_error(
+                            "the open project changed while this run was active; \
+                             the tool was not executed",
+                        );
+                    }
+                }
                 if let Some(output) = native_agent_tool(project, &call.name, &call.arguments).await
                 {
                     return output;

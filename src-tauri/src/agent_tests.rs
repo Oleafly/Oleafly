@@ -370,3 +370,16 @@ async fn malformed_native_arguments_become_a_tool_error_not_a_fallthrough() {
         .expect("native tools must not fall through on bad arguments");
     assert!(output.output.contains("error"));
 }
+
+#[test]
+fn native_dispatch_requires_the_pinned_project_to_still_be_active() {
+    assert!(native_dispatch_allowed("proj-a", Some("proj-a")));
+    assert!(
+        !native_dispatch_allowed("proj-a", Some("proj-b")),
+        "a run surviving a project switch must not read the old project natively"
+    );
+    assert!(
+        !native_dispatch_allowed("proj-a", None),
+        "no active project (home screen) refuses native dispatch"
+    );
+}
