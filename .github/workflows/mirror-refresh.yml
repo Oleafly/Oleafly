@@ -1,0 +1,64 @@
+name: Mirror refresh
+
+# Keeps the live-data parts of mirrors.oleafly.com fresh. Everything else on
+# the mirror is version-pinned and only changes when a fetch script or the
+# language-server manifest changes; the ccfddl conference-deadlines feed is
+# the one artifact that goes stale on its own.
+#
+# Requires two repository secrets (an R2 API token scoped to the
+# oleafly-mirror bucket, Object Read & Write):
+#   R2_MIRROR_ACCESS_KEY_ID
+#   R2_MIRROR_SECRET_ACCESS_KEY
+
+on:
+  schedule:
+    - cron: "17 5 * * 1" # Mondays 05:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh-deadlines-feed:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch the upstream ccfddl feed
+        run: |
+          curl -fSL --proto '=https' --connect-timeout 30 \
+            --retry 5 --retry-delay 5 --retry-connrefused \
+            -o allconf.yml "https://ccfddl.com/conference/allconf.yml"
+
+      - name: Sanity-check the feed before overwriting the mirror
+        run: |
+          python3 - <<'EOF'
+          import sys, yaml
+          data = yaml.safe_load(open("allconf.yml"))
+          if not isinstance(data, list) or len(data) < 100:
+              sys.exit(f"feed looks wrong: {type(data)} with {len(data) if isinstance(data, list) else 'n/a'} entries")
+          print(f"feed ok: {len(data)} entries")
+          EOF
+
+      - name: Upload to the R2 mirror
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_MIRROR_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_MIRROR_SECRET_ACCESS_KEY }}
+          AWS_REQUEST_CHECKSUM_CALCULATION: WHEN_REQUIRED
+          AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
+        run: |
+          if [[ -z "$AWS_ACCESS_KEY_ID" ]]; then
+            echo "::error::R2_MIRROR_ACCESS_KEY_ID secret is not configured"
+            exit 1
+          fi
+          aws s3 cp allconf.yml \
+            s3://oleafly-mirror/feeds/ccfddl/allconf.yml \
+            --endpoint-url https://c7413a3ebd52922ee97e88ae6aec7090.r2.cloudflarestorage.com \
+            --content-type text/yaml
+
+      - name: Verify the mirror serves the fresh copy
+        run: |
+          sleep 5
+          curl -fsS "https://mirrors.oleafly.com/feeds/ccfddl/allconf.yml?cb=$(date +%s)" \
+            -o served.yml
+          cmp allconf.yml served.yml
+          echo "mirror copy verified byte-identical"
