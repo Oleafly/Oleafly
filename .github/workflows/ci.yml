@@ -404,6 +404,10 @@ jobs:
     needs: [frontend, rust]
     runs-on: macos-15
     timeout-minutes: 40
+    env:
+      # The vite build graph exceeds Node's default ~4GB heap on the 7GB
+      # macOS arm64 runners (same setting as release.yml).
+      NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: actions/checkout@v7
 
