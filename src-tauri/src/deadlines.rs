@@ -4,10 +4,10 @@ use tauri::Manager;
 
 use crate::paths;
 
-/// Our mirror of the ccfddl feed (refreshed on a schedule by the
-/// mirror-refresh workflow), with the upstream as fallback so a stale or
-/// unreachable mirror never blocks a refresh.
-const MIRROR_URL: &str = "https://mirrors.oleafly.com/feeds/ccfddl/allconf.yml";
+/// Our copy of the ccfddl feed, committed to oleafly-assets and refreshed
+/// weekly by that repo's refresh-deadlines workflow, with the upstream as
+/// fallback so a stale or unreachable copy never blocks a refresh.
+const MIRROR_URL: &str = "https://cdn.oleafly.com/feeds/ccfddl/allconf.yml";
 const UPSTREAM_URL: &str = "https://ccfddl.com/conference/allconf.yml";
 
 fn deadlines_urls() -> Vec<String> {
@@ -405,7 +405,7 @@ mod tests {
         }
         let urls = super::deadlines_urls();
         assert_eq!(urls.len(), 2);
-        assert!(urls[0].starts_with("https://mirrors.oleafly.com/"));
+        assert!(urls[0].starts_with("https://cdn.oleafly.com/"));
         assert_eq!(urls[1], "https://ccfddl.com/conference/allconf.yml");
     }
 }
