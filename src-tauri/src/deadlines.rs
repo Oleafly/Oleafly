@@ -4,12 +4,16 @@ use tauri::Manager;
 
 use crate::paths;
 
-const DEFAULT_URL: &str = "https://ccfddl.com/conference/allconf.yml";
+/// Our mirror of the ccfddl feed (refreshed on a schedule by the
+/// mirror-refresh workflow), with the upstream as fallback so a stale or
+/// unreachable mirror never blocks a refresh.
+const MIRROR_URL: &str = "https://mirrors.oleafly.com/feeds/ccfddl/allconf.yml";
+const UPSTREAM_URL: &str = "https://ccfddl.com/conference/allconf.yml";
 
-fn deadlines_url() -> String {
+fn deadlines_urls() -> Vec<String> {
     match std::env::var("OLEAFLY_DEADLINES_URL") {
-        Ok(v) if !v.trim().is_empty() => v.trim().to_string(),
-        _ => DEFAULT_URL.to_string(),
+        Ok(v) if !v.trim().is_empty() => vec![v.trim().to_string()],
+        _ => vec![MIRROR_URL.to_string(), UPSTREAM_URL.to_string()],
     }
 }
 
@@ -241,16 +245,21 @@ pub fn read_deadlines(app: tauri::AppHandle) -> Result<String, String> {
 
 #[tauri::command]
 pub async fn refresh_deadlines() -> Result<(), String> {
-    let url = deadlines_url();
-    let resp = reqwest::get(&url)
-        .await
-        .map_err(|e| format!("deadlines fetch failed: {e}"))?
-        .error_for_status()
-        .map_err(|e| format!("deadlines fetch failed: {e}"))?;
-    let body = resp
-        .text()
-        .await
-        .map_err(|e| format!("deadlines fetch failed: {e}"))?;
+    let mut body = String::new();
+    let mut last_error = String::from("no deadlines source configured");
+    for url in deadlines_urls() {
+        match fetch_feed(&url).await {
+            Ok(text) => {
+                body = text;
+                last_error.clear();
+                break;
+            }
+            Err(error) => last_error = error,
+        }
+    }
+    if !last_error.is_empty() {
+        return Err(last_error);
+    }
     let generated_at = chrono_now();
     let json = normalize(&body, generated_at)?;
     let cache = deadlines_cache_path()?;
@@ -258,6 +267,17 @@ pub async fn refresh_deadlines() -> Result<(), String> {
     std::fs::write(&tmp, &json).map_err(|e| e.to_string())?;
     std::fs::rename(&tmp, &cache).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+async fn fetch_feed(url: &str) -> Result<String, String> {
+    reqwest::get(url)
+        .await
+        .map_err(|e| format!("deadlines fetch failed: {e}"))?
+        .error_for_status()
+        .map_err(|e| format!("deadlines fetch failed: {e}"))?
+        .text()
+        .await
+        .map_err(|e| format!("deadlines fetch failed: {e}"))
 }
 
 fn chrono_now() -> String {
@@ -374,5 +394,18 @@ mod tests {
         let out = super::normalize(yaml, "t".into()).unwrap();
         let v: serde_json::Value = serde_json::from_str(&out).unwrap();
         assert_eq!(v["venues"][0]["rank"], "CCF-B");
+    }
+
+    #[test]
+    fn deadline_sources_try_the_mirror_before_upstream() {
+        // Ignores any OLEAFLY_DEADLINES_URL override set in the environment by
+        // asserting only the default branch's shape when the override is absent.
+        if std::env::var("OLEAFLY_DEADLINES_URL").is_ok() {
+            return;
+        }
+        let urls = super::deadlines_urls();
+        assert_eq!(urls.len(), 2);
+        assert!(urls[0].starts_with("https://mirrors.oleafly.com/"));
+        assert_eq!(urls[1], "https://ccfddl.com/conference/allconf.yml");
     }
 }

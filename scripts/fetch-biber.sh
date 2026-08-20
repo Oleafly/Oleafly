@@ -105,6 +105,7 @@ fetch() {
   [[ "$target" == *windows* ]] && ext=".exe"
   local out="$BIN_DIR/tectonic-biber-$target$ext"
   local base="https://downloads.sourceforge.net/project/biblatex-biber/biblatex-biber/$VERSION/binaries"
+  local mirror_url="https://mirrors.oleafly.com/binaries/biber/$VERSION/$asset"
   local url="$base/$asset"
   local cache_name="biber-$VERSION-$(basename "$asset")"
   local archive="$CACHE_DIR/$cache_name"
@@ -118,12 +119,21 @@ fetch() {
   if [[ "$actual_sha" != "$expected_sha" ]]; then
     rm -f "$archive"
     echo "→ fetching $target ($asset)"
+    # Mirror first: SourceForge is the least reliable origin in the toolchain.
+    # The checksum pin below keeps either origin honest.
     if ! curl -fSL --proto '=https' --connect-timeout 30 \
         --speed-limit 1024 --speed-time 60 \
         --retry 5 --retry-delay 3 --retry-connrefused \
-        -o "$tmp/download" "$url"; then
-      echo "failed to download $url" >&2
-      exit 1
+        -o "$tmp/download" "$mirror_url"; then
+      echo "mirror download failed; falling back to $url" >&2
+      rm -f "$tmp/download"
+      if ! curl -fSL --proto '=https' --connect-timeout 30 \
+          --speed-limit 1024 --speed-time 60 \
+          --retry 5 --retry-delay 3 --retry-connrefused \
+          -o "$tmp/download" "$url"; then
+        echo "failed to download $url" >&2
+        exit 1
+      fi
     fi
     actual_sha="$(checksum "$tmp/download")"
     if [[ "$actual_sha" == "$expected_sha" ]]; then

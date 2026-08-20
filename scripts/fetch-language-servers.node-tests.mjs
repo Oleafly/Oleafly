@@ -45,6 +45,7 @@ const EXPECTED_TARGETS = [
   "x86_64-pc-windows-msvc",
 ];
 const EXPECTED_DOWNLOAD_HOSTS = [
+  "mirrors.oleafly.com",
   "github.com",
   "release-assets.githubusercontent.com",
   "objects.githubusercontent.com",
@@ -367,28 +368,33 @@ test("download URLs, assets, and archive members are safe and exact", () => {
     );
   }
 
-  for (const server of Object.values(manifest.servers)) {
-    const repository = new URL(server.repository);
+  for (const [serverKey, server] of Object.entries(manifest.servers)) {
     for (const entry of Object.values(server.targets)) {
       const url = new URL(entry.url);
       assert.equal(url.protocol, "https:");
-      assert.equal(url.hostname, "github.com");
+      assert.equal(url.hostname, "mirrors.oleafly.com");
       assert.equal(url.username, "");
       assert.equal(url.password, "");
       assert.equal(url.search, "");
       assert.equal(url.hash, "");
       assert.equal(
         url.pathname,
-        `${repository.pathname}/releases/download/${server.tag}/${entry.asset}`,
+        `/language-servers/${serverKey}/${server.version}/${entry.asset}`,
       );
       assert.match(entry.asset, /^[A-Za-z0-9][A-Za-z0-9._+-]*$/);
       assert.equal(isSafeArchivePath(entry.archiveMember), true, entry.archiveMember);
       assert.equal(entry.archiveMember.endsWith("/"), false);
       if (entry.upstreamChecksumUrl) {
+        // Deliberately upstream, not the mirror: verifying a mirror-served
+        // archive against GitHub's checksum defends against mirror tampering.
+        const repository = new URL(server.repository);
         const checksumUrl = new URL(entry.upstreamChecksumUrl);
         assert.equal(checksumUrl.protocol, "https:");
         assert.equal(checksumUrl.hostname, "github.com");
-        assert.equal(checksumUrl.pathname, `${url.pathname}.sha256`);
+        assert.equal(
+          checksumUrl.pathname,
+          `${repository.pathname}/releases/download/${server.tag}/${entry.asset}.sha256`,
+        );
       }
     }
   }

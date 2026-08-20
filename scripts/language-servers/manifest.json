@@ -8,6 +8,7 @@
     "x86_64-pc-windows-msvc"
   ],
   "allowedDownloadHosts": [
+    "mirrors.oleafly.com",
     "github.com",
     "release-assets.githubusercontent.com",
     "objects.githubusercontent.com"
@@ -90,7 +91,7 @@
           "binarySha256": "8a88be127caaf4da8197076efae6b953f5e00f5ca9d5fc6edb41ddb3acd41514",
           "binarySize": 15265888,
           "outputFilename": "texlab-aarch64-apple-darwin",
-          "url": "https://github.com/latex-lsp/texlab/releases/download/v5.26.0/texlab-aarch64-macos.tar.gz",
+          "url": "https://mirrors.oleafly.com/language-servers/texlab/5.26.0/texlab-aarch64-macos.tar.gz",
           "upstreamChecksumUrl": null
         },
         "aarch64-unknown-linux-gnu": {
@@ -102,7 +103,7 @@
           "binarySha256": "4976f7a9b2f1264010616efd3bb96362dfe6edf9722dd2a32912888c06776241",
           "binarySize": 16612520,
           "outputFilename": "texlab-aarch64-unknown-linux-gnu",
-          "url": "https://github.com/latex-lsp/texlab/releases/download/v5.26.0/texlab-aarch64-linux.tar.gz",
+          "url": "https://mirrors.oleafly.com/language-servers/texlab/5.26.0/texlab-aarch64-linux.tar.gz",
           "upstreamChecksumUrl": null
         },
         "x86_64-unknown-linux-gnu": {
@@ -114,7 +115,7 @@
           "binarySha256": "17544b8880b9869f7147777435541c481ef25ddbc6114118ef7f357f6ca7bc71",
           "binarySize": 16832064,
           "outputFilename": "texlab-x86_64-unknown-linux-gnu",
-          "url": "https://github.com/latex-lsp/texlab/releases/download/v5.26.0/texlab-x86_64-linux.tar.gz",
+          "url": "https://mirrors.oleafly.com/language-servers/texlab/5.26.0/texlab-x86_64-linux.tar.gz",
           "upstreamChecksumUrl": null
         },
         "x86_64-pc-windows-msvc": {
@@ -126,7 +127,7 @@
           "binarySha256": "8dc34014a515347e23327488122a0273d0bfa249d10e9ddd356e4ac907043112",
           "binarySize": 14595072,
           "outputFilename": "texlab-x86_64-pc-windows-msvc.exe",
-          "url": "https://github.com/latex-lsp/texlab/releases/download/v5.26.0/texlab-x86_64-windows.zip",
+          "url": "https://mirrors.oleafly.com/language-servers/texlab/5.26.0/texlab-x86_64-windows.zip",
           "upstreamChecksumUrl": null
         }
       }
@@ -197,7 +198,7 @@
           "binarySize": 63312448,
           "outputFilename": "tinymist-aarch64-apple-darwin",
           "resourceRelativePath": "resources/language-servers/tinymist/0.15.2/tinymist-aarch64-apple-darwin.tar.gz",
-          "url": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-aarch64-apple-darwin.tar.gz",
+          "url": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.2/tinymist-aarch64-apple-darwin.tar.gz",
           "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-aarch64-apple-darwin.tar.gz.sha256"
         },
         "aarch64-unknown-linux-gnu": {
@@ -210,7 +211,7 @@
           "binarySize": 62351256,
           "outputFilename": "tinymist-aarch64-unknown-linux-gnu",
           "resourceRelativePath": "resources/language-servers/tinymist/0.15.2/tinymist-aarch64-unknown-linux-gnu.tar.gz",
-          "url": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-aarch64-unknown-linux-gnu.tar.gz",
+          "url": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.2/tinymist-aarch64-unknown-linux-gnu.tar.gz",
           "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-aarch64-unknown-linux-gnu.tar.gz.sha256"
         },
         "x86_64-unknown-linux-gnu": {
@@ -223,7 +224,7 @@
           "binarySize": 75682584,
           "outputFilename": "tinymist-x86_64-unknown-linux-gnu",
           "resourceRelativePath": "resources/language-servers/tinymist/0.15.2/tinymist-x86_64-unknown-linux-gnu.tar.gz",
-          "url": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-x86_64-unknown-linux-gnu.tar.gz",
+          "url": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.2/tinymist-x86_64-unknown-linux-gnu.tar.gz",
           "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-x86_64-unknown-linux-gnu.tar.gz.sha256"
         },
         "x86_64-pc-windows-msvc": {
@@ -236,7 +237,7 @@
           "binarySize": 62377984,
           "outputFilename": "tinymist-x86_64-pc-windows-msvc.exe",
           "resourceRelativePath": "resources/language-servers/tinymist/0.15.2/tinymist-x86_64-pc-windows-msvc.zip",
-          "url": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-x86_64-pc-windows-msvc.zip",
+          "url": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.2/tinymist-x86_64-pc-windows-msvc.zip",
           "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-x86_64-pc-windows-msvc.zip.sha256"
         }
       }

@@ -1754,7 +1754,7 @@ async fn execute_compile_spec(
 ) -> Result<(String, Option<i32>), String> {
     match &spec.executable {
         EngineExecutable::BundledSidecar(name) => {
-            run_bundled(
+            let (output, exit_code) = run_bundled(
                 request.app,
                 name,
                 &spec.args,
@@ -1762,7 +1762,34 @@ async fn execute_compile_spec(
                 request.log_event,
                 request.cancel,
             )
-            .await
+            .await?;
+            // Mirror outage (or a pre-mirror cache in offline mode): one retry
+            // against Tectonic's default upstream bundle. Gated on the log so
+            // ordinary TeX errors never trigger a second run.
+            if name == &"tectonic"
+                && exit_code != Some(0)
+                && spec.args.iter().any(|arg| arg == "--bundle")
+                && is_bundle_fetch_failure(&output)
+            {
+                let fallback_args = args_without_bundle(&spec.args);
+                let (retry_output, retry_code) = run_bundled(
+                    request.app,
+                    name,
+                    &fallback_args,
+                    &spec.working_dir,
+                    request.log_event,
+                    request.cancel,
+                )
+                .await?;
+                let mut combined = String::new();
+                append_bounded(
+                    &mut combined,
+                    b"[Oleafly] The TeX package mirror was unreachable; retried with the upstream bundle.\n",
+                );
+                append_bounded(&mut combined, retry_output.as_bytes());
+                return Ok((combined, retry_code));
+            }
+            Ok((output, exit_code))
         }
         EngineExecutable::ExternalPath(path) => {
             run_external(
@@ -2353,6 +2380,51 @@ fn artifact_is_fresh(path: &Path, retained: &[RetainedArtifact]) -> bool {
     artifact_is_fresh_with(path, retained, Path::exists, artifact_identity)
 }
 
+/// Oleafly's mirror of the Tectonic TeX package bundle. Upstream's relay
+/// rate-limits (HTTP 429) and is a single point of failure for every first
+/// compile; the mirror serves the same tar (same content digest) from
+/// Cloudflare, so Tectonic's content-addressed cache is shared across origins.
+const TEX_BUNDLE_MIRROR_URL: &str = "https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar";
+
+fn tex_bundle_url() -> String {
+    std::env::var("OLEAFLY_TEX_BUNDLE_URL")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| TEX_BUNDLE_MIRROR_URL.into())
+}
+
+/// True when a failed Tectonic run died acquiring bundle resources rather
+/// than on a TeX error — the only case where retrying against the upstream
+/// bundle can help.
+fn is_bundle_fetch_failure(log: &str) -> bool {
+    [
+        "couldn't get it from the internet",
+        "this bundle isn't cached",
+        "unexpected HTTP response code",
+        "failed to download",
+        "error connecting to",
+    ]
+    .iter()
+    .any(|marker| log.contains(marker))
+}
+
+fn args_without_bundle(args: &[String]) -> Vec<String> {
+    let mut out = Vec::with_capacity(args.len());
+    let mut skip_next = false;
+    for arg in args {
+        if skip_next {
+            skip_next = false;
+            continue;
+        }
+        if arg == "--bundle" {
+            skip_next = true;
+            continue;
+        }
+        out.push(arg.clone());
+    }
+    out
+}
+
 fn tectonic_args(
     out_dir: &str,
     search_path: &str,
@@ -2360,6 +2432,10 @@ fn tectonic_args(
     options: CompileOptions,
 ) -> Vec<String> {
     let mut args: Vec<String> = vec!["-X".into(), "compile".into()];
+    // Pinned in offline mode too: a cache populated from either origin
+    // satisfies --only-cached, and the upstream fallback below covers a cache
+    // whose URL mapping predates the mirror.
+    args.extend(["--bundle".into(), tex_bundle_url()]);
     if options.offline {
         args.push("--only-cached".into());
     }
@@ -2757,6 +2833,70 @@ mod tests {
     }
 
     #[test]
+    fn tectonic_args_pin_the_bundle_to_the_oleafly_mirror() {
+        let args = tectonic_args(
+            "out",
+            "-Zsearch-path=src",
+            "main.tex",
+            CompileOptions::default(),
+        );
+        let position = args
+            .iter()
+            .position(|arg| arg == "--bundle")
+            .expect("--bundle flag present");
+        assert_eq!(args[position + 1], tex_bundle_url());
+        assert!(tex_bundle_url().starts_with("https://mirrors.oleafly.com/"));
+    }
+
+    #[test]
+    fn offline_compiles_keep_the_bundle_pin_alongside_only_cached() {
+        // The mirror tar shares upstream's content digest, so Tectonic's
+        // content-addressed cache satisfies --only-cached for either origin.
+        let options = CompileOptions {
+            offline: true,
+            ..Default::default()
+        };
+        let args = tectonic_args("out", "-Zsearch-path=src", "main.tex", options);
+        assert!(args.iter().any(|arg| arg == "--only-cached"));
+        assert!(args.iter().any(|arg| arg == "--bundle"));
+    }
+
+    #[test]
+    fn bundle_fetch_failures_are_distinguished_from_tex_errors() {
+        for log in [
+            "error: this bundle isn't cached, and we couldn't get it from the internet",
+            "caused by: unexpected HTTP response code 429 Too Many Requests for URL https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar",
+            "note: failed to download \"msbm10.tfm\"",
+        ] {
+            assert!(is_bundle_fetch_failure(log), "{log}");
+        }
+        for log in [
+            "! Undefined control sequence.\nl.19 \\oops",
+            "main.tex:4: Package fontspec Error: The font \"Nope\" cannot be found.",
+            "",
+        ] {
+            assert!(!is_bundle_fetch_failure(log), "{log:?}");
+        }
+    }
+
+    #[test]
+    fn stripping_the_bundle_flag_removes_the_flag_and_its_url() {
+        let args: Vec<String> = [
+            "-X",
+            "compile",
+            "--bundle",
+            "https://example.test/b.tar",
+            "main.tex",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
+        let stripped = args_without_bundle(&args);
+        assert_eq!(stripped, vec!["-X", "compile", "main.tex"]);
+        assert_eq!(args_without_bundle(&stripped), stripped);
+    }
+
+    #[test]
     fn legacy_latex_names_dispatch_to_canonical_engine() {
         for name in ["", "latex", "tex", "tectonic", "xetex", "XeTeX", "luatex"] {
             let engine = engine_for(name, "chapters/main.tex").unwrap();
@@ -2985,6 +3125,8 @@ mod tests {
             [
                 "-X",
                 "compile",
+                "--bundle",
+                "https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar",
                 "--only-cached",
                 "--synctex",
                 "--keep-logs",

@@ -43,7 +43,11 @@ if [[ ! -f "$ARCHIVE" ]] || [[ "$(checksum "$ARCHIVE")" != "$SHA" ]]; then
   curl -fSL --proto '=https' --connect-timeout 30 \
     --speed-limit 1024 --speed-time 60 \
     --retry 5 --retry-delay 3 --retry-connrefused \
-    -o "$TMP/download" "https://github.com/jgm/pandoc/releases/download/$VERSION/$ASSET"
+    -o "$TMP/download" "https://mirrors.oleafly.com/binaries/pandoc/$VERSION/$ASSET" \
+    || curl -fSL --proto '=https' --connect-timeout 30 \
+      --speed-limit 1024 --speed-time 60 \
+      --retry 5 --retry-delay 3 --retry-connrefused \
+      -o "$TMP/download" "https://github.com/jgm/pandoc/releases/download/$VERSION/$ASSET"
   ACTUAL="$(checksum "$TMP/download")"
   if [[ "$ACTUAL" != "$SHA" ]]; then
     echo "checksum mismatch for $ASSET: expected $SHA, got $ACTUAL" >&2

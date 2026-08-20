@@ -62,6 +62,7 @@ fetch() {
   local ext=""
   [[ "$target" == *windows* ]] && ext=".exe"
   local out="$BIN_DIR/tectonic-$target$ext"
+  local mirror_url="https://mirrors.oleafly.com/binaries/tectonic/$VERSION/$asset"
   local url="https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40$VERSION/$asset"
   TMP="$(mktemp -d)"
   local tmp="$TMP"
@@ -77,11 +78,22 @@ fetch() {
   if [[ "$actual_sha" != "$expected_sha" ]]; then
     rm -f "$archive"
     echo "→ fetching $target ($asset)"
-    if ! curl -fSL --proto '=https' --connect-timeout 30 \
-        --speed-limit 1024 --speed-time 60 \
-        --retry 5 --retry-delay 3 --retry-connrefused \
-        -o "$tmp/download" "$url"; then
-      echo "failed to download $url" >&2
+    # Mirror first (our own origin), upstream as fallback. The checksum pin
+    # below makes the origin choice integrity-neutral.
+    local fetched=""
+    for origin in "$mirror_url" "$url"; do
+      if curl -fSL --proto '=https' --connect-timeout 30 \
+          --speed-limit 1024 --speed-time 60 \
+          --retry 5 --retry-delay 3 --retry-connrefused \
+          -o "$tmp/download" "$origin"; then
+        fetched="$origin"
+        break
+      fi
+      echo "download failed from $origin; trying next origin" >&2
+      rm -f "$tmp/download"
+    done
+    if [[ -z "$fetched" ]]; then
+      echo "failed to download $asset from every origin" >&2
       exit 1
     fi
     actual_sha="$(checksum "$tmp/download")"
