@@ -65,15 +65,23 @@ else
   ln -s "$ROOT/$TECTONIC" "$ENGINE"
 fi
 # Pull TeX packages from our own mirror instead of relay.fullyjustified.net,
-# which rate-limits CI runners (HTTP 429). The retry loop stays as a guard for
-# any remaining transient network failure.
+# which rate-limits CI runners (HTTP 429). Attempts 1-2 use the mirror;
+# attempts 3-4 drop the pin and use Tectonic's upstream bundle, so neither
+# origin being down (or blocking datacenter IPs) can fail the build alone.
 BUNDLE_URL="${OLEAFLY_TEX_BUNDLE_URL:-https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar}"
 attempt=1
-until "$TMP/$PANDOC" --from=markdown --standalone \
-  "--pdf-engine=$ENGINE" \
-  --pdf-engine-opt=-b --pdf-engine-opt="$BUNDLE_URL" \
-  --output="$TMP/smoke.pdf" -- \
-  "$ROOT/scripts/fixtures/markdown-smoke.md"; do
+while :; do
+  BUNDLE_OPTS=(--pdf-engine-opt=-b "--pdf-engine-opt=$BUNDLE_URL")
+  if [[ "$attempt" -ge 3 ]]; then
+    BUNDLE_OPTS=()
+  fi
+  if "$TMP/$PANDOC" --from=markdown --standalone \
+    "--pdf-engine=$ENGINE" \
+    ${BUNDLE_OPTS[@]+"${BUNDLE_OPTS[@]}"} \
+    --output="$TMP/smoke.pdf" -- \
+    "$ROOT/scripts/fixtures/markdown-smoke.md"; then
+    break
+  fi
   if [[ "$attempt" -ge 4 ]]; then
     echo "markdown smoke compile failed after $attempt attempts" >&2
     exit 1
