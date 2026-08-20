@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 export type AgentTodoStatus = "pending" | "in_progress" | "completed" | "cancelled";
 
@@ -22,7 +23,7 @@ export const useAgentTodoStore = create<AgentTodoState>((set) => ({
 }));
 
 // E2E / devtools: seed a plan checklist without a model call.
-if (typeof window !== "undefined" && import.meta.env.DEV) {
+if (typeof window !== "undefined" && E2E_HOOKS) {
   const w = window as unknown as {
     __agentTodosSet?: (todos: AgentTodo[]) => void;
     __agentTodosClear?: () => void;

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { isTauri } from "@tauri-apps/api/core";
 import { loadProjectChats, saveProjectChats } from "@/lib/tauri";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 export interface ToolEntry {
   id?: string;
@@ -426,7 +427,7 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
 }));
 
 // E2E / devtools: inspect and seed per-chat usage without a model call.
-if (typeof window !== "undefined" && import.meta.env.DEV) {
+if (typeof window !== "undefined" && E2E_HOOKS) {
   const w = window as unknown as {
     __chatUsageAdd?: (
       chatId: string,

@@ -178,3 +178,15 @@ through a DEV-only one-shot path-result seam (40, 54, 55). Secondary-preview
 creation is covered natively and the production component/handlers are covered
 in the browser harness (17, 56). The remaining OS chrome is exercised by release
 smoke-testing.
+
+## Packaged-mode lanes (macOS CI)
+
+The macOS CI shards run against a packaged `tauri build --debug --features
+e2e-testing` binary (built once per run with VITE_E2E_HOOKS=1 and downloaded
+by every shard) instead of `tauri dev`. Coverage is identical with two
+deliberate exceptions: 24-pdf-selection-browser and 56-preview-window-browser
+load TSX fixtures through the Vite dev server, so packaged runs skip them —
+their subject is Playwright's own Chromium/WebKit, which the Linux and Windows
+dev-mode lanes still exercise on every push. localStorage seeding happens
+before boot (OLEAFLY_E2E_BOOT_LOCALSTORAGE) instead of via dev-server reloads,
+and dev-server module imports resolve through src/lib/e2e-import-registry.ts.

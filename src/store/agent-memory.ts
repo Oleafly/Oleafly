@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 const MAX_NOTES = 40;
 const MAX_NOTE_CHARS = 400;
@@ -93,7 +94,7 @@ export const useAgentMemoryStore = create<AgentMemoryState>((set, get) => ({
 }));
 
 // E2E / devtools hooks for sticky memory without going through the model.
-if (typeof window !== "undefined" && import.meta.env.DEV) {
+if (typeof window !== "undefined" && E2E_HOOKS) {
   const w = window as unknown as {
     __agentMemoryLoad?: (projectId: string) => void;
     __agentMemoryAdd?: (content: string) => string | null;

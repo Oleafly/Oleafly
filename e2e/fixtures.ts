@@ -61,18 +61,17 @@ const DISMISSED_TOUR_STATE = JSON.stringify({
 });
 
 export async function reloadNativePage(page: TauriPage) {
-  if (productionE2e) {
-    throw new Error(
-      "packaged E2E smoke tests run one test per app launch; production reload is unsupported",
-    );
-  }
   const mainWindow = await page.waitForWindow((window) => window.label === "main", {
     timeout: 20_000,
   });
   await mainWindow.evaluate(`window.__E2E_RELOAD_PENDING__ = true`);
-  await mainWindow.evaluate(
-    `import("/src/lib/tauri.ts").then(({ reloadViews }) => { void reloadViews(); })`,
-  );
+  // Packaged builds have no dev server to import the reload helper from, but
+  // a plain location.reload() re-navigates the custom-protocol document and
+  // the plugin bridge re-injects on the fresh page.
+  const scheduleReload = productionE2e
+    ? `setTimeout(() => location.reload(), 0)`
+    : `import("/src/lib/tauri.ts").then(({ reloadViews }) => { void reloadViews(); })`;
+  await mainWindow.evaluate(scheduleReload);
   // 150s: a loaded CI runner (Windows especially) can take well over 20s to
   // tear down and re-create the webview, and macOS content-filter network
   // extensions (Proxyman Guard, Bitdefender) can stall the webview's vite
@@ -115,7 +114,9 @@ export async function reloadNativePage(page: TauriPage) {
       if (parsed.reloadPending && Date.now() >= nextNudge) {
         nextNudge = Date.now() + 20_000;
         await reloadedWindow.evaluate(
-          `import("/src/lib/tauri.ts").then(({ reloadViews }) => { void reloadViews(); })`,
+          productionE2e
+            ? `setTimeout(() => location.reload(), 0)`
+            : `import("/src/lib/tauri.ts").then(({ reloadViews }) => { void reloadViews(); })`,
         );
       }
     } catch {}
@@ -140,15 +141,52 @@ async function ensureNativePageReady(page: TauriPage) {
 }
 
 async function focusNativeWindow(page: TauriPage) {
-  if (productionE2e) {
-    await page.evaluate("(() => { window.focus(); return true; })()");
-    return;
-  }
+  // Real OS focus in both modes: editor features gate on the CodeMirror
+  // view's hasFocus, and a JS-level window.focus() cannot focus an unfocused
+  // native window. Packaged runs resolve this import through the registry.
   await page.evaluate(`
     import("/src/lib/tauri.ts").then(({ focusCurrentWindow }) =>
       focusCurrentWindow().then(() => true)
     )
   `);
+}
+
+// Specs drive the app through evaluated snippets that import modules by
+// dev-server URL. Packaged builds resolve those through the registry the app
+// installs at boot (src/lib/e2e-import-registry.ts), so in production mode
+// every evaluated string is rewritten to go through it. Dev mode passes
+// strings through untouched.
+function rewritePackagedEval(script: string): string {
+  // Whitespace-tolerant: specs also write `import(\n  "/src/..."\n)`.
+  return script.replace(
+    /import\(\s*("\/(?:src|packages)\/)/g,
+    'window.__oleaflyE2EImport($1',
+  );
+}
+
+function adaptForPackagedRuntime<T>(target: T): T {
+  if (!productionE2e) return target;
+  const patchable = target as T & {
+    evaluate?: (script: string, ...rest: unknown[]) => unknown;
+    waitForFunction?: (script: string, ...rest: unknown[]) => unknown;
+    waitForWindow?: (...args: unknown[]) => Promise<unknown>;
+  };
+  if (typeof patchable.evaluate === "function") {
+    const original = patchable.evaluate.bind(patchable);
+    patchable.evaluate = (script: string, ...rest: unknown[]) =>
+      original(typeof script === "string" ? rewritePackagedEval(script) : script, ...rest);
+  }
+  if (typeof patchable.waitForFunction === "function") {
+    const original = patchable.waitForFunction.bind(patchable);
+    patchable.waitForFunction = (script: string, ...rest: unknown[]) =>
+      original(typeof script === "string" ? rewritePackagedEval(script) : script, ...rest);
+  }
+  if (typeof patchable.waitForWindow === "function") {
+    const original = patchable.waitForWindow.bind(patchable);
+    patchable.waitForWindow = async (...args: unknown[]) =>
+      adaptForPackagedRuntime(await original(...args));
+  }
+  return target;
 }
 
 function createNativeTest(dismissTours: boolean) {
@@ -174,7 +212,7 @@ function createNativeTest(dismissTours: boolean) {
       if (lastErr) throw lastErr;
       const ping = await client.send({ type: "ping" });
       if (!ping.ok) throw new Error("plugin ping failed");
-      const page = new TauriPage(client);
+      const page = adaptForPackagedRuntime(new TauriPage(client));
       page.setDefaultTimeout(20_000);
       const firstPage = !nativePageOpened;
       if (nativePageOpened) {
@@ -195,12 +233,23 @@ function createNativeTest(dismissTours: boolean) {
       }
       if (dismissTours) {
         if (productionE2e) {
-          throw new Error("packaged E2E tests must use tourTest to avoid a production reload");
+          // Packaged runs seed localStorage before boot via
+          // OLEAFLY_E2E_BOOT_LOCALSTORAGE (see e2e.sh and lib.rs), so no
+          // reload is needed — verify the seed actually landed instead.
+          const seeded = await page.evaluate(
+            `(function(){ const raw = localStorage.getItem("oleafly.tours"); if (!raw) return false; try { return JSON.parse(raw).state?.enabled === false; } catch { return false; } })()`,
+          );
+          if (!seeded) {
+            throw new Error(
+              "packaged E2E run is missing the boot seed: launch through scripts/e2e.sh so OLEAFLY_E2E_BOOT_LOCALSTORAGE disables tours before boot",
+            );
+          }
+        } else {
+          await page.evaluate(
+            `localStorage.setItem("oleafly.tours", ${JSON.stringify(DISMISSED_TOUR_STATE)})`,
+          );
+          await reloadNativePage(page);
         }
-        await page.evaluate(
-          `localStorage.setItem("oleafly.tours", ${JSON.stringify(DISMISSED_TOUR_STATE)})`,
-        );
-        await reloadNativePage(page);
       }
       await focusNativeWindow(page);
       nativePageOpened = true;

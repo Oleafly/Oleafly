@@ -17,8 +17,16 @@ import { reapOrphanAgentRuns } from "@/lib/agent-backend";
 import { registerContributions } from "@/contributions";
 import { installDesktopViewportGuard } from "@/lib/desktop-viewport";
 import "@/styles/globals.css";
+import { registerE2EImports } from "@/lib/e2e-import-registry";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 markBootStage("entry-evaluated");
+
+// Packaged e2e boots (init script in src-tauri/src/lib.rs) need app modules
+// resolvable by dev-server path; a normal launch never sets the flag.
+if ((window as { __OLEAFLY_E2E_BOOT__?: boolean }).__OLEAFLY_E2E_BOOT__) {
+  registerE2EImports();
+}
 
 type WindowView = "main" | "update" | "preview";
 
@@ -41,7 +49,7 @@ function installErrorLogging(): void {
 }
 
 async function installDevelopmentProbe(): Promise<void> {
-  if (!import.meta.env.DEV) return;
+  if (!E2E_HOOKS) return;
   const { installE2ePdfProbe } = await import("@/lib/e2e-probe");
   installE2ePdfProbe();
 }

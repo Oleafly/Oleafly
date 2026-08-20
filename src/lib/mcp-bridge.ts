@@ -29,6 +29,7 @@ import {
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 export type McpContent =
   | { type: "text"; text: string }
@@ -828,7 +829,7 @@ async function initializeMcpBridge(): Promise<void> {
 }
 
 export async function startMcpBridge(): Promise<() => void> {
-  if (import.meta.env.DEV) {
+  if (E2E_HOOKS) {
     const w = window as unknown as {
       __mcpDecide?: (verb: string) => string;
       __mcpDisconnectRenderer?: () => Promise<void>;

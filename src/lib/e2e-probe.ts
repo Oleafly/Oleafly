@@ -3,7 +3,7 @@
 // of those modules only load when a lazy panel or view opens, so a suite that
 // calls a hook before opening its owner would find it undefined. This module
 // is imported at boot in dev, so importing them here guarantees every hook
-// exists from startup. The whole module is behind `import.meta.env.DEV` at its
+// exists from startup. The whole module is behind `E2E_HOOKS` at its
 // only call site, so none of this reaches a production build.
 import "@/features/import";
 import "@/features/citation";
@@ -18,6 +18,7 @@ import {
   refreshEditorLints,
 } from "@oleafly/editor";
 import { diagnosticCardSource } from "@oleafly/editor/diagnostic-card";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 export interface E2ePdfTextItem {
   str: string;
@@ -292,7 +293,7 @@ function installAiConnectHook() {
 }
 
 export function installE2ePdfProbe() {
-  if (!import.meta.env.DEV) return;
+  if (!E2E_HOOKS) return;
   const target = window as unknown as E2eProbeWindow;
   installAiConnectHook();
   target.__e2ePdfProbe = readCompiledPdfProbe;

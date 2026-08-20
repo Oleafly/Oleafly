@@ -12,6 +12,7 @@ import { useImportStore } from "@/store/import";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { ensurePandoc } from "@/features/pandoc";
 import { CONVERSION_NOTICE } from "@/features/import-copy";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 const ZIP_EXPORT_ERROR_MESSAGE = "Could not save ZIP archive.";
 
@@ -199,7 +200,7 @@ export async function handleDownloadZipClick(
 
 // E2E / devtools hook: the native test bridge cannot drive a real file input,
 // so specs feed bytes in directly.
-if (typeof window !== "undefined" && import.meta.env.DEV) {
+if (typeof window !== "undefined" && E2E_HOOKS) {
   const w = window as unknown as {
     __importFile?: (name: string, base64: string) => Promise<void>;
     __hasPandoc?: () => Promise<boolean>;

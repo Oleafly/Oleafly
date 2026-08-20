@@ -34,13 +34,14 @@ import { latexLanguage } from "@/components/editor/cm/latex";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { isMac } from "@/lib/utils";
 import { pickSavePath } from "@/lib/native-file-dialog";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 // E2E / devtools hook: the native bridge cannot drive a real file input, so
 // specs can queue the next pick's result here instead of opening a picker
 // (name: null simulates the user canceling the dialog). The real button
 // click and the real applyLoadedContent() codepath still run end to end;
 // only the OS file dialog itself is bypassed.
-if (typeof window !== "undefined" && import.meta.env.DEV) {
+if (typeof window !== "undefined" && E2E_HOOKS) {
   const w = window as unknown as {
     __setNextTikzImport?: (name: string | null, content: string | null) => void;
   };
@@ -51,7 +52,7 @@ if (typeof window !== "undefined" && import.meta.env.DEV) {
 let nextTikzImportOverride: { name: string; content: string } | null | undefined;
 
 function pickTikzFile(): Promise<{ name: string; content: string } | null> {
-  if (import.meta.env.DEV && nextTikzImportOverride !== undefined) {
+  if (E2E_HOOKS && nextTikzImportOverride !== undefined) {
     const next = nextTikzImportOverride;
     nextTikzImportOverride = undefined;
     return Promise.resolve(next);

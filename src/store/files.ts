@@ -52,6 +52,7 @@ import {
 import { useSettingsStore } from "@/store/settings";
 import { nextTabSeq } from "@/store/tab-order";
 import { recordProjectStateRevision } from "@/lib/project-state-revision";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 import {
   flushWysiwygPendingEdits,
   invalidateWysiwygProjectSession,
@@ -1803,7 +1804,7 @@ if (typeof window !== "undefined") {
   window.addEventListener("pagehide", flushPendingSaves);
   window.addEventListener("beforeunload", flushPendingSaves);
 
-  if (import.meta.env.DEV) {
+  if (E2E_HOOKS) {
     // E2E / devtools hook: read-only commit count, so a test can wait for a
     // fire-and-forget auto-commit to land without opening the History modal.
     (window as unknown as { __gitCommitCount?: () => Promise<number> }).__gitCommitCount =

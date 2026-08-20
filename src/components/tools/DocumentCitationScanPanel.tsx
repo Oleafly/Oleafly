@@ -44,6 +44,7 @@ import { useSettingsStore } from "@/store/settings";
 import { getConfig } from "@/lib/tauri";
 import { hasConfiguredProvider } from "@/lib/ai-providers";
 import { toast } from "@/lib/toast";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 const SOURCE_DOT: Record<LiteratureSource, string> = {
   arxiv: "bg-red-500",
@@ -556,7 +557,7 @@ export function DocumentCitationScanPanel() {
 
   // E2E / DEV: inject canned scan results without network or LLM.
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
+    if (!E2E_HOOKS) return;
     const w = window as unknown as {
       __e2eDocumentCitation?: {
         seedResults: (results: ParagraphCitationResult[]) => void;

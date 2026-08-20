@@ -15,6 +15,7 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useIndexStore } from "@/store/project-index";
 import { getEditorView, insertAtCursor } from "@/components/editor/cm/controller";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 function basename(p: string): string {
   const i = p.lastIndexOf("/");
@@ -242,7 +243,7 @@ export function parseCitationFile(filename: string, text: string): ParsedBib[] |
 // E2E / devtools hook: the native test bridge cannot drive a real file input,
 // so specs feed file text in directly through the same parse/import path the
 // Connect Sources dialog uses.
-if (typeof window !== "undefined" && import.meta.env.DEV) {
+if (typeof window !== "undefined" && E2E_HOOKS) {
   const w = window as unknown as {
     __importCitationFile?: (name: string, text: string) => Promise<BatchImportResult | { error: string }>;
   };

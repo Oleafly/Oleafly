@@ -68,6 +68,27 @@ pub fn run() {
     #[cfg(feature = "e2e-testing")]
     {
         builder = builder.plugin(tauri_plugin_playwright::init());
+        // Packaged suites cannot reload through the Vite dev server the way
+        // the dev fixture seeds localStorage, so seed it before any app code
+        // runs instead. The env var holds a JSON object of key -> string
+        // (null removes the key); it is validated here so a malformed value
+        // fails the launch instead of silently skipping the seed.
+        if let Ok(seed) = std::env::var("OLEAFLY_E2E_BOOT_LOCALSTORAGE") {
+            let parsed: serde_json::Value = serde_json::from_str(&seed)
+                .expect("OLEAFLY_E2E_BOOT_LOCALSTORAGE must be valid JSON");
+            assert!(
+                parsed.is_object(),
+                "OLEAFLY_E2E_BOOT_LOCALSTORAGE must be a JSON object"
+            );
+            let script = format!(
+                "window.__OLEAFLY_E2E_BOOT__ = true; (() => {{ const seed = {parsed}; for (const [key, value] of Object.entries(seed)) {{ if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); }} }})();"
+            );
+            builder = builder.plugin(
+                tauri::plugin::Builder::<tauri::Wry, ()>::new("oleafly-e2e-boot-seed")
+                    .js_init_script(script)
+                    .build(),
+            );
+        }
     }
 
     builder

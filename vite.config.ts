@@ -36,6 +36,15 @@ export const rejectProductionDevHooks = (): Plugin => ({
     },
   },
   generateBundle(_options, bundle) {
+    // The packaged e2e build (VITE_E2E_HOOKS=1, consumed by scripts/e2e.sh
+    // via OLEAFLY_E2E_APP_BINARY) deliberately carries the test hooks; every
+    // other production build must stay clean, so the audit remains fatal.
+    if (process.env.VITE_E2E_HOOKS === "1") {
+      this.warn(
+        "VITE_E2E_HOOKS=1: this bundle contains test hooks and must never ship to users",
+      );
+      return;
+    }
     const artifacts: [string, string][] = [];
     for (const [fileName, output] of Object.entries(bundle)) {
       if (output.type === "chunk") {

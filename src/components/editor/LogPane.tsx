@@ -8,6 +8,7 @@ import { openFileAndGotoLine } from "@/features/synctex";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
 import { Tooltip } from "@/components/ui/tooltip";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 function easeInOutQuad(t: number): number {
   return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
@@ -368,7 +369,7 @@ export function LogPane() {
   }, [structured, errors]);
 
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
+    if (!E2E_HOOKS) return;
     const target = window as unknown as { __e2eRenderedCompileLog?: string };
     target.__e2eRenderedCompileLog = log;
     return () => {

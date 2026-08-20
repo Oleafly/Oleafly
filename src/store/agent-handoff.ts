@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 interface AgentHandoffState {
   pendingPrompt: string | null;
@@ -27,7 +28,7 @@ export const useAgentHandoffStore = create<AgentHandoffState>((set, get) => ({
 }));
 
 // E2E / devtools hook: seed a handoff without going through inline AI.
-if (typeof window !== "undefined" && import.meta.env.DEV) {
+if (typeof window !== "undefined" && E2E_HOOKS) {
   const w = window as unknown as {
     __agentHandoff?: (prompt: string, autoSend?: boolean) => void;
   };

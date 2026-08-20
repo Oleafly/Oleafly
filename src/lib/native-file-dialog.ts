@@ -1,4 +1,5 @@
-import {
+
+import { E2E_HOOKS } from "@/lib/e2e-flags";import {
   open as openNativeDialog,
   save as saveNativeDialog,
   type OpenDialogOptions,
@@ -22,7 +23,7 @@ declare global {
 }
 
 function e2eState(): E2eFileDialogState | null {
-  if (typeof window === "undefined" || !import.meta.env.DEV) return null;
+  if (typeof window === "undefined" || !E2E_HOOKS) return null;
   if (!window.__e2eFileDialogState) {
     window.__e2eFileDialogState = {
       openRequests: 0,
@@ -32,7 +33,7 @@ function e2eState(): E2eFileDialogState | null {
   return window.__e2eFileDialogState;
 }
 
-if (typeof window !== "undefined" && import.meta.env.DEV) {
+if (typeof window !== "undefined" && E2E_HOOKS) {
   window.__e2eSetNextImportPaths = (paths) => {
     const state = e2eState();
     if (state) state.nextImportPaths = paths?.slice() ?? null;

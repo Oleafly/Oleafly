@@ -57,6 +57,7 @@ import { useFullscreen } from "@/lib/use-fullscreen";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, isMac, shortcut } from "@/lib/utils";
 import { pickSavePath } from "@/lib/native-file-dialog";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 const FMT_LABEL: Record<string, string> = {
   zip: "Zip",
@@ -309,7 +310,7 @@ export function TopToolbar() {
     <header
       data-tauri-drag-region
       data-tour="project-toolbar"
-      {...(import.meta.env.DEV
+      {...(E2E_HOOKS
         ? { "data-e2e-project-id": projectId ?? undefined }
         : {})}
       className={cn(

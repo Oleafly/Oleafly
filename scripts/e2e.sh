@@ -247,10 +247,27 @@ if [ -z "$APP_BINARY" ] && lsof -ti :1420 >/dev/null 2>&1; then
   exit 1
 fi
 
+# Packaged builds cannot seed localStorage through a dev-server reload the way
+# the fixtures do in dev mode, so the app seeds it before boot instead
+# (OLEAFLY_E2E_BOOT_LOCALSTORAGE, see src-tauri/src/lib.rs). The tours spec is
+# the one suite that needs tours ENABLED, so it gets the seed without the
+# tours key. Argument: the spec path about to run ("" for non-spec runs).
+boot_seed_for() {
+  local spec="${1:-}"
+  local flags='"oleafly.shortcuts":null,"oleafly.visualEditor":"1","oleafly.latexTools":"1"'
+  case "$spec" in
+    *00-tours*) printf '{%s}' "$flags" ;;
+    *) printf '{%s,"oleafly.tours":"{\\"state\\":{\\"schemaVersion\\":1,\\"enabled\\":false,\\"tours\\":{}},\\"version\\":1}"}' "$flags" ;;
+  esac
+}
+
 start_app() {
   rm -f "$SOCK"
+  local spec_hint="${1:-}"
   if [ -n "$APP_BINARY" ]; then
-    OLEAFLY_DATA_DIR="$DATA_DIR" "$APP_BINARY" >>"$LOG" 2>&1 &
+    OLEAFLY_DATA_DIR="$DATA_DIR" \
+      OLEAFLY_E2E_BOOT_LOCALSTORAGE="$(boot_seed_for "$spec_hint")" \
+      "$APP_BINARY" >>"$LOG" 2>&1 &
   else
     OLEAFLY_DATA_DIR="$DATA_DIR" pnpm tauri dev --features e2e-testing >>"$LOG" 2>&1 &
   fi
@@ -286,24 +303,52 @@ for arg in "$@"; do
 done
 
 if [ "$has_spec" -eq 1 ]; then
-  start_app
+  start_app "$1"
   run_playwright "requested spec selection" "$@"
 else
   suite_status=0
   suite_failures=0
   SUITE_SPECS=()
   if [ -n "$SHARD" ]; then
-    # Round-robin split for parallel CI runners. Every shard gets
-    # 02-create-compile first: it creates the shared "E2E Doc" project and
-    # warms the compile path that later specs assume (the same convention as
-    # running a manual subset).
+    # Duration-weighted split for parallel CI runners: the four heaviest specs
+    # (multi-minute book compiles, chaos suites, long WYSIWYG flows) are dealt
+    # to distinct shards first, then everything else round-robins. Plain
+    # count-based round-robin once put four of them on one shard, making that
+    # shard both the wall-clock ceiling and the flake hotspot for every run.
+    # Every shard still gets 02-create-compile first: it creates the shared
+    # "E2E Doc" project and warms the compile path later specs assume.
     shard_index="${SHARD%%/*}"
     shard_total="${SHARD##*/}"
+    HEAVY_SPECS=(
+      "e2e/tests/58-editor-core-stability.spec.ts"
+      "e2e/tests/62-large-document-interaction.spec.ts"
+      "e2e/tests/30-project-kinds.spec.ts"
+      "e2e/tests/59-proofreading-complete.spec.ts"
+      "e2e/tests/52-editor-workflows-semantics.spec.ts"
+      "e2e/tests/24-synctex-inverse.spec.ts"
+    )
+    is_heavy() {
+      local candidate="$1" heavy
+      for heavy in "${HEAVY_SPECS[@]}"; do
+        [ "$candidate" = "$heavy" ] && return 0
+      done
+      return 1
+    }
     SUITE_SPECS+=("e2e/tests/02-create-compile.spec.ts")
     position=0
+    for spec in "${HEAVY_SPECS[@]}"; do
+      [ -f "$spec" ] || continue
+      if [ $(( position % shard_total )) -eq $(( shard_index - 1 )) ]; then
+        SUITE_SPECS+=("$spec")
+      fi
+      position=$((position + 1))
+    done
+    position=0
     for spec in e2e/tests/*.spec.ts; do
-      if [ "$spec" != "e2e/tests/02-create-compile.spec.ts" ] \
-        && [ $(( position % shard_total )) -eq $(( shard_index - 1 )) ]; then
+      if [ "$spec" = "e2e/tests/02-create-compile.spec.ts" ] || is_heavy "$spec"; then
+        continue
+      fi
+      if [ $(( position % shard_total )) -eq $(( shard_index - 1 )) ]; then
         SUITE_SPECS+=("$spec")
       fi
       position=$((position + 1))
@@ -314,6 +359,28 @@ else
       SUITE_SPECS+=("$spec")
     done
   fi
+  # Browser-harness specs load TSX fixtures through the Vite dev server, so a
+  # packaged run cannot serve them. Their subject is Playwright's own
+  # Chromium/WebKit (platform-independent), and the dev-mode lanes still run
+  # them — skipping here loses no coverage, and the log says so out loud.
+  PACKAGED_UNSERVABLE=(
+    "e2e/tests/24-pdf-selection-browser.spec.ts"
+    "e2e/tests/56-preview-window-browser.spec.ts"
+  )
+  if [ -n "$APP_BINARY" ]; then
+    filtered=()
+    for spec in "${SUITE_SPECS[@]}"; do
+      skip_this=0
+      for unservable in "${PACKAGED_UNSERVABLE[@]}"; do
+        if [ "$spec" = "$unservable" ]; then
+          skip_this=1
+          echo "e2e: skipping $(basename "$spec") in packaged mode (dev-server harness; covered by dev-mode lanes)"
+        fi
+      done
+      [ "$skip_this" -eq 1 ] || filtered+=("$spec")
+    done
+    SUITE_SPECS=("${filtered[@]}")
+  fi
   SPECS_RAN=()
   SPECS_FAILED=()
   SPECS_NOT_RUN=()
@@ -321,10 +388,10 @@ else
   for spec in "${SUITE_SPECS[@]}"; do
     # A spec that never runs is indistinguishable from a passing one in the
     # exit code alone, so every spec is accounted for explicitly below.
-    if ! wait_for_port_free || ! start_app; then
+    if ! wait_for_port_free || ! start_app "$spec"; then
       stop_app
       echo "e2e: retrying ${spec} after a failed app launch" >&2
-      if ! wait_for_port_free || ! start_app; then
+      if ! wait_for_port_free || ! start_app "$spec"; then
         stop_app
         SPECS_NOT_RUN+=("$spec")
         suite_status=1

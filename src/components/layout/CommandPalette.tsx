@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { commandAliasSearchText } from "@/lib/command-search";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 export function CommandPalette() {
   const open = useSettingsStore((s) => s.paletteOpen);
@@ -44,7 +45,7 @@ export function CommandPalette() {
   }, [open]);
 
   useEffect(() => {
-    if (!import.meta.env.DEV || !open) return;
+    if (!E2E_HOOKS || !open) return;
     const setE2eQuery = (event: Event) => {
       if (!(event instanceof CustomEvent) || typeof event.detail !== "string") {
         return;

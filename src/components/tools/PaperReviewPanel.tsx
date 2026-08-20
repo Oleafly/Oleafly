@@ -18,6 +18,7 @@ import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useSettingsStore } from "@/store/settings";
 import { getConfig } from "@/lib/tauri";
 import { hasConfiguredProvider } from "@/lib/ai-providers";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 function isLatexPath(path: string): boolean {
   return path.toLowerCase().endsWith(".tex");
@@ -177,7 +178,7 @@ export function PaperReviewPanel() {
 
   // E2E / DEV: seed review output without calling a live model.
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
+    if (!E2E_HOOKS) return;
     const w = window as unknown as {
       __e2ePaperReview?: {
         seed: (mode: PaperReviewMode, body: string) => void;

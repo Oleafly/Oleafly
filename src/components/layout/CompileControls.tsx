@@ -27,6 +27,7 @@ import { useSettingsStore } from "@/store/settings";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import type { TexFlavor } from "@/lib/tauri";
 import { cn, shortcut } from "@/lib/utils";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 function basename(path: string): string {
   const slash = path.lastIndexOf("/");
@@ -126,7 +127,7 @@ export function CompileControls() {
       <Button
         data-testid="compile-button"
         data-tour="project-compile"
-        {...(import.meta.env.DEV
+        {...(E2E_HOOKS
           ? {
               "data-e2e-compile-status": status,
               "data-e2e-compile-revision": compileRevision,

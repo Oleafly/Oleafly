@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
 import { Kbd } from "@/components/ui/kbd";
 import { useFavoritesStore } from "@/store/favorites";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 function basename(p: string) {
   const i = p.lastIndexOf("/");
@@ -285,7 +286,7 @@ export function SearchOmnibar() {
   }, [setSearchOpen]);
 
   useEffect(() => {
-    if (!import.meta.env.DEV || !open) return;
+    if (!E2E_HOOKS || !open) return;
     const setE2eQuery = (event: Event) => {
       if (!(event instanceof CustomEvent) || typeof event.detail !== "string") {
         return;
