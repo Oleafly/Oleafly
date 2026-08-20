@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Check, ChevronDown, ChevronRight, Download, FileText, Info, Loader2, Sparkles, Trash2, Type } from "lucide-react";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import { logError } from "@/lib/log";
@@ -242,7 +243,11 @@ export function DownloadsSection() {
           components.map((c) => {
             const busy = busyId === c.id || (busyId === ALL && !c.installed);
             return (
-              <div key={c.id} className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
+              <div
+                key={c.id}
+                {...(E2E_HOOKS ? { "data-e2e-font-pack": c.id } : {})}
+                className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0"
+              >
                 <Type className="size-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
