@@ -837,6 +837,7 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
   const tauriActionPattern = /uses:\s*tauri-apps\/tauri-action@/;
   const cargoBuildPattern = /run:\s*cargo (?:build|check|clippy|run|test)\b/;
   const e2eBuildPattern = /run:\s*[^\n]*scripts\/e2e\.(?:sh|ps1)\b/;
+  const packagedE2eBuildPattern = /run:\s*[^\n]*pnpm tauri build\b/;
 
   assertTinymistFetchBeforeBuild(
     releaseWorkflow,
@@ -856,11 +857,13 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
     "x86_64-pc-windows-msvc",
     cargoBuildPattern,
   );
+  // The macOS shards consume a prebuilt bundle; the staging obligation moved
+  // to the job that actually builds the app.
   assertTinymistFetchBeforeBuild(
     ciWorkflow,
-    "e2e",
+    "e2e-build-macos",
     "aarch64-apple-darwin",
-    e2eBuildPattern,
+    packagedE2eBuildPattern,
   );
   assertTinymistFetchBeforeBuild(
     ciWorkflow,
@@ -904,6 +907,10 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
         ),
       );
       if (buildIndex === -1) continue;
+      // Shards that run the suite against a prebuilt bundle
+      // (OLEAFLY_E2E_APP_BINARY) do not build Tauri; the job that builds the
+      // bundle carries the staging obligation and is asserted above.
+      if (job.source.includes("OLEAFLY_E2E_APP_BINARY")) continue;
       const fetchIndex = job.source.indexOf(
         "run: node scripts/fetch-language-servers.mjs --server tinymist",
       );
