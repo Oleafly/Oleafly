@@ -186,16 +186,32 @@ async function settleOpenCompile(
   const deadline = Date.now() + 180_000;
   let quietPolls = 0;
   let status = "unknown";
+  let starvedProbes = 0;
   while (Date.now() < deadline) {
-    status = await page.evaluate<string>(
-      `import("/src/store/compile.ts").then(({ useCompileStore }) =>
-        useCompileStore.getState().status)`,
-    );
+    try {
+      status = await page.evaluate<string>(
+        `import("/src/store/compile.ts").then(({ useCompileStore }) =>
+          useCompileStore.getState().status)`,
+      );
+    } catch {
+      // This probe is a bridge round trip, and the bridge caps an eval at a
+      // hard 30 s. Compiling a 6,200-line book saturates a two-core runner, so
+      // the webview can be starved past that cap while everything is working
+      // exactly as intended. A probe that cannot get an answer is by
+      // definition not quiet, so count it as still compiling and keep waiting.
+      // The outer deadline still bounds the whole wait, so a genuinely wedged
+      // app fails, just with an accurate message.
+      starvedProbes += 1;
+      status = "compiling";
+    }
     quietPolls = status === "compiling" ? 0 : quietPolls + 1;
     if (quietPolls >= QUIET_POLLS_REQUIRED) return;
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
-  throw new Error(`the open-compile never settled (last status ${status})`);
+  throw new Error(
+    `the open-compile never settled (last status ${status}, ` +
+      `${starvedProbes} probe(s) timed out against a busy webview)`,
+  );
 }
 
 async function openLargeBook(
