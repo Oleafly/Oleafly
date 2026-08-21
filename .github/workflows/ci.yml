@@ -586,8 +586,20 @@ jobs:
           deb="$(find src-tauri/target/debug/bundle/deb -name '*.deb' -print -quit)"
           test -n "$deb"
           cp "$deb" oleafly-e2e-linux.deb
-          echo "--- package contents (binaries and resources) ---"
-          dpkg-deb -c oleafly-e2e-linux.deb | grep -E '/usr/(bin|lib)/' | head -40
+          # Every line below is a diagnostic, and a diagnostic must never be able
+          # to fail the build. Under `set -o pipefail` a grep that matches
+          # nothing returns 1 and takes the step down with it, which is exactly
+          # what happened the first time this ran - the package was fine and the
+          # description of it was what failed. Write the listing to a file, then
+          # read slices out of it, and guard every filter.
+          dpkg-deb -c oleafly-e2e-linux.deb > deb-contents.txt
+          echo "--- layout sample (first 20 entries) ---"
+          sed -n '1,20p' deb-contents.txt
+          echo "--- executables ---"
+          grep -E '/(bin|sbin)/' deb-contents.txt || echo "(none matched /bin/)"
+          echo "--- libexec, resources, sidecars (first 25) ---"
+          grep -E '/lib/' deb-contents.txt | sed -n '1,25p' || echo "(none matched /lib/)"
+          echo "--- $(wc -l < deb-contents.txt) entries total ---"
 
       - name: Upload the app package
         uses: actions/upload-artifact@v7
@@ -769,10 +781,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb ./oleafly-e2e-linux.deb
           pkg="$(dpkg-deb -f oleafly-e2e-linux.deb Package)"
-          app_bin="$(dpkg -L "$pkg" | grep -E '^/usr/bin/' | head -1)"
-          if [ ! -x "$app_bin" ]; then
-            echo "no executable found in /usr/bin for package $pkg" >&2
-            dpkg -L "$pkg" >&2
+          # Prefer /usr/bin, but do not depend on it: fall back to the first
+          # executable file the package installed anywhere. Guessing a layout
+          # this job has never seen is what costs a round trip, so the guess is
+          # only a preference and the fallback is exhaustive. Every filter is
+          # guarded because an unmatched grep returns 1 under pipefail.
+          dpkg -L "$pkg" > installed-files.txt
+          app_bin="$(grep -E '^/usr/bin/.' installed-files.txt | sed -n '1p' || true)"
+          if [ -z "$app_bin" ] || [ ! -x "$app_bin" ]; then
+            app_bin=""
+            while IFS= read -r candidate; do
+              if [ -f "$candidate" ] && [ -x "$candidate" ]; then
+                app_bin="$candidate"
+                break
+              fi
+            done < installed-files.txt
+          fi
+          if [ -z "$app_bin" ]; then
+            echo "package $pkg installed no executable file" >&2
+            cat installed-files.txt >&2
             exit 1
           fi
           echo "app binary: $app_bin"
