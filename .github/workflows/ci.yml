@@ -781,24 +781,29 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb ./oleafly-e2e-linux.deb
           pkg="$(dpkg-deb -f oleafly-e2e-linux.deb Package)"
-          # Prefer /usr/bin, but do not depend on it: fall back to the first
-          # executable file the package installed anywhere. Guessing a layout
-          # this job has never seen is what costs a round trip, so the guess is
-          # only a preference and the fallback is exhaustive. Every filter is
-          # guarded because an unmatched grep returns 1 under pipefail.
+          # Match the app by NAME, never by position. The package installs the
+          # engine sidecars beside the app - /usr/bin holds tectonic,
+          # tectonic-biber, typst and oleafly - so "the first executable in
+          # /usr/bin" is tectonic, and the suite duly launched tectonic as the
+          # app and got "required arguments were not provided". The Debian
+          # package name and the app binary name are both derived from
+          # productName, so match on that and fail loudly rather than guess.
+          # Every filter is guarded: an unmatched grep returns 1 under pipefail.
           dpkg -L "$pkg" > installed-files.txt
-          app_bin="$(grep -E '^/usr/bin/.' installed-files.txt | sed -n '1p' || true)"
-          if [ -z "$app_bin" ] || [ ! -x "$app_bin" ]; then
-            app_bin=""
-            while IFS= read -r candidate; do
-              if [ -f "$candidate" ] && [ -x "$candidate" ]; then
-                app_bin="$candidate"
-                break
-              fi
-            done < installed-files.txt
-          fi
+          echo "--- executables installed by $pkg ---"
+          grep -E '^/usr/bin/.' installed-files.txt || echo "(none)"
+          app_bin=""
+          while IFS= read -r candidate; do
+            case "$candidate" in /usr/bin/*) ;; *) continue ;; esac
+            [ -f "$candidate" ] && [ -x "$candidate" ] || continue
+            base="$(basename "$candidate" | tr '[:upper:]' '[:lower:]')"
+            if [ "$base" = "$(printf '%s' "$pkg" | tr '[:upper:]' '[:lower:]')" ]; then
+              app_bin="$candidate"
+              break
+            fi
+          done < installed-files.txt
           if [ -z "$app_bin" ]; then
-            echo "package $pkg installed no executable file" >&2
+            echo "package $pkg installed no executable named '$pkg' in /usr/bin" >&2
             cat installed-files.txt >&2
             exit 1
           fi
