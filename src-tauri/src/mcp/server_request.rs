@@ -1,3 +1,12 @@
+// Errors in this module are already-built HTTP responses that the caller
+// returns unchanged - the ordinary axum shape, where the response *is* the
+// error. clippy::result_large_err measures that Err variant at 128 bytes and
+// asks for a Box, but the value is unwrapped and returned on the very next
+// line, so boxing would add an allocation to every rejected request and buy
+// nothing. Scoped to this module rather than configured workspace-wide, so a
+// genuinely oversized error elsewhere still gets caught.
+#![allow(clippy::result_large_err)]
+
 use super::*;
 
 pub(super) async fn collect_body_limited(body: Body, limit: usize) -> Result<Bytes, StatusCode> {
