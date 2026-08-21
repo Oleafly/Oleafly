@@ -468,6 +468,16 @@ cargo run -p oleafly-cli --bin oleaflyc -- project info --json
 Commands run against the current directory. Pass `-C <path>` to point at
 another project. Run `oleaflyc --help` for the full command list.
 
+It does not bundle compilers. `doctor` checks for the ones your project needs
+and prints an install command for your platform when one is missing.
+
+`oleaflyc completions <shell>` prints a completion script for bash, zsh, fish,
+PowerShell, or elvish, and `oleaflyc man` prints the manual page in roff.
+
+**The interface is not stable yet.** Any release before 1.0.0 may add, rename,
+or remove JSON fields and change exit codes. Pin an exact version if you build
+a pipeline on it.
+
 ## Documentation
 
 The repository keeps public engineering and product references close to the

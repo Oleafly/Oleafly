@@ -13,6 +13,17 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "=4.5.50", features = ["derive"] }
+# Pinned for the same reason clap is: the Rust 1.77 MSRV. clap_complete 4.5.67
+# and clap_mangen 0.2.32 are the newest that still declare 1.74; the next
+# clap_mangen (0.2.33) jumps to 1.85.
+clap_complete = "=4.5.67"
+clap_mangen = "=0.2.32"
+# Not used directly - this constrains clap_mangen's own dependency. roff 1.1.x
+# is edition 2024, which Cargo 1.77 refuses to parse at all, so the MSRV job
+# fails while resolving rather than compiling. 1.0.0 is edition 2021.
+# Cargo.lock is not committed, so CI resolves fresh and this has to live here
+# rather than in the lock.
+roff = "=1.0.0"
 notify = "8.2"
 oleafly-core = { path = "../oleafly-core" }
 serde = { version = "1", features = ["derive"] }

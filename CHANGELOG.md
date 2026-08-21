@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The command-line tool tells you how to install a missing compiler.** When
+  `doctor` cannot find Tectonic, Typst, Pandoc, or latexmk, it now prints a
+  command you can paste for your platform instead of only reporting that the
+  tool is absent. The CLI does not bundle compilers, so this was the first
+  thing a new user hit.
+- **Shell completions and a manual page.** `oleaflyc completions bash`
+  (also zsh, fish, PowerShell, and elvish) prints a completion script, and
+  `oleaflyc man` prints the manual in roff. Both are generated from the parser
+  itself, so a new flag cannot drift out of them.
+- **`--help` now says the interface is not stable yet.** Every 0.x release may
+  add, rename, or remove JSON fields and change exit codes. Pin an exact
+  version if you script against it. This is stated in the tool because the
+  people most likely to depend on it are automating something.
+
 ## [0.3.7] - 2026-08-19
 
 ### Added

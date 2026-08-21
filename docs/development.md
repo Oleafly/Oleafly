@@ -93,6 +93,19 @@ JSON events. Build and watch kill a compiler after 300 seconds unless you pass
 desktop can, and only through its device-local trust prompt for the system TeX
 engine.
 
+Compilers are not bundled with the CLI. `doctor` reports which ones the
+project's engine needs and, when one is missing, prints an install command for
+the current platform. Add a hint alongside the others in `install_hint` if a
+new engine tool is introduced; a test fails if one is missing.
+
+`completions <shell>` and `man` generate a shell completion script and a roff
+manual page from the clap parser, so both stay correct as flags change.
+Packagers consume them directly from the built binary.
+
+The interface is unstable below 1.0.0: JSON fields may be added, renamed, or
+removed and exit codes may change in any release. `--help` says so, because
+the people most likely to depend on the output are scripting against it.
+
 ### Checks before opening a PR
 
 Make sure both pass:
