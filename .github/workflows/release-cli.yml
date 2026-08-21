@@ -27,11 +27,15 @@ permissions:
   contents: read
 
 env:
-  # The binary is still `oleaflyc` until the desktop package gives up the name
-  # `oleafly`; two packages in one Cargo workspace cannot both produce it. See
-  # the naming record. Everything downstream reads this, so the rename is a
-  # one-line change here plus the Cargo manifest.
-  BIN_NAME: oleaflyc
+  # What cargo produces. The desktop package still owns the name `oleafly`
+  # inside this workspace - two packages cannot both build a binary by that
+  # name - so the build artifact keeps the old one until the desktop rename
+  # lands. See the naming record.
+  CARGO_BIN: oleaflyc
+  # What people install and type. The build name is an internal detail of the
+  # workspace and nobody outside it should ever see it: the shipped file, the
+  # archive, the completions, and the manual page all use this.
+  SHIP_NAME: oleafly
 
 jobs:
   build:
@@ -103,10 +107,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/completions dist/man
-          cargo run --release -p oleafly-cli --bin "$BIN_NAME" -- man > "dist/man/$BIN_NAME.1"
+          cargo run --release -p oleafly-cli --bin "$CARGO_BIN" -- man > "dist/man/$SHIP_NAME.1"
           for shell in bash zsh fish powershell elvish; do
-            cargo run --release -p oleafly-cli --bin "$BIN_NAME" -- completions "$shell" \
-              > "dist/completions/$BIN_NAME.$shell"
+            cargo run --release -p oleafly-cli --bin "$CARGO_BIN" -- completions "$shell" \
+              > "dist/completions/$SHIP_NAME.$shell"
           done
 
       # macOS binaries downloaded from the internet are quarantined until they
@@ -124,7 +128,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
-          binary="src-tauri/target/${{ matrix.target }}/release/$BIN_NAME"
+          binary="src-tauri/target/${{ matrix.target }}/release/$CARGO_BIN"
           if [ -z "${APPLE_CERTIFICATE:-}" ] || [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
             echo "::warning::Apple signing secrets absent; shipping an unsigned macOS binary"
             exit 0
@@ -183,14 +187,16 @@ jobs:
             cli-v*) version="${ref#cli-v}" ;;
             *) version="0.0.0-dev.$(git rev-parse --short HEAD)" ;;
           esac
-          stem="$BIN_NAME-$version-${{ matrix.target }}"
+          stem="$SHIP_NAME-$version-${{ matrix.target }}"
           staging="dist/$stem"
           mkdir -p "$staging"
-          source="src-tauri/target/${{ matrix.target }}/release/$BIN_NAME"
+          source="src-tauri/target/${{ matrix.target }}/release/$CARGO_BIN"
+          # Ship it under the name people type, not the name cargo happened
+          # to build it as.
           if [ -f "$source.exe" ]; then
-            cp "$source.exe" "$staging/"
+            cp "$source.exe" "$staging/$SHIP_NAME.exe"
           else
-            cp "$source" "$staging/"
+            cp "$source" "$staging/$SHIP_NAME"
           fi
           cp LICENSE README.md "$staging/"
           cp -r dist/completions dist/man "$staging/"

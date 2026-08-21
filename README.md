@@ -453,9 +453,11 @@ setup, production builds, and the source-only command-line workflow.
 
 ### Command line
 
-`oleaflyc` manages Oleafly projects without launching the desktop app. It
-builds from source in this repository and is not published as a standalone
-package yet.
+`oleafly` manages Oleafly projects without launching the desktop app. It builds
+from source in this repository and is not published as a standalone package
+yet. Built from source the file is called `oleaflyc`, because the desktop
+package currently owns the name `oleafly` inside the Cargo workspace; released
+builds ship it as `oleafly`, which is what the tool calls itself everywhere.
 
 ```bash
 cargo run -p oleafly-cli --bin oleaflyc -- init
@@ -466,13 +468,13 @@ cargo run -p oleafly-cli --bin oleaflyc -- project info --json
 ```
 
 Commands run against the current directory. Pass `-C <path>` to point at
-another project. Run `oleaflyc --help` for the full command list.
+another project. Run `oleafly --help` for the full command list.
 
 It does not bundle compilers. `doctor` checks for the ones your project needs
 and prints an install command for your platform when one is missing.
 
-`oleaflyc completions <shell>` prints a completion script for bash, zsh, fish,
-PowerShell, or elvish, and `oleaflyc man` prints the manual page in roff.
+`oleafly completions <shell>` prints a completion script for bash, zsh, fish,
+PowerShell, or elvish, and `oleafly man` prints the manual page in roff.
 
 **The interface is not stable yet.** Any release before 1.0.0 may add, rename,
 or remove JSON fields and change exit codes. Pin an exact version if you build

@@ -63,7 +63,7 @@ impl Workspace {
             return Err(Error::new(
                 ErrorKind::NotInitialized,
                 format!(
-                    "{} is not an Oleafly project. Run `oleaflyc init` first",
+                    "{} is not an Oleafly project. Run `oleafly init` first",
                     root.display()
                 ),
             ));

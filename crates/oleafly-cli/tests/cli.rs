@@ -339,7 +339,7 @@ fn completions_and_the_manual_are_generated_from_the_parser() {
         );
         let script = String::from_utf8(output.stdout).unwrap();
         assert!(
-            script.contains("oleaflyc"),
+            script.contains("oleafly"),
             "the {shell} completion script must name the command: {script:.120}"
         );
         // Every subcommand has to appear, or completion silently stops
@@ -357,10 +357,7 @@ fn completions_and_the_manual_are_generated_from_the_parser() {
     let page = String::from_utf8(output.stdout).unwrap();
     assert!(page.starts_with(".ie"), "expected roff output: {page:.60}");
     assert!(page.contains(".SH NAME"), "the manual needs a NAME section");
-    assert!(
-        page.contains("oleaflyc"),
-        "the manual must name the command"
-    );
+    assert!(page.contains("oleafly"), "the manual must name the command");
 }
 
 #[test]
@@ -375,4 +372,39 @@ fn help_states_that_the_interface_is_unstable_before_1_0() {
         help.contains("0.x") && help.contains("1.0.0"),
         "--help must say the interface is unstable before 1.0: {help}"
     );
+}
+
+#[test]
+fn the_public_name_is_oleafly_everywhere_a_user_can_see_it() {
+    // The file cargo builds is still `oleaflyc`, because the desktop package
+    // owns `oleafly` inside this workspace. That is an internal detail and it
+    // must not leak: clap takes its usage line from argv[0] unless bin_name
+    // says otherwise, which is exactly how it would leak.
+    for arguments in [vec!["--help"], vec!["build", "--help"], vec!["--version"]] {
+        let output = run(&arguments, None);
+        let text = String::from_utf8(output.stdout).unwrap();
+        assert!(
+            text.contains("oleafly") && !text.contains("oleaflyc"),
+            "`{}` shows the build name instead of the public one:\n{text}",
+            arguments.join(" ")
+        );
+    }
+
+    let manual = String::from_utf8(run(&["man"], None).stdout).unwrap();
+    assert!(
+        manual.contains(".TH oleafly"),
+        "the manual names the wrong command"
+    );
+    assert!(
+        !manual.contains("oleaflyc"),
+        "the manual leaks the build name"
+    );
+
+    for shell in ["bash", "zsh", "fish"] {
+        let script = String::from_utf8(run(&["completions", shell], None).stdout).unwrap();
+        assert!(
+            !script.contains("oleaflyc"),
+            "the {shell} completion script leaks the build name"
+        );
+    }
 }

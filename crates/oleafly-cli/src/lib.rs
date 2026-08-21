@@ -44,7 +44,18 @@ release before 1.0.0. Pin an exact version if you script against it.";
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "oleaflyc",
+    // What users type, which is not the same thing as what cargo builds. The
+    // desktop package still owns the name `oleafly` inside this workspace, so
+    // the build artifact stays `oleaflyc` until that is resolved - but that is
+    // an implementation detail of the workspace, and nobody should have to see
+    // it. This name is what --help, the usage strings, the generated
+    // completions, and the manual page all carry, and the release workflow
+    // ships the file under it.
+    name = "oleafly",
+    // Without this clap takes the usage line from argv[0], which is whatever
+    // the file on disk happens to be called - so `Usage:` would read
+    // `oleaflyc` while the completions and the manual said `oleafly`.
+    bin_name = "oleafly",
     version,
     about = "Build and manage Oleafly projects",
     after_help = UNSTABLE_NOTICE,
