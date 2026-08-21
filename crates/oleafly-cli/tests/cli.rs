@@ -323,3 +323,88 @@ fn watch_recovers_from_environment_errors_and_reloads_the_manifest() {
     });
     assert_eq!(finished["build"]["engine"], "latexmk");
 }
+
+#[test]
+fn completions_and_the_manual_are_generated_from_the_parser() {
+    // Packagers install both straight out of the binary - Homebrew calls
+    // generate_completions_from_executable, and the release job redirects the
+    // manual into oleafly.1 - so a silent regression here breaks packaging
+    // rather than anything a normal run would notice.
+    for shell in ["bash", "zsh", "fish", "powershell", "elvish"] {
+        let output = run(&["completions", shell], None);
+        assert!(
+            output.status.success(),
+            "completions {shell} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let script = String::from_utf8(output.stdout).unwrap();
+        assert!(
+            script.contains("oleafly"),
+            "the {shell} completion script must name the command: {script:.120}"
+        );
+        // Every subcommand has to appear, or completion silently stops
+        // offering whichever one drifted out.
+        for command in ["init", "build", "watch", "clean", "doctor", "project"] {
+            assert!(
+                script.contains(command),
+                "the {shell} completion script is missing `{command}`"
+            );
+        }
+    }
+
+    let output = run(&["man"], None);
+    assert!(output.status.success());
+    let page = String::from_utf8(output.stdout).unwrap();
+    assert!(page.starts_with(".ie"), "expected roff output: {page:.60}");
+    assert!(page.contains(".SH NAME"), "the manual needs a NAME section");
+    assert!(page.contains("oleafly"), "the manual must name the command");
+}
+
+#[test]
+fn help_states_that_the_interface_is_unstable_before_1_0() {
+    // The audience is automation. Someone wiring the JSON output or the exit
+    // codes into a pipeline has to learn from the CLI that neither is a
+    // contract yet.
+    let output = run(&["--help"], None);
+    assert!(output.status.success());
+    let help = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        help.contains("0.x") && help.contains("1.0.0"),
+        "--help must say the interface is unstable before 1.0: {help}"
+    );
+}
+
+#[test]
+fn the_public_name_is_oleafly_everywhere_a_user_can_see_it() {
+    // The file cargo builds is still `oleaflyc`, because the desktop package
+    // owns `oleafly` inside this workspace. That is an internal detail and it
+    // must not leak: clap takes its usage line from argv[0] unless bin_name
+    // says otherwise, which is exactly how it would leak.
+    for arguments in [vec!["--help"], vec!["build", "--help"], vec!["--version"]] {
+        let output = run(&arguments, None);
+        let text = String::from_utf8(output.stdout).unwrap();
+        assert!(
+            text.contains("oleafly") && !text.contains("oleaflyc"),
+            "`{}` shows the build name instead of the public one:\n{text}",
+            arguments.join(" ")
+        );
+    }
+
+    let manual = String::from_utf8(run(&["man"], None).stdout).unwrap();
+    assert!(
+        manual.contains(".TH oleafly"),
+        "the manual names the wrong command"
+    );
+    assert!(
+        !manual.contains("oleaflyc"),
+        "the manual leaks the build name"
+    );
+
+    for shell in ["bash", "zsh", "fish"] {
+        let script = String::from_utf8(run(&["completions", shell], None).stdout).unwrap();
+        assert!(
+            !script.contains("oleaflyc"),
+            "the {shell} completion script leaks the build name"
+        );
+    }
+}
