@@ -1052,12 +1052,16 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
   );
   // The invariant is that the text under the cursor does not jump on screen.
   expect(Math.abs(afterTyping.top - beforeTyping.top)).toBeLessThanOrEqual(3);
-  // scrollTop is the mechanism, not the invariant, and the two can only both
-  // hold still while nothing reflows. Inserting into a line long enough to wrap
-  // adds a visual line, and holding the cursor steady on screen then *requires*
-  // scrolling by exactly that much. Whether the line wraps depends on the
-  // window width, which is why asserting both at 3px passed locally and failed
-  // on a CI runner. One visual line of movement is reflow; more is a jump.
+  // scrollTop is the mechanism, not the invariant, and the two cannot both
+  // hold still once anything reflows: keeping the cursor at a fixed screen
+  // position while the content under it grows *requires* scrolling by the
+  // amount it grew. Typing here also opens an autocomplete tooltip, which the
+  // editor legitimately scrolls to keep in view. The observed movement on CI
+  // was 11px against a 3px bound; the exact cause (a wrap, or scrolling the
+  // tooltip into view) was not pinned down, so bound it rather than explain
+  // it: one visual line of movement is reflow, more than that is a jump. The
+  // bound is measured from the editor instead of hardcoded so it tracks the
+  // font settings.
   expect(
     Math.abs(afterTyping.scrollTop - beforeTyping.scrollTop),
   ).toBeLessThanOrEqual(afterTyping.lineHeight + 3);

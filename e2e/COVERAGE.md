@@ -186,7 +186,9 @@ e2e-testing` binary (built once per run with VITE_E2E_HOOKS=1 and downloaded
 by every shard) instead of `tauri dev`. Coverage is identical with two
 deliberate exceptions: 24-pdf-selection-browser and 56-preview-window-browser
 load TSX fixtures through the Vite dev server, so packaged runs skip them —
-their subject is Playwright's own Chromium/WebKit, which the Linux and Windows
-dev-mode lanes still exercise on every push. localStorage seeding happens
+their subject is Playwright's own Chromium/WebKit, which the Windows dev-mode
+lane still exercises on every push. It is the only dev-mode lane left now that
+Linux runs packaged too, so packaging Windows would end that coverage and has
+to replace it first. localStorage seeding happens
 before boot (OLEAFLY_E2E_BOOT_LOCALSTORAGE) instead of via dev-server reloads,
 and dev-server module imports resolve through src/lib/e2e-import-registry.ts.
