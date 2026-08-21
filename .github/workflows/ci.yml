@@ -487,6 +487,115 @@ jobs:
           path: oleafly-e2e-macos.tar.gz
           retention-days: 1
 
+  e2e-build-linux:
+    # Same idea as e2e-build-macos: compile the packaged e2e app once instead of
+    # four times from source inside the shards. On Linux the self-contained unit
+    # is the .deb, so the shards install it rather than unpacking a bundle
+    # directory. Removing the per-shard compile is also the point: the shards are
+    # 2-core runners on software GL, and a concurrent cargo build starves the
+    # webview badly enough that single evals exceed the bridge's hard 30s cap.
+    name: E2E app build (Linux)
+    needs: [frontend, rust]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Linux system dependencies (Tauri)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libxdo-dev \
+            build-essential \
+            curl wget file
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> src-tauri/target
+
+      - name: Cache Tectonic sidecar
+        id: cache-tectonic-e2e-build-linux
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/tectonic-*
+          key: tectonic-${{ runner.os }}-${{ hashFiles('scripts/fetch-tectonic.sh') }}
+
+      - name: Fetch Tectonic sidecar
+        if: steps.cache-tectonic-e2e-build-linux.outputs.cache-hit != 'true'
+        run: bash scripts/fetch-tectonic.sh x86_64-unknown-linux-gnu
+
+      - name: Cache Biber sidecar
+        id: cache-biber-e2e-build-linux
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/tectonic-biber-*
+          key: biber-${{ runner.os }}-${{ hashFiles('scripts/fetch-biber.sh') }}
+
+      - name: Fetch Biber sidecar
+        if: steps.cache-biber-e2e-build-linux.outputs.cache-hit != 'true'
+        run: bash scripts/fetch-biber.sh x86_64-unknown-linux-gnu
+
+      - name: Cache Typst sidecar
+        id: cache-typst-e2e-build-linux
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/typst-*
+          key: typst-${{ runner.os }}-${{ hashFiles('scripts/fetch-typst.sh') }}
+
+      - name: Fetch Typst sidecar
+        if: steps.cache-typst-e2e-build-linux.outputs.cache-hit != 'true'
+        run: bash scripts/fetch-typst.sh x86_64-unknown-linux-gnu
+
+      - name: Smoke-test Typst sidecar
+        run: bash scripts/smoke-typst.sh x86_64-unknown-linux-gnu
+
+      - name: Stage checksum-pinned Tinymist resource archive
+        run: node scripts/fetch-language-servers.mjs --server tinymist --target x86_64-unknown-linux-gnu --install-mode resource
+
+      - name: Build the packaged e2e app
+        env:
+          VITE_E2E_HOOKS: "1"
+        run: pnpm tauri build --debug --features e2e-testing --bundles deb --config '{"bundle":{"createUpdaterArtifacts":false}}'
+
+      # The shards install this blind, so record the layout here where the log
+      # is cheap to read. If a future Tauri release moves the binary or the
+      # sidecars, this listing is the first place that shows it.
+      - name: Stage and describe the package
+        run: |
+          set -euo pipefail
+          deb="$(find src-tauri/target/debug/bundle/deb -name '*.deb' -print -quit)"
+          test -n "$deb"
+          cp "$deb" oleafly-e2e-linux.deb
+          echo "--- package contents (binaries and resources) ---"
+          dpkg-deb -c oleafly-e2e-linux.deb | grep -E '/usr/(bin|lib)/' | head -40
+
+      - name: Upload the app package
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-app-linux
+          path: oleafly-e2e-linux.deb
+          retention-days: 1
+
   e2e:
     # The full no-mock suite against the real app (WKWebView + Rust + Tectonic
     # compiles) on macOS. Tests that need credentials (GitHub PAT, AI keys) skip
@@ -586,6 +695,12 @@ jobs:
         # bounds the complete suite to 50 minutes.
         env:
           OLEAFLY_E2E_APP_BINARY: ${{ github.workspace }}/e2e-app/Oleafly.app/Contents/MacOS/Oleafly
+          # Pinned so a failure is reproducible; blank on the nightly so the
+          # random-seed exploration still happens off the blocking path. Written
+          # in this order because an empty string is falsy in a GitHub
+          # expression, so the obvious `== 'schedule' && '' || SEED` returns the
+          # seed in both branches.
+          E2E_INTERACTION_SEED: ${{ github.event_name != 'schedule' && '62024' || '' }}
         run: ./scripts/e2e.sh --shard=${{ matrix.shard }}/4 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
@@ -613,12 +728,13 @@ jobs:
     # Fast lane: this is the per-push e2e signal, split across four parallel
     # shards so a full sweep lands in ~15-20 minutes instead of ~50.
     name: E2E (real app, Linux, shard ${{ matrix.shard }}/4)
-    needs: [frontend, rust]
+    needs: e2e-build-linux
     strategy:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4]
     # 24.04, not 22.04: the upstream Tectonic release binary needs glibc 2.39.
+    # Must match e2e-build-linux, which produced the .deb this installs.
     runs-on: ubuntu-24.04
     timeout-minutes: 70
     steps:
@@ -636,27 +752,35 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Linux system dependencies (Tauri + xvfb)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            libxdo-dev \
-            build-essential \
-            xvfb \
-            curl wget file
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
+      - name: Download the packaged e2e app
+        uses: actions/download-artifact@v7
         with:
-          workspaces: . -> src-tauri/target
+          name: e2e-app-linux
 
+      # apt resolves the package's own runtime dependencies (webkit2gtk and
+      # friends), so this replaces the -dev package list and the Rust toolchain
+      # the shard used to need to build the app itself. The binary path is read
+      # back out of the installed package rather than hardcoded, so a Tauri
+      # bundler layout change surfaces as a clear failure here instead of a
+      # confusing one inside the suite.
+      - name: Install the packaged e2e app
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y xvfb ./oleafly-e2e-linux.deb
+          pkg="$(dpkg-deb -f oleafly-e2e-linux.deb Package)"
+          app_bin="$(dpkg -L "$pkg" | grep -E '^/usr/bin/' | head -1)"
+          if [ ! -x "$app_bin" ]; then
+            echo "no executable found in /usr/bin for package $pkg" >&2
+            dpkg -L "$pkg" >&2
+            exit 1
+          fi
+          echo "app binary: $app_bin"
+          echo "OLEAFLY_E2E_APP_BINARY=$app_bin" >> "$GITHUB_ENV"
+
+      # Pre-warm still uses the repo's own Tectonic sidecar rather than the one
+      # inside the package: both fill the same ~/.cache/Tectonic, and this keeps
+      # the warm step independent of where the bundler puts sidecars.
       - name: Cache Tectonic sidecar
         id: cache-tectonic-e2e-linux
         uses: actions/cache@v6
@@ -667,34 +791,6 @@ jobs:
       - name: Fetch Tectonic sidecar
         if: steps.cache-tectonic-e2e-linux.outputs.cache-hit != 'true'
         run: bash scripts/fetch-tectonic.sh x86_64-unknown-linux-gnu
-
-      - name: Cache Biber sidecar
-        id: cache-biber-e2e-linux
-        uses: actions/cache@v6
-        with:
-          path: src-tauri/binaries/tectonic-biber-*
-          key: biber-${{ runner.os }}-${{ hashFiles('scripts/fetch-biber.sh') }}
-
-      - name: Fetch Biber sidecar
-        if: steps.cache-biber-e2e-linux.outputs.cache-hit != 'true'
-        run: bash scripts/fetch-biber.sh x86_64-unknown-linux-gnu
-
-      - name: Cache Typst sidecar
-        id: cache-typst-e2e-linux
-        uses: actions/cache@v6
-        with:
-          path: src-tauri/binaries/typst-*
-          key: typst-${{ runner.os }}-${{ hashFiles('scripts/fetch-typst.sh') }}
-
-      - name: Fetch Typst sidecar
-        if: steps.cache-typst-e2e-linux.outputs.cache-hit != 'true'
-        run: bash scripts/fetch-typst.sh x86_64-unknown-linux-gnu
-
-      - name: Stage checksum-pinned Tinymist resource archive
-        run: node scripts/fetch-language-servers.mjs --server tinymist --target x86_64-unknown-linux-gnu --install-mode resource
-
-      - name: Smoke-test Typst sidecar
-        run: bash scripts/smoke-typst.sh x86_64-unknown-linux-gnu
 
       - name: Restore Tectonic packages
         id: tectonic-pkgs-linux
@@ -736,10 +832,14 @@ jobs:
       - name: Run the e2e suite
         # WEBKIT_DISABLE_* work around webkit2gtk rendering hangs on the
         # software GL stack xvfb provides.
+        # Failure caps match the macOS and Windows lanes: stopping at the first
+        # broken spec turns one red run into one round of fixing per spec, and
+        # in the green case these caps never fire.
         env:
           WEBKIT_DISABLE_COMPOSITING_MODE: "1"
           WEBKIT_DISABLE_DMABUF_RENDERER: "1"
-        run: xvfb-run -a ./scripts/e2e.sh --shard=${{ matrix.shard }}/4 --suite-max-failures=1 --max-failures=1 --global-timeout=3000000
+          E2E_INTERACTION_SEED: ${{ github.event_name != 'schedule' && '62024' || '' }}
+        run: xvfb-run -a ./scripts/e2e.sh --shard=${{ matrix.shard }}/4 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
         if: failure()
@@ -881,6 +981,8 @@ jobs:
         shell: pwsh
         # Same reasoning as the macOS lane: report every failing spec in one
         # run instead of one per round.
+        env:
+          E2E_INTERACTION_SEED: ${{ github.event_name != 'schedule' && '62024' || '' }}
         run: powershell -File scripts/e2e.ps1 --shard=${{ matrix.shard }}/4 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
