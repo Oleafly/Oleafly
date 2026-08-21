@@ -857,8 +857,8 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
     "x86_64-pc-windows-msvc",
     cargoBuildPattern,
   );
-  // The macOS shards consume a prebuilt bundle; the staging obligation moved
-  // to the job that actually builds the app.
+  // The macOS and Linux shards consume a prebuilt app; the staging obligation
+  // follows the build, so it lives in the job that actually compiles.
   assertTinymistFetchBeforeBuild(
     ciWorkflow,
     "e2e-build-macos",
@@ -867,9 +867,9 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
   );
   assertTinymistFetchBeforeBuild(
     ciWorkflow,
-    "e2e-linux",
+    "e2e-build-linux",
     "x86_64-unknown-linux-gnu",
-    e2eBuildPattern,
+    packagedE2eBuildPattern,
   );
   assertTinymistFetchBeforeBuild(
     ciWorkflow,
