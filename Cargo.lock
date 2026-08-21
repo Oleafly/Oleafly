@@ -487,15 +487,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "clap_complete"
-version = "4.5.67"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1248e420506b523e97ebd7b610656114abadbe73b04279a86768a12ce1860837"
-dependencies = [
- "clap",
-]
-
-[[package]]
 name = "clap_derive"
 version = "4.5.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -512,16 +503,6 @@ name = "clap_lex"
 version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3e64b0cc0439b12df2fa678eae89a1c56a529fd067a9115f7827f1fffd22b32"
-
-[[package]]
-name = "clap_mangen"
-version = "0.2.32"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f98eb8c611cdbd2a8bbfe35408903badf2e7f9d47f756907f1b1434c49b6655"
-dependencies = [
- "clap",
- "roff",
-]
 
 [[package]]
 name = "colorchoice"
@@ -2577,12 +2558,9 @@ name = "oleafly-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
- "clap_complete",
- "clap_mangen",
  "libc",
  "notify",
  "oleafly-core",
- "roff",
  "serde",
  "serde_json",
  "sha2",
@@ -3259,12 +3237,6 @@ dependencies = [
  "untrusted",
  "windows-sys 0.52.0",
 ]
-
-[[package]]
-name = "roff"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2a65c4aa82d26fd949433258cada661b1816175012149f0b8cc3269b2df5913"
 
 [[package]]
 name = "rustc-hash"
