@@ -753,18 +753,36 @@ WYSRAWANCHOR
     await clickToolbarControl(tauriPage, selector, menuLabel);
   };
   const rawHeading = async (label: "Part" | "Chapter" | "Paragraph") => {
-    await atAnchor();
-    await clickToolbarControl(
-      tauriPage,
-      '[aria-label="Heading level"]',
-      "Heading",
-    );
-    await clickPortalButton(
-      tauriPage,
-      `candidate.textContent?.trim() === ${JSON.stringify(label)}
+    // The toolbar menu sometimes does not open on the first click in a
+    // headless webview. The tell is `portals=[]` in the failure: no popper
+    // wrapper in the DOM at all, rather than an open one missing the item, so
+    // the click that should have opened the menu is what got lost. Reopen and
+    // retry, the same way insertRawTable below already handles it. A first
+    // attempt that works costs nothing.
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await tauriPage.press("body", "Escape").catch(() => {});
+      await atAnchor();
+      await clickToolbarControl(
+        tauriPage,
+        '[aria-label="Heading level"]',
+        "Heading",
+      );
+      try {
+        await clickPortalButton(
+          tauriPage,
+          `candidate.textContent?.trim() === ${JSON.stringify(label)}
         || Array.from(candidate.querySelectorAll("span")).some((s) => s.textContent?.trim() === ${JSON.stringify(label)})`,
-      label,
-    );
+          label,
+        );
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError instanceof Error
+      ? lastError
+      : new Error(`${label} heading never applied`);
   };
   const insertRawTable = async () => {
     for (let attempt = 0; attempt < 8; attempt++) {
