@@ -165,17 +165,26 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
     `!!document.querySelector('[data-tour="project-editor"] .cm-content')`,
     30_000,
   );
-  // The blocker toast carries the entry point into the engine picker.
+  // The blocker toast carries the entry point into the engine picker, and a
+  // toast is transient. Every gap between "the button is there" and "click it"
+  // is a race the toast can win, and it did: this passed on the push run and
+  // timed out on the nightly at the same commit. Count and click inside one
+  // evaluation so there is no window for the toast to dismiss in between.
   await waitLong(
     tauriPage,
     `[...document.querySelectorAll("button")].some((b) => (b.textContent ?? "").includes("Choose engine"))`,
     20_000,
   );
   const actions = await tauriPage.evaluate<number>(
-    `[...document.querySelectorAll("button")].filter((b) => (b.textContent ?? "").includes("Choose engine")).length`,
+    `(() => {
+      const buttons = [...document.querySelectorAll("button")].filter((b) =>
+        (b.textContent ?? "").includes("Choose engine"),
+      );
+      buttons[0]?.click();
+      return buttons.length;
+    })()`,
   );
   expect(actions).toBe(1);
-  await tauriPage.getByText("Choose engine").click();
   await waitLong(
     tauriPage,
     `!!document.querySelector('[data-testid="engine-picker-modal"]')`,

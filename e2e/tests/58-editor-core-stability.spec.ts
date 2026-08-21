@@ -1037,6 +1037,7 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
   const afterTyping = await tauriPage.evaluate<{
     top: number;
     scrollTop: number;
+    lineHeight: number;
   }>(
     `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
       const view = getEditorView();
@@ -1045,13 +1046,21 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
       return {
         top: view.coordsAtPos(position)?.top ?? -1,
         scrollTop: view.scrollDOM.scrollTop,
+        lineHeight: view.defaultLineHeight,
       };
     })`,
   );
+  // The invariant is that the text under the cursor does not jump on screen.
   expect(Math.abs(afterTyping.top - beforeTyping.top)).toBeLessThanOrEqual(3);
+  // scrollTop is the mechanism, not the invariant, and the two can only both
+  // hold still while nothing reflows. Inserting into a line long enough to wrap
+  // adds a visual line, and holding the cursor steady on screen then *requires*
+  // scrolling by exactly that much. Whether the line wraps depends on the
+  // window width, which is why asserting both at 3px passed locally and failed
+  // on a CI runner. One visual line of movement is reflow; more is a jump.
   expect(
     Math.abs(afterTyping.scrollTop - beforeTyping.scrollTop),
-  ).toBeLessThanOrEqual(3);
+  ).toBeLessThanOrEqual(afterTyping.lineHeight + 3);
   await tauriPage.evaluate(
     `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
       const view = getEditorView();

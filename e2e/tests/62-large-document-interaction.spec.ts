@@ -23,9 +23,16 @@ import {
 
 const PROJECT = "E2E Large Interaction";
 
-// Varies per run so repeated runs explore different lines, and is printed so a
+// The seed picks which lines this spec exercises, and it is printed so any
 // failure can be replayed exactly.
-const SEED = Number(process.env.E2E_INTERACTION_SEED ?? Date.now() % 100_000);
+// A pinned seed makes a failure reproducible; an unpinned one means every run
+// exercises different lines, which is why "a different test fails each time".
+// The blocking lanes pin it (see ci.yml) and the nightly leaves it unset so the
+// random exploration still happens somewhere that files issues instead of
+// blocking a push. An empty value counts as unset — CI cannot omit an env key
+// conditionally, only blank it, and Number("") would silently pin seed 0.
+const seedFromEnv = process.env.E2E_INTERACTION_SEED?.trim();
+const SEED = seedFromEnv ? Number(seedFromEnv) : Date.now() % 100_000;
 
 function seededLines(count: number): number[] {
   // Mulberry32: small, deterministic, good enough to spread positions.
