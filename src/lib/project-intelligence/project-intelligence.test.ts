@@ -74,13 +74,13 @@ describe("Phase 3 project intelligence acceptance", () => {
     // execution setup.
     latexCommandKeyTokens(malformed(32));
 
+    // Build the input outside the timed region: `.repeat(4000)` allocates, and
+    // that allocation is not what is being measured.
     const measure = (count: number) => {
+      const source = malformed(count);
       const started = performance.now();
-      const tokens = latexCommandKeyTokens(malformed(count));
-      return {
-        duration: performance.now() - started,
-        tokens,
-      };
+      const tokens = latexCommandKeyTokens(source);
+      return { duration: performance.now() - started, tokens };
     };
     const oneThousand = measure(1_000);
     const fourThousand = measure(4_000);
@@ -88,8 +88,16 @@ describe("Phase 3 project intelligence acceptance", () => {
     expect(oneThousand.tokens).toEqual([]);
     expect(fourThousand.tokens).toEqual([]);
     expect(fourThousand.duration).toBeLessThan(150);
+    // The ratio is what enforces near-linear scaling: 4x the input inside 8x
+    // the time rules out the quadratic blowup this guards against. The floor
+    // matters because both sides are single wall-clock samples on a shared
+    // runner - when the 1,000 case happens to be measured fast, 8x it becomes
+    // a bound no correct implementation can meet. CI failed here at 45.77ms
+    // against a 43.47ms bound derived from a 5.43ms sample, with the algorithm
+    // unchanged. 60ms is above that noise and still well under what a
+    // quadratic regression would produce at this size.
     expect(fourThousand.duration).toBeLessThan(
-      Math.max(20, oneThousand.duration * 8),
+      Math.max(60, oneThousand.duration * 8),
     );
 
     const analysisStarted = performance.now();
