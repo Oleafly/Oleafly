@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { FileText, Loader2, X } from "lucide-react";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
@@ -19,6 +19,8 @@ import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine
 import { getWysiwygMode, setWysiwygMode } from "@/lib/wysiwyg-mode";
 import { setWysiwygVisibilityController } from "./wysiwyg/controller";
 import { ProofreadingStatus } from "./ProofreadingStatus";
+import { RealtimeStatusBar } from "./RealtimeStatusBar";
+import { realtimeRuntime } from "@/lib/realtime/runtime";
 const WysiwygEditor = lazy(() =>
   import("./wysiwyg/WysiwygEditor").then((m) => ({ default: m.WysiwygEditor })),
 );
@@ -82,6 +84,10 @@ function ImageFileView({ projectId, path }: { projectId: string; path: string })
 const DiagramMainFileView = lazy(() => import("./DiagramMainFileView"));
 
 export function Editor() {
+  useSyncExternalStore(
+    realtimeRuntime.subscribe,
+    realtimeRuntime.getSnapshot,
+  );
   const openTabs = useFilesStore((s) => s.openTabs);
   const activePath = useFilesStore((s) => s.activePath);
   const setActive = useFilesStore((s) => s.setActive);
@@ -147,6 +153,9 @@ export function Editor() {
     activePath != null &&
     /\.(zip|gz|eps|ttf|otf|woff2?)$/i.test(activePath);
   const projectId = useFilesStore((s) => s.projectId);
+  // Establish unknown/shared fail-closed access during render, before a
+  // persisted Visual preference can mount any solo writer for this project.
+  realtimeRuntime.observeProject(projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
   const visualEditor = useSettingsStore((s) => s.visualEditor);
   const visualEnabled = projectKind === "diagram" || visualEditor;
@@ -158,6 +167,12 @@ export function Editor() {
   const showLatexToolbar = engineLoaded && formattingProfile === "latex" && pathUsesEngineSource(engine, activePath);
   const showMarkdownToolbar =
     engineLoaded && formattingProfile === "markdown" && pathUsesEngineSource(engine, activePath);
+  const realtimeAccess = realtimeRuntime.getDocumentAccess(projectId, activePath ?? "");
+  const visualAvailable = visualEnabled && realtimeAccess.kind === "solo";
+
+  useEffect(() => {
+    void realtimeRuntime.handleProjectSwitch(projectId);
+  }, [projectId]);
 
   const [wysiwygState, setWysiwygState] = useState(() => (projectId ? getWysiwygMode(projectId) : false));
   useEffect(() => {
@@ -169,7 +184,9 @@ export function Editor() {
     setWysiwygState(next);
   }, [projectId]);
   const toggleWysiwyg = () => setWysiwyg(!wysiwygState);
-  const wysiwyg = visualEnabled && wysiwygState;
+  // Realtime 1.0 gates Source first. Visual stays disabled until its lossless
+  // projection can share this same DocumentSession without a second model.
+  const wysiwyg = visualAvailable && wysiwygState;
 
   useEffect(() => {
     setWysiwygVisibilityController(setWysiwyg);
@@ -251,6 +268,7 @@ export function Editor() {
           )
         )}
       </div>
+      <RealtimeStatusBar />
       {!diffFocused ? (
         <ProofreadingStatus
           path={activePath}
@@ -271,12 +289,12 @@ export function Editor() {
         <>
           {showLatexToolbar && (
             <div className="shrink-0">
-              <EditorToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} showVisualToggle={visualEnabled} />
+              <EditorToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} showVisualToggle={visualAvailable} />
             </div>
           )}
           {showMarkdownToolbar && (
             <div className="shrink-0">
-              <MarkdownToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} showVisualToggle={visualEnabled} />
+              <MarkdownToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} showVisualToggle={visualAvailable} />
             </div>
           )}
           {isTypstFile && (
@@ -330,24 +348,26 @@ export function Editor() {
             </div>
           ) : (
             <div className="relative min-h-0 flex-1 overflow-hidden">
-              <div
-                aria-hidden={!wysiwyg}
-                inert={!wysiwyg ? true : undefined}
-                className={cn(
-                  "absolute inset-0",
-                  !wysiwyg && "invisible pointer-events-none select-none",
-                )}
-              >
-                <Suspense
-                  fallback={
-                    <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="size-4 animate-spin" /> Loading…
-                    </div>
-                  }
+              {visualAvailable && (
+                <div
+                  aria-hidden={!wysiwyg}
+                  inert={!wysiwyg ? true : undefined}
+                  className={cn(
+                    "absolute inset-0",
+                    !wysiwyg && "invisible pointer-events-none select-none",
+                  )}
                 >
-                  <WysiwygEditor wysiwyg={wysiwyg} />
-                </Suspense>
-              </div>
+                  <Suspense
+                    fallback={
+                      <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="size-4 animate-spin" /> Loading…
+                      </div>
+                    }
+                  >
+                    <WysiwygEditor wysiwyg={wysiwyg} />
+                  </Suspense>
+                </div>
+              )}
               <div
                 aria-hidden={wysiwyg}
                 inert={wysiwyg ? true : undefined}

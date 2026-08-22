@@ -24,6 +24,7 @@ mod paths;
 mod proc;
 mod project;
 mod quit_gate;
+mod realtime;
 mod sandbox;
 mod secrets;
 mod state;
@@ -67,7 +68,13 @@ pub fn run() {
     // builds (real-webview Playwright control; see e2e/README.md).
     #[cfg(feature = "e2e-testing")]
     {
-        builder = builder.plugin(tauri_plugin_playwright::init());
+        let playwright = match std::env::var("TAURI_PLAYWRIGHT_SOCKET") {
+            Ok(socket) if !socket.is_empty() => tauri_plugin_playwright::init_with_config(
+                tauri_plugin_playwright::PluginConfig::new().socket_path(socket),
+            ),
+            _ => tauri_plugin_playwright::init(),
+        };
+        builder = builder.plugin(playwright);
         // Packaged suites cannot reload through the Vite dev server the way
         // the dev fixture seeds localStorage, so seed it before any app code
         // runs instead. The env var holds a JSON object of key -> string
@@ -95,6 +102,7 @@ pub fn run() {
         .manage(AppState::default())
         .manage(agent::AgentState::default())
         .manage(mcp::server::McpState::default())
+        .manage(realtime::RealtimeState::default())
         // Closing the app mid-TinyTeX-install must be a deliberate choice: block
         // the close, let the frontend show a confirm dialog, and only pass a
         // close through after `confirm_quit_during_install`.
@@ -184,6 +192,19 @@ pub fn run() {
             agent::agent_tool_result,
             agent::agent_list_models,
             commands::reload_views,
+            realtime::realtime_discover,
+            realtime::realtime_dev_bootstrap,
+            realtime::realtime_local_login,
+            realtime::realtime_get_binding,
+            realtime::realtime_store_binding,
+            realtime::realtime_open_session,
+            realtime::realtime_send_ephemeral_frame,
+            realtime::realtime_close_session,
+            realtime::realtime_hydrate_replica,
+            realtime::realtime_persist_and_send_mutation,
+            realtime::realtime_persist_replica_state,
+            realtime::realtime_acknowledge_mutation,
+            realtime::realtime_materialize,
             commands::library_root,
             commands::app_version,
             commands::project_engine,

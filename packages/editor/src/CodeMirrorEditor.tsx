@@ -55,12 +55,19 @@ import { latexFolding } from "./latex-folding";
 import { ghostCompletion } from "./ghost-completion";
 import { foldMarkerDOM, foldMarkerTheme } from "./fold-marker";
 import { gateCompletionSource, type CompletionSyntax } from "./completion-trigger";
+import type { DocumentSession, TextEdit } from "./document-session";
+import {
+  collaborationDecorations,
+  setCollaboratorSelections,
+} from "./collaboration";
 
 // The use* members are React hooks: must follow hook rules, and the host
 // object identity must stay stable across renders.
 export interface EditorHost {
   useActivePath(): string | null;
   getActivePath(): string | null;
+  useProjectId?(): string | null;
+  getProjectId?(): string | null;
   useDocVersion(): number;
   useCompletionSyntax(path: string | null): CompletionSyntax;
   getContent(path: string): string;
@@ -81,6 +88,14 @@ export interface EditorHost {
   };
   useLintRefreshDeps(): readonly unknown[];
 }
+
+export type EditorDocumentAccess =
+  | { readonly kind: "solo" }
+  | {
+      readonly kind: "shared";
+      readonly session: DocumentSession | null;
+      readonly message: string;
+    };
 
 export const isLatexSourcePath = (path: string | null): boolean =>
   !!path && /\.(?:tex|latex|ltx|sty|cls)$/i.test(path);
@@ -177,6 +192,8 @@ export function CodeMirrorEditor({
   extraCompletionSourcesForPath,
   extraGhostCompletionSourcesForPath,
   extraKeymap,
+  getDocumentSession,
+  getDocumentAccess,
 }: {
   active?: boolean;
   host: EditorHost;
@@ -187,6 +204,13 @@ export function CodeMirrorEditor({
   // Checked before the default keymaps (CodeMirror keymap precedence: earlier
   // extensions in the array win).
   extraKeymap?: KeyBinding[];
+  /** Optional incremental session. Returning null preserves the controlled solo API. */
+  getDocumentSession?: (path: string) => DocumentSession | null;
+  /** Shared access is fail-closed while its native session is not ready. */
+  getDocumentAccess?: (
+    projectId: string | null,
+    path: string,
+  ) => EditorDocumentAccess;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -194,13 +218,24 @@ export function CodeMirrorEditor({
   const spellCompartmentRef = useRef<Compartment | null>(null);
   const langCompartmentRef = useRef<Compartment | null>(null);
   const historyCompartmentRef = useRef<Compartment | null>(null);
+  const accessCompartmentRef = useRef<Compartment | null>(null);
   const sourceToolsCompartmentRef = useRef<Compartment | null>(null);
   const hostToolsCompartmentRef = useRef<Compartment | null>(null);
   const prevPathRef = useRef<string | null>(null);
+  const prevProjectIdRef = useRef<string | null>(null);
   const suppressSyncRef = useRef(false);
+  const sessionRef = useRef<DocumentSession | null>(null);
+  const sharedRequiredRef = useRef(false);
+  const selectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const editorPrefsCompartmentRef = useRef<Compartment | null>(null);
   const activePath = host.useActivePath();
+  const projectId = host.useProjectId?.() ?? null;
+  const documentAccess = activePath
+    ? getDocumentAccess?.(projectId, activePath) ?? {
+        kind: "solo" as const,
+      }
+    : { kind: "solo" as const };
   const completionSyntax = host.useCompletionSyntax(activePath);
   // NB: the active file's content is read imperatively (host.getContent) inside
   // the file-swap effect below, NOT subscribed to. Subscribing here would
@@ -227,7 +262,18 @@ export function CodeMirrorEditor({
   useLayoutEffect(() => {
     if (!hostRef.current) return;
     const initialPath = host.getActivePath();
-    const initialContent = initialPath ? host.getContent(initialPath) : "";
+    const initialProjectId = host.getProjectId?.() ?? null;
+    const initialAccess = initialPath
+      ? getDocumentAccess?.(initialProjectId, initialPath) ?? { kind: "solo" as const }
+      : { kind: "solo" as const };
+    const initialSession = initialPath
+      ? initialAccess.kind === "shared"
+        ? initialAccess.session
+        : getDocumentSession?.(initialPath) ?? null
+      : null;
+    sessionRef.current = initialSession;
+    sharedRequiredRef.current = initialAccess.kind === "shared";
+    const initialContent = initialSession?.snapshot().text ?? (initialPath ? host.getContent(initialPath) : "");
     const vimCompartment = new Compartment();
     vimCompartmentRef.current = vimCompartment;
     const spellCompartment = new Compartment();
@@ -236,6 +282,8 @@ export function CodeMirrorEditor({
     langCompartmentRef.current = langCompartment;
     const historyCompartment = new Compartment();
     historyCompartmentRef.current = historyCompartment;
+    const accessCompartment = new Compartment();
+    accessCompartmentRef.current = accessCompartment;
     const sourceToolsCompartment = new Compartment();
     sourceToolsCompartmentRef.current = sourceToolsCompartment;
     const hostToolsCompartment = new Compartment();
@@ -243,6 +291,7 @@ export function CodeMirrorEditor({
     const editorPrefsCompartment = new Compartment();
     editorPrefsCompartmentRef.current = editorPrefsCompartment;
     prevPathRef.current = initialPath;
+    prevProjectIdRef.current = initialProjectId;
     const initialLang = initialPath ? languageForPath(initialPath) : null;
     const initialCompletionSources =
       extraCompletionSourcesForPath?.(initialPath) ?? [];
@@ -273,6 +322,12 @@ export function CodeMirrorEditor({
         EditorView.lineWrapping,
         langCompartment.of(initialLang ? initialLang : []),
         editorTheme(),
+        collaborationDecorations(),
+        accessCompartment.of(
+          initialAccess.kind === "shared" && !initialAccess.session
+            ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
+            : [],
+        ),
         historyCompartment.of(history()),
         vscodeSearch(),
         sourceToolsCompartment.of(
@@ -288,6 +343,24 @@ export function CodeMirrorEditor({
         ...(extraExtensions ?? []),
         hostToolsCompartment.of(extraExtensionsForPath?.(initialPath) ?? []),
         keymap.of([
+          {
+            key: "Mod-z",
+            run: () => {
+              const session = sessionRef.current;
+              if (session?.mode !== "shared") return false;
+              session.undo();
+              return true;
+            },
+          },
+          {
+            key: "Mod-Shift-z",
+            run: () => {
+              const session = sessionRef.current;
+              if (session?.mode !== "shared") return false;
+              session.redo();
+              return true;
+            },
+          },
           ...(extraKeymap ?? []),
           indentWithTab,
           ...closeBracketsKeymap,
@@ -306,7 +379,33 @@ export function CodeMirrorEditor({
         EditorView.updateListener.of((vu) => {
           if (vu.docChanged && !suppressSyncRef.current) {
             const path = host.getActivePath();
-            if (path) host.setContent(path, vu.state.doc.toString());
+            const session = sessionRef.current;
+            if (path && session) {
+              const edits: TextEdit[] = [];
+              vu.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+                edits.push({ from: fromA, to: toA, insert: inserted.toString() });
+              });
+              session.apply(edits, { origin: "human" });
+            } else if (path) {
+              if (!sharedRequiredRef.current) {
+                host.setContent(path, vu.state.doc.toString());
+              }
+            }
+          }
+          if ((vu.selectionSet || vu.docChanged) && !suppressSyncRef.current) {
+            const session = sessionRef.current;
+            if (!session?.updateLocalSelection) return;
+            if (selectionTimerRef.current) clearTimeout(selectionTimerRef.current);
+            const selection = vu.state.selection.main;
+            const capturedSession = session;
+            const capturedAnchor = selection.anchor;
+            const capturedHead = selection.head;
+            selectionTimerRef.current = setTimeout(() => {
+              selectionTimerRef.current = null;
+              if (sessionRef.current === capturedSession) {
+                capturedSession.updateLocalSelection?.(capturedAnchor, capturedHead);
+              }
+            }, 50);
           }
         }),
       ],
@@ -322,11 +421,93 @@ export function CodeMirrorEditor({
       cancelSourceProofreading(prevPathRef.current ?? undefined);
       setEditorDocumentPath(null);
       view.destroy();
+      if (selectionTimerRef.current) clearTimeout(selectionTimerRef.current);
+      sessionRef.current?.updateLocalSelection?.(null, null);
       setEditorView(null);
       viewRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Bind the active CodeMirror document to the incremental session. Remote
+  // changes are dispatched as exact edits and suppressed from the local path.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (selectionTimerRef.current) clearTimeout(selectionTimerRef.current);
+    selectionTimerRef.current = null;
+    const previousSession = sessionRef.current;
+    const session = activePath
+      ? documentAccess.kind === "shared"
+        ? documentAccess.session
+        : getDocumentSession?.(activePath) ?? null
+      : null;
+    if (previousSession && previousSession !== session) {
+      previousSession.updateLocalSelection?.(null, null);
+    }
+    sessionRef.current = session;
+    sharedRequiredRef.current = documentAccess.kind === "shared";
+    if (!view || !session) {
+      if (view) {
+        view.dispatch({
+          effects: [
+            setCollaboratorSelections.of([]),
+            accessCompartmentRef.current!.reconfigure(
+              documentAccess.kind === "shared"
+                ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
+                : [],
+            ),
+          ],
+        });
+      }
+      return;
+    }
+    view.dispatch({
+      effects: accessCompartmentRef.current!.reconfigure([]),
+    });
+    const sessionText = session.snapshot().text;
+    if (view.state.doc.toString() !== sessionText) {
+      suppressSyncRef.current = true;
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: sessionText },
+      });
+      queueMicrotask(() => {
+        suppressSyncRef.current = false;
+      });
+    }
+    if (session.mode === "shared") {
+      view.dispatch({ effects: historyCompartmentRef.current!.reconfigure([]) });
+    }
+    const unsubscribe = session.subscribe((change) => {
+      if (change.source !== "remote" || change.edits.length === 0) return;
+      suppressSyncRef.current = true;
+      view.dispatch({ changes: change.edits });
+      queueMicrotask(() => {
+        suppressSyncRef.current = false;
+      });
+    });
+    const publishPresence = () => {
+      view.dispatch({
+        effects: setCollaboratorSelections.of(session.collaborators?.() ?? []),
+      });
+    };
+    publishPresence();
+    const unsubscribePresence = session.subscribeCollaborators?.(publishPresence);
+    return () => {
+      unsubscribe();
+      unsubscribePresence?.();
+      session.updateLocalSelection?.(null, null);
+      if (selectionTimerRef.current) clearTimeout(selectionTimerRef.current);
+      selectionTimerRef.current = null;
+      if (sessionRef.current === session) sessionRef.current = null;
+    };
+  }, [
+    activePath,
+    projectId,
+    docVersion,
+    getDocumentSession,
+    documentAccess.kind,
+    documentAccess.kind === "shared" ? documentAccess.session : null,
+  ]);
 
   // Keep the source editor mounted at its real panel dimensions while Visual
   // mode is active. CodeMirror virtualizes its document using measured line
@@ -377,14 +558,25 @@ export function CodeMirrorEditor({
         ),
       });
       prevPathRef.current = null;
+      prevProjectIdRef.current = projectId;
+      sharedRequiredRef.current = false;
       setEditorDocumentPath(null);
       queueMicrotask(() => {
         suppressSyncRef.current = false;
       });
       return;
     }
-    const activeContent = host.getContent(activePath);
-    const pathChanged = prevPathRef.current !== activePath;
+    if (selectionTimerRef.current) clearTimeout(selectionTimerRef.current);
+    selectionTimerRef.current = null;
+    const nextSession =
+      documentAccess.kind === "shared"
+        ? documentAccess.session
+        : getDocumentSession?.(activePath) ?? null;
+    sessionRef.current = nextSession;
+    sharedRequiredRef.current = documentAccess.kind === "shared";
+    const activeContent = nextSession?.snapshot().text ?? host.getContent(activePath);
+    const pathChanged =
+      prevPathRef.current !== activePath || prevProjectIdRef.current !== projectId;
     if (pathChanged && prevPathRef.current) {
       cancelSourceProofreading(prevPathRef.current);
     }
@@ -432,17 +624,18 @@ export function CodeMirrorEditor({
       view.dispatch({ effects });
     }
     // Re-install a fresh, empty history for the new file.
-    if (pathChanged) {
+    if (pathChanged && nextSession?.mode !== "shared") {
       view.dispatch({ effects: historyCompartmentRef.current!.reconfigure(history()) });
     }
     prevPathRef.current = activePath;
+    prevProjectIdRef.current = projectId;
     setEditorDocumentPath(activePath);
     queueMicrotask(() => {
       suppressSyncRef.current = false;
     });
     view.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePath, docVersion]);
+  }, [activePath, projectId, docVersion]);
 
   // Toggle vim without recreating the editor.
   useEffect(() => {
@@ -562,11 +755,22 @@ export function CodeMirrorEditor({
   }, []);
 
   return (
-    <div
-      ref={hostRef}
-      data-editor-active={active ? "true" : "false"}
-      data-editor-theme={editorThemeId}
-      className="h-full min-h-0 overflow-hidden"
-    />
+    <div className="relative h-full min-h-0 overflow-hidden">
+      <div
+        ref={hostRef}
+        data-editor-active={active ? "true" : "false"}
+        data-editor-theme={editorThemeId}
+        data-document-access={documentAccess.kind}
+        className="h-full min-h-0 overflow-hidden"
+      />
+      {documentAccess.kind === "shared" && !documentAccess.session ? (
+        <div
+          className="absolute inset-x-0 top-0 z-10 border-b bg-background/95 px-3 py-2 text-xs text-muted-foreground"
+          data-testid="shared-source-readonly"
+        >
+          {documentAccess.message}
+        </div>
+      ) : null}
+    </div>
   );
 }

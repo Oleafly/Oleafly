@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import type { Extension } from "@codemirror/state";
 import type { KeyBinding } from "@codemirror/view";
 import {
@@ -40,6 +40,7 @@ import {
   proofreadDocument,
 } from "@/lib/proofreading/client";
 import { proofreadingPresentationDiagnostics } from "@/store/proofreading";
+import { realtimeRuntime } from "@/lib/realtime/runtime";
 
 function sourceProofreadingContextKey(
   projectId: string | null,
@@ -143,6 +144,8 @@ installAuxNumbers();
 const HOST: EditorHost = {
   useActivePath: () => useFilesStore((s) => s.activePath),
   getActivePath: () => useFilesStore.getState().activePath,
+  useProjectId: () => useFilesStore((s) => s.projectId),
+  getProjectId: () => useFilesStore.getState().projectId,
   useDocVersion: () => useFilesStore((s) => s.docVersion),
   useCompletionSyntax: (path) => {
     const sourceFormat = useFilesStore((s) => s.engine.source_format);
@@ -192,7 +195,16 @@ const EXTRA_KEYMAP: KeyBinding[] = [
   { key: "Mod-l", run: (v) => { toggleInlineEdit(v); return true; } },
 ];
 
+const getRealtimeDocumentAccess = (projectId: string | null, path: string) =>
+  realtimeRuntime.getDocumentAccess(projectId, path);
+
 export function CodeMirrorEditor({ active = true }: { active?: boolean }) {
+  useSyncExternalStore(
+    realtimeRuntime.subscribe,
+    realtimeRuntime.getSnapshot,
+  );
+  const currentProjectId = useFilesStore((state) => state.projectId);
+  realtimeRuntime.observeProject(currentProjectId);
   useEffect(
     () =>
       useSettingsStore.subscribe((settings, previous) => {
@@ -215,6 +227,7 @@ export function CodeMirrorEditor({ active = true }: { active?: boolean }) {
     <CodeMirrorEditorCore
       active={active}
       host={HOST}
+      getDocumentAccess={getRealtimeDocumentAccess}
       extraExtensions={[inlineDiffPlugin]}
       extraExtensionsForPath={(path) => {
         if (!path || !/\.(?:tex|latex|ltx|sty|cls|md|markdown|typ|bib)$/i.test(path)) {

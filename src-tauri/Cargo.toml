@@ -17,6 +17,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 oleafly-agent = { path = "../crates/oleafly-agent" }
 oleafly-core = { path = "../crates/oleafly-core" }
+oleafly-realtime-protocol = { path = "../crates/oleafly-realtime-protocol" }
 tauri = { version = "2", features = ["macos-private-api"] }
 tokio = { version = "1", features = ["time", "sync", "macros", "process", "io-util"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
@@ -38,6 +39,8 @@ zip = { version = "4", default-features = false, features = ["deflate"] }
 tar = "0.4"
 # Streaming the pandoc download so we can report progress.
 futures-util = "0.3"
+tokio-tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
+url = "2"
 fs4 = "1.1"
 atomicwrites = "0.4"
 sha2 = "0.10"
@@ -60,6 +63,11 @@ windows-sys = { version = "0.61", features = [
   "Win32_System_JobObjects",
   "Win32_System_Threading",
 ] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Realtime master keys and refresh credentials belong in macOS Keychain. The
+# collaboration journal itself is a separate versioned AEAD store in app data.
+keyring = { version = "3.6", default-features = false, features = ["apple-native"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 # Streaming decoder for TinyTeX's official Linux ARM64 .tar.xz. Static linking

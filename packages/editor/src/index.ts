@@ -8,6 +8,7 @@
 // need the index (controller, commands). Import it via the
 // "@oleafly/editor/CodeMirrorEditor" subpath instead.
 export * from "./controller";
+export * from "./document-session";
 export { editorTheme } from "./theme";
 export { languageForPath } from "./languages";
 export {
