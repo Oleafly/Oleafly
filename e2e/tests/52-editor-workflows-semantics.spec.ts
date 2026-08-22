@@ -25,16 +25,46 @@ const RED_PNG =
 
 async function freshLatex(page: Page, suffix: string, source: string) {
   await createBlankProject(page, `E2E Workflow ${suffix} ${RUN}`);
+  // Project creation schedules a real on-open compile. Replacing the source
+  // while that compile is starting can queue follow-up compiles that survive
+  // into the fixture's next-page reload and starve the native webview. Wait
+  // for the blank template's verified output before applying the fixture.
+  await page.waitForFunction(
+    `import("/src/store/compile.ts").then(({ useCompileStore }) => {
+      const compile = useCompileStore.getState();
+      return compile.status === "success" && compile.lastCompileCheckpoint !== null;
+    })`,
+    120_000,
+  );
   await replaceEditorSource(page, source);
 }
 
 async function readWordCounts(
   page: TauriPage,
 ): Promise<{ Words: number; Characters: number; Lines: number }> {
+  await page.waitForFunction(
+    `(() => {
+      const title = Array.from(document.querySelectorAll("p"))
+        .find((node) =>
+          node.textContent?.trim() === "Project info" &&
+          node.closest('[data-state="open"]')
+        );
+      if (!title?.parentElement) return false;
+      const lines = (title.parentElement.innerText || "")
+        .split("\\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+      return ["Words", "Characters", "Lines"].every((label) => lines.includes(label));
+    })()`,
+    10_000,
+  );
   return page.evaluate<{ Words: number; Characters: number; Lines: number }>(
     `(() => {
       const title = Array.from(document.querySelectorAll("p"))
-        .find((node) => node.textContent?.trim() === "Project info");
+        .find((node) =>
+          node.textContent?.trim() === "Project info" &&
+          node.closest('[data-state="open"]')
+        );
       if (!title?.parentElement) throw new Error("project-info popover not found");
       const lines = (title.parentElement.innerText || "")
         .split("\\n")
