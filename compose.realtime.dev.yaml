@@ -1,0 +1,46 @@
+name: oleafly-realtime-dev
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: oleafly_realtime
+      POSTGRES_USER: oleafly
+      POSTGRES_PASSWORD: oleafly-dev-only
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - realtime-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oleafly -d oleafly_realtime"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  realtime:
+    build:
+      context: .
+      dockerfile: deploy/realtime/Dockerfile
+    environment:
+      DATABASE_URL: postgres://oleafly:oleafly-dev-only@postgres:5432/oleafly_realtime
+      OLEAFLY_REALTIME_MODE: development
+      OLEAFLY_REALTIME_BIND: 0.0.0.0:8787
+      OLEAFLY_REALTIME_PUBLIC_URL: http://127.0.0.1:8787
+      OLEAFLY_REALTIME_MASTER_KEY: b2xlYWZseS1kZXYtbWFzdGVyLWtleS0zMi1ieXRlcyE=
+      OLEAFLY_REALTIME_AUTO_MIGRATE: "true"
+      OLEAFLY_DEV_BOOTSTRAP_TOKEN: oleafly-local-e2e
+      OLEAFLY_DEV_TRUST_LOOPBACK_PROXY: "true"
+      RUST_LOG: oleafly_realtime_server=info
+    ports:
+      - "127.0.0.1:8787:8787"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:8787/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  realtime-postgres-data:

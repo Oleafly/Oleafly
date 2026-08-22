@@ -1,0 +1,7 @@
+.git
+**/node_modules
+**/target
+**/dist
+e2e/test-results
+e2e/playwright-report
+*.log

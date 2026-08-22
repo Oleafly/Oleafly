@@ -1,0 +1,45 @@
+name: oleafly-realtime
+
+services:
+  realtime:
+    build:
+      context: ../../..
+      dockerfile: deploy/realtime/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://oleafly:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/oleafly_realtime
+      OLEAFLY_REALTIME_MODE: production
+      OLEAFLY_REALTIME_BIND: 0.0.0.0:8787
+      OLEAFLY_REALTIME_PUBLIC_URL: ${OLEAFLY_REALTIME_PUBLIC_URL:?set the public https URL}
+      OLEAFLY_REALTIME_MASTER_KEY: ${OLEAFLY_REALTIME_MASTER_KEY:?set a base64 32-byte master key}
+      OLEAFLY_REALTIME_SETUP_TOKEN: ${OLEAFLY_REALTIME_SETUP_TOKEN:?set a random one-time setup token}
+      OLEAFLY_REALTIME_AUTO_MIGRATE: "true"
+      RUST_LOG: oleafly_realtime_server=info
+    expose:
+      - "8787"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:8787/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: oleafly_realtime
+      POSTGRES_USER: oleafly
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - realtime-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oleafly -d oleafly_realtime"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  realtime-postgres-data:

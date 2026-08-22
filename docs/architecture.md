@@ -12,7 +12,7 @@ making document engines, filesystem policy, and external integrations explicit.
 | `crates/oleafly-cli/` | The `oleaflyc` commands, native compiler adapter, and output contracts |
 | `crates/oleafly-agent/` | Provider-neutral agent runtime |
 | `crates/oleafly-realtime-protocol/` | Versioned realtime identities, authorization, state machines, and Yjs/`yrs` compatibility |
-| Planned realtime server crates | Axum control/sync service, PostgreSQL migrations, storage adapters, and operator CLI in this monorepo |
+| `crates/oleafly-realtime-server/` | Experimental Axum control/sync service, encrypted PostgreSQL journal, migrations, and operator commands |
 | `src/` | Application shell, stores, Tauri adapters, contributions, and UI |
 | `packages/editor/` | Engine-neutral editor and language-service primitives |
 | `packages/latex/` | LaTeX parsing, masking, and source operations |
@@ -24,7 +24,7 @@ making document engines, filesystem policy, and external integrations explicit.
 | `packages/ai-core/` and `packages/ai-tools/` | Provider and tool boundaries |
 | `src-tauri/src/` | IPC commands, project sandbox, Git, engines, downloads, and secrets |
 | `src-tauri/resources/` | Templates, licenses, and pinned runtime resources |
-| Planned deployment package | Compose and Coolify descriptors for the monorepo-built realtime OCI image |
+| `deploy/realtime/` | Docker and Coolify descriptors for the monorepo-built realtime OCI image |
 
 The realtime server ships as a separate container, not a separate repository. Its service code,
 migrations, operator commands, and deployment descriptors stay versioned with the desktop and
