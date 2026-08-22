@@ -21,8 +21,8 @@ const alice = await openPage(process.env.OLEAFLY_REALTIME_SOCKET_A);
 const bob = await openPage(process.env.OLEAFLY_REALTIME_SOCKET_B);
 
 try {
-  const aliceProject = await createProject(alice, "Realtime Alice");
-  const bobProject = await createProject(bob, "Realtime Bob");
+  const aliceProject = await createProject(alice, "Realtime Shared Project");
+  const bobProject = await createProject(bob, "Realtime Shared Project");
   await connect(alice, aliceProject, bootstrap, bootstrap.clients[0], true);
   await waitForSaved(alice);
   await connect(bob, bobProject, bootstrap, bootstrap.clients[1], false);
