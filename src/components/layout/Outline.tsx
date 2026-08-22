@@ -7,6 +7,7 @@ import {
   type IntelligenceTreeNode,
 } from "@/components/layout/IntelligenceTree";
 import { buildProjectStructureNodes } from "@/components/layout/project-intelligence-view";
+import { cn } from "@/lib/utils";
 import { acceptedProjectSnapshot } from "@/lib/project-intelligence/current";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import type { ProjectIntelligenceState } from "@/lib/project-intelligence/types";
@@ -134,11 +135,18 @@ function StatusStrip({ state }: { state: ProjectIntelligenceState }) {
   return null;
 }
 
-export function Outline() {
+export function Outline({
+  // The layout owns this, not the component: the sidebar collapses Structure
+  // because Outline sits above it and answers the more common question. Left
+  // expanded by default so rendering it on its own shows its content.
+  defaultCollapsed = false,
+}: {
+  readonly defaultCollapsed?: boolean;
+} = {}) {
   const intelligenceState = useIndexStore((state) => state.intelligenceState);
   const activePath = useFilesStore((state) => state.activePath);
   const projectId = useFilesStore((state) => state.projectId);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [filter, setFilter] = useState("");
 
   const snapshot = acceptedProjectSnapshot(
@@ -165,7 +173,10 @@ export function Outline() {
     <section
       aria-label="Document structure"
       aria-busy={intelligenceState.status === "running"}
-      className="flex h-full min-h-0 shrink-0 flex-col border-t border-sidebar-border"
+      className={cn(
+        "flex min-h-0 flex-col border-t border-sidebar-border",
+        collapsed ? "shrink-0" : "flex-1",
+      )}
     >
       <div className="flex h-8 shrink-0 items-center border-b border-sidebar-border/65">
         <button

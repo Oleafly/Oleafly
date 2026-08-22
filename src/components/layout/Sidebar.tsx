@@ -12,7 +12,13 @@ import { objectKey } from "@/lib/react-key";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { Input } from "@/components/ui/input";
 
-const Outline = lazy(() =>
+const DocumentOutline = lazy(() =>
+  import("@/components/layout/DocumentOutline").then((module) => ({
+    default: module.DocumentOutline,
+  })),
+);
+
+const ProjectStructure = lazy(() =>
   import("@/components/layout/Outline").then((module) => ({
     default: module.Outline,
   })),
@@ -108,7 +114,10 @@ export function ProjectSearch() {
 export function FilesPanel() {
   return (
     <PanelGroup direction="vertical">
-      <Panel id="filetree-v" order={1} defaultSize={70} minSize={20}>
+      {/* The file list keeps the larger share: it is what you navigate by, and
+          the outline below it stays long enough to scan without crowding it.
+          Both stay draggable. */}
+      <Panel id="filetree-v" order={1} defaultSize={60} minSize={15}>
         <FileTree />
       </Panel>
       <PanelResizeHandle
@@ -120,9 +129,15 @@ export function FilesPanel() {
       >
         <span className="h-0.5 w-8 rounded-full bg-border transition-colors group-hover:bg-ring" />
       </PanelResizeHandle>
-      <Panel id="outline-v" order={2} defaultSize={30} minSize={5}>
+      <Panel id="outline-v" order={2} defaultSize={40} minSize={10}>
+        {/* Outline first and open: it answers "where am I in this document",
+            which is the question you have while writing. Structure sits under
+            it, collapsed, for when you want the whole project map. */}
         <Suspense fallback={<SidebarPanelFallback />}>
-          <Outline />
+          <div className="flex h-full min-h-0 flex-col">
+            <DocumentOutline />
+            <ProjectStructure defaultCollapsed />
+          </div>
         </Suspense>
       </Panel>
     </PanelGroup>

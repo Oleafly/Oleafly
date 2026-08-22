@@ -6,6 +6,10 @@ export interface OutlineItem {
   line: number;
   file: string;
   kind: "section" | "file";
+  // Token span, so a click can navigate through the shared project navigation
+  // path instead of opening the file and guessing at a delay before jumping.
+  from: number;
+  to: number;
 }
 
 function basename(p: string): string {
@@ -28,13 +32,29 @@ export function outlineFromIndex(index: ProjectIndex, activeFile: string): Outli
 
     for (const s of syms) {
       if (s.kind === "section") {
-        out.push({ level: s.level ?? 2, title: s.name, line: s.line, file, kind: "section" });
+        out.push({
+          level: s.level ?? 2,
+          title: s.name,
+          line: s.line,
+          file,
+          kind: "section",
+          from: s.from,
+          to: s.to,
+        });
       } else {
         const target = s.target ?? s.name;
         const before = out.length;
         walk(target, depth + 1);
         if (out.length === before) {
-          out.push({ level: 2, title: basename(target), line: s.line, file: target, kind: "file" });
+          out.push({
+            level: 2,
+            title: basename(target),
+            line: s.line,
+            file: target,
+            kind: "file",
+            from: 0,
+            to: 0,
+          });
         }
       }
     }
