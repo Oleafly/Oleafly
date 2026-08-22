@@ -143,4 +143,14 @@ describe("EditorToolbar wysiwyg toggle", () => {
     await waitFor(() => expect(screen.getByText("Words")).toBeInTheDocument());
     expect(screen.queryByText("Selection")).not.toBeInTheDocument();
   });
+
+  it("falls back to empty statistics when project counting fails", async () => {
+    collectProjectInfoMock.mockRejectedValue(new Error("count failed"));
+    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
+
+    fireEvent.click(screen.getByLabelText("Project info"));
+
+    await waitFor(() => expect(screen.getByText("Words")).toBeInTheDocument());
+    expect(screen.getAllByText("0").length).toBeGreaterThan(1);
+  });
 });
