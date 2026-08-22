@@ -712,7 +712,10 @@ function AppContent() {
 
   return (
     <ThemeProvider>
-      <div className="flex h-full flex-col">
+      {/* Drives the gutter's horizontal metrics: the line-number column gives
+          back a few pixels only while the sidebar is competing for the width
+          (see globals.css). */}
+      <div data-sidebar-open={showTree ? "true" : "false"} className="flex h-full flex-col">
         <TopToolbar />
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <Rail />

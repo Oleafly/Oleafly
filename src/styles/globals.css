@@ -1434,3 +1434,13 @@ body[data-tour-active] [data-tour-hide] {
     will-change: auto;
   }
 }
+
+/* The line-number gutter gives back a few pixels while the sidebar is open,
+   because that is the only time the horizontal space is contested. With the
+   sidebar closed the editor has room to spare and the roomier defaults in
+   packages/editor/src/theme.ts apply unchanged. */
+[data-sidebar-open="true"] .cm-editor {
+  --cm-gutter-inset: 3px;
+  --cm-gutter-number-inset: 3px;
+  --cm-gutter-min-width: 2em;
+}
