@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-08-21
+
+### Added
+
+- **The document outline is back, above Structure.** It lists the sections of
+  the file you are editing and follows `\input` and `\include`, so a thesis
+  split across files reads as one document. Indentation follows heading depth,
+  so you can see the shape of a document without reading any of the titles, and
+  clicking a heading jumps to it. Structure, the whole-project map of files,
+  labels, citation keys and dependencies, is still there directly below,
+  collapsed until you want it.
+
+### Changed
+
+- **The line-number column gives back a few pixels while the sidebar is open.**
+  It reserved more width than two-digit line numbers need, which mattered only
+  when the sidebar was competing for the same space. With the sidebar closed
+  nothing changed.
+
 ## [0.3.7] - 2026-08-19
 
 ### Added
@@ -1378,7 +1397,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.7...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.8...HEAD
+[0.3.8]: https://github.com/Oleafly/Oleafly/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/Oleafly/Oleafly/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/Oleafly/Oleafly/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/Oleafly/Oleafly/compare/v0.3.4...v0.3.5
