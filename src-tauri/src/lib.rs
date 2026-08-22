@@ -162,6 +162,23 @@ pub fn run() {
                         }
                     }
                 }
+                // Manual realtime testing launches two isolated app processes.
+                // Give each window a stable label and screen position so they
+                // are immediately distinguishable and usable side by side.
+                if let Ok(title) = std::env::var("OLEAFLY_E2E_TITLE") {
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.set_title(&title);
+                    }
+                }
+                if let Ok(spec) = std::env::var("OLEAFLY_E2E_POSITION") {
+                    if let Some((x, y)) = spec.split_once(',') {
+                        if let (Ok(x), Ok(y)) = (x.parse::<f64>(), y.parse::<f64>()) {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.set_position(tauri::LogicalPosition::new(x, y));
+                            }
+                        }
+                    }
+                }
             }
 
             // Start the MCP server on boot when the user has enabled it. Failure to
