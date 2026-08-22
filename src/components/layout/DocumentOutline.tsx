@@ -67,16 +67,16 @@ export function DocumentOutline() {
           )}
           <List aria-hidden className="size-3.5" />
           <span className="truncate">Outline</span>
+          {!collapsed && items.length > 0 ? (
+            <span
+              role="status"
+              aria-label={`${items.length} outline entries`}
+              className="shrink-0 rounded-sm bg-muted px-1 font-mono text-[9px] text-muted-foreground"
+            >
+              {items.length}
+            </span>
+          ) : null}
         </button>
-        {!collapsed && items.length > 0 ? (
-          <span
-            role="status"
-            aria-label={`${items.length} outline entries`}
-            className="mr-2 rounded-sm bg-muted px-1 font-mono text-[9px] text-muted-foreground"
-          >
-            {items.length}
-          </span>
-        ) : null}
       </div>
 
       {!collapsed ? (

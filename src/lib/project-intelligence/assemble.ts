@@ -418,11 +418,13 @@ function hierarchyFor(
     })
     .sort((left, right) => left.file.localeCompare(right.file));
   const nodeFiles = new Set(nodes.map((node) => node.file));
+  // Any resolved edge, not just include/import: the structure view renders
+  // every edge's target inline, so a bibliography or asset target is already
+  // on screen and must not also be a root.
   const incoming = new Set(
     edges
       .filter(
         (edge) =>
-          (edge.kind === "include" || edge.kind === "import") &&
           edge.resolution === "resolved" &&
           edge.targetFile &&
           nodeFiles.has(edge.targetFile),

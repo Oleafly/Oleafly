@@ -197,12 +197,13 @@ function mergeOutlines(
       continue;
     }
     const nodes = outlines[definition.location.file] ?? [];
+    // Anchor only: the local node's range spans the whole section body while
+    // the language server reports just the command, so the ends never match.
     const duplicate = nodes.some(
       (node) =>
         node.kind === definition.kind &&
         node.title === definition.name &&
-        node.range.from === definition.location.range.from &&
-        node.range.to === definition.location.range.to,
+        node.range.from === definition.location.range.from,
     );
     if (duplicate) continue;
     nodes.push({
