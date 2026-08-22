@@ -249,7 +249,7 @@ jobs:
 
       - name: Install cargo-llvm-cov
         if: github.event_name == 'push' || github.event_name == 'pull_request'
-        uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2.85.11
+        uses: taiki-e/install-action@5b4d68e2e660441203ab128a23676f1e4faf1532 # v2.86.3
         with:
           tool: cargo-llvm-cov@0.8.7
 
@@ -365,13 +365,13 @@ jobs:
           fetch-depth: 0
 
       - name: Download frontend coverage
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: frontend-coverage
           path: coverage/frontend
 
       - name: Download Rust coverage
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: rust-coverage
           path: coverage/rust
@@ -643,7 +643,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Download the packaged e2e app
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: e2e-app-macos
 
@@ -765,7 +765,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Download the packaged e2e app
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: e2e-app-linux
 

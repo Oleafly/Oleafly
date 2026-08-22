@@ -389,7 +389,7 @@ jobs:
           NODE
 
       - name: Attest release artifact provenance
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: release-subjects/*
 
@@ -405,13 +405,13 @@ jobs:
           upload-release-assets: false
 
       - name: Attest platform SBOM
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: release-subjects/*
           sbom-path: sbom/Oleafly-${{ github.event.inputs.tag || github.ref_name }}-${{ matrix.rust_target }}.spdx.json
 
       - name: Attest SBOM provenance
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: sbom/Oleafly-${{ github.event.inputs.tag || github.ref_name }}-${{ matrix.rust_target }}.spdx.json
 
@@ -468,7 +468,7 @@ jobs:
       attestations: write
     steps:
       - name: Download per-target updater fragments
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: updater-fragment-*
           path: updater-fragments
@@ -525,7 +525,7 @@ jobs:
           gh release upload "$TAG" latest.json --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Attest updater manifest provenance
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: latest.json
 
@@ -538,7 +538,7 @@ jobs:
       attestations: read
     steps:
       - name: Download platform SBOMs
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: release-sbom-*
           path: release-sboms
