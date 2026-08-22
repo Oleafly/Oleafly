@@ -823,13 +823,6 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
       ) {
         return false;
       }
-      state.setPresentationPage(
-        "source",
-        Math.floor(
-          diagnosticIndex /
-            proofreading.PROOFREADING_PRESENTATION_PAGE_SIZE,
-        ),
-      );
       window.__e2eProofreadingTargetOffset =
         source.diagnostics[diagnosticIndex].from;
       window.dispatchEvent(
@@ -1222,6 +1215,22 @@ The integrated preview renders a second page.
   expect(liveHighlighting.colors).toBeGreaterThan(2);
 
   await openRailTab(tauriPage, "Source Tree");
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('[aria-controls="project-structure-content"]')`,
+    10_000,
+  );
+  const structureExpanded = await tauriPage.evaluate<boolean>(
+    `document.querySelector('[aria-controls="project-structure-content"]')?.getAttribute("aria-expanded") === "true"`,
+  );
+  if (!structureExpanded) {
+    await tauriPage.click('[aria-controls="project-structure-content"]');
+  }
+  await waitLong(
+    tauriPage,
+    `document.querySelector('[aria-label="Project structure"]')?.textContent?.includes("Core section") === true`,
+    30_000,
+  );
   await expect(
     tauriPage.locator('[aria-label="Project structure"]'),
   ).toContainText("Core section");

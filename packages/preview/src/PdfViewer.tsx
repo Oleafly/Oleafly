@@ -39,6 +39,7 @@ import {
   type PdfSearchProgress,
 } from "./pdfSearch";
 import { safePdfExternalUrl } from "./pdfSecurity";
+import { createPdfScreenReaderLayer } from "./pdfScreenReader";
 import { closestMatchingElement, wordAtHorizontalPosition, wordInText } from "./textHit";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -321,6 +322,7 @@ interface RenderState {
   annotationLayer: pdfjsLib.AnnotationLayer | null;
   accessibilityManager: PdfTextAccessibilityManager | null;
   structTreeLayer: StructTreeLayerBuilder | null;
+  screenReaderLayer: HTMLElement | null;
   page: pdfjsLib.PDFPageProxy | null;
   removeTextSelection: (() => void) | null;
   nodes: HTMLElement[];
@@ -344,6 +346,8 @@ function cancelRenderState(state: RenderState): void {
   state.annotationLayer = null;
   state.structTreeLayer?.hide();
   state.structTreeLayer = null;
+  state.screenReaderLayer?.remove();
+  state.screenReaderLayer = null;
   state.accessibilityManager?.disable();
   state.accessibilityManager = null;
   try {
@@ -791,6 +795,7 @@ export interface PdfViewerProps {
   // worker. false: skip the probe so a legitimately text-less page (image/figure
   // projects) doesn't force the session onto the main-thread worker.
   expectText?: boolean;
+  screenReaderMode?: boolean;
 }
 
 export interface PdfViewerHandle {
@@ -826,6 +831,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     password,
     rotation = 0,
     expectText = true,
+    screenReaderMode = false,
   },
   ref
 ) {
@@ -848,6 +854,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   searchQueryRef.current = searchQuery;
   const rotationRef = useRef<PdfRotation>(normalizeRotation(rotation));
   rotationRef.current = normalizeRotation(rotation);
+  const screenReaderModeRef = useRef(screenReaderMode);
+  screenReaderModeRef.current = screenReaderMode;
   // Last page we reported, so scroll churn doesn't spam setState.
   const currentPageRef = useRef(1);
 
@@ -1055,6 +1063,57 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     }
   }, [unrenderPage]);
 
+  const syncScreenReaderLayer = useCallback(
+    async (pageNo: number, state: RenderState, wrap: HTMLElement) => {
+      const visualLayers = state.nodes.filter(
+        (node) => !node.classList.contains("pdf-screen-reader-layer"),
+      );
+      for (const node of visualLayers) {
+        if (screenReaderModeRef.current) node.setAttribute("aria-hidden", "true");
+        else node.removeAttribute("aria-hidden");
+      }
+
+      state.screenReaderLayer?.remove();
+      state.screenReaderLayer = null;
+      const page = state.page;
+      const textContent = textContentRef.current.get(pageNo);
+      const doc = docRef.current;
+      if (!screenReaderModeRef.current || !page || !textContent || !doc) return;
+
+      const fallbackLayer = createPdfScreenReaderLayer({
+        pageNumber: pageNo,
+        totalPages: doc.numPages,
+        textContent,
+      });
+      wrap.appendChild(fallbackLayer);
+      state.screenReaderLayer = fallbackLayer;
+
+      try {
+        const structureTree = await page.getStructTree();
+        if (
+          !screenReaderModeRef.current ||
+          state.page !== page ||
+          renderedRef.current.get(pageNo) !== state ||
+          wrapsRef.current.get(pageNo) !== wrap ||
+          state.screenReaderLayer !== fallbackLayer
+        ) {
+          return;
+        }
+        const structuredLayer = createPdfScreenReaderLayer({
+          pageNumber: pageNo,
+          totalPages: doc.numPages,
+          textContent,
+          structureTree,
+        });
+        fallbackLayer.replaceWith(structuredLayer);
+        state.screenReaderLayer = structuredLayer;
+      } catch {
+        // Untagged PDFs keep the plain-text fallback.
+      }
+    },
+    [],
+  );
+
   // Rasterize one page at the given scale (skips if already current). Idempotent
   // and cancellation-safe.
   const renderPage = useCallback(async (pageNo: number, renderScale: number) => {
@@ -1107,6 +1166,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       annotationLayer: null,
       accessibilityManager: null,
       structTreeLayer: null,
+      screenReaderLayer: null,
       page: null,
       removeTextSelection: null,
       nodes: [],
@@ -1282,6 +1342,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         /* text selection is a non-fatal enhancement */
       }
 
+      void syncScreenReaderLayer(pageNo, state, wrap);
+
       try {
         await renderTask.promise;
       } catch (err) {
@@ -1382,7 +1444,20 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         renderedRef.current.delete(pageNo);
       }
     }
-  }, [applyExactPageViewport, ensurePageGeometry, reserveRenderSlot]);
+  }, [
+    applyExactPageViewport,
+    ensurePageGeometry,
+    reserveRenderSlot,
+    syncScreenReaderLayer,
+  ]);
+
+  useEffect(() => {
+    screenReaderModeRef.current = screenReaderMode;
+    for (const [pageNo, state] of renderedRef.current) {
+      const wrap = wrapsRef.current.get(pageNo);
+      if (wrap) void syncScreenReaderLayer(pageNo, state, wrap);
+    }
+  }, [screenReaderMode, syncScreenReaderLayer]);
 
   // Forward SyncTeX may target an off-screen page; render it on demand.
   const ensurePageRendered = useCallback(
@@ -1909,6 +1984,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         );
         wrap.addEventListener("click", (ev: MouseEvent) => {
           if ((ev.target as HTMLElement)?.closest?.("a")) return;
+          if ((ev.target as HTMLElement)?.closest?.(".pdf-screen-reader-layer")) return;
           const selection = document.getSelection();
           if (selection && !selection.isCollapsed) {
             for (let index = 0; index < selection.rangeCount; index++) {

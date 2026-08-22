@@ -380,6 +380,43 @@ function triggerIntersection(pageNumbers: number[], isIntersecting: boolean): vo
 }
 
 describe("PdfViewer production geometry and lifecycle wiring", () => {
+  it("switches rendered pages to the text-first screen reader layer", async () => {
+    const view = render(
+      <PdfViewer
+        data={new Uint8Array([1])}
+        scale={1}
+        expectText={false}
+        screenReaderMode
+      />,
+    );
+
+    await waitFor(() =>
+      expect(
+        view.container.querySelector("[data-page='1'] .pdf-screen-reader-layer"),
+      ).toHaveTextContent("PAGE 1 TEXT"),
+    );
+    expect(
+      view.container.querySelector("[data-page='1'] .pdf-canvas"),
+    ).toHaveAttribute("aria-hidden", "true");
+
+    view.rerender(
+      <PdfViewer
+        data={new Uint8Array([1])}
+        scale={1}
+        expectText={false}
+        screenReaderMode={false}
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        view.container.querySelector("[data-page='1'] .pdf-screen-reader-layer"),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      view.container.querySelector("[data-page='1'] .pdf-canvas"),
+    ).not.toHaveAttribute("aria-hidden");
+  });
+
   it("retains selectable text when DOM width calibration is unavailable", async () => {
     harness.throwTextGeometry = true;
     const view = render(

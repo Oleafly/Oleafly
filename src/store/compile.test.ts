@@ -2,6 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 
 const mocks = vi.hoisted(() => ({
+  events: new Map<string, (event: { payload: string }) => void>(),
+  listen: vi.fn(
+    async (name: string, handler: (event: { payload: string }) => void) => {
+      mocks.events.set(name, handler);
+      return () => mocks.events.delete(name);
+    },
+  ),
   compileProject: vi.fn(),
   readCompiledPdf: vi.fn(),
   validateCompileFingerprint: vi.fn(),
@@ -47,7 +54,7 @@ vi.mock("@/lib/tauri", () => ({
   clearBuildDir: mocks.clearBuildDir,
 }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
-vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
+vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.files } }));
 vi.mock("@/store/project-index", () => ({
   currentProjectSourcePaths: () =>
@@ -106,6 +113,8 @@ function checkpoint(bytes: Uint8Array, outputRevision: number) {
 }
 
 beforeEach(() => {
+  mocks.events.clear();
+  mocks.listen.mockClear();
   mocks.compileProject.mockReset();
   mocks.readCompiledPdf.mockReset();
   mocks.validateCompileFingerprint.mockReset().mockResolvedValue(null);
@@ -163,6 +172,55 @@ beforeEach(() => {
 });
 
 describe("compile output lifecycle", () => {
+  it("coalesces bursty compiler output so WebKit gets a paint frame", async () => {
+    const compile = deferred<{
+      ok: boolean;
+      has_pdf: boolean;
+      output_id: null;
+      output_revision: null;
+      log: string;
+      errors: never[];
+      synctex_path: null;
+      out_dir: null;
+      compile_time_ms: number;
+    }>();
+    mocks.compileProject.mockReturnValue(compile.promise);
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", vi.fn((callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    }));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    try {
+      const compiling = useCompileStore.getState().recompile();
+      await vi.waitFor(() => expect(mocks.events.has("compile:log")).toBe(true));
+
+      mocks.events.get("compile:log")?.({ payload: "first\n" });
+      mocks.events.get("compile:log")?.({ payload: "second\n" });
+      mocks.events.get("compile:log")?.({ payload: "third\n" });
+
+      expect(frames).toHaveLength(1);
+      expect(useCompileStore.getState().log).toBe("");
+      frames[0](16);
+      expect(useCompileStore.getState().log).toBe("first\nsecond\nthird\n");
+
+      compile.resolve({
+        ok: false,
+        has_pdf: false,
+        output_id: null,
+        output_revision: null,
+        log: "first\nsecond\nthird\n",
+        errors: [],
+        synctex_path: null,
+        out_dir: null,
+        compile_time_ms: 12,
+      });
+      await compiling;
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("timestamps and broadcasts the exact verified successful output", async () => {
     const bytes = new Uint8Array([1, 2, 3]);
     mocks.compileProject.mockResolvedValue({

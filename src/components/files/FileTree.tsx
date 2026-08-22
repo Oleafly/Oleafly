@@ -39,6 +39,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useFilesStore } from "@/store/files";
+import { fileTreePathIsHidden, useSettingsStore } from "@/store/settings";
 import { FileIcon } from "@/components/files/fileIcon";
 import { isFileConflictError } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
@@ -143,6 +144,7 @@ export function FileTree() {
   const setMainDoc = useFilesStore((s) => s.setMainDoc);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const sourceExtensions = useFilesStore((s) => s.engine.source_extensions);
+  const hiddenFilePatterns = useSettingsStore((s) => s.hiddenFilePatterns);
   const mainExtensions = engineLoaded ? sourceExtensions : EMPTY_EXTENSIONS;
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -177,7 +179,15 @@ export function FileTree() {
     onBackdropMouseDown: onConflictBackdropMouseDown,
   } = useModalAccessibility<HTMLDivElement>(conflict !== null, closeConflict);
 
-  const nodes = useMemo(() => buildTree(tree), [tree]);
+  const nodes = useMemo(
+    () =>
+      buildTree(
+        tree.filter(
+          (entry) => !fileTreePathIsHidden(entry.path, hiddenFilePatterns),
+        ),
+      ),
+    [hiddenFilePatterns, tree],
+  );
 
   const expand = (p: string) =>
     setExpanded((prev) => {

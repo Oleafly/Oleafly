@@ -1,3 +1,6 @@
+// @vitest-environment jsdom
+import { render, screen } from "@testing-library/react";
+import { createElement, Fragment } from "react";
 import { describe, expect, it } from "vitest";
 import {
   CONTROL_GAP,
@@ -5,7 +8,29 @@ import {
   MORE_BUTTON_WIDTH,
   fitCount,
   type ToolbarControl,
+  useAvailableWidth,
 } from "./toolbar-overflow";
+
+function WidthHarness({ mounted, width }: { mounted: boolean; width: number }) {
+  const { containerRef, availableWidth } = useAvailableWidth();
+
+  return createElement(
+    Fragment,
+    null,
+    createElement(
+      "output",
+      { "data-testid": "available-width" },
+      availableWidth,
+    ),
+    mounted
+      ? createElement("div", {
+          ref: containerRef,
+          "data-testid": "measured-toolbar",
+          "data-width": width,
+        })
+      : null,
+  );
+}
 
 function icons(count: number): ToolbarControl[] {
   return Array.from({ length: count }, (_unused, index) => ({
@@ -60,5 +85,46 @@ describe("fitCount", () => {
     ];
     expect(fitCount(controls, 139)).toBe(0);
     expect(fitCount(controls, 140 + CONTROL_GAP + MORE_BUTTON_WIDTH)).toBe(1);
+  });
+});
+
+describe("useAvailableWidth", () => {
+  it("remeasures a toolbar that remounts after a conditional view change", () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "clientWidth",
+    );
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+      configurable: true,
+      get() {
+        return Number(this.getAttribute("data-width") ?? 0);
+      },
+    });
+
+    try {
+      const view = render(
+        createElement(WidthHarness, { mounted: true, width: 160 }),
+      );
+      expect(screen.getByTestId("available-width")).toHaveTextContent("160");
+
+      view.rerender(
+        createElement(WidthHarness, { mounted: false, width: 0 }),
+      );
+      view.rerender(
+        createElement(WidthHarness, { mounted: true, width: 640 }),
+      );
+
+      expect(screen.getByTestId("available-width")).toHaveTextContent("640");
+    } finally {
+      if (originalDescriptor) {
+        Object.defineProperty(
+          HTMLElement.prototype,
+          "clientWidth",
+          originalDescriptor,
+        );
+      } else {
+        delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
+      }
+    }
   });
 });

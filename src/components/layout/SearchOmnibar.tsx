@@ -207,6 +207,7 @@ export function SearchOmnibar() {
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setRailTab = useSettingsStore((s) => s.setRailTab);
+  const latexTools = useSettingsStore((s) => s.latexTools);
   const projects = useFilesStore((s) => s.projects);
   const projectColors = useProjectColorsStore((s) => s.colors);
   const favs = useFavoritesStore((s) => s.favs);
@@ -221,8 +222,8 @@ export function SearchOmnibar() {
   const [loading, setLoading] = useState(false);
 
   const ctx = useMemo<AppContext>(
-    () => ({ projectId, projectKind, theme }),
-    [projectId, projectKind, theme],
+    () => ({ projectId, projectKind, theme, latexToolsEnabled: latexTools }),
+    [latexTools, projectId, projectKind, theme],
   );
   const availableCommands = useMemo(
     () => commandsFor("omnibar", ctx),

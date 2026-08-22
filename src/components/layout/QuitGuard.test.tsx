@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const mocks = vi.hoisted(() => ({
   events: new Map<string, (event: { payload: unknown }) => void>(),
@@ -75,6 +75,7 @@ describe("QuitGuard", () => {
     await fireQuitRequest(false);
 
     await screen.findByText(/could not be saved/i);
+    expect(screen.getByRole("alertdialog").parentElement).toHaveClass("pointer-events-auto");
     expect(mocks.confirmQuitFlush).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: /stay/i }));
@@ -104,5 +105,28 @@ describe("QuitGuard", () => {
     flush.resolve();
     await waitFor(() => expect(mocks.confirmQuitFlush).toHaveBeenCalledTimes(1));
     expect(mocks.flushForQuit).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers a safe escape when the save flush never settles", async () => {
+    vi.useFakeTimers();
+    const flush = deferred<void>();
+    mocks.flushForQuit.mockImplementation(() => flush.promise);
+    try {
+      render(<QuitGuard />);
+      await act(async () => {});
+      expect(mocks.events.has("quit-flush-requested")).toBe(true);
+
+      await act(async () => {
+        mocks.events.get("quit-flush-requested")?.({ payload: false });
+        await vi.advanceTimersByTimeAsync(5_000);
+      });
+
+      expect(screen.getByText(/could not be saved/i)).toBeInTheDocument();
+      expect(screen.getByText(/saving did not finish/i)).toBeInTheDocument();
+      expect(mocks.confirmQuitFlush).not.toHaveBeenCalled();
+    } finally {
+      flush.resolve();
+      vi.useRealTimers();
+    }
   });
 });

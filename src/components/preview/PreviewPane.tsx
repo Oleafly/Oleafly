@@ -9,6 +9,7 @@ import {
 import { isTauri } from "@tauri-apps/api/core";
 import {
   AlertTriangle,
+  Accessibility,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -78,6 +79,7 @@ import {
 } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { usePdfViewStore } from "@/store/pdf-view";
+import { useSettingsStore } from "@/store/settings";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useTourStore } from "@/store/tours";
 import {
@@ -661,6 +663,17 @@ export function PreviewPane() {
   // Image and diagram projects render a single figure: no pages/spreads, "PDF" reads as "image".
   const projectKindForPreview = useFilesStore((s) => s.projectKind);
   const isImage = projectKindForPreview === "image" || projectKindForPreview === "diagram";
+  const inverted = useSettingsStore((state) => state.pdfDarkMode);
+  const setInverted = useSettingsStore((state) => state.setPdfDarkMode);
+  const pdfZoomShortcuts = useSettingsStore(
+    (state) => state.pdfZoomShortcuts,
+  );
+  const screenReaderMode = useSettingsStore(
+    (state) => state.pdfScreenReaderMode,
+  );
+  const setScreenReaderMode = useSettingsStore(
+    (state) => state.setPdfScreenReaderMode,
+  );
   const [scale, setScale] = useState(1.0);
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
   const [tab, setTab] = useState<"pdf" | "logs">("pdf");
@@ -670,7 +683,6 @@ export function PreviewPane() {
   const [saveName, setSaveName] = useState("");
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [inverted, setInverted] = useState(false);
   const [page, setPage] = useState(1);
   const [numPages, setNumPages] = useState(0);
   const [pageInput, setPageInput] = useState("1");
@@ -969,21 +981,25 @@ export function PreviewPane() {
       ) {
         return;
       }
-      if (modifier && (event.key === "+" || event.key === "=")) {
+      if (
+        pdfZoomShortcuts &&
+        modifier &&
+        (event.key === "+" || event.key === "=")
+      ) {
         event.preventDefault();
         userZoom(() =>
           setScale((current) =>
             Math.min(MAX_PREVIEW_SCALE, current + 0.2),
           ),
         );
-      } else if (modifier && event.key === "-") {
+      } else if (pdfZoomShortcuts && modifier && event.key === "-") {
         event.preventDefault();
         userZoom(() =>
           setScale((current) =>
             Math.max(MIN_PREVIEW_SCALE, current - 0.2),
           ),
         );
-      } else if (modifier && event.key === "0") {
+      } else if (pdfZoomShortcuts && modifier && event.key === "0") {
         event.preventDefault();
         userZoom(() => setScale(1));
       } else if (
@@ -999,7 +1015,7 @@ export function PreviewPane() {
     };
     root.addEventListener("keydown", onKeyDown);
     return () => root.removeEventListener("keydown", onKeyDown);
-  }, [outlineOpen, searchOpen, tab, userZoom]);
+  }, [outlineOpen, pdfZoomShortcuts, searchOpen, tab, userZoom]);
 
   const submitSavePdf = async () => {
     if (!projectId || !displayedBytes) return;
@@ -1603,11 +1619,26 @@ export function PreviewPane() {
       "invert",
       Contrast,
       "Invert PDF preview colors",
-      () => setInverted((v) => !v),
+      () => setInverted(!inverted),
       {
         disabled: !displayedBytes,
         active: inverted,
         tooltip: inverted ? "Restore colors" : "Invert PDF preview colors",
+      },
+    ),
+  );
+  inkGroup.push(
+    iconControl(
+      "screen-reader",
+      Accessibility,
+      "Show a text-first PDF view",
+      () => setScreenReaderMode(!screenReaderMode),
+      {
+        disabled: !displayedBytes || isImage,
+        active: screenReaderMode,
+        tooltip: screenReaderMode
+          ? "Hide screen reader mode"
+          : "Show screen reader mode",
       },
     ),
   );
@@ -2011,7 +2042,7 @@ export function PreviewPane() {
                 aria-label="PDF continuous scroll area"
                 className="h-full overflow-auto bg-sidebar focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 style={
-                  inverted
+                  inverted && !screenReaderMode
                     ? { filter: "invert(1) hue-rotate(180deg)" }
                     : undefined
                 }
@@ -2044,6 +2075,7 @@ export function PreviewPane() {
                     scale={scale}
                     layout={layout}
                     expectText={!isImage}
+                    screenReaderMode={screenReaderMode && !isImage}
                     searchQuery={searchOpen ? deferredSearch : ""}
                     onLoadStateChange={handlePdfLoadState}
                     onSearchStateChange={setSearchState}

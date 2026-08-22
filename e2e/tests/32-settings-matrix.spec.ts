@@ -26,6 +26,19 @@ async function pickOption(page: Page, rowText: string, optionText: string) {
   await page.click(optionSelector);
 }
 
+async function openAppearanceTab(
+  page: Page,
+  tab: "app" | "editor" | "pdf" | "files",
+) {
+  await openSettings(page, "appearance");
+  const selector = `[data-testid="appearance-tab-${tab}"]`;
+  await page.press(selector, "Enter");
+  await page.waitForFunction(
+    `document.querySelector(${JSON.stringify(selector)})?.getAttribute("data-state") === "active"`,
+    5_000,
+  );
+}
+
 async function setOfflineMode(page: Page, enabled: boolean) {
   await openSettings(page, "general");
   const selector = '[role="switch"][aria-label="Offline mode"]';
@@ -43,7 +56,7 @@ async function setOfflineMode(page: Page, enabled: boolean) {
 test("every editor font size option restyles the editor", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openSettings(tauriPage, "appearance");
+  await openAppearanceTab(tauriPage, "editor");
   for (const px of [11, 12, 14, 16, 18, 20, 15, 13]) {
     // ends on 13 = default
     await pickOption(tauriPage, "Editor font size", `${px}px`);
@@ -58,7 +71,7 @@ test("every editor font size option restyles the editor", async ({ tauriPage }) 
 test("every app font size option rescales the interface", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openSettings(tauriPage, "appearance");
+  await openAppearanceTab(tauriPage, "app");
   for (const px of [13, 14, 15, 17, 18, 20, 16]) {
     // ends on 16 = default
     await pickOption(tauriPage, "App font size", `${px}px`);
@@ -73,7 +86,7 @@ test("every app font size option rescales the interface", async ({ tauriPage }) 
 test("every app font option changes the interface font", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openSettings(tauriPage, "appearance");
+  await openAppearanceTab(tauriPage, "app");
   const fonts = [
     ["Inter", "Inter"],
     ["Helvetica Neue", "Helvetica Neue"],
@@ -98,7 +111,7 @@ test("every app font option changes the interface font", async ({ tauriPage }) =
 test("every editor font option changes the code font", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openSettings(tauriPage, "appearance");
+  await openAppearanceTab(tauriPage, "editor");
   const fonts = [
     ["JetBrains Mono", "JetBrains Mono"],
     ["Fira Code", "Fira Code"],
@@ -125,7 +138,7 @@ test("every editor font option changes the code font", async ({ tauriPage }) => 
 test("every accent color repaints the primary color", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openSettings(tauriPage, "appearance");
+  await openAppearanceTab(tauriPage, "app");
   const accents = [
     ["Green", "#0b8842"],
     ["Purple", "#7c3aed"],
@@ -149,7 +162,7 @@ test("open-projects-in controls the landing layout", async ({ tauriPage }) => {
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
   const setDefaultView = async (label: string) => {
-    await openSettings(tauriPage, "appearance");
+    await openAppearanceTab(tauriPage, "files");
     await pickOption(tauriPage, "Open projects in", label);
     await tauriPage.click('[aria-label="Close settings"]');
   };
@@ -177,7 +190,7 @@ test("show-file-tree-on-open controls the sidebar", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  await openSettings(tauriPage, "appearance");
+  await openAppearanceTab(tauriPage, "files");
   await tauriPage.evaluate(
     `(() => {
       const toggle = document.querySelector('[role="switch"][aria-label="Show file tree on open"]');
@@ -194,7 +207,7 @@ test("show-file-tree-on-open controls the sidebar", async ({ tauriPage }) => {
     10_000,
   );
 
-  await openSettings(tauriPage, "appearance");
+  await openAppearanceTab(tauriPage, "files");
   await tauriPage.evaluate(
     `(() => {
       const toggle = document.querySelector('[role="switch"][aria-label="Show file tree on open"]');
@@ -245,8 +258,9 @@ test("reset to defaults restores factory preferences", async ({ tauriPage }) => 
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  await openSettings(tauriPage, "appearance");
+  await openAppearanceTab(tauriPage, "editor");
   await pickOption(tauriPage, "Editor font size", "20px");
+  await tauriPage.press('[data-testid="appearance-tab-app"]', "Enter");
   await tauriPage.click('button[title="Teal"]');
   await tauriPage.waitForFunction(
     `getComputedStyle(document.querySelector('.cm-content')).fontSize === '20px'`,
@@ -271,7 +285,7 @@ test("dark mode switch in settings flips the real theme", async ({ tauriPage }) 
   const theme = () =>
     tauriPage.evaluate<boolean>(`document.documentElement.classList.contains('dark')`);
   const before = await theme();
-  await openSettings(tauriPage, "appearance");
+  await openAppearanceTab(tauriPage, "app");
   await tauriPage.click('[role="switch"][aria-label="Dark mode"]');
   expect(await theme()).toBe(!before);
   await tauriPage.click('[role="switch"][aria-label="Dark mode"]');

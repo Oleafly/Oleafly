@@ -857,24 +857,49 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       )
       .catch(() => {});
     let unlisten = () => {};
+    let pendingLog = "";
+    let pendingPhase: CompilePhase | null = null;
+    let logFrame: number | null = null;
+    const flushPendingLog = () => {
+      if (logFrame !== null) {
+        cancelAnimationFrame(logFrame);
+        logFrame = null;
+      }
+      const chunk = pendingLog;
+      const phase = pendingPhase;
+      pendingLog = "";
+      pendingPhase = null;
+      if (!chunk) return;
+      set((state) => {
+        if (
+          identityStale() ||
+          hasCompileCheckpointAdvanced(
+            checkpointAtStart,
+            state.lastCompileCheckpoint,
+          )
+        ) {
+          return state;
+        }
+        return {
+          log: state.log + chunk,
+          phase: phase ?? state.phase,
+        };
+      });
+    };
     try {
       unlisten = await listen<string>("compile:log", (e) => {
-        set((state) => {
-          if (
-            identityStale() ||
-            hasCompileCheckpointAdvanced(
-              checkpointAtStart,
-              state.lastCompileCheckpoint,
-            )
-          ) {
-            return state;
-          }
-          const nextPhase = phaseFromLogChunk(e.payload, state.phase);
-          return {
-            log: state.log + e.payload,
-            phase: nextPhase,
-          };
-        });
+        if (identityStale() || checkpointAdvanced()) return;
+        pendingLog += e.payload;
+        pendingPhase = phaseFromLogChunk(
+          e.payload,
+          pendingPhase ?? get().phase,
+        );
+        if (logFrame === null) {
+          logFrame = requestAnimationFrame(() => {
+            logFrame = null;
+            flushPendingLog();
+          });
+        }
       });
       if (identityStale() || checkpointAdvanced()) return undefined;
       const result = await compileProject(
@@ -884,6 +909,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         get().compileMode === "fast",
         get().stopOnFirstError,
       );
+      flushPendingLog();
       if (result.stopped) {
         // A stop is not a failed document: keep the preview and the previous
         // log rather than reporting an error the source did not cause.
@@ -1049,6 +1075,9 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       void import("@/lib/log").then(({ logError }) => logError("compile", e));
       return undefined;
     } finally {
+      if (logFrame !== null) cancelAnimationFrame(logFrame);
+      pendingLog = "";
+      pendingPhase = null;
       unlisten();
       const ownsIntent = activeCompileIntent === intent;
       if (ownsIntent && identityStale()) {

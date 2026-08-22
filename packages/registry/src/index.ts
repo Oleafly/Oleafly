@@ -12,6 +12,7 @@ export interface AppContext {
   documentEngineId?: string;
   documentEngineLoaded?: boolean;
   activeDocumentPath?: string | null;
+  latexToolsEnabled?: boolean;
 }
 
 export interface RailTabContribution {

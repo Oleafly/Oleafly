@@ -30,19 +30,19 @@ test("settings and template modals close through user interactions and restore f
   await expect(tauriPage.locator('[aria-label="Settings"]')).toBeFocused();
 });
 
-test("word count modal opens from the palette and closes", async ({ tauriPage }) => {
+test("project info modal opens from the word-count palette command and closes", async ({
+  tauriPage,
+}) => {
   await pressGlobal(tauriPage, "k", { meta: true });
   await fillCommandPalette(tauriPage, "word"); // cmdk matches single terms
   await tauriPage.press("[cmdk-input]", "Enter");
-  await tauriPage.waitForFunction(
-    `document.body.innerText.includes('Word count')`,
-    10_000,
+  const projectInfo = tauriPage.locator(
+    '[role="dialog"][aria-labelledby="project-info-title"]',
   );
+  await expect(projectInfo).toBeVisible();
+  await expect(tauriPage.getByText("Project info", { exact: true })).toBeVisible();
   await tauriPage.getByText("Close", { exact: true }).click();
-  await tauriPage.waitForFunction(
-    `!document.body.innerText.includes('Word count')`,
-    10_000,
-  );
+  await expect(projectInfo).not.toBeVisible();
 });
 
 test("history modal opens from the palette", async ({ tauriPage }) => {

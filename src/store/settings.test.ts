@@ -1,5 +1,9 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { useSettingsStore } from "./settings";
+import {
+  DEFAULT_HIDDEN_FILE_PATTERNS,
+  fileTreePathIsHidden,
+  useSettingsStore,
+} from "./settings";
 
 const lsValues = new Map<string, string>();
 
@@ -66,5 +70,42 @@ describe("useSettingsStore reset", () => {
     expect(localStorage.getItem("oleafly.editor.closeBrackets")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.ghostCompletion")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.solidCursor")).toBe("0");
+  });
+});
+
+describe("file tree visibility settings", () => {
+  it("matches generated files and hidden folders at any path depth", () => {
+    expect(fileTreePathIsHidden("paper.aux", DEFAULT_HIDDEN_FILE_PATTERNS)).toBe(true);
+    expect(fileTreePathIsHidden("build/paper.run.xml", DEFAULT_HIDDEN_FILE_PATTERNS)).toBe(true);
+    expect(fileTreePathIsHidden("chapters/.git/config", DEFAULT_HIDDEN_FILE_PATTERNS)).toBe(true);
+    expect(fileTreePathIsHidden("chapters/results.tex", DEFAULT_HIDDEN_FILE_PATTERNS)).toBe(false);
+  });
+
+  it("supports custom wildcard and path patterns", () => {
+    expect(fileTreePathIsHidden("figures/draft-2.png", ["draft-?.png"])).toBe(true);
+    expect(fileTreePathIsHidden("generated/cache/data.json", ["generated/*"])).toBe(true);
+    expect(fileTreePathIsHidden("src/generated/cache.ts", ["generated/*"])).toBe(false);
+  });
+
+  it("adds, removes, and persists custom patterns", () => {
+    const settings = useSettingsStore.getState();
+    settings.resetToDefaults();
+    settings.addHiddenFilePattern("*.generated.tex");
+    settings.addHiddenFilePattern("*.generated.tex");
+
+    expect(useSettingsStore.getState().hiddenFilePatterns).toContain("*.generated.tex");
+    expect(
+      useSettingsStore.getState().hiddenFilePatterns.filter(
+        (pattern) => pattern === "*.generated.tex",
+      ),
+    ).toHaveLength(1);
+    expect(localStorage.getItem("oleafly.fileTree.hiddenPatterns")).toContain(
+      "*.generated.tex",
+    );
+
+    settings.removeHiddenFilePattern("*.generated.tex");
+    expect(useSettingsStore.getState().hiddenFilePatterns).not.toContain(
+      "*.generated.tex",
+    );
   });
 });

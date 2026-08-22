@@ -76,4 +76,20 @@ describe("Settings Help & About support callout", () => {
       expect(mocks.open).toHaveBeenCalledWith("https://github.com/Oleafly/Oleafly");
     });
   });
+
+  it("keeps the settings section list scrollable at larger app font sizes", () => {
+    useSettingsStore.setState({
+      settingsOpen: true,
+      settingsInitialSection: "appearance",
+      appFontSize: 20,
+    });
+
+    render(<SettingsModal />);
+
+    const sectionList = screen.getByTestId("settings-section-scroll");
+    expect(sectionList).toHaveClass("min-h-0", "flex-1", "overflow-y-auto");
+    expect(sectionList).not.toContainElement(
+      screen.getByTestId("settings-toggle-advanced"),
+    );
+  });
 });

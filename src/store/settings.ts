@@ -187,6 +187,87 @@ export const ACCENTS: { id: string; name: string; color: string }[] = [
   { id: "teal", name: "Teal", color: "#0d9488" },
 ];
 
+export const DEFAULT_HIDDEN_FILE_PATTERNS = [
+  "*.aux",
+  "*.log",
+  "*.toc",
+  "*.out",
+  "*.fls",
+  "*.fdb_latexmk",
+  "*.synctex.gz",
+  "*.gz",
+  "*.dvi",
+  "*.lof",
+  "*.lot",
+  "*.bit",
+  "*.idx",
+  "*.glo",
+  "*.bbl",
+  "*.blg",
+  "*.ilg",
+  "*.ind",
+  "*.glg",
+  "*.gls",
+  "*.acr",
+  "*.alg",
+  "*.xdy",
+  "*.xdv",
+  "*.bak",
+  "*.sav",
+  "*.tmp",
+  "*~",
+  "*.swp",
+  "*.swo",
+  "*.snm",
+  "*.nav",
+  "*.vrb",
+  "*.bcf",
+  "*.run.xml",
+  "*.spl",
+  ".git",
+  ".DS_Store",
+  ".gitignore",
+  "node_modules",
+  ".next",
+] as const;
+
+function readHiddenFilePatterns(raw: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [...DEFAULT_HIDDEN_FILE_PATTERNS];
+    return [
+      ...new Set(
+        parsed
+          .filter((value): value is string => typeof value === "string")
+          .map((value) => value.trim())
+          .filter(Boolean),
+      ),
+    ];
+  } catch {
+    return [...DEFAULT_HIDDEN_FILE_PATTERNS];
+  }
+}
+
+function filePatternRegex(pattern: string): RegExp {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/gu, "\\$&");
+  return new RegExp(`^${escaped.replace(/\*/gu, ".*").replace(/\?/gu, ".")}$`, "u");
+}
+
+export function fileTreePathIsHidden(
+  path: string,
+  patterns: readonly string[],
+): boolean {
+  const normalized = path.replace(/\\/gu, "/").replace(/^\.\//u, "");
+  const segments = normalized.split("/").filter(Boolean);
+  return patterns.some((rawPattern) => {
+    const pattern = rawPattern.trim().replace(/\\/gu, "/");
+    if (!pattern) return false;
+    const candidates = pattern.includes("/") ? [normalized] : segments;
+    const expression = filePatternRegex(pattern);
+    return candidates.some((candidate) => expression.test(candidate));
+  });
+}
+
 export const GRAMMAR_DIALECTS: {
   id: GrammarDialect;
   name: string;
@@ -271,6 +352,15 @@ interface SettingsState {
   setEditorFontFamily: (v: string) => void;
   editorTheme: EditorThemeId;
   setEditorTheme: (v: EditorThemeId) => void;
+  pdfDarkMode: boolean;
+  setPdfDarkMode: (v: boolean) => void;
+  pdfZoomShortcuts: boolean;
+  setPdfZoomShortcuts: (v: boolean) => void;
+  pdfScreenReaderMode: boolean;
+  setPdfScreenReaderMode: (v: boolean) => void;
+  hiddenFilePatterns: readonly string[];
+  addHiddenFilePattern: (pattern: string) => void;
+  removeHiddenFilePattern: (pattern: string) => void;
   accentColor: string;
   setAccentColor: (v: string) => void;
   showTree: boolean;
@@ -325,6 +415,10 @@ const PREF_DEFAULTS = {
   appFontFamily: "",
   editorFontFamily: "",
   editorTheme: "system" as EditorThemeId,
+  pdfDarkMode: false,
+  pdfZoomShortcuts: true,
+  pdfScreenReaderMode: false,
+  hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS] as readonly string[],
   defaultView: "editor-preview" as LayoutPreset,
   openInTree: false,
   hoverPreview: true,
@@ -480,6 +574,43 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.editorTheme", v);
     set({ editorTheme: v });
   },
+  pdfDarkMode: ls("oleafly.pdf.darkMode", "0") === "1",
+  setPdfDarkMode: (v) => {
+    saveLs("oleafly.pdf.darkMode", v ? "1" : "0");
+    set({ pdfDarkMode: v });
+  },
+  pdfZoomShortcuts: ls("oleafly.pdf.zoomShortcuts", "1") !== "0",
+  setPdfZoomShortcuts: (v) => {
+    saveLs("oleafly.pdf.zoomShortcuts", v ? "1" : "0");
+    set({ pdfZoomShortcuts: v });
+  },
+  pdfScreenReaderMode: ls("oleafly.pdf.screenReaderMode", "0") === "1",
+  setPdfScreenReaderMode: (v) => {
+    saveLs("oleafly.pdf.screenReaderMode", v ? "1" : "0");
+    set({ pdfScreenReaderMode: v });
+  },
+  hiddenFilePatterns: readHiddenFilePatterns(
+    ls("oleafly.fileTree.hiddenPatterns", JSON.stringify(DEFAULT_HIDDEN_FILE_PATTERNS)),
+  ),
+  addHiddenFilePattern: (rawPattern) => {
+    const pattern = rawPattern.trim();
+    if (!pattern) return;
+    set((state) => {
+      if (state.hiddenFilePatterns.includes(pattern)) return state;
+      const hiddenFilePatterns = [...state.hiddenFilePatterns, pattern];
+      saveLs("oleafly.fileTree.hiddenPatterns", JSON.stringify(hiddenFilePatterns));
+      return { hiddenFilePatterns };
+    });
+  },
+  removeHiddenFilePattern: (pattern) => {
+    set((state) => {
+      const hiddenFilePatterns = state.hiddenFilePatterns.filter(
+        (candidate) => candidate !== pattern,
+      );
+      saveLs("oleafly.fileTree.hiddenPatterns", JSON.stringify(hiddenFilePatterns));
+      return { hiddenFilePatterns };
+    });
+  },
   accentColor: ls("oleafly.accent", "#2563eb"),
   setAccentColor: (v) => {
     saveLs("oleafly.accent", v);
@@ -611,6 +742,19 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.appFont", PREF_DEFAULTS.appFontFamily);
     saveLs("oleafly.editorFont", PREF_DEFAULTS.editorFontFamily);
     saveLs("oleafly.editorTheme", PREF_DEFAULTS.editorTheme);
+    saveLs("oleafly.pdf.darkMode", PREF_DEFAULTS.pdfDarkMode ? "1" : "0");
+    saveLs(
+      "oleafly.pdf.zoomShortcuts",
+      PREF_DEFAULTS.pdfZoomShortcuts ? "1" : "0",
+    );
+    saveLs(
+      "oleafly.pdf.screenReaderMode",
+      PREF_DEFAULTS.pdfScreenReaderMode ? "1" : "0",
+    );
+    saveLs(
+      "oleafly.fileTree.hiddenPatterns",
+      JSON.stringify(PREF_DEFAULTS.hiddenFilePatterns),
+    );
     saveLs("oleafly.defaultView", PREF_DEFAULTS.defaultView);
     saveLs("oleafly.openInTree", PREF_DEFAULTS.openInTree ? "1" : "0");
     saveLs("oleafly.hoverPreview", PREF_DEFAULTS.hoverPreview ? "1" : "0");

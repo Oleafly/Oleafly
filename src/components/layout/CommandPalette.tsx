@@ -13,6 +13,7 @@ import { E2E_HOOKS } from "@/lib/e2e-flags";
 export function CommandPalette() {
   const open = useSettingsStore((s) => s.paletteOpen);
   const setPaletteOpen = useSettingsStore((s) => s.setPaletteOpen);
+  const latexTools = useSettingsStore((s) => s.latexTools);
   const [query, setQuery] = useState("");
   const [selectedValue, setSelectedValue] = useState("");
   const projectId = useFilesStore((s) => s.projectId);
@@ -65,8 +66,17 @@ export function CommandPalette() {
       documentEngineId: engine.id,
       documentEngineLoaded: engineLoaded,
       activeDocumentPath: activePath,
+      latexToolsEnabled: latexTools,
     }),
-    [activePath, engine.id, engineLoaded, projectId, projectKind, theme],
+    [
+      activePath,
+      engine.id,
+      engineLoaded,
+      latexTools,
+      projectId,
+      projectKind,
+      theme,
+    ],
   );
 
   // Map preserves insertion order, so groups render in registration order.

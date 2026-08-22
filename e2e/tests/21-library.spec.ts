@@ -87,9 +87,10 @@ test("the bookmark stacks above the hover preview overlay", async ({ tauriPage }
       const btn = el?.parentElement?.querySelector('[aria-label="Add to favorites"], [aria-label="Remove from favorites"]');
       const img = el && el.querySelector('img[draggable="false"]');
       const overlay = img && img.parentElement;
-      if (!btn || !overlay) return false;
+      const bookmarkLayer = btn?.parentElement;
+      if (!bookmarkLayer || !overlay) return false;
       const z = (n) => parseInt(getComputedStyle(n).zIndex || '0', 10) || 0;
-      return z(btn) > z(overlay);
+      return z(bookmarkLayer) > z(overlay);
     })()`,
   );
   expect(stacked).toBe(true);
@@ -243,6 +244,7 @@ test("hovering a compiled project slides in its PDF preview, gated by the settin
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage, "appearance");
+  await tauriPage.press('[data-testid="appearance-tab-pdf"]', "Enter");
   await tauriPage.click('[role="switch"][aria-label="Preview PDF on hover"]');
   await tauriPage.click('[aria-label="Close settings"]');
   await tauriPage.click('[title="Back to library"]');
@@ -260,6 +262,7 @@ test("hovering a compiled project slides in its PDF preview, gated by the settin
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage, "appearance");
+  await tauriPage.press('[data-testid="appearance-tab-pdf"]', "Enter");
   await tauriPage.click('[role="switch"][aria-label="Preview PDF on hover"]');
   await tauriPage.click('[aria-label="Close settings"]');
 });

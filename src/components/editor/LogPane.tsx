@@ -16,7 +16,8 @@ function easeInOutQuad(t: number): number {
 
 function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 700) {
   const startTop = el.scrollTop;
-  const delta = targetTop - startTop;
+  const maxTop = Math.max(0, el.scrollHeight - el.clientHeight);
+  const delta = Math.min(Math.max(0, targetTop), maxTop) - startTop;
   const startTime = performance.now();
   function step(now: number) {
     const t = Math.min(1, (now - startTime) / duration);
@@ -342,6 +343,8 @@ export function LogPane() {
   const errors = useCompileStore((s) => s.errors);
   const mainDoc = useFilesStore((s) => s.mainDoc);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
+  const followTailRef = useRef(true);
+  const tailFrameRef = useRef<number | null>(null);
 
   const structured = useMemo(() => (log ? parseLatexLog(log, mainDoc) : []), [log, mainDoc]);
   const groups = useMemo(() => {
@@ -381,23 +384,47 @@ export function LogPane() {
 
   useEffect(() => {
     void log;
-    const scrollBox = scrollBoxRef.current;
-    if (scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
+    if (!followTailRef.current || tailFrameRef.current !== null) return;
+    tailFrameRef.current = requestAnimationFrame(() => {
+      tailFrameRef.current = null;
+      const scrollBox = scrollBoxRef.current;
+      if (!scrollBox || !followTailRef.current) return;
+      scrollBox.scrollTop = Math.max(0, scrollBox.scrollHeight - scrollBox.clientHeight);
+    });
   }, [log]);
 
+  useEffect(
+    () => () => {
+      if (tailFrameRef.current !== null) cancelAnimationFrame(tailFrameRef.current);
+    },
+    [],
+  );
+
+  const onScroll = () => {
+    const scrollBox = scrollBoxRef.current;
+    if (!scrollBox) return;
+    const maxTop = Math.max(0, scrollBox.scrollHeight - scrollBox.clientHeight);
+    followTailRef.current = maxTop - scrollBox.scrollTop <= 32;
+  };
+
   const scrollToTop = () => {
+    followTailRef.current = false;
     if (scrollBoxRef.current) smoothScrollTo(scrollBoxRef.current, 0);
   };
   const scrollToBottom = () => {
-    if (scrollBoxRef.current) smoothScrollTo(scrollBoxRef.current, scrollBoxRef.current.scrollHeight);
+    const scrollBox = scrollBoxRef.current;
+    if (!scrollBox) return;
+    followTailRef.current = true;
+    smoothScrollTo(scrollBox, scrollBox.scrollHeight - scrollBox.clientHeight);
   };
 
   return (
-    <div className="relative flex h-full flex-col bg-sidebar">
+    <div className="relative flex h-full min-h-0 flex-col bg-sidebar">
       <div
         ref={scrollBoxRef}
         data-testid="compile-log-scroll"
-        className="flex-1 overflow-auto p-3"
+        className="min-h-0 flex-1 overflow-auto p-3"
+        onScroll={onScroll}
       >
         <div className="space-y-3">
           {errors.length > 0 &&

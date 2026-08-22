@@ -171,7 +171,7 @@ export function registerOmnibarCommands() {
     hint: "/tools",
     icon: () => <ToolCase className="size-4" />,
     order: 290,
-    when: () => useSettingsStore.getState().latexTools,
+    when: (ctx) => ctx.latexToolsEnabled === true,
     run: () => void openToolsGallery(),
   });
   TOOL_DEFINITIONS.forEach((tool, index) => {
@@ -189,7 +189,7 @@ export function registerOmnibarCommands() {
         />
       ),
       order: 330 + index,
-      when: () => useSettingsStore.getState().latexTools,
+      when: (ctx) => ctx.latexToolsEnabled === true,
       run: () => void openHomePage(tool.page),
     });
   });

@@ -38,8 +38,6 @@ import { reportCrashToGithub } from "@/lib/crash-report";
 import { isTauri } from "@tauri-apps/api/core";
 import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
-import { DotPattern } from "@/components/ui/dot-pattern";
-import { GridPattern } from "@/components/ui/grid-pattern";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
@@ -59,10 +57,6 @@ import {
 } from "@/components/ui/select";
 import {
   useSettingsStore,
-  ACCENTS,
-  APP_FONTS,
-  EDITOR_FONTS,
-  EDITOR_THEMES,
   GRAMMAR_DIALECTS,
   DICTIONARY_LOCALES,
   type GrammarDialect,
@@ -72,12 +66,16 @@ import { useFilesStore } from "@/store/files";
 import { useTheme } from "@/lib/theme";
 import { appVersion, libraryRoot } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
-import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { startTour } from "@/lib/tour";
 import { TOUR_IDS } from "@/lib/tours/registry";
 import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
+import { AppearanceSection } from "@/components/settings/AppearanceSection";
+import {
+  SettingsSwitchIndicator,
+  SettingsToggleRow,
+} from "@/components/settings/SettingsToggleRow";
 import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
 import {
   githubGetPublicRepoStats,
@@ -135,76 +133,11 @@ const TOUR_LABELS = {
   diagram: "Diagram Composer",
 } as const;
 
-function Switch({ checked }: { checked: boolean }) {
-  return (
-    <span
-      className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
-        checked ? "bg-primary" : "bg-zinc-300 dark:bg-zinc-600"
-      )}
-    >
-      <span
-        className={cn(
-          "pointer-events-none inline-block size-4 rounded-full bg-white shadow transition-transform",
-          checked ? "translate-x-4" : "translate-x-1"
-        )}
-      />
-    </span>
-  );
-}
-
-function ToggleRow({
-  label,
-  desc,
-  checked,
-  onChange,
-}: {
-  label: string;
-  desc?: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      tabIndex={0}
-      onClick={() => onChange(!checked)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onChange(!checked);
-        }
-      }}
-      className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border bg-background p-3 hover:bg-accent"
-    >
-      <div>
-        <div className="text-sm font-medium">{label}</div>
-        {desc && <div className="text-xs text-muted-foreground">{desc}</div>}
-      </div>
-      <Switch checked={checked} />
-    </div>
-  );
-}
-
 export function SettingsModal() {
   const open = useSettingsStore((s) => s.settingsOpen);
   const setOpen = useSettingsStore((s) => s.setSettingsOpen);
   const resetToDefaults = useSettingsStore((s) => s.resetToDefaults);
-  const { theme, setTheme, toggleTheme } = useTheme();
-  const vim = useSettingsStore((s) => s.vim);
-  const toggleVim = useSettingsStore((s) => s.toggleVim);
-  const editorAutocomplete = useSettingsStore((s) => s.editorAutocomplete);
-  const setEditorAutocomplete = useSettingsStore((s) => s.setEditorAutocomplete);
-  const editorAutoCloseBrackets = useSettingsStore((s) => s.editorAutoCloseBrackets);
-  const setEditorAutoCloseBrackets = useSettingsStore((s) => s.setEditorAutoCloseBrackets);
-  const editorGhostCompletion = useSettingsStore((s) => s.editorGhostCompletion);
-  const setEditorGhostCompletion = useSettingsStore((s) => s.setEditorGhostCompletion);
-  const editorNonBlinkingCursor = useSettingsStore((s) => s.editorNonBlinkingCursor);
-  const setEditorNonBlinkingCursor = useSettingsStore((s) => s.setEditorNonBlinkingCursor);
-  const editorStickyScroll = useSettingsStore((s) => s.editorStickyScroll);
-  const setEditorStickyScroll = useSettingsStore((s) => s.setEditorStickyScroll);
+  const { setTheme } = useTheme();
   const spellcheck = useSettingsStore((s) => s.spellcheck);
   const toggleSpellcheck = useSettingsStore((s) => s.toggleSpellcheck);
   const harper = useSettingsStore((s) => s.harper);
@@ -223,28 +156,6 @@ export function SettingsModal() {
   const setVisualEditor = useSettingsStore((s) => s.setVisualEditor);
   const latexTools = useSettingsStore((s) => s.latexTools);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
-  const editorFontSize = useSettingsStore((s) => s.editorFontSize);
-  const setEditorFontSize = useSettingsStore((s) => s.setEditorFontSize);
-  const appFontSize = useSettingsStore((s) => s.appFontSize);
-  const setAppFontSize = useSettingsStore((s) => s.setAppFontSize);
-  const appFontFamily = useSettingsStore((s) => s.appFontFamily);
-  const setAppFontFamily = useSettingsStore((s) => s.setAppFontFamily);
-  const editorFontFamily = useSettingsStore((s) => s.editorFontFamily);
-  const setEditorFontFamily = useSettingsStore((s) => s.setEditorFontFamily);
-  const editorTheme = useSettingsStore((s) => s.editorTheme);
-  const setEditorTheme = useSettingsStore((s) => s.setEditorTheme);
-  const defaultView = useSettingsStore((s) => s.defaultView);
-  const setDefaultView = useSettingsStore((s) => s.setDefaultView);
-  const openInTree = useSettingsStore((s) => s.openInTree);
-  const hoverPreview = useSettingsStore((s) => s.hoverPreview);
-  const setHoverPreview = useSettingsStore((s) => s.setHoverPreview);
-  const setOpenInTree = useSettingsStore((s) => s.setOpenInTree);
-  const accentColor = useSettingsStore((s) => s.accentColor);
-  const setAccentColor = useSettingsStore((s) => s.setAccentColor);
-  const dockPlacement = useSettingsStore((s) => s.dockPlacement);
-  const setDockPlacement = useSettingsStore((s) => s.setDockPlacement);
-  const bgPattern = useSettingsStore((s) => s.bgPattern);
-  const setBgPattern = useSettingsStore((s) => s.setBgPattern);
 
   const projectId = useFilesStore((s) => s.projectId);
 
@@ -319,10 +230,19 @@ export function SettingsModal() {
         <nav
           aria-label="Settings sections"
           data-tour="settings-navigation-panel"
-          className="flex w-52 shrink-0 flex-col gap-0.5 border-r bg-muted/30 p-3"
+          className="flex min-h-0 w-52 shrink-0 flex-col gap-0.5 border-r bg-muted/30 p-3"
         >
-          <div className="flex flex-col gap-0.5">
-            <div data-tour="settings-navigation" className="mb-2 px-2 text-sm font-semibold">Settings</div>
+          <div
+            data-tour="settings-navigation"
+            className="mb-2 shrink-0 px-2 text-sm font-semibold"
+          >
+            Settings
+          </div>
+          <div
+            data-testid="settings-section-scroll"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          >
+            <div className="flex flex-col gap-0.5">
             {NAV.filter(({ id }) => showAdvanced || !ADVANCED.includes(id)).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -341,6 +261,7 @@ export function SettingsModal() {
               {label}
             </button>
             ))}
+            </div>
           </div>
           <div
             role="switch"
@@ -355,10 +276,10 @@ export function SettingsModal() {
                 setAdvanced(!showAdvanced);
               }
             }}
-            className="mt-auto flex cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
+            className="mt-0.5 flex shrink-0 cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
           >
             <span>Show Advanced</span>
-            <Switch checked={showAdvanced} />
+            <SettingsSwitchIndicator checked={showAdvanced} />
           </div>
         </nav>
 
@@ -389,346 +310,19 @@ export function SettingsModal() {
             </Button>
           </div>
           <div className="flex-1 overflow-auto p-5">
-            {section === "appearance" && (
-              <div className="space-y-3 [&>*]:bg-card">
-                <div className="rounded-lg border bg-background p-3">
-                  <div className="text-sm font-medium">Dock placement</div>
-                  <div className="mb-2 text-xs text-muted-foreground">
-                    Where the floating home-screen dock sits.
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(
-                      [
-                        { id: "left", label: "Left" },
-                        { id: "bottom", label: "Bottom" },
-                        { id: "right", label: "Right" },
-                      ] as const
-                    ).map((opt) => {
-                      const active = dockPlacement === opt.id;
-                      return (
-                        <button
-                          type="button"
-                          key={opt.id}
-                          data-testid={`settings-dock-placement-${opt.id}`}
-                          onClick={() => setDockPlacement(opt.id)}
-                          className={cn(
-                            "flex flex-col items-center gap-2 rounded-md border p-3 text-xs font-medium transition-colors",
-                            active ? "border-primary bg-primary/5" : "border-border hover:bg-accent",
-                          )}
-                        >
-                          <div className="relative h-14 w-full overflow-hidden rounded bg-muted">
-                            {opt.id === "left" && (
-                              <div className="absolute inset-y-1 left-1 w-2 rounded bg-foreground/30" />
-                            )}
-                            {opt.id === "right" && (
-                              <div className="absolute inset-y-1 right-1 w-2 rounded bg-foreground/30" />
-                            )}
-                            {opt.id === "bottom" && (
-                              <div className="absolute inset-x-0 bottom-1 mx-auto h-2 w-10 rounded bg-foreground/30" />
-                            )}
-                          </div>
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border bg-background p-3">
-                  <div className="text-sm font-medium">Background pattern</div>
-                  <div className="mb-2 text-xs text-muted-foreground">
-                    The pattern behind your project shelf.
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(
-                      [
-                        { id: "dots", label: "Dots" },
-                        { id: "grid", label: "Grid" },
-                        { id: "none", label: "None" },
-                      ] as const
-                    ).map((opt) => {
-                      const active = bgPattern === opt.id;
-                      return (
-                        <button
-                          type="button"
-                          key={opt.id}
-                          data-testid={`settings-bg-pattern-${opt.id}`}
-                          onClick={() => setBgPattern(opt.id)}
-                          className={cn(
-                            "flex flex-col items-center gap-2 rounded-md border p-3 text-xs font-medium transition-colors",
-                            active ? "border-primary bg-primary/5" : "border-border hover:bg-accent",
-                          )}
-                        >
-                          <div className="relative h-14 w-full overflow-hidden rounded bg-[var(--home-background)]">
-                            {opt.id === "dots" ? (
-                              <DotPattern width={10} height={10} radius={0.75} />
-                            ) : opt.id === "grid" ? (
-                              <GridPattern width={10} height={10} />
-                            ) : null}
-                          </div>
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border bg-background p-3">
-                  <div className="text-sm font-medium">Accent color</div>
-                  <div className="mb-2 text-xs text-muted-foreground">
-                    The app's primary highlight color (buttons, selections, cursor).
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {ACCENTS.map((a) => {
-                      const active = accentColor === a.color;
-                      return (
-                        <button type="button"
-                          key={a.id}
-                          title={a.name}
-                          onClick={() => setAccentColor(a.color)}
-                          className={cn(
-                            "flex size-8 items-center justify-center rounded-full border transition-transform hover:scale-110",
-                            active
-                              ? "border-foreground ring-1 ring-foreground/20"
-                              : "border-border"
-                          )}
-                          style={{ backgroundColor: a.color }}
-                        >
-                          {active && (
-                            <Check className="size-3.5 text-white drop-shadow" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <ToggleRow
-                  label="Dark mode"
-                  desc="Switch between light and dark themes."
-                  checked={theme === "dark"}
-                  onChange={toggleTheme}
-                />
-
-                <div
-                  data-testid="settings-row-editor-font-size"
-                  className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3"
-                >
-                  <div>
-                    <div className="text-sm font-medium">Editor font size</div>
-                    <div className="text-xs text-muted-foreground">
-                      The code editor's text size.
-                    </div>
-                  </div>
-                  <Select
-                    value={String(editorFontSize)}
-                    onValueChange={(v) => setEditorFontSize(Number(v))}
-                  >
-                    <SelectTrigger className="w-[88px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[100]">
-                      {[11, 12, 13, 14, 15, 16, 18, 20].map((n) => (
-                        <SelectItem key={n} value={String(n)}>
-                          {n}px
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div
-                  data-testid="settings-row-app-font-size"
-                  className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3"
-                >
-                  <div>
-                    <div className="text-sm font-medium">App font size</div>
-                    <div className="text-xs text-muted-foreground">
-                      Scales the whole interface (menus, panels, and buttons).
-                    </div>
-                  </div>
-                  <Select value={String(appFontSize)} onValueChange={(v) => setAppFontSize(Number(v))}>
-                    <SelectTrigger className="w-[88px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[100]">
-                      {[13, 14, 15, 16, 17, 18, 20].map((n) => (
-                        <SelectItem key={n} value={String(n)}>
-                          {n}px
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div
-                  data-testid="settings-row-app-font"
-                  className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3"
-                >
-                  <div>
-                    <div className="text-sm font-medium">App font</div>
-                    <div className="text-xs text-muted-foreground">
-                      The interface font. Falls back if a font is not installed.
-                    </div>
-                  </div>
-                  <Select
-                    value={appFontFamily || "__default__"}
-                    onValueChange={(v) => setAppFontFamily(v === "__default__" ? "" : v)}
-                  >
-                    <SelectTrigger className="w-[168px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[100]">
-                      {APP_FONTS.map((f) => (
-                        <SelectItem key={f.name} value={f.value || "__default__"}>
-                          {f.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div
-                  data-testid="settings-row-editor-font"
-                  className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3"
-                >
-                  <div>
-                    <div className="text-sm font-medium">Editor font</div>
-                    <div className="text-xs text-muted-foreground">
-                      The monospace font used in the code editor.
-                    </div>
-                  </div>
-                  <Select
-                    value={editorFontFamily || "__default__"}
-                    onValueChange={(v) => setEditorFontFamily(v === "__default__" ? "" : v)}
-                  >
-                    <SelectTrigger className="w-[168px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[100]">
-                      {EDITOR_FONTS.map((f) => (
-                        <SelectItem key={f.name} value={f.value || "__default__"}>
-                          {f.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div
-                  data-testid="settings-row-editor-theme"
-                  className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3"
-                >
-                  <div>
-                    <div className="text-sm font-medium">Editor theme</div>
-                    <div className="text-xs text-muted-foreground">
-                      Syntax colors for the code editor, independent of the app's theme.
-                    </div>
-                  </div>
-                  <Select
-                    value={editorTheme}
-                    onValueChange={(v) => setEditorTheme(v as typeof editorTheme)}
-                  >
-                    <SelectTrigger className="w-[168px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[100]">
-                      {EDITOR_THEMES.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div
-                  data-testid="settings-row-open-projects-in"
-                  className="flex items-center justify-between gap-4 rounded-lg border bg-background p-3"
-                >
-                  <div>
-                    <div className="text-sm font-medium">Open projects in</div>
-                    <div className="text-xs text-muted-foreground">
-                      The layout a project lands in when you open it.
-                    </div>
-                  </div>
-                  <Select value={defaultView} onValueChange={(v) => setDefaultView(v as typeof defaultView)}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[100]">
-                      {LAYOUT_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.preset} value={opt.preset}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <ToggleRow
-                  label="Show file tree on open"
-                  desc="Reveal the source-file tree whenever you open a project."
-                  checked={openInTree}
-                  onChange={() => setOpenInTree(!openInTree)}
-                />
-
-                <ToggleRow
-                  label="Preview PDF on hover"
-                  desc="Slide the last compiled page over a project card when you hover it in the library."
-                  checked={hoverPreview}
-                  onChange={setHoverPreview}
-                />
-              </div>
-            )}
+            {section === "appearance" && <AppearanceSection />}
 
             {section === "general" && (
               <div className="space-y-2 [&>[role=switch]]:bg-card">
-                <ToggleRow
-                  label="Vim mode"
-                  desc="Enable Vim keybindings in the editor."
-                  checked={vim}
-                  onChange={toggleVim}
-                />
-                <ToggleRow
-                  label="Auto-complete"
-                  desc="Suggest code completions while typing. Ctrl+Space still opens suggestions when this is off."
-                  checked={editorAutocomplete}
-                  onChange={setEditorAutocomplete}
-                />
-                <ToggleRow
-                  label="Auto-close brackets"
-                  desc="Automatically insert closing brackets and parentheses."
-                  checked={editorAutoCloseBrackets}
-                  onChange={setEditorAutoCloseBrackets}
-                />
-                <ToggleRow
-                  label="Inline suggestion"
-                  desc="Preview the most likely completion in dim text after the cursor. Press Tab to accept it."
-                  checked={editorGhostCompletion}
-                  onChange={setEditorGhostCompletion}
-                />
-                <ToggleRow
-                  label="Non-blinking cursor"
-                  desc="Reduce visual distraction by keeping the cursor solid."
-                  checked={editorNonBlinkingCursor}
-                  onChange={setEditorNonBlinkingCursor}
-                />
-                <ToggleRow
-                  label="Sticky scroll"
-                  desc="Pin the sections and environments you are inside to the top of the editor while you scroll. LaTeX source only."
-                  checked={editorStickyScroll}
-                  onChange={setEditorStickyScroll}
-                />
-                <ToggleRow
+                <SettingsToggleRow
                   label="Spellcheck"
-                  desc="Underline misspelled words with the selected offline Hunspell dictionary and offer replacement suggestions in Source and Visual editing."
+                  description="Underline misspelled words with the selected offline Hunspell dictionary and offer replacement suggestions in Source and Visual editing."
                   checked={spellcheck}
                   onChange={toggleSpellcheck}
                 />
-                <ToggleRow
+                <SettingsToggleRow
                   label="Grammar & style (Harper)"
-                  desc="Check English grammar and style in LaTeX and Markdown Source and Visual editing, plus Typst Source, with one-click fixes."
+                  description="Check English grammar and style in LaTeX and Markdown Source and Visual editing, plus Typst Source, with one-click fixes."
                   checked={harper}
                   onChange={setHarper}
                 />
@@ -768,15 +362,15 @@ export function SettingsModal() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <ToggleRow
+                    <SettingsToggleRow
                       label="Regionalism suggestions"
-                      desc="Flag terms that do not match the selected English dialect. Turn off if you use such terms as product or code names."
+                      description="Flag terms that do not match the selected English dialect. Turn off if you use such terms as product or code names."
                       checked={showRegionalism}
                       onChange={setShowRegionalism}
                     />
-                    <ToggleRow
+                    <SettingsToggleRow
                       label="Word-choice suggestions"
-                      desc="Suggest alternative words (e.g. “too” vs. “to”). Turn off to keep only spelling and grammar."
+                      description="Suggest alternative words (e.g. “too” vs. “to”). Turn off to keep only spelling and grammar."
                       checked={showWordChoice}
                       onChange={setShowWordChoice}
                     />
@@ -821,9 +415,9 @@ export function SettingsModal() {
                   the exact selected Hunspell pack. Math, code, comments,
                   citation syntax, metadata, and URLs are excluded.
                 </div>
-                <ToggleRow
+                <SettingsToggleRow
                   label="Offline mode"
-                  desc="Compile with --only-cached and never fetch packages over the network."
+                  description="Compile with --only-cached and never fetch packages over the network."
                   checked={offline}
                   onChange={setOffline}
                 />
@@ -869,7 +463,7 @@ export function SettingsModal() {
                       }}
                       className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <Switch checked={toursEnabled} />
+                      <SettingsSwitchIndicator checked={toursEnabled} />
                     </button>
                   </div>
                   {tourGuidesOpen && (
@@ -896,7 +490,7 @@ export function SettingsModal() {
                               }
                               className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                              <Switch checked={checked} />
+                              <SettingsSwitchIndicator checked={checked} />
                             </button>
                           </div>
                         );
@@ -1052,15 +646,15 @@ export function SettingsModal() {
                     progress.
                   </span>
                 </div>
-                <ToggleRow
+                <SettingsToggleRow
                   label="Visual editor"
-                  desc="Show the Visual/Code toggle in the document editor. Off by default, so documents open in the code editor only. Diagrams always keep their own canvas toggle."
+                  description="Show the Visual/Code toggle in the document editor. Off by default, so documents open in the code editor only. Diagrams always keep their own canvas toggle."
                   checked={visualEditor}
                   onChange={setVisualEditor}
                 />
-                <ToggleRow
+                <SettingsToggleRow
                   label="LaTeX tools"
-                  desc="Show the Oleafly Tools gallery and the individual tools (PDF import, equations, tables, BibTeX, lab and literature search, deadlines) plus their slash commands. Off by default while still in beta."
+                  description="Show the Oleafly Tools gallery and the individual tools (PDF import, equations, tables, BibTeX, lab and literature search, deadlines) plus their slash commands. Off by default while still in beta."
                   checked={latexTools}
                   onChange={setLatexTools}
                 />

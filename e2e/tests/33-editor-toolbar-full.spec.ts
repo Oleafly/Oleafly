@@ -240,9 +240,9 @@ test("symbol picker searches and inserts a symbol", async ({ tauriPage }) => {
   await editorHas(tauriPage, "\\alpha");
 });
 
-test("word-count toolbar popover reports the active file", async ({ tauriPage }) => {
+test("project-info toolbar popover reports the active file", async ({ tauriPage }) => {
   await openScratchProject(tauriPage);
-  await tauriPage.click('[aria-label="Word count"]');
+  await tauriPage.click('[aria-label="Project info"]');
   await expect(tauriPage.getByText("Words", { exact: true })).toBeVisible();
   await expect(tauriPage.getByText("Characters", { exact: true })).toBeVisible();
   await expect(tauriPage.getByText("Lines", { exact: true })).toBeVisible();

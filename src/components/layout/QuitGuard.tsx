@@ -6,6 +6,20 @@ import { cancelQuitFlush, confirmQuitFlush } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 
+const QUIT_FLUSH_TIMEOUT_MS = 5_000;
+
+function flushForQuitWithDeadline(): Promise<void> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      reject(new Error("Saving did not finish within 5 seconds."));
+    }, QUIT_FLUSH_TIMEOUT_MS);
+  });
+  return Promise.race([useFilesStore.getState().flushForQuit(), deadline]).finally(() => {
+    if (timeout !== undefined) clearTimeout(timeout);
+  });
+}
+
 /**
  * Transactional quit: the Rust side blocks window close, Cmd+Q, and Restart
  * while dirty buffers may exist and emits `quit-flush-requested` (payload:
@@ -28,9 +42,7 @@ export function QuitGuard() {
       // stack dialogs; the running flush decides the outcome.
       if (flushing.current) return;
       flushing.current = true;
-      useFilesStore
-        .getState()
-        .flushForQuit()
+      flushForQuitWithDeadline()
         .then(() => confirmQuitFlush(restart))
         .catch((error: unknown) => {
           setFailure({

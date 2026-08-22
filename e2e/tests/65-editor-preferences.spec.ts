@@ -37,7 +37,13 @@ async function openPrefsProject(page: Page) {
 }
 
 async function toggleSetting(page: Page, label: string, on: boolean) {
-  await openSettings(page, "general");
+  await openSettings(page, "appearance");
+  await page.press('[data-testid="appearance-tab-editor"]', "Enter");
+  await waitLong(
+    page,
+    `document.querySelector('[data-testid="appearance-tab-editor"]')?.getAttribute("data-state") === "active"`,
+    10_000,
+  );
   const selector = `[role="switch"][aria-label="${label}"]`;
   await waitLong(page, `!!document.querySelector('${selector}')`, 10_000);
   const already = await page.evaluate<boolean>(

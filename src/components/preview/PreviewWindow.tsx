@@ -9,6 +9,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import {
   AlertTriangle,
+  Accessibility,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -58,6 +59,7 @@ import {
   writeBytesFile,
 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
+import { useSettingsStore } from "@/store/settings";
 import {
   attachPreviewZoom,
   MAX_PREVIEW_SCALE,
@@ -330,7 +332,17 @@ export function PreviewWindow({
   const [fitMode, setFitMode] = useState<"width" | "height" | null>(null);
   const [layout, setLayout] = useState<PdfLayout>("single");
   const [rotation, setRotation] = useState<PdfRotation>(0);
-  const [inverted, setInverted] = useState(false);
+  const inverted = useSettingsStore((state) => state.pdfDarkMode);
+  const setInverted = useSettingsStore((state) => state.setPdfDarkMode);
+  const pdfZoomShortcuts = useSettingsStore(
+    (state) => state.pdfZoomShortcuts,
+  );
+  const screenReaderMode = useSettingsStore(
+    (state) => state.pdfScreenReaderMode,
+  );
+  const setScreenReaderMode = useSettingsStore(
+    (state) => state.setPdfScreenReaderMode,
+  );
   const [page, setPage] = useState(1);
   const [numPages, setNumPages] = useState(0);
   const [pageInput, setPageInput] = useState("1");
@@ -702,21 +714,25 @@ export function PreviewWindow({
       ) {
         return;
       }
-      if (modifier && (event.key === "+" || event.key === "=")) {
+      if (
+        pdfZoomShortcuts &&
+        modifier &&
+        (event.key === "+" || event.key === "=")
+      ) {
         event.preventDefault();
         userZoom(() =>
           setScale((current) =>
             Math.min(MAX_PREVIEW_SCALE, current + 0.2),
           ),
         );
-      } else if (modifier && event.key === "-") {
+      } else if (pdfZoomShortcuts && modifier && event.key === "-") {
         event.preventDefault();
         userZoom(() =>
           setScale((current) =>
             Math.max(MIN_PREVIEW_SCALE, current - 0.2),
           ),
         );
-      } else if (modifier && event.key === "0") {
+      } else if (pdfZoomShortcuts && modifier && event.key === "0") {
         event.preventDefault();
         userZoom(() => setScale(1));
       } else if (
@@ -732,7 +748,7 @@ export function PreviewWindow({
     };
     root.addEventListener("keydown", onKeyDown);
     return () => root.removeEventListener("keydown", onKeyDown);
-  }, [outlineOpen, searchOpen, userZoom]);
+  }, [outlineOpen, pdfZoomShortcuts, searchOpen, userZoom]);
 
   const jumpToPage = () => {
     const requested = Number.parseInt(pageInput, 10);
@@ -1100,11 +1116,26 @@ export function PreviewWindow({
               size="icon"
               className={cn("size-7", inverted && "bg-accent")}
               disabled={!previewDocument}
-              onClick={() => setInverted((value) => !value)}
+              onClick={() => setInverted(!inverted)}
               aria-label="Invert PDF colors"
               aria-pressed={inverted}
             >
               <Contrast className="size-3.5" />
+            </Button>
+          </Tooltip>
+          <Tooltip
+            label={screenReaderMode ? "Show rendered PDF" : "Use screen reader mode"}
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn("size-7", screenReaderMode && "bg-accent")}
+              disabled={!previewDocument}
+              onClick={() => setScreenReaderMode(!screenReaderMode)}
+              aria-label="Screen reader mode"
+              aria-pressed={screenReaderMode}
+            >
+              <Accessibility className="size-3.5" />
             </Button>
           </Tooltip>
           <Tooltip label="Download displayed PDF">
@@ -1296,7 +1327,7 @@ export function PreviewWindow({
           aria-label="PDF continuous scroll area"
           className="h-full overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           style={
-            inverted
+            inverted && !screenReaderMode
               ? { filter: "invert(1) hue-rotate(180deg)" }
               : undefined
           }
@@ -1323,6 +1354,7 @@ export function PreviewWindow({
                 rotation={rotation}
                 scale={scale}
                 layout={layout}
+                screenReaderMode={screenReaderMode}
                 searchQuery={searchOpen ? deferredSearch : ""}
                 onLoadStateChange={handlePdfLoadState}
                 onSearchStateChange={setSearchState}

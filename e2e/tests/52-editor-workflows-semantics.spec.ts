@@ -34,17 +34,17 @@ async function readWordCounts(
   return page.evaluate<{ Words: number; Characters: number; Lines: number }>(
     `(() => {
       const title = Array.from(document.querySelectorAll("p"))
-        .find((node) => node.textContent?.trim() === "Word count");
-      if (!title?.parentElement) throw new Error("word-count popover not found");
+        .find((node) => node.textContent?.trim() === "Project info");
+      if (!title?.parentElement) throw new Error("project-info popover not found");
       const lines = (title.parentElement.innerText || "")
         .split("\\n")
         .map((line) => line.trim())
         .filter(Boolean);
       const valueAfter = (label) => {
         const index = lines.indexOf(label);
-        if (index < 0) throw new Error("missing word-count row: " + label);
+        if (index < 0) throw new Error("missing project-info row: " + label);
         const value = Number(lines[index + 1].replaceAll(",", ""));
-        if (!Number.isFinite(value)) throw new Error("invalid word-count value: " + lines[index + 1]);
+        if (!Number.isFinite(value)) throw new Error("invalid project-info value: " + lines[index + 1]);
         return value;
       };
       return {
@@ -246,7 +246,7 @@ FINDTARGET first. middle FINDTARGET second.
 `,
   );
 
-  await tauriPage.click('[aria-label="Word count"]');
+  await tauriPage.click('[aria-label="Project info"]');
   expect(await readWordCounts(tauriPage)).toEqual({
     Words: 8,
     Characters: 60,
@@ -265,7 +265,7 @@ FINDTARGET first. middle FINDTARGET second.
 \end{document}
 `,
   );
-  await tauriPage.click('[aria-label="Word count"]');
+  await tauriPage.click('[aria-label="Project info"]');
   expect(await readWordCounts(tauriPage)).toEqual({
     Words: 11,
     Characters: 79,
@@ -898,7 +898,7 @@ WYSRAWANCHOR
   // portals, and reopen retries (proven on CI in spec 51).
   await insertSymbol(tauriPage, "Misc", "hash");
 
-  await tauriPage.click('[aria-label="Word count"]');
+  await tauriPage.click('[aria-label="Project info"]');
   await expect(tauriPage.getByText("Words", { exact: true })).toBeVisible();
   await tauriPage.press("body", "Escape");
   await tauriPage.click('[aria-label="Switch to source view"]');

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 
 /**
  * Width-measured toolbar overflow.
@@ -23,14 +23,16 @@ export const MORE_BUTTON_WIDTH = 32;
 export const CONTROL_GAP = 2;
 
 export function useAvailableWidth() {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<ResizeObserver | null>(null);
   const [availableWidth, setAvailableWidth] = useState(
     Number.POSITIVE_INFINITY,
   );
 
-  useLayoutEffect(() => {
-    const container = containerRef.current;
+  const containerRef = useCallback((container: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
     if (!container) return;
+
     const recompute = () => setAvailableWidth(container.clientWidth);
     recompute();
     // Non-browser runtimes (jsdom under test) have no ResizeObserver. The
@@ -38,7 +40,7 @@ export function useAvailableWidth() {
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(recompute);
     observer.observe(container);
-    return () => observer.disconnect();
+    observerRef.current = observer;
   }, []);
 
   return { containerRef, availableWidth };

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 
@@ -65,6 +65,58 @@ describe("LogPane", () => {
     expect(screen.getByLabelText("Scroll to bottom")).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Scroll to bottom"));
     fireEvent.click(screen.getByLabelText("Scroll to top"));
+  });
+
+  it("never scrolls the streaming log into the blank region below its content", async () => {
+    setCompileState({ status: "compiling", log: "first chunk", errors: [] });
+    render(<LogPane />);
+    const box = screen.getByTestId("compile-log-scroll");
+    let scrollTop = 0;
+    Object.defineProperties(box, {
+      clientHeight: { configurable: true, get: () => 400 },
+      scrollHeight: { configurable: true, get: () => 1_200 },
+      scrollTop: {
+        configurable: true,
+        get: () => scrollTop,
+        set: (value: number) => {
+          scrollTop = value;
+        },
+      },
+    });
+
+    act(() => {
+      useCompileStore.setState({ log: "first chunk\nsecond chunk" });
+    });
+
+    await waitFor(() => expect(scrollTop).toBe(800));
+  });
+
+  it("does not yank the viewport away when the user scrolls up during a compile", async () => {
+    setCompileState({ status: "compiling", log: "first chunk", errors: [] });
+    render(<LogPane />);
+    const box = screen.getByTestId("compile-log-scroll");
+    let scrollTop = 800;
+    let scrollHeight = 1_200;
+    Object.defineProperties(box, {
+      clientHeight: { configurable: true, get: () => 400 },
+      scrollHeight: { configurable: true, get: () => scrollHeight },
+      scrollTop: {
+        configurable: true,
+        get: () => scrollTop,
+        set: (value: number) => {
+          scrollTop = value;
+        },
+      },
+    });
+
+    scrollTop = 200;
+    fireEvent.scroll(box);
+    scrollHeight = 1_300;
+    act(() => {
+      useCompileStore.setState({ log: "first chunk\nsecond chunk" });
+    });
+
+    await waitFor(() => expect(scrollTop).toBe(200));
   });
 
   it("shows an error card with the explanation, location, and a collapsed raw log by default when there are errors", () => {
