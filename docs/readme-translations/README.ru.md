@@ -4,7 +4,7 @@
 
 # Oleafly <sup><em>beta</em></sup>
 
-[Deutsch](README.de.md) | [English](README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | **Русский** | [中文](README.zh.md)
+[Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | **Русский** | [中文](README.zh.md)
 
 **Пишите, компилируйте и публикуйте научные работы в ИИ-пространстве, которое принадлежит вам.**
 
@@ -17,14 +17,14 @@ Windows и Linux. Оно работает по принципу local-first, н�
 
 [![Download](https://img.shields.io/github/v/release/Oleafly/Oleafly?label=Download&color=22c55e)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml)
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
 [![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 [![GitGem](https://gitgem.org/api/badge/github/Oleafly/Oleafly.svg)](https://gitgem.org/github/Oleafly/Oleafly)
 
 **[Скачать Oleafly](https://github.com/Oleafly/Oleafly/releases/latest) ·
-[Инженерная документация](docs/README.md) ·
-[Сборка из исходников](docs/development.md)**
+[Инженерная документация](../README.md) ·
+[Сборка из исходников](../development.md)**
 
 </div>
 
@@ -391,7 +391,7 @@ Claude Code, Cursor и других MCP-клиентов. MCP-подключен
 </div>
 
 Актуальный список провайдеров, инструментов и модель безопасности описаны в
-[справочнике по функциям](docs/features.md) и [настройке MCP](docs/mcp.md).
+[справочнике по функциям](../features.md) и [настройке MCP](../mcp.md).
 
 Всё доступно из одного места: омнибар ищет по проектам и документам, а ввод
 `/` превращает его в палитру команд.
@@ -451,7 +451,7 @@ pnpm tauri dev
 ```
 
 Требования, настройка платформ и производственные сборки описаны в
-[руководстве по разработке](docs/development.md).
+[руководстве по разработке](../development.md).
 
 ## Документация
 
@@ -461,16 +461,16 @@ pnpm tauri dev
 
 | Справочник | Содержание |
 | --- | --- |
-| [Каталог продуктовой инженерии](docs/README.md) | Реестры функций и инженерные контракты |
-| [Справочник по функциям](docs/features.md) | Возможности продукта и поддерживаемые рабочие процессы |
-| [Движки документов](docs/document-engines.md) | Возможности LaTeX, Typst и Markdown |
-| [Архитектура продукта](docs/Architecture.md) | Границы системы, владение пакетами и точки расширения |
-| [Разработка](docs/development.md) | Локальная настройка, тесты и процесс участия |
-| [Инструментарий языкового сервера](docs/language-server-toolchain.md) | Политика загрузки, целостности и распространения |
-| [Интеграция MCP](docs/mcp.md) | Внешние клиенты, токены доступа и политики одобрения |
-| [Выпуск релизов](docs/releasing.md) | Процесс релиза и проверки артефактов |
-| [Подпись кода](docs/signing.md) | Требования к подписи для платформ |
-| [Автообновления](docs/updates.md) | Манифесты обновлений, подписи и откат |
+| [Каталог продуктовой инженерии](../README.md) | Реестры функций и инженерные контракты |
+| [Справочник по функциям](../features.md) | Возможности продукта и поддерживаемые рабочие процессы |
+| [Движки документов](../document-engines.md) | Возможности LaTeX, Typst и Markdown |
+| [Архитектура продукта](../architecture.md) | Границы системы, владение пакетами и точки расширения |
+| [Разработка](../development.md) | Локальная настройка, тесты и процесс участия |
+| [Инструментарий языкового сервера](../language-server-toolchain.md) | Политика загрузки, целостности и распространения |
+| [Интеграция MCP](../mcp.md) | Внешние клиенты, токены доступа и политики одобрения |
+| [Выпуск релизов](../releasing.md) | Процесс релиза и проверки артефактов |
+| [Подпись кода](../signing.md) | Требования к подписи для платформ |
+| [Автообновления](../updates.md) | Манифесты обновлений, подписи и откат |
 
 ## Участие в разработке
 
@@ -479,7 +479,7 @@ Oleafly открыто разрабатывают
 сообщества. Мы рады сообщениям об ошибках, исправлениям, шаблонам,
 документации и вдумчивой обратной связи о продукте.
 
-1. Прочитайте [CONTRIBUTING.md](CONTRIBUTING.md).
+1. Прочитайте [CONTRIBUTING.md](../../CONTRIBUTING.md).
 2. Перед крупным изменением откройте issue; небольшие точечные исправления
    можно сразу оформлять пулреквестом.
 3. Перед отправкой запустите соответствующие проверки:
@@ -491,8 +491,8 @@ Oleafly открыто разрабатывают
    ```
 
 О проблемах безопасности, пожалуйста, сообщайте приватно, как описано в
-[SECURITY.md](SECURITY.md). Участие регулируется
-[кодексом поведения](CODE_OF_CONDUCT.md).
+[SECURITY.md](../../SECURITY.md). Участие регулируется
+[кодексом поведения](../../CODE_OF_CONDUCT.md).
 
 ## Благодарности
 
@@ -509,5 +509,5 @@ Oleafly построен на
 [Hunspell](https://hunspell.github.io/).
 
 Oleafly распространяется под лицензией
-[AGPL-3.0-or-later](LICENSE). Уведомления о сторонних компонентах перечислены
-в [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+[AGPL-3.0-or-later](../../LICENSE). Уведомления о сторонних компонентах перечислены
+в [THIRD_PARTY_LICENSES.md](../../THIRD_PARTY_LICENSES.md).

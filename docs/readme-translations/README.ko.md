@@ -4,7 +4,7 @@
 
 # Oleafly <sup><em>beta</em></sup>
 
-[Deutsch](README.de.md) | [English](README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | **한국어** | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md)
+[Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | **한국어** | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md)
 
 **직접 소유하는 AI 워크스페이스에서 연구를 작성하고, 컴파일하고, 출판하세요.**
 
@@ -17,14 +17,14 @@ Oleafly는 macOS, Windows, Linux용 무료 100% 오픈소스 데스크톱 앱입
 
 [![Download](https://img.shields.io/github/v/release/Oleafly/Oleafly?label=Download&color=22c55e)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml)
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
 [![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 [![GitGem](https://gitgem.org/api/badge/github/Oleafly/Oleafly.svg)](https://gitgem.org/github/Oleafly/Oleafly)
 
 **[Oleafly 다운로드](https://github.com/Oleafly/Oleafly/releases/latest) ·
-[엔지니어링 문서 보기](docs/README.md) ·
-[소스에서 빌드하기](docs/development.md)**
+[엔지니어링 문서 보기](../README.md) ·
+[소스에서 빌드하기](../development.md)**
 
 </div>
 
@@ -372,8 +372,8 @@ Oleafly는 프로젝트 도구를 Claude Desktop, Claude Code, Cursor를 비롯�
 
 </div>
 
-현재 지원되는 제공자, 도구, 보안 모델은 [기능 레퍼런스](docs/features.md)와
-[MCP 설정](docs/mcp.md)을 참고하시기 바랍니다.
+현재 지원되는 제공자, 도구, 보안 모델은 [기능 레퍼런스](../features.md)와
+[MCP 설정](../mcp.md)을 참고하시기 바랍니다.
 
 모든 기능은 한곳에서 접근할 수 있습니다. 옴니바로 프로젝트와 문서를
 검색하고, `/`를 입력하면 명령 팔레트로 바뀝니다.
@@ -434,7 +434,7 @@ pnpm tauri dev
 ```
 
 사전 요구 사항, 플랫폼별 설정, 프로덕션 빌드는
-[개발 가이드](docs/development.md)를 참고하시기 바랍니다.
+[개발 가이드](../development.md)를 참고하시기 바랍니다.
 
 ## 문서
 
@@ -443,16 +443,16 @@ pnpm tauri dev
 
 | 레퍼런스 | 다루는 내용 |
 | --- | --- |
-| [제품 엔지니어링 카탈로그](docs/README.md) | 기능 목록과 엔지니어링 계약 |
-| [기능 레퍼런스](docs/features.md) | 제품 표면과 지원되는 워크플로 |
-| [문서 엔진](docs/document-engines.md) | LaTeX, Typst, Markdown 기능 |
-| [제품 아키텍처](docs/Architecture.md) | 시스템 경계, 패키지 소유권, 확장 지점 |
-| [개발](docs/development.md) | 로컬 설정, 테스트, 기여 워크플로 |
-| [언어 서버 툴체인](docs/language-server-toolchain.md) | 가져오기, 무결성, 배포 정책 |
-| [MCP 연동](docs/mcp.md) | 외부 클라이언트, 액세스 토큰, 승인 정책 |
-| [릴리스](docs/releasing.md) | 릴리스 워크플로와 산출물 검사 |
-| [코드 서명](docs/signing.md) | 플랫폼별 서명 요구 사항 |
-| [자동 업데이트](docs/updates.md) | 업데이트 매니페스트, 서명, 롤백 |
+| [제품 엔지니어링 카탈로그](../README.md) | 기능 목록과 엔지니어링 계약 |
+| [기능 레퍼런스](../features.md) | 제품 표면과 지원되는 워크플로 |
+| [문서 엔진](../document-engines.md) | LaTeX, Typst, Markdown 기능 |
+| [제품 아키텍처](../architecture.md) | 시스템 경계, 패키지 소유권, 확장 지점 |
+| [개발](../development.md) | 로컬 설정, 테스트, 기여 워크플로 |
+| [언어 서버 툴체인](../language-server-toolchain.md) | 가져오기, 무결성, 배포 정책 |
+| [MCP 연동](../mcp.md) | 외부 클라이언트, 액세스 토큰, 승인 정책 |
+| [릴리스](../releasing.md) | 릴리스 워크플로와 산출물 검사 |
+| [코드 서명](../signing.md) | 플랫폼별 서명 요구 사항 |
+| [자동 업데이트](../updates.md) | 업데이트 매니페스트, 서명, 롤백 |
 
 ## 기여하기
 
@@ -461,7 +461,7 @@ Oleafly는
 기여자들이 공개적으로 개발하고 있습니다. 버그 리포트, 수정, 템플릿, 문서,
 그리고 신중한 제품 피드백을 환영합니다.
 
-1. [CONTRIBUTING.md](CONTRIBUTING.md)를 읽어 주세요.
+1. [CONTRIBUTING.md](../../CONTRIBUTING.md)를 읽어 주세요.
 2. 큰 변경은 먼저 이슈를 열어 주세요. 작고 집중된 수정은 바로 풀
    리퀘스트로 보내도 됩니다.
 3. 제출 전에 관련 검사를 실행해 주세요:
@@ -472,9 +472,9 @@ Oleafly는
    cargo test --workspace --all-targets
    ```
 
-보안 문제는 [SECURITY.md](SECURITY.md)에 안내된 대로 비공개로 제보해
+보안 문제는 [SECURITY.md](../../SECURITY.md)에 안내된 대로 비공개로 제보해
 주시기 바랍니다. 참여에는
-[행동 강령](CODE_OF_CONDUCT.md)이 적용됩니다.
+[행동 강령](../../CODE_OF_CONDUCT.md)이 적용됩니다.
 
 ## 크레딧
 
@@ -491,5 +491,5 @@ Oleafly는
 [Hunspell](https://hunspell.github.io/) 위에서 만들어졌습니다.
 
 Oleafly는
-[AGPL-3.0-or-later](LICENSE) 라이선스를 따릅니다. 서드파티 고지는
-[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)에 정리되어 있습니다.
+[AGPL-3.0-or-later](../../LICENSE) 라이선스를 따릅니다. 서드파티 고지는
+[THIRD_PARTY_LICENSES.md](../../THIRD_PARTY_LICENSES.md)에 정리되어 있습니다.

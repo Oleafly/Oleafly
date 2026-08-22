@@ -4,7 +4,7 @@
 
 # Oleafly <sup><em>beta</em></sup>
 
-[Deutsch](README.de.md) | [English](README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | **中文**
+[Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | **中文**
 
 **在完全属于你的 AI 工作区中撰写、编译并发表研究成果。**
 
@@ -17,14 +17,14 @@ Oleafly 是一款免费且 100% 开源的桌面应用，支持 macOS、Windows �
 
 [![Download](https://img.shields.io/github/v/release/Oleafly/Oleafly?label=Download&color=22c55e)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml)
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
 [![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 [![GitGem](https://gitgem.org/api/badge/github/Oleafly/Oleafly.svg)](https://gitgem.org/github/Oleafly/Oleafly)
 
 **[下载 Oleafly](https://github.com/Oleafly/Oleafly/releases/latest) ·
-[阅读工程文档](docs/README.md) ·
-[从源码构建](docs/development.md)**
+[阅读工程文档](../README.md) ·
+[从源码构建](../development.md)**
 
 </div>
 
@@ -365,8 +365,8 @@ Cursor 及其他 MCP 客户端。MCP 连接支持只读模式和
 
 </div>
 
-当前支持的服务商、工具和安全模型，请参阅[功能参考](docs/features.md)和
-[MCP 配置](docs/mcp.md)。
+当前支持的服务商、工具和安全模型，请参阅[功能参考](../features.md)和
+[MCP 配置](../mcp.md)。
 
 一切都可以从同一个入口触达：全能搜索栏可搜索项目和文档，
 输入 `/` 即可变身命令面板。
@@ -426,7 +426,7 @@ pnpm tauri dev
 ```
 
 前置依赖、各平台环境搭建和生产构建，请参阅
-[开发指南](docs/development.md)。
+[开发指南](../development.md)。
 
 ## 文档
 
@@ -435,16 +435,16 @@ pnpm tauri dev
 
 | 参考文档 | 内容 |
 | --- | --- |
-| [产品工程目录](docs/README.md) | 功能清单与工程契约 |
-| [功能参考](docs/features.md) | 产品功能面与支持的工作流 |
-| [文档引擎](docs/document-engines.md) | LaTeX、Typst 和 Markdown 的能力 |
-| [产品架构](docs/Architecture.md) | 系统边界、包归属与扩展点 |
-| [开发](docs/development.md) | 本地环境搭建、测试与贡献流程 |
-| [语言服务器工具链](docs/language-server-toolchain.md) | 获取、完整性校验与分发策略 |
-| [MCP 集成](docs/mcp.md) | 外部客户端、访问令牌与批准策略 |
-| [发布流程](docs/releasing.md) | 发布工作流与产物检查 |
-| [代码签名](docs/signing.md) | 各平台签名要求 |
-| [自动更新](docs/updates.md) | 更新清单、签名与回滚 |
+| [产品工程目录](../README.md) | 功能清单与工程契约 |
+| [功能参考](../features.md) | 产品功能面与支持的工作流 |
+| [文档引擎](../document-engines.md) | LaTeX、Typst 和 Markdown 的能力 |
+| [产品架构](../architecture.md) | 系统边界、包归属与扩展点 |
+| [开发](../development.md) | 本地环境搭建、测试与贡献流程 |
+| [语言服务器工具链](../language-server-toolchain.md) | 获取、完整性校验与分发策略 |
+| [MCP 集成](../mcp.md) | 外部客户端、访问令牌与批准策略 |
+| [发布流程](../releasing.md) | 发布工作流与产物检查 |
+| [代码签名](../signing.md) | 各平台签名要求 |
+| [自动更新](../updates.md) | 更新清单、签名与回滚 |
 
 ## 参与贡献
 
@@ -453,7 +453,7 @@ Oleafly 由
 众多贡献者公开开发。欢迎提交错误报告、修复、模板、文档，
 以及经过深思的产品反馈。
 
-1. 阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
+1. 阅读 [CONTRIBUTING.md](../../CONTRIBUTING.md)。
 2. 大的改动请先开 issue 讨论；小而聚焦的修复可以直接
    提交 pull request。
 3. 提交前运行相关检查：
@@ -465,8 +465,8 @@ Oleafly 由
    ```
 
 安全问题请按照
-[SECURITY.md](SECURITY.md) 中的说明私下报告。参与本项目须遵守
-[行为准则](CODE_OF_CONDUCT.md)。
+[SECURITY.md](../../SECURITY.md) 中的说明私下报告。参与本项目须遵守
+[行为准则](../../CODE_OF_CONDUCT.md)。
 
 ## 致谢
 
@@ -483,5 +483,5 @@ Oleafly 构建于以下项目之上：
 [Hunspell](https://hunspell.github.io/)。
 
 Oleafly 采用
-[AGPL-3.0-or-later](LICENSE) 许可发布。第三方声明列于
-[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。
+[AGPL-3.0-or-later](../../LICENSE) 许可发布。第三方声明列于
+[THIRD_PARTY_LICENSES.md](../../THIRD_PARTY_LICENSES.md)。

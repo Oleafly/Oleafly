@@ -4,7 +4,7 @@
 
 # Oleafly <sup><em>beta</em></sup>
 
-[English](README.md) | **Deutsch** | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md)
+[English](../../README.md) | **Deutsch** | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md)
 
 **Schreibe, kompiliere und veröffentliche Forschung mit einem KI-Arbeitsbereich, der dir gehört.**
 
@@ -17,14 +17,14 @@ einfache Projektdateien auf deinem Rechner.
 
 [![Download](https://img.shields.io/github/v/release/Oleafly/Oleafly?label=Download&color=22c55e)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml)
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
 [![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 [![GitGem](https://gitgem.org/api/badge/github/Oleafly/Oleafly.svg)](https://gitgem.org/github/Oleafly/Oleafly)
 
 **[Oleafly herunterladen](https://github.com/Oleafly/Oleafly/releases/latest) ·
-[Engineering-Dokumentation lesen](docs/README.md) ·
-[Aus dem Quellcode bauen](docs/development.md)**
+[Engineering-Dokumentation lesen](../README.md) ·
+[Aus dem Quellcode bauen](../development.md)**
 
 </div>
 
@@ -394,7 +394,7 @@ eigenen Freigabekontrolle des Clients vertrauen.
 </div>
 
 Die aktuellen Anbieter, Werkzeuge und das Sicherheitsmodell findest du in der
-[Funktionsreferenz](docs/features.md) und im [MCP-Setup](docs/mcp.md).
+[Funktionsreferenz](../features.md) und im [MCP-Setup](../mcp.md).
 
 Alles ist von einer Stelle aus erreichbar: Die Omnibar durchsucht Projekte und
 Dokumente, und mit einem `/` wird sie zur Befehlspalette.
@@ -454,7 +454,7 @@ pnpm tauri dev
 ```
 
 Voraussetzungen, Plattform-Setup und Produktions-Builds findest du im
-[Entwicklungsleitfaden](docs/development.md).
+[Entwicklungsleitfaden](../development.md).
 
 ## Dokumentation
 
@@ -464,16 +464,16 @@ Code. Aufgabenorientierte Anleitungen für Endnutzer werden getrennt von diesem
 
 | Referenz | Inhalt |
 | --- | --- |
-| [Produkt-Engineering-Katalog](docs/README.md) | Funktionsinventare und Engineering-Verträge |
-| [Funktionsreferenz](docs/features.md) | Die Produktoberfläche und unterstützte Workflows |
-| [Dokument-Engines](docs/document-engines.md) | Fähigkeiten von LaTeX, Typst und Markdown |
-| [Produktarchitektur](docs/Architecture.md) | Systemgrenzen, Paketverantwortlichkeiten und Erweiterungspunkte |
-| [Entwicklung](docs/development.md) | Lokales Setup, Tests und Beitrags-Workflow |
-| [Language-Server-Toolchain](docs/language-server-toolchain.md) | Bezug, Integrität und Verteilungsrichtlinie |
-| [MCP-Integration](docs/mcp.md) | Externe Clients, Zugriffstoken und Freigaberichtlinien |
-| [Releases](docs/releasing.md) | Release-Workflow und Artefaktprüfungen |
-| [Codesignierung](docs/signing.md) | Signaturanforderungen der Plattformen |
-| [Auto-Updates](docs/updates.md) | Update-Manifeste, Signaturen und Rollback |
+| [Produkt-Engineering-Katalog](../README.md) | Funktionsinventare und Engineering-Verträge |
+| [Funktionsreferenz](../features.md) | Die Produktoberfläche und unterstützte Workflows |
+| [Dokument-Engines](../document-engines.md) | Fähigkeiten von LaTeX, Typst und Markdown |
+| [Produktarchitektur](../architecture.md) | Systemgrenzen, Paketverantwortlichkeiten und Erweiterungspunkte |
+| [Entwicklung](../development.md) | Lokales Setup, Tests und Beitrags-Workflow |
+| [Language-Server-Toolchain](../language-server-toolchain.md) | Bezug, Integrität und Verteilungsrichtlinie |
+| [MCP-Integration](../mcp.md) | Externe Clients, Zugriffstoken und Freigaberichtlinien |
+| [Releases](../releasing.md) | Release-Workflow und Artefaktprüfungen |
+| [Codesignierung](../signing.md) | Signaturanforderungen der Plattformen |
+| [Auto-Updates](../updates.md) | Update-Manifeste, Signaturen und Rollback |
 
 ## Mitwirken
 
@@ -482,7 +482,7 @@ Oleafly wird offen entwickelt, von
 Mitwirkenden. Fehlerberichte, Fixes, Vorlagen, Dokumentation und durchdachtes
 Produktfeedback sind willkommen.
 
-1. Lies [CONTRIBUTING.md](CONTRIBUTING.md).
+1. Lies [CONTRIBUTING.md](../../CONTRIBUTING.md).
 2. Eröffne vor einer großen Änderung ein Issue; kleine, fokussierte Fixes
    können direkt als Pull Request eingereicht werden.
 3. Führe vor dem Einreichen die relevanten Checks aus:
@@ -494,8 +494,8 @@ Produktfeedback sind willkommen.
    ```
 
 Bitte melde Sicherheitsprobleme vertraulich, wie in
-[SECURITY.md](SECURITY.md) beschrieben. Für die Teilnahme gilt der
-[Verhaltenskodex](CODE_OF_CONDUCT.md).
+[SECURITY.md](../../SECURITY.md) beschrieben. Für die Teilnahme gilt der
+[Verhaltenskodex](../../CODE_OF_CONDUCT.md).
 
 ## Danksagungen
 
@@ -512,5 +512,5 @@ Oleafly baut auf
 [Hunspell](https://hunspell.github.io/) auf.
 
 Oleafly ist lizenziert unter
-[AGPL-3.0-or-later](LICENSE). Hinweise zu Drittanbieterkomponenten sind in
-[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) aufgeführt.
+[AGPL-3.0-or-later](../../LICENSE). Hinweise zu Drittanbieterkomponenten sind in
+[THIRD_PARTY_LICENSES.md](../../THIRD_PARTY_LICENSES.md) aufgeführt.

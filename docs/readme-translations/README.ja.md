@@ -4,7 +4,7 @@
 
 # Oleafly <sup><em>beta</em></sup>
 
-[Deutsch](README.de.md) | [English](README.md) | [Español](README.es.md) | [Français](README.fr.md) | **日本語** | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md)
+[Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | **日本語** | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md)
 
 **自分の手元にある AI ワークスペースで、研究を執筆・コンパイル・公開する。**
 
@@ -17,14 +17,14 @@ Oleafly は macOS、Windows、Linux 向けの無料かつ 100% オープンソ�
 
 [![Download](https://img.shields.io/github/v/release/Oleafly/Oleafly?label=Download&color=22c55e)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml)
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
 [![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 [![GitGem](https://gitgem.org/api/badge/github/Oleafly/Oleafly.svg)](https://gitgem.org/github/Oleafly/Oleafly)
 
 **[Oleafly をダウンロード](https://github.com/Oleafly/Oleafly/releases/latest) ·
-[エンジニアリングドキュメントを読む](docs/README.md) ·
-[ソースからビルドする](docs/development.md)**
+[エンジニアリングドキュメントを読む](../README.md) ·
+[ソースからビルドする](../development.md)**
 
 </div>
 
@@ -380,7 +380,7 @@ Oleafly はプロジェクトツールを Claude Desktop、Claude Code、Cursor�
 </div>
 
 現在のプロバイダー、ツール、セキュリティモデルについては
-[機能リファレンス](docs/features.md)と [MCP セットアップ](docs/mcp.md)を
+[機能リファレンス](../features.md)と [MCP セットアップ](../mcp.md)を
 ご覧ください。
 
 すべての機能にひとつの場所から到達できます。オムニバーはプロジェクトと
@@ -442,7 +442,7 @@ pnpm tauri dev
 ```
 
 前提条件、プラットフォームごとのセットアップ、プロダクションビルドに
-ついては[開発ガイド](docs/development.md)をご覧ください。
+ついては[開発ガイド](../development.md)をご覧ください。
 
 ## ドキュメント
 
@@ -452,16 +452,16 @@ pnpm tauri dev
 
 | リファレンス | 内容 |
 | --- | --- |
-| [プロダクトエンジニアリングカタログ](docs/README.md) | 機能インベントリとエンジニアリング上の取り決め |
-| [機能リファレンス](docs/features.md) | プロダクトの提供範囲とサポートされるワークフロー |
-| [ドキュメントエンジン](docs/document-engines.md) | LaTeX、Typst、Markdown の各機能 |
-| [プロダクトアーキテクチャ](docs/Architecture.md) | システム境界、パッケージの責務、拡張ポイント |
-| [開発](docs/development.md) | ローカルセットアップ、テスト、コントリビューションのワークフロー |
-| [言語サーバーツールチェーン](docs/language-server-toolchain.md) | 取得、整合性検証、配布のポリシー |
-| [MCP 連携](docs/mcp.md) | 外部クライアント、アクセストークン、承認ポリシー |
-| [リリース](docs/releasing.md) | リリースワークフローと成果物チェック |
-| [コード署名](docs/signing.md) | プラットフォームごとの署名要件 |
-| [自動アップデート](docs/updates.md) | アップデートマニフェスト、署名、ロールバック |
+| [プロダクトエンジニアリングカタログ](../README.md) | 機能インベントリとエンジニアリング上の取り決め |
+| [機能リファレンス](../features.md) | プロダクトの提供範囲とサポートされるワークフロー |
+| [ドキュメントエンジン](../document-engines.md) | LaTeX、Typst、Markdown の各機能 |
+| [プロダクトアーキテクチャ](../architecture.md) | システム境界、パッケージの責務、拡張ポイント |
+| [開発](../development.md) | ローカルセットアップ、テスト、コントリビューションのワークフロー |
+| [言語サーバーツールチェーン](../language-server-toolchain.md) | 取得、整合性検証、配布のポリシー |
+| [MCP 連携](../mcp.md) | 外部クライアント、アクセストークン、承認ポリシー |
+| [リリース](../releasing.md) | リリースワークフローと成果物チェック |
+| [コード署名](../signing.md) | プラットフォームごとの署名要件 |
+| [自動アップデート](../updates.md) | アップデートマニフェスト、署名、ロールバック |
 
 ## コントリビューション
 
@@ -470,7 +470,7 @@ Oleafly は
 コントリビューターによってオープンに開発されています。バグ報告、修正、
 テンプレート、ドキュメント、丁寧なプロダクトフィードバックを歓迎します。
 
-1. [CONTRIBUTING.md](CONTRIBUTING.md) をお読みください。
+1. [CONTRIBUTING.md](../../CONTRIBUTING.md) をお読みください。
 2. 大きな変更の前には Issue を立ててください。小さく焦点の絞られた修正は
    そのままプルリクエストで構いません。
 3. 提出前に関連するチェックを実行してください。
@@ -482,8 +482,8 @@ Oleafly は
    ```
 
 セキュリティ上の問題は
-[SECURITY.md](SECURITY.md) の記載に従って非公開でご報告ください。
-参加にあたっては[行動規範](CODE_OF_CONDUCT.md)が適用されます。
+[SECURITY.md](../../SECURITY.md) の記載に従って非公開でご報告ください。
+参加にあたっては[行動規範](../../CODE_OF_CONDUCT.md)が適用されます。
 
 ## クレジット
 
@@ -500,5 +500,5 @@ Oleafly は次のプロジェクトの上に築かれています。
 [Hunspell](https://hunspell.github.io/)。
 
 Oleafly は
-[AGPL-3.0-or-later](LICENSE) の下でライセンスされています。サードパーティの
-表示事項は [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) に記載されています。
+[AGPL-3.0-or-later](../../LICENSE) の下でライセンスされています。サードパーティの
+表示事項は [THIRD_PARTY_LICENSES.md](../../THIRD_PARTY_LICENSES.md) に記載されています。
