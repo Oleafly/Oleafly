@@ -1,0 +1,85 @@
+{
+  "fixtureVersion": 1,
+  "accepted": [
+    {
+      "schemaVersion": 1,
+      "nodes": [
+        {
+          "kind": "text",
+          "fileId": "0198cf35-0000-7000-8000-000000000020",
+          "parentId": null,
+          "name": "café.tex",
+          "collisionKey": "café.tex",
+          "tombstone": false,
+          "text": ""
+        }
+      ],
+      "conflicts": []
+    }
+  ],
+  "rejected": [
+    {
+      "label": "duplicate_file_id",
+      "snapshot": {
+        "schemaVersion": 1,
+        "nodes": [
+          {
+            "kind": "text",
+            "fileId": "0198cf35-0000-7000-8000-000000000020",
+            "parentId": null,
+            "name": "first.tex",
+            "collisionKey": "first.tex",
+            "tombstone": false,
+            "text": ""
+          },
+          {
+            "kind": "text",
+            "fileId": "0198cf35-0000-7000-8000-000000000020",
+            "parentId": null,
+            "name": "second.tex",
+            "collisionKey": "second.tex",
+            "tombstone": false,
+            "text": ""
+          }
+        ],
+        "conflicts": []
+      }
+    },
+    {
+      "label": "non_nfc_name",
+      "snapshot": {
+        "schemaVersion": 1,
+        "nodes": [
+          {
+            "kind": "text",
+            "fileId": "0198cf35-0000-7000-8000-000000000020",
+            "parentId": null,
+            "name": "café.tex",
+            "collisionKey": "café.tex",
+            "tombstone": false,
+            "text": ""
+          }
+        ],
+        "conflicts": []
+      }
+    },
+    {
+      "label": "wrong_collision_key",
+      "snapshot": {
+        "schemaVersion": 1,
+        "nodes": [
+          {
+            "kind": "text",
+            "fileId": "0198cf35-0000-7000-8000-000000000020",
+            "parentId": null,
+            "name": "Main.tex",
+            "collisionKey": "Main.tex",
+            "tombstone": false,
+            "text": ""
+          }
+        ],
+        "conflicts": []
+      }
+    }
+  ]
+}

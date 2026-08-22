@@ -1,0 +1,57 @@
+{
+  "versions": {
+    "frameHeader": 1,
+    "protocol": 1,
+    "authoringDoc": 1,
+    "authoringConflict": 1,
+    "projectControls": 1,
+    "canonicalManifest": 1
+  },
+  "roleCapabilities": {
+    "viewer": ["source_read", "presence_join", "compile_private", "review_read"],
+    "commenter": ["source_read", "presence_join", "compile_private", "review_read", "review_create", "review_manage_own"],
+    "editor": ["source_read", "presence_join", "compile_private", "review_read", "review_create", "review_manage_own", "source_write", "tree_write", "binary_write", "review_moderate", "suggestion_decide", "version_create", "version_restore_file", "artifact_publish", "artifact_select_current"],
+    "owner": ["source_read", "presence_join", "compile_private", "review_read", "review_create", "review_manage_own", "source_write", "tree_write", "binary_write", "review_moderate", "suggestion_decide", "version_create", "version_restore_file", "artifact_publish", "artifact_select_current", "membership_manage", "project_controls_manage", "review_hide_abuse", "version_restore_project", "publisher_policy_manage", "lifecycle_manage", "ownership_transfer"]
+  },
+  "localProjectTransitions": [
+    {"from":"local","event":"begin_share","to":"sharing_staging"},
+    {"from":"sharing_staging","event":"staging_ready","to":"sharing_cutover"},
+    {"from":"sharing_staging","event":"share_failed","to":"local"},
+    {"from":"sharing_cutover","event":"share_failed","to":"local"},
+    {"from":"sharing_cutover","event":"cutover_committed","to":"shared_active"},
+    {"from":"local","event":"begin_join","to":"joining_bootstrap"},
+    {"from":"joining_bootstrap","event":"bootstrap_durable","to":"shared_active"},
+    {"from":"joining_bootstrap","event":"join_failed","to":"local"},
+    {"from":"shared_active","event":"authorization_revoked","to":"revocation_recovery"},
+    {"from":"shared_active","event":"leave_confirmed","to":"shared_closed"},
+    {"from":"revocation_recovery","event":"recovery_detached","to":"shared_closed"},
+    {"from":"revocation_recovery","event":"recovery_exported","to":"shared_closed"},
+    {"from":"revocation_recovery","event":"recovery_discarded","to":"shared_closed"}
+  ],
+  "syncStatusTransitions": [
+    {"from":"saved_to_team","event":"local_mutation","to":"saved_locally"},
+    {"from":"saved_locally","event":"local_mutation","to":"saved_locally"},
+    {"from":"syncing","event":"local_mutation","to":"syncing"},
+    {"from":"offline","event":"local_mutation","to":"offline"},
+    {"from":"saved_locally","event":"sync_started","to":"syncing"},
+    {"from":"offline","event":"sync_started","to":"syncing"},
+    {"from":"syncing","event":"durable_receipt_pending","to":"syncing"},
+    {"from":"syncing","event":"durable_receipt_complete","to":"saved_to_team"},
+    {"from":"syncing","event":"reconciliation_complete_no_pending","to":"saved_to_team"},
+    {"from":"saved_to_team","event":"connection_lost","to":"offline"},
+    {"from":"saved_locally","event":"connection_lost","to":"offline"},
+    {"from":"syncing","event":"connection_lost","to":"offline"},
+    {"from":"saved_locally","event":"authorization_rejected","to":"recovery_required"},
+    {"from":"syncing","event":"authorization_rejected","to":"recovery_required"},
+    {"from":"offline","event":"authorization_rejected","to":"recovery_required"}
+  ],
+  "serverProjectTransitions": [
+    {"from":"staging","event":"activate","to":"active"},
+    {"from":"staging","event":"staging_expired","to":"purged"},
+    {"from":"active","event":"archive","to":"archived_read_only"},
+    {"from":"active","event":"schedule_delete","to":"delete_pending"},
+    {"from":"archived_read_only","event":"schedule_delete","to":"delete_pending"},
+    {"from":"delete_pending","event":"cancel_delete","to":"active"},
+    {"from":"delete_pending","event":"grace_elapsed","to":"purged"}
+  ]
+}

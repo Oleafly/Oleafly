@@ -34,6 +34,7 @@
       "@oleafly/editor/math-preview": ["./packages/editor/src/math-preview.ts"],
       "@oleafly/ai-tools": ["./packages/ai-tools/src/index.ts"],
       "@oleafly/preflight": ["./packages/preflight/src/index.ts"],
+      "@oleafly/realtime-protocol": ["./packages/realtime-protocol/src/index.ts"],
       "@oleafly/registry": ["./packages/registry/src/index.ts"],
       "@oleafly/preflight/pdf-extract": ["./packages/preflight/src/pdf-extract.ts"],
       "@oleafly/templates": ["./packages/templates/src/index.ts"],

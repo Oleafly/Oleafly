@@ -283,8 +283,8 @@ jobs:
         with:
           toolchain: 1.77.0
 
-      - name: Check core and CLI against the Rust 1.77 MSRV
-        run: cargo +1.77.0 check -p oleafly-core -p oleafly-cli --all-targets
+      - name: Check core, CLI, and realtime protocol against the Rust 1.77 MSRV
+        run: cargo +1.77.0 check -p oleafly-core -p oleafly-cli -p oleafly-realtime-protocol --all-targets
 
   rust-windows:
     name: Rust tests (Windows Job Objects)

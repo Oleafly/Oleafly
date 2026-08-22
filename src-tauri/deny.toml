@@ -30,6 +30,10 @@ ignore = [
   "RUSTSEC-2025-0081",
   "RUSTSEC-2025-0098",
   "RUSTSEC-2025-0100",
+  # yrs 0.26 requires smallstr and exposes no feature to remove it. The
+  # advisory reports abandonment, not a vulnerability, and has no fixed
+  # smallstr release. Revisit this exception with each pinned yrs upgrade.
+  "RUSTSEC-2026-0215",
 ]
 
 [licenses]
@@ -53,6 +57,7 @@ exceptions = [
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-agent" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-cli" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-core" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-realtime-protocol" },
 ]
 
 [bans]

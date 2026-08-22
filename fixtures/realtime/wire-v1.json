@@ -1,0 +1,67 @@
+{
+  "encoding": "oleafly-realtime-binary-v1-base64",
+  "fixtureVersion": 1,
+  "frameHeaderVersion": 1,
+  "frames": [
+    {
+      "base64": "T0xSVAEAAAEAAAAoAAMAAwABAAIAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHw==",
+      "name": "opening_auth",
+      "protocolVersion": 0
+    },
+    {
+      "base64": "T0xSVAEAAQIAAAAA",
+      "name": "opening_accepted",
+      "protocolVersion": 1
+    },
+    {
+      "base64": "T0xSVAEAARAAAAAJAAAAAAQBZYQB",
+      "name": "yjs_state_vector",
+      "protocolVersion": 1
+    },
+    {
+      "base64": "T0xSVAEAARAAAARcAQAABFcBIWUAKAEJYXV0aG9yaW5nDnNjaGVtYV92ZXJzaW9uAX0BJwEFbm9kZXMkMDE5OGNmMzUtMDAwMC03MDAwLTgwMDAtMDAwMDAwMDAwMDAyASgAZQEJcGFyZW50X2lkAX4oAGUBBG5hbWUBdwhtYWluLnRleCgAZQENY29sbGlzaW9uX2tleQF3CG1haW4udGV4KABlAQl0b21ic3RvbmUBeSgAZQEEa2luZAF3BHRleHQnAQV0ZXh0cyQwMTk4Y2YzNS0wMDAwLTcwMDAtODAwMC0wMDAwMDAwMDAwMDICBABlB0NcZG9jdW1lbnRjbGFzc3thcnRpY2xlfQpcYmVnaW57ZG9jdW1lbnR9CkhlbGxvIPCfjL8KXGVuZHtkb2N1bWVudH0KJwEFbm9kZXMkMDE5OGNmMzUtMDAwMC03MDAwLTgwMDAtMDAwMDAwMDAwMDAzASgAZUkJcGFyZW50X2lkAX4oAGVJBG5hbWUBdwhTZWN0aW9ucygAZUkNY29sbGlzaW9uX2tleQF3CHNlY3Rpb25zKABlSQl0b21ic3RvbmUBeSgAZUkEa2luZAF3CWRpcmVjdG9yeScBBW5vZGVzJDAxOThjZjM1LTAwMDAtNzAwMC04MDAwLTAwMDAwMDAwMDAwNAEoAGVPCXBhcmVudF9pZAF3JDAxOThjZjM1LTAwMDAtNzAwMC04MDAwLTAwMDAwMDAwMDAwMygAZU8EbmFtZQF3CWNhZsOpLnRleCgAZU8NY29sbGlzaW9uX2tleQF3CWNhZsOpLnRleCgAZU8JdG9tYnN0b25lAXkoAGVPBGtpbmQBdwR0ZXh0JwEFdGV4dHMkMDE5OGNmMzUtMDAwMC03MDAwLTgwMDAtMDAwMDAwMDAwMDA0AgQAZVUNQ2Fmw6kgbm90ZXMuCicBBW5vZGVzJDAxOThjZjM1LTAwMDAtNzAwMC04MDAwLTAwMDAwMDAwMDAwNgEoAGViCXBhcmVudF9pZAF+KABlYgRuYW1lAXcLc2NyYXRjaC50ZXgoAGViDWNvbGxpc2lvbl9rZXkBdwtzY3JhdGNoLnRleCEAZWIJdG9tYnN0b25lASgAZWIEa2luZAF3BHRleHQnAQV0ZXh0cyQwMTk4Y2YzNS0wMDAwLTcwMDAtODAwMC0wMDAwMDAwMDAwMDYCBABlaBlEZWxldGVkIGJ1dCByZWNvdmVyYWJsZS4KqGVmAXgIAQljb25mbGljdHMBdgYNc2NoZW1hVmVyc2lvbn0BCmNvbmZsaWN0SWR3JDAxOThjZjM1LTAwMDAtNzAwMC04MDAwLTAwMDAwMDAwMDAwNwRraW5kdwxyZW5hbWVfbG9zZXIGZmlsZUlkdyQwMTk4Y2YzNS0wMDAwLTcwMDAtODAwMC0wMDAwMDAwMDAwMDQKbG9zaW5nTmFtZXcIQ2FmZS50ZXgLd2lubmluZ05hbWV3CWNhZsOpLnRleAFlAWYB",
+      "name": "yjs_sync_update",
+      "protocolVersion": 1
+    },
+    {
+      "base64": "T0xSVAEAARAAAAAaAgAAABUBAZQDAMRlD2UQBWxpdmUgAWUBZgE=",
+      "name": "yjs_broadcast",
+      "protocolVersion": 1
+    },
+    {
+      "base64": "T0xSVAEAAREAAABTAZjPNQAAcACAAAAAAAAAEwGYzzUAAHAAgAAAAAAAABEAAAAAAAAAAQGYzzUAAHAAgAAAAAAAABIAAAAAABUBAZQDAMRlD2UQBWxpdmUgAWUBZgE=",
+      "name": "mutation_without_assistance",
+      "protocolVersion": 1
+    },
+    {
+      "base64": "T0xSVAEAAREAAACEAZjPNQAAcACAAAAAAAAAEAGYzzUAAHAAgAAAAAAAABH//////////wGYzzUAAHAAgAAAAAAAABIAAQAGb3BlbmFpAAhncHQtdGVzdAANcHJvcG9zYWwtZmVybgAAAAwrSGVsbG8g8J+MvwoAAAAVAQGUAwDEZQ9lEAVsaXZlIAFlAWYB",
+      "name": "mutation_with_assistance",
+      "protocolVersion": 1
+    },
+    {
+      "base64": "T0xSVAEAARIAAABAAZjPNQAAcACAAAAAAAAAEAGYzzUAAHAAgAAAAAAAABH//////////wAgAAAAAAABAAAAAAAAACoAAAGcHDikew==",
+      "name": "durable_receipt",
+      "protocolVersion": 1
+    },
+    {
+      "base64": "T0xSVAEAASAAAAAhAQGYzzUAAHAAgAAAAAAAAAIAAAAEAGUQAAAAAAQAZSAA",
+      "name": "client_presence",
+      "protocolVersion": 1
+    },
+    {
+      "base64": "T0xSVAEAASAAAAABAA==",
+      "name": "client_presence_cleared",
+      "protocolVersion": 1
+    },
+    {
+      "base64": "T0xSVAEAASEAAABToHtmEFlQS5CKKcnqIHI2yAGYzzUAAHAAgAAAAAAAABEACkFsaWNlIPCfjL8ABGZlcm4BAZjPNQAAcACAAAAAAAAAAgAAAAQAZRAAAAAABABlIAA=",
+      "name": "server_presence",
+      "protocolVersion": 1
+    },
+    {
+      "base64": "T0xSVAEAASEAAAAzoHtmEFlQS5CKKcnqIHI2yAGYzzUAAHAAgAAAAAAAABEACkFsaWNlIPCfjL8ABGZlcm4A",
+      "name": "server_presence_cleared",
+      "protocolVersion": 1
+    }
+  ]
+}

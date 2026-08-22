@@ -131,6 +131,7 @@ export default defineConfig(async () => ({
       "@oleafly/editor": path.resolve(__dirname, "./packages/editor/src"),
       "@oleafly/ai-tools": path.resolve(__dirname, "./packages/ai-tools/src"),
       "@oleafly/preflight": path.resolve(__dirname, "./packages/preflight/src"),
+      "@oleafly/realtime-protocol": path.resolve(__dirname, "./packages/realtime-protocol/src"),
       "@oleafly/registry": path.resolve(__dirname, "./packages/registry/src"),
       "@oleafly/templates": path.resolve(__dirname, "./packages/templates/src"),
       "@oleafly/preview": path.resolve(__dirname, "./packages/preview/src"),

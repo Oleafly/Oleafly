@@ -1,0 +1,62 @@
+{
+  "fixtureVersion": 1,
+  "accepted": {
+    "projectControls": [
+      {
+        "schemaVersion": 1,
+        "version": "18446744073709551615",
+        "mainFileId": "0198cf35-0000-7000-8000-000000000002"
+      },
+      {
+        "kind": "set_main_file",
+        "expectedVersion": "0",
+        "mainFileId": null
+      }
+    ],
+    "bindings": [
+      {
+        "localProjectId": "local-project-1",
+        "serverProfileId": "a07b6610-5950-4b90-8a29-c9ea207236c8",
+        "serverInstanceId": "b07b6610-5950-4b90-8a29-c9ea207236c8",
+        "projectId": "0198cf35-0000-7000-8000-000000000001",
+        "replicaId": "0198cf35-0000-7000-8000-000000000011",
+        "state": "shared_active"
+      }
+    ]
+  },
+  "rejected": {
+    "projectControls": [
+      {
+        "schemaVersion": 2,
+        "version": "0",
+        "mainFileId": null
+      },
+      {
+        "schemaVersion": 1,
+        "version": 0,
+        "mainFileId": null
+      },
+      {
+        "schemaVersion": 1,
+        "version": "00",
+        "mainFileId": null
+      },
+      {
+        "kind": "set_main_file",
+        "expectedVersion": "18446744073709551616",
+        "mainFileId": null
+      }
+    ],
+    "bindings": [
+      {
+        "localProjectId": "local-project-1",
+        "serverProfileId": "a07b6610-5950-4b90-8a29-c9ea207236c8",
+        "serverInstanceId": "b07b6610-5950-4b90-8a29-c9ea207236c8",
+        "projectId": "0198cf35-0000-7000-8000-000000000001",
+        "replicaId": "0198cf35-0000-7000-8000-000000000011",
+        "state": "shared_active",
+        "authorizationEpoch": "1"
+      }
+    ]
+  }
+}
