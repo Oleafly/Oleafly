@@ -31,11 +31,12 @@ describe("ProjectImportMenu", () => {
       ctrlKey: false,
     });
 
-    expect(screen.getByText("Import")).toBeInTheDocument();
+    expect(screen.getByText("Local")).toBeInTheDocument();
+    expect(screen.getByText("Cloud")).toBeInTheDocument();
     expect(screen.getByText("Existing project (.zip)")).toBeInTheDocument();
     expect(screen.getByText("Word document")).toBeInTheDocument();
     expect(screen.getByText("Markdown document")).toBeInTheDocument();
-    expect(screen.getByText("GitHub repo")).toBeInTheDocument();
+    expect(screen.getByText("GitHub")).toBeInTheDocument();
   });
 
   it("shows a tooltip when the trigger requests one", () => {

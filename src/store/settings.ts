@@ -213,6 +213,9 @@ interface SettingsState {
   /** Keep the cursor solid instead of blinking. */
   editorNonBlinkingCursor: boolean;
   setEditorNonBlinkingCursor: (v: boolean) => void;
+  /** Pin the enclosing sections and environments to the top while scrolling. */
+  editorStickyScroll: boolean;
+  setEditorStickyScroll: (v: boolean) => void;
   spellcheck: boolean;
   toggleSpellcheck: () => void;
   harper: boolean;
@@ -309,6 +312,7 @@ const PREF_DEFAULTS = {
   editorAutoCloseBrackets: true,
   editorGhostCompletion: true,
   editorNonBlinkingCursor: false,
+  editorStickyScroll: true,
   spellcheck: true,
   harper: true,
   grammarDialect: "american" as GrammarDialect,
@@ -353,6 +357,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setEditorGhostCompletion: (v) => {
     saveLs("oleafly.editor.ghostCompletion", v ? "1" : "0");
     set({ editorGhostCompletion: v });
+  },
+  editorStickyScroll: ls("oleafly.editor.stickyScroll", "1") !== "0",
+  setEditorStickyScroll: (v) => {
+    saveLs("oleafly.editor.stickyScroll", v ? "1" : "0");
+    set({ editorStickyScroll: v });
   },
   editorNonBlinkingCursor: ls("oleafly.editor.solidCursor", "0") === "1",
   setEditorNonBlinkingCursor: (v) => {
@@ -587,6 +596,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs(
       "oleafly.editor.solidCursor",
       PREF_DEFAULTS.editorNonBlinkingCursor ? "1" : "0",
+    );
+    saveLs(
+      "oleafly.editor.stickyScroll",
+      PREF_DEFAULTS.editorStickyScroll ? "1" : "0",
     );
     saveLs("oleafly.spellcheck", PREF_DEFAULTS.spellcheck ? "1" : "0");
     saveLs("oleafly.harper", PREF_DEFAULTS.harper ? "1" : "0");

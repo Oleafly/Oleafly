@@ -1444,3 +1444,15 @@ body[data-tour-active] [data-tour-hide] {
   --cm-gutter-number-inset: 3px;
   --cm-gutter-min-width: 2em;
 }
+
+/* Scrollable, but with no visible bar. The tab strip needs to scroll
+   horizontally without a track sitting under the tabs. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}

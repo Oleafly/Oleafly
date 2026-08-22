@@ -1,6 +1,8 @@
 import { ChevronDown, ChevronRight, FileText, List } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEditorViewportAnchor } from "@/components/editor/cm/use-viewport-anchor";
 import { outlineFromIndex, type OutlineItem } from "@/lib/index/outline";
+import { activeOutlineIndex } from "@/lib/outline-active";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
@@ -28,9 +30,33 @@ export function DocumentOutline() {
   const [collapsed, setCollapsed] = useState(false);
 
   const items = useMemo(
-    () => (index && activePath ? outlineFromIndex(index, activePath) : []),
+    () =>
+      index && activePath
+        ? outlineFromIndex(index, activePath).filter(
+            // Sections only. An \input whose target has no headings of its own
+            // contributed a bare filename row, which is file-tree information,
+            // not an outline.
+            (item) => item.kind === "section",
+          )
+        : [],
     [index, activePath],
   );
+
+  const anchor = useEditorViewportAnchor();
+  const activeIndex = useMemo(
+    () => activeOutlineIndex(items, anchor),
+    [items, anchor],
+  );
+
+  const activeRef = useRef<HTMLButtonElement | null>(null);
+  // A long outline scrolls itself to follow the editor, but never while the
+  // pointer is over the panel: yanking the list out from under a reader who is
+  // about to click a different section is worse than losing the highlight.
+  const hoveringRef = useRef(false);
+  useEffect(() => {
+    if (collapsed || activeIndex < 0 || hoveringRef.current) return;
+    activeRef.current?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, collapsed]);
 
   const jump = useCallback((item: OutlineItem) => {
     // Goes through the shared navigation path, which opens the file, reveals
@@ -67,11 +93,11 @@ export function DocumentOutline() {
           )}
           <List aria-hidden className="size-3.5" />
           <span className="truncate">Outline</span>
-          {!collapsed && items.length > 0 ? (
+          {items.length > 0 ? (
             <span
               role="status"
               aria-label={`${items.length} outline entries`}
-              className="shrink-0 rounded-sm bg-muted px-1 font-mono text-[9px] text-muted-foreground"
+              className="ml-auto shrink-0 rounded-sm bg-muted px-1 font-mono text-[9px] text-muted-foreground"
             >
               {items.length}
             </span>
@@ -83,23 +109,39 @@ export function DocumentOutline() {
         <div
           id="document-outline-content"
           className="min-h-0 flex-1 overflow-auto py-1 [scrollbar-width:thin]"
+          onPointerEnter={() => {
+            hoveringRef.current = true;
+          }}
+          onPointerLeave={() => {
+            hoveringRef.current = false;
+          }}
         >
           {items.length === 0 ? (
             <p className="px-3 py-2 text-[11px] text-muted-foreground/70">
               No sections or includes in this document.
             </p>
           ) : (
-            items.map((item) => {
+            items.map((item, index) => {
               const crossFile = item.file !== activePath;
+              const active = index === activeIndex;
               return (
                 <button
                   type="button"
                   key={`${item.file}:${item.line}:${item.kind}:${item.title}`}
+                  ref={active ? activeRef : undefined}
                   onClick={() => jump(item)}
+                  aria-current={active ? "location" : undefined}
                   // Indent by heading depth so the shape of the document is
-                  // visible without reading any of the titles.
-                  style={{ paddingLeft: `${item.level * 12 + 12}px` }}
-                  className="flex w-full items-center gap-1 truncate py-0.5 pr-2 text-left text-xs text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  // visible without reading any of the titles. The active
+                  // marker takes 2px off the left padding so the accent bar
+                  // does not shift the title it marks.
+                  style={{ paddingLeft: `${item.level * 12 + 12 - (active ? 2 : 0)}px` }}
+                  className={cn(
+                    "flex w-full items-center gap-1 truncate py-0.5 pr-2 text-left text-xs hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                    active
+                      ? "border-l-2 border-primary bg-sidebar-accent/60 font-medium text-sidebar-foreground"
+                      : "text-sidebar-foreground/80",
+                  )}
                   title={`${item.title} — ${item.file}:${item.line}`}
                 >
                   {item.kind === "file" ? (
@@ -118,7 +160,7 @@ export function DocumentOutline() {
                   </span>
                   {crossFile ? (
                     <span className="ml-auto shrink-0 rounded bg-muted px-1 font-mono text-[9px] text-muted-foreground/70">
-                      {basename(item.file)}
+                      {basename(item.file).replace(/\.[^.]+$/, "")}
                     </span>
                   ) : null}
                 </button>

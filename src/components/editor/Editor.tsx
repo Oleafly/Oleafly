@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine";
 import { getWysiwygMode, setWysiwygMode } from "@/lib/wysiwyg-mode";
 import { setWysiwygVisibilityController } from "./wysiwyg/controller";
-import { ProofreadingStatus } from "./ProofreadingStatus";
+import { ProofreadingNotifications } from "./ProofreadingNotifications";
 const WysiwygEditor = lazy(() =>
   import("./wysiwyg/WysiwygEditor").then((m) => ({ default: m.WysiwygEditor })),
 );
@@ -181,7 +181,7 @@ export function Editor() {
       data-tour="project-editor"
       className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background"
     >
-      <div className="flex h-9 shrink-0 items-center gap-1 overflow-x-auto border-b px-2">
+      <div className="flex h-9 shrink-0 items-center gap-1 overflow-x-auto border-b px-2 no-scrollbar">
         {tabs.length === 0 && (
           <span className="px-2 text-xs text-muted-foreground">No file open</span>
         )}
@@ -252,7 +252,7 @@ export function Editor() {
         )}
       </div>
       {!diffFocused ? (
-        <ProofreadingStatus
+        <ProofreadingNotifications
           path={activePath}
           surface={wysiwyg ? "visual" : "source"}
         />

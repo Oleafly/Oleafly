@@ -39,6 +39,24 @@ export function getEditorDocumentPath(): string | null {
   return documentPath;
 }
 
+/**
+ * Observes which document the shared EditorView holds, for callers that have to
+ * re-attach to the view itself rather than wait for one document.
+ *
+ * The listener fires immediately with the current state, so a subscriber that
+ * mounts after the editor is already up does not sit idle until the next file
+ * swap.
+ */
+export function subscribeEditorDocument(
+  listener: DocumentReadyListener,
+): () => void {
+  documentReadyListeners.add(listener);
+  listener(documentPath, view);
+  return () => {
+    documentReadyListeners.delete(listener);
+  };
+}
+
 export function waitForEditorDocument(
   path: string,
   signal?: AbortSignal,

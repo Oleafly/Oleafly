@@ -203,6 +203,8 @@ export function SettingsModal() {
   const setEditorGhostCompletion = useSettingsStore((s) => s.setEditorGhostCompletion);
   const editorNonBlinkingCursor = useSettingsStore((s) => s.editorNonBlinkingCursor);
   const setEditorNonBlinkingCursor = useSettingsStore((s) => s.setEditorNonBlinkingCursor);
+  const editorStickyScroll = useSettingsStore((s) => s.editorStickyScroll);
+  const setEditorStickyScroll = useSettingsStore((s) => s.setEditorStickyScroll);
   const spellcheck = useSettingsStore((s) => s.spellcheck);
   const toggleSpellcheck = useSettingsStore((s) => s.toggleSpellcheck);
   const harper = useSettingsStore((s) => s.harper);
@@ -711,6 +713,12 @@ export function SettingsModal() {
                   desc="Reduce visual distraction by keeping the cursor solid."
                   checked={editorNonBlinkingCursor}
                   onChange={setEditorNonBlinkingCursor}
+                />
+                <ToggleRow
+                  label="Sticky scroll"
+                  desc="Pin the sections and environments you are inside to the top of the editor while you scroll. LaTeX source only."
+                  checked={editorStickyScroll}
+                  onChange={setEditorStickyScroll}
                 />
                 <ToggleRow
                   label="Spellcheck"

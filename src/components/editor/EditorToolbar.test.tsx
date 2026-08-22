@@ -1,13 +1,10 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useFilesStore } from "@/store/files";
 
-const countWordsMock = vi.hoisted(() =>
-  vi.fn(() => ({ words: 7, characters: 44, lines: 3, method: "masked" as const })),
-);
-const getEditorViewMock = vi.hoisted(() => vi.fn((): unknown => null));
+const collectProjectInfoMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@oleafly/preview", () => ({
   registerPdfView: vi.fn(),
@@ -17,13 +14,8 @@ vi.mock("@oleafly/preview", () => ({
   setPdfLogger: vi.fn(),
 }));
 
-vi.mock("@/lib/wordcount", () => ({
-  countWords: countWordsMock,
-}));
-
-vi.mock("@/components/editor/cm/controller", async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
-  getEditorView: getEditorViewMock,
+vi.mock("@/components/editor/project-info-data", () => ({
+  collectProjectInfo: collectProjectInfoMock,
 }));
 
 import { EditorToolbar } from "./EditorToolbar";
@@ -35,9 +27,29 @@ class ResizeObserverStub {
 }
 vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 
+const SNAPSHOT = {
+  root: "book.tex",
+  fileCount: 3,
+  unreadable: [],
+  stats: {
+    words: 11960,
+    wordsInText: 11455,
+    wordsInHeaders: 320,
+    wordsOutsideText: 185,
+    headers: 42,
+    figures: 17,
+    mathInline: 903,
+    mathDisplayed: 128,
+    characters: 81028,
+    lines: 669,
+  },
+  selectionWords: null,
+};
+
 describe("EditorToolbar wysiwyg toggle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    collectProjectInfoMock.mockResolvedValue(SNAPSHOT);
   });
 
   it("shows a Code/Visual segmented switch and calls onToggleWysiwyg when the Visual segment is clicked while off", () => {
@@ -59,6 +71,24 @@ describe("EditorToolbar wysiwyg toggle", () => {
     expect(onToggleWysiwyg).toHaveBeenCalledTimes(1);
   });
 
+  it("places the mode switch ahead of undo, and the info button after the formatting controls", () => {
+    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
+    const order = [
+      screen.getByLabelText("Switch to source view"),
+      screen.getByLabelText(/^Undo \(/u),
+      screen.getByLabelText("Project info"),
+    ];
+
+    expect(
+      order[0].compareDocumentPosition(order[1]) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      order[1].compareDocumentPosition(order[2]) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("does not expose CodeMirror-only navigation while Visual mode is active", () => {
     useFilesStore.setState({
       projectKind: "",
@@ -74,80 +104,43 @@ describe("EditorToolbar wysiwyg toggle", () => {
     rerender(<EditorToolbar wysiwyg={true} onToggleWysiwyg={vi.fn()} />);
     expect(screen.queryByLabelText(/^Find \(/u)).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Go to PDF (SyncTeX)")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Word count")).toBeInTheDocument();
+    expect(screen.getByLabelText("Project info")).toBeInTheDocument();
   });
 
-  it("computes book-sized word counts only when the popover is opened", () => {
-    useFilesStore.setState({
-      activePath: "book.tex",
-      files: {
-        "book.tex": {
-          content: "Initial manuscript text.",
-          dirty: false,
-        },
-      },
-    });
+  it("counts the document only when the panel is opened", async () => {
     render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
-    expect(countWordsMock).not.toHaveBeenCalled();
+    expect(collectProjectInfoMock).not.toHaveBeenCalled();
 
-    useFilesStore.setState({
-      files: {
-        "book.tex": {
-          content: "The latest complete manuscript text.",
-          dirty: true,
-        },
-      },
-    });
-    expect(countWordsMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("Project info"));
 
-    fireEvent.click(screen.getByLabelText("Word count"));
+    expect(collectProjectInfoMock).toHaveBeenCalledOnce();
+    expect(await screen.findByText("81,028")).toBeInTheDocument();
+    expect(screen.getByText("book.tex · 3 files")).toBeInTheDocument();
+  });
 
-    expect(countWordsMock).toHaveBeenCalledOnce();
-    expect(countWordsMock).toHaveBeenCalledWith(
-      "The latest complete manuscript text.",
+  it("breaks the word total down into text, headers, and outside-text rows", async () => {
+    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText("Project info"));
+
+    expect(await screen.findByText("11,960")).toBeInTheDocument();
+    for (const label of ["In text", "In headers", "Outside text", "Figures", "Math displayed"]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+  });
+
+  it("adds a Selection row only when the editor has a selection", async () => {
+    collectProjectInfoMock.mockResolvedValue({ ...SNAPSHOT, selectionWords: 12 });
+    const { unmount } = render(
+      <EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />,
     );
-    expect(screen.getByText("44")).toBeInTheDocument();
-  });
+    fireEvent.click(screen.getByLabelText("Project info"));
+    expect(await screen.findByText("Selection")).toBeInTheDocument();
+    unmount();
 
-  it("adds a Selection row counting only the primary editor selection", () => {
-    const doc = "Alpha beta gamma delta.";
-    useFilesStore.setState({
-      activePath: "book.tex",
-      files: {
-        "book.tex": { content: doc, dirty: false },
-      },
-    });
-    getEditorViewMock.mockReturnValueOnce({
-      state: {
-        selection: { main: { from: 0, to: 10, empty: false } },
-        sliceDoc: (from: number, to: number) => doc.slice(from, to),
-      },
-    });
+    collectProjectInfoMock.mockResolvedValue(SNAPSHOT);
     render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
-    fireEvent.click(screen.getByLabelText("Word count"));
-
-    expect(countWordsMock).toHaveBeenCalledTimes(2);
-    expect(countWordsMock).toHaveBeenLastCalledWith("Alpha beta");
-    expect(screen.getByText("Selection")).toBeInTheDocument();
-  });
-
-  it("does not add a Selection row when the primary selection is empty", () => {
-    useFilesStore.setState({
-      activePath: "book.tex",
-      files: {
-        "book.tex": { content: "Some text.", dirty: false },
-      },
-    });
-    getEditorViewMock.mockReturnValueOnce({
-      state: {
-        selection: { main: { from: 3, to: 3, empty: true } },
-        sliceDoc: () => "",
-      },
-    });
-    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
-    fireEvent.click(screen.getByLabelText("Word count"));
-
-    expect(countWordsMock).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByLabelText("Project info"));
+    await waitFor(() => expect(screen.getByText("Words")).toBeInTheDocument());
     expect(screen.queryByText("Selection")).not.toBeInTheDocument();
   });
 });

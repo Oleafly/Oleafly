@@ -181,7 +181,10 @@ const chromeTheme = EditorView.theme({
   },
 });
 
-const highlightStyle = HighlightStyle.define([
+// Exported so sticky scroll can colorize its own rows with exactly the styles
+// the document uses. Those rows are rendered outside the document flow, so
+// `syntaxHighlighting` cannot reach them.
+export const editorHighlightStyle = HighlightStyle.define([
   { tag: t.comment, color: "var(--cm-comment)", fontStyle: "italic" },
   { tag: t.keyword, color: "var(--cm-keyword)" },
   { tag: [t.atom, t.bool, t.number, t.literal], color: "var(--cm-number)" },
@@ -194,4 +197,7 @@ const highlightStyle = HighlightStyle.define([
   { tag: t.link, color: "var(--cm-string)", textDecoration: "underline" },
 ]);
 
-export const editorTheme = () => [chromeTheme, syntaxHighlighting(highlightStyle)];
+export const editorTheme = () => [
+  chromeTheme,
+  syntaxHighlighting(editorHighlightStyle),
+];

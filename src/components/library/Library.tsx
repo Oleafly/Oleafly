@@ -22,6 +22,15 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -254,6 +263,75 @@ export function Library() {
     setForkTarget(null);
     setForkName("");
   };
+
+  // One list, rendered by both the right-click menu and the hover ellipsis, so
+  // the two can never offer different actions.
+  const projectMenuItems = (
+    p: (typeof visibleProjects)[number],
+    kit: {
+      Item: typeof ContextMenuItem;
+      Sub: typeof ContextMenuSub;
+      SubTrigger: typeof ContextMenuSubTrigger;
+      SubContent: typeof ContextMenuSubContent;
+    },
+  ) => {
+    const { Item, Sub, SubTrigger, SubContent } = kit;
+    return (
+      <>
+        <Item onClick={() => void openProject(p.id)}>
+          <FileText className="mr-2 size-4" /> Open project
+        </Item>
+        <Item onClick={() => window.setTimeout(() => setDetailsProject(p), 0)}>
+          <Info className="mr-2 size-4" /> Project details
+        </Item>
+        <Item onClick={() => window.setTimeout(() => setHistoryProject(p), 0)}>
+          <History className="mr-2 size-4" /> Export history
+        </Item>
+        <Sub>
+          <SubTrigger>
+            <Palette className="mr-2 size-4" /> Change book color
+          </SubTrigger>
+          <SubContent className="w-44">
+            {BOOK_COLOR_OPTIONS.map((c) => {
+              const active =
+                (projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)) === c.hex;
+              return (
+                <Item key={c.hex} onClick={() => setProjectColor(p.id, c.hex)}>
+                  <span
+                    className="mr-2 size-3.5 shrink-0 rounded-full ring-1 ring-black/10"
+                    style={{ background: c.hex }}
+                  />
+                  {c.name}
+                  {active && <Check className="ml-auto size-3.5" />}
+                </Item>
+              );
+            })}
+          </SubContent>
+        </Sub>
+        <Item
+          onClick={() => {
+            setForkName(`${p.name} (copy)`);
+            setForkTarget({ id: p.id, name: p.name });
+          }}
+        >
+          <GitFork className="mr-2 size-4" /> Fork project
+        </Item>
+        <Item
+          className="text-destructive focus:text-destructive"
+          onClick={() => {
+            // Let Radix finish closing the menu before mounting the modal
+            // focus trap.
+            window.setTimeout(
+              () => setDeleteTarget({ id: p.id, name: p.name }),
+              0,
+            );
+          }}
+        >
+          <Trash2 className="mr-2 size-4" /> Delete project
+        </Item>
+      </>
+    );
+  };
   const confirmProjectDeletion = async () => {
     const target = deleteTarget;
     if (!target) return;
@@ -412,7 +490,10 @@ export function Library() {
       <header
         data-tauri-drag-region
         className={cn(
-          "relative z-10 grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center px-3"
+          // The third column hugs its buttons instead of taking an equal
+          // share. With the middle column empty, 1fr_auto_1fr split the header
+          // in half and left the trailing group ~740px wide for three icons.
+          "relative z-10 grid h-12 shrink-0 grid-cols-[1fr_auto_auto] items-center px-3"
         )}
       >
         <div data-tauri-drag-region className="flex items-center" />
@@ -727,6 +808,28 @@ export function Library() {
                       kind={p.kind || "document"}
                       starred={favs.includes(p.id)}
                       onStarToggle={() => toggleFav(p.id)}
+                      menu={
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              aria-label={`Actions for ${p.name}`}
+                              onClick={(event) => event.stopPropagation()}
+                              className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100 data-[state=open]:opacity-100"
+                            >
+                              <Info className="size-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-52">
+                            {projectMenuItems(p, {
+                              Item: DropdownMenuItem,
+                              Sub: DropdownMenuSub,
+                              SubTrigger: DropdownMenuSubTrigger,
+                              SubContent: DropdownMenuSubContent,
+                            })}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      }
                       onClick={() => void openProject(p.id)}
                       onPreviewRequest={() => hoverPreview && loadThumb(p.id, p.updated_at)}
                       preview={hoverPreview ? thumbs[p.id] : undefined}
@@ -735,61 +838,12 @@ export function Library() {
                   </div>
                 </ContextMenuTrigger>
                 <ContextMenuContent className="w-52">
-                  <ContextMenuItem onClick={() => void openProject(p.id)}>
-                    <FileText className="mr-2 size-4" /> Open project
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    onClick={() => {
-                      window.setTimeout(() => setDetailsProject(p), 0);
-                    }}
-                  >
-                    <Info className="mr-2 size-4" /> Project details
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    onClick={() => {
-                      window.setTimeout(() => setHistoryProject(p), 0);
-                    }}
-                  >
-                    <History className="mr-2 size-4" /> Export history
-                  </ContextMenuItem>
-                  <ContextMenuSub>
-                    <ContextMenuSubTrigger>
-                      <Palette className="mr-2 size-4" /> Change book color
-                    </ContextMenuSubTrigger>
-                    <ContextMenuSubContent className="w-44">
-                      {BOOK_COLOR_OPTIONS.map((c) => {
-                        const active = (projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)) === c.hex;
-                        return (
-                          <ContextMenuItem key={c.hex} onClick={() => setProjectColor(p.id, c.hex)}>
-                            <span className="mr-2 size-3.5 shrink-0 rounded-full ring-1 ring-black/10" style={{ background: c.hex }} />
-                            {c.name}
-                            {active && <Check className="ml-auto size-3.5" />}
-                          </ContextMenuItem>
-                        );
-                      })}
-                    </ContextMenuSubContent>
-                  </ContextMenuSub>
-                  <ContextMenuItem
-                    onClick={() => {
-                      setForkName(`${p.name} (copy)`);
-                      setForkTarget({ id: p.id, name: p.name });
-                    }}
-                  >
-                    <GitFork className="mr-2 size-4" /> Fork project
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    className="text-destructive focus:text-destructive"
-                    onClick={() => {
-                      // Let Radix finish closing the context menu before
-                      // mounting the modal focus trap.
-                      window.setTimeout(
-                        () => setDeleteTarget({ id: p.id, name: p.name }),
-                        0,
-                      );
-                    }}
-                  >
-                    <Trash2 className="mr-2 size-4" /> Delete project
-                  </ContextMenuItem>
+                  {projectMenuItems(p, {
+                    Item: ContextMenuItem,
+                    Sub: ContextMenuSub,
+                    SubTrigger: ContextMenuSubTrigger,
+                    SubContent: ContextMenuSubContent,
+                  })}
                 </ContextMenuContent>
               </ContextMenu>
             ))}

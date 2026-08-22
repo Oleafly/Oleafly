@@ -61,6 +61,7 @@ export function Book({
   onClick,
   starred,
   onStarToggle,
+  menu,
   preview,
   onPreviewRequest,
 }: {
@@ -77,6 +78,7 @@ export function Book({
   onClick?: () => void;
   starred?: boolean;
   onStarToggle?: () => void;
+  menu?: ReactNode;
   preview?: string | null;
   onPreviewRequest?: () => void;
 }) {
@@ -181,24 +183,32 @@ export function Book({
         </div>
       </button>
       {onStarToggle && (
-        <button
-          type="button"
-          onClick={onStarToggle}
-          aria-label={starred ? "Remove from favorites" : "Add to favorites"}
-          className={cn(
-            "absolute right-2 top-2 z-20 flex size-7 items-center justify-center rounded-md transition-all group-hover:bg-black/15 group-hover:backdrop-blur-sm hover:bg-black/25",
-            starred ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-          )}
-          style={{ color: starred ? "#f59e0b" : ink }}
+        <div
+          className="absolute right-2 top-2 z-20 flex items-center gap-0.5"
+          style={{ color: ink }}
         >
-          {starred ? (
-            <BookmarkCheck className="size-3.5 fill-current" />
-          ) : (
-            <Bookmark className="size-3.5" />
+          {(
+            <button
+              type="button"
+              onClick={onStarToggle}
+              aria-label={starred ? "Remove from favorites" : "Add to favorites"}
+              className={cn(
+                "flex size-7 items-center justify-center rounded-md transition-all group-hover:bg-black/15 group-hover:backdrop-blur-sm hover:bg-black/25",
+                starred ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+              )}
+              style={{ color: starred ? "#f59e0b" : ink }}
+            >
+              {starred ? (
+                <BookmarkCheck className="size-3.5 fill-current" />
+              ) : (
+                <Bookmark className="size-3.5" />
+              )}
+            </button>
           )}
-        </button>
+        </div>
       )}
-      <div className="mt-2.5 px-0.5">
+      <div className="mt-2.5 flex items-end justify-between gap-2 px-0.5">
+        <div className="min-w-0">
         {kind && (
           <div className="flex items-center gap-1.5 text-xs capitalize text-muted-foreground">
             <span>{kind}</span>
@@ -219,6 +229,8 @@ export function Book({
           </div>
         )}
         {date && <div className="mt-0.5 text-xs text-muted-foreground">{date}</div>}
+        </div>
+        {menu}
       </div>
     </div>
   );

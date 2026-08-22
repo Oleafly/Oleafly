@@ -11,7 +11,6 @@ import {
   Divide,
   Image as ImageIcon,
   ImagePlus,
-  Info,
   Italic,
   Link as LinkIcon,
   List,
@@ -40,8 +39,7 @@ import {
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
 import { imageToLatex, imageToLatexAvailable } from "@/features/image-to-latex";
 import { goToSyncTex } from "@/features/synctex";
-import { countWords } from "@/lib/wordcount";
-import { activeSelectionText } from "@/components/editor/WordCountModal";
+import { ProjectInfoButton } from "@/components/editor/ProjectInfo";
 import { useFilesStore } from "@/store/files";
 import { cn, shortcut } from "@/lib/utils";
 import {
@@ -324,51 +322,6 @@ function CodeIntelDropdown({ variant }: { variant: "bar" | "menu" }) {
   );
 }
 
-export function WordCountButton() {
-  const activePath = useFilesStore((s) => s.activePath);
-  const [stats, setStats] = useState({
-    words: 0,
-    characters: 0,
-    lines: 0,
-  });
-  const [selectionWords, setSelectionWords] = useState<number | null>(null);
-  const rows: [string, number][] = [
-    ["Words", stats.words],
-    ["Characters", stats.characters],
-    ["Lines", stats.lines],
-  ];
-  if (selectionWords !== null) rows.push(["Selection", selectionWords]);
-  return (
-    <Popover
-      ariaLabel="Word count"
-      className="w-56 p-3"
-      trigger={<Info className="size-4" />}
-      onOpenChange={(open) => {
-        // Counting stays lazy: nothing is computed until the popover opens.
-        if (!open) return;
-        const files = useFilesStore.getState();
-        const content = files.activePath
-          ? (files.files[files.activePath]?.content ?? "")
-          : "";
-        setStats(countWords(content));
-        const selected = activeSelectionText();
-        setSelectionWords(selected === null ? null : countWords(selected).words);
-      }}
-    >
-      <p className="mb-1 text-sm font-semibold text-foreground">Word count</p>
-      <p className="mb-2 truncate text-xs text-muted-foreground">{activePath ?? "no file"}</p>
-      <div className="divide-y divide-border">
-        {rows.map(([label, value]) => (
-          <div key={label} className="flex items-center justify-between py-2 text-sm">
-            <span className="text-muted-foreground">{label}</span>
-            <span className="font-mono tabular-nums">{value.toLocaleString()}</span>
-          </div>
-        ))}
-      </div>
-    </Popover>
-  );
-}
-
 
 export function EditorToolbar({
   wysiwyg,
@@ -484,6 +437,18 @@ export function EditorToolbar({
 
   return (
     <div className="flex h-9 items-center gap-0.5 border-b px-2">
+      {showVisualToggle && (
+        <>
+          <WysiwygModeSwitch
+            wysiwyg={wysiwyg}
+            onToggle={onToggleWysiwyg}
+            secondLabel={projectKind === "diagram" ? "Canvas" : "Visual"}
+            data-tour="wysiwyg-toggle"
+          />
+          <Divider />
+        </>
+      )}
+
       <IconBtn onClick={editorUndo} title={`Undo (${shortcut("⌘Z")})`}>
         <Undo2 className="size-4" />
       </IconBtn>
@@ -525,15 +490,7 @@ export function EditorToolbar({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
-        {showVisualToggle && (
-          <WysiwygModeSwitch
-            wysiwyg={wysiwyg}
-            onToggle={onToggleWysiwyg}
-            secondLabel={projectKind === "diagram" ? "Canvas" : "Visual"}
-            data-tour="wysiwyg-toggle"
-          />
-        )}
-        <WordCountButton />
+        <ProjectInfoButton surface={wysiwyg ? "visual" : "source"} />
         {!wysiwyg && (
           <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
             <Search className="size-4" />

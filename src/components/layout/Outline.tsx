@@ -193,11 +193,11 @@ export function Outline({
           )}
           <ListTree aria-hidden className="size-3.5" />
           <span className="truncate">Structure</span>
-          {!collapsed && snapshot ? (
+          {snapshot ? (
             <span
               role="status"
               aria-label={`${nodeCount} structure items`}
-              className="shrink-0 rounded-sm bg-muted px-1 font-mono text-[9px] text-muted-foreground"
+              className="ml-auto shrink-0 rounded-sm bg-muted px-1 font-mono text-[9px] text-muted-foreground"
             >
               {nodeCount}
             </span>

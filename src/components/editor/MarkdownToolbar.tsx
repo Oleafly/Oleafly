@@ -27,11 +27,11 @@ import {
   Divider,
   IconBtn,
   MenuRow,
-  WordCountButton,
   WysiwygModeSwitch,
   btnControl,
   dividerControl,
 } from "@/components/editor/EditorToolbar";
+import { ProjectInfoButton } from "@/components/editor/ProjectInfo";
 import {
   DROPDOWN_TRIGGER_WIDTH,
   ICON_BUTTON_WIDTH,
@@ -266,6 +266,17 @@ export function MarkdownToolbar({
 
   return (
     <div className="flex h-9 items-center gap-0.5 border-b px-2">
+      {showVisualToggle && (
+        <>
+          <WysiwygModeSwitch
+            wysiwyg={wysiwyg}
+            onToggle={onToggleWysiwyg}
+            data-tour="wysiwyg-toggle"
+          />
+          <Divider />
+        </>
+      )}
+
       <IconBtn onClick={editorUndo} title={`Undo (${shortcut("⌘Z")})`}>
         <Undo2 className="size-4" />
       </IconBtn>
@@ -295,14 +306,7 @@ export function MarkdownToolbar({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
-        {showVisualToggle && (
-          <WysiwygModeSwitch
-            wysiwyg={wysiwyg}
-            onToggle={onToggleWysiwyg}
-            data-tour="wysiwyg-toggle"
-          />
-        )}
-        <WordCountButton />
+        <ProjectInfoButton surface={wysiwyg ? "visual" : "source"} />
         {!wysiwyg && (
           <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
             <Search className="size-4" />
