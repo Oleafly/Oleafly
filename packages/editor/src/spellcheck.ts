@@ -149,6 +149,12 @@ const presentationRefreshGenerations = new WeakMap<
   EditorView,
   number
 >();
+// Presentation repair loop guard. The repair dispatch below carries this
+// effect; the diagnostics update listener skips transactions that carry it so
+// a repair can never re-trigger itself. The generation counter additionally
+// caps runaway repairs from pathological external writers.
+const presentationRepairEffect = StateEffect.define<null>();
+const presentationRepairs = new WeakMap<EditorView, { generation: number; count: number }>();
 
 interface PendingProofreadingRequest {
   contextKey: string;
@@ -492,6 +498,9 @@ function repaintCachedProofreadingPresentation(
       ...retainedDiagnostics,
       ...proofreadingDiagnostics,
     ]),
+    // Tag as a presentation repair so the diagnostics update listener does
+    // not schedule another repair for our own transaction.
+    { effects: presentationRepairEffect.of(null) },
   );
   return true;
 }
@@ -929,9 +938,35 @@ export function diagnosticPresentationExtensions(): Extension[] {
       ) {
         return;
       }
+      // Repairs may only be triggered by OTHER writers. A transaction that
+      // carries our own repair effect must not schedule another repair:
+      // repair → setDiagnostics → listener → repair is an unbounded
+      // microtask feedback loop that starves the run loop and freezes the
+      // app whenever the equality guard cannot converge.
+      const external = update.transactions.some(
+        (transaction) =>
+          !transaction.effects.some((effect) =>
+            effect.is(presentationRepairEffect),
+          ),
+      );
+      if (!external) return;
+      const view = update.view;
+      const generation = presentationRefreshGenerations.get(view) ?? 0;
+      const tally = presentationRepairs.get(view);
+      const next =
+        tally && tally.generation === generation
+          ? { generation, count: tally.count + 1 }
+          : { generation, count: 1 };
+      if (tally && tally.generation === generation && tally.count >= 8) {
+        return;
+      }
+      presentationRepairs.set(view, next);
       queueMicrotask(() => {
-        if (update.view.dom.isConnected) {
-          repaintCachedProofreadingPresentation(update.view);
+        if (
+          view.dom.isConnected &&
+          presentationRefreshGenerations.get(view) === generation
+        ) {
+          repaintCachedProofreadingPresentation(view);
         }
       });
     }),

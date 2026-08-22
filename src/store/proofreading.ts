@@ -7,8 +7,6 @@ import {
   type ProofreadingSurface,
 } from "@oleafly/editor";
 
-export const PROOFREADING_PRESENTATION_PAGE_SIZE = 250;
-
 export type ProofreadingPhase =
   | "idle"
   | "loading"
@@ -25,7 +23,6 @@ export interface ProofreadingSurfaceState {
   message: string | null;
   diagnosticCount: number;
   diagnostics: ProofreadingDiagnostic[];
-  presentationPage: number;
   truncated: boolean;
   activeDictionaryLocale: string | null;
 }
@@ -40,10 +37,6 @@ interface ProofreadingState {
     message: string,
     phase?: "error" | "unavailable",
   ) => void;
-  setPresentationPage: (
-    surface: ProofreadingSurface,
-    page: number,
-  ) => void;
   clear: (surface: ProofreadingSurface, path?: string) => void;
 }
 
@@ -53,7 +46,6 @@ const IDLE_STATE: ProofreadingSurfaceState = {
   message: null,
   diagnosticCount: 0,
   diagnostics: [],
-  presentationPage: 0,
   truncated: false,
   activeDictionaryLocale: null,
 };
@@ -76,9 +68,6 @@ export const useProofreadingStore = create<ProofreadingState>((set) => ({
             ? previous.diagnosticCount
             : 0,
           diagnostics: sameDocument ? previous.diagnostics : [],
-          presentationPage: sameDocument
-            ? previous.presentationPage
-            : 0,
           truncated: false,
           activeDictionaryLocale: sameDocument
             ? previous.activeDictionaryLocale
@@ -98,13 +87,6 @@ export const useProofreadingStore = create<ProofreadingState>((set) => ({
       ) {
         return state;
       }
-      const pageCount = Math.max(
-        1,
-        Math.ceil(
-          result.diagnostics.length /
-            PROOFREADING_PRESENTATION_PAGE_SIZE,
-        ),
-      );
       return {
         [result.identity.surface]: {
           phase: result.status,
@@ -112,10 +94,6 @@ export const useProofreadingStore = create<ProofreadingState>((set) => ({
           message: result.message ?? null,
           diagnosticCount: result.diagnostics.length,
           diagnostics: result.diagnostics,
-          presentationPage: Math.min(
-            current.presentationPage,
-            pageCount - 1,
-          ),
           truncated: result.truncated ?? false,
           activeDictionaryLocale:
             result.activeDictionaryLocale ?? null,
@@ -141,7 +119,6 @@ export const useProofreadingStore = create<ProofreadingState>((set) => ({
           message,
           diagnosticCount: 0,
           diagnostics: [],
-          presentationPage: 0,
           truncated: false,
           activeDictionaryLocale: null,
         },
@@ -149,25 +126,6 @@ export const useProofreadingStore = create<ProofreadingState>((set) => ({
         ProofreadingState,
         ProofreadingSurface
       >;
-    }),
-  setPresentationPage: (surface, page) =>
-    set((state) => {
-      const current = state[surface];
-      const pageCount = Math.max(
-        1,
-        Math.ceil(
-          current.diagnosticCount /
-            PROOFREADING_PRESENTATION_PAGE_SIZE,
-        ),
-      );
-      const presentationPage = Math.max(
-        0,
-        Math.min(Math.trunc(page), pageCount - 1),
-      );
-      if (presentationPage === current.presentationPage) return state;
-      return {
-        [surface]: { ...current, presentationPage },
-      } as Pick<ProofreadingState, ProofreadingSurface>;
     }),
   clear: (surface, path) =>
     set((state) => {
@@ -179,33 +137,38 @@ export const useProofreadingStore = create<ProofreadingState>((set) => ({
 }));
 
 /**
- * Workers and the store retain every finding. Editor surfaces consume one
- * deterministic page at a time so an adversarial document cannot allocate
- * hundreds of thousands of DOM/CodeMirror decorations on the main thread.
+ * Workers and the store retain every finding; presentation is unbounded.
+ * CodeMirror and ProseMirror only materialize DOM for the visible viewport,
+ * and full-set rebuilds are coalesced by the lint debounce, coordinated
+ * runs, and the presentation repair guards in the editors.
  */
+export function storePresentationDiagnostics(
+  surface: ProofreadingSurface,
+  projectId: string | null,
+  path: string,
+): ProofreadingDiagnostic[] | null {
+  const state = useProofreadingStore.getState()[surface];
+  const authoritative =
+    (state.phase === "ready" || state.phase === "partial") &&
+    state.identity?.projectId === projectId &&
+    state.identity.path === path &&
+    state.identity.surface === surface;
+  if (!authoritative) return null;
+  return state.diagnostics;
+}
+
 export function proofreadingPresentationDiagnostics(
   result: ProofreadingResult,
 ): ProofreadingDiagnostic[] {
-  const state =
-    useProofreadingStore.getState()[result.identity.surface];
-  const hasAuthoritativeDocumentResult =
-    (state.phase === "ready" || state.phase === "partial") &&
-    state.identity?.projectId === result.identity.projectId &&
-    state.identity.path === result.identity.path &&
-    state.identity.surface === result.identity.surface;
   // A presentation repaint can be seeded by an older worker response for the
   // exact same document text after CodeMirror replaces its immutable Text
   // object. Always render the central store's newer authoritative diagnostics
-  // for that document so request-generation churn cannot reset the page to 0.
-  const diagnostics = hasAuthoritativeDocumentResult
-    ? state.diagnostics
-    : result.diagnostics;
-  const page = hasAuthoritativeDocumentResult
-    ? state.presentationPage
-    : 0;
-  const from = page * PROOFREADING_PRESENTATION_PAGE_SIZE;
-  return diagnostics.slice(
-    from,
-    from + PROOFREADING_PRESENTATION_PAGE_SIZE,
+  // for that document so request-generation churn cannot regress the set.
+  return (
+    storePresentationDiagnostics(
+      result.identity.surface,
+      result.identity.projectId,
+      result.identity.path,
+    ) ?? result.diagnostics
   );
 }

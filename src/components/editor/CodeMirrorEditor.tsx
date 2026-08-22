@@ -163,6 +163,7 @@ const HOST: EditorHost = {
     autoCloseBrackets: useSettingsStore((s) => s.editorAutoCloseBrackets),
     nonBlinkingCursor: useSettingsStore((s) => s.editorNonBlinkingCursor),
     ghostCompletion: useSettingsStore((s) => s.editorGhostCompletion),
+    stickyScroll: useSettingsStore((s) => s.editorStickyScroll),
   }),
   useLintRefreshDeps: () => [
     useSettingsStore((s) => s.showRegionalism),

@@ -29,7 +29,7 @@ import {
   useDictionary,
 } from "@/lib/dictionary";
 import { useFilesStore } from "@/store/files";
-import { proofreadingPresentationDiagnostics } from "@/store/proofreading";
+import { proofreadingPresentationDiagnostics, storePresentationDiagnostics } from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
 import { isWysiwygActive } from "./controller";
 
@@ -510,6 +510,16 @@ export const VisualProofreading = Extension.create({
           let requestGeneration = 0;
           let requestedPath: string | null = null;
           let destroyed = false;
+          // The extraction for the last painted revision. Presentation page
+          // flips reuse it so paging never re-walks the document or re-runs
+          // the worker for unchanged text.
+          let cachedExtraction:
+            | {
+                doc: ProseMirrorNode;
+                revision: number;
+                extraction: ReturnType<typeof extractVisualProofreadingProse>;
+              }
+            | null = null;
 
           const paintEmpty = (
             doc: ProseMirrorNode,
@@ -634,6 +644,7 @@ export const VisualProofreading = Extension.create({
                     }
                     return;
                   }
+                  cachedExtraction = { doc, revision, extraction };
                   const painted = mapVisualProofreadingDiagnostics(
                     doc,
                     proofreadingPresentationDiagnostics(result),
@@ -687,6 +698,50 @@ export const VisualProofreading = Extension.create({
             schedule(0);
           };
           const onPresentationChanged = () => {
+            // Fast path: paging through findings for an unchanged document
+            // repaints the next slice straight from the store and the cached
+            // extraction — no doc re-walk, no worker round trip. Those are
+            // main-thread heavy on book-sized documents and freeze the UI.
+            const state = visualProofreadingKey.getState(
+              editorView.state,
+            );
+            const identity = currentIdentity();
+            if (
+              state &&
+              !state.dirty &&
+              identity &&
+              isWysiwygActive() &&
+              cachedExtraction &&
+              cachedExtraction.doc === editorView.state.doc &&
+              cachedExtraction.revision === state.revision
+            ) {
+              const diagnostics = storePresentationDiagnostics(
+                "visual",
+                identity.projectId,
+                identity.path,
+              );
+              if (diagnostics) {
+                const request = ++requestGeneration;
+                const painted = mapVisualProofreadingDiagnostics(
+                  editorView.state.doc,
+                  diagnostics,
+                  cachedExtraction.extraction,
+                  identity,
+                  state.revision,
+                  request,
+                );
+                editorView.dispatch(
+                  editorView.state.tr.setMeta(visualProofreadingKey, {
+                    type: "paint",
+                    doc: editorView.state.doc,
+                    revision: state.revision,
+                    requestGeneration: request,
+                    ...painted,
+                  } satisfies VisualProofreadingMeta),
+                );
+                return;
+              }
+            }
             schedule(0);
           };
 
@@ -731,9 +786,10 @@ export const VisualProofreading = Extension.create({
                 schedule();
               }
             },
-            destroy() {
-              destroyed = true;
-              requestGeneration++;
+          destroy() {
+            destroyed = true;
+            requestGeneration++;
+            cachedExtraction = null;
               if (timer !== null) clearTimeout(timer);
               timer = null;
               window.removeEventListener(

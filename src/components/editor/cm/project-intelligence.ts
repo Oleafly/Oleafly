@@ -1166,24 +1166,32 @@ export function projectIntelligenceExtensions(): Extension[] {
   const lifecycle = ViewPlugin.define((view) => {
     let disposed = false;
     let refreshQueued = false;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const initialState = useIndexStore.getState().intelligenceState;
     let revision = diagnosticIdentity(initialState);
     let snapshot = initialState.data;
     const refresh = (requestGeneration: number) => {
-      if (refreshQueued) return;
-      refreshQueued = true;
-      queueMicrotask(() => {
-        refreshQueued = false;
-        if (disposed || !view.dom.isConnected) return;
-        view.dispatch({
-          effects: [
-            refreshProjectIntelligence.of(requestGeneration),
-            closeHoverTooltips,
-            clearProjectHoverIntel.of(null),
-          ],
+      if (disposed) return;
+      if (debounceTimer !== null) clearTimeout(debounceTimer);
+      // Trailing debounce: intelligence updates stream in bursts while a
+      // large project indexes; each forced lint re-runs full proofreading.
+      debounceTimer = setTimeout(() => {
+        debounceTimer = null;
+        if (refreshQueued || disposed) return;
+        refreshQueued = true;
+        queueMicrotask(() => {
+          refreshQueued = false;
+          if (disposed || !view.dom.isConnected) return;
+          view.dispatch({
+            effects: [
+              refreshProjectIntelligence.of(requestGeneration),
+              closeHoverTooltips,
+              clearProjectHoverIntel.of(null),
+            ],
+          });
+          forceLinting(view);
         });
-        forceLinting(view);
-      });
+      }, 300);
     };
     const unsubscribe = useIndexStore.subscribe((store) => {
       const nextRevision = diagnosticIdentity(store.intelligenceState);
@@ -1204,6 +1212,7 @@ export function projectIntelligenceExtensions(): Extension[] {
       },
       destroy() {
         disposed = true;
+        if (debounceTimer !== null) clearTimeout(debounceTimer);
         unsubscribe();
       },
     };

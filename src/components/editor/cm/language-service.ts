@@ -814,20 +814,29 @@ export function languageServiceDiagnostics(): Extension[] {
   const lifecycle = ViewPlugin.define((view) => {
     let disposed = false;
     let queued = false;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     let revision = diagnosticsRevision();
     const refresh = () => {
-      if (queued || disposed) return;
-      queued = true;
-      queueMicrotask(() => {
-        queued = false;
-        if (disposed || !view.dom.isConnected) return;
-        revision = diagnosticsRevision();
-        view.dispatch({
-          effects:
-            refreshLanguageServiceDiagnostics.of(revision),
+      if (disposed) return;
+      if (debounceTimer !== null) clearTimeout(debounceTimer);
+      // Trailing debounce: the analysis store can emit dozens of updates
+      // while a large project indexes. Each forced lint re-runs the full
+      // proofreading pass, so coalesce a burst into one.
+      debounceTimer = setTimeout(() => {
+        debounceTimer = null;
+        if (queued || disposed) return;
+        queued = true;
+        queueMicrotask(() => {
+          queued = false;
+          if (disposed || !view.dom.isConnected) return;
+          revision = diagnosticsRevision();
+          view.dispatch({
+            effects:
+              refreshLanguageServiceDiagnostics.of(revision),
+          });
+          forceLinting(view);
         });
-        forceLinting(view);
-      });
+      }, 300);
     };
     const unsubscribeStore =
       useProjectAnalysisStore.subscribe((state) => {
@@ -838,6 +847,7 @@ export function languageServiceDiagnostics(): Extension[] {
     return {
       destroy() {
         disposed = true;
+        if (debounceTimer !== null) clearTimeout(debounceTimer);
         unsubscribeStore();
         unsubscribeRuntime();
       },

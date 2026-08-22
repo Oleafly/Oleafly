@@ -58,6 +58,13 @@ export {
   type MathSourceFormat,
 } from "./math-source";
 export { preserveCase } from "./preserve-case";
+export { stickyScroll } from "./sticky-scroll";
+export {
+  STICKY_MAX_LINES,
+  scopesAtLine,
+  stickyScopes,
+  type StickyScope,
+} from "./sticky-structure";
 export {
   PROOFREADING_LIMITS,
   PROOFREADING_PROTOCOL_VERSION,
@@ -89,7 +96,6 @@ export {
   createSpellLinter,
   createHarperLinter,
   setSpellHost,
-  type SpellHost,
   type GrammarDiag,
   type GrammarSuggestion,
 } from "./spellcheck";

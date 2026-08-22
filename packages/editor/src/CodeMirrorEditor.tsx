@@ -53,6 +53,7 @@ import { liveMathPreview } from "./math-preview";
 import { createLatexLinter } from "./latex-linter";
 import { latexFolding } from "./latex-folding";
 import { ghostCompletion } from "./ghost-completion";
+import { stickyScroll } from "./sticky-scroll";
 import { foldMarkerDOM, foldMarkerTheme } from "./fold-marker";
 import { gateCompletionSource, type CompletionSyntax } from "./completion-trigger";
 
@@ -78,6 +79,8 @@ export interface EditorHost {
     nonBlinkingCursor: boolean;
     /** Dim inline preview of the top completion, accepted with Tab. */
     ghostCompletion: boolean;
+    /** Pin the enclosing sections and environments to the top while scrolling. */
+    stickyScroll: boolean;
   };
   useLintRefreshDeps(): readonly unknown[];
 }
@@ -156,6 +159,12 @@ function sourceToolsForPath(
   ];
 }
 
+// Sticky scroll reads LaTeX sectioning and environments, so it has nothing to
+// pin in a Markdown, BibTeX, or JSON buffer.
+function stickyScrollFor(path: string | null, enabled: boolean): Extension[] {
+  return enabled && isLatexSourcePath(path) ? [stickyScroll()] : [];
+}
+
 // Bracket auto-closing and cursor rendering, both user preferences that must
 // reconfigure without recreating the editor.
 function editorPrefExtensions(
@@ -200,6 +209,7 @@ export function CodeMirrorEditor({
   const suppressSyncRef = useRef(false);
 
   const editorPrefsCompartmentRef = useRef<Compartment | null>(null);
+  const stickyCompartmentRef = useRef<Compartment | null>(null);
   const activePath = host.useActivePath();
   const completionSyntax = host.useCompletionSyntax(activePath);
   // NB: the active file's content is read imperatively (host.getContent) inside
@@ -217,6 +227,7 @@ export function CodeMirrorEditor({
     autoCloseBrackets,
     nonBlinkingCursor,
     ghostCompletion: ghostCompletionEnabled,
+    stickyScroll: stickyScrollEnabled,
   } = host.useSettings();
   const lintDeps = host.useLintRefreshDeps();
 
@@ -242,6 +253,8 @@ export function CodeMirrorEditor({
     hostToolsCompartmentRef.current = hostToolsCompartment;
     const editorPrefsCompartment = new Compartment();
     editorPrefsCompartmentRef.current = editorPrefsCompartment;
+    const stickyCompartment = new Compartment();
+    stickyCompartmentRef.current = stickyCompartment;
     prevPathRef.current = initialPath;
     const initialLang = initialPath ? languageForPath(initialPath) : null;
     const initialCompletionSources =
@@ -259,6 +272,9 @@ export function CodeMirrorEditor({
         foldMarkerTheme,
         editorPrefsCompartment.of(
           editorPrefExtensions(autoCloseBrackets, nonBlinkingCursor),
+        ),
+        stickyCompartment.of(
+          stickyScrollFor(initialPath, stickyScrollEnabled),
         ),
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
@@ -443,6 +459,20 @@ export function CodeMirrorEditor({
     view.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePath, docVersion]);
+
+  // Sticky scroll depends on both the preference and the file's syntax, and it
+  // rebuilds its own scope list on reconfigure, so a single effect covers a
+  // toggle and a file swap alike.
+  useEffect(() => {
+    const view = viewRef.current;
+    const compartment = stickyCompartmentRef.current;
+    if (!view || !compartment) return;
+    view.dispatch({
+      effects: compartment.reconfigure(
+        stickyScrollFor(activePath, stickyScrollEnabled),
+      ),
+    });
+  }, [activePath, stickyScrollEnabled]);
 
   // Toggle vim without recreating the editor.
   useEffect(() => {
