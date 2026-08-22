@@ -1,0 +1,268 @@
+name: Release CLI
+
+#
+#     git tag cli-v0.1.0 && git push origin cli-v0.1.0
+#
+# or run manually from the Actions tab against any ref.
+#
+# The CLI has its own tag namespace (`cli-v*`) and its own version line. The
+# desktop owns `v*.*.*` and the two products have no reason to move together.
+#
+# This workflow always stops at a DRAFT release. Nothing here publishes to a
+# package registry: crates.io, Homebrew and Scoop are deliberately absent until
+# there is a stable local build and the package name is settled. Publishing a
+# crates.io name cannot be undone, so it does not belong behind a tag push.
+on:
+  push:
+    tags:
+      - "cli-v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to attach the draft release to (e.g. cli-v0.1.0)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  # What cargo produces. The desktop package still owns the name `oleafly`
+  # inside this workspace - two packages cannot both build a binary by that
+  # name - so the build artifact keeps the old one until the desktop rename
+  # lands. See the naming record.
+  CARGO_BIN: oleaflyc
+  # What people install and type. The build name is an internal detail of the
+  # workspace and nobody outside it should ever see it: the shipped file, the
+  # archive, the completions, and the manual page all use this.
+  SHIP_NAME: oleafly
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (Apple Silicon)
+            os: macos-14
+            target: aarch64-apple-darwin
+          - name: macOS (Intel)
+            os: macos-14
+            target: x86_64-apple-darwin
+          - name: Linux (x86_64, gnu)
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          - name: Linux (ARM64, gnu)
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          # musl builds are static: they run on Alpine, in scratch containers,
+          # and on distributions whose glibc is older than the build machine's.
+          # That is what "supports Linux" means in practice for a CI tool.
+          - name: Linux (x86_64, musl)
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-musl
+          - name: Linux (ARM64, musl)
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+          - name: Windows (x86_64)
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> src-tauri/target
+          key: cli-${{ matrix.target }}
+
+      # The CLI has no C dependencies, so musl needs only the linker.
+      - name: Install the musl toolchain
+        if: endsWith(matrix.target, '-musl')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
+      # --locked: Cargo.lock is tracked, so a release must build exactly the
+      # dependency set that was reviewed, and fail loudly if the lock is stale
+      # rather than quietly resolving something newer.
+      - name: Build
+        run: cargo build --release --locked -p oleafly-cli --target ${{ matrix.target }}
+
+      # Generated from the parser, so they cannot drift from the flags. Built
+      # on the host for the host: cross-compiled targets cannot be executed
+      # here, so these come from a native build of the same source.
+      - name: Generate completions and the manual page
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/completions dist/man
+          cargo run --release --locked -p oleafly-cli --bin "$CARGO_BIN" -- man > "dist/man/$SHIP_NAME.1"
+          for shell in bash zsh fish powershell elvish; do
+            cargo run --release --locked -p oleafly-cli --bin "$CARGO_BIN" -- completions "$shell" \
+              > "dist/completions/$SHIP_NAME.$shell"
+          done
+
+      # macOS binaries downloaded from the internet are quarantined until they
+      # are signed and notarized. Skips cleanly when the secrets are absent so
+      # a fork still produces working (unsigned) artifacts.
+      - name: Sign and notarize (macOS)
+        if: startsWith(matrix.os, 'macos-')
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          binary="src-tauri/target/${{ matrix.target }}/release/$CARGO_BIN"
+          if [ -z "${APPLE_CERTIFICATE:-}" ] || [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
+            echo "::warning::Apple signing secrets absent; shipping an unsigned macOS binary"
+            exit 0
+          fi
+          keychain="$RUNNER_TEMP/cli-signing.keychain-db"
+          password="$(uuidgen)"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          certificate="$RUNNER_TEMP/certificate.p12"
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$certificate"
+          security import "$certificate" -k "$keychain" -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          rm -f "$certificate"
+          codesign --force --options runtime --timestamp \
+            --sign "$APPLE_SIGNING_IDENTITY" "$binary"
+          codesign --verify --strict --verbose=2 "$binary"
+          if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
+            # notarytool takes an archive, not a bare Mach-O.
+            ditto -c -k --keepParent "$binary" "$RUNNER_TEMP/notarize.zip"
+            xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --wait \
+              --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID"
+            # A bare binary cannot be stapled; Gatekeeper checks it online.
+            # Notarizing still clears the quarantine prompt on first run.
+          else
+            echo "::warning::Notarization credentials absent; binary is signed but not notarized"
+          fi
+
+      - name: Sign (Windows)
+        if: startsWith(matrix.os, 'windows-')
+        shell: bash
+        env:
+          AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          AZURE_SIGNING_PROFILE: ${{ secrets.AZURE_SIGNING_PROFILE }}
+        run: |
+          set -euo pipefail
+          if [ -z "${AZURE_SIGNING_ENDPOINT:-}" ]; then
+            echo "::warning::Azure signing secrets absent; shipping an unsigned Windows binary"
+            exit 0
+          fi
+          echo "::warning::Windows Authenticode signing for the CLI is not wired up yet"
+
+      - name: Assemble the archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          # A manual dispatch against a branch has no version in its ref, and
+          # naming an archive "oleaflyc-main-..." helps nobody. Fall back to a
+          # commit-stamped dry-run version so those artifacts are obviously not
+          # releases.
+          ref="${{ github.event.inputs.tag || github.ref_name }}"
+          case "$ref" in
+            cli-v*) version="${ref#cli-v}" ;;
+            *) version="0.0.0-dev.$(git rev-parse --short HEAD)" ;;
+          esac
+          stem="$SHIP_NAME-$version-${{ matrix.target }}"
+          staging="dist/$stem"
+          mkdir -p "$staging"
+          source="src-tauri/target/${{ matrix.target }}/release/$CARGO_BIN"
+          # Ship it under the name people type, not the name cargo happened
+          # to build it as.
+          if [ -f "$source.exe" ]; then
+            cp "$source.exe" "$staging/$SHIP_NAME.exe"
+          else
+            cp "$source" "$staging/$SHIP_NAME"
+          fi
+          cp LICENSE README.md "$staging/"
+          cp -r dist/completions dist/man "$staging/"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            # Archive the directory, not a quoted glob: the shell will not
+            # expand "./dir/*" inside quotes, and mirroring the tar branch
+            # keeps both archives the same shape.
+            (cd dist && 7z a -tzip "$stem.zip" "$stem" >/dev/null)
+            echo "ARCHIVE=dist/$stem.zip" >> "$GITHUB_ENV"
+          else
+            tar -czf "dist/$stem.tar.gz" -C dist "$stem"
+            echo "ARCHIVE=dist/$stem.tar.gz" >> "$GITHUB_ENV"
+          fi
+
+      - name: Attest build provenance
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-path: ${{ env.ARCHIVE }}
+
+      - name: Upload the archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-${{ matrix.target }}
+          path: ${{ env.ARCHIVE }}
+          retention-days: 7
+
+  draft:
+    name: Draft release
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download every archive
+        uses: actions/download-artifact@v7
+        with:
+          path: archives
+          merge-multiple: true
+
+      # One checksum file across every target, so a user can verify a download
+      # without trusting the page they got the link from.
+      - name: Checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd archives
+          ls -1
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create or update the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft \
+              --title "Oleafly CLI $TAG" \
+              --notes "Draft. The CLI interface is unstable below 1.0.0: JSON fields may be added, renamed, or removed and exit codes may change. Pin an exact version if you script against it."
+          fi
+          gh release upload "$TAG" archives/* --repo "$GITHUB_REPOSITORY" --clobber
+          echo "Draft release ready. Publishing is a separate, deliberate step."
