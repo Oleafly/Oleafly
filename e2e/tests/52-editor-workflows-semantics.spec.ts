@@ -3,6 +3,7 @@ import { test, expect } from "../fixtures";
 import {
   caretIn,
   caretLineIncludes,
+  clickLiveToolbarPopoverTrigger,
   clickToolbarControl,
   compileAndProbe,
   createBlankProject,
@@ -163,6 +164,7 @@ async function clickPortalButton(
   page: TauriPage,
   predicate: string,
   description: string,
+  timeout = 10_000,
 ) {
   const clicked = await page
     .waitForFunction(
@@ -177,7 +179,7 @@ async function clickPortalButton(
         button.click();
         return true;
       })()`,
-      10_000,
+      timeout,
     )
     .then(() => true)
     .catch(() => false);
@@ -196,6 +198,43 @@ async function clickPortalButton(
       `${description} portal button never became clickable; portals=${state}`,
     );
   }
+}
+
+async function chooseList(
+  page: TauriPage,
+  label: "Bulleted list" | "Numbered list",
+) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    await page.press("body", "Escape").catch(() => {});
+    const triggerClicked = await clickLiveToolbarPopoverTrigger(
+      page,
+      "Insert list",
+    )
+      .then(() => true)
+      .catch((error: unknown) => {
+        lastError = error;
+        return false;
+      });
+    if (triggerClicked) {
+      try {
+        await clickPortalButton(
+          page,
+          `candidate.textContent?.trim() === ${JSON.stringify(label)}
+            || Array.from(candidate.querySelectorAll("span")).some((span) => span.textContent?.trim() === ${JSON.stringify(label)})`,
+          label,
+          3_000,
+        );
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`${label} never opened from the toolbar list picker`);
 }
 
 async function selectWysiwygText(page: TauriPage, text: string) {
@@ -666,21 +705,9 @@ WYSQUOTE
   await clickToolbarControl(tauriPage, '[aria-label="Heading level"]', "Heading");
   await tauriPage.getByText("Subsubsection", { exact: true }).click();
   await selectWysiwygText(tauriPage, "WYSBULLET");
-  await clickToolbarControl(tauriPage, '[aria-label="Insert list"]', "List");
-  await clickPortalButton(
-    tauriPage,
-    `candidate.textContent?.trim() === "Bulleted list"
-      || Array.from(candidate.querySelectorAll("span")).some((s) => s.textContent?.trim() === "Bulleted list")`,
-    "Bulleted list",
-  );
+  await chooseList(tauriPage, "Bulleted list");
   await selectWysiwygText(tauriPage, "WYSNUMBER");
-  await clickToolbarControl(tauriPage, '[aria-label="Insert list"]', "List");
-  await clickPortalButton(
-    tauriPage,
-    `candidate.textContent?.trim() === "Numbered list"
-      || Array.from(candidate.querySelectorAll("span")).some((s) => s.textContent?.trim() === "Numbered list")`,
-    "Numbered list",
-  );
+  await chooseList(tauriPage, "Numbered list");
   await selectWysiwygText(tauriPage, "WYSQUOTE");
   await clickToolbarControl(
     tauriPage,

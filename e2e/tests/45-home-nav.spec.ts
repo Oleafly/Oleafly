@@ -36,7 +36,10 @@ test("Oleafly Tools gallery filters by category and search, and opens a dedicate
   await expect(tauriPage.locator('[data-testid="latex-tools-view"]')).toBeVisible();
   await expect(tauriPage.locator('[data-testid="latex-tool-card-bibtex"]')).toBeVisible();
 
-  await tauriPage.fill('input[placeholder^="Search"]', "table");
+  await tauriPage.fill(
+    '[data-testid="latex-tools-view"] input[aria-label="Search Oleafly Tools"]',
+    "table",
+  );
   await expect(tauriPage.locator('[data-testid="latex-tool-card-table"]')).toBeVisible();
   await expect(tauriPage.locator('[data-testid="latex-tool-card-bibtex"]')).toBeHidden();
 
