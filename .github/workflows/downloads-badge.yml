@@ -12,7 +12,7 @@ name: Downloads badge
 # by GitHub automatically and the badges branch carries no protection rules.
 on:
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:
