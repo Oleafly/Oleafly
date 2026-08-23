@@ -356,8 +356,6 @@ interface SettingsState {
   setPdfDarkMode: (v: boolean) => void;
   pdfZoomShortcuts: boolean;
   setPdfZoomShortcuts: (v: boolean) => void;
-  pdfScreenReaderMode: boolean;
-  setPdfScreenReaderMode: (v: boolean) => void;
   hiddenFilePatterns: readonly string[];
   addHiddenFilePattern: (pattern: string) => void;
   removeHiddenFilePattern: (pattern: string) => void;
@@ -417,7 +415,6 @@ const PREF_DEFAULTS = {
   editorTheme: "system" as EditorThemeId,
   pdfDarkMode: false,
   pdfZoomShortcuts: true,
-  pdfScreenReaderMode: false,
   hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS] as readonly string[],
   defaultView: "editor-preview" as LayoutPreset,
   openInTree: false,
@@ -584,11 +581,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.pdf.zoomShortcuts", v ? "1" : "0");
     set({ pdfZoomShortcuts: v });
   },
-  pdfScreenReaderMode: ls("oleafly.pdf.screenReaderMode", "0") === "1",
-  setPdfScreenReaderMode: (v) => {
-    saveLs("oleafly.pdf.screenReaderMode", v ? "1" : "0");
-    set({ pdfScreenReaderMode: v });
-  },
   hiddenFilePatterns: readHiddenFilePatterns(
     ls("oleafly.fileTree.hiddenPatterns", JSON.stringify(DEFAULT_HIDDEN_FILE_PATTERNS)),
   ),
@@ -746,10 +738,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs(
       "oleafly.pdf.zoomShortcuts",
       PREF_DEFAULTS.pdfZoomShortcuts ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.pdf.screenReaderMode",
-      PREF_DEFAULTS.pdfScreenReaderMode ? "1" : "0",
     );
     saveLs(
       "oleafly.fileTree.hiddenPatterns",

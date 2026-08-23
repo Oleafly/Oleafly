@@ -329,6 +329,32 @@ interface RenderState {
   searchNodes: HTMLElement[];
 }
 
+function setPdfScreenReaderWrapStyle(
+  wrap: HTMLElement,
+  active: boolean,
+): void {
+  wrap.dataset.pdfScreenReader = active ? "true" : "false";
+  wrap.classList.toggle("rounded-sm", !active);
+  wrap.classList.toggle("rounded-xl", active);
+  wrap.classList.toggle("bg-white", !active);
+  wrap.classList.toggle("bg-background", active);
+  wrap.classList.toggle("ring-black/5", !active);
+  wrap.classList.toggle("ring-white/10", active);
+  if (active) {
+    if (wrap.style.height && wrap.style.height !== "auto") {
+      wrap.dataset.pdfVisualHeight = wrap.style.height;
+    }
+    wrap.style.minHeight = wrap.dataset.pdfVisualHeight ?? "";
+    wrap.style.height = "auto";
+  } else {
+    if (wrap.style.height === "auto" && wrap.dataset.pdfVisualHeight) {
+      wrap.style.height = wrap.dataset.pdfVisualHeight;
+    }
+    wrap.style.minHeight = "";
+    delete wrap.dataset.pdfVisualHeight;
+  }
+}
+
 function clearPdfSearchHighlights(state: RenderState): void {
   for (const node of state.searchNodes) node.remove();
   state.searchNodes.length = 0;
@@ -418,6 +444,7 @@ function paintPdfSearchHighlights(
             ? "pdf-search-highlight pdf-search-highlight-current"
             : "pdf-search-highlight";
         marker.setAttribute("aria-hidden", "true");
+        marker.hidden = wrap.dataset.pdfScreenReader === "true";
         Object.assign(marker.style, {
           position: "absolute",
           left: `${rect.left - wrapRect.left}px`,
@@ -1021,10 +1048,13 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   const unrenderPage = useCallback((pageNo: number) => {
     const state = renderedRef.current.get(pageNo);
     if (!state) return;
+    const wrap = wrapsRef.current.get(pageNo);
+    if (screenReaderModeRef.current && state.screenReaderLayer) {
+      state.screenReaderLayer = null;
+    }
     cancelRenderState(state);
     renderedRef.current.delete(pageNo);
     textContentRef.current.delete(pageNo);
-    const wrap = wrapsRef.current.get(pageNo);
     if (wrap) {
       const baseViewport = pageViewportsRef.current.get(pageNo);
       if (!baseViewport) return;
@@ -1034,6 +1064,9 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         scaleRef.current,
         window.devicePixelRatio || 1,
       );
+      if (screenReaderModeRef.current) {
+        setPdfScreenReaderWrapStyle(wrap, true);
+      }
     }
   }, []);
 
@@ -1065,20 +1098,28 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
 
   const syncScreenReaderLayer = useCallback(
     async (pageNo: number, state: RenderState, wrap: HTMLElement) => {
+      const screenReaderActive = screenReaderModeRef.current;
       const visualLayers = state.nodes.filter(
         (node) => !node.classList.contains("pdf-screen-reader-layer"),
       );
       for (const node of visualLayers) {
-        if (screenReaderModeRef.current) node.setAttribute("aria-hidden", "true");
+        if (screenReaderActive) node.setAttribute("aria-hidden", "true");
         else node.removeAttribute("aria-hidden");
+        node.hidden = screenReaderActive;
       }
+      for (const node of state.searchNodes) node.hidden = screenReaderActive;
+      setPdfScreenReaderWrapStyle(wrap, screenReaderActive);
 
-      state.screenReaderLayer?.remove();
+      for (const existingLayer of wrap.querySelectorAll(
+        ":scope > .pdf-screen-reader-layer",
+      )) {
+        existingLayer.remove();
+      }
       state.screenReaderLayer = null;
       const page = state.page;
       const textContent = textContentRef.current.get(pageNo);
       const doc = docRef.current;
-      if (!screenReaderModeRef.current || !page || !textContent || !doc) return;
+      if (!screenReaderActive || !page || !textContent || !doc) return;
 
       const fallbackLayer = createPdfScreenReaderLayer({
         pageNumber: pageNo,
@@ -1453,6 +1494,16 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
 
   useEffect(() => {
     screenReaderModeRef.current = screenReaderMode;
+    for (const wrap of wrapsRef.current.values()) {
+      if (!screenReaderMode) {
+        for (const layer of wrap.querySelectorAll(
+          ":scope > .pdf-screen-reader-layer",
+        )) {
+          layer.remove();
+        }
+      }
+      setPdfScreenReaderWrapStyle(wrap, screenReaderMode);
+    }
     for (const [pageNo, state] of renderedRef.current) {
       const wrap = wrapsRef.current.get(pageNo);
       if (wrap) void syncScreenReaderLayer(pageNo, state, wrap);

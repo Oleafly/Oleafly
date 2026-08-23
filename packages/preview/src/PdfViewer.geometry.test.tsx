@@ -398,6 +398,21 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
     expect(
       view.container.querySelector("[data-page='1'] .pdf-canvas"),
     ).toHaveAttribute("aria-hidden", "true");
+    expect(
+      view.container.querySelector("[data-page='1'] .pdf-canvas"),
+    ).not.toBeVisible();
+    expect(
+      view.container.querySelector("[data-page='1'] .textLayer"),
+    ).not.toBeVisible();
+    expect(
+      view.container.querySelector("[data-page='1'] .annotationLayer"),
+    ).not.toBeVisible();
+    expect(view.container.querySelector("[data-page='1']")).toHaveClass(
+      "rounded-xl",
+    );
+    expect(view.container.querySelector("[data-page='1']")).toHaveStyle({
+      height: "auto",
+    });
 
     view.rerender(
       <PdfViewer
@@ -415,6 +430,18 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
     expect(
       view.container.querySelector("[data-page='1'] .pdf-canvas"),
     ).not.toHaveAttribute("aria-hidden");
+    expect(
+      view.container.querySelector("[data-page='1'] .textLayer"),
+    ).toBeVisible();
+    expect(
+      view.container.querySelector("[data-page='1'] .annotationLayer"),
+    ).toBeVisible();
+    expect(view.container.querySelector("[data-page='1']")).toHaveClass(
+      "rounded-sm",
+    );
+    expect(view.container.querySelector("[data-page='1']")).not.toHaveStyle({
+      height: "auto",
+    });
   });
 
   it("retains selectable text when DOM width calibration is unavailable", async () => {

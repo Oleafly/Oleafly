@@ -33,9 +33,11 @@ vi.mock("@/components/pdf/PdfViewer", async () => {
       {
         data,
         onPageChange,
+        screenReaderMode,
       }: {
         data: Uint8Array;
         onPageChange?: (current: number, total: number) => void;
+        screenReaderMode?: boolean;
       },
       ref: React.ForwardedRef<{
         gotoPage: (page: number) => void;
@@ -48,7 +50,10 @@ vi.mock("@/components/pdf/PdfViewer", async () => {
       }));
       React.useEffect(() => onPageChange?.(1, 3), [onPageChange]);
       return (
-        <div data-testid="detached-pdf-bytes">
+        <div
+          data-testid="detached-pdf-bytes"
+          data-screen-reader-mode={screenReaderMode ? "true" : "false"}
+        >
           {Array.from(data).join(",")}
         </div>
       );
@@ -198,6 +203,24 @@ describe("detached preview request identity", () => {
     );
     beta.resolve(buffer(2));
     await screen.findByText("2");
+  });
+
+  it("resets screen reader mode when the window changes projects", async () => {
+    mocks.readCompiledPdf.mockResolvedValue(buffer(1));
+    render(<PreviewWindow />);
+    emitRefresh(successState("alpha", 1, 1));
+    await screen.findByText("1");
+
+    fireEvent.click(screen.getByRole("button", { name: "Reader view" }));
+    expect(screen.getByTestId("detached-pdf-bytes")).toHaveAttribute(
+      "data-screen-reader-mode",
+      "true",
+    );
+
+    emitProject("beta");
+    expect(
+      screen.getByRole("button", { name: "Reader view" }),
+    ).toHaveAttribute("aria-pressed", "false");
   });
 
   it("keeps project B when its load finishes before the older project A request", async () => {

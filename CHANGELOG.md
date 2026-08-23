@@ -7,24 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.8] - 2026-08-21
+## [0.3.8] - 2026-08-22
 
 ### Added
 
-- **The document outline is back, above Structure.** It lists the sections of
-  the file you are editing and follows `\input` and `\include`, so a thesis
-  split across files reads as one document. Indentation follows heading depth,
-  so you can see the shape of a document without reading any of the titles, and
-  clicking a heading jumps to it. Structure, the whole-project map of files,
-  labels, citation keys and dependencies, is still there directly below,
-  collapsed until you want it.
+- The document outline is back above Structure. It follows `\input` and
+  `\include`, tracks the active heading, and keeps the project-wide Structure
+  map close by without mixing the two views together.
+- Sticky scroll keeps the current LaTeX sections and environments at the top of
+  the source editor. It can be turned off from the Editor appearance settings.
+- Project info brings document and selection counts together with proofreading
+  status. For documents split across files, the totals follow the same source
+  graph as the outline.
+- Appearance settings are grouped into App, Editor, PDF Preview, and Project
+  tabs. The PDF tab includes default dark mode and PDF zoom shortcuts. The
+  preview toolbar adds a text-first screen reader view that preserves tagged
+  headings and reading order when the document provides them.
+- Project settings can hide generated files and folders from the file tree
+  using editable name and glob patterns.
+- Project cards in the library have a visible actions menu, so details, export,
+  color, fork, and delete actions no longer depend on right-clicking.
 
 ### Changed
 
-- **The line-number column gives back a few pixels while the sidebar is open.**
-  It reserved more width than two-digit line numbers need, which mattered only
-  when the sidebar was competing for the same space. With the sidebar closed
-  nothing changed.
+- The line-number column uses less space while the sidebar is open.
+- Proofreading shows every retained finding and refreshes large result sets
+  without repeatedly rescanning the document.
+- Project import separates local and cloud sources. GitHub entries identify
+  private repositories and can be opened in the browser without importing.
+- Compiler resources, language servers, fonts, and deadline data try Oleafly's
+  verified download mirrors first, then fall back to their upstream sources.
+- Compile logs follow new output only while the view is already at the bottom,
+  and toolbar controls respond to the space available instead of moving into an
+  overflow menu too early.
+- Experimental tools that are turned off are also hidden from the omnibar.
+- Screen reader pages use the preview's main scroll area, grow to fit their
+  extracted text, and reset to the rendered PDF when the active project changes.
+
+### Fixed
+
+- Proofreading no longer freezes the app when a large set of findings changes.
+- Structure no longer repeats headings or bibliography files when local and
+  language-service results describe the same item.
+- Compiler-choice and confirmation dialogs remain clickable during compilation.
+  Quitting also stops waiting after five seconds if pending saves cannot finish.
+- The Settings sidebar scrolls when the window is too short to show every
+  section.
 
 ## [0.3.7] - 2026-08-19
 

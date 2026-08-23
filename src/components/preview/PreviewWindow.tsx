@@ -337,12 +337,7 @@ export function PreviewWindow({
   const pdfZoomShortcuts = useSettingsStore(
     (state) => state.pdfZoomShortcuts,
   );
-  const screenReaderMode = useSettingsStore(
-    (state) => state.pdfScreenReaderMode,
-  );
-  const setScreenReaderMode = useSettingsStore(
-    (state) => state.setPdfScreenReaderMode,
-  );
+  const [screenReaderMode, setScreenReaderMode] = useState(false);
   const [page, setPage] = useState(1);
   const [numPages, setNumPages] = useState(0);
   const [pageInput, setPageInput] = useState("1");
@@ -432,6 +427,7 @@ export function PreviewWindow({
       setPage(1);
       setNumPages(0);
       setRotation(0);
+      setScreenReaderMode(false);
     }
   }, []);
 
@@ -1123,16 +1119,14 @@ export function PreviewWindow({
               <Contrast className="size-3.5" />
             </Button>
           </Tooltip>
-          <Tooltip
-            label={screenReaderMode ? "Show rendered PDF" : "Use screen reader mode"}
-          >
+          <Tooltip label={screenReaderMode ? "Exit reader view" : "Reader view"}>
             <Button
               variant="ghost"
               size="icon"
               className={cn("size-7", screenReaderMode && "bg-accent")}
               disabled={!previewDocument}
               onClick={() => setScreenReaderMode(!screenReaderMode)}
-              aria-label="Screen reader mode"
+              aria-label="Reader view"
               aria-pressed={screenReaderMode}
             >
               <Accessibility className="size-3.5" />

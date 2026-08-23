@@ -38,7 +38,6 @@ describe("Appearance settings tabs", () => {
       openInTree: false,
       pdfDarkMode: false,
       pdfZoomShortcuts: false,
-      pdfScreenReaderMode: false,
       hoverPreview: false,
     });
   });
@@ -55,12 +54,10 @@ describe("Appearance settings tabs", () => {
     await user.click(screen.getByRole("tab", { name: "PDF Preview" }));
     expect(screen.getByRole("switch", { name: "PDF dark mode" })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "PDF zoom shortcuts" })).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Screen reader mode" })).toBeInTheDocument();
 
     for (const label of [
       "PDF dark mode",
       "PDF zoom shortcuts",
-      "Screen reader mode",
       "Preview PDF on hover",
     ]) {
       await user.click(screen.getByRole("switch", { name: label }));
@@ -68,7 +65,6 @@ describe("Appearance settings tabs", () => {
     expect(useSettingsStore.getState()).toMatchObject({
       pdfDarkMode: true,
       pdfZoomShortcuts: true,
-      pdfScreenReaderMode: true,
       hoverPreview: true,
     });
   });

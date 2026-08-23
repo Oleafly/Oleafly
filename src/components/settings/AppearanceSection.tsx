@@ -397,12 +397,6 @@ function PdfPreviewTab() {
   const setPdfZoomShortcuts = useSettingsStore(
     (state) => state.setPdfZoomShortcuts,
   );
-  const pdfScreenReaderMode = useSettingsStore(
-    (state) => state.pdfScreenReaderMode,
-  );
-  const setPdfScreenReaderMode = useSettingsStore(
-    (state) => state.setPdfScreenReaderMode,
-  );
   const hoverPreview = useSettingsStore((state) => state.hoverPreview);
   const setHoverPreview = useSettingsStore((state) => state.setHoverPreview);
 
@@ -419,12 +413,6 @@ function PdfPreviewTab() {
         description="Use Cmd/Ctrl +, -, and 0 to zoom the PDF instead of the app window."
         checked={pdfZoomShortcuts}
         onChange={setPdfZoomShortcuts}
-      />
-      <SettingsToggleRow
-        label="Screen reader mode"
-        description="Show a text-first view of each page. Tagged PDFs keep their headings and reading order."
-        checked={pdfScreenReaderMode}
-        onChange={setPdfScreenReaderMode}
       />
       <SettingsToggleRow
         label="Preview PDF on hover"

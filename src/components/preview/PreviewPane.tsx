@@ -668,12 +668,7 @@ export function PreviewPane() {
   const pdfZoomShortcuts = useSettingsStore(
     (state) => state.pdfZoomShortcuts,
   );
-  const screenReaderMode = useSettingsStore(
-    (state) => state.pdfScreenReaderMode,
-  );
-  const setScreenReaderMode = useSettingsStore(
-    (state) => state.setPdfScreenReaderMode,
-  );
+  const [screenReaderMode, setScreenReaderMode] = useState(false);
   const [scale, setScale] = useState(1.0);
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
   const [tab, setTab] = useState<"pdf" | "logs">("pdf");
@@ -750,6 +745,7 @@ export function PreviewPane() {
     setPasswordDraft("");
     setRotation(0);
     setRotationPending(false);
+    setScreenReaderMode(false);
     // A different project has nothing on screen to preserve, so its first load
     // gets the explanatory startup panel again.
     setHasRendered(false);
@@ -1631,14 +1627,12 @@ export function PreviewPane() {
     iconControl(
       "screen-reader",
       Accessibility,
-      "Show a text-first PDF view",
+      "Reader view",
       () => setScreenReaderMode(!screenReaderMode),
       {
         disabled: !displayedBytes || isImage,
         active: screenReaderMode,
-        tooltip: screenReaderMode
-          ? "Hide screen reader mode"
-          : "Show screen reader mode",
+        tooltip: screenReaderMode ? "Exit reader view" : "Reader view",
       },
     ),
   );

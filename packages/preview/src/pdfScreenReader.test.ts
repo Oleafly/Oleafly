@@ -34,6 +34,31 @@ describe("PDF screen reader view", () => {
     expect(extractPdfScreenReaderText(textContent).plainText).toBe(
       "Training Compute\nOptimal.",
     );
+    expect(
+      createPdfScreenReaderLayer({
+        pageNumber: 1,
+        totalPages: 1,
+        textContent,
+      }).querySelector("article p")?.textContent,
+    ).toBe("Training Compute Optimal.");
+  });
+
+  it("maps text to every active marked-content ancestor", () => {
+    const textContent: TextContent = {
+      items: [
+        { type: "beginMarkedContentProps", id: "section" },
+        { type: "beginMarkedContentProps", id: "paragraph" },
+        textItem("Nested text"),
+        { type: "endMarkedContent", id: "" },
+        { type: "endMarkedContent", id: "" },
+      ],
+      styles: {},
+      lang: "en",
+    };
+
+    const extracted = extractPdfScreenReaderText(textContent);
+    expect(extracted.byMarkedContent.get("section")).toBe("Nested text");
+    expect(extracted.byMarkedContent.get("paragraph")).toBe("Nested text");
   });
 
   it("preserves tagged headings and reading order", () => {
@@ -67,6 +92,10 @@ describe("PDF screen reader view", () => {
     expect(layer.getAttribute("aria-label")).toBe(
       "Screen reader view, page 2 of 12",
     );
+    expect(layer).not.toHaveClass("overflow-auto");
+    expect(layer).toHaveClass("relative", "w-full");
+    expect(layer.textContent).not.toContain("Screen reader mode");
+    expect(layer.querySelector("header")).toHaveClass("justify-end");
     expect(layer.querySelector("h1")?.textContent).toBe("Compute-optimal training");
     expect(layer.querySelector("p")?.textContent).toBe("A concise summary.");
   });
@@ -79,6 +108,7 @@ describe("PDF screen reader view", () => {
     });
 
     expect(layer.textContent).toContain("No readable text was found on this page.");
+    expect(layer.textContent).toContain("Screen reader mode");
   });
 
   it("maps list, table, quote, code, and unknown structure roles", () => {
