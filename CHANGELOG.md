@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.9] - 2026-08-23
+
 ### Added
 
 - The project library adds a header search and can switch between book covers
@@ -19,9 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Data Storage settings report the actual size of the Oleafly data folder,
   including project, file, image, PDF, Git history, build cache, and app-data
   aggregates. Deleted projects now move to a Recycle Bin there, where they can
-  be restored or explicitly deleted forever; Oleafly never clears it
+  be restored or explicitly deleted forever. Oleafly never clears it
   automatically. A separate danger zone can move every active project there at
   once. GitHub setup guidance is hidden after an account is connected.
+
+### Changed
+
+- The README downloads badge now refreshes every 30 minutes instead of every
+  six hours.
 
 ### Fixed
 
@@ -33,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Outline entries also use a slightly larger font.
 - Advanced project filters close when focus moves elsewhere while remaining
   open during select-menu interactions.
+- Oleafly Tools search now has an explicit accessible name and reliable
+  cross-platform automation.
+- WYSIWYG list formatting interactions are more reliable in Linux webviews.
 
 ## [0.3.8] - 2026-08-22
 
@@ -1452,7 +1462,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.8...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.9...HEAD
+[0.3.9]: https://github.com/Oleafly/Oleafly/compare/v0.3.8...v0.3.9
 [0.3.8]: https://github.com/Oleafly/Oleafly/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/Oleafly/Oleafly/compare/v0.3.6...v0.3.7
 [0.3.6]: https://github.com/Oleafly/Oleafly/compare/v0.3.5...v0.3.6
