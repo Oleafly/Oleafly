@@ -5092,14 +5092,14 @@ pub fn clear_build_cache(project_id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn delete_project(
+pub async fn recycle_project(
     project_id: String,
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<(), String> {
-    delete_project_synchronized(&state, project_id).await
+    recycle_project_synchronized(&state, project_id).await
 }
 
-async fn delete_project_synchronized(
+async fn recycle_project_synchronized(
     state: &crate::state::AppState,
     project_id: String,
 ) -> Result<(), String> {
@@ -5137,9 +5137,11 @@ async fn delete_project_synchronized(
                     Ok(_) => {}
                 }
                 let verified = paths::project_dir(&project_id)?;
+                let project_name = read_meta(&project_id)
+                    .map(|meta| meta.name)
+                    .unwrap_or_else(|_| project_id.clone());
                 revoke_shell_escape_trust(&project_id)?;
-                std::fs::remove_dir_all(&verified)
-                    .map_err(|e| format!("failed to delete project: {e}"))?;
+                crate::storage::recycle_project_directory(&project_id, &project_name, &verified)?;
                 Ok(((), true))
             })
         })?;
@@ -5537,7 +5539,7 @@ mod tests {
 
     #[allow(clippy::await_holding_lock)]
     #[tokio::test]
-    async fn project_deletion_rejects_queued_and_late_writes_without_resurrection() {
+    async fn project_recycling_rejects_queued_and_late_writes_without_resurrection() {
         let _env_guard = crate::paths::data_dir_env_lock();
         let data = test_dir("project-delete-coordinator");
         std::env::set_var("OLEAFLY_DATA_DIR", &data);
@@ -5565,7 +5567,7 @@ mod tests {
         )
         .unwrap();
         let state = crate::state::AppState::default();
-        super::delete_project_synchronized(&state, project_id.clone())
+        super::recycle_project_synchronized(&state, project_id.clone())
             .await
             .unwrap();
         assert!(!project_dir.exists());

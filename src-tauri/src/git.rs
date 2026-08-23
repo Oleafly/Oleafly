@@ -38,14 +38,34 @@ fn ensure_git_identity(root: &PathBuf) -> Result<(), String> {
     Ok(())
 }
 
+fn default_branch(root: &PathBuf) -> String {
+    let configured = run_git(root, &["config", "--get", "init.defaultBranch"])
+        .ok()
+        .filter(|output| output.status.success())
+        .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
+        .filter(|branch| !branch.is_empty());
+
+    configured
+        .filter(|branch| {
+            run_git(root, &["check-ref-format", "--branch", branch])
+                .is_ok_and(|output| output.status.success())
+        })
+        .unwrap_or_else(|| "main".to_string())
+}
+
+fn initialize_repo(root: &PathBuf, branch: &str) -> Result<(), String> {
+    ok_or_err(run_git(
+        root,
+        &["init", "--quiet", "--initial-branch", branch],
+    )?)
+}
+
 /// Initialize a git repo in the project (idempotent) with a sensible identity.
 fn ensure_repo(project_id: &str) -> Result<PathBuf, String> {
     let root = project_root(project_id)?;
     if !root.join(".git").exists() {
-        run_git(&root, &["init", "--quiet"])?;
-        // Put the (still unborn) default branch on `main` regardless of the
-        // user's git `init.defaultBranch`, so the first commit and push agree.
-        let _ = run_git(&root, &["symbolic-ref", "HEAD", "refs/heads/main"]);
+        let branch = default_branch(&root);
+        initialize_repo(&root, &branch)?;
         std::fs::write(root.join(".gitignore"), ".oleafly/\n").map_err(|e| e.to_string())?;
         ensure_git_identity(&root)?;
     }
@@ -504,13 +524,14 @@ pub fn git_get_remote(project_id: String) -> Result<Option<String>, String> {
 }
 
 fn current_branch(root: &PathBuf) -> Result<String, String> {
-    let out = run_git(root, &["rev-parse", "--abbrev-ref", "HEAD"])?;
-    let b = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    Ok(if b.is_empty() || b == "HEAD" {
-        "main".to_string()
+    let out = run_git(root, &["symbolic-ref", "--quiet", "--short", "HEAD"])?;
+    let branch = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    ok_or_err(out)?;
+    if branch.is_empty() {
+        Err("The repository does not have a current branch.".to_string())
     } else {
-        b
-    })
+        Ok(branch)
+    }
 }
 
 #[tauri::command]
@@ -962,10 +983,10 @@ pub async fn git_show(project_id: String, rev: String, path: String) -> Result<S
 #[cfg(test)]
 mod tests {
     use super::{
-        attach_imported_repository_history_at, auto_commit_update_in, commit_index,
-        is_allowed_remote_url, ok_or_err, parse_status_porcelain, read_version_labels_at,
-        restore_worktree, run_git, sanitize_url, show, stage, stage_all, unstage, unstage_all,
-        update_message, validate_git_oid,
+        attach_imported_repository_history_at, auto_commit_update_in, commit_index, current_branch,
+        initialize_repo, is_allowed_remote_url, ok_or_err, parse_status_porcelain,
+        read_version_labels_at, restore_worktree, run_git, sanitize_url, show, stage, stage_all,
+        unstage, unstage_all, update_message, validate_git_oid,
     };
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -999,6 +1020,22 @@ mod tests {
 
     fn write(root: &Path, name: &str, content: &str) {
         std::fs::write(root.join(name), content).unwrap();
+    }
+
+    #[test]
+    fn initialized_repository_uses_the_selected_default_branch() {
+        let root = temp_dir("default-branch");
+        initialize_repo(&root, "trunk").unwrap();
+
+        assert_eq!(current_branch(&root).unwrap(), "trunk");
+    }
+
+    #[test]
+    fn current_branch_reports_the_repository_branch_after_a_rename() {
+        let root = temp_repo();
+        run_git(&root, &["branch", "--move", "topic/reader-view"]).unwrap();
+
+        assert_eq!(current_branch(&root).unwrap(), "topic/reader-view");
     }
 
     #[test]

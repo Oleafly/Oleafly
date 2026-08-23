@@ -21,6 +21,7 @@ import type {
   GitHubUser,
   GitPullResult,
   ImportPathsResult,
+  LibraryStorageSummary,
   McpConnectionInfo,
   McpStatus,
   PackInfo,
@@ -29,6 +30,7 @@ import type {
   ProjectMeta,
   ProjectStateChanged,
   ProviderModel,
+  RecycledProjectInfo,
   RenameFileResult,
   SearchHit,
   SynctexHit,
@@ -299,6 +301,18 @@ export const getProject = (projectId: string) =>
   invoke<ProjectMeta>("get_project", { projectId });
 
 export const listProjects = () => invoke<ProjectInfo[]>("list_projects");
+
+export const libraryStorageSummary = () =>
+  invoke<LibraryStorageSummary>("library_storage_summary");
+
+export const listRecycledProjects = () =>
+  invoke<RecycledProjectInfo[]>("list_recycled_projects");
+
+export const restoreRecycledProject = (recycleId: string) =>
+  invoke<string>("restore_recycled_project", { recycleId });
+
+export const permanentlyDeleteRecycledProject = (recycleId: string) =>
+  invoke<void>("permanently_delete_recycled_project", { recycleId });
 
 export const createProject = (name: string) =>
   invoke<string>("create_project", { name });
@@ -650,8 +664,8 @@ export const duplicateProject = (projectId: string, newName: string) =>
 export const clearBuildCache = (projectId: string) =>
   invoke<void>("clear_build_cache", { projectId });
 
-export const deleteProject = (projectId: string) =>
-  invoke<void>("delete_project", { projectId });
+export const recycleProject = (projectId: string) =>
+  invoke<void>("recycle_project", { projectId });
 
 export const libraryRoot = () => invoke<string>("library_root");
 export const appVersion = () => invoke<string>("app_version");

@@ -114,6 +114,31 @@ export interface ProjectInfo {
     }[];
     forked_from: string | null;
 }
+export interface LibraryStorageSummary {
+    total_bytes: number;
+    projects_bytes: number;
+    source_bytes: number;
+    image_bytes: number;
+    pdf_bytes: number;
+    git_bytes: number;
+    build_bytes: number;
+    recycle_bin_bytes: number;
+    app_data_bytes: number;
+    project_count: number;
+    recycled_project_count: number;
+    file_count: number;
+    directory_count: number;
+    image_count: number;
+    pdf_count: number;
+    unreadable_entries: number;
+}
+export interface RecycledProjectInfo {
+    id: string;
+    project_id: string;
+    name: string;
+    deleted_at: number;
+    size_bytes: number;
+}
 export interface FileMutationResult {
     generation: number;
 }
@@ -523,7 +548,10 @@ export interface BackendPort {
   downloadProjectZip: (projectId: string, dest: string) => Promise<void>;
   duplicateProject: (projectId: string, newName: string) => Promise<string>;
   clearBuildCache: (projectId: string) => Promise<void>;
-  deleteProject: (projectId: string) => Promise<void>;
+  recycleProject: (projectId: string) => Promise<void>;
+  listRecycledProjects: () => Promise<RecycledProjectInfo[]>;
+  restoreRecycledProject: (recycleId: string) => Promise<string>;
+  permanentlyDeleteRecycledProject: (recycleId: string) => Promise<void>;
   libraryRoot: () => Promise<string>;
   appVersion: () => Promise<string>;
   base64ToUint8Array(b64: string): Uint8Array;

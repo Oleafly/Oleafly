@@ -1,23 +1,29 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bookmark,
+  BookmarkCheck,
   BookmarkX,
   Check,
   Clock3,
+  Eye,
   FileText,
   FolderInput,
   GitFork,
   History,
   Info,
+  LayoutGrid,
+  List,
   Loader2,
   Palette,
   Plus,
+  Search,
   SearchX,
   SlidersHorizontal,
   Trash2,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PdfViewer } from "@/components/pdf/PdfViewer";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
@@ -45,7 +51,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { HomeDock } from "@/components/library/HomeDock";
+import {
+  HomeDock,
+  HOME_DOCK_GLASS_SURFACE,
+} from "@/components/library/HomeDock";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { markBootStage } from "@/lib/boot-telemetry";
 import { WindowControls } from "@/components/layout/WindowControls";
@@ -78,10 +87,10 @@ import {
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
-import { cn } from "@/lib/utils";
+import { cn, isWindows } from "@/lib/utils";
 import { cancelAutoCommit } from "@/lib/auto-commit";
 import {
-  deleteProject,
+  recycleProject,
   duplicateProject,
   readCompiledPdf,
   type ProjectInfo,
@@ -197,7 +206,10 @@ function FilterSelect({
     >
       {label}
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger id={id} className="h-10 text-sm">
+        <SelectTrigger
+          id={id}
+          className="h-10 border-white/20 bg-background/35 text-sm backdrop-blur-md dark:border-white/10"
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -225,18 +237,23 @@ export function Library() {
   const openProject = useFilesStore((s) => s.openProject);
   const favs = useFavoritesStore((s) => s.favs);
   const toggleFav = useFavoritesStore((s) => s.toggle);
-  const removeFav = useFavoritesStore((s) => s.remove);
   const projectColors = useProjectColorsStore((s) => s.colors);
   const setProjectColor = useProjectColorsStore((s) => s.setColor);
-  const removeProjectColor = useProjectColorsStore((s) => s.remove);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const hoverPreview = useSettingsStore((s) => s.hoverPreview);
   const bgPattern = useSettingsStore((s) => s.bgPattern);
+  const projectLayout = useSettingsStore((s) => s.homeProjectLayout);
+  const setProjectLayout = useSettingsStore((s) => s.setHomeProjectLayout);
   const [forkTarget, setForkTarget] = useState<{ id: string; name: string } | null>(null);
   const [forkName, setForkName] = useState("");
   const [filters, setFilters] = useState<ProjectFilters>(DEFAULT_PROJECT_FILTERS);
+  const [previewProjectId, setPreviewProjectId] = useState<string | null>(null);
   const [detailsProject, setDetailsProject] = useState<ProjectInfo | null>(null);
   const [historyProject, setHistoryProject] = useState<ProjectInfo | null>(null);
+  const [previewProject, setPreviewProject] = useState<ProjectInfo | null>(null);
+  const [previewBytes, setPreviewBytes] = useState<Uint8Array | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const previewRequestRef = useRef(0);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     name: string;
@@ -262,6 +279,28 @@ export function Library() {
   const closeFork = () => {
     setForkTarget(null);
     setForkName("");
+  };
+  const openProjectPreview = async (project: ProjectInfo) => {
+    const request = ++previewRequestRef.current;
+    setPreviewProject(project);
+    setPreviewBytes(null);
+    setPreviewError(null);
+    try {
+      const bytes = new Uint8Array(await readCompiledPdf(project.id));
+      if (previewRequestRef.current !== request) return;
+      setPreviewBytes(bytes);
+    } catch (error) {
+      if (previewRequestRef.current !== request) return;
+      void logError("library PDF preview", error);
+      setPreviewError("The compiled PDF could not be loaded.");
+    }
+  };
+  const closeProjectPreview = () => {
+    previewRequestRef.current += 1;
+    setPreviewProject(null);
+    setPreviewBytes(null);
+    setPreviewError(null);
+    releasePointerLock();
   };
 
   // One list, rendered by both the right-click menu and the hover ellipsis, so
@@ -341,11 +380,9 @@ export function Library() {
     setDeleteTarget(null);
     try {
       cancelAutoCommit(target.id);
-      await deleteProject(target.id);
-      removeFav(target.id);
-      removeProjectColor(target.id);
+      await recycleProject(target.id);
       await refreshProjects();
-      toast.success(`Deleted "${target.name}".`);
+      toast.success(`Moved "${target.name}" to the Recycle Bin.`);
     } catch (error) {
       notifyError(
         "delete project",
@@ -397,14 +434,14 @@ export function Library() {
   const activeFilterCount = useMemo(
     () =>
       Object.entries(filters).filter(([key, value]) => {
-        if (key === "metadata") return value.trim().length > 0;
+        if (key === "metadata") return false;
         return value !== DEFAULT_PROJECT_FILTERS[key as keyof ProjectFilters];
       }).length,
     [filters],
   );
   const bookmarkedOnly = filters.bookmark === "yes";
   const bookmarkIsOnlyActiveFilter =
-    bookmarkedOnly && activeFilterCount === 1;
+    bookmarkedOnly && activeFilterCount === 1 && !filters.metadata.trim();
   const visibleProjects = useMemo(
     () =>
       projects.filter((project) => {
@@ -468,12 +505,6 @@ export function Library() {
       data-projects-loaded={projectsLoaded ? "true" : "false"}
       className="relative flex h-full flex-row bg-[var(--home-background)]"
     >
-      {/* The blue wash lifts the dark home away from flat black. In light mode
-          it only greys the top of an otherwise white page, so it stays off. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 hidden h-[420px] dark:block dark:bg-[radial-gradient(ellipse_60%_100%_at_50%_0%,oklch(0.7_0.11_262/0.08),transparent_70%)]"
-      />
       {bgPattern === "grid" ? (
         <GridPattern width={22} height={22} />
       ) : bgPattern === "dots" ? (
@@ -489,50 +520,104 @@ export function Library() {
       <div className="flex min-w-0 flex-1 flex-col">
       <header
         data-tauri-drag-region
-        className={cn(
-          // The third column hugs its buttons instead of taking an equal
-          // share. With the middle column empty, 1fr_auto_1fr split the header
-          // in half and left the trailing group ~740px wide for three icons.
-          "relative z-10 grid h-12 shrink-0 grid-cols-[1fr_auto_auto] items-center px-3"
-        )}
+        className="absolute inset-x-0 top-0 z-20 h-16 bg-transparent"
       >
-        <div data-tauri-drag-region className="flex items-center" />
         <div
           data-tauri-drag-region
-          data-tour="home-brand"
-          className="flex items-center justify-center gap-1.5"
+          className="grid h-16 grid-cols-[max-content_minmax(10rem,1fr)_max-content] items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:px-8"
         >
-
-        </div>
-        <div data-tauri-drag-region className="flex items-center justify-end gap-1.5">
-          <ProjectImportMenu
-            align="end"
-            triggerTooltip="Import"
-            trigger={(busy) => (
-              <Button
-                data-testid="import-project-button"
-                variant="ghost"
-                size="icon"
-                disabled={busy}
-                aria-label="Import"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                {busy ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <FolderInput className="size-4" />
+          <div
+            data-tauri-drag-region
+            data-tour="home-brand"
+            className="flex min-w-0 items-center gap-2"
+          >
+            <LeafLogo className="size-5 shrink-0" />
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">
+              Oleafly
+            </h1>
+          </div>
+          <div className="flex w-full min-w-0 max-w-[42rem] items-center gap-1.5 justify-self-center">
+          {projects.length > 0 ? (
+            <div className="relative min-w-0 flex-1">
+              <Search
+                aria-hidden
+                className="pointer-events-none absolute left-4 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                type="search"
+                aria-label="Search projects"
+                placeholder={`Search ${projects.length.toLocaleString()} ${projects.length === 1 ? "project" : "projects"} by name, ID, main file, color, or export`}
+                value={filters.metadata}
+                onChange={(event) =>
+                  setFilters((current) => ({
+                    ...current,
+                    metadata: event.target.value,
+                  }))
+                }
+                className={cn(
+                  HOME_DOCK_GLASS_SURFACE,
+                  "h-11 rounded-2xl !bg-background/75 py-0 pl-10 pr-10 shadow-sm dark:!bg-background/65 dark:shadow-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
                 )}
-              </Button>
-            )}
-          />
+              />
+              {filters.metadata ? (
+                <button
+                  type="button"
+                  aria-label="Clear project search"
+                  onClick={() =>
+                    setFilters((current) => ({ ...current, metadata: "" }))
+                  }
+                  className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <X aria-hidden className="size-3.5" />
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <span />
+          )}
+          <div
+            data-tauri-drag-region
+            className="flex shrink-0 items-center gap-1.5"
+          >
+          <div className={cn("order-2", projects.length === 0 && "ml-auto")}>
+            <ProjectImportMenu
+              align="end"
+              triggerTooltip="Import"
+              trigger={(busy) => (
+                <Button
+                  data-testid="import-project-button"
+                  variant="ghost"
+                  size="icon"
+                  disabled={busy}
+                  aria-label="Import"
+                  className={cn(
+                    HOME_DOCK_GLASS_SURFACE,
+                    "size-10 rounded-2xl !bg-background/75 p-0 text-muted-foreground shadow-sm hover:text-foreground dark:!bg-background/65 dark:shadow-sm",
+                  )}
+                >
+                  {busy ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <FolderInput className="size-4" />
+                  )}
+                </Button>
+              )}
+            />
+          </div>
           {projects.length > 0 && (
-            <>
-              <Tooltip label="Advanced project filters">
+            <Tooltip label="Advanced project filters" className="order-1">
                 <Popover
                   ariaLabel="Advanced project filters"
                   align="right"
                   closeOnClick={false}
-                  className="flex w-96 flex-col gap-3 p-3"
+                  className={cn(
+                    HOME_DOCK_GLASS_SURFACE,
+                    "relative flex w-96 flex-col gap-3 overflow-hidden rounded-2xl !border-white/25 !bg-background/70 p-4 ring-1 ring-inset ring-white/10 backdrop-blur-2xl backdrop-saturate-150 before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(145deg,rgba(255,255,255,0.09),transparent_42%,rgba(255,255,255,0.025))] dark:!border-white/15 dark:!bg-background/65 [&>*]:relative [&>*]:z-[1]",
+                  )}
+                  triggerClassName={cn(
+                    HOME_DOCK_GLASS_SURFACE,
+                    "size-10 rounded-2xl !bg-background/75 p-0 shadow-sm dark:!bg-background/65 dark:shadow-sm",
+                  )}
                   trigger={
                     <span className="relative inline-flex">
                       <SlidersHorizontal className="size-4" />
@@ -554,29 +639,16 @@ export function Library() {
                     variant="ghost"
                     size="sm"
                     disabled={activeFilterCount === 0}
-                    onClick={() => setFilters(DEFAULT_PROJECT_FILTERS)}
+                    onClick={() =>
+                      setFilters((current) => ({
+                        ...DEFAULT_PROJECT_FILTERS,
+                        metadata: current.metadata,
+                      }))
+                    }
                   >
                     Reset
                   </Button>
                 </div>
-                <label
-                  htmlFor="project-filter-metadata"
-                  className="flex flex-col gap-1 text-xs font-medium"
-                >
-                  Project metadata
-                  <Input
-                    id="project-filter-metadata"
-                    value={filters.metadata}
-                    onChange={(event) =>
-                      setFilters((current) => ({
-                        ...current,
-                        metadata: event.target.value,
-                      }))
-                    }
-                    placeholder="Name, ID, main file, color, or export"
-                    className="h-9 text-sm"
-                  />
-                </label>
                 <div className="grid grid-cols-2 gap-2">
                   <FilterSelect
                     label="Engine"
@@ -673,50 +745,63 @@ export function Library() {
                     ]}
                   />
                 </div>
-                  <p className="text-center text-[10px] text-muted-foreground">
-                    Showing {visibleProjects.length} of {projects.length} projects
-                  </p>
                 </Popover>
-              </Tooltip>
-              <Tooltip label={bookmarkedOnly ? "Show all projects" : "Show bookmarked only"}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={bookmarkedOnly ? "Show all projects" : "Show bookmarked only"}
-                  aria-pressed={bookmarkedOnly}
-                  className={cn(
-                    "hover:text-foreground",
-                    bookmarkedOnly
-                      ? "text-amber-500 hover:text-amber-500"
-                      : "text-muted-foreground"
-                  )}
-                  onClick={() =>
-                    setFilters((current) => ({
-                      ...current,
-                      bookmark: current.bookmark === "yes" ? "all" : "yes",
-                    }))
-                  }
-                >
-                  <span className="relative inline-flex">
-                    <Bookmark
-                      className={cn("size-4", bookmarkedOnly && "fill-current")}
-                    />
-                    {favs.length > 0 && (
-                      <span className="absolute -right-2 -top-2 flex size-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground">
-                        {favs.length}
-                      </span>
-                    )}
-                  </span>
-                </Button>
-              </Tooltip>
-            </>
+            </Tooltip>
           )}
-          <WindowControls />
+          </div>
+          </div>
+          <div data-tauri-drag-region className="flex min-w-max items-center">
+            {projects.length > 0 ? (
+              <fieldset
+                aria-label="Project layout"
+                className={cn(
+                  "flex items-center rounded-xl border border-white/20 bg-background/75 p-1 shadow-sm backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 dark:bg-background/65",
+                  isWindows && "mr-3",
+                )}
+              >
+                {([
+                  { mode: "list", label: "List view", icon: List },
+                  { mode: "grid", label: "Grid view", icon: LayoutGrid },
+                ] as const).map(({ mode, label, icon: Icon }) => (
+                  <Tooltip key={mode} label={label} side="bottom">
+                    <button
+                      type="button"
+                      onClick={() => setProjectLayout(mode)}
+                      aria-label={label}
+                      aria-pressed={projectLayout === mode}
+                      className={cn(
+                        "flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors focus-visible:ring-1 focus-visible:ring-ring",
+                        projectLayout === mode
+                          ? "bg-white/15 text-foreground shadow-sm dark:bg-white/10"
+                          : "hover:text-foreground",
+                      )}
+                    >
+                      <Icon aria-hidden className="size-4" />
+                    </button>
+                  </Tooltip>
+                ))}
+              </fieldset>
+            ) : null}
+            <WindowControls />
+          </div>
         </div>
       </header>
 
-      <div className="relative z-10 flex-1 overflow-auto p-8">
-        <div className="mx-auto max-w-4xl xl:max-w-5xl 2xl:max-w-7xl">
+      <div
+        className={cn(
+          "relative z-10 flex-1 overflow-auto pb-8",
+          "pt-20",
+          projectLayout === "list" ? "px-12" : "px-8",
+        )}
+      >
+        <div
+          className={cn(
+            "mx-auto",
+            projectLayout === "list"
+              ? "max-w-[92rem]"
+              : "max-w-4xl xl:max-w-5xl 2xl:max-w-7xl",
+          )}
+        >
           {projects.length === 0 ? (
             // Until the first listProjects resolves we don't know whether the
             // library is empty, so don't flash the first-run welcome.
@@ -794,7 +879,11 @@ export function Library() {
               </EmptyHeader>
             </Empty>
           ) : (
-          <div className="grid grid-cols-2 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-16 xl:gap-y-16 2xl:grid-cols-5">
+          projectLayout === "grid" ? (
+          <div
+            data-testid="project-grid"
+            className="grid grid-cols-2 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-16 xl:gap-y-16 2xl:grid-cols-5"
+          >
             {visibleProjects.map((p) => (
               <ContextMenu key={p.id}>
                 <ContextMenuTrigger asChild>
@@ -815,7 +904,7 @@ export function Library() {
                               type="button"
                               aria-label={`Actions for ${p.name}`}
                               onClick={(event) => event.stopPropagation()}
-                              className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100 data-[state=open]:opacity-100"
+                              className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
                             >
                               <Info className="size-4" />
                             </button>
@@ -848,6 +937,174 @@ export function Library() {
               </ContextMenu>
             ))}
           </div>
+          ) : (
+          <div data-testid="project-list" className="border-b border-border/70">
+            <div
+              aria-hidden="true"
+              className="hidden min-h-10 grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_6.5rem] items-center gap-4 border-b border-border/70 px-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground lg:grid"
+            >
+              <span>Name</span>
+              <span>Type</span>
+              <span>Engine</span>
+              <span>Modified</span>
+              <span />
+            </div>
+            {visibleProjects.map((p) => {
+              const color = projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR);
+              const starred = favs.includes(p.id);
+              const forkSource = p.forked_from
+                ? projects.find((project) => project.id === p.forked_from)?.name ??
+                  p.forked_from
+                : null;
+              return (
+                <ContextMenu key={p.id}>
+                  <ContextMenuTrigger asChild>
+                    <div className="group grid min-h-[5.25rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-3 transition-colors last:border-b-0 hover:bg-accent/35 sm:grid-cols-[minmax(0,1fr)_9rem_auto] lg:grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_6.5rem] lg:gap-4 lg:px-4">
+                      <button
+                        type="button"
+                        aria-label={`Open ${p.name}`}
+                        onClick={() => void openProject(p.id)}
+                        onMouseEnter={() => {
+                          if (!hoverPreview) return;
+                          setPreviewProjectId(p.id);
+                          loadThumb(p.id, p.updated_at);
+                        }}
+                        onMouseLeave={() =>
+                          setPreviewProjectId((current) =>
+                            current === p.id ? null : current,
+                          )
+                        }
+                        onFocus={() => {
+                          if (!hoverPreview) return;
+                          setPreviewProjectId(p.id);
+                          loadThumb(p.id, p.updated_at);
+                        }}
+                        onBlur={() =>
+                          setPreviewProjectId((current) =>
+                            current === p.id ? null : current,
+                          )
+                        }
+                        className="flex min-w-0 items-center gap-3 rounded-md py-3 text-left focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="relative h-12 w-9 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-inset ring-black/10 shadow-sm"
+                          style={{ backgroundColor: color }}
+                        >
+                          {hoverPreview &&
+                          previewProjectId === p.id &&
+                          thumbs[p.id] ? (
+                            <img
+                              src={thumbs[p.id] ?? undefined}
+                              alt=""
+                              draggable={false}
+                              className="size-full object-cover object-top"
+                            />
+                          ) : null}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-foreground">
+                            {p.name}
+                          </span>
+                          <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
+                            {projectEngineLabel(p.engine, p.main_doc)} · {p.kind || "document"}
+                          </span>
+                        </span>
+                      </button>
+                      <span className="hidden text-xs capitalize text-muted-foreground lg:block">
+                        {p.kind || "document"}
+                      </span>
+                      <span className="hidden text-xs text-muted-foreground lg:block">
+                        {projectEngineLabel(p.engine, p.main_doc)}
+                      </span>
+                      <span className="hidden text-xs text-muted-foreground sm:block">
+                        {projectModifiedLabel(p.updated_at)}
+                      </span>
+                      <span className="flex items-center justify-end gap-0.5">
+                        {forkSource ? (
+                          <Tooltip label={`Forked from ${forkSource}`}>
+                            <span
+                              role="img"
+                              aria-label={`Forked from ${forkSource}`}
+                              className="flex size-7 items-center justify-center text-muted-foreground"
+                            >
+                              <GitFork aria-hidden className="size-4" />
+                            </span>
+                          </Tooltip>
+                        ) : null}
+                        <Tooltip
+                          label={
+                            p.has_preview
+                              ? "Preview PDF"
+                              : "PDF preview unavailable"
+                          }
+                        >
+                          <button
+                            type="button"
+                            disabled={!p.has_preview}
+                            onClick={() => void openProjectPreview(p)}
+                            aria-label={`Preview ${p.name}`}
+                            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-35"
+                          >
+                            <Eye aria-hidden className="size-4" />
+                          </button>
+                        </Tooltip>
+                        <Tooltip label={starred ? "Remove from favorites" : "Add to favorites"}>
+                          <button
+                            type="button"
+                            onClick={() => toggleFav(p.id)}
+                            aria-label={starred ? "Remove from favorites" : "Add to favorites"}
+                            className={cn(
+                              "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring",
+                              starred && "text-amber-500 hover:text-amber-500",
+                            )}
+                            style={starred ? { color: "#f59e0b" } : undefined}
+                          >
+                            {starred ? (
+                              <BookmarkCheck
+                                aria-hidden
+                                className="size-4 fill-current"
+                              />
+                            ) : (
+                              <Bookmark aria-hidden className="size-4" />
+                            )}
+                          </button>
+                        </Tooltip>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              aria-label={`Actions for ${p.name}`}
+                              className="flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-70 outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground group-hover:opacity-100 data-[state=open]:opacity-100"
+                            >
+                              <Info aria-hidden className="size-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-52">
+                            {projectMenuItems(p, {
+                              Item: DropdownMenuItem,
+                              Sub: DropdownMenuSub,
+                              SubTrigger: DropdownMenuSubTrigger,
+                              SubContent: DropdownMenuSubContent,
+                            })}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </span>
+                    </div>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent className="w-52">
+                    {projectMenuItems(p, {
+                      Item: ContextMenuItem,
+                      Sub: ContextMenuSub,
+                      SubTrigger: ContextMenuSubTrigger,
+                      SubContent: ContextMenuSubContent,
+                    })}
+                  </ContextMenuContent>
+                </ContextMenu>
+              );
+            })}
+          </div>
+          )
           )
           )}
         </div>
@@ -855,6 +1112,59 @@ export function Library() {
       </div>
 
       {/* New Project gallery is mounted globally (GlobalNewProject), not here. */}
+      {previewProject && (
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) closeProjectPreview();
+          }}
+        >
+          <DialogContent className="h-[min(88vh,56rem)] max-w-[54rem] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
+            <DialogHeader className="px-5 py-4 pr-12">
+              <DialogTitle>PDF preview — {previewProject.name}</DialogTitle>
+              <DialogDescription>
+                Latest compiled output for this project
+              </DialogDescription>
+            </DialogHeader>
+            <div className="relative min-h-0 overflow-hidden border-t bg-sidebar">
+              {previewError ? (
+                <div
+                  role="alert"
+                  className="flex h-full items-center justify-center p-8 text-sm text-destructive"
+                >
+                  {previewError}
+                </div>
+              ) : previewBytes ? (
+                <section
+                  data-pdf-scroll-root
+                  aria-label={`PDF preview for ${previewProject.name}`}
+                  className="h-full overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                >
+                  <PdfViewer
+                    data={previewBytes}
+                    documentIdentity={`library:${previewProject.id}:${previewProject.updated_at}`}
+                    scale={1}
+                    layout="single"
+                  />
+                </section>
+              ) : (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="flex h-full items-center justify-center gap-2 p-8 text-sm text-muted-foreground"
+                >
+                  <Loader2
+                    aria-hidden
+                    className="size-4 animate-spin motion-reduce:animate-none"
+                  />
+                  Loading PDF preview…
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {detailsProject && <Dialog
         open
         onOpenChange={(open) => {
@@ -1013,9 +1323,9 @@ export function Library() {
       )}
       <ConfirmationDialog
         open={deleteTarget !== null}
-        title={`Delete “${deleteTarget?.name ?? "project"}”?`}
-        description="This permanently deletes the project and all of its files. This action cannot be undone."
-        confirmLabel="Delete permanently"
+        title={`Move “${deleteTarget?.name ?? "project"}” to the Recycle Bin?`}
+        description="The project will leave your library but remain available in Data Storage until you restore or permanently delete it."
+        confirmLabel="Move to Recycle Bin"
         destructive
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void confirmProjectDeletion()}

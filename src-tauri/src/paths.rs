@@ -61,6 +61,25 @@ pub fn projects_root() -> Result<PathBuf, String> {
     Ok(root)
 }
 
+/// Recoverable project deletions live beside the active projects directory so
+/// moving a project into or out of the recycle bin stays on the same volume.
+pub fn recycle_bin_root() -> Result<PathBuf, String> {
+    let data = oleafly_root()?;
+    ensure_data_directory(&data)?;
+    let data = data
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve Oleafly data directory: {e}"))?;
+    let recycle_bin = data.join("recycle-bin");
+    ensure_real_directory(&recycle_bin, "recycle bin")?;
+    let recycle_bin = recycle_bin
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve recycle bin directory: {e}"))?;
+    if recycle_bin.parent() != Some(data.as_path()) {
+        return Err("recycle bin directory escapes the Oleafly data root".into());
+    }
+    Ok(recycle_bin)
+}
+
 pub fn device_trust_root() -> Result<PathBuf, String> {
     let data = oleafly_root()?;
     ensure_data_directory(&data)?;

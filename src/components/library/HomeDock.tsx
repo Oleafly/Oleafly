@@ -52,7 +52,7 @@ function DockButton({
   );
 }
 
-const GLASS_SURFACE =
+export const HOME_DOCK_GLASS_SURFACE =
   "border border-white/30 bg-white/10 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.3),inset_0_1px_0_0_rgba(255,255,255,0.3)] backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 dark:bg-white/5 dark:shadow-[0_8px_30px_-6px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.08)]";
 
 export function HomeDock() {
@@ -133,7 +133,10 @@ export function HomeDock() {
         <div
           data-testid="home-dock"
           data-placement="bottom"
-          className={cn("pointer-events-auto flex items-center gap-2 rounded-2xl p-1.5", GLASS_SURFACE)}
+          className={cn(
+            "pointer-events-auto flex items-center gap-2 rounded-2xl p-1.5",
+            HOME_DOCK_GLASS_SURFACE,
+          )}
         >
           {items}
         </div>
@@ -154,7 +157,10 @@ export function HomeDock() {
       <div
         data-testid="home-dock"
         data-placement={dockPlacement}
-        className={cn("pointer-events-auto flex flex-col items-center gap-2 rounded-2xl p-1.5", GLASS_SURFACE)}
+        className={cn(
+          "pointer-events-auto flex flex-col items-center gap-2 rounded-2xl p-1.5",
+          HOME_DOCK_GLASS_SURFACE,
+        )}
       >
         {items}
       </div>

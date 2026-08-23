@@ -1,5 +1,9 @@
 import { ChevronDown, ChevronRight, FileText, List } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  collectLatexOutlineMacros,
+  renderLatexOutlineTitle,
+} from "@oleafly/latex";
 import { useEditorViewportAnchor } from "@/components/editor/cm/use-viewport-anchor";
 import { outlineFromIndex, type OutlineItem } from "@/lib/index/outline";
 import { activeOutlineIndex } from "@/lib/outline-active";
@@ -26,6 +30,7 @@ function basename(path: string): string {
 // everything else that reads the index and does no parsing or file IO here.
 export function DocumentOutline() {
   const index = useIndexStore((state) => state.index);
+  const texts = useIndexStore((state) => state.texts);
   const activePath = useFilesStore((state) => state.activePath);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -46,6 +51,10 @@ export function DocumentOutline() {
   const activeIndex = useMemo(
     () => activeOutlineIndex(items, anchor),
     [items, anchor],
+  );
+  const latexMacros = useMemo(
+    () => collectLatexOutlineMacros(texts),
+    [texts],
   );
 
   const activeRef = useRef<HTMLButtonElement | null>(null);
@@ -124,6 +133,9 @@ export function DocumentOutline() {
             items.map((item, index) => {
               const crossFile = item.file !== activePath;
               const active = index === activeIndex;
+              const displayTitle = /\.(?:latex|ltx|tex)$/iu.test(item.file)
+                ? renderLatexOutlineTitle(item.title, latexMacros)
+                : item.title;
               return (
                 <button
                   type="button"
@@ -137,12 +149,12 @@ export function DocumentOutline() {
                   // does not shift the title it marks.
                   style={{ paddingLeft: `${item.level * 12 + 12 - (active ? 2 : 0)}px` }}
                   className={cn(
-                    "flex w-full items-center gap-1 truncate py-0.5 pr-2 text-left text-xs hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                    "flex w-full items-center gap-1 truncate py-0.5 pr-2 text-left text-[13px] hover:bg-sidebar-accent hover:text-sidebar-foreground",
                     active
                       ? "border-l-2 border-primary bg-sidebar-accent/60 font-medium text-sidebar-foreground"
                       : "text-sidebar-foreground/80",
                   )}
-                  title={`${item.title} — ${item.file}:${item.line}`}
+                  title={`${displayTitle} — ${item.file}:${item.line}`}
                 >
                   {item.kind === "file" ? (
                     <FileText
@@ -156,7 +168,7 @@ export function DocumentOutline() {
                       item.kind === "file" && "text-muted-foreground",
                     )}
                   >
-                    {item.title}
+                    {displayTitle}
                   </span>
                   {crossFile ? (
                     <span className="ml-auto shrink-0 rounded bg-muted px-1 font-mono text-[9px] text-muted-foreground/70">

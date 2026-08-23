@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The project library adds a header search and can switch between book covers
+  and a compact list. It remembers the selected layout, exposes Grid or List
+  as an explicit default in Project settings, and keeps hover previews
+  available in both. List rows can also open the compiled PDF in a modal
+  without leaving the library, show where a project was forked from, and keep
+  favorite controls visible. Advanced filters cover engine, project kind,
+  favorites, PDF availability, and creation or modification date.
+- Data Storage settings report the actual size of the Oleafly data folder,
+  including project, file, image, PDF, Git history, build cache, and app-data
+  aggregates. Deleted projects now move to a Recycle Bin there, where they can
+  be restored or explicitly deleted forever; Oleafly never clears it
+  automatically. A separate danger zone can move every active project there at
+  once. GitHub setup guidance is hidden after an account is connected.
+
+### Fixed
+
+- Source control now shows the repository's real current branch, including
+  custom branch names, and new projects honor Git's configured default branch.
+  When Git has no valid preference, new projects start on `main`.
+- LaTeX outline titles render escaped characters such as `\&` as readable text
+  and expand simple project-defined title macros instead of exposing raw LaTeX.
+  Outline entries also use a slightly larger font.
+- Advanced project filters close when focus moves elsewhere while remaining
+  open during select-menu interactions.
+
 ## [0.3.8] - 2026-08-22
 
 ### Added

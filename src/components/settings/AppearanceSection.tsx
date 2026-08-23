@@ -425,6 +425,10 @@ function PdfPreviewTab() {
 }
 
 function FileManagementTab() {
+  const homeProjectLayout = useSettingsStore((state) => state.homeProjectLayout);
+  const setHomeProjectLayout = useSettingsStore(
+    (state) => state.setHomeProjectLayout,
+  );
   const defaultView = useSettingsStore((state) => state.defaultView);
   const setDefaultView = useSettingsStore((state) => state.setDefaultView);
   const openInTree = useSettingsStore((state) => state.openInTree);
@@ -448,6 +452,32 @@ function FileManagementTab() {
 
   return (
     <div className="space-y-3">
+      <div
+        data-testid="settings-row-default-home-view"
+        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
+      >
+        <div>
+          <div className="text-sm font-medium">Default home view</div>
+          <div className="text-xs text-muted-foreground">
+            Choose how projects are arranged in the library.
+          </div>
+        </div>
+        <Select
+          value={homeProjectLayout}
+          onValueChange={(value) =>
+            setHomeProjectLayout(value as typeof homeProjectLayout)
+          }
+        >
+          <SelectTrigger className="w-[140px]" aria-label="Default home view">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            <SelectItem value="grid">Grid</SelectItem>
+            <SelectItem value="list">List</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <div
         data-testid="settings-row-open-projects-in"
         className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"

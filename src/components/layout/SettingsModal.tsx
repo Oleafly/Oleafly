@@ -30,6 +30,7 @@ import {
   Settings,
   Sparkles,
   Star,
+  Trash2,
   TriangleAlert,
   X,
 } from "lucide-react";
@@ -63,9 +64,22 @@ import {
   type DictionaryLocale,
 } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
+import { useGithubStore } from "@/store/github";
 import { useTheme } from "@/lib/theme";
-import { appVersion, libraryRoot } from "@/lib/tauri";
+import {
+  appVersion,
+  libraryRoot,
+  libraryStorageSummary,
+  listRecycledProjects,
+  permanentlyDeleteRecycledProject,
+  recycleProject,
+  restoreRecycledProject,
+  type LibraryStorageSummary,
+  type RecycledProjectInfo,
+} from "@/lib/tauri";
 import { cn } from "@/lib/utils";
+import { notifyError, toast } from "@/lib/toast";
+import { cancelAutoCommit } from "@/lib/auto-commit";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { startTour } from "@/lib/tour";
 import { TOUR_IDS } from "@/lib/tours/registry";
@@ -133,6 +147,16 @@ const TOUR_LABELS = {
   diagram: "Diagram Composer",
 } as const;
 
+function formatStorageSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const unit = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** unit;
+  return `${value.toLocaleString(undefined, {
+    maximumFractionDigits: unit === 0 ? 0 : value >= 10 ? 1 : 2,
+  })} ${units[unit]}`;
+}
+
 export function SettingsModal() {
   const open = useSettingsStore((s) => s.settingsOpen);
   const setOpen = useSettingsStore((s) => s.setSettingsOpen);
@@ -158,9 +182,24 @@ export function SettingsModal() {
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
 
   const projectId = useFilesStore((s) => s.projectId);
+  const projects = useFilesStore((s) => s.projects);
+  const closeProject = useFilesStore((s) => s.closeProject);
+  const refreshProjects = useFilesStore((s) => s.refreshProjects);
+  const githubStatus = useGithubStore((s) => s.status);
 
   const [section, setSection] = useState<Section>("general");
   const [libRoot, setLibRoot] = useState("");
+  const [storageSummary, setStorageSummary] =
+    useState<LibraryStorageSummary | null>(null);
+  const [storageLoading, setStorageLoading] = useState(false);
+  const [storageError, setStorageError] = useState("");
+  const [storageRefreshKey, setStorageRefreshKey] = useState(0);
+  const [recycledProjects, setRecycledProjects] = useState<RecycledProjectInfo[]>([]);
+  const [recycleActionId, setRecycleActionId] = useState<string | null>(null);
+  const [permanentDeleteTarget, setPermanentDeleteTarget] =
+    useState<RecycledProjectInfo | null>(null);
+  const [confirmDeleteAllProjects, setConfirmDeleteAllProjects] = useState(false);
+  const [deletingAllProjects, setDeletingAllProjects] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [tourConfirmation, setTourConfirmation] = useState<"disable" | "dismiss-all" | null>(
     null,
@@ -210,6 +249,104 @@ export function SettingsModal() {
     }
     void libraryRoot().then(setLibRoot).catch(() => {});
   }, [open, settingsInitialSection]);
+
+  useEffect(() => {
+    if (!open || section !== "data" || !isTauri()) return;
+    void storageRefreshKey;
+    let cancelled = false;
+    setStorageLoading(true);
+    setStorageError("");
+    void Promise.all([libraryStorageSummary(), listRecycledProjects()])
+      .then(([summary, recycled]) => {
+        if (!cancelled) {
+          setStorageSummary(summary);
+          setRecycledProjects(recycled);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setStorageError("Storage details could not be calculated.");
+      })
+      .finally(() => {
+        if (!cancelled) setStorageLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, section, storageRefreshKey]);
+
+  const restoreProject = async (project: RecycledProjectInfo) => {
+    setRecycleActionId(project.id);
+    try {
+      await restoreRecycledProject(project.id);
+      await refreshProjects();
+      toast.success(`Restored "${project.name}".`);
+      setStorageRefreshKey((value) => value + 1);
+    } catch (error) {
+      notifyError(
+        "restore recycled project",
+        error,
+        `Couldn't restore "${project.name}".`,
+      );
+    } finally {
+      setRecycleActionId(null);
+    }
+  };
+
+  const confirmPermanentProjectDeletion = async () => {
+    const project = permanentDeleteTarget;
+    if (!project) return;
+    setPermanentDeleteTarget(null);
+    setRecycleActionId(project.id);
+    try {
+      await permanentlyDeleteRecycledProject(project.id);
+      toast.success(`Permanently deleted "${project.name}".`);
+      setStorageRefreshKey((value) => value + 1);
+    } catch (error) {
+      notifyError(
+        "permanently delete recycled project",
+        error,
+        `Couldn't permanently delete "${project.name}".`,
+      );
+    } finally {
+      setRecycleActionId(null);
+    }
+  };
+
+  const deleteAllProjects = async () => {
+    setConfirmDeleteAllProjects(false);
+    setDeletingAllProjects(true);
+    let moved = 0;
+    try {
+      for (const project of projects) cancelAutoCommit(project.id);
+      if (useFilesStore.getState().projectId) {
+        await closeProject();
+        if (useFilesStore.getState().projectId) {
+          throw new Error("The open project could not be closed safely.");
+        }
+      }
+      for (const project of projects) {
+        await recycleProject(project.id);
+        moved += 1;
+      }
+      await refreshProjects();
+      toast.success(
+        `Moved ${moved.toLocaleString()} ${moved === 1 ? "project" : "projects"} to the Recycle Bin.`,
+      );
+      setStorageRefreshKey((value) => value + 1);
+    } catch (error) {
+      await refreshProjects().catch(() => {});
+      setStorageRefreshKey((value) => value + 1);
+      notifyError(
+        "move all projects to recycle bin",
+        error,
+        moved > 0
+          ? `Moved ${moved.toLocaleString()} projects, but couldn't finish the operation.`
+          : "Couldn't move the projects to the Recycle Bin.",
+      );
+    } finally {
+      setDeletingAllProjects(false);
+    }
+  };
 
   if (!open) return null;
 
@@ -584,6 +721,227 @@ export function SettingsModal() {
                   Each project is a plain folder with a <code>.git</code> history. Nothing leaves
                   your machine unless you push to GitHub.
                 </p>
+                <section
+                  aria-labelledby="storage-usage-title"
+                  className="overflow-hidden rounded-xl border bg-card/60"
+                >
+                  <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Database aria-hidden className="size-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <h3 id="storage-usage-title" className="font-medium">
+                          Storage usage
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          {storageSummary
+                            ? `${formatStorageSize(storageSummary.total_bytes)} across the Oleafly data folder`
+                            : "Projects, previews, history, and app data"}
+                        </p>
+                      </div>
+                    </div>
+                    <Tooltip label="Refresh storage usage">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 shrink-0"
+                        disabled={storageLoading || !isTauri()}
+                        aria-label="Refresh storage usage"
+                        onClick={() => setStorageRefreshKey((value) => value + 1)}
+                      >
+                        <RefreshCw
+                          aria-hidden
+                          className={cn(
+                            "size-4",
+                            storageLoading &&
+                              "animate-spin motion-reduce:animate-none",
+                          )}
+                        />
+                      </Button>
+                    </Tooltip>
+                  </div>
+                  {storageError ? (
+                    <p role="alert" className="px-4 py-5 text-sm text-destructive">
+                      {storageError}
+                    </p>
+                  ) : storageLoading && !storageSummary ? (
+                    <div
+                      role="status"
+                      className="flex items-center gap-2 px-4 py-5 text-sm text-muted-foreground"
+                    >
+                      <RefreshCw
+                        aria-hidden
+                        className="size-4 animate-spin motion-reduce:animate-none"
+                      />
+                      Calculating storage usage…
+                    </div>
+                  ) : storageSummary ? (
+                    <dl className="grid grid-cols-2 divide-x divide-y text-xs sm:grid-cols-4">
+                      {[
+                        {
+                          label: "Projects",
+                          value: storageSummary.project_count.toLocaleString(),
+                          detail: formatStorageSize(storageSummary.projects_bytes),
+                        },
+                        {
+                          label: "Files",
+                          value: storageSummary.file_count.toLocaleString(),
+                          detail: `${storageSummary.directory_count.toLocaleString()} folders`,
+                        },
+                        {
+                          label: "Images",
+                          value: storageSummary.image_count.toLocaleString(),
+                          detail: formatStorageSize(storageSummary.image_bytes),
+                        },
+                        {
+                          label: "PDFs",
+                          value: storageSummary.pdf_count.toLocaleString(),
+                          detail: formatStorageSize(storageSummary.pdf_bytes),
+                        },
+                        {
+                          label: "Project files",
+                          value: formatStorageSize(storageSummary.source_bytes),
+                          detail: "Sources and metadata",
+                        },
+                        {
+                          label: "Git history",
+                          value: formatStorageSize(storageSummary.git_bytes),
+                          detail: "Local versions",
+                        },
+                        {
+                          label: "Build cache",
+                          value: formatStorageSize(storageSummary.build_bytes),
+                          detail: "Generated output",
+                        },
+                        {
+                          label: "App data",
+                          value: formatStorageSize(storageSummary.app_data_bytes),
+                          detail: "Assets and settings",
+                        },
+                      ].map((item) => (
+                        <div key={item.label} className="min-w-0 px-3 py-3">
+                          <dt className="text-muted-foreground">{item.label}</dt>
+                          <dd className="mt-1 truncate text-sm font-semibold text-foreground">
+                            {item.value}
+                          </dd>
+                          <dd className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                            {item.detail}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : (
+                    <p className="px-4 py-5 text-sm text-muted-foreground">
+                      Storage details are available in the desktop app.
+                    </p>
+                  )}
+                  {storageSummary && storageSummary.unreadable_entries > 0 ? (
+                    <p className="border-t px-4 py-2 text-[10px] text-muted-foreground">
+                      {storageSummary.unreadable_entries.toLocaleString()} inaccessible
+                      {storageSummary.unreadable_entries === 1 ? " item was" : " items were"}
+                      {" "}excluded.
+                    </p>
+                  ) : null}
+                </section>
+                <section
+                  aria-labelledby="recycle-bin-title"
+                  className="overflow-hidden rounded-xl border bg-card/60"
+                >
+                  <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Trash2 aria-hidden className="size-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <h3 id="recycle-bin-title" className="font-medium">
+                          Recycle Bin
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          {storageSummary
+                            ? `${formatStorageSize(storageSummary.recycle_bin_bytes)} · no automatic cleanup`
+                            : "Deleted projects stay here until you remove them"}
+                        </p>
+                      </div>
+                    </div>
+                    {recycledProjects.length > 0 ? (
+                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                        {recycledProjects.length.toLocaleString()}
+                      </span>
+                    ) : null}
+                  </div>
+                  {storageLoading && !storageSummary ? (
+                    <div
+                      role="status"
+                      className="flex items-center gap-2 px-4 py-5 text-sm text-muted-foreground"
+                    >
+                      <RefreshCw
+                        aria-hidden
+                        className="size-4 animate-spin motion-reduce:animate-none"
+                      />
+                      Loading Recycle Bin…
+                    </div>
+                  ) : recycledProjects.length === 0 ? (
+                    <p className="px-4 py-5 text-sm text-muted-foreground">
+                      The Recycle Bin is empty.
+                    </p>
+                  ) : (
+                    <ul className="divide-y">
+                      {recycledProjects.map((project) => {
+                        const busy = recycleActionId === project.id;
+                        return (
+                          <li
+                            key={project.id}
+                            className="flex items-center justify-between gap-3 px-4 py-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-foreground">
+                                {project.name}
+                              </p>
+                              <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                                Deleted {new Date(project.deleted_at * 1000).toLocaleString()} ·{" "}
+                                {formatStorageSize(project.size_bytes)}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                disabled={recycleActionId !== null}
+                                onClick={() => void restoreProject(project)}
+                              >
+                                <RotateCcw
+                                  aria-hidden
+                                  className={cn(
+                                    "size-3.5",
+                                    busy && "animate-spin motion-reduce:animate-none",
+                                  )}
+                                />
+                                Restore
+                              </Button>
+                              <Tooltip label={`Permanently delete ${project.name}`}>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-8 text-muted-foreground hover:text-destructive"
+                                  disabled={recycleActionId !== null}
+                                  aria-label={`Permanently delete ${project.name}`}
+                                  onClick={() => setPermanentDeleteTarget(project)}
+                                >
+                                  <Trash2 aria-hidden className="size-3.5" />
+                                </Button>
+                              </Tooltip>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </section>
+                {githubStatus === "disconnected" ? (
                 <div className="flex items-start gap-2 rounded-lg border border-dashed bg-card p-3 text-xs text-muted-foreground">
                   <Github className="mt-0.5 size-4 shrink-0" />
                   <span>
@@ -598,6 +956,41 @@ export function SettingsModal() {
                     </button>
                   </span>
                 </div>
+                ) : null}
+                <section
+                  aria-labelledby="data-danger-zone-title"
+                  className="overflow-hidden rounded-xl border border-destructive/40"
+                >
+                  <div className="border-b border-destructive/25 px-4 py-3">
+                    <h3
+                      id="data-danger-zone-title"
+                      className="font-medium text-destructive"
+                    >
+                      Danger zone
+                    </h3>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        Delete all projects
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Moves every project to the Recycle Bin. Nothing is permanently deleted.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={projects.length === 0 || deletingAllProjects}
+                      onClick={() => setConfirmDeleteAllProjects(true)}
+                    >
+                      <Trash2 aria-hidden className="size-3.5" />
+                      {deletingAllProjects ? "Deleting…" : "Delete all"}
+                    </Button>
+                  </div>
+                </section>
                 </TabsContent>
                 <TabsContent value="cloud">
                 <div className="rounded-xl border bg-card p-5">
@@ -676,6 +1069,24 @@ export function SettingsModal() {
           useTourStore.getState().dismissAll();
           setTourConfirmation(null);
         }}
+      />
+      <ConfirmationDialog
+        open={permanentDeleteTarget !== null}
+        title={`Permanently delete “${permanentDeleteTarget?.name ?? "project"}”?`}
+        description="This removes the project, its files, and its Git history from the Recycle Bin. This action cannot be undone."
+        confirmLabel="Delete permanently"
+        destructive
+        onCancel={() => setPermanentDeleteTarget(null)}
+        onConfirm={() => void confirmPermanentProjectDeletion()}
+      />
+      <ConfirmationDialog
+        open={confirmDeleteAllProjects}
+        title={`Delete all ${projects.length.toLocaleString()} ${projects.length === 1 ? "project" : "projects"}?`}
+        description="Every current project will move to the Recycle Bin, including its files and Git history. You can restore projects individually afterward."
+        confirmLabel="Delete all projects"
+        destructive
+        onCancel={() => setConfirmDeleteAllProjects(false)}
+        onConfirm={() => void deleteAllProjects()}
       />
     </div>
   );

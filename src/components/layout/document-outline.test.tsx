@@ -36,8 +36,12 @@ function indexWith(
   };
 }
 
-function mount(index: ReturnType<typeof indexWith> | null, activePath: string) {
-  useIndexStore.setState({ index: index as never });
+function mount(
+  index: ReturnType<typeof indexWith> | null,
+  activePath: string,
+  texts: Record<string, string> = {},
+) {
+  useIndexStore.setState({ index: index as never, texts });
   useFilesStore.setState({ activePath } as never);
   return render(<DocumentOutline />);
 }
@@ -61,6 +65,59 @@ describe("DocumentOutline", () => {
     expect(screen.getByText("Introduction")).toBeInTheDocument();
     expect(screen.getByText("Background")).toBeInTheDocument();
     expect(screen.getByText("Attention")).toBeInTheDocument();
+  });
+
+  it("presents escaped characters and project macros as readable titles", () => {
+    mount(
+      indexWith([
+        {
+          name: "Evaluation \\& Open-source Implementations",
+          line: 3,
+          from: 10,
+          level: 1,
+        },
+        {
+          name: "\\oursfull{} (\\oursabbrv{})",
+          line: 9,
+          from: 80,
+          level: 2,
+        },
+        {
+          name: "\\textbf{Results}: 100\\% of \\#1\\_rank costs \\$5",
+          line: 12,
+          from: 140,
+          level: 2,
+        },
+        {
+          name: "\\LaTeX{} systems vs.\\ alternatives",
+          line: 15,
+          from: 210,
+          level: 2,
+        },
+      ]),
+      "main.tex",
+      {
+        "main.tex": [
+          "\\newcommand{\\oursfull}{Vision Transformer\\xspace}",
+          "\\newcommand{\\oursabbrv}{ViT\\xspace}",
+          "\\subsection{\\oursfull{} (\\oursabbrv{})}",
+        ].join("\n"),
+      },
+    );
+
+    expect(
+      screen.getByText("Evaluation & Open-source Implementations"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Vision Transformer (ViT)"))
+      .toBeInTheDocument();
+    expect(
+      screen.getByText("Results: 100% of #1_rank costs $5"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("LaTeX systems vs. alternatives"))
+      .toBeInTheDocument();
+    expect(
+      screen.getByText("LaTeX systems vs. alternatives").closest("button"),
+    ).toHaveClass("text-[13px]");
   });
 
   it("indents by heading depth so the shape reads without the titles", () => {

@@ -24,6 +24,10 @@ import { AppearanceSection } from "./AppearanceSection";
 describe("Appearance settings tabs", () => {
   beforeEach(() => {
     toggleTheme.mockClear();
+    Element.prototype.hasPointerCapture = vi.fn(() => false);
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+    Element.prototype.scrollIntoView = vi.fn();
     useSettingsStore.setState({
       dockPlacement: "left",
       bgPattern: "dots",
@@ -39,6 +43,7 @@ describe("Appearance settings tabs", () => {
       pdfDarkMode: false,
       pdfZoomShortcuts: false,
       hoverPreview: false,
+      homeProjectLayout: "grid",
     });
   });
 
@@ -112,6 +117,12 @@ describe("Appearance settings tabs", () => {
     const user = userEvent.setup();
     render(<AppearanceSection />);
     await user.click(screen.getByRole("tab", { name: "Project" }));
+
+    const homeView = screen.getByLabelText("Default home view");
+    expect(homeView).toHaveTextContent("Grid");
+    await user.click(homeView);
+    await user.click(await screen.findByRole("option", { name: "List" }));
+    expect(useSettingsStore.getState().homeProjectLayout).toBe("list");
 
     await user.click(screen.getByRole("switch", { name: "Show file tree on open" }));
     expect(useSettingsStore.getState().openInTree).toBe(true);

@@ -53,6 +53,7 @@ export type RailTab =
 
 export type DockPlacement = "left" | "right" | "bottom";
 export type BackgroundPattern = "dots" | "grid" | "none";
+export type HomeProjectLayout = "grid" | "list";
 export type GrammarDialect =
   | "american"
   | "british"
@@ -376,6 +377,8 @@ interface SettingsState {
   setDockPlacement: (v: DockPlacement) => void;
   bgPattern: BackgroundPattern;
   setBgPattern: (v: BackgroundPattern) => void;
+  homeProjectLayout: HomeProjectLayout;
+  setHomeProjectLayout: (v: HomeProjectLayout) => void;
   visualEditor: boolean;
   setVisualEditor: (v: boolean) => void;
   latexTools: boolean;
@@ -422,6 +425,7 @@ const PREF_DEFAULTS = {
   accentColor: "#2563eb",
   dockPlacement: "left" as DockPlacement,
   bgPattern: "dots" as BackgroundPattern,
+  homeProjectLayout: "grid" as HomeProjectLayout,
   visualEditor: false,
   latexTools: false,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
@@ -618,6 +622,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.bgPattern", v);
     set({ bgPattern: v });
   },
+  homeProjectLayout:
+    ls("oleafly.library.projectLayout", "grid") === "list" ? "list" : "grid",
+  setHomeProjectLayout: (v) => {
+    saveLs("oleafly.library.projectLayout", v);
+    set({ homeProjectLayout: v });
+  },
   visualEditor: ls("oleafly.visualEditor", "0") === "1",
   setVisualEditor: (v) => {
     saveLs("oleafly.visualEditor", v ? "1" : "0");
@@ -749,6 +759,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.accent", PREF_DEFAULTS.accentColor);
     saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
     saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);
+    saveLs("oleafly.library.projectLayout", PREF_DEFAULTS.homeProjectLayout);
     saveLs("oleafly.visualEditor", PREF_DEFAULTS.visualEditor ? "1" : "0");
     saveLs("oleafly.latexTools", PREF_DEFAULTS.latexTools ? "1" : "0");
     saveLs("oleafly.defaultLatexEngine", PREF_DEFAULTS.defaultLatexEngine);

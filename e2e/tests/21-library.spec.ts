@@ -2,6 +2,28 @@ import { test, expect } from "../fixtures";
 import type { TauriPage } from "@srsholmes/tauri-playwright";
 import { createBlankProject, openProject, openSettings } from "../helpers";
 
+async function ensureLibraryFixture(tauriPage: TauriPage) {
+  await expect(
+    tauriPage.locator('[data-testid="library"][data-projects-loaded="true"]'),
+  ).toBeVisible({ timeout: 30_000 });
+  const hasProject = await tauriPage.evaluate<boolean>(
+    `Array.from(document.querySelectorAll('button[aria-label^="Open "]'))
+      .some((button) => button.textContent.includes('E2E Doc'))`,
+  );
+  if (hasProject) return;
+
+  await createBlankProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await tauriPage.click('[title="Back to library"]');
+  await expect(
+    tauriPage.locator('[data-testid="library"][data-projects-loaded="true"]'),
+  ).toBeVisible({ timeout: 30_000 });
+}
+
+test.beforeEach(async ({ tauriPage }) => {
+  await ensureLibraryFixture(tauriPage);
+});
+
 async function compileForLibraryPreview(tauriPage: TauriPage) {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -125,12 +147,22 @@ test("fork a project from the context menu", async ({ tauriPage }) => {
 // Separate test: the fixture's reload between tests clears the re-armed
 // Radix context menu from the fork flow (a second right-click in the same
 // page would hit the wrong book's menu).
-test("delete the forked copy from the context menu", async ({ tauriPage }) => {
+test("move the forked copy to the recycle bin and restore it from Data Storage", async ({
+  tauriPage,
+}) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
   await tauriPage.waitForFunction(
     `Array.from(document.querySelectorAll('button[aria-label^="Open "]')).some(b => b.textContent.includes('E2E Fork'))`,
     60_000,
   );
+  const forkName = await tauriPage.evaluate<string>(
+    `(() => {
+      const copy = Array.from(document.querySelectorAll('button[aria-label^="Open "]'))
+        .find((button) => button.textContent.includes('E2E Fork'));
+      return copy?.getAttribute('aria-label')?.replace(/^Open /, '') ?? '';
+    })()`,
+  );
+  expect(forkName).not.toBe("");
 
   await tauriPage.evaluate(
     `(() => {
@@ -148,7 +180,9 @@ test("delete the forked copy from the context menu", async ({ tauriPage }) => {
   await tauriPage.getByText("Delete project").click();
   let confirmation = tauriPage.getByRole("alertdialog");
   await expect(confirmation).toBeVisible({ timeout: 10_000 });
-  await expect(confirmation).toContainText(/Delete “E2E Fork.*”\?/u);
+  await expect(confirmation).toContainText(
+    /Move “E2E Fork.*” to the Recycle Bin\?/u,
+  );
   await confirmation.getByText("Cancel").click();
   await expect(confirmation).not.toBeVisible();
   await expect(tauriPage.locator('button[aria-label^="Open E2E Fork"]').first()).toBeVisible();
@@ -168,53 +202,100 @@ test("delete the forked copy from the context menu", async ({ tauriPage }) => {
   await tauriPage.getByText("Delete project").click();
   confirmation = tauriPage.getByRole("alertdialog");
   await expect(confirmation).toBeVisible({ timeout: 10_000 });
-  await confirmation.getByText("Delete permanently").click();
+  await confirmation.getByText("Move to Recycle Bin").click();
   await tauriPage.waitForFunction(
     `!Array.from(document.querySelectorAll('button[aria-label^="Open "]')).some(b => b.textContent.includes('E2E Fork'))`,
     20_000,
   );
-});
 
-test("bookmark filter shows only bookmarked projects", async ({ tauriPage }) => {
-  await expect(tauriPage.getByTestId("library")).toBeVisible();
-  // Bookmark whichever book is first; the bridge's synthetic hover doesn't
-  // reliably keep :hover active for the follow-up click, so drive the
-  // (opacity-gated until starred) button directly instead.
-  const clicked = await tauriPage.evaluate<boolean>(
+  await openSettings(tauriPage, "data");
+  await expect(tauriPage.getByText("Storage usage", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByText("Recycle Bin", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByText(forkName, { exact: true })).toBeVisible();
+  const restored = await tauriPage.evaluate<boolean>(
     `(() => {
-      const book = document.querySelector('button[aria-label^="Open "]');
-      const btn = book?.parentElement?.querySelector('[aria-label="Add to favorites"], [aria-label="Remove from favorites"]');
-      if (!btn) return false;
-      btn.click();
+      const item = Array.from(document.querySelectorAll('li'))
+        .find((element) => element.textContent.includes(${JSON.stringify(forkName)}));
+      const restore = item && Array.from(item.querySelectorAll('button'))
+        .find((button) => button.textContent.includes('Restore'));
+      if (!(restore instanceof HTMLElement)) return false;
+      restore.click();
       return true;
     })()`,
   );
-  if (!clicked) throw new Error("no project book found to bookmark");
+  expect(restored).toBe(true);
+  await expect(tauriPage.getByText(forkName, { exact: true })).toHaveCount(0);
+  await tauriPage.click('[aria-label="Close settings"]');
+  await expect(tauriPage.locator(`[aria-label="Open ${forkName}"]`)).toBeVisible({
+    timeout: 20_000,
+  });
+});
 
-  const bookmarkFilter = tauriPage.locator('[aria-label="Show bookmarked only"]');
-  await bookmarkFilter.click();
-  await expect(tauriPage.locator('[aria-label="Show all projects"]')).toHaveAttribute(
+test("the library header search filters projects and clears cleanly", async ({
+  tauriPage,
+}) => {
+  await expect(tauriPage.getByTestId("library")).toBeVisible();
+  const search = tauriPage.locator('input[aria-label="Search projects"]');
+  await expect(search).toBeVisible();
+  await expect(search).toHaveAttribute(
+    "placeholder",
+    /Search \d+ projects? by name, ID, main file, color, or export/u,
+  );
+
+  await search.fill("a project name that cannot exist in this test");
+  await expect(tauriPage.getByText("No matches", { exact: true })).toBeVisible();
+  await expect(
+    tauriPage.getByText("No projects match the current filters.", { exact: true }),
+  ).toBeVisible();
+
+  await tauriPage.click('[aria-label="Clear project search"]');
+  await expect(search).toHaveValue("");
+  await expect(tauriPage.getByText("E2E Doc", { exact: true })).toBeVisible();
+});
+
+test("list view exposes favorites and the compiled PDF preview", async ({
+  tauriPage,
+}) => {
+  await expect(tauriPage.getByTestId("library")).toBeVisible();
+  await compileForLibraryPreview(tauriPage);
+
+  await tauriPage.click('[aria-label="List view"]');
+  await expect(tauriPage.locator('[aria-label="List view"]')).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await tauriPage.waitForFunction(
-    `document.querySelectorAll('[aria-label="Remove from favorites"]').length >= 1
-      && document.querySelectorAll('[aria-label="Add to favorites"]').length === 0`,
-    10_000,
+  await expect(tauriPage.getByTestId("project-list")).toBeVisible();
+  await expect(tauriPage.getByTestId("project-grid")).toHaveCount(0);
+
+  const listFavorite = tauriPage
+    .getByTestId("project-list")
+    .locator('[aria-label="Add to favorites"], [aria-label="Remove from favorites"]')
+    .first();
+  const originalFavoriteLabel = await listFavorite.getAttribute("aria-label");
+  await listFavorite.click();
+  await expect(listFavorite).toHaveAttribute(
+    "aria-label",
+    originalFavoriteLabel === "Add to favorites"
+      ? "Remove from favorites"
+      : "Add to favorites",
+  );
+  await listFavorite.click();
+  await expect(listFavorite).toHaveAttribute(
+    "aria-label",
+    originalFavoriteLabel ?? "Add to favorites",
   );
 
-  await tauriPage.click('[aria-label="Remove from favorites"]');
-  await expect(tauriPage.getByText("No bookmarks yet")).toBeVisible({ timeout: 5_000 });
+  await tauriPage.click('[aria-label="Preview E2E Doc"]');
+  const previewDialog = tauriPage.getByRole("dialog");
+  await expect(previewDialog).toContainText("PDF preview — E2E Doc");
+  await expect(previewDialog.locator(".pdf-canvas").first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await tauriPage.press("body", "Escape");
+  await expect(previewDialog).toHaveCount(0);
 
-  await tauriPage.click('[aria-label="Show all projects"]');
-  await expect(tauriPage.locator('[aria-label="Show bookmarked only"]')).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
-  await tauriPage.waitForFunction(
-    `document.querySelectorAll('[aria-label="Add to favorites"]').length >= 1`,
-    10_000,
-  );
+  await tauriPage.click('[aria-label="Grid view"]');
+  await expect(tauriPage.getByTestId("project-grid")).toBeVisible();
 });
 
 test("hovering a compiled project slides in its PDF preview, gated by the setting", async ({
@@ -321,7 +402,7 @@ test("project details and export history release their modal layers after closin
   await expect(tauriPage.locator('[role="dialog"][aria-label="Settings"]')).toBeVisible();
 });
 
-test("advanced filters stay open through abandoned select interactions", async ({
+test("advanced filters keep select interactions open and dismiss outside", async ({
   tauriPage,
 }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
@@ -330,11 +411,19 @@ test("advanced filters stay open through abandoned select interactions", async (
 
   await tauriPage.getByText("All engines", { exact: true }).click();
   await expect(tauriPage.getByRole("listbox")).toBeVisible();
-  await tauriPage.click("#project-filter-metadata");
+  const selected = await tauriPage.evaluate<boolean>(
+    `(() => {
+      const option = Array.from(document.querySelectorAll('[role="option"]'))
+        .find((element) => element.textContent.trim() === 'Tectonic');
+      if (!(option instanceof HTMLElement)) return false;
+      option.click();
+      return true;
+    })()`,
+  );
+  expect(selected).toBe(true);
   await expect(tauriPage.getByText("Advanced filters", { exact: true })).toBeVisible();
 
-  await tauriPage.fill("#project-filter-metadata", "E2E Doc");
-  await expect(tauriPage.getByText("Showing 1 of", { exact: false })).toBeVisible();
-  await tauriPage.click('[aria-label="Advanced project filters"]');
+  const shelf = tauriPage.getByTestId("project-grid");
+  await shelf.click({ position: { x: 4, y: 4 } });
   await expect(tauriPage.getByText("Advanced filters", { exact: true })).toHaveCount(0);
 });

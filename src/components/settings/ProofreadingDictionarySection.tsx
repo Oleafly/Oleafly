@@ -175,8 +175,9 @@ export function ProofreadingDictionarySection() {
   return (
     <div className="space-y-4 text-sm">
       <p className="text-muted-foreground">
-        Add names and technical terms that offline spelling and grammar
-        should accept. Matching is Unicode-normalized and case-insensitive.
+        Add words to your personal spellcheck dictionary. These words are
+        stored in local settings and ignored across projects. Matching is
+        Unicode-normalized and case-insensitive.
       </p>
       <div className="relative">
         <Search

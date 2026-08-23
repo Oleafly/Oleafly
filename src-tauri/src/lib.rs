@@ -27,6 +27,7 @@ mod quit_gate;
 mod sandbox;
 mod secrets;
 mod state;
+mod storage;
 mod synctex;
 mod template_packs;
 mod templates;
@@ -185,6 +186,10 @@ pub fn run() {
             agent::agent_list_models,
             commands::reload_views,
             commands::library_root,
+            storage::library_storage_summary,
+            storage::list_recycled_projects,
+            storage::restore_recycled_project,
+            storage::permanently_delete_recycled_project,
             commands::app_version,
             commands::project_engine,
             language_service::language_service_start,
@@ -297,7 +302,7 @@ pub fn run() {
             project::download_project_zip,
             project::duplicate_project,
             project::clear_build_cache,
-            project::delete_project,
+            project::recycle_project,
             commands::reveal_in_dir,
             config::redacted_secret_marker,
             config::get_config,
