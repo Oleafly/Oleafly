@@ -30,26 +30,13 @@ your computer.
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor-light.png" alt="Oleafly with a LaTeX editor and compiled PDF open side by side (light theme)" width="92%" />
-  <br /><br />
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor.png" alt="Oleafly with a LaTeX editor and compiled PDF open side by side (dark theme)" width="92%" />
-</div>
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/library-shelf.png" alt="The Oleafly library in list view with project search, layout controls, previews, bookmarks, and project details (dark theme)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/library-shelf-light.png" alt="The Oleafly library in list view with project search, layout controls, previews, bookmarks, and project details (light theme)" /></td>
-  </tr>
-</table>
-
+  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor-v0.3.10-r2.png" alt="Oleafly editing the LLaMA research paper in LaTeX with the source tree, document outline, and compiled PDF open together" width="100%" />
 </div>
 
 <!--
-Recording placeholder: the stacked hero stands in until a 45–60 second
-workspace walkthrough is ready. Keep the same framing and replace the sources
-above with https://cdn.oleafly.com/videos/workspace-tour.webp.
+Recording placeholder: the hero image stands in until a 45–60 second workspace
+walkthrough is ready. Keep the same framing and replace the hero above with
+https://cdn.oleafly.com/videos/workspace-tour.webp.
 -->
 
 > [!NOTE]
