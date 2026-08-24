@@ -4,7 +4,7 @@
 
 # Oleafly <sup><em>beta</em></sup>
 
-[Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | **Русский** | [中文](README.zh.md) | [العربية](docs/readme-translations/README.ar.md)
+[Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | **Русский** | [中文](README.zh.md) | [العربية](README.ar.md)
 
 <h2>Полная исследовательская среда, заново спроектированная для эпохи ИИ.</h2>
 
