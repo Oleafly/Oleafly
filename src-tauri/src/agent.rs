@@ -250,8 +250,28 @@ async fn native_agent_tool(
         Err(_) => return Some(tool_error("the tool arguments were not valid JSON")),
     };
     match crate::mcp::native::call(project_id, name, &arguments).await {
-        Ok(outcome) => Some(oleafly_agent::ToolOutput::text(outcome.result.to_string())),
+        Ok(outcome) => Some(oleafly_agent::ToolOutput::text(unwrap_mcp_text(
+            &outcome.result,
+        ))),
         Err(error) => Some(tool_error(&error)),
+    }
+}
+
+fn unwrap_mcp_text(result: &serde_json::Value) -> String {
+    let texts: Vec<&str> = result
+        .get("content")
+        .and_then(|content| content.as_array())
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item.get("text").and_then(|text| text.as_str()))
+                .collect()
+        })
+        .unwrap_or_default();
+    if texts.is_empty() {
+        result.to_string()
+    } else {
+        texts.join("\n")
     }
 }
 
