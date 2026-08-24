@@ -19,6 +19,14 @@ describe("friendlyHint", () => {
     expect(friendlyHint("invalid api key", 401)).toContain("API key");
   });
 
+  it("explains a capacity spike", () => {
+    const hint = friendlyHint(
+      "The provider returned 503. This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+      503,
+    );
+    expect(hint).toContain("overloaded");
+  });
+
   it("stays quiet on errors it does not recognize", () => {
     expect(friendlyHint("something odd happened")).toBeNull();
   });

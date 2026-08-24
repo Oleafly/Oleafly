@@ -189,6 +189,9 @@ export function friendlyHint(text: string, statusCode?: number): string | null {
   ) {
     return "The provider retired or restricted this model. Pick a newer model from the model menu above (Settings → AI Assistant lists what your key can use).";
   }
+  if (statusCode === 503 || /high demand|overloaded|over capacity|service unavailable|\b503\b/.test(t)) {
+    return "The provider's servers are overloaded right now (this was already retried). Wait a minute and try again, or switch to a sibling model from the model menu above.";
+  }
   if (/econnrefused|failed to fetch|fetch failed|load failed|network error|not reachable|connection refused/.test(t)) {
     return "Couldn't reach the AI provider. Check your connection, or if you're using Ollama, make sure it's running (Settings → AI Assistant → Check for Ollama).";
   }
