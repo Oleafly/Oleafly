@@ -19,6 +19,15 @@ fn openai() -> Resolved {
     })
 }
 
+fn google() -> Resolved {
+    Resolved {
+        model_id: "gemini-3.7-flash".into(),
+        ..resolved(Wire::Google {
+            base_url: GOOGLE_BASE.into(),
+        })
+    }
+}
+
 fn openai_responses() -> Resolved {
     resolved(Wire::OpenAiResponses {
         base_url: OPENAI_BASE.into(),
@@ -59,7 +68,7 @@ fn an_empty_system_prompt_is_omitted_everywhere() {
         .unwrap()
         .get("system")
         .is_none());
-    assert!(google_body(&req)
+    assert!(google_body(&google(), &req)
         .unwrap()
         .get("systemInstruction")
         .is_none());
@@ -92,7 +101,7 @@ fn images_take_each_providers_own_shape() {
     );
     assert_eq!(an["messages"][0]["content"][1]["source"]["data"], "AAAB");
 
-    let gg = google_body(&req).unwrap();
+    let gg = google_body(&google(), &req).unwrap();
     assert_eq!(
         gg["contents"][0]["parts"][1]["inlineData"]["mimeType"],
         "image/png"
@@ -116,7 +125,7 @@ fn a_remote_image_url_is_refused_before_any_request_leaves() {
     };
     assert!(openai_body(&openai(), &req).is_err());
     assert!(anthropic_body(&openai(), &req).is_err());
-    assert!(google_body(&req).is_err());
+    assert!(google_body(&google(), &req).is_err());
 }
 
 fn tool_turn() -> CompletionRequest {
@@ -132,6 +141,7 @@ fn tool_turn() -> CompletionRequest {
                         id: "call_1".into(),
                         name: "read_file".into(),
                         arguments: "{\"path\":\"main.tex\"}".into(),
+                        thought_signature: Some("sig-abc".into()),
                     },
                 ],
             },
@@ -269,6 +279,7 @@ fn an_assistant_turn_of_only_tool_calls_sends_null_content() {
                 id: "c".into(),
                 name: "n".into(),
                 arguments: "{}".into(),
+                thought_signature: None,
             }],
         }],
         ..Default::default()
@@ -297,7 +308,7 @@ fn anthropic_keeps_tool_blocks_inside_the_turn_and_parses_arguments() {
 
 #[test]
 fn google_uses_function_call_and_response_parts() {
-    let body = google_body(&tool_turn()).unwrap();
+    let body = google_body(&google(), &tool_turn()).unwrap();
     let contents = body["contents"].as_array().unwrap();
 
     assert_eq!(contents[1]["role"], "model");
@@ -315,6 +326,47 @@ fn google_uses_function_call_and_response_parts() {
 }
 
 #[test]
+fn google_echoes_the_thought_signature_beside_its_function_call() {
+    let body = google_body(&google(), &tool_turn()).unwrap();
+    assert_eq!(
+        body["contents"][1]["parts"][1]["thoughtSignature"],
+        "sig-abc"
+    );
+}
+
+#[test]
+fn a_function_call_without_a_signature_omits_the_field_entirely() {
+    let request = CompletionRequest {
+        messages: vec![Message {
+            role: Role::Assistant,
+            content: vec![ContentPart::ToolUse {
+                id: "c".into(),
+                name: "n".into(),
+                arguments: "{}".into(),
+                thought_signature: None,
+            }],
+        }],
+        ..Default::default()
+    };
+    let part = &google_body(&google(), &request).unwrap()["contents"][0]["parts"][0];
+    assert!(part.get("thoughtSignature").is_none());
+}
+
+#[test]
+fn thought_signatures_never_leak_into_other_providers_wire_shapes() {
+    let request = tool_turn();
+    let openai_call = &openai_body(&openai(), &request).unwrap()["messages"][2]["tool_calls"][0];
+    assert!(openai_call.get("thoughtSignature").is_none());
+
+    let anthropic_block =
+        &anthropic_body(&openai(), &request).unwrap()["messages"][1]["content"][1];
+    assert!(anthropic_block.get("thoughtSignature").is_none());
+
+    let responses_item = &openai_responses_body(&openai_responses(), &request).unwrap()["input"][2];
+    assert!(responses_item.get("thoughtSignature").is_none());
+}
+
+#[test]
 fn tool_schemas_reach_every_provider_in_its_own_shape() {
     let request = tool_turn();
     assert_eq!(
@@ -326,7 +378,7 @@ fn tool_schemas_reach_every_provider_in_its_own_shape() {
         "read_file"
     );
     assert_eq!(
-        google_body(&request).unwrap()["tools"][0]["functionDeclarations"][0]["name"],
+        google_body(&google(), &request).unwrap()["tools"][0]["functionDeclarations"][0]["name"],
         "read_file"
     );
 }
@@ -342,7 +394,10 @@ fn a_request_without_tools_sends_no_tools_field() {
         .unwrap()
         .get("tools")
         .is_none());
-    assert!(google_body(&request).unwrap().get("tools").is_none());
+    assert!(google_body(&google(), &request)
+        .unwrap()
+        .get("tools")
+        .is_none());
 }
 
 #[test]
@@ -354,6 +409,7 @@ fn truncated_tool_arguments_do_not_break_the_request() {
                 id: "c".into(),
                 name: "n".into(),
                 arguments: "{\"path\":".into(),
+                thought_signature: None,
             }],
         }],
         ..Default::default()
@@ -394,15 +450,34 @@ fn google_renames_the_assistant_turn() {
         ],
         ..Default::default()
     };
-    let body = google_body(&req).unwrap();
+    let body = google_body(&google(), &req).unwrap();
     assert_eq!(body["contents"][0]["role"], "user");
     assert_eq!(body["contents"][1]["role"], "model");
 }
 
 #[test]
-fn generation_config_is_omitted_when_nothing_was_asked_for() {
+fn gemini_models_always_ask_for_streamed_thought_summaries() {
     let req = CompletionRequest::prompt("s", "u");
-    assert!(google_body(&req).unwrap().get("generationConfig").is_none());
+    let body = google_body(&google(), &req).unwrap();
+    assert_eq!(
+        body["generationConfig"]["thinkingConfig"]["includeThoughts"],
+        true
+    );
+}
+
+#[test]
+fn non_gemini_google_models_get_no_generation_config_by_default() {
+    let req = CompletionRequest::prompt("s", "u");
+    let other = Resolved {
+        model_id: "gemma-3-27b-it".into(),
+        ..resolved(Wire::Google {
+            base_url: GOOGLE_BASE.into(),
+        })
+    };
+    assert!(google_body(&other, &req)
+        .unwrap()
+        .get("generationConfig")
+        .is_none());
 }
 
 fn header_names(resolved: &Resolved) -> Vec<String> {
@@ -473,8 +548,8 @@ fn endpoints_are_built_without_double_slashes() {
         format!(
             "{}/models/{}:generateContent",
             GOOGLE_BASE.trim_end_matches('/'),
-            "gemini-2.5-pro"
+            "gemini-3.5-flash-lite"
         ),
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent"
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent"
     );
 }

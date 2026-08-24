@@ -6,43 +6,29 @@
 
 [Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | **中文**
 
-**在完全属于你的 AI 工作区中撰写、编译并发表研究成果。**
+<h2>为 AI 时代重新设计的一体化研究环境。</h2>
 
-用 LaTeX、Typst 或 Markdown 写作，在源码旁边即时编译，
-用 Git 保存每一次修订，按你自己的方式使用 AI。
+在一个工作区中完成写作、编译、校对、文献检索、引文管理、图表制作、PDF
+审阅和 Git 变更追踪。你可以使用托管式 AI、自定义端点、本地 Ollama，也可以
+完全不使用 AI。Oleafly 将项目保存在你电脑上的普通文件夹中。
 
-Oleafly 是一款免费且 100% 开源的桌面应用，支持 macOS、Windows 和 Linux。
-它坚持本地优先，无需注册账号，项目文件以纯文本形式
-保存在你自己的电脑上。
-
+[![待处理 Issue](https://img.shields.io/github/issues/Oleafly/Oleafly?label=Issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues)
 [![Download](https://img.shields.io/github/v/release/Oleafly/Oleafly?label=Download&color=22c55e)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml)
+[![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases)
+[![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
+<br/>
 [![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 [![GitGem](https://gitgem.org/api/badge/github/Oleafly/Oleafly.svg)](https://gitgem.org/github/Oleafly/Oleafly)
-
 **[下载 Oleafly](https://github.com/Oleafly/Oleafly/releases/latest) ·
-[阅读工程文档](../README.md) ·
+[阅读产品文档](https://oleafly.com/docs/overview/) ·
 [从源码构建](../development.md)**
 
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor-light.png" alt="Oleafly 并排显示 LaTeX 编辑器与编译后的 PDF（浅色主题）" width="92%" />
-  <br /><br />
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor.png" alt="Oleafly 并排显示 LaTeX 编辑器与编译后的 PDF（深色主题）" width="92%" />
-</div>
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/library-shelf.png" alt="Oleafly 项目库以彩色书籍形式展示项目，并标注引擎、类型和最近修改时间（深色主题）" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/library-shelf-light.png" alt="Oleafly 项目库以彩色书籍形式展示项目，并标注引擎、类型和最近修改时间（浅色主题）" /></td>
-  </tr>
-</table>
-
+  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor-v0.3.10-r2.png" alt="Oleafly 正在使用 LaTeX 编辑 LLaMA 研究论文，同时显示源码树、文档大纲和编译后的 PDF" width="100%" />
 </div>
 
 <!--
@@ -50,13 +36,6 @@ Recording placeholder: the stacked hero stands in until a 45–60 second
 workspace walkthrough is ready. Keep the same framing and replace the sources
 above with https://cdn.oleafly.com/videos/workspace-tour.webp.
 -->
-
-> [!NOTE]
-> Oleafly 已经能够胜任日常文档写作，但项目仍在快速迭代中。
-> 高级宏包兼容性和部分平台集成仍在持续完善。
-> macOS 构建已完成签名和公证；Windows 构建尚未签名。
-> 请只从官方发布页面下载，并在安装未签名的预览版之前
-> 仔细阅读发行说明。
 
 ## 研究本身的环节已经够多了
 
@@ -165,10 +144,6 @@ Oleafly 目前不提供多人实时在线协作编辑，Git 和 GitHub
   </tr>
 </table>
 
-</div>
-
-<div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/pdf-figures.png" alt="编译后的页面在 LaTeX 源码旁展示曲线图、彩色映射的误差曲面和结果表格" width="88%" />
 </div>
 
 缩小视图即可一屏纵览整个文档，这通常是检查浮动体、图片
@@ -399,6 +374,19 @@ Cursor 及其他 MCP 客户端。MCP 连接支持只读模式和
 API 密钥保存在本地。即使不再使用 Oleafly，纯文本文档文件
 依然完全可用。
 
+## 即将推出
+
+路线图将继续保持 Oleafly 的开放、本地优先特性，并覆盖完整的研究工作流。
+
+- **应用本地化。** 支持更多界面语言，让研究人员能在最自然的语言环境中使用 Oleafly。
+- **智能体技能和插件。** 添加专注、可复用的 AI 工作流，减少重复上下文和 token 用量。
+- **自主研究智能体。** 将研究问题和资料集转换为结构化的初稿，帮助研究快速起步。
+- **实时协作和评论。** 为研究团队提供无限、自托管的协作环境。
+- **Oleafly CLI。** 为不需要图形界面的研究工作流提供轻量、可安装的命令行工具包。
+- **更完善的 Typst 和 Markdown 支持。** 让两种格式都能使用更多编辑、预览和发布功能。
+- **更多研究集成。** 连接 Mendeley 以及其他参考文献、资源库和研究服务。
+- **自托管云同步。** 在多台设备之间同步项目，并按需使用更完善的 GitHub 自动同步。
+
 ## 安装
 
 从
@@ -419,19 +407,45 @@ Tectonic 会缓存这些宏包供后续构建使用，而离线模式会将编�
 ```bash
 git clone https://github.com/Oleafly/Oleafly.git
 cd Oleafly
-./scripts/fetch-tectonic.sh all
-./scripts/fetch-typst.sh all
 pnpm install
+host_target="$(rustc -vV | sed -n 's/^host: //p')"
+./scripts/fetch-tectonic.sh "$host_target"
+./scripts/fetch-biber.sh "$host_target"
+./scripts/fetch-typst.sh "$host_target"
 pnpm tauri dev
 ```
 
 前置依赖、各平台环境搭建和生产构建，请参阅
 [开发指南](../development.md)。
 
-## 文档
+这些脚本会把当前平台所需且已锁定校验和的编译器辅助程序下载到
+`src-tauri/binaries`。`all` 参数用于 CI 和发布打包，因为这些场景需要准备
+所有受支持的平台。
 
-本仓库将公开的工程与产品参考文档和代码放在一起维护。
-面向最终用户的操作指南单独维护，不在此公开索引之列。
+本地运行时可以不安装 TexLab 和 Tinymist 提供的编辑器智能功能。需要时可运行
+`pnpm language-servers:fetch` 下载这些语言服务器。有关完整性校验、许可证和
+分发规则，请参阅[语言服务器工具链](../language-server-toolchain.md)。
+
+### 命令行
+
+`oleaflyc` 可以在不启动桌面应用的情况下管理 Oleafly 项目。目前它需要从本
+仓库的源码构建，尚未作为独立软件包发布。
+
+```bash
+cargo run -p oleafly-cli --bin oleaflyc -- init
+cargo run -p oleafly-cli --bin oleaflyc -- doctor
+cargo run -p oleafly-cli --bin oleaflyc -- build
+cargo run -p oleafly-cli --bin oleaflyc -- watch
+cargo run -p oleafly-cli --bin oleaflyc -- project info --json
+```
+
+这些命令默认作用于当前目录。使用 `-C <path>` 可指定其他项目。运行
+`oleaflyc --help` 可查看完整命令列表。
+
+## 开发者文档
+
+用户指南位于 [Oleafly 产品文档](https://oleafly.com/docs/overview/)。
+以下资料面向贡献者、集成开发者和发布维护者。
 
 | 参考文档 | 内容 |
 | --- | --- |
@@ -448,10 +462,12 @@ pnpm tauri dev
 
 ## 参与贡献
 
-Oleafly 由
-[Prajwal S Venkateshmurthy](https://github.com/prajwal-svm) 和
-众多贡献者公开开发。欢迎提交错误报告、修复、模板、文档，
-以及经过深思的产品反馈。
+<table>
+  <tr>
+    <td width="38%" valign="top"><img src="../assets/oleafly-club.png" alt="Oleafly Club：一个共同庆祝初稿、修订、测试和成功投稿的开源研究社区" width="100%" /></td>
+    <td width="62%" valign="top"><h3>研究者值得拥有可以审查、扩展并信赖的工具。</h3><p>Oleafly 由 <a href="https://github.com/prajwal-svm">Prajwal Murthy</a> 和众多贡献者公开开发。欢迎提交错误报告、修复、模板、文档，以及经过深思的产品反馈。</p></td>
+  </tr>
+</table>
 
 1. 阅读 [CONTRIBUTING.md](../../CONTRIBUTING.md)。
 2. 大的改动请先开 issue 讨论；小而聚焦的修复可以直接
@@ -467,6 +483,25 @@ Oleafly 由
 安全问题请按照
 [SECURITY.md](../../SECURITY.md) 中的说明私下报告。参与本项目须遵守
 [行为准则](../../CODE_OF_CONDUCT.md)。
+
+## 社区与支持
+
+- 在 [GitHub Discussions](https://github.com/Oleafly/Oleafly/discussions) 提问并分享想法。
+- 在 [GitHub Issues](https://github.com/Oleafly/Oleafly/issues) 报告错误并提出功能建议。
+- 🔔 关注 X 上的 [@OleaflyHQ](https://x.com/OleaflyHQ)，获取产品和版本更新。
+
+⭐ 如果 Oleafly 对你有帮助，请考虑[为仓库加星](https://github.com/Oleafly/Oleafly)。
+这个小小的点击能帮助更多研究人员发现项目，并支持持续开发。
+
+## 星标趋势
+
+<a href="https://www.star-history.com/?repos=Oleafly%2FOleafly&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&theme=dark&legend=top-left&sealed_token=ZRIr-1jiqjn35WhaqiDqKsmeII-LmnrILQdxzg5v_RX8-PFtlYa4d5IY7U2-Mcn1_D2-0k4e440BGXMhRskNzn-mZUGI59rpIErWId2F600cSJDgZqwcQ3BxV6zC3m5peZz6s_P_Mla0ZW06zikSg5LHLCIALEzrFnLqag7R_rQ7haTYEGHvSdgx76__" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&legend=top-left&sealed_token=ZRIr-1jiqjn35WhaqiDqKsmeII-LmnrILQdxzg5v_RX8-PFtlYa4d5IY7U2-Mcn1_D2-0k4e440BGXMhRskNzn-mZUGI59rpIErWId2F600cSJDgZqwcQ3BxV6zC3m5peZz6s_P_Mla0ZW06zikSg5LHLCIALEzrFnLqag7R_rQ7haTYEGHvSdgx76__" />
+   <img alt="GitHub 星标趋势图" src="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&legend=top-left&sealed_token=ZRIr-1jiqjn35WhaqiDqKsmeII-LmnrILQdxzg5v_RX8-PFtlYa4d5IY7U2-Mcn1_D2-0k4e440BGXMhRskNzn-mZUGI59rpIErWId2F600cSJDgZqwcQ3BxV6zC3m5peZz6s_P_Mla0ZW06zikSg5LHLCIALEzrFnLqag7R_rQ7haTYEGHvSdgx76__" />
+ </picture>
+</a>
 
 ## 致谢
 

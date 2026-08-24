@@ -255,6 +255,7 @@ fn part_context_chars(part: &ContentPart) -> Result<usize> {
             id,
             name,
             arguments,
+            ..
         } => checked_context_fields([id.as_str(), name.as_str(), arguments.as_str()]),
         ContentPart::ToolResult { id, name, output } => {
             checked_context_fields([id.as_str(), name.as_str(), output.as_str()])
@@ -315,6 +316,7 @@ fn assistant_turn(outcome: &StreamOutcome) -> Message {
             id: call.id.clone(),
             name: call.name.clone(),
             arguments: call.arguments.clone(),
+            thought_signature: call.thought_signature.clone(),
         });
     }
     Message {
@@ -724,11 +726,13 @@ mod tests {
                     id: "a".into(),
                     name: "read_file".into(),
                     arguments: "{}".into(),
+                    thought_signature: Some("sig-a".into()),
                 },
                 ToolCall {
                     id: "b".into(),
                     name: "list_files".into(),
                     arguments: "{}".into(),
+                    ..Default::default()
                 },
             ],
             ..Default::default()
@@ -738,11 +742,13 @@ mod tests {
         assert!(matches!(message.content[0], ContentPart::Text { .. }));
         assert!(matches!(
             message.content[1],
-            ContentPart::ToolUse { ref id, .. } if id == "a"
+            ContentPart::ToolUse { ref id, ref thought_signature, .. }
+                if id == "a" && thought_signature.as_deref() == Some("sig-a")
         ));
         assert!(matches!(
             message.content[2],
-            ContentPart::ToolUse { ref id, .. } if id == "b"
+            ContentPart::ToolUse { ref id, ref thought_signature, .. }
+                if id == "b" && thought_signature.is_none()
         ));
     }
 
@@ -770,6 +776,7 @@ mod tests {
                     id: call_id.clone(),
                     name: "literature_search".into(),
                     arguments: r#"{"query":"wildfire detection"}"#.into(),
+                    ..Default::default()
                 }],
                 response_items: vec![json!({
                     "type": "function_call",
@@ -815,6 +822,7 @@ mod tests {
                 id: "call_1".into(),
                 name: "read_file".into(),
                 arguments: "{}".into(),
+                ..Default::default()
             }],
             response_items: vec![
                 json!({
@@ -866,6 +874,7 @@ mod tests {
                 id: "a".into(),
                 name: "n".into(),
                 arguments: "{}".into(),
+                ..Default::default()
             }],
             ..Default::default()
         };
@@ -882,6 +891,7 @@ mod tests {
                     id: "a".into(),
                     name: "verify_pdf_pages".into(),
                     arguments: "{}".into(),
+                    ..Default::default()
                 },
                 ToolOutput {
                     output: "checked".into(),
@@ -893,6 +903,7 @@ mod tests {
                     id: "b".into(),
                     name: "read_file".into(),
                     arguments: "{}".into(),
+                    ..Default::default()
                 },
                 ToolOutput::text("body"),
             ),

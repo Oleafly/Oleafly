@@ -16,7 +16,7 @@ describe("vision capability", () => {
 
   it("still recognises the other vendors' vision models", () => {
     expect(modelSupportsVision("openai", "gpt-4o")).toBe(true);
-    expect(modelSupportsVision("google", "gemini-2.5-pro")).toBe(true);
+    expect(modelSupportsVision("google", "gemini-3.5-flash")).toBe(true);
     expect(modelSupportsVision("anthropic", "claude-sonnet-4-20250514")).toBe(true);
     expect(modelSupportsVision("openrouter", "qwen/qwen2-vl-7b")).toBe(true);
   });

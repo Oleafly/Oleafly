@@ -47,7 +47,8 @@ describe("modelSupportsVision", () => {
     expect(modelSupportsVision("openai", "gpt-4.1-mini")).toBe(true);
     expect(modelSupportsVision("anthropic", "claude-3-5-sonnet-20241022")).toBe(true);
     expect(modelSupportsVision("anthropic", "claude-sonnet-4-20250514")).toBe(true);
-    expect(modelSupportsVision("openrouter", "google/gemini-flash-1.5")).toBe(true);
+    expect(modelSupportsVision("openrouter", "google/gemini-2.5-flash")).toBe(true);
+    expect(modelSupportsVision("google", "gemini-3.7-flash")).toBe(true);
     expect(modelSupportsVision("ollama", "llama3.2-vision")).toBe(true);
   });
 

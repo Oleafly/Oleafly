@@ -19,6 +19,17 @@ pub enum Wire {
     },
 }
 
+impl Wire {
+    fn base_url(&self) -> &str {
+        match self {
+            Self::OpenAiResponses { base_url }
+            | Self::OpenAiChat { base_url, .. }
+            | Self::Anthropic { base_url }
+            | Self::Google { base_url } => base_url,
+        }
+    }
+}
+
 pub const OPENAI_BASE: &str = "https://api.openai.com/v1";
 pub const ANTHROPIC_BASE: &str = "https://api.anthropic.com/v1";
 pub const GOOGLE_BASE: &str = "https://generativelanguage.googleapis.com/v1beta";
@@ -35,31 +46,31 @@ pub const CATALOG: &[CatalogEntry] = &[
     CatalogEntry {
         id: "openai",
         base_url: None,
-        default_model: "gpt-4o",
+        default_model: "gpt-5.6-terra",
         is_host: false,
     },
     CatalogEntry {
         id: "anthropic",
         base_url: None,
-        default_model: "claude-sonnet-4-20250514",
+        default_model: "claude-opus-5",
         is_host: false,
     },
     CatalogEntry {
         id: "google",
         base_url: None,
-        default_model: "gemini-2.5-pro",
+        default_model: "gemini-3.7-flash",
         is_host: false,
     },
     CatalogEntry {
         id: "zai",
         base_url: Some("https://api.z.ai/api/coding/paas/v4"),
-        default_model: "glm-5.2",
+        default_model: "glm-5.3",
         is_host: false,
     },
     CatalogEntry {
         id: "groq",
         base_url: Some("https://api.groq.com/openai/v1"),
-        default_model: "llama-3.3-70b-versatile",
+        default_model: "openai/gpt-oss-120b",
         is_host: false,
     },
     CatalogEntry {
@@ -71,7 +82,7 @@ pub const CATALOG: &[CatalogEntry] = &[
     CatalogEntry {
         id: "deepseek",
         base_url: Some("https://api.deepseek.com"),
-        default_model: "deepseek-chat",
+        default_model: "deepseek-v4-flash",
         is_host: false,
     },
     CatalogEntry {
@@ -83,7 +94,7 @@ pub const CATALOG: &[CatalogEntry] = &[
     CatalogEntry {
         id: "xai",
         base_url: Some("https://api.x.ai/v1"),
-        default_model: "grok-2",
+        default_model: "grok-4.6",
         is_host: false,
     },
     CatalogEntry {
@@ -141,6 +152,35 @@ pub struct Resolved {
     pub credential: String,
     pub auth: Option<String>,
     pub wire: Wire,
+}
+
+impl Resolved {
+    pub(crate) fn is_local_endpoint(&self) -> bool {
+        if self.provider_id == "ollama" {
+            return true;
+        }
+        let Ok(url) = reqwest::Url::parse(self.wire.base_url()) else {
+            return false;
+        };
+        let Some(host) = url.host_str() else {
+            return false;
+        };
+        if host.eq_ignore_ascii_case("localhost") || host.ends_with(".localhost") {
+            return true;
+        }
+        match host.parse::<std::net::IpAddr>() {
+            Ok(std::net::IpAddr::V4(ip)) => {
+                ip.is_loopback() || ip.is_private() || ip.is_link_local()
+            }
+            Ok(std::net::IpAddr::V6(ip)) => {
+                let octets = ip.octets();
+                ip.is_loopback()
+                    || octets[0] & 0xfe == 0xfc
+                    || (octets[0] == 0xfe && octets[1] & 0xc0 == 0x80)
+            }
+            Err(_) => false,
+        }
+    }
 }
 
 pub fn pick_provider(cfg: &ProviderConfig) -> (String, String, String) {
@@ -435,7 +475,7 @@ mod tests {
     fn google_model_ids_cannot_escape_the_models_path_segment() {
         let cfg = cfg_with(&[("google", "google-key")]);
 
-        assert!(resolve_specific(&cfg, "google", "gemini-2.5-pro").is_ok());
+        assert!(resolve_specific(&cfg, "google", "gemini-3.5-flash-lite").is_ok());
         for model in ["../other", "gemini?key=attacker", "gemini#fragment", "a/b"] {
             assert!(
                 resolve_specific(&cfg, "google", model).is_err(),
@@ -647,7 +687,7 @@ mod tests {
 
         cfg.enabled_models.remove("openai");
         cfg.provider = "anthropic".into();
-        assert_eq!(pick_provider(&cfg).1, "gpt-4o");
+        assert_eq!(pick_provider(&cfg).1, "gpt-5.6-terra");
     }
 
     #[test]

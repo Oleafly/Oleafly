@@ -20,11 +20,11 @@ export const PROVIDERS: AIProvider[] = [
     blurb: "GPT models. The default choice.",
     signupUrl: "https://platform.openai.com/api-keys",
     models: [
-      { id: "gpt-4o", name: "GPT-4o" },
+      { id: "gpt-5.6-terra", name: "GPT-5.6 Terra" },
+      { id: "gpt-5.6-sol", name: "GPT-5.6 Sol" },
+      { id: "gpt-5.6-luna", name: "GPT-5.6 Luna" },
+      { id: "gpt-5.3-codex", name: "GPT-5.3 Codex" },
       { id: "gpt-4o-mini", name: "GPT-4o mini" },
-      { id: "gpt-4.1", name: "GPT-4.1" },
-      { id: "gpt-4.1-mini", name: "GPT-4.1 mini" },
-      { id: "o3-mini", name: "o3-mini" },
     ],
   },
   {
@@ -33,9 +33,10 @@ export const PROVIDERS: AIProvider[] = [
     blurb: "Claude models - strong at code and writing.",
     signupUrl: "https://console.anthropic.com/settings/keys",
     models: [
-      { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
-      { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
-      { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
+      { id: "claude-opus-5", name: "Claude Opus 5" },
+      { id: "claude-sonnet-5", name: "Claude Sonnet 5" },
+      { id: "claude-haiku-4-5", name: "Claude Haiku 4.5" },
+      { id: "claude-fable-5", name: "Claude Fable 5" },
     ],
   },
   {
@@ -44,9 +45,9 @@ export const PROVIDERS: AIProvider[] = [
     blurb: "Gemini models from Google AI Studio.",
     signupUrl: "https://aistudio.google.com/app/api-keys",
     models: [
-      { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" },
-      { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
-      { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
+      { id: "gemini-3.7-flash", name: "Gemini 3.7 Flash" },
+      { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro (preview)" },
+      { id: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash-Lite" },
     ],
   },
   {
@@ -57,21 +58,22 @@ export const PROVIDERS: AIProvider[] = [
     // Use the Coding Plan endpoint. The general /api/paas/v4 one bills separate
     baseURL: "https://api.z.ai/api/coding/paas/v4",
     models: [
+      { id: "glm-5.3", name: "GLM-5.3" },
       { id: "glm-5.2", name: "GLM-5.2" },
       { id: "glm-4.6", name: "GLM-4.6" },
       { id: "glm-4.5-air", name: "GLM-4.5 Air" },
-      { id: "glm-4.5", name: "GLM-4.5" },
     ],
   },
   {
     id: "groq",
     name: "Groq",
-    blurb: "Very fast Llama & Mixtral inference.",
+    blurb: "Very fast open-model inference.",
     signupUrl: "https://console.groq.com/keys",
     baseURL: "https://api.groq.com/openai/v1",
     models: [
+      { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B" },
+      { id: "openai/gpt-oss-20b", name: "GPT-OSS 20B" },
       { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B" },
-      { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Instant" },
     ],
   },
   {
@@ -82,20 +84,20 @@ export const PROVIDERS: AIProvider[] = [
     baseURL: "https://openrouter.ai/api/v1",
     models: [
       { id: "openai/gpt-4o-mini", name: "GPT-4o mini" },
-      { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet" },
-      { id: "google/gemini-flash-1.5", name: "Gemini Flash 1.5" },
+      { id: "anthropic/claude-sonnet-5", name: "Claude Sonnet 5" },
+      { id: "google/gemini-2.5-flash", name: "Gemini 2.5 Flash" },
       { id: "meta-llama/llama-3.3-70b-instruct", name: "Llama 3.3 70B" },
     ],
   },
   {
     id: "deepseek",
     name: "DeepSeek",
-    blurb: "DeepSeek V3 / R1 reasoning models.",
+    blurb: "DeepSeek V4 models.",
     signupUrl: "https://platform.deepseek.com/api_keys",
     baseURL: "https://api.deepseek.com",
     models: [
-      { id: "deepseek-chat", name: "DeepSeek V3 (chat)" },
-      { id: "deepseek-reasoner", name: "DeepSeek R1 (reasoner)" },
+      { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash" },
+      { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro" },
     ],
   },
   {
@@ -106,6 +108,7 @@ export const PROVIDERS: AIProvider[] = [
     baseURL: "https://api.mistral.ai/v1",
     models: [
       { id: "mistral-large-latest", name: "Mistral Large" },
+      { id: "magistral-medium-latest", name: "Magistral Medium" },
       { id: "codestral-latest", name: "Codestral" },
       { id: "mistral-small-latest", name: "Mistral Small" },
     ],
@@ -117,8 +120,9 @@ export const PROVIDERS: AIProvider[] = [
     signupUrl: "https://console.x.ai",
     baseURL: "https://api.x.ai/v1",
     models: [
-      { id: "grok-2", name: "Grok 2" },
-      { id: "grok-beta", name: "Grok Beta" },
+      { id: "grok-4.6", name: "Grok 4.6" },
+      { id: "grok-4.3", name: "Grok 4.3" },
+      { id: "grok-build-0.1", name: "Grok Build" },
     ],
   },
   {
@@ -130,7 +134,7 @@ export const PROVIDERS: AIProvider[] = [
     models: [
       { id: "sonar", name: "Sonar" },
       { id: "sonar-pro", name: "Sonar Pro" },
-      { id: "sonar-reasoning", name: "Sonar Reasoning" },
+      { id: "sonar-reasoning-pro", name: "Sonar Reasoning Pro" },
     ],
   },
   {
@@ -141,9 +145,9 @@ export const PROVIDERS: AIProvider[] = [
     isHost: true,
     models: [
       { id: "llama3.2", name: "Llama 3.2" },
-      { id: "qwen2.5", name: "Qwen 2.5" },
-      { id: "mistral", name: "Mistral" },
-      { id: "gemma2", name: "Gemma 2" },
+      { id: "qwen3.6:27b", name: "Qwen 3.6 27B" },
+      { id: "qwen3-coder:30b", name: "Qwen3 Coder 30B" },
+      { id: "gemma4:12b", name: "Gemma 4 12B" },
     ],
   },
 ];

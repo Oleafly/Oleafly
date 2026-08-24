@@ -164,6 +164,16 @@ export function ToolBadge({ tc }: { tc: ToolEntry }) {
   );
 }
 
+export function formatToolOutput(output: unknown): string {
+  if (typeof output === "string") return output;
+  if (output && typeof output === "object") {
+    const record = output as Record<string, unknown>;
+    if (typeof record.content === "string") return record.content;
+    if (typeof record.error === "string") return `Error: ${record.error}`;
+  }
+  return JSON.stringify(output, null, 2) ?? String(output);
+}
+
 export function friendlyHint(text: string, statusCode?: number): string | null {
   const t = text.toLowerCase();
   if (
@@ -181,6 +191,16 @@ export function friendlyHint(text: string, statusCode?: number): string | null {
   }
   if (statusCode === 429 || /rate limit|too many requests|\b429\b/.test(t)) {
     return "The provider is rate-limiting requests. Wait a moment and retry, or switch providers from the model menu above.";
+  }
+  if (
+    /no longer available|has been retired|model.{0,40}(deprecated|discontinued|not found|does not exist)|unknown model|model_not_found/.test(
+      t,
+    )
+  ) {
+    return "The provider retired or restricted this model. Pick a newer model from the model menu above (Settings → AI Assistant lists what your key can use).";
+  }
+  if (statusCode === 503 || /high demand|overloaded|over capacity|service unavailable|\b503\b/.test(t)) {
+    return "The provider's servers are overloaded right now (this was already retried). Wait a minute and try again, or switch to a sibling model from the model menu above.";
   }
   if (/econnrefused|failed to fetch|fetch failed|load failed|network error|not reachable|connection refused/.test(t)) {
     return "Couldn't reach the AI provider. Check your connection, or if you're using Ollama, make sure it's running (Settings → AI Assistant → Check for Ollama).";
@@ -224,7 +244,7 @@ export function formatError(e: unknown, providerLabel?: string): string {
   return parts.join(" ");
 }
 
-// Plain text, not markdown, so a long stream stays cheap.
+// Keep active streams as plain text, then parse Markdown once reasoning is complete.
 export function ReasoningBlock({
   text,
   active,
@@ -236,7 +256,7 @@ export function ReasoningBlock({
 }) {
   const [userToggled, setUserToggled] = useState<boolean | null>(null);
   const open = userToggled ?? false;
-  const scrollRef = useRef<HTMLPreElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     void text;
@@ -263,12 +283,16 @@ export function ReasoningBlock({
         <ChevronRight className={cn("ml-auto size-3 transition-transform", open && "rotate-90")} />
       </button>
       {open && (
-        <pre
+        <div
           ref={scrollRef}
-          className="max-h-56 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words border-t px-2.5 py-1.5 font-sans text-[11px] leading-relaxed text-muted-foreground"
+          className="max-h-56 overflow-x-hidden overflow-y-auto break-words border-t px-2.5 py-1.5 text-[11px] leading-relaxed text-muted-foreground"
         >
-          {text}
-        </pre>
+          {active ? (
+            <span className="whitespace-pre-wrap">{text}</span>
+          ) : (
+            <Markdown className="chat-markdown">{text}</Markdown>
+          )}
+        </div>
       )}
     </div>
   );

@@ -16,6 +16,12 @@ pub enum ContentPart {
         id: String,
         name: String,
         arguments: String,
+        #[serde(
+            rename = "thoughtSignature",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
+        thought_signature: Option<String>,
     },
     ToolResult {
         id: String,
@@ -95,6 +101,36 @@ mod tests {
         assert_eq!(parse_arguments("   "), serde_json::json!({}));
         assert_eq!(parse_arguments("{\"a\":1}"), serde_json::json!({"a":1}));
         assert_eq!(parse_arguments("{truncated"), serde_json::json!({}));
+    }
+
+    #[test]
+    fn a_tool_use_part_round_trips_its_thought_signature_in_camel_case() {
+        let part = ContentPart::ToolUse {
+            id: "c1".into(),
+            name: "read_file".into(),
+            arguments: "{}".into(),
+            thought_signature: Some("sig".into()),
+        };
+        let json = serde_json::to_value(&part).unwrap();
+        assert_eq!(json["thoughtSignature"], "sig");
+        assert!(json.get("thought_signature").is_none());
+        assert_eq!(serde_json::from_value::<ContentPart>(json).unwrap(), part);
+    }
+
+    #[test]
+    fn a_tool_use_part_without_a_signature_stays_wire_compatible() {
+        let unsigned: ContentPart = serde_json::from_str(
+            r#"{"type":"toolUse","id":"c1","name":"read_file","arguments":"{}"}"#,
+        )
+        .unwrap();
+        assert!(matches!(
+            unsigned,
+            ContentPart::ToolUse { ref thought_signature, .. } if thought_signature.is_none()
+        ));
+        assert!(serde_json::to_value(&unsigned)
+            .unwrap()
+            .get("thoughtSignature")
+            .is_none());
     }
 
     #[test]

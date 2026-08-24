@@ -87,6 +87,7 @@ import {
   InfoHint,
   MessageItem,
   formatError,
+  formatToolOutput,
 } from "@/components/ai/chat-parts";
 import type { EngineFeature } from "@/lib/tauri";
 
@@ -259,8 +260,6 @@ export function ChatCore() {
   const pendingImagesRef = useRef<string[]>([]);
   // Timestamp of the last stream part, for the stall watchdog.
   const lastPartAtRef = useRef<number>(0);
-  // Set when the watchdog aborts a silent run, so the catch shows a timeout note.
-  const timedOutRef = useRef(false);
   const figureModeOpen = useSettingsStore((s) => s.figureModeOpen);
   const setFigureModeOpen = useSettingsStore((s) => s.setFigureModeOpen);
   // User's own system-prompt addition (sandboxed into our prompt at send time).
@@ -369,23 +368,18 @@ export function ChatCore() {
     if (!figureModeAvailable) setFigureMode(false);
   }, [figureModeAvailable]);
 
-  // Stall watchdog: if the provider goes quiet mid-run, tell the user it is
-  // still working (reasoning models can be slow) rather than looking frozen.
+  // Stall notice: if the provider goes quiet mid-run, tell the user it is
+  // still working rather than looking frozen. Hard aborts belong to the
+  // backend stream's idle timeout, which knows whether the provider is a
+  // local server (long silent prompt prefill is normal there) or a cloud API.
   useEffect(() => {
     if (!streaming) return;
     const id = window.setInterval(() => {
       const quietMs = Date.now() - (activeChatRun()?.lastPartAt ?? lastPartAtRef.current);
-      // Hard timeout: 90s of total silence from the provider aborts the run so a
-      // hung or unavailable model never spins forever.
-      if (quietMs > 90000) {
-        timedOutRef.current = true;
-        abortRef.current?.abort();
-        return;
-      }
       if (quietMs > 20000) {
         const secs = Math.round(quietMs / 1000);
         setThinkingText(
-          `Still working (${secs}s). Reasoning models and the first figure compile can be slow. Click stop to cancel.`,
+          `Still working (${secs}s). Reasoning models and local prompt processing can be slow. Click stop to cancel.`,
         );
       }
     }, 5000);
@@ -795,7 +789,6 @@ export function ChatCore() {
     setRunThinking("Thinking…");
     lastPartAtRef.current = Date.now();
     runHandle.lastPartAt = Date.now();
-    timedOutRef.current = false;
 
     // Persist this conversation as a chat (creates one on the first message).
     {
@@ -1016,9 +1009,7 @@ ${sandboxedCustom}`;
               ],
             })),
           onToolResult: ({ id, output }) => {
-            const outStr = (
-              typeof output === "string" ? output : JSON.stringify(output, null, 2)
-            ).slice(0, 500);
+            const outStr = formatToolOutput(output).slice(0, 500);
             updateRunLast((m) => {
               const calls = [...(m.toolCalls || [])];
               for (let i = calls.length - 1; i >= 0; i--) {
@@ -1046,9 +1037,10 @@ ${sandboxedCustom}`;
 
       usageSteps = outcome.steps;
       if (outcome.error) {
+        const displayError = formatError(outcome.error, activeProviderName);
         updateRunLast((m) => ({
           ...m,
-          content: (m.content ? `${m.content}\n\n` : "") + outcome.error,
+          content: (m.content ? `${m.content}\n\n` : "") + displayError,
         }));
       }
       if (outcome.stopped_at_cap) {
@@ -1065,9 +1057,7 @@ ${sandboxedCustom}`;
         ac.signal.aborted ||
         (typeof e === "object" && e !== null && "name" in e && e.name === "AbortError")
       ) {
-        const note = timedOutRef.current
-          ? "_Timed out after 90s with no response. The model may be unavailable or overloaded. Try again, or switch models from the menu above._"
-          : "_Stopped._";
+        const note = "_Stopped._";
         updateRunLast((m) => ({
           ...m,
           content: (m.content ? `${m.content}\n\n` : "") + note,
