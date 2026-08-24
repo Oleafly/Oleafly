@@ -536,6 +536,20 @@ fn google_function_calls_arrive_whole() {
 }
 
 #[test]
+fn google_thought_parts_stream_as_reasoning_not_answer_text() {
+    let raw = concat!(
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"planning the search\",\"thought\":true}]}}]}\n\n",
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"Here are the papers.\"}]},\"finishReason\":\"STOP\"}]}\n\n"
+    );
+    let (events, _) = run(WireKind::Google, raw);
+    assert_eq!(text_of(&events), "Here are the papers.");
+    assert!(events.iter().any(|e| matches!(
+        e,
+        AgentEvent::ReasoningDelta { text } if text == "planning the search"
+    )));
+}
+
+#[test]
 fn a_google_function_call_keeps_its_part_level_thought_signature() {
     let raw = "data: {\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":{\"name\":\"read_file\",\"args\":{}},\"thoughtSignature\":\"sig-1\"}]}}]}\n\n";
     let (_, translator) = run(WireKind::Google, raw);

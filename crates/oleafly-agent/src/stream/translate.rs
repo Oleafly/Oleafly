@@ -507,8 +507,16 @@ impl Translator {
             .and_then(|p| p.as_array())
         {
             for part in parts {
+                let thought = part
+                    .get("thought")
+                    .and_then(|t| t.as_bool())
+                    .unwrap_or(false);
                 if let Some(text) = nonempty(part.get("text")) {
-                    out.push(AgentEvent::TextDelta { text });
+                    if thought {
+                        out.push(AgentEvent::ReasoningDelta { text });
+                    } else {
+                        out.push(AgentEvent::TextDelta { text });
+                    }
                 }
                 if let Some(call) = part.get("functionCall") {
                     let signature = part

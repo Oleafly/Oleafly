@@ -180,7 +180,7 @@ fn stream_body(resolved: &Resolved, req: &CompletionRequest) -> Result<Value> {
             body["stream"] = Value::Bool(true);
             Ok(body)
         }
-        Wire::Google { .. } => google_body(req),
+        Wire::Google { .. } => google_body(resolved, req),
     }
 }
 
