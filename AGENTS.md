@@ -40,6 +40,15 @@ Anthropic (platform.claude.com pricing and model-deprecations), OpenAI
 (api-docs.deepseek.com/quick_start/pricing), Mistral (docs.mistral.ai models
 overview), Perplexity (docs.perplexity.ai models), Z.AI release notes.
 
+Do not stop at the docs. Provider lifecycle pages can lag or contradict
+production: in August 2026, `gemini-2.5-pro` returned 404 "no longer
+available to new users" while Google's lifecycle page still promised it until
+October 2026. After a docs sweep, test the recommended models against a real
+key (a fresh key if possible, since gating often hits new accounts first),
+and search community forums for "\<model\> no longer available" before
+keeping an older model in the recommended picker. When a provider's error
+message names a replacement model, believe the error, not the docs.
+
 Gemini has one wire-level requirement the others do not: Gemini 3 models
 return a part-level `thoughtSignature` beside `functionCall`, and the request
 that replays history must echo it or the API returns a 400. The handling

@@ -182,6 +182,13 @@ export function friendlyHint(text: string, statusCode?: number): string | null {
   if (statusCode === 429 || /rate limit|too many requests|\b429\b/.test(t)) {
     return "The provider is rate-limiting requests. Wait a moment and retry, or switch providers from the model menu above.";
   }
+  if (
+    /no longer available|has been retired|model.{0,40}(deprecated|discontinued|not found|does not exist)|unknown model|model_not_found/.test(
+      t,
+    )
+  ) {
+    return "The provider retired or restricted this model. Pick a newer model from the model menu above (Settings → AI Assistant lists what your key can use).";
+  }
   if (/econnrefused|failed to fetch|fetch failed|load failed|network error|not reachable|connection refused/.test(t)) {
     return "Couldn't reach the AI provider. Check your connection, or if you're using Ollama, make sure it's running (Settings → AI Assistant → Check for Ollama).";
   }
