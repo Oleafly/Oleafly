@@ -548,8 +548,8 @@ fn endpoints_are_built_without_double_slashes() {
         format!(
             "{}/models/{}:generateContent",
             GOOGLE_BASE.trim_end_matches('/'),
-            "gemini-2.5-pro"
+            "gemini-3.5-flash-lite"
         ),
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent"
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent"
     );
 }

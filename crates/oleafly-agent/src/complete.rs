@@ -147,6 +147,7 @@ pub(crate) fn parse_google(body: &Value) -> Result<(String, Usage)> {
         .ok_or_else(|| AgentError::Decode("response carried no candidates".into()))?;
     let text = parts
         .iter()
+        .filter(|p| p.get("thought").and_then(|t| t.as_bool()) != Some(true))
         .filter_map(|p| p.get("text").and_then(|t| t.as_str()))
         .collect::<Vec<_>>()
         .join("");
@@ -430,9 +431,13 @@ mod tests {
     }
 
     #[test]
-    fn google_joins_candidate_parts() {
+    fn google_joins_visible_candidate_parts_and_skips_thoughts() {
         let body = json!({
-            "candidates": [{ "content": { "parts": [{ "text": "a" }, { "text": "b" }] } }],
+            "candidates": [{ "content": { "parts": [
+                { "text": "private reasoning", "thought": true },
+                { "text": "a" },
+                { "text": "b" }
+            ] } }],
             "usageMetadata": { "promptTokenCount": 9, "candidatesTokenCount": 2 }
         });
         let (text, usage) = parse_google(&body).unwrap();

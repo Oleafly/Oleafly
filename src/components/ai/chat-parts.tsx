@@ -244,7 +244,7 @@ export function formatError(e: unknown, providerLabel?: string): string {
   return parts.join(" ");
 }
 
-// Plain text, not markdown, so a long stream stays cheap.
+// Keep active streams as plain text, then parse Markdown once reasoning is complete.
 export function ReasoningBlock({
   text,
   active,
@@ -287,7 +287,11 @@ export function ReasoningBlock({
           ref={scrollRef}
           className="max-h-56 overflow-x-hidden overflow-y-auto break-words border-t px-2.5 py-1.5 text-[11px] leading-relaxed text-muted-foreground"
         >
-          <Markdown className="chat-markdown">{text}</Markdown>
+          {active ? (
+            <span className="whitespace-pre-wrap">{text}</span>
+          ) : (
+            <Markdown className="chat-markdown">{text}</Markdown>
+          )}
         </div>
       )}
     </div>

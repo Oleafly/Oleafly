@@ -177,7 +177,7 @@ mod tests {
         };
         let body = json!({
             "models": [
-                { "name": "models/gemini-2.5-pro", "displayName": "Gemini 2.5 Pro" },
+                { "name": "models/gemini-3.5-flash-lite", "displayName": "Gemini 3.5 Flash-Lite" },
                 { "name": "gemini-3.6-flash" }
             ]
         });
@@ -185,8 +185,8 @@ mod tests {
             parse_models(&wire, &body).unwrap(),
             vec![
                 ModelInfo {
-                    id: "gemini-2.5-pro".into(),
-                    name: "Gemini 2.5 Pro".into()
+                    id: "gemini-3.5-flash-lite".into(),
+                    name: "Gemini 3.5 Flash-Lite".into()
                 },
                 ModelInfo {
                     id: "gemini-3.6-flash".into(),

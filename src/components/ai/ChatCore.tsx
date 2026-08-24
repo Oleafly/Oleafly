@@ -1037,9 +1037,10 @@ ${sandboxedCustom}`;
 
       usageSteps = outcome.steps;
       if (outcome.error) {
+        const displayError = formatError(outcome.error, activeProviderName);
         updateRunLast((m) => ({
           ...m,
-          content: (m.content ? `${m.content}\n\n` : "") + outcome.error,
+          content: (m.content ? `${m.content}\n\n` : "") + displayError,
         }));
       }
       if (outcome.stopped_at_cap) {

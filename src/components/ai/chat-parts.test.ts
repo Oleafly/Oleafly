@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatToolOutput, friendlyHint } from "./chat-parts";
+import { formatError, formatToolOutput, friendlyHint } from "./chat-parts";
 
 describe("formatToolOutput", () => {
   it("shows a text payload's content field as readable text", () => {
@@ -51,5 +51,16 @@ describe("friendlyHint", () => {
 
   it("stays quiet on errors it does not recognize", () => {
     expect(friendlyHint("something odd happened")).toBeNull();
+  });
+});
+
+describe("formatError", () => {
+  it("formats string overload errors returned as run outcomes", () => {
+    const formatted = formatError(
+      "The provider returned 503. This model is currently experiencing high demand.",
+      "Google Gemini",
+    );
+    expect(formatted).toContain("Google Gemini");
+    expect(formatted).toContain("overloaded");
   });
 });

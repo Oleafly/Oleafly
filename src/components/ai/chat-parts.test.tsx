@@ -60,4 +60,16 @@ describe("AI chat overflow surfaces", () => {
     expect(body).toHaveClass("overflow-x-hidden", "overflow-y-auto", "break-words");
     expect(body?.querySelector("strong")).toHaveTextContent("Exploring Project Contents");
   });
+
+  it("keeps active reasoning as plain text until streaming completes", () => {
+    const { container } = render(
+      <ReasoningBlock text="**Exploring Project Contents**" active />,
+    );
+
+    fireEvent.click(getByRole(container, "button"));
+
+    const body = container.querySelector("div.max-h-56");
+    expect(body?.querySelector("strong")).toBeNull();
+    expect(body).toHaveTextContent("**Exploring Project Contents**");
+  });
 });
