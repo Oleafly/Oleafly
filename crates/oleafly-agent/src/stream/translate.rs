@@ -39,6 +39,7 @@ pub struct Translator {
     synthetic: i64,
     error: Option<AgentError>,
     response_items: BTreeMap<i64, Value>,
+    pending_google_signature: Option<String>,
 }
 
 impl Translator {
@@ -54,6 +55,7 @@ impl Translator {
             synthetic: 0,
             error: None,
             response_items: BTreeMap::new(),
+            pending_google_signature: None,
         }
     }
 
@@ -518,13 +520,15 @@ impl Translator {
                         out.push(AgentEvent::TextDelta { text });
                     }
                 }
+                let signature = part
+                    .get("thoughtSignature")
+                    .and_then(|s| s.as_str())
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.to_string());
                 if let Some(call) = part.get("functionCall") {
-                    let signature = part
-                        .get("thoughtSignature")
-                        .and_then(|s| s.as_str())
-                        .filter(|s| !s.is_empty())
-                        .map(|s| s.to_string());
                     out.extend(self.google_function_call(call, signature));
+                } else if let Some(signature) = signature {
+                    self.note_google_signature(signature);
                 }
             }
         }
@@ -551,6 +555,7 @@ impl Translator {
         if name.is_empty() {
             return Vec::new();
         }
+        let thought_signature = thought_signature.or_else(|| self.pending_google_signature.take());
         self.synthetic += 1;
         let index = -self.synthetic;
         let id = format!("call_{}_{}", name, self.synthetic);
@@ -565,6 +570,25 @@ impl Translator {
         out.extend(self.push_args(index, &arguments));
         out.extend(self.close_call(index));
         out
+    }
+
+    fn note_google_signature(&mut self, signature: String) {
+        let step_already_signed = self
+            .finished
+            .iter()
+            .any(|call| call.thought_signature.is_some());
+        if step_already_signed {
+            self.pending_google_signature = Some(signature);
+            return;
+        }
+        match self
+            .finished
+            .iter_mut()
+            .find(|call| call.thought_signature.is_none())
+        {
+            Some(call) => call.thought_signature = Some(signature),
+            None => self.pending_google_signature = Some(signature),
+        }
     }
 }
 

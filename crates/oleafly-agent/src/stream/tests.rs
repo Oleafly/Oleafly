@@ -559,6 +559,40 @@ fn a_google_function_call_keeps_its_part_level_thought_signature() {
 }
 
 #[test]
+fn a_signature_on_a_thought_part_reaches_the_following_call() {
+    let raw = concat!(
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"planning\",\"thought\":true,\"thoughtSignature\":\"sig-t\"}]}}]}\n\n",
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":{\"name\":\"read_file\",\"args\":{}}}]}}]}\n\n"
+    );
+    let (_, translator) = run(WireKind::Google, raw);
+    let calls = translator.tool_calls();
+    assert_eq!(calls[0].thought_signature.as_deref(), Some("sig-t"));
+}
+
+#[test]
+fn a_trailing_signature_only_part_backfills_an_unsigned_call() {
+    let raw = concat!(
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":{\"name\":\"read_file\",\"args\":{}}}]}}]}\n\n",
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"\",\"thoughtSignature\":\"sig-late\"}]}}]}\n\n"
+    );
+    let (_, translator) = run(WireKind::Google, raw);
+    let calls = translator.tool_calls();
+    assert_eq!(calls[0].thought_signature.as_deref(), Some("sig-late"));
+}
+
+#[test]
+fn a_signed_call_is_never_overwritten_by_a_stray_signature() {
+    let raw = concat!(
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":{\"name\":\"f\",\"args\":{}},\"thoughtSignature\":\"sig-own\"},{\"functionCall\":{\"name\":\"f\",\"args\":{}}}]}}]}\n\n",
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"\",\"thoughtSignature\":\"sig-stray\"}]}}]}\n\n"
+    );
+    let (_, translator) = run(WireKind::Google, raw);
+    let calls = translator.tool_calls();
+    assert_eq!(calls[0].thought_signature.as_deref(), Some("sig-own"));
+    assert_eq!(calls[1].thought_signature, None);
+}
+
+#[test]
 fn parallel_google_calls_keep_the_signature_only_where_it_arrived() {
     let raw = "data: {\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":{\"name\":\"f\",\"args\":{}},\"thoughtSignature\":\"sig-first\"},{\"functionCall\":{\"name\":\"f\",\"args\":{}}}]}}]}\n\n";
     let (_, translator) = run(WireKind::Google, raw);
