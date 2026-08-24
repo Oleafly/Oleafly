@@ -4,7 +4,7 @@
 
 # Oleafly <sup><em>beta</em></sup>
 
-[English](../../README.md) | **Deutsch** | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md)
+[English](../../README.md) | **Deutsch** | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md) | [العربية](docs/readme-translations/README.ar.md)
 
 <h2>Eine vollständige Forschungsumgebung, neu entwickelt für das KI-Zeitalter.</h2>
 
