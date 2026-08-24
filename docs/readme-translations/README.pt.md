@@ -4,7 +4,7 @@
 
 # Oleafly <sup><em>beta</em></sup>
 
-[Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | **Português** | [Русский](README.ru.md) | [中文](README.zh.md)
+[Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | **Português** | [Русский](README.ru.md) | [中文](README.zh.md) | [العربية](docs/readme-translations/README.ar.md)
 
 <h2>Um ambiente de pesquisa completo, reprojetado para a era da IA.</h2>
 
