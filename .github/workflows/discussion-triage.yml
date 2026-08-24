@@ -1,0 +1,55 @@
+# Triage agent for GitHub Discussions.
+#
+# When a new discussion is created, an LLM (Z.AI GLM by default, OpenRouter
+# free models as fallback) classifies it and optionally:
+#   - bug / API / AI-assistant malfunction -> analyze code context, open a
+#     linked issue (or link an existing similar one) and reply with analysis
+#   - ask that is already documented -> reply pointing at the docs
+#   - usage question -> short answer from docs/code context
+#   - feature ideas / vague posts / spam -> stay silent
+#
+# Required secret: LLM_API_KEY (an OpenAI-compatible chat-completions key).
+# Optional repo variables: LLM_BASE_URL (endpoint override), LLM_MODEL.
+# Manual re-run: workflow_dispatch with a discussion number (skips
+# discussions the bot already replied to).
+
+name: Discussion triage
+
+on:
+  discussion:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      discussion_number:
+        description: 'Discussion number to triage'
+        required: true
+        type: string
+
+permissions:
+  discussions: write
+  issues: write
+  contents: read
+
+concurrency:
+  group: discussion-triage
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    if: github.event_name == 'workflow_dispatch' || github.event.discussion.user.type != 'Bot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Triage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          INPUT_DISCUSSION_NUMBER: ${{ inputs.discussion_number }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+        run: node .github/scripts/triage-discussion.mjs
