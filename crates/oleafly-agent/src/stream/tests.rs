@@ -342,6 +342,7 @@ fn openai_tool_call_fragments_reassemble_into_one_document() {
             id: "call_a".into(),
             name: "read_file".into(),
             arguments: "{\"path\":\"main.tex\"}".into(),
+            ..Default::default()
         }]
     );
     assert!(events.iter().any(|e| matches!(
@@ -440,6 +441,7 @@ fn anthropic_tool_use_blocks_reassemble() {
             id: "toolu_1".into(),
             name: "write_file".into(),
             arguments: "{\"path\":\"a.tex\"}".into(),
+            ..Default::default()
         }]
     );
 }
@@ -530,6 +532,26 @@ fn google_function_calls_arrive_whole() {
         serde_json::from_str::<Value>(&calls[0].arguments).unwrap()["path"],
         "main.tex"
     );
+    assert_eq!(calls[0].thought_signature, None);
+}
+
+#[test]
+fn a_google_function_call_keeps_its_part_level_thought_signature() {
+    let raw = "data: {\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":{\"name\":\"read_file\",\"args\":{}},\"thoughtSignature\":\"sig-1\"}]}}]}\n\n";
+    let (_, translator) = run(WireKind::Google, raw);
+    let calls = translator.tool_calls();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].thought_signature.as_deref(), Some("sig-1"));
+}
+
+#[test]
+fn parallel_google_calls_keep_the_signature_only_where_it_arrived() {
+    let raw = "data: {\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":{\"name\":\"f\",\"args\":{}},\"thoughtSignature\":\"sig-first\"},{\"functionCall\":{\"name\":\"f\",\"args\":{}}}]}}]}\n\n";
+    let (_, translator) = run(WireKind::Google, raw);
+    let calls = translator.tool_calls();
+    assert_eq!(calls.len(), 2);
+    assert_eq!(calls[0].thought_signature.as_deref(), Some("sig-first"));
+    assert_eq!(calls[1].thought_signature, None);
 }
 
 #[test]

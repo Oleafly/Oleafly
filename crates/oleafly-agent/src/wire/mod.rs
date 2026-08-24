@@ -34,6 +34,7 @@ fn openai_tool_calls(rest: &[&ContentPart]) -> Vec<Value> {
                 id,
                 name,
                 arguments,
+                ..
             } => Some(json!({
                 "id": id,
                 "type": "function",
@@ -144,6 +145,7 @@ pub(crate) fn openai_responses_input(messages: &[Message]) -> Result<Vec<Value>>
                     id,
                     name,
                     arguments,
+                    ..
                 } => {
                     if let Some(item) = responses_message(message, &visible)? {
                         input.push(item);
@@ -221,6 +223,7 @@ fn anthropic_part(part: &ContentPart) -> Result<Value> {
             id,
             name,
             arguments,
+            ..
         } => json!({
             "type": "tool_use",
             "id": id,
@@ -275,10 +278,19 @@ fn google_part(part: &ContentPart) -> Result<Value> {
             })
         }
         ContentPart::ToolUse {
-            name, arguments, ..
-        } => json!({
-            "functionCall": { "name": name, "args": parse_arguments(arguments) }
-        }),
+            name,
+            arguments,
+            thought_signature,
+            ..
+        } => {
+            let mut part = json!({
+                "functionCall": { "name": name, "args": parse_arguments(arguments) }
+            });
+            if let Some(signature) = thought_signature {
+                part["thoughtSignature"] = json!(signature);
+            }
+            part
+        }
         ContentPart::ToolResult { name, output, .. } => json!({
             "functionResponse": {
                 "name": name,

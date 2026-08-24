@@ -126,6 +126,7 @@ impl Translator {
                 id: id.clone(),
                 name: name.clone(),
                 arguments: String::new(),
+                thought_signature: None,
             },
         );
         vec![AgentEvent::ToolCallStart { id, name }]
@@ -510,7 +511,12 @@ impl Translator {
                     out.push(AgentEvent::TextDelta { text });
                 }
                 if let Some(call) = part.get("functionCall") {
-                    out.extend(self.google_function_call(call));
+                    let signature = part
+                        .get("thoughtSignature")
+                        .and_then(|s| s.as_str())
+                        .filter(|s| !s.is_empty())
+                        .map(|s| s.to_string());
+                    out.extend(self.google_function_call(call, signature));
                 }
             }
         }
@@ -524,7 +530,11 @@ impl Translator {
         out
     }
 
-    fn google_function_call(&mut self, call: &Value) -> Vec<AgentEvent> {
+    fn google_function_call(
+        &mut self,
+        call: &Value,
+        thought_signature: Option<String>,
+    ) -> Vec<AgentEvent> {
         let name = call
             .get("name")
             .and_then(|n| n.as_str())
@@ -541,6 +551,9 @@ impl Translator {
             .map(|a| a.to_string())
             .unwrap_or_else(|| "{}".to_string());
         let mut out = self.start_call(index, id, name);
+        if let Some(open) = self.open.get_mut(&index) {
+            open.thought_signature = thought_signature;
+        }
         out.extend(self.push_args(index, &arguments));
         out.extend(self.close_call(index));
         out

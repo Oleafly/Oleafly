@@ -132,6 +132,7 @@ fn tool_turn() -> CompletionRequest {
                         id: "call_1".into(),
                         name: "read_file".into(),
                         arguments: "{\"path\":\"main.tex\"}".into(),
+                        thought_signature: Some("sig-abc".into()),
                     },
                 ],
             },
@@ -269,6 +270,7 @@ fn an_assistant_turn_of_only_tool_calls_sends_null_content() {
                 id: "c".into(),
                 name: "n".into(),
                 arguments: "{}".into(),
+                thought_signature: None,
             }],
         }],
         ..Default::default()
@@ -315,6 +317,47 @@ fn google_uses_function_call_and_response_parts() {
 }
 
 #[test]
+fn google_echoes_the_thought_signature_beside_its_function_call() {
+    let body = google_body(&tool_turn()).unwrap();
+    assert_eq!(
+        body["contents"][1]["parts"][1]["thoughtSignature"],
+        "sig-abc"
+    );
+}
+
+#[test]
+fn a_function_call_without_a_signature_omits_the_field_entirely() {
+    let request = CompletionRequest {
+        messages: vec![Message {
+            role: Role::Assistant,
+            content: vec![ContentPart::ToolUse {
+                id: "c".into(),
+                name: "n".into(),
+                arguments: "{}".into(),
+                thought_signature: None,
+            }],
+        }],
+        ..Default::default()
+    };
+    let part = &google_body(&request).unwrap()["contents"][0]["parts"][0];
+    assert!(part.get("thoughtSignature").is_none());
+}
+
+#[test]
+fn thought_signatures_never_leak_into_other_providers_wire_shapes() {
+    let request = tool_turn();
+    let openai_call = &openai_body(&openai(), &request).unwrap()["messages"][2]["tool_calls"][0];
+    assert!(openai_call.get("thoughtSignature").is_none());
+
+    let anthropic_block =
+        &anthropic_body(&openai(), &request).unwrap()["messages"][1]["content"][1];
+    assert!(anthropic_block.get("thoughtSignature").is_none());
+
+    let responses_item = &openai_responses_body(&openai_responses(), &request).unwrap()["input"][2];
+    assert!(responses_item.get("thoughtSignature").is_none());
+}
+
+#[test]
 fn tool_schemas_reach_every_provider_in_its_own_shape() {
     let request = tool_turn();
     assert_eq!(
@@ -354,6 +397,7 @@ fn truncated_tool_arguments_do_not_break_the_request() {
                 id: "c".into(),
                 name: "n".into(),
                 arguments: "{\"path\":".into(),
+                thought_signature: None,
             }],
         }],
         ..Default::default()

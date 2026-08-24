@@ -27,6 +27,7 @@ pub struct ToolCall {
     pub id: String,
     pub name: String,
     pub arguments: String,
+    pub thought_signature: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
