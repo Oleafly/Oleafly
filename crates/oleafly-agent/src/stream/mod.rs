@@ -13,6 +13,7 @@ use crate::provider::{catalog_entry, Resolved, Wire};
 use crate::sse::{SseDecoder, SseEvent};
 
 const DEFAULT_STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(120);
+const LOCAL_STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(360);
 const MAX_STREAM_DURATION: Duration = Duration::from_secs(10 * 60);
 const MAX_STREAM_BYTES: usize = 32 * 1024 * 1024;
 const MAX_TOOL_ARGUMENT_BYTES: usize = 8 * 1024 * 1024;
@@ -27,6 +28,7 @@ pub struct ToolCall {
     pub id: String,
     pub name: String,
     pub arguments: String,
+    pub thought_signature: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -152,6 +154,14 @@ impl StreamBudget {
     }
 }
 
+fn default_idle_timeout(resolved: &Resolved) -> Duration {
+    if resolved.is_local_endpoint() {
+        LOCAL_STREAM_IDLE_TIMEOUT
+    } else {
+        DEFAULT_STREAM_IDLE_TIMEOUT
+    }
+}
+
 fn stream_deadline(req: &CompletionRequest) -> Duration {
     req.timeout_ms
         .map(Duration::from_millis)
@@ -179,7 +189,7 @@ fn stream_body(resolved: &Resolved, req: &CompletionRequest) -> Result<Value> {
             body["stream"] = Value::Bool(true);
             Ok(body)
         }
-        Wire::Google { .. } => google_body(req),
+        Wire::Google { .. } => google_body(resolved, req),
     }
 }
 
@@ -213,7 +223,7 @@ where
     let idle = req
         .idle_timeout_ms
         .map(Duration::from_millis)
-        .unwrap_or(DEFAULT_STREAM_IDLE_TIMEOUT);
+        .unwrap_or_else(|| default_idle_timeout(resolved));
     let response = open_stream(client, resolved, req).await?;
     let mut state = StreamState::new(WireKind::from(&resolved.wire));
     consume_response(response, idle, &mut state, &mut on_event).await?;

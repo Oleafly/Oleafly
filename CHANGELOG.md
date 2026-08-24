@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.11] - 2026-08-24
+
+### Added
+
+- Gemini thought summaries stream into the reasoning panel while a response is
+  active, then render as readable Markdown when the response is complete.
+
+### Changed
+
+- Supported AI model catalogs, defaults, and pricing metadata have been
+  refreshed across OpenAI, Google, Anthropic, Z.AI, Groq, DeepSeek, xAI,
+  Perplexity, and Ollama. Locally installed Ollama models are no longer hidden
+  by the bundled allow-list.
+- AI tool results and reasoning details use clearer, structured rendering in
+  the chat transcript.
+
+### Fixed
+
+- Gemini 3 tool loops preserve each function call's encrypted thought
+  signature and replay it on the exact response part required by Google's API,
+  preventing follow-up requests from failing with a 400 error.
+- Non-streaming Gemini completions exclude private thought summaries from the
+  visible answer.
+- Native project tools unwrap their MCP response envelope before returning
+  content to the model, reducing duplicated JSON and wasted context.
+- Local and loopback AI endpoints receive the longer local-model timeout even
+  when they use authentication, while remote endpoints retain the cloud
+  timeout. The frontend no longer ends a healthy silent local-model run after
+  90 seconds.
+- Provider capacity errors use a concise, actionable message in both streamed
+  and non-streamed failure paths.
+
 ## [0.3.10] - 2026-08-24
 
 ### Added
@@ -1498,7 +1530,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.10...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.11...HEAD
+[0.3.11]: https://github.com/Oleafly/Oleafly/compare/v0.3.10...v0.3.11
 [0.3.10]: https://github.com/Oleafly/Oleafly/compare/v0.3.9...v0.3.10
 [0.3.9]: https://github.com/Oleafly/Oleafly/compare/v0.3.8...v0.3.9
 [0.3.8]: https://github.com/Oleafly/Oleafly/compare/v0.3.7...v0.3.8

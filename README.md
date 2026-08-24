@@ -6,7 +6,7 @@
 
 [Deutsch](docs/readme-translations/README.de.md) | **English** | [Español](docs/readme-translations/README.es.md) | [Français](docs/readme-translations/README.fr.md) | [日本語](docs/readme-translations/README.ja.md) | [한국어](docs/readme-translations/README.ko.md) | [Português](docs/readme-translations/README.pt.md) | [Русский](docs/readme-translations/README.ru.md) | [中文](docs/readme-translations/README.zh.md)
 
-**A complete research harness, re-engineered for the AI era.**
+<h2>A complete research harness, re-engineered for the AI era.</h2>
 
 Write, compile, proofread, search literature, manage citations, build figures,
 review PDFs, and trace changes in Git. Use hosted AI, a custom endpoint, local

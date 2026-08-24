@@ -117,7 +117,7 @@ fn a_configured_key_resolves_end_to_end_from_app_config() {
     let cfg = config_with("groq", &[("groq", "gsk-1")]);
     let resolved = oleafly_agent::resolve(&provider_config(&cfg)).unwrap();
     assert_eq!(resolved.provider_id, "groq");
-    assert_eq!(resolved.model_id, "llama-3.3-70b-versatile");
+    assert_eq!(resolved.model_id, "openai/gpt-oss-120b");
     assert_eq!(resolved.credential, "gsk-1");
 }
 
@@ -420,4 +420,33 @@ async fn native_read_file_answers_with_project_content() {
 
     std::env::remove_var("OLEAFLY_DATA_DIR");
     std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn native_tool_output_is_the_payload_not_the_mcp_envelope() {
+    let envelope = serde_json::json!({
+        "content": [{ "type": "text", "text": "{\"files\":[{\"path\":\"main.tex\"}]}" }]
+    });
+    assert_eq!(
+        unwrap_mcp_text(&envelope),
+        "{\"files\":[{\"path\":\"main.tex\"}]}"
+    );
+
+    let multi = serde_json::json!({
+        "content": [
+            { "type": "text", "text": "first" },
+            { "type": "image", "data": "AAAB" },
+            { "type": "text", "text": "second" }
+        ]
+    });
+    assert_eq!(unwrap_mcp_text(&multi), "first\nsecond");
+}
+
+#[test]
+fn a_result_that_is_not_an_envelope_passes_through_verbatim() {
+    let plain = serde_json::json!({ "error": "not found" });
+    assert_eq!(unwrap_mcp_text(&plain), plain.to_string());
+
+    let empty_content = serde_json::json!({ "content": [] });
+    assert_eq!(unwrap_mcp_text(&empty_content), empty_content.to_string());
 }

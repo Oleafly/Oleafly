@@ -6,43 +6,30 @@
 
 [Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | **Русский** | [中文](README.zh.md)
 
-**Пишите, компилируйте и публикуйте научные работы в ИИ-пространстве, которое принадлежит вам.**
+<h2>Полная исследовательская среда, заново спроектированная для эпохи ИИ.</h2>
 
-Пишите на LaTeX, Typst или Markdown. Компилируйте рядом с исходником. Храните
-каждую версию в Git. Используйте ИИ на своих условиях.
+Пишите, компилируйте и вычитывайте тексты, ищите научную литературу, управляйте
+ссылками, создавайте иллюстрации, проверяйте PDF и отслеживайте каждое изменение
+в Git. Используйте размещённый ИИ, собственную конечную точку, локальный Ollama
+или работайте без ИИ. Oleafly хранит проекты в обычных папках на вашем компьютере.
 
-Oleafly — бесплатное, на 100 % открытое настольное приложение для macOS,
-Windows и Linux. Оно работает по принципу local-first, не требует учётной
-записи и хранит обычные файлы проектов на вашем компьютере.
-
+[![Открытые задачи](https://img.shields.io/github/issues/Oleafly/Oleafly?label=Issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues)
 [![Download](https://img.shields.io/github/v/release/Oleafly/Oleafly?label=Download&color=22c55e)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml)
+[![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases)
+[![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
+<br/>
 [![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 [![GitGem](https://gitgem.org/api/badge/github/Oleafly/Oleafly.svg)](https://gitgem.org/github/Oleafly/Oleafly)
-
 **[Скачать Oleafly](https://github.com/Oleafly/Oleafly/releases/latest) ·
-[Инженерная документация](../README.md) ·
+[Документация продукта](https://oleafly.com/docs/overview/) ·
 [Сборка из исходников](../development.md)**
 
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor-light.png" alt="Oleafly с редактором LaTeX и скомпилированным PDF, открытыми бок о бок (светлая тема)" width="92%" />
-  <br /><br />
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor.png" alt="Oleafly с редактором LaTeX и скомпилированным PDF, открытыми бок о бок (тёмная тема)" width="92%" />
-</div>
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/library-shelf.png" alt="Библиотека Oleafly, где проекты показаны как цветные книги с метками движка, типа и даты последнего изменения (тёмная тема)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/library-shelf-light.png" alt="Библиотека Oleafly, где проекты показаны как цветные книги с метками движка, типа и даты последнего изменения (светлая тема)" /></td>
-  </tr>
-</table>
-
+  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor-v0.3.10-r2.png" alt="Oleafly редактирует исследовательскую статью LLaMA в LaTeX, одновременно показывая дерево файлов, структуру документа и скомпилированный PDF" width="100%" />
 </div>
 
 <!--
@@ -50,14 +37,6 @@ Recording placeholder: the stacked hero stands in until a 45–60 second
 workspace walkthrough is ready. Keep the same framing and replace the sources
 above with https://cdn.oleafly.com/videos/workspace-tour.webp.
 -->
-
-> [!NOTE]
-> Oleafly готов к повседневной работе с документами, но проект всё ещё быстро
-> развивается. Совместимость с продвинутыми пакетами и некоторые платформенные
-> интеграции продолжают дорабатываться. Сборки для macOS подписаны и
-> нотаризованы; сборки для Windows пока не подписаны. Скачивайте приложение
-> только со страницы официальных релизов и просматривайте примечания к выпуску,
-> прежде чем устанавливать неподписанную предварительную сборку.
 
 ## В научной работе и без того хватает движущихся частей
 
@@ -177,10 +156,6 @@ above with https://cdn.oleafly.com/videos/workspace-tour.webp.
   </tr>
 </table>
 
-</div>
-
-<div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/pdf-figures.png" alt="Скомпилированная страница с графиками, цветовой картой поверхности ошибки и таблицей результатов рядом с исходником LaTeX" width="88%" />
 </div>
 
 Уменьшите масштаб — и весь документ окажется на экране целиком; обычно это
@@ -424,6 +399,28 @@ Claude Code, Cursor и других MCP-клиентов. MCP-подключен
 API-ключи хранятся локально. Обычные файлы документов останутся пригодными к
 работе, даже если вы перестанете пользоваться Oleafly.
 
+## Скоро
+
+В дальнейшем Oleafly останется открытым, local-first и полезным на всех
+этапах исследования.
+
+- **Локализация приложения.** Используйте Oleafly на большем числе языков
+  и выбирайте наиболее удобный интерфейс.
+- **Навыки и плагины для агентов.** Добавляйте целевые повторяемые
+  сценарии ИИ, которые передают меньше контекста и расходуют меньше токенов.
+- **Автономные исследовательские агенты.** Превращайте исследовательский
+  вопрос и набор источников в структурированный первый черновик.
+- **Совместная работа в реальном времени и комментарии.** Работайте в команде
+  без ограничений в самостоятельно развёрнутой среде.
+- **Oleafly CLI.** Используйте лёгкий устанавливаемый пакет командной строки
+  для исследовательских сценариев, которым не нужен графический интерфейс.
+- **Улучшенная поддержка Typst и Markdown.** Расширяйте возможности редактирования,
+  предпросмотра и публикации в обоих форматах.
+- **Больше интеграций для исследований.** Подключайте Mendeley и другие сервисы
+  для библиографии, библиотек и исследований.
+- **Самостоятельно развёрнутая облачная синхронизация.** Синхронизируйте проекты
+  между устройствами и используйте улучшенную автоматическую синхронизацию с GitHub.
+
 ## Установка
 
 Скачайте свежую сборку со страницы
@@ -444,20 +441,50 @@ API-ключи хранятся локально. Обычные файлы до
 ```bash
 git clone https://github.com/Oleafly/Oleafly.git
 cd Oleafly
-./scripts/fetch-tectonic.sh all
-./scripts/fetch-typst.sh all
 pnpm install
+host_target="$(rustc -vV | sed -n 's/^host: //p')"
+./scripts/fetch-tectonic.sh "$host_target"
+./scripts/fetch-biber.sh "$host_target"
+./scripts/fetch-typst.sh "$host_target"
 pnpm tauri dev
 ```
 
 Требования, настройка платформ и производственные сборки описаны в
 [руководстве по разработке](../development.md).
 
-## Документация
+Эти скрипты загружают в `src-tauri/binaries` вспомогательные исполняемые файлы
+компилятора для текущей платформы. Их контрольные суммы зафиксированы. Аргумент
+`all` предназначен для CI и подготовки релизов, где нужны все поддерживаемые
+платформы.
 
-Репозиторий хранит публичные инженерные и продуктовые справочники рядом с
-кодом. Пользовательские руководства по конкретным задачам ведутся отдельно от
-этого публичного указателя.
+Функции редактора на основе TexLab и Tinymist необязательны для локального
+запуска. Загрузите эти языковые серверы командой
+`pnpm language-servers:fetch`. Правила проверки целостности, лицензирования и
+распространения описаны в
+[документации по языковым серверам](../language-server-toolchain.md).
+
+### Командная строка
+
+`oleaflyc` управляет проектами Oleafly без запуска настольного приложения.
+Пока он собирается из исходного кода этого репозитория и не публикуется как
+отдельный пакет.
+
+```bash
+cargo run -p oleafly-cli --bin oleaflyc -- init
+cargo run -p oleafly-cli --bin oleaflyc -- doctor
+cargo run -p oleafly-cli --bin oleaflyc -- build
+cargo run -p oleafly-cli --bin oleaflyc -- watch
+cargo run -p oleafly-cli --bin oleaflyc -- project info --json
+```
+
+Команды работают с текущим каталогом. Передайте `-C <path>`, чтобы выбрать
+другой проект. Полный список доступен по команде `oleaflyc --help`.
+
+## Документация для разработчиков
+
+Руководства пользователя находятся в
+[документации продукта Oleafly](https://oleafly.com/docs/overview/). Ссылки ниже
+предназначены для участников, интеграторов и ответственных за выпуск релизов.
 
 | Справочник | Содержание |
 | --- | --- |
@@ -474,10 +501,12 @@ pnpm tauri dev
 
 ## Участие в разработке
 
-Oleafly открыто разрабатывают
-[Prajwal S Venkateshmurthy](https://github.com/prajwal-svm) и участники
-сообщества. Мы рады сообщениям об ошибках, исправлениям, шаблонам,
-документации и вдумчивой обратной связи о продукте.
+<table>
+  <tr>
+    <td width="38%" valign="top"><img src="../assets/oleafly-club.png" alt="Клуб Oleafly: открытое исследовательское сообщество, которое отмечает черновики, правки, тесты и успешные публикации" width="100%" /></td>
+    <td width="62%" valign="top"><h3>Исследователям нужны инструменты, которые можно изучать, расширять и которым можно доверять.</h3><p>Oleafly открыто разрабатывают <a href="https://github.com/prajwal-svm">Prajwal Murthy</a> и участники сообщества. Мы рады сообщениям об ошибках, исправлениям, шаблонам, документации и вдумчивой обратной связи о продукте.</p></td>
+  </tr>
+</table>
 
 1. Прочитайте [CONTRIBUTING.md](../../CONTRIBUTING.md).
 2. Перед крупным изменением откройте issue; небольшие точечные исправления
@@ -493,6 +522,25 @@ Oleafly открыто разрабатывают
 О проблемах безопасности, пожалуйста, сообщайте приватно, как описано в
 [SECURITY.md](../../SECURITY.md). Участие регулируется
 [кодексом поведения](../../CODE_OF_CONDUCT.md).
+
+## Сообщество и поддержка
+
+- Задавайте вопросы и делитесь идеями в [GitHub Discussions](https://github.com/Oleafly/Oleafly/discussions).
+- Сообщайте об ошибках и предлагайте функции в [GitHub Issues](https://github.com/Oleafly/Oleafly/issues).
+- 🔔 Подписывайтесь на [@OleaflyHQ в X](https://x.com/OleaflyHQ), чтобы узнавать новости продукта и релизов.
+
+⭐ Если Oleafly помогает вам, [поставьте звезду репозиторию](https://github.com/Oleafly/Oleafly).
+Этот небольшой жест помогает другим исследователям найти проект и поддерживает его развитие.
+
+## История звёзд
+
+<a href="https://www.star-history.com/?repos=Oleafly%2FOleafly&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&theme=dark&legend=top-left&sealed_token=ZRIr-1jiqjn35WhaqiDqKsmeII-LmnrILQdxzg5v_RX8-PFtlYa4d5IY7U2-Mcn1_D2-0k4e440BGXMhRskNzn-mZUGI59rpIErWId2F600cSJDgZqwcQ3BxV6zC3m5peZz6s_P_Mla0ZW06zikSg5LHLCIALEzrFnLqag7R_rQ7haTYEGHvSdgx76__" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&legend=top-left&sealed_token=ZRIr-1jiqjn35WhaqiDqKsmeII-LmnrILQdxzg5v_RX8-PFtlYa4d5IY7U2-Mcn1_D2-0k4e440BGXMhRskNzn-mZUGI59rpIErWId2F600cSJDgZqwcQ3BxV6zC3m5peZz6s_P_Mla0ZW06zikSg5LHLCIALEzrFnLqag7R_rQ7haTYEGHvSdgx76__" />
+   <img alt="График истории звёзд GitHub" src="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&legend=top-left&sealed_token=ZRIr-1jiqjn35WhaqiDqKsmeII-LmnrILQdxzg5v_RX8-PFtlYa4d5IY7U2-Mcn1_D2-0k4e440BGXMhRskNzn-mZUGI59rpIErWId2F600cSJDgZqwcQ3BxV6zC3m5peZz6s_P_Mla0ZW06zikSg5LHLCIALEzrFnLqag7R_rQ7haTYEGHvSdgx76__" />
+ </picture>
+</a>
 
 ## Благодарности
 

@@ -342,6 +342,7 @@ fn openai_tool_call_fragments_reassemble_into_one_document() {
             id: "call_a".into(),
             name: "read_file".into(),
             arguments: "{\"path\":\"main.tex\"}".into(),
+            ..Default::default()
         }]
     );
     assert!(events.iter().any(|e| matches!(
@@ -440,6 +441,7 @@ fn anthropic_tool_use_blocks_reassemble() {
             id: "toolu_1".into(),
             name: "write_file".into(),
             arguments: "{\"path\":\"a.tex\"}".into(),
+            ..Default::default()
         }]
     );
 }
@@ -530,6 +532,76 @@ fn google_function_calls_arrive_whole() {
         serde_json::from_str::<Value>(&calls[0].arguments).unwrap()["path"],
         "main.tex"
     );
+    assert_eq!(calls[0].thought_signature, None);
+}
+
+#[test]
+fn google_thought_parts_stream_as_reasoning_not_answer_text() {
+    let raw = concat!(
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"planning the search\",\"thought\":true}]}}]}\n\n",
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"Here are the papers.\"}]},\"finishReason\":\"STOP\"}]}\n\n"
+    );
+    let (events, _) = run(WireKind::Google, raw);
+    assert_eq!(text_of(&events), "Here are the papers.");
+    assert!(events.iter().any(|e| matches!(
+        e,
+        AgentEvent::ReasoningDelta { text } if text == "planning the search"
+    )));
+}
+
+#[test]
+fn a_google_function_call_keeps_its_part_level_thought_signature() {
+    let raw = "data: {\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":{\"name\":\"read_file\",\"args\":{}},\"thoughtSignature\":\"sig-1\"}]}}]}\n\n";
+    let (_, translator) = run(WireKind::Google, raw);
+    let calls = translator.tool_calls();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].thought_signature.as_deref(), Some("sig-1"));
+}
+
+#[test]
+fn a_signature_on_a_thought_part_is_not_moved_to_a_following_call() {
+    let raw = concat!(
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"planning\",\"thought\":true,\"thoughtSignature\":\"sig-t\"}]}}]}\n\n",
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":{\"name\":\"read_file\",\"args\":{}}}]}}]}\n\n"
+    );
+    let (_, translator) = run(WireKind::Google, raw);
+    let calls = translator.tool_calls();
+    assert_eq!(calls[0].thought_signature, None);
+}
+
+#[test]
+fn a_trailing_signature_only_part_does_not_backfill_an_unsigned_call() {
+    let raw = concat!(
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":{\"name\":\"read_file\",\"args\":{}}}]}}]}\n\n",
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"\",\"thoughtSignature\":\"sig-late\"}]}}]}\n\n"
+    );
+    let (_, translator) = run(WireKind::Google, raw);
+    let calls = translator.tool_calls();
+    assert_eq!(calls[0].thought_signature, None);
+}
+
+#[test]
+fn a_signed_call_is_never_overwritten_by_a_stray_signature() {
+    let raw = concat!(
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":{\"name\":\"f\",\"args\":{}},\"thoughtSignature\":\"sig-own\"},{\"functionCall\":{\"name\":\"f\",\"args\":{}}}]}}]}\n\n",
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"\",\"thoughtSignature\":\"sig-stray\"}]}}]}\n\n",
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":{\"name\":\"later\",\"args\":{}}}]}}]}\n\n"
+    );
+    let (_, translator) = run(WireKind::Google, raw);
+    let calls = translator.tool_calls();
+    assert_eq!(calls[0].thought_signature.as_deref(), Some("sig-own"));
+    assert_eq!(calls[1].thought_signature, None);
+    assert_eq!(calls[2].thought_signature, None);
+}
+
+#[test]
+fn parallel_google_calls_keep_the_signature_only_where_it_arrived() {
+    let raw = "data: {\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":{\"name\":\"f\",\"args\":{}},\"thoughtSignature\":\"sig-first\"},{\"functionCall\":{\"name\":\"f\",\"args\":{}}}]}}]}\n\n";
+    let (_, translator) = run(WireKind::Google, raw);
+    let calls = translator.tool_calls();
+    assert_eq!(calls.len(), 2);
+    assert_eq!(calls[0].thought_signature.as_deref(), Some("sig-first"));
+    assert_eq!(calls[1].thought_signature, None);
 }
 
 #[test]
@@ -609,7 +681,7 @@ fn google_stream_body_carries_no_stream_flag() {
     let req = CompletionRequest::prompt("s", "u");
     let resolved = Resolved {
         provider_id: "google".into(),
-        model_id: "gemini-2.5-pro".into(),
+        model_id: "gemini-3.5-flash-lite".into(),
         credential: "k".into(),
         auth: Some("k".into()),
         wire: Wire::Google {
@@ -619,4 +691,31 @@ fn google_stream_body_carries_no_stream_flag() {
     let body = stream_body(&resolved, &req).unwrap();
     assert!(body.get("stream").is_none());
     assert!(body.get("contents").is_some());
+}
+
+#[test]
+fn endpoint_locality_controls_the_default_idle_timeout_independently_of_auth() {
+    let local = Resolved {
+        provider_id: "private-model-server".into(),
+        model_id: "llama3.2".into(),
+        credential: "local-key".into(),
+        auth: Some("local-key".into()),
+        wire: Wire::OpenAiChat {
+            base_url: "http://127.0.0.1:11434/v1".into(),
+            reasoning_content: false,
+        },
+    };
+    let cloud = Resolved {
+        provider_id: "remote-keyless-server".into(),
+        credential: String::new(),
+        auth: None,
+        wire: Wire::OpenAiChat {
+            base_url: "https://models.example/v1".into(),
+            reasoning_content: false,
+        },
+        ..local.clone()
+    };
+
+    assert_eq!(default_idle_timeout(&local), Duration::from_secs(360));
+    assert_eq!(default_idle_timeout(&cloud), Duration::from_secs(120));
 }

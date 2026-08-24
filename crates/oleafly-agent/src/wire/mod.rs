@@ -34,6 +34,7 @@ fn openai_tool_calls(rest: &[&ContentPart]) -> Vec<Value> {
                 id,
                 name,
                 arguments,
+                ..
             } => Some(json!({
                 "id": id,
                 "type": "function",
@@ -144,6 +145,7 @@ pub(crate) fn openai_responses_input(messages: &[Message]) -> Result<Vec<Value>>
                     id,
                     name,
                     arguments,
+                    ..
                 } => {
                     if let Some(item) = responses_message(message, &visible)? {
                         input.push(item);
@@ -221,6 +223,7 @@ fn anthropic_part(part: &ContentPart) -> Result<Value> {
             id,
             name,
             arguments,
+            ..
         } => json!({
             "type": "tool_use",
             "id": id,
@@ -275,10 +278,19 @@ fn google_part(part: &ContentPart) -> Result<Value> {
             })
         }
         ContentPart::ToolUse {
-            name, arguments, ..
-        } => json!({
-            "functionCall": { "name": name, "args": parse_arguments(arguments) }
-        }),
+            name,
+            arguments,
+            thought_signature,
+            ..
+        } => {
+            let mut part = json!({
+                "functionCall": { "name": name, "args": parse_arguments(arguments) }
+            });
+            if let Some(signature) = thought_signature {
+                part["thoughtSignature"] = json!(signature);
+            }
+            part
+        }
         ContentPart::ToolResult { name, output, .. } => json!({
             "functionResponse": {
                 "name": name,
@@ -288,13 +300,16 @@ fn google_part(part: &ContentPart) -> Result<Value> {
     })
 }
 
-fn google_generation_config(req: &CompletionRequest) -> Option<Value> {
+fn google_generation_config(resolved: &Resolved, req: &CompletionRequest) -> Option<Value> {
     let mut generation = serde_json::Map::new();
     if let Some(t) = req.temperature {
         generation.insert("temperature".into(), json!(t));
     }
     if let Some(m) = req.max_tokens {
         generation.insert("maxOutputTokens".into(), json!(m));
+    }
+    if resolved.model_id.starts_with("gemini-") {
+        generation.insert("thinkingConfig".into(), json!({ "includeThoughts": true }));
     }
     if generation.is_empty() {
         None
@@ -303,7 +318,7 @@ fn google_generation_config(req: &CompletionRequest) -> Option<Value> {
     }
 }
 
-pub(crate) fn google_body(req: &CompletionRequest) -> Result<Value> {
+pub(crate) fn google_body(resolved: &Resolved, req: &CompletionRequest) -> Result<Value> {
     let mut contents: Vec<Value> = Vec::new();
     for message in &req.messages {
         let mut parts = Vec::with_capacity(message.content.len());
@@ -321,7 +336,7 @@ pub(crate) fn google_body(req: &CompletionRequest) -> Result<Value> {
     if let Some(system) = req.system.as_ref().filter(|s| !s.is_empty()) {
         body["systemInstruction"] = json!({ "parts": [{ "text": system }] });
     }
-    if let Some(generation) = google_generation_config(req) {
+    if let Some(generation) = google_generation_config(resolved, req) {
         body["generationConfig"] = generation;
     }
     if !req.tools.is_empty() {
@@ -390,7 +405,7 @@ pub fn wire_body(resolved: &Resolved, req: &CompletionRequest) -> Result<serde_j
         Wire::OpenAiResponses { .. } => openai_responses_body(resolved, req),
         Wire::OpenAiChat { .. } => openai_body(resolved, req),
         Wire::Anthropic { .. } => anthropic_body(resolved, req),
-        Wire::Google { .. } => google_body(req),
+        Wire::Google { .. } => google_body(resolved, req),
     }
 }
 

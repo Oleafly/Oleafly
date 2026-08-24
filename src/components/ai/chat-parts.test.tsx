@@ -51,16 +51,25 @@ describe("AI chat overflow surfaces", () => {
     );
   });
 
-  it("wraps expanded reasoning without horizontal scrolling", () => {
-    const { container } = render(<ReasoningBlock text="A long reasoning trace" />);
+  it("wraps expanded reasoning without horizontal scrolling and renders its markdown", () => {
+    const { container } = render(<ReasoningBlock text="**Exploring Project Contents**" />);
 
     fireEvent.click(getByRole(container, "button"));
 
-    expect(container.querySelector("pre")).toHaveClass(
-      "overflow-x-hidden",
-      "overflow-y-auto",
-      "whitespace-pre-wrap",
-      "break-words",
+    const body = container.querySelector("div.max-h-56");
+    expect(body).toHaveClass("overflow-x-hidden", "overflow-y-auto", "break-words");
+    expect(body?.querySelector("strong")).toHaveTextContent("Exploring Project Contents");
+  });
+
+  it("keeps active reasoning as plain text until streaming completes", () => {
+    const { container } = render(
+      <ReasoningBlock text="**Exploring Project Contents**" active />,
     );
+
+    fireEvent.click(getByRole(container, "button"));
+
+    const body = container.querySelector("div.max-h-56");
+    expect(body?.querySelector("strong")).toBeNull();
+    expect(body).toHaveTextContent("**Exploring Project Contents**");
   });
 });

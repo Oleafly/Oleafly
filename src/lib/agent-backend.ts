@@ -3,7 +3,7 @@ import { Channel, invoke } from "@tauri-apps/api/core";
 export type AgentContentPart =
   | { type: "text"; text: string }
   | { type: "image"; image: string }
-  | { type: "toolUse"; id: string; name: string; arguments: string }
+  | { type: "toolUse"; id: string; name: string; arguments: string; thoughtSignature?: string }
   | { type: "toolResult"; id: string; name: string; output: string };
 
 export function agentErrorKind(error: unknown): string {
