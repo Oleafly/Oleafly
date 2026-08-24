@@ -299,7 +299,7 @@ test("welcome is modal and Home creates a real project before Workspace starts",
   await expectTourTooltipInsideViewport(tauriPage, "home-template");
   await tauriPage.getByText("Skip", { exact: true }).click();
   await expect(tauriPage.getByRole("alertdialog")).toContainText("Quit the tour?");
-  await tauriPage.getByRole("button", { name: /Cancel/ }).click();
+  await tauriPage.getByText("Cancel", { exact: true }).click();
   await expectTourTooltipInsideViewport(tauriPage, "home-template");
   const templateList = tauriPage.locator('[data-tour="project-template-list"]');
   const templateListMetrics = await templateList.evaluate((element) => ({

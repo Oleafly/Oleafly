@@ -1,12 +1,18 @@
 import { test, expect } from "../fixtures";
 import {
+  createBlankProject,
   fillCommandPalette,
   openProject,
+  openSettings,
   pressGlobal,
 } from "../helpers";
 
 test.beforeEach(async ({ tauriPage }) => {
-  await openProject(tauriPage, "E2E Doc");
+  const projectExists = await tauriPage.evaluate<boolean>(
+    `document.querySelector(${JSON.stringify('button[aria-label="Open E2E Doc"]')}) !== null`,
+  );
+  if (projectExists) await openProject(tauriPage, "E2E Doc");
+  else await createBlankProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 });
 
@@ -57,12 +63,12 @@ test("history modal opens from the palette", async ({ tauriPage }) => {
   await tauriPage.click('[aria-label="Close version history"]');
 });
 
-test("help popover leads to the About dialog", async ({ tauriPage }) => {
-  await tauriPage.focus('[aria-label="Help"]');
-  await tauriPage.press('[aria-label="Help"]', "Enter");
-  await tauriPage.getByText("Contact us").press("Enter");
-  await expect(tauriPage.locator('[aria-label="Close About dialog"]')).toBeVisible();
-  await tauriPage.click('[aria-label="Close About dialog"]');
+test("Help and About is available from Settings", async ({ tauriPage }) => {
+  await openSettings(tauriPage, "help");
+  await expect(tauriPage.getByTestId("about-oleafly-section")).toBeVisible();
+  await expect(tauriPage.getByText("Discussions", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByText("Issues", { exact: true })).toBeVisible();
+  await tauriPage.click('[aria-label="Close settings"]');
 });
 
 test("shortcuts reference filters as you search", async ({ tauriPage }) => {

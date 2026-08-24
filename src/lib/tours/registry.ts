@@ -62,7 +62,9 @@ export const tourRegistry = {
         title: "Find your starting point",
         content: "Browse categories, search by name, and narrow templates by compiler or offline availability.",
         waitForTarget: true,
-        placement: "top",
+        // The list nearly fills the template dialog, leaving no guaranteed
+        // outside edge for a tooltip on smaller desktop windows.
+        placement: "center",
       },
       {
         id: "home-template",
@@ -73,7 +75,7 @@ export const tourRegistry = {
         title: "Choose a template",
         content: "Select any real template to continue. Its files will become your new project.",
         waitForTarget: true,
-        placement: "top",
+        placement: "center",
       },
       {
         id: "home-name",

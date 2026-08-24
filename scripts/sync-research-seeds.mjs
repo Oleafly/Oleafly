@@ -1,9 +1,9 @@
-import { execFileSync } from "node:child_process";
 import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { zipSync } from "fflate";
+import ts from "typescript";
 
 const MAX_PROJECT_BYTES = 25 * 1024 * 1024;
 const FORCE = process.argv.includes("--force");
@@ -16,14 +16,39 @@ const catalogFile = join(repositoryRoot, "src", "developer", "research-seed-cata
 const encoder = new TextEncoder();
 
 function loadCatalog(source) {
-  const declaration = source.indexOf("export const RESEARCH_SEED_PROJECTS");
-  const equals = source.indexOf("=", declaration);
-  const end = source.lastIndexOf("];");
-  if (declaration < 0 || equals < 0 || end < equals) {
-    throw new Error("Could not read RESEARCH_SEED_PROJECTS from the TypeScript catalog");
+  const file = ts.createSourceFile(catalogFile, source, ts.ScriptTarget.ESNext, true);
+  const declaration = file.statements
+    .filter(ts.isVariableStatement)
+    .flatMap((statement) => [...statement.declarationList.declarations])
+    .find((entry) => ts.isIdentifier(entry.name) && entry.name.text === "RESEARCH_SEED_PROJECTS");
+  if (!declaration?.initializer) {
+    throw new Error("Could not find RESEARCH_SEED_PROJECTS in the TypeScript catalog");
   }
-  const literal = source.slice(equals + 1, end + 1);
-  return Function(`"use strict"; return (${literal});`)();
+
+  const readLiteral = (node) => {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
+    if (ts.isNumericLiteral(node)) return Number(node.text);
+    if (node.kind === ts.SyntaxKind.TrueKeyword) return true;
+    if (node.kind === ts.SyntaxKind.FalseKeyword) return false;
+    if (ts.isArrayLiteralExpression(node)) return node.elements.map(readLiteral);
+    if (ts.isObjectLiteralExpression(node)) {
+      return Object.fromEntries(node.properties.map((property) => {
+        if (!ts.isPropertyAssignment(property)) {
+          throw new Error(`Unsupported catalog property: ${property.getText(file)}`);
+        }
+        const key = ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)
+          ? property.name.text
+          : null;
+        if (!key) throw new Error(`Unsupported catalog key: ${property.name.getText(file)}`);
+        return [key, readLiteral(property.initializer)];
+      }));
+    }
+    throw new Error(`Unsupported catalog value: ${node.getText(file)}`);
+  };
+
+  const catalog = readLiteral(declaration.initializer);
+  if (!Array.isArray(catalog)) throw new Error("RESEARCH_SEED_PROJECTS must be an array");
+  return catalog;
 }
 
 function archiveName(project) {
@@ -38,32 +63,36 @@ function archiveName(project) {
 
 const treeCache = new Map();
 
-function repositoryTree(project) {
+async function repositoryTree(project) {
   const key = `${project.repository}@${project.revision}`;
   if (treeCache.has(key)) return treeCache.get(key);
-  let output;
-  try {
-    output = execFileSync(
-      "gh",
-      ["api", `repos/${project.repository}/git/trees/${project.revision}?recursive=1`],
-      { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
-    );
-  } catch (error) {
-    throw new Error(`Could not list ${key}. Install and authenticate GitHub CLI first. ${error.message}`);
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  const response = await fetch(
+    `https://api.github.com/repos/${project.repository}/git/trees/${project.revision}?recursive=1`,
+    {
+      headers: {
+        Accept: "application/vnd.github+json",
+        "User-Agent": "oleafly-research-seed-sync",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`GitHub returned ${response.status} while listing ${key}`);
   }
-  const body = JSON.parse(output);
+  const body = await response.json();
   if (body.truncated) throw new Error(`GitHub truncated the source tree for ${key}`);
   const tree = body.tree.filter((entry) => entry.type === "blob");
   treeCache.set(key, tree);
   return tree;
 }
 
-function selectedFiles(project) {
+async function selectedFiles(project) {
   const exact = new Set(project.include.filter((entry) => !entry.endsWith("/")));
   const prefixes = project.include.filter((entry) => entry.endsWith("/"));
   let files = [];
   if (prefixes.length > 0) {
-    files = repositoryTree(project).filter(
+    files = (await repositoryTree(project)).filter(
       (entry) => exact.has(entry.path) || prefixes.some((prefix) => entry.path.startsWith(prefix)),
     );
   } else {
@@ -156,7 +185,7 @@ async function buildArchive(project, index, total) {
     return { project, archive: output, cached: true };
   }
   process.stdout.write(`[${index}/${total}] downloading ${project.name}\n`);
-  const files = selectedFiles(project);
+  const files = await selectedFiles(project);
   const downloaded = await mapConcurrent(files, 8, async (entry) => ({
     path: entry.path,
     bytes: await downloadFile(project, entry.path),
