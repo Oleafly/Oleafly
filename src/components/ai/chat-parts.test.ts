@@ -1,5 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { friendlyHint } from "./chat-parts";
+import { formatToolOutput, friendlyHint } from "./chat-parts";
+
+describe("formatToolOutput", () => {
+  it("shows a text payload's content field as readable text", () => {
+    const out = formatToolOutput({
+      path: "bare_adv.tex",
+      truncated: false,
+      content: "% The publisher's ID mark\n\\IEEEpubid{0000}",
+    });
+    expect(out).toBe("% The publisher's ID mark\n\\IEEEpubid{0000}");
+  });
+
+  it("keeps plain strings and surfaces errors", () => {
+    expect(formatToolOutput("done")).toBe("done");
+    expect(formatToolOutput({ error: "file not found" })).toBe("Error: file not found");
+  });
+
+  it("pretty-prints structured payloads without a content field", () => {
+    const out = formatToolOutput({ files: [{ path: "a.tex" }] });
+    expect(out).toContain('"a.tex"');
+    expect(out).toContain("\n");
+  });
+});
 
 describe("friendlyHint", () => {
   it("explains a retired or restricted model", () => {

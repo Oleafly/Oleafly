@@ -87,6 +87,7 @@ import {
   InfoHint,
   MessageItem,
   formatError,
+  formatToolOutput,
 } from "@/components/ai/chat-parts";
 import type { EngineFeature } from "@/lib/tauri";
 
@@ -1016,9 +1017,7 @@ ${sandboxedCustom}`;
               ],
             })),
           onToolResult: ({ id, output }) => {
-            const outStr = (
-              typeof output === "string" ? output : JSON.stringify(output, null, 2)
-            ).slice(0, 500);
+            const outStr = formatToolOutput(output).slice(0, 500);
             updateRunLast((m) => {
               const calls = [...(m.toolCalls || [])];
               for (let i = calls.length - 1; i >= 0; i--) {

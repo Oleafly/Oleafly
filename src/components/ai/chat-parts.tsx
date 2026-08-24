@@ -164,6 +164,16 @@ export function ToolBadge({ tc }: { tc: ToolEntry }) {
   );
 }
 
+export function formatToolOutput(output: unknown): string {
+  if (typeof output === "string") return output;
+  if (output && typeof output === "object") {
+    const record = output as Record<string, unknown>;
+    if (typeof record.content === "string") return record.content;
+    if (typeof record.error === "string") return `Error: ${record.error}`;
+  }
+  return JSON.stringify(output, null, 2) ?? String(output);
+}
+
 export function friendlyHint(text: string, statusCode?: number): string | null {
   const t = text.toLowerCase();
   if (
@@ -246,7 +256,7 @@ export function ReasoningBlock({
 }) {
   const [userToggled, setUserToggled] = useState<boolean | null>(null);
   const open = userToggled ?? false;
-  const scrollRef = useRef<HTMLPreElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     void text;
@@ -273,12 +283,12 @@ export function ReasoningBlock({
         <ChevronRight className={cn("ml-auto size-3 transition-transform", open && "rotate-90")} />
       </button>
       {open && (
-        <pre
+        <div
           ref={scrollRef}
-          className="max-h-56 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words border-t px-2.5 py-1.5 font-sans text-[11px] leading-relaxed text-muted-foreground"
+          className="max-h-56 overflow-x-hidden overflow-y-auto break-words border-t px-2.5 py-1.5 text-[11px] leading-relaxed text-muted-foreground"
         >
-          {text}
-        </pre>
+          <Markdown className="chat-markdown">{text}</Markdown>
+        </div>
       )}
     </div>
   );
