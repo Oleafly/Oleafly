@@ -656,3 +656,24 @@ fn google_stream_body_carries_no_stream_flag() {
     assert!(body.get("stream").is_none());
     assert!(body.get("contents").is_some());
 }
+
+#[test]
+fn local_hosts_get_a_longer_default_idle_timeout_than_cloud_apis() {
+    let local = Resolved {
+        provider_id: "ollama".into(),
+        model_id: "llama3.2".into(),
+        credential: String::new(),
+        auth: None,
+        wire: Wire::OpenAiChat {
+            base_url: "http://localhost:11434/v1".into(),
+            reasoning_content: false,
+        },
+    };
+    let cloud = Resolved {
+        auth: Some("sk".into()),
+        ..local.clone()
+    };
+
+    assert_eq!(default_idle_timeout(&local), Duration::from_secs(360));
+    assert_eq!(default_idle_timeout(&cloud), Duration::from_secs(120));
+}
