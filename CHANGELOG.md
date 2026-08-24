@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.10] - 2026-08-24
+
 ### Added
 
 - First-run setup now lets people choose an accent color and light or dark
@@ -1496,7 +1498,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.9...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.10...HEAD
+[0.3.10]: https://github.com/Oleafly/Oleafly/compare/v0.3.9...v0.3.10
 [0.3.9]: https://github.com/Oleafly/Oleafly/compare/v0.3.8...v0.3.9
 [0.3.8]: https://github.com/Oleafly/Oleafly/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/Oleafly/Oleafly/compare/v0.3.6...v0.3.7
