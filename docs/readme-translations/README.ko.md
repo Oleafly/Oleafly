@@ -6,43 +6,30 @@
 
 [Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | **한국어** | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md)
 
-**직접 소유하는 AI 워크스페이스에서 연구를 작성하고, 컴파일하고, 출판하세요.**
+<h2>AI 시대에 맞춰 다시 설계한 완전한 연구 환경.</h2>
 
-LaTeX, Typst, Markdown으로 글을 쓰고, 소스 옆에서 바로 컴파일하고, 모든
-수정 이력을 Git에 남기세요. AI는 원하는 방식으로만 사용합니다.
+작성, 컴파일, 교정, 문헌 검색, 인용 관리, 그림 제작, PDF 검토, Git 변경
+추적을 한곳에서 처리하세요. 호스팅 AI, 사용자 지정 엔드포인트, 로컬 Ollama,
+또는 AI 없이 작업할 수 있습니다. Oleafly는 프로젝트를 컴퓨터의 일반 폴더에
+보관합니다.
 
-Oleafly는 macOS, Windows, Linux용 무료 100% 오픈소스 데스크톱 앱입니다.
-로컬 우선(local-first)으로 동작하고, 계정 없이 사용할 수 있으며, 프로젝트
-파일을 평범한 형식 그대로 내 컴퓨터에 보관합니다.
-
+[![열린 이슈](https://img.shields.io/github/issues/Oleafly/Oleafly?label=Issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues)
 [![Download](https://img.shields.io/github/v/release/Oleafly/Oleafly?label=Download&color=22c55e)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml)
+[![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases)
+[![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
+<br/>
 [![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 [![GitGem](https://gitgem.org/api/badge/github/Oleafly/Oleafly.svg)](https://gitgem.org/github/Oleafly/Oleafly)
-
 **[Oleafly 다운로드](https://github.com/Oleafly/Oleafly/releases/latest) ·
-[엔지니어링 문서 보기](../README.md) ·
+[제품 문서 보기](https://oleafly.com/docs/overview/) ·
 [소스에서 빌드하기](../development.md)**
 
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor-light.png" alt="LaTeX 편집기와 컴파일된 PDF가 나란히 열려 있는 Oleafly (라이트 테마)" width="92%" />
-  <br /><br />
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor.png" alt="LaTeX 편집기와 컴파일된 PDF가 나란히 열려 있는 Oleafly (다크 테마)" width="92%" />
-</div>
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/library-shelf.png" alt="프로젝트를 엔진, 종류, 최근 수정 라벨이 붙은 색색의 책으로 보여주는 Oleafly 라이브러리 (다크 테마)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/library-shelf-light.png" alt="프로젝트를 엔진, 종류, 최근 수정 라벨이 붙은 색색의 책으로 보여주는 Oleafly 라이브러리 (라이트 테마)" /></td>
-  </tr>
-</table>
-
+  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor-v0.3.10-r2.png" alt="LLaMA 연구 논문을 LaTeX로 편집하면서 소스 트리, 문서 개요, 컴파일된 PDF를 함께 보여 주는 Oleafly" width="100%" />
 </div>
 
 <!--
@@ -50,14 +37,6 @@ Recording placeholder: the stacked hero stands in until a 45–60 second
 workspace walkthrough is ready. Keep the same framing and replace the sources
 above with https://cdn.oleafly.com/videos/workspace-tour.webp.
 -->
-
-> [!NOTE]
-> Oleafly는 일상적인 문서 작업에 바로 쓸 수 있는 상태이지만, 프로젝트는
-> 아직 빠르게 변화하고 있습니다. 고급 패키지 호환성과 일부 플랫폼 연동은
-> 계속 안정화 중입니다. macOS 빌드는 서명 및 공증이 완료되어 있지만,
-> Windows 빌드는 아직 서명되지 않았습니다. 반드시 공식 릴리스 페이지에서만
-> 다운로드하고, 서명되지 않은 프리뷰 빌드를 설치하기 전에는 릴리스 노트를
-> 먼저 확인하시기 바랍니다.
 
 ## 연구에는 이미 신경 쓸 것이 충분히 많습니다
 
@@ -169,10 +148,6 @@ LaTeX를 이해하는 단어 수 세기는 마크업을 무시하고 독자가 �
   </tr>
 </table>
 
-</div>
-
-<div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/pdf-figures.png" alt="LaTeX 소스 옆에 플롯, 컬러맵 오차 곡면, 결과 표가 담긴 컴파일된 페이지" width="88%" />
 </div>
 
 축소하면 문서 전체가 한 화면에 들어오므로, 플로트, 그림, 표가 의도한
@@ -406,6 +381,27 @@ Oleafly는 프로젝트 도구를 Claude Desktop, Claude Code, Cursor를 비롯�
 API 키는 로컬에 저장됩니다. 문서 파일은 평범한 형식이므로 Oleafly 사용을
 그만두더라도 계속 쓸 수 있습니다.
 
+## 공개 예정
+
+앞으로도 Oleafly는 개방되고 로컬 우선이며, 전체 연구 워크플로에
+유용한 작업 공간을 목표로 합니다.
+
+- **앱 현지화.** 더 많은 언어로 Oleafly를 사용하고, 연구자에게 가장 편안한
+  인터페이스 언어를 선택할 수 있게 합니다.
+- **에이전트 스킬과 플러그인.** 반복 가능한 AI 워크플로를 추가해 같은 맥락을
+  반복 전송하는 일과 토큰 사용량을 줄입니다.
+- **자율 연구 에이전트.** 연구 질문과 출처 목록을 구조화된 첫 초안으로
+  바꿔 연구의 출발점을 만듭니다.
+- **실시간 협업과 댓글.** 연구팀을 위한 무제한 자체 호스팅 협업을 제공합니다.
+- **Oleafly CLI.** GUI가 필요 없는 연구 워크플로에 가벼운 설치형 명령줄 패키지를
+  제공합니다.
+- **Typst와 Markdown 지원 강화.** 두 형식 모두에 더 많은 편집, 미리 보기,
+  게시 기능을 제공합니다.
+- **연구 연동 확대.** Mendeley와 추가 참고문헌, 라이브러리, 연구 서비스를
+  연결합니다.
+- **자체 호스팅 클라우드 동기화.** 여러 기기에서 프로젝트를 동기화하고,
+  원할 때 GitHub 자동 동기화를 더 나은 방식으로 사용합니다.
+
 ## 설치
 
 최신 빌드는
@@ -427,19 +423,47 @@ Tectonic이 이후 빌드를 위해 패키지를 캐시하며, 오프라인 모�
 ```bash
 git clone https://github.com/Oleafly/Oleafly.git
 cd Oleafly
-./scripts/fetch-tectonic.sh all
-./scripts/fetch-typst.sh all
 pnpm install
+host_target="$(rustc -vV | sed -n 's/^host: //p')"
+./scripts/fetch-tectonic.sh "$host_target"
+./scripts/fetch-biber.sh "$host_target"
+./scripts/fetch-typst.sh "$host_target"
 pnpm tauri dev
 ```
 
 사전 요구 사항, 플랫폼별 설정, 프로덕션 빌드는
 [개발 가이드](../development.md)를 참고하시기 바랍니다.
 
-## 문서
+이 스크립트는 현재 플랫폼용으로 체크섬이 고정된 컴파일러 사이드카를
+`src-tauri/binaries`에 내려받습니다. `all` 인수는 지원하는 모든 플랫폼을
+준비해야 하는 CI와 릴리스 패키징에 사용합니다.
 
-이 저장소는 공개 엔지니어링·제품 레퍼런스를 코드와 가까운 곳에 둡니다.
-최종 사용자용 작업 가이드는 이 공개 인덱스와 별도로 관리됩니다.
+TexLab과 Tinymist가 제공하는 편집기 지능 기능은 로컬 실행에서 선택 사항입니다.
+`pnpm language-servers:fetch`로 이 언어 서버를 받을 수 있습니다. 무결성,
+라이선스, 배포 정책은
+[언어 서버 도구 체인](../language-server-toolchain.md)을 참고하세요.
+
+### 명령줄
+
+`oleaflyc`는 데스크톱 앱을 실행하지 않고 Oleafly 프로젝트를 관리합니다.
+현재는 이 저장소의 소스에서 빌드하며 독립 패키지로는 아직 배포하지 않습니다.
+
+```bash
+cargo run -p oleafly-cli --bin oleaflyc -- init
+cargo run -p oleafly-cli --bin oleaflyc -- doctor
+cargo run -p oleafly-cli --bin oleaflyc -- build
+cargo run -p oleafly-cli --bin oleaflyc -- watch
+cargo run -p oleafly-cli --bin oleaflyc -- project info --json
+```
+
+명령은 현재 디렉터리를 대상으로 실행됩니다. 다른 프로젝트를 지정하려면
+`-C <path>`를 사용하세요. 전체 명령 목록은 `oleaflyc --help`에서 확인할 수
+있습니다.
+
+## 개발자 문서
+
+사용자 가이드는 [Oleafly 제품 문서](https://oleafly.com/docs/overview/)에서
+확인할 수 있습니다. 아래 자료는 기여자, 통합 개발자, 릴리스 관리자를 위한 것입니다.
 
 | 레퍼런스 | 다루는 내용 |
 | --- | --- |
@@ -456,10 +480,12 @@ pnpm tauri dev
 
 ## 기여하기
 
-Oleafly는
-[Prajwal S Venkateshmurthy](https://github.com/prajwal-svm)와
-기여자들이 공개적으로 개발하고 있습니다. 버그 리포트, 수정, 템플릿, 문서,
-그리고 신중한 제품 피드백을 환영합니다.
+<table>
+  <tr>
+    <td width="38%" valign="top"><img src="../assets/oleafly-club.png" alt="Oleafly Club: 초안, 수정, 테스트, 성공적인 투고를 함께 기념하는 공개 연구 커뮤니티" width="100%" /></td>
+    <td width="62%" valign="top"><h3>연구자는 직접 살펴보고, 확장하고, 신뢰할 수 있는 도구를 누릴 자격이 있습니다.</h3><p>Oleafly는 <a href="https://github.com/prajwal-svm">Prajwal Murthy</a>와 기여자들이 공개적으로 개발하고 있습니다. 버그 리포트, 수정, 템플릿, 문서, 그리고 신중한 제품 피드백을 환영합니다.</p></td>
+  </tr>
+</table>
 
 1. [CONTRIBUTING.md](../../CONTRIBUTING.md)를 읽어 주세요.
 2. 큰 변경은 먼저 이슈를 열어 주세요. 작고 집중된 수정은 바로 풀
@@ -475,6 +501,25 @@ Oleafly는
 보안 문제는 [SECURITY.md](../../SECURITY.md)에 안내된 대로 비공개로 제보해
 주시기 바랍니다. 참여에는
 [행동 강령](../../CODE_OF_CONDUCT.md)이 적용됩니다.
+
+## 커뮤니티 및 지원
+
+- 질문과 아이디어는 [GitHub Discussions](https://github.com/Oleafly/Oleafly/discussions)에 공유해 주세요.
+- 버그와 기능 요청은 [GitHub Issues](https://github.com/Oleafly/Oleafly/issues)에 등록해 주세요.
+- 🔔 제품 및 릴리스 소식은 [X의 @OleaflyHQ](https://x.com/OleaflyHQ)를 팔로우해 주세요.
+
+⭐ Oleafly가 도움이 된다면 [저장소에 별을 눌러 주세요](https://github.com/Oleafly/Oleafly).
+작은 클릭 하나가 더 많은 연구자에게 프로젝트를 알리고 지속적인 개발을 돕습니다.
+
+## 스타 기록
+
+<a href="https://www.star-history.com/?repos=Oleafly%2FOleafly&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&theme=dark&legend=top-left&sealed_token=ZRIr-1jiqjn35WhaqiDqKsmeII-LmnrILQdxzg5v_RX8-PFtlYa4d5IY7U2-Mcn1_D2-0k4e440BGXMhRskNzn-mZUGI59rpIErWId2F600cSJDgZqwcQ3BxV6zC3m5peZz6s_P_Mla0ZW06zikSg5LHLCIALEzrFnLqag7R_rQ7haTYEGHvSdgx76__" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&legend=top-left&sealed_token=ZRIr-1jiqjn35WhaqiDqKsmeII-LmnrILQdxzg5v_RX8-PFtlYa4d5IY7U2-Mcn1_D2-0k4e440BGXMhRskNzn-mZUGI59rpIErWId2F600cSJDgZqwcQ3BxV6zC3m5peZz6s_P_Mla0ZW06zikSg5LHLCIALEzrFnLqag7R_rQ7haTYEGHvSdgx76__" />
+   <img alt="GitHub 스타 기록 차트" src="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&legend=top-left&sealed_token=ZRIr-1jiqjn35WhaqiDqKsmeII-LmnrILQdxzg5v_RX8-PFtlYa4d5IY7U2-Mcn1_D2-0k4e440BGXMhRskNzn-mZUGI59rpIErWId2F600cSJDgZqwcQ3BxV6zC3m5peZz6s_P_Mla0ZW06zikSg5LHLCIALEzrFnLqag7R_rQ7haTYEGHvSdgx76__" />
+ </picture>
+</a>
 
 ## 크레딧
 
