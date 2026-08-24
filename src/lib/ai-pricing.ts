@@ -20,10 +20,17 @@ const PRICES: Record<string, ModelPrice> = {
   // Groq (approx)
   "llama-3.3-70b-versatile": { inputPerMTok: 0.59, outputPerMTok: 0.79 },
   "llama-3.1-8b-instant": { inputPerMTok: 0.05, outputPerMTok: 0.08 },
+  // Google Gemini
+  "gemini-3.7-flash": { inputPerMTok: 0.75, outputPerMTok: 3.75 },
+  "gemini-3.1-pro-preview": { inputPerMTok: 2, outputPerMTok: 12 },
+  "gemini-3.5-flash-lite": { inputPerMTok: 0.1, outputPerMTok: 0.4 },
+  "gemini-2.5-pro": { inputPerMTok: 1.25, outputPerMTok: 10 },
+  "gemini-2.5-flash": { inputPerMTok: 0.3, outputPerMTok: 2.5 },
+  "gemini-2.5-flash-lite": { inputPerMTok: 0.1, outputPerMTok: 0.4 },
   // OpenRouter catalog ids
   "openai/gpt-4o-mini": { inputPerMTok: 0.15, outputPerMTok: 0.6 },
   "anthropic/claude-3.5-sonnet": { inputPerMTok: 3, outputPerMTok: 15 },
-  "google/gemini-flash-1.5": { inputPerMTok: 0.075, outputPerMTok: 0.3 },
+  "google/gemini-2.5-flash": { inputPerMTok: 0.3, outputPerMTok: 2.5 },
   "meta-llama/llama-3.3-70b-instruct": { inputPerMTok: 0.1, outputPerMTok: 0.3 },
   // DeepSeek
   "deepseek-chat": { inputPerMTok: 0.27, outputPerMTok: 1.1 },

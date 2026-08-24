@@ -47,7 +47,7 @@ pub const CATALOG: &[CatalogEntry] = &[
     CatalogEntry {
         id: "google",
         base_url: None,
-        default_model: "gemini-2.5-pro",
+        default_model: "gemini-3.7-flash",
         is_host: false,
     },
     CatalogEntry {

@@ -178,7 +178,7 @@ mod tests {
         let body = json!({
             "models": [
                 { "name": "models/gemini-2.5-pro", "displayName": "Gemini 2.5 Pro" },
-                { "name": "gemini-2.0-flash" }
+                { "name": "gemini-3.6-flash" }
             ]
         });
         assert_eq!(
@@ -189,8 +189,8 @@ mod tests {
                     name: "Gemini 2.5 Pro".into()
                 },
                 ModelInfo {
-                    id: "gemini-2.0-flash".into(),
-                    name: "gemini-2.0-flash".into()
+                    id: "gemini-3.6-flash".into(),
+                    name: "gemini-3.6-flash".into()
                 },
             ]
         );
