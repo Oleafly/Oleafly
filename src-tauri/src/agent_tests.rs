@@ -117,7 +117,7 @@ fn a_configured_key_resolves_end_to_end_from_app_config() {
     let cfg = config_with("groq", &[("groq", "gsk-1")]);
     let resolved = oleafly_agent::resolve(&provider_config(&cfg)).unwrap();
     assert_eq!(resolved.provider_id, "groq");
-    assert_eq!(resolved.model_id, "llama-3.3-70b-versatile");
+    assert_eq!(resolved.model_id, "openai/gpt-oss-120b");
     assert_eq!(resolved.credential, "gsk-1");
 }
 

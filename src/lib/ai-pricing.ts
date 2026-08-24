@@ -8,16 +8,23 @@ export interface ModelPrice {
 
 const PRICES: Record<string, ModelPrice> = {
   // OpenAI
+  "gpt-5.6-sol": { inputPerMTok: 5, outputPerMTok: 30 },
+  "gpt-5.6-terra": { inputPerMTok: 2, outputPerMTok: 12 },
+  "gpt-5.6-luna": { inputPerMTok: 0.2, outputPerMTok: 1.2 },
+  "gpt-5.3-codex": { inputPerMTok: 1.75, outputPerMTok: 14 },
   "gpt-4o": { inputPerMTok: 2.5, outputPerMTok: 10 },
   "gpt-4o-mini": { inputPerMTok: 0.15, outputPerMTok: 0.6 },
   "gpt-4.1": { inputPerMTok: 2, outputPerMTok: 8 },
   "gpt-4.1-mini": { inputPerMTok: 0.4, outputPerMTok: 1.6 },
   "o3-mini": { inputPerMTok: 1.1, outputPerMTok: 4.4 },
   // Anthropic
-  "claude-sonnet-4-20250514": { inputPerMTok: 3, outputPerMTok: 15 },
-  "claude-3-5-sonnet-20241022": { inputPerMTok: 3, outputPerMTok: 15 },
-  "claude-3-5-haiku-20241022": { inputPerMTok: 0.8, outputPerMTok: 4 },
+  "claude-fable-5": { inputPerMTok: 10, outputPerMTok: 50 },
+  "claude-opus-5": { inputPerMTok: 5, outputPerMTok: 25 },
+  "claude-sonnet-5": { inputPerMTok: 2, outputPerMTok: 10 },
+  "claude-haiku-4-5": { inputPerMTok: 1, outputPerMTok: 5 },
   // Groq (approx)
+  "openai/gpt-oss-120b": { inputPerMTok: 0.15, outputPerMTok: 0.6 },
+  "openai/gpt-oss-20b": { inputPerMTok: 0.075, outputPerMTok: 0.3 },
   "llama-3.3-70b-versatile": { inputPerMTok: 0.59, outputPerMTok: 0.79 },
   "llama-3.1-8b-instant": { inputPerMTok: 0.05, outputPerMTok: 0.08 },
   // Google Gemini
@@ -29,23 +36,35 @@ const PRICES: Record<string, ModelPrice> = {
   "gemini-2.5-flash-lite": { inputPerMTok: 0.1, outputPerMTok: 0.4 },
   // OpenRouter catalog ids
   "openai/gpt-4o-mini": { inputPerMTok: 0.15, outputPerMTok: 0.6 },
-  "anthropic/claude-3.5-sonnet": { inputPerMTok: 3, outputPerMTok: 15 },
+  "anthropic/claude-sonnet-5": { inputPerMTok: 2, outputPerMTok: 10 },
   "google/gemini-2.5-flash": { inputPerMTok: 0.3, outputPerMTok: 2.5 },
   "meta-llama/llama-3.3-70b-instruct": { inputPerMTok: 0.1, outputPerMTok: 0.3 },
-  // DeepSeek
-  "deepseek-chat": { inputPerMTok: 0.27, outputPerMTok: 1.1 },
-  "deepseek-reasoner": { inputPerMTok: 0.55, outputPerMTok: 2.19 },
+  // DeepSeek (peak-hour cache-miss rates; off-peak is half)
+  "deepseek-v4-flash": { inputPerMTok: 0.44, outputPerMTok: 1.32 },
+  "deepseek-v4-pro": { inputPerMTok: 1.32, outputPerMTok: 3.96 },
   // Mistral
-  "mistral-large-latest": { inputPerMTok: 2, outputPerMTok: 6 },
+  "mistral-large-latest": { inputPerMTok: 0.5, outputPerMTok: 1.5 },
+  "magistral-medium-latest": { inputPerMTok: 2, outputPerMTok: 5 },
+  "magistral-small-latest": { inputPerMTok: 0.5, outputPerMTok: 1.5 },
   "codestral-latest": { inputPerMTok: 0.3, outputPerMTok: 0.9 },
-  "mistral-small-latest": { inputPerMTok: 0.1, outputPerMTok: 0.3 },
-  // xAI
-  "grok-2": { inputPerMTok: 2, outputPerMTok: 10 },
-  "grok-beta": { inputPerMTok: 5, outputPerMTok: 15 },
+  "mistral-small-latest": { inputPerMTok: 0.15, outputPerMTok: 0.6 },
+  // xAI (under 200k prompt tokens)
+  "grok-4.6": { inputPerMTok: 2, outputPerMTok: 6 },
+  "grok-4.5": { inputPerMTok: 2, outputPerMTok: 6 },
+  "grok-4.3": { inputPerMTok: 1.25, outputPerMTok: 2.5 },
+  "grok-build-0.1": { inputPerMTok: 1, outputPerMTok: 2 },
+  // Perplexity (token rates; request fees not modeled)
+  sonar: { inputPerMTok: 1, outputPerMTok: 1 },
+  "sonar-pro": { inputPerMTok: 3, outputPerMTok: 15 },
+  "sonar-reasoning-pro": { inputPerMTok: 2, outputPerMTok: 8 },
   "llama3.2": { inputPerMTok: 0, outputPerMTok: 0, note: "local" },
+  "qwen3.6:27b": { inputPerMTok: 0, outputPerMTok: 0, note: "local" },
+  "qwen3-coder:30b": { inputPerMTok: 0, outputPerMTok: 0, note: "local" },
+  "gemma4:12b": { inputPerMTok: 0, outputPerMTok: 0, note: "local" },
   "qwen2.5": { inputPerMTok: 0, outputPerMTok: 0, note: "local" },
   mistral: { inputPerMTok: 0, outputPerMTok: 0, note: "local" },
   gemma2: { inputPerMTok: 0, outputPerMTok: 0, note: "local" },
+  "glm-5.3": { inputPerMTok: 0, outputPerMTok: 0, note: "plan" },
   "glm-5.2": { inputPerMTok: 0, outputPerMTok: 0, note: "plan" },
   "glm-4.6": { inputPerMTok: 0, outputPerMTok: 0, note: "plan" },
   "glm-4.5-air": { inputPerMTok: 0, outputPerMTok: 0, note: "plan" },
