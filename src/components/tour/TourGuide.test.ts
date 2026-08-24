@@ -154,8 +154,10 @@ describe("tour target hydration", () => {
   it("does not make AI eligible until configuration reaches an explicit ready state", () => {
     const element = { dataset: { tourReady: "false" } } as unknown as HTMLElement;
     expect(isTourTargetReady('[data-tour="ai-assistant"]', element)).toBe(false);
+    expect(isTourTargetReady('[data-tour="ai-assistant-header"]', element)).toBe(false);
     element.dataset.tourReady = "true";
     expect(isTourTargetReady('[data-tour="ai-assistant"]', element)).toBe(true);
+    expect(isTourTargetReady('[data-tour="ai-assistant-header"]', element)).toBe(true);
     expect(isTourTargetReady('[data-tour="home"]', element)).toBe(true);
     expect(isTourTargetReady('[data-tour="ai-assistant"]', null)).toBe(false);
   });

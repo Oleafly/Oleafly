@@ -56,6 +56,21 @@ async function dismissAll(page: Page) {
   );
 }
 
+async function expectTourTooltipInsideViewport(page: Page, stepId: string) {
+  await page.waitForFunction(
+    `(() => {
+      const tooltip = document.querySelector('[data-tour-tooltip=${JSON.stringify(stepId)}]');
+      if (!(tooltip instanceof HTMLElement)) return false;
+      const rect = tooltip.getBoundingClientRect();
+      return rect.top >= 0
+        && rect.left >= 0
+        && rect.bottom <= window.innerHeight
+        && rect.right <= window.innerWidth;
+    })()`,
+    20_000,
+  );
+}
+
 interface ProjectHandoffSnapshot {
   tourTitleVisible: boolean;
   toolbarVisible: boolean;
@@ -273,12 +288,43 @@ test("welcome is modal and Home creates a real project before Workspace starts",
   await tauriPage.getByText("Next", { exact: true }).click();
   await tauriPage.click('[data-tour="new-project"]');
   await expect(tauriPage.getByText("Find your starting point", { exact: true })).toBeVisible();
+  await expectTourTooltipInsideViewport(tauriPage, "home-gallery");
   await tauriPage.click('[data-testid="tour-back"]');
   await expect(tauriPage.getByText("Choose a template", { exact: true })).toHaveCount(0);
   await expect(tauriPage.getByText("Create a real project", { exact: true })).toBeVisible();
   await tauriPage.click('[data-tour="new-project"]');
   await expect(tauriPage.getByText("Find your starting point", { exact: true })).toBeVisible();
+  await expectTourTooltipInsideViewport(tauriPage, "home-gallery");
   await tauriPage.getByText("Next", { exact: true }).click();
+  await expectTourTooltipInsideViewport(tauriPage, "home-template");
+  await tauriPage.getByText("Skip", { exact: true }).click();
+  await expect(tauriPage.getByRole("alertdialog")).toContainText("Quit the tour?");
+  await tauriPage.getByRole("button", { name: /Cancel/ }).click();
+  await expectTourTooltipInsideViewport(tauriPage, "home-template");
+  const templateList = tauriPage.locator('[data-tour="project-template-list"]');
+  const templateListMetrics = await templateList.evaluate((element) => ({
+    clientHeight: element.clientHeight,
+    overflowY: getComputedStyle(element).overflowY,
+    scrollHeight: element.scrollHeight,
+  }));
+  expect(templateListMetrics.overflowY).toBe("auto");
+  expect(templateListMetrics.scrollHeight).toBeGreaterThan(templateListMetrics.clientHeight);
+  await templateList.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    element.dispatchEvent(
+      new WheelEvent("wheel", {
+        bubbles: true,
+        cancelable: true,
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.top + rect.height / 2,
+        deltaY: 500,
+      }),
+    );
+  });
+  await expect.poll(() => templateList.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await templateList.evaluate((element) => {
+    element.scrollTop = 0;
+  });
   await tauriPage.click('[data-testid="template-card-blank"]');
   await expect(tauriPage.getByText("Name your project", { exact: true })).toBeVisible();
 
@@ -302,6 +348,15 @@ test("welcome is modal and Home creates a real project before Workspace starts",
   await expect(tauriPage.getByText("Project toolbar", { exact: true })).toBeVisible({
     timeout: 30_000,
   });
+  for (const title of ["Workspace navigation", "Editor", "Try WYSIWYG mode", "Compile and recompile"]) {
+    await pressGlobal(tauriPage, "Enter", { meta: true });
+    await expect(tauriPage.locator("#react-joyride-portal h2")).toHaveText(title, {
+      timeout: 10_000,
+    });
+  }
+  await expect(
+    tauriPage.locator('[data-tour="project-compile"] [data-testid="compile-options-button"]'),
+  ).toBeVisible();
 });
 
 test("Settings tour remains in the viewport and tour confirmations are atomic", async ({
@@ -373,12 +428,12 @@ test("AI and Diagram tours select their eligible context without sending or comp
   });
   await tauriPage.waitForFunction(
     `(() => {
-      const target = document.querySelector('[data-tour="ai-assistant"]');
+      const target = document.querySelector('[data-tour="ai-assistant-header"]');
       const tooltip = document.querySelector('[data-tour-tooltip="ai-assistant"]');
       if (!(target instanceof HTMLElement) || !(tooltip instanceof HTMLElement)) return false;
       const targetRect = target.getBoundingClientRect();
       const tooltipRect = tooltip.getBoundingClientRect();
-      return tooltipRect.left >= targetRect.right - 2
+      return tooltipRect.top >= targetRect.bottom - 2
         && tooltipRect.top >= 0
         && tooltipRect.right <= window.innerWidth
         && tooltipRect.bottom <= window.innerHeight;
@@ -433,21 +488,24 @@ test("AI settings tour walks the tabs with keyboard navigation and Escape confir
 }) => {
   await loadTours(tauriPage, { "ai-settings": "pending" });
   await openSettings(tauriPage, "ai");
+  await tauriPage.evaluate(
+    `window.dispatchEvent(new CustomEvent("oleafly:start-tour", { detail: "ai-settings" }))`,
+  );
   const title = () => tauriPage.locator("#react-joyride-portal h2");
   await expect(title()).toHaveText("AI Assistant settings", { timeout: 30_000 });
 
-  await pressGlobal(tauriPage, "ArrowRight", { meta: true });
+  await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(title()).toHaveText("Connect providers", { timeout: 10_000 });
   await pressGlobal(tauriPage, "ArrowLeft", { meta: true });
   await expect(title()).toHaveText("AI Assistant settings", { timeout: 10_000 });
-  await pressGlobal(tauriPage, "ArrowRight", { meta: true });
+  await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(title()).toHaveText("Connect providers", { timeout: 10_000 });
-  await pressGlobal(tauriPage, "ArrowRight", { meta: true });
+  await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(title()).toHaveText("Bring your own endpoint", { timeout: 10_000 });
 
-  await pressGlobal(tauriPage, "ArrowRight", { meta: true });
+  await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(title()).toHaveText("Instructions", { timeout: 10_000 });
-  await pressGlobal(tauriPage, "ArrowRight", { meta: true });
+  await pressGlobal(tauriPage, "Enter", { meta: true });
   await expect(title()).toHaveText("Instructions");
 
   // A real click (mouse or trusted Enter) fires a native click event; the

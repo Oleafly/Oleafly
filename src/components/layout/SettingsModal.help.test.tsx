@@ -52,11 +52,17 @@ describe("Settings Help & About support callout", () => {
 
     const aboutHeading = await screen.findByRole("heading", { name: "Oleafly" });
     const aboutSection = screen.getByTestId("about-oleafly-section");
-    expect(aboutSection).toHaveClass("rounded-md", "border", "p-4");
+    expect(aboutSection).toHaveClass(
+      "grid",
+      "grid-cols-[minmax(0,1fr)_auto]",
+      "rounded-md",
+      "border",
+      "p-4",
+    );
     expect(aboutSection).toContainElement(aboutHeading);
     expect(screen.getByText("v0.3.6")).toBeInTheDocument();
     expect(
-      screen.getByText("An open-source modern workspace for all your research work."),
+      screen.getByText(/Write, compile, proofread, manage citations/),
     ).toBeInTheDocument();
     expect(await screen.findByLabelText("128 GitHub stars")).toBeInTheDocument();
     expect(screen.getByLabelText("14 GitHub forks")).toBeInTheDocument();
@@ -70,10 +76,21 @@ describe("Settings Help & About support callout", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "starring the project on GitHub" }));
+    expect(screen.getByRole("button", { name: /Discussions/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Issues/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /@OleaflyHQ/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "star the project on GitHub" }));
 
     await waitFor(() => {
       expect(mocks.open).toHaveBeenCalledWith("https://github.com/Oleafly/Oleafly");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Discussions/ }));
+    await waitFor(() => {
+      expect(mocks.open).toHaveBeenCalledWith(
+        "https://github.com/Oleafly/Oleafly/discussions",
+      );
     });
   });
 

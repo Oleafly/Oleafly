@@ -21,7 +21,7 @@ export function OleaflyAssistantMascot({ className }: { className?: string }) {
         alt=""
         aria-hidden="true"
         draggable={false}
-        className="oleafly-assistant-mascot-blink absolute inset-0 size-full object-contain drop-shadow-[0_7px_10px_rgb(0_0_0/0.18)]"
+        className="oleafly-assistant-mascot-blink pointer-events-none absolute inset-0 size-full object-contain"
       />
     </span>
   );

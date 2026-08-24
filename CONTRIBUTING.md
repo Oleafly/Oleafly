@@ -37,6 +37,10 @@ bash scripts/fetch-typst.sh aarch64-apple-darwin
 pnpm tauri dev
 ```
 
+Interactive development uses `~/.oleafly-dev` by default, so reset and seed
+tools cannot touch the library used by an installed Oleafly app. Set
+`OLEAFLY_DATA_DIR` explicitly when you need a different isolated test library.
+
 > The Tectonic and Typst binaries are **git-ignored** on
 > purpose - never commit them. The fetch script drops them in
 > `src-tauri/binaries/`, which is where `bundle.externalBin` expects them.

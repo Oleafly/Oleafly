@@ -151,6 +151,37 @@ describe("Settings Data Storage recycle bin", () => {
     });
   });
 
+  it("requires confirmation before clearing every recycled project", async () => {
+    const secondProject = {
+      ...recycledProject,
+      id: "124-0-notes",
+      project_id: "notes",
+      name: "Research notes",
+    };
+    mocks.listRecycledProjects.mockResolvedValue([recycledProject, secondProject]);
+
+    render(<SettingsModal />);
+    await screen.findByText("Research paper");
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    expect(mocks.permanentlyDeleteRecycledProject).not.toHaveBeenCalled();
+    expect(screen.getByRole("alertdialog")).toHaveTextContent(
+      "This action cannot be undone.",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Clear Recycle Bin" }));
+
+    await waitFor(() => {
+      expect(mocks.permanentlyDeleteRecycledProject).toHaveBeenNthCalledWith(
+        1,
+        "123-0-paper",
+      );
+      expect(mocks.permanentlyDeleteRecycledProject).toHaveBeenNthCalledWith(
+        2,
+        "124-0-notes",
+      );
+    });
+  });
+
   it("hides GitHub setup guidance after GitHub is connected", async () => {
     useGithubStore.setState({
       status: "connected",

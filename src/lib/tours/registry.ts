@@ -24,6 +24,8 @@ export interface TourDefinition {
   version: number;
   contexts: readonly TourContext[];
   priority: number;
+  /** Whether the coordinator may start this tour just by entering its context. */
+  autoStart?: boolean;
   steps: readonly TourStepDefinition[];
 }
 
@@ -31,7 +33,7 @@ export const tourRegistry = {
   home: {
     id: "home",
     label: "Getting started",
-    version: 4,
+    version: 5,
     contexts: ["home"],
     priority: 10,
     steps: [
@@ -55,29 +57,23 @@ export const tourRegistry = {
       },
       {
         id: "home-gallery",
-        target: '[data-tour="project-template-gallery"]',
+        target: '[data-tour="project-template-list"]',
         kind: "informational",
         title: "Find your starting point",
         content: "Browse categories, search by name, and narrow templates by compiler or offline availability.",
         waitForTarget: true,
-        // The target is the whole near-fullscreen dialog, so a fixed side
-        // clips on smaller windows; "auto" picks whichever edge has room
-        // and always renders outside the dialog instead of on top of it.
-        placement: "auto",
+        placement: "top",
       },
       {
         id: "home-template",
-        target: '[data-tour="project-template-gallery"]',
+        target: '[data-tour="project-template-list"]',
         interactionTarget: '[data-tour="project-template-card"]',
-        interactionArea: '[data-tour="project-template-gallery"]',
+        interactionArea: '[data-tour="project-template-list"]',
         kind: "required-click",
         title: "Choose a template",
         content: "Select any real template to continue. Its files will become your new project.",
         waitForTarget: true,
-        // Same large target as home-gallery: "center" rendered the tooltip
-        // directly over the template grid, blocking clicks on the cards
-        // underneath it. "auto" keeps it outside the dialog's bounds.
-        placement: "auto",
+        placement: "top",
       },
       {
         id: "home-name",
@@ -183,8 +179,8 @@ export const tourRegistry = {
         id: "workspace-zoom",
         target: '[data-tour="project-preview-zoom"]',
         kind: "informational",
-        title: "Preview controls",
-        content: "Adjust zoom, search the document, and export the PDF from the preview toolbar.",
+        title: "Your complete PDF toolkit",
+        content: "Open the outline, search text, jump between pages, choose single or two-page layouts, zoom or fit the page, invert colors, use the accessible reader view, rotate, download, save to the project, go fullscreen, or open the preview in its own window.",
         waitForTarget: true,
         placement: "bottom",
       },
@@ -331,16 +327,17 @@ export const tourRegistry = {
   "ai-settings": {
     id: "ai-settings",
     label: "AI settings",
-    version: 1,
+    version: 2,
     contexts: ["settings"],
     priority: 35,
+    autoStart: false,
     steps: [
       {
         id: "ai-settings-tabs",
         target: '[data-tour="ai-settings-tabs"]',
         kind: "informational",
         title: "AI Assistant settings",
-        content: "Providers and keys, Instructions, and Personas. Everything the assistant does starts here.",
+        content: "Providers and keys, Instructions, Personas, and the upcoming Skills library. Everything the assistant does starts here.",
         waitForTarget: true,
       },
       {
@@ -406,18 +403,19 @@ export const tourRegistry = {
   ai: {
     id: "ai",
     label: "AI Assistant",
-    version: 4,
+    version: 5,
     contexts: ["ai"],
     priority: 40,
     steps: [
       {
         id: "ai-assistant",
-        target: '[data-tour="ai-assistant"]',
+        target: '[data-tour="ai-assistant-header"]',
+        spotlightTarget: '[data-tour="ai-assistant"]',
         kind: "informational",
         title: "AI Assistant",
         content: "Work with a project-aware assistant without sending anything during this tour.",
         waitForTarget: true,
-        placement: "right",
+        placement: "bottom",
       },
       {
         id: "ai-connect-provider",
@@ -496,18 +494,19 @@ export const tourRegistry = {
   diagram: {
     id: "diagram",
     label: "Diagram Composer",
-    version: 3,
+    version: 4,
     contexts: ["diagram"],
     priority: 50,
     steps: [
       {
         id: "diagram-composer",
-        target: '[data-tour="diagram-composer"]',
+        target: '[data-tour="diagram-intro-anchor"]',
+        spotlightTarget: '[data-tour="diagram-canvas"]',
         kind: "informational",
         title: "Diagram Composer",
         content: "Build diagrams visually or from TikZ code. The tour does not modify or save your work.",
         waitForTarget: true,
-        placement: "center",
+        placement: "bottom",
       },
       {
         id: "diagram-import",
@@ -534,15 +533,6 @@ export const tourRegistry = {
         waitForTarget: true,
       },
       {
-        id: "diagram-canvas",
-        target: '[data-tour="diagram-canvas"]',
-        kind: "informational",
-        title: "Canvas interactions",
-        content: "Move shapes, edit labels, pan with Space and drag, and use the canvas controls to navigate.",
-        waitForTarget: true,
-        placement: "center",
-      },
-      {
         id: "diagram-handles",
         target: '[data-tour="diagram-handles"]',
         kind: "informational",
@@ -560,13 +550,12 @@ export const tourRegistry = {
       },
       {
         id: "diagram-preview",
-        target: '[data-tour="diagram-preview-affordance"]',
-        spotlightTarget: '[data-tour="diagram-preview-panel"]',
+        target: '[data-tour="diagram-preview-panel"]',
         kind: "informational",
         title: "Compiled preview",
         content: "Compile opens a preview beside the editor with scale and background controls.",
         waitForTarget: true,
-        placement: "center",
+        placement: "left",
       },
       {
         id: "diagram-compile",

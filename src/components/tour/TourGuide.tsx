@@ -9,7 +9,7 @@ import {
   type Step,
   type TooltipRenderProps,
 } from "react-joyride";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Moon, Sun } from "lucide-react";
 import { modalCoordinator } from "@oleafly/templates/modal-coordinator";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import {
   type TourStepDefinition,
 } from "@/lib/tours/registry";
 import { cn, modKey, shortcut } from "@/lib/utils";
+import { useTheme } from "@/lib/theme";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { ACCENTS, useSettingsStore } from "@/store/settings";
@@ -36,7 +37,7 @@ function omitTitle<T extends { title: string }>({ title: _title, ...rest }: T) {
   return rest;
 }
 
-let requestQuitConfirm: (() => void) | null = null;
+const REQUEST_TOUR_QUIT_EVENT = "oleafly:request-tour-quit";
 
 const KBD_CHIP = "h-4 min-w-4 px-1 text-[10px]";
 
@@ -56,7 +57,7 @@ function ChordHint({ variant, back }: { variant?: "primary"; back?: boolean }) {
   return (
     <span className="inline-flex items-center gap-1">
       <Kbd className={chipClass}>{modKey}</Kbd>
-      <Kbd className={chipClass}>{back ? "←" : "→"}</Kbd>
+      <Kbd className={chipClass}>{back ? "←" : "↵"}</Kbd>
     </span>
   );
 }
@@ -120,37 +121,11 @@ function TourTooltip(props: TooltipRenderProps) {
     definition.kind !== "required-input" ||
     Boolean(document.querySelector<HTMLInputElement>(`${definition.target}`)?.value.trim());
   const isWelcome = definition.id === "home-overview";
-  const tooltipRef = useRef<HTMLDivElement | null>(null);
-  // The gallery step's decorative down-arrow only makes sense when the floater
-  // actually placed the tooltip above its target ("auto" placement can put it
-  // beside the near-fullscreen dialog on short windows, where a down-arrow
-  // would point at nothing). Geometry is the only reliable signal.
-  const [arrowFits, setArrowFits] = useState(false);
-  useEffect(() => {
-    if (definition.id !== "home-gallery") return;
-    const measure = () => {
-      const tooltip = tooltipRef.current;
-      const target = document.querySelector(definition.target);
-      if (!tooltip || !target) return setArrowFits(false);
-      const tipRect = tooltip.getBoundingClientRect();
-      const targetRect = target.getBoundingClientRect();
-      setArrowFits(tipRect.bottom <= targetRect.top + 24);
-    };
-    measure();
-    // The floater positions asynchronously and re-positions on resize.
-    const interval = window.setInterval(measure, 200);
-    window.addEventListener("resize", measure);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("resize", measure);
-    };
-  }, [definition.id, definition.target]);
 
   return (
     <div
       {...tooltipProps}
       ref={(node) => {
-        tooltipRef.current = node;
         // The runtime floater props carry a ref the public typings omit.
         const forwarded = (tooltipProps as { ref?: React.Ref<HTMLDivElement> }).ref;
         if (typeof forwarded === "function") forwarded(node);
@@ -164,78 +139,80 @@ function TourTooltip(props: TooltipRenderProps) {
       {isWelcome ? (
         <svg
           aria-hidden
-          className="pointer-events-none absolute top-[calc(100%+10px)] left-1/2 h-[clamp(7rem,30vh,22rem)] w-24 -translate-x-1/2 overflow-visible text-primary"
-          viewBox="0 0 96 320"
+          className="pointer-events-none absolute left-[calc(100%-4px)] top-[58%] h-40 w-28 overflow-visible text-primary"
+          viewBox="0 0 120 180"
           preserveAspectRatio="none"
         >
           <title>Hand-drawn arrow pointing to the welcome paragraph</title>
+          <defs>
+            <marker
+              id="tour-welcome-arrowhead"
+              viewBox="0 0 24 24"
+              refX="21"
+              refY="12"
+              markerWidth="24"
+              markerHeight="24"
+              markerUnits="userSpaceOnUse"
+              orient="auto"
+            >
+              <path
+                d="M3 3 L21 12 L3 21"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </marker>
+          </defs>
           <path
-            d="M52 4 C80 62, 19 98, 55 154 C81 196, 28 232, 49 296"
+            d="M4 4 Q112 70, 28 156"
             fill="none"
             stroke="currentColor"
             strokeWidth="4"
             strokeLinecap="round"
             strokeLinejoin="round"
-          />
-          <path
-            d="M31 275 L49 296 L63 269 M34 272 L49 293"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      ) : null}
-      {definition.id === "home-gallery" && arrowFits ? (
-        <svg
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] h-24 w-12 -translate-x-1/2 overflow-visible text-primary"
-          viewBox="0 0 48 96"
-          preserveAspectRatio="none"
-        >
-          <title>Hand-drawn arrow pointing to the template gallery</title>
-          <path
-            d="M24 4 C26 28, 22 58, 24 86"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M12 72 L24 88 L36 70"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            markerEnd="url(#tour-welcome-arrowhead)"
           />
         </svg>
       ) : null}
-      {definition.id === "diagram-composer" || definition.id === "diagram-canvas" ? (
+      {definition.id === "diagram-composer" ? (
         <svg
           aria-hidden
-          className="pointer-events-none absolute right-[calc(100%-8px)] top-1/2 h-40 w-48 overflow-visible text-primary"
-          viewBox="0 0 192 160"
+          className="pointer-events-none absolute right-6 top-[calc(100%-2px)] h-24 w-20 overflow-visible text-primary"
+          viewBox="0 0 80 96"
           preserveAspectRatio="none"
         >
-          <title>Hand-drawn arrow pointing to the diagram canvas</title>
+          <title>Curved arrow pointing to the diagram canvas</title>
+          <defs>
+            <marker
+              id="tour-diagram-arrowhead"
+              viewBox="0 0 16 16"
+              refX="14"
+              refY="8"
+              markerWidth="16"
+              markerHeight="16"
+              markerUnits="userSpaceOnUse"
+              orient="auto"
+            >
+              <path
+                d="M2 2 L14 8 L2 14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </marker>
+          </defs>
           <path
-            d="M188 10 C151 18, 169 65, 119 76 C78 86, 73 124, 25 139"
+            d="M16 4 Q18 48 66 80"
             fill="none"
             stroke="currentColor"
-            strokeWidth="4"
+            strokeWidth="3"
             strokeLinecap="round"
             strokeLinejoin="round"
-          />
-          <path
-            d="M46 106 L23 140 L61 151"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            markerEnd="url(#tour-diagram-arrowhead)"
           />
         </svg>
       ) : null}
@@ -257,7 +234,7 @@ function TourTooltip(props: TooltipRenderProps) {
               {...omitTitle(skipProps)}
               onClick={(event) => {
                 event.preventDefault();
-                requestQuitConfirm?.();
+                window.dispatchEvent(new Event(REQUEST_TOUR_QUIT_EVENT));
               }}
               variant="ghost"
               size="sm"
@@ -305,7 +282,10 @@ export function tourArrowSide(placement?: string) {
 
 export function isTourTargetReady(target: string, element: HTMLElement | null) {
   if (!element) return false;
-  if (target === '[data-tour="ai-assistant"]') {
+  if (
+    target === '[data-tour="ai-assistant"]' ||
+    target === '[data-tour="ai-assistant-header"]'
+  ) {
     return element.dataset.tourReady === "true";
   }
   return true;
@@ -494,6 +474,7 @@ function Welcome({ onStart }: { onStart: () => void }) {
   onStartRef.current = onStart;
   const accentColor = useSettingsStore((s) => s.accentColor);
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
+  const { theme, setTheme } = useTheme();
   const sparkles = useMemo(
     () =>
       Array.from({ length: 10 }, (_, i) => ({
@@ -516,7 +497,7 @@ function Welcome({ onStart }: { onStart: () => void }) {
     );
     const blockEscape = (event: KeyboardEvent) => {
       if (!modalCoordinator.isTop(id)) return;
-      if ((event.metaKey || event.ctrlKey) && event.key === "ArrowRight") {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
         event.preventDefault();
         event.stopPropagation();
         onStartRef.current();
@@ -568,7 +549,7 @@ function Welcome({ onStart }: { onStart: () => void }) {
         aria-modal="true"
         aria-labelledby="tour-welcome-title"
         data-testid="tour-welcome"
-        className="relative w-full max-w-md overflow-hidden rounded-xl border bg-popover p-7 text-center text-popover-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-300 motion-reduce:animate-none"
+        className="relative max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-y-auto rounded-xl border bg-popover p-7 text-center text-popover-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-300 motion-reduce:animate-none"
       >
         <div
           aria-hidden
@@ -603,12 +584,15 @@ function Welcome({ onStart }: { onStart: () => void }) {
         <h1 id="tour-welcome-title" className="mt-4 text-xl font-semibold">
           Welcome to Oleafly
         </h1>
-        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-          A local-first studio for LaTeX, Typst, and Markdown. Your projects live on your disk,
-          and Oleafly walks you from a blank page to a polished PDF.
+        <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">
+          Take a paper from first draft to final PDF in one open-source workspace. Write,
+          compile, proofread, manage citations, build figures, review every change in Git,
+          and use the AI models you choose. Your projects stay on your machine.
         </p>
-        <div className="mt-6">
-          <p className="text-xs font-medium text-muted-foreground">Pick your accent color</p>
+        <div className="mt-5">
+          <p className="text-sm font-semibold text-muted-foreground">
+            Choose your signature color
+          </p>
           <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2">
             {ACCENTS.map((a) => {
               const active = accentColor === a.color;
@@ -633,7 +617,33 @@ function Welcome({ onStart }: { onStart: () => void }) {
             })}
           </div>
         </div>
-        <Button className="mt-6" onClick={onStart}>
+        <div className="mt-5">
+          <p className="text-sm font-semibold text-muted-foreground">Set the mood</p>
+          <div className="mx-auto mt-2.5 grid max-w-[14rem] grid-cols-2 gap-1 rounded-xl bg-muted/35 p-1">
+            {([
+              { value: "light", label: "Light", icon: Sun },
+              { value: "dark", label: "Dark", icon: Moon },
+            ] as const).map(({ value, label, icon: Icon }) => (
+              <button
+                type="button"
+                key={value}
+                aria-label={`Use ${label.toLowerCase()} theme`}
+                aria-pressed={theme === value}
+                onClick={() => setTheme(value)}
+                className={cn(
+                  "flex h-9 items-center justify-center gap-2 rounded-lg text-xs font-medium transition-colors",
+                  theme === value
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Icon className="size-3.5" aria-hidden />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Button className="mt-5" onClick={onStart}>
           Show me around
           <ChordHint variant="primary" />
         </Button>
@@ -993,10 +1003,9 @@ export function TourGuide() {
   useEffect(() => {
     if (!activeTourId) return;
     setQuitConfirmOpen(false);
-    requestQuitConfirm = () => setQuitConfirmOpen(true);
-    return () => {
-      requestQuitConfirm = null;
-    };
+    const requestQuitConfirm = () => setQuitConfirmOpen(true);
+    window.addEventListener(REQUEST_TOUR_QUIT_EVENT, requestQuitConfirm);
+    return () => window.removeEventListener(REQUEST_TOUR_QUIT_EVENT, requestQuitConfirm);
   }, [activeTourId]);
 
   useEffect(() => {
@@ -1006,6 +1015,40 @@ export function TourGuide() {
       delete document.body.dataset.tourActive;
     };
   }, [activeTourId]);
+
+  useEffect(() => {
+    if (!activeTourId || !activeStep) return;
+    if (!("interactionArea" in activeStep) || !activeStep.interactionArea) return;
+    const interactionArea = activeStep.interactionArea;
+
+    const redirectWheel = (event: WheelEvent) => {
+      const area = document.querySelector<HTMLElement>(interactionArea);
+      if (!area || area.scrollHeight <= area.clientHeight) return;
+      const startedInsideArea =
+        event.target instanceof Element && event.target.closest(interactionArea) !== null;
+      const rect = area.getBoundingClientRect();
+      const pointerInsideArea =
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom;
+      if (!startedInsideArea && !pointerInsideArea) {
+        return;
+      }
+      if (
+        event.deltaY === 0 &&
+        event.deltaX === 0
+      ) {
+        return;
+      }
+      area.scrollBy({ left: event.deltaX, top: event.deltaY });
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+
+    window.addEventListener("wheel", redirectWheel, { capture: true, passive: false });
+    return () => window.removeEventListener("wheel", redirectWheel, { capture: true });
+  }, [activeStep, activeTourId]);
 
   useEffect(() => {
     if (!activeTourId || !activeStep) return;
@@ -1022,7 +1065,7 @@ export function TourGuide() {
       }
       if (
         chord &&
-        event.key === "ArrowRight" &&
+        event.key === "Enter" &&
         tourStep.kind !== "required-click" &&
         tourStep.kind !== "required-input"
       ) {

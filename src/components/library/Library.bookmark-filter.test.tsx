@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/components/library/HomeDock", () => ({
@@ -17,7 +18,11 @@ vi.mock("@/components/pdf/PdfViewer", () => ({
   ),
 }));
 vi.mock("@/components/library/ProjectImportMenu", () => ({
-  ProjectImportMenu: () => null,
+  ProjectImportMenu: ({
+    trigger,
+  }: {
+    trigger: (busy: boolean) => ReactNode;
+  }) => trigger(false),
 }));
 vi.mock("@/components/library/Book", () => ({
   Book: () => <div>Project card</div>,
@@ -77,6 +82,27 @@ beforeEach(() => {
 });
 
 describe("Library bookmark filters", () => {
+  it("shows the current product scope and only one import action when empty", () => {
+    useFilesStore.setState({ projects: [], projectsLoaded: true });
+
+    render(<Library />);
+
+    expect(screen.getByRole("img", { name: "Oleafly app icon" })).toHaveAttribute(
+      "src",
+      "/oleafly-tile-gradient.png",
+    );
+    expect(
+      screen.getByText(/Write, compile, and proofread LaTeX, Typst, and Markdown/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /^Oleafly$/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("import-project-button")).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: "Import an existing project" }),
+    ).toHaveLength(1);
+  });
+
   it("filters projects from the library header search", () => {
     render(<Library />);
 

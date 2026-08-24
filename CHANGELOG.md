@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- First-run setup now lets people choose an accent color and light or dark
+  appearance before starting the product tour. Fresh profiles start in dark
+  mode unless a preference has already been saved.
+- Help & About now brings update checks, documentation, GitHub Discussions,
+  issue reporting, social updates, and the project star link together in one
+  place.
+- The Recycle Bin can be cleared in one confirmed action.
+- AI settings includes a Skills tab that previews the upcoming feature.
+
+### Changed
+
+- The empty library uses the current Oleafly icon and product description, with
+  clear actions to create a new project or import an existing one. Redundant
+  library header controls stay hidden until a project exists.
+- Product tours have clearer copy and more reliable placement in small windows.
+  Template browsing remains scrollable during onboarding, project and AI tours
+  stay separate, and Command or Control plus Enter advances the current step.
+- PDF preview guidance now covers the screen reader, search, zoom, dark mode,
+  source sync, page controls, and export tools.
+- The Diagram Composer tour focuses the canvas and compiled preview, removes a
+  repeated interaction step, and uses a clearer file-import icon.
+
+### Fixed
+
+- Tour controls no longer clip outside the window in assistant-only layouts or
+  smaller template and settings views.
+- Required template steps can be skipped, and tour spotlights now cover the
+  complete compile control and compiled diagram preview.
+- Mascot blinking changes only the eyes, so the image no longer jumps or
+  flickers. The mascot also blinks in Help & About.
+- The About summary no longer overlaps the app icon in narrow settings windows.
+
 ## [0.3.9] - 2026-08-23
 
 ### Added

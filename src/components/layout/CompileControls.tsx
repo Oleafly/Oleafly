@@ -122,11 +122,10 @@ export function CompileControls() {
   return (
   <>
   <TexRootIndicator />
-  <ButtonGroup>
+  <ButtonGroup data-tour="project-compile">
     <Tooltip label={`${compileLabel} ${engine.label} (${shortcut("⌘↵")})`}>
       <Button
         data-testid="compile-button"
-        data-tour="project-compile"
         {...(E2E_HOOKS
           ? {
               "data-e2e-compile-status": status,

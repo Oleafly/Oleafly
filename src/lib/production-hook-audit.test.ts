@@ -14,12 +14,14 @@ describe("production DEV-hook audit", () => {
   it("detects explicit and generic test-hook tokens", () => {
     expect(
       findProductionDevHookTokens(
-        "window.__agentHandoff = fn; target.__e2ePdfText = fn; data-e2e-compile-status",
+        "window.__agentHandoff = fn; target.__e2ePdfText = fn; data-e2e-compile-status; oleafly-developer-settings-v1; oleafly-real-research-seed-v1",
       ),
     ).toEqual([
       "__agentHandoff",
       "__e2ePdfText",
       "data-e2e-compile-status",
+      "oleafly-developer-settings-v1",
+      "oleafly-real-research-seed-v1",
     ]);
   });
 

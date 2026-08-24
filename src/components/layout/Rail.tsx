@@ -1,30 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
-  BookOpen,
-  CircleHelp,
-  GraduationCap,
-  Mail,
   Moon,
   PanelLeft,
   PanelLeftClose,
   Settings as SettingsIcon,
   Sun,
 } from "lucide-react";
-import { open } from "@tauri-apps/plugin-shell";
 import { railSections, type AppContext, type RailTabContribution } from "@oleafly/registry";
 import { useSettingsStore, type RailTab } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { useTheme } from "@/lib/theme";
 import { Tooltip } from "@/components/ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { AboutModal } from "@/components/layout/AboutModal";
 
 const railBtn = (active: boolean) =>
   cn(
@@ -80,8 +68,6 @@ export function Rail() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const mcpEnabled = useMcpActivityStore((s) => s.serverRunning);
   const { theme, toggleTheme } = useTheme();
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [aboutOpen, setAboutOpen] = useState(false);
 
   // MCP activity tab disappears when the server stops; leave the rail cleanly.
   useEffect(() => {
@@ -136,26 +122,6 @@ export function Rail() {
             )}
           </button>
         </Tooltip>
-        <Tooltip label="Help" side="right">
-          <DropdownMenu open={helpOpen} onOpenChange={setHelpOpen}>
-            <DropdownMenuTrigger asChild>
-              <button type="button" aria-label="Help" className={railBtn(false)}>
-                <CircleHelp className="size-5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="right" align="end" className="w-44">
-              <DropdownMenuItem onSelect={() => void open("https://oleafly.com/docs/")}>
-                <BookOpen className="size-4 text-muted-foreground" /> Documentation
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void open("https://oleafly.com/learn/")}>
-                <GraduationCap className="size-4 text-muted-foreground" /> Learn
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setAboutOpen(true)}>
-                <Mail className="size-4 text-muted-foreground" /> Contact us
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </Tooltip>
         <Tooltip label={theme === "dark" ? "Light theme" : "Dark theme"} side="right">
           <button type="button"
             aria-label="Toggle theme"
@@ -175,7 +141,6 @@ export function Rail() {
           </button>
         </Tooltip>
       </div>
-      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </nav>
   );
 }

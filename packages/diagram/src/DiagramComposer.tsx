@@ -8,6 +8,7 @@ import {
   Circle,
   Code2,
   Download,
+  FileDown,
   FolderOpen,
   Loader2,
   Minus,
@@ -20,7 +21,6 @@ import {
   Save,
   Sparkles,
   Square,
-  Upload,
   X,
 } from "lucide-react";
 import type { Extension } from "@codemirror/state";
@@ -636,27 +636,29 @@ export function DiagramComposer({
           !isMac && "pl-4",
         )}
       >
-        {brand ?? (
-          <>
-            <Tooltip label="Back to project">
-              <button
-                type="button"
-                aria-label="Back to project"
-                onClick={onClose}
-                className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+        <div data-tour="diagram-intro-anchor" className="flex shrink-0 items-center gap-2">
+          {brand ?? (
+            <>
+              <Tooltip label="Back to project">
+                <button
+                  type="button"
+                  aria-label="Back to project"
+                  onClick={onClose}
+                  className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                >
+                  <ArrowLeft className="size-4" />
+                </button>
+              </Tooltip>
+              <h2
+                id="diagram-composer-title"
+                className="max-w-[15ch] shrink-0 truncate text-sm font-semibold"
+                title={projectName || "Insert diagram"}
               >
-                <ArrowLeft className="size-4" />
-              </button>
-            </Tooltip>
-            <h2
-              id="diagram-composer-title"
-              className="max-w-[15ch] shrink-0 truncate text-sm font-semibold"
-              title={projectName || "Insert diagram"}
-            >
-              {projectName || "Insert diagram"}
-            </h2>
-          </>
-        )}
+                {projectName || "Insert diagram"}
+              </h2>
+            </>
+          )}
+        </div>
         <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
         <div className="flex min-w-0 items-center gap-1">
           {editingName ? (
@@ -722,7 +724,11 @@ export function DiagramComposer({
               disabled={importing}
               className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
             >
-              {importing ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+              {importing ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <FileDown className="size-4" />
+              )}
             </button>
           </Tooltip>
         </div>

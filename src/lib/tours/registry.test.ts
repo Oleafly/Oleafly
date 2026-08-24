@@ -6,14 +6,17 @@ describe("tour registry", () => {
     expect(tourRegistry.home.steps.map((step) => [step.id, step.kind, step.target])).toEqual([
       ["home-overview", "informational", '[data-tour="home"]'],
       ["home-create", "required-click", '[data-tour="new-project"]'],
-      ["home-gallery", "informational", '[data-tour="project-template-gallery"]'],
-      ["home-template", "required-click", '[data-tour="project-template-gallery"]'],
+      ["home-gallery", "informational", '[data-tour="project-template-list"]'],
+      ["home-template", "required-click", '[data-tour="project-template-list"]'],
       ["home-name", "required-input", '[data-tour="project-name"]'],
       ["home-color", "informational", '[data-tour="project-cover-color"]'],
       ["home-create-project", "required-click", '[data-tour="create-project"]'],
     ]);
     expect(tourRegistry.home.steps[3].interactionTarget).toBe(
       '[data-tour="project-template-card"]',
+    );
+    expect(tourRegistry.home.steps[3].interactionArea).toBe(
+      '[data-tour="project-template-list"]',
     );
     expect(tourRegistry.home.steps[5].interactionArea).toBe(
       '[data-tour="project-cover-color"]',
@@ -78,7 +81,15 @@ describe("tour registry", () => {
       "ai-restore",
     ]);
     expect(tourRegistry.ai.steps.every((step) => step.kind === "informational")).toBe(true);
-    expect(tourRegistry.ai.steps[0].placement).toBe("right");
+    expect(tourRegistry.ai.steps[0].target).toBe('[data-tour="ai-assistant-header"]');
+    expect(tourRegistry.ai.steps[0].spotlightTarget).toBe('[data-tour="ai-assistant"]');
+    expect(tourRegistry.ai.steps[0].placement).toBe("bottom");
+  });
+
+  it("keeps the detailed AI settings walkthrough separate from the Settings overview", () => {
+    expect("autoStart" in tourRegistry.settings).toBe(false);
+    expect(tourRegistry["ai-settings"].autoStart).toBe(false);
+    expect(tourRegistry["ai-settings"].contexts).toEqual(["settings"]);
   });
 
   it("covers diagram authoring without compiling or saving", () => {
@@ -87,7 +98,6 @@ describe("tour registry", () => {
       "diagram-import",
       "diagram-modes",
       "diagram-palette",
-      "diagram-canvas",
       "diagram-handles",
       "diagram-inspector",
       "diagram-preview",
@@ -96,5 +106,8 @@ describe("tour registry", () => {
       "diagram-download",
     ]);
     expect(tourRegistry.diagram.steps.every((step) => step.kind === "informational")).toBe(true);
+    const previewStep = tourRegistry.diagram.steps.find((step) => step.id === "diagram-preview");
+    expect(previewStep?.target).toBe('[data-tour="diagram-preview-panel"]');
+    expect(previewStep?.placement).toBe("left");
   });
 });

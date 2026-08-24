@@ -20,6 +20,10 @@ describe("assistant mascot motion", () => {
     expect(styles).toContain("@keyframes oleafly-assistant-hover-blink");
     expect(styles).not.toContain("@keyframes oleafly-assistant-nod");
     expect(styles).toContain(".oleafly-assistant-mascot-blink");
+    expect(styles).toContain("clip-path: inset(35.5% 39.5% 50.5% 33%)");
+    expect(styles).toContain(
+      "animation: oleafly-assistant-blink 2s steps(1, end) infinite",
+    );
     expect(styles).toContain(
       ".oleafly-assistant-mascot:hover .oleafly-assistant-mascot-blink",
     );

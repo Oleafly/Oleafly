@@ -1264,7 +1264,11 @@ ${sandboxedCustom}`;
       }
       className="ai-chat-shell flex h-full flex-col bg-sidebar"
     >
-      <div className="flex h-9 shrink-0 items-center gap-1.5 border-b px-2">
+      <div
+        data-tour="ai-assistant-header"
+        data-tour-ready={providerConfigReady ? "true" : "false"}
+        className="flex h-9 shrink-0 items-center gap-1.5 border-b px-2"
+      >
         {apiKey && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
           <InfoHint message="This chat started from an older version of the project. File contents may differ from what the AI saw." />
         )}

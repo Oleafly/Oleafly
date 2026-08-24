@@ -24,7 +24,7 @@ export function evaluateTour(
   if (!state.enabled) return { tourId: null, reason: "disabled" };
   if (state.activeTourId) return { tourId: null, reason: "active" };
   if (readiness.blockingOverlay) return { tourId: null, reason: "blocked" };
-  const candidates = toursForContext(context);
+  const candidates = toursForContext(context).filter((tour) => tour.autoStart !== false);
   const tour = candidates.find((candidate) => state.tours[candidate.id].status === "pending");
   if (!tour) return { tourId: null, reason: "not-pending" };
   const firstTarget = tour.steps[0]?.target;

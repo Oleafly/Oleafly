@@ -526,16 +526,20 @@ export function Library() {
           data-tauri-drag-region
           className="grid h-16 grid-cols-[max-content_minmax(10rem,1fr)_max-content] items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:px-8"
         >
-          <div
-            data-tauri-drag-region
-            data-tour="home-brand"
-            className="flex min-w-0 items-center gap-2"
-          >
-            <LeafLogo className="size-5 shrink-0" />
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">
-              Oleafly
-            </h1>
-          </div>
+          {projects.length > 0 ? (
+            <div
+              data-tauri-drag-region
+              data-tour="home-brand"
+              className="flex min-w-0 items-center gap-2"
+            >
+              <LeafLogo className="size-5 shrink-0" />
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">
+                Oleafly
+              </h1>
+            </div>
+          ) : (
+            <span data-tauri-drag-region />
+          )}
           <div className="flex w-full min-w-0 max-w-[42rem] items-center gap-1.5 justify-self-center">
           {projects.length > 0 ? (
             <div className="relative min-w-0 flex-1">
@@ -579,31 +583,33 @@ export function Library() {
             data-tauri-drag-region
             className="flex shrink-0 items-center gap-1.5"
           >
-          <div className={cn("order-2", projects.length === 0 && "ml-auto")}>
-            <ProjectImportMenu
-              align="end"
-              triggerTooltip="Import"
-              trigger={(busy) => (
-                <Button
-                  data-testid="import-project-button"
-                  variant="ghost"
-                  size="icon"
-                  disabled={busy}
-                  aria-label="Import"
-                  className={cn(
-                    HOME_DOCK_GLASS_SURFACE,
-                    "size-10 rounded-2xl !bg-background/75 p-0 text-muted-foreground shadow-sm hover:text-foreground dark:!bg-background/65 dark:shadow-sm",
-                  )}
-                >
-                  {busy ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <FolderInput className="size-4" />
-                  )}
-                </Button>
-              )}
-            />
-          </div>
+          {projects.length > 0 ? (
+            <div className="order-2">
+              <ProjectImportMenu
+                align="end"
+                triggerTooltip="Import"
+                trigger={(busy) => (
+                  <Button
+                    data-testid="import-project-button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={busy}
+                    aria-label="Import"
+                    className={cn(
+                      HOME_DOCK_GLASS_SURFACE,
+                      "size-10 rounded-2xl !bg-background/75 p-0 text-muted-foreground shadow-sm hover:text-foreground dark:!bg-background/65 dark:shadow-sm",
+                    )}
+                  >
+                    {busy ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <FolderInput className="size-4" />
+                    )}
+                  </Button>
+                )}
+              />
+            </div>
+          ) : null}
           {projects.length > 0 && (
             <Tooltip label="Advanced project filters" className="order-1">
                 <Popover
@@ -798,7 +804,7 @@ export function Library() {
           className={cn(
             "mx-auto",
             projectLayout === "list"
-              ? "max-w-[92rem]"
+              ? "w-[calc(100%_-_6rem)] max-w-[84rem]"
               : "max-w-4xl xl:max-w-5xl 2xl:max-w-7xl",
           )}
         >
@@ -807,14 +813,19 @@ export function Library() {
             // library is empty, so don't flash the first-run welcome.
             projectsLoaded ? (
             <Empty className="min-h-[60vh] py-10">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <LeafLogo className="size-7" />
+              <EmptyHeader className="max-w-2xl">
+                <EmptyMedia className="size-16 overflow-hidden rounded-2xl border-white/20 bg-white p-0 shadow-sm sm:size-20">
+                  <img
+                    src="/oleafly-tile-gradient.png"
+                    alt="Oleafly app icon"
+                    className="size-full object-cover"
+                  />
                 </EmptyMedia>
                 <EmptyTitle>Welcome to Oleafly</EmptyTitle>
-                <EmptyDescription>
-                  A workspace for LaTeX documents and résumés. Create your first
-                  project to begin.
+                <EmptyDescription className="max-w-xl leading-relaxed">
+                  Write, compile, and proofread LaTeX, Typst, and Markdown.
+                  Manage citations, review PDFs, track changes in Git, and work
+                  with the AI models you choose.
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent className="max-w-2xl">
@@ -825,7 +836,7 @@ export function Library() {
                     className="bg-primary text-white hover:bg-primary"
                     onClick={() => setNewProjectOpen(true)}
                   >
-                    <Plus className="size-4" /> Create your first project
+                    <Plus className="size-4" /> Create new project
                   </Button>
                   <ProjectImportMenu
                     align="center"
@@ -836,7 +847,7 @@ export function Library() {
                         ) : (
                           <FolderInput className="size-4" />
                         )}
-                        Import
+                        Import an existing project
                       </Button>
                     )}
                   />

@@ -39,8 +39,8 @@ your computer.
 
 <table>
   <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/library-shelf.png" alt="The Oleafly library showing projects as coloured books with engine, kind, and last-modified labels (dark theme)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/library-shelf-light.png" alt="The Oleafly library showing projects as coloured books with engine, kind, and last-modified labels (light theme)" /></td>
+    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/library-shelf.png" alt="The Oleafly library in list view with project search, layout controls, previews, bookmarks, and project details (dark theme)" /></td>
+    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/library-shelf-light.png" alt="The Oleafly library in list view with project search, layout controls, previews, bookmarks, and project details (light theme)" /></td>
   </tr>
 </table>
 
@@ -495,6 +495,11 @@ Oleafly is built in the open by
 [Prajwal S Venkateshmurthy](https://github.com/prajwal-svm) and
 contributors. Bug reports, fixes, templates, documentation, and careful
 product feedback are welcome.
+
+Join [GitHub Discussions](https://github.com/Oleafly/Oleafly/discussions) to
+ask questions and share ideas. Use [Issues](https://github.com/Oleafly/Oleafly/issues)
+for bugs and feature requests. Follow [@OleaflyHQ](https://x.com/OleaflyHQ) for
+release notes and development updates.
 
 1. Read [CONTRIBUTING.md](CONTRIBUTING.md).
 2. Open an issue before a large change. Small, focused fixes can go straight

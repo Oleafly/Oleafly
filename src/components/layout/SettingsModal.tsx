@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  AtSign,
   Blocks,
   BookMarked,
   BookOpen,
@@ -21,6 +22,7 @@ import {
   HardDriveDownload,
   Keyboard,
   LifeBuoy,
+  MessageCircle,
   Palette,
   Plug,
   RotateCcw,
@@ -108,7 +110,10 @@ type Section =
   | "shortcuts"
   | "mcp"
   | "experimentation"
+  | "developer"
   | "help";
+
+type DeveloperSettingsModule = typeof import("@/developer/DeveloperSettings");
 
 const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   { id: "general", label: "General", icon: Settings },
@@ -188,6 +193,8 @@ export function SettingsModal() {
   const githubStatus = useGithubStore((s) => s.status);
 
   const [section, setSection] = useState<Section>("general");
+  const [developerSettings, setDeveloperSettings] =
+    useState<DeveloperSettingsModule | null>(null);
   const [libRoot, setLibRoot] = useState("");
   const [storageSummary, setStorageSummary] =
     useState<LibraryStorageSummary | null>(null);
@@ -198,6 +205,8 @@ export function SettingsModal() {
   const [recycleActionId, setRecycleActionId] = useState<string | null>(null);
   const [permanentDeleteTarget, setPermanentDeleteTarget] =
     useState<RecycledProjectInfo | null>(null);
+  const [confirmClearRecycleBin, setConfirmClearRecycleBin] = useState(false);
+  const [clearingRecycleBin, setClearingRecycleBin] = useState(false);
   const [confirmDeleteAllProjects, setConfirmDeleteAllProjects] = useState(false);
   const [deletingAllProjects, setDeletingAllProjects] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -217,6 +226,13 @@ export function SettingsModal() {
     try { localStorage.setItem("ol-settings-advanced", v ? "1" : "0"); } catch { /* ignore */ }
     if (!v && ADVANCED.includes(section)) setSection("general");
   };
+  const navigation = developerSettings
+    ? [
+        ...NAV.slice(0, -1),
+        developerSettings.DEVELOPER_NAV_ITEM,
+        NAV[NAV.length - 1],
+      ]
+    : NAV;
   const settingsInitialSection = useSettingsStore((s) => s.settingsInitialSection);
   const closeSettings = () => {
     if (useTourStore.getState().activeTourId === "settings") return;
@@ -230,11 +246,20 @@ export function SettingsModal() {
 
   const doReset = () => {
     resetToDefaults();
-    setTheme(
-      window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light",
-    );
+    setTheme("dark");
     setConfirmReset(false);
   };
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    let active = true;
+    void import("@/developer/DeveloperSettings").then((module) => {
+      if (active) setDeveloperSettings(module);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -312,6 +337,34 @@ export function SettingsModal() {
     }
   };
 
+  const clearRecycleBin = async () => {
+    setConfirmClearRecycleBin(false);
+    setClearingRecycleBin(true);
+    const projectsToDelete = [...recycledProjects];
+    let deleted = 0;
+    try {
+      for (const project of projectsToDelete) {
+        await permanentlyDeleteRecycledProject(project.id);
+        deleted += 1;
+      }
+      toast.success(
+        `Permanently deleted ${deleted.toLocaleString()} ${deleted === 1 ? "project" : "projects"}.`,
+      );
+      setStorageRefreshKey((value) => value + 1);
+    } catch (error) {
+      setStorageRefreshKey((value) => value + 1);
+      notifyError(
+        "clear recycle bin",
+        error,
+        deleted > 0
+          ? `Permanently deleted ${deleted.toLocaleString()} projects, but couldn't clear the entire Recycle Bin.`
+          : "Couldn't clear the Recycle Bin.",
+      );
+    } finally {
+      setClearingRecycleBin(false);
+    }
+  };
+
   const deleteAllProjects = async () => {
     setConfirmDeleteAllProjects(false);
     setDeletingAllProjects(true);
@@ -380,7 +433,7 @@ export function SettingsModal() {
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
           >
             <div className="flex flex-col gap-0.5">
-            {NAV.filter(({ id }) => showAdvanced || !ADVANCED.includes(id)).map(({ id, label, icon: Icon }) => (
+            {navigation.filter(({ id }) => showAdvanced || !ADVANCED.includes(id)).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
@@ -433,7 +486,7 @@ export function SettingsModal() {
               data-tour={TOUR_SECTION_TARGETS[section]}
               className="text-sm font-semibold"
             >
-              {NAV.find((n) => n.id === section)?.label}
+              {navigation.find((n) => n.id === section)?.label}
             </h2>
             <Button
               variant="ghost"
@@ -866,9 +919,22 @@ export function SettingsModal() {
                       </div>
                     </div>
                     {recycledProjects.length > 0 ? (
-                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                        {recycledProjects.length.toLocaleString()}
-                      </span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                          {recycledProjects.length.toLocaleString()}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-destructive"
+                          disabled={recycleActionId !== null || clearingRecycleBin}
+                          onClick={() => setConfirmClearRecycleBin(true)}
+                        >
+                          <Trash2 aria-hidden className="size-3.5" />
+                          {clearingRecycleBin ? "Clearing…" : "Clear all"}
+                        </Button>
+                      </div>
                     ) : null}
                   </div>
                   {storageLoading && !storageSummary ? (
@@ -909,7 +975,7 @@ export function SettingsModal() {
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                disabled={recycleActionId !== null}
+                                disabled={recycleActionId !== null || clearingRecycleBin}
                                 onClick={() => void restoreProject(project)}
                               >
                                 <RotateCcw
@@ -927,7 +993,7 @@ export function SettingsModal() {
                                   variant="ghost"
                                   size="icon"
                                   className="size-8 text-muted-foreground hover:text-destructive"
-                                  disabled={recycleActionId !== null}
+                                  disabled={recycleActionId !== null || clearingRecycleBin}
                                   aria-label={`Permanently delete ${project.name}`}
                                   onClick={() => setPermanentDeleteTarget(project)}
                                 >
@@ -1054,6 +1120,10 @@ export function SettingsModal() {
               </div>
             )}
 
+            {section === "developer" && developerSettings ? (
+              <developerSettings.DeveloperSettings />
+            ) : null}
+
             {section === "help" && <HelpSection />}
           </div>
         </div>
@@ -1080,6 +1150,15 @@ export function SettingsModal() {
         onConfirm={() => void confirmPermanentProjectDeletion()}
       />
       <ConfirmationDialog
+        open={confirmClearRecycleBin}
+        title={`Clear ${recycledProjects.length.toLocaleString()} ${recycledProjects.length === 1 ? "project" : "projects"} from the Recycle Bin?`}
+        description="This permanently deletes every project currently in the Recycle Bin, including its files and Git history. This action cannot be undone."
+        confirmLabel="Clear Recycle Bin"
+        destructive
+        onCancel={() => setConfirmClearRecycleBin(false)}
+        onConfirm={() => void clearRecycleBin()}
+      />
+      <ConfirmationDialog
         open={confirmDeleteAllProjects}
         title={`Delete all ${projects.length.toLocaleString()} ${projects.length === 1 ? "project" : "projects"}?`}
         description="Every current project will move to the Recycle Bin, including its files and Git history. You can restore projects individually afterward."
@@ -1102,7 +1181,9 @@ const REPO_URL = "https://github.com/Oleafly/Oleafly";
 // const AUTHOR_URL = "https://prajwal.me";
 const DOCS_URL = "https://oleafly.com/docs/";
 const LEARN_URL = "https://oleafly.com/learn/";
-const ISSUES_URL = `${REPO_URL}/issues/new`;
+const ISSUES_URL = `${REPO_URL}/issues`;
+const DISCUSSIONS_URL = `${REPO_URL}/discussions`;
+const X_URL = "https://x.com/OleaflyHQ";
 const CHANGELOG_URL = `${REPO_URL}/blob/main/CHANGELOG.md`;
 const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
 
@@ -1162,7 +1243,6 @@ function HelpSection() {
     { icon: Compass, label: "Start tour", onClick: beginTour, external: false },
     { icon: BookOpen, label: "Documentation", onClick: ext(DOCS_URL), external: true },
     { icon: GraduationCap, label: "Learn", onClick: ext(LEARN_URL), external: true },
-    { icon: Bug, label: "Report a bug", onClick: ext(ISSUES_URL), external: true },
     {
       icon: TriangleAlert,
       label: "Report a crash (attach logs)",
@@ -1172,6 +1252,27 @@ function HelpSection() {
     { icon: ScrollText, label: "What's new", onClick: ext(CHANGELOG_URL), external: true },
     { icon: Scale, label: "License", onClick: ext(LICENSE_URL), external: true },
   ];
+
+  const community = [
+    {
+      icon: MessageCircle,
+      label: "Discussions",
+      description: "Ask questions and share ideas",
+      onClick: ext(DISCUSSIONS_URL),
+    },
+    {
+      icon: Bug,
+      label: "Issues",
+      description: "Report a bug or request a feature",
+      onClick: ext(ISSUES_URL),
+    },
+    {
+      icon: AtSign,
+      label: "@OleaflyHQ",
+      description: "Follow releases and development",
+      onClick: ext(X_URL),
+    },
+  ] as const;
 
   return (
     <div className="space-y-5">
@@ -1191,39 +1292,42 @@ function HelpSection() {
             className="absolute -left-px top-[18px] z-20 h-4 w-1 bg-[color-mix(in_srgb,var(--accent)_35%,var(--background))]"
           />
           <span className="relative z-30">
-            If Oleafly helps your work, consider{" "}
+            If Oleafly helps your work, please{" "}
             <button
               type="button"
               onClick={ext(REPO_URL)}
               className="font-medium text-foreground underline decoration-muted-foreground/50 underline-offset-2 hover:text-primary"
             >
-              starring the project on GitHub
+              star the project on GitHub
             </button>
-            . It helps others discover it and supports continued development.
+            . That small click helps more researchers find it and supports continued development.
           </span>
         </div>
       </div>
 
       <div
         data-testid="about-oleafly-section"
-        className="relative min-h-14 rounded-md border p-4"
+        className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] gap-x-5 gap-y-3 rounded-md border p-4"
       >
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <h3 className="text-sm font-semibold">Oleafly</h3>
+            {version && (
+              <span className="text-[11px] text-muted-foreground">v{version}</span>
+            )}
+          </div>
+          <p className="mt-1 max-w-[42rem] text-xs leading-relaxed text-muted-foreground">
+            Write, compile, proofread, manage citations, review PDFs, track changes in Git,
+            and use the AI models you choose. All in one open-source workspace.
+          </p>
+        </div>
         <img
           data-testid="about-oleafly-logo"
           src="/oleafly-tile-gradient.png"
           alt="Oleafly"
-          className="absolute right-4 top-4 size-14 rounded-xl"
+          className="size-14 shrink-0 rounded-xl"
         />
-        <div className="flex items-baseline gap-2 pr-20">
-          <h3 className="text-sm font-semibold">Oleafly</h3>
-          {version && (
-            <span className="text-[11px] text-muted-foreground">v{version}</span>
-          )}
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          An open-source modern workspace for all your research work.
-        </p>
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="col-span-2 flex flex-wrap items-center gap-x-3 gap-y-2">
           <UpdateChecker />
           <button
             type="button"
@@ -1258,7 +1362,7 @@ function HelpSection() {
           className="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent"
         >
           <Github className="size-4 shrink-0 text-muted-foreground" />
-          <span className="flex-1 truncate">GitHub</span>
+          <span className="flex-1 truncate">Star and explore on GitHub</span>
           {repoStats && (
             <span className="flex shrink-0 items-center gap-3 text-[11px] tabular-nums text-muted-foreground">
               <span
@@ -1283,6 +1387,29 @@ function HelpSection() {
           )}
           <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
         </button>
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Community
+        </p>
+        {community.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            onClick={item.onClick}
+            className="group flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left hover:bg-accent"
+          >
+            <item.icon className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm">{item.label}</span>
+              <span className="block truncate text-[11px] text-muted-foreground">
+                {item.description}
+              </span>
+            </span>
+            <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+          </button>
+        ))}
       </div>
 
       <div className="space-y-1">

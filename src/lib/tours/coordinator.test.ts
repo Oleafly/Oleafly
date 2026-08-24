@@ -32,12 +32,15 @@ describe("tour coordinator", () => {
     ).toBe("blocked");
   });
 
-  it("ignores completed contextual tours and disabled state", () => {
+  it("does not chain an explicit AI settings tour after the Settings overview", () => {
     const state = defaultPersistedTourState();
     state.tours.settings.status = "completed";
-    expect(evaluateTour(state, "settings", ready).tourId).toBe("ai-settings");
-    state.tours["ai-settings"].status = "completed";
     expect(evaluateTour(state, "settings", ready).reason).toBe("not-pending");
+    expect(state.tours["ai-settings"].status).toBe("pending");
+  });
+
+  it("ignores disabled state", () => {
+    const state = defaultPersistedTourState();
     expect(evaluateTour({ ...state, enabled: false }, "home", ready).reason).toBe("disabled");
   });
 

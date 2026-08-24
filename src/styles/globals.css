@@ -1291,21 +1291,23 @@ body[data-tour-active] [data-tour-hide] {
 }
 
 /*
- * The empty-state mascot gives the writer a quick double blink once per quiet
- * interval. Both frames stay in the document so the blink never waits on an
+ * The empty-state mascot gives the writer a quick double blink every two
+ * seconds. Both frames stay in the document so the blink never waits on an
  * image request; only the closed-eye layer's opacity changes.
  */
 @keyframes oleafly-assistant-blink {
   0%,
-  76%,
-  78.25%,
-  80.5%,
+  74%,
+  80%,
+  86%,
   100% {
     opacity: 0;
   }
 
-  77%,
-  79.25% {
+  75%,
+  79%,
+  81%,
+  85% {
     opacity: 1;
   }
 }
@@ -1326,7 +1328,11 @@ body[data-tour-active] [data-tour-hide] {
 
 .oleafly-assistant-mascot-blink {
   opacity: 0;
-  animation: oleafly-assistant-blink 7.2s linear infinite;
+  /* The source frames differ only around the eyes. Cropping the overlay avoids
+     recompositing the mascot body and its translucent edges. */
+  clip-path: inset(35.5% 39.5% 50.5% 33%);
+  will-change: opacity;
+  animation: oleafly-assistant-blink 2s steps(1, end) infinite;
 }
 
 /*
