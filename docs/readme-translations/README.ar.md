@@ -18,7 +18,7 @@
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor-v0.3.10-r2.png" alt="Oleafly editing the LLaMA research paper in LaTeX with the source tree, document outline, and compiled PDF open together" width="100%" />
+  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor-v0.3.10-r2.png" alt="برنامج Oleafly لتحرير ورقة بحثية حول LLaMA باستخدام LaTeX مع فتح شجرة المصدر، ومخطط المستند، وملف PDF المجمع معًا" width="100%" />
 </div>
 
 <!--
@@ -65,17 +65,17 @@ https://cdn.oleafly.com/videos/workspace-tour.webp.
 
 تتولى **خريطة المشروع** (Project Map) فهرسة كل قسم، وعلامة، ومفتاح استشهاد، وبيئة عمل بدقة متناهية عبر عنونتها المباشرة بنظام `file:line`؛ مما يمنحك تجربة سلسة في التنقل وإعادة التسمية عبر كافة ملفات المشروع كوحدة واحدة متكاملة.
 
-| ![Oleafly's source tree beside the project map, listing sections and labels with their file and line (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/project-structure.png) | ![Oleafly's source tree beside the project map, listing sections and labels with their file and line (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/project-structure-light.png) |
+| ![شجرة مصدر Oleafly بجانب خريطة المشروع، تسرد الأقسام والتصنيفات مع ملفها ورقم سطرها (الوضع الداكن)](https://cdn.oleafly.com/images/screenshots/desktop/project-structure.png) | ![شجرة مصدر Oleafly بجانب خريطة المشروع، تسرد الأقسام والتصنيفات مع ملفها ورقم سطرها (النمط الفاتح)](https://cdn.oleafly.com/images/screenshots/desktop/project-structure-light.png) |
 | --- | --- |
 
 **إدارة دقيقة للمراجع:** تتيح لك أداة الاستشهادات (Citation picker) استعراض ملفات `.bib` مباشرةً وبسلاسة تامة؛ حيث تعرض مفاتيح الاقتباس مقرونةً باسم المؤلف، وسنة النشر، والعنوان، ورقم سطر التعريف بدقة.
 
-| ![Choosing a citation key from parsed BibTeX entries, each showing authors, year, and source line (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/citation-picker.png) | ![Choosing a citation key from parsed BibTeX entries, each showing authors, year, and source line (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/citation-picker-light.png) |
+| ![اختيار مفتاح اقتباس من مدخلات BibTeX المُحللة، حيث يُظهر كل منها المؤلفين والسنة ورقم المصدر (الوضع الداكن)](https://cdn.oleafly.com/images/screenshots/desktop/citation-picker.png) | ![اختيار مفتاح اقتباس من مدخلات BibTeX المُحللة، حيث يُظهر كل منها المؤلفين والسنة ورقم المصدر (الوضع الفاتح)](https://cdn.oleafly.com/images/screenshots/desktop/citation-picker-light.png) |
 | --- | --- |
 
 **إحصاء ذكي للنصوص:** يتجاهل عدّاد الكلمات المخصص لـ LaTeX وسوم الشيفرة البرمجية والتنسيقات الجانبية، ليحصر تركيزه فقط على الكلمات الفعلية الظاهرة للقارئ.
 
-| ![The word count popover reporting words, characters, and lines for the open document (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/word-count.png) | ![The word count popover reporting words, characters, and lines for the open document (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/word-count-light.png) |
+| ![نافذة عدّ الكلمات المنبثقة التي تعرض عدد الكلمات والأحرف والأسطر للمستند المفتوح (الوضع الداكن)](https://cdn.oleafly.com/images/screenshots/desktop/word-count.png) | ![نافذة عدّ الكلمات المنبثقة التي تعرض عدد الكلمات والأحرف والأسطر للمستند المفتوح (الوضع الفاتح)](https://cdn.oleafly.com/images/screenshots/desktop/word-count-light.png) |
 | --- | --- |
 
 ### **بيئة متكاملة للإنشاء و القراءة دون مغادرة مساحة العمل**
@@ -89,12 +89,12 @@ https://cdn.oleafly.com/videos/workspace-tour.webp.
 - **مزامنة تفاعلية عبر SyncTeX:** تنقّل لحظيًا بين الشيفرة وموضعها في ملف PDF؛ فبنقرة واحدة مصحوبة بزر Cmd/Ctrl تنتقل مباشرة من النتيجة المعروضة إلى سطرها البرمجي المقابل، والعكس صحيح؛
 - **حفظ وتصدير سلس:** احتفظ بملفات PDF النهائية داخل مجلد عملك، أو صدّر المشروع كاملًا في هيئة أرشيف محمول ومستقل.
 
-| ![The LaTeX Engine settings page showing the bundled engines and their options (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/settings-latex-engine.png) | ![The LaTeX Engine settings page showing the bundled engines and their options (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/settings-latex-engine-light.png) |
+| ![صفحة إعدادات محرك LaTeX التي تعرض المحركات المدمجة وخياراتها (الوضع الداكن)](https://cdn.oleafly.com/images/screenshots/desktop/settings-latex-engine.png) | ![صفحة إعدادات محرك LaTeX التي تعرض المحركات المدمجة وخياراتها (الوضع الفاتح)](https://cdn.oleafly.com/images/screenshots/desktop/settings-latex-engine-light.png) |
 | --- | --- |
 
 يتيح لك تصغير مشهد العرض (Zoom out) إلقاء نظرة بانورامية شاملة على المستند؛ وهي الوسيلة الأسرع للتحقق من استقرار الجداول، والرسوم التوضيحية، والعناصر العائمة في مواضعها المحددة بدقة.
 
-| ![A three-page document laid out in the preview with every figure and table visible (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/pdf-preview-spread.png) | ![A three-page document laid out in the preview with every figure and table visible (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/pdf-preview-spread-light.png) |
+| ![مستند من ثلاث صفحات مُنسق في المعاينة مع إظهار كل شكل وجدول (الوضع الداكن)](https://cdn.oleafly.com/images/screenshots/desktop/pdf-preview-spread.png) | ![مستند من ثلاث صفحات مُنسق في المعاينة مع إظهار كل شكل وجدول (الوضع الفاتح)](https://cdn.oleafly.com/images/screenshots/desktop/pdf-preview-spread-light.png) |
 | --- | --- |
 
 ### **سِجِلٌّ تاريخي متكامل، ومسار عمل لا ينقطع**
@@ -120,7 +120,7 @@ https://cdn.oleafly.com/videos/workspace-tour.webp.
 - **تنظيم متقدم:** دعم هيكلة المشاريع وتوزيعها عبر ملفات متعددة لإدارة المحتوى المعقد بكفاءة وسلاسة.
 
 
-| ![Oleafly's searchable project template gallery with live thumbnails, category counts, and engine filters (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/project-templates.png) | ![Oleafly's searchable project template gallery with live thumbnails, category counts, and engine filters (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/project-templates-light.png) |
+| ![معرض قوالب المشاريع القابل للبحث في Oleafly مع صور مصغرة مباشرة، وعدد الفئات، وفلاتر المحرك (الوضع الداكن)](https://cdn.oleafly.com/images/screenshots/desktop/project-templates.png) | ![معرض قوالب المشاريع القابل للبحث في Oleafly مع صور مصغرة مباشرة، وعدد الفئات، وفلاتر المحرك (الوضع الفاتح)](https://cdn.oleafly.com/images/screenshots/desktop/project-templates-light.png) |
 | --- | --- |
 
 ### **تجربة متكاملة تجمع بين رصانة البحث ومرونة النشر**
@@ -132,13 +132,13 @@ https://cdn.oleafly.com/videos/workspace-tour.webp.
 - **محرك استكشاف وتدقيق بحثي:** متابعة مواعيد المؤتمرات والبحث في أمهات المنصات العلمية (arXiv، وSemantic Scholar، وCrossref، وPubMed، وOpenAlex، وGoogle Scholar) في آنٍ واحد، مع دمج النتائج المتطابقة تلقائياً وتصديرها بصيغة BibTeX دون المساس بخصوصية ملفاتك المحلية.
 - **فحص المراجع الذكي:** مسح دقيق للمستند فقرة تلو الأخرى لاكتشاف الادعاءات غير الموثقة واقتراح المراجع الملائمة لها لتعزيز مصداقية أبحاثك.
 
-| ![Citation search returning deduplicated results from several indexes, each with a save and copy-BibTeX action (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/literature-search.png) | ![Citation search returning deduplicated results from several indexes, each with a save and copy-BibTeX action (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/literature-search-light.png) |
+| ![بحث عن الاستشهادات يُعيد نتائج مُزالة التكرارات من عدة فهارس، كل منها مزود بإجراء حفظ ونسخ BibTeX (الوضع الداكن)](https://cdn.oleafly.com/images/screenshots/desktop/literature-search.png) | ![بحث عن الاستشهادات يُعيد نتائج مُزالة التكرارات من عدة فهارس، كل منها مزود بإجراء حفظ ونسخ BibTeX (الوضع الفاتح)](https://cdn.oleafly.com/images/screenshots/desktop/literature-search-light.png) |
 | --- | --- |
 
 
 يمنحك **مُنشئ المخططات (Diagram Composer)** مساحة تفاعلية تُرسم فيها الأفكار بسلاسة، لتتحول آنياً إلى كود **TikZ** برمجي دقيق؛ مما يضمن أن ما تُدرجه هو رسم متجهي أصيل يتيح لك كامل الحرية في إعادة تحريره وصقله برمجياً.
 
-| ![The diagram composer with a transformer architecture on the canvas and its compiled TikZ preview alongside (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/diagram-composer.png) | ![The diagram composer with a transformer architecture on the canvas and its compiled TikZ preview alongside (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/diagram-composer-light.png) |
+| ![مُنشئ المخططات مع بنية المحولات على اللوحة ومعاينة TikZ المُجمّعة بجانبها (الوضع الداكن)](https://cdn.oleafly.com/images/screenshots/desktop/diagram-composer.png) | ![مُنشئ المخططات مع بنية المحولات على اللوحة ومعاينة TikZ المُجمّعة بجانبها (الوضع الفاتح)](https://cdn.oleafly.com/images/screenshots/desktop/diagram-composer-light.png) |
 | --- | --- |
 
 ### فحص شامل ومُحكم قبل النشر
@@ -153,12 +153,12 @@ https://cdn.oleafly.com/videos/workspace-tour.webp.
 
 تُميز الأداة بوضوح بين النتائج القطعية المستخلصة مباشرة والملحوظات الإرشادية التي تتطلب مراجعة الكاتب، بينما يُحاكي **نمط القارئ (Reader View)** تجربة قارئات الشاشة والأنظمة الآلية عبر عرض النص المستخرج صفحة بصفحة. تُمثل هذه الأداة مرشداً عملياً يُعينك على تحسين التسليم، وليست وثيقة قبول نهائي أو شهادة اعتماد رسمية.
 
-| ![Preflight reporting an accessibility score with specific source and compiled-output findings (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/preflight-ats.png) | ![Preflight reporting an accessibility score with specific source and compiled-output findings (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/preflight-ats-light.png) |
+| ![تقرير ما قبل الرحلة عن درجة إمكانية الوصول مع مصدر محدد ونتائج المخرجات المجمعة (الوضع الداكن)](https://cdn.oleafly.com/images/screenshots/desktop/preflight-ats.png) | ![تقرير ما قبل الرحلة عن درجة إمكانية الوصول مع مصدر محدد ونتائج المخرجات المجمعة (الوضع الفاتح)](https://cdn.oleafly.com/images/screenshots/desktop/preflight-ats-light.png) |
 | --- | --- |
 
 كما خُصصت لوحة مستقلة لإدارة المراجع والاستشهادات، تتيح استعراض المصادر (Bibliography)، وكل اقتباس مُدرج، والرموز المعرّفة في بنية المشروع.
 
-| ![The references panel listing bibliography entries by key and year beside the source and compiled PDF (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/references-panel.png) | ![The references panel listing bibliography entries by key and year beside the source and compiled PDF (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/references-panel-light.png) |
+| ![لوحة المراجع التي تعرض مداخل قائمة المراجع حسب المفتاح والسنة بجانب المصدر وملف PDF المجمع (الوضع الداكن)](https://cdn.oleafly.com/images/screenshots/desktop/references-panel.png) | ![لوحة المراجع التي تعرض مداخل قائمة المراجع حسب المفتاح والسنة بجانب المصدر وملف PDF المجمع (الوضع الفاتح)](https://cdn.oleafly.com/images/screenshots/desktop/references-panel-light.png) |
 | --- | --- |
 
 ### ذكاء اصطناعي مرن في خدمة مشروعك
@@ -171,12 +171,12 @@ https://cdn.oleafly.com/videos/workspace-tour.webp.
 - تشغيل النماذج محلياً بخصوصية تامة عبر **Ollama**.
 - العمل دون تفعيل أدوات الذكاء الاصطناعي مع التمتع بكامل مزايا المنصة كالمعتاد.
 
-| ![The assistant panel offering starting points such as finding papers to cite, writing a literature review, and fixing source errors (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/ai-assistant-start.png) | ![The assistant panel offering starting points such as finding papers to cite, writing a literature review, and fixing source errors (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/ai-assistant-start-light.png) |
+| ![لوحة المساعد التي تقدم نقاط بداية مثل العثور على أوراق بحثية للاستشهاد بها، وكتابة مراجعة أدبية، وتصحيح أخطاء المصادر (الوضع الداكن)](https://cdn.oleafly.com/images/screenshots/desktop/ai-assistant-start.png) | ![لوحة المساعد التي تقدم نقاط بداية مثل العثور على أوراق بحثية للاستشهاد بها، وكتابة مراجعة أدبية، وتصحيح أخطاء المصادر (الوضع الفاتح)](https://cdn.oleafly.com/images/screenshots/desktop/ai-assistant-start-light.png) |
 | --- | --- |
 
 تُعرض التعديلات المقترحة بفروقات لونية واضحة تتيح لك حرية **القبول** أو **الرفض**. يتيح لك خيار **«السماح دائماً»** الموافقة التلقائية على عمليات الكتابة الروتينية أثناء الجلسة الحالية، مع الإبقاء على طلب التأكيد اليدوي الصارم لأي إجراء يتضمن الحذف.
 
-![An assistant file change shown as a red and green diff with Reject, Always allow, and Approve controls](https://cdn.oleafly.com/images/screenshots/desktop/ai-approval-diff.png)
+![تغيير ملف مساعد معروض كفرق باللونين الأحمر والأخضر مع عناصر تحكم الرفض، والسماح دائمًا، والموافقة](https://cdn.oleafly.com/images/screenshots/desktop/ai-approval-diff.png)
 
 فور اعتمادك للتعديل، يُدمج في الملف ويُعاد تجميع المستند في الحال، مع توفير خيار دائم يتيح لك **«استعادة الكود إلى حالته السابقة»**(Restore code to before this response) بضغطة زر.
 
@@ -184,19 +184,19 @@ https://cdn.oleafly.com/videos/workspace-tour.webp.
 
 تُدار خيارات المزودين بدقة عبر صفحة الإعدادات؛ حيث تُشفّر المفاتيح محلياً على القرص وتُعالج عبر واجهة Rust الخلفية بمعزل تام عن واجهة العرض (Webview). تُوجّه الطلبات السحابية المفاتيح للمزود المعني حصراً، بينما تعمل النماذج المحلية كلياً دون الحاجة لأي مفاتيح خارجية.
 
-| ![The AI Assistant settings page with several providers connected and a local Ollama model selected (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/settings-ai.png) | ![The AI Assistant settings page with several providers connected and a local Ollama model selected (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/settings-ai-light.png) |
+![تمت الموافقة على تعديل المساعد على المستند وانعكس ذلك في ملف PDF المعاد تجميعه](https://cdn.oleafly.com/images/screenshots/desktop/ai-chat-applied.png)
 | --- | --- |
 
 يمتد توافق **Oleafly** ليتيح أدواته عبر بروتوكول **MCP** لتطبيقات مثل Claude Desktop وClaude Code وCursor وCodex، معتمداً على خادم محلي (`localhost`) يدعم وضع القراءة فقط وثلاث سياسات متباينة للموافقة. كما تواصل الأدوات مهامها الأصلية حتى بعد إغلاق النوافذ طالما سمحت السياسة بذلك، على أن تظل مقيدة بنطاق آخر مشروع أُبلغ عنه التطبيق دون التبديل العشوائي بين المشاريع.
 
-| ![MCP settings showing the local server, its client instructions, and the available approval policies (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/settings-mcp.png) | ![MCP settings showing the local server, its client instructions, and the available approval policies (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/settings-mcp-light.png) |
+| ![إعدادات MCP التي تعرض الخادم المحلي وتعليمات العميل وسياسات الموافقة المتاحة (الوضع الداكن)](https://cdn.oleafly.com/images/screenshots/desktop/settings-mcp.png) | ![إعدادات MCP التي تعرض الخادم المحلي وتعليمات العميل وسياسات الموافقة المتاحة (الوضع الفاتح)](https://cdn.oleafly.com/images/screenshots/desktop/settings-mcp-light.png) |
 | --- | --- |
 
 يمكن الاطلاع على تفاصيل النماذج الأمنية والمزودين عبر [مرجع الميزات](../features.md) و[إعداد MCP](../mcp.md).
 
 تلتئم هذه الأدوات جميعها في واجهة موحدة؛ حيث يتيح لك **الشريط الشامل (Omnibar)** البحث السريع داخل وثائقك ومشاريعك، وبمجرد إدخال الرمز `/` يتحول الشريط فوراً إلى **لوحة أوامر سريعة**(command palette) تضع كامل التحكم بين يديك.
 
-| ![The omnibar listing commands and recently updated projects (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/search-omnibar.png) | ![The omnibar listing commands and recently updated projects (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/search-omnibar-light.png) |
+| ![قائمة أوامر شريط البحث والمشاريع التي تم تحديثها مؤخرًا (الوضع الداكن)](https://cdn.oleafly.com/images/screenshots/desktop/search-omnibar.png) | ![قائمة أوامر شريط البحث والمشاريع التي تم تحديثها مؤخرًا (الوضع الفاتح)](https://cdn.oleafly.com/images/screenshots/desktop/search-omnibar-light.png) |
 | --- | --- |
 
 ## **السيادة لبياناتك: بيئة محلية أولاً (Local-first) وبحدود شبكية منضبطة**
@@ -314,7 +314,7 @@ oleaflyc --help
 
 ## المساهمة
 
-|![The Oleafly Club: an open-source research community celebrating drafts, revisions, tests, and successful submissions](https://chatgpt.com/c/docs/assets/oleafly-club.png)|### يستحق الباحثون أدوات برمجية يمكنهم فحصها، وتوسيعها، والوثوق بها.|
+|![نادي أوليفلاي: مجتمع بحثي مفتوح المصدر يحتفي بالمسودات والمراجعات والاختبارات والتقديمات الناجحة](https://chatgpt.com/c/docs/assets/oleafly-club.png)|### يستحق الباحثون أدوات برمجية يمكنهم فحصها، وتوسيعها، والوثوق بها.|
 |---|---|
 ||يتم بناء Oleafly بشكل مفتوح ومباشر بواسطة [Prajwal Murthy](https://github.com/prajwal-svm) ونخبة من المساهمين. نرحب بالتبليغ عن المشكلات البرمجية، والإصلاحات، والقوالب، والتوثيق، والآراء البناءة لتطوير المنتج.|
 
@@ -331,7 +331,6 @@ pnpm test
 cargo test --workspace --all-targets
 ```
 
-يرجى الإبلاغ عن الثغرات الأمنية بشكل سري وخاص وفقاً للإرشادات الموضحة في . وتخضع كافة المشاركات لمعايير 
 نُقدّر إبلاغكم عن أي ثغرات أمنية بسرية وخصوصية وفق الإرشادات المبينة في [SECURITY.md](../../SECURITY.md)، علمًا بأن جميع المساهمات تلتزم بأحكام [ميثاق السلوك الأخلاقي](../../CODE_OF_CONDUCT.md).
 
 ## المجتمع والدعم
