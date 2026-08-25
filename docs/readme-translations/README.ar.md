@@ -7,14 +7,13 @@
 [Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md) | **العربية**
 
 **بيئة بحثية متكاملة، أُعيدت هندستها لعصر الذكاء الاصطناعي (AI).**
-
-من تحرير النصوص وتجميعها برمجياً (Compile)، مروراً بالتدقيق اللغوي والبحث في الأوراق الأكاديمية، وصولاً إلى إدارة المراجع، و إنشاث الرسوم التوضيحية، ومراجعة ملفات PDF، وتتبّع مسار التعديلات بدقة عبر Git؛ يمنحك Oleafly بيئة عمل متكاملة وشاملة. يمكنك من توظّيف الذكاء الاصطناعي بالأسلوب الذي يناسبك: سواءً عبر النماذج المستضافة سحابياً، أو نقاط الربط المخصصة (Custom Endpoints)، أو محلياً باستخدام Ollama، أو بالاعتماد كلياً على أدواتك التقليدية دون ذكاء اصطناعي، مع الاحتفاظ بكامل مشاريعك ومستنداتك بأمان داخل مجلداتك المحلية المعتادة على جهازك.
+من تحرير النصوص وتجميعها برمجياً (Compile)، مروراً بالتدقيق اللغوي والبحث في الأوراق الأكاديمية، وصولاً إلى إدارة المراجع، و إنشاء الرسوم التوضيحية، ومراجعة ملفات PDF، وتتبّع مسار التعديلات بدقة عبر Git؛ يمنحك Oleafly بيئة عمل متكاملة وشاملة. يمكنك من توظيف الذكاء الاصطناعي بالأسلوب الذي يناسبك: سواءً عبر النماذج المستضافة سحابياً، أو نقاط الربط المخصصة (Custom Endpoints)، أو محلياً باستخدام Ollama، أو بالاعتماد كلياً على أدواتك التقليدية دون ذكاء اصطناعي، مع الاحتفاظ بكامل مشاريعك ومستنداتك بأمان داخل مجلداتك المحلية المعتادة على جهازك.
 
 [![Open issues](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![Download](https://img.shields.io/github/v/release/Oleafly/Oleafly?label=Download&color=22c55e)](https://github.com/Oleafly/Oleafly/releases/latest) [![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](LICENSE)
 
 [![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest) [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
-**[تنزيل Oleafly](https://github.com/Oleafly/Oleafly/releases/latest) · [قراءة وثائق المنتج](https://oleafly.com/docs/overview/) · [البناء من المصدر](docs/development.md)**
+**[تنزيل Oleafly](https://github.com/Oleafly/Oleafly/releases/latest) · [قراءة وثائق المنتج](https://oleafly.com/docs/overview/) · [البناء من المصدر](../development.md)**
 
 </div>
 
@@ -193,7 +192,7 @@ https://cdn.oleafly.com/videos/workspace-tour.webp.
 | ![MCP settings showing the local server, its client instructions, and the available approval policies (dark theme)](https://cdn.oleafly.com/images/screenshots/desktop/settings-mcp.png) | ![MCP settings showing the local server, its client instructions, and the available approval policies (light theme)](https://cdn.oleafly.com/images/screenshots/desktop/settings-mcp-light.png) |
 | --- | --- |
 
-يمكن الاطلاع على تفاصيل النماذج الأمنية والمزودين عبر [مرجع الميزات](docs/features.md) و[إعداد MCP](docs/mcp.md).
+يمكن الاطلاع على تفاصيل النماذج الأمنية والمزودين عبر [مرجع الميزات](../features.md) و[إعداد MCP](../mcp.md).
 
 تلتئم هذه الأدوات جميعها في واجهة موحدة؛ حيث يتيح لك **الشريط الشامل (Omnibar)** البحث السريع داخل وثائقك ومشاريعك، وبمجرد إدخال الرمز `/` يتحول الشريط فوراً إلى **لوحة أوامر سريعة**(command palette) تضع كامل التحكم بين يديك.
 
@@ -260,7 +259,7 @@ pnpm tauri dev
 ````
 
 
-يُرجى الاطلاع على [دليل التطوير](https://chatgpt.com/c/docs/development.md) للإحاطة بالمتطلبات الأساسية، وتهيئة بيئات العمل لمختلف المنصات، وبناء حزم الإنتاج، فضلًا عن مسارات العمل عبر سطر الأوامر انطلاقًا من الكود المصدري.
+يُرجى الاطلاع على [دليل التطوير](../development.md). للإحاطة بالمتطلبات الأساسية، وتهيئة بيئات العمل لمختلف المنصات، وبناء حزم الإنتاج، فضلًا عن مسارات العمل عبر سطر الأوامر انطلاقًا من الكود المصدري.
 
 تتولى هذه البرمجيات النصية (Scripts) تحميل البرامج الجانبية للمترجم (Compiler Sidecars) الموثقة بالبصمة الرقمية (Checksum-pinned) والموافقة لبيئة تشغيلك الحالية، وإيداعها في المسار: `src-tauri/binaries`.
 
@@ -272,7 +271,7 @@ pnpm tauri dev
 pnpm language-servers:fetch
 ```
 
-ولمزيد من التفاصيل حول معايير الأمان، وسياسات التراخيص، وآليات التوزيع، يُرجى مراجعة [سلسلة أدوات خوادم اللغات](https://chatgpt.com/c/docs/language-server-toolchain.md).
+ولمزيد من التفاصيل حول معايير الأمان، وسياسات التراخيص، وآليات التوزيع، يُرجى مراجعة [سلسلة أدوات خوادم اللغات](../language-server-toolchain.md).
 
 ### واجهة سطر الأوامر (CLI)
 
@@ -302,16 +301,16 @@ oleaflyc --help
 
 |المرجع|الموضوع|
 |---|---|
-|[فهرس الهندسة التقنية](https://chatgpt.com/c/docs/README.md)|جرد الميزات والمواصفات الهندسية|
-|[مرجع الميزات](https://chatgpt.com/c/docs/features.md)|إمكانيات المنتج ومسارات العمل المدعومة|
-|[محركات المستندات](https://chatgpt.com/c/docs/document-engines.md)|إمكانيات LaTeX وTypst وMarkdown|
-|[معمارية المنتج](https://chatgpt.com/c/docs/architecture.md)|حدود النظام، وهيكلية الحزم، ونقاط التوسعة|
-|[التطوير](https://chatgpt.com/c/docs/development.md)|الإعداد المحلي، والاختبارات، وسير عمل المساهمة|
-|[سلسلة أدوات خوادم اللغات](https://chatgpt.com/c/docs/language-server-toolchain.md)|سياسات الجلب، والتحقق من السلامة، والتوزيع|
-|[تكامل MCP](https://chatgpt.com/c/docs/mcp.md)|العملاء الخارجيون، ورموز الوصول، وسياسات التحقق|
-|[إطلاق الإصدارات](https://chatgpt.com/c/docs/releasing.md)|خطوات بناء الإصدارات وفحص المخرجات|
-|[توقيع الشيفرة البرمجية](https://chatgpt.com/c/docs/signing.md)|متطلبات توقيع التطبيقات للمنصات المختلفة|
-|[التحديثات التلقائية](https://chatgpt.com/c/docs/updates.md)|ملفات التحديث، والتواقيع الرقمية، وخيارات التراجع|
+|[فهرس الهندسة التقنية](../README.md)|جرد الميزات والمواصفات الهندسية|
+|[مرجع الميزات](../features.md)|إمكانيات المنتج ومسارات العمل المدعومة|
+|[محركات المستندات](../document-engines.md)|إمكانيات LaTeX وTypst وMarkdown|
+|[معمارية المنتج](../architecture.md)|حدود النظام، وهيكلية الحزم، ونقاط التوسعة|
+|[التطوير](../development.md)|الإعداد المحلي، والاختبارات، وسير عمل المساهمة|
+|[سلسلة أدوات خوادم اللغات](../language-server-toolchain.md)|سياسات الجلب، والتحقق من السلامة، والتوزيع|
+|[تكامل MCP](../mcp.md)|العملاء الخارجيون، ورموز الوصول، وسياسات التحقق|
+|[إطلاق الإصدارات](../releasing.md)|خطوات بناء الإصدارات وفحص المخرجات|
+|[توقيع الشيفرة البرمجية](../signing.md)|متطلبات توقيع التطبيقات للمنصات المختلفة|
+|[التحديثات التلقائية](../updates.md)|ملفات التحديث، والتواقيع الرقمية، وخيارات التراجع|
 
 ## المساهمة
 
@@ -319,7 +318,7 @@ oleaflyc --help
 |---|---|
 ||يتم بناء Oleafly بشكل مفتوح ومباشر بواسطة [Prajwal Murthy](https://github.com/prajwal-svm) ونخبة من المساهمين. نرحب بالتبليغ عن المشكلات البرمجية، والإصلاحات، والقوالب، والتوثيق، والآراء البناءة لتطوير المنتج.|
 
-1. اقرأ ملف [CONTRIBUTING.md](CONTRIBUTING.md).
+1. اقرأ ملف [CONTRIBUTING.md](../../CONTRIBUTING.md).
     
 2. افتح تقرير مشكلة (issue) قبل البدء بتغييرات جوهرية كبيرة. يمكن إرسال الإصلاحات الصغيرة المحددة مباشرة عبر طلب دمج (pull request).
     
@@ -333,7 +332,7 @@ cargo test --workspace --all-targets
 ```
 
 يرجى الإبلاغ عن الثغرات الأمنية بشكل سري وخاص وفقاً للإرشادات الموضحة في . وتخضع كافة المشاركات لمعايير 
-نُقدّر إبلاغكم عن أي ثغرات أمنية بسرية وخصوصية وفق الإرشادات المبينة في [SECURITY.md](SECURITY.md)، علمًا بأن جميع المساهمات تلتزم بأحكام [ميثاق السلوك الأخلاقي](CODE_OF_CONDUCT.md).
+نُقدّر إبلاغكم عن أي ثغرات أمنية بسرية وخصوصية وفق الإرشادات المبينة في [SECURITY.md](../../SECURITY.md)، علمًا بأن جميع المساهمات تلتزم بأحكام [ميثاق السلوك الأخلاقي](../../CODE_OF_CONDUCT.md).
 
 ## المجتمع والدعم
 
@@ -356,4 +355,4 @@ cargo test --workspace --all-targets
 [Tauri](https://tauri.app/),[React](https://react.dev/),[CodeMirror](https://codemirror.net/),[Tectonic](https://tectonic-typesetting.github.io/),[Typst](https://typst.app/),[pdf.js](https://mozilla.github.io/pdf.js/),[Zustand](https://github.com/pmndrs/zustand),[Tailwind CSS](https://tailwindcss.com/), [Harper](https://writewithharper.com/), and
 [Hunspell](https://hunspell.github.io/).
 
-يخضع Oleafly لترخيص [AGPL-3.0-or-later](https://chatgpt.com/c/LICENSE). وتتوفر إشعارات الأطراف الخارجية في ملف [THIRD_PARTY_LICENSES.md](https://chatgpt.com/c/THIRD_PARTY_LICENSES.md).
+يخضع Oleafly لترخيص [AGPL-3.0-or-later](../../THIRD_PARTY_LICENSES.md). وتتوفر إشعارات الأطراف الخارجية في ملف [THIRD_PARTY_LICENSES.md](../../LICENSE).
