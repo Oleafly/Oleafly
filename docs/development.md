@@ -47,18 +47,20 @@ covers the port pattern, the contribution registry, and the alias wiring.
 ## First run
 
 ```bash
-./scripts/fetch-tectonic.sh all     # fetch compiler sidecars for all platforms
-./scripts/fetch-biber.sh all        # pinned Biber 2.17 (biblatex / tectonic-biber)
-./scripts/fetch-typst.sh all
 pnpm install
-pnpm language-servers:fetch         # current-host policy, see note below
+host_target="$(rustc -vV | sed -n 's/^host: //p')"
+./scripts/fetch-tectonic.sh "$host_target"
+./scripts/fetch-biber.sh "$host_target" # pinned Biber 2.17
+./scripts/fetch-typst.sh "$host_target"
 pnpm tauri dev
 ```
 
-For a single platform, pass the same host triple to both fetch scripts (use `rustc -vV` to find it).
+The sidecar scripts fetch only the current host for day-to-day development.
+Pass `all` only when preparing every supported target for CI or release work.
 
 TexLab and Tinymist use the separate checksum-pinned language-server fetcher.
-Its default installs TexLab under the current user's app-data directory as an
+Run `pnpm language-servers:fetch` when you need that optional editor
+intelligence. Its default installs TexLab under the current user's app-data directory as an
 explicit development setup action and stages Tinymist's exact upstream archive
 as a Tauri resource. Neither language server is an `externalBin`: TexLab's
 GPL object-distribution checklist awaits a
