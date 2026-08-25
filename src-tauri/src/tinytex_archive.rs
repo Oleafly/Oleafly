@@ -116,8 +116,18 @@ impl<'a> ArchiveManifest<'a> {
     }
 }
 
-fn validate_tar_mode(path: &Path, mode: u32) -> Result<(), String> {
-    if mode & 0o7000 != 0 || mode & 0o002 != 0 {
+fn validate_tar_mode(
+    path: &Path,
+    mode: u32,
+    is_directory: bool,
+    is_symlink: bool,
+) -> Result<(), String> {
+    if is_symlink {
+        return Ok(());
+    }
+    let has_privilege_bits = mode & 0o6000 != 0;
+    let has_non_directory_sticky_bit = mode & 0o1000 != 0 && !is_directory;
+    if has_privilege_bits || has_non_directory_sticky_bit || mode & 0o002 != 0 {
         return Err(format!(
             "TinyTeX archive member {} has unsafe permissions.",
             path.display()
@@ -126,7 +136,7 @@ fn validate_tar_mode(path: &Path, mode: u32) -> Result<(), String> {
     Ok(())
 }
 
-fn validate_zip_member_mode(path: &Path, mode: u32) -> Result<(), String> {
+fn validate_zip_member_mode(path: &Path, mode: u32, is_directory: bool) -> Result<(), String> {
     let file_type = mode & 0o170000;
     if file_type == 0o120000 {
         return Err("TinyTeX ZIP contains an unsupported symbolic link.".into());
@@ -137,7 +147,7 @@ fn validate_zip_member_mode(path: &Path, mode: u32) -> Result<(), String> {
             path.display()
         ));
     }
-    validate_tar_mode(path, mode)
+    validate_tar_mode(path, mode, is_directory, false)
 }
 
 fn validated_archive_path(path: &Path) -> Result<String, String> {
@@ -199,7 +209,12 @@ pub(crate) fn inspect_tar<R: std::io::Read>(
         let mut entry = entry.map_err(|e| e.to_string())?;
         let (kind, link_target) = tar_member_kind(&mut entry)?;
         let path = entry.path().map_err(|e| e.to_string())?.into_owned();
-        validate_tar_mode(&path, entry.header().mode().map_err(|e| e.to_string())?)?;
+        validate_tar_mode(
+            &path,
+            entry.header().mode().map_err(|e| e.to_string())?,
+            entry.header().entry_type().is_dir(),
+            entry.header().entry_type().is_symlink(),
+        )?;
         manifest.record(kind, &path, entry.size(), link_target.as_deref())?;
     }
     manifest.finish()
@@ -247,7 +262,12 @@ fn validate_tar_entry<R: std::io::Read>(
 ) -> Result<std::path::PathBuf, String> {
     let path = entry.path().map_err(|e| e.to_string())?.into_owned();
     validated_archive_path(&path)?;
-    validate_tar_mode(&path, entry.header().mode().map_err(|e| e.to_string())?)?;
+    validate_tar_mode(
+        &path,
+        entry.header().mode().map_err(|e| e.to_string())?,
+        entry.header().entry_type().is_dir(),
+        entry.header().entry_type().is_symlink(),
+    )?;
     if entry.header().entry_type().is_symlink() {
         let target = entry
             .link_name()
@@ -294,7 +314,7 @@ fn inspect_zip(file: std::fs::File, policy: ArchiveMemberPolicy<'_>) -> Result<(
             .ok_or_else(|| "TinyTeX archive contains an unsafe member path.".to_string())?;
         let kind = if entry.is_dir() { "directory" } else { "file" };
         if let Some(mode) = entry.unix_mode() {
-            validate_zip_member_mode(&path, mode)?;
+            validate_zip_member_mode(&path, mode, entry.is_dir())?;
         }
         manifest.record(kind, &path, entry.size(), None)?;
     }
@@ -371,6 +391,24 @@ mod tests {
     use super::*;
     use std::io::Write as _;
 
+    fn manifest_digest(entries: &[(&str, &str, u64, Option<&str>)]) -> String {
+        use sha2::Digest as _;
+
+        let mut hasher = sha2::Sha256::new();
+        for (kind, path, size, link_target) in entries {
+            hasher.update(kind.as_bytes());
+            hasher.update([0]);
+            hasher.update(path.as_bytes());
+            hasher.update([0]);
+            hasher.update(size.to_le_bytes());
+            if let Some(target) = link_target {
+                hasher.update(target.as_bytes());
+            }
+            hasher.update([0]);
+        }
+        format!("{:x}", hasher.finalize())
+    }
+
     fn policy() -> ArchiveMemberPolicy<'static> {
         ArchiveMemberPolicy {
             members: 1,
@@ -418,9 +456,79 @@ mod tests {
 
     #[test]
     fn unsafe_archive_permissions_are_rejected() {
-        assert!(validate_tar_mode(Path::new("TinyTeX/file"), 0o755).is_ok());
-        assert!(validate_tar_mode(Path::new("TinyTeX/file"), 0o4755).is_err());
-        assert!(validate_tar_mode(Path::new("TinyTeX/file"), 0o777).is_err());
+        let path = Path::new("TinyTeX/member");
+        assert!(validate_tar_mode(path, 0o755, false, false).is_ok());
+        assert!(validate_tar_mode(path, 0o1755, false, false).is_err());
+        assert!(validate_tar_mode(path, 0o1755, true, false).is_ok());
+        assert!(validate_tar_mode(path, 0o2755, true, false).is_err());
+        assert!(validate_tar_mode(path, 0o4755, true, false).is_err());
+        assert!(validate_tar_mode(path, 0o1757, true, false).is_err());
+        assert!(validate_tar_mode(path, 0o777, false, false).is_err());
+        assert!(validate_tar_mode(path, 0o777, false, true).is_ok());
+    }
+
+    #[test]
+    fn sticky_directory_permissions_are_accepted() {
+        let path = "TinyTeX/texmf-var/fonts/pk/ljfour/";
+        let mut writer = tar::Builder::new(Vec::new());
+        let mut header = tar::Header::new_gnu();
+        header.set_size(0);
+        header.set_mode(0o1755);
+        header.set_entry_type(tar::EntryType::Directory);
+        header.set_cksum();
+        writer.append_data(&mut header, path, &[][..]).unwrap();
+        let tar = writer.into_inner().unwrap();
+        let digest = manifest_digest(&[("directory", path, 0, None)]);
+        let policy = ArchiveMemberPolicy {
+            members: 1,
+            expanded_bytes: 0,
+            manifest_sha256: &digest,
+        };
+
+        inspect_tar(std::io::Cursor::new(&tar), policy).unwrap();
+
+        let destination = tempfile::tempdir().unwrap();
+        extract_tar(std::io::Cursor::new(&tar), destination.path()).unwrap();
+        let extracted = destination.path().join(path);
+        assert!(extracted.is_dir());
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            assert_eq!(
+                std::fs::metadata(extracted).unwrap().permissions().mode() & 0o7000,
+                0
+            );
+        }
+    }
+
+    #[test]
+    fn world_writable_symlink_modes_are_accepted() {
+        let link = "TinyTeX/bin/x86_64-linux/texhash";
+        let mut writer = tar::Builder::new(Vec::new());
+        let mut header = tar::Header::new_gnu();
+        header.set_size(0);
+        header.set_mode(0o777);
+        header.set_entry_type(tar::EntryType::Symlink);
+        writer.append_link(&mut header, link, "mktexlsr").unwrap();
+        let tar = writer.into_inner().unwrap();
+        let digest = manifest_digest(&[("symlink", link, 0, Some("mktexlsr"))]);
+        let policy = ArchiveMemberPolicy {
+            members: 1,
+            expanded_bytes: 0,
+            manifest_sha256: &digest,
+        };
+
+        inspect_tar(std::io::Cursor::new(&tar), policy).unwrap();
+
+        let destination = tempfile::tempdir().unwrap();
+        extract_tar(std::io::Cursor::new(&tar), destination.path()).unwrap();
+        assert!(destination
+            .path()
+            .join(link)
+            .symlink_metadata()
+            .unwrap()
+            .file_type()
+            .is_symlink());
     }
 
     #[test]
