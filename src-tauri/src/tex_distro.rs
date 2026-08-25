@@ -16,6 +16,29 @@ pub fn exe(name: &str) -> String {
     }
 }
 
+/// File names a TeX tool may resolve to, best-first. TeX Live on Windows
+/// ships most tools as `.exe` wrappers but installs `tlmgr` as `tlmgr.bat`,
+/// so `.exe`-only lookups miss it and TinyTeX validation fails with "no
+/// host-compatible tlmgr binary".
+fn tool_file_names(name: &str) -> Vec<String> {
+    tool_file_names_for(cfg!(windows), name)
+}
+
+fn tool_file_names_for(windows: bool, name: &str) -> Vec<String> {
+    if windows {
+        vec![format!("{name}.exe"), format!("{name}.bat")]
+    } else {
+        vec![name.to_string()]
+    }
+}
+
+pub(crate) fn find_tool_in_dir(dir: &Path, name: &str) -> Option<PathBuf> {
+    tool_file_names(name)
+        .into_iter()
+        .map(|file| dir.join(file))
+        .find(|candidate| candidate.is_file())
+}
+
 /// TeX binary directories to probe, best-first: full system installs (MacTeX,
 /// TeX Live by year, MiKTeX), then Oleafly's managed TinyTeX, then generic
 /// locations. A complete system distribution must outrank the compact TinyTeX:
@@ -154,7 +177,7 @@ fn compose_tex_bin_dirs(
 fn bin_dir_has_tex(dir: &Path) -> bool {
     ["latexmk", "tlmgr", "pdflatex", "xelatex", "lualatex"]
         .into_iter()
-        .any(|tool| dir.join(exe(tool)).is_file())
+        .any(|tool| find_tool_in_dir(dir, tool).is_some())
 }
 
 fn bin_dir_has_complete_tex(dir: &Path) -> bool {
@@ -167,7 +190,7 @@ fn bin_dir_has_complete_tex(dir: &Path) -> bool {
         "biber",
     ]
     .into_iter()
-    .all(|tool| dir.join(exe(tool)).is_file())
+    .all(|tool| find_tool_in_dir(dir, tool).is_some())
 }
 
 fn bin_dir_is_tinytex(dir: &Path) -> bool {
@@ -176,7 +199,8 @@ fn bin_dir_is_tinytex(dir: &Path) -> bool {
     }
     ["latexmk", "tlmgr", "pdflatex", "xelatex", "lualatex"]
         .into_iter()
-        .filter_map(|tool| std::fs::canonicalize(dir.join(exe(tool))).ok())
+        .filter_map(|tool| find_tool_in_dir(dir, tool))
+        .filter_map(|tool| std::fs::canonicalize(tool).ok())
         .any(|tool| named_tinytex_root(&tool).is_some())
 }
 
@@ -185,11 +209,12 @@ where
     I: IntoIterator<Item = P>,
     P: AsRef<Path>,
 {
-    let file = exe(name);
     let mut candidates = Vec::new();
     for dir in dirs {
-        let candidate = dir.as_ref().join(&file);
-        if candidate.is_file() && !candidates.contains(&candidate) {
+        let Some(candidate) = find_tool_in_dir(dir.as_ref(), name) else {
+            continue;
+        };
+        if !candidates.contains(&candidate) {
             candidates.push(candidate);
         }
     }
@@ -201,10 +226,8 @@ where
     I: IntoIterator<Item = P>,
     P: AsRef<Path>,
 {
-    let file = exe(name);
     dirs.into_iter()
-        .map(|dir| dir.as_ref().join(&file))
-        .find(|candidate| candidate.is_file())
+        .find_map(|dir| find_tool_in_dir(dir.as_ref(), name))
 }
 
 /// One detected TeX distribution, for the Settings "Manage TeX distributions"
@@ -256,23 +279,19 @@ pub fn list_distributions() -> Vec<TexDistribution> {
 
 fn distribution_for_bin_dir(dir: &Path) -> Option<TexDistribution> {
     let (kind, root) = classify_bin_dir(dir);
-    let latexmk = dir.join(exe("latexmk"));
-    let tlmgr = dir.join(exe("tlmgr"));
-    let has_tex = latexmk.is_file()
-        || tlmgr.is_file()
-        || dir.join(exe("pdflatex")).is_file()
-        || dir.join(exe("xelatex")).is_file()
-        || dir.join(exe("lualatex")).is_file();
+    let latexmk = find_tool_in_dir(dir, "latexmk");
+    let tlmgr = find_tool_in_dir(dir, "tlmgr");
+    let has_tex = latexmk.is_some()
+        || tlmgr.is_some()
+        || find_tool_in_dir(dir, "pdflatex").is_some()
+        || find_tool_in_dir(dir, "xelatex").is_some()
+        || find_tool_in_dir(dir, "lualatex").is_some();
     has_tex.then(|| TexDistribution {
         label: label_for(&kind, &root),
         kind,
         bin_dir: dir.to_string_lossy().into_owned(),
-        latexmk: latexmk
-            .is_file()
-            .then(|| latexmk.to_string_lossy().into_owned()),
-        tlmgr: tlmgr
-            .is_file()
-            .then(|| tlmgr.to_string_lossy().into_owned()),
+        latexmk: latexmk.map(|tool| tool.to_string_lossy().into_owned()),
+        tlmgr: tlmgr.map(|tool| tool.to_string_lossy().into_owned()),
     })
 }
 
@@ -550,6 +569,38 @@ mod tests {
             assert_eq!(exe("latexmk"), "latexmk.exe");
         } else {
             assert_eq!(exe("latexmk"), "latexmk");
+        }
+    }
+
+    #[test]
+    fn windows_tool_names_include_bat_fallback() {
+        assert_eq!(
+            tool_file_names_for(true, "tlmgr"),
+            vec!["tlmgr.exe".to_string(), "tlmgr.bat".to_string()]
+        );
+        assert_eq!(
+            tool_file_names_for(false, "tlmgr"),
+            vec!["tlmgr".to_string()]
+        );
+    }
+
+    #[test]
+    fn find_tool_in_dir_resolves_windows_bat_scripts() {
+        let directory = tempfile::tempdir().unwrap();
+        let dir = directory.path();
+        std::fs::write(dir.join("tlmgr.bat"), b"@echo off").unwrap();
+        std::fs::write(dir.join(exe("latexmk")), b"tool").unwrap();
+
+        assert_eq!(
+            find_tool_in_dir(dir, "latexmk"),
+            Some(dir.join(exe("latexmk")))
+        );
+        if cfg!(windows) {
+            assert_eq!(find_tool_in_dir(dir, "tlmgr"), Some(dir.join("tlmgr.bat")));
+            std::fs::write(dir.join("tlmgr.exe"), b"tool").unwrap();
+            assert_eq!(find_tool_in_dir(dir, "tlmgr"), Some(dir.join("tlmgr.exe")));
+        } else {
+            assert_eq!(find_tool_in_dir(dir, "tlmgr"), None);
         }
     }
 

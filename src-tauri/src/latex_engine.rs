@@ -46,14 +46,6 @@ fn find_latexmk() -> Option<String> {
     crate::tex_distro::find_tex_tool("latexmk").map(|p| p.to_string_lossy().into_owned())
 }
 
-fn exe(name: &str) -> String {
-    if cfg!(windows) {
-        format!("{name}.exe")
-    } else {
-        name.to_string()
-    }
-}
-
 const TEX_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 const TLMGR_INFO_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(90);
 const TLMGR_MUTATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15 * 60);
@@ -287,8 +279,7 @@ fn utility_error(output: &TexUtilityOutput) -> String {
 fn find_in_texdir(root: &Path, name: &str) -> Option<PathBuf> {
     crate::tex_distro::texdir_bin_dirs(root)
         .into_iter()
-        .map(|bin| bin.join(exe(name)))
-        .find(|candidate| candidate.is_file())
+        .find_map(|bin| crate::tex_distro::find_tool_in_dir(&bin, name))
 }
 
 /// Our own TinyTeX install root: `~/.oleafly/tinytex`.
@@ -313,8 +304,7 @@ fn legacy_tinytex_download_path() -> Result<PathBuf, String> {
 }
 
 fn sibling_tool(tool: &Path, name: &str) -> Option<PathBuf> {
-    let candidate = tool.parent()?.join(exe(name));
-    candidate.is_file().then_some(candidate)
+    crate::tex_distro::find_tool_in_dir(tool.parent()?, name)
 }
 
 fn engine_kind_for_path(lualatex: &Path, managed_root: Option<&Path>) -> &'static str {
