@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.12] - 2026-08-25
+
+### Fixed
+
+- TinyTeX setup accepts the safe directory and symlink permissions in the
+  pinned release archives. On Windows it also finds TeX Live's `tlmgr.bat`, so
+  a finished download no longer falls back into the resume loop.
+
 ## [0.3.11] - 2026-08-24
 
 ### Added
