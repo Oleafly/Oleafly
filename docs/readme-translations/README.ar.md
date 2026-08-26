@@ -341,3 +341,5 @@ _ملاحظة:_ تُنفّذ الأوامر نسبةً إلى المسار ال�
 [Hunspell](https://hunspell.github.io/).
 
 يخضع Oleafly لترخيص [AGPL-3.0-or-later](../../LICENSE). وتتوفر إشعارات الأطراف الخارجية في ملف [THIRD_PARTY_LICENSES.md](../../THIRD_PARTY_LICENSES.md).
+
+</div>
