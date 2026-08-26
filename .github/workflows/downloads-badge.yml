@@ -1,9 +1,8 @@
 name: Downloads badge
 
-# Publishes an honest installer-download count for the README badge: the raw
-# GitHub total is dominated by latest.json fetches (every running app polls it
-# to check for updates) and .sig files (fetched by the updater), so this sums
-# release assets excluding both.
+# Publishes the GitHub download total for the installer and package formats
+# shipped by Oleafly. The allow-list leaves out updater bundles, manifests,
+# signatures, SBOMs, and any future non-installer assets.
 #
 # The shields.io endpoint JSON lives on the unprotected `badges` branch and is
 # written through the GitHub Contents API. main's protection (signed commits,
@@ -36,9 +35,9 @@ jobs:
           path=".github/badges/downloads.json"
 
           total=$(gh api --paginate "repos/${repo}/releases?per_page=100" \
-            --jq '.[] | .assets[] | select(.name != "latest.json") | select(.name | endswith(".sig") | not) | .download_count' \
+            --jq '.[] | .assets[] | select(.name | test("\\.(dmg|msi|exe|deb|rpm|AppImage)$")) | .download_count' \
             | awk '{ sum += $1 } END { print sum + 0 }')
-          json=$(printf '{"schemaVersion":1,"label":"Downloads","message":"%s","color":"22c55e"}\n' "$total")
+          json=$(printf '{"schemaVersion":1,"label":"Installer downloads","message":"%s","color":"22c55e"}\n' "$total")
 
           # Create the badges branch from main on first run.
           if ! gh api "repos/${repo}/branches/${branch}" >/dev/null 2>&1; then
