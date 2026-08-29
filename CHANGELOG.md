@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.13] - 2026-08-29
+
+### Fixed
+
+- Undo and redo survive a compile on Windows. Clicking Compile took keyboard
+  focus out of the editor, and the button disabling itself for the build then
+  dropped that focus entirely, so Ctrl+Z reached nothing afterwards. Buttons in
+  the LaTeX and Markdown toolbars took focus the same way and no longer do.
+
 ## [0.3.12] - 2026-08-25
 
 ### Fixed
@@ -1538,7 +1547,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.11...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.13...HEAD
+[0.3.13]: https://github.com/Oleafly/Oleafly/compare/v0.3.12...v0.3.13
+[0.3.12]: https://github.com/Oleafly/Oleafly/compare/v0.3.11...v0.3.12
 [0.3.11]: https://github.com/Oleafly/Oleafly/compare/v0.3.10...v0.3.11
 [0.3.10]: https://github.com/Oleafly/Oleafly/compare/v0.3.9...v0.3.10
 [0.3.9]: https://github.com/Oleafly/Oleafly/compare/v0.3.8...v0.3.9
