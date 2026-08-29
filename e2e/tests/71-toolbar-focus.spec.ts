@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures";
 import {
+  compileAndWait,
   editorSource,
   openProject,
   readProjectText,
@@ -22,13 +23,23 @@ const COMPILE_REVISION = `(() => {
   return Number(button?.dataset.e2eCompileRevision ?? "0");
 })()`;
 
+const COMPILE_BUTTON_ENABLED = `(() => {
+  const button = document.querySelector('[data-testid="compile-button"]');
+  return button instanceof HTMLButtonElement && !button.disabled;
+})()`;
+
 // Chromium (WebView2 on Windows) focuses a <button> on mousedown unless the
 // page prevents the default; WebKit (macOS, Linux) never focuses one. Driving
 // both halves here makes the guard mean the same thing on every runner.
+//
+// React does not run onMouseDown on a disabled button, so a disabled control
+// looks exactly like an unguarded one. It reports itself rather than silently
+// failing as "took-focus".
 function chromiumStyleClick(selector: string): string {
   return `(() => {
     const button = document.querySelector(${JSON.stringify(selector)});
     if (!(button instanceof HTMLElement)) return "missing";
+    if ("disabled" in button && button.disabled) return "disabled";
     const focusable = button.dispatchEvent(
       new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
     );
@@ -56,9 +67,13 @@ function pressUndo(page: Page, mod: "ctrl" | "meta") {
   })()`);
 }
 
+// Opening a project in split view auto-compiles, which disables the compile
+// button. Drive that build to completion before touching anything, otherwise
+// the click lands on a disabled control.
 async function openWithCaretInEditor(page: Page) {
   await openProject(page, "E2E Doc");
   await waitEditorShowsFile(page, "main.tex");
+  await compileAndWait(page, 240_000);
   await page.evaluate(
     `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
       getEditorView()?.focus();
@@ -88,6 +103,7 @@ test("compiling from the toolbar leaves keyboard undo reachable", async ({ tauri
   expect(await editorSource(tauriPage)).not.toBe(baseline);
   expect(await tauriPage.evaluate<boolean>(FOCUS_IS_IN_EDITOR)).toBe(true);
 
+  await waitLong(tauriPage, COMPILE_BUTTON_ENABLED, 240_000);
   const revisionBefore = await tauriPage.evaluate<number>(COMPILE_REVISION);
   expect(
     await tauriPage.evaluate<string>(
