@@ -1,5 +1,8 @@
+//! Run facade: the public agent-run API. The turn loop lives in
+//! `session::turn`, context-window accounting in `session::context_window`,
+//! compaction in `session::compact`, and tool execution policy in `tools`.
+
 use std::future::Future;
-use std::io::Write;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
@@ -9,35 +12,31 @@ use serde::{Deserialize, Serialize};
 use crate::complete::{CompletionRequest, Usage};
 use crate::error::{AgentError, Result};
 use crate::event::AgentEvent;
-use crate::message::{ContentPart, Message, Role};
-use crate::provider::{Resolved, Wire};
-use crate::stream::{stream_completion, StreamOutcome, ToolCall, MAX_STREAM_TOOL_CALLS};
+use crate::provider::Resolved;
+use crate::stream::ToolCall;
+use crate::tasks::CancellationToken;
+use crate::tools::parallel::ToolGate;
+use crate::tools::registry::ToolRegistry;
 
-const MAX_RETRY_DELAY_MS: u64 = 60_000;
 const MAX_AGENT_RUN_DURATION: Duration = Duration::from_secs(30 * 60);
-const MAX_AGENT_STEPS: u32 = 50;
-const MAX_AGENT_RETRIES: u32 = 8;
-const MAX_TOOL_EXECUTION_DURATION: Duration = Duration::from_secs(5 * 60);
-const MAX_TOOL_OUTPUT_TEXT_BYTES: usize = 64 * 1024;
+pub(crate) const MAX_TOOL_OUTPUT_TEXT_BYTES: usize = 64 * 1024;
 const MAX_TOOL_OUTPUT_IMAGES: usize = 6;
 const MAX_TOOL_IMAGE_DATA_URL_BYTES: usize = 14 * 1024 * 1024;
 const MAX_TOOL_OUTPUT_IMAGE_BYTES: usize = 84 * 1024 * 1024;
-const MAX_TOOL_RESULT_BATCH_BYTES: usize = 96 * 1024 * 1024;
-const MAX_AGENT_HISTORY_BYTES: usize = 128 * 1024 * 1024;
-// Keep the character guard within the serialized-history ceiling while leaving
-// room for every individually permitted text tool result. A fixed 100k guard
-// could reject an ordinary multi-step run after only a handful of searches.
-const MAX_AGENT_CONTEXT_CHARS: usize = MAX_AGENT_HISTORY_BYTES / 4;
-const MAX_AGENT_IMAGES: usize = 12;
-const MAX_AGENT_MESSAGES: usize = 128;
-const MAX_TOOL_DEFINITIONS: usize = 128;
-const MAX_AGENT_TOOL_CALLS: usize = 256;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunConfig {
     pub max_steps: u32,
     pub max_retries: u32,
     pub retry_base_ms: u64,
+    /// Summarize older history instead of failing when the context window is
+    /// exhausted mid-turn.
+    #[serde(default = "default_auto_compact")]
+    pub auto_compact: bool,
+}
+
+fn default_auto_compact() -> bool {
+    true
 }
 
 impl Default for RunConfig {
@@ -46,6 +45,7 @@ impl Default for RunConfig {
             max_steps: 50,
             max_retries: 4,
             retry_base_ms: 800,
+            auto_compact: true,
         }
     }
 }
@@ -78,6 +78,54 @@ pub struct RunOutcome {
 pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 pub type ToolRunner = Arc<dyn Fn(ToolCall) -> BoxFuture<ToolOutput> + Send + Sync>;
 
+/// Execution context one agent run shares across every tool batch: the
+/// registry carrying per-tool parallel policy, the single gate serializing
+/// exclusive tools, and the run's cancellation token. Defaults preserve the
+/// historical behavior (unknown tools serialize; no cancellation source).
+#[derive(Clone, Default)]
+pub struct ToolPipeline {
+    pub registry: ToolRegistry,
+    pub gate: ToolGate,
+    pub token: CancellationToken,
+}
+
+impl ToolPipeline {
+    pub fn from_registry(registry: ToolRegistry) -> Self {
+        Self {
+            registry,
+            gate: ToolGate::new(),
+            token: CancellationToken::new(),
+        }
+    }
+}
+
+/// The sender half of a run's steer channel: the shell injects mid-run user
+/// input and the turn loop delivers it at the next message boundary.
+#[derive(Clone)]
+pub struct SteerHandle {
+    tx: std::sync::Arc<tokio::sync::mpsc::UnboundedSender<String>>,
+}
+
+impl SteerHandle {
+    pub fn channel() -> (Self, tokio::sync::mpsc::UnboundedReceiver<String>) {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        (
+            Self {
+                tx: std::sync::Arc::new(tx),
+            },
+            rx,
+        )
+    }
+
+    pub fn steer(&self, text: impl Into<String>) {
+        let _ = self.tx.send(text.into());
+    }
+}
+
+pub fn validate_completion_request(request: &CompletionRequest) -> Result<()> {
+    crate::session::context_window::validate_completion_request(request)
+}
+
 #[derive(Clone, Copy)]
 struct ToolOutputLimits {
     max_text_bytes: usize,
@@ -95,286 +143,6 @@ impl Default for ToolOutputLimits {
             max_total_image_bytes: MAX_TOOL_OUTPUT_IMAGE_BYTES,
         }
     }
-}
-
-struct LimitedWriter {
-    bytes: usize,
-    max_bytes: usize,
-}
-
-impl Write for LimitedWriter {
-    fn write(&mut self, buffer: &[u8]) -> std::io::Result<usize> {
-        let next = self
-            .bytes
-            .checked_add(buffer.len())
-            .filter(|next| *next <= self.max_bytes)
-            .ok_or_else(|| std::io::Error::other("serialized history limit exceeded"))?;
-        self.bytes = next;
-        Ok(buffer.len())
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
-}
-
-struct HistoryBudget {
-    serialized_bytes: usize,
-    context_chars: usize,
-    images: usize,
-    messages: usize,
-    tool_calls: usize,
-}
-
-pub fn validate_completion_request(request: &CompletionRequest) -> Result<()> {
-    HistoryBudget::new(request).map(|_| ())
-}
-
-impl HistoryBudget {
-    fn new(request: &CompletionRequest) -> Result<Self> {
-        if request.messages.len() > MAX_AGENT_MESSAGES {
-            return Err(history_limit_error("agent message count"));
-        }
-        if request.tools.len() > MAX_TOOL_DEFINITIONS {
-            return Err(history_limit_error("tool definition count"));
-        }
-        let tool_calls = count_tool_calls(&request.messages)?;
-        if tool_calls > MAX_AGENT_TOOL_CALLS {
-            return Err(history_limit_error("agent tool-call count"));
-        }
-        let context_chars = completion_context_chars(request)?;
-        if context_chars > MAX_AGENT_CONTEXT_CHARS {
-            return Err(history_limit_error("agent context"));
-        }
-        let images = count_images(&request.messages)?;
-        if images > MAX_AGENT_IMAGES {
-            return Err(history_limit_error("agent image count"));
-        }
-        Ok(Self {
-            serialized_bytes: serialized_size_limited(request, MAX_AGENT_HISTORY_BYTES)?,
-            context_chars,
-            images,
-            messages: request.messages.len(),
-            tool_calls,
-        })
-    }
-
-    fn append_message(&mut self, message: &Message, new_tool_calls: usize) -> Result<()> {
-        let messages = bounded_add(self.messages, 1, MAX_AGENT_MESSAGES, "agent message count")?;
-        let tool_calls = bounded_add(
-            self.tool_calls,
-            new_tool_calls,
-            MAX_AGENT_TOOL_CALLS,
-            "agent tool-call count",
-        )?;
-        let context_chars = bounded_add(
-            self.context_chars,
-            message_context_chars(message)?,
-            MAX_AGENT_CONTEXT_CHARS,
-            "agent context",
-        )?;
-        let images = bounded_add(
-            self.images,
-            message_image_count(message),
-            MAX_AGENT_IMAGES,
-            "agent image count",
-        )?;
-        let remaining = MAX_AGENT_HISTORY_BYTES.saturating_sub(self.serialized_bytes);
-        let message_bytes = serialized_size_limited(message, remaining)?;
-        let serialized_bytes = self
-            .serialized_bytes
-            .checked_add(message_bytes)
-            .and_then(|bytes| bytes.checked_add(1))
-            .filter(|bytes| *bytes <= MAX_AGENT_HISTORY_BYTES)
-            .ok_or_else(|| history_limit_error("serialized agent history"))?;
-
-        self.messages = messages;
-        self.tool_calls = tool_calls;
-        self.context_chars = context_chars;
-        self.images = images;
-        self.serialized_bytes = serialized_bytes;
-        Ok(())
-    }
-}
-
-fn bounded_add(current: usize, added: usize, limit: usize, description: &str) -> Result<usize> {
-    current
-        .checked_add(added)
-        .filter(|value| *value <= limit)
-        .ok_or_else(|| history_limit_error(description))
-}
-
-fn history_limit_error(description: &str) -> AgentError {
-    AgentError::Decode(format!("{description} exceeded its safety limit"))
-}
-
-fn serialized_size_limited<T: Serialize>(value: &T, max_bytes: usize) -> Result<usize> {
-    let mut writer = LimitedWriter {
-        bytes: 0,
-        max_bytes,
-    };
-    serde_json::to_writer(&mut writer, value)
-        .map_err(|_| history_limit_error("serialized agent history"))?;
-    Ok(writer.bytes)
-}
-
-fn count_tool_calls(messages: &[Message]) -> Result<usize> {
-    messages.iter().try_fold(0usize, |total, message| {
-        let calls = message
-            .content
-            .iter()
-            .filter(|part| matches!(part, ContentPart::ToolUse { .. }))
-            .count();
-        total
-            .checked_add(calls)
-            .ok_or_else(|| history_limit_error("agent tool-call count"))
-    })
-}
-
-fn checked_chars(value: &str) -> Result<usize> {
-    let chars = value.chars().count();
-    (chars <= MAX_AGENT_CONTEXT_CHARS)
-        .then_some(chars)
-        .ok_or_else(|| history_limit_error("agent context"))
-}
-
-fn message_context_chars(message: &Message) -> Result<usize> {
-    message.content.iter().try_fold(0usize, |total, part| {
-        let chars = part_context_chars(part)?;
-        total
-            .checked_add(chars)
-            .ok_or_else(|| history_limit_error("agent context"))
-    })
-}
-
-fn part_context_chars(part: &ContentPart) -> Result<usize> {
-    match part {
-        ContentPart::Text { text } => checked_chars(text),
-        ContentPart::Image { .. } => Ok(0),
-        ContentPart::ToolUse {
-            id,
-            name,
-            arguments,
-            ..
-        } => checked_context_fields([id.as_str(), name.as_str(), arguments.as_str()]),
-        ContentPart::ToolResult { id, name, output } => {
-            checked_context_fields([id.as_str(), name.as_str(), output.as_str()])
-        }
-    }
-}
-
-fn checked_context_fields<const N: usize>(fields: [&str; N]) -> Result<usize> {
-    fields.into_iter().try_fold(0usize, |total, field| {
-        total
-            .checked_add(checked_chars(field)?)
-            .ok_or_else(|| history_limit_error("agent context"))
-    })
-}
-
-fn completion_context_chars(request: &CompletionRequest) -> Result<usize> {
-    let system = request
-        .system
-        .as_deref()
-        .map(checked_chars)
-        .transpose()?
-        .unwrap_or(0);
-    let messages = request.messages.iter().try_fold(0usize, |total, message| {
-        total
-            .checked_add(message_context_chars(message)?)
-            .ok_or_else(|| history_limit_error("agent context"))
-    })?;
-    let tools = serialized_size_limited(&request.tools, MAX_AGENT_CONTEXT_CHARS)?;
-    system
-        .checked_add(messages)
-        .and_then(|sum| sum.checked_add(tools))
-        .ok_or_else(|| history_limit_error("agent context"))
-}
-
-fn message_image_count(message: &Message) -> usize {
-    message
-        .content
-        .iter()
-        .filter(|part| matches!(part, ContentPart::Image { .. }))
-        .count()
-}
-
-fn count_images(messages: &[Message]) -> Result<usize> {
-    messages.iter().try_fold(0usize, |total, message| {
-        total
-            .checked_add(message_image_count(message))
-            .ok_or_else(|| history_limit_error("agent image count"))
-    })
-}
-
-fn assistant_turn(outcome: &StreamOutcome) -> Message {
-    let mut content = Vec::new();
-    if !outcome.text.is_empty() {
-        content.push(ContentPart::text(outcome.text.clone()));
-    }
-    for call in &outcome.tool_calls {
-        content.push(ContentPart::ToolUse {
-            id: call.id.clone(),
-            name: call.name.clone(),
-            arguments: call.arguments.clone(),
-            thought_signature: call.thought_signature.clone(),
-        });
-    }
-    Message {
-        role: Role::Assistant,
-        content,
-    }
-}
-
-fn results_turn(results: Vec<(ToolCall, ToolOutput)>) -> Message {
-    let mut content = Vec::new();
-    let mut images = Vec::new();
-    for (call, output) in results {
-        content.push(ContentPart::ToolResult {
-            id: call.id,
-            name: call.name,
-            output: output.output,
-        });
-        images.extend(output.images);
-    }
-    for image in images {
-        content.push(ContentPart::Image { image });
-    }
-    Message {
-        role: Role::User,
-        content,
-    }
-}
-
-fn empty(outcome: &StreamOutcome) -> bool {
-    outcome.text.is_empty() && outcome.tool_calls.is_empty()
-}
-
-fn accumulate_usage(total: &mut Usage, addition: Usage) {
-    total.input = total.input.saturating_add(addition.input);
-    total.output = total.output.saturating_add(addition.output);
-}
-
-fn should_retry(error: &AgentError, retries_remaining: u32, saw_output: bool) -> bool {
-    error.retryable() && retries_remaining > 0 && !saw_output
-}
-
-fn retry_delay(base_ms: u64, attempt: u32, jitter_basis_points: u16) -> Duration {
-    let multiplier = 1u64.checked_shl(attempt.min(16)).unwrap_or(u64::MAX);
-    let delay = base_ms.saturating_mul(multiplier).min(MAX_RETRY_DELAY_MS);
-    let jitter = u64::from(jitter_basis_points.clamp(750, 1_250));
-    Duration::from_millis(
-        delay
-            .saturating_mul(jitter)
-            .saturating_div(1_000)
-            .min(MAX_RETRY_DELAY_MS),
-    )
-}
-
-fn retry_jitter_basis_points() -> u16 {
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |duration| duration.subsec_nanos());
-    750 + (nanos % 501) as u16
 }
 
 fn truncate_utf8(value: &mut String, max_bytes: usize) {
@@ -445,124 +213,15 @@ pub fn bound_tool_output(output: ToolOutput) -> ToolOutput {
     sanitize_tool_output(output, ToolOutputLimits::default())
 }
 
-fn tool_output_payload_bytes(output: &ToolOutput) -> Result<usize> {
+pub(crate) fn tool_output_payload_bytes(output: &ToolOutput) -> Result<usize> {
     output
         .images
         .iter()
         .try_fold(output.output.len(), |total, image| {
-            total
-                .checked_add(image.len())
-                .ok_or_else(|| history_limit_error("tool result batch"))
+            total.checked_add(image.len()).ok_or_else(|| {
+                crate::session::context_window::history_limit_error("tool result batch")
+            })
         })
-}
-
-fn add_tool_batch_bytes(total: &mut usize, bytes: usize, limit: usize) -> Result<()> {
-    let next = total
-        .checked_add(bytes)
-        .filter(|next| *next <= limit)
-        .ok_or_else(|| history_limit_error("tool result batch"))?;
-    *total = next;
-    Ok(())
-}
-
-fn validate_tool_calls_per_turn(calls: usize) -> Result<()> {
-    if calls > MAX_STREAM_TOOL_CALLS {
-        Err(history_limit_error("tool calls in one turn"))
-    } else {
-        Ok(())
-    }
-}
-
-async fn run_tool_with_timeout(
-    call: ToolCall,
-    run_tool: &ToolRunner,
-    timeout: Duration,
-) -> ToolOutput {
-    match tokio::time::timeout(timeout, run_tool(call)).await {
-        Ok(output) => output,
-        Err(_) => ToolOutput::text(
-            serde_json::json!({ "error": "the tool execution timed out" }).to_string(),
-        ),
-    }
-}
-
-async fn run_tools<F>(
-    calls: Vec<ToolCall>,
-    run_tool: &ToolRunner,
-    on_event: &mut F,
-) -> Result<Vec<(ToolCall, ToolOutput)>>
-where
-    F: FnMut(AgentEvent) + Send,
-{
-    validate_tool_calls_per_turn(calls.len())?;
-    let mut results = Vec::with_capacity(calls.len());
-    let mut batch_bytes = 0usize;
-    for call in calls {
-        let output = bound_tool_output(
-            run_tool_with_timeout(call.clone(), run_tool, MAX_TOOL_EXECUTION_DURATION).await,
-        );
-        add_tool_batch_bytes(
-            &mut batch_bytes,
-            tool_output_payload_bytes(&output)?,
-            MAX_TOOL_RESULT_BATCH_BYTES,
-        )?;
-        on_event(AgentEvent::ToolOutcome {
-            id: call.id.clone(),
-            output: output.output.clone(),
-        });
-        results.push((call, output));
-    }
-    Ok(results)
-}
-
-async fn stream_with_retries<F>(
-    client: &reqwest::Client,
-    resolved: &Resolved,
-    request: &CompletionRequest,
-    config: &RunConfig,
-    retries_remaining: &mut u32,
-    on_event: &mut F,
-) -> Result<StreamOutcome>
-where
-    F: FnMut(AgentEvent) + Send,
-{
-    let mut attempt = 0;
-    loop {
-        let mut saw_output = false;
-        let streamed = {
-            let forward = &mut |event: AgentEvent| {
-                if matches!(
-                    event,
-                    AgentEvent::TextDelta { .. } | AgentEvent::ReasoningDelta { .. }
-                ) {
-                    saw_output = true;
-                }
-                on_event(event);
-            };
-            stream_completion(client, resolved, request, forward).await
-        };
-
-        match streamed {
-            Ok(outcome) => return Ok(outcome),
-            Err(error) => {
-                if !should_retry(&error, *retries_remaining, saw_output) {
-                    return Err(error);
-                }
-                *retries_remaining = retries_remaining.saturating_sub(1);
-                on_event(AgentEvent::Retry {
-                    attempt: attempt + 1,
-                    max: config.max_retries.min(MAX_AGENT_RETRIES),
-                });
-                tokio::time::sleep(retry_delay(
-                    config.retry_base_ms,
-                    attempt,
-                    retry_jitter_basis_points(),
-                ))
-                .await;
-                attempt = attempt.saturating_add(1);
-            }
-        }
-    }
 }
 
 pub async fn run_agent<F>(
@@ -576,415 +235,49 @@ pub async fn run_agent<F>(
 where
     F: FnMut(AgentEvent) + Send,
 {
+    run_agent_with_pipeline(
+        client,
+        resolved,
+        request,
+        config,
+        ToolPipeline::default(),
+        None,
+        run_tool,
+        on_event,
+    )
+    .await
+}
+
+/// Like `run_agent`, but the caller supplies the tool pipeline (per-tool
+/// parallel policy, shared gate, cancellation token) the run executes under
+/// and may pass the receiver half of a steer channel for mid-run input.
+#[allow(clippy::too_many_arguments)] // Turn plumbing; each arg is load-bearing.
+pub async fn run_agent_with_pipeline<F>(
+    client: &reqwest::Client,
+    resolved: &Resolved,
+    request: CompletionRequest,
+    config: &RunConfig,
+    pipeline: ToolPipeline,
+    steer_rx: Option<tokio::sync::mpsc::UnboundedReceiver<String>>,
+    run_tool: ToolRunner,
+    on_event: F,
+) -> Result<RunOutcome>
+where
+    F: FnMut(AgentEvent) + Send,
+{
     tokio::time::timeout(
         MAX_AGENT_RUN_DURATION,
-        run_agent_inner(client, resolved, request, config, run_tool, on_event),
+        crate::session::turn::run_turn(
+            client, resolved, request, config, &pipeline, steer_rx, run_tool, on_event,
+        ),
     )
     .await
     .map_err(|_| AgentError::Timeout)?
 }
 
-async fn run_agent_inner<F>(
-    client: &reqwest::Client,
-    resolved: &Resolved,
-    request: CompletionRequest,
-    config: &RunConfig,
-    run_tool: ToolRunner,
-    mut on_event: F,
-) -> Result<RunOutcome>
-where
-    F: FnMut(AgentEvent) + Send,
-{
-    let mut request = request;
-    let mut result = RunOutcome::default();
-    let mut history = HistoryBudget::new(&request)?;
-    let mut retries_remaining = config.max_retries.min(MAX_AGENT_RETRIES);
-
-    for step in 0..config.max_steps.min(MAX_AGENT_STEPS) {
-        on_event(AgentEvent::StepStart { step });
-        let outcome = stream_with_retries(
-            client,
-            resolved,
-            &request,
-            config,
-            &mut retries_remaining,
-            &mut on_event,
-        )
-        .await;
-        let outcome = match outcome {
-            Ok(outcome) => outcome,
-            Err(error) => return Ok(finish_with_stream_error(result, error, &mut on_event)),
-        };
-        record_stream_outcome(&mut result, &outcome, &mut on_event);
-        if outcome.tool_calls.is_empty() {
-            return Ok(finish_without_tools(result, &outcome));
-        }
-        append_tool_turns(
-            resolved,
-            &mut request,
-            &mut history,
-            outcome,
-            &run_tool,
-            &mut on_event,
-        )
-        .await?;
-    }
-
-    result.stopped_at_cap = true;
-    Ok(result)
-}
-
-fn finish_with_stream_error<F>(
-    mut result: RunOutcome,
-    error: AgentError,
-    on_event: &mut F,
-) -> RunOutcome
-where
-    F: FnMut(AgentEvent),
-{
-    result.error = Some(error.to_string());
-    on_event(AgentEvent::Error {
-        message: error.to_string(),
-        retryable: error.retryable(),
-    });
-    result
-}
-
-fn record_stream_outcome<F>(result: &mut RunOutcome, outcome: &StreamOutcome, on_event: &mut F)
-where
-    F: FnMut(AgentEvent),
-{
-    accumulate_usage(&mut result.usage, outcome.usage);
-    result.steps = result.steps.saturating_add(1);
-    on_event(AgentEvent::Usage {
-        usage: result.usage,
-    });
-    if !outcome.text.is_empty() {
-        result.text.clone_from(&outcome.text);
-    }
-}
-
-fn finish_without_tools(mut result: RunOutcome, outcome: &StreamOutcome) -> RunOutcome {
-    if empty(outcome) {
-        result.error = Some("The model returned nothing.".into());
-    }
-    result
-}
-
-async fn append_tool_turns<F>(
-    resolved: &Resolved,
-    request: &mut CompletionRequest,
-    history: &mut HistoryBudget,
-    outcome: StreamOutcome,
-    run_tool: &ToolRunner,
-    on_event: &mut F,
-) -> Result<()>
-where
-    F: FnMut(AgentEvent) + Send,
-{
-    validate_tool_calls_per_turn(outcome.tool_calls.len())?;
-    let mut responses_input = if matches!(resolved.wire, Wire::OpenAiResponses { .. }) {
-        Some(match &request.openai_responses_input {
-            Some(input) => input.clone(),
-            None => crate::wire::openai_responses_input(&request.messages)?,
-        })
-    } else {
-        None
-    };
-    let new_tool_calls = outcome.tool_calls.len();
-    let assistant = assistant_turn(&outcome);
-    history.append_message(&assistant, new_tool_calls)?;
-    request.messages.push(assistant);
-    let results = run_tools(outcome.tool_calls, run_tool, on_event).await?;
-    let results = results_turn(results);
-    if let Some(input) = &mut responses_input {
-        input.extend(outcome.response_items);
-        input.extend(crate::wire::openai_responses_input(std::slice::from_ref(
-            &results,
-        ))?);
-        request.openai_responses_input = responses_input;
-    }
-    history.append_message(&results, 0)?;
-    request.messages.push(results);
-    *history = HistoryBudget::new(request)?;
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::provider::OPENAI_BASE;
-    use crate::stream::ToolCall;
-    use serde_json::json;
-
-    #[test]
-    fn an_assistant_turn_carries_text_then_every_call() {
-        let outcome = StreamOutcome {
-            text: "Reading".into(),
-            tool_calls: vec![
-                ToolCall {
-                    id: "a".into(),
-                    name: "read_file".into(),
-                    arguments: "{}".into(),
-                    thought_signature: Some("sig-a".into()),
-                },
-                ToolCall {
-                    id: "b".into(),
-                    name: "list_files".into(),
-                    arguments: "{}".into(),
-                    ..Default::default()
-                },
-            ],
-            ..Default::default()
-        };
-        let message = assistant_turn(&outcome);
-        assert_eq!(message.role, Role::Assistant);
-        assert!(matches!(message.content[0], ContentPart::Text { .. }));
-        assert!(matches!(
-            message.content[1],
-            ContentPart::ToolUse { ref id, ref thought_signature, .. }
-                if id == "a" && thought_signature.as_deref() == Some("sig-a")
-        ));
-        assert!(matches!(
-            message.content[2],
-            ContentPart::ToolUse { ref id, ref thought_signature, .. }
-                if id == "b" && thought_signature.is_none()
-        ));
-    }
-
-    #[tokio::test]
-    async fn many_bounded_tool_results_do_not_abort_at_the_context_guard() {
-        let resolved = Resolved {
-            provider_id: "openai".into(),
-            model_id: "arbitrary-compatible-model".into(),
-            credential: "key".into(),
-            auth: Some("key".into()),
-            wire: Wire::OpenAiResponses {
-                base_url: OPENAI_BASE.into(),
-            },
-        };
-        let mut request = CompletionRequest::prompt("system", "find papers to cite");
-        let mut history = HistoryBudget::new(&request).unwrap();
-        let runner: ToolRunner =
-            Arc::new(|_| Box::pin(async { ToolOutput::text("x".repeat(12_000)) }));
-        let mut events = Vec::new();
-
-        for index in 0..9 {
-            let call_id = format!("call_{index}");
-            let outcome = StreamOutcome {
-                tool_calls: vec![ToolCall {
-                    id: call_id.clone(),
-                    name: "literature_search".into(),
-                    arguments: r#"{"query":"wildfire detection"}"#.into(),
-                    ..Default::default()
-                }],
-                response_items: vec![json!({
-                    "type": "function_call",
-                    "id": format!("fc_{index}"),
-                    "call_id": call_id,
-                    "name": "literature_search",
-                    "arguments": r#"{"query":"wildfire detection"}"#,
-                })],
-                ..Default::default()
-            };
-
-            append_tool_turns(
-                &resolved,
-                &mut request,
-                &mut history,
-                outcome,
-                &runner,
-                &mut |event| events.push(event),
-            )
-            .await
-            .expect("individually bounded tool results should not abort a valid multi-step run");
-        }
-
-        assert_eq!(history.tool_calls, 9);
-        assert!(request.openai_responses_input.is_some());
-    }
-
-    #[tokio::test]
-    async fn responses_tool_turns_replay_provider_items_and_local_outputs_statelessly() {
-        let resolved = Resolved {
-            provider_id: "openai".into(),
-            model_id: "arbitrary-compatible-model".into(),
-            credential: "key".into(),
-            auth: Some("key".into()),
-            wire: Wire::OpenAiResponses {
-                base_url: OPENAI_BASE.into(),
-            },
-        };
-        let mut request = CompletionRequest::prompt("system", "read the file");
-        let mut history = HistoryBudget::new(&request).unwrap();
-        let outcome = StreamOutcome {
-            tool_calls: vec![ToolCall {
-                id: "call_1".into(),
-                name: "read_file".into(),
-                arguments: "{}".into(),
-                ..Default::default()
-            }],
-            response_items: vec![
-                json!({
-                    "type": "reasoning",
-                    "id": "rs_1",
-                    "encrypted_content": "opaque",
-                }),
-                json!({
-                    "type": "function_call",
-                    "id": "fc_1",
-                    "call_id": "call_1",
-                    "name": "read_file",
-                    "arguments": "{}",
-                }),
-            ],
-            ..Default::default()
-        };
-        let runner: ToolRunner = Arc::new(|_| Box::pin(async { ToolOutput::text("contents") }));
-        let mut events = Vec::new();
-
-        append_tool_turns(
-            &resolved,
-            &mut request,
-            &mut history,
-            outcome,
-            &runner,
-            &mut |event| events.push(event),
-        )
-        .await
-        .unwrap();
-
-        let input = request.openai_responses_input.unwrap();
-        assert_eq!(input[0]["type"], "message");
-        assert_eq!(input[1]["type"], "reasoning");
-        assert_eq!(input[1]["encrypted_content"], "opaque");
-        assert_eq!(input[2]["type"], "function_call");
-        assert_eq!(input[3]["type"], "function_call_output");
-        assert_eq!(input[3]["call_id"], "call_1");
-        assert_eq!(input[3]["output"], "contents");
-        assert!(events
-            .iter()
-            .any(|event| matches!(event, AgentEvent::ToolOutcome { id, .. } if id == "call_1")));
-    }
-
-    #[test]
-    fn a_tool_only_turn_carries_no_empty_text_part() {
-        let outcome = StreamOutcome {
-            tool_calls: vec![ToolCall {
-                id: "a".into(),
-                name: "n".into(),
-                arguments: "{}".into(),
-                ..Default::default()
-            }],
-            ..Default::default()
-        };
-        let message = assistant_turn(&outcome);
-        assert_eq!(message.content.len(), 1);
-        assert!(matches!(message.content[0], ContentPart::ToolUse { .. }));
-    }
-
-    #[test]
-    fn tool_images_follow_every_result_in_the_same_turn() {
-        let message = results_turn(vec![
-            (
-                ToolCall {
-                    id: "a".into(),
-                    name: "verify_pdf_pages".into(),
-                    arguments: "{}".into(),
-                    ..Default::default()
-                },
-                ToolOutput {
-                    output: "checked".into(),
-                    images: vec!["data:image/png;base64,AA".into()],
-                },
-            ),
-            (
-                ToolCall {
-                    id: "b".into(),
-                    name: "read_file".into(),
-                    arguments: "{}".into(),
-                    ..Default::default()
-                },
-                ToolOutput::text("body"),
-            ),
-        ]);
-        assert_eq!(message.role, Role::User);
-        assert!(matches!(message.content[0], ContentPart::ToolResult { .. }));
-        assert!(matches!(message.content[1], ContentPart::ToolResult { .. }));
-        assert!(matches!(message.content[2], ContentPart::Image { .. }));
-    }
-
-    #[test]
-    fn a_turn_with_text_and_no_calls_is_not_empty() {
-        let outcome = StreamOutcome {
-            text: "done".into(),
-            ..Default::default()
-        };
-        assert!(!empty(&outcome));
-
-        let outcome = StreamOutcome {
-            tool_calls: vec![ToolCall::default()],
-            ..Default::default()
-        };
-        assert!(!empty(&outcome));
-
-        assert!(empty(&StreamOutcome::default()));
-    }
-
-    #[test]
-    fn the_default_budget_matches_the_typescript_loop_it_replaced() {
-        let config = RunConfig::default();
-        assert_eq!(config.max_steps, 50);
-        assert_eq!(config.max_retries, 4);
-        assert_eq!(config.retry_base_ms, 800);
-    }
-
-    #[test]
-    fn a_retryable_error_is_retried_only_before_any_output_streamed() {
-        let error = AgentError::Transport("connection reset".into());
-        assert!(should_retry(&error, 4, false));
-        assert!(!should_retry(&error, 4, true));
-        assert!(!should_retry(&error, 0, false));
-
-        let fatal = AgentError::Provider {
-            status: 401,
-            message: "bad key".into(),
-        };
-        assert!(!should_retry(&fatal, 4, false));
-    }
-
-    #[test]
-    fn retry_delay_uses_exponential_backoff_and_bounded_jitter() {
-        assert_eq!(retry_delay(800, 3, 1_000), Duration::from_millis(6_400));
-        assert_eq!(retry_delay(800, 0, 750), Duration::from_millis(600));
-        assert_eq!(retry_delay(800, 0, 1_250), Duration::from_millis(1_000));
-    }
-
-    #[test]
-    fn retry_delay_saturates_without_overflowing() {
-        assert_eq!(
-            retry_delay(u64::MAX, u32::MAX, 1_250),
-            Duration::from_millis(MAX_RETRY_DELAY_MS)
-        );
-    }
-
-    #[test]
-    fn cumulative_usage_saturates_instead_of_wrapping() {
-        let mut usage = Usage {
-            input: u32::MAX - 1,
-            output: u32::MAX,
-        };
-        accumulate_usage(
-            &mut usage,
-            Usage {
-                input: 10,
-                output: 1,
-            },
-        );
-
-        assert_eq!(usage.input, u32::MAX);
-        assert_eq!(usage.output, u32::MAX);
-    }
 
     #[test]
     fn tool_outputs_are_bounded_before_entering_history() {
@@ -1036,84 +329,6 @@ mod tests {
     }
 
     #[test]
-    fn tool_result_batches_have_an_aggregate_ceiling() {
-        let mut bytes = 0;
-        add_tool_batch_bytes(&mut bytes, 5, 8).unwrap();
-        let error = add_tool_batch_bytes(&mut bytes, 4, 8).unwrap_err();
-
-        assert!(matches!(error, AgentError::Decode(_)));
-        assert!(!error.retryable());
-        assert_eq!(bytes, 5);
-    }
-
-    #[tokio::test]
-    async fn tool_execution_has_a_backend_deadline() {
-        let runner: ToolRunner = Arc::new(|_| Box::pin(std::future::pending()));
-        let output = run_tool_with_timeout(ToolCall::default(), &runner, Duration::ZERO).await;
-
-        let value: serde_json::Value = serde_json::from_str(&output.output).unwrap();
-        assert_eq!(value["error"], "the tool execution timed out");
-    }
-
-    #[test]
-    fn serialized_history_is_counted_without_allocating_a_copy() {
-        let message = Message::user("a payload");
-        let exact = serde_json::to_vec(&message).unwrap().len();
-        assert_eq!(serialized_size_limited(&message, exact).unwrap(), exact);
-        assert!(matches!(
-            serialized_size_limited(&message, exact - 1),
-            Err(AgentError::Decode(_))
-        ));
-    }
-
-    #[test]
-    fn history_and_tool_call_counts_are_backend_enforced() {
-        let too_many_messages = CompletionRequest {
-            messages: vec![Message::user(""); MAX_AGENT_MESSAGES + 1],
-            ..Default::default()
-        };
-        assert!(matches!(
-            HistoryBudget::new(&too_many_messages),
-            Err(AgentError::Decode(_))
-        ));
-
-        let request = CompletionRequest::default();
-        let mut history = HistoryBudget::new(&request).unwrap();
-        assert!(matches!(
-            history.append_message(&Message::user("next"), MAX_AGENT_TOOL_CALLS + 1),
-            Err(AgentError::Decode(_))
-        ));
-        assert!(validate_tool_calls_per_turn(MAX_STREAM_TOOL_CALLS).is_ok());
-        assert!(validate_tool_calls_per_turn(MAX_STREAM_TOOL_CALLS + 1).is_err());
-        assert!(validate_completion_request(&too_many_messages).is_err());
-
-        let excessive_context = CompletionRequest {
-            messages: vec![Message::user("x".repeat(MAX_AGENT_CONTEXT_CHARS + 1))],
-            ..Default::default()
-        };
-        assert!(validate_completion_request(&excessive_context).is_err());
-
-        let excessive_images = CompletionRequest {
-            messages: vec![Message {
-                role: Role::User,
-                content: (0..=MAX_AGENT_IMAGES)
-                    .map(|_| ContentPart::Image {
-                        image: "data:image/png;base64,AA".into(),
-                    })
-                    .collect(),
-            }],
-            ..Default::default()
-        };
-        assert!(validate_completion_request(&excessive_images).is_err());
-    }
-
-    #[test]
-    fn aggregate_context_guard_can_hold_all_permitted_text_tool_results() {
-        let maximum_tool_output_chars = MAX_AGENT_TOOL_CALLS * MAX_TOOL_OUTPUT_TEXT_BYTES;
-        assert!(MAX_AGENT_CONTEXT_CHARS >= maximum_tool_output_chars);
-    }
-
-    #[test]
     fn a_tool_output_deserializes_with_or_without_images() {
         let plain: ToolOutput = serde_json::from_str(r#"{"output":"ok"}"#).unwrap();
         assert_eq!(plain, ToolOutput::text("ok"));
@@ -1122,5 +337,14 @@ mod tests {
             serde_json::from_str(r#"{"output":"ok","images":["data:image/png;base64,AA"]}"#)
                 .unwrap();
         assert_eq!(with_images.images.len(), 1);
+    }
+
+    #[test]
+    fn run_config_deserializes_without_the_compaction_flag_for_old_callers() {
+        let config: RunConfig =
+            serde_json::from_str(r#"{"max_steps": 10, "max_retries": 2, "retry_base_ms": 500}"#)
+                .unwrap();
+        assert_eq!(config.max_steps, 10);
+        assert!(config.auto_compact);
     }
 }
