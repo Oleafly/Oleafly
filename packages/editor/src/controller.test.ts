@@ -9,6 +9,7 @@ import {
   editorUndo,
   gotoLine,
   insertTemplate,
+  selectWordNearLine,
   setEditorView,
 } from "./controller";
 
@@ -85,5 +86,49 @@ describe("editor controller navigation", () => {
     expect(document.documentElement.scrollTop).toBe(47);
     expect(document.body.scrollTop).toBe(31);
     expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+  });
+});
+
+describe("selectWordNearLine occurrence targeting", () => {
+  const line = "The model uses a model of the model to predict the model output.";
+
+  function mount(doc: string) {
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    view = new EditorView({ parent, state: EditorState.create({ doc }) });
+    setEditorView(view);
+    return view;
+  }
+
+  it("selects the requested occurrence of a repeated word", () => {
+    const v = mount(line);
+    expect(selectWordNearLine(1, "model", 2)).toBe(true);
+    const selection = v.state.selection.main;
+    expect(selection.from).toBe(line.indexOf("model", 25));
+    expect(v.state.doc.sliceString(selection.from, selection.to)).toBe("model");
+  });
+
+  it("still selects the first occurrence when none is requested", () => {
+    const v = mount(line);
+    expect(selectWordNearLine(1, "model")).toBe(true);
+    expect(v.state.selection.main.from).toBe(line.indexOf("model"));
+  });
+
+  it("selects the last occurrence for the last index", () => {
+    const v = mount(line);
+    expect(selectWordNearLine(1, "model", 3)).toBe(true);
+    expect(v.state.selection.main.from).toBe(line.lastIndexOf("model"));
+  });
+
+  it("falls back to the first occurrence when the line has fewer than requested", () => {
+    const v = mount("only one model on this line");
+    expect(selectWordNearLine(1, "model", 4)).toBe(true);
+    expect(v.state.selection.main.from).toBe("only one model on this line".indexOf("model"));
+  });
+
+  it("keeps searching neighbouring lines when the target line lacks the word", () => {
+    const v = mount(`first line\n${line}`);
+    expect(selectWordNearLine(1, "model", 2)).toBe(true);
+    expect(v.state.doc.sliceString(v.state.selection.main.from, v.state.selection.main.to)).toBe("model");
   });
 });

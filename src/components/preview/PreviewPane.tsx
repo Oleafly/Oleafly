@@ -90,6 +90,7 @@ import {
   disarmPreviewTyping,
   settlePreviewTyping,
 } from "@/features/preview-typing";
+import { wordOccurrenceIndex } from "@oleafly/preview/textHit";
 import { askAiAboutCompileErrors } from "@/features/ask-ai-compile-errors";
 import {
   revealInDir,
@@ -2097,6 +2098,12 @@ export function PreviewPane() {
                               clickY,
                               word,
                               displayedCheckpoint,
+                              textTarget
+                                ? wordOccurrenceIndex(
+                                    textTarget.span.textContent ?? "",
+                                    textTarget.offset,
+                                  )
+                                : 0,
                             ).then((placed) =>
                               settlePreviewTyping(placed, textTarget, typingEnabled),
                             );

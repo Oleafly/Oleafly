@@ -216,6 +216,10 @@ export async function inverseFromClick(
   y: number,
   word?: string,
   expectedCheckpoint: CompileSuccessCheckpoint | null = null,
+  /// Which occurrence of `word` on the resolved line was clicked. SyncTeX
+  /// resolves to a line but not a column, so without this a click on a
+  /// repeated word always lands on the first one.
+  wordOccurrence = 0,
 ): Promise<boolean> {
   const store = useFilesStore.getState();
   const { projectId } = store;
@@ -225,7 +229,8 @@ export async function inverseFromClick(
   const context = currentSyncTexContext(expectedCheckpoint);
   if (!context) return false;
   const currentLine = getCurrentLine();
-  if (word && currentLine != null) selectWordNearLine(currentLine, word);
+  if (word && currentLine != null)
+    selectWordNearLine(currentLine, word, wordOccurrence);
   try {
     const hit = await synctexInverse(projectId, mainDoc, page, x, y);
     if (!contextStillValid(context)) return false;
@@ -258,7 +263,7 @@ export async function inverseFromClick(
     // SyncTeX only resolves to a line (its column is coarse and often lands on a
     // `\begin`/`\end`). If we know the word that was clicked, place the cursor on
     // the nearest matching word; otherwise fall back to the line start.
-    if (word && selectWordNearLine(targetLine, word)) return true;
+    if (word && selectWordNearLine(targetLine, word, wordOccurrence)) return true;
     gotoLine(targetLine);
     return true;
   } catch (e) {
