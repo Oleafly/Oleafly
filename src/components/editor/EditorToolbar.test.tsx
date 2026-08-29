@@ -18,7 +18,7 @@ vi.mock("@/components/editor/project-info-data", () => ({
   collectProjectInfo: collectProjectInfoMock,
 }));
 
-import { EditorToolbar } from "./EditorToolbar";
+import { EditorToolbar, IconBtn } from "./EditorToolbar";
 
 class ResizeObserverStub {
   observe() {}
@@ -152,5 +152,28 @@ describe("EditorToolbar wysiwyg toggle", () => {
 
     await waitFor(() => expect(screen.getByText("Words")).toBeInTheDocument());
     expect(screen.getAllByText("0").length).toBeGreaterThan(1);
+  });
+});
+
+describe("EditorToolbar focus", () => {
+  it("keeps the caret where it was when a toolbar button is pressed", () => {
+    const onClick = vi.fn();
+    render(
+      <IconBtn onClick={onClick} title="Undo probe">
+        <span>undo</span>
+      </IconBtn>,
+    );
+    const button = screen.getByLabelText("Undo probe");
+
+    expect(fireEvent.mouseDown(button)).toBe(false);
+    expect(onClick).not.toHaveBeenCalled();
+
+    fireEvent.click(button);
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("labels the toolbar so focus assertions can scope to it", () => {
+    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
+    expect(screen.getByTestId("editor-toolbar")).toBeInTheDocument();
   });
 });

@@ -903,22 +903,42 @@ WYSRAWANCHOR
   );
   await rawAction('[aria-label="Insert footnote"]', "Insert footnote");
 
-  await atAnchor();
-  await clickToolbarControl(
-    tauriPage,
-    '[aria-label="Cite from project"]',
-    "Cite from project",
-  );
-  await clickPortalButton(
-    tauriPage,
-    `candidate.textContent?.trim() === "Find and add a new citation…"`,
-    "Find and add a new citation",
-  );
-  await expect(
-    tauriPage.locator(
-      'input[placeholder="DOI, arXiv id, URL, or a paper title…"]',
-    ),
-  ).toBeVisible({ timeout: 5_000 });
+  // Same headless-webview flake rawHeading guards against: the click that
+  // should open the toolbar menu is sometimes lost, and the failure reports
+  // `portals=[]` because no popper wrapper ever entered the DOM. The item
+  // click and the dialog it opens are inside the retry too, so a lost click
+  // at any of the three steps costs an attempt rather than the run.
+  let citationError: unknown;
+  let citationDialogOpen = false;
+  for (let attempt = 0; attempt < 4 && !citationDialogOpen; attempt++) {
+    await tauriPage.press("body", "Escape").catch(() => {});
+    await atAnchor();
+    await clickToolbarControl(
+      tauriPage,
+      '[aria-label="Cite from project"]',
+      "Cite from project",
+    );
+    try {
+      await clickPortalButton(
+        tauriPage,
+        `candidate.textContent?.trim() === "Find and add a new citation…"`,
+        "Find and add a new citation",
+      );
+      await expect(
+        tauriPage.locator(
+          'input[placeholder="DOI, arXiv id, URL, or a paper title…"]',
+        ),
+      ).toBeVisible({ timeout: 5_000 });
+      citationDialogOpen = true;
+    } catch (error) {
+      citationError = error;
+    }
+  }
+  if (!citationDialogOpen) {
+    throw citationError instanceof Error
+      ? citationError
+      : new Error("citation search dialog never opened");
+  }
   const citation = await tauriPage.evaluate<{ key?: string; error?: string }>(
     `Promise.all([
       import("/src/features/citation.ts"),

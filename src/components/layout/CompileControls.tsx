@@ -142,6 +142,7 @@ export function CompileControls() {
           "rounded-r-none",
         )}
         disabled={compiling || !engineLoaded}
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => {
           // If the PDF pane is hidden (editor-only), reveal it so the result shows.
           if (viewMode === "editor") setViewMode("split");
