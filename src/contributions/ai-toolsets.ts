@@ -10,7 +10,11 @@ export function registerAiToolsets() {
   registerAiToolset({
     id: "project-tools",
     mode: "chat",
-    create: (opts: { confirm?: ConfirmFn; onImage?: (dataUrl: string) => void }) =>
+    create: (opts: {
+      confirm?: ConfirmFn;
+      onImage?: (dataUrl: string) => void;
+      runId?: () => string | null;
+    }) =>
       createOleaflyTools(opts),
   });
   registerAiToolset({

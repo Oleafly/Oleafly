@@ -19,6 +19,17 @@ describe("classifyTool", () => {
 });
 
 describe("TurnFold", () => {
+  it("seals every open item when a sample is done", () => {
+    const fold = new TurnFold("turn-done");
+    fold.apply({ kind: "reasoningDelta", text: "thinking" });
+    fold.apply({ kind: "retry", attempt: 1, max: 2 });
+    fold.apply({ kind: "textDelta", text: "answer" });
+
+    fold.apply({ kind: "done", stopReason: null });
+
+    expect(fold.snapshot().items.every((item) => item.completed)).toBe(true);
+  });
+
   it("accumulates text and reasoning deltas into tail items", () => {
     const record = fold([
       { kind: "reasoningDelta", text: "thinking" },
@@ -42,7 +53,11 @@ describe("TurnFold", () => {
         arguments: '{"path":"main.tex"}',
       },
       { kind: "toolRequest", id: "call-2", name: "run_command", arguments: '{"command":"ls","cwd":"/tmp"}' },
-      { kind: "toolOutcome", id: "call-2", output: '{"error":"denied"}' },
+      {
+        kind: "toolOutcome",
+        id: "call-2",
+        output: '{"message":"denied","declined":true,"status":"declined"}',
+      },
       { kind: "toolOutcome", id: "call-1", output: "contents" },
     ]);
     const [read, exec] = record.items;
@@ -58,15 +73,21 @@ describe("TurnFold", () => {
     expect(exec.item).toMatchObject({
       type: "commandExecution",
       command: ["ls"],
-      status: "failed",
+      status: "declined",
       exitCode: null,
     });
   });
 
   it.each([
     ['{"error":"aborted"}', "failed", null],
-    ['{"exit_code":1}', "failed", 1],
-    ['{"exit_code":0}', "completed", 0],
+    ['{"message":"denied","declined":true,"status":"declined"}', "declined", null],
+    ['{"exec":true,"exit_code":127}', "failed", 127],
+    ['{"exec":true,"exit_code":0}', "completed", 0],
+    [
+      '{"exec":true,"exit_code":null,"timed_out":true,"status":"Stopped: timed out"}',
+      "failed",
+      null,
+    ],
     ["plain text mentioning error", "completed", null],
     ['prose containing "error": as a substring', "completed", null],
   ] as const)(

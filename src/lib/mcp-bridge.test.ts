@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -42,6 +42,9 @@ const mocks = vi.hoisted(() => ({
     writeProjectBytes: vi.fn(),
     compileIsolated: vi.fn(),
     readIsolatedPdf: vi.fn(),
+    agentExecCwd: vi.fn(async () => "/library/projects/proj"),
+    agentExecAuthorize: vi.fn(async () => "approval-token"),
+    agentExec: vi.fn(),
   },
   filesState: {
     projectId: "proj" as string | null,
@@ -81,6 +84,9 @@ import {
   startMcpBridge,
   validateToolInput,
 } from "@/lib/mcp-bridge";
+import { registerCuaSurface } from "@/lib/cua-sandbox";
+
+afterEach(() => registerCuaSurface(null));
 
 describe("mcp tool registry", () => {
   const registry = buildMcpToolRegistry({
@@ -108,6 +114,8 @@ describe("mcp tool registry", () => {
       "preview_figure",
       "insert_figure",
       "load_image",
+      "run_command",
+      "computer_use",
     ]) {
       expect(registry[name], name).toBeDefined();
     }
@@ -138,11 +146,36 @@ describe("mcp tool registry", () => {
       "update_todos",
       "remember_note",
       "forget_note",
+      "run_command",
+      "computer_use",
     ]) {
       expect(ro[name], name).toBeUndefined();
     }
     expect(ro.read_file).toBeDefined();
     expect(ro.compile).toBeDefined();
+  });
+
+  it("trust prompts before read-only computer control actions", async () => {
+    registerCuaSurface({
+      get document(): Document {
+        throw new Error("computer control must not run before approval");
+      },
+      url: () => "https://sandbox.local/",
+      navigate: vi.fn(),
+    });
+    const request = vi.fn(async () => false);
+    const guarded = buildMcpToolRegistry({
+      confirm: confirmForPolicy("trust", request),
+      readOnly: false,
+      onImage: () => {},
+    });
+
+    const result = await guarded.computer_use.execute({ action: "read" });
+
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({ tool: "computer_use", summary: "read" }),
+    );
+    expect(result).toMatchObject({ declined: true, status: "declined" });
   });
 
   it("keeps the Rust fail-safe mutation list in parity with the webview registry", () => {
@@ -243,6 +276,15 @@ describe("confirmForPolicy", () => {
     expect(await confirm(req("write_file"))).toBe(true);
     expect(await confirm(req("delete_file"))).toBe(true);
     expect(r.wasPrompted()).toBe(false);
+  });
+
+  it("trust still prompts before shell and computer control", async () => {
+    for (const tool of ["run_command", "computer_use"]) {
+      const r = denyingRequest();
+      const confirm = confirmForPolicy("trust", r.fn);
+      expect(await confirm(req(tool))).toBe(false);
+      expect(r.wasPrompted()).toBe(true);
+    }
   });
 });
 

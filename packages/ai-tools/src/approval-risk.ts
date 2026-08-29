@@ -1,10 +1,3 @@
-// Risk classes for agent tools. read runs without a prompt; write pauses the
-// run for confirmation (with a diff where one exists); shell would confirm
-// with command and cwd (no such tool ships today; engines run sandboxed);
-// network consent is granted when the user configures the connector in
-// Settings, so classified network tools do not re-prompt per call. Unknown
-// tools default to write so a new tool never runs silently.
-
 export type ToolRisk = "read" | "write" | "shell" | "network";
 
 const READ_TOOLS = new Set([

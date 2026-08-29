@@ -70,7 +70,7 @@ export function TerminalPane({
     })
       .then((id) => {
         if (disposed) {
-          void invoke("term_kill", { id }).catch(() => {});
+          void invoke("term_kill", { id, projectId }).catch(() => {});
           return;
         }
         sessionId = id;
@@ -81,7 +81,9 @@ export function TerminalPane({
       });
 
     const dataSub = terminal.onData((data) => {
-      if (sessionId) void invoke("term_write", { id: sessionId, data }).catch(() => {});
+      if (sessionId) {
+        void invoke("term_write", { id: sessionId, projectId, data }).catch(() => {});
+      }
     });
     const observer = new ResizeObserver(() => {
       if (!visibleRef.current) return;
@@ -89,6 +91,7 @@ export function TerminalPane({
       if (sessionId) {
         void invoke("term_resize", {
           id: sessionId,
+          projectId,
           cols: terminal.cols,
           rows: terminal.rows,
         }).catch(() => {});
@@ -100,7 +103,7 @@ export function TerminalPane({
       disposed = true;
       observer.disconnect();
       dataSub.dispose();
-      if (sessionId) void invoke("term_kill", { id: sessionId }).catch(() => {});
+      if (sessionId) void invoke("term_kill", { id: sessionId, projectId }).catch(() => {});
       sessionIdRef.current = null;
       terminalRef.current = null;
       fitRef.current = null;
@@ -122,13 +125,14 @@ export function TerminalPane({
       if (terminal && id) {
         void invoke("term_resize", {
           id,
+          projectId,
           cols: terminal.cols,
           rows: terminal.rows,
         }).catch(() => {});
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [visible]);
+  }, [projectId, visible]);
 
   return (
     <div

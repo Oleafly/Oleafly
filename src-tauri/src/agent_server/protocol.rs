@@ -111,7 +111,7 @@ pub struct ClientCapabilities {
 }
 
 #[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct AgentServerInfo {
     pub app_server_protocol_version: u32,
     pub native_host_protocol_version: u32,
@@ -666,6 +666,17 @@ mod tests {
         );
         assert_eq!(info.schema_version, SCHEMA_VERSION);
         assert!(!info.server_version.is_empty());
+        let value = serde_json::to_value(info).unwrap();
+        assert_eq!(
+            value["app_server_protocol_version"],
+            APP_SERVER_PROTOCOL_VERSION
+        );
+        assert_eq!(
+            value["native_host_protocol_version"],
+            NATIVE_HOST_PROTOCOL_VERSION
+        );
+        assert_eq!(value["schema_version"], SCHEMA_VERSION);
+        assert!(value.get("appServerProtocolVersion").is_none());
     }
 
     #[test]

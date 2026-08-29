@@ -81,6 +81,7 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 }));
 
 import { useFilesStore } from "./files";
+import { useMcpApprovalStore } from "./mcp-approvals";
 import { useSettingsStore } from "./settings";
 
 let projectStateRevision = 10_000;
@@ -150,6 +151,7 @@ beforeEach(async () => {
   mocks.flushWysiwygPendingEdits.mockReset();
   mocks.invalidateWysiwygProjectSession.mockReset();
   useSettingsStore.setState({ defaultLatexEngine: "tectonic" });
+  useMcpApprovalStore.getState().cancelAll();
 });
 
 function seedProjectMetadata() {
@@ -551,6 +553,24 @@ describe("transactional project transitions", () => {
     expect(useFilesStore.getState().files).toEqual({});
   });
 
+  it("rejects pending external approvals when their project closes", async () => {
+    useFilesStore.setState({
+      projectId: "old-project",
+      files: {},
+      openTabs: [],
+      activePath: null,
+    });
+    const pending = useMcpApprovalStore.getState().request({
+      tool: "run_command",
+      summary: "$ touch should-not-run",
+    });
+
+    await useFilesStore.getState().closeProject();
+
+    expect(useMcpApprovalStore.getState().queue).toEqual([]);
+    await expect(pending).resolves.toBe(false);
+  });
+
   it("flushes pending Visual edits before collecting dirty buffers for close", async () => {
     useFilesStore.setState({
       projectId: "project",
@@ -610,6 +630,33 @@ describe("transactional project transitions", () => {
     expect(mocks.invalidateWysiwygProjectSession).toHaveBeenCalledTimes(1);
     expect(useFilesStore.getState().projectId).toBe("replacement");
     expect(useFilesStore.getState().files["main.tex"].content).toBe("replacement content");
+  });
+
+  it("rejects pending external approvals when opening a different project", async () => {
+    mocks.getProject.mockResolvedValue({
+      name: "Replacement",
+      kind: "",
+      main_doc: "main.tex",
+    });
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+    mocks.readFileContent.mockResolvedValue("replacement content");
+    useFilesStore.setState({
+      projectId: "old-project",
+      files: {},
+      openTabs: [],
+      activePath: null,
+    });
+    const pending = useMcpApprovalStore.getState().request({
+      tool: "run_command",
+      summary: "$ touch should-not-run",
+      projectId: "old-project",
+    });
+
+    await useFilesStore.getState().openProject("replacement");
+
+    expect(useFilesStore.getState().projectId).toBe("replacement");
+    expect(useMcpApprovalStore.getState().queue).toEqual([]);
+    await expect(pending).resolves.toBe(false);
   });
 
   it("keeps the current project open when a transition save fails", async () => {

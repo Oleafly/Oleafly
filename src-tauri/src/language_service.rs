@@ -2698,17 +2698,24 @@ mod tests {
     #[cfg(unix)]
     #[tokio::test]
     async fn containment_drop_kills_a_helper_after_its_leader_exits() {
+        #[cfg(target_os = "linux")]
         fn process_is_running(pid: u32) -> bool {
-            let output = std::process::Command::new("ps")
-                .args(["-o", "stat=", "-p", &pid.to_string()])
-                .output()
-                .expect("inspect helper process");
-            output.status.success()
-                && String::from_utf8_lossy(&output.stdout)
-                    .trim_start()
-                    .chars()
-                    .next()
-                    .is_some_and(|state| state != 'Z')
+            std::fs::read_to_string(format!("/proc/{pid}/stat"))
+                .ok()
+                .is_some_and(|stat| {
+                    stat.rsplit_once(") ")
+                        .and_then(|(_, tail)| tail.chars().next())
+                        .is_some_and(|state| state != 'Z')
+                })
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        fn process_is_running(pid: u32) -> bool {
+            std::process::Command::new("/bin/kill")
+                .args(["-0", &pid.to_string()])
+                .stderr(Stdio::null())
+                .status()
+                .is_ok_and(|status| status.success())
         }
 
         let args = vec![

@@ -118,6 +118,7 @@ pub fn run() {
     builder
         .manage(AppState::default())
         .manage(agent::AgentState::default())
+        .manage(agent_exec::AgentExecState::default())
         .manage(agent_server::AgentServerState::default())
         .manage(mcp::server::McpState::default())
         // Closing the app mid-TinyTeX-install must be a deliberate choice: block
@@ -249,6 +250,8 @@ pub fn run() {
             terminal::term_resize,
             terminal::term_kill,
             cua_policy::cua_action_confirm,
+            agent_exec::agent_exec_cwd,
+            agent_exec::agent_exec_authorize,
             agent_exec::agent_exec,
             commands::project_engine,
             language_service::language_service_start,

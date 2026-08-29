@@ -265,8 +265,8 @@ export async function runViaBackend(
 }
 
 /** Inject mid-run input into an active run; lands at the next message boundary. */
-export const agentSteer = (requestId: string, text: string) =>
-  invoke<void>("agent_steer", { requestId, text });
+export const agentSteer = (requestId: string, message: AgentMessage) =>
+  invoke<void>("agent_steer", { requestId, message });
 
 /** Stop every running subagent of a run without stopping the run. */
 export const agentSubagentsStop = (requestId: string) =>

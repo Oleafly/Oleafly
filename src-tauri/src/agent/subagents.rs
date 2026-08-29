@@ -84,6 +84,19 @@ pub struct SubagentManager {
     agents: Mutex<HashMap<String, SubAgentEntry>>,
 }
 
+impl Drop for SubagentManager {
+    fn drop(&mut self) {
+        let agents = self
+            .agents
+            .get_mut()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        for entry in agents.values() {
+            entry.token.cancel();
+            entry.handle.abort();
+        }
+    }
+}
+
 fn next_agent_id() -> u64 {
     use std::sync::atomic::{AtomicU64, Ordering};
     static NEXT: AtomicU64 = AtomicU64::new(1);
@@ -234,6 +247,7 @@ impl SubagentManager {
         for entry in agents.values() {
             if *lock_status(&entry.status) == SubagentStatus::Running {
                 entry.token.cancel();
+                entry.handle.abort();
                 *lock_status(&entry.status) = SubagentStatus::Interrupted;
                 let _ = entry.done_tx.send(true);
                 interrupted += 1;
@@ -269,20 +283,30 @@ impl SubagentManager {
         Ok(summary)
     }
 
-    pub fn send_message(&self, agent: &str, message: &str) -> Result<Value, String> {
+    pub async fn send_message(&self, agent: &str, message: &str) -> Result<Value, String> {
         if message.trim().is_empty() {
             return Err("the message must not be empty".into());
         }
-        let agents = lock(&self.agents);
-        let entry = agents
-            .get(agent)
-            .ok_or_else(|| format!("no agent {agent}"))?;
-        if *lock_status(&entry.status) != SubagentStatus::Running {
+        let steer = {
+            let agents = lock(&self.agents);
+            let entry = agents
+                .get(agent)
+                .ok_or_else(|| format!("no agent {agent}"))?;
+            if *lock_status(&entry.status) != SubagentStatus::Running {
+                return Err(format!(
+                    "agent {agent} is not running (use followup_task to give it new work)"
+                ));
+            }
+            entry.steer.clone()
+        };
+        if !steer
+            .steer(oleafly_agent::Message::user(message.to_string()))
+            .await
+        {
             return Err(format!(
-                "agent {agent} is not running (use followup_task to give it new work)"
+                "agent {agent} stopped before receiving the message"
             ));
         }
-        entry.steer.steer(message.to_string());
         Ok(serde_json::json!({ "delivered": true }))
     }
 
@@ -425,7 +449,7 @@ impl SubagentManager {
 
     /// Give a finished agent new work in its own thread (the audited
     /// followup_task: a message plus a triggered turn).
-    pub fn followup_task(
+    pub async fn followup_task(
         self: &Arc<Self>,
         ctx: &RunContext,
         agent: &str,
@@ -444,7 +468,7 @@ impl SubagentManager {
         };
         if running {
             // Still working: the message lands at its next message boundary.
-            self.send_message(agent, message)?;
+            self.send_message(agent, message).await?;
             return Ok(serde_json::json!({ "delivered": true, "triggeredTurn": false }));
         }
         let prior = {
@@ -510,7 +534,7 @@ fn spawn_child_run(
     ctx: RunContext,
     request: CompletionRequest,
     token: CancellationToken,
-    steer_rx: tokio::sync::mpsc::UnboundedReceiver<String>,
+    steer_rx: tokio::sync::mpsc::UnboundedReceiver<oleafly_agent::run::SteeredInput>,
     id: String,
     label: String,
     thread_id: String,
@@ -529,7 +553,24 @@ fn spawn_child_run(
         };
         let event_id = id.clone();
         let event_label = label.clone();
-        let shared_recorder = Arc::new(Mutex::new(TurnRecorder::new(&id)));
+        let initial_user_message = request
+            .messages
+            .first()
+            .map(|message| {
+                message
+                    .content
+                    .iter()
+                    .filter_map(|part| match part {
+                        oleafly_agent::ContentPart::Text { text } => Some(text.as_str()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            })
+            .unwrap_or_default();
+        let mut recorder = TurnRecorder::new(&id);
+        recorder.seed_user_message(initial_user_message);
+        let shared_recorder = Arc::new(Mutex::new(recorder));
         let record_sink = shared_recorder.clone();
 
         subagent_start_hook(&thread_id, &label, &ctx.project_id, &request);
@@ -734,6 +775,7 @@ pub async fn dispatch(
             Some(
                 manager
                     .send_message(&args.agent, &message)
+                    .await
                     .map(|result| ToolOutput::text(result.to_string())),
             )
         }
@@ -749,6 +791,7 @@ pub async fn dispatch(
             Some(
                 manager
                     .followup_task(ctx, &args.agent, &args.message)
+                    .await
                     .map(|result| ToolOutput::text(result.to_string())),
             )
         }
@@ -948,7 +991,8 @@ mod tests {
     async fn interrupt_all_stops_only_running_children() {
         let manager = SubagentManager::default();
         let running_token = {
-            let entry = dummy_entry("agent-1", SubagentStatus::Running);
+            let mut entry = dummy_entry("agent-1", SubagentStatus::Running);
+            entry.handle = tokio::spawn(std::future::pending());
             let token = entry.token.clone();
             lock(&manager.agents).insert("agent-1".into(), entry);
             token
@@ -958,7 +1002,9 @@ mod tests {
 
         assert_eq!(manager.interrupt_all(), 1);
         assert!(running_token.is_cancelled());
+        tokio::task::yield_now().await;
         let agents = lock(&manager.agents);
+        assert!(agents["agent-1"].handle.is_finished());
         assert_eq!(
             *lock_status(&agents["agent-1"].status),
             SubagentStatus::Interrupted
@@ -970,6 +1016,19 @@ mod tests {
         // A second sweep finds nothing running.
         drop(agents);
         assert_eq!(manager.interrupt_all(), 0);
+    }
+
+    #[tokio::test]
+    async fn dropping_a_manager_aborts_running_children() {
+        let manager = SubagentManager::default();
+        let mut entry = dummy_entry("agent-1", SubagentStatus::Running);
+        entry.handle = tokio::spawn(std::future::pending());
+        let abort = entry.handle.abort_handle();
+        lock(&manager.agents).insert("agent-1".into(), entry);
+
+        drop(manager);
+        tokio::task::yield_now().await;
+        assert!(abort.is_finished());
     }
 
     #[tokio::test]

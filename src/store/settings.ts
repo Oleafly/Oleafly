@@ -347,6 +347,7 @@ interface SettingsState {
   setTerminalOpen: (v: boolean) => void;
   browserOpen: boolean;
   setBrowserOpen: (v: boolean) => void;
+  closeDocks: () => void;
   editorFontSize: number;
   setEditorFontSize: (v: number) => void;
   appFontSize: number;
@@ -551,15 +552,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.ai.floating", v ? "1" : "0");
     set({ chatFloating: v });
   },
-  terminalOpen: ls("oleafly.dock.terminalOpen", "0") === "1",
+  terminalOpen: false,
   setTerminalOpen: (v) => {
-    saveLs("oleafly.dock.terminalOpen", v ? "1" : "0");
     set({ terminalOpen: v });
   },
-  browserOpen: ls("oleafly.dock.browserOpen", "0") === "1",
+  browserOpen: false,
   setBrowserOpen: (v) => {
-    saveLs("oleafly.dock.browserOpen", v ? "1" : "0");
     set({ browserOpen: v });
+  },
+  closeDocks: () => {
+    set({ terminalOpen: false, browserOpen: false });
   },
   openInTree: ls("oleafly.openInTree", "0") !== "0",
   setOpenInTree: (v) => {
@@ -772,8 +774,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.defaultView", PREF_DEFAULTS.defaultView);
     saveLs("oleafly.openInTree", PREF_DEFAULTS.openInTree ? "1" : "0");
     saveLs("oleafly.hoverPreview", PREF_DEFAULTS.hoverPreview ? "1" : "0");
-    saveLs("oleafly.dock.terminalOpen", PREF_DEFAULTS.terminalOpen ? "1" : "0");
-    saveLs("oleafly.dock.browserOpen", PREF_DEFAULTS.browserOpen ? "1" : "0");
     saveLs("oleafly.accent", PREF_DEFAULTS.accentColor);
     saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
     saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);

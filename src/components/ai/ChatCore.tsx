@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
-import { runAgentHarness } from "./agent-turn";
-import { DeltaQueues } from "@oleafly/ai-core";
+import { runAgentHarness, toAgentMessages } from "./agent-turn";
+import { DeltaQueues, MAX_BATCH } from "@oleafly/ai-core";
 import { windowFlushScheduler } from "@/lib/agent-stream-scheduler";
 import { useAgentTurnsStore, type QueuedFollowUp } from "@/store/agent-turns";
 import { useAssistantOutputsStore } from "@/store/assistant-outputs";
@@ -188,6 +188,27 @@ export function buildToolContinuation(
   ];
 }
 
+function inputModelMessage(
+  text: string,
+  attachments: readonly PendingAttachment[],
+): ModelMessage {
+  if (attachments.length === 0) return { role: "user", content: text };
+  const content: UserContent = [
+    ...(text.trim() ? [{ type: "text" as const, text }] : []),
+    ...attachments.map((attachment) =>
+      attachment.mediaType.startsWith("image/")
+        ? { type: "image" as const, image: attachment.dataUrl }
+        : {
+            type: "file" as const,
+            data: attachment.dataUrl,
+            mediaType: attachment.mediaType,
+            name: attachment.name,
+          },
+    ),
+  ];
+  return { role: "user", content };
+}
+
 const EMPTY_FOLLOW_UPS: QueuedFollowUp[] = [];
 
 export function ChatCore() {
@@ -259,6 +280,10 @@ export function ChatCore() {
   >(null);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [showScrollDown, setShowScrollDown] = useState(false);
+  const [steeringFollowUpIds, setSteeringFollowUpIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const steeringFollowUpIdsRef = useRef(new Set<string>());
   // Figure studio mode: swaps in the figure system prompt + figure toolset.
   const [figureMode, setFigureMode] = useState(false);
   const agentTodos = useAgentTodoStore((s) => s.todos);
@@ -378,10 +403,17 @@ export function ChatCore() {
   // visible, a timer otherwise), structural output rides a 50 ms interval,
   // and terminal events drain both before applying. Patches batch into one
   // React update per flush either way.
-  const streamPatchesRef = useRef<Array<{
-    chatId: string | null;
-    apply: (message: ChatMessage) => ChatMessage;
-  }>>([]);
+  const streamPatchesRef = useRef<
+    Record<
+      "text" | "output",
+      Array<{ chatId: string | null; apply: (message: ChatMessage) => ChatMessage }>
+    >
+  >({ text: [], output: [] });
+  const streamDrainQueuedRef = useRef<Record<"text" | "output", boolean>>({
+    text: false,
+    output: false,
+  });
+  const streamTierDrainRef = useRef<(tier: "text" | "output") => void>(() => {});
   const streamQueuesRef = useRef<DeltaQueues | null>(null);
   const streamQueues = useCallback(() => {
     if (streamQueuesRef.current === null) {
@@ -661,15 +693,11 @@ export function ChatCore() {
     setShowScrollDown(longEnough && distanceFromBottom > 80);
   };
 
-  const flushStreamPatches = useCallback(() => {
-    // Synchronous drain of both tiers: the terminal path and explicit
-    // flushers must see every pending patch before they act.
-    const queues = streamQueues();
-    queues.flushFrameText();
-    queues.flushOutput();
-    const patches = streamPatchesRef.current;
+  const publishStreamBatch = useCallback((patches: Array<{
+    chatId: string | null;
+    apply: (message: ChatMessage) => ChatMessage;
+  }>) => {
     if (!patches.length) return;
-    streamPatchesRef.current = [];
     const prev = messagesRef.current;
     if (!prev.length) return;
     const copy = [...prev];
@@ -680,31 +708,59 @@ export function ChatCore() {
     const chatId = patches[patches.length - 1].chatId;
     if (chatId) useChatsStore.getState().setLive(chatId, copy);
     persistDebounced(chatId, copy);
-  }, [persistDebounced, setMessages, streamQueues]);
+  }, [persistDebounced, setMessages]);
 
-  // Text-tier appends flush on the frame cadence; everything structural
-  // (tool calls, approvals, usage) rides the slower output cadence. Both
-  // drain synchronously in flushStreamPatches.
+  const queueStreamDrain = useCallback((tier: "text" | "output") => {
+    if (streamDrainQueuedRef.current[tier]) return;
+    streamDrainQueuedRef.current[tier] = true;
+    const drain = () => streamTierDrainRef.current(tier);
+    const queues = streamQueues();
+    if (tier === "text") queues.enqueueFrameText(drain);
+    else queues.enqueueOutput(drain);
+  }, [streamQueues]);
+
+  const drainStreamTier = useCallback((tier: "text" | "output") => {
+    streamDrainQueuedRef.current[tier] = false;
+    const patches = streamPatchesRef.current[tier].splice(0, MAX_BATCH);
+    publishStreamBatch(patches);
+    if (streamPatchesRef.current[tier].length > 0) queueStreamDrain(tier);
+  }, [publishStreamBatch, queueStreamDrain]);
+  streamTierDrainRef.current = drainStreamTier;
+
+  const flushStreamPatches = useCallback(async () => {
+    const queues = streamQueues();
+    queues.flushFrameText();
+    queues.flushOutput();
+    while (
+      streamPatchesRef.current.text.length > 0 ||
+      streamPatchesRef.current.output.length > 0
+    ) {
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      queues.flushFrameText();
+      queues.flushOutput();
+    }
+  }, [streamQueues]);
+
   const updateLast = useCallback(
     (chatId: string | null, fn: (m: ChatMessage) => ChatMessage, tier: "text" | "output" = "output") => {
-      streamPatchesRef.current.push({ chatId, apply: fn });
-      const queues = streamQueues();
-      const drain = () => flushStreamPatches();
-      if (tier === "text") queues.enqueueFrameText(drain);
-      else queues.enqueueOutput(drain);
+      streamPatchesRef.current[tier].push({ chatId, apply: fn });
+      queueStreamDrain(tier);
     },
-    [flushStreamPatches, streamQueues],
+    [queueStreamDrain],
   );
 
-  const send = useCallback(async (text: string) => {
-    const outgoing = attachmentsRef.current;
+  const send = useCallback(async (text: string, queued?: QueuedFollowUp) => {
+    const outgoing = (queued?.attachments ?? attachmentsRef.current).map((attachment) => ({
+      ...attachment,
+    }));
     if ((!text.trim() && outgoing.length === 0)) return;
     // Steer-vs-queue: while a turn runs, Enter queues the message for the
     // next turn; an explicit Steer injects it mid-run at a message boundary.
     if (streaming || activeChatRun()) {
-      if (text.trim() && activeChatId) {
-        useAgentTurnsStore.getState().queueFollowUp(activeChatId, text);
+      if (!queued && activeChatId) {
+        useAgentTurnsStore.getState().queueFollowUp(activeChatId, text, outgoing);
         setInput("");
+        setAttachments([]);
       }
       return;
     }
@@ -713,10 +769,6 @@ export function ChatCore() {
       return;
     }
     if (!apiKey) { openAISettings(); return; }
-    if (projectId) {
-      const gate = await checkProjectBudget(projectId);
-      if (gate === "blocked") return;
-    }
     const runIdentity = runIsolationRef.current.begin(projectId);
     let runChatId: string | null = null;
     const runIsCurrent = () => runIsolationRef.current.allows(
@@ -734,6 +786,33 @@ export function ChatCore() {
       if (runIsCurrent()) setThinkingText(value);
     };
 
+    const ac = new AbortController();
+    abortRef.current = ac;
+    const runHandle = beginChatRun(ac, projectId);
+    runOwnerRef.current = true;
+    const releaseRunReservation = () => {
+      if (abortRef.current === ac) abortRef.current = null;
+      if (activeChatRun() !== runHandle) return;
+      runOwnerRef.current = false;
+      endChatRun(runHandle);
+    };
+    const reservationIsCurrent = () =>
+      !ac.signal.aborted && activeChatRun() === runHandle && runIsCurrent();
+
+    if (projectId) {
+      let gate: Awaited<ReturnType<typeof checkProjectBudget>>;
+      try {
+        gate = await checkProjectBudget(projectId);
+      } catch (error) {
+        releaseRunReservation();
+        throw error;
+      }
+      if (gate === "blocked" || !reservationIsCurrent()) {
+        releaseRunReservation();
+        return;
+      }
+    }
+
     // In figure mode, remember where to place the finished figure (the selected
     // paragraph it was generated from, else the cursor).
     if (figureMode && figureModeAvailable) {
@@ -742,13 +821,13 @@ export function ChatCore() {
       setFigureInsertTarget(sel ? { from: sel.from, to: sel.to } : null);
     }
 
-    const ac = new AbortController();
-    abortRef.current = ac;
-    const runHandle = beginChatRun(ac, projectId);
-    runOwnerRef.current = true;
     projectApprovalsRef.current = projectId
       ? await approvalsList(projectId).catch(() => ({}))
       : {};
+    if (!reservationIsCurrent()) {
+      releaseRunReservation();
+      return;
+    }
 
     // Human-in-the-loop gate for destructive edits: the tool's execute() awaits
     // this, which naturally pauses the stream on that tool until the user picks.
@@ -756,9 +835,8 @@ export function ChatCore() {
     const confirm = (req: ToolApprovalRequest): Promise<boolean> =>
       new Promise((resolve) => {
         if (ac.signal.aborted) { resolve(false); return; }
-        // Persisted project decision settles the call without a prompt.
         const persisted = projectApprovalsRef.current[req.tool];
-        if (persisted) {
+        if (persisted === "deny" || (persisted === "allow" && isAutoApprovable(req.tool))) {
           const ok = persisted === "allow";
           updateRunLast((m) => {
             const calls = [...(m.toolCalls || [])];
@@ -841,7 +919,10 @@ export function ChatCore() {
         runCheckpointOid = null;
       }
     }
-    if (!runIsCurrent()) return;
+    if (!reservationIsCurrent()) {
+      releaseRunReservation();
+      return;
+    }
 
     const priorMessages = messagesRef.current;
     const userMsg: ChatMessage = {
@@ -852,20 +933,23 @@ export function ChatCore() {
         ? { attachments: outgoing.map((a) => ({ name: a.name, mediaType: a.mediaType })) }
         : {}),
     };
+    const assistantMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: "",
+      toolCalls: [],
+      ...(runCheckpointOid ? { checkpointOid: runCheckpointOid } : {}),
+    };
     const nextMessages: ChatMessage[] = [
       ...priorMessages,
       userMsg,
-      {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: "",
-        toolCalls: [],
-        ...(runCheckpointOid ? { checkpointOid: runCheckpointOid } : {}),
-      },
+      assistantMsg,
     ];
     setMessages(nextMessages);
-    setInput("");
-    setAttachments([]);
+    if (!queued) {
+      setInput("");
+      setAttachments([]);
+    }
     setStreaming(true);
     setRunThinking("Thinking…");
     lastPartAtRef.current = Date.now();
@@ -987,29 +1071,33 @@ ${sandboxedCustom}`;
         role: m.role === "assistant" ? "assistant" : "user",
         content: m.content,
       })),
-      { role: "user", content: userMsg.content },
+      inputModelMessage(text, outgoing),
     ];
-    // Attach files/images to the final user message as multimodal content parts
-    // (images need a vision-capable model; other providers surface an error).
-    if (outgoing.length) {
-      const content: UserContent = [
-        ...(text.trim() ? [{ type: "text" as const, text }] : []),
-        ...outgoing.map((a) =>
-          a.mediaType.startsWith("image/")
-            ? { type: "image" as const, image: a.dataUrl }
-            : { type: "file" as const, data: a.dataUrl, mediaType: a.mediaType, name: a.name },
-        ),
-      ];
-      apiMessages[apiMessages.length - 1] = {
-        role: "user",
-        content,
-      };
-    }
+    let queuedAccepted = false;
+    const acknowledgeQueued = () => {
+      if (queuedAccepted || !queued || !runChatId) return;
+      queuedAccepted = true;
+      useAgentTurnsStore.getState().acknowledgeFollowUp(runChatId, queued.id);
+    };
+    const optimisticMessageIds = new Set([userMsg.id, assistantMsg.id]);
+    const withoutOptimisticTurn = (current: ChatMessage[]) =>
+      current.filter((message) => !message.id || !optimisticMessageIds.has(message.id));
+    const rollbackQueuedTurn = () => {
+      setMessages(withoutOptimisticTurn);
+      if (!runChatId) return;
+      const chatsState = useChatsStore.getState();
+      const saved = chatsState.byId(runChatId)?.messages;
+      if (saved) chatsState.saveMessages(runChatId, withoutOptimisticTurn(saved));
+      const live = chatsState.live[runChatId];
+      if (live) chatsState.setLive(runChatId, withoutOptimisticTurn(live));
+      useAgentTurnsStore.getState().rollbackTurn(runChatId, clientTurnId);
+    };
 
     try {
       const tools = resolveChatTools(registry.aiToolsets, figure ? "figure" : "chat", {
         confirm,
         onImage: (d: string) => pendingImagesRef.current.push(d),
+        runId: () => activeRunRequestIdRef.current,
       });
       if (!documentEngine.capabilities.features.includes("document_index")) {
         delete tools.project_map;
@@ -1053,7 +1141,7 @@ ${sandboxedCustom}`;
         }
       };
 
-      const outcome = await runAgentHarness({
+      const outcomePromise = runAgentHarness({
         system: effectiveSystem,
         messages: apiMessages,
         tools,
@@ -1065,7 +1153,9 @@ ${sandboxedCustom}`;
           activeRunRequestIdRef.current = id;
         },
         onRawEvent: (event) => {
-          if (runChatId) useAgentTurnsStore.getState().applyEvent(runChatId, event);
+          acknowledgeQueued();
+          if (!runChatId) return;
+          useAgentTurnsStore.getState().applyEvent(runChatId, event);
         },
         guardToolCall: () => {
           const current = useFilesStore.getState().projectId;
@@ -1192,6 +1282,8 @@ ${sandboxedCustom}`;
           },
         },
       });
+      const outcome = await outcomePromise;
+      acknowledgeQueued();
 
       usageSteps = outcome.steps;
       runEndedCleanly = !outcome.error && !ac.signal.aborted;
@@ -1214,11 +1306,13 @@ ${sandboxedCustom}`;
         }));
       }
     } catch (e) {
-      // A user-initiated stop (or teardown) isn't an error - note it quietly.
-      if (
+      const aborted =
         ac.signal.aborted ||
-        (typeof e === "object" && e !== null && "name" in e && e.name === "AbortError")
-      ) {
+        (typeof e === "object" && e !== null && "name" in e && e.name === "AbortError");
+      if (queued && !queuedAccepted) {
+        rollbackQueuedTurn();
+        if (!aborted) toast.error(formatError(e, activeProviderName));
+      } else if (aborted) {
         const note = "_Stopped._";
         if (runChatId) useAgentTurnsStore.getState().interruptTurn(runChatId);
         updateRunLast((m) => ({
@@ -1251,27 +1345,32 @@ ${sandboxedCustom}`;
         if (runIsCurrent()) setRunUsage({ input: usageIn, output: usageOut, steps: usageSteps, usd });
       }
       if (runIsCurrent()) {
-        flushStreamPatches();
-        setStreaming(false);
-        setRunThinking(null);
-        if (persistTimerRef.current) {
-          clearTimeout(persistTimerRef.current);
-          persistTimerRef.current = null;
-        }
-        if (runChatId) {
-          useChatsStore.getState().saveMessages(runChatId, messagesRef.current);
+        await flushStreamPatches();
+        if (runIsCurrent()) {
+          setStreaming(false);
+          setRunThinking(null);
+          if (persistTimerRef.current) {
+            clearTimeout(persistTimerRef.current);
+            persistTimerRef.current = null;
+          }
+          if (runChatId) {
+            useChatsStore.getState().saveMessages(runChatId, messagesRef.current);
+          }
         }
       }
       if (runChatId) useChatsStore.getState().clearLive(runChatId);
-      streamQueuesRef.current?.dispose();
-      streamQueuesRef.current = null;
-      activeRunRequestIdRef.current = null;
-      runOwnerRef.current = false;
+      if (activeChatRun() === runHandle) {
+        streamQueuesRef.current?.dispose();
+        streamQueuesRef.current = null;
+        streamDrainQueuedRef.current = { text: false, output: false };
+        activeRunRequestIdRef.current = null;
+        runOwnerRef.current = false;
+      }
       endChatRun(runHandle);
       if (runEndedCleanly && runChatId) {
         const followUps = useAgentTurnsStore.getState().takeFollowUps(runChatId);
         const next = followUps.find((item) => item.status === "pending");
-        if (next) void send(next.text);
+        if (next) void send(next.text, next);
       }
     }
   }, [streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId]);
@@ -1343,9 +1442,13 @@ ${sandboxedCustom}`;
       cancelChatRun(run.controller, persistTimerRef.current, () => {
         streamQueuesRef.current?.dispose();
         streamQueuesRef.current = null;
-        streamPatchesRef.current = [];
+        streamPatchesRef.current = { text: [], output: [] };
+        streamDrainQueuedRef.current = { text: false, output: false };
       });
       persistTimerRef.current = null;
+      activeRunRequestIdRef.current = null;
+      runOwnerRef.current = false;
+      endChatRun(run);
     }
     setStreaming(false);
     setThinkingText(null);
@@ -1752,21 +1855,38 @@ ${sandboxedCustom}`;
                       >
                         <span className="min-w-0 flex-1 truncate">
                           {item.status === "steered"
-                            ? `Steered into the running turn: ${item.text}`
-                            : `Queued for the next turn: ${item.text}`}
+                            ? `Steered into the running turn: ${item.text || item.attachments.map((attachment) => attachment.name).join(", ")}`
+                            : `Queued for the next turn: ${item.text || item.attachments.map((attachment) => attachment.name).join(", ")}`}
                         </span>
                         {item.status === "pending" && streaming && (
                           <button
                             type="button"
+                            disabled={steeringFollowUpIds.has(item.id)}
                             className="shrink-0 rounded-md px-2 py-0.5 font-medium text-primary transition-colors hover:bg-accent"
                             onClick={() => {
                               const runId = activeRunRequestIdRef.current;
-                              if (!runId) return;
-                              agentSteer(runId, item.text)
+                              const chatId = activeChatId;
+                              if (!runId || !chatId) return;
+                              if (steeringFollowUpIdsRef.current.has(item.id)) return;
+                              const message = toAgentMessages([
+                                inputModelMessage(item.text, item.attachments),
+                              ])[0];
+                              if (!message) return;
+                              steeringFollowUpIdsRef.current.add(item.id);
+                              setSteeringFollowUpIds(new Set(steeringFollowUpIdsRef.current));
+                              agentSteer(runId, message)
                                 .then(() =>
-                                  useAgentTurnsStore.getState().markSteered(activeChatId ?? "", item.id),
+                                  useAgentTurnsStore.getState().markSteered(chatId, item.id),
                                 )
-                                .catch(() => toast.error("The running turn could not be steered."));
+                                .catch(() =>
+                                  toast.error("The running turn could not be steered."),
+                                )
+                                .finally(() => {
+                                  steeringFollowUpIdsRef.current.delete(item.id);
+                                  setSteeringFollowUpIds(
+                                    new Set(steeringFollowUpIdsRef.current),
+                                  );
+                                });
                             }}
                           >
                             Steer now

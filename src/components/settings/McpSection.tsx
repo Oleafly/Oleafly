@@ -523,8 +523,8 @@ export function McpSection() {
           <span>
             <span className="font-medium">Trust this connection</span>
             <span className="block text-xs text-muted-foreground">
-              Oleafly never prompts. Your MCP client's own approval is the only gate, deletes
-              included. Best when your client already confirms tool use.
+              File changes do not prompt. Shell commands and computer control always require
+              approval. Your MCP client remains an additional gate.
             </span>
           </span>
         </label>

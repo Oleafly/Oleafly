@@ -49,7 +49,7 @@ import {
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
 import { layoutPresetViewMode, layoutPresetWantsAi, useSettingsStore } from "@/store/settings";
-import { useAgentTurnsStore } from "@/store/agent-turns";
+import { subscribeToComputerUseStarts } from "@/lib/agent-item-effects";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import { resetOpenCompileMarker, shouldCompileOnOpen } from "@/lib/open-compile";
@@ -268,6 +268,7 @@ function AppContent() {
   const railTab = useSettingsStore((s) => s.railTab);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
   const browserOpen = useSettingsStore((s) => s.browserOpen);
+  const closeDocks = useSettingsStore((s) => s.closeDocks);
   const homePage = useHomeViewStore((state) => state.page);
   const toolsOpen = useHomeViewStore((state) => state.toolsOpen);
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
@@ -279,6 +280,10 @@ function AppContent() {
   const previousShowTreeRef = useRef(showTree);
   const sidebarSizeBeforeAiRef = useRef<number | null>(null);
   const aiResizePendingRef = useRef(false);
+
+  useEffect(() => {
+    if (projectId) closeDocks();
+  }, [projectId, closeDocks]);
 
   useLayoutEffect(() => {
     if (!projectId || hideEditorArea) return;
@@ -303,35 +308,8 @@ function AppContent() {
   }, [terminalOpen, hideEditorArea, projectId]);
 
   useEffect(() => {
-    const seen = new Set<string>();
-    const seed = (recordsByChat: ReturnType<typeof useAgentTurnsStore.getState>["recordsByChat"]) => {
-      for (const [chatId, records] of Object.entries(recordsByChat)) {
-        for (const record of records) {
-          for (const item of record.items) seen.add(`${chatId}:${item.id}`);
-        }
-      }
-    };
-    seed(useAgentTurnsStore.getState().recordsByChat);
-    return useAgentTurnsStore.subscribe((state, previous) => {
-      if (state.recordsByChat === previous.recordsByChat) return;
-      for (const [chatId, records] of Object.entries(state.recordsByChat)) {
-        if (records === previous.recordsByChat[chatId]) continue;
-        const record = records[records.length - 1];
-        if (!record) continue;
-        for (const recorded of record.items) {
-          const id = `${chatId}:${recorded.id}`;
-          if (seen.has(id)) continue;
-          seen.add(id);
-          const item = recorded.item;
-          if (
-            item.type === "dynamicToolCall" &&
-            item.tool === "computer_use" &&
-            item.status === "inProgress"
-          ) {
-            useSettingsStore.getState().setBrowserOpen(true);
-          }
-        }
-      }
+    return subscribeToComputerUseStarts(() => {
+      useSettingsStore.getState().setBrowserOpen(true);
     });
   }, []);
 

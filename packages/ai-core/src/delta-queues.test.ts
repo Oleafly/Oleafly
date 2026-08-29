@@ -58,6 +58,26 @@ describe("DeltaQueues", () => {
     expect(order[order.length - 1]).toBe("terminal");
   });
 
+  it("does not let a queued callback recursively bypass the frame batch cap", () => {
+    const scheduler = new ManualScheduler();
+    const queues = new DeltaQueues(scheduler);
+    let applied = 0;
+    for (let index = 0; index < 1_000; index += 1) {
+      queues.enqueueFrameText(() => {
+        applied += 1;
+        queues.flushFrameText();
+      });
+    }
+
+    scheduler.runFrame();
+
+    expect(applied).toBe(512);
+    expect(queues.pendingFrameText()).toBe(488);
+    scheduler.runFrame();
+    expect(applied).toBe(1_000);
+    expect(queues.pendingFrameText()).toBe(0);
+  });
+
   it("dispose cancels scheduled work and clears the queues", () => {
     const scheduler = new ManualScheduler();
     const queues = new DeltaQueues(scheduler);

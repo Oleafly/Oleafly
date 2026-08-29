@@ -130,12 +130,20 @@ type RawToolDef = {
 export interface ToolApprovalRequest {
   tool: string;
   summary: string;
+  projectId?: string;
+  command?: string;
+  cwd?: string;
   path?: string;
   diff?: { path: string; oldText: string; newText: string };
   image?: string;
 }
 
 export type ConfirmFn = (req: ToolApprovalRequest) => Promise<boolean>;
+
+export interface ExecAuthorization {
+  approvalToken: string;
+  runId: string;
+}
 
 const MAX_MUTATION_BYTES = 16 * 1024 * 1024;
 const MAX_REPLACEMENTS = 100_000;
@@ -169,13 +177,20 @@ export function createOleaflyTools(
     mutationAllowed?: () => boolean;
     /** When present, exposes the computer_use tool over this sandbox surface. */
     cuaSurface?: () => CuaSurface | null;
-    /** When present, exposes the run_command shell tool. */
-    execCommand?: (command: string) => Promise<{
+    alwaysConfirmComputerUse?: boolean;
+    resolveExecCwd?: (projectId: string) => Promise<string>;
+    authorizeExec?: (projectId: string, command: string) => Promise<ExecAuthorization>;
+    execCommand?: (
+      projectId: string,
+      command: string,
+      authorization: ExecAuthorization,
+    ) => Promise<{
       command: string;
       output: string;
       exit_code: number | null;
       status: string;
       truncated: boolean;
+      timed_out: boolean;
     }>;
   },
 ) {
@@ -206,8 +221,9 @@ export function createOleaflyTools(
     return generation;
   };
   const declined = (tool: string) => ({
-    error: "The user declined this change.",
+    message: "The user declined this change.",
     declined: true as const,
+    status: "declined" as const,
     tool,
   });
   const approveStateMutation = async (tool: string, summary: string): Promise<boolean> => {
@@ -1009,8 +1025,10 @@ export function createOleaflyTools(
     },
   };
 
-  if (opts?.execCommand) {
+  if (opts?.execCommand && opts.resolveExecCwd && opts.authorizeExec) {
     const execCommand = opts.execCommand;
+    const resolveExecCwd = opts.resolveExecCwd;
+    const authorizeExec = opts.authorizeExec;
     tools.run_command = {
       description:
         "Run a shell command in the current project directory and return its output and exit status. Use for build tooling, git, file inspection, or scripts the dedicated tools do not cover. The command and working directory are confirmed with the user before it runs.",
@@ -1030,17 +1048,23 @@ export function createOleaflyTools(
         if (!command) return { error: "command is required" };
         const projectId = pid();
         if (!projectId) return { error: "No project open" };
-        if (
-          confirm &&
-          !(await confirm({
+        if (!confirm) return declined("run_command");
+        try {
+          const cwd = await resolveExecCwd(projectId);
+          assertMutationAllowed(projectId);
+          if (!(await confirm({
             tool: "run_command",
             summary: `$ ${command}`,
-          }))
-        ) {
-          return declined("run_command");
-        }
-        try {
-          const result = await execCommand(command);
+            projectId,
+            command,
+            cwd,
+          }))) {
+            return declined("run_command");
+          }
+          assertMutationAllowed(projectId);
+          const authorization = await authorizeExec(projectId, command);
+          assertMutationAllowed(projectId);
+          const result = await execCommand(projectId, command, authorization);
           return {
             // Structured so the exec card renders command, output, and status;
             // the model also reads the flat fields.
@@ -1049,6 +1073,7 @@ export function createOleaflyTools(
             output: result.output,
             exit_code: result.exit_code,
             status: result.status,
+            timed_out: result.timed_out,
           };
         } catch (e) {
           return { error: String(e) };
@@ -1060,8 +1085,9 @@ export function createOleaflyTools(
   if (opts?.cuaSurface) {
     const getSurface = opts.cuaSurface;
     tools.computer_use = {
-      description:
-        "Operate the harness browser as a computer-use agent: navigate, read, screenshot, scroll, click, type, submit, or wait. Read-only actions run immediately; navigate/click/type/submit are confirmed with the user first. Local sandbox only; the agent never touches your real desktop.",
+      description: opts.alwaysConfirmComputerUse
+        ? "Operate the local harness browser. Every action requires explicit user approval for external connections."
+        : "Operate the harness browser as a computer-use agent: navigate, read, screenshot, scroll, click, type, submit, or wait. Read-only actions run immediately. Navigate, click, type, and submit are confirmed with the user first. The agent stays inside the local sandbox and never touches your real desktop.",
       inputSchema: {
         type: "object",
         properties: {
@@ -1096,15 +1122,14 @@ export function createOleaflyTools(
           text: input.text as string | undefined,
           amount: input.amount as number | undefined,
         };
-        if (
-          cuaActionRisk(action.type) === "confirm" &&
-          confirm &&
-          !(await confirm({
+        if (opts.alwaysConfirmComputerUse || cuaActionRisk(action.type) === "confirm") {
+          if (!confirm) return declined("computer_use");
+          if (!(await confirm({
             tool: "computer_use",
             summary: `${action.type}${action.selector ? ` ${action.selector}` : action.text ? ` ${action.text}` : ""}`,
-          }))
-        ) {
-          return declined("computer_use");
+          }))) {
+            return declined("computer_use");
+          }
         }
         return runCuaAction(surface, action);
       },
@@ -1225,8 +1250,9 @@ export function createFigureTools(
     return generation;
   };
   const declined = (tool: string) => ({
-    error: "The user declined this change.",
+    message: "The user declined this change.",
     declined: true as const,
+    status: "declined" as const,
     tool,
   });
 

@@ -41,13 +41,34 @@ describe("useAgentTurnsStore", () => {
     expect(second.items[1]?.item).toEqual({ type: "agentMessage", text: "reply" });
   });
 
-  it("takes one pending follow-up and leaves later pending items queued", () => {
+  it("keeps a selected follow-up queued until its send is acknowledged", () => {
     const store = useAgentTurnsStore.getState();
-    store.queueFollowUp("chat-1", "then check the figures");
+    store.queueFollowUp("chat-1", "then check the figures", [
+      {
+        id: "figures.pdf-4-1",
+        name: "figures.pdf",
+        mediaType: "application/pdf",
+        dataUrl: "data:application/pdf;base64,UEZERg==",
+      },
+    ]);
     store.queueFollowUp("chat-1", "then check the tables");
 
-    const taken = store.takeFollowUps("chat-1");
-    expect(taken.map((item) => item.text)).toEqual(["then check the figures"]);
+    const selected = store.takeFollowUps("chat-1");
+    expect(selected.map((item) => item.text)).toEqual(["then check the figures"]);
+    expect(selected[0].attachments).toEqual([
+      {
+        id: "figures.pdf-4-1",
+        name: "figures.pdf",
+        mediaType: "application/pdf",
+        dataUrl: "data:application/pdf;base64,UEZERg==",
+      },
+    ]);
+    expect(useAgentTurnsStore.getState().queuedByChat["chat-1"]?.map((item) => item.text)).toEqual([
+      "then check the figures",
+      "then check the tables",
+    ]);
+
+    store.acknowledgeFollowUp("chat-1", selected[0].id);
     expect(useAgentTurnsStore.getState().queuedByChat["chat-1"]?.map((item) => item.text)).toEqual([
       "then check the tables",
     ]);
@@ -67,6 +88,8 @@ describe("useAgentTurnsStore", () => {
     const clone = vi.spyOn(globalThis, "structuredClone");
     const store = useAgentTurnsStore.getState();
     store.beginTurn("chat-1", "thread-1", "c1", "hello");
+    const first = useAgentTurnsStore.getState().recordsByChat["chat-1"][0];
+    const userItem = first.items[0];
     const before = clone.mock.calls.length;
 
     for (let index = 0; index < 100; index += 1) {
@@ -75,9 +98,99 @@ describe("useAgentTurnsStore", () => {
 
     expect(clone.mock.calls.length - before).toBe(0);
     vi.advanceTimersByTime(20);
-    expect(clone.mock.calls.length - before).toBe(1);
+    expect(clone.mock.calls.length - before).toBe(0);
     const record = useAgentTurnsStore.getState().recordsByChat["chat-1"][0];
+    expect(record).not.toBe(first);
+    expect(record.items[0]).toBe(userItem);
     expect(record.items[1].item).toEqual({ type: "agentMessage", text: "x".repeat(100) });
+  });
+
+  it("publishes only newly appended items for event consumers", () => {
+    const store = useAgentTurnsStore.getState();
+    store.beginTurn("chat-1", "thread-1", "c1", "hello");
+    store.applyEvent("chat-1", {
+      kind: "toolCallStart",
+      id: "tool-1",
+      name: "computer_use",
+    });
+
+    const added = useAgentTurnsStore.getState().addedItemsByChat["chat-1"];
+    expect(added).toHaveLength(1);
+    expect(added[0].item).toMatchObject({
+      type: "dynamicToolCall",
+      tool: "computer_use",
+      status: "inProgress",
+    });
+  });
+
+  it("publishes an out-of-order tool outcome without cloning the completed prefix", () => {
+    const store = useAgentTurnsStore.getState();
+    store.beginTurn("chat-1", "thread-1", "c1", "hello");
+    store.applyEvent("chat-1", { kind: "toolCallStart", id: "call-1", name: "read_file" });
+    store.applyEvent("chat-1", { kind: "toolCallStart", id: "call-2", name: "run_command" });
+    const before = useAgentTurnsStore.getState().recordsByChat["chat-1"][0];
+
+    store.applyEvent("chat-1", { kind: "toolOutcome", id: "call-1", output: "contents" });
+    const afterFirst = useAgentTurnsStore.getState().recordsByChat["chat-1"][0];
+
+    expect(afterFirst.items[0]).toBe(before.items[0]);
+    expect(afterFirst.items[1]).not.toBe(before.items[1]);
+    expect(afterFirst.items[1].item).toMatchObject({
+      type: "dynamicToolCall",
+      output: "contents",
+      status: "completed",
+    });
+    expect(before.items[1].item).toMatchObject({
+      type: "dynamicToolCall",
+      output: null,
+      status: "inProgress",
+    });
+
+    store.applyEvent("chat-1", {
+      kind: "toolOutcome",
+      id: "call-2",
+      output: '{"exec":true,"exit_code":7}',
+    });
+    const afterSecond = useAgentTurnsStore.getState().recordsByChat["chat-1"][0];
+
+    expect(afterSecond.items[0]).toBe(afterFirst.items[0]);
+    expect(afterSecond.items[1]).toBe(afterFirst.items[1]);
+    expect(afterFirst.items[2].item).toMatchObject({
+      type: "commandExecution",
+      exitCode: null,
+      status: "inProgress",
+    });
+    expect(afterSecond.items[2].item).toMatchObject({
+      type: "commandExecution",
+      exitCode: 7,
+      status: "failed",
+    });
+  });
+
+  it("reuses earlier streaming items while a later message receives deltas", () => {
+    vi.useFakeTimers();
+    const store = useAgentTurnsStore.getState();
+    store.beginTurn("chat-1", "thread-1", "c1", "hello");
+    store.applyEvent("chat-1", { kind: "textDelta", text: "early text" });
+    vi.advanceTimersByTime(20);
+    store.applyEvent("chat-1", { kind: "reasoningDelta", text: "early reasoning" });
+    vi.advanceTimersByTime(20);
+    store.applyEvent("chat-1", { kind: "toolCallStart", id: "call-1", name: "read_file" });
+    store.applyEvent("chat-1", { kind: "toolOutcome", id: "call-1", output: "contents" });
+    store.applyEvent("chat-1", { kind: "textDelta", text: "later" });
+    vi.advanceTimersByTime(20);
+
+    const before = useAgentTurnsStore.getState().recordsByChat["chat-1"][0];
+    store.applyEvent("chat-1", { kind: "textDelta", text: " message" });
+    vi.advanceTimersByTime(20);
+    const after = useAgentTurnsStore.getState().recordsByChat["chat-1"][0];
+
+    expect(after.items[0]).toBe(before.items[0]);
+    expect(after.items[1]).toBe(before.items[1]);
+    expect(after.items[2]).toBe(before.items[2]);
+    expect(after.items[3]).toBe(before.items[3]);
+    expect(after.items[4]).not.toBe(before.items[4]);
+    expect(after.items[4].item).toEqual({ type: "agentMessage", text: "later message" });
   });
 
   it("reuses a thread per chat and claims prewarmed threads once", async () => {

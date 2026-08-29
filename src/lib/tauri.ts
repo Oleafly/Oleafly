@@ -707,14 +707,24 @@ export const recycleProject = (projectId: string) =>
 
 export const libraryRoot = () => invoke<string>("library_root");
 export const appVersion = () => invoke<string>("app_version");
-export const agentExec = (projectId: string, command: string) =>
+export const agentExecCwd = (projectId: string) =>
+  invoke<string>("agent_exec_cwd", { projectId });
+export const agentExecAuthorize = (projectId: string, command: string, runId: string) =>
+  invoke<string>("agent_exec_authorize", { projectId, command, runId });
+export const agentExec = (
+  projectId: string,
+  command: string,
+  runId: string,
+  approvalToken: string,
+) =>
   invoke<{
     command: string;
     output: string;
     exit_code: number | null;
     status: string;
     truncated: boolean;
-  }>("agent_exec", { projectId, command });
+    timed_out: boolean;
+  }>("agent_exec", { projectId, command, runId, approvalToken });
 export const backendProtocolInfo = () =>
   invoke<BackendProtocolInfo>("backend_protocol_info");
 export const initialState = () => invoke<InitialState>("initial_state");

@@ -44,6 +44,11 @@ struct PendingTool {
     project_id: Option<String>,
 }
 
+struct RunResource<T> {
+    generation: u64,
+    value: T,
+}
+
 #[derive(Default)]
 struct RequestRegistry {
     active: HashMap<String, ActiveRequest>,
@@ -59,11 +64,11 @@ pub struct AgentState {
     request_slots: std::sync::Arc<tokio::sync::Semaphore>,
     /// Steer senders and cancellation tokens for in-flight runs; registered
     /// at run start, cleaned up at run end and on cancel.
-    steer_senders: Mutex<HashMap<String, oleafly_agent::SteerHandle>>,
-    run_tokens: Mutex<HashMap<String, oleafly_agent::CancellationToken>>,
+    steer_senders: Mutex<HashMap<String, RunResource<oleafly_agent::SteerHandle>>>,
+    run_tokens: Mutex<HashMap<String, RunResource<oleafly_agent::CancellationToken>>>,
     /// Per-run subagent managers, so "stop all subagents" can reach the
     /// children without stopping the parent run.
-    subagent_managers: Mutex<HashMap<String, std::sync::Arc<SubagentManager>>>,
+    subagent_managers: Mutex<HashMap<String, RunResource<std::sync::Arc<SubagentManager>>>>,
 }
 
 impl Default for AgentState {
@@ -92,6 +97,28 @@ impl AgentState {
         *slot = Some(client.clone());
         Ok(client)
     }
+}
+
+pub(crate) fn request_is_active(state: &AgentState, request_id: &str) -> bool {
+    lock_or_recover(&state.requests)
+        .active
+        .contains_key(request_id)
+}
+
+#[cfg(test)]
+pub(crate) fn register_active_request_for_test(state: &AgentState, request_id: &str) -> u64 {
+    begin_request(state, request_id)
+        .expect("test request must register")
+        .0
+}
+
+#[cfg(test)]
+pub(crate) fn finish_active_request_for_test(
+    state: &AgentState,
+    request_id: &str,
+    generation: u64,
+) {
+    finish_request(state, request_id, generation);
 }
 
 pub fn provider_config(cfg: &AppConfig) -> ProviderConfig {
@@ -169,50 +196,155 @@ pub async fn agent_complete(
 }
 
 #[tauri::command]
-pub fn agent_cancel_all(state: State<'_, AgentState>, session_id: String) {
+pub fn agent_cancel_all(
+    state: State<'_, AgentState>,
+    exec_state: State<'_, crate::agent_exec::AgentExecState>,
+    session_id: String,
+) {
+    crate::agent_exec::cancel_all(exec_state.inner());
     // Cancel every run token first so in-flight tools (including subagent
     // children sharing the token) wind down before their futures drop.
     let tokens: Vec<_> = {
         let mut tokens = lock_or_recover(&state.run_tokens);
-        tokens.drain().map(|(_, token)| token).collect()
+        tokens.drain().map(|(_, token)| token.value).collect()
     };
     for token in tokens {
         token.cancel();
     }
     lock_or_recover(&state.steer_senders).clear();
+    let managers: Vec<_> = lock_or_recover(&state.subagent_managers)
+        .drain()
+        .map(|(_, manager)| manager.value)
+        .collect();
+    for manager in managers {
+        manager.interrupt_all();
+    }
     cancel_all_requests(state.inner(), &session_id);
     lock_or_recover(&state.pending_tools).clear();
 }
 
 #[tauri::command]
-pub fn agent_cancel(state: State<'_, AgentState>, request_id: String) {
+pub fn agent_cancel(
+    state: State<'_, AgentState>,
+    exec_state: State<'_, crate::agent_exec::AgentExecState>,
+    request_id: String,
+) {
+    crate::agent_exec::cancel_run(exec_state.inner(), &request_id);
     cancel_run(state.inner(), &request_id);
 }
 
 fn cancel_run(state: &AgentState, request_id: &str) {
     let token = {
         let mut tokens = lock_or_recover(&state.run_tokens);
-        tokens.remove(request_id)
+        tokens.remove(request_id).map(|token| token.value)
     };
     if let Some(token) = &token {
         // Cascades to subagent children through the shared pipeline token.
         token.cancel();
     }
     lock_or_recover(&state.steer_senders).remove(request_id);
+    if let Some(manager) = lock_or_recover(&state.subagent_managers).remove(request_id) {
+        manager.value.interrupt_all();
+    }
     if let Some(generation) = cancel_request(state, request_id) {
         drop_pending_tools(state, request_id, Some(generation));
+    }
+}
+
+fn remove_run_resource<T>(
+    resources: &Mutex<HashMap<String, RunResource<T>>>,
+    request_id: &str,
+    generation: u64,
+) -> Option<T> {
+    let mut resources = lock_or_recover(resources);
+    if resources
+        .get(request_id)
+        .is_some_and(|resource| resource.generation == generation)
+    {
+        resources.remove(request_id).map(|resource| resource.value)
+    } else {
+        None
+    }
+}
+
+fn register_run_resources(
+    state: &AgentState,
+    request_id: &str,
+    generation: u64,
+    steer: oleafly_agent::SteerHandle,
+    token: oleafly_agent::CancellationToken,
+    manager: std::sync::Arc<SubagentManager>,
+) {
+    lock_or_recover(&state.steer_senders).insert(
+        request_id.to_string(),
+        RunResource {
+            generation,
+            value: steer,
+        },
+    );
+    if let Some(previous) = lock_or_recover(&state.run_tokens).insert(
+        request_id.to_string(),
+        RunResource {
+            generation,
+            value: token,
+        },
+    ) {
+        previous.value.cancel();
+    }
+    if let Some(previous) = lock_or_recover(&state.subagent_managers).insert(
+        request_id.to_string(),
+        RunResource {
+            generation,
+            value: manager,
+        },
+    ) {
+        previous.value.interrupt_all();
+    }
+}
+
+struct RunResourcesGuard<'a> {
+    state: &'a AgentState,
+    request_id: &'a str,
+    generation: u64,
+}
+
+impl<'a> RunResourcesGuard<'a> {
+    fn new(state: &'a AgentState, request_id: &'a str, generation: u64) -> Self {
+        Self {
+            state,
+            request_id,
+            generation,
+        }
+    }
+}
+
+impl Drop for RunResourcesGuard<'_> {
+    fn drop(&mut self) {
+        if let Some(token) =
+            remove_run_resource(&self.state.run_tokens, self.request_id, self.generation)
+        {
+            token.cancel();
+        }
+        remove_run_resource(&self.state.steer_senders, self.request_id, self.generation);
+        if let Some(manager) = remove_run_resource(
+            &self.state.subagent_managers,
+            self.request_id,
+            self.generation,
+        ) {
+            manager.interrupt_all();
+        }
     }
 }
 
 /// Inject mid-run input into an active run; it lands at the next message
 /// boundary (after the pending tool batch completes).
 #[tauri::command]
-pub fn agent_steer(
+pub async fn agent_steer(
     state: State<'_, AgentState>,
     request_id: String,
-    text: String,
+    message: oleafly_agent::Message,
 ) -> Result<(), String> {
-    steer_run(state.inner(), &request_id, &text)
+    steer_run(state.inner(), &request_id, message).await
 }
 
 /// Stop every running subagent of a run without stopping the run itself.
@@ -227,7 +359,9 @@ pub fn agent_subagents_stop(
 fn subagents_stop(state: &AgentState, request_id: &str) -> Result<u32, String> {
     let manager = {
         let managers = lock_or_recover(&state.subagent_managers);
-        managers.get(request_id).cloned()
+        managers
+            .get(request_id)
+            .map(|manager| manager.value.clone())
     };
     match manager {
         Some(manager) => Ok(u32::try_from(manager.interrupt_all()).unwrap_or(u32::MAX)),
@@ -235,21 +369,66 @@ fn subagents_stop(state: &AgentState, request_id: &str) -> Result<u32, String> {
     }
 }
 
-fn steer_run(state: &AgentState, request_id: &str, text: &str) -> Result<(), String> {
-    if text.trim().is_empty() {
-        return Err("steer text must not be empty".into());
+async fn steer_run(
+    state: &AgentState,
+    request_id: &str,
+    message: oleafly_agent::Message,
+) -> Result<(), String> {
+    if message.role != oleafly_agent::Role::User {
+        return Err("a steer must be a user message".into());
+    }
+    let has_content = message.content.iter().any(|part| match part {
+        oleafly_agent::ContentPart::Text { text } => !text.trim().is_empty(),
+        oleafly_agent::ContentPart::Image { image } => !image.trim().is_empty(),
+        _ => false,
+    });
+    if !has_content {
+        return Err("a steer must contain text or an image".into());
     }
     let sender = {
         let senders = lock_or_recover(&state.steer_senders);
-        senders.get(request_id).cloned()
+        senders.get(request_id).map(|sender| sender.value.clone())
     };
     match sender {
-        Some(handle) => {
-            handle.steer(text.to_string());
-            Ok(())
-        }
+        Some(handle) if handle.steer(message).await => Ok(()),
+        Some(_) => Err(format!(
+            "run {request_id} stopped before receiving the steer"
+        )),
         None => Err(format!("no active run {request_id} to steer")),
     }
+}
+
+fn initiating_user_text(request: &CompletionRequest) -> String {
+    request
+        .messages
+        .iter()
+        .rev()
+        .find(|message| message.role == oleafly_agent::Role::User)
+        .map(|message| {
+            message
+                .content
+                .iter()
+                .filter_map(|part| match part {
+                    oleafly_agent::ContentPart::Text { text } => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
+        .unwrap_or_default()
+}
+
+fn turn_recorder_for_request(
+    turn_id: String,
+    client_turn_id: Option<String>,
+    request: &CompletionRequest,
+) -> oleafly_agent::items::TurnRecorder {
+    let mut recorder = oleafly_agent::items::TurnRecorder::new(turn_id);
+    recorder.seed_user_message(initiating_user_text(request));
+    if let Some(client_turn_id) = client_turn_id {
+        recorder.bind_client_turn_id(client_turn_id);
+    }
+    recorder
 }
 
 #[tauri::command]
@@ -351,26 +530,20 @@ pub async fn agent_run(
         // interrupt (cascading to subagents through the shared token) while
         // the run is in flight.
         let (steer_handle, steer_rx) = oleafly_agent::SteerHandle::channel();
-        {
-            let mut senders = lock_or_recover(&agent_state.steer_senders);
-            senders.insert(run_registration_id.clone(), steer_handle);
-        }
-        {
-            let mut tokens = lock_or_recover(&agent_state.run_tokens);
-            tokens.insert(run_registration_id.clone(), pipeline.token.clone());
-        }
-        {
-            let mut managers = lock_or_recover(&agent_state.subagent_managers);
-            managers.insert(run_registration_id.clone(), subagent_manager_for_registry);
-        }
+        register_run_resources(
+            agent_state,
+            &run_registration_id,
+            generation,
+            steer_handle,
+            pipeline.token.clone(),
+            subagent_manager_for_registry,
+        );
+        let _run_resources = RunResourcesGuard::new(agent_state, &run_registration_id, generation);
 
         // A run scoped to a thread records its items into that thread's
         // rollout as it completes.
         let record_sink = record_scope.map(|(thread_id, turn_id, client_turn_id)| {
-            let mut recorder = oleafly_agent::items::TurnRecorder::new(turn_id);
-            if let Some(client_turn_id) = client_turn_id {
-                recorder.bind_client_turn_id(client_turn_id);
-            }
+            let recorder = turn_recorder_for_request(turn_id, client_turn_id, &request);
             (thread_id, std::sync::Arc::new(Mutex::new(recorder)))
         });
         let mut persist_guard = InterruptedRunPersist {
@@ -399,18 +572,6 @@ pub async fn agent_run(
         )
         .await;
         persist_guard.settled = true;
-        {
-            let mut senders = lock_or_recover(&agent_state.steer_senders);
-            senders.remove(&run_registration_id);
-        }
-        {
-            let mut tokens = lock_or_recover(&agent_state.run_tokens);
-            tokens.remove(&run_registration_id);
-        }
-        {
-            let mut managers = lock_or_recover(&agent_state.subagent_managers);
-            managers.remove(&run_registration_id);
-        }
         if let Some((thread_id, shared)) = &record_sink {
             // The guard must drop before the persist await keeps this future
             // Send; a poisoned lock simply skips persistence.
@@ -898,7 +1059,13 @@ pub(crate) fn register_steer_for_test(
     request_id: &str,
     handle: oleafly_agent::SteerHandle,
 ) {
-    lock_or_recover(&state.steer_senders).insert(request_id.to_string(), handle);
+    lock_or_recover(&state.steer_senders).insert(
+        request_id.to_string(),
+        RunResource {
+            generation: 0,
+            value: handle,
+        },
+    );
 }
 
 #[cfg(test)]
@@ -907,7 +1074,13 @@ pub(crate) fn register_manager_for_test(
     request_id: &str,
     manager: std::sync::Arc<SubagentManager>,
 ) {
-    lock_or_recover(&state.subagent_managers).insert(request_id.to_string(), manager);
+    lock_or_recover(&state.subagent_managers).insert(
+        request_id.to_string(),
+        RunResource {
+            generation: 0,
+            value: manager,
+        },
+    );
 }
 
 #[cfg(test)]
@@ -916,7 +1089,13 @@ pub(crate) fn register_token_for_test(
     request_id: &str,
     token: oleafly_agent::CancellationToken,
 ) {
-    lock_or_recover(&state.run_tokens).insert(request_id.to_string(), token);
+    lock_or_recover(&state.run_tokens).insert(
+        request_id.to_string(),
+        RunResource {
+            generation: 0,
+            value: token,
+        },
+    );
 }
 
 #[cfg(test)]

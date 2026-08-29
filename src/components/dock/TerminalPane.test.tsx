@@ -81,6 +81,10 @@ describe("TerminalPane", () => {
 
     await waitFor(() => {
       expect(invoke.mock.calls.filter(([command]) => command === "term_kill")).toHaveLength(1);
+      expect(invoke).toHaveBeenCalledWith("term_kill", {
+        id: "term-1",
+        projectId: "project-1",
+      });
     });
   });
 });

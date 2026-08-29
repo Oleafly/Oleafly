@@ -17,7 +17,7 @@ export interface FlushScheduler {
 
 export const OUTPUT_FLUSH_INTERVAL_MS = 50;
 /** Bounded batch so one flush never janks the frame. */
-const MAX_BATCH = 512;
+export const MAX_BATCH = 512;
 
 type QueueKind = "frameText" | "output";
 
@@ -39,6 +39,8 @@ export class DeltaQueues {
   private readonly output: QueuedDelta[] = [];
   private frameHandle: ReturnType<FlushScheduler["scheduleFrame"]> | null = null;
   private intervalHandle: ReturnType<FlushScheduler["scheduleInterval"]> | null = null;
+  private drainingFrame = false;
+  private drainingOutput = false;
 
   constructor(private readonly scheduler: FlushScheduler) {}
 
@@ -72,16 +74,28 @@ export class DeltaQueues {
   }
 
   flushFrameText(): DrainResult {
-    return this.drain(this.frameText);
+    if (this.drainingFrame) return "empty";
+    this.drainingFrame = true;
+    try {
+      return this.drain(this.frameText);
+    } finally {
+      this.drainingFrame = false;
+    }
   }
 
   flushOutput(): DrainResult {
-    const result = this.drain(this.output);
-    if (this.intervalHandle !== null && this.output.length === 0) {
-      this.intervalHandle();
-      this.intervalHandle = null;
+    if (this.drainingOutput) return "empty";
+    this.drainingOutput = true;
+    try {
+      const result = this.drain(this.output);
+      if (this.intervalHandle !== null && this.output.length === 0) {
+        this.intervalHandle();
+        this.intervalHandle = null;
+      }
+      return result;
+    } finally {
+      this.drainingOutput = false;
     }
-    return result;
   }
 
   private drain(queue: QueuedDelta[]): DrainResult {

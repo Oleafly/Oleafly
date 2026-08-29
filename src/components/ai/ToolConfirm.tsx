@@ -6,6 +6,7 @@ import type { ToolApprovalRequest } from "@/lib/ai-tools";
 import { AiChrome, AiMark, AI_GRADIENT } from "@/components/ai/AiChrome";
 import { gotoLine } from "@/components/editor/cm/controller";
 import { useFilesStore } from "@/store/files";
+import { isAutoApprovable } from "@/store/mcp-approvals";
 
 export function firstChangedLine(oldText: string, newText: string): number {
   const a = oldText.split("\n");
@@ -22,21 +23,8 @@ function basename(path: string): string {
   return i >= 0 ? path.slice(i + 1) : path;
 }
 
-const WRITE_TOOLS = new Set([
-  "write_file",
-  "replace_in_file",
-  "create_file",
-  "rename_file",
-]);
-
-const ALWAYS_CONFIRM = new Set(["delete_file"]);
-
-export function isAutoApprovable(tool: string): boolean {
-  return WRITE_TOOLS.has(tool) && !ALWAYS_CONFIRM.has(tool);
-}
-
 // Re-export so MCP shell and others keep a single import path.
-export { AI_GRADIENT, AiChrome, AiMark };
+export { AI_GRADIENT, AiChrome, AiMark, isAutoApprovable };
 
 export function ToolConfirm({
   req,
@@ -57,6 +45,7 @@ export function ToolConfirm({
   embedded?: boolean;
 }) {
   const canSession = isAutoApprovable(req.tool) && !!onApproveSession;
+  const commandApproval = req.tool === "run_command";
   const filePath = req.diff?.path ?? req.path;
   const changeLine = req.diff ? firstChangedLine(req.diff.oldText, req.diff.newText) : null;
 
@@ -86,7 +75,9 @@ export function ToolConfirm({
         <AiMark className="mt-0.5" />
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="text-sm font-semibold leading-snug text-foreground">
-            The assistant wants to change your files
+            {commandApproval
+              ? "The assistant wants to run this command"
+              : "The assistant wants to change your files"}
           </p>
           <div className="flex flex-wrap items-center gap-1.5">
             <code className="inline-flex items-center rounded-md border border-primary/25 bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] font-medium leading-none text-primary">
@@ -113,6 +104,25 @@ export function ToolConfirm({
           )}
         </div>
       </div>
+
+      {commandApproval && (
+        <div className="space-y-2 rounded-lg border border-border/80 bg-background p-2.5 shadow-inner">
+          <div className="space-y-1">
+            <p className="text-[11px] font-medium text-muted-foreground">Command</p>
+            <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
+              {req.command ?? req.summary}
+            </pre>
+          </div>
+          {req.cwd && (
+            <div className="space-y-1">
+              <p className="text-[11px] font-medium text-muted-foreground">Working directory</p>
+              <code className="block overflow-x-auto whitespace-pre rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
+                {req.cwd}
+              </code>
+            </div>
+          )}
+        </div>
+      )}
 
       {req.image && (
         <div className="flex justify-center overflow-hidden rounded-lg border bg-white p-2">
@@ -202,7 +212,12 @@ export function ToolConfirm({
   // Content only; the MCP floating panel owns the gradient shell.
   if (embedded) {
     return (
-      <div role="alertdialog" aria-modal="true" aria-label="Confirm AI edit" className="p-1">
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={commandApproval ? "Confirm command" : "Confirm AI edit"}
+        className="p-1"
+      >
         {body}
       </div>
     );
@@ -210,7 +225,11 @@ export function ToolConfirm({
 
   return (
     <AiChrome borderVariant="animated" className="mx-3 mb-2" contentClassName="p-3.5">
-      <div role="alertdialog" aria-modal="true" aria-label="Confirm AI edit">
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={commandApproval ? "Confirm command" : "Confirm AI edit"}
+      >
         {body}
       </div>
     </AiChrome>

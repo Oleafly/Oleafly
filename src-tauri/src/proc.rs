@@ -146,6 +146,13 @@ pub struct ProcessTreeGuard {
 }
 
 #[cfg(not(windows))]
+impl ProcessTreeGuard {
+    pub fn disarm(mut self) {
+        self.process_group = 0;
+    }
+}
+
+#[cfg(not(windows))]
 impl Drop for ProcessTreeGuard {
     fn drop(&mut self) {
         if self.process_group > 0 {
@@ -164,6 +171,19 @@ pub struct ProcessTreeGuard {
 
 #[cfg(windows)]
 unsafe impl Send for ProcessTreeGuard {}
+
+#[cfg(windows)]
+impl ProcessTreeGuard {
+    pub fn disarm(mut self) {
+        if !self.job.is_null() {
+            unsafe {
+                let _ = configure_job_kill_on_close(self.job, false);
+                windows_sys::Win32::Foundation::CloseHandle(self.job);
+            }
+            self.job = std::ptr::null_mut();
+        }
+    }
+}
 
 #[cfg(windows)]
 impl Drop for ProcessTreeGuard {
@@ -216,7 +236,7 @@ fn assign_process_to_new_job(pid: u32) -> std::io::Result<*mut std::ffi::c_void>
         if job.is_null() {
             return Err(std::io::Error::last_os_error());
         }
-        if let Err(error) = configure_kill_on_close(job) {
+        if let Err(error) = configure_job_kill_on_close(job, true) {
             CloseHandle(job);
             return Err(error);
         }
@@ -246,7 +266,7 @@ fn assign_process_to_new_job(pid: u32) -> std::io::Result<*mut std::ffi::c_void>
 }
 
 #[cfg(windows)]
-fn configure_kill_on_close(job: *mut std::ffi::c_void) -> std::io::Result<()> {
+fn configure_job_kill_on_close(job: *mut std::ffi::c_void, enabled: bool) -> std::io::Result<()> {
     use windows_sys::Win32::System::JobObjects::{
         JobObjectExtendedLimitInformation, SetInformationJobObject,
         JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
@@ -254,7 +274,11 @@ fn configure_kill_on_close(job: *mut std::ffi::c_void) -> std::io::Result<()> {
 
     unsafe {
         let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
-        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        limits.BasicLimitInformation.LimitFlags = if enabled {
+            JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        } else {
+            0
+        };
         let result = SetInformationJobObject(
             job,
             JobObjectExtendedLimitInformation,

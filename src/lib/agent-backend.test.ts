@@ -12,6 +12,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, Channel: mocks.Ch
 
 import {
   AgentStreamError,
+  agentSteer,
   completeText,
   completeViaBackend,
   streamText,
@@ -107,6 +108,40 @@ describe("cancellation", () => {
   it("reports a genuine provider failure as an error, not an abort", async () => {
     mocks.invoke.mockRejectedValue("The provider returned 401. Incorrect API key provided");
     await expect(completeText({ user: "hi" })).rejects.toThrow(/401/);
+  });
+});
+
+describe("steering", () => {
+  it("sends the complete user message and waits for backend delivery", async () => {
+    let resolveDelivery!: () => void;
+    mocks.invoke.mockImplementation(
+      () => new Promise<void>((resolve) => {
+        resolveDelivery = resolve;
+      }),
+    );
+    const message = {
+      role: "user" as const,
+      content: [
+        { type: "text" as const, text: "Use this image" },
+        { type: "image" as const, image: "data:image/png;base64,AA==" },
+      ],
+    };
+
+    let delivered = false;
+    const pending = agentSteer("run-1", message).then(() => {
+      delivered = true;
+    });
+    await Promise.resolve();
+
+    expect(mocks.invoke).toHaveBeenCalledWith("agent_steer", {
+      requestId: "run-1",
+      message,
+    });
+    expect(delivered).toBe(false);
+
+    resolveDelivery();
+    await pending;
+    expect(delivered).toBe(true);
   });
 });
 

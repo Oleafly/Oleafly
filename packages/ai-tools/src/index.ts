@@ -8,6 +8,7 @@ export {
   type IndexUseView,
   type ToolApprovalRequest,
   type ConfirmFn,
+  type ExecAuthorization,
 } from "./tools";
 export { pickPagesToVerify } from "./pick-pages";
 export {

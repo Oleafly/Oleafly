@@ -32,7 +32,7 @@ describe("useSettingsStore dock appearance settings", () => {
     useSettingsStore.getState().setDockPlacement("left");
   });
 
-  it("persists dock visibility and restores its reset shape", () => {
+  it("keeps docks closed by default and does not persist their open state", () => {
     expect(useSettingsStore.getState()).toMatchObject({
       terminalOpen: false,
       browserOpen: false,
@@ -45,8 +45,14 @@ describe("useSettingsStore dock appearance settings", () => {
       terminalOpen: true,
       browserOpen: true,
     });
-    expect(localStorage.getItem("oleafly.dock.terminalOpen")).toBe("1");
-    expect(localStorage.getItem("oleafly.dock.browserOpen")).toBe("1");
+    expect(localStorage.getItem("oleafly.dock.terminalOpen")).toBeNull();
+    expect(localStorage.getItem("oleafly.dock.browserOpen")).toBeNull();
+
+    useSettingsStore.getState().closeDocks();
+    expect(useSettingsStore.getState()).toMatchObject({
+      terminalOpen: false,
+      browserOpen: false,
+    });
 
     useSettingsStore.getState().resetToDefaults();
 
@@ -54,8 +60,8 @@ describe("useSettingsStore dock appearance settings", () => {
       terminalOpen: false,
       browserOpen: false,
     });
-    expect(localStorage.getItem("oleafly.dock.terminalOpen")).toBe("0");
-    expect(localStorage.getItem("oleafly.dock.browserOpen")).toBe("0");
+    expect(localStorage.getItem("oleafly.dock.terminalOpen")).toBeNull();
+    expect(localStorage.getItem("oleafly.dock.browserOpen")).toBeNull();
   });
 });
 

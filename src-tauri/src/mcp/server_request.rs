@@ -83,6 +83,10 @@ pub(super) fn effective_policy(config: Option<(String, bool)>) -> (String, bool)
     config.unwrap_or_else(|| ("ask".to_string(), true))
 }
 
+pub(super) fn tool_disabled_by_read_only(read_only: bool, name: &str) -> bool {
+    read_only && crate::mcp::native::is_mutating(name)
+}
+
 pub(super) fn bounded_activity_tool_name(name: &str) -> String {
     name.chars().take(MAX_ACTIVITY_TOOL_NAME_CHARS).collect()
 }
@@ -303,7 +307,7 @@ async fn handle_forward_call(
     .ok()
     .and_then(|read| read.ok());
     let (policy, read_only) = effective_policy(config);
-    if read_only && crate::mcp::native::is_mutating(&name) {
+    if tool_disabled_by_read_only(read_only, &name) {
         return json_tool_error(id, "tool disabled by read-only mode");
     }
     let renderer_is_fresh = renderer_session_is_fresh(state, renderer_session);

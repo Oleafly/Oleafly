@@ -172,22 +172,31 @@ function parseArguments(raw: string): unknown {
   }
 }
 
-function toolOutcome(output: string): { failed: boolean; exitCode: number | null } {
+function toolOutcome(output: string): { status: ExecutionStatus; exitCode: number | null } {
   try {
     const parsed = JSON.parse(output) as unknown;
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-      return { failed: false, exitCode: null };
+      return { status: "completed", exitCode: null };
     }
     const record = parsed as Record<string, unknown>;
     const exitCode = typeof record.exit_code === "number" ? record.exit_code : null;
+    if (record.declined === true || record.status === "declined") {
+      return { status: "declined", exitCode };
+    }
+    const timedOut =
+      record.timed_out === true ||
+      (typeof record.status === "string" && record.status.toLowerCase().includes("timed out"));
+    const failed =
+      Object.prototype.hasOwnProperty.call(record, "error") ||
+      timedOut ||
+      (exitCode !== null && exitCode !== 0) ||
+      (record.exec === true && exitCode === null);
     return {
-      failed:
-        Object.prototype.hasOwnProperty.call(record, "error") ||
-        (exitCode !== null && exitCode !== 0),
+      status: failed ? "failed" : "completed",
       exitCode,
     };
   } catch {
-    return { failed: false, exitCode: null };
+    return { status: "completed", exitCode: null };
   }
 }
 
@@ -294,17 +303,16 @@ export class TurnFold {
           const recorded = record.items[index];
           recorded.completed = true;
           const outcome = toolOutcome(event.output);
-          const ok = !outcome.failed;
           const item = recorded.item;
           if (item.type === "commandExecution") {
             item.aggregatedOutput += event.output;
             item.exitCode = outcome.exitCode;
-            item.status = ok ? "completed" : "failed";
+            item.status = outcome.status;
           } else if (item.type === "fileChange" || item.type === "mcpToolCall") {
-            item.status = ok ? "completed" : "failed";
+            item.status = outcome.status;
           } else if (item.type === "dynamicToolCall") {
             item.output = event.output;
-            item.status = ok ? "completed" : "failed";
+            item.status = outcome.status;
           }
         }
         break;
@@ -364,14 +372,8 @@ export class TurnFold {
         break;
       }
       case "done": {
-        // The model stream ended: complete the most recent message still
-        // open, wherever it sits (text can precede tool calls).
-        for (let i = record.items.length - 1; i >= 0; i -= 1) {
-          const recorded = record.items[i];
-          if (recorded.item.type === "agentMessage") {
-            recorded.completed = true;
-            break;
-          }
+        for (const recorded of record.items) {
+          recorded.completed = true;
         }
         break;
       }

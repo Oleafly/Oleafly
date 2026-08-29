@@ -525,31 +525,162 @@ fn the_classifier_skips_without_a_project_and_denies_from_decisions() {
     assert_eq!(pinned(&call), ApprovalRequirement::NeedsApproval);
 }
 
-#[test]
-fn steering_requires_text_and_an_active_run() {
+#[tokio::test]
+async fn steering_requires_user_content_and_an_active_run() {
     let state = crate::agent::AgentState::default();
-    let error = crate::agent::steer_run(&state, "no-such-run", "redirect").unwrap_err();
+    let error = crate::agent::steer_run(
+        &state,
+        "no-such-run",
+        oleafly_agent::Message::user("redirect"),
+    )
+    .await
+    .unwrap_err();
     assert!(error.contains("no active run"));
-    let error = crate::agent::steer_run(&state, "any", "   ").unwrap_err();
-    assert!(error.contains("must not be empty"));
+    let error = crate::agent::steer_run(&state, "any", oleafly_agent::Message::user("   "))
+        .await
+        .unwrap_err();
+    assert!(error.contains("must contain text or an image"));
+    let error = crate::agent::steer_run(
+        &state,
+        "any",
+        oleafly_agent::Message {
+            role: oleafly_agent::Role::Assistant,
+            content: vec![oleafly_agent::ContentPart::text("redirect")],
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(error.contains("must be a user message"));
 }
 
-#[test]
-fn steering_reaches_a_registered_run_and_cancel_removes_it() {
+#[tokio::test]
+async fn steering_is_acknowledged_only_after_the_run_receives_it() {
     let state = crate::agent::AgentState::default();
-    let (handle, mut receiver) = oleafly_agent::SteerHandle::channel();
+    let (handle, receiver) = oleafly_agent::SteerHandle::channel();
     crate::agent::register_steer_for_test(&state, "run-1", handle);
-    crate::agent::steer_run(&state, "run-1", "redirect now").unwrap();
-    assert_eq!(receiver.try_recv().unwrap(), "redirect now");
+    drop(receiver);
+    let error = crate::agent::steer_run(
+        &state,
+        "run-1",
+        oleafly_agent::Message::user("redirect now"),
+    )
+    .await
+    .unwrap_err();
+    assert!(error.contains("stopped before receiving"));
 
     let token = oleafly_agent::CancellationToken::new();
     let child = token.child();
     crate::agent::register_token_for_test(&state, "run-1", token);
     crate::agent::cancel_run(&state, "run-1");
     assert!(child.is_cancelled());
-    // The steer registration went with it.
-    let error = crate::agent::steer_run(&state, "run-1", "again").unwrap_err();
+    let error = crate::agent::steer_run(&state, "run-1", oleafly_agent::Message::user("again"))
+        .await
+        .unwrap_err();
     assert!(error.contains("no active run"));
+}
+
+#[test]
+fn initiating_user_text_uses_the_last_user_message() {
+    let request = oleafly_agent::CompletionRequest {
+        messages: vec![
+            oleafly_agent::Message::user("older prompt"),
+            oleafly_agent::Message {
+                role: oleafly_agent::Role::Assistant,
+                content: vec![oleafly_agent::ContentPart::text("older answer")],
+            },
+            oleafly_agent::Message {
+                role: oleafly_agent::Role::User,
+                content: vec![
+                    oleafly_agent::ContentPart::text("current prompt"),
+                    oleafly_agent::ContentPart::Image {
+                        image: "data:image/png;base64,AA".into(),
+                    },
+                ],
+            },
+        ],
+        ..Default::default()
+    };
+
+    assert_eq!(
+        crate::agent::initiating_user_text(&request),
+        "current prompt"
+    );
+}
+
+#[test]
+fn initiating_user_message_survives_rollout_persistence_and_thread_search() {
+    let root = tempfile::tempdir().unwrap();
+    let request = oleafly_agent::CompletionRequest {
+        messages: vec![oleafly_agent::Message::user(
+            "cuttlefishprompt repair the citation",
+        )],
+        ..Default::default()
+    };
+    let mut recorder = crate::agent::turn_recorder_for_request(
+        "turn-search".into(),
+        Some("client-search".into()),
+        &request,
+    );
+    recorder.record(&oleafly_agent::AgentEvent::TextDelta {
+        text: "I repaired it.".into(),
+    });
+    recorder.finish(false);
+    crate::rollout::append_turn(root.path(), "thread-search", &recorder.into_record()).unwrap();
+    let turns = crate::rollout::read_turns(root.path(), "thread-search").unwrap();
+    crate::library_db::resync_thread(root.path(), "thread-search", "project-search", &turns)
+        .unwrap();
+
+    let hits = crate::library_db::search_threads(root.path(), "cuttlefishprompt", 10).unwrap();
+
+    assert_eq!(hits.len(), 1);
+    assert_eq!(hits[0].thread_id, "thread-search");
+}
+
+#[test]
+fn dropping_run_resources_cleans_every_registry() {
+    let state = crate::agent::AgentState::default();
+    let (handle, _receiver) = oleafly_agent::SteerHandle::channel();
+    let token = oleafly_agent::CancellationToken::new();
+    let child = token.child();
+    let manager = std::sync::Arc::new(crate::agent::SubagentManager::default());
+    crate::agent::register_run_resources(&state, "run-1", 7, handle, token, manager);
+
+    drop(crate::agent::RunResourcesGuard::new(&state, "run-1", 7));
+
+    assert!(child.is_cancelled());
+    assert!(crate::agent::subagents_stop(&state, "run-1").is_err());
+    assert!(lock_or_recover(&state.steer_senders).get("run-1").is_none());
+    assert!(lock_or_recover(&state.run_tokens).get("run-1").is_none());
+}
+
+#[test]
+fn stale_run_cleanup_preserves_replacement_resources() {
+    let state = crate::agent::AgentState::default();
+    let (first_handle, _first_receiver) = oleafly_agent::SteerHandle::channel();
+    let (second_handle, _second_receiver) = oleafly_agent::SteerHandle::channel();
+    crate::agent::register_run_resources(
+        &state,
+        "same",
+        1,
+        first_handle,
+        oleafly_agent::CancellationToken::new(),
+        std::sync::Arc::new(crate::agent::SubagentManager::default()),
+    );
+    let replacement = oleafly_agent::CancellationToken::new();
+    let replacement_child = replacement.child();
+    crate::agent::register_run_resources(
+        &state,
+        "same",
+        2,
+        second_handle,
+        replacement,
+        std::sync::Arc::new(crate::agent::SubagentManager::default()),
+    );
+
+    drop(crate::agent::RunResourcesGuard::new(&state, "same", 1));
+
+    assert!(!replacement_child.is_cancelled());
+    assert!(crate::agent::subagents_stop(&state, "same").is_ok());
 }
 
 #[tokio::test]

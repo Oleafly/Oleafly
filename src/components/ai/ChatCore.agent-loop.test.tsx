@@ -1,6 +1,7 @@
 import { JSDOM } from "jsdom";
 import type { RenderResult } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AgentEvent } from "@oleafly/ai-core";
 import type { ModelMessage, ToolSet } from "@/lib/chat-types";
 import type { ChatMessage, StoredChat } from "@/store/chats";
 
@@ -8,6 +9,7 @@ interface HarnessOptions {
   messages: ModelMessage[];
   tools: ToolSet;
   onRequestId?: (requestId: string) => void;
+  onRawEvent?: (event: AgentEvent) => void;
   handlers: {
     onText: (text: string) => void;
     onToolCall: (call: { id: string; name: string; args: unknown }) => void;
@@ -50,7 +52,8 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("./agent-turn", () => ({
+vi.mock("./agent-turn", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./agent-turn")>()),
   runAgentHarness: (options: HarnessOptions) => mocks.runAgentHarness(options),
 }));
 
@@ -106,15 +109,34 @@ vi.mock("@oleafly/registry", () => ({
               }),
             }),
           },
+          run_command: {
+            execute: async () => ({
+              approved: await confirm({
+                tool: "run_command",
+                summary: "$ echo unsafe",
+                projectId: "project",
+                command: "echo unsafe",
+                cwd: "/project",
+              }),
+            }),
+          },
         }),
       },
     ],
   },
 }));
 
-vi.mock("@/components/ai/AttachmentChips", () => ({
-  AttachmentChips: () => null,
-}));
+vi.mock("@/components/ai/AttachmentChips", async () => {
+  const React = await import("react");
+  return {
+    AttachmentChips: ({ items }: { items: Array<{ id: string; name: string }> }) =>
+      React.createElement(
+        "div",
+        null,
+        items.map((item) => React.createElement("span", { key: item.id }, item.name)),
+      ),
+  };
+});
 
 vi.mock("@/components/ai/ChatHistoryModal", () => ({
   ChatHistoryModal: () => null,
@@ -177,11 +199,14 @@ beforeAll(async () => {
     document: { configurable: true, value: dom.window.document },
     navigator: { configurable: true, value: dom.window.navigator },
     HTMLElement: { configurable: true, value: dom.window.HTMLElement },
+    HTMLInputElement: { configurable: true, value: dom.window.HTMLInputElement },
     HTMLTextAreaElement: { configurable: true, value: dom.window.HTMLTextAreaElement },
     Element: { configurable: true, value: dom.window.Element },
     Node: { configurable: true, value: dom.window.Node },
     Event: { configurable: true, value: dom.window.Event },
     CustomEvent: { configurable: true, value: dom.window.CustomEvent },
+    File: { configurable: true, value: dom.window.File },
+    FileReader: { configurable: true, value: dom.window.FileReader },
     MutationObserver: { configurable: true, value: dom.window.MutationObserver },
     getComputedStyle: {
       configurable: true,
@@ -321,6 +346,23 @@ function plainTranscript(messages: ModelMessage[]) {
   }));
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+async function attachTextFile(rendered: RenderResult, name: string, text: string) {
+  const input = rendered.container.querySelector('input[type="file"]');
+  if (!(input instanceof HTMLInputElement)) throw new Error("attachment input missing");
+  fireEvent.change(input, {
+    target: { files: [new File([text], name, { type: "text/plain", lastModified: 1 })] },
+  });
+  await waitFor(() => expect(rendered.getByText(name)).toBeTruthy());
+}
+
 describe("ChatCore agent turns", () => {
   it("queues follow-ups while streaming and sends every one with the complete transcript", async () => {
     const rendered = await renderChat();
@@ -366,22 +408,280 @@ describe("ChatCore agent turns", () => {
     await act(async () => finishRun(2, "Second follow-up response"));
   });
 
-  it("steers a queued follow-up into the active backend run", async () => {
+  it("keeps queued attachment bytes until the follow-up send is accepted", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    await attachTextFile(rendered, "queued-a.txt", "attachment A");
+    submit(rendered, "Read the queued attachment");
+    await attachTextFile(rendered, "composer-b.txt", "attachment B");
+
+    await act(async () => finishRun(0, "First response"));
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    const followUp = mocks.runs[1].options.messages.at(-1);
+    expect(followUp?.content).toEqual([
+      { type: "text", text: "Read the queued attachment" },
+      expect.objectContaining({ type: "file", name: "queued-a.txt" }),
+    ]);
+    expect(JSON.stringify(followUp?.content)).not.toContain("composer-b.txt");
+
+    await act(async () => finishRun(1, "Read it"));
+  });
+
+  it("keeps a queued follow-up when its budget gate rejects the resend", async () => {
+    mocks.checkProjectBudget
+      .mockResolvedValueOnce("ok")
+      .mockResolvedValueOnce("blocked");
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    submit(rendered, "Keep this queued");
+
+    await act(async () => finishRun(0, "First response"));
+    await waitFor(() => expect(mocks.checkProjectBudget).toHaveBeenCalledTimes(2));
+
+    expect(mocks.runs).toHaveLength(1);
+    expect(rendered.getByText("Queued for the next turn: Keep this queued")).toBeTruthy();
+    expect(useAgentTurnsStore.getState().queuedByChat["chat-1"]).toHaveLength(1);
+  });
+
+  it("keeps a queued follow-up when backend startup fails before acceptance", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await attachTextFile(rendered, "retry.txt", "retry attachment");
+    submit(rendered, "Keep this after startup failure");
+    mocks.runAgentHarness.mockRejectedValueOnce(new Error("backend startup failed"));
+
+    await act(async () => finishRun(0, "First response"));
+    await waitFor(() => expect(mocks.runAgentHarness).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    expect(useAgentTurnsStore.getState().queuedByChat["chat-1"]).toEqual([
+      expect.objectContaining({
+        text: "Keep this after startup failure",
+        status: "pending",
+        attachments: [expect.objectContaining({ name: "retry.txt" })],
+      }),
+    ]);
+    expect(
+      useChatsStore.getState().byId("chat-1")?.messages.map(
+        (message: ChatMessage) => ({ role: message.role, content: message.content }),
+      ),
+    ).toEqual([
+      { role: "user", content: "First request" },
+      { role: "assistant", content: "First response" },
+    ]);
+    expect(useAgentTurnsStore.getState().recordsByChat["chat-1"]).toHaveLength(1);
+
+    submit(rendered, "Recovery request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    expect(plainTranscript(mocks.runs[1].options.messages)).toEqual([
+      { role: "user", content: "First request" },
+      { role: "assistant", content: "First response" },
+      { role: "user", content: "Recovery request" },
+    ]);
+
+    await act(async () => finishRun(1, "Recovery response"));
+    await waitFor(() => expect(mocks.runs).toHaveLength(3));
+    expect(plainTranscript(mocks.runs[2].options.messages.slice(0, -1))).toEqual([
+      { role: "user", content: "First request" },
+      { role: "assistant", content: "First response" },
+      { role: "user", content: "Recovery request" },
+      { role: "assistant", content: "Recovery response" },
+    ]);
+    expect(mocks.runs[2].options.messages.at(-1)).toEqual({
+      role: "user",
+      content: [
+        { type: "text", text: "Keep this after startup failure" },
+        expect.objectContaining({ type: "file", name: "retry.txt" }),
+      ],
+    });
+
+    await act(async () => finishRun(2, "Queued response"));
+  });
+
+  it("does not let a stale budget callback replace the new project's active run", async () => {
+    const firstBudget = deferred<"ok">();
+    const firstProject = useFilesStore.getState().projectId;
+    mocks.checkProjectBudget.mockImplementation((projectId: string) =>
+      projectId === firstProject ? firstBudget.promise : Promise.resolve("ok"),
+    );
+    const rendered = await renderChat();
+    submit(rendered, "Request in project A");
+    await waitFor(() => expect(mocks.checkProjectBudget).toHaveBeenCalledWith(firstProject));
+
+    const secondProject = `${firstProject}-second`;
+    act(() => {
+      useFilesStore.setState({ projectId: secondProject, projectName: "Second project" });
+      useChatsStore.setState({
+        projectId: secondProject,
+        chats: [
+          {
+            id: "chat-2",
+            projectId: secondProject,
+            title: "New chat",
+            createdAt: 2,
+            updatedAt: 2,
+            messages: [],
+            headOid: null,
+          },
+        ],
+        activeId: "chat-2",
+        live: {},
+      });
+    });
+    submit(rendered, "Request in project B");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    await act(async () => firstBudget.resolve("ok"));
+    await act(async () => finishRun(0, "Project B response"));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+  });
+
+  it("marks only the acknowledged queued steer as delivered", async () => {
+    const steerAck = deferred<void>();
+    mocks.agentSteer.mockReturnValueOnce(steerAck.promise);
     const rendered = await renderChat();
     submit(rendered, "First request");
     await waitFor(() => expect(mocks.runs).toHaveLength(1));
 
     submit(rendered, "Use this now");
-    fireEvent.click(rendered.getByRole("button", { name: "Steer now" }));
+    submit(rendered, "Use this now");
+    const queued = useAgentTurnsStore.getState().queuedByChat["chat-1"];
+    const steerButton = rendered.getAllByRole("button", { name: "Steer now" })[1];
+    fireEvent.click(steerButton);
+    fireEvent.click(steerButton);
 
     await waitFor(() => {
-      expect(mocks.agentSteer).toHaveBeenCalledWith("request-1", "Use this now");
-      expect(rendered.getByText("Steered into the running turn: Use this now")).toBeTruthy();
+      expect(mocks.agentSteer).toHaveBeenCalledWith("request-1", {
+        role: "user",
+        content: [{ type: "text", text: "Use this now" }],
+      });
+    });
+    expect(mocks.agentSteer).toHaveBeenCalledTimes(1);
+    expect(useAgentTurnsStore.getState().queuedByChat["chat-1"].map((item) => item.status)).toEqual([
+      "pending",
+      "pending",
+    ]);
+
+    await act(async () => steerAck.resolve());
+    await waitFor(() => {
+      expect(
+        useAgentTurnsStore.getState().queuedByChat["chat-1"].map((item) => ({
+          id: item.id,
+          status: item.status,
+        })),
+      ).toEqual([
+        { id: queued[0].id, status: "pending" },
+        { id: queued[1].id, status: "steered" },
+      ]);
     });
 
     await act(async () => finishRun(0, "First response"));
-    await waitFor(() => expect(activeChatRun()).toBeNull());
-    expect(mocks.runs).toHaveLength(1);
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    await act(async () => finishRun(1, "Follow-up response"));
+  });
+
+  it("steers queued attachments through the same backend message conversion", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    await attachTextFile(rendered, "steer.txt", "steered attachment");
+    submit(rendered, "Use the attachment now");
+    fireEvent.click(rendered.getByRole("button", { name: "Steer now" }));
+
+    await waitFor(() => {
+      expect(mocks.agentSteer).toHaveBeenCalledWith("request-1", {
+        role: "user",
+        content: [
+          { type: "text", text: "Use the attachment now" },
+          { type: "text", text: 'Attached file "steer.txt":\n\nsteered attachment' },
+        ],
+      });
+    });
+
+    act(() =>
+      mocks.runs[0].options.onRawEvent?.({ kind: "steered", text: "Use the attachment now" }),
+    );
+    await act(async () => finishRun(0, "First response"));
+  });
+
+  it("publishes no more than one capped text batch per animation frame", async () => {
+    const callbacks = new Map<number, FrameRequestCallback>();
+    let nextFrame = 0;
+    const requestFrame = vi.fn((callback: FrameRequestCallback) => {
+      nextFrame += 1;
+      callbacks.set(nextFrame, callback);
+      return nextFrame;
+    });
+    const cancelFrame = vi.fn((handle: number) => {
+      callbacks.delete(handle);
+    });
+    const originalRequestFrame = globalThis.requestAnimationFrame;
+    const originalCancelFrame = globalThis.cancelAnimationFrame;
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    });
+    Object.defineProperties(globalThis, {
+      requestAnimationFrame: { configurable: true, value: requestFrame },
+      cancelAnimationFrame: { configurable: true, value: cancelFrame },
+    });
+    Object.defineProperties(window, {
+      requestAnimationFrame: { configurable: true, value: requestFrame },
+      cancelAnimationFrame: { configurable: true, value: cancelFrame },
+    });
+
+    try {
+      const rendered = await renderChat();
+      submit(rendered, "Stream a burst");
+      await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+      act(() => {
+        for (let index = 0; index < 600; index += 1) {
+          mocks.runs[0].options.handlers.onText("x");
+        }
+      });
+
+      expect(requestFrame).toHaveBeenCalledTimes(1);
+      expect(callbacks).toHaveLength(1);
+      const first = callbacks.entries().next().value as [number, FrameRequestCallback];
+      callbacks.delete(first[0]);
+      act(() => first[1](0));
+      expect(requestFrame).toHaveBeenCalledTimes(2);
+      expect(callbacks).toHaveLength(1);
+      expect(useChatsStore.getState().live["chat-1"].at(-1)?.content).toHaveLength(512);
+
+      const second = callbacks.entries().next().value as [number, FrameRequestCallback];
+      callbacks.delete(second[0]);
+      act(() => second[1](16));
+      expect(callbacks).toHaveLength(0);
+      expect(useChatsStore.getState().live["chat-1"].at(-1)?.content).toHaveLength(600);
+
+      await act(async () => {
+        mocks.runs[0].resolve({
+          text: "x".repeat(600),
+          usage: { input: 0, output: 0 },
+          steps: 1,
+          stopped_at_cap: false,
+          error: null,
+        });
+      });
+      await waitFor(() => expect(activeChatRun()).toBeNull());
+    } finally {
+      Reflect.deleteProperty(document, "visibilityState");
+      Object.defineProperties(globalThis, {
+        requestAnimationFrame: { configurable: true, value: originalRequestFrame },
+        cancelAnimationFrame: { configurable: true, value: originalCancelFrame },
+      });
+      Object.defineProperties(window, {
+        requestAnimationFrame: { configurable: true, value: originalRequestFrame },
+        cancelAnimationFrame: { configurable: true, value: originalCancelFrame },
+      });
+    }
   });
 
   it("uses a persisted project approval without showing ToolConfirm", async () => {
@@ -403,5 +703,28 @@ describe("ChatCore agent turns", () => {
     expect(rendered.queryByRole("alertdialog", { name: "Confirm AI edit" })).toBeNull();
 
     await act(async () => finishRun(0, "Updated"));
+  });
+
+  it("never auto-approves a persisted shell allow decision", async () => {
+    mocks.approvalsList.mockResolvedValue({ run_command: "allow" });
+    const rendered = await renderChat();
+    submit(rendered, "Run a command");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    mocks.runs[0].options.handlers.onToolCall({
+      id: "call-1",
+      name: "run_command",
+      args: { command: "echo unsafe" },
+    });
+    const result = mocks.runs[0].options.tools.run_command.execute?.({
+      command: "echo unsafe",
+    });
+
+    await waitFor(() =>
+      expect(rendered.getByRole("alertdialog", { name: "Confirm command" })).toBeTruthy(),
+    );
+    fireEvent.click(rendered.getByRole("button", { name: "Reject" }));
+    await expect(result).resolves.toEqual({ approved: false });
+    await act(async () => finishRun(0, "Not run"));
   });
 });

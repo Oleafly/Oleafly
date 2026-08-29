@@ -11,7 +11,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use native::{
     rejected_override_message, BuildOptions, BuildResult, BuildTools, CompilerLog, NativeCompiler,
 };
-use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Config, Event, EventKind, PollWatcher, RecursiveMode, Watcher};
 use oleafly_core::{
     is_generated_directory, DoctorCheck, DoctorStatus, Engine, Error, ErrorKind, InitOptions,
     Workspace,
@@ -442,11 +442,22 @@ async fn run_watch(path: &Path, request: BuildRequest) -> Result<u8, Error> {
 
 fn create_watcher(
     sender: mpsc::UnboundedSender<notify::Result<Event>>,
-) -> Result<RecommendedWatcher, Error> {
-    notify::recommended_watcher(move |event| {
+) -> Result<Box<dyn Watcher + Send>, Error> {
+    let handler = move |event| {
         let _ = sender.send(event);
-    })
-    .map_err(notify_error)
+    };
+    if std::env::var_os("OLEAFLY_WATCH_POLL").is_some() {
+        PollWatcher::new(
+            handler,
+            Config::default().with_poll_interval(Duration::from_millis(100)),
+        )
+        .map(|watcher| Box::new(watcher) as Box<dyn Watcher + Send>)
+        .map_err(notify_error)
+    } else {
+        notify::recommended_watcher(handler)
+            .map(|watcher| Box::new(watcher) as Box<dyn Watcher + Send>)
+            .map_err(notify_error)
+    }
 }
 
 async fn watch_build(path: &Path, request: BuildRequest) -> Result<bool, Error> {

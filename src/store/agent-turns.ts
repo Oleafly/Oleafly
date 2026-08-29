@@ -1,32 +1,42 @@
-// Live turn records: the authoritative item-layer state for the active
-// chat. One TurnFold per chat runs the event fold (records mutate in place
-// inside the fold; the store republishes on every applied event), turns are
-// keyed by chat with a thread mapping so a chat keeps its rollout thread
-// across sends. Queued follow-ups implement steer-vs-queue: Enter during a
-// running turn queues; an explicit steer injects mid-run.
-
 import { create } from "zustand";
 import type { AgentEvent } from "@oleafly/ai-core";
-import { DeltaQueues, TurnFold, type TurnRecord } from "@oleafly/ai-core";
+import {
+  DeltaQueues,
+  TurnFold,
+  type RecordedStoreItem,
+  type StoreItem,
+  type TurnRecord,
+} from "@oleafly/ai-core";
 import { windowFlushScheduler } from "@/lib/agent-stream-scheduler";
+
+export interface QueuedAttachment {
+  id: string;
+  name: string;
+  mediaType: string;
+  dataUrl: string;
+}
 
 export interface QueuedFollowUp {
   id: string;
   text: string;
+  attachments: QueuedAttachment[];
   status: "pending" | "steered";
 }
 
 interface AgentTurnsState {
   recordsByChat: Record<string, TurnRecord[]>;
+  addedItemsByChat: Record<string, RecordedStoreItem[]>;
   threadByChat: Record<string, string>;
   queuedByChat: Record<string, QueuedFollowUp[]>;
   beginTurn: (chatId: string, threadId: string, clientTurnId: string, userText: string) => void;
   applyEvent: (chatId: string, event: AgentEvent) => void;
   finishTurn: (chatId: string, stoppedAtCap: boolean) => void;
   interruptTurn: (chatId: string) => void;
-  queueFollowUp: (chatId: string, text: string) => void;
+  rollbackTurn: (chatId: string, clientTurnId: string) => void;
+  queueFollowUp: (chatId: string, text: string, attachments?: QueuedAttachment[]) => void;
   markSteered: (chatId: string, followUpId: string) => void;
   takeFollowUps: (chatId: string) => QueuedFollowUp[];
+  acknowledgeFollowUp: (chatId: string, followUpId: string) => void;
   threadFor: (chatId: string, projectId: string | null, claimPrewarmed: () => Promise<string | null>) => Promise<string>;
   reset: () => void;
 }
@@ -35,19 +45,82 @@ const folds = new Map<string, TurnFold>();
 const pendingPublishes = new Map<string, TurnFold>();
 const publishQueues = new DeltaQueues(windowFlushScheduler());
 
+function cloneStreamingItem(recorded: RecordedStoreItem): RecordedStoreItem {
+  let item: StoreItem = { ...recorded.item };
+  if (recorded.item.type === "reasoning") {
+    item = {
+      ...recorded.item,
+      summary: [...recorded.item.summary],
+      content: [...recorded.item.content],
+    };
+  } else if (recorded.item.type === "commandExecution") {
+    item = { ...recorded.item, command: [...recorded.item.command] };
+  }
+  return { ...recorded, item };
+}
+
+function itemCanStillChange(
+  recorded: RecordedStoreItem,
+  index: number,
+  itemCount: number,
+): boolean {
+  const item = recorded.item;
+  if (
+    (item.type === "commandExecution" ||
+      item.type === "fileChange" ||
+      item.type === "dynamicToolCall" ||
+      item.type === "mcpToolCall") &&
+    item.status === "inProgress"
+  ) {
+    return true;
+  }
+  return (
+    !recorded.completed &&
+    index === itemCount - 1 &&
+    (item.type === "agentMessage" || item.type === "reasoning")
+  );
+}
+
+function streamingSnapshot(previous: TurnRecord, current: TurnRecord): TurnRecord {
+  return {
+    ...current,
+    items: current.items.map((recorded, index) => {
+      const prior = previous.items[index];
+      if (!prior || prior.id !== recorded.id) return cloneStreamingItem(recorded);
+      if (prior.completed !== recorded.completed) return cloneStreamingItem(recorded);
+      if (itemCanStillChange(prior, index, previous.items.length)) {
+        return cloneStreamingItem(recorded);
+      }
+      if (itemCanStillChange(recorded, index, current.items.length)) {
+        return cloneStreamingItem(recorded);
+      }
+      return prior;
+    }),
+  };
+}
+
 function republish(
-  state: Pick<AgentTurnsState, "recordsByChat">,
+  state: Pick<AgentTurnsState, "recordsByChat" | "addedItemsByChat">,
   chatId: string,
   fold: TurnFold,
 ): Partial<AgentTurnsState> {
-  const snapshot = fold.snapshot();
   const previous = state.recordsByChat[chatId] ?? [];
-  return {
+  const previousRecord = previous[previous.length - 1];
+  const current = fold.snapshot();
+  const snapshot = previousRecord
+    ? streamingSnapshot(previousRecord, current)
+    : structuredClone(current);
+  const added = snapshot.items.slice(previousRecord?.items.length ?? 0);
+  const update: Partial<AgentTurnsState> = {
     recordsByChat: {
       ...state.recordsByChat,
-      [chatId]: [...previous.slice(0, -1), structuredClone(snapshot)],
+      [chatId]: [...previous.slice(0, -1), snapshot],
     },
   };
+  if (added.length > 0) {
+    update.addedItemsByChat = { ...state.addedItemsByChat, [chatId]: added };
+  }
+  return update;
 }
 
 function scheduleRepublish(chatId: string, fold: TurnFold): void {
@@ -63,6 +136,7 @@ function scheduleRepublish(chatId: string, fold: TurnFold): void {
 
 export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
   recordsByChat: {},
+  addedItemsByChat: {},
   threadByChat: {},
   queuedByChat: {},
 
@@ -70,12 +144,14 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
     // The optimistic turn: a user message item exists before any request.
     const fold = new TurnFold(clientTurnId, clientTurnId).pushUserMessage(userText);
     folds.set(chatId, fold);
+    const snapshot = structuredClone(fold.snapshot());
     set((state) => ({
       threadByChat: { ...state.threadByChat, [chatId]: threadId },
       recordsByChat: {
         ...state.recordsByChat,
-        [chatId]: [...(state.recordsByChat[chatId] ?? []), structuredClone(fold.snapshot())],
+        [chatId]: [...(state.recordsByChat[chatId] ?? []), snapshot],
       },
+      addedItemsByChat: { ...state.addedItemsByChat, [chatId]: snapshot.items },
     }));
   },
 
@@ -108,14 +184,38 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
     folds.delete(chatId);
   },
 
-  queueFollowUp: (chatId, text) => {
-    if (!text.trim()) return;
+  rollbackTurn: (chatId, clientTurnId) => {
+    const fold = folds.get(chatId);
+    if (fold?.snapshot().clientTurnId === clientTurnId) {
+      folds.delete(chatId);
+      pendingPublishes.delete(chatId);
+    }
+    set((state) => {
+      const records = state.recordsByChat[chatId] ?? [];
+      const remaining = records.filter((record) => record.clientTurnId !== clientTurnId);
+      if (remaining.length === records.length) return {};
+      const recordsByChat = { ...state.recordsByChat };
+      const addedItemsByChat = { ...state.addedItemsByChat };
+      if (remaining.length > 0) recordsByChat[chatId] = remaining;
+      else delete recordsByChat[chatId];
+      delete addedItemsByChat[chatId];
+      return { recordsByChat, addedItemsByChat };
+    });
+  },
+
+  queueFollowUp: (chatId, text, attachments = []) => {
+    if (!text.trim() && attachments.length === 0) return;
     set((state) => ({
       queuedByChat: {
         ...state.queuedByChat,
         [chatId]: [
           ...(state.queuedByChat[chatId] ?? []),
-          { id: crypto.randomUUID(), text: text.trim(), status: "pending" },
+          {
+            id: crypto.randomUUID(),
+            text: text.trim(),
+            attachments: attachments.map((attachment) => ({ ...attachment })),
+            status: "pending",
+          },
         ],
       },
     }));
@@ -143,16 +243,28 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
     const queued = get().queuedByChat[chatId] ?? [];
     const pendingIndex = queued.findIndex((item) => item.status === "pending");
     const taken = pendingIndex >= 0 ? [queued[pendingIndex]] : [];
-    const remaining = queued.filter(
-      (item, index) => item.status === "pending" && index !== pendingIndex,
-    );
+    if (queued.some((item) => item.status === "steered")) {
+      set((state) => {
+        const next = { ...state.queuedByChat };
+        const remaining = (next[chatId] ?? []).filter((item) => item.status === "pending");
+        if (remaining.length > 0) next[chatId] = remaining;
+        else delete next[chatId];
+        return { queuedByChat: next };
+      });
+    }
+    return taken;
+  },
+
+  acknowledgeFollowUp: (chatId, followUpId) => {
     set((state) => {
+      const queued = state.queuedByChat[chatId] ?? [];
+      const remaining = queued.filter((item) => item.id !== followUpId);
+      if (remaining.length === queued.length) return {};
       const next = { ...state.queuedByChat };
       if (remaining.length > 0) next[chatId] = remaining;
       else delete next[chatId];
       return { queuedByChat: next };
     });
-    return taken;
   },
 
   threadFor: async (chatId, projectId, claimPrewarmed) => {
@@ -174,6 +286,6 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
     folds.clear();
     pendingPublishes.clear();
     publishQueues.dispose();
-    set({ recordsByChat: {}, threadByChat: {}, queuedByChat: {} });
+    set({ recordsByChat: {}, addedItemsByChat: {}, threadByChat: {}, queuedByChat: {} });
   },
 }));

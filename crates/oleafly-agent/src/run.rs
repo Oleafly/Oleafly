@@ -4,6 +4,7 @@
 
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -12,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::complete::{CompletionRequest, Usage};
 use crate::error::{AgentError, Result};
 use crate::event::AgentEvent;
+use crate::message::Message;
 use crate::provider::Resolved;
 use crate::stream::ToolCall;
 use crate::tasks::CancellationToken;
@@ -103,11 +105,33 @@ impl ToolPipeline {
 /// input and the turn loop delivers it at the next message boundary.
 #[derive(Clone)]
 pub struct SteerHandle {
-    tx: std::sync::Arc<tokio::sync::mpsc::UnboundedSender<String>>,
+    tx: std::sync::Arc<tokio::sync::mpsc::UnboundedSender<SteeredInput>>,
+}
+
+pub struct SteeredInput {
+    pub(crate) message: Message,
+    pub(crate) delivered: tokio::sync::oneshot::Sender<()>,
+    claimed: Arc<AtomicBool>,
+}
+
+impl SteeredInput {
+    pub(crate) fn try_claim(&self) -> bool {
+        !self.claimed.swap(true, Ordering::AcqRel)
+    }
+}
+
+struct SteerReceipt {
+    claimed: Arc<AtomicBool>,
+}
+
+impl Drop for SteerReceipt {
+    fn drop(&mut self) {
+        self.claimed.store(true, Ordering::Release);
+    }
 }
 
 impl SteerHandle {
-    pub fn channel() -> (Self, tokio::sync::mpsc::UnboundedReceiver<String>) {
+    pub fn channel() -> (Self, tokio::sync::mpsc::UnboundedReceiver<SteeredInput>) {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         (
             Self {
@@ -117,8 +141,24 @@ impl SteerHandle {
         )
     }
 
-    pub fn steer(&self, text: impl Into<String>) {
-        let _ = self.tx.send(text.into());
+    pub async fn steer(&self, message: Message) -> bool {
+        let (delivered, receipt) = tokio::sync::oneshot::channel();
+        let claimed = Arc::new(AtomicBool::new(false));
+        let _receipt = SteerReceipt {
+            claimed: claimed.clone(),
+        };
+        if self
+            .tx
+            .send(SteeredInput {
+                message,
+                delivered,
+                claimed,
+            })
+            .is_err()
+        {
+            return false;
+        }
+        receipt.await.is_ok()
     }
 }
 
@@ -258,7 +298,7 @@ pub async fn run_agent_with_pipeline<F>(
     request: CompletionRequest,
     config: &RunConfig,
     pipeline: ToolPipeline,
-    steer_rx: Option<tokio::sync::mpsc::UnboundedReceiver<String>>,
+    steer_rx: Option<tokio::sync::mpsc::UnboundedReceiver<SteeredInput>>,
     run_tool: ToolRunner,
     on_event: F,
 ) -> Result<RunOutcome>
@@ -278,6 +318,86 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::message::{ContentPart, Message, Role};
+    use crate::provider::Wire;
+    use std::io::{Read, Write};
+    use std::net::{TcpListener, TcpStream};
+    use std::sync::{mpsc, Mutex};
+
+    fn local_resolved(addr: std::net::SocketAddr) -> Resolved {
+        Resolved {
+            provider_id: "custom".into(),
+            model_id: "test-model".into(),
+            credential: String::new(),
+            auth: None,
+            wire: Wire::OpenAiChat {
+                base_url: format!("http://{addr}/v1"),
+                reasoning_content: false,
+            },
+        }
+    }
+
+    fn read_request(stream: &mut TcpStream) -> String {
+        stream
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
+        let mut bytes = Vec::new();
+        let mut chunk = [0u8; 4096];
+        loop {
+            let read = stream.read(&mut chunk).unwrap_or(0);
+            if read == 0 {
+                break;
+            }
+            bytes.extend_from_slice(&chunk[..read]);
+            let Some(header_end) = bytes.windows(4).position(|part| part == b"\r\n\r\n") else {
+                continue;
+            };
+            let headers = String::from_utf8_lossy(&bytes[..header_end]);
+            let content_length = headers
+                .lines()
+                .find_map(|line| {
+                    let (name, value) = line.split_once(':')?;
+                    name.eq_ignore_ascii_case("content-length")
+                        .then(|| value.trim().parse::<usize>().ok())
+                        .flatten()
+                })
+                .unwrap_or(0);
+            if bytes.len() >= header_end + 4 + content_length {
+                break;
+            }
+        }
+        String::from_utf8_lossy(&bytes).into_owned()
+    }
+
+    fn respond(stream: &mut TcpStream, status: &str, content_type: &str, body: &str) {
+        write!(
+            stream,
+            "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        )
+        .unwrap();
+        stream.flush().unwrap();
+    }
+
+    async fn receive_signal<T>(receiver: &mpsc::Receiver<T>) -> T {
+        tokio::time::timeout(Duration::from_secs(2), async {
+            loop {
+                match receiver.try_recv() {
+                    Ok(value) => return value,
+                    Err(mpsc::TryRecvError::Empty) => {
+                        tokio::time::sleep(Duration::from_millis(5)).await;
+                    }
+                    Err(mpsc::TryRecvError::Disconnected) => panic!("signal channel closed"),
+                }
+            }
+        })
+        .await
+        .expect("signal timed out")
+    }
+
+    fn no_tools() -> ToolRunner {
+        Arc::new(|_| Box::pin(async { ToolOutput::text("unused") }))
+    }
 
     #[test]
     fn tool_outputs_are_bounded_before_entering_history() {
@@ -346,5 +466,193 @@ mod tests {
                 .unwrap();
         assert_eq!(config.max_steps, 10);
         assert!(config.auto_compact);
+    }
+
+    #[tokio::test]
+    async fn cancellation_interrupts_a_provider_wait() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let (seen_tx, seen_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let _ = read_request(&mut stream);
+            seen_tx.send(()).unwrap();
+            let _ = release_rx.recv_timeout(Duration::from_secs(2));
+        });
+
+        let token = CancellationToken::new();
+        let run_token = token.clone();
+        let mut handle = tokio::spawn(async move {
+            let client = crate::build_client().unwrap();
+            let mut request = CompletionRequest::prompt("system", "prompt");
+            request.timeout_ms = Some(5_000);
+            run_agent_with_pipeline(
+                &client,
+                &local_resolved(addr),
+                request,
+                &RunConfig::default(),
+                ToolPipeline {
+                    token: run_token,
+                    ..ToolPipeline::default()
+                },
+                None,
+                no_tools(),
+                |_| {},
+            )
+            .await
+        });
+
+        receive_signal(&seen_rx).await;
+        token.cancel();
+        let result = tokio::time::timeout(Duration::from_secs(1), &mut handle).await;
+        let _ = release_tx.send(());
+        let outcome = match result {
+            Ok(result) => result.unwrap().unwrap(),
+            Err(_) => {
+                handle.abort();
+                panic!("cancelled provider wait did not finish promptly");
+            }
+        };
+        assert_eq!(outcome.error.as_deref(), Some("The request was cancelled."));
+    }
+
+    #[tokio::test]
+    async fn cancellation_interrupts_retry_backoff() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let _ = read_request(&mut stream);
+            respond(&mut stream, "503 Service Unavailable", "text/plain", "busy");
+        });
+
+        let token = CancellationToken::new();
+        let run_token = token.clone();
+        let (retry_tx, mut retry_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut handle = tokio::spawn(async move {
+            let client = crate::build_client().unwrap();
+            run_agent_with_pipeline(
+                &client,
+                &local_resolved(addr),
+                CompletionRequest::prompt("system", "prompt"),
+                &RunConfig {
+                    max_retries: 1,
+                    retry_base_ms: 10_000,
+                    ..RunConfig::default()
+                },
+                ToolPipeline {
+                    token: run_token,
+                    ..ToolPipeline::default()
+                },
+                None,
+                no_tools(),
+                move |event| {
+                    if matches!(event, AgentEvent::Retry { .. }) {
+                        let _ = retry_tx.send(());
+                    }
+                },
+            )
+            .await
+        });
+
+        tokio::time::timeout(Duration::from_secs(2), retry_rx.recv())
+            .await
+            .expect("retry event timed out")
+            .expect("retry event channel closed");
+        token.cancel();
+        let result = tokio::time::timeout(Duration::from_secs(1), &mut handle).await;
+        match result {
+            Ok(result) => {
+                let outcome = result.unwrap().unwrap();
+                assert_eq!(outcome.error.as_deref(), Some("The request was cancelled."));
+            }
+            Err(_) => {
+                handle.abort();
+                panic!("cancelled retry backoff did not finish promptly");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn a_final_text_sample_delivers_the_full_steered_message_as_a_followup() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let (first_tx, first_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let (second_tx, second_rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let (mut first, _) = listener.accept().unwrap();
+            let _ = read_request(&mut first);
+            first_tx.send(()).unwrap();
+            release_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+            respond(
+                &mut first,
+                "200 OK",
+                "text/event-stream",
+                "data: {\"choices\":[{\"delta\":{\"content\":\"first\"}}]}\n\ndata: [DONE]\n\n",
+            );
+
+            let (mut second, _) = listener.accept().unwrap();
+            second_tx.send(read_request(&mut second)).unwrap();
+            respond(
+                &mut second,
+                "200 OK",
+                "text/event-stream",
+                "data: {\"choices\":[{\"delta\":{\"content\":\"second\"}}]}\n\ndata: [DONE]\n\n",
+            );
+        });
+
+        let (steer, steer_rx) = SteerHandle::channel();
+        let events = Arc::new(Mutex::new(Vec::new()));
+        let event_sink = events.clone();
+        let mut handle = tokio::spawn(async move {
+            let client = crate::build_client().unwrap();
+            run_agent_with_pipeline(
+                &client,
+                &local_resolved(addr),
+                CompletionRequest::prompt("system", "prompt"),
+                &RunConfig::default(),
+                ToolPipeline::default(),
+                Some(steer_rx),
+                no_tools(),
+                move |event| event_sink.lock().unwrap().push(event),
+            )
+            .await
+        });
+
+        receive_signal(&first_rx).await;
+        let steer_task = tokio::spawn(async move {
+            steer
+                .steer(Message {
+                    role: Role::User,
+                    content: vec![
+                        ContentPart::text("change direction"),
+                        ContentPart::Image {
+                            image: "data:image/png;base64,AA".into(),
+                        },
+                    ],
+                })
+                .await
+        });
+        tokio::task::yield_now().await;
+        release_tx.send(()).unwrap();
+
+        assert!(tokio::time::timeout(Duration::from_secs(2), steer_task)
+            .await
+            .expect("steer acknowledgement timed out")
+            .unwrap());
+        let second_request = receive_signal(&second_rx).await;
+        assert!(second_request.contains("change direction"));
+        assert!(second_request.contains("data:image/png;base64,AA"));
+        let outcome = tokio::time::timeout(Duration::from_secs(2), &mut handle)
+            .await
+            .expect("followup turn timed out")
+            .unwrap()
+            .unwrap();
+        assert_eq!(outcome.text, "second");
+        assert!(events.lock().unwrap().iter().any(
+            |event| matches!(event, AgentEvent::Steered { text } if text == "change direction")
+        ));
     }
 }

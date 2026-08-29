@@ -13,6 +13,9 @@ const mocks = vi.hoisted(() => ({
     setMainDocCmd: vi.fn(),
     listFiles: vi.fn(),
     searchProject: vi.fn(),
+    agentExecCwd: vi.fn(),
+    agentExecAuthorize: vi.fn(),
+    agentExec: vi.fn(),
   },
   filesState: {
     projectId: "proj" as string | null,
@@ -48,6 +51,16 @@ beforeEach(() => {
   mocks.filesState.prepareExternalMutation.mockReset().mockResolvedValue(0);
   mocks.filesState.recordMutationGeneration.mockReset();
   mocks.api.projectMutationGeneration.mockResolvedValue(0);
+  mocks.api.agentExecCwd.mockResolvedValue("/library/projects/proj");
+  mocks.api.agentExecAuthorize.mockResolvedValue("approval-token");
+  mocks.api.agentExec.mockResolvedValue({
+    command: "pwd",
+    output: "/library/projects/proj",
+    exit_code: 0,
+    status: "Success",
+    truncated: false,
+    timed_out: false,
+  });
   mocks.filesState.projectId = "proj";
   mocks.filesState.files = {};
 });
@@ -300,6 +313,89 @@ describe("ai-tools: project scoping", () => {
     await expect(pending).resolves.toMatchObject({ error: expect.stringContaining("Project changed") });
     expect(mocks.api.writeFileContent).not.toHaveBeenCalled();
     expect(mocks.filesState.applyExternalWrite).not.toHaveBeenCalled();
+  });
+});
+
+describe("ai-tools: command approval", () => {
+  it("does not expose shell execution without an approval flow", async () => {
+    const result = await createOleaflyTools({ runId: () => "run-1" }).run_command.execute({
+      command: "pwd",
+    });
+
+    expect(result).toMatchObject({ declined: true, tool: "run_command" });
+    expect(result).toMatchObject({ status: "declined", message: expect.stringContaining("declined") });
+    expect(result).not.toHaveProperty("error");
+    expect(mocks.api.agentExecAuthorize).not.toHaveBeenCalled();
+    expect(mocks.api.agentExec).not.toHaveBeenCalled();
+  });
+
+  it("shows the exact command and working directory before authorization", async () => {
+    const confirm = vi.fn().mockResolvedValue(false);
+    await createOleaflyTools({ confirm, runId: () => "run-1" }).run_command.execute({
+      command: "pnpm test",
+    });
+
+    expect(confirm).toHaveBeenCalledWith({
+      tool: "run_command",
+      summary: "$ pnpm test",
+      projectId: "proj",
+      command: "pnpm test",
+      cwd: "/library/projects/proj",
+    });
+    expect(mocks.api.agentExecAuthorize).not.toHaveBeenCalled();
+  });
+
+  it("mints and consumes an approval bound to the originating project and run", async () => {
+    const confirm = vi.fn().mockResolvedValue(true);
+    await createOleaflyTools({ confirm, runId: () => "run-7" }).run_command.execute({
+      command: "pwd",
+    });
+
+    expect(mocks.api.agentExecAuthorize).toHaveBeenCalledWith("proj", "pwd", "run-7");
+    expect(mocks.api.agentExec).toHaveBeenCalledWith(
+      "proj",
+      "pwd",
+      "run-7",
+      "approval-token",
+    );
+  });
+
+  it("preserves an explicit timeout outcome when no exit code exists", async () => {
+    mocks.api.agentExec.mockResolvedValue({
+      command: "sleep 180",
+      output: "",
+      exit_code: null,
+      status: "Stopped: timed out",
+      truncated: false,
+      timed_out: true,
+    });
+
+    const result = await createOleaflyTools({
+      confirm: async () => true,
+      runId: () => "run-timeout",
+    }).run_command.execute({ command: "sleep 180" });
+
+    expect(result).toMatchObject({ exit_code: null, timed_out: true });
+  });
+
+  it("refuses an approved command if the project switches while approval is pending", async () => {
+    let approve!: (value: boolean) => void;
+    const confirm = vi.fn(
+      () => new Promise<boolean>((resolve) => {
+        approve = resolve;
+      }),
+    );
+    const pending = createOleaflyTools({ confirm, runId: () => "run-1" }).run_command.execute({
+      command: "pwd",
+    });
+    await vi.waitFor(() => expect(confirm).toHaveBeenCalledOnce());
+
+    mocks.filesState.projectId = "other";
+    approve(true);
+
+    await expect(pending).resolves.toMatchObject({ error: expect.stringContaining("Project changed") });
+    expect(mocks.api.agentExecAuthorize).not.toHaveBeenCalled();
+    expect(mocks.api.agentExec).not.toHaveBeenCalled();
   });
 });
 

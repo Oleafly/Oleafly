@@ -59,7 +59,11 @@ const MUTATING_TOOLS = new Set([
   "update_todos",
   "remember_note",
   "forget_note",
+  "run_command",
+  "computer_use",
 ]);
+
+const ALWAYS_PROMPT_TOOLS = new Set(["run_command", "computer_use"]);
 
 export function rawSchemaOf(schema: unknown): unknown {
   if (schema && typeof schema === "object" && "jsonSchema" in schema) {
@@ -329,6 +333,7 @@ export function buildMcpToolRegistry(opts: {
     ...(createOleaflyTools({
       confirm: opts.confirm,
       mutationAllowed: opts.mutationAllowed,
+      alwaysConfirmComputerUse: true,
     }) as Record<string, McpToolEntry>),
     ...(createFigureTools({
       confirm: opts.confirm,
@@ -466,7 +471,9 @@ function isStaleRendererError(error: unknown): boolean {
 }
 
 export function confirmForPolicy(policy: string, request: ConfirmFn): ConfirmFn {
-  if (policy === "trust") return async () => true;
+  if (policy === "trust") {
+    return async (req) => (ALWAYS_PROMPT_TOOLS.has(req.tool) ? request(req) : true);
+  }
   if (policy === "auto_writes") {
     return async (req) => (isAutoApprovable(req.tool) ? true : request(req));
   }

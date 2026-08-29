@@ -9,7 +9,7 @@ use crate::error::Result;
 use crate::event::AgentEvent;
 use crate::message::{ContentPart, Message, Role};
 use crate::provider::{Resolved, Wire};
-use crate::run::{RunConfig, RunOutcome, ToolOutput, ToolPipeline, ToolRunner};
+use crate::run::{RunConfig, RunOutcome, SteeredInput, ToolOutput, ToolPipeline, ToolRunner};
 use crate::session::compact;
 use crate::session::context_window::{is_history_limit, HistoryBudget};
 use crate::stream::{stream_completion, StreamOutcome, ToolCall};
@@ -26,7 +26,7 @@ pub(crate) async fn run_turn<F>(
     request: CompletionRequest,
     config: &RunConfig,
     pipeline: &ToolPipeline,
-    mut steer_rx: Option<tokio::sync::mpsc::UnboundedReceiver<String>>,
+    mut steer_rx: Option<tokio::sync::mpsc::UnboundedReceiver<SteeredInput>>,
     run_tool: ToolRunner,
     mut on_event: F,
 ) -> Result<RunOutcome>
@@ -46,7 +46,8 @@ where
     .await?;
     let mut retries_remaining = config.max_retries.min(MAX_AGENT_RETRIES);
 
-    for step in 0..config.max_steps.min(MAX_AGENT_STEPS) {
+    let step_limit = config.max_steps.min(MAX_AGENT_STEPS);
+    for step in 0..step_limit {
         on_event(AgentEvent::StepStart { step });
         let outcome = stream_with_retries(
             client,
@@ -54,6 +55,7 @@ where
             &request,
             config,
             &mut retries_remaining,
+            &pipeline.token,
             &mut on_event,
         )
         .await;
@@ -62,7 +64,28 @@ where
             Err(error) => return Ok(finish_with_stream_error(result, error, &mut on_event)),
         };
         record_stream_outcome(&mut result, &outcome, &mut on_event);
+        let has_next_step = step.saturating_add(1) < step_limit;
         if outcome.tool_calls.is_empty() {
+            if has_next_step {
+                if let Some(rx) = steer_rx.as_mut() {
+                    let steers = drain_steer(rx);
+                    if !steers.is_empty() {
+                        append_final_response(resolved, &mut request, &outcome)?;
+                        let acknowledgements = append_steered_messages(&mut request, steers)?;
+                        ensure_budget(
+                            client,
+                            resolved,
+                            &mut request,
+                            config,
+                            pipeline,
+                            &mut on_event,
+                        )
+                        .await?;
+                        acknowledge_steers(acknowledgements, &mut on_event);
+                        continue;
+                    }
+                }
+            }
             return Ok(finish_without_tools(result, &outcome));
         }
         append_tool_turns(
@@ -74,6 +97,11 @@ where
             &mut on_event,
         )
         .await?;
+        if !has_next_step {
+            continue;
+        }
+        let steers = steer_rx.as_mut().map(drain_steer).unwrap_or_default();
+        let acknowledgements = append_steered_messages(&mut request, steers)?;
         // The turn must continue, so an exhausted window rolls over into a
         // compacted context instead of failing.
         ensure_budget(
@@ -85,13 +113,7 @@ where
             &mut on_event,
         )
         .await?;
-        // Message boundary: deliver any steered input before sampling again.
-        if let Some(rx) = steer_rx.as_mut() {
-            for text in drain_steer(rx) {
-                append_steered_message(&mut request, text.clone())?;
-                on_event(AgentEvent::Steered { text });
-            }
-        }
+        acknowledge_steers(acknowledgements, &mut on_event);
     }
 
     result.stopped_at_cap = true;
@@ -139,6 +161,7 @@ async fn stream_with_retries<F>(
     request: &CompletionRequest,
     config: &RunConfig,
     retries_remaining: &mut u32,
+    token: &crate::tasks::CancellationToken,
     on_event: &mut F,
 ) -> Result<StreamOutcome>
 where
@@ -157,7 +180,10 @@ where
                 }
                 on_event(event);
             };
-            stream_completion(client, resolved, request, forward).await
+            tokio::select! {
+                response = stream_completion(client, resolved, request, forward) => response,
+                _ = token.cancelled() => Err(crate::error::AgentError::Cancelled),
+            }
         };
 
         match streamed {
@@ -171,12 +197,11 @@ where
                     attempt: attempt + 1,
                     max: config.max_retries.min(MAX_AGENT_RETRIES),
                 });
-                tokio::time::sleep(retry_delay(
-                    config.retry_base_ms,
-                    attempt,
-                    retry_jitter_basis_points(),
-                ))
-                .await;
+                let delay = retry_delay(config.retry_base_ms, attempt, retry_jitter_basis_points());
+                tokio::select! {
+                    _ = tokio::time::sleep(delay) => {}
+                    _ = token.cancelled() => return Err(crate::error::AgentError::Cancelled),
+                }
                 attempt = attempt.saturating_add(1);
             }
         }
@@ -340,16 +365,82 @@ fn finish_without_tools(mut result: RunOutcome, outcome: &StreamOutcome) -> RunO
 
 /// Take every pending steer message without waiting (delivery happens at
 /// the next message boundary, never mid-sampling).
-pub(crate) fn drain_steer(rx: &mut tokio::sync::mpsc::UnboundedReceiver<String>) -> Vec<String> {
+pub(crate) fn drain_steer(
+    rx: &mut tokio::sync::mpsc::UnboundedReceiver<SteeredInput>,
+) -> Vec<SteeredInput> {
     let mut drained = Vec::new();
-    while let Ok(text) = rx.try_recv() {
-        drained.push(text);
+    while let Ok(input) = rx.try_recv() {
+        drained.push(input);
     }
     drained
 }
 
-fn append_steered_message(request: &mut CompletionRequest, text: String) -> Result<()> {
-    let message = Message::user(text);
+fn append_final_response(
+    resolved: &Resolved,
+    request: &mut CompletionRequest,
+    outcome: &StreamOutcome,
+) -> Result<()> {
+    let responses_input = if matches!(resolved.wire, Wire::OpenAiResponses { .. }) {
+        Some(match &request.openai_responses_input {
+            Some(input) => input.clone(),
+            None => crate::wire::openai_responses_input(&request.messages)?,
+        })
+    } else {
+        None
+    };
+    request.messages.push(assistant_turn(outcome));
+    if let Some(mut input) = responses_input {
+        if outcome.response_items.is_empty() {
+            request.openai_responses_input = None;
+        } else {
+            input.extend(outcome.response_items.clone());
+            request.openai_responses_input = Some(input);
+        }
+    }
+    Ok(())
+}
+
+fn message_text(message: &Message) -> String {
+    message
+        .content
+        .iter()
+        .filter_map(|part| match part {
+            ContentPart::Text { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn append_steered_messages(
+    request: &mut CompletionRequest,
+    steers: Vec<SteeredInput>,
+) -> Result<Vec<(String, tokio::sync::oneshot::Sender<()>)>> {
+    let mut acknowledgements = Vec::with_capacity(steers.len());
+    for steer in steers {
+        if !steer.try_claim() {
+            continue;
+        }
+        let text = message_text(&steer.message);
+        append_steered_message(request, steer.message)?;
+        acknowledgements.push((text, steer.delivered));
+    }
+    Ok(acknowledgements)
+}
+
+fn acknowledge_steers<F>(
+    acknowledgements: Vec<(String, tokio::sync::oneshot::Sender<()>)>,
+    on_event: &mut F,
+) where
+    F: FnMut(AgentEvent),
+{
+    for (text, delivered) in acknowledgements {
+        on_event(AgentEvent::Steered { text });
+        let _ = delivered.send(());
+    }
+}
+
+fn append_steered_message(request: &mut CompletionRequest, message: Message) -> Result<()> {
     if let Some(responses_input) = request.openai_responses_input.as_mut() {
         let input = crate::wire::openai_responses_input(std::slice::from_ref(&message))?;
         responses_input.extend(input);
@@ -489,11 +580,24 @@ mod tests {
         request.openai_responses_input =
             Some(crate::wire::openai_responses_input(&request.messages).unwrap());
 
-        append_steered_message(&mut request, "change direction".into()).unwrap();
+        append_steered_message(
+            &mut request,
+            Message {
+                role: Role::User,
+                content: vec![
+                    ContentPart::text("change direction"),
+                    ContentPart::Image {
+                        image: "data:image/png;base64,AA".into(),
+                    },
+                ],
+            },
+        )
+        .unwrap();
 
         assert!(matches!(
             request.messages.last().unwrap().content.as_slice(),
-            [ContentPart::Text { text }] if text == "change direction"
+            [ContentPart::Text { text }, ContentPart::Image { image }]
+                if text == "change direction" && image == "data:image/png;base64,AA"
         ));
         let input = request.openai_responses_input.as_ref().unwrap();
         assert_eq!(input.len(), 2);
@@ -501,6 +605,28 @@ mod tests {
         assert_eq!(input[1]["role"], "user");
         assert_eq!(input[1]["content"][0]["type"], "input_text");
         assert_eq!(input[1]["content"][0]["text"], "change direction");
+        assert_eq!(input[1]["content"][1]["type"], "input_image");
+        assert_eq!(
+            input[1]["content"][1]["image_url"],
+            "data:image/png;base64,AA"
+        );
+    }
+
+    #[tokio::test]
+    async fn cancelled_steering_is_retracted_before_it_reaches_history() {
+        let (handle, mut receiver) = crate::run::SteerHandle::channel();
+        let steering =
+            tokio::spawn(async move { handle.steer(Message::user("do not deliver")).await });
+        let pending = receiver.recv().await.unwrap();
+        steering.abort();
+        let _ = steering.await;
+        let mut request = CompletionRequest::prompt("system", "start");
+        let message_count = request.messages.len();
+
+        let acknowledgements = append_steered_messages(&mut request, vec![pending]).unwrap();
+
+        assert!(acknowledgements.is_empty());
+        assert_eq!(request.messages.len(), message_count);
     }
 
     #[test]
