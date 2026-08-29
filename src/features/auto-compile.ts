@@ -1,5 +1,26 @@
-export const AUTO_COMPILE_DEBOUNCE_MS = 2500;
-export const AUTO_COMPILE_RETRY_MS = 500;
+/// Floor for the adaptive debounce: fast enough that a light document feels
+/// live, slow enough that a burst of keystrokes still coalesces into one build.
+export const AUTO_COMPILE_MIN_DEBOUNCE_MS = 400;
+/// Ceiling for the adaptive debounce, and the wait used for a document whose
+/// cost is not known yet. A heavy document is never debounced longer than this.
+export const AUTO_COMPILE_MAX_DEBOUNCE_MS = 2500;
+export const AUTO_COMPILE_RETRY_MS = 150;
+
+/**
+ * How long to wait after an edit before rebuilding, given what the last build
+ * of this document cost. Waiting roughly one build's worth keeps the machine
+ * at about half duty cycle: a 600ms document rebuilds on a 600ms pause, while
+ * a book-sized one keeps the old 2.5s wait instead of thrashing.
+ */
+export function autoCompileDebounceMs(lastCompileMs: number | null): number {
+  if (lastCompileMs === null || !Number.isFinite(lastCompileMs)) {
+    return AUTO_COMPILE_MIN_DEBOUNCE_MS;
+  }
+  return Math.min(
+    AUTO_COMPILE_MAX_DEBOUNCE_MS,
+    Math.max(AUTO_COMPILE_MIN_DEBOUNCE_MS, Math.round(lastCompileMs)),
+  );
+}
 
 export interface AutoCompileSnapshot {
   status: string;
@@ -26,7 +47,7 @@ export function scheduleAutoCompile({
   getSnapshot,
   recompile,
   stopCompile,
-  debounceMs = AUTO_COMPILE_DEBOUNCE_MS,
+  debounceMs = AUTO_COMPILE_MAX_DEBOUNCE_MS,
   retryMs = AUTO_COMPILE_RETRY_MS,
 }: AutoCompileSchedulerOptions): () => void {
   let timer: ReturnType<typeof setTimeout>;

@@ -51,7 +51,10 @@ import { resetOpenCompileMarker, shouldCompileOnOpen } from "@/lib/open-compile"
 import { useGitStatusStore } from "@/store/git-status";
 import { useGithubStore } from "@/store/github";
 import { forwardFromCursor } from "@/features/synctex";
-import { scheduleAutoCompile } from "@/features/auto-compile";
+import {
+  autoCompileDebounceMs,
+  scheduleAutoCompile,
+} from "@/features/auto-compile";
 import { checkForUpdatesOnStartup, openUpdateWindow } from "@/lib/updater";
 import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -861,6 +864,7 @@ function AutoCompileKeeper() {
       getSnapshot: useCompileStore.getState,
       recompile,
       stopCompile,
+      debounceMs: autoCompileDebounceMs(useCompileStore.getState().compileTimeMs),
     });
   }, [activeContent, activePath, autoCompile, projectId, recompile, stopCompile]);
 
