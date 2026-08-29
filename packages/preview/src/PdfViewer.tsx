@@ -40,7 +40,8 @@ import {
 } from "./pdfSearch";
 import { safePdfExternalUrl } from "./pdfSecurity";
 import { createPdfScreenReaderLayer } from "./pdfScreenReader";
-import { closestMatchingElement, wordAtHorizontalPosition, wordInText } from "./textHit";
+import { charOffsetAtHorizontalPosition, closestMatchingElement, wordAtHorizontalPosition, wordInText } from "./textHit";
+import type { PreviewTextTarget } from "./typingEcho";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -234,18 +235,19 @@ async function probePageText(doc: pdfjsLib.PDFDocumentProxy): Promise<PageTextCo
   }
 }
 
-function wordAtPoint(
+type CaretPointDocument = Document & {
+  caretRangeFromPoint?: (x: number, y: number) => Range | null;
+  caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+};
+
+function findTextLayerSpanAt(
   clientX: number,
   clientY: number,
   eventTarget?: EventTarget | null,
   root: ParentNode = document,
-): string | null {
-  const d = document as Document & {
-    caretRangeFromPoint?: (x: number, y: number) => Range | null;
-    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
-  };
+): HTMLElement | null {
   const clickedSpan = closestMatchingElement<HTMLElement>(eventTarget, ".textLayer span");
-  const containingSpan =
+  return (
     clickedSpan ??
     Array.from(root.querySelectorAll<HTMLElement>(".textLayer span")).find((span) => {
       const rect = span.getBoundingClientRect();
@@ -255,7 +257,66 @@ function wordAtPoint(
         clientY >= rect.top &&
         clientY <= rect.bottom
       );
-    });
+    }) ??
+    null
+  );
+}
+
+function caretTextOffsetAt(
+  clientX: number,
+  clientY: number,
+  span: HTMLElement,
+): number | null {
+  const d = document as CaretPointDocument;
+  const range = d.caretRangeFromPoint?.(clientX, clientY);
+  if (
+    range &&
+    range.startContainer.nodeType === Node.TEXT_NODE &&
+    span.contains(range.startContainer)
+  ) {
+    return range.startOffset;
+  }
+  const pos = d.caretPositionFromPoint?.(clientX, clientY);
+  if (
+    pos &&
+    pos.offsetNode.nodeType === Node.TEXT_NODE &&
+    span.contains(pos.offsetNode)
+  ) {
+    return pos.offset;
+  }
+  return null;
+}
+
+function textTargetAtPoint(
+  clientX: number,
+  clientY: number,
+  eventTarget?: EventTarget | null,
+  root: ParentNode = document,
+): PreviewTextTarget | null {
+  const span = findTextLayerSpanAt(clientX, clientY, eventTarget, root);
+  if (!span) return null;
+  const offset = caretTextOffsetAt(clientX, clientY, span);
+  if (offset !== null) return { span, offset };
+  const rect = span.getBoundingClientRect();
+  return {
+    span,
+    offset: charOffsetAtHorizontalPosition(
+      span.textContent ?? "",
+      rect.left,
+      rect.width,
+      clientX,
+    ),
+  };
+}
+
+function wordAtPoint(
+  clientX: number,
+  clientY: number,
+  eventTarget?: EventTarget | null,
+  root: ParentNode = document,
+): string | null {
+  const d = document as CaretPointDocument;
+  const containingSpan = findTextLayerSpanAt(clientX, clientY, eventTarget, root) ?? undefined;
   if (containingSpan) {
     const text = containingSpan.textContent ?? "";
     const rect = containingSpan.getBoundingClientRect();
@@ -808,7 +869,13 @@ export interface PdfViewerProps {
   /** Exact compile/PDF-load identity; never use a filename as this value. */
   documentIdentity?: string;
   scale: number;
-  onInverse?: (page: number, x: number, y: number, word?: string) => void;
+  onInverse?: (
+    page: number,
+    x: number,
+    y: number,
+    word?: string,
+    textTarget?: PreviewTextTarget,
+  ) => void;
   onPageChange?: (current: number, total: number) => void;
   layout?: PdfLayout;
   onOpenLink?: (url: string) => void;
@@ -2051,7 +2118,14 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           const hit = pageClickToBp(wrap, p, { clientX, clientY });
           if (hit) {
             const word = wordAtPoint(clientX, clientY, ev.target, wrap);
-            onInverseRef.current?.(hit.page, hit.x, hit.y, word ?? undefined);
+            const textTarget = textTargetAtPoint(clientX, clientY, ev.target, wrap);
+            onInverseRef.current?.(
+              hit.page,
+              hit.x,
+              hit.y,
+              word ?? undefined,
+              textTarget ?? undefined,
+            );
           }
         });
         container.appendChild(wrap);

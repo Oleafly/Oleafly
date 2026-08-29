@@ -19,3 +19,4 @@ export {
   setPdfLogger,
   type SynctexRect,
 } from "./pdfController";
+export type { PreviewTextTarget } from "./typingEcho";
