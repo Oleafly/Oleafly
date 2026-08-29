@@ -107,6 +107,47 @@ describe("parseLatexBody", () => {
     expect(texts).toContain("more text.");
   });
 
+  it("parses a nested list into listItem blocks instead of flattening it", () => {
+    const body = "\\begin{itemize}\n  \\item top\n  \\begin{itemize}\n    \\item inner\n  \\end{itemize}\n  \\item second\n\\end{itemize}\n";
+    const doc = parseLatexBody(body);
+    const list = doc.content?.[0];
+    expect(list?.type).toBe("bulletList");
+    expect(list?.content).toHaveLength(2);
+    const firstItem = list?.content?.[0];
+    expect(firstItem?.content?.[0]).toMatchObject({
+      type: "paragraph",
+      content: [{ type: "text", text: "top" }],
+    });
+    expect(firstItem?.content?.[1]).toMatchObject({
+      type: "bulletList",
+      content: [
+        {
+          type: "listItem",
+          content: [{ type: "paragraph", content: [{ type: "text", text: "inner" }] }],
+        },
+      ],
+    });
+    expect(list?.content?.[1]).toMatchObject({
+      type: "listItem",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "second" }] }],
+    });
+  });
+
+  it("keeps inline markup inside a heading title instead of collapsing it to plain text", () => {
+    const doc = parseLatexBody("\\section{\\textbf{Big} idea}\n");
+    const heading = doc.content?.[0];
+    expect(heading?.type).toBe("heading");
+    const bold = heading?.content?.find((n) => n.marks?.some((m) => m.type === "bold"));
+    expect(bold?.text).toBe("Big");
+    expect(fullText(heading)).toBe("Big idea");
+  });
+
+  it("keeps an unrecognized macro inside a heading title as a rawInline", () => {
+    const doc = parseLatexBody("\\section{Results for \\pkgname}\n");
+    const heading = doc.content?.[0];
+    expect(heading?.content?.some((n) => n.type === "rawInline" && n.attrs?.source === "\\pkgname")).toBe(true);
+  });
+
   it("falls back to a rawBlock for unrecognized environments", () => {
     const doc = parseLatexBody("\\begin{tabular}{cc}\na & b\n\\end{tabular}\n");
     const rawBlock = doc.content?.find((n) => n.type === "rawBlock");

@@ -35,6 +35,13 @@ function inlineToLatex(nodes: JSONContent[] = []): string {
     .join("");
 }
 
+function indentLines(block: string, indent: string): string {
+  return block
+    .split("\n")
+    .map((line) => (line.length ? `${indent}${line}` : line))
+    .join("\n");
+}
+
 function blockToLatex(node: JSONContent): string {
   if (node.type === "heading") {
     const macro = HEADING_MACRO[node.attrs?.level ?? 1] ?? "section";
@@ -51,8 +58,15 @@ function blockToLatex(node: JSONContent): string {
     const env = node.type === "bulletList" ? "itemize" : "enumerate";
     const items = (node.content ?? [])
       .map((item) => {
-        const paragraph = item.content?.[0];
-        return `  \\item ${inlineToLatex(paragraph?.content)}`;
+        const blocks = item.content ?? [];
+        const [first, ...rest] = blocks;
+        const leadsWithParagraph = first?.type === "paragraph";
+        const lead = leadsWithParagraph ? inlineToLatex(first.content) : "";
+        const head = lead.length ? `  \\item ${lead}` : "  \\item";
+        const tail = (leadsWithParagraph ? rest : blocks)
+          .map((block) => indentLines(blockToLatex(block), "  "))
+          .filter((s) => s.trim().length > 0);
+        return [head, ...tail].join("\n");
       })
       .join("\n");
     return `\\begin{${env}}\n${items}\n\\end{${env}}`;
