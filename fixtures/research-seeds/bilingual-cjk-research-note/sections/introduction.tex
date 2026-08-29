@@ -1,0 +1,23 @@
+\section{引言 Introduction}
+\label{sec:intro}
+
+多语言预训练模型的词表通常由高资源语言的语料统计得到。当这一词表被应用到
+形态丰富但语料稀缺的语言时，单词往往被切分成大量无语义的片段。我们在四种
+低资源语言上测得，平均每个词被切分为 4.7 个词元，而同一模型在英语上仅为
+1.3 个。碎片化直接抬高了序列长度，也削弱了模型对词内结构的建模能力。
+
+A tokenizer inherited from high-resource data fragments morphologically rich
+languages. The fragmentation is not merely an efficiency problem. Longer
+sequences consume the context budget, and the model must rediscover word
+boundaries that the tokenizer has destroyed.
+
+本文的出发点是：形态规则在亲缘语言之间是可迁移的，即使词汇本身不可迁移。
+我们据此构造一个共享形态先验，并用它约束目标语言的词表学习过程。
+
+\subsection{贡献 Contributions}
+
+\begin{itemize}
+  \item 提出一种形态先验约束下的分词迁移算法，仅需十万句目标语言语料。
+  \item 在四种低资源语言上验证该方法，平均词元长度提高百分之三十一。
+  \item 明确给出方法失效的两种情形，见第~\ref{sec:experiments} 节。
+\end{itemize}

@@ -1,157 +1,56 @@
-import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { zipSync } from "fflate";
-import ts from "typescript";
+import {
+  loadResearchSeedCatalog,
+  seedArchiveName,
+  seedFixtureDir,
+} from "./research-seed-catalog.mjs";
 
 const MAX_PROJECT_BYTES = 25 * 1024 * 1024;
-const FORCE = process.argv.includes("--force");
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDir, "..");
 const defaultSeedRoot = join(homedir(), "Codespace", "Oleafly", "oleafly-seed");
 const seedRoot = resolve(process.env.OLEAFLY_SEED_ROOT || defaultSeedRoot);
 const archiveRoot = join(seedRoot, "archives");
-const catalogFile = join(repositoryRoot, "src", "developer", "research-seed-catalog.ts");
 const encoder = new TextEncoder();
 
-function loadCatalog(source) {
-  const file = ts.createSourceFile(catalogFile, source, ts.ScriptTarget.ESNext, true);
-  const declaration = file.statements
-    .filter(ts.isVariableStatement)
-    .flatMap((statement) => [...statement.declarationList.declarations])
-    .find((entry) => ts.isIdentifier(entry.name) && entry.name.text === "RESEARCH_SEED_PROJECTS");
-  if (!declaration?.initializer) {
-    throw new Error("Could not find RESEARCH_SEED_PROJECTS in the TypeScript catalog");
-  }
+const IGNORED_ENTRIES = new Set([".DS_Store", ".oleafly", ".build", "project.json"]);
 
-  const readLiteral = (node) => {
-    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
-    if (ts.isNumericLiteral(node)) return Number(node.text);
-    if (node.kind === ts.SyntaxKind.TrueKeyword) return true;
-    if (node.kind === ts.SyntaxKind.FalseKeyword) return false;
-    if (ts.isArrayLiteralExpression(node)) return node.elements.map(readLiteral);
-    if (ts.isObjectLiteralExpression(node)) {
-      return Object.fromEntries(node.properties.map((property) => {
-        if (!ts.isPropertyAssignment(property)) {
-          throw new Error(`Unsupported catalog property: ${property.getText(file)}`);
-        }
-        const key = ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)
-          ? property.name.text
-          : null;
-        if (!key) throw new Error(`Unsupported catalog key: ${property.name.getText(file)}`);
-        return [key, readLiteral(property.initializer)];
-      }));
+async function collectFiles(root, current = root, found = []) {
+  for (const entry of await readdir(current, { withFileTypes: true })) {
+    if (IGNORED_ENTRIES.has(entry.name)) continue;
+    const absolute = join(current, entry.name);
+    if (entry.isDirectory()) {
+      await collectFiles(root, absolute, found);
+      continue;
     }
-    throw new Error(`Unsupported catalog value: ${node.getText(file)}`);
-  };
-
-  const catalog = readLiteral(declaration.initializer);
-  if (!Array.isArray(catalog)) throw new Error("RESEARCH_SEED_PROJECTS must be an array");
-  return catalog;
-}
-
-function archiveName(project) {
-  const slug = project.name
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return `${slug}-${project.revision.slice(0, 12)}.zip`;
-}
-
-const treeCache = new Map();
-
-async function repositoryTree(project) {
-  const key = `${project.repository}@${project.revision}`;
-  if (treeCache.has(key)) return treeCache.get(key);
-  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
-  const response = await fetch(
-    `https://api.github.com/repos/${project.repository}/git/trees/${project.revision}?recursive=1`,
-    {
-      headers: {
-        Accept: "application/vnd.github+json",
-        "User-Agent": "oleafly-research-seed-sync",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    },
-  );
-  if (!response.ok) {
-    throw new Error(`GitHub returned ${response.status} while listing ${key}`);
+    if (!entry.isFile()) continue;
+    found.push(relative(root, absolute).split(sep).join("/"));
   }
-  const body = await response.json();
-  if (body.truncated) throw new Error(`GitHub truncated the source tree for ${key}`);
-  const tree = body.tree.filter((entry) => entry.type === "blob");
-  treeCache.set(key, tree);
-  return tree;
+  return found;
 }
 
-async function selectedFiles(project) {
-  const exact = new Set(project.include.filter((entry) => !entry.endsWith("/")));
-  const prefixes = project.include.filter((entry) => entry.endsWith("/"));
-  let files = [];
-  if (prefixes.length > 0) {
-    files = (await repositoryTree(project)).filter(
-      (entry) => exact.has(entry.path) || prefixes.some((prefix) => entry.path.startsWith(prefix)),
-    );
-  } else {
-    files = [...exact].map((path) => ({ path, size: 0 }));
-  }
-  const selected = new Map(files.map((entry) => [entry.path, entry]));
-  for (const path of exact) {
-    if (!selected.has(path)) selected.set(path, { path, size: 0 });
-  }
-  const result = [...selected.values()].sort((left, right) => left.path.localeCompare(right.path));
-  const maxFiles = project.maxFiles ?? 180;
-  if (result.length === 0) throw new Error("No upstream files matched the manifest");
-  if (result.length > maxFiles) {
-    throw new Error(`Manifest matched ${result.length} files, above its ${maxFiles} file limit`);
-  }
-  const knownBytes = result.reduce((total, entry) => total + (entry.size ?? 0), 0);
-  if (knownBytes > MAX_PROJECT_BYTES) throw new Error("Selected files exceed the 25 MB limit");
-  return result;
-}
-
-function rawUrl(project, path) {
-  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
-  return `https://raw.githubusercontent.com/${project.repository}/${project.revision}/${encodedPath}`;
-}
-
-async function downloadFile(project, path) {
-  const response = await fetch(rawUrl(project, path));
-  if (!response.ok) throw new Error(`GitHub returned ${response.status} for ${path}`);
-  return new Uint8Array(await response.arrayBuffer());
-}
-
-async function mapConcurrent(items, concurrency, callback) {
-  const result = new Array(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const index = next;
-      next += 1;
-      result[index] = await callback(items[index], index);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
-  return result;
-}
-
-function upstreamNote(project, fileCount) {
+function fixtureNote(project, fileCount) {
   return [
-    "# Upstream research fixture",
+    "# Oleafly research seed fixture",
     "",
-    `This development-only fixture snapshots ${fileCount} file${fileCount === 1 ? "" : "s"} from a real public project.`,
+    `This development-only project is first-party content authored in the Oleafly`,
+    `desktop repository. It is not a snapshot of an upstream repository, so it`,
+    `cannot drift when an upstream file moves or a package version is withdrawn.`,
     "",
-    `- Source: https://github.com/${project.repository}/tree/${project.revision}`,
-    `- Revision: \`${project.revision}\``,
-    `- Reported license: ${project.license}`,
-    `- Oleafly engine: ${project.engine}${project.flavor ? ` (${project.flavor})` : ""}`,
+    `- Fixture: \`fixtures/research-seeds/${project.slug}\``,
+    `- Files: ${fileCount}`,
+    `- Engine: ${project.engine}`,
     `- Main document: \`${project.mainDoc}\``,
-    `- External commands: ${project.shellEscape ? "required by upstream, not enabled by the seeder" : "not required by this fixture"}`,
+    `- Exercises: ${project.figureTypes.join(", ")}`,
     "",
-    "Refer to the upstream repository for its complete license terms and history.",
+    project.summary,
+    "",
+    "Every fixture is verified to compile with the sidecar the desktop app",
+    "bundles. Run `pnpm seed:research:validate` to check them again.",
     "",
   ].join("\n");
 }
@@ -162,8 +61,8 @@ function projectMetadata(project) {
       name: project.name,
       main_doc: project.mainDoc,
       engine: project.engine,
-      tex_flavor: project.flavor ?? null,
-      color: "",
+      tex_flavor: null,
+      color: project.color,
       kind: project.kind,
       exports: [],
       hidden: false,
@@ -174,35 +73,51 @@ function projectMetadata(project) {
   );
 }
 
-async function isFile(path) {
-  return stat(path).then((entry) => entry.isFile()).catch(() => false);
-}
-
 async function buildArchive(project, index, total) {
-  const output = join(archiveRoot, archiveName(project));
-  if (!FORCE && await isFile(output)) {
-    process.stdout.write(`[${index}/${total}] cached ${project.name}\n`);
-    return { project, archive: output, cached: true };
+  const source = seedFixtureDir(repositoryRoot, project);
+  const info = await stat(source).catch(() => null);
+  if (!info?.isDirectory()) {
+    throw new Error(`Missing fixture directory: fixtures/research-seeds/${project.slug}`);
   }
-  process.stdout.write(`[${index}/${total}] downloading ${project.name}\n`);
-  const files = await selectedFiles(project);
-  const downloaded = await mapConcurrent(files, 8, async (entry) => ({
-    path: entry.path,
-    bytes: await downloadFile(project, entry.path),
-  }));
-  const totalBytes = downloaded.reduce((totalBytes, file) => totalBytes + file.bytes.byteLength, 0);
-  if (totalBytes > MAX_PROJECT_BYTES) throw new Error("Downloaded files exceed the 25 MB limit");
-  const archiveFiles = Object.fromEntries(downloaded.map((file) => [file.path, file.bytes]));
-  archiveFiles["UPSTREAM.md"] = encoder.encode(upstreamNote(project, downloaded.length));
+  const paths = await collectFiles(source);
+  if (paths.length === 0) throw new Error("Fixture directory is empty");
+  if (!paths.includes(project.mainDoc)) {
+    throw new Error(`Fixture does not contain its main document ${project.mainDoc}`);
+  }
+
+  const archiveFiles = {};
+  let totalBytes = 0;
+  for (const path of paths) {
+    const bytes = new Uint8Array(await readFile(join(source, path)));
+    totalBytes += bytes.byteLength;
+    archiveFiles[path] = bytes;
+  }
+  if (totalBytes > MAX_PROJECT_BYTES) throw new Error("Fixture exceeds the 25 MB limit");
+  archiveFiles["FIXTURE.md"] = encoder.encode(fixtureNote(project, paths.length));
   archiveFiles["project.json"] = encoder.encode(projectMetadata(project));
-  const archive = zipSync(archiveFiles, { level: 6 });
+
+  const output = join(archiveRoot, seedArchiveName(project));
   const temporary = `${output}.tmp`;
-  await writeFile(temporary, archive);
+  await writeFile(temporary, zipSync(archiveFiles, { level: 6 }));
   await rename(temporary, output);
-  return { project, archive: output, cached: false, files: downloaded.length, bytes: totalBytes };
+  process.stdout.write(
+    `[${index}/${total}] packed ${project.name} (${paths.length} files, ${(totalBytes / 1024).toFixed(0)} KB)\n`,
+  );
+  return { project, archive: output, files: paths.length, bytes: totalBytes };
 }
 
-const catalog = loadCatalog(await readFile(catalogFile, "utf8"));
+async function pruneStaleArchives(expected) {
+  const present = await readdir(archiveRoot).catch(() => []);
+  const removed = [];
+  for (const name of present) {
+    if (!name.endsWith(".zip") || expected.has(name)) continue;
+    await rm(join(archiveRoot, name), { force: true });
+    removed.push(name);
+  }
+  return removed;
+}
+
+const catalog = loadResearchSeedCatalog(repositoryRoot);
 await mkdir(archiveRoot, { recursive: true });
 const completed = [];
 const failures = [];
@@ -210,14 +125,39 @@ for (const [index, project] of catalog.entries()) {
   try {
     completed.push(await buildArchive(project, index + 1, catalog.length));
   } catch (error) {
-    failures.push({ name: project.name, message: error instanceof Error ? error.message : String(error) });
-    process.stderr.write(`[${index + 1}/${catalog.length}] failed ${project.name}: ${failures.at(-1).message}\n`);
+    const message = error instanceof Error ? error.message : String(error);
+    failures.push({ name: project.name, message });
+    process.stderr.write(`[${index + 1}/${catalog.length}] failed ${project.name}: ${message}\n`);
   }
 }
+
+const removed = await pruneStaleArchives(new Set(catalog.map(seedArchiveName)));
 await writeFile(
   join(seedRoot, "manifest.json"),
-  `${JSON.stringify({ generatedAt: new Date().toISOString(), projects: completed, failures }, null, 2)}\n`,
+  `${JSON.stringify(
+    {
+      generatedAt: new Date().toISOString(),
+      source: "fixtures/research-seeds",
+      projects: completed.map((entry) => ({
+        name: entry.project.name,
+        slug: entry.project.slug,
+        engine: entry.project.engine,
+        kind: entry.project.kind,
+        mainDoc: entry.project.mainDoc,
+        color: entry.project.color,
+        archive: entry.archive,
+        files: entry.files,
+        bytes: entry.bytes,
+      })),
+      removed,
+      failures,
+    },
+    null,
+    2,
+  )}\n`,
 );
+
 process.stdout.write(`Research seed cache: ${seedRoot}\n`);
+if (removed.length > 0) process.stdout.write(`${removed.length} stale archives removed\n`);
 process.stdout.write(`${completed.length} ready, ${failures.length} failed\n`);
 if (failures.length > 0) process.exitCode = 1;

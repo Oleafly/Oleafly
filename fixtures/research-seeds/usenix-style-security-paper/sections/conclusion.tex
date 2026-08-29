@@ -1,0 +1,36 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+Install-time hooks give every package author code execution on every machine
+that installs their package, before any of that package's code has been called.
+We measured what they do. Across 1.42~million versions and 6.1~million
+executions, the legitimate use is narrow and uniform, the malicious use is rare
+in count but sits in packages that carry 31 percent of install volume, and the
+two are separable by behaviour with a single feature that benign hooks
+essentially never exhibit.
+
+Two of our findings are directly actionable and neither requires a new
+mechanism. Registries can hold hook-bearing publications for 72 hours after a
+maintainer recovery-email change, using data they already have, and would have
+caught 35 of our 47 malicious versions. Clients can disable hooks by default,
+which we measure as breaking 0.9 percent of popular installs once prebuilt
+artifacts are considered, rather than the much larger number the ecosystem
+assumes.
+
+The measurement itself has a shelf life. Our classifier observes a population
+that has not yet been selected against it, and the samples already gate on
+continuous integration signals, which is exactly the direction an adversary
+would extend to defeat a sandbox. We are releasing \tool{} so that the
+measurement can be repeated rather than cited.
+
+\section*{Availability}
+The \tool{} sandbox, the classification pipeline, and the anonymised trace
+summaries are available to registry operators and to researchers under a
+disclosure agreement, and will be released publicly when coordinated disclosure
+completes.
+
+\section*{Acknowledgements}
+We thank the three registry security teams for their handling of 237
+disclosures, the reviewers who pushed us to quantify the cost of disabling
+hooks rather than asserting it, and the Ridgemount systems group for cluster
+time.

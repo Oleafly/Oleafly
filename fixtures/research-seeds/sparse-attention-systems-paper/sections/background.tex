@@ -1,0 +1,38 @@
+\section{Background}
+\label{sec:background}
+
+\subsection{Attention as a memory-bound kernel}
+
+Scaled dot-product attention over a sequence of length $n$ with head dimension
+$d$ computes
+\begin{equation}
+  \label{eq:attention}
+  \mathrm{Attn}(Q, K, V) = \mathrm{softmax}\!\left(\frac{QK^{\top}}{\sqrt{d}}\right) V,
+\end{equation}
+where $Q, K, V \in \mathbb{R}^{n \times d}$. The arithmetic cost is
+$\Theta(n^{2}d)$, but the quantity that governs runtime on current hardware is
+the volume of key and value data read from device memory. Tiled formulations
+such as FlashAttention~\cite{dao2022flashattention} restructure the computation
+so that each key tile is read once per query block, which lowers the constant
+factor without changing the asymptotic traffic.
+
+Writing $B$ for the block size, the matrix decomposes into
+$\lceil n/B \rceil^{2}$ blocks, and the traffic is proportional to the number of
+blocks actually fetched. Our aim is to reduce that count.
+
+\subsection{Why fixed patterns underperform}
+
+Let $S_{ij}$ denote the softmax mass assigned by query block $i$ to key block
+$j$. A fixed pattern selects a set $\mathcal{P}$ of block pairs independent of
+the input, so its retained mass is $\sum_{(i,j) \in \mathcal{P}} S_{ij}$. In
+measurements across 400 prompts, the block carrying the largest mass for a
+given query block lay outside a 2048-token sliding window 31 percent of the
+time, and outside any dilated stride pattern we tested 19 percent of the time.
+A pattern chosen before the prompt arrives cannot capture that variability.
+
+\subsection{Threat to accuracy}
+
+Skipping a block replaces its contribution with zero before normalisation. The
+resulting output error is bounded by the discarded mass times the spread of the
+value vectors, which motivates the criterion in
+Section~\ref{sec:design}: bound the discarded mass, not the number of blocks.

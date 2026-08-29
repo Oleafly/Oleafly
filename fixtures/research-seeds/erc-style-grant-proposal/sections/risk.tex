@@ -1,0 +1,108 @@
+\section{Ethics and risk management}
+\label{sec:risk}
+
+\subsection{Ethics}
+
+\proj{} processes identifiers from three national registries covering approximately 24 million
+people, none of whom will be contacted and none of whom consented to this specific study. That is
+the central ethical fact of the project and it shapes every design decision below.
+
+\begin{center}
+\small
+\begin{tabular}{@{}L{3.5cm} L{5.3cm} L{6.0cm}@{}}
+  \toprule
+  Issue & Why it arises & How \proj{} handles it \\
+  \midrule
+  Processing without individual consent &
+  Registry data are collected under statute, not consent, and re-consenting 24 million people is
+  not possible &
+  Public interest basis assessed per custodian, with an independent lay panel reviewing every
+  research question before extraction \\
+  \addlinespace
+  Re-identification of an individual &
+  Any linkage raises the identifiability of the resulting record &
+  No party ever holds the join. The analyst receives aggregates and a certificate, never a linked
+  row. Enclave egress is reviewed by two people \\
+  \addlinespace
+  Harm to small subgroups &
+  Linkage error concentrates in migrants and in people who change names, and so would any published
+  subgroup finding &
+  Subgroup results are published only with the linkage-error bound attached, which is a scientific
+  requirement of \ref{obj:inference} and also an ethical one \\
+  \addlinespace
+  Dual use of the attack work &
+  \ref{wp:encoding} improves attacks on encodings that are deployed today &
+  Responsible disclosure to affected custodians 120 days before publication, coordinated through
+  the governance board in \ref{wp:governance} \\
+  \addlinespace
+  Scope creep in the access agreement &
+  A signed agreement invites questions it was not written for &
+  The tripartite agreement enumerates permitted analyses. Anything outside it returns to the lay
+  panel and to the custodians \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Risk register}
+
+{\small
+\begin{longtable}{@{}c L{4.2cm} c c c L{5.5cm}@{}}
+  \toprule
+  ID & Risk & WP & Lik. & Imp. & Mitigation and fallback \\
+  \midrule
+  \endfirsthead
+  \toprule
+  ID & Risk & WP & Lik. & Imp. & Mitigation and fallback \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endfoot
+  \bottomrule
+  \endlastfoot
+  R1 & Access agreement not signed by month 12 &
+  \ref{wp:governance} & M & H &
+  Two custodians are already at heads of terms. If the third slips, MS1 proceeds bilaterally and
+  the third joins at MS5. Synthetic populations cover the gap \\
+  \addlinespace
+  R2 & Privacy guarantee costs more match quality than budgeted &
+  \ref{wp:encoding} & M & H &
+  The 4 point F1 target is the ambition. At 8 points the project still succeeds, because
+  \ref{obj:theory} lets the analyst price the loss instead of hiding it \\
+  \addlinespace
+  R3 & Bounds are not sharp enough to be useful &
+  \ref{wp:theory} & L & H &
+  Fall back to computable but conservative bounds plus a simulation-calibrated diagnostic. The
+  deliverable becomes a tool rather than a theorem \\
+  \addlinespace
+  R4 & Secure comparison too slow at 8 million records &
+  \ref{wp:protocol} & M & M &
+  Blocking under encryption is the planned route. If it underperforms, reduce to a stratified
+  sample of 2 million per custodian, which still supports MS5 \\
+  \addlinespace
+  R5 & An attack breaks our own construction after publication &
+  \ref{wp:encoding} & L & H &
+  Treated as a result, not a failure. The audit schedule in Section~\ref{sec:budget} is timed to
+  find this before deployment rather than after \\
+  \addlinespace
+  R6 & Loss of the research software engineer &
+  \ref{wp:protocol} & M & H &
+  Single greatest personnel risk. Mitigated by a written protocol specification at M20, before the
+  implementation, and by a six-month overlap in the recruitment plan \\
+  \addlinespace
+  R7 & Regulatory change during the project &
+  \ref{wp:governance} & M & M &
+  The architecture already exceeds current requirements by never centralising the join. Legal
+  adviser retained across all five years for exactly this \\
+  \addlinespace
+  R8 & Reanalyses contradict published findings &
+  \ref{wp:inference} & H & L &
+  Expected and desirable. Original authors are contacted before submission and offered the
+  diagnostic to run themselves \\
+\end{longtable}
+}
+
+\vspace{4pt}
+\noindent
+{\small Likelihood and impact are rated L, M, H. R1 and R6 are the two risks that would change the
+shape of the project rather than its schedule, and both are managed by producing a written artefact
+early: the heads of terms in year 1 and the protocol specification at month 20.}

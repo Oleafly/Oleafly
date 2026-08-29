@@ -1,0 +1,33 @@
+\section{Limitations}
+\label{sec:limitations}
+
+Our tasks are defect repairs of 15 to 20 minutes in an unfamiliar codebase.
+Familiarity plausibly reduces resumption cost, since a developer who knows the
+code rebuilds the suspended state faster, so our absolute numbers are likely an
+upper bound on what a developer would experience in their own repository. We
+have no reason to think familiarity changes the ordering of conditions, but we
+did not test it.
+
+The editor was purpose built. It looks and behaves like a mainstream tool, and
+participants were given a training task, but it was not the tool any of them
+use daily, and a small part of the measured lag is orientation in an unfamiliar
+interface. This applies equally across conditions, so it inflates variance
+rather than biasing the contrasts.
+
+Builds were held at a fixed 42~s. Real builds vary, and a developer who cannot
+predict the wait may disengage differently from one who can. Our follow-up at
+6~s establishes that duration matters and locates a crossover, but the interior
+of that range is unmapped.
+
+The laboratory setting removes the social interruptions that dominate field
+telemetry: colleagues, messages, and meetings. Those interruptions compete for
+the same recovery capacity, and it is possible that in a working day saturated
+with them the marginal cost of one more toast is smaller than we measure. It is
+also possible that it is larger. Our design cannot distinguish these.
+
+Finally, the sample is drawn from two meetups and one alumni list in a single
+region and skews toward developers who volunteer for studies. The experience
+distribution in Table~\ref{tab:demographics} is reasonable but the sample is
+not representative of the profession, and the 12-participant follow-up in
+Section~\ref{sec:discussion} is underpowered for anything beyond locating the
+crossover approximately.

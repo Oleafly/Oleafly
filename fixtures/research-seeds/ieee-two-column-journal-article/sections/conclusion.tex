@@ -1,0 +1,24 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+Phase noise in a hybrid millimeter-wave receiver is common to the whole array
+and therefore immune to beamforming gain, and at wideband symbol durations its
+intercarrier leakage is structured rather than white. We derived that structure
+exactly, without a small-phase approximation, and showed that the leakage
+covariance is effectively rank $2\lceil \beta T_s N \rceil + 1$. \est{} turns
+that fact into a variational estimator whose channel update is a fixed linear
+solve and whose phase update is a scalar Kalman smoother, at a cost of 3.4
+times the common-phase baseline and within 1.1~dB of a genie receiver across a
+two-decade linewidth sweep.
+
+The remaining work is the prior. A free-running Wiener model is the honest
+choice for the oscillators these receivers actually ship, but locked
+synthesizers are common in infrastructure equipment and they violate it in a
+way that costs a third of the gain. The same smoother accepts a second-order
+autoregressive prior with no change to the channel update, and fitting that
+prior online from the residuals is the direction we are pursuing.
+
+\section*{Acknowledgements}
+The authors thank the Coastal Institute radio laboratory for oscillator phase
+noise measurements used to calibrate the simulation, and the reviewers whose
+questions about locked synthesizers produced Section~\ref{sec:results}.

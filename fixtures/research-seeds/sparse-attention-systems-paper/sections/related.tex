@@ -1,0 +1,19 @@
+\section{Related work}
+\label{sec:related}
+
+\paragraph{Fixed sparsity.}
+Sparse Transformers~\cite{child2019sparse}, Longformer~\cite{beltagy2020longformer},
+and BigBird~\cite{zaheer2020bigbird} fix the pattern at model-design time and
+retrain around it. They are strictly cheaper to schedule than \sysname{} and
+strictly less adaptive; our measurements in Section~\ref{sec:background}
+quantify the gap.
+
+\paragraph{Kernel-level optimisation.}
+FlashAttention~\cite{dao2022flashattention} and its successors reduce the
+constant factor of dense attention by restructuring memory access. That work is
+complementary: \sysname{} emits a fetch plan that such a kernel consumes.
+
+\paragraph{Cache compression.}
+Key-value eviction policies discard entries after the fact, whereas \sysname{}
+avoids fetching them. The two compose, and the combination is the natural next
+experiment.

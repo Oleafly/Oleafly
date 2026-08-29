@@ -1,0 +1,68 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[a4paper,margin=1.0in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{microtype}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{listings}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,shapes.geometric,calc}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\footnotesize Marram Coast Flux Network}
+\fancyhead[R]{\footnotesize Technical Report MCF-2025-04}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  columns=fullflexible,
+  keepspaces=true,
+  frame=single,
+  framesep=4pt,
+  showstringspaces=false,
+  breaklines=true,
+  captionpos=b
+}
+
+\newcommand{\degC}{^{\circ}\mathrm{C}}
+\newcommand{\network}{Marram Coast Flux Network}
+
+\title{\bfseries The \network:\\ Instrumentation, Data Quality, and Annual Flux Budget for 2024}
+\author{
+  Ingeborg Sandvik \and Callum Ridley \and Yusra Al-Mahdi\\
+  \normalsize Coastal Observation Group, Institute for Boundary Layer Science\\
+  \normalsize Report MCF-2025-04
+}
+\date{March 2025}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+\input{sections/executive-summary}
+
+\tableofcontents
+
+\input{sections/network}
+\input{sections/instrumentation}
+\input{sections/processing}
+\input{sections/quality}
+\input{sections/results}
+\input{sections/measurement-table}
+\input{sections/recommendations}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

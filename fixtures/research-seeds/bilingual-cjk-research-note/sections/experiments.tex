@@ -1,0 +1,67 @@
+\section{实验 Experiments}
+\label{sec:experiments}
+
+\subsection{设置}
+
+我们在四种低资源语言上评估：阿姆哈拉语、孟加拉语、豪萨语与维吾尔语。
+每种语言使用十万句单语语料。基线为直接沿用源语言词表，以及在目标语料上
+从零训练的一元语言模型分词器~\cite{kudo2018subword}。
+
+\begin{table}[t]
+  \centering
+  \small
+  \caption{平均词元长度（字符数，越高越好）与下游命名实体识别 F1。}
+  \label{tab:main}
+  \begin{tabular}{lcccc}
+    \toprule
+    方法 & 阿姆哈拉 & 孟加拉 & 豪萨 & 维吾尔 \\
+    \midrule
+    沿用源词表   & 1.84 & 2.03 & 2.41 & 1.77 \\
+    从零训练     & 2.29 & 2.51 & 2.88 & 2.16 \\
+    本文方法     & \textbf{2.71} & \textbf{3.02} & \textbf{3.34} & \textbf{2.63} \\
+    \midrule
+    F1 提升      & +2.6 & +2.1 & +1.9 & +3.0 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+表~\ref{tab:main} 显示本文方法在四种语言上均优于两个基线。
+
+\subsection{先验强度的影响}
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+        width=0.86\linewidth, height=4.6cm,
+        xlabel={先验强度 $\lambda$},
+        ylabel={平均词元长度},
+        xmin=0, xmax=1.0, ymin=2.0, ymax=3.2,
+        grid=both, grid style={gray!20},
+        tick label style={font=\scriptsize},
+        label style={font=\scriptsize},
+        legend style={font=\scriptsize,at={(0.98,0.04)},anchor=south east,draw=none,fill=none},
+      ]
+      \addplot[thick,mark=*,mark size=1.2pt] coordinates {
+        (0,2.29) (0.1,2.48) (0.25,2.66) (0.5,2.71) (0.75,2.62) (1.0,2.41)
+      };
+      \addlegendentry{阿姆哈拉语}
+      \addplot[thick,dashed,mark=square,mark size=1.2pt] coordinates {
+        (0,2.16) (0.1,2.34) (0.25,2.57) (0.5,2.63) (0.75,2.55) (1.0,2.30)
+      };
+      \addlegendentry{维吾尔语}
+    \end{axis}
+  \end{tikzpicture}
+  \caption{先验过强会压制目标语言自身的统计规律，$\lambda$ 超过 0.5 后性能下降。}
+  \label{fig:lambda}
+\end{figure}
+
+图~\ref{fig:lambda} 表明先验强度存在一个明确的最优区间。
+
+\subsection{失效情形}
+
+该方法在两种情形下失效。第一，当源语言与目标语言的形态类型不同时，
+例如源语言为屈折语而目标语言为黏着语，先验会引入错误约束，平均词元长度
+反而下降百分之九。第二，当目标语料少于两万句时，式~\eqref{eq:objective}
+的似然项过弱，结果几乎完全由先验决定，模型退化为源语言词表。
+我们如实报告这两点，因为它们决定了该方法的适用边界。

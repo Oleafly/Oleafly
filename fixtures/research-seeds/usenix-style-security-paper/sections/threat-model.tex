@@ -1,0 +1,83 @@
+\section{Threat Model}
+\label{sec:threat-model}
+
+\subsection{Adversary}
+
+We consider an adversary who can publish a package version to a registry. This
+capability is obtained in three ways that we observe in the wild: compromising
+an existing maintainer account, typically through credential stuffing or a
+recovery-email takeover~\citep{mbeki2022typosquat}; acquiring maintainership of
+an abandoned package, which several registries grant on request; and
+registering a new name that a victim will plausibly install, whether by
+typosquatting or by dependency confusion against an internal
+name~\citep{ferrante2021incidents}.
+
+The adversary does not control the registry, the network path, or the victim's
+machine before the install. They do not need to. The install client fetches
+their archive over an authenticated channel and then executes their hook,
+which is the entire attack.
+
+\subsection{Victim and assets}
+
+The victim is any machine that installs the package: a developer workstation, a
+continuous integration runner, or a container build. Continuous integration is
+the most valuable target and the least defended, because a runner typically
+holds deployment credentials, registry publishing tokens, and cloud role
+credentials reachable from an unauthenticated metadata endpoint, and because
+nobody is watching the terminal.
+
+The assets we instrument for are therefore credential material in the
+environment and on disk, the cloud metadata endpoint, the source tree being
+built, and outbound network reachability. Figure~\ref{fig:threat} shows the
+positions and the trust boundaries.
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[
+      node distance=5mm and 6mm,
+      blk/.style={draw,rounded corners=1.5pt,align=center,font=\scriptsize,
+                  minimum height=7mm,minimum width=16mm},
+      adv/.style={blk,fill=black!12,draw=black},
+      flow/.style={-{Stealth[length=1.7mm]},semithick},
+      atk/.style={-{Stealth[length=1.7mm]},semithick,dashed},
+    ]
+    \node[adv] (att) {Adversary};
+    \node[blk,right=12mm of att] (acct) {Maintainer\\account};
+    \node[blk,right=13mm of acct] (reg) {Registry};
+    \node[blk,below=9mm of reg] (client) {Install client};
+    \node[blk,left=of client] (hook) {Hook process\\\scriptsize user privileges};
+    \node[blk,below=9mm of hook] (creds) {CI secrets,\\tokens, metadata};
+    \node[adv,left=17mm of hook] (drop) {Collection\\host};
+
+    \draw[atk] (att) -- node[above,font=\scriptsize] {takeover} (acct);
+    \draw[flow] (acct) -- node[above,font=\scriptsize] {publish} (reg);
+    \draw[flow] (reg) -- node[right,font=\scriptsize] {fetch} (client);
+    \draw[flow] (client) -- node[above,font=\scriptsize] {exec} (hook);
+    \draw[flow] (hook) -- node[right,font=\scriptsize] {read} (creds);
+    \draw[atk] (hook) -- node[above,font=\scriptsize] {exfiltrate} (drop);
+    \draw[atk] (drop) to[bend left=38] (att);
+
+    \begin{scope}[on background layer]
+      \node[draw,dashed,rounded corners=2pt,fit=(client)(hook)(creds),
+            inner sep=3mm,
+            label={[font=\scriptsize]below:victim build host}] {};
+      \node[draw,dotted,rounded corners=2pt,fit=(acct)(reg),
+            inner sep=2.5mm,
+            label={[font=\scriptsize]above:registry trust boundary}] {};
+    \end{scope}
+  \end{tikzpicture}
+  \caption{Threat model. The adversary never touches the network path or the
+  victim host directly. The install client fetches an authenticated archive and
+  then executes the adversary's hook with the invoking user's privileges,
+  inside the victim's trust boundary.}
+  \label{fig:threat}
+\end{figure}
+
+\subsection{Out of scope}
+
+We do not consider registry compromise, transport interception, or malicious
+behaviour in the package's runtime code. The last is a genuine and larger
+problem, but it requires the victim to call the code and is therefore reachable
+by ordinary code review, whereas a hook executes before anyone has read
+anything. We also exclude hooks that require interactive input, 0.3 percent of
+our corpus, since our sandbox cannot supply it.

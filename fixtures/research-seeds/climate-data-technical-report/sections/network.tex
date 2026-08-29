@@ -1,0 +1,63 @@
+\section{The network}
+\label{sec:network}
+
+\subsection{Siting rationale}
+\label{sec:network-siting}
+
+The \network{} was established to close a gap in the national observing system.
+Coastal margins occupy a small fraction of land area and a disproportionate
+share of the carbon exchange, and the existing network placed no tower within
+15 kilometres of the shoreline \citep{sandvik2021coastalgap}. The stretch of
+coast selected runs from the estuary at Kirkhavn in the north to the sand spit
+at Roseholm in the south, and contains both of the land cover classes of
+interest in interleaved patches of a size that a single tower can resolve.
+
+Siting followed three constraints. Each tower needed a fetch of at least 300
+metres of homogeneous cover in the prevailing wind sector, which for this coast
+is 200 to 260 degrees. Each needed mains power or a solar array with 14 days of
+winter autonomy. And the network as a whole needed at least three towers of each
+land cover class so that a class mean would carry a usable standard error.
+
+Table~\ref{tab:site-summary} lists the resulting sites.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Sites of the \network. Elevation is metres above the ordnance datum.
+Fetch is the shortest distance to a cover change within the prevailing sector.
+The canopy height at the saltmarsh sites is the seasonal maximum reached in
+August.}
+\label{tab:site-summary}
+\begin{tabular}{llrrrrl}
+\toprule
+Site & Cover & Elev. (m) & Tower (m) & Canopy (m) & Fetch (m) & Power \\
+\midrule
+MC01 & saltmarsh & 1.8  & 4.0 & 0.55 & 940  & mains \\
+MC02 & saltmarsh & 2.1  & 4.0 & 0.61 & 720  & mains \\
+MC03 & dune      & 8.4  & 6.0 & 0.90 & 480  & solar \\
+MC04 & dune      & 11.2 & 6.0 & 1.15 & 610  & solar \\
+MC05 & saltmarsh & 1.4  & 4.0 & 0.48 & 1150 & solar \\
+MC06 & dune      & 6.9  & 6.0 & 0.82 & 340  & solar \\
+MC07 & saltmarsh & 0.9  & 4.0 & 0.52 & 830  & solar \\
+MC08 & dune      & 14.6 & 8.0 & 1.30 & 520  & mains \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+MC06 has the shortest fetch in the network at 340 metres, which is above the
+constraint but not comfortably. Its footprint climatology, computed by the
+method of Section~\ref{sec:proc-footprint}, places 12 percent of the annual flux
+source area outside the intended cover class under stable stratification. Fluxes
+from MC06 under stable conditions are flagged and excluded from the class means
+of Section~\ref{sec:results-budget}.
+
+\subsection{Operating period and data return}
+\label{sec:network-return}
+
+All eight towers ran from 1 January to 31 December 2024. Two extended outages
+affected the network: a storm on 14 to 17 February took the solar sites offline
+when battery voltage fell below the cutoff, and a firmware fault in the
+datalogger at MC02 and MC04 corrupted 11 days of high frequency records in
+September before it was diagnosed. Neither loss is correlated with the flux
+magnitude and both are treated as missing at random in the gap filling of
+Section~\ref{sec:proc-gapfill}.
