@@ -87,8 +87,8 @@ import {
   inverseFromClick,
 } from "@/features/synctex";
 import {
-  armPreviewTyping,
   disarmPreviewTyping,
+  settlePreviewTyping,
 } from "@/features/preview-typing";
 import { askAiAboutCompileErrors } from "@/features/ask-ai-compile-errors";
 import {
@@ -2089,22 +2089,17 @@ export function PreviewPane() {
                     onInverse={
                       syncTexAvailable
                         ? (pageNumber, clickX, clickY, word, textTarget) => {
-                            const wantsTyping =
-                              useSettingsStore.getState().previewTyping &&
-                              textTarget !== undefined;
+                            const typingEnabled =
+                              useSettingsStore.getState().previewTyping;
                             void inverseFromClick(
                               pageNumber,
                               clickX,
                               clickY,
                               word,
                               displayedCheckpoint,
-                            ).then((placed) => {
-                              if (placed && wantsTyping && textTarget) {
-                                armPreviewTyping(textTarget);
-                              } else {
-                                disarmPreviewTyping();
-                              }
-                            });
+                            ).then((placed) =>
+                              settlePreviewTyping(placed, textTarget, typingEnabled),
+                            );
                           }
                         : undefined
                     }

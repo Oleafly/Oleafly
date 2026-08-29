@@ -133,6 +133,31 @@ describe("parseLatexBody", () => {
     });
   });
 
+  it("opens a list item with an empty paragraph when it starts with a nested list", () => {
+    const body = "\\begin{itemize}\n  \\item \\begin{itemize}\n    \\item inner\n  \\end{itemize}\n\\end{itemize}\n";
+    const item = parseLatexBody(body).content?.[0]?.content?.[0];
+    expect(item?.type).toBe("listItem");
+    expect(item?.content?.[0]).toEqual({ type: "paragraph" });
+    expect(item?.content?.[1]?.type).toBe("bulletList");
+  });
+
+  it("drops whitespace-only text nodes at the edges of a heading title", () => {
+    const doc = parseLatexBody("\\section{ \\textbf{Big} idea \\textit{here} }\n");
+    const heading = doc.content?.[0];
+    expect(heading?.type).toBe("heading");
+    expect(heading?.content?.[0]).toMatchObject({
+      type: "text",
+      text: "Big",
+      marks: [{ type: "bold" }],
+    });
+    expect(heading?.content?.[heading.content.length - 1]).toMatchObject({
+      type: "text",
+      text: "here",
+      marks: [{ type: "italic" }],
+    });
+    expect(fullText(heading)).toBe("Big idea here");
+  });
+
   it("keeps inline markup inside a heading title instead of collapsing it to plain text", () => {
     const doc = parseLatexBody("\\section{\\textbf{Big} idea}\n");
     const heading = doc.content?.[0];

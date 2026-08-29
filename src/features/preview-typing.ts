@@ -86,3 +86,18 @@ export function armPreviewTyping(target: PreviewTextTarget): boolean {
   };
   return true;
 }
+
+/**
+ * Decide what a settled inverse search should do with the click's text target.
+ * The setting is read at click time by the caller, not here, so a toggle flipped
+ * while the inverse search is in flight cannot change the outcome of that click.
+ */
+export function settlePreviewTyping(
+  placed: boolean,
+  textTarget: PreviewTextTarget | undefined,
+  enabled: boolean,
+): boolean {
+  if (placed && enabled && textTarget) return armPreviewTyping(textTarget);
+  disarmPreviewTyping();
+  return false;
+}

@@ -8,6 +8,7 @@ import {
   armPreviewTyping,
   disarmPreviewTyping,
   isPreviewTypingArmed,
+  settlePreviewTyping,
 } from "./preview-typing";
 
 let view: EditorView | null = null;
@@ -120,5 +121,39 @@ describe("preview typing", () => {
     const { span } = setup();
     setEditorView(null);
     expect(armPreviewTyping({ span, offset: 2 })).toBe(false);
+  });
+});
+
+describe("settlePreviewTyping", () => {
+  it("arms typing when the inverse search placed the cursor and the setting is on", () => {
+    const { span } = setup();
+    expect(settlePreviewTyping(true, { span, offset: 2 }, true)).toBe(true);
+    expect(isPreviewTypingArmed()).toBe(true);
+  });
+
+  it("does not arm when the setting is off", () => {
+    const { span } = setup();
+    expect(settlePreviewTyping(true, { span, offset: 2 }, false)).toBe(false);
+    expect(isPreviewTypingArmed()).toBe(false);
+  });
+
+  it("does not arm when the inverse search failed to place a cursor", () => {
+    const { span } = setup();
+    expect(settlePreviewTyping(false, { span, offset: 2 }, true)).toBe(false);
+    expect(isPreviewTypingArmed()).toBe(false);
+  });
+
+  it("does not arm when the click reported no text target", () => {
+    setup();
+    expect(settlePreviewTyping(true, undefined, true)).toBe(false);
+    expect(isPreviewTypingArmed()).toBe(false);
+  });
+
+  it("disarms an already-armed session when the next click does not qualify", () => {
+    const { span } = setup();
+    armPreviewTyping({ span, offset: 2 });
+    expect(isPreviewTypingArmed()).toBe(true);
+    settlePreviewTyping(false, { span, offset: 2 }, true);
+    expect(isPreviewTypingArmed()).toBe(false);
   });
 });
