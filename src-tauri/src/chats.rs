@@ -72,7 +72,13 @@ fn save_blocking(project_id: &str, json: &str) -> Result<(), String> {
         return Err("chat history must be a JSON array".into());
     }
     let path = chats_path(project_id)?;
-    save_to_path(&path, json)
+    save_to_path(&path, json)?;
+    // Best-effort mirror into the searchable library store; the JSON on disk
+    // stays canonical, so an index failure must never fail the save.
+    if let Ok(root) = paths::oleafly_root() {
+        let _ = crate::library_db::index_project_chats(&root, project_id, json);
+    }
+    Ok(())
 }
 
 fn save_to_path(path: &std::path::Path, json: &str) -> Result<(), String> {

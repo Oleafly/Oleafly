@@ -122,12 +122,14 @@ export function FilesPanel() {
       </Panel>
       <PanelResizeHandle
         style={{ cursor: "row-resize" }}
-        className={cn(
-          "resize-handle-row group flex h-2.5 items-center justify-center",
-          "transition-colors hover:bg-accent/40"
-        )}
+        className="resize-handle-row group relative h-1.5"
       >
-        <span className="h-0.5 w-8 rounded-full bg-border transition-colors group-hover:bg-ring" />
+        <span
+          className={cn(
+            "pointer-events-none absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border transition-colors duration-150",
+            "group-hover:h-0.5 group-hover:bg-ring group-data-[resize-handle-state=drag]:h-0.5 group-data-[resize-handle-state=drag]:bg-ring"
+          )}
+        />
       </PanelResizeHandle>
       <Panel id="outline-v" order={2} defaultSize={40} minSize={10}>
         {/* Outline first and open: it answers "where am I in this document",

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   agentListModels,
   getConfig,
@@ -20,6 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettingsStore } from "@/store/settings";
 import { cn } from "@/lib/utils";
 import { ProvidersTab, type ProviderStatus } from "./ai/ProvidersTab";
+import { ProjectApprovals } from "./ai/ProjectApprovals";
+import { ProjectBudget } from "./ai/ProjectBudget";
 import { InstructionsTab } from "./ai/InstructionsTab";
 import { PersonasTab } from "./ai/PersonasTab";
 import { AddCustomProviderDialog, type AddCustomProviderInput } from "./ai/AddCustomProviderDialog";
@@ -82,10 +85,9 @@ export function AISection() {
   // Unset falls back to "open if active", so the in-use provider stays expanded.
   const [openProviders, setOpenProviders] = useState<Record<string, boolean>>({});
   const [customDialogOpen, setCustomDialogOpen] = useState(false);
-  const [ollama, setOllama] = useState<{
-    status: "idle" | "loading" | "ok" | "down";
-    models: string[];
-  }>({ status: "idle", models: [] });
+  // A host the user probed explicitly from the provider card; null follows the
+  // saved (or default) host.
+  const [probeHost, setProbeHost] = useState<string | null>(null);
 
   const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
@@ -117,22 +119,40 @@ export function AISection() {
     });
   }, []);
 
-  const refreshOllama = useCallback(async (host: string) => {
-    setOllama((o) => ({ ...o, status: "loading" }));
-    try {
-      const models = await listOllamaModels(host);
-      setOllama({ status: "ok", models });
-    } catch {
-      setOllama({ status: "down", models: [] });
-    }
-  }, []);
-
-  // Cheap localhost request that fails fast, so it's run proactively instead of
-  // waiting on the user to configure a host first.
+  // Cheap localhost request that fails fast, so the query runs proactively
+  // instead of waiting on the user to configure a host first.
   const savedOllamaHost = cfg.ai_keys?.ollama ?? "";
+  const ollamaHost = probeHost ?? (savedOllamaHost || DEFAULT_OLLAMA_HOST);
+  const queryClient = useQueryClient();
+  const ollamaQuery = useQuery({
+    queryKey: ["ollama-models", ollamaHost],
+    queryFn: () => listOllamaModels(ollamaHost),
+    retry: false,
+    staleTime: 30_000,
+    meta: { silent: true },
+  });
+  const ollama = {
+    status: ollamaQuery.isPending
+      ? ("loading" as const)
+      : ollamaQuery.isError
+        ? ("down" as const)
+        : ("ok" as const),
+    models: ollamaQuery.data ?? [],
+  };
+  const refreshOllama = useCallback(
+    async (host: string) => {
+      setProbeHost(host);
+      await queryClient.invalidateQueries({
+        queryKey: ["ollama-models", host],
+      });
+    },
+    [queryClient],
+  );
+  // Saving a new host takes over from any manual probe.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: savedOllamaHost is the trigger, not a read dependency; the reset must run exactly when the saved host changes
   useEffect(() => {
-    void refreshOllama(savedOllamaHost || DEFAULT_OLLAMA_HOST);
-  }, [savedOllamaHost, refreshOllama]);
+    setProbeHost(null);
+  }, [savedOllamaHost]);
 
   const persist = async (next: AppConfig) => {
     await setConfig(next);
@@ -409,6 +429,10 @@ export function AISection() {
             onAddCustomProvider={() => setCustomDialogOpen(true)}
             deleteCustomProvider={deleteCustomProvider}
           />
+          <div className="mt-3 space-y-3">
+            <ProjectApprovals />
+            <ProjectBudget />
+          </div>
         </TabsContent>
 
         <TabsContent value="instructions">

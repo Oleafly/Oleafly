@@ -17,7 +17,7 @@ export function Progress({
       aria-valuenow={Math.round(percent)}
     >
       <div
-        className="h-full rounded-full bg-[#4285F4] transition-[width] duration-200"
+        className="h-full rounded-full bg-primary transition-[width] duration-200"
         style={{ width: `${percent}%` }}
       />
     </div>

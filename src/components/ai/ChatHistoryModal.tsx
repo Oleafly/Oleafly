@@ -1,9 +1,20 @@
 import { useState } from "react";
-import { MessageSquareQuote, Trash2, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { MessageSquareQuote, Search, Trash2, X } from "lucide-react";
 import type { StoredChat } from "@/store/chats";
 import { formatUsd } from "@/lib/ai-pricing";
+import { chatsSearch } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+
+// FTS5 special characters would error inside MATCH; quote each term instead.
+function ftsQuery(raw: string): string {
+  return raw
+    .trim()
+    .split(/\s+/)
+    .map((term) => `"${term.replaceAll('"', "")}"`)
+    .join(" ");
+}
 
 function relativeTime(t: number) {
   const diff = Date.now() - t;
@@ -35,13 +46,32 @@ export function ChatHistoryModal({
   onDelete: (chatId: string) => void;
 }) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, onClose);
+  const trimmed = query.trim();
+  // Titles filter locally; message content matches come from the library.db
+  // session index ("find the chat where…").
+  const contentHits = useQuery({
+    queryKey: ["chat-content-search", trimmed],
+    queryFn: () => chatsSearch(ftsQuery(trimmed)),
+    enabled: open && trimmed.length >= 2,
+    staleTime: 10_000,
+    meta: { silent: true },
+  });
 
   if (!open) return null;
+  const matchedIds = new Set((contentHits.data ?? []).map((hit) => hit.chat_id));
+  const visibleChats = trimmed
+    ? chats.filter(
+        (chat) =>
+          (chat.title || "").toLowerCase().includes(trimmed.toLowerCase()) ||
+          matchedIds.has(chat.id),
+      )
+    : chats;
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[80] flex animate-in fade-in items-center justify-center bg-black/50 p-4 duration-200 backdrop-blur-sm motion-reduce:animate-none"
     >
       <button type="button" aria-label="Close chat history" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
@@ -50,7 +80,7 @@ export function ChatHistoryModal({
         tabIndex={-1}
         aria-modal="true"
         aria-labelledby="chat-history-title"
-        className="relative flex h-[min(30rem,80vh)] w-full max-w-lg flex-col rounded-xl border bg-popover text-popover-foreground shadow-2xl"
+        className="relative flex h-[min(30rem,80vh)] w-full max-w-lg animate-in flex-col rounded-xl border bg-popover text-popover-foreground shadow-2xl zoom-in-95 fade-in duration-200 motion-reduce:animate-none"
       >
         <div className="flex shrink-0 items-center gap-2 p-4">
           <MessageSquareQuote className="size-4" />
@@ -66,13 +96,30 @@ export function ChatHistoryModal({
           </button>
         </div>
 
+        <div className="shrink-0 px-4 pb-2">
+          <div className="flex items-center gap-2 rounded-md border bg-background px-2">
+            <Search className="size-3.5 shrink-0 text-muted-foreground" />
+            <input
+              aria-label="Search chats"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search titles and messages"
+              className="h-8 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
+            />
+          </div>
+        </div>
+
         <div className="min-h-0 flex-1 overflow-auto p-2">
           {chats.length === 0 ? (
             <p className="px-3 py-10 text-center text-sm text-muted-foreground">
               No saved chats for this project yet.
             </p>
+          ) : visibleChats.length === 0 ? (
+            <p className="px-3 py-10 text-center text-sm text-muted-foreground">
+              No chats match that search.
+            </p>
           ) : (
-            chats.map((chat) => {
+            visibleChats.map((chat) => {
               const stale =
                 chat.headOid && currentHead && chat.headOid !== currentHead;
               const isActive = chat.id === activeId;

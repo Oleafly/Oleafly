@@ -20,6 +20,7 @@ import {
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
 import { notifyError, toast } from "@/lib/toast";
+import { appQueryClient } from "@/lib/query";
 import { compileOfflineForEngine } from "@/lib/document-engine";
 import { ensurePandoc } from "@/features/pandoc";
 import {
@@ -532,7 +533,17 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     // Only seed a fresh store: once any compile has produced a checkpoint in
     // this session, disk state is older by definition.
     if (get().lastCompileCheckpoint || get().status !== "idle") return false;
-    const validated = await validateCompileFingerprint(projectId, mainDoc).catch(() => null);
+    // Through the query cache for dedup and devtools visibility; staleTime 0
+    // so every open revalidates against the on-disk build state.
+    const validated = await appQueryClient()
+      .fetchQuery({
+        queryKey: ["compile-fingerprint", projectId, mainDoc],
+        queryFn: () => validateCompileFingerprint(projectId, mainDoc),
+        staleTime: 0,
+        retry: false,
+        meta: { silent: true },
+      })
+      .catch(() => null);
     if (!validated || validated.main_document !== mainDoc) return false;
     const buffer = await readCompiledPdf(projectId).catch(() => null);
     if (!buffer) return false;

@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { NewProjectDialog } from "@/components/library/NewProjectDialog";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
-import { listTemplates, type TemplateInfo } from "@/lib/tauri";
+import { useInvalidateCatalog, useTemplates } from "@/lib/queries/catalog";
 import { notifyError } from "@/lib/toast";
-import { logError } from "@/lib/log";
 import { useTourStore } from "@/store/tours";
 import { finishHomeTourAfterProjectCreation } from "@/lib/tours/coordinator";
 
@@ -15,16 +14,9 @@ export function GlobalNewProject() {
   const setOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const createFromTemplate = useFilesStore((s) => s.createFromTemplate);
   const homeTourActive = useTourStore((state) => state.activeTourId === "home");
-  const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [creating, setCreating] = useState(false);
-
-  useEffect(() => {
-    if (open && templates.length === 0) {
-      void listTemplates()
-        .then(setTemplates)
-        .catch((e) => void logError("load templates", e));
-    }
-  }, [open, templates.length]);
+  const templates = useTemplates(open).data ?? [];
+  const invalidate = useInvalidateCatalog();
 
   const create = async (rawName: string, templateId: string, color: string) => {
     setCreating(true);
@@ -88,9 +80,7 @@ export function GlobalNewProject() {
         void create(n, t, c);
       }}
       onTemplatesChanged={() => {
-        void listTemplates()
-          .then(setTemplates)
-          .catch((e) => void logError("load templates", e));
+        void invalidate.templates();
       }}
     />
   );

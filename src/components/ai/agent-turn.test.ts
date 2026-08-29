@@ -151,6 +151,7 @@ function harness(
     onUsage: vi.fn(),
     onStep: vi.fn(),
     onRetry: vi.fn(),
+    onSubagentUpdate: vi.fn(),
   };
 
   return {
@@ -352,6 +353,7 @@ describe("harness", () => {
         onUsage: vi.fn(),
         onStep: vi.fn(),
         onRetry: vi.fn(),
+        onSubagentUpdate: vi.fn(),
       },
     });
 
@@ -414,6 +416,7 @@ describe("harness", () => {
       onUsage: vi.fn(),
       onStep: vi.fn(),
       onRetry: vi.fn(),
+      onSubagentUpdate: vi.fn(),
     };
     const controller = new AbortController();
     const pending = runAgentHarness({
@@ -539,5 +542,49 @@ describe("tool output packing", () => {
   it("leaves a small output untouched", () => {
     expect(packToolOutputText({ ok: true })).toBe('{"ok":true}');
     expect(packToolOutputText("done")).toBe("done");
+  });
+});
+
+describe("run scoping pass-through", () => {
+  it("forwards threadId and clientTurnId and taps raw events", async () => {
+    const raw: AgentEvent[] = [];
+    const requestIds: string[] = [];
+    mocks.invoke.mockImplementation(async (command: string, args: Record<string, unknown>) => {
+      if (command !== "agent_run") return;
+      expect(args.threadId).toBe("thread-9");
+      expect(args.clientTurnId).toBe("client-9");
+      const channel = args.onEvent as { onmessage: ((event: AgentEvent) => void) | null };
+      channel.onmessage?.({ kind: "textDelta", text: "hi" });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      return { text: "", usage: { input: 0, output: 0 }, steps: 1, stopped_at_cap: false, error: null };
+    });
+
+    await runAgentHarness({
+      system: "s",
+      messages: [{ role: "user", content: "hello" }],
+      tools: {},
+      signal: new AbortController().signal,
+      threadId: "thread-9",
+      clientTurnId: "client-9",
+      onRequestId: (id) => requestIds.push(id),
+      onRawEvent: (event) => raw.push(event),
+      handlers: {
+        onActivity: () => {},
+        onThinking: () => {},
+        onText: () => {},
+        onReasoningStart: () => {},
+        onReasoningDelta: () => {},
+        onReasoningEnd: () => {},
+        onToolCall: () => {},
+        onToolResult: () => {},
+        onUsage: () => {},
+        onStep: () => {},
+        onRetry: () => {},
+        onSubagentUpdate: () => {},
+      },
+    });
+
+    expect(raw).toEqual([{ kind: "textDelta", text: "hi" }]);
+    expect(requestIds).toHaveLength(1);
   });
 });

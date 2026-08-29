@@ -1,21 +1,35 @@
 mod agent;
+mod agent_config;
+mod agent_exec;
+// Protocol-vocabulary + scheduler foundation; emitters and command call
+// sites land with the session/tool restructure.
+#[allow(dead_code)]
+mod agent_server;
 mod ai_model_registry;
+mod approvals;
 mod assets;
 mod biber_toolchain;
 mod chats;
+mod chunked;
 mod citation;
 mod commands;
 mod compile_fingerprint;
 mod config;
 mod connectors;
+mod cua_policy;
 mod deadlines;
 mod document_engine;
 mod fsperm;
 mod git;
 mod github;
+mod initial_state;
 mod language_service;
 mod latex_engine;
+mod library_db;
 mod literature;
+// Two-bucket logging; emit sites land with per-sidecar adoption.
+#[allow(dead_code)]
+mod logsafe;
 mod mcp;
 #[cfg(not(target_os = "windows"))]
 mod menu;
@@ -23,14 +37,23 @@ mod ollama;
 mod paths;
 mod proc;
 mod project;
+mod protocol;
 mod quit_gate;
+// Thread persistence; the thread-store commands land on top of it next.
+#[allow(dead_code)]
+mod rollout;
 mod sandbox;
 mod secrets;
+mod skills;
 mod state;
 mod storage;
+// Infrastructure for Phase 3 sidecar adoption; not all call sites exist yet.
+#[allow(dead_code)]
+mod supervisor;
 mod synctex;
 mod template_packs;
 mod templates;
+mod terminal;
 mod tex_distro;
 mod tinytex_archive;
 
@@ -95,6 +118,7 @@ pub fn run() {
     builder
         .manage(AppState::default())
         .manage(agent::AgentState::default())
+        .manage(agent_server::AgentServerState::default())
         .manage(mcp::server::McpState::default())
         // Closing the app mid-TinyTeX-install must be a deliberate choice: block
         // the close, let the frontend show a confirm dialog, and only pass a
@@ -180,10 +204,26 @@ pub fn run() {
             agent::agent_complete,
             agent::agent_cancel,
             agent::agent_cancel_all,
+            agent::agent_steer,
+            agent::agent_subagents_stop,
             agent::agent_stream,
             agent::agent_run,
             agent::agent_tool_result,
             agent::agent_list_models,
+            agent_server::agent_server_initialize,
+            agent_server::agent_server_resolve_request,
+            agent_server::agent_server_abandon_request,
+            agent_server::agent_thread_list,
+            agent_server::agent_thread_read,
+            agent_server::agent_thread_search,
+            agent_server::agent_thread_rollback,
+            agent_server::agent_thread_fork,
+            agent_server::agent_thread_archive,
+            agent_server::agent_thread_delete,
+            agent_server::agent_thread_prewarm,
+            agent_server::agent_thread_claim_prewarmed,
+            agent_server::agent_thread_import_chat,
+            agent_config::agent_multi_agent_config,
             commands::reload_views,
             commands::library_root,
             storage::library_storage_summary,
@@ -191,6 +231,25 @@ pub fn run() {
             storage::restore_recycled_project,
             storage::permanently_delete_recycled_project,
             commands::app_version,
+            protocol::backend_protocol_info,
+            initial_state::initial_state,
+            chunked::chunked_ack,
+            chunked::read_app_log_chunked,
+            logsafe::export_log_archive,
+            approvals::approvals_list,
+            approvals::approvals_set,
+            skills::skills_list,
+            library_db::chats_search,
+            library_db::usage_record,
+            library_db::usage_summary,
+            library_db::budget_get_cmd,
+            library_db::budget_set_cmd,
+            terminal::term_open,
+            terminal::term_write,
+            terminal::term_resize,
+            terminal::term_kill,
+            cua_policy::cua_action_confirm,
+            agent_exec::agent_exec,
             commands::project_engine,
             language_service::language_service_start,
             language_service::language_service_send,

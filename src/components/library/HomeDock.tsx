@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Moon, PenTool, Plus, Search, Settings as SettingsIcon, Sun, ToolCase } from "lucide-react";
+import { Moon, PenTool, Plus, Search, Settings as SettingsIcon, Sparkles, Sun, ToolCase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn, isMac, shortcut } from "@/lib/utils";
@@ -91,6 +91,14 @@ export function HomeDock() {
           tooltipSide={tooltipSide}
         />
       )}
+      <DockButton
+        label="AI Composer"
+        icon={<Sparkles className="size-4" />}
+        onClick={() => goTo("agentic-harness")}
+        active={page === "agentic-harness"}
+        testId="open-agentic-harness"
+        tooltipSide={tooltipSide}
+      />
       <DockButton
         label="Diagram Composer"
         icon={<PenTool className="size-4" />}

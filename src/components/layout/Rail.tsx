@@ -90,7 +90,7 @@ export function Rail() {
     <nav
       aria-label="Sidebar"
       data-tour="project-sidebar"
-      className="flex w-12 shrink-0 flex-col items-center border-r bg-muted/30 py-2"
+      className="flex w-12 shrink-0 flex-col items-center border-r bg-sidebar py-2"
     >
       <div className="flex flex-1 flex-col items-center gap-1">
         {sections.map((tabs, i) => (

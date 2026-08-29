@@ -38,6 +38,8 @@ import {
   mcpSetActiveProject,
 } from "@/lib/tauri";
 import { UNKNOWN_ENGINE } from "@/lib/document-engine";
+import { appQueryClient } from "@/lib/query";
+import { projectsKey } from "@/lib/queries/projects";
 import { flushAutoCommit, scheduleAutoCommit } from "@/lib/auto-commit";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
@@ -264,7 +266,6 @@ let projectTransition: Promise<void> = Promise.resolve();
 // detect it is stale and stop writing into the newly opened project's state.
 let openSeq = 0;
 let mainDocSeq = 0;
-let projectsInFlight: Promise<ProjectInfo[]> | null = null;
 let fileOpenSeq = 0;
 let fileOpenEpoch = 0;
 const pendingFileOpens = new Map<string, number>();
@@ -958,13 +959,16 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   docVersion: 0,
 
   refreshProjects: async () => {
-    // Single-flight: the app shell and the library both ask for the list on
-    // boot. Share one in-flight IPC instead of dropping a caller, so
-    // returning to the library still refetches (external edits, new dates).
-    projectsInFlight ??= listProjects().finally(() => {
-      projectsInFlight = null;
-    });
-    const projects = [...(await projectsInFlight)];
+    // Fetched through the query cache: concurrent boot callers (app shell and
+    // library) share one in-flight IPC, and the listing shows in devtools.
+    // staleTime 0 keeps the old always-refetch behavior on later calls.
+    const projects = [
+      ...(await appQueryClient().fetchQuery({
+        queryKey: projectsKey,
+        queryFn: listProjects,
+        staleTime: 0,
+      })),
+    ];
     projects.sort((a, b) => b.updated_at - a.updated_at);
     set({ projects, projectsLoaded: true });
   },

@@ -25,7 +25,7 @@ import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 
 function AppAppearanceTab() {
-  const { theme, toggleTheme } = useTheme();
+  const { preference, setPreference } = useTheme();
   const dockPlacement = useSettingsStore((state) => state.dockPlacement);
   const setDockPlacement = useSettingsStore((state) => state.setDockPlacement);
   const bgPattern = useSettingsStore((state) => state.bgPattern);
@@ -156,12 +156,39 @@ function AppAppearanceTab() {
         </div>
       </div>
 
-      <SettingsToggleRow
-        label="Dark mode"
-        description="Switch the app between light and dark themes."
-        checked={theme === "dark"}
-        onChange={toggleTheme}
-      />
+      <div className="rounded-lg border bg-card p-3">
+        <div className="text-sm font-medium">Theme</div>
+        <div className="mb-2 text-xs text-muted-foreground">
+          Pick a palette, or let the app follow your system setting.
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              { id: "light", label: "Light" },
+              { id: "dark", label: "Dark" },
+              { id: "system", label: "System" },
+            ] as const
+          ).map((option) => {
+            const active = preference === option.id;
+            return (
+              <button
+                type="button"
+                key={option.id}
+                data-testid={`settings-theme-${option.id}`}
+                onClick={() => setPreference(option.id)}
+                className={cn(
+                  "rounded-md border p-2.5 text-xs font-medium transition-colors",
+                  active
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:bg-accent",
+                )}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <div
         data-testid="settings-row-app-font-size"

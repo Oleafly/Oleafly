@@ -43,6 +43,7 @@ export function ToolConfirm({
   onApprove,
   onReject,
   onApproveSession,
+  onApproveProject,
   sessionAutoApprove,
   embedded,
 }: {
@@ -50,6 +51,8 @@ export function ToolConfirm({
   onApprove: () => void;
   onReject: () => void;
   onApproveSession?: () => void;
+  /** Persists an allow decision for this tool in this project, then approves. */
+  onApproveProject?: () => void;
   sessionAutoApprove?: boolean;
   embedded?: boolean;
 }) {
@@ -157,6 +160,19 @@ export function ToolConfirm({
         >
           <XCircle className="size-3.5" /> Reject
         </Button>
+        {isAutoApprovable(req.tool) && onApproveProject && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label="Always allow in this project"
+            data-testid="tool-confirm-approve-project"
+            onClick={onApproveProject}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <CheckCircle2 className="size-3.5" /> Always in this project
+          </Button>
+        )}
         {canSession && (
           <Button
             type="button"

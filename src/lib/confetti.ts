@@ -1,7 +1,8 @@
 import confetti from "canvas-confetti";
+import { prefersReducedMotion } from "@/lib/use-reduced-motion";
 
 export function celebrate(): void {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (prefersReducedMotion()) return;
   const colors = ["#1982c4", "#98f5e1", "#b9fbc0", "#fde4cf", "#a3c4f3"];
   confetti({
     particleCount: 140,

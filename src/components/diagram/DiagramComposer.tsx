@@ -4,6 +4,7 @@ import {
   DiagramKitContext,
   type DiagramHost,
 } from "@oleafly/diagram";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KIT } from "@/components/diagram/diagram-kit";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { WindowControls } from "@/components/layout/WindowControls";
@@ -170,19 +171,21 @@ export function DiagramComposer() {
   if (!open || !scratchId) return null;
 
   return (
-    <DiagramKitContext.Provider value={KIT}>
-      <DiagramComposerCore
-        open={open}
-        projectId={scratchId}
-        onClose={() => goTo("library")}
-        host={HOST}
-        codeExtensions={codeExtensions}
-        isMac={isMac}
-        fullscreen={fullscreen}
-        forcePreviewOpen={forcePreviewOpen}
-        brand={<HomeBrandButton onClick={() => goTo("library")} />}
-        windowControls={<WindowControls />}
-      />
-    </DiagramKitContext.Provider>
+    <ErrorBoundary surface="diagram composer" resetKey={scratchId}>
+      <DiagramKitContext.Provider value={KIT}>
+        <DiagramComposerCore
+          open={open}
+          projectId={scratchId}
+          onClose={() => goTo("library")}
+          host={HOST}
+          codeExtensions={codeExtensions}
+          isMac={isMac}
+          fullscreen={fullscreen}
+          forcePreviewOpen={forcePreviewOpen}
+          brand={<HomeBrandButton onClick={() => goTo("library")} />}
+          windowControls={<WindowControls />}
+        />
+      </DiagramKitContext.Provider>
+    </ErrorBoundary>
   );
 }

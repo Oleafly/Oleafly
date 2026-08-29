@@ -17,6 +17,7 @@ import { RefreshCw } from "lucide-react";
 import { ThemeProvider } from "@/lib/theme";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
+import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
 import { Editor } from "@/components/editor/Editor";
 import { PreviewPane } from "@/components/preview/PreviewPane";
 import { PdfImportView } from "@/components/import/PdfImportView";
@@ -136,6 +137,9 @@ const SettingsModal = lazy(() =>
 const DiagramComposer = lazy(() =>
   import("@/components/diagram/DiagramComposer").then((m) => ({ default: m.DiagramComposer })),
 );
+const AgenticHarness = lazy(() =>
+  import("@/components/harness/AgenticHarness").then((m) => ({ default: m.AgenticHarness })),
+);
 const CopilotOverlay = lazy(() =>
   import("@/components/ai/CopilotOverlay").then((m) => ({ default: m.CopilotOverlay })),
 );
@@ -193,19 +197,16 @@ function VHandle({
   placement?: "top" | "center" | "bottom";
 }) {
   return (
-    <div className="resize-handle-col relative flex w-3 shrink-0">
+    <div className="resize-handle-col relative flex w-1.5 shrink-0 bg-background">
       <PanelResizeHandle
         id={id}
         style={{ cursor: "col-resize" }}
-        className={cn(
-          "group absolute inset-0 flex items-center justify-center",
-          "transition-colors hover:bg-accent/40"
-        )}
+        className="group absolute inset-0"
       >
         <span
           className={cn(
-            "pointer-events-none h-10 w-1 rounded-full bg-border transition-colors",
-            "group-hover:bg-ring group-data-[resize-handle-state=drag]:bg-ring"
+            "pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border transition-colors duration-150",
+            "group-hover:w-0.5 group-hover:bg-ring group-data-[resize-handle-state=drag]:w-0.5 group-data-[resize-handle-state=drag]:bg-ring"
           )}
         />
       </PanelResizeHandle>
@@ -673,6 +674,46 @@ function AppContent() {
     tree,
   ]);
 
+  // The composer is its own surface, not a layer over the workspace: while
+  // it is active the editor and preview never mount behind it. This branch
+  // sits above both the library and project branches so the same component
+  // instance stays mounted across project-open transitions (its native
+  // browser webview cannot survive a remount).
+  if (homePage === "agentic-harness") {
+    return (
+      <ThemeProvider>
+        <Suspense
+          fallback={
+            <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
+              <div className="size-6 animate-spin rounded-full border-2 border-muted-foreground/25 border-t-foreground motion-reduce:animate-none" />
+              <p className="text-xs">Loading the composer…</p>
+            </div>
+          }
+        >
+          <AgenticHarness />
+        </Suspense>
+        <CommandPalette />
+        <SearchOmnibar />
+        <GlobalNewProject />
+        <ExternalToolApprovals />
+        <QuitGuard />
+        <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
+        {chatFloating && (
+          <Suspense fallback={null}>
+            <CopilotOverlay />
+          </Suspense>
+        )}
+        <LazyModals>
+          <SettingsModal />
+          <WordCountModal />
+          <HistoryModal />
+          <HotkeysModal />
+          <TourGuide />
+        </LazyModals>
+      </ThemeProvider>
+    );
+  }
+
   if (!projectId) {
     return (
       <ThemeProvider>
@@ -717,6 +758,7 @@ function AppContent() {
           (see globals.css). */}
       <div data-sidebar-open={showTree ? "true" : "false"} className="flex h-full flex-col">
         <TopToolbar />
+        <BackendProtocolBanner />
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <Rail />
           <ErrorBoundary
@@ -778,9 +820,11 @@ function AppContent() {
                         minSize={15}
                         className="min-h-0 min-w-0"
                       >
-                        <Suspense fallback={<SurfaceLoading label="Loading editor" />}>
-                          <Editor />
-                        </Suspense>
+                        <ErrorBoundary surface="editor" resetKey={projectId}>
+                          <Suspense fallback={<SurfaceLoading label="Loading editor" />}>
+                            <Editor />
+                          </Suspense>
+                        </ErrorBoundary>
                       </Panel>
                     )}
                     {viewMode === "split" && <VHandle id="h-mid" placement="top" />}
@@ -793,9 +837,11 @@ function AppContent() {
                         minSize={15}
                         className="min-h-0 min-w-0"
                       >
-                        <Suspense fallback={<SurfaceLoading label="Loading preview" />}>
-                          <PreviewPane />
-                        </Suspense>
+                        <ErrorBoundary surface="PDF preview" resetKey={projectId}>
+                          <Suspense fallback={<SurfaceLoading label="Loading preview" />}>
+                            <PreviewPane />
+                          </Suspense>
+                        </ErrorBoundary>
                       </Panel>
                     )}
                   </PanelGroup>

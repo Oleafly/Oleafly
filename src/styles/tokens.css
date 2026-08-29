@@ -1,0 +1,213 @@
+/* Oleafly design tokens.
+ *
+ * Primitive ramps and semantic derivations ported from the openai-codex-electron
+ * design system (MIT). Values only; no identity assets. Semantic tokens follow
+ * --oleafly-{family}-{step} with family in {text,surface,border,accent,danger,
+ * success,warn} and step in {primary,secondary,tertiary}.
+ *
+ * Theme scoping intentionally answers both hooks: the legacy .light/.dark root
+ * classes and the data-theme attribute the boot script now also sets, so either
+ * mechanism alone produces a fully-themed page. */
+
+:root {
+  /* Primitive ramps */
+  --oleafly-white: #fff;
+  --oleafly-black: #000;
+  --oleafly-gray-0: #fff;
+  --oleafly-gray-50: #f9f9f9;
+  --oleafly-gray-75: #f3f3f3;
+  --oleafly-gray-100: #ededed;
+  --oleafly-gray-150: #dfdfdf;
+  --oleafly-gray-200: #cdcdcd;
+  --oleafly-gray-300: #afafaf;
+  --oleafly-gray-400: #8f8f8f;
+  --oleafly-gray-500: #5d5d5d;
+  --oleafly-gray-550: #4f4f4f;
+  --oleafly-gray-600: #414141;
+  --oleafly-gray-650: #393939;
+  --oleafly-gray-700: #303030;
+  --oleafly-gray-750: #282828;
+  --oleafly-gray-800: #212121;
+  --oleafly-gray-900: #181818;
+  --oleafly-gray-950: #131313;
+  --oleafly-gray-1000: #0d0d0d;
+  --oleafly-blue-50: #e5f3ff;
+  --oleafly-blue-75: #cce6ff;
+  --oleafly-blue-100: #99ceff;
+  --oleafly-blue-200: #66b5ff;
+  --oleafly-blue-300: #339cff;
+  --oleafly-blue-400: #0285ff;
+  --oleafly-blue-500: #0169cc;
+  --oleafly-blue-600: #004f99;
+  --oleafly-blue-800: #013566;
+  --oleafly-blue-900: #00284d;
+  --oleafly-red-50: #ffd9d9;
+  --oleafly-red-100: #ffa4a2;
+  --oleafly-red-200: #ff8583;
+  --oleafly-red-300: #ff6764;
+  --oleafly-red-400: #fa423e;
+  --oleafly-red-500: #e02e2a;
+  --oleafly-red-600: #ba2623;
+  --oleafly-red-900: #4d100e;
+  --oleafly-green-50: #d9f4e4;
+  --oleafly-green-100: #8cdfad;
+  --oleafly-green-200: #66d492;
+  --oleafly-green-300: #40c977;
+  --oleafly-green-400: #04b84c;
+  --oleafly-green-500: #00a240;
+  --oleafly-green-600: #008635;
+  --oleafly-green-800: #004f1f;
+  --oleafly-orange-50: #ffe7d9;
+  --oleafly-orange-200: #ff9e6c;
+  --oleafly-orange-300: #ff8549;
+  --oleafly-orange-400: #fb6a22;
+  --oleafly-orange-500: #e25507;
+  --oleafly-orange-700: #923b0f;
+  --oleafly-orange-900: #4a2206;
+  --oleafly-yellow-100: #ffe48c;
+  --oleafly-yellow-300: #ffd240;
+  --oleafly-yellow-400: #ffc300;
+  --oleafly-yellow-500: #e0ac00;
+  --oleafly-purple-100: #ceb0fb;
+  --oleafly-purple-300: #ad7bf9;
+  --oleafly-purple-400: #924ff7;
+  --oleafly-purple-500: #8046d9;
+
+  /* Radius scale: base sizes times a global shape scale, so a future
+   * "square corners" or "round corners" preference is a one-token change. */
+  --oleafly-corner-scale: 1;
+  --oleafly-radius-xs: calc(0.25rem * var(--oleafly-corner-scale));
+  --oleafly-radius-sm: calc(0.375rem * var(--oleafly-corner-scale));
+  --oleafly-radius-md: calc(0.5rem * var(--oleafly-corner-scale));
+  --oleafly-radius-lg: calc(0.625rem * var(--oleafly-corner-scale));
+  --oleafly-radius-xl: calc(0.75rem * var(--oleafly-corner-scale));
+  --oleafly-radius-full: 9999px;
+
+  /* Spacing base */
+  --oleafly-spacing: 0.25rem;
+
+  /* Measured layout metrics from the reference shell */
+  --oleafly-toolbar-height: 46px;
+  --oleafly-toolbar-padding: calc(var(--oleafly-spacing) * 2);
+  --oleafly-sidebar-width: clamp(240px, 275px, min(520px, calc(100vw - 320px)));
+  --oleafly-thread-top-inset: calc(var(--oleafly-spacing) * 8);
+  --oleafly-composer-radius: calc(var(--oleafly-spacing) * 5.5);
+  --oleafly-composer-inset: calc(var(--oleafly-spacing) * 3.25);
+  --oleafly-composer-button: calc(var(--oleafly-spacing) * 7);
+  --oleafly-composer-button-sm: calc(var(--oleafly-spacing) * 5);
+  --oleafly-composer-gap: var(--oleafly-spacing);
+
+  /* Motion */
+  --oleafly-duration-basic: 0.15s;
+  --oleafly-duration-relaxed: 0.3s;
+  --oleafly-ease-basic: ease;
+  --oleafly-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --oleafly-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --oleafly-ease-enter-snappy: cubic-bezier(0.23, 1, 0.32, 1);
+
+  /* Elevation */
+  --oleafly-shadow-hairline: 0px 0px 0px 0.5px rgb(0 0 0 / 0.1);
+  --oleafly-shadow-sm: 0px 1px 2px -1px rgb(0 0 0 / 0.08);
+  --oleafly-shadow-md: 0px 2px 4px -1px rgb(0 0 0 / 0.08);
+  --oleafly-shadow-lg: 0px 4px 8px -2px rgb(0 0 0 / 0.1);
+  --oleafly-shadow-xl: 0px 8px 16px -4px rgb(0 0 0 / 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --oleafly-duration-basic: 0s;
+    --oleafly-duration-relaxed: 0s;
+  }
+}
+
+/* Light palette */
+:root,
+.light,
+[data-theme="light"] {
+  --oleafly-text-primary: #1a1c1f;
+  --oleafly-text-secondary: color-mix(in oklab, var(--oleafly-text-primary) 70%, transparent);
+  --oleafly-text-tertiary: color-mix(in oklab, var(--oleafly-text-primary) 50%, transparent);
+
+  --oleafly-surface-primary: var(--oleafly-gray-0);
+  --oleafly-surface-secondary: var(--oleafly-gray-50);
+  --oleafly-surface-tertiary: var(--oleafly-gray-100);
+
+  --oleafly-border-primary: color-mix(in oklab, var(--oleafly-text-primary) 8%, transparent);
+  --oleafly-border-secondary: color-mix(in oklab, var(--oleafly-text-primary) 12%, transparent);
+  --oleafly-border-tertiary: color-mix(in oklab, var(--oleafly-text-primary) 5%, transparent);
+
+  --oleafly-accent-primary: var(--oleafly-blue-400);
+  --oleafly-accent-secondary: var(--oleafly-blue-500);
+  --oleafly-accent-tertiary: var(--oleafly-blue-50);
+
+  --oleafly-danger-primary: var(--oleafly-red-500);
+  --oleafly-danger-secondary: var(--oleafly-red-600);
+  --oleafly-danger-tertiary: var(--oleafly-red-50);
+
+  --oleafly-success-primary: var(--oleafly-green-500);
+  --oleafly-success-secondary: var(--oleafly-green-600);
+  --oleafly-success-tertiary: var(--oleafly-green-50);
+
+  --oleafly-warn-primary: var(--oleafly-orange-500);
+  --oleafly-warn-secondary: var(--oleafly-orange-700);
+  --oleafly-warn-tertiary: var(--oleafly-orange-50);
+
+  --oleafly-focus: var(--oleafly-blue-300);
+}
+
+/* Dark palette */
+.dark,
+[data-theme="dark"] {
+  --oleafly-text-primary: var(--oleafly-gray-150);
+  --oleafly-text-secondary: color-mix(in oklab, var(--oleafly-white) 70%, transparent);
+  --oleafly-text-tertiary: color-mix(in oklab, var(--oleafly-white) 50%, transparent);
+
+  --oleafly-surface-primary: var(--oleafly-gray-900);
+  --oleafly-surface-secondary: var(--oleafly-gray-800);
+  --oleafly-surface-tertiary: var(--oleafly-gray-750);
+
+  --oleafly-border-primary: color-mix(in oklab, var(--oleafly-white) 8%, transparent);
+  --oleafly-border-secondary: color-mix(in oklab, var(--oleafly-white) 16%, transparent);
+  --oleafly-border-tertiary: color-mix(in oklab, var(--oleafly-white) 4%, transparent);
+
+  --oleafly-accent-primary: var(--oleafly-blue-300);
+  --oleafly-accent-secondary: var(--oleafly-blue-100);
+  --oleafly-accent-tertiary: var(--oleafly-blue-900);
+
+  --oleafly-danger-primary: var(--oleafly-red-300);
+  --oleafly-danger-secondary: var(--oleafly-red-400);
+  --oleafly-danger-tertiary: var(--oleafly-red-900);
+
+  --oleafly-success-primary: var(--oleafly-green-300);
+  --oleafly-success-secondary: var(--oleafly-green-400);
+  --oleafly-success-tertiary: color-mix(in oklab, var(--oleafly-green-400) 16%, transparent);
+
+  --oleafly-warn-primary: var(--oleafly-orange-300);
+  --oleafly-warn-secondary: var(--oleafly-orange-400);
+  --oleafly-warn-tertiary: var(--oleafly-orange-900);
+
+  --oleafly-focus: color-mix(in oklab, var(--oleafly-blue-300) 70%, transparent);
+}
+
+/* Tailwind utilities over the semantic tokens: bg-surface, bg-surface-secondary,
+ * text-danger, border-strong, shadow-hairline, ease-enter-snappy… */
+@theme inline {
+  --color-surface: var(--oleafly-surface-primary);
+  --color-surface-secondary: var(--oleafly-surface-secondary);
+  --color-surface-tertiary: var(--oleafly-surface-tertiary);
+  --color-danger: var(--oleafly-danger-primary);
+  --color-danger-strong: var(--oleafly-danger-secondary);
+  --color-danger-soft: var(--oleafly-danger-tertiary);
+  --color-success: var(--oleafly-success-primary);
+  --color-success-strong: var(--oleafly-success-secondary);
+  --color-success-soft: var(--oleafly-success-tertiary);
+  --color-warn: var(--oleafly-warn-primary);
+  --color-warn-strong: var(--oleafly-warn-secondary);
+  --color-warn-soft: var(--oleafly-warn-tertiary);
+  --color-border-strong: var(--oleafly-border-secondary);
+  --color-border-subtle: var(--oleafly-border-tertiary);
+  --shadow-hairline: var(--oleafly-shadow-hairline);
+  --ease-enter-snappy: var(--oleafly-ease-enter-snappy);
+  --ease-out: var(--oleafly-ease-out);
+  --ease-in-out: var(--oleafly-ease-in-out);
+}

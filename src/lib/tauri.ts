@@ -1,9 +1,16 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { receiveChunkedText } from "@/lib/chunked-ipc";
 
 import type {
   AheadBehind,
+  AgentClientCapabilities,
+  AgentClientInfo,
+  AgentRequestDecision,
+  AgentServerInfo,
   AppConfig,
+  BackendProtocolInfo,
+  ChatSearchHit,
   CompileResult,
   ComponentInfo,
   CopyFileResult,
@@ -21,6 +28,7 @@ import type {
   GitHubUser,
   GitPullResult,
   ImportPathsResult,
+  InitialState,
   LibraryStorageSummary,
   McpConnectionInfo,
   McpStatus,
@@ -42,6 +50,8 @@ import type {
   TexSpec,
   TexStatus,
   TinytexInstallState,
+  ToolDecision,
+  UsageTotals,
   ValidatedCompileFingerprint,
 } from "@oleafly/backend-port";
 export type * from "@oleafly/backend-port";
@@ -269,6 +279,11 @@ export const appendAppLog = (message: string) =>
 
 export const readAppLog = (maxBytes: number) =>
   invoke<string>("read_app_log", { maxBytes });
+
+export const readAppLogChunked = (maxBytes: number) =>
+  receiveChunkedText((channel) =>
+    invoke<void>("read_app_log_chunked", { maxBytes, channel }),
+  );
 
 export const setMainDocCmd = (projectId: string, mainDoc: string) =>
   invoke<ProjectMeta>("set_main_doc", { projectId, mainDoc });
@@ -573,6 +588,29 @@ export const agentListModels = (args: {
     baseUrl: args.baseURL ?? null,
   });
 
+export const agentServerInitialize = (
+  clientInfo: AgentClientInfo,
+  capabilities: AgentClientCapabilities,
+) =>
+  invoke<AgentServerInfo>("agent_server_initialize", {
+    clientInfo,
+    capabilities,
+  });
+
+export const agentServerResolveRequest = (
+  requestId: string,
+  decision: AgentRequestDecision,
+  payload?: unknown,
+) =>
+  invoke<void>("agent_server_resolve_request", {
+    requestId,
+    decision,
+    payload: payload ?? null,
+  });
+
+export const agentServerAbandonRequest = (requestId: string) =>
+  invoke<void>("agent_server_abandon_request", { requestId });
+
 export const mcpSetActiveProject = (projectId: string | null) => {
   if (activeMcpRendererSession === null) {
     return Promise.reject(new Error("The MCP renderer session is not ready"));
@@ -669,6 +707,52 @@ export const recycleProject = (projectId: string) =>
 
 export const libraryRoot = () => invoke<string>("library_root");
 export const appVersion = () => invoke<string>("app_version");
+export const agentExec = (projectId: string, command: string) =>
+  invoke<{
+    command: string;
+    output: string;
+    exit_code: number | null;
+    status: string;
+    truncated: boolean;
+  }>("agent_exec", { projectId, command });
+export const backendProtocolInfo = () =>
+  invoke<BackendProtocolInfo>("backend_protocol_info");
+export const initialState = () => invoke<InitialState>("initial_state");
+
+export const chatsSearch = (query: string) =>
+  invoke<ChatSearchHit[]>("chats_search", { query });
+export const usageRecord = (
+  projectId: string,
+  chatId: string,
+  provider: string,
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  costUsd: number,
+) =>
+  invoke<void>("usage_record", {
+    projectId,
+    chatId,
+    provider,
+    model,
+    inputTokens,
+    outputTokens,
+    costUsd,
+  });
+export const usageSummary = (projectId: string) =>
+  invoke<UsageTotals>("usage_summary", { projectId });
+export const budgetGet = (projectId: string) =>
+  invoke<number | null>("budget_get_cmd", { projectId });
+export const budgetSet = (projectId: string, budgetUsd: number | null) =>
+  invoke<void>("budget_set_cmd", { projectId, budgetUsd });
+
+export const approvalsList = (projectId: string) =>
+  invoke<Record<string, ToolDecision>>("approvals_list", { projectId });
+export const approvalsSet = (
+  projectId: string,
+  tool: string,
+  decision: ToolDecision | null,
+) => invoke<void>("approvals_set", { projectId, tool, decision });
 
 export function base64ToUint8Array(b64: string): Uint8Array {
   const bin = atob(b64);

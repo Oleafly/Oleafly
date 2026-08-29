@@ -14,6 +14,16 @@ describe("desktop scrollbars", () => {
   });
 });
 
+describe("app-wide reduced motion", () => {
+  it("damps every animation and transition when the OS asks for less motion", () => {
+    expect(styles).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(styles).toContain("animation-duration: 0.01ms !important");
+    expect(styles).toContain("animation-iteration-count: 1 !important");
+    expect(styles).toContain("transition-duration: 0.01ms !important");
+    expect(styles).toContain("scroll-behavior: auto !important");
+  });
+});
+
 describe("assistant mascot motion", () => {
   it("animates only the blink with a reduced-motion fallback", () => {
     expect(styles).toContain("@keyframes oleafly-assistant-blink");

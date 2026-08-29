@@ -5,6 +5,7 @@ const ATTACHMENT_MAX_CHARS = 48_000;
 import {
   runViaBackend,
   type AgentContentPart,
+  type AgentEvent,
   type AgentMessage,
   type AgentRunConfig,
   type AgentRunOutcome,
@@ -29,6 +30,12 @@ export interface HarnessHandlers {
   onUsage(usage: { input: number; output: number }): void;
   onStep(step: number): void;
   onRetry(attempt: number, max: number): void;
+  onSubagentUpdate(update: {
+    id: string;
+    label: string;
+    state: string;
+    detail: string | null;
+  }): void;
 }
 
 export function toolSchemasFor(tools: ToolSet): AgentToolSchema[] {
@@ -162,6 +169,14 @@ export async function runAgentHarness(args: {
   imageInstruction?: string;
   /** The project this run is pinned to; enables native backend tool dispatch. */
   projectId?: string | null;
+  /** Thread the turn records into (rollouts + SQLite mirror). */
+  threadId?: string;
+  /** Client-generated turn id for the optimistic-turn rebind. */
+  clientTurnId?: string;
+  /** Backend request id, needed to steer or interrupt by id. */
+  onRequestId?: (id: string) => void;
+  /** Raw event tap (fold into the authoritative turn record). */
+  onRawEvent?: (event: AgentEvent) => void;
   /**
    * Run-context guard, called before every tool execution. Returning a
    * message refuses the call with a structured error instead of executing —
@@ -201,6 +216,7 @@ export async function runAgentHarness(args: {
     {
       onEvent: (event) => {
         if (args.signal.aborted) return;
+        args.onRawEvent?.(event);
         handlers.onActivity();
         switch (event.kind) {
           case "stepStart":
@@ -251,6 +267,16 @@ export async function runAgentHarness(args: {
           }
           case "usage":
             handlers.onUsage(event.usage);
+            break;
+          case "subagentUpdate":
+            handlers.onActivity();
+            handlers.onSubagentUpdate(event);
+            break;
+          case "compacted":
+            handlers.onThinking("Summarizing earlier conversation…");
+            break;
+          case "steered":
+            handlers.onActivity();
             break;
           case "done":
             endReasoning();
@@ -310,5 +336,10 @@ export async function runAgentHarness(args: {
     args.config,
     args.providerOverride,
     args.projectId ?? null,
+    {
+      threadId: args.threadId,
+      clientTurnId: args.clientTurnId,
+      onRequestId: args.onRequestId,
+    },
   );
 }

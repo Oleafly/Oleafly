@@ -52,7 +52,7 @@ import {
   type Venue,
 } from "@/lib/deadlines";
 import { cn } from "@/lib/utils";
-import { useDeadlinesStore } from "@/store/deadlines";
+import { useDeadlines, useRefreshDeadlines } from "@/lib/queries/deadlines";
 import { useHomeViewStore } from "@/store/home-view";
 
 function pad(number: number): string {
@@ -515,24 +515,20 @@ function DeadlineStat({
 
 export function DeadlinesView() {
   const activePage = useHomeViewStore((state) => state.page);
-  const venues = useDeadlinesStore((state) => state.venues);
-  const generatedAt = useDeadlinesStore((state) => state.generatedAt);
-  const busy = useDeadlinesStore((state) => state.busy);
-  const error = useDeadlinesStore((state) => state.error);
-  const openView = useDeadlinesStore((state) => state.openView);
-  const refresh = useDeadlinesStore((state) => state.refresh);
+  const active = activePage === "deadlines";
+  const deadlines = useDeadlines(active);
+  const refreshDeadlines = useRefreshDeadlines();
+  const venues = deadlines.data?.venues ?? (deadlines.isError ? [] : null);
+  const generatedAt = deadlines.data?.generatedAt ?? null;
+  const busy = refreshDeadlines.isPending;
+  const error = deadlines.isError || refreshDeadlines.isError;
+  const refresh = refreshDeadlines.mutate;
   const [now, setNow] = useState(() => new Date());
   const [sub, setSub] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [showPassed, setShowPassed] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("deadline");
   const [helpOpen, setHelpOpen] = useState(false);
-  const active = activePage === "deadlines";
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: openView is a stable store action, re-running it on every countdown tick would refetch on each countdown tick
-  useEffect(() => {
-    if (active) void openView();
-  }, [active]);
 
   useEffect(() => {
     if (!active) return;
@@ -616,7 +612,7 @@ export function DeadlinesView() {
                 disabled={busy}
                 aria-label={busy ? "Refreshing deadlines" : "Refresh deadlines"}
                 data-testid="deadlines-refresh"
-                onClick={() => void refresh()}
+                onClick={() => refresh()}
               >
                 <RefreshCw
                   className={cn("size-4", busy && "animate-spin")}

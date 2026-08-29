@@ -10,11 +10,14 @@ import {
 } from "@/store/settings";
 
 const toggleTheme = vi.hoisted(() => vi.fn());
+const setPreference = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({
     theme: "dark",
+    preference: "dark",
     setTheme: vi.fn(),
+    setPreference,
     toggleTheme,
   }),
 }));
@@ -24,6 +27,7 @@ import { AppearanceSection } from "./AppearanceSection";
 describe("Appearance settings tabs", () => {
   beforeEach(() => {
     toggleTheme.mockClear();
+    setPreference.mockClear();
     Element.prototype.hasPointerCapture = vi.fn(() => false);
     Element.prototype.setPointerCapture = vi.fn();
     Element.prototype.releasePointerCapture = vi.fn();
@@ -83,14 +87,16 @@ describe("Appearance settings tabs", () => {
     await user.click(
       screen.getByRole("button", { name: `${ACCENTS[1].name} accent` }),
     );
-    await user.click(screen.getByRole("switch", { name: "Dark mode" }));
+    await user.click(screen.getByTestId("settings-theme-light"));
+    await user.click(screen.getByTestId("settings-theme-system"));
 
     expect(useSettingsStore.getState()).toMatchObject({
       dockPlacement: "right",
       bgPattern: "grid",
       accentColor: ACCENTS[1].color,
     });
-    expect(toggleTheme).toHaveBeenCalledOnce();
+    expect(setPreference).toHaveBeenNthCalledWith(1, "light");
+    expect(setPreference).toHaveBeenNthCalledWith(2, "system");
 
     await user.click(screen.getByRole("tab", { name: "Editor" }));
     for (const label of [

@@ -1,41 +1,65 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { chatsSearch } from "@/lib/tauri";
+import { createAppQueryClient } from "@/lib/query";
 import type { StoredChat } from "@/store/chats";
 import { ChatHistoryModal } from "./ChatHistoryModal";
 
-const chat: StoredChat = {
-  id: "chat-1",
-  projectId: "project-1",
-  title: "Review the introduction",
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
-  messages: [{ role: "user", content: "Review this introduction." }],
-  headOid: null,
-};
+vi.mock("@/lib/tauri", () => ({
+  chatsSearch: vi.fn(),
+}));
 
-describe("ChatHistoryModal", () => {
-  it("uses the spacious history modal shell without a header divider", () => {
-    render(
+const mockSearch = vi.mocked(chatsSearch);
+
+const CHATS = [
+  { id: "c1", title: "Bibliography fixes", messages: [], updatedAt: Date.now() },
+  { id: "c2", title: "Figure drawing", messages: [], updatedAt: Date.now() },
+] as unknown as StoredChat[];
+
+function renderModal() {
+  render(
+    <QueryClientProvider client={createAppQueryClient()}>
       <ChatHistoryModal
         open
-        chats={[chat]}
+        chats={CHATS}
         activeId={null}
         currentHead={null}
-        onClose={vi.fn()}
-        onOpen={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    );
+        onClose={() => {}}
+        onOpen={() => {}}
+        onDelete={() => {}}
+      />
+    </QueryClientProvider>,
+  );
+}
 
-    const dialog = screen.getByRole("dialog", { name: "Chat history" });
-    expect(dialog).toHaveClass("h-[min(30rem,80vh)]", "bg-popover");
+describe("ChatHistoryModal search", () => {
+  beforeEach(() => {
+    mockSearch.mockReset().mockResolvedValue([]);
+  });
 
-    const header = screen.getByRole("heading", { name: "Chat history" })
-      .parentElement;
-    expect(header).toHaveClass("p-4");
-    expect(header).not.toHaveClass("border-b");
-    expect(screen.getByText("Review the introduction")).toBeInTheDocument();
+  it("filters the list by title as the user types", async () => {
+    renderModal();
+    fireEvent.change(screen.getByLabelText("Search chats"), {
+      target: { value: "bibliography" },
+    });
+
+    expect(await screen.findByText("Bibliography fixes")).toBeInTheDocument();
+    expect(screen.queryByText("Figure drawing")).not.toBeInTheDocument();
+  });
+
+  it("keeps chats whose message content matches via the session index", async () => {
+    mockSearch.mockResolvedValue([
+      { project_id: "p", chat_id: "c2", title: "Figure drawing", snippet: "tikz" },
+    ]);
+    renderModal();
+    fireEvent.change(screen.getByLabelText("Search chats"), {
+      target: { value: "tikz" },
+    });
+
+    expect(await screen.findByText("Figure drawing")).toBeInTheDocument();
+    expect(screen.queryByText("Bibliography fixes")).not.toBeInTheDocument();
   });
 });

@@ -99,7 +99,7 @@ export function Tooltip({
             ref={tipRef}
             role="tooltip"
             className={cn(
-              "pointer-events-none fixed z-[200] rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md",
+              "pointer-events-none fixed z-[200] rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md animate-in fade-in-0 duration-100",
               // overflow-wrap anywhere: labels can carry long unbroken paths
               // (TeX bin directories), which must wrap instead of spilling
               // past the bubble.

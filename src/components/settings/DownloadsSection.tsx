@@ -1,28 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Check, ChevronDown, ChevronRight, Download, FileText, Info, Loader2, Sparkles, Trash2, Type } from "lucide-react";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
-import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
+import {
+  useFontComponents,
+  useInvalidateCatalog,
+  useTemplatePacks,
+  useTemplates,
+} from "@/lib/queries/catalog";
 import { useSettingsStore } from "@/store/settings";
 import {
   deleteCustomTemplate,
   downloadAllFonts,
   installFontComponent,
   installTemplatePack,
-  listFontComponents,
-  listTemplatePacks,
-  listTemplates,
-  refreshPackCatalog,
   removeFontComponent,
   removeTemplatePack,
   templatePreview,
   type AssetProgress,
-  type ComponentInfo,
-  type PackInfo,
   type TemplateInfo,
 } from "@/lib/tauri";
 
@@ -36,36 +35,34 @@ function formatSize(bytes: number): string {
 }
 
 export function DownloadsSection() {
-  const [components, setComponents] = useState<ComponentInfo[]>([]);
+  const invalidate = useInvalidateCatalog();
+  const components = useFontComponents().data ?? [];
   const [busyId, setBusyId] = useState<string | null>(null);
   const [progress, setProgress] = useState("");
 
   const templatesHeadingRef = useRef<HTMLHeadingElement>(null);
   const [tab, setTab] = useState<"fonts" | "templates">("fonts");
   const [aiOpen, setAiOpen] = useState(false);
-  const [aiTemplates, setAiTemplates] = useState<TemplateInfo[]>([]);
   const [aiPreviews, setAiPreviews] = useState<Record<string, string>>({});
   const [aiConfirm, setAiConfirm] = useState<TemplateInfo | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
-  const refreshAiTemplates = useCallback(async () => {
-    try {
-      const all = await listTemplates();
-      const ai = all.filter((t) => (t.category || "") === "AI Generated");
-      setAiTemplates(ai);
-      for (const t of ai) {
-        void templatePreview(t.id)
-          .then((uri) => {
-            if (uri) setAiPreviews((prev) => ({ ...prev, [t.id]: uri }));
-          })
-          .catch(() => {});
-      }
-    } catch (e) {
-      void logError("list AI templates", e);
-    }
-  }, []);
+  const templatesData = useTemplates(aiOpen).data;
+  const aiTemplates = useMemo(
+    () =>
+      (templatesData ?? []).filter(
+        (t) => (t.category || "") === "AI Generated",
+      ),
+    [templatesData],
+  );
   useEffect(() => {
-    if (aiOpen) void refreshAiTemplates();
-  }, [aiOpen, refreshAiTemplates]);
+    for (const t of aiTemplates) {
+      void templatePreview(t.id)
+        .then((uri) => {
+          if (uri) setAiPreviews((prev) => ({ ...prev, [t.id]: uri }));
+        })
+        .catch(() => {});
+    }
+  }, [aiTemplates]);
   const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
   useEffect(() => {
@@ -75,16 +72,8 @@ export function DownloadsSection() {
   }, [scrollTarget, setScrollTarget]);
 
   const refresh = useCallback(async () => {
-    try {
-      setComponents(await listFontComponents());
-    } catch (e) {
-      void logError("list font components", e);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    await invalidate.fontComponents();
+  }, [invalidate.fontComponents]);
 
   const withProgress = useCallback(
     async (id: string, run: () => Promise<void>, verb: string) => {
@@ -128,22 +117,13 @@ export function DownloadsSection() {
   const anyBusy = busyId !== null;
   const allInstalled = components.length > 0 && components.every((c) => c.installed);
 
-  const [packs, setPacks] = useState<PackInfo[]>([]);
+  const packs = useTemplatePacks().data ?? [];
   const [packBusyId, setPackBusyId] = useState<string | null>(null);
   const [packProgress, setPackProgress] = useState("");
 
   const refreshPacks = useCallback(async () => {
-    try {
-      await refreshPackCatalog().catch(() => {});
-      setPacks(await listTemplatePacks());
-    } catch (e) {
-      void logError("list template packs", e);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refreshPacks();
-  }, [refreshPacks]);
+    await invalidate.templatePacks();
+  }, [invalidate.templatePacks]);
 
   const runPackInstall = async (id: string) => {
     let unlisten: (() => void) | undefined;
@@ -446,7 +426,7 @@ export function DownloadsSection() {
           void deleteCustomTemplate(target.id)
             .then(() => {
               toast.success(`Deleted "${target.name}" from your library`);
-              return refreshAiTemplates();
+              return invalidate.templates();
             })
             .catch((e) => notifyError("delete the template", e, "Couldn't delete the template."))
             .finally(() => setAiBusy(false));

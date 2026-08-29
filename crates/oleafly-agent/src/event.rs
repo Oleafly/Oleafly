@@ -46,6 +46,25 @@ pub enum AgentEvent {
     Usage {
         usage: Usage,
     },
+    /// Lifecycle of a delegated child run: started, thinking, the tool it is
+    /// on, done (detail carries a preview of its answer), or error.
+    SubagentUpdate {
+        id: String,
+        label: String,
+        state: String,
+        detail: Option<String>,
+    },
+    /// Older history was summarized away mid-run so the turn could continue
+    /// in a fresh context window.
+    Compacted {
+        dropped_messages: u32,
+        reason: String,
+    },
+    /// Mid-run input was delivered at a message boundary and the turn
+    /// continues with it in history.
+    Steered {
+        text: String,
+    },
     Done {
         stop_reason: Option<String>,
     },

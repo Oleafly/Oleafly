@@ -12,6 +12,7 @@ import {
 import { ArrowLeft, Check, Moon, Sun } from "lucide-react";
 import { modalCoordinator } from "@oleafly/templates/modal-coordinator";
 import { LeafLogo } from "@/components/layout/LeafLogo";
+import { prefersReducedMotion, useReducedMotion } from "@/lib/use-reduced-motion";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Kbd } from "@/components/ui/kbd";
@@ -703,7 +704,7 @@ function TourBackdropBlur({ target }: { target: string }) {
 
   if (!rect) return null;
 
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reducedMotion = prefersReducedMotion();
   const blurStyle = {
     backdropFilter: "blur(4px)",
     WebkitBackdropFilter: "blur(4px)",
@@ -774,10 +775,7 @@ export function TourGuide() {
   const [libraryReady, setLibraryReady] = useState(false);
   const [joyrideInstance, setJoyrideInstance] = useState(0);
   const [aiReadinessRevision, setAiReadinessRevision] = useState(0);
-  const reducedMotion = useMemo(
-    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    [],
-  );
+  const reducedMotion = useReducedMotion();
   const previousViewMode = useRef<ReturnType<typeof useSettingsStore.getState>["viewMode"] | null>(
     null,
   );

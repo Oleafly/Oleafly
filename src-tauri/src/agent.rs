@@ -14,9 +14,11 @@ use tauri::{Manager, State};
 use crate::config::AppConfig;
 
 mod registry;
+mod subagents;
 use registry::{acquire_request_slot, cancel_all_requests, cancel_request, run_registered};
 #[cfg(test)]
 use registry::{begin_request, finish_request};
+pub use subagents::SubagentManager;
 
 const MAX_EARLY_CANCELLATIONS: usize = 256;
 const MAX_RUN_STEPS: u32 = 50;
@@ -38,6 +40,8 @@ struct ActiveRequest {
 struct PendingTool {
     generation: u64,
     sender: tokio::sync::oneshot::Sender<ToolOutput>,
+    tool_name: String,
+    project_id: Option<String>,
 }
 
 #[derive(Default)]
@@ -53,6 +57,13 @@ pub struct AgentState {
     requests: Mutex<RequestRegistry>,
     pending_tools: Mutex<HashMap<String, PendingTool>>,
     request_slots: std::sync::Arc<tokio::sync::Semaphore>,
+    /// Steer senders and cancellation tokens for in-flight runs; registered
+    /// at run start, cleaned up at run end and on cancel.
+    steer_senders: Mutex<HashMap<String, oleafly_agent::SteerHandle>>,
+    run_tokens: Mutex<HashMap<String, oleafly_agent::CancellationToken>>,
+    /// Per-run subagent managers, so "stop all subagents" can reach the
+    /// children without stopping the parent run.
+    subagent_managers: Mutex<HashMap<String, std::sync::Arc<SubagentManager>>>,
 }
 
 impl Default for AgentState {
@@ -64,6 +75,9 @@ impl Default for AgentState {
             request_slots: std::sync::Arc::new(tokio::sync::Semaphore::new(
                 MAX_CONCURRENT_AGENT_REQUESTS,
             )),
+            steer_senders: Mutex::new(HashMap::new()),
+            run_tokens: Mutex::new(HashMap::new()),
+            subagent_managers: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -156,14 +170,85 @@ pub async fn agent_complete(
 
 #[tauri::command]
 pub fn agent_cancel_all(state: State<'_, AgentState>, session_id: String) {
+    // Cancel every run token first so in-flight tools (including subagent
+    // children sharing the token) wind down before their futures drop.
+    let tokens: Vec<_> = {
+        let mut tokens = lock_or_recover(&state.run_tokens);
+        tokens.drain().map(|(_, token)| token).collect()
+    };
+    for token in tokens {
+        token.cancel();
+    }
+    lock_or_recover(&state.steer_senders).clear();
     cancel_all_requests(state.inner(), &session_id);
     lock_or_recover(&state.pending_tools).clear();
 }
 
 #[tauri::command]
 pub fn agent_cancel(state: State<'_, AgentState>, request_id: String) {
-    if let Some(generation) = cancel_request(state.inner(), &request_id) {
-        drop_pending_tools(state.inner(), &request_id, Some(generation));
+    cancel_run(state.inner(), &request_id);
+}
+
+fn cancel_run(state: &AgentState, request_id: &str) {
+    let token = {
+        let mut tokens = lock_or_recover(&state.run_tokens);
+        tokens.remove(request_id)
+    };
+    if let Some(token) = &token {
+        // Cascades to subagent children through the shared pipeline token.
+        token.cancel();
+    }
+    lock_or_recover(&state.steer_senders).remove(request_id);
+    if let Some(generation) = cancel_request(state, request_id) {
+        drop_pending_tools(state, request_id, Some(generation));
+    }
+}
+
+/// Inject mid-run input into an active run; it lands at the next message
+/// boundary (after the pending tool batch completes).
+#[tauri::command]
+pub fn agent_steer(
+    state: State<'_, AgentState>,
+    request_id: String,
+    text: String,
+) -> Result<(), String> {
+    steer_run(state.inner(), &request_id, &text)
+}
+
+/// Stop every running subagent of a run without stopping the run itself.
+#[tauri::command]
+pub fn agent_subagents_stop(
+    state: State<'_, AgentState>,
+    request_id: String,
+) -> Result<u32, String> {
+    subagents_stop(state.inner(), &request_id)
+}
+
+fn subagents_stop(state: &AgentState, request_id: &str) -> Result<u32, String> {
+    let manager = {
+        let managers = lock_or_recover(&state.subagent_managers);
+        managers.get(request_id).cloned()
+    };
+    match manager {
+        Some(manager) => Ok(u32::try_from(manager.interrupt_all()).unwrap_or(u32::MAX)),
+        None => Err(format!("no active run {request_id}")),
+    }
+}
+
+fn steer_run(state: &AgentState, request_id: &str, text: &str) -> Result<(), String> {
+    if text.trim().is_empty() {
+        return Err("steer text must not be empty".into());
+    }
+    let sender = {
+        let senders = lock_or_recover(&state.steer_senders);
+        senders.get(request_id).cloned()
+    };
+    match sender {
+        Some(handle) => {
+            handle.steer(text.to_string());
+            Ok(())
+        }
+        None => Err(format!("no active run {request_id} to steer")),
     }
 }
 
@@ -200,6 +285,8 @@ pub async fn agent_run(
     config: Option<RunConfig>,
     provider_override: Option<ProviderOverride>,
     project_id: Option<String>,
+    thread_id: Option<String>,
+    client_turn_id: Option<String>,
     on_event: tauri::ipc::Channel<AgentEvent>,
 ) -> Result<oleafly_agent::RunOutcome, String> {
     let agent_state = state.inner();
@@ -208,28 +295,238 @@ pub async fn agent_run(
     // The run is pinned to the project it started in; an invalid id disables
     // native dispatch rather than failing the run.
     let pinned_project = project_id.filter(|id| crate::paths::validate_project_id(id).is_ok());
+    // Recorder inputs are captured before `run_registered` borrows the id.
+    let record_scope = thread_id
+        .as_deref()
+        .map(|id| (id.to_string(), request_id.clone(), client_turn_id.clone()));
+    // The closure owns its own id copy; `run_registered` borrows the original.
+    let run_registration_id = request_id.clone();
     run_registered(agent_state, &request_id, |generation| async move {
         oleafly_agent::validate_completion_request(&request).map_err(tagged)?;
         let resolved = resolve_off_thread(provider_override).await?;
         let client = agent_state.client()?;
         let sink = on_event.clone();
-        let run_tool = composite_tool_runner(app, run_id, generation, on_event, pinned_project);
-        oleafly_agent::run_agent(
+        let base_tool = composite_tool_runner(
+            app,
+            run_id,
+            generation,
+            on_event.clone(),
+            pinned_project.clone(),
+        );
+        // Pre-classify every call: project denials short-circuit before any
+        // webview round trip; read-class tools may run concurrently under the
+        // pipeline's shared gate.
+        let classified_tool = oleafly_agent::ToolOrchestrator::wrap(
+            base_tool.clone(),
+            approval_classifier(pinned_project.clone()),
+        );
+        let pipeline = tool_pipeline();
+        // Sub-agents: threads in this run, managed by the tool dispatcher.
+        let multi_agent = crate::agent_config::MultiAgentConfig::load(
+            &crate::paths::oleafly_root().unwrap_or_default(),
+        );
+        let subagent_manager = std::sync::Arc::new(SubagentManager::default());
+        let run_context = subagents::RunContext {
+            client: client.clone(),
+            resolved: resolved.clone(),
+            request_template: request.clone(),
+            config: config.clone(),
+            registry: pipeline.registry.clone(),
+            gate: pipeline.gate.clone(),
+            parent_token: pipeline.token.clone(),
+            tool_runner: classified_tool.clone(),
+            parent_sink: sink.clone(),
+            project_id: pinned_project.clone().unwrap_or_default(),
+            depth: 0,
+            task_path: subagents::RunContext::root_task_path(),
+            multi_agent,
+        };
+        let subagent_manager_for_registry = subagent_manager.clone();
+        let run_tool = subagents::multi_agent_tool_runner(
+            run_context,
+            subagent_manager,
+            classified_tool.clone(),
+        );
+        // Steer channel + token registration: the shell can inject input or
+        // interrupt (cascading to subagents through the shared token) while
+        // the run is in flight.
+        let (steer_handle, steer_rx) = oleafly_agent::SteerHandle::channel();
+        {
+            let mut senders = lock_or_recover(&agent_state.steer_senders);
+            senders.insert(run_registration_id.clone(), steer_handle);
+        }
+        {
+            let mut tokens = lock_or_recover(&agent_state.run_tokens);
+            tokens.insert(run_registration_id.clone(), pipeline.token.clone());
+        }
+        {
+            let mut managers = lock_or_recover(&agent_state.subagent_managers);
+            managers.insert(run_registration_id.clone(), subagent_manager_for_registry);
+        }
+
+        // A run scoped to a thread records its items into that thread's
+        // rollout as it completes.
+        let record_sink = record_scope.map(|(thread_id, turn_id, client_turn_id)| {
+            let mut recorder = oleafly_agent::items::TurnRecorder::new(turn_id);
+            if let Some(client_turn_id) = client_turn_id {
+                recorder.bind_client_turn_id(client_turn_id);
+            }
+            (thread_id, std::sync::Arc::new(Mutex::new(recorder)))
+        });
+        let mut persist_guard = InterruptedRunPersist {
+            thread_id: record_sink.as_ref().map(|(id, _)| id.clone()),
+            recorder: record_sink.as_ref().map(|(_, shared)| shared.clone()),
+            root: crate::paths::oleafly_root().unwrap_or_else(|_| std::path::PathBuf::from(".")),
+            project: pinned_project.clone().unwrap_or_default(),
+            settled: false,
+        };
+        let outcome = oleafly_agent::run_agent_with_pipeline(
             &client,
             &resolved,
             request,
             &config,
+            pipeline,
+            Some(steer_rx),
             run_tool,
-            move |event| {
+            |event| {
+                if let Some((_, shared)) = &record_sink {
+                    if let Ok(mut recorder) = shared.lock() {
+                        recorder.record(&event);
+                    }
+                }
                 let _ = sink.send(event);
             },
         )
-        .await
-        .map_err(tagged)
+        .await;
+        persist_guard.settled = true;
+        {
+            let mut senders = lock_or_recover(&agent_state.steer_senders);
+            senders.remove(&run_registration_id);
+        }
+        {
+            let mut tokens = lock_or_recover(&agent_state.run_tokens);
+            tokens.remove(&run_registration_id);
+        }
+        {
+            let mut managers = lock_or_recover(&agent_state.subagent_managers);
+            managers.remove(&run_registration_id);
+        }
+        if let Some((thread_id, shared)) = &record_sink {
+            // The guard must drop before the persist await keeps this future
+            // Send; a poisoned lock simply skips persistence.
+            let snapshot = shared.lock().ok().map(|mut recorder| {
+                let stopped_at_cap = matches!(&outcome, Ok(outcome) if outcome.stopped_at_cap);
+                recorder.finish(stopped_at_cap);
+                recorder.snapshot().clone()
+            });
+            if let Some(snapshot) = snapshot {
+                let thread_id = thread_id.clone();
+                let project = pinned_project.clone().unwrap_or_default();
+                let persist = tauri::async_runtime::spawn_blocking(move || {
+                    let Ok(root) = crate::paths::oleafly_root() else {
+                        return;
+                    };
+                    if crate::rollout::append_turn(&root, &thread_id, &snapshot).is_ok() {
+                        if let Ok(turns) = crate::rollout::read_turns(&root, &thread_id) {
+                            let _ = crate::library_db::resync_thread(
+                                &root, &thread_id, &project, &turns,
+                            );
+                        }
+                    }
+                });
+                let _ = persist.await;
+            }
+        }
+        outcome.map_err(tagged)
     })
     .await
 }
 
+/// The legacy batch delegation tool, still dispatched for older prompts.
+pub const SUBAGENT_TOOL: &str = "spawn_subagents";
+
+/// Risk classification mirroring the shell's approval-risk table
+/// (packages/ai-tools/src/approval-risk.ts): read tools run unprompted and
+/// may execute concurrently; everything else confirms, and unknown tools
+/// classify as write so nothing new runs silently.
+const PARALLEL_SAFE_TOOLS: [&str; 24] = [
+    "read_file",
+    "list_files",
+    "project_map",
+    "search_project",
+    "project_library_search",
+    "get_pdf_text",
+    "get_log",
+    "get_todos",
+    "update_todos",
+    "list_notes",
+    "remember_note",
+    "forget_note",
+    "load_image",
+    "preview_figure",
+    "verify_pdf_pages",
+    "toggle_theme",
+    "compile",
+    "spawn_agent",
+    "send_message",
+    "followup_task",
+    "wait_agent",
+    "interrupt_agent",
+    "list_agents",
+    "close_agent",
+];
+
+const NETWORK_TOOLS: [&str; 4] = [
+    "literature_search",
+    "alphaxiv_search",
+    "alphaxiv_paper_content",
+    "verify_citation",
+];
+
+fn tool_risk(name: &str) -> oleafly_agent::ToolRisk {
+    if name == "run_command" {
+        return oleafly_agent::ToolRisk::Shell;
+    }
+    if PARALLEL_SAFE_TOOLS.contains(&name) {
+        return oleafly_agent::ToolRisk::Read;
+    }
+    if NETWORK_TOOLS.contains(&name) {
+        return oleafly_agent::ToolRisk::Network;
+    }
+    oleafly_agent::ToolRisk::Write
+}
+
+fn tool_pipeline() -> oleafly_agent::ToolPipeline {
+    let mut registry = oleafly_agent::ToolRegistry::default();
+    for name in PARALLEL_SAFE_TOOLS {
+        registry.register_trusted(name, oleafly_agent::RegisteredTool::parallel());
+    }
+    oleafly_agent::ToolPipeline::from_registry(registry)
+}
+
+/// Classify every tool call against the project's persisted decisions: a
+/// denial is Forbidden (never executes, never asks), an explicit allow or a
+/// read-class tool is Skip, everything else asks.
+fn approval_classifier(
+    project_id: Option<String>,
+) -> oleafly_agent::tools::orchestrator::Classifier {
+    std::sync::Arc::new(move |call| {
+        let risk = tool_risk(&call.name);
+        let decision = project_id.as_deref().and_then(|project| {
+            crate::paths::oleafly_root().ok().and_then(|root| {
+                crate::approvals::decision_for(&root, project, &call.name).map(|decision| {
+                    match decision {
+                        crate::approvals::ToolDecision::Allow => {
+                            oleafly_agent::PolicyDecision::Allow
+                        }
+                        crate::approvals::ToolDecision::Deny => oleafly_agent::PolicyDecision::Deny,
+                    }
+                })
+            })
+        });
+        oleafly_agent::classification_from_policy(risk, decision)
+    })
+}
 /// Execute a backend-capable tool natively, without a webview round trip.
 ///
 /// `Some(output)` means the tool was answered natively — including native
@@ -291,7 +588,7 @@ fn composite_tool_runner(
     project_id: Option<String>,
 ) -> oleafly_agent::ToolRunner {
     let handle = app.clone();
-    let webview = webview_tool_runner(app, request_id, generation, tool_sink);
+    let webview = webview_tool_runner(app, request_id, generation, tool_sink, project_id.clone());
     std::sync::Arc::new(move |call| {
         let webview = webview.clone();
         let project = project_id.clone();
@@ -326,12 +623,14 @@ fn webview_tool_runner(
     request_id: String,
     generation: u64,
     tool_sink: tauri::ipc::Channel<AgentEvent>,
+    project_id: Option<String>,
 ) -> oleafly_agent::ToolRunner {
     let sequence = std::sync::Arc::new(AtomicU64::new(0));
     std::sync::Arc::new(move |call| {
         let tool_sink = tool_sink.clone();
         let handle = app.clone();
         let run_id = request_id.clone();
+        let project_id = project_id.clone();
         let reply_id = tool_reply_id(
             generation,
             sequence.fetch_add(1, Ordering::Relaxed),
@@ -347,6 +646,8 @@ fn webview_tool_runner(
                     PendingTool {
                         generation,
                         sender: tx,
+                        tool_name: call.name.clone(),
+                        project_id: project_id.clone(),
                     },
                 );
             }
@@ -388,6 +689,41 @@ fn tool_error(message: &str) -> ToolOutput {
     ToolOutput::text(serde_json::json!({ "error": message }).to_string())
 }
 
+/// Persists an interrupted turn when a run's future is dropped by a cancel:
+/// the natural completion path disarms the guard first.
+struct InterruptedRunPersist {
+    thread_id: Option<String>,
+    recorder: Option<std::sync::Arc<Mutex<oleafly_agent::items::TurnRecorder>>>,
+    root: std::path::PathBuf,
+    project: String,
+    settled: bool,
+}
+
+impl Drop for InterruptedRunPersist {
+    fn drop(&mut self) {
+        if self.settled {
+            return;
+        }
+        let (Some(thread_id), Some(shared)) = (&self.thread_id, &self.recorder) else {
+            return;
+        };
+        if let Ok(mut recorder) = shared.lock() {
+            recorder.mark_interrupted();
+            let record = recorder.snapshot().clone();
+            if crate::rollout::append_turn(&self.root, thread_id, &record).is_ok() {
+                if let Ok(turns) = crate::rollout::read_turns(&self.root, thread_id) {
+                    let _ = crate::library_db::resync_thread(
+                        &self.root,
+                        thread_id,
+                        &self.project,
+                        &turns,
+                    );
+                }
+            }
+        }
+    }
+}
+
 struct PendingToolGuard {
     handle: tauri::AppHandle,
     key: String,
@@ -411,6 +747,19 @@ pub fn agent_tool_result(
     let key = tool_key(&request_id, &call_id);
     let pending = { lock_or_recover(&state.pending_tools).remove(&key) };
     if let Some(pending) = pending {
+        // Defense-in-depth for persisted per-project denials: even if the
+        // webview ran a denied tool, its output never reaches the model.
+        let denied = pending.project_id.as_deref().is_some_and(|project| {
+            crate::paths::oleafly_root().is_ok_and(|root| {
+                crate::approvals::decision_for(&root, project, &pending.tool_name)
+                    == Some(crate::approvals::ToolDecision::Deny)
+            })
+        });
+        let output = if denied {
+            tool_error("this tool is denied for this project in approval settings")
+        } else {
+            output
+        };
         let _ = pending
             .sender
             .send(oleafly_agent::bound_tool_output(output));
@@ -541,6 +890,33 @@ fn resolve_for(
         None => oleafly_agent::resolve(&projected),
     }
     .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+pub(crate) fn register_steer_for_test(
+    state: &AgentState,
+    request_id: &str,
+    handle: oleafly_agent::SteerHandle,
+) {
+    lock_or_recover(&state.steer_senders).insert(request_id.to_string(), handle);
+}
+
+#[cfg(test)]
+pub(crate) fn register_manager_for_test(
+    state: &AgentState,
+    request_id: &str,
+    manager: std::sync::Arc<SubagentManager>,
+) {
+    lock_or_recover(&state.subagent_managers).insert(request_id.to_string(), manager);
+}
+
+#[cfg(test)]
+pub(crate) fn register_token_for_test(
+    state: &AgentState,
+    request_id: &str,
+    token: oleafly_agent::CancellationToken,
+) {
+    lock_or_recover(&state.run_tokens).insert(request_id.to_string(), token);
 }
 
 #[cfg(test)]

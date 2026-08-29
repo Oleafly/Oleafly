@@ -1,6 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
 import { runAgentHarness } from "./agent-turn";
+import { DeltaQueues } from "@oleafly/ai-core";
+import { windowFlushScheduler } from "@/lib/agent-stream-scheduler";
+import { useAgentTurnsStore, type QueuedFollowUp } from "@/store/agent-turns";
+import { useComposerOutputsStore } from "@/store/composer-outputs";
+import { SubagentActivity } from "./SubagentActivity";
+import { agentSteer, agentThreadClaimPrewarmed } from "@/lib/agent-backend";
 import {
   ArrowLeftRight,
   ArrowUp,
@@ -16,7 +22,6 @@ import {
   IndentIncrease as ListIndentIncrease,
   MessageSquareQuote,
   Mic,
-  Paperclip,
   Plus,
   Quote,
   RotateCcw,
@@ -29,7 +34,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { getConfig, gitLog, gitAutoCommit, type AppConfig, type CustomProvider, type Persona, type StoredModel } from "@/lib/tauri";
+import { approvalsList, approvalsSet, getConfig, gitLog, gitAutoCommit, usageRecord, type AppConfig, type CustomProvider, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
+import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
@@ -69,6 +75,7 @@ import { estimateUsd, formatUsd } from "@/lib/ai-pricing";
 import { formatRagContext, retrieveProjectChunks } from "@/lib/ai-rag";
 import { ChatHistoryModal } from "@/components/ai/ChatHistoryModal";
 import { PROMPT_CATEGORIES } from "@/components/ai/prompt-shortcuts";
+import { useSkills } from "@/lib/skills";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -181,7 +188,15 @@ export function buildToolContinuation(
   ];
 }
 
-export function ChatCore() {
+const EMPTY_FOLLOW_UPS: QueuedFollowUp[] = [];
+
+export function ChatCore({
+  variant = "panel",
+}: {
+  /** "panel" is the project-view assistant pane; "composer" is the AI Composer center. */
+  variant?: "panel" | "composer";
+} = {}) {
+  const isComposer = variant === "composer";
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
   const documentEngine = useFilesStore((s) => s.engine);
@@ -195,6 +210,12 @@ export function ChatCore() {
   const setChatFloating = useSettingsStore((s) => s.setChatFloating);
   const chats = useChatsStore((s) => s.chats);
   const activeChatId = useChatsStore((s) => s.activeId);
+  // The sentinel keeps the selector's snapshot referentially stable for
+  // chats without queued follow-ups (a fresh [] loops useSyncExternalStore).
+  const queuedFollowUps = useAgentTurnsStore((s) =>
+    activeChatId ? s.queuedByChat[activeChatId] ?? EMPTY_FOLLOW_UPS : EMPTY_FOLLOW_UPS,
+  );
+  const activeRunRequestIdRef = useRef<string | null>(null);
   const loadChats = useChatsStore((s) => s.load);
   const removeChat = useChatsStore((s) => s.remove);
   const setActiveChat = useChatsStore((s) => s.setActive);
@@ -297,6 +318,7 @@ export function ChatCore() {
     composerInputShellRef,
     input,
     composerPlaceholder,
+    224,
   );
 
   const MAX_ATTACH = 6;
@@ -338,15 +360,41 @@ export function ChatCore() {
   const runOwnerRef = useRef(false);
   // When true, write/replace/create/rename tools skip the prompt for this run's session.
   const sessionAutoApproveRef = useRef(false);
+  // Persisted per-project decisions (~/.oleafly/approvals.toml), loaded per
+  // run: allow skips the prompt, deny skips execution.
+  const projectApprovalsRef = useRef<Record<string, ToolDecision>>({});
+  const skills = useSkills().data ?? [];
+  const skillPromptCategories =
+    skills.length > 0
+      ? [
+          {
+            label: "Skills",
+            items: skills.map((skill) => ({
+              icon: Sparkles,
+              label: skill.name,
+              description: skill.description,
+              prompt: skill.instructions,
+            })),
+          },
+        ]
+      : [];
   // Trailing-debounce timer for persisting the streaming conversation.
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Coalesce stream-token setState into one React update per animation frame so
-  // a fast provider cannot thrash the chat UI on every delta.
+  // Two-tier stream flushing: text deltas ride the frame cadence (rAF while
+  // visible, a timer otherwise), structural output rides a 50 ms interval,
+  // and terminal events drain both before applying. Patches batch into one
+  // React update per flush either way.
   const streamPatchesRef = useRef<Array<{
     chatId: string | null;
     apply: (message: ChatMessage) => ChatMessage;
   }>>([]);
-  const streamRafRef = useRef<number | null>(null);
+  const streamQueuesRef = useRef<DeltaQueues | null>(null);
+  const streamQueues = useCallback(() => {
+    if (streamQueuesRef.current === null) {
+      streamQueuesRef.current = new DeltaQueues(windowFlushScheduler());
+    }
+    return streamQueuesRef.current;
+  }, []);
   const runIsolationRef = useRef(new ChatRunIsolation());
 
   // Surface a one-time warning if chat history can no longer be saved (quota).
@@ -624,10 +672,11 @@ export function ChatCore() {
   };
 
   const flushStreamPatches = useCallback(() => {
-    if (streamRafRef.current != null) {
-      cancelAnimationFrame(streamRafRef.current);
-      streamRafRef.current = null;
-    }
+    // Synchronous drain of both tiers: the terminal path and explicit
+    // flushers must see every pending patch before they act.
+    const queues = streamQueues();
+    queues.flushFrameText();
+    queues.flushOutput();
     const patches = streamPatchesRef.current;
     if (!patches.length) return;
     streamPatchesRef.current = [];
@@ -641,28 +690,43 @@ export function ChatCore() {
     const chatId = patches[patches.length - 1].chatId;
     if (chatId) useChatsStore.getState().setLive(chatId, copy);
     persistDebounced(chatId, copy);
-  }, [persistDebounced, setMessages]);
+  }, [persistDebounced, setMessages, streamQueues]);
 
-  // High-frequency stream deltas are coalesced to one setState per animation
-  // frame; callers that need the UI to reflect a patch before the next frame
-  // should call flushStreamPatches.
-  const updateLast = useCallback((chatId: string | null, fn: (m: ChatMessage) => ChatMessage) => {
-    streamPatchesRef.current.push({ chatId, apply: fn });
-    if (streamRafRef.current != null) return;
-    streamRafRef.current = requestAnimationFrame(() => {
-      streamRafRef.current = null;
-      flushStreamPatches();
-    });
-  }, [flushStreamPatches]);
+  // Text-tier appends flush on the frame cadence; everything structural
+  // (tool calls, approvals, usage) rides the slower output cadence. Both
+  // drain synchronously in flushStreamPatches.
+  const updateLast = useCallback(
+    (chatId: string | null, fn: (m: ChatMessage) => ChatMessage, tier: "text" | "output" = "output") => {
+      streamPatchesRef.current.push({ chatId, apply: fn });
+      const queues = streamQueues();
+      const drain = () => flushStreamPatches();
+      if (tier === "text") queues.enqueueFrameText(drain);
+      else queues.enqueueOutput(drain);
+    },
+    [flushStreamPatches, streamQueues],
+  );
 
   const send = useCallback(async (text: string) => {
     const outgoing = attachmentsRef.current;
-    if ((!text.trim() && outgoing.length === 0) || streaming || activeChatRun()) return;
+    if ((!text.trim() && outgoing.length === 0)) return;
+    // Steer-vs-queue: while a turn runs, Enter queues the message for the
+    // next turn; an explicit Steer injects it mid-run at a message boundary.
+    if (streaming || activeChatRun()) {
+      if (text.trim() && activeChatId) {
+        useAgentTurnsStore.getState().queueFollowUp(activeChatId, text);
+        setInput("");
+      }
+      return;
+    }
     if (!engineLoaded) {
       toast.error("Document engine details are not loaded. AI editing is disabled for safety.");
       return;
     }
     if (!apiKey) { openAISettings(); return; }
+    if (projectId) {
+      const gate = await checkProjectBudget(projectId);
+      if (gate === "blocked") return;
+    }
     const runIdentity = runIsolationRef.current.begin(projectId);
     let runChatId: string | null = null;
     const runIsCurrent = () => runIsolationRef.current.allows(
@@ -672,6 +736,10 @@ export function ChatCore() {
     const updateRunLast = (fn: (message: ChatMessage) => ChatMessage) => {
       if (runIsCurrent()) updateLast(runChatId, fn);
     };
+    const updateRunLastText = (fn: (message: ChatMessage) => ChatMessage) => {
+      if (runIsCurrent()) updateLast(runChatId, fn, "text");
+    };
+    let runEndedCleanly = false;
     const setRunThinking = (value: string | null) => {
       if (runIsCurrent()) setThinkingText(value);
     };
@@ -688,6 +756,9 @@ export function ChatCore() {
     abortRef.current = ac;
     const runHandle = beginChatRun(ac, projectId);
     runOwnerRef.current = true;
+    projectApprovalsRef.current = projectId
+      ? await approvalsList(projectId).catch(() => ({}))
+      : {};
 
     // Human-in-the-loop gate for destructive edits: the tool's execute() awaits
     // this, which naturally pauses the stream on that tool until the user picks.
@@ -695,6 +766,25 @@ export function ChatCore() {
     const confirm = (req: ToolApprovalRequest): Promise<boolean> =>
       new Promise((resolve) => {
         if (ac.signal.aborted) { resolve(false); return; }
+        // Persisted project decision settles the call without a prompt.
+        const persisted = projectApprovalsRef.current[req.tool];
+        if (persisted) {
+          const ok = persisted === "allow";
+          updateRunLast((m) => {
+            const calls = [...(m.toolCalls || [])];
+            for (let i = calls.length - 1; i >= 0; i--) {
+              if (calls[i].name === req.tool && calls[i].approval === undefined) {
+                calls[i] = ok
+                  ? { ...calls[i], approval: "approved" }
+                  : { ...calls[i], approval: "rejected", status: "done" };
+                break;
+              }
+            }
+            return { ...m, toolCalls: calls };
+          });
+          resolve(ok);
+          return;
+        }
         // Session auto-approve covers non-delete writes only.
         if (sessionAutoApproveRef.current && isAutoApprovable(req.tool)) {
           updateRunLast((m) => {
@@ -803,6 +893,19 @@ export function ChatCore() {
       if (chatId) cs.saveMessages(chatId, nextMessages);
     }
 
+    // Optimistic turn + thread scoping: the record exists before any
+    // request, and the chat keeps one rollout thread across sends.
+    const clientTurnId = crypto.randomUUID();
+    let turnThreadId: string | null = null;
+    if (runChatId) {
+      turnThreadId = await useAgentTurnsStore
+        .getState()
+        .threadFor(runChatId, projectId, () =>
+          projectId ? agentThreadClaimPrewarmed(projectId) : Promise.resolve(null),
+        );
+      useAgentTurnsStore.getState().beginTurn(runChatId, turnThreadId, clientTurnId, text);
+    }
+
     // An active persona replaces the user's default custom instructions for
     // this request; otherwise fall back to those default instructions.
     const requestCustomPrompt = resolveResponseInstructions(
@@ -866,6 +969,8 @@ Agentic workflow (required for multi-step tasks):
 5. After structural or multi-file edits: compile, then verify_pdf_pages (vision) or get_pdf_text (text-only).
 6. set_main_doc requires approval. Deleting files always requires approval.
 7. Use remember_note for durable project conventions the user would want kept across chats; forget_note to remove.
+8. For independent parallel work (surveying several papers, reviewing separate sections, checking unrelated claims), delegate with spawn_agent: one focused agent per task, complete self-contained instructions, then wait_agent (prefer long waits over polling) and close_agent when done. Task names are canonical paths under /root. Do the work yourself when steps depend on each other; spawning agents increases usage quickly.
+9. Use run_command for shell work the dedicated tools do not cover (git status, build scripts, listing outputs). It runs in the project directory and is confirmed with the user first. Prefer the dedicated file and compile tools when they fit.
 
 Workflow for "fix errors" requests:
 1. Use live compile errors if present, or compile first.
@@ -926,12 +1031,54 @@ ${sandboxedCustom}`;
       // project at execute time, so without this guard a run surviving a
       // project switch would silently write into the newly opened project.
       const runProjectId = useFilesStore.getState().projectId;
+      // Composer runs mirror their file activity into the harness output
+      // panel: reads open a preview immediately, writes re-open the file so
+      // the fresh content shows, and successful compiles surface the PDF.
+      const composerToolCalls = new Map<string, { name: string; args: unknown }>();
+      const composerOutputs = useComposerOutputsStore.getState();
+      const argPath = (args: unknown): string | null => {
+        if (args && typeof args === "object" && "path" in args) {
+          const p = (args as Record<string, unknown>).path;
+          if (typeof p === "string") return p;
+        }
+        return null;
+      };
+      const composerOpenRead = (call: { name: string; args: unknown }) => {
+        if (!isComposer || call.name !== "read_file") return;
+        const path = argPath(call.args);
+        if (path) composerOutputs.openFile(path, "read");
+      };
+      const composerOpenWrite = (
+        call: { name: string; args: unknown } | undefined,
+        output: unknown,
+      ) => {
+        if (!isComposer || !call) return;
+        if (call.name === "write_file" || call.name === "create_file") {
+          const failed =
+            !!output && typeof output === "object" && "error" in (output as Record<string, unknown>);
+          const path = argPath(call.args);
+          if (path && !failed) composerOutputs.openFile(path, "write");
+        }
+        if (call.name === "compile") {
+          const record = output as Record<string, unknown> | null;
+          if (record && record.success === true) composerOutputs.openPdf();
+        }
+      };
+
       const outcome = await runAgentHarness({
         system: effectiveSystem,
         messages: apiMessages,
         tools,
         signal: ac.signal,
         projectId: runProjectId,
+        threadId: turnThreadId ?? undefined,
+        clientTurnId,
+        onRequestId: (id) => {
+          activeRunRequestIdRef.current = id;
+        },
+        onRawEvent: (event) => {
+          if (runChatId) useAgentTurnsStore.getState().applyEvent(runChatId, event);
+        },
         guardToolCall: () => {
           const current = useFilesStore.getState().projectId;
           if (current === runProjectId) return null;
@@ -966,7 +1113,7 @@ ${sandboxedCustom}`;
             }));
           },
           onText: (chunk) =>
-            updateRunLast((m) => ({ ...m, content: (m.content ?? "") + chunk })),
+            updateRunLastText((m) => ({ ...m, content: (m.content ?? "") + chunk })),
           onReasoningStart: () => {
             if (reasoningStartedAt !== null) return;
             reasoningStartedAt = Date.now();
@@ -979,7 +1126,7 @@ ${sandboxedCustom}`;
             }));
           },
           onReasoningDelta: (chunk) =>
-            updateRunLast((m) => {
+            updateRunLastText((m) => {
               const blocks = [...(m.reasoningBlocks ?? [])];
               if (!blocks.length) return m;
               const last = { ...blocks[blocks.length - 1] };
@@ -1000,16 +1147,24 @@ ${sandboxedCustom}`;
               return { ...m, reasoningBlocks: blocks };
             });
           },
-          onToolCall: (call) =>
+          onToolCall: (call) => {
+            composerToolCalls.set(call.id, { name: call.name, args: call.args });
+            composerOpenRead(call);
             updateRunLast((m) => ({
               ...m,
               toolCalls: [
                 ...(m.toolCalls || []),
                 { id: call.id, name: call.name, status: "running" as const },
               ],
-            })),
+            }));
+          },
           onToolResult: ({ id, output }) => {
-            const outStr = formatToolOutput(output).slice(0, 500);
+            // Full output up to a generous safety ceiling: the tool badge
+            // scrolls, and the persisted chat must not silently lose payload
+            // data the run actually saw.
+            const outStr = formatToolOutput(output).slice(0, 40_000);
+            composerOpenWrite(composerToolCalls.get(id), output);
+            composerToolCalls.delete(id);
             updateRunLast((m) => {
               const calls = [...(m.toolCalls || [])];
               for (let i = calls.length - 1; i >= 0; i--) {
@@ -1032,10 +1187,29 @@ ${sandboxedCustom}`;
                 usd: estimateUsd(model, usageIn, usageOut).usd,
               });
           },
+          onSubagentUpdate: (update) => {
+            updateRunLast((m) => {
+              const list = [...(m.subagents ?? [])];
+              const index = list.findIndex((entry) => entry.id === update.id);
+              const entry = {
+                id: update.id,
+                label: update.label,
+                state: update.state,
+                detail: update.detail ?? undefined,
+              };
+              if (index >= 0) list[index] = entry;
+              else list.push(entry);
+              return { ...m, subagents: list };
+            });
+          },
         },
       });
 
       usageSteps = outcome.steps;
+      runEndedCleanly = !outcome.error && !ac.signal.aborted;
+      if (runChatId) {
+        useAgentTurnsStore.getState().finishTurn(runChatId, outcome.stopped_at_cap);
+      }
       if (outcome.error) {
         const displayError = formatError(outcome.error, activeProviderName);
         updateRunLast((m) => ({
@@ -1058,6 +1232,7 @@ ${sandboxedCustom}`;
         (typeof e === "object" && e !== null && "name" in e && e.name === "AbortError")
       ) {
         const note = "_Stopped._";
+        if (runChatId) useAgentTurnsStore.getState().interruptTurn(runChatId);
         updateRunLast((m) => ({
           ...m,
           content: (m.content ? `${m.content}\n\n` : "") + note,
@@ -1081,6 +1256,10 @@ ${sandboxedCustom}`;
           steps: usageSteps,
           estimatedUsd: usd,
         });
+        // Durable per-provider/model ledger (library.db); drives the budget gate.
+        void usageRecord(projectId, runChatId, provider, model, usageIn, usageOut, usd).catch(
+          () => {},
+        );
         if (runIsCurrent()) setRunUsage({ input: usageIn, output: usageOut, steps: usageSteps, usd });
       }
       if (runIsCurrent()) {
@@ -1096,10 +1275,20 @@ ${sandboxedCustom}`;
         }
       }
       if (runChatId) useChatsStore.getState().clearLive(runChatId);
+      streamQueuesRef.current?.dispose();
+      streamQueuesRef.current = null;
+      activeRunRequestIdRef.current = null;
       runOwnerRef.current = false;
       endChatRun(runHandle);
+      // A cleanly finished turn sends the first queued follow-up; steered
+      // ones already landed in the run's history and are simply dropped.
+      if (runEndedCleanly && runChatId) {
+        const followUps = useAgentTurnsStore.getState().takeFollowUps(runChatId);
+        const next = followUps.find((item) => item.status === "pending");
+        if (next) void send(next.text);
+      }
     }
-  }, [messages, streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName]);
+  }, [messages, streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId, isComposer]);
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
@@ -1146,13 +1335,15 @@ ${sandboxedCustom}`;
     [activeChatId, projectId, restoringCheckpoint, setMessages],
   );
 
-  // Inline AI (and other UIs) can hand a prompt into the agent chat.
+  // Inline AI (and other UIs) can hand a prompt into the agent chat. Loading
+  // the prompt into the composer must not require a configured provider —
+  // only auto-send does.
   useEffect(() => {
-    if (!handoffPending || streaming || !apiKey) return;
+    if (!handoffPending || streaming) return;
     const h = useAgentHandoffStore.getState().consume();
     if (!h) return;
     if (h.images.length) pendingImagesRef.current.push(...h.images);
-    if (h.autoSend) void send(h.prompt);
+    if (h.autoSend && apiKey) void send(h.prompt);
     else setInput(h.prompt);
   }, [handoffPending, streaming, apiKey, send, setInput]);
 
@@ -1167,8 +1358,8 @@ ${sandboxedCustom}`;
       run.pendingApproval?.resolve(false);
       if (run.chatId) useChatsStore.getState().clearLive(run.chatId);
       cancelChatRun(run.controller, persistTimerRef.current, () => {
-        if (streamRafRef.current != null) cancelAnimationFrame(streamRafRef.current);
-        streamRafRef.current = null;
+        streamQueuesRef.current?.dispose();
+        streamQueuesRef.current = null;
         streamPatchesRef.current = [];
       });
       persistTimerRef.current = null;
@@ -1254,6 +1445,7 @@ ${sandboxedCustom}`;
       }
       className="ai-chat-shell flex h-full flex-col bg-sidebar"
     >
+      {!isComposer && (
       <div
         data-tour="ai-assistant-header"
         data-tour-ready={providerConfigReady ? "true" : "false"}
@@ -1372,6 +1564,7 @@ ${sandboxedCustom}`;
 
         </div>
       </div>
+      )}
 
       {quotaWarning && (
         <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600 dark:text-amber-400">
@@ -1425,6 +1618,37 @@ ${sandboxedCustom}`;
                     )}
                   </div>
                 )}
+                {isComposer && !figureMode && skills.length > 0 ? (
+                  /* Composer flows start from research workflows: same chip
+                     language as the assistant's suggestions, but these load
+                     the workflow into the input instead of sending. */
+                  <div
+                    className="flex w-full flex-col items-center gap-1.5"
+                    data-testid="composer-workflows"
+                  >
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+                      Research workflows
+                    </p>
+                    <div className="flex w-full flex-wrap items-center justify-center gap-1.5">
+                      {skills.slice(0, 6).map((skill) => (
+                        <button
+                          type="button"
+                          key={skill.id}
+                          data-testid={`composer-workflow-${skill.id}`}
+                          title={skill.description}
+                          onClick={() => {
+                            setInput(skill.instructions);
+                            textareaRef.current?.focus();
+                          }}
+                          className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-left text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/70"
+                        >
+                          <Sparkles className="size-3.5 shrink-0" />
+                          <span className="min-w-0 truncate">{skill.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
                 <div className="flex w-full flex-wrap items-center justify-center gap-1.5">
                   {(figureMode ? FIGURE_SUGGESTIONS : SUGGESTIONS).map((s) => {
                     const Icon = figureMode ? FIGURE_SUGGESTION_ICONS[s] : SUGGESTION_ICONS[s];
@@ -1442,6 +1666,7 @@ ${sandboxedCustom}`;
                     );
                   })}
                 </div>
+                )}
 
                 {chats.length > 0 && (
                   <div className="mt-2 flex w-full max-w-[300px] flex-col gap-0.5">
@@ -1546,6 +1771,14 @@ ${sandboxedCustom}`;
                 </div>
               </ErrorBoundary>
             )}
+            {activeChatId && (
+              <SubagentActivity
+                chatId={activeChatId}
+                streaming={streaming}
+                activeRunId={() => activeRunRequestIdRef.current}
+                onError={(message) => toast.error(message)}
+              />
+            )}
           </div>
             {showScrollDown && (
               <button
@@ -1561,6 +1794,39 @@ ${sandboxedCustom}`;
           </div>
 
           <div className="relative shrink-0">
+                {queuedFollowUps.length > 0 && (
+                  <div className="mb-2 flex flex-col gap-1.5">
+                    {queuedFollowUps.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground"
+                      >
+                        <span className="min-w-0 flex-1 truncate">
+                          {item.status === "steered"
+                            ? `Steered into the running turn: ${item.text}`
+                            : `Queued for the next turn: ${item.text}`}
+                        </span>
+                        {item.status === "pending" && streaming && (
+                          <button
+                            type="button"
+                            className="shrink-0 rounded-md px-2 py-0.5 font-medium text-primary transition-colors hover:bg-accent"
+                            onClick={() => {
+                              const runId = activeRunRequestIdRef.current;
+                              if (!runId) return;
+                              agentSteer(runId, item.text)
+                                .then(() =>
+                                  useAgentTurnsStore.getState().markSteered(activeChatId ?? "", item.id),
+                                )
+                                .catch(() => toast.error("The running turn could not be steered."));
+                            }}
+                          >
+                            Steer now
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {pendingApproval && (
                   <ToolConfirm
                     req={pendingApproval.req}
@@ -1571,15 +1837,34 @@ ${sandboxedCustom}`;
                       sessionAutoApproveRef.current = true;
                       pendingApproval.resolve(true);
                     }}
+                    onApproveProject={
+                      projectId
+                        ? () => {
+                            projectApprovalsRef.current = {
+                              ...projectApprovalsRef.current,
+                              [pendingApproval.req.tool]: "allow",
+                            };
+                            void approvalsSet(
+                              projectId,
+                              pendingApproval.req.tool,
+                              "allow",
+                            ).catch(() => {});
+                            pendingApproval.resolve(true);
+                          }
+                        : undefined
+                    }
                   />
                 )}
 
-                <div className="border-t p-2.5">
+                <div className="px-3 pb-3 pt-1.5">
             <AttachmentChips
               items={attachments}
               onRemove={(id) => setAttachments((a) => a.filter((x) => x.id !== id))}
             />
-            <div ref={composerInputShellRef} className="rounded-lg bg-background p-2">
+            <div
+              ref={composerInputShellRef}
+              className="rounded-[var(--oleafly-composer-radius)] border bg-surface-secondary px-[var(--oleafly-composer-inset)] pb-2 pt-2.5 shadow-sm transition-colors focus-within:border-border-strong"
+            >
               <Input
                 ref={fileInputRef}
                 type="file"
@@ -1597,19 +1882,19 @@ ${sandboxedCustom}`;
                 placeholder={composerPlaceholder}
                 disabled={!engineLoaded}
                 rows={1}
-                className="max-h-32 min-h-[24px] w-full resize-none rounded-md border-0 bg-transparent px-1 text-sm shadow-none outline-none placeholder:text-muted-foreground"
+                className="max-h-56 min-h-[32px] w-full resize-none overflow-y-auto rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none outline-none placeholder:text-muted-foreground/70"
               />
-              <div className="mt-1.5 flex items-center justify-between gap-1">
-                <div className="flex min-w-0 items-center gap-0.5">
+              <div className="mt-2 flex min-h-[var(--oleafly-composer-button)] items-center justify-between gap-[var(--oleafly-composer-gap)]">
+                <div className="flex min-w-0 items-center gap-[var(--oleafly-composer-gap)]">
                   <button
                     data-tour="ai-attachments"
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     aria-label="Attach a file or image"
                     title="Attach a file or image"
-                    className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
-                    <Paperclip className="size-4" />
+                    <Plus className="size-4.5" />
                   </button>
                   {figureModeAvailable && (
                     <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
@@ -1643,7 +1928,7 @@ ${sandboxedCustom}`;
                         </>
                       }
                     >
-                      {PROMPT_CATEGORIES.map((category, i) => (
+                      {[...PROMPT_CATEGORIES, ...skillPromptCategories].map((category, i) => (
                         <div
                           key={category.label}
                           className={cn("py-2", i > 0 && "mt-1 border-t pt-2.5")}
@@ -1797,7 +2082,7 @@ ${sandboxedCustom}`;
                       type="button"
                       disabled
                       aria-label="Voice input (coming soon)"
-                      className="flex size-7 shrink-0 cursor-not-allowed items-center justify-center rounded-md text-muted-foreground/40"
+                      className="flex size-7 shrink-0 cursor-not-allowed items-center justify-center rounded-full text-muted-foreground/40"
                     >
                       <Mic className="size-4" />
                     </button>
@@ -1807,7 +2092,7 @@ ${sandboxedCustom}`;
                       onClick={stop}
                       aria-label="Stop"
                       title="Stop generating"
-                      className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white transition-colors hover:opacity-90"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:opacity-90"
                     >
                       <Square className="size-3.5 fill-current" />
                     </button>
@@ -1816,7 +2101,7 @@ ${sandboxedCustom}`;
                       onClick={() => void send(input)}
                       disabled={!engineLoaded || (!input.trim() && attachments.length === 0)}
                       aria-label="Send"
-                      className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40"
                     >
                       <ArrowUp className="size-4" />
                     </button>

@@ -9,7 +9,8 @@ export type HomePage =
   | "lab-search"
   | "literature-search"
   | "deadlines"
-  | "diagram-composer";
+  | "diagram-composer"
+  | "agentic-harness";
 
 export const useHomeViewStore = create<{
   page: HomePage;

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./tokens.css";
 @source "../../packages";
 
 @custom-variant dark (&:is(.dark *));
@@ -13,33 +14,33 @@
 .light {
   --radius: 0.625rem;
   --neutral-900: #171717;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(0.985 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(0.985 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  --background: var(--oleafly-surface-primary);
+  --foreground: var(--oleafly-text-primary);
+  --card: var(--oleafly-surface-secondary);
+  --card-foreground: var(--oleafly-text-primary);
+  --popover: var(--oleafly-surface-secondary);
+  --popover-foreground: var(--oleafly-text-primary);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.95 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.95 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.95 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: hsl(0 72.2% 50.6%);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.708 0 0);
-  --sidebar: oklch(0.975 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-border: oklch(0.9 0 0);
-  --sidebar-accent: oklch(0.94 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --secondary: var(--oleafly-gray-75);
+  --secondary-foreground: var(--oleafly-text-primary);
+  --muted: var(--oleafly-gray-75);
+  --muted-foreground: var(--oleafly-text-tertiary);
+  --accent: var(--oleafly-gray-100);
+  --accent-foreground: var(--oleafly-text-primary);
+  --destructive: var(--oleafly-danger-primary);
+  --destructive-foreground: var(--oleafly-gray-0);
+  --border: var(--oleafly-border-primary);
+  --input: var(--oleafly-border-primary);
+  --ring: var(--oleafly-focus);
+  --sidebar: var(--oleafly-gray-50);
+  --sidebar-foreground: var(--oleafly-text-primary);
+  --sidebar-border: var(--oleafly-border-primary);
+  --sidebar-accent: var(--oleafly-gray-100);
+  --sidebar-accent-foreground: var(--oleafly-text-primary);
   /* The home page is plain white in light mode, independent of any later
      tweak to --background. */
-  --home-background: #ffffff;
+  --home-background: var(--oleafly-gray-0);
 
   /* CodeMirror syntax tokens (light) */
   --cm-comment: #6a737d;
@@ -54,31 +55,31 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: #121212;
-  --popover-foreground: oklch(0.985 0 0);
+  --background: var(--oleafly-surface-primary);
+  --foreground: var(--oleafly-text-primary);
+  --card: var(--oleafly-surface-secondary);
+  --card-foreground: var(--oleafly-text-primary);
+  --popover: var(--oleafly-surface-secondary);
+  --popover-foreground: var(--oleafly-text-primary);
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: hsl(0 72.2% 50.6%);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --home-background: oklch(0.155 0.004 266);
+  --secondary: var(--oleafly-gray-750);
+  --secondary-foreground: var(--oleafly-text-primary);
+  --muted: var(--oleafly-gray-750);
+  --muted-foreground: var(--oleafly-text-secondary);
+  --accent: var(--oleafly-gray-750);
+  --accent-foreground: var(--oleafly-text-primary);
+  --destructive: var(--oleafly-danger-secondary);
+  --destructive-foreground: var(--oleafly-gray-0);
+  --border: var(--oleafly-border-primary);
+  --input: var(--oleafly-border-secondary);
+  --ring: var(--oleafly-focus);
+  --sidebar: var(--oleafly-gray-900);
+  --sidebar-foreground: var(--oleafly-text-primary);
+  --sidebar-border: var(--oleafly-border-primary);
+  --sidebar-accent: var(--oleafly-gray-750);
+  --sidebar-accent-foreground: var(--oleafly-text-primary);
+  --home-background: var(--oleafly-gray-900);
 
   /* CodeMirror syntax tokens (dark) */
   --cm-comment: #8b949e;
@@ -94,13 +95,13 @@
 
 .dark [role="dialog"],
 .dark [role="alertdialog"] {
-  background-color: #121212;
+  background-color: var(--popover);
 }
 
 /* These two overlay-style palettes read slightly lighter than other dialogs. */
 .dark [data-testid="template-gallery"],
 .dark [data-testid="latex-tools-view"] {
-  background-color: #181818;
+  background-color: var(--oleafly-surface-tertiary);
 }
 
 /* Selection for the default ("system") editor theme, where --cm-selection is
@@ -700,8 +701,21 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  --font-sans: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter",
+    ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  /* Reference type scale (14px body at the default 16px root; rem so the app
+     font-size setting keeps scaling everything). */
+  --text-xs: 0.6875rem;
+  --text-xs--line-height: calc(1 / 0.75);
+  --text-sm: 0.75rem;
+  --text-sm--line-height: calc(1.25 / 0.875);
+  --text-base: 0.875rem;
+  --text-base--line-height: calc(1.5 / 1);
+  --text-lg: 1rem;
+  --text-lg--line-height: calc(1.75 / 1.125);
 }
 
 @layer base {
@@ -1461,4 +1475,18 @@ body[data-tour-active] [data-tour-hide] {
   display: none;
   width: 0;
   height: 0;
+}
+
+/* App-wide reduced-motion floor. Near-zero rather than zero so animationend
+   and transitionend still fire for code that sequences on them. Component
+   motion-reduce: variants and JS gates (use-reduced-motion.ts) layer on top. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

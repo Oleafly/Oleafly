@@ -405,7 +405,7 @@ export function SettingsModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      className="relative flex h-[min(30rem,80vh)] w-full max-w-lg animate-in flex-col rounded-xl border bg-popover text-popover-foreground shadow-2xl zoom-in-95 fade-in duration-200 motion-reduce:animate-none"
     >
       <button type="button" aria-label="Close settings" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
@@ -415,7 +415,7 @@ export function SettingsModal() {
         data-modal-initial-focus
         aria-modal="true"
         aria-label="Settings"
-        className="relative flex h-[min(620px,86vh)] w-[min(820px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl outline-none"
+        className="relative flex h-[min(620px,86vh)] w-[min(820px,94vw)] animate-in overflow-hidden rounded-xl border bg-background shadow-2xl outline-none zoom-in-95 fade-in duration-200 motion-reduce:animate-none"
       >
         <nav
           aria-label="Settings sections"

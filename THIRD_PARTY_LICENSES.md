@@ -34,6 +34,21 @@ target-specific unmodified release archive under
 `resources/language-servers/tinymist/0.15.2/`. Upstream has no `NOTICE` file
 at the pinned tag.
 
+## Ported design tokens
+
+| Component | Purpose | License |
+|---|---|---|
+| `openai-codex-electron` design-token values (grays/accent ramps and spacing scale in `src/styles/tokens.css`; values only — no code, no identity assets) | Basis for Oleafly's semantic token system | MIT |
+
+The ported values originate from the `openai-codex-electron` package, whose
+manifest declares the MIT license. Permission is hereby granted, free of
+charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without
+restriction, subject to the standard MIT terms: the above copyright notice
+(© OpenAI) and this permission notice shall be included in all copies or
+substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS",
+WITHOUT WARRANTY OF ANY KIND.
+
 ## Backend (Rust crates)
 
 | Crate | License |

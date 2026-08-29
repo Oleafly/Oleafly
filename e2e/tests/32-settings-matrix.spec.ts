@@ -279,16 +279,26 @@ test("reset to defaults restores factory preferences", async ({ tauriPage }) => 
   await tauriPage.click('[aria-label="Close settings"]');
 });
 
-test("dark mode switch in settings flips the real theme", async ({ tauriPage }) => {
+test("theme choice in settings flips the real theme", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  const theme = () =>
+  const isDark = () =>
     tauriPage.evaluate<boolean>(`document.documentElement.classList.contains('dark')`);
-  const before = await theme();
+  const dataTheme = () =>
+    tauriPage.evaluate<string>(`document.documentElement.getAttribute('data-theme')`);
+  const before = await isDark();
   await openAppearanceTab(tauriPage, "app");
-  await tauriPage.click('[role="switch"][aria-label="Dark mode"]');
-  expect(await theme()).toBe(!before);
-  await tauriPage.click('[role="switch"][aria-label="Dark mode"]');
-  expect(await theme()).toBe(before);
+  // The preference resolves to the applied theme one render later, so poll
+  // instead of reading immediately after the click.
+  await tauriPage.click('[data-testid="settings-theme-light"]');
+  await expect.poll(isDark).toBe(false);
+  await expect.poll(dataTheme).toBe("light");
+  await tauriPage.click('[data-testid="settings-theme-dark"]');
+  await expect.poll(isDark).toBe(true);
+  await expect.poll(dataTheme).toBe("dark");
+  await tauriPage.click(
+    `[data-testid="settings-theme-${before ? "dark" : "light"}"]`,
+  );
+  await expect.poll(isDark).toBe(before);
   await tauriPage.click('[aria-label="Close settings"]');
 });
