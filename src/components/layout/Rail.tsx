@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import {
+  Globe,
   Moon,
   PanelLeft,
   PanelLeftClose,
   Settings as SettingsIcon,
   Sun,
+  Terminal,
 } from "lucide-react";
 import { railSections, type AppContext, type RailTabContribution } from "@oleafly/registry";
 import { useSettingsStore, type RailTab } from "@/store/settings";
@@ -58,6 +60,39 @@ function RailTabButton({
   );
 }
 
+function DockToggles() {
+  const terminalOpen = useSettingsStore((s) => s.terminalOpen);
+  const setTerminalOpen = useSettingsStore((s) => s.setTerminalOpen);
+  const browserOpen = useSettingsStore((s) => s.browserOpen);
+  const setBrowserOpen = useSettingsStore((s) => s.setBrowserOpen);
+  return (
+    <>
+      <Tooltip label={terminalOpen ? "Hide terminal" : "Show terminal"} side="right">
+        <button
+          type="button"
+          aria-label={terminalOpen ? "Hide terminal" : "Show terminal"}
+          aria-pressed={terminalOpen}
+          onClick={() => setTerminalOpen(!terminalOpen)}
+          className={railBtn(terminalOpen)}
+        >
+          <Terminal className="size-5" aria-hidden />
+        </button>
+      </Tooltip>
+      <Tooltip label={browserOpen ? "Hide browser" : "Show browser"} side="right">
+        <button
+          type="button"
+          aria-label={browserOpen ? "Hide browser" : "Show browser"}
+          aria-pressed={browserOpen}
+          onClick={() => setBrowserOpen(!browserOpen)}
+          className={railBtn(browserOpen)}
+        >
+          <Globe className="size-5" aria-hidden />
+        </button>
+      </Tooltip>
+    </>
+  );
+}
+
 export function Rail() {
   const railTab = useSettingsStore((s) => s.railTab);
   const projectId = useFilesStore((s) => s.projectId);
@@ -104,6 +139,7 @@ export function Rail() {
                 onSelect={() => select(tab.id as RailTab)}
               />
             ))}
+            {tabs.some((tab) => tab.id === "ai") && projectId && <DockToggles />}
           </div>
         ))}
       </div>
