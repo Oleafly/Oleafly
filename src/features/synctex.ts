@@ -216,20 +216,20 @@ export async function inverseFromClick(
   y: number,
   word?: string,
   expectedCheckpoint: CompileSuccessCheckpoint | null = null,
-) {
+): Promise<boolean> {
   const store = useFilesStore.getState();
   const { projectId } = store;
   const mainDoc = resolveEffectiveMainDoc().mainDoc;
-  if (!projectId) return;
-  if (!store.engineLoaded || !store.engine.capabilities.supports_synctex) return;
+  if (!projectId) return false;
+  if (!store.engineLoaded || !store.engine.capabilities.supports_synctex) return false;
   const context = currentSyncTexContext(expectedCheckpoint);
-  if (!context) return;
+  if (!context) return false;
   const currentLine = getCurrentLine();
   if (word && currentLine != null) selectWordNearLine(currentLine, word);
   try {
     const hit = await synctexInverse(projectId, mainDoc, page, x, y);
-    if (!contextStillValid(context)) return;
-    if (!hit) return;
+    if (!contextStillValid(context)) return false;
+    if (!hit) return false;
 
     let targetPath: string | null = null;
     let targetLine = hit.line;
@@ -244,7 +244,7 @@ export async function inverseFromClick(
         hit.line,
         false,
       );
-      if (!mapped) return;
+      if (!mapped) return false;
       targetPath = mapped[1];
       targetLine = mapped[2];
     }
@@ -253,14 +253,16 @@ export async function inverseFromClick(
     if (targetPath && targetPath !== activePath) {
       await store.openFile(targetPath);
       await nextFrames(2); // let the editor mount the new file
-      if (!contextStillValid(context)) return;
+      if (!contextStillValid(context)) return false;
     }
     // SyncTeX only resolves to a line (its column is coarse and often lands on a
     // `\begin`/`\end`). If we know the word that was clicked, place the cursor on
     // the nearest matching word; otherwise fall back to the line start.
-    if (word && selectWordNearLine(targetLine, word)) return;
+    if (word && selectWordNearLine(targetLine, word)) return true;
     gotoLine(targetLine);
+    return true;
   } catch (e) {
     void logError("synctex inverse", e);
+    return false;
   }
 }

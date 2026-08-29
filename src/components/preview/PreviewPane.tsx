@@ -86,6 +86,10 @@ import {
   canUseSyncTexForCheckpoint,
   inverseFromClick,
 } from "@/features/synctex";
+import {
+  armPreviewTyping,
+  disarmPreviewTyping,
+} from "@/features/preview-typing";
 import { askAiAboutCompileErrors } from "@/features/ask-ai-compile-errors";
 import {
   revealInDir,
@@ -799,6 +803,14 @@ export function PreviewPane() {
   }, [compileCheckpoint, pdfBytes]);
 
   const displayedCheckpoint = viewerDocument?.checkpoint ?? null;
+  const viewerIdentity = viewerDocument?.identity ?? null;
+  useEffect(() => {
+    void viewerIdentity;
+    disarmPreviewTyping();
+    return () => {
+      disarmPreviewTyping();
+    };
+  }, [viewerIdentity]);
   const pdfIsCurrent =
     viewerDocument !== null &&
     displayedCheckpoint !== null &&
@@ -2076,14 +2088,24 @@ export function PreviewPane() {
                     onOutlineStateChange={setOutlineState}
                     onInverse={
                       syncTexAvailable
-                        ? (pageNumber, clickX, clickY, word) =>
+                        ? (pageNumber, clickX, clickY, word, textTarget) => {
+                            const wantsTyping =
+                              useSettingsStore.getState().previewTyping &&
+                              textTarget !== undefined;
                             void inverseFromClick(
                               pageNumber,
                               clickX,
                               clickY,
                               word,
                               displayedCheckpoint,
-                            )
+                            ).then((placed) => {
+                              if (placed && wantsTyping && textTarget) {
+                                armPreviewTyping(textTarget);
+                              } else {
+                                disarmPreviewTyping();
+                              }
+                            });
+                          }
                         : undefined
                     }
                     onPageChange={(current, total) => {

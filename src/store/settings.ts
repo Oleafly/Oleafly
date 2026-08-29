@@ -381,6 +381,8 @@ interface SettingsState {
   setHomeProjectLayout: (v: HomeProjectLayout) => void;
   visualEditor: boolean;
   setVisualEditor: (v: boolean) => void;
+  previewTyping: boolean;
+  setPreviewTyping: (v: boolean) => void;
   latexTools: boolean;
   setLatexTools: (v: boolean) => void;
   // Engine for NEW LaTeX projects: "tectonic" (bundled, zero-setup) or
@@ -632,6 +634,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setVisualEditor: (v) => {
     saveLs("oleafly.visualEditor", v ? "1" : "0");
     set({ visualEditor: v });
+  },
+  previewTyping: ls("oleafly.previewTyping", "0") === "1",
+  setPreviewTyping: (v) => {
+    saveLs("oleafly.previewTyping", v ? "1" : "0");
+    set({ previewTyping: v });
   },
   latexTools: ls("oleafly.latexTools", "0") === "1",
   setLatexTools: (v) => {
