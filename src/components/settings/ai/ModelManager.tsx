@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Loader2, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -27,28 +28,24 @@ export interface ModelManagerProps {
 export function ModelManager({ providerId, models, apiKey, onChange }: ModelManagerProps) {
   const [newId, setNewId] = useState("");
   const [addError, setAddError] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshError, setRefreshError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<StoredModel | null>(null);
 
   const missingSeeds = seedProviderModels(providerId).filter(
     (s) => !models.some((m) => m.id === s.id)
   );
 
-  async function refresh() {
-    setRefreshing(true);
-    setRefreshError("");
-    try {
-      const fetched = await agentListModels({ providerId, key: apiKey || undefined });
-      onChange(mergeFetchedModels(models, fetched));
-    } catch (error) {
-      setRefreshError(
-        agentErrorKind(error) === "auth" ? "Invalid API key." : "Could not reach the provider.",
-      );
-    } finally {
-      setRefreshing(false);
-    }
-  }
+  // Inline error text under the list; the global mutation toast stays quiet.
+  const refresh = useMutation({
+    mutationFn: () => agentListModels({ providerId, key: apiKey || undefined }),
+    onSuccess: (fetched) => onChange(mergeFetchedModels(models, fetched)),
+    meta: { silent: true },
+  });
+  const refreshing = refresh.isPending;
+  const refreshError = refresh.isError
+    ? agentErrorKind(refresh.error) === "auth"
+      ? "Invalid API key."
+      : "Could not reach the provider."
+    : "";
 
   function submitNewModel() {
     const trimmed = newId.trim();
@@ -94,7 +91,7 @@ export function ModelManager({ providerId, models, apiKey, onChange }: ModelMana
             className="h-6 px-1.5 text-[11px]"
             data-testid={`ai-refresh-models-${providerId}`}
             disabled={refreshing}
-            onClick={() => void refresh()}
+            onClick={() => refresh.mutate()}
           >
             {refreshing ? (
               <Loader2 className="size-3 animate-spin" />

@@ -3,6 +3,7 @@ import {
   lazy,
   Suspense,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -17,6 +18,9 @@ import { RefreshCw } from "lucide-react";
 import { ThemeProvider } from "@/lib/theme";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
+import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
+import { BrowserPane } from "@/components/dock/BrowserPane";
+import { TerminalPane } from "@/components/dock/TerminalPane";
 import { Editor } from "@/components/editor/Editor";
 import { PreviewPane } from "@/components/preview/PreviewPane";
 import { PdfImportView } from "@/components/import/PdfImportView";
@@ -45,6 +49,7 @@ import {
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
 import { layoutPresetViewMode, layoutPresetWantsAi, useSettingsStore } from "@/store/settings";
+import { useAgentTurnsStore } from "@/store/agent-turns";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import { resetOpenCompileMarker, shouldCompileOnOpen } from "@/lib/open-compile";
@@ -232,6 +237,7 @@ const RESTORE_PREVIEW_FROM_FINGERPRINT = false;
 function AppContent() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const projectId = useFilesStore((s) => s.projectId);
+  const projectName = useFilesStore((s) => s.projectName);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const projectLoading = useFilesStore((state) => state.loading);
   const mainDocument = useFilesStore((state) => state.mainDoc);
@@ -260,15 +266,74 @@ function AppContent() {
   const accentColor = useSettingsStore((s) => s.accentColor);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const railTab = useSettingsStore((s) => s.railTab);
+  const terminalOpen = useSettingsStore((s) => s.terminalOpen);
+  const browserOpen = useSettingsStore((s) => s.browserOpen);
   const homePage = useHomeViewStore((state) => state.page);
   const toolsOpen = useHomeViewStore((state) => state.toolsOpen);
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
   const editorPanelRef = useRef<ImperativePanelHandle>(null);
   const pdfPanelRef = useRef<ImperativePanelHandle>(null);
+  const browserPanelRef = useRef<ImperativePanelHandle>(null);
+  const terminalPanelRef = useRef<ImperativePanelHandle>(null);
   const previousRailTabRef = useRef<string | null>(null);
   const previousShowTreeRef = useRef(showTree);
   const sidebarSizeBeforeAiRef = useRef<number | null>(null);
   const aiResizePendingRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!projectId || hideEditorArea) return;
+    const panel = browserPanelRef.current;
+    if (!panel) return;
+    if (browserOpen) {
+      if (panel.isCollapsed()) panel.expand(30);
+    } else if (panel.isExpanded()) {
+      panel.collapse();
+    }
+  }, [browserOpen, hideEditorArea, projectId]);
+
+  useLayoutEffect(() => {
+    if (!projectId || hideEditorArea) return;
+    const panel = terminalPanelRef.current;
+    if (!panel) return;
+    if (terminalOpen) {
+      if (panel.isCollapsed()) panel.expand(30);
+    } else if (panel.isExpanded()) {
+      panel.collapse();
+    }
+  }, [terminalOpen, hideEditorArea, projectId]);
+
+  useEffect(() => {
+    const seen = new Set<string>();
+    const seed = (recordsByChat: ReturnType<typeof useAgentTurnsStore.getState>["recordsByChat"]) => {
+      for (const [chatId, records] of Object.entries(recordsByChat)) {
+        for (const record of records) {
+          for (const item of record.items) seen.add(`${chatId}:${item.id}`);
+        }
+      }
+    };
+    seed(useAgentTurnsStore.getState().recordsByChat);
+    return useAgentTurnsStore.subscribe((state, previous) => {
+      if (state.recordsByChat === previous.recordsByChat) return;
+      for (const [chatId, records] of Object.entries(state.recordsByChat)) {
+        if (records === previous.recordsByChat[chatId]) continue;
+        const record = records[records.length - 1];
+        if (!record) continue;
+        for (const recorded of record.items) {
+          const id = `${chatId}:${recorded.id}`;
+          if (seen.has(id)) continue;
+          seen.add(id);
+          const item = recorded.item;
+          if (
+            item.type === "dynamicToolCall" &&
+            item.tool === "computer_use" &&
+            item.status === "inProgress"
+          ) {
+            useSettingsStore.getState().setBrowserOpen(true);
+          }
+        }
+      }
+    });
+  }, []);
 
   const RAIL_WIDTH_PX = 48;
   const SIDEBAR_DEFAULT_PX = 340;
@@ -290,6 +355,8 @@ function AppContent() {
   const sidebarMinSize = panelGroupWidth > 0 ? Math.min(65, (SIDEBAR_MIN_PX / panelGroupWidth) * 100) : 15;
   const sidebarDefaultSize =
     panelGroupWidth > 0 ? Math.min(65, (SIDEBAR_DEFAULT_PX / panelGroupWidth) * 100) : 15;
+  const workspacePanelDefaultSize =
+    viewMode === "split" ? (browserOpen ? 35 : 50) : browserOpen ? 70 : 100;
 
   useEffect(() => {
     const wasOpen = previousShowTreeRef.current;
@@ -354,12 +421,16 @@ function AppContent() {
           }
           if (viewMode === "split") {
             panel.resize(30);
-            editorPanelRef.current?.resize((30 / 70) * 100);
-            pdfPanelRef.current?.resize((40 / 70) * 100);
+            if (!browserOpen) {
+              editorPanelRef.current?.resize((30 / 70) * 100);
+              pdfPanelRef.current?.resize((40 / 70) * 100);
+            }
           } else {
             panel.resize(50);
-            if (viewMode === "editor") editorPanelRef.current?.resize(100);
-            else if (viewMode === "pdf") pdfPanelRef.current?.resize(100);
+            if (!browserOpen) {
+              if (viewMode === "editor") editorPanelRef.current?.resize(100);
+              else if (viewMode === "pdf") pdfPanelRef.current?.resize(100);
+            }
           }
         }
         aiResizePendingRef.current = false;
@@ -375,13 +446,13 @@ function AppContent() {
         // Without a remembered size the sidebar would keep the assistant's
         // half-width for the file tree, so fall back to its normal width.
         sidebarPanelRef.current?.resize(previousSize ?? sidebarDefaultSize);
-        if (viewMode === "split") {
+        if (viewMode === "split" && !browserOpen) {
           editorPanelRef.current?.resize(50);
           pdfPanelRef.current?.resize(50);
         }
       });
     }
-  }, [railTab, setViewMode, viewMode, hideEditorArea, sidebarDefaultSize]);
+  }, [railTab, setViewMode, viewMode, hideEditorArea, sidebarDefaultSize, browserOpen]);
 
   // Panels are sized in percentages, so a window resize would scale the sidebar
   // with it and leave it far from the width it was opened at. Hold its pixel
@@ -717,6 +788,7 @@ function AppContent() {
           (see globals.css). */}
       <div data-sidebar-open={showTree ? "true" : "false"} className="flex h-full flex-col">
         <TopToolbar />
+        <BackendProtocolBanner />
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <Rail />
           <ErrorBoundary
@@ -768,36 +840,130 @@ function AppContent() {
                   defaultSize={showTree ? 85 : 100}
                   className="min-h-0 min-w-0"
                 >
-                  <PanelGroup direction="horizontal" className="h-full min-h-0 min-w-0">
-                    {viewMode !== "pdf" && (
-                      <Panel
-                        ref={editorPanelRef}
-                        id="editor"
-                        order={1}
-                        defaultSize={viewMode === "editor" ? 100 : 50}
-                        minSize={15}
-                        className="min-h-0 min-w-0"
+                  <PanelGroup direction="vertical" className="h-full min-h-0 min-w-0">
+                    <Panel
+                      id="workspace-main"
+                      order={1}
+                      defaultSize={terminalOpen ? 70 : 100}
+                      minSize={15}
+                      className="min-h-0 min-w-0"
+                    >
+                      <PanelGroup direction="horizontal" className="h-full min-h-0 min-w-0">
+                        {viewMode !== "pdf" && (
+                          <Panel
+                            ref={editorPanelRef}
+                            id="editor"
+                            order={1}
+                            defaultSize={workspacePanelDefaultSize}
+                            minSize={15}
+                            className="min-h-0 min-w-0"
+                          >
+                            <ErrorBoundary surface="editor" resetKey={projectId}>
+                              <Suspense fallback={<SurfaceLoading label="Loading editor" />}>
+                                <Editor />
+                              </Suspense>
+                            </ErrorBoundary>
+                          </Panel>
+                        )}
+                        {viewMode === "split" && <VHandle id="h-mid" placement="top" />}
+                        {viewMode !== "editor" && (
+                          <Panel
+                            ref={pdfPanelRef}
+                            id="pdf"
+                            order={2}
+                            defaultSize={workspacePanelDefaultSize}
+                            minSize={15}
+                            className="min-h-0 min-w-0"
+                          >
+                            <ErrorBoundary surface="PDF preview" resetKey={projectId}>
+                              <Suspense fallback={<SurfaceLoading label="Loading preview" />}>
+                                <PreviewPane />
+                              </Suspense>
+                            </ErrorBoundary>
+                          </Panel>
+                        )}
+                        <div className={cn("flex shrink-0", !browserOpen && "hidden")}>
+                          <VHandle id="h-browser" placement="top" />
+                        </div>
+                        <Panel
+                          ref={browserPanelRef}
+                          id="browser"
+                          order={3}
+                          defaultSize={30}
+                          minSize={15}
+                          collapsible
+                          collapsedSize={0}
+                          onCollapse={() => {
+                            if (useSettingsStore.getState().browserOpen) {
+                              useSettingsStore.getState().setBrowserOpen(false);
+                            }
+                          }}
+                          onExpand={() => {
+                            if (!useSettingsStore.getState().browserOpen) {
+                              useSettingsStore.getState().setBrowserOpen(true);
+                            }
+                          }}
+                          className="min-h-0 min-w-0"
+                        >
+                          <div
+                            className={cn(
+                              "h-full min-h-0 min-w-0",
+                              !browserOpen && "invisible pointer-events-none",
+                            )}
+                          >
+                            <ErrorBoundary surface="browser dock" resetKey={projectId}>
+                              <BrowserPane visible={browserOpen} />
+                            </ErrorBoundary>
+                          </div>
+                        </Panel>
+                      </PanelGroup>
+                    </Panel>
+                    <PanelResizeHandle
+                      id="v-terminal"
+                      style={{ cursor: "row-resize" }}
+                      className={cn(
+                        "resize-handle-row group flex h-2.5 items-center justify-center",
+                        "transition-colors hover:bg-accent/40",
+                        !terminalOpen && "hidden",
+                      )}
+                    >
+                      <span className="h-0.5 w-8 rounded-full bg-border transition-colors group-hover:bg-ring" />
+                    </PanelResizeHandle>
+                    <Panel
+                      ref={terminalPanelRef}
+                      id="terminal"
+                      order={2}
+                      defaultSize={30}
+                      minSize={10}
+                      collapsible
+                      collapsedSize={0}
+                      onCollapse={() => {
+                        if (useSettingsStore.getState().terminalOpen) {
+                          useSettingsStore.getState().setTerminalOpen(false);
+                        }
+                      }}
+                      onExpand={() => {
+                        if (!useSettingsStore.getState().terminalOpen) {
+                          useSettingsStore.getState().setTerminalOpen(true);
+                        }
+                      }}
+                      className="min-h-0 min-w-0"
+                    >
+                      <div
+                        className={cn(
+                          "h-full min-h-0 min-w-0",
+                          !terminalOpen && "invisible pointer-events-none",
+                        )}
                       >
-                        <Suspense fallback={<SurfaceLoading label="Loading editor" />}>
-                          <Editor />
-                        </Suspense>
-                      </Panel>
-                    )}
-                    {viewMode === "split" && <VHandle id="h-mid" placement="top" />}
-                    {viewMode !== "editor" && (
-                      <Panel
-                        ref={pdfPanelRef}
-                        id="pdf"
-                        order={2}
-                        defaultSize={viewMode === "pdf" ? 100 : 50}
-                        minSize={15}
-                        className="min-h-0 min-w-0"
-                      >
-                        <Suspense fallback={<SurfaceLoading label="Loading preview" />}>
-                          <PreviewPane />
-                        </Suspense>
-                      </Panel>
-                    )}
+                        <ErrorBoundary surface="terminal dock" resetKey={projectId}>
+                          <TerminalPane
+                            projectId={projectId}
+                            projectName={projectName}
+                            visible={terminalOpen}
+                          />
+                        </ErrorBoundary>
+                      </div>
+                    </Panel>
                   </PanelGroup>
                 </Panel>
               )}

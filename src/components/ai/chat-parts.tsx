@@ -1,5 +1,6 @@
 import { memo, useEffect, useId, useRef, useState } from "react";
 import {
+  Bot,
   Brain,
   Check,
   CheckCircle2,
@@ -9,6 +10,7 @@ import {
   Info,
   Loader2,
   Paperclip,
+  Terminal,
   Wrench,
   XCircle,
 } from "lucide-react";
@@ -110,6 +112,155 @@ export function CopyMessageButton({ text }: { text: string }) {
   );
 }
 
+// Read-only tools whose consecutive calls collapse into one "Explored…"
+// summary, matching the reference exploration grouping.
+const EXPLORATION_TOOLS: Record<string, "file" | "search" | "list"> = {
+  read_file: "file",
+  get_pdf_text: "file",
+  get_log: "file",
+  search_project: "search",
+  project_library_search: "search",
+  list_files: "list",
+  project_map: "list",
+};
+
+function pluralize(count: number, one: string, many: string): string | null {
+  if (count === 0) return null;
+  return count === 1 ? `a ${one}` : `${count} ${many}`;
+}
+
+// "Explored 3 files, 2 searches" from a run of read-only tool calls.
+export function explorationSummary(tools: ToolEntry[]): string {
+  let files = 0;
+  let searches = 0;
+  let lists = 0;
+  for (const tool of tools) {
+    const kind = EXPLORATION_TOOLS[tool.name];
+    if (kind === "file") files++;
+    else if (kind === "search") searches++;
+    else if (kind === "list") lists++;
+  }
+  const parts = [
+    pluralize(files, "file", "files"),
+    pluralize(searches, "search", "searches"),
+    pluralize(lists, "list", "lists"),
+  ].filter((p): p is string => p != null);
+  return parts.length === 0 ? "Explored" : `Explored ${parts.join(", ")}`;
+}
+
+function parseExec(output?: string): {
+  command: string;
+  body: string;
+  status: string;
+  exitCode: number | null;
+} | null {
+  if (!output) return null;
+  try {
+    const parsed = JSON.parse(output) as {
+      exec?: boolean;
+      command?: string;
+      output?: string;
+      status?: string;
+      exit_code?: number | null;
+    };
+    if (!parsed.exec || typeof parsed.command !== "string") return null;
+    return {
+      command: parsed.command,
+      body: parsed.output ?? "",
+      status: parsed.status ?? "Running",
+      exitCode: parsed.exit_code ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Command card for run_command results: `$ command`, aggregated output, and a
+// status pill (Success / Failed with exit code N / Stopped), per the reference
+// exec item.
+export function ExecCard({ tc }: { tc: ToolEntry }) {
+  const [expanded, setExpanded] = useState(false);
+  const exec = parseExec(tc.output);
+  const running = tc.status === "running" || !exec;
+  const failed = exec ? exec.exitCode !== 0 && exec.exitCode !== null : false;
+  const command = exec?.command ?? "";
+  return (
+    <div
+      data-testid="exec-card"
+      data-exec-status={exec?.status ?? "running"}
+      className="max-w-[85%] overflow-hidden rounded-md border bg-muted text-xs"
+    >
+      <button
+        type="button"
+        onClick={() => exec?.body && setExpanded((v) => !v)}
+        className={cn(
+          "flex w-full items-center gap-2 px-2.5 py-1.5 text-left",
+          exec?.body && "cursor-pointer hover:bg-accent/50",
+        )}
+      >
+        <Terminal className="size-3.5 shrink-0 text-muted-foreground" />
+        <code className="min-w-0 flex-1 truncate font-mono text-[11px]">
+          $ {command || tc.name}
+        </code>
+        {running ? (
+          <Loader2 className="size-3 shrink-0 animate-spin" />
+        ) : failed ? (
+          <XCircle className="size-3 shrink-0 text-destructive" />
+        ) : (
+          <CheckCircle2 className="size-3 shrink-0 text-emerald-500" />
+        )}
+        {exec?.body && (
+          <ChevronRight
+            className={cn("size-3 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-90")}
+          />
+        )}
+      </button>
+      {exec && !running && (
+        <div className="border-t px-2.5 py-1 text-[10px] text-muted-foreground">
+          {exec.status}
+        </div>
+      )}
+      {expanded && exec?.body && (
+        <pre className="max-h-56 animate-in fade-in overflow-auto whitespace-pre-wrap break-words border-t px-2.5 py-1.5 font-mono text-[10px] text-muted-foreground duration-150 motion-reduce:animate-none">
+          {exec.body}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+// A collapsed run of read-only tool calls: "Explored 3 files, 2 searches",
+// expandable to the individual tool badges. Mirrors the reference exploration
+// grouping so a long read-heavy turn stays scannable.
+export function ExplorationGroup({ tools }: { tools: ToolEntry[] }) {
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  return (
+    <div className="max-w-[85%]" data-testid="exploration-group">
+      <button
+        type="button"
+        aria-controls={listId}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 rounded-md px-1 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ChevronRight
+          aria-hidden="true"
+          className={cn("size-3 transition-transform", open && "rotate-90")}
+        />
+        {explorationSummary(tools)}
+      </button>
+      {open && (
+        <div id={listId} className="mt-1.5 flex animate-in fade-in flex-col gap-1.5 border-l pl-2.5 duration-150 motion-reduce:animate-none">
+          {tools.map((tool, index) => (
+            <ToolBadge key={tool.id ?? `explore-${index}`} tc={tool} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ToolBadge({ tc }: { tc: ToolEntry }) {
   const [expanded, setExpanded] = useState(false);
   const result = tc.output?.includes('"success": true')
@@ -156,7 +307,7 @@ export function ToolBadge({ tc }: { tc: ToolEntry }) {
         </span>
       </button>
       {expanded && tc.output && (
-        <pre className="max-h-40 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words border-t px-2.5 py-1.5 font-mono text-[10px] text-muted-foreground">
+        <pre className="max-h-96 animate-in fade-in overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words border-t px-2.5 py-1.5 font-mono text-[10px] text-muted-foreground duration-150 motion-reduce:animate-none">
           {tc.output}
         </pre>
       )}
@@ -298,6 +449,83 @@ export function ReasoningBlock({
   );
 }
 
+// Delegated child run, in the multi-agent-action card shape: what it was
+// asked, where it is, and a preview of what came back.
+export function SubagentCard({
+  entry,
+}: {
+  entry: { id: string; label: string; state: string; detail?: string };
+}) {
+  const running = entry.state !== "done" && entry.state !== "error";
+  return (
+    <div
+      data-testid="subagent-card"
+      data-subagent-state={entry.state}
+      className="max-w-[85%] rounded-md border bg-muted text-xs"
+    >
+      <div className="flex items-center gap-2 px-2.5 py-1.5">
+        <Bot className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate font-medium">{entry.label}</span>
+        {running && <Loader2 className="size-3 shrink-0 animate-spin" />}
+        {entry.state === "done" && (
+          <CheckCircle2 className="size-3 shrink-0 text-emerald-500" />
+        )}
+        {entry.state === "error" && (
+          <XCircle className="size-3 shrink-0 text-destructive" />
+        )}
+      </div>
+      {(running || entry.detail) && (
+        <div className="border-t px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground">
+          {running
+            ? entry.state === "tool" && entry.detail
+              ? `Using ${entry.detail}`
+              : "Working on it"
+            : entry.detail}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Finished runs fold their reasoning and tool steps behind one header, so a
+// long agentic turn reads as its outcome first. Streaming turns stay fully
+// expanded; the fold only applies once the run is over.
+function WorkedSteps({
+  rows,
+  totalMs,
+}: {
+  rows: React.ReactNode[];
+  totalMs: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  const seconds = Math.max(1, Math.round(totalMs / 1000));
+  const label = totalMs > 0 ? `Worked for ${seconds}s` : `Worked through ${rows.length} steps`;
+  return (
+    <div className="max-w-[85%]">
+      <button
+        type="button"
+        data-testid="worked-steps-toggle"
+        aria-controls={listId}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex items-center gap-1.5 rounded-md px-1 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ChevronRight
+          aria-hidden="true"
+          className={cn("size-3 transition-transform", open && "rotate-90")}
+        />
+        {label}
+      </button>
+      {open && (
+        <div id={listId} className="mt-1.5 flex animate-in fade-in flex-col gap-1.5 border-l pl-2.5 duration-150 motion-reduce:animate-none">
+          {rows}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Memoized on the message object reference: `updateLast` only replaces the
 // *last* message's reference each streamed token, so every earlier message
 // skips re-render (and re-parsing its markdown) instead of reconciling the
@@ -333,13 +561,47 @@ export const MessageItem = memo(function MessageItem({
       }
     });
     if (i < tools.length) {
+      // Collapse a finished run of consecutive read-only tools (with no
+      // reasoning anchored between them) into one exploration summary.
+      const reasoningAt = (index: number) =>
+        blocks.some((b) => Math.min(b.beforeTool, tools.length) === index);
+      if (!live && EXPLORATION_TOOLS[tools[i].name]) {
+        let j = i;
+        while (
+          j + 1 < tools.length &&
+          EXPLORATION_TOOLS[tools[j + 1].name] &&
+          !reasoningAt(j + 1)
+        ) {
+          j++;
+        }
+        if (j > i) {
+          rows.push(
+            <ExplorationGroup
+              key={tools[i].id ?? `explore-group-${i}`}
+              tools={tools.slice(i, j + 1)}
+            />,
+          );
+          i = j;
+          continue;
+        }
+      }
       const tool = tools[i];
-      rows.push(<ToolBadge key={tool.id ?? `legacy-tool-${i}`} tc={tool} />);
+      const key = tool.id ?? `legacy-tool-${i}`;
+      if (tool.name === "run_command") {
+        rows.push(<ExecCard key={key} tc={tool} />);
+      } else {
+        rows.push(<ToolBadge key={key} tc={tool} />);
+      }
     }
   }
+  for (const entry of msg.subagents ?? []) {
+    rows.push(<SubagentCard key={entry.id} entry={entry} />);
+  }
+  const totalMs = blocks.reduce((sum, block) => sum + (block.ms ?? 0), 0);
+  const foldSteps = !live && rows.length > 0 && msg.role === "assistant";
   return (
     <div className={cn("flex flex-col gap-1.5", msg.role === "user" && "items-end")}>
-      {rows}
+      {foldSteps ? <WorkedSteps rows={rows} totalMs={totalMs} /> : rows}
       {msg.attachments && msg.attachments.length > 0 && (
         <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
           {msg.attachments.map((a) => {
@@ -373,7 +635,17 @@ export const MessageItem = memo(function MessageItem({
             )}
           >
             {msg.role === "assistant" ? (
-              <Markdown className="chat-markdown">{msg.content}</Markdown>
+              live ? (
+                <div
+                  data-streaming-text="true"
+                  dir="auto"
+                  className="whitespace-pre-wrap break-words [unicode-bidi:plaintext]"
+                >
+                  {msg.content}
+                </div>
+              ) : (
+                <Markdown className="chat-markdown">{msg.content}</Markdown>
+              )
             ) : (
               <p className="whitespace-pre-wrap break-words">{msg.content}</p>
             )}

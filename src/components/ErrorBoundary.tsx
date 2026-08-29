@@ -10,6 +10,10 @@ interface Props {
   // rather than the whole app. When provided, a caught error renders this
   // instead of the full-screen crash screen, so the rest of the UI survives.
   fallback?: ReactNode;
+  // Names a UI surface (editor, chat, PDF preview…). A caught error renders a
+  // compact in-place fallback with Retry and Copy diagnostics instead of the
+  // full-screen crash screen, so the rest of the workspace survives.
+  surface?: string;
   // A new render payload (for example, a newly compiled PDF) gets one fresh
   // attempt after a scoped child crashed.
   resetKey?: unknown;
@@ -17,6 +21,7 @@ interface Props {
 
 interface State {
   error: Error | null;
+  componentStack: string | null;
   copied: boolean;
 }
 
@@ -24,13 +29,14 @@ interface State {
 // leaves a blank window. This catches it, logs details to `~/.oleafly/app.log`
 // (so users can share it), and offers a reload.
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null, copied: false };
+  state: State = { error: null, componentStack: null, copied: false };
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { error, copied: false };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
+    this.setState({ componentStack: info.componentStack ?? null });
     const detail = `UI crash: ${error.name}: ${error.message}\n${
       error.stack ?? ""
     }\ncomponentStack:${info.componentStack ?? ""}`;
@@ -43,9 +49,31 @@ export class ErrorBoundary extends Component<Props, State> {
       this.state.error &&
       !Object.is(previousProps.resetKey, this.props.resetKey)
     ) {
-      this.setState({ error: null, copied: false });
+      this.reset();
     }
   }
+
+  reset = () => {
+    this.setState({ error: null, componentStack: null, copied: false });
+  };
+
+  diagnostics = () => {
+    const { error, componentStack } = this.state;
+    if (!error) return "";
+    return `${error.name}: ${error.message}\n${error.stack ?? ""}\ncomponentStack:${componentStack ?? ""}`;
+  };
+
+  copyDiagnostics = async () => {
+    const text = this.diagnostics();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      this.setState({ copied: true });
+      setTimeout(() => this.setState({ copied: false }), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
 
   copyStack = async () => {
     const { error } = this.state;
@@ -66,6 +94,41 @@ export class ErrorBoundary extends Component<Props, State> {
     // Scoped boundaries render their own compact fallback and leave the rest of
     // the app mounted.
     if (this.props.fallback !== undefined) return this.props.fallback;
+
+    if (this.props.surface !== undefined) {
+      return (
+        <div
+          data-testid="surface-error-boundary"
+          className="flex h-full min-h-24 w-full flex-1 flex-col items-center justify-center gap-3 p-6 text-center"
+        >
+          <p className="text-sm text-muted-foreground">
+            The {this.props.surface} crashed.
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={this.reset}
+              className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              <RefreshCw className="size-3.5" />
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={() => void this.copyDiagnostics()}
+              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              {copied ? (
+                <Check className="size-3.5 text-emerald-500" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+              Copy diagnostics
+            </button>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div

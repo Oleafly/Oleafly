@@ -5,6 +5,7 @@ const ATTACHMENT_MAX_CHARS = 48_000;
 import {
   runViaBackend,
   type AgentContentPart,
+  type AgentEvent,
   type AgentMessage,
   type AgentRunConfig,
   type AgentRunOutcome,
@@ -29,6 +30,12 @@ export interface HarnessHandlers {
   onUsage(usage: { input: number; output: number }): void;
   onStep(step: number): void;
   onRetry(attempt: number, max: number): void;
+  onSubagentUpdate(update: {
+    id: string;
+    label: string;
+    state: string;
+    detail: string | null;
+  }): void;
 }
 
 export function toolSchemasFor(tools: ToolSet): AgentToolSchema[] {
@@ -151,6 +158,12 @@ export function packToolOutputText(output: unknown): string {
   }
 }
 
+const TOOL_REPLY_ID_PREFIX = /^tool-\d+-\d+-/;
+
+export function providerCallIdFromToolReplyId(id: string): string {
+  return id.replace(TOOL_REPLY_ID_PREFIX, "");
+}
+
 export async function runAgentHarness(args: {
   system: string;
   messages: ModelMessage[];
@@ -162,6 +175,14 @@ export async function runAgentHarness(args: {
   imageInstruction?: string;
   /** The project this run is pinned to; enables native backend tool dispatch. */
   projectId?: string | null;
+  /** Thread the turn records into (rollouts + SQLite mirror). */
+  threadId?: string;
+  /** Client-generated turn id for the optimistic-turn rebind. */
+  clientTurnId?: string;
+  /** Backend request id, needed to steer or interrupt by id. */
+  onRequestId?: (id: string) => void;
+  /** Raw event tap (fold into the authoritative turn record). */
+  onRawEvent?: (event: AgentEvent) => void;
   /**
    * Run-context guard, called before every tool execution. Returning a
    * message refuses the call with a structured error instead of executing —
@@ -201,6 +222,7 @@ export async function runAgentHarness(args: {
     {
       onEvent: (event) => {
         if (args.signal.aborted) return;
+        args.onRawEvent?.(event);
         handlers.onActivity();
         switch (event.kind) {
           case "stepStart":
@@ -252,6 +274,16 @@ export async function runAgentHarness(args: {
           case "usage":
             handlers.onUsage(event.usage);
             break;
+          case "subagentUpdate":
+            handlers.onActivity();
+            handlers.onSubagentUpdate(event);
+            break;
+          case "compacted":
+            handlers.onThinking("Summarizing earlier conversation…");
+            break;
+          case "steered":
+            handlers.onActivity();
+            break;
           case "done":
             endReasoning();
             break;
@@ -266,7 +298,7 @@ export async function runAgentHarness(args: {
         // the loop's toolOutcome event carries the bare provider id; record
         // both so the outcome of a locally executed tool is not re-rendered.
         locallyExecuted.add(call.id);
-        locallyExecuted.add(call.id.replace(/^tool-\d+-\d+-/, ""));
+        locallyExecuted.add(providerCallIdFromToolReplyId(call.id));
         names.set(call.id, call.name);
         let parsed: unknown = {};
         try {
@@ -310,5 +342,10 @@ export async function runAgentHarness(args: {
     args.config,
     args.providerOverride,
     args.projectId ?? null,
+    {
+      threadId: args.threadId,
+      clientTurnId: args.clientTurnId,
+      onRequestId: args.onRequestId,
+    },
   );
 }
