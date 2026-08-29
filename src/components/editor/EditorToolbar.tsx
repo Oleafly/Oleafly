@@ -111,6 +111,7 @@ export function IconBtn({
     <Tooltip label={title} side="bottom">
       <button
         type="button"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={onClick}
         aria-label={title}
         data-tour={dataTour}
@@ -436,7 +437,7 @@ export function EditorToolbar({
   const overflowControls = controls.slice(visibleCount);
 
   return (
-    <div className="flex h-9 items-center gap-0.5 border-b px-2">
+    <div data-testid="editor-toolbar" className="flex h-9 items-center gap-0.5 border-b px-2">
       {showVisualToggle && (
         <>
           <WysiwygModeSwitch
