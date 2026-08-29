@@ -1,0 +1,87 @@
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{Architecture}
+
+Figure~\ref{fig:architecture} shows how the four objectives compose into one system. Each custodian
+runs a node that never exports records. The encoder is the mechanism from \ref{obj:encoding}, the
+comparison is the protocol from \ref{obj:protocol}, and the certificate that leaves the system is
+what makes \ref{obj:inference} possible.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+      node distance=6mm and 8mm,
+      cust/.style={draw,rounded corners=2pt,fill=wpone!10,align=center,font=\scriptsize,
+                   minimum width=24mm,minimum height=9mm,inner sep=2pt},
+      core/.style={draw,rounded corners=2pt,fill=wptwo!12,align=center,font=\scriptsize,
+                   minimum width=28mm,minimum height=9mm,inner sep=2pt},
+      sink/.style={draw,rounded corners=2pt,fill=wpthree!12,align=center,font=\scriptsize,
+                   minimum width=26mm,minimum height=9mm,inner sep=2pt},
+      flow/.style={-{Stealth[length=1.8mm]},thick},
+    ]
+    \node[cust] (c1) {Custodian A\\\scriptsize births, deaths};
+    \node[cust,below=of c1] (c2) {Custodian B\\\scriptsize hospital episodes};
+    \node[cust,below=of c2] (c3) {Custodian C\\\scriptsize prescriptions};
+
+    \node[core,right=10mm of c2] (enc) {Local encoder\\\scriptsize private sketch, $\varepsilon \le 2$};
+    \node[core,right=of enc] (cmp) {Secure comparison\\\scriptsize no party sees the join};
+    \node[sink,right=of cmp,yshift=7mm] (agg) {Aggregate estimates};
+    \node[sink,right=of cmp,yshift=-7mm] (cert) {Error certificate\\\scriptsize $\hat{\alpha}, \hat{\beta}$, coverage};
+
+    \foreach \n in {c1,c2,c3} { \draw[flow] (\n.east) -- (enc.west); }
+    \draw[flow] (enc) -- (cmp);
+    \draw[flow] (cmp.east) -- (agg.west);
+    \draw[flow] (cmp.east) -- (cert.west);
+
+    \node[draw,dashed,rounded corners=2pt,font=\scriptsize,align=center,
+          below=9mm of cert,minimum height=9mm,minimum width=26mm,inner sep=2pt]
+      (an) {Analyst\\\scriptsize corrected estimand};
+    \draw[flow] (cert) -- (an);
+    \draw[flow] (agg.east) -- ++(4mm,0) |- (an.east);
+
+    \begin{scope}[on background layer]
+      \node[draw,dotted,rounded corners=3pt,fit=(enc)(cmp),inner sep=3mm,
+            label={[font=\scriptsize]above:no identifier crosses this boundary}] {};
+    \end{scope}
+  \end{tikzpicture}
+  \caption{Architecture of the \proj{} federated linkage. The dotted boundary is the property that
+  the encoding proof in \ref{obj:encoding} has to establish, and the certificate is the input that
+  \ref{obj:inference} consumes.}
+  \label{fig:architecture}
+\end{figure}
+
+\subsection{Where the error enters}
+
+Let $\alpha$ be the false match rate and $\beta$ the missed match rate of a linkage, and let $Z$
+denote the demographic variables that drive both the linkage and the outcome model. Writing the
+target estimand as $\theta$ and the naive linked-data estimator as $\hat{\theta}_{\text{naive}}$,
+the first-order bias takes the form
+\begin{equation}
+  \label{eq:bias}
+  \mathbb{E}\bigl[\hat{\theta}_{\text{naive}}\bigr] - \theta
+    = \alpha\,\bigl(\theta_{\text{false}} - \theta\bigr)
+    + \operatorname{Cov}\!\left(\beta(Z),\, \frac{\partial \theta(Z)}{\partial Z}\right) + o(\alpha + \bar{\beta}).
+\end{equation}
+The first term is the one the applied literature expects and it is usually small. The second term
+is the one that matters, because $\beta(Z)$ is large exactly where the population is unusual, and
+it does not vanish as the sample grows. \ref{obj:theory} makes Equation~\eqref{eq:bias} sharp and
+computable from certificate quantities.
+
+\subsection{Encoding}
+
+We construct a randomised sketch of the $q$-gram set of each identifier field, calibrated so that
+the Hamming distance between two sketches is an unbiased estimator of the Jaccard distance between
+the underlying sets, with noise chosen to satisfy $\varepsilon$-differential privacy at the record
+level. The construction differs from a Bloom filter in that the noise is added to the counts rather
+than to the membership bits, which is what lets the privacy loss be accounted rather than
+estimated. The evaluation runs the published graph alignment attack against our encodings and
+reports recovery rate as a function of $\varepsilon$, side information, and population size.
+
+\subsection{Validation strategy}
+
+Every claim is validated at three levels: on synthetic populations where the truth is known, on a
+national registry pair for which a clerical review gold standard exists, and in the live
+three-custodian deployment where only the certificate is available. The third level cannot validate
+the bounds, so its role is to show that the certificate quantities are stable and that the protocol
+completes within its time budget.

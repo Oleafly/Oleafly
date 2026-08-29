@@ -1,0 +1,88 @@
+\begin{theindex}
+
+  \item augmented inverse probability weighting, \hyperpage{17}
+  \item average treatment effect, \hyperpage{3}
+    \subitem on the treated, \hyperpage{3}
+
+  \indexspace
+
+  \item backdoor criterion, \hyperpage{7}
+  \item benchmarking, \hyperpage{24}
+
+  \indexspace
+
+  \item collider bias, \hyperpage{8}
+  \item consistency assumption, \hyperpage{3}
+  \item cross fitting, \hyperpage{18}
+
+  \indexspace
+
+  \item d-separation, \hyperpage{7}
+  \item design based identification, \hyperpage{27}
+  \item directed acyclic graph, \hyperpage{7}
+
+  \indexspace
+
+  \item efficiency bound, \hyperpage{18}
+  \item exclusion restriction, \hyperpage{27}
+
+  \indexspace
+
+  \item front door criterion, \hyperpage{8}
+  \item fundamental problem of causal inference, \hyperpage{4}
+
+  \indexspace
+
+  \item g formula, \hyperpage{4}
+
+  \indexspace
+
+  \item Hajek estimator, \hyperpage{14}
+
+  \indexspace
+
+  \item ignorability, \hyperpage{4}
+  \item influence function, \hyperpage{18}
+  \item instrumental variable, \hyperpage{27}
+  \item interference, \hyperpage{3}
+    \subitem partial, \hyperpage{29}
+  \item inverse probability weighting, \hyperpage{13}
+
+  \indexspace
+
+  \item local average treatment effect, \hyperpage{27}
+
+  \indexspace
+
+  \item Markov property, \hyperpage{7}
+  \item monotonicity, \hyperpage{27}
+
+  \indexspace
+
+  \item outcome regression, \hyperpage{17}
+  \item overidentification test, \hyperpage{9}
+  \item overlap weights, \hyperpage{14}
+
+  \indexspace
+
+  \item parallel trends, \hyperpage{28}
+  \item positivity, \hyperpage{4}
+  \item potential outcomes, \hyperpage{3}
+  \item pre trend test, \hyperpage{9}
+  \item propensity score, \hyperpage{13}
+
+  \indexspace
+
+  \item sensitivity analysis, \hyperpage{23}
+  \item standardised mean difference, \hyperpage{15}
+
+  \indexspace
+
+  \item treatment version, \hyperpage{3}
+  \item truncation, \hyperpage{18}
+
+  \indexspace
+
+  \item weak instruments, \hyperpage{27}
+
+\end{theindex}

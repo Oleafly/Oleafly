@@ -1,0 +1,196 @@
+\chapter{Potential Outcomes and Estimands}
+\label{chap:potential-outcomes}
+
+\section{The framework}
+\label{sec:po-framework}
+
+Let $i = 1, \dots, n$ index units drawn independently from a population. Each
+unit has a binary treatment $A_i \in \{0,1\}$, a vector of pre treatment
+covariates $X_i \in \mathcal{X}$, and an observed outcome $Y_i \in \mathbb{R}$.
+The framework of this book posits, in addition, a pair of potential
+outcomes\index{potential outcomes} $\left( Y_i(0), Y_i(1) \right)$ representing
+the outcome that would be observed under each treatment value.
+
+\begin{assumption}[Consistency]
+\label{ass:consistency}
+\index{consistency assumption}
+The observed outcome equals the potential outcome under the received treatment,
+$Y_i = A_i Y_i(1) + (1 - A_i) Y_i(0)$.
+\end{assumption}
+
+Assumption~\ref{ass:consistency} looks like a definition and is not. It asserts
+that the treatment is well enough defined that a single potential outcome
+attaches to each value of $A_i$. A treatment such as ``obesity''\index{treatment version} fails this
+test, because the outcome under a reduction in body mass depends on how the
+reduction was achieved, and the framework cannot distinguish those routes.
+
+\begin{assumption}[No interference]
+\label{ass:sutva}
+\index{interference}
+The potential outcomes of unit $i$ do not depend on the treatments assigned to
+other units.
+\end{assumption}
+
+Assumption~\ref{ass:sutva} is violated whenever treatment spreads. Vaccination,
+job training in a local labour market, and any intervention delivered to a
+network all violate it, and Section~\ref{sec:design-interference} sketches what
+can be recovered when it fails.
+
+\section{Estimands}
+\label{sec:po-estimands}
+
+\begin{definition}[Average treatment effect]
+\label{def:ate}
+\index{average treatment effect}
+The average treatment effect is
+\begin{equation*}
+  \ATE = \E\left[ Y(1) - Y(0) \right].
+\end{equation*}
+\end{definition}
+
+\begin{definition}[Effect on the treated]
+\label{def:att}
+\index{average treatment effect!on the treated}
+The average treatment effect on the treated is
+\begin{equation*}
+  \ATT = \E\left[ Y(1) - Y(0) \mid A = 1 \right].
+\end{equation*}
+\end{definition}
+
+The two differ whenever treatment assignment correlates with the effect rather
+than merely with the level of the outcome, which is the usual situation when
+people select into treatment on the basis of expected benefit. A policy question
+about expanding a programme to those not currently receiving it is a question
+about neither estimand exactly, and Section~\ref{sec:design-late} returns to
+this point.
+
+\begin{remark}
+\label{rem:estimand-first}
+Choosing the estimand before choosing the estimator is not a stylistic
+preference. A propensity weighted difference in means and an outcome regression
+fitted to the same data estimate different quantities under misspecification,
+and reporting whichever is more favourable is a form of specification search
+that no standard error accounts for.
+\end{remark}
+
+\section{Identification under ignorability}
+\label{sec:po-identification}
+
+The fundamental problem of causal inference\index{fundamental problem of causal inference} is that $Y_i(1)$ and $Y_i(0)$ are never both observed.
+Identification proceeds by assuming that, within strata of covariates, the
+treated and untreated are exchangeable.
+
+\begin{assumption}[Conditional ignorability]
+\label{ass:ignorability}
+\index{ignorability}
+$\left( Y(0), Y(1) \right) \indep A \mid X$.
+\end{assumption}
+
+\begin{assumption}[Positivity]
+\label{ass:positivity}
+\index{positivity}
+There exists $\delta > 0$ such that
+$\delta < \Prob(A = 1 \mid X = x) < 1 - \delta$ for all $x$ in the support of
+$X$.
+\end{assumption}
+
+\begin{theorem}[Identification of the ATE]
+\label{thm:ate-identification}
+Under Assumptions~\ref{ass:consistency}, \ref{ass:sutva},
+\ref{ass:ignorability}, and~\ref{ass:positivity},
+\begin{equation}
+  \ATE = \E\Big[ \E\left[ Y \mid A = 1, X \right]
+               - \E\left[ Y \mid A = 0, X \right] \Big],
+  \label{eq:g-formula}
+\end{equation}
+and the right hand side is a functional of the observed data distribution alone.
+\end{theorem}
+
+\begin{proof}
+Fix $a \in \{0,1\}$. By the tower property,
+$\E[Y(a)] = \E\left[ \E\left[ Y(a) \mid X \right] \right]$. By
+Assumption~\ref{ass:ignorability}, $Y(a) \indep A \mid X$, so
+$\E\left[ Y(a) \mid X \right] = \E\left[ Y(a) \mid A = a, X \right]$. The
+conditioning event has positive probability by
+Assumption~\ref{ass:positivity}. By Assumption~\ref{ass:consistency}, on the
+event $\{A = a\}$ we have $Y = Y(a)$, hence
+$\E\left[ Y(a) \mid A = a, X \right] = \E\left[ Y \mid A = a, X \right]$.
+Taking the difference at $a = 1$ and $a = 0$ and applying linearity of
+expectation gives~\eqref{eq:g-formula}. Every term on the right involves only
+the joint law of $(Y, A, X)$.
+\end{proof}
+
+The right hand side of~\eqref{eq:g-formula} is the g formula\index{g formula}.
+Its structure is worth noting: the inner difference is a regression contrast at
+fixed $X$, and the outer expectation is over the marginal covariate
+distribution, not over the covariate distribution within either treatment arm.
+Standardising to the wrong marginal is the most common error in applied practice
+and produces a quantity that is neither the ATE nor the ATT.
+
+\begin{corollary}[Identification of the ATT]
+\label{cor:att-identification}
+Under the same assumptions, with Assumption~\ref{ass:positivity} weakened to
+$\Prob(A = 1 \mid X = x) < 1 - \delta$,
+\begin{equation*}
+  \ATT = \E\Big[ \E\left[ Y \mid A = 1, X \right]
+               - \E\left[ Y \mid A = 0, X \right] \,\Big|\, A = 1 \Big].
+\end{equation*}
+\end{corollary}
+
+\begin{proof}
+Repeat the proof of Theorem~\ref{thm:ate-identification} with every expectation
+conditioned on $A = 1$. Only $\E[Y(0) \mid A = 1]$ requires the ignorability
+assumption, and only the upper positivity bound is used, because units with
+$\Prob(A = 1 \mid X) = 0$ contribute no mass to the conditioning event.
+\end{proof}
+
+\section{What the assumptions cost}
+\label{sec:po-cost}
+
+Assumption~\ref{ass:ignorability} is untestable. No function of the observed
+data distinguishes a world in which it holds from one in which it fails, because
+the failure concerns the joint law of quantities that are never jointly
+observed. This is not a technicality to be noted and moved past. It is the
+reason Part~\ref{part:design} exists.
+
+Assumption~\ref{ass:positivity} is testable in principle and routinely violated
+in practice \citep{ferreiro2012positivity}. Table~\ref{tab:overlap} reports the overlap diagnostics for the
+worked example carried through this book, a study of a regional retraining
+programme in which enrolment was neither randomised nor administratively
+rationed.
+
+\begin{table}[t]
+\centering
+\caption[Overlap diagnostics for the retraining study]{Overlap diagnostics for
+the retraining study, $n = 8412$. The estimated propensity score is binned into
+deciles. Positivity is marginal in the top decile, where 96 percent of units are
+treated, and this is the stratum that drives the instability of the weighted
+estimators in Chapter~\ref{chap:propensity}.}
+\label{tab:overlap}
+\begin{tabular}{lrrrr}
+\toprule
+Decile of $\hat{e}(X)$ & Range & Treated & Control & Treated share \\
+\midrule
+1  & 0.01 to 0.06 & 22  & 819 & 0.026 \\
+2  & 0.06 to 0.11 & 61  & 780 & 0.073 \\
+3  & 0.11 to 0.18 & 118 & 723 & 0.140 \\
+4  & 0.18 to 0.26 & 190 & 651 & 0.226 \\
+5  & 0.26 to 0.35 & 264 & 577 & 0.314 \\
+6  & 0.35 to 0.46 & 351 & 490 & 0.417 \\
+7  & 0.46 to 0.59 & 452 & 390 & 0.537 \\
+8  & 0.59 to 0.73 & 559 & 282 & 0.665 \\
+9  & 0.73 to 0.88 & 682 & 159 & 0.811 \\
+10 & 0.88 to 0.99 & 808 &  33 & 0.961 \\
+\midrule
+Total & & 3507 & 4904 & 0.417 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two features of Table~\ref{tab:overlap} matter later. The support is nominally
+complete, in that both arms are represented in every decile. The effective
+support is not: the top decile contributes 33 control units to an estimate that
+must extrapolate across 808 treated units, and any estimator that weights by
+$1/(1 - \hat{e})$ will place enormous weight on those 33 observations. This is
+the mechanism behind the variance inflation documented in
+Section~\ref{sec:ps-variance}.

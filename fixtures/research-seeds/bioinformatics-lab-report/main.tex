@@ -1,0 +1,92 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shapes.geometric}
+
+\definecolor{ink}{RGB}{30,40,56}
+\definecolor{muted}{RGB}{104,110,124}
+\definecolor{wetlab}{RGB}{58,110,165}
+\definecolor{drylab}{RGB}{82,138,80}
+\definecolor{accent}{RGB}{178,60,48}
+\definecolor{gridline}{RGB}{214,218,226}
+\definecolor{codebg}{RGB}{247,247,250}
+
+\lstdefinestyle{shellstyle}{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{gridline},
+  framesep=5pt,
+  xleftmargin=6pt,
+  xrightmargin=2pt,
+  breaklines=true,
+  breakatwhitespace=true,
+  keywordstyle=\color{wetlab}\bfseries,
+  commentstyle=\color{muted}\itshape,
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true,
+  language=bash,
+  morekeywords={fastp,STAR,salmon,samtools,featureCounts,Rscript,multiqc},
+}
+
+\captionsetup{font=small,labelfont=bf}
+
+\newcommand{\strain}{CGU-114}
+\newcommand{\logfc}{\log_{2}\!\text{FC}}
+
+\title{\bfseries Transcriptional response of \emph{Thalassiosira pseudonana}
+strain \strain{} to sustained nitrogen limitation\\
+\large A differential expression and sequencing quality control report}
+
+\author{
+  Ines Karvonen \and Amadou Diallo \and Rosalind Ferreira-Bax\\
+  \normalsize Coastal Genomics Unit, Marisol Institute for Marine Sciences\\
+  \normalsize Practical BIO-437, experiment series NL-08
+}
+
+\date{14 March 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Nitrogen availability sets the ceiling on primary production across much of the
+temperate shelf, yet the transcriptional program a diatom runs when nitrogen
+becomes limiting is only partly resolved. We cultured
+\emph{Thalassiosira pseudonana} strain \strain{} in semi-continuous batch under
+nitrogen-replete and nitrogen-limited regimes, sampled at mid-exponential phase,
+and sequenced six stranded polyadenylated libraries to a median depth of
+34.2 million read pairs. After adapter trimming and rRNA depletion in silico,
+92.4 percent of reads aligned to the reference assembly. Differential expression
+testing recovered 1{,}486 transcripts at a false discovery rate below 0.05, of
+which 863 were induced. Nitrate and ammonium transporters, glutamine synthetase
+III, and the urea cycle carbamoyl phosphate synthase dominated the induced set,
+while photosystem II antenna proteins and ribosomal proteins were the strongest
+repressed group. Two libraries showed elevated optical duplication, and we report
+the quality control evidence that led us to keep them rather than resequence.
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/methods}
+\input{sections/results}
+\input{sections/discussion}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

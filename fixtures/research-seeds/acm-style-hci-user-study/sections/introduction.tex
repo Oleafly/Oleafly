@@ -1,0 +1,52 @@
+\section{Introduction}
+\label{sec:introduction}
+
+A developer who triggers a 40-second build does not sit and watch it. They read
+a ticket, answer a message, or start editing a different file, and the
+toolchain is then responsible for bringing them back. Every mainstream editor
+solves this the same way: a toast in the corner, an animated badge, sometimes a
+system notification, delivered the instant the build finishes.
+
+The design rationale is rarely stated but is easy to reconstruct. Build results
+are time sensitive, the developer asked for them, and the sooner they know the
+sooner they can act. Interruption research has been telling a different story
+for two decades. An interruption's cost is not the time it occupies but the
+time it takes to rebuild the suspended mental state
+afterwards~\citep{brandt2011resumption,ferreiro2014fragmentation}, and that
+cost is dominated by whether the interruption forces a shift of visual
+attention and a motor action, not by how much information it
+carries~\citep{okonjo2016peripheral}.
+
+Applied to compile notifications this predicts something specific and testable:
+a notification that appears in the periphery and requires no dismissal should
+outperform one that appears centrally and must be clicked away, even though the
+two convey identical information. It also predicts that the peripheral
+notification should beat no notification at all, since the developer would
+otherwise poll the build state manually and pay a self-interruption cost each
+time.
+
+We tested both predictions. Thirty-six professional developers each completed
+four instrumented editing tasks in a controlled editor, under four compile
+notification conditions in a counterbalanced within-subjects design. We
+measured resumption lag directly from keystroke and gaze traces rather than
+inferring it from task completion time, which is the measurement most prior
+work in this specific setting has relied on.
+
+The results support both predictions and are larger than we expected. The
+immediate toast condition, which is what nearly every shipping editor does, is
+the worst of the four on resumption lag, task completion time, error rate, and
+self-reported mental demand. We report the effect sizes, the confidence
+intervals, and the one condition where the ordering reverses.
+
+\paragraph*{Contributions.}
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+  \item A within-subjects study of compile notification modality with 36
+        professional developers and direct instrumentation of resumption lag
+        (Section~\ref{sec:method}).
+  \item Effect size estimates for four notification designs on four outcomes,
+        with the ambient design beating both the immediate toast and the silent
+        control (Section~\ref{sec:results}).
+  \item A boundary condition: the advantage inverts for builds shorter than
+        roughly eight seconds, where the developer never disengages and an
+        ambient marker is simply missed (Section~\ref{sec:discussion}).
+\end{itemize}

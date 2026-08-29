@@ -1,0 +1,49 @@
+\chapter*{Preface}
+\addcontentsline{toc}{chapter}{Preface}
+
+This book is about the gap between an association and an answer. A regression
+coefficient is an association. The question that motivated the regression is
+almost always causal: whether a programme raised earnings, whether a drug
+shortened a hospital stay, whether a tax changed behaviour. Closing that gap
+requires assumptions that the data cannot supply, and the discipline of causal
+inference is largely the discipline of stating those assumptions precisely
+enough that a reader can disagree with them.
+
+The organising idea is a separation of concerns. Part~\ref{part:identification}
+asks whether the causal quantity is a function of the observed distribution at
+all. This is identification, and it is a question about assumptions rather than
+about sample size. Part~\ref{part:estimation} asks how to estimate an identified
+quantity efficiently and how to do so without betting everything on one
+parametric model. Part~\ref{part:design} asks what to do when the identifying
+assumptions are doubtful, which is the normal case.
+
+The separation matters because the three failures look alike in a data analysis
+and have nothing to do with one another. An unidentified estimand cannot be
+rescued by a larger sample. An inefficient estimator of an identified quantity
+is a waste rather than an error. A well estimated quantity under a false
+assumption is the most dangerous of the three, because its confidence interval
+is narrow and centred in the wrong place.
+
+A longer treatment of the philosophical background is given in
+\citet{achterberg2018foundations}, and readers who want the graphical language
+developed from first principles should read \citet{ferreiro2007graphs}
+alongside Part~\ref{part:identification}.
+
+The prerequisites are a first course in mathematical statistics and comfort with
+conditional expectation. Measure theoretic care is used where it changes an
+answer and suppressed where it does not. Every theorem is proved, and the proofs
+are short by design: a proof that runs for four pages usually indicates that the
+statement is doing too much work.
+
+Readers coming from applied practice may prefer to begin with
+Chapter~\ref{chap:propensity} and return to Part~\ref{part:identification} when
+a weighting estimator misbehaves, which it will. Readers coming from
+econometrics will find Chapter~\ref{chap:design} familiar and
+Chapter~\ref{chap:graphical} less so, and the connection between the two
+languages is drawn explicitly in Section~\ref{sec:design-dag-view}.
+
+The fourth edition rewrites the treatment of doubly robust estimation in
+Chapter~\ref{chap:doubly-robust} around the sample splitting argument, which
+makes the rate condition transparent, and adds the sensitivity contours of
+Chapter~\ref{chap:sensitivity}. The exercises have been removed. They were never
+good, and the space is better spent on the material.

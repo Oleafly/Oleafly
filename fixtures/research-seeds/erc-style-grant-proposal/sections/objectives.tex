@@ -1,0 +1,47 @@
+\section{Objectives}
+\label{sec:objectives}
+
+\proj{} pursues four objectives. They are ordered so that each supplies what the next needs:
+\ref{obj:theory} defines what has to be measured, \ref{obj:encoding} produces a mechanism whose
+error can be measured, \ref{obj:protocol} makes that mechanism run across custodians, and
+\ref{obj:inference} carries the measurement into the scientific conclusion.
+
+\objective{obj:theory}{A theory of linkage error propagation}
+Characterise how false match and missed match rates propagate into regression, survival, and causal
+estimands, as a function of the dependence between linkage variables and analysis variables. The
+target is a set of sharp bounds and a diagnostic that tells an analyst, from quantities the protocol
+can report, whether the linkage error can plausibly explain the finding.
+\emph{Success criterion:} bounds validated against simulation and against three registry studies
+with known ground truth, plus a released diagnostic package.
+
+\objective{obj:encoding}{An encoding with a stated guarantee}
+Replace Bloom filter encodings with a sketch that supports approximate string comparison while
+satisfying a formal privacy definition, building on our differentially private sketch
+construction~\cite{okparalange2024sketch} and on the accounting framework of Dwork and
+Roth~\cite{dwork2014dpfoundations}.
+\emph{Success criterion:} an encoding at $\varepsilon \le 2$ per record that loses no more than
+4 percentage points of F1 against an unprotected comparison on the reference identifier benchmark,
+with a proof and an adversarial evaluation against the attacks
+of~\cite{christen2018attack,haugsdal2022graphattack}.
+
+\objective{obj:protocol}{A federated linkage protocol}
+Design and implement a protocol in which the joined dataset never exists in one place. Custodians
+hold their own records, a secure comparison step in the style of~\cite{yao1982protocols} produces
+match decisions, and the analyst receives only aggregate results together with the error rates
+required by \ref{obj:theory}.
+\emph{Success criterion:} a protocol running across three national custodians on at least
+8 million records per custodian, completing a full linkage within 72 hours on the agreed compute
+allocation.
+
+\objective{obj:inference}{Inference that carries the linkage uncertainty}
+Deliver estimators and software that treat the linkage as a latent structure rather than as given,
+extending the linked-data regression tradition~\cite{lahiri2005regression} to survival analysis and
+to the federated setting in which the analyst cannot see the links.
+\emph{Success criterion:} nominal coverage within 2 percentage points across the simulation grid,
+and three reanalyses of published registry findings with the linkage cost stated explicitly.
+
+\vspace{9pt}
+\noindent
+Objectives \ref{obj:theory} and \ref{obj:encoding} carry the scientific risk of the project.
+\ref{obj:protocol} and \ref{obj:inference} carry the delivery risk. Section~\ref{sec:risk} treats
+the two separately because they need different contingencies.

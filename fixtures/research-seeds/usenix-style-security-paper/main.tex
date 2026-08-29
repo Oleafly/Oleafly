@@ -1,0 +1,97 @@
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[letterpaper,top=1in,bottom=1in,left=0.75in,right=0.75in,columnsep=0.33in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage[ruled,vlined]{algorithm2e}
+\usepackage{enumitem}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,shapes.geometric}
+
+\definecolor{codekw}{rgb}{0.10,0.30,0.62}
+\definecolor{codecm}{rgb}{0.35,0.42,0.35}
+\definecolor{codestr}{rgb}{0.55,0.20,0.20}
+\definecolor{codebg}{rgb}{0.97,0.97,0.96}
+
+\lstdefinestyle{hook}{
+  language=bash,
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{codecm}\itshape,
+  stringstyle=\color{codestr},
+  backgroundcolor=\color{codebg},
+  numbers=left,
+  numberstyle=\ttfamily\tiny\color{black!45},
+  numbersep=5pt,
+  frame=single,
+  rulecolor=\color{black!30},
+  breaklines=true,
+  breakatwhitespace=false,
+  columns=fullflexible,
+  showstringspaces=false,
+  captionpos=b,
+  xleftmargin=13pt,
+  framexleftmargin=13pt,
+  aboveskip=6pt,
+  belowskip=4pt,
+}
+
+\newcommand{\tool}{Ratchet}
+
+\title{\vspace{-8mm}\bfseries\large
+Silent Rebuilds: A Longitudinal Measurement of\\
+Install-Time Code Execution in Package Registries}
+
+\author{
+  \normalsize Yuliya Ostrovska \and Marcus Kilbride \and Farah Tannous \and Jonas Ekstrom\\[1mm]
+  \footnotesize Ridgemount Institute for Systems Security\\
+  \footnotesize \texttt{\{ostrovska,kilbride,tannous,ekstrom\}@ridgemount.example}
+}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+Installing a package is supposed to copy files. In three of the largest
+language ecosystems it also runs arbitrary code, because the package format
+supports install-time hooks and the client executes them by default. We report
+a 19-month measurement of that surface across three registries, covering
+1.42~million package versions and 6.1~million recorded hook executions in an
+instrumented sandbox. Hooks are not rare: 8.4 percent of versions declare one,
+and the packages that do account for 31 percent of installs by download volume
+because they cluster in build-tooling dependencies that everything else pulls
+in. We built \tool, a sandboxed installer that records every syscall a hook
+issues and classifies its behaviour, and we use it to separate legitimate
+native compilation from behaviour that no build step needs. Of 119{,}400
+distinct hooks, 2{,}214 contacted a network host that was not the registry,
+408 read credential material outside the package directory, and 61 did both
+while also obfuscating the payload. We disclosed 47 packages that we assess as
+malicious and 190 that are merely reckless. Three quarters of the malicious
+set were published within 72 hours of a maintainer account changing its
+recovery email, which is a signal registries already hold and do not act on.
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/threat-model}
+\input{sections/methodology}
+\input{sections/results}
+\input{sections/defenses}
+\input{sections/related}
+\input{sections/conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

@@ -1,0 +1,46 @@
+\section{Defenses}
+\label{sec:defenses}
+
+\subsection{Turning hooks off is cheaper than assumed}
+
+The obvious mitigation, running the client with hooks disabled, is widely
+believed to break too much to be practical. We tested the belief. Installing
+the 10{,}000 most downloaded packages of each registry with hooks disabled, in
+a clean container, succeeded for 96.2 percent of them. Of the 3.8 percent that
+failed, nearly all were native bindings for which a prebuilt artifact exists
+and is selected automatically when one is available for the platform. On the
+three platforms we tested, the residual failure rate with prebuilt artifacts
+enabled was 0.9 percent.
+
+That figure changes the policy conversation. A default of no hooks with an
+explicit per-package allowance is a small amount of friction for one package in
+a hundred, and it removes the entire class of attack for the other ninety nine.
+
+\subsection{Sandboxing hooks that must run}
+
+For the residual set, the hook must run but does not need ambient authority. A
+hook performing native compilation needs the package directory, the toolchain,
+and nothing else: no network, no home directory, no environment beyond a
+curated set. We ran the residual 0.9 percent under exactly that policy, and all
+of them succeeded. The cost is 40~ms of namespace setup per package, which is
+noise against a compilation step measured in seconds.
+
+The reason clients do not already do this is not technical difficulty; it is
+that the policy has to be the default to matter, and defaults that break one
+install in a thousand are hard to ship. Our measurement suggests the true
+breakage rate under a compilation-only policy is close to zero.
+
+\subsection{What detection can and cannot add}
+
+Behavioural classification of the kind \tool{} performs is a good registry-side
+control and a poor client-side one. Registry side, it runs once per version, at
+publication, and a 180-second sandbox execution is affordable at the
+publication rates we observe: the busiest of the three registries would need
+roughly 40 concurrent sandboxes to keep up. Client side it is useless, because
+by the time the client can observe the behaviour the hook has already run.
+
+Detection also inherits the standard limitation. An adversary who reads this
+paper will gate the payload on a signal our sandbox does not reproduce, and our
+own results show they already gate on continuous integration environment
+variables. We treat the 94 percent recall as a measurement of the current
+population, not as a durable bound.

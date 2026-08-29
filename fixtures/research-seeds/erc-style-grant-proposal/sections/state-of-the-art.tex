@@ -1,0 +1,51 @@
+\section{State of the art and what \proj{} adds}
+\label{sec:sota}
+
+\subsection{Privacy-preserving linkage}
+
+The dominant deployed approach encodes each identifier as a Bloom filter and compares filters by
+Dice coefficient~\cite{schnell2009bloom}. It is fast, it needs no interaction, and it is used by
+national statistical offices. It is also cryptanalysable. Attacks exploit the fact that the
+encoding preserves frequency structure: common bigrams produce common bit patterns, and a graph
+built on encoding similarity aligns with a graph built on plaintext similarity from any public name
+frequency table~\cite{christen2018attack,haugsdal2022graphattack}. Reported recovery rates exceed
+50 percent of surnames on realistic populations.
+
+The field's response has been hardening: salting, bit balancing, record-level filters. Each raises
+the cost of the attack without changing its structure, and none produces a statement of the form
+"an adversary with this much side information learns at most this much". \proj{} takes the position
+that the guarantee must be definitional rather than empirical, and that the cost of the guarantee
+must be paid in a currency the epidemiologist can also see, namely the match quality.
+
+\subsection{Linkage error in analysis}
+
+Fellegi and Sunter gave the probabilistic framework in 1969~\cite{fellegi1969theory}, and the
+statistical literature on estimation from linked files is small but sharp, beginning with the
+regression corrections of Lahiri and Larsen~\cite{lahiri2005regression}. The applied literature
+mostly ignores it. Registry studies typically report a match rate and then analyse the linked file
+as observed data.
+
+Our own preliminary work quantified what that costs~\cite{okparalange2025linkageerror}. Linkage
+error is not classical measurement error, because the probability that a record is mislinked
+depends on the same demographic variables that appear in the analysis model. Migrants, people who
+change names, and people in large households are systematically harder to link. The bias therefore
+concentrates in exactly the subgroups that the study is usually about.
+
+\subsection{The gap}
+
+No existing system reports, to the analyst, the quantities needed to bound that bias, because no
+existing system knows them. The encoding is chosen for privacy, the threshold is chosen by a
+custodian, and the resulting error rates are estimated, if at all, on a clerical review sample that
+the analyst never sees. \proj{} closes the loop: the protocol that protects the identifiers is the
+same protocol that certifies its own error rates, and the estimator consumes that certificate.
+
+\subsection{Beyond the state of the art}
+
+\begin{enumerate}
+  \item A privacy definition for approximate string comparison that composes across a multi-party
+    linkage, rather than a per-encoding heuristic.
+  \item Sharp, computable bounds on linkage-induced bias for survival and causal estimands, not
+    only for linear regression.
+  \item A working three-custodian deployment, which is the point at which governance stops being a
+    thought experiment~\cite{vestergaardnnamdi2023governance}.
+\end{enumerate}

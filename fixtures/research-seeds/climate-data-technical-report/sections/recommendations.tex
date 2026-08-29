@@ -1,0 +1,113 @@
+\section{Recommendations}
+\label{sec:recommendations}
+
+\begin{enumerate}
+  \item \label{rec:enclosure}
+    \textbf{Convert MC06 and MC07 to enclosed path analysers.} The two sites
+    account for 61 percent of network wide stationarity rejections and sit
+    below the network mean data return in eleven months of twelve, as
+    Table~\ref{tab:monthly-record} shows. The mechanism is salt film
+    accumulation on the open path windows between cleaning visits, and no
+    cleaning schedule that the site access permits will fix it. An enclosed
+    path instrument with a heated inlet removes the failure mode at the cost of
+    a larger power budget, which both sites can carry with a 40 percent array
+    expansion.
+  \item \label{rec:profile}
+    \textbf{Install a vertical concentration profile at one saltmarsh and one
+    dune site.} Section~\ref{sec:results-advection} identifies an advective term
+    of 8 to 14 percent of the midday carbon flux on sea breeze days that the
+    single level eddy covariance measurement cannot resolve. A six level
+    profile with a sequential sampling manifold would allow the storage and
+    horizontal advection terms to be estimated directly. MC01 and MC08 are the
+    natural choices because both have mains power and the longest continuous
+    records.
+  \item \label{rec:radiometer}
+    \textbf{Shorten the radiometer calibration interval to six months.} The
+    observed drift of 3.8 percent over twelve months is nearly twice the
+    protocol tolerance and propagates directly into the energy balance closure
+    that the network uses as its independent quality check. A six month interval
+    with a travelling reference standard would hold the drift within tolerance
+    at modest cost.
+  \item \label{rec:threshold}
+    \textbf{Report the friction velocity threshold uncertainty separately in all
+    downstream products.} Table~\ref{tab:uncertainty} shows that the threshold
+    contributes more uncertainty than every measurement term combined. Products
+    that fold it into a single interval will mislead users into treating a
+    methodological choice as a measurement limit.
+  \item \label{rec:footprint}
+    \textbf{Reassess the MC06 fetch or relocate the tower.} With 340 metres of
+    fetch, MC06 fails the footprint criterion on 19.8 percent of records against
+    a network mean of 6.2 percent. A relocation 400 metres inland along the same
+    dune ridge would roughly double the fetch in the prevailing sector without
+    changing the cover class.
+\end{enumerate}
+
+\section{Archive and reproducibility}
+\label{sec:archive}
+
+The archive holds the raw 20 hertz records, the half hourly fluxes at every
+processing stage, and the configuration that produced them. Every archived flux
+carries the identifier of the configuration used, so the effect of a
+reprocessing campaign can be isolated. The configuration for the 2024 annual
+release is reproduced below.
+
+\begin{lstlisting}[caption={Processing configuration for the 2024 annual release.},label={lst:config}]
+release: 2024-annual
+chain_version: 4.2.1
+
+despike:
+  method: median_absolute_deviation
+  threshold: 5.5
+  window_minutes: 5
+  max_consecutive: 4
+
+rotation:
+  method: planar_fit
+  sector_width_degrees: 30
+  refit_interval_days: 30
+
+covariance:
+  averaging_minutes: 30
+  detrend: block_average
+  lag_search_seconds: [-2.0, 2.0]
+
+corrections:
+  density: true
+  spectral: empirical_transfer_function
+  reference_cospectrum: site_fitted
+  low_frequency: ogive
+
+footprint:
+  model: parameterised_2d
+  source_fraction: 0.80
+  min_target_fraction: 0.70
+
+quality:
+  stationarity_percent: 30
+  integral_turbulence_percent: 30
+  ustar_threshold_network: 0.13
+  ustar_threshold_range: [0.08, 0.16]
+  reject_precipitation: true
+
+gapfill:
+  method: marginal_distribution_sampling
+  window_days: 7
+  drivers: [shortwave_in, air_temperature, vapour_pressure_deficit]
+  max_gap_days: 12
+\end{lstlisting}
+
+The one entry that a user is likely to want to change is
+\texttt{ustar\_threshold\_network}. Reprocessing the full year at a different
+threshold takes approximately four hours on a single workstation, and the
+\texttt{ustar\_threshold\_range} entry records the interval over which the
+sensitivity in Table~\ref{tab:uncertainty} was evaluated.
+
+\section*{Acknowledgements}
+\addcontentsline{toc}{section}{Acknowledgements}
+
+The \network{} is funded by the coastal observation programme of the Institute
+for Boundary Layer Science. Site access at MC05 and MC07 is granted by the
+Roseholm Estate and at MC01 by the Kirkhavn Wildfowl Trust. Field maintenance
+through 2024 was carried out by Petra Lindholm and Osmund Kaale, who kept eight
+towers running through a winter that took out two of them, and the archive is
+maintained by Elias Grothe.

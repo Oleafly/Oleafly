@@ -23,13 +23,7 @@ export interface ResearchSeedResult {
 }
 
 export function researchSeedArchiveName(project: ResearchSeedProject): string {
-  const slug = project.name
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return `${slug}-${project.revision.slice(0, 12)}.zip`;
+  return `${project.slug}.zip`;
 }
 
 export function researchSeedRoot(libraryPath: string): string {
@@ -53,7 +47,7 @@ async function copySeedProject(seedRoot: string, project: ResearchSeedProject): 
   );
   try {
     await setMainDocCmd(projectId, project.mainDoc);
-    await setProjectEngineCmd(projectId, project.engine, project.flavor ?? null);
+    await setProjectEngineCmd(projectId, project.engine, null);
   } catch (error) {
     await recycleProject(projectId).catch(() => undefined);
     throw error;

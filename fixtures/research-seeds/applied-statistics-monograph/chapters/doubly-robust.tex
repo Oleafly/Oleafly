@@ -1,0 +1,177 @@
+\chapter{Doubly Robust Estimation}
+\label{chap:doubly-robust}
+
+\section{The augmented estimator}
+\label{sec:dr-aipw}
+
+Chapter~\ref{chap:propensity} estimated the ATE from a model for treatment.
+The g formula~\eqref{eq:g-formula} suggests instead a model for the outcome,
+$\mu_a(x) = \E\left[ Y \mid A = a, X = x \right]$, giving the outcome regression
+estimator\index{outcome regression} $n^{-1}\sum_i \left( \hat{\mu}_1(X_i) - \hat{\mu}_0(X_i) \right)$.
+Both estimators require their model to be correct. The augmented estimator
+requires only that one of them be.
+
+\begin{definition}[Augmented IPW estimator]
+\label{def:aipw}
+\index{augmented inverse probability weighting}
+\begin{equation}
+  \hat{\ATE}_{\mathrm{AIPW}} = \frac{1}{n} \sum_{i=1}^{n} \left\{
+    \hat{\mu}_1(X_i) - \hat{\mu}_0(X_i)
+    + \frac{A_i \left( Y_i - \hat{\mu}_1(X_i) \right)}{\hat{e}(X_i)}
+    - \frac{(1 - A_i)\left( Y_i - \hat{\mu}_0(X_i) \right)}{1 - \hat{e}(X_i)}
+  \right\}.
+  \label{eq:aipw}
+\end{equation}
+\end{definition}
+
+\begin{theorem}[Double robustness]
+\label{thm:double-robustness}
+Let $e^{*}$ and $\mu_a^{*}$ denote the probability limits of $\hat{e}$ and
+$\hat{\mu}_a$. If either $e^{*} = e$ or $\mu_a^{*} = \mu_a$ for $a \in \{0,1\}$,
+and positivity holds, then $\hat{\ATE}_{\mathrm{AIPW}}$ is consistent for the
+ATE.
+\end{theorem}
+
+\begin{proof}
+Write the population limit of the $a = 1$ portion of~\eqref{eq:aipw} as
+\begin{equation*}
+  \E\left[ \mu_1^{*}(X) + \frac{A\left( Y - \mu_1^{*}(X) \right)}{e^{*}(X)} \right]
+  = \E\left[ Y(1) \right]
+    + \E\left[ \left( 1 - \frac{e(X)}{e^{*}(X)} \right)
+               \left( \mu_1^{*}(X) - \mu_1(X) \right) \right],
+\end{equation*}
+which follows by conditioning on $X$, using $\E[A \mid X] = e(X)$ and
+$\E[AY \mid X] = e(X)\mu_1(X)$ under Assumptions~\ref{ass:consistency}
+and~\ref{ass:ignorability}, and collecting terms. The remainder is a product of
+two errors. If $e^{*} = e$ the first factor vanishes. If $\mu_1^{*} = \mu_1$ the
+second vanishes. In either case the limit is $\E[Y(1)]$. The argument for
+$a = 0$ is identical, and the difference of the two limits is the ATE.
+\end{proof}
+
+The proof shows more than the statement. The bias is a product of the two model
+errors, so the estimator is not merely robust to one failure but also
+second order accurate when both models are somewhat wrong. This is the
+observation that makes machine learning nuisance estimation viable.
+
+\begin{corollary}[Rate double robustness]
+\label{cor:rate-dr}
+If $\|\hat{e} - e\|_{2} = o_p(n^{-r_e})$ and
+$\|\hat{\mu}_a - \mu_a\|_{2} = o_p(n^{-r_\mu})$ with $r_e + r_\mu \geq 1/2$,
+and cross fitting is used, then $\hat{\ATE}_{\mathrm{AIPW}}$ is
+$\sqrt{n}$ consistent and asymptotically normal.
+\end{corollary}
+
+\begin{proof}
+The remainder term in the proof of Theorem~\ref{thm:double-robustness} is
+bounded by $\|\hat{e} - e\|_{2}\,\|\hat{\mu}_a - \mu_a\|_{2}$ after a Cauchy
+Schwarz step and the positivity bound on $e^{*}$. Under the stated rates this is
+$o_p(n^{-1/2})$ and therefore negligible relative to the influence function
+term. Cross fitting removes the empirical process term that would otherwise
+require a Donsker condition on the nuisance estimators.
+\end{proof}
+
+Corollary~\ref{cor:rate-dr} is proved in greater generality by
+\citet{barros2019rates}. It is the reason a random forest with a convergence
+rate of $n^{-1/4}$ in each nuisance function suffices for valid inference on the
+ATE, whereas the same forest plugged into the g formula alone does not.
+
+\section{Cross fitting}
+\label{sec:dr-crossfit}
+
+Cross fitting\index{cross fitting} estimates the nuisance functions on data
+disjoint from the fold at which they are evaluated \citep{lindqvist2016crossfit}. Without it, an overfitted
+$\hat{\mu}$ correlates with the residual it is subtracted from, and the
+correction term in~\eqref{eq:aipw} no longer has mean zero.
+
+\begin{algorithm}[t]
+\SetAlgoLined
+\KwIn{Data $\{(Y_i, A_i, X_i)\}_{i=1}^{n}$, folds $K$, learners for $e$ and $\mu_a$}
+\KwOut{$\hat{\ATE}_{\mathrm{AIPW}}$ and its standard error}
+partition the index set into folds $I_1, \dots, I_K$ of near equal size\;
+\For{$k \leftarrow 1$ \KwTo $K$}{
+  fit $\hat{e}^{(-k)}$ and $\hat{\mu}_a^{(-k)}$ on the units outside $I_k$\;
+  \ForEach{$i \in I_k$}{
+    evaluate $\hat{e}^{(-k)}(X_i)$ and $\hat{\mu}_a^{(-k)}(X_i)$\;
+    truncate $\hat{e}^{(-k)}(X_i)$ into $[\delta, 1 - \delta]$\;
+    form the influence contribution $\hat{\psi}_i$ from~\eqref{eq:influence}\;
+  }
+}
+$\hat{\ATE}_{\mathrm{AIPW}} \leftarrow n^{-1} \sum_i \hat{\psi}_i$\;
+$\widehat{\mathrm{se}} \leftarrow n^{-1/2}$ times the sample standard deviation
+of $\hat{\psi}_i$\;
+\caption{Cross fitted augmented estimation of the average treatment effect.}
+\label{alg:crossfit}
+\end{algorithm}
+
+The truncation step\index{truncation} in Algorithm~\ref{alg:crossfit} is not cosmetic. A learner
+that returns $\hat{e} = 0.998$ for a control unit creates a single influence
+contribution of order 500 times the others, and the sample standard deviation
+that supplies the standard error is then estimating the fourth moment of the
+weight distribution rather than anything about the effect. The value
+$\delta = 0.01$ is conventional. Reporting the number of truncated units is
+obligatory, and if that number is more than a few percent the estimand should be
+changed rather than the truncation loosened.
+
+\section{The efficient influence function}
+\label{sec:dr-influence}
+
+\begin{proposition}[Efficient influence function]
+\label{prop:eif}
+\index{influence function}
+The efficient influence function for the ATE in the nonparametric model is
+\begin{equation}
+  \psi(Y, A, X) = \mu_1(X) - \mu_0(X)
+    + \frac{A\left( Y - \mu_1(X) \right)}{e(X)}
+    - \frac{(1-A)\left( Y - \mu_0(X) \right)}{1 - e(X)}
+    - \ATE,
+  \label{eq:influence}
+\end{equation}
+and the semiparametric efficiency bound\index{efficiency bound} is $\Var\left[ \psi \right] / n$.
+\end{proposition}
+
+The bound decomposes usefully. Writing $\sigma_a^{2}(x) = \Var\left[ Y \mid A = a, X = x \right]$,
+\begin{equation}
+  \Var\left[ \psi \right]
+    = \E\left[ \frac{\sigma_1^{2}(X)}{e(X)} + \frac{\sigma_0^{2}(X)}{1 - e(X)} \right]
+    + \Var\left[ \mu_1(X) - \mu_0(X) \right].
+  \label{eq:efficiency-bound}
+\end{equation}
+The first term is irreducible sampling noise inflated by the imbalance of the
+design, and it is what explodes when $e$ approaches zero or one. The second is
+the genuine heterogeneity of the effect across covariate strata and is
+irreducible in a different sense: it would remain in a randomised experiment.
+
+\begin{table}[t]
+\centering
+\caption[Estimators compared on the retraining data]{Estimators compared on the
+retraining data. The nuisance functions for the last three rows are fitted with
+a gradient boosted ensemble under five fold cross fitting. The final column is
+the ratio of the estimated variance to the efficiency bound
+of~\eqref{eq:efficiency-bound} evaluated at the cross fitted nuisances.}
+\label{tab:dr-comparison}
+\begin{tabular}{lrrrr}
+\toprule
+Estimator & Estimate & Std. error & 95\% interval & Var. ratio \\
+\midrule
+Outcome regression, linear   & 1372 & 174 & (1031, 1713) & 1.41 \\
+Hajek weighting              & 1461 & 388 & (700, 2222)  & 6.99 \\
+AIPW, both models linear     & 1409 & 191 & (1035, 1783) & 1.69 \\
+AIPW, cross fitted ensemble  & 1418 & 147 & (1130, 1706) & 1.01 \\
+AIPW, score misspecified     & 1431 & 152 & (1133, 1729) & 1.08 \\
+AIPW, outcome misspecified   & 1404 & 163 & (1085, 1723) & 1.24 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:dr-comparison} illustrates Theorem~\ref{thm:double-robustness}
+directly. The last two rows deliberately break one nuisance model each, by
+fitting the score with an intercept only model and by fitting the outcome model
+on a single covariate respectively. Both remain within 2 percent of the fully
+specified estimate, whereas the pure weighting and pure regression estimators
+differ from each other by 6 percent and from the doubly robust estimate in
+opposite directions.
+
+The variance ratio column carries the other message of this chapter. The cross
+fitted ensemble attains the efficiency bound. The Hajek estimator is seven times
+the bound, which means that six sevenths of the sampling variability in that row
+is a property of the estimator rather than of the data.

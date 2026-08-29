@@ -1,0 +1,188 @@
+\section{Method}
+\label{sec:method}
+
+\subsection{Setting}
+
+We are given a pool $\pool = \{(x_i, y_i)\}_{i=1}^{N}$ drawn from a source
+distribution, an anchor set $\anchor$ of $m$ examples drawn from the target
+distribution $\target$ with $m \ll N$, a pretrained parameter vector
+$\theta_0$, and a token budget $B$ that admits far fewer than $N$ examples. We
+want parameters that minimise the target risk
+$R_{\target}(\theta) = \mathbb{E}_{(x,y) \sim \target}[\ell(f_\theta(x), y)]$
+while consuming at most $B$ tokens of the pool. The anchor set is too small to
+fine-tune on directly: at $m = 256$ it overfits within a few hundred steps.
+
+\subsection{The anchored objective}
+
+\method{} optimises a reweighted empirical risk with a proximal term that keeps
+the solution near the pretrained initialisation,
+\begin{equation}
+  \label{eq:objective}
+  \mathcal{L}(\theta; w) \;=\; \sum_{i=1}^{N} w_i \,
+    \ell\bigl(f_\theta(x_i), y_i\bigr)
+    \;+\; \frac{\lambda}{2} \left\lVert \theta - \theta_0 \right\rVert_2^2 ,
+  \qquad \sum_{i=1}^{N} w_i = 1, \; w_i \ge 0 .
+\end{equation}
+The weights are not free parameters and they are not learned. They are a fixed
+function of an alignment score and of training time.
+
+Let $g_i = \nabla_\theta \ell(f_{\theta}(x_i), y_i)$ be the per-example
+gradient at the current parameters and let
+$\bar{g}_{\anchor} = \frac{1}{m} \sum_{(x,y) \in \anchor} \nabla_\theta
+\ell(f_\theta(x), y)$ be the anchor gradient. Computing and storing $g_i$ for
+every candidate is not affordable at any useful scale, so we project both onto
+a fixed random matrix $\Pi \in \mathbb{R}^{d \times r}$ with $r = 512$ and
+define the alignment
+\begin{equation}
+  \label{eq:alignment}
+  a_i \;=\;
+  \frac{\bigl\langle \Pi^{\top} g_i, \; \Pi^{\top} \bar{g}_{\anchor} \bigr\rangle}
+       {\left\lVert \Pi^{\top} g_i \right\rVert_2 \,
+        \left\lVert \Pi^{\top} \bar{g}_{\anchor} \right\rVert_2} \; \in \; [-1, 1] .
+\end{equation}
+Cosine rather than raw inner product matters here. The uncentred inner product
+reintroduces gradient magnitude and therefore reintroduces exactly the
+difficulty bias we are trying to remove; we verify this as an ablation in
+Section~\ref{sec:analysis}.
+
+The score becomes a distribution through an annealed softmax,
+\begin{equation}
+  \label{eq:weights}
+  w_i(t) \;=\; \frac{\exp\bigl(a_i / \tau_t\bigr)}
+                    {\sum_{j=1}^{N} \exp\bigl(a_j / \tau_t\bigr)} ,
+  \qquad
+  \tau_t \;=\; \tau_0 \left( \frac{\tau_T}{\tau_0} \right)^{t/T} ,
+\end{equation}
+with $\tau_0 = 0.05$ and $\tau_T = 1.0$ over $T$ total steps. At $t = 0$ the
+distribution is concentrated on the best-aligned few percent of the pool; by
+$t = T$ it is close to uniform. Scores are refreshed every 200 steps, since the
+alignment ranking drifts as the parameters move but not fast enough to justify
+per-step recomputation.
+
+\subsection{An excess-risk bound}
+
+Two assumptions make the analysis tractable without making it vacuous.
+
+\begin{assumption}[Bounded, smooth losses]
+\label{ass:smooth}
+The loss $\ell(f_\theta(x), y)$ is $L$-Lipschitz and $\beta$-smooth in $\theta$
+on the ball of radius $D$ around $\theta_0$, and gradients are bounded,
+$\lVert g_i \rVert_2 \le G$.
+\end{assumption}
+
+\begin{assumption}[Anchor coverage]
+\label{ass:anchor}
+The anchor gradient is an unbiased estimate of the target gradient with
+variance $\sigma^2 / m$, that is,
+$\mathbb{E}[\bar{g}_{\anchor}] = \nabla R_{\target}(\theta)$ and
+$\mathbb{E}\lVert \bar{g}_{\anchor} - \nabla R_{\target}(\theta) \rVert_2^2
+\le \sigma^2 / m$.
+\end{assumption}
+
+Write $\rho_K = \frac{1}{K} \sum_{t < K} \sum_i w_i(t) \, a_i$ for the mean
+alignment mass retained by the curriculum over $K$ steps.
+
+\begin{proposition}[Anchored excess risk]
+\label{prop:risk}
+Under Assumptions~\ref{ass:smooth} and~\ref{ass:anchor}, running $K$ steps of
+stochastic gradient descent on Eq.~\eqref{eq:objective} with step size
+$\eta = D / (G\sqrt{K})$ yields iterates whose average satisfies
+\begin{equation}
+  \label{eq:bound}
+  R_{\target}(\bar{\theta}_K) - R_{\target}(\theta^{\star})
+  \;\le\; \frac{D G}{\sqrt{K}}
+  \;+\; 2 L D \,\bigl(1 - \rho_K\bigr)
+  \;+\; \frac{L D \sigma}{\sqrt{m}} .
+\end{equation}
+\end{proposition}
+
+The three terms separate cleanly and each is actionable. The first is ordinary
+optimisation error and shrinks with the budget. The second is the price of a
+curriculum that spends weight on misaligned examples, and it is what \method{}
+minimises directly. The third is anchor estimation noise, and it does not
+shrink with the budget at all: no amount of training repairs a badly estimated
+anchor direction.
+
+\begin{corollary}[Useful anchor size]
+\label{cor:anchor}
+The anchor noise term falls below the curriculum term whenever
+$m > \sigma^2 / \bigl(4 L^2 (1 - \rho_K)^2\bigr)$. With the values we measure
+empirically, $\sigma \approx 1.9$ and $\rho_K \approx 0.72$, this requires
+$m \gtrsim 120$.
+\end{corollary}
+
+Corollary~\ref{cor:anchor} predicts a sharp threshold below which anchored
+selection should stop working. Section~\ref{sec:analysis} confirms it: at
+$m = 64$ our method is 1.3 points below random selection.
+
+\subsection{Procedure}
+
+Algorithm~\ref{alg:meridian} states the loop. The sketch is what makes the
+score affordable: the projected gradients are 512-dimensional regardless of
+model size, so the scoring pass costs one forward and one backward per
+candidate plus a matrix product that is negligible beside them.
+
+\begin{algorithm}[t]
+  \caption{\method{} anchored curriculum selection}
+  \label{alg:meridian}
+  \SetAlgoLined
+  \KwIn{pool $\pool$, anchor set $\anchor$, budget $B$, steps $T$, refresh
+        period $P$, sketch $\Pi$}
+  \KwOut{fine-tuned parameters $\theta_T$}
+  $\theta \gets \theta_0$\;
+  \For{$t \gets 0$ \KwTo $T - 1$}{
+    \If{$t \bmod P = 0$}{
+      $\bar{g}_{\anchor} \gets \frac{1}{m}\sum_{(x,y) \in \anchor}
+        \nabla_\theta \ell(f_\theta(x), y)$\;
+      \ForEach{$i \in \pool$}{
+        compute $a_i$ by Eq.~\eqref{eq:alignment} on the sketch\;
+      }
+      $\tau_t \gets \tau_0 (\tau_T / \tau_0)^{t/T}$\;
+      recompute $w(t)$ by Eq.~\eqref{eq:weights}\;
+    }
+    draw a minibatch $\mathcal{B} \sim w(t)$ without replacement\;
+    $\theta \gets \theta - \eta \nabla_\theta
+      \bigl[ \textstyle\sum_{i \in \mathcal{B}} \ell(f_\theta(x_i), y_i)
+      + \frac{\lambda}{2}\lVert \theta - \theta_0 \rVert_2^2 \bigr]$\;
+    \If{tokens consumed $\ge B$}{\textbf{break}\;}
+  }
+  \Return{$\theta$}
+\end{algorithm}
+
+Figure~\ref{fig:pipeline} shows how the pieces are wired in a training run. The
+scoring pass runs on the same devices as training and is interleaved with it,
+so no additional hardware is required.
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[
+      node distance=7mm and 11mm,
+      box/.style={draw,rounded corners=2pt,align=center,font=\small,
+                  minimum height=9mm,inner xsep=5pt},
+      flow/.style={-{Stealth[length=2mm]},thick},
+    ]
+    \node[box] (pool) {Pool $\pool$\\\scriptsize $N$ candidates};
+    \node[box,right=of pool] (sketch) {Sketched gradients\\\scriptsize $\Pi^\top g_i$, $r = 512$};
+    \node[box,right=of sketch] (score) {Alignment $a_i$\\\scriptsize Eq.~\eqref{eq:alignment}};
+    \node[box,below=of score] (temp) {Annealed softmax\\\scriptsize $\tau_t$};
+    \node[box,left=of temp] (train) {Fine-tuning step};
+    \node[box,left=of train] (anch) {Anchor $\anchor$\\\scriptsize $m$ target examples};
+
+    \draw[flow] (pool) -- (sketch);
+    \draw[flow] (sketch) -- (score);
+    \draw[flow] (score) -- (temp);
+    \draw[flow] (temp) -- node[above,font=\scriptsize] {$w(t)$} (train);
+    \draw[flow] (anch) -- node[above,font=\scriptsize] {$\bar{g}_\anchor$} (train);
+    \draw[flow] (train.north) -- node[left,font=\scriptsize] {$\theta$} (pool.south);
+
+    \begin{scope}[on background layer]
+      \node[draw,dashed,rounded corners=3pt,fit=(sketch)(score)(temp),
+            inner sep=3.5mm,
+            label={[font=\scriptsize]above:\method{} scoring}] {};
+    \end{scope}
+  \end{tikzpicture}
+  \caption{Data flow for one refresh period. Sketched gradients and the anchor
+  gradient are computed at the current parameters, so the curriculum tracks the
+  model rather than a fixed pretrained snapshot.}
+  \label{fig:pipeline}
+\end{figure}

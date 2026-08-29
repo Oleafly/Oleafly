@@ -1,0 +1,52 @@
+\section{Introduction}
+\label{sec:introduction}
+
+A fine-tuning corpus is chosen once and used many times. A deployment target is
+chosen later, and it is nearly always narrower: a legal question-answering
+product does not need the pool's cooking instructions, and the cooking
+instructions are not merely useless to it, they compete for capacity and for
+optimisation steps. The practical question is which subset of a broad pool to
+spend a fixed token budget on when the target distribution is known only
+through a handful of examples.
+
+The selection literature answers this question with difficulty. Loss-based
+selection keeps the examples the current model predicts worst; gradient-norm
+selection keeps the examples that would move the parameters
+furthest~\citep{arbogast2021gradnorm}. Both criteria are distribution free, and
+that is exactly the problem. An example can be hard because it is informative
+about the target, or hard because it is mislabelled, or hard because it belongs
+to a region of the pool the target never visits. Under distribution shift the
+third case dominates the first, and we measure the consequence in
+Section~\ref{sec:analysis}: on our most shifted benchmark, the top decile by
+gradient norm contains 61 percent examples from source domains that carry no
+target mass at all.
+
+We take the position that selection must be anchored. Given even a small set of
+target examples, we can ask a directional question instead of a magnitude
+question: does training on this candidate move the parameters in the direction
+that a target example would have moved them? That question is answerable with a
+sketched gradient inner product, and it separates useful difficulty from
+irrelevant difficulty in a way that no magnitude statistic can.
+
+\method{} makes this concrete. It maintains an anchor gradient estimated from a
+few hundred target examples, scores every candidate by cosine alignment against
+it in a 512-dimensional random projection, and converts those scores into
+sampling weights through a temperature that anneals upward during training. The
+early curriculum is therefore sharply anchored and the late curriculum
+approaches uniform sampling over the pool, which prevents the collapse onto a
+narrow slice that a fixed hard threshold produces.
+
+\paragraph{Contributions.}
+\begin{itemize}
+  \item An anchored selection score computed from sketched per-example
+        gradients, with a temperature schedule that turns it into a curriculum
+        rather than a static filter (Section~\ref{sec:method}).
+  \item An excess-risk bound for the annealed objective that isolates the cost
+        of discarded alignment mass from the cost of gradient noise, and a
+        corollary giving the anchor size needed for the first term to dominate
+        (Section~\ref{sec:method}).
+  \item An evaluation on four shifted benchmarks at 1.4B and 7B parameters,
+        including the anchor-starvation regime in which \method{} is worse than
+        random selection (Sections~\ref{sec:experiments}
+        and~\ref{sec:analysis}).
+\end{itemize}

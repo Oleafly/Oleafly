@@ -1,0 +1,233 @@
+\section{Materials and methods}
+\label{sec:methods}
+
+\subsection{Culture conditions}
+
+\emph{Thalassiosira pseudonana} strain \strain{} was grown in artificial
+seawater at a salinity of 32 with f/2 trace metals and vitamins, at
+$18.0 \pm 0.3\,^{\circ}\mathrm{C}$ under a 14:10 light and dark cycle at
+$120\;\mu\mathrm{mol\,photons\,m^{-2}\,s^{-1}}$. The nitrogen-replete regime
+supplied $880\;\mu\mathrm{mol\,L^{-1}}$ nitrate. The nitrogen-limited regime
+supplied $55\;\mu\mathrm{mol\,L^{-1}}$ nitrate and was otherwise identical.
+Three biological replicates per regime were carried in separate 2 L
+borosilicate flasks with filtered air bubbling at
+$40\;\mathrm{mL\,min^{-1}}$. Cultures were acclimated for six generations
+before the experimental transfer.
+
+Specific growth rate over the exponential interval was taken from cell counts
+$X$ at times $t_1$ and $t_2$,
+\begin{equation}
+  \label{eq:growth}
+  \mu = \frac{\ln X(t_2) - \ln X(t_1)}{t_2 - t_1},
+\end{equation}
+with counts made in triplicate on a haemocytometer at 24 hour intervals.
+Table~\ref{tab:physiology} reports the resulting physiology.
+
+\subsection{Sampling and RNA extraction protocol}
+
+Sampling took place four hours into the light period on day 5, at
+mid-exponential phase in both regimes. The protocol below was followed without
+deviation for all six flasks.
+
+\begin{enumerate}
+  \item Draw 250 mL of culture into a pre-chilled flask and record the time.
+  \item Filter onto a 47 mm, $0.8\;\mu\mathrm{m}$ polycarbonate membrane at a
+        vacuum no stronger than 15 kPa, keeping total filtration time under
+        four minutes.
+  \item Transfer the membrane to a 2 mL screw-cap tube, flash freeze in liquid
+        nitrogen, and hold at $-80\,^{\circ}\mathrm{C}$ for no longer than
+        eleven days.
+  \item Add 1 mL of guanidinium thiocyanate lysis buffer and 200 mg of
+        acid-washed 0.5 mm glass beads. Bead beat for
+        $3 \times 45\;\mathrm{s}$ at $6.0\;\mathrm{m\,s^{-1}}$ with 60 s on ice
+        between cycles.
+  \item Clear the lysate at $12{,}000 \times g$ for 5 minutes at
+        $4\,^{\circ}\mathrm{C}$ and carry the supernatant onto a silica column.
+  \item Perform on-column DNase I digestion for 20 minutes at room temperature,
+        then wash twice and elute in $40\;\mu\mathrm{L}$ of nuclease-free water.
+  \item Assess integrity on a microfluidic electrophoresis chip. Accept the
+        sample only if the RNA integrity number is at least 8.0 and the
+        $28\mathrm{S}/18\mathrm{S}$ ratio lies between 1.4 and 2.2.
+\end{enumerate}
+
+All six extractions passed step 7 on the first attempt, with integrity numbers
+between 8.4 and 9.1 and yields between 3.1 and $7.8\;\mu\mathrm{g}$.
+
+\subsection{Library preparation and sequencing}
+
+Polyadenylated RNA was selected with oligo-dT magnetic beads from
+$1.0\;\mu\mathrm{g}$ of total RNA, fragmented for 6 minutes at
+$94\,^{\circ}\mathrm{C}$, and converted to stranded libraries by the dUTP
+second-strand method. Libraries were amplified for 11 cycles, quantified by
+fluorometry, pooled equimolar, and sequenced as $2 \times 150$ paired-end reads
+on a single patterned flow cell lane. Two libraries, NL-2 and NL-3, were loaded
+from a pool prepared one day later than the rest, which is the most likely
+origin of their elevated duplication.
+
+\begin{table}[t]
+  \centering
+  \caption{Physiological state at the sampling point. Values are the mean of
+  three biological replicates with the standard deviation. Residual nitrate is
+  the concentration remaining in the medium at sampling.}
+  \label{tab:physiology}
+  \begin{tabular}{lcc}
+    \toprule
+    Measurement & Nitrogen replete & Nitrogen limited \\
+    \midrule
+    Growth rate $\mu$ ($\mathrm{d^{-1}}$)
+      & $1.34 \pm 0.05$ & $0.41 \pm 0.07$ \\
+    Cell density ($10^{6}\;\mathrm{cells\,mL^{-1}}$)
+      & $4.82 \pm 0.31$ & $1.96 \pm 0.24$ \\
+    Chlorophyll $a$ ($\mathrm{pg\,cell^{-1}}$)
+      & $0.191 \pm 0.012$ & $0.074 \pm 0.009$ \\
+    Residual nitrate ($\mu\mathrm{mol\,L^{-1}}$)
+      & $612 \pm 28$ & $1.8 \pm 0.6$ \\
+    Particulate C:N (mol mol$^{-1}$)
+      & $6.9 \pm 0.2$ & $14.7 \pm 1.1$ \\
+    Maximum quantum yield $F_v/F_m$
+      & $0.66 \pm 0.01$ & $0.38 \pm 0.03$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Analysis pipeline}
+
+Figure~\ref{fig:workflow} sets out the full workflow from flask to gene list.
+The computational half was run once, end to end, on a fixed container image so
+that the version of every tool is recoverable from the report. Adapters and low
+quality tails were removed with fastp \citep{chen2018fastp}, reads were aligned
+to reference assembly v3 with a splice-aware aligner \citep{dobin2013star},
+fragments were assigned to transcripts with featureCounts
+\citep{liao2014featurecounts}, and the per-stage metrics were collected into a
+single report \citep{ewels2016multiqc}. Parameter choices follow the community
+recommendations for a small genome with short introns
+\citep{conesa2016survey}.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\linewidth}{!}{\begin{tikzpicture}[
+      font=\sffamily\scriptsize,
+      wet/.style={draw=wetlab,line width=0.7pt,rounded corners=2pt,
+        fill=wetlab!8,align=center,minimum width=20mm,minimum height=9mm,
+        inner sep=3pt},
+      dry/.style={draw=drylab,line width=0.7pt,rounded corners=2pt,
+        fill=drylab!8,align=center,minimum width=20mm,minimum height=9mm,
+        inner sep=3pt},
+      gate/.style={draw=accent,line width=0.7pt,fill=white,align=center,
+        minimum width=16mm,minimum height=8mm,inner sep=2pt},
+      flow/.style={-{Stealth[length=2mm,width=1.6mm]},line width=0.6pt,
+        draw=ink},
+      lane/.style={font=\sffamily\footnotesize\bfseries},
+    ]
+
+    \node[wet] (culture) at (0,3.3) {two nitrogen\\ regimes};
+    \node[wet] (sample) at (2.7,3.3) {filter and\\ flash freeze};
+    \node[wet] (rna) at (5.4,3.3) {bead beat and\\ column extract};
+    \node[gate] (rin) at (8.1,3.3) {RIN $\geq 8.0$};
+    \node[wet] (library) at (10.8,3.3) {stranded\\ polyA library};
+    \node[wet] (seq) at (13.5,3.3) {$2 \times 150$\\ sequencing};
+
+    \node[dry] (trim) at (13.5,0.9) {adapter and\\ quality trim};
+    \node[dry] (align) at (10.8,0.9) {splice-aware\\ alignment};
+    \node[gate] (mapgate) at (8.1,0.9) {mapped\\ $\geq 85\%$};
+    \node[dry] (count) at (5.4,0.9) {per-transcript\\ counts};
+    \node[dry] (norm) at (2.7,0.9) {size factor\\ normalisation};
+    \node[dry] (de) at (0,0.9) {negative binomial\\ Wald test};
+
+    \foreach \a/\b in {culture/sample, sample/rna, rna/rin, rin/library,
+                       library/seq} {
+      \draw[flow] (\a) -- (\b);
+    }
+    \foreach \a/\b in {trim/align, align/mapgate, mapgate/count, count/norm,
+                       norm/de} {
+      \draw[flow] (\a) -- (\b);
+    }
+    \draw[flow] (seq.south) -- ++(0,-0.75) -- ++(1.5,0) -- ++(0,-0.9)
+      -- ++(-1.5,0) -- (trim.north);
+
+    \draw[flow,draw=accent,dash pattern=on 2pt off 1.5pt]
+      (rin.north) -- ++(0,0.65) -| node[pos=0.25,above,text=accent]
+      {re-extract on failure} (rna.north);
+    \draw[flow,draw=accent,dash pattern=on 2pt off 1.5pt]
+      (mapgate.south) -- ++(0,-0.65) -| node[pos=0.25,below,text=accent]
+      {inspect unmapped fraction} (align.south);
+
+    \node[dry] (report) at (0,-1.3) {ranked transcript list\\ and enrichment};
+    \draw[flow] (de) -- (report);
+
+    \begin{scope}[on background layer]
+      \node[draw=wetlab!45,dashed,rounded corners=3pt,inner sep=4mm,
+        fit=(culture)(seq)(rin)] (wetbox) {};
+      \node[draw=drylab!45,dashed,rounded corners=3pt,inner sep=4mm,
+        fit=(trim)(de)(mapgate)(report)] (drybox) {};
+    \end{scope}
+    \node[lane,text=wetlab,anchor=west] at ($(wetbox.north west)+(1mm,2.5mm)$)
+      {Bench};
+    \node[lane,text=drylab,anchor=west] at ($(drybox.north west)+(1mm,2.5mm)$)
+      {Analysis};
+  \end{tikzpicture}}
+  \caption{Experimental and computational workflow. The two red boxes are the
+  acceptance checks written into the protocol, and the dashed paths are the
+  actions taken when a check fails.}
+  \label{fig:workflow}
+\end{figure}
+
+The commands below reproduce the analysis from the raw archive. Tool versions
+are pinned in the container manifest distributed with this report.
+
+\begin{lstlisting}[style=shellstyle,caption={Pipeline invocation for one
+library. The loop over the remaining five differs only in the sample
+identifier.},label={lst:pipeline},captionpos=b]
+fastp -i raw/NR-1_R1.fastq.gz -I raw/NR-1_R2.fastq.gz \
+      -o trim/NR-1_R1.fastq.gz -O trim/NR-1_R2.fastq.gz \
+      --detect_adapter_for_pe --cut_tail --cut_mean_quality 20 \
+      --length_required 50 --json qc/NR-1.fastp.json
+
+STAR --genomeDir index/tpseudo_v3 --readFilesCommand zcat \
+     --readFilesIn trim/NR-1_R1.fastq.gz trim/NR-1_R2.fastq.gz \
+     --outSAMtype BAM SortedByCoordinate \
+     --outFilterMismatchNoverLmax 0.04 --quantMode GeneCounts \
+     --outFileNamePrefix bam/NR-1.
+
+samtools index bam/NR-1.Aligned.sortedByCoord.out.bam
+featureCounts -p -s 2 -a ref/tpseudo_v3.gtf -o counts/NR-1.txt \
+              bam/NR-1.Aligned.sortedByCoord.out.bam
+
+multiqc qc bam counts -o qc/report
+Rscript scripts/deseq_contrast.R --design design.csv \
+        --contrast regime,limited,replete --alpha 0.05
+\end{lstlisting}
+
+\subsection{Statistical model}
+
+Counts $K_{gi}$ for transcript $g$ in library $i$ were modelled as negative
+binomial with a library-specific size factor $s_i$ and a gene-specific
+dispersion $\alpha_g$,
+\begin{equation}
+  \label{eq:nb}
+  K_{gi} \sim \mathrm{NB}\!\left(\mu_{gi}, \alpha_g\right),
+  \qquad
+  \mu_{gi} = s_i \, q_{gi},
+  \qquad
+  \log_{2} q_{gi} = \beta_{g0} + \beta_{g1} x_i,
+\end{equation}
+where $x_i$ indicates the nitrogen-limited regime \citep{love2014deseq2}.
+Size factors were the median ratio to the geometric mean across libraries.
+Dispersions were shrunk toward a fitted mean and dispersion trend, and the
+regime coefficient was tested with the Wald statistic
+\begin{equation}
+  \label{eq:wald}
+  W_g = \frac{\hat{\beta}_{g1}}{\mathrm{SE}(\hat{\beta}_{g1})},
+\end{equation}
+with $p$ values adjusted across transcripts by the Benjamini and Hochberg
+procedure \citep{benjamini1995controlling}. Abundance is reported as transcripts
+per million,
+\begin{equation}
+  \label{eq:tpm}
+  \mathrm{TPM}_{gi}
+  = 10^{6} \cdot
+    \frac{K_{gi} / \ell_{g}}{\sum_{h} K_{hi} / \ell_{h}},
+\end{equation}
+with $\ell_g$ the effective length of transcript $g$. A transcript was called
+differentially expressed when the adjusted $p$ value fell below 0.05 and the
+absolute shrunken $\logfc$ exceeded 1.0.

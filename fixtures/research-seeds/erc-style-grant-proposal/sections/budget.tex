@@ -1,0 +1,74 @@
+\section{Resources and budget}
+\label{sec:budget}
+
+\subsection{Team}
+
+The requested team is five full-time researchers plus the principal investigator at 50 percent.
+\ref{wp:theory} and \ref{wp:inference} are statistical, \ref{wp:encoding} is cryptographic, and
+\ref{wp:protocol} is an engineering effort that a doctoral student cannot carry, which is why a
+dedicated research software engineer is requested for the full 60 months rather than bought in.
+
+\begin{center}
+\small
+\begin{tabular}{@{}l c c L{6.4cm}@{}}
+  \toprule
+  Role & Months & Work packages & Justification \\
+  \midrule
+  Principal investigator      & 30 & all              & Leads \ref{wp:theory} and \ref{wp:governance}, supervises the rest \\
+  Postdoctoral researcher 1   & 48 & \ref{wp:encoding} & Cryptography, privacy accounting, adversarial evaluation \\
+  Postdoctoral researcher 2   & 48 & \ref{wp:inference} & Semiparametric inference and survival estimands \\
+  Research software engineer  & 60 & \ref{wp:protocol} & Protocol implementation and custodian deployment \\
+  Doctoral researcher 1       & 42 & \ref{wp:theory}   & Bounds for causal estimands \\
+  Doctoral researcher 2       & 42 & \ref{wp:encoding}, \ref{wp:protocol} & Blocking under encryption \\
+  Legal and governance adviser & 12 & \ref{wp:governance} & Tripartite access agreement, part time \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Budget}
+
+\begin{center}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}l R{1.55cm} R{1.55cm} R{1.55cm} R{1.55cm} R{1.55cm} R{1.85cm}@{}}
+  \toprule
+  Category & Year 1 & Year 2 & Year 3 & Year 4 & Year 5 & Total \\
+  \midrule
+  Personnel                  & 318{,}000 & 366{,}000 & 366{,}000 & 341{,}000 & 289{,}000 & 1{,}680{,}000 \\
+  Secure compute enclave     & 96{,}000  & 24{,}000  & 24{,}000  & 24{,}000  & 24{,}000  & 192{,}000 \\
+  Custodian access fees      & 18{,}000  & 30{,}000  & 30{,}000  & 30{,}000  & 12{,}000  & 120{,}000 \\
+  Travel and site visits     & 14{,}000  & 18{,}000  & 18{,}000  & 18{,}000  & 14{,}000  & 82{,}000 \\
+  Open access and archiving   & 6{,}000   & 9{,}000   & 9{,}000   & 12{,}000  & 12{,}000  & 48{,}000 \\
+  External security audit    & 0         & 0         & 28{,}000  & 0         & 28{,}000  & 56{,}000 \\
+  Public engagement          & 5{,}000   & 7{,}000   & 7{,}000   & 7{,}000   & 5{,}000   & 31{,}000 \\
+  Consumables and equipment  & 21{,}000  & 9{,}000   & 9{,}000   & 9{,}000   & 6{,}000   & 54{,}000 \\
+  \midrule
+  Direct costs               & 478{,}000 & 463{,}000 & 491{,}000 & 441{,}000 & 390{,}000 & 2{,}263{,}000 \\
+  Indirect costs, 25 percent & 119{,}500 & 115{,}750 & 122{,}750 & 110{,}250 & 97{,}500 & 565{,}750 \\
+  \midrule
+  \textbf{Total requested}   & \textbf{597{,}500} & \textbf{578{,}750} & \textbf{613{,}750} & \textbf{551{,}250} & \textbf{487{,}500} & \textbf{2{,}828{,}250} \\
+  \midrule
+  Host contribution          & 40{,}000  & 82{,}000  & 82{,}000  & 82{,}000  & 124{,}250 & 410{,}250 \\
+  \textbf{Net from the call} & \textbf{557{,}500} & \textbf{496{,}750} & \textbf{531{,}750} & \textbf{469{,}250} & \textbf{363{,}250} & \textbf{2{,}418{,}000} \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{4pt}
+\noindent
+{\small All amounts in euro. The host contribution covers the principal investigator's teaching
+buyout in years 2 to 5 and half of the enclave refresh in year 5.}
+
+\subsection{Notes on the larger items}
+
+\begin{itemize}
+  \item \textbf{Secure compute enclave, 192{,}000.} The custodians will not permit linkage on shared
+    infrastructure. The year 1 figure buys the hardware; later years are operation, certification,
+    and one refresh cycle.
+  \item \textbf{Custodian access fees, 120{,}000.} Each of the three custodians charges a cost
+    recovery fee per extraction. The profile assumes two extractions per custodian across the
+    project, with the last in year 5 for the reanalyses in \ref{wp:inference}.
+  \item \textbf{External security audit, 56{,}000.} Two independent audits, one after D2.1 and one
+    before the three-custodian deployment. An unaudited protocol will not be approved by the
+    custodians, so this is a delivery requirement rather than a nicety.
+\end{itemize}

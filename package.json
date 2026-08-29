@@ -20,6 +20,7 @@
     "language-servers:test": "node --test scripts/fetch-language-servers.node-tests.mjs",
     "proofreading:node-test": "node --test scripts/hunspell.node-tests.mjs",
     "seed:research:sync": "node scripts/sync-research-seeds.mjs",
+    "seed:research:validate": "node scripts/validate-research-seeds.mjs",
     "preview": "vite preview",
     "tauri": "node scripts/tauri-sandbox.mjs",
     "lint": "biome lint src",
