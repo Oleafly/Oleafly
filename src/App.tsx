@@ -841,6 +841,7 @@ function AutoCompileKeeper() {
   const activeContent = useActiveContent();
   const autoCompile = useCompileStore((state) => state.autoCompile);
   const recompile = useCompileStore((state) => state.recompile);
+  const stopCompile = useCompileStore((state) => state.stopCompile);
   const pathRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -855,11 +856,22 @@ function AutoCompileKeeper() {
       pathRef.current = activePath;
       return;
     }
+    const editedAt = Date.now();
     let timer: ReturnType<typeof setTimeout>;
     let cancelled = false;
+    let stopRequested = false;
     const attempt = () => {
       if (cancelled) return;
-      if (useCompileStore.getState().status === "compiling") {
+      const compile = useCompileStore.getState();
+      if (compile.status === "compiling") {
+        if (
+          !stopRequested &&
+          compile.compileStartedAt !== null &&
+          compile.compileStartedAt < editedAt
+        ) {
+          stopRequested = true;
+          void stopCompile();
+        }
         timer = setTimeout(attempt, 500);
         return;
       }
@@ -870,7 +882,7 @@ function AutoCompileKeeper() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [activeContent, activePath, autoCompile, projectId, recompile]);
+  }, [activeContent, activePath, autoCompile, projectId, recompile, stopCompile]);
 
   return null;
 }
