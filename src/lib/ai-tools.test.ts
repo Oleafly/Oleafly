@@ -266,6 +266,22 @@ describe("ai-tools: project scoping", () => {
     expect(mocks.api.searchProject).toHaveBeenCalledWith("proj", "theorem");
   });
 
+  it("search_project returns every hit instead of a capped prefix", async () => {
+    const hits = Array.from({ length: 47 }, (_, i) => ({
+      path: `doc-${i}.tex`,
+      line: i + 1,
+      preview: `theorem match ${i}`,
+    }));
+    mocks.api.searchProject.mockResolvedValue(hits);
+    const tools = createOleaflyTools();
+    const result = (await tools.search_project.execute({ query: "theorem" })) as {
+      results: unknown[];
+      total: number;
+    };
+    expect(result.results).toHaveLength(47);
+    expect(result.total).toBe(47);
+  });
+
   it("does not write when the active project changes during approval", async () => {
     mocks.api.readFileContent.mockResolvedValue("old");
     let approve!: (value: boolean) => void;

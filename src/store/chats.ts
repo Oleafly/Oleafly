@@ -20,10 +20,18 @@ export interface AttachmentMeta {
   mediaType: string;
 }
 
+export interface SubagentEntry {
+  id: string;
+  label: string;
+  state: string;
+  detail?: string;
+}
+
 export interface ChatMessage {
   id?: string;
   role: "user" | "assistant";
   content: string;
+  subagents?: SubagentEntry[];
   checkpointOid?: string;
   checkpointRestored?: boolean;
   toolCalls?: ToolEntry[];

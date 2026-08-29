@@ -1,6 +1,6 @@
 import "@/lib/polyfills"; // must run before pdf.js and other libs load
 import { dismissBootSplash, markBootStage } from "@/lib/boot-telemetry";
-import { StrictMode } from "react";
+import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -11,9 +11,12 @@ import { AddCitationDialog } from "@/components/layout/AddCitationDialog";
 import { UpdateWindow } from "@/components/layout/UpdateWindow";
 import { PreviewWindow } from "@/components/preview/PreviewWindow";
 import { ThemeProvider } from "@/lib/theme";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { appQueryClient } from "@/lib/query";
 import { Toaster } from "@/components/ui/sonner";
 import { appendAppLog } from "@/lib/tauri";
 import { reapOrphanAgentRuns } from "@/lib/agent-backend";
+import { hydrateFromSnapshot } from "@/lib/initial-state";
 import { registerContributions } from "@/contributions";
 import { installDesktopViewportGuard } from "@/lib/desktop-viewport";
 import "@/styles/globals.css";
@@ -66,6 +69,19 @@ function prepareWindow(view: WindowView): void {
   dismissBootSplash();
 }
 
+// One client per window: server-state queries share a cache for the lifetime
+// of the webview.
+const queryClient = appQueryClient();
+
+// Dev builds only; the conditional import keeps devtools out of the bundle.
+const ReactQueryDevtools = import.meta.env.DEV
+  ? lazy(() =>
+      import("@tanstack/react-query-devtools").then((m) => ({
+        default: m.ReactQueryDevtools,
+      })),
+    )
+  : null;
+
 function WindowContent({ view }: { view: WindowView }) {
   if (view === "update") {
     return (
@@ -76,27 +92,36 @@ function WindowContent({ view }: { view: WindowView }) {
   }
   if (view === "preview") {
     return (
-      <ThemeProvider>
-        <PreviewWindow />
-        <Toaster />
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <PreviewWindow />
+          <Toaster />
+        </ThemeProvider>
+      </QueryClientProvider>
     );
   }
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <App />
       <Toaster />
       <DevContextMenu />
       <IndexKeeper />
       <RenameDialog />
       <AddCitationDialog />
-    </>
+      {ReactQueryDevtools && (
+        <Suspense fallback={null}>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </Suspense>
+      )}
+    </QueryClientProvider>
   );
 }
 
 async function bootstrap(): Promise<void> {
   const view = currentWindowView();
-  if (view === "main") await reapOrphanAgentRuns();
+  if (view === "main") {
+    await Promise.all([reapOrphanAgentRuns(), hydrateFromSnapshot()]);
+  }
   registerContributions();
   markBootStage("contributions-registered");
   await installDevelopmentProbe();

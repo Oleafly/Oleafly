@@ -31,6 +31,32 @@ describe("useSettingsStore dock appearance settings", () => {
     expect(localStorage.getItem("oleafly.dockPlacement")).toBe("bottom");
     useSettingsStore.getState().setDockPlacement("left");
   });
+
+  it("persists dock visibility and restores its reset shape", () => {
+    expect(useSettingsStore.getState()).toMatchObject({
+      terminalOpen: false,
+      browserOpen: false,
+    });
+
+    useSettingsStore.getState().setTerminalOpen(true);
+    useSettingsStore.getState().setBrowserOpen(true);
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      terminalOpen: true,
+      browserOpen: true,
+    });
+    expect(localStorage.getItem("oleafly.dock.terminalOpen")).toBe("1");
+    expect(localStorage.getItem("oleafly.dock.browserOpen")).toBe("1");
+
+    useSettingsStore.getState().resetToDefaults();
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      terminalOpen: false,
+      browserOpen: false,
+    });
+    expect(localStorage.getItem("oleafly.dock.terminalOpen")).toBe("0");
+    expect(localStorage.getItem("oleafly.dock.browserOpen")).toBe("0");
+  });
 });
 
 describe("useSettingsStore layout presets", () => {

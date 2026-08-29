@@ -1,4 +1,6 @@
 import { getConfigCached } from "@/lib/config-cache";
+import { activeCuaSurface } from "@/lib/cua-sandbox";
+import { agentExec } from "@/lib/tauri";
 import {
   createOleaflyTools as createOleaflyToolsCore,
   createFigureTools as createFigureToolsCore,
@@ -275,7 +277,18 @@ export function createOleaflyTools(opts?: {
   onImage?: (dataUrl: string) => void;
   mutationAllowed?: () => boolean;
 }) {
-  return createOleaflyToolsCore(HOST, opts);
+  // computer_use and run_command are harness capabilities: computer_use drives
+  // the browser sandbox (exposed only while that surface is registered), and
+  // run_command runs shell in the open project dir.
+  return createOleaflyToolsCore(HOST, {
+    ...opts,
+    cuaSurface: activeCuaSurface,
+    execCommand: (command: string) => {
+      const projectId = useFilesStore.getState().projectId;
+      if (!projectId) return Promise.reject(new Error("No project open"));
+      return agentExec(projectId, command);
+    },
+  });
 }
 
 export function createFigureTools(opts?: {

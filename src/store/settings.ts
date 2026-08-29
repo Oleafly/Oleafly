@@ -343,6 +343,10 @@ interface SettingsState {
   setHoverPreview: (v: boolean) => void;
   chatFloating: boolean;
   setChatFloating: (v: boolean) => void;
+  terminalOpen: boolean;
+  setTerminalOpen: (v: boolean) => void;
+  browserOpen: boolean;
+  setBrowserOpen: (v: boolean) => void;
   editorFontSize: number;
   setEditorFontSize: (v: number) => void;
   appFontSize: number;
@@ -422,6 +426,8 @@ const PREF_DEFAULTS = {
   defaultView: "editor-preview" as LayoutPreset,
   openInTree: false,
   hoverPreview: true,
+  terminalOpen: false,
+  browserOpen: false,
   accentColor: "#2563eb",
   dockPlacement: "left" as DockPlacement,
   bgPattern: "dots" as BackgroundPattern,
@@ -544,6 +550,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setChatFloating: (v) => {
     saveLs("oleafly.ai.floating", v ? "1" : "0");
     set({ chatFloating: v });
+  },
+  terminalOpen: ls("oleafly.dock.terminalOpen", "0") === "1",
+  setTerminalOpen: (v) => {
+    saveLs("oleafly.dock.terminalOpen", v ? "1" : "0");
+    set({ terminalOpen: v });
+  },
+  browserOpen: ls("oleafly.dock.browserOpen", "0") === "1",
+  setBrowserOpen: (v) => {
+    saveLs("oleafly.dock.browserOpen", v ? "1" : "0");
+    set({ browserOpen: v });
   },
   openInTree: ls("oleafly.openInTree", "0") !== "0",
   setOpenInTree: (v) => {
@@ -756,6 +772,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.defaultView", PREF_DEFAULTS.defaultView);
     saveLs("oleafly.openInTree", PREF_DEFAULTS.openInTree ? "1" : "0");
     saveLs("oleafly.hoverPreview", PREF_DEFAULTS.hoverPreview ? "1" : "0");
+    saveLs("oleafly.dock.terminalOpen", PREF_DEFAULTS.terminalOpen ? "1" : "0");
+    saveLs("oleafly.dock.browserOpen", PREF_DEFAULTS.browserOpen ? "1" : "0");
     saveLs("oleafly.accent", PREF_DEFAULTS.accentColor);
     saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
     saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);
