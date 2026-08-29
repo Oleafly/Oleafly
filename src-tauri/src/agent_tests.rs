@@ -127,11 +127,13 @@ fn renderer_run_budgets_are_clamped_to_backend_limits() {
         max_steps: u32::MAX,
         max_retries: u32::MAX,
         retry_base_ms: u64::MAX,
+        auto_compact: true,
     }));
 
     assert_eq!(config.max_steps, MAX_RUN_STEPS);
     assert_eq!(config.max_retries, MAX_RUN_RETRIES);
     assert_eq!(config.retry_base_ms, MAX_RETRY_BASE_MS);
+    assert!(config.auto_compact);
 }
 
 #[test]
@@ -140,11 +142,13 @@ fn renderer_run_budgets_have_safe_minimums() {
         max_steps: 0,
         max_retries: 0,
         retry_base_ms: 0,
+        auto_compact: false,
     }));
 
     assert_eq!(config.max_steps, 1);
     assert_eq!(config.max_retries, 0);
     assert_eq!(config.retry_base_ms, MIN_RETRY_BASE_MS);
+    assert!(!config.auto_compact);
 }
 
 #[test]
@@ -332,6 +336,8 @@ fn stale_request_cleanup_cannot_remove_replacement_tools() {
         PendingTool {
             generation: 2,
             sender,
+            tool_name: "write_file".to_string(),
+            project_id: None,
         },
     );
 
@@ -449,4 +455,111 @@ fn a_result_that_is_not_an_envelope_passes_through_verbatim() {
 
     let empty_content = serde_json::json!({ "content": [] });
     assert_eq!(unwrap_mcp_text(&empty_content), empty_content.to_string());
+}
+
+#[test]
+fn tool_risk_mirrors_the_shell_approval_table() {
+    // Read class: runs unprompted, may run concurrently.
+    for tool in [
+        "read_file",
+        "list_files",
+        "search_project",
+        "compile",
+        "spawn_agent",
+        "wait_agent",
+        "close_agent",
+    ] {
+        assert_eq!(tool_risk(tool), oleafly_agent::ToolRisk::Read, "{tool}");
+    }
+    // Network class: consent rides on connector configuration.
+    for tool in ["literature_search", "verify_citation"] {
+        assert_eq!(tool_risk(tool), oleafly_agent::ToolRisk::Network, "{tool}");
+    }
+    // Shell and write classes confirm.
+    assert_eq!(tool_risk("run_command"), oleafly_agent::ToolRisk::Shell);
+    for tool in ["write_file", "delete_file", "a_brand_new_tool"] {
+        assert_eq!(tool_risk(tool), oleafly_agent::ToolRisk::Write, "{tool}");
+    }
+}
+
+#[test]
+fn the_pipeline_marks_read_tools_parallel_and_everything_else_exclusive() {
+    let pipeline = tool_pipeline();
+    assert_eq!(
+        pipeline.registry.parallel_policy("read_file"),
+        oleafly_agent::ParallelPolicy::Parallel
+    );
+    assert_eq!(
+        pipeline.registry.parallel_policy("write_file"),
+        oleafly_agent::ParallelPolicy::Exclusive
+    );
+    assert_eq!(
+        pipeline.registry.parallel_policy("unknown_tool"),
+        oleafly_agent::ParallelPolicy::Exclusive
+    );
+}
+
+#[test]
+fn the_classifier_skips_without_a_project_and_denies_from_decisions() {
+    use oleafly_agent::tools::orchestrator::ApprovalRequirement;
+    let call = oleafly_agent::ToolCall {
+        id: "c1".into(),
+        name: "write_file".into(),
+        arguments: "{}".into(),
+        ..Default::default()
+    };
+    // No project pinned: falls back to the risk table (write asks).
+    let unpinned = approval_classifier(None);
+    assert_eq!(unpinned(&call), ApprovalRequirement::NeedsApproval);
+
+    // Read-class without a project skips.
+    let read_call = oleafly_agent::ToolCall {
+        name: "read_file".into(),
+        ..call.clone()
+    };
+    assert_eq!(unpinned(&read_call), ApprovalRequirement::Skip);
+
+    // A nonexistent project id yields no decisions, so the risk table
+    // governs rather than a blanket deny.
+    let pinned = approval_classifier(Some("no-such-project".into()));
+    assert_eq!(pinned(&call), ApprovalRequirement::NeedsApproval);
+}
+
+#[test]
+fn steering_requires_text_and_an_active_run() {
+    let state = crate::agent::AgentState::default();
+    let error = crate::agent::steer_run(&state, "no-such-run", "redirect").unwrap_err();
+    assert!(error.contains("no active run"));
+    let error = crate::agent::steer_run(&state, "any", "   ").unwrap_err();
+    assert!(error.contains("must not be empty"));
+}
+
+#[test]
+fn steering_reaches_a_registered_run_and_cancel_removes_it() {
+    let state = crate::agent::AgentState::default();
+    let (handle, mut receiver) = oleafly_agent::SteerHandle::channel();
+    crate::agent::register_steer_for_test(&state, "run-1", handle);
+    crate::agent::steer_run(&state, "run-1", "redirect now").unwrap();
+    assert_eq!(receiver.try_recv().unwrap(), "redirect now");
+
+    let token = oleafly_agent::CancellationToken::new();
+    let child = token.child();
+    crate::agent::register_token_for_test(&state, "run-1", token);
+    crate::agent::cancel_run(&state, "run-1");
+    assert!(child.is_cancelled());
+    // The steer registration went with it.
+    let error = crate::agent::steer_run(&state, "run-1", "again").unwrap_err();
+    assert!(error.contains("no active run"));
+}
+
+#[tokio::test]
+async fn stopping_subagents_targets_the_registered_run_only() {
+    let state = crate::agent::AgentState::default();
+    let error = crate::agent::subagents_stop(&state, "no-such-run").unwrap_err();
+    assert!(error.contains("no active run"));
+
+    let manager = std::sync::Arc::new(crate::agent::SubagentManager::default());
+    crate::agent::register_manager_for_test(&state, "run-1", manager);
+    // No children yet: zero interrupted, no error.
+    assert_eq!(crate::agent::subagents_stop(&state, "run-1").unwrap(), 0);
 }
