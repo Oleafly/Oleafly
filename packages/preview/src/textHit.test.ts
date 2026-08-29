@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { closestMatchingElement, wordAtHorizontalPosition, wordInText } from "./textHit";
+import { charOffsetAtHorizontalPosition, closestMatchingElement, snapAfterWord, wordAtHorizontalPosition, wordInText } from "./textHit";
 
 describe("PDF text hit testing", () => {
   it("finds a word at a text offset", () => {
@@ -25,5 +25,36 @@ describe("PDF text hit testing", () => {
 
   it("returns null for non-element event targets", () => {
     expect(closestMatchingElement({} as EventTarget, ".textLayer span")).toBeNull();
+  });
+});
+
+describe("charOffsetAtHorizontalPosition", () => {
+  it("maps a click position to a character offset proportionally", () => {
+    expect(charOffsetAtHorizontalPosition("abcd", 100, 100, 100)).toBe(0);
+    expect(charOffsetAtHorizontalPosition("abcd", 100, 100, 150)).toBe(2);
+    expect(charOffsetAtHorizontalPosition("abcd", 100, 100, 200)).toBe(4);
+  });
+
+  it("clamps positions outside the span", () => {
+    expect(charOffsetAtHorizontalPosition("abcd", 100, 100, 50)).toBe(0);
+    expect(charOffsetAtHorizontalPosition("abcd", 100, 100, 400)).toBe(4);
+    expect(charOffsetAtHorizontalPosition("", 100, 100, 150)).toBe(0);
+  });
+});
+
+describe("snapAfterWord", () => {
+  it("moves an offset inside a word to the end of that word", () => {
+    expect(snapAfterWord("hello world", 2)).toBe(5);
+    expect(snapAfterWord("hello world", 8)).toBe(11);
+  });
+
+  it("keeps an offset that is already at a boundary", () => {
+    expect(snapAfterWord("hello world", 5)).toBe(5);
+    expect(snapAfterWord("hello world", 11)).toBe(11);
+  });
+
+  it("clamps out-of-range offsets", () => {
+    expect(snapAfterWord("abc", -2)).toBe(3);
+    expect(snapAfterWord("abc", 99)).toBe(99 > 3 ? 3 : 99);
   });
 });

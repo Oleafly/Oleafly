@@ -9,7 +9,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./controller": "./src/controller.ts",
-    "./polyfills": "./src/polyfills.ts"
+    "./polyfills": "./src/polyfills.ts",
+    "./typingEcho": "./src/typingEcho.ts"
   },
   "dependencies": {
     "pdfjs-dist": "6.2.108",
