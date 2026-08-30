@@ -12,6 +12,7 @@ import { railSections, type AppContext, type RailTabContribution } from "@oleafl
 import { useSettingsStore, type RailTab } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useMcpActivityStore } from "@/store/mcp-activity";
+import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useTheme } from "@/lib/theme";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -65,12 +66,20 @@ function DockToggles() {
   const setTerminalOpen = useSettingsStore((s) => s.setTerminalOpen);
   const browserOpen = useSettingsStore((s) => s.browserOpen);
   const setBrowserOpen = useSettingsStore((s) => s.setBrowserOpen);
+  const terminalShortcut = useShortcutStore((s) =>
+    shortcutLabel(s.bindings.toggleTerminal),
+  );
+  const browserShortcut = useShortcutStore((s) =>
+    shortcutLabel(s.bindings.toggleBrowser),
+  );
+  const terminalLabel = `${terminalOpen ? "Hide" : "Show"} terminal (${terminalShortcut})`;
+  const browserLabel = `${browserOpen ? "Hide" : "Show"} browser (${browserShortcut})`;
   return (
     <>
-      <Tooltip label={terminalOpen ? "Hide terminal" : "Show terminal"} side="right">
+      <Tooltip label={terminalLabel} side="right">
         <button
           type="button"
-          aria-label={terminalOpen ? "Hide terminal" : "Show terminal"}
+          aria-label={terminalLabel}
           aria-pressed={terminalOpen}
           onClick={() => setTerminalOpen(!terminalOpen)}
           className={railBtn(terminalOpen)}
@@ -78,10 +87,10 @@ function DockToggles() {
           <Terminal className="size-5" aria-hidden />
         </button>
       </Tooltip>
-      <Tooltip label={browserOpen ? "Hide browser" : "Show browser"} side="right">
+      <Tooltip label={browserLabel} side="right">
         <button
           type="button"
-          aria-label={browserOpen ? "Hide browser" : "Show browser"}
+          aria-label={browserLabel}
           aria-pressed={browserOpen}
           onClick={() => setBrowserOpen(!browserOpen)}
           className={railBtn(browserOpen)}

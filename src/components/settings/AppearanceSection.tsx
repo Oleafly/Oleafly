@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type WheelEvent } from "react";
 import { Check, Plus } from "lucide-react";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { GridPattern } from "@/components/ui/grid-pattern";
@@ -29,6 +29,18 @@ import {
 } from "@/store/settings";
 import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
+import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
+
+const APPEARANCE_TABS = [
+  { id: "app", label: "App" },
+  { id: "editor", label: "Editor" },
+  { id: "terminal", label: "Terminal" },
+  { id: "pdf", label: "PDF Preview" },
+  { id: "browser", label: "Browser" },
+  { id: "files", label: "Project" },
+] as const;
+
+type AppearanceTabId = (typeof APPEARANCE_TABS)[number]["id"];
 
 function AppAppearanceTab() {
   const { theme, toggleTheme } = useTheme();
@@ -662,6 +674,9 @@ function BrowserAppearanceTab() {
     (state) => state.setBrowserHomePage,
   );
   const [homePageDraft, setHomePageDraft] = useState(browserHomePage);
+  const selectedSearchEngine =
+    BROWSER_SEARCH_ENGINES.find(({ id }) => id === browserSearchEngine) ??
+    BROWSER_SEARCH_ENGINES[0];
   const saveHomePage = () => {
     setBrowserHomePage(homePageDraft);
     setHomePageDraft(useSettingsStore.getState().browserHomePage);
@@ -683,11 +698,20 @@ function BrowserAppearanceTab() {
           }
         >
           <SelectTrigger className="w-[140px]" aria-label="Default search engine">
-            <SelectValue />
+            <SelectValue>
+              <span className="flex items-center gap-2">
+                <SearchEngineIcon engine={selectedSearchEngine.id} />
+                <span>{selectedSearchEngine.name}</span>
+              </span>
+            </SelectValue>
           </SelectTrigger>
           <SelectContent className="z-[100]">
             {BROWSER_SEARCH_ENGINES.map((engine) => (
-              <SelectItem key={engine.id} value={engine.id}>
+              <SelectItem
+                key={engine.id}
+                value={engine.id}
+                icon={<SearchEngineIcon engine={engine.id} />}
+              >
                 {engine.name}
               </SelectItem>
             ))}
@@ -897,27 +921,52 @@ function FileManagementTab() {
 }
 
 export function AppearanceSection() {
+  const [activeTab, setActiveTab] = useState<AppearanceTabId>("app");
+  const tabRefs = useRef<
+    Partial<Record<AppearanceTabId, HTMLButtonElement | null>>
+  >({});
+
+  useEffect(() => {
+    tabRefs.current[activeTab]?.scrollIntoView?.({
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [activeTab]);
+
+  const scrollTabs = (event: WheelEvent<HTMLDivElement>) => {
+    const list = event.currentTarget;
+    if (
+      list.scrollWidth <= list.clientWidth ||
+      Math.abs(event.deltaX) >= Math.abs(event.deltaY)
+    ) {
+      return;
+    }
+    list.scrollLeft += event.deltaY;
+  };
+
   return (
-    <Tabs defaultValue="app" className="space-y-4">
-      <TabsList className="grid h-auto w-full grid-cols-6">
-        <TabsTrigger value="app" data-testid="appearance-tab-app">
-          App
-        </TabsTrigger>
-        <TabsTrigger value="editor" data-testid="appearance-tab-editor">
-          Editor
-        </TabsTrigger>
-        <TabsTrigger value="terminal" data-testid="appearance-tab-terminal">
-          Terminal
-        </TabsTrigger>
-        <TabsTrigger value="pdf" data-testid="appearance-tab-pdf">
-          PDF Preview
-        </TabsTrigger>
-        <TabsTrigger value="browser" data-testid="appearance-tab-browser">
-          Browser
-        </TabsTrigger>
-        <TabsTrigger value="files" data-testid="appearance-tab-files">
-          Project
-        </TabsTrigger>
+    <Tabs
+      value={activeTab}
+      onValueChange={(value) => setActiveTab(value as AppearanceTabId)}
+      className="space-y-4"
+    >
+      <TabsList
+        className="flex h-auto w-full justify-start gap-1 overflow-x-auto no-scrollbar"
+        onWheel={scrollTabs}
+      >
+        {APPEARANCE_TABS.map((tab) => (
+          <TabsTrigger
+            key={tab.id}
+            ref={(node) => {
+              tabRefs.current[tab.id] = node;
+            }}
+            value={tab.id}
+            data-testid={`appearance-tab-${tab.id}`}
+            className="shrink-0"
+          >
+            {tab.label}
+          </TabsTrigger>
+        ))}
       </TabsList>
       <TabsContent value="app">
         <AppAppearanceTab />

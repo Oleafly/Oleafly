@@ -6,7 +6,15 @@ use std::sync::{Arc, Mutex};
 use base64::Engine;
 use portable_pty::{CommandBuilder, MasterPty, PtySize};
 use rand::RngCore;
-use tauri::ipc::Channel;
+use serde::Serialize;
+use tauri::{ipc::Channel, Runtime, Webview};
+
+#[derive(Serialize)]
+#[serde(tag = "event", rename_all = "snake_case")]
+pub(crate) enum TerminalEvent {
+    Output { data: String },
+    Exit,
+}
 
 struct TermSession {
     master: Box<dyn MasterPty + Send>,
@@ -103,6 +111,13 @@ fn command_owner(window_label: &str, project_id: &str) -> Result<SessionOwner, S
     Ok(SessionOwner::new(window_label, project_id))
 }
 
+fn webview_command_owner<R: Runtime>(
+    webview: &Webview<R>,
+    project_id: &str,
+) -> Result<SessionOwner, String> {
+    command_owner(webview.window().label(), project_id)
+}
+
 fn default_shell() -> CommandBuilder {
     #[cfg(windows)]
     {
@@ -118,14 +133,14 @@ fn default_shell() -> CommandBuilder {
 }
 
 #[tauri::command]
-pub fn term_open(
-    window: tauri::WebviewWindow,
+pub fn term_open<R: Runtime>(
+    webview: Webview<R>,
     project_id: String,
     cols: u16,
     rows: u16,
-    channel: Channel<String>,
+    channel: Channel<TerminalEvent>,
 ) -> Result<String, String> {
-    let owner = command_owner(window.label(), &project_id)?;
+    let owner = webview_command_owner(&webview, &project_id)?;
     let cwd = crate::paths::project_dir(&project_id)?;
     open_terminal(&cwd, owner, cols, rows, channel, default_shell())
 }
@@ -135,7 +150,7 @@ fn open_terminal(
     owner: SessionOwner,
     cols: u16,
     rows: u16,
-    channel: Channel<String>,
+    channel: Channel<TerminalEvent>,
     mut cmd: CommandBuilder,
 ) -> Result<String, String> {
     let pty = portable_pty::native_pty_system()
@@ -193,12 +208,14 @@ fn open_terminal(
     let session_id = id.clone();
     std::thread::spawn(move || {
         let mut buffer = [0u8; 8192];
+        let mut channel_open = true;
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) | Err(_) => break,
                 Ok(n) => {
-                    let text = String::from_utf8_lossy(&buffer[..n]).to_string();
-                    if channel.send(text).is_err() {
+                    let data = String::from_utf8_lossy(&buffer[..n]).to_string();
+                    if channel.send(TerminalEvent::Output { data }).is_err() {
+                        channel_open = false;
                         break;
                     }
                 }
@@ -212,6 +229,9 @@ fn open_terminal(
         };
         if let Some(session) = session {
             stop_session(session);
+        }
+        if channel_open {
+            let _ = channel.send(TerminalEvent::Exit);
         }
     });
 
@@ -230,13 +250,13 @@ fn stop_session(session: TermSession) {
 }
 
 #[tauri::command]
-pub fn term_write(
-    window: tauri::WebviewWindow,
+pub fn term_write<R: Runtime>(
+    webview: Webview<R>,
     project_id: String,
     id: String,
     data: String,
 ) -> Result<(), String> {
-    let owner = command_owner(window.label(), &project_id)?;
+    let owner = webview_command_owner(&webview, &project_id)?;
     write_terminal(&owner, &id, &data)
 }
 
@@ -258,14 +278,14 @@ fn write_terminal(owner: &SessionOwner, id: &str, data: &str) -> Result<(), Stri
 }
 
 #[tauri::command]
-pub fn term_resize(
-    window: tauri::WebviewWindow,
+pub fn term_resize<R: Runtime>(
+    webview: Webview<R>,
     project_id: String,
     id: String,
     cols: u16,
     rows: u16,
 ) -> Result<(), String> {
-    let owner = command_owner(window.label(), &project_id)?;
+    let owner = webview_command_owner(&webview, &project_id)?;
     resize_terminal(&owner, &id, cols, rows)
 }
 
@@ -287,12 +307,12 @@ fn resize_terminal(owner: &SessionOwner, id: &str, cols: u16, rows: u16) -> Resu
 }
 
 #[tauri::command]
-pub fn term_kill(
-    window: tauri::WebviewWindow,
+pub fn term_kill<R: Runtime>(
+    webview: Webview<R>,
     project_id: String,
     id: String,
 ) -> Result<(), String> {
-    let owner = command_owner(window.label(), &project_id)?;
+    let owner = webview_command_owner(&webview, &project_id)?;
     kill_terminal(&owner, &id)
 }
 
@@ -314,6 +334,143 @@ fn kill_terminal(owner: &SessionOwner, id: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn terminal_write_resolves_the_parent_of_a_multi_webview_window() {
+        #[cfg(not(windows))]
+        use std::os::unix::fs::PermissionsExt;
+
+        let root = std::env::temp_dir().join(format!(
+            "oleafly-terminal-multi-webview-{}",
+            std::process::id()
+        ));
+        std::fs::remove_dir_all(&root).ok();
+        let project = root.join("projects/proj");
+        std::fs::create_dir_all(&project).unwrap();
+        #[cfg(not(windows))]
+        let shell = {
+            let shell = root.join("test-shell.sh");
+            std::fs::write(
+                &shell,
+                b"#!/bin/sh\nIFS= read -r input\nprintf '%s' \"$input\" > terminal-input.txt\nsleep 10\n",
+            )
+            .unwrap();
+            std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+            CommandBuilder::new(shell)
+        };
+        #[cfg(windows)]
+        let shell = {
+            let mut shell = CommandBuilder::new("powershell.exe");
+            shell.arg("-NoProfile");
+            shell.arg("-Command");
+            shell.arg("$input = [Console]::In.ReadLine(); [IO.File]::WriteAllText('terminal-input.txt', $input); Start-Sleep -Seconds 10");
+            shell
+        };
+        let owner = SessionOwner::new("main", "proj");
+        let session_id = open_terminal(
+            &project,
+            owner.clone(),
+            80,
+            24,
+            Channel::new(|_| Ok(())),
+            shell,
+        )
+        .unwrap();
+        let app = tauri::test::mock_builder()
+            .invoke_handler(tauri::generate_handler![term_write])
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let main_webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .unwrap();
+        let window = main_webview.as_ref().window();
+        let _browser_webview = window
+            .add_child(
+                tauri::webview::WebviewBuilder::new(
+                    "oleafly-browser-pane-test",
+                    Default::default(),
+                ),
+                tauri::LogicalPosition::new(0, 0),
+                tauri::LogicalSize::new(400, 600),
+            )
+            .unwrap();
+
+        let response = tauri::test::get_ipc_response(
+            &main_webview,
+            tauri::webview::InvokeRequest {
+                cmd: "term_write".into(),
+                callback: tauri::ipc::CallbackFn(0),
+                error: tauri::ipc::CallbackFn(1),
+                url: if cfg!(windows) {
+                    "http://tauri.localhost"
+                } else {
+                    "tauri://localhost"
+                }
+                .parse()
+                .unwrap(),
+                body: serde_json::json!({
+                    "projectId": "proj",
+                    "id": session_id,
+                    "data": "hello from the main webview\n"
+                })
+                .into(),
+                headers: Default::default(),
+                invoke_key: tauri::test::INVOKE_KEY.to_string(),
+            },
+        );
+        let response = response.map(|body| body.deserialize::<()>().unwrap());
+        let received_path = project.join("terminal-input.txt");
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        while !received_path.exists() && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        let received = std::fs::read_to_string(&received_path);
+
+        kill_terminal(&owner, &session_id).unwrap();
+        std::fs::remove_dir_all(&root).ok();
+        assert_eq!(response, Ok(()));
+        assert_eq!(received.unwrap(), "hello from the main webview");
+    }
+
+    #[test]
+    fn child_exit_sends_a_terminal_exit_event() {
+        let root = std::env::temp_dir().join(format!(
+            "oleafly-terminal-exit-event-{}",
+            std::process::id()
+        ));
+        std::fs::remove_dir_all(&root).ok();
+        let project = root.join("projects/proj");
+        std::fs::create_dir_all(&project).unwrap();
+        let mut shell = CommandBuilder::new(if cfg!(windows) { "cmd" } else { "/bin/sh" });
+        if cfg!(windows) {
+            shell.arg("/C");
+            shell.arg("ping -n 2 127.0.0.1 >NUL");
+        } else {
+            shell.arg("-c");
+            shell.arg("sleep 0.05");
+        }
+        let (events_tx, events_rx) = std::sync::mpsc::channel();
+        let channel = Channel::new(move |body| {
+            events_tx
+                .send(body.deserialize::<serde_json::Value>().unwrap())
+                .unwrap();
+            Ok(())
+        });
+
+        open_terminal(
+            &project,
+            SessionOwner::new("main", "proj"),
+            80,
+            24,
+            channel,
+            shell,
+        )
+        .unwrap();
+        let event = events_rx.recv_timeout(std::time::Duration::from_secs(3));
+
+        std::fs::remove_dir_all(&root).ok();
+        assert_eq!(event.unwrap(), serde_json::json!({ "event": "exit" }));
+    }
 
     #[test]
     fn writes_to_unknown_sessions_are_rejected() {
@@ -443,6 +600,7 @@ mod tests {
     #[test]
     fn closed_output_channel_kills_the_login_shell() {
         use std::os::unix::fs::PermissionsExt;
+        use std::sync::atomic::{AtomicUsize, Ordering};
         use std::sync::{Arc, Barrier};
 
         let root = std::env::temp_dir().join(format!(
@@ -461,11 +619,15 @@ mod tests {
         std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
         let channel_entered = Arc::new(Barrier::new(2));
         let close_channel = Arc::new(Barrier::new(2));
+        let send_attempts = Arc::new(AtomicUsize::new(0));
         let callback_entered = Arc::clone(&channel_entered);
         let callback_close = Arc::clone(&close_channel);
+        let callback_attempts = Arc::clone(&send_attempts);
         let channel = Channel::new(move |_| {
-            callback_entered.wait();
-            callback_close.wait();
+            if callback_attempts.fetch_add(1, Ordering::SeqCst) == 0 {
+                callback_entered.wait();
+                callback_close.wait();
+            }
             Err(tauri::Error::AssetNotFound("closed".into()))
         });
 
@@ -510,8 +672,10 @@ mod tests {
                 .status();
         }
         let _ = kill_terminal(&owner, &session_id);
+        std::thread::sleep(std::time::Duration::from_millis(100));
         std::fs::remove_dir_all(&root).ok();
         assert!(stopped);
+        assert_eq!(send_attempts.load(Ordering::SeqCst), 1);
     }
 
     #[cfg(unix)]

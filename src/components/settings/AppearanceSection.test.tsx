@@ -91,6 +91,41 @@ describe("Appearance settings tabs", () => {
     });
   });
 
+  it("keeps the tab strip scrollable and reveals keyboard-selected tabs", async () => {
+    render(<AppearanceSection />);
+
+    const tabList = screen.getByRole("tablist");
+    expect(tabList).toHaveClass("overflow-x-auto", "no-scrollbar");
+
+    const appTab = screen.getByRole("tab", { name: "App" });
+    const editorTab = screen.getByRole("tab", { name: "Editor" });
+    const scrollIntoView = vi.fn();
+    editorTab.scrollIntoView = scrollIntoView;
+    appTab.focus();
+    fireEvent.keyDown(appTab, { key: "ArrowRight" });
+
+    await waitFor(() => expect(editorTab).toHaveAttribute("aria-selected", "true"));
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      block: "nearest",
+      inline: "nearest",
+    });
+  });
+
+  it("scrolls the tab strip horizontally with a mouse wheel", () => {
+    render(<AppearanceSection />);
+
+    const tabList = screen.getByRole("tablist");
+    Object.defineProperties(tabList, {
+      clientWidth: { configurable: true, value: 320 },
+      scrollLeft: { configurable: true, value: 0, writable: true },
+      scrollWidth: { configurable: true, value: 640 },
+    });
+
+    fireEvent.wheel(tabList, { deltaY: 80 });
+
+    expect(tabList.scrollLeft).toBe(80);
+  });
+
   it("updates the app and editor appearance controls", async () => {
     const user = userEvent.setup();
     render(<AppearanceSection />);
@@ -221,6 +256,29 @@ describe("Appearance settings tabs", () => {
       browserSearchEngine: "duckduckgo",
       browserHomePage: "https://example.com/",
     });
+  });
+
+  it("renders a local icon for every browser search engine", async () => {
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: "Browser" }));
+
+    const trigger = screen.getByLabelText("Default search engine");
+    expect(
+      within(trigger).getByTestId("search-engine-icon-google"),
+    ).toBeInTheDocument();
+    await user.click(trigger);
+
+    for (const engine of [
+      { id: "google", name: "Google" },
+      { id: "duckduckgo", name: "DuckDuckGo" },
+      { id: "bing", name: "Bing" },
+    ]) {
+      const option = await screen.findByRole("option", { name: engine.name });
+      expect(
+        within(option).getByTestId(`search-engine-icon-${engine.id}`),
+      ).toBeInTheDocument();
+    }
   });
 
   it("occludes native webviews only while a select menu is open", async () => {

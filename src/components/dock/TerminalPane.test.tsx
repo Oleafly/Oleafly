@@ -6,7 +6,15 @@ import { TerminalPane } from "./TerminalPane";
 
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
-  channels: [] as Array<{ onmessage: ((data: string) => void) | null }>,
+  channels: [] as Array<{
+    onmessage:
+      | ((message: { event: "output"; data: string } | { event: "exit" }) => void)
+      | null;
+  }>,
+  resizeObservers: [] as Array<{
+    callback: ResizeObserverCallback;
+    disconnect: ReturnType<typeof vi.fn>;
+  }>,
   terminals: [] as Array<{
     cols: number;
     rows: number;
@@ -14,6 +22,7 @@ const mocks = vi.hoisted(() => ({
     focus: ReturnType<typeof vi.fn>;
     write: ReturnType<typeof vi.fn>;
     writeln: ReturnType<typeof vi.fn>;
+    dispose: ReturnType<typeof vi.fn>;
     dataHandler: ((data: string) => void) | null;
   }>,
   terminalColorThemes: {
@@ -71,6 +80,8 @@ const mocks = vi.hoisted(() => ({
     },
   },
   settings: {
+    terminalOpen: true,
+    setTerminalOpen: vi.fn(),
     terminalFontSize: 14,
     terminalFontFamily:
       'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace',
@@ -87,7 +98,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@tauri-apps/api/core", () => ({
   Channel: class {
-    onmessage: ((data: string) => void) | null = null;
+    onmessage:
+      | ((message: { event: "output"; data: string } | { event: "exit" }) => void)
+      | null = null;
 
     constructor() {
       mocks.channels.push(this);
@@ -150,7 +163,10 @@ describe("TerminalPane", () => {
     );
     mocks.channels.length = 0;
     mocks.terminals.length = 0;
+    mocks.resizeObservers.length = 0;
+    mocks.settings.setTerminalOpen.mockReset();
     Object.assign(mocks.settings, {
+      terminalOpen: true,
       terminalFontSize: 14,
       terminalFontFamily:
         'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace',
@@ -166,8 +182,15 @@ describe("TerminalPane", () => {
     vi.stubGlobal(
       "ResizeObserver",
       class {
+        callback: ResizeObserverCallback;
+        disconnect = vi.fn();
+
+        constructor(callback: ResizeObserverCallback) {
+          this.callback = callback;
+          mocks.resizeObservers.push(this);
+        }
+
         observe() {}
-        disconnect() {}
       },
     );
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
@@ -251,6 +274,61 @@ describe("TerminalPane", () => {
     });
   });
 
+  it("closes and disposes an exited session without accepting later input or resize", async () => {
+    render(<TerminalPane projectId="project-1" visible />);
+    const terminal = mocks.terminals[0];
+    await waitFor(() => {
+      expect(mocks.invoke.mock.calls.filter(([command]) => command === "term_open")).toHaveLength(1);
+    });
+    const observer = mocks.resizeObservers[0];
+
+    mocks.channels[0].onmessage?.({ event: "output", data: "ready\r\n" });
+    expect(terminal.write).toHaveBeenCalledWith("ready\r\n");
+    mocks.channels[0].onmessage?.({ event: "exit" });
+
+    await waitFor(() => {
+      expect(mocks.settings.setTerminalOpen).toHaveBeenCalledWith(false);
+      expect(terminal.dispose).toHaveBeenCalledTimes(1);
+    });
+    mocks.invoke.mockClear();
+
+    terminal.dataHandler?.("after exit");
+    observer.callback([], observer as unknown as ResizeObserver);
+
+    await Promise.resolve();
+    expect(mocks.invoke).not.toHaveBeenCalledWith("term_write", expect.anything());
+    expect(mocks.invoke).not.toHaveBeenCalledWith("term_resize", expect.anything());
+  });
+
+  it("starts a fresh session when the terminal is reopened after exit", async () => {
+    let opens = 0;
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "term_open") {
+        opens += 1;
+        return Promise.resolve(`term-${opens}`);
+      }
+      return Promise.resolve(undefined);
+    });
+    const view = render(<TerminalPane projectId="project-1" visible />);
+    await waitFor(() => expect(opens).toBe(1));
+
+    mocks.channels[0].onmessage?.({ event: "exit" });
+    await waitFor(() => expect(mocks.terminals[0].dispose).toHaveBeenCalledTimes(1));
+    view.rerender(<TerminalPane projectId="project-1" visible={false} />);
+    view.rerender(<TerminalPane projectId="project-1" visible />);
+
+    await waitFor(() => expect(opens).toBe(2));
+    expect(mocks.terminals).toHaveLength(2);
+    mocks.terminals[1].dataHandler?.("fresh input");
+    await waitFor(() => {
+      expect(mocks.invoke).toHaveBeenCalledWith("term_write", {
+        id: "term-2",
+        projectId: "project-1",
+        data: "fresh input",
+      });
+    });
+  });
+
   it("shows a Loader2 spinner until the terminal session is ready", async () => {
     const open = deferred<string>();
     mocks.invoke.mockImplementation((command: string) =>
@@ -308,6 +386,50 @@ describe("TerminalPane", () => {
         "\r\nThe terminal could not resize: Error: resize denied",
       );
     });
+  });
+
+  it("surfaces the same input failure only once per session", async () => {
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "term_open") return Promise.resolve("term-1");
+      if (command === "term_write") return Promise.reject(new Error("write denied"));
+      return Promise.resolve(undefined);
+    });
+    render(<TerminalPane projectId="project-1" visible />);
+    const terminal = mocks.terminals[0];
+    await waitFor(() => {
+      expect(mocks.invoke.mock.calls.filter(([command]) => command === "term_open")).toHaveLength(1);
+    });
+
+    terminal.dataHandler?.("first");
+    terminal.dataHandler?.("second");
+
+    await waitFor(() => {
+      expect(terminal.writeln).toHaveBeenCalledTimes(1);
+      expect(terminal.writeln).toHaveBeenCalledWith(
+        "\r\nThe shell could not accept input: Error: write denied",
+      );
+    });
+  });
+
+  it("suppresses a pending input failure after the session exits", async () => {
+    const write = deferred<void>();
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "term_open") return Promise.resolve("term-1");
+      if (command === "term_write") return write.promise;
+      return Promise.resolve(undefined);
+    });
+    render(<TerminalPane projectId="project-1" visible />);
+    const terminal = mocks.terminals[0];
+    await waitFor(() => {
+      expect(mocks.invoke.mock.calls.filter(([command]) => command === "term_open")).toHaveLength(1);
+    });
+
+    terminal.dataHandler?.("exit\r");
+    mocks.channels[0].onmessage?.({ event: "exit" });
+    write.reject(new Error("terminal session is not open"));
+
+    await waitFor(() => expect(terminal.dispose).toHaveBeenCalledTimes(1));
+    expect(terminal.writeln).not.toHaveBeenCalled();
   });
 
   it("uses terminal appearance settings and a complete dark ANSI palette", () => {

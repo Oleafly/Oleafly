@@ -77,4 +77,5 @@ custom-protocol = ["tauri/custom-protocol"]
 e2e-testing = ["dep:tauri-plugin-playwright"]
 
 [dev-dependencies]
+tauri = { version = "2", features = ["test"] }
 tempfile = { workspace = true }
