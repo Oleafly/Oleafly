@@ -415,7 +415,7 @@ export function SettingsModal() {
         data-modal-initial-focus
         aria-modal="true"
         aria-label="Settings"
-        className="relative flex h-[min(620px,86vh)] w-[min(820px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl outline-none"
+        className="relative flex h-[min(620px,86vh)] w-[min(1040px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl outline-none"
       >
         <nav
           aria-label="Settings sections"

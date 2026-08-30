@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type WheelEvent,
+} from "react";
 import { Check, Copy, Eye, EyeOff, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -44,6 +52,19 @@ function CopyBtn({ text, testId }: { text: string; testId?: string }) {
 }
 
 type SnippetLang = "json" | "shell" | "toml";
+type McpPaneTab = "assistant" | "oleafly";
+type McpClientTab = "claude-code" | "claude-desktop" | "cursor" | "codex" | "grok";
+
+function scrollTabs(event: WheelEvent<HTMLDivElement>) {
+  const list = event.currentTarget;
+  if (
+    list.scrollWidth <= list.clientWidth ||
+    Math.abs(event.deltaX) >= Math.abs(event.deltaY)
+  ) {
+    return;
+  }
+  list.scrollLeft += event.deltaY;
+}
 
 // Avoids pulling in a full syntax-highlighter dependency for these small snippets.
 function highlightSnippet(source: string, lang: SnippetLang): ReactNode[] {
@@ -217,6 +238,16 @@ export function McpSection() {
   const [token, setToken] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
+  const [paneTab, setPaneTab] = useState<McpPaneTab>("assistant");
+  const [clientTab, setClientTab] = useState<McpClientTab>("claude-code");
+  const clientTabRefs = useRef<Partial<Record<McpClientTab, HTMLButtonElement | null>>>({});
+
+  useEffect(() => {
+    clientTabRefs.current[clientTab]?.scrollIntoView?.({
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [clientTab]);
 
   const loadToken = useCallback(async (running: boolean) => {
     if (!running) {
@@ -388,16 +419,35 @@ export function McpSection() {
 
   return (
     <div className="space-y-5" data-testid="settings-section-mcp">
+      <Tabs
+        value={paneTab}
+        onValueChange={(value) => setPaneTab(value as McpPaneTab)}
+        className="space-y-4"
+      >
+        <TabsList
+          className="flex h-auto w-full justify-start gap-1 overflow-x-auto no-scrollbar"
+          data-testid="mcp-pane-tab-strip"
+          onWheel={scrollTabs}
+        >
+          <TabsTrigger value="assistant" className="shrink-0">
+            Assistant MCP
+          </TabsTrigger>
+          <TabsTrigger value="oleafly" className="shrink-0">
+            Oleafly MCP
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="assistant" forceMount hidden={paneTab !== "assistant"}>
+          <McpServersManager />
+        </TabsContent>
+
+        <TabsContent
+          value="oleafly"
+          forceMount
+          hidden={paneTab !== "oleafly"}
+          className="space-y-5"
+        >
       <div>
-        <h2 className="text-base font-semibold">MCP</h2>
-        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-          Connect the AI Assistant to MCP tools, or let external apps work with the open project.
-        </p>
-      </div>
-
-      <McpServersManager />
-
-      <div className="border-t pt-5">
         <h3 className="text-sm font-medium">Oleafly MCP server</h3>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           Claude Desktop, Claude Code, Cursor, and other MCP clients can read, edit, and compile the
@@ -649,22 +699,65 @@ export function McpSection() {
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold">Connect your app</h3>
-        <Tabs defaultValue="claude-code" className="space-y-3">
-          <TabsList className="flex-wrap">
-            <TabsTrigger value="claude-code" data-testid="mcp-tab-claude-code">
+        <h3 className="text-sm font-semibold">Connect your apps</h3>
+        <Tabs
+          value={clientTab}
+          onValueChange={(value) => setClientTab(value as McpClientTab)}
+          className="space-y-3"
+        >
+          <TabsList
+            className="flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto no-scrollbar"
+            data-testid="mcp-client-tab-strip"
+            onWheel={scrollTabs}
+          >
+            <TabsTrigger
+              ref={(node) => {
+                clientTabRefs.current["claude-code"] = node;
+              }}
+              value="claude-code"
+              data-testid="mcp-tab-claude-code"
+              className="shrink-0"
+            >
               Claude Code
             </TabsTrigger>
-            <TabsTrigger value="claude-desktop" data-testid="mcp-tab-claude-desktop">
+            <TabsTrigger
+              ref={(node) => {
+                clientTabRefs.current["claude-desktop"] = node;
+              }}
+              value="claude-desktop"
+              data-testid="mcp-tab-claude-desktop"
+              className="shrink-0"
+            >
               Claude Desktop
             </TabsTrigger>
-            <TabsTrigger value="cursor" data-testid="mcp-tab-cursor">
+            <TabsTrigger
+              ref={(node) => {
+                clientTabRefs.current.cursor = node;
+              }}
+              value="cursor"
+              data-testid="mcp-tab-cursor"
+              className="shrink-0"
+            >
               Cursor
             </TabsTrigger>
-            <TabsTrigger value="codex" data-testid="mcp-tab-codex">
+            <TabsTrigger
+              ref={(node) => {
+                clientTabRefs.current.codex = node;
+              }}
+              value="codex"
+              data-testid="mcp-tab-codex"
+              className="shrink-0"
+            >
               Codex CLI
             </TabsTrigger>
-            <TabsTrigger value="grok" data-testid="mcp-tab-grok">
+            <TabsTrigger
+              ref={(node) => {
+                clientTabRefs.current.grok = node;
+              }}
+              value="grok"
+              data-testid="mcp-tab-grok"
+              className="shrink-0"
+            >
               Grok CLI
             </TabsTrigger>
           </TabsList>
@@ -738,6 +831,8 @@ export function McpSection() {
           {error}
         </p>
       )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

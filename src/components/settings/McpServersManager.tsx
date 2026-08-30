@@ -3,6 +3,7 @@ import { Globe2, Loader2, Pencil, Plus, RefreshCw, Terminal, Trash2, X } from "l
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import {
   Dialog,
   DialogContent,
@@ -261,6 +262,15 @@ function ServerEditor({
     );
   }, [state]);
 
+  useEffect(() => {
+    if (!state) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const modalId = appModalCoordinator.add(opener);
+    return () => {
+      appModalCoordinator.remove(modalId)?.focus({ preventScroll: true });
+    };
+  }, [state]);
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!state) return;
@@ -290,7 +300,10 @@ function ServerEditor({
 
   return (
     <Dialog open={state !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-xl">
+      <DialogContent
+        className="z-[120] max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-xl"
+        overlayClassName="z-[120]"
+      >
         <DialogHeader>
           <DialogTitle>{state?.mode === "edit" ? "Edit MCP server" : "Add MCP server"}</DialogTitle>
           <DialogDescription>

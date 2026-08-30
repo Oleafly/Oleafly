@@ -2,7 +2,9 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import type {
   McpManagedServer,
   McpServerConfig,
@@ -75,6 +77,15 @@ function connectedValidation(name: string): McpServerValidation {
 
 function renderManager() {
   return render(<McpServersManager />);
+}
+
+function ParentModal({ onClose }: { onClose: () => void }) {
+  const { dialogRef } = useModalAccessibility<HTMLDivElement>(true, onClose);
+  return (
+    <div ref={dialogRef} role="dialog" aria-label="Settings" tabIndex={-1}>
+      <McpServersManager />
+    </div>
+  );
 }
 
 describe("McpServersManager", () => {
@@ -200,6 +211,54 @@ describe("McpServersManager", () => {
     expect(screen.getByText("2 tools")).toBeInTheDocument();
     expect(screen.getByText("Disabled")).toBeInTheDocument();
     expect(screen.queryByText("files_search")).not.toBeInTheDocument();
+  });
+
+  it("portals the server editor above the Settings modal", async () => {
+    records = [];
+    const { container } = renderManager();
+    await screen.findByText("No servers added.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Add MCP server" });
+    expect(container).not.toContainElement(dialog);
+    expect(dialog).toHaveClass("z-[120]");
+    expect(dialog.previousElementSibling).toHaveClass("z-[120]");
+    expect(screen.getByLabelText("Server name")).toBeEnabled();
+  });
+
+  it("keeps Tab navigation inside the server editor above a parent modal", async () => {
+    records = [];
+    const user = userEvent.setup();
+    render(<ParentModal onClose={vi.fn()} />);
+    await screen.findByText("No servers added.");
+
+    await user.click(screen.getByRole("button", { name: "Add server" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Add MCP server" });
+    const serverName = screen.getByLabelText("Server name");
+    await waitFor(() => expect(serverName).toHaveFocus());
+    await user.tab();
+
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    expect(serverName).not.toHaveFocus();
+  });
+
+  it("closes only the server editor when Escape is pressed", async () => {
+    records = [];
+    const user = userEvent.setup();
+    const closeParent = vi.fn();
+    render(<ParentModal onClose={closeParent} />);
+    await screen.findByText("No servers added.");
+
+    await user.click(screen.getByRole("button", { name: "Add server" }));
+    await screen.findByRole("dialog", { name: "Add MCP server" });
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Add MCP server" })).not.toBeInTheDocument();
+    });
+    expect(closeParent).not.toHaveBeenCalled();
   });
 
   it("validates enabled servers with bounded concurrency", async () => {

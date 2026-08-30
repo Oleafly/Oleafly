@@ -95,7 +95,8 @@ describe("Appearance settings tabs", () => {
     render(<AppearanceSection />);
 
     const tabList = screen.getByRole("tablist");
-    expect(tabList).toHaveClass("overflow-x-auto", "no-scrollbar");
+    expect(tabList).toHaveClass("w-full", "overflow-x-auto", "no-scrollbar");
+    expect(tabList).not.toHaveClass("max-w-xs");
 
     const appTab = screen.getByRole("tab", { name: "App" });
     const editorTab = screen.getByRole("tab", { name: "Editor" });

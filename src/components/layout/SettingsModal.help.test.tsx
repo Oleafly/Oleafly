@@ -111,6 +111,14 @@ describe("Settings Help & About support callout", () => {
     );
   });
 
+  it("uses the wider responsive Settings layout", () => {
+    render(<SettingsModal />);
+
+    expect(screen.getByRole("dialog", { name: "Settings" })).toHaveClass(
+      "w-[min(1040px,94vw)]",
+    );
+  });
+
   it("occludes native webviews for the entire settings session", async () => {
     render(<SettingsModal />);
 
