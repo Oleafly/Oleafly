@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import { cn } from "@/lib/utils";
 
 type Side = "top" | "bottom" | "left" | "right";
@@ -34,6 +35,7 @@ export function Tooltip({
   role?: "none";
 }) {
   const [show, setShow] = useState(false);
+  useOccludeNativeWebview(show);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<HTMLSpanElement>(null);

@@ -2,6 +2,7 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getNativeWebviewOccluded } from "@/lib/native-webview-occlusion";
 import { useSettingsStore } from "@/store/settings";
 
 const mocks = vi.hoisted(() => ({
@@ -108,5 +109,15 @@ describe("Settings Help & About support callout", () => {
     expect(sectionList).not.toContainElement(
       screen.getByTestId("settings-toggle-advanced"),
     );
+  });
+
+  it("occludes native webviews for the entire settings session", async () => {
+    render(<SettingsModal />);
+
+    expect(getNativeWebviewOccluded()).toBe(true);
+
+    useSettingsStore.getState().setSettingsOpen(false);
+
+    await waitFor(() => expect(getNativeWebviewOccluded()).toBe(false));
   });
 });

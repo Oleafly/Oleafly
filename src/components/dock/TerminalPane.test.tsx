@@ -1,29 +1,122 @@
 // @vitest-environment jsdom
 
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TerminalPane } from "./TerminalPane";
 
-const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  invoke: vi.fn(),
+  channels: [] as Array<{ onmessage: ((data: string) => void) | null }>,
+  terminals: [] as Array<{
+    cols: number;
+    rows: number;
+    options: Record<string, unknown>;
+    focus: ReturnType<typeof vi.fn>;
+    write: ReturnType<typeof vi.fn>;
+    writeln: ReturnType<typeof vi.fn>;
+    dataHandler: ((data: string) => void) | null;
+  }>,
+  terminalColorThemes: {
+    dark: {
+      colors: {
+        background: "#1e1e1e",
+        foreground: "#f2f2f2",
+        cursor: "#ffffff",
+        cursorAccent: "#1e1e1e",
+        selectionBackground: "#264f78",
+        selectionForeground: "#ffffff",
+        black: "#000000",
+        red: "#cd3131",
+        green: "#0dbc79",
+        yellow: "#e5e510",
+        blue: "#2472c8",
+        magenta: "#bc3fbc",
+        cyan: "#11a8cd",
+        white: "#e5e5e5",
+        brightBlack: "#666666",
+        brightRed: "#f14c4c",
+        brightGreen: "#23d18b",
+        brightYellow: "#f5f543",
+        brightBlue: "#3b8eea",
+        brightMagenta: "#d670d6",
+        brightCyan: "#29b8db",
+        brightWhite: "#ffffff",
+      },
+    },
+    light: {
+      colors: {
+        background: "#ffffff",
+        foreground: "#1f2328",
+        cursor: "#1f2328",
+        cursorAccent: "#ffffff",
+        selectionBackground: "#add6ff",
+        selectionForeground: "#1f2328",
+        black: "#000000",
+        red: "#cd3131",
+        green: "#00bc00",
+        yellow: "#949800",
+        blue: "#0451a5",
+        magenta: "#bc05bc",
+        cyan: "#0598bc",
+        white: "#555555",
+        brightBlack: "#666666",
+        brightRed: "#cd3131",
+        brightGreen: "#14ce14",
+        brightYellow: "#b5ba00",
+        brightBlue: "#0451a5",
+        brightMagenta: "#bc05bc",
+        brightCyan: "#0598bc",
+        brightWhite: "#a5a5a5",
+      },
+    },
+  },
+  settings: {
+    terminalFontSize: 14,
+    terminalFontFamily:
+      'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace',
+    terminalFontWeight: 500,
+    terminalFontWeightBold: 700,
+    terminalCursorStyle: "block",
+    terminalCursorBlink: true,
+    terminalColorTheme: "dark",
+    terminalBackground: "#1e1e1e",
+    terminalForeground: "#f2f2f2",
+    terminalCursorColor: "#ffffff",
+  },
+}));
 
 vi.mock("@tauri-apps/api/core", () => ({
   Channel: class {
     onmessage: ((data: string) => void) | null = null;
+
+    constructor() {
+      mocks.channels.push(this);
+    }
   },
-  invoke,
+  invoke: mocks.invoke,
 }));
 
 vi.mock("@xterm/xterm", () => ({
   Terminal: class {
     cols = 80;
     rows = 24;
-    options = {};
+    options: Record<string, unknown>;
+    focus = vi.fn();
     loadAddon = vi.fn();
     open = vi.fn();
     write = vi.fn();
     writeln = vi.fn();
     dispose = vi.fn();
-    onData = vi.fn(() => ({ dispose: vi.fn() }));
+    dataHandler: ((data: string) => void) | null = null;
+    onData = vi.fn((handler: (data: string) => void) => {
+      this.dataHandler = handler;
+      return { dispose: vi.fn() };
+    });
+
+    constructor(options: Record<string, unknown>) {
+      this.options = options;
+      mocks.terminals.push(this);
+    }
   },
 }));
 
@@ -33,16 +126,43 @@ vi.mock("@xterm/addon-fit", () => ({
   },
 }));
 
-vi.mock("@/lib/theme", () => ({
-  useTheme: () => ({ theme: "light" }),
+vi.mock("@/store/settings", () => ({
+  TERMINAL_COLOR_THEMES: mocks.terminalColorThemes,
+  useSettingsStore: (selector: (settings: typeof mocks.settings) => unknown) =>
+    selector(mocks.settings),
 }));
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
 
 describe("TerminalPane", () => {
   beforeEach(() => {
-    invoke.mockReset();
-    invoke.mockImplementation((command: string) =>
+    mocks.invoke.mockReset();
+    mocks.invoke.mockImplementation((command: string) =>
       Promise.resolve(command === "term_open" ? "term-1" : undefined),
     );
+    mocks.channels.length = 0;
+    mocks.terminals.length = 0;
+    Object.assign(mocks.settings, {
+      terminalFontSize: 14,
+      terminalFontFamily:
+        'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace',
+      terminalFontWeight: 500,
+      terminalFontWeightBold: 700,
+      terminalCursorStyle: "block",
+      terminalCursorBlink: true,
+      terminalColorTheme: "dark",
+      terminalBackground: "#1e1e1e",
+      terminalForeground: "#f2f2f2",
+      terminalCursorColor: "#ffffff",
+    });
     vi.stubGlobal(
       "ResizeObserver",
       class {
@@ -58,33 +178,221 @@ describe("TerminalPane", () => {
   });
 
   it("keeps the PTY alive across title and visibility changes", async () => {
-    const { rerender, unmount } = render(
-      <TerminalPane projectId="project-1" visible />,
-    );
+    const { rerender, unmount } = render(<TerminalPane projectId="project-1" visible />);
 
     await waitFor(() => {
-      expect(invoke).toHaveBeenCalledWith(
+      expect(mocks.invoke).toHaveBeenCalledWith(
         "term_open",
         expect.objectContaining({ projectId: "project-1" }),
       );
     });
 
-    rerender(
-      <TerminalPane projectId="project-1" projectName="Paper" visible={false} />,
-    );
+    rerender(<TerminalPane projectId="project-1" projectName="Paper" visible={false} />);
     rerender(<TerminalPane projectId="project-1" projectName="Paper" visible />);
 
-    expect(invoke.mock.calls.filter(([command]) => command === "term_open")).toHaveLength(1);
-    expect(invoke.mock.calls.filter(([command]) => command === "term_kill")).toHaveLength(0);
+    expect(mocks.invoke.mock.calls.filter(([command]) => command === "term_open")).toHaveLength(1);
+    expect(mocks.invoke.mock.calls.filter(([command]) => command === "term_kill")).toHaveLength(0);
 
     unmount();
 
     await waitFor(() => {
-      expect(invoke.mock.calls.filter(([command]) => command === "term_kill")).toHaveLength(1);
-      expect(invoke).toHaveBeenCalledWith("term_kill", {
+      expect(mocks.invoke.mock.calls.filter(([command]) => command === "term_kill")).toHaveLength(
+        1,
+      );
+      expect(mocks.invoke).toHaveBeenCalledWith("term_kill", {
         id: "term-1",
         projectId: "project-1",
       });
     });
+  });
+
+  it("focuses xterm after opening, connecting, becoming visible, and being clicked", async () => {
+    const open = deferred<string>();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "term_open" ? open.promise : Promise.resolve(undefined),
+    );
+    const view = render(<TerminalPane projectId="project-1" visible />);
+    const terminal = mocks.terminals[0];
+
+    expect(terminal.focus).toHaveBeenCalled();
+    terminal.focus.mockClear();
+    open.resolve("term-1");
+    await waitFor(() => expect(terminal.focus).toHaveBeenCalled());
+
+    terminal.focus.mockClear();
+    view.rerender(<TerminalPane projectId="project-1" visible={false} />);
+    view.rerender(<TerminalPane projectId="project-1" visible />);
+    expect(terminal.focus).toHaveBeenCalled();
+
+    terminal.focus.mockClear();
+    fireEvent.mouseDown(screen.getByTestId("dock-terminal"));
+    expect(terminal.focus).toHaveBeenCalledTimes(1);
+  });
+
+  it("forwards typed xterm data to the owning project terminal", async () => {
+    render(<TerminalPane projectId="project-1" visible />);
+    const terminal = mocks.terminals[0];
+    await waitFor(() => expect(terminal.dataHandler).not.toBeNull());
+    await waitFor(() => {
+      expect(mocks.invoke).toHaveBeenCalledWith(
+        "term_open",
+        expect.objectContaining({ projectId: "project-1" }),
+      );
+    });
+
+    terminal.dataHandler?.("printf ready\r");
+
+    await waitFor(() => {
+      expect(mocks.invoke).toHaveBeenCalledWith("term_write", {
+        id: "term-1",
+        projectId: "project-1",
+        data: "printf ready\r",
+      });
+    });
+  });
+
+  it("shows a Loader2 spinner until the terminal session is ready", async () => {
+    const open = deferred<string>();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "term_open" ? open.promise : Promise.resolve(undefined),
+    );
+    render(<TerminalPane projectId="project-1" visible />);
+
+    const loading = screen.getByTestId("dock-terminal-loading");
+    expect(loading.querySelector("svg.animate-spin")).not.toBeNull();
+
+    open.resolve("term-1");
+    await waitFor(() => expect(screen.queryByTestId("dock-terminal-loading")).toBeNull());
+  });
+
+  it("reveals terminal open errors instead of leaving the loading layer in place", async () => {
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "term_open"
+        ? Promise.reject(new Error("pty unavailable"))
+        : Promise.resolve(undefined),
+    );
+    render(<TerminalPane projectId="project-1" visible />);
+    const terminal = mocks.terminals[0];
+
+    await waitFor(() => {
+      expect(terminal.writeln).toHaveBeenCalledWith(
+        "\r\nThe shell could not start: Error: pty unavailable",
+      );
+    });
+    expect(screen.queryByTestId("dock-terminal-loading")).toBeNull();
+  });
+
+  it("writes input and resize failures into the terminal", async () => {
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "term_open") return Promise.resolve("term-1");
+      if (command === "term_write") return Promise.reject(new Error("write denied"));
+      if (command === "term_resize") return Promise.reject(new Error("resize denied"));
+      return Promise.resolve(undefined);
+    });
+    const view = render(<TerminalPane projectId="project-1" visible />);
+    const terminal = mocks.terminals[0];
+    await waitFor(() => expect(terminal.dataHandler).not.toBeNull());
+    await waitFor(() => {
+      terminal.dataHandler?.("pwd\r");
+      expect(mocks.invoke.mock.calls.some(([command]) => command === "term_write")).toBe(true);
+    });
+
+    view.rerender(<TerminalPane projectId="project-1" visible={false} />);
+    view.rerender(<TerminalPane projectId="project-1" visible />);
+
+    await waitFor(() => {
+      expect(terminal.writeln).toHaveBeenCalledWith(
+        "\r\nThe shell could not accept input: Error: write denied",
+      );
+      expect(terminal.writeln).toHaveBeenCalledWith(
+        "\r\nThe terminal could not resize: Error: resize denied",
+      );
+    });
+  });
+
+  it("uses terminal appearance settings and a complete dark ANSI palette", () => {
+    Object.assign(mocks.settings, {
+      terminalFontSize: 17,
+      terminalFontFamily: "JetBrains Mono",
+      terminalFontWeight: 600,
+      terminalFontWeightBold: 800,
+      terminalCursorStyle: "bar",
+      terminalCursorBlink: false,
+      terminalBackground: "#101112",
+      terminalForeground: "#f8f9fa",
+      terminalCursorColor: "#abcdef",
+    });
+    render(<TerminalPane projectId="project-1" visible />);
+
+    expect(mocks.terminals[0].options).toMatchObject({
+      fontSize: 17,
+      fontFamily: "JetBrains Mono",
+      fontWeight: 600,
+      fontWeightBold: 800,
+      cursorStyle: "bar",
+      cursorBlink: false,
+      drawBoldTextInBrightColors: true,
+      theme: {
+        background: "#101112",
+        foreground: "#f8f9fa",
+        cursor: "#abcdef",
+        black: expect.any(String),
+        red: expect.any(String),
+        green: expect.any(String),
+        yellow: expect.any(String),
+        blue: expect.any(String),
+        magenta: expect.any(String),
+        cyan: expect.any(String),
+        white: expect.any(String),
+        brightBlack: expect.any(String),
+        brightRed: expect.any(String),
+        brightGreen: expect.any(String),
+        brightYellow: expect.any(String),
+        brightBlue: expect.any(String),
+        brightMagenta: expect.any(String),
+        brightCyan: expect.any(String),
+        brightWhite: expect.any(String),
+      },
+    });
+    expect(screen.getByTestId("dock-terminal")).toHaveStyle({ backgroundColor: "#101112" });
+  });
+
+  it("applies terminal appearance changes to the open xterm instance", async () => {
+    const view = render(<TerminalPane projectId="project-1" visible />);
+    const terminal = mocks.terminals[0];
+    await waitFor(() => {
+      expect(mocks.invoke.mock.calls.filter(([command]) => command === "term_open")).toHaveLength(1);
+    });
+
+    Object.assign(mocks.settings, {
+      terminalFontSize: 18,
+      terminalFontFamily: "Iosevka",
+      terminalFontWeight: 550,
+      terminalFontWeightBold: 750,
+      terminalCursorStyle: "underline",
+      terminalCursorBlink: false,
+      terminalColorTheme: "light",
+      terminalBackground: "#fafafa",
+      terminalForeground: "#202124",
+      terminalCursorColor: "#123456",
+    });
+    view.rerender(<TerminalPane projectId="project-1" visible />);
+
+    expect(terminal.options).toMatchObject({
+      fontSize: 18,
+      fontFamily: "Iosevka",
+      fontWeight: 550,
+      fontWeightBold: 750,
+      cursorStyle: "underline",
+      cursorBlink: false,
+      theme: {
+        background: "#fafafa",
+        foreground: "#202124",
+        cursor: "#123456",
+        black: expect.any(String),
+        brightWhite: expect.any(String),
+      },
+    });
+    expect(mocks.invoke.mock.calls.filter(([command]) => command === "term_open")).toHaveLength(1);
   });
 });

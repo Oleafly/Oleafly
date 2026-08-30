@@ -1,6 +1,7 @@
 import { useMcpApprovalStore } from "@/store/mcp-approvals";
 import { AI_PROMPT_SURFACE } from "@/components/ai/AiChrome";
 import { ToolConfirm, isAutoApprovable } from "@/components/ai/ToolConfirm";
+import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import { cn } from "@/lib/utils";
 
 // Reuses the ToolConfirm card from the in-app chat so approval semantics
@@ -11,6 +12,7 @@ export function ExternalToolApprovals() {
   const decide = useMcpApprovalStore((s) => s.decide);
   const approveSession = useMcpApprovalStore((s) => s.approveSession);
   const head = queue[0];
+  useOccludeNativeWebview(Boolean(head));
   if (!head) return null;
   return (
     <div

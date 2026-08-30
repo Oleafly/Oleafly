@@ -19,7 +19,7 @@ describe("Rail dock toggles", () => {
     useFilesStore.setState({ projectId: null });
   });
 
-  it("shows terminal and browser toggles under the assistant when a project is open", () => {
+  it("shows terminal and browser toggles below Source Control", () => {
     render(
       <ThemeProvider>
         <Rail />
@@ -27,6 +27,23 @@ describe("Rail dock toggles", () => {
     );
     expect(screen.getByLabelText("Show terminal")).toBeInTheDocument();
     expect(screen.getByLabelText("Show browser")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Show browser").querySelector(".lucide-globe"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Show browser").querySelector(".lucide-earth"),
+    ).not.toBeInTheDocument();
+    const labels = Array.from(
+      screen.getByRole("navigation", { name: "Sidebar" }).querySelectorAll("button"),
+    ).map((button) => button.getAttribute("aria-label"));
+    const sourceIndex = labels.indexOf("Source Control");
+    const preflightIndex = labels.indexOf("Preflight Checks");
+    expect(labels.slice(sourceIndex, preflightIndex + 1)).toEqual([
+      "Source Control",
+      "Show terminal",
+      "Show browser",
+      "Preflight Checks",
+    ]);
   });
 
   it("hides the toggles when no project is open", () => {

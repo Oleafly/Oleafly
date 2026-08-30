@@ -9,6 +9,7 @@ mod ai_model_registry;
 mod approvals;
 mod assets;
 mod biber_toolchain;
+mod browser;
 mod chats;
 mod chunked;
 mod citation;
@@ -31,7 +32,6 @@ mod literature;
 #[allow(dead_code)]
 mod logsafe;
 mod mcp;
-#[cfg(not(target_os = "windows"))]
 mod menu;
 mod ollama;
 mod paths;
@@ -66,6 +66,7 @@ pub fn run() {
     git::scrub_remote_credentials();
 
     let mut builder = tauri::Builder::default()
+        .on_page_load(browser::on_page_load)
         .manage(language_service::LanguageServiceState::default())
         .plugin(language_service::lifecycle_plugin())
         .plugin(tauri_plugin_shell::init())
@@ -249,6 +250,7 @@ pub fn run() {
             terminal::term_write,
             terminal::term_resize,
             terminal::term_kill,
+            menu::set_dock_shortcut_accelerators,
             cua_policy::cua_action_confirm,
             agent_exec::agent_exec_cwd,
             agent_exec::agent_exec_authorize,

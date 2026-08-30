@@ -63,6 +63,121 @@ describe("useSettingsStore dock appearance settings", () => {
     expect(localStorage.getItem("oleafly.dock.terminalOpen")).toBeNull();
     expect(localStorage.getItem("oleafly.dock.browserOpen")).toBeNull();
   });
+
+  it("defaults terminal appearance and browser preferences", () => {
+    useSettingsStore.getState().resetToDefaults();
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      terminalFontSize: 14,
+      terminalFontFamily:
+        'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace',
+      terminalFontWeight: 500,
+      terminalFontWeightBold: 700,
+      terminalCursorStyle: "block",
+      terminalCursorBlink: true,
+      terminalColorTheme: "dark",
+      terminalBackground: "#1e1e1e",
+      terminalForeground: "#f2f2f2",
+      terminalCursorColor: "#ffffff",
+      browserSearchEngine: "google",
+      browserHomePage: "https://www.google.com/",
+    });
+  });
+
+  it("persists terminal appearance and browser preferences", () => {
+    const settings = useSettingsStore.getState();
+    expect(typeof settings.setTerminalFontSize).toBe("function");
+    expect(typeof settings.setBrowserSearchEngine).toBe("function");
+
+    settings.setTerminalFontSize(16);
+    settings.setTerminalFontFamily("JetBrains Mono");
+    settings.setTerminalFontWeight(600);
+    settings.setTerminalFontWeightBold(800);
+    settings.setTerminalCursorStyle("bar");
+    settings.setTerminalCursorBlink(false);
+    settings.setTerminalColorTheme("light");
+    settings.setTerminalBackground("#f8f8f8");
+    settings.setTerminalForeground("#202124");
+    settings.setTerminalCursorColor("#111111");
+    settings.setBrowserSearchEngine("duckduckgo");
+    settings.setBrowserHomePage("https://example.com/");
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      terminalFontSize: 16,
+      terminalFontFamily: "JetBrains Mono",
+      terminalFontWeight: 600,
+      terminalFontWeightBold: 800,
+      terminalCursorStyle: "bar",
+      terminalCursorBlink: false,
+      terminalColorTheme: "light",
+      terminalBackground: "#f8f8f8",
+      terminalForeground: "#202124",
+      terminalCursorColor: "#111111",
+      browserSearchEngine: "duckduckgo",
+      browserHomePage: "https://example.com/",
+    });
+    expect(localStorage.getItem("oleafly.terminal.fontSize")).toBe("16");
+    expect(localStorage.getItem("oleafly.terminal.fontFamily")).toBe(
+      "JetBrains Mono",
+    );
+    expect(localStorage.getItem("oleafly.terminal.fontWeight")).toBe("600");
+    expect(localStorage.getItem("oleafly.terminal.fontWeightBold")).toBe("800");
+    expect(localStorage.getItem("oleafly.terminal.cursorStyle")).toBe("bar");
+    expect(localStorage.getItem("oleafly.terminal.cursorBlink")).toBe("0");
+    expect(localStorage.getItem("oleafly.terminal.colorTheme")).toBe("light");
+    expect(localStorage.getItem("oleafly.terminal.background")).toBe("#f8f8f8");
+    expect(localStorage.getItem("oleafly.terminal.foreground")).toBe("#202124");
+    expect(localStorage.getItem("oleafly.terminal.cursorColor")).toBe("#111111");
+    expect(localStorage.getItem("oleafly.browser.searchEngine")).toBe(
+      "duckduckgo",
+    );
+    expect(localStorage.getItem("oleafly.browser.homePage")).toBe(
+      "https://example.com/",
+    );
+  });
+
+  it("loads safe defaults for malformed terminal and browser preferences", async () => {
+    localStorage.setItem("oleafly.terminal.fontSize", "huge");
+    localStorage.setItem("oleafly.terminal.fontWeight", "950");
+    localStorage.setItem("oleafly.terminal.fontWeightBold", "0");
+    localStorage.setItem("oleafly.terminal.cursorStyle", "beam");
+    localStorage.setItem("oleafly.terminal.colorTheme", "neon");
+    localStorage.setItem("oleafly.terminal.background", "black");
+    localStorage.setItem("oleafly.terminal.foreground", "#12");
+    localStorage.setItem("oleafly.terminal.cursorColor", "#12345g");
+    localStorage.setItem("oleafly.browser.searchEngine", "unknown");
+    localStorage.setItem("oleafly.browser.homePage", "file:///etc/passwd");
+    vi.resetModules();
+
+    const { useSettingsStore: loadedStore } = await import("./settings");
+
+    expect(loadedStore.getState()).toMatchObject({
+      terminalFontSize: 14,
+      terminalFontWeight: 500,
+      terminalFontWeightBold: 700,
+      terminalCursorStyle: "block",
+      terminalColorTheme: "dark",
+      terminalBackground: "#1e1e1e",
+      terminalForeground: "#f2f2f2",
+      terminalCursorColor: "#ffffff",
+      browserSearchEngine: "google",
+      browserHomePage: "https://www.google.com/",
+    });
+  });
+
+  it("loads the selected preset colors when custom colors are absent", async () => {
+    localStorage.setItem("oleafly.terminal.colorTheme", "light");
+    vi.resetModules();
+
+    const { useSettingsStore: loadedStore } = await import("./settings");
+
+    expect(loadedStore.getState()).toMatchObject({
+      terminalColorTheme: "light",
+      terminalBackground: "#ffffff",
+      terminalForeground: "#1f2328",
+      terminalCursorColor: "#1f2328",
+    });
+  });
 });
 
 describe("useSettingsStore layout presets", () => {

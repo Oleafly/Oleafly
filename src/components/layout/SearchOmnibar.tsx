@@ -20,6 +20,7 @@ import {
 import { useSettingsStore } from "@/store/settings";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
+import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import { useFilesStore } from "@/store/files";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
@@ -203,6 +204,7 @@ function parse(
 
 export function SearchOmnibar() {
   const open = useSettingsStore((s) => s.searchOpen);
+  useOccludeNativeWebview(open);
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);

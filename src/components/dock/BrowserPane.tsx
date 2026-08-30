@@ -1,25 +1,75 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink, Globe2, Lock, TriangleAlert } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ExternalLink, Globe, Loader2, Lock, TriangleAlert } from "lucide-react";
 import { isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { Webview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { registerCuaSurface } from "@/lib/cua-sandbox";
+import { useNativeWebviewOccluded } from "@/lib/native-webview-occlusion";
+import {
+  BROWSER_SEARCH_ENGINES,
+  useSettingsStore,
+  type BrowserSearchEngineId,
+} from "@/store/settings";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-function normalize(raw: string): string | null {
+type BrowserPageLoadPayload = {
+  label: string;
+  state: "started" | "finished";
+  url: string;
+};
+
+function isDomainUrl(url: URL, raw: string): boolean {
+  if (/\s|@/u.test(raw)) return false;
+  const hostname = url.hostname.replace(/^\[|\]$/gu, "");
+  return (
+    hostname === "localhost" ||
+    hostname.includes(".") ||
+    hostname.includes(":") ||
+    /^\d{1,3}(?:\.\d{1,3}){3}$/u.test(hostname)
+  );
+}
+
+function normalizeAddress(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
-  const candidate = /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  try {
-    const url = new URL(candidate);
-    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-    return url.toString();
-  } catch {
-    return null;
+  if (/^https?:\/\//iu.test(trimmed)) {
+    try {
+      const url = new URL(trimmed);
+      return url.toString();
+    } catch {
+      return null;
+    }
   }
+  try {
+    const url = new URL(`https://${trimmed}`);
+    if (isDomainUrl(url, trimmed)) return url.toString();
+  } catch {}
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol === "http:" || url.protocol === "https:") {
+      return url.toString();
+    }
+  } catch {}
+  return null;
+}
+
+function resolveNavigation(
+  raw: string,
+  searchEngine: BrowserSearchEngineId,
+): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const address = normalizeAddress(trimmed);
+  if (address) return address;
+  if (/^[a-z][a-z\d+.-]*:/iu.test(trimmed)) return null;
+  const engine =
+    BROWSER_SEARCH_ENGINES.find(({ id }) => id === searchEngine) ??
+    BROWSER_SEARCH_ENGINES[0];
+  return `${engine.searchUrl}${encodeURIComponent(trimmed)}`;
 }
 
 let webviewSeq = 0;
@@ -28,31 +78,157 @@ const nextWebviewLabel = () => `oleafly-browser-pane-${++webviewSeq}`;
 const NATIVE_CREATE_TIMEOUT_MS = 4_000;
 
 export function BrowserPane({ visible = true }: { visible?: boolean }) {
+  const browserSearchEngine = useSettingsStore((state) => state.browserSearchEngine);
+  const browserHomePage = useSettingsStore((state) => state.browserHomePage);
+  const nativeWebviewOccluded = useNativeWebviewOccluded();
   const [draft, setDraft] = useState("");
   const [url, setUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [pageLoadListenerState, setPageLoadListenerState] = useState<
+    "pending" | "ready" | "failed"
+  >(() => (isTauri() ? "pending" : "ready"));
   const [nativeFailed, setNativeFailed] = useState(false);
   const [nativeError, setNativeError] = useState<string | null>(null);
   const placeholderRef = useRef<HTMLDivElement | null>(null);
   const webviewRef = useRef<Webview | null>(null);
+  const webviewLabelRef = useRef<string | null>(null);
   const visibleRef = useRef(visible);
+  const loadingRef = useRef(loading);
+  const occludedRef = useRef(nativeWebviewOccluded);
   const urlRef = useRef(url);
+  const desiredVisibilityRef = useRef(
+    visible && !loading && !nativeWebviewOccluded,
+  );
+  const visibilityRevisionRef = useRef(0);
+  const visibilitySyncRunningRef = useRef(false);
   visibleRef.current = visible;
+  loadingRef.current = loading;
+  occludedRef.current = nativeWebviewOccluded;
   urlRef.current = url;
+  desiredVisibilityRef.current = visible && !loading && !nativeWebviewOccluded;
 
-  const syncBounds = useCallback(async () => {
+  const setPageLoading = useCallback((next: boolean) => {
+    loadingRef.current = next;
+    desiredVisibilityRef.current =
+      visibleRef.current && !next && !occludedRef.current;
+    setLoading(next);
+  }, []);
+
+  const syncBounds = useCallback(async (): Promise<boolean> => {
     const pane = webviewRef.current;
     const host = placeholderRef.current;
-    if (!pane || !host || !visibleRef.current) return;
+    if (
+      !pane ||
+      !host ||
+      !visibleRef.current ||
+      loadingRef.current ||
+      occludedRef.current
+    ) {
+      return false;
+    }
     const rect = host.getBoundingClientRect();
-    if (rect.width < 1 || rect.height < 1) return;
+    if (rect.width < 1 || rect.height < 1) return false;
     try {
       await pane.setPosition(new LogicalPosition(rect.left, rect.top));
       await pane.setSize(new LogicalSize(rect.width, rect.height));
-    } catch {}
+      return true;
+    } catch {
+      return false;
+    }
   }, []);
 
+  const syncNativeVisibility = useCallback(
+    (requestedVisibility?: boolean) => {
+      desiredVisibilityRef.current =
+        requestedVisibility ??
+        (visibleRef.current && !loadingRef.current && !occludedRef.current);
+      visibilityRevisionRef.current += 1;
+      if (visibilitySyncRunningRef.current) return;
+      visibilitySyncRunningRef.current = true;
+      void (async () => {
+        let handledRevision = -1;
+        while (handledRevision !== visibilityRevisionRef.current) {
+          handledRevision = visibilityRevisionRef.current;
+          const pane = webviewRef.current;
+          if (!pane) continue;
+          try {
+            if (!desiredVisibilityRef.current) {
+              await pane.hide();
+              continue;
+            }
+            const positioned = await syncBounds();
+            if (
+              !positioned ||
+              pane !== webviewRef.current ||
+              !desiredVisibilityRef.current
+            ) {
+              if (pane === webviewRef.current) await pane.hide();
+              continue;
+            }
+            await pane.show();
+            if (
+              pane === webviewRef.current &&
+              !desiredVisibilityRef.current
+            ) {
+              await pane.hide();
+            }
+          } catch {}
+        }
+        visibilitySyncRunningRef.current = false;
+      })();
+    },
+    [syncBounds],
+  );
+
+  const openUrl = useCallback(
+    (next: string) => {
+      const normalized = normalizeAddress(next);
+      if (!normalized) return;
+      setDraft(normalized);
+      if (urlRef.current === normalized) return;
+      urlRef.current = normalized;
+      setPageLoading(true);
+      setUrl(normalized);
+    },
+    [setPageLoading],
+  );
+
   useEffect(() => {
-    if (!isTauri() || !url) return;
+    if (!isTauri()) return;
+    let cancelled = false;
+    let unlisten: (() => void) | null = null;
+    void listen<BrowserPageLoadPayload>("browser-page-load", (event) => {
+      if (event.payload.label !== webviewLabelRef.current) return;
+      setPageLoading(event.payload.state === "started");
+    })
+      .then((stop) => {
+        if (cancelled) stop();
+        else {
+          unlisten = stop;
+          setPageLoadListenerState("ready");
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setNativeError(`Page-load monitoring failed: ${String(error)}`);
+        setNativeFailed(true);
+        setPageLoadListenerState("failed");
+      });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, [setPageLoading]);
+
+  useEffect(() => {
+    if (
+      !isTauri() ||
+      !url ||
+      nativeFailed ||
+      pageLoadListenerState !== "ready"
+    ) {
+      return;
+    }
     let cancelled = false;
     let ownedPane: Webview | null = null;
     let closeOwnedPromise: Promise<void> | null = null;
@@ -80,6 +256,7 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
       const pane = ownedPane;
       if (!pane) return Promise.resolve();
       if (webviewRef.current === pane) webviewRef.current = null;
+      if (webviewLabelRef.current === pane.label) webviewLabelRef.current = null;
       closeOwnedPromise ??= pane.close().catch(() => {});
       return closeOwnedPromise;
     };
@@ -87,23 +264,21 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
       try {
         const previous = webviewRef.current;
         webviewRef.current = null;
+        webviewLabelRef.current = null;
         await previous?.close();
       } catch {}
       if (cancelled) return;
       webviewRef.current = null;
-      setNativeError(null);
-      setNativeFailed(false);
       const host = placeholderRef.current;
       if (!host) return;
-      const rect = host.getBoundingClientRect();
       let created = false;
       try {
         const pane = new Webview(getCurrentWindow(), nextWebviewLabel(), {
           url,
-          x: rect.left,
-          y: rect.top,
-          width: Math.max(rect.width, 80),
-          height: Math.max(rect.height, 80),
+          x: -10_000,
+          y: -10_000,
+          width: 80,
+          height: 80,
         });
         ownedPane = pane;
         if (cancelled) {
@@ -111,29 +286,31 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
           return;
         }
         webviewRef.current = pane;
-        trackUnlisten(pane.once("tauri://created", () => {
-          if (cancelled) return;
-          created = true;
-          if (watchdog) clearTimeout(watchdog);
-          if (visibleRef.current) {
-            void pane
-              .show()
-              .then(() => {
-                if (!cancelled && webviewRef.current === pane) return syncBounds();
-              })
-              .catch(() => {});
-          } else {
-            void pane.hide().catch(() => {});
-          }
-        }));
-        trackUnlisten(pane.once("tauri://error", (event) => {
-          if (cancelled) return;
-          if (watchdog) clearTimeout(watchdog);
-          setNativeError(String((event.payload as { message?: string })?.message ?? event.payload ?? "unknown error"));
-          setNativeFailed(true);
-          disposeTracking();
-          void closeOwnedPane();
-        }));
+        webviewLabelRef.current = pane.label;
+        trackUnlisten(
+          pane.once("tauri://created", () => {
+            if (cancelled) return;
+            created = true;
+            if (watchdog) clearTimeout(watchdog);
+            void syncNativeVisibility();
+          }),
+        );
+        trackUnlisten(
+          pane.once("tauri://error", (event) => {
+            if (cancelled) return;
+            if (watchdog) clearTimeout(watchdog);
+            setNativeError(
+              String(
+                (event.payload as { message?: string })?.message ??
+                  event.payload ??
+                  "unknown error",
+              ),
+            );
+            setNativeFailed(true);
+            disposeTracking();
+            void closeOwnedPane();
+          }),
+        );
         watchdog = setTimeout(() => {
           if (created || cancelled) return;
           setNativeFailed(true);
@@ -144,11 +321,11 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
           await closeOwnedPane();
           return;
         }
-        observer = new ResizeObserver(() => void syncBounds());
+        observer = new ResizeObserver(() => syncNativeVisibility());
         observer.observe(host);
         const win = getCurrentWindow();
-        trackUnlisten(win.onMoved(() => void syncBounds()));
-        trackUnlisten(win.onResized(() => void syncBounds()));
+        trackUnlisten(win.onMoved(() => syncNativeVisibility()));
+        trackUnlisten(win.onResized(() => syncNativeVisibility()));
       } catch (error) {
         disposeTracking();
         void closeOwnedPane();
@@ -164,7 +341,7 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
       disposeTracking();
       void closeOwnedPane();
     };
-  }, [url, syncBounds]);
+  }, [nativeFailed, pageLoadListenerState, url, syncNativeVisibility]);
 
   useEffect(() => {
     registerCuaSurface({
@@ -172,38 +349,28 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
         throw new Error("The native browser page is not scriptable from the app.");
       },
       url: () => urlRef.current ?? "",
-      navigate: (next: string) => {
-        const normalized = normalize(next);
-        if (!normalized) return;
-        setDraft(normalized);
-        setUrl(normalized);
-      },
+      navigate: openUrl,
     });
     return () => registerCuaSurface(null);
-  }, []);
+  }, [openUrl]);
 
   useEffect(() => {
-    const pane = webviewRef.current;
-    if (!pane) return;
-    if (visible) {
-      void pane
-        .show()
-        .then(() => syncBounds())
-        .catch(() => {});
-    } else {
-      void pane.hide().catch(() => {});
-    }
-  }, [visible, syncBounds]);
+    if (!visible || urlRef.current || !browserHomePage) return;
+    openUrl(browserHomePage);
+  }, [browserHomePage, openUrl, visible]);
+
+  useLayoutEffect(() => {
+    syncNativeVisibility(visible && !loading && !nativeWebviewOccluded);
+  }, [loading, nativeWebviewOccluded, syncNativeVisibility, visible]);
 
   const go = () => {
-    const next = normalize(draft);
-    if (next) {
-      setDraft(next);
-      setUrl(next);
-    }
+    const next = resolveNavigation(draft, browserSearchEngine);
+    if (!next) return;
+    openUrl(next);
   };
 
-  const useIframe = !isTauri() || nativeFailed;
+  const useIframe =
+    !isTauri() || nativeFailed || pageLoadListenerState === "failed";
 
   return (
     <div
@@ -223,7 +390,7 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
             aria-label="Not secure"
           />
         ) : (
-          <Globe2 className="size-3.5 shrink-0 text-muted-foreground" />
+          <Globe className="size-3.5 shrink-0 text-muted-foreground" />
         )}
         <Input
           aria-label="Browser address"
@@ -258,28 +425,41 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
         </p>
       )}
       {url ? (
-        useIframe ? (
-          <>
-            {isTauri() && (
-              <p className="border-b px-3 py-1.5 text-[11px] text-muted-foreground">
-                The embedded browser is unavailable, so pages render in-app where sites allow
-                it. Sites that refuse embedding only open externally.
-              </p>
+        <>
+          {useIframe && isTauri() && (
+            <p className="border-b px-3 py-1.5 text-[11px] text-muted-foreground">
+              The embedded browser is unavailable, so pages render in-app where sites allow it.
+              Sites that refuse embedding only open externally.
+            </p>
+          )}
+          <div className="relative min-h-0 flex-1">
+            {loading && (
+              <div
+                className="absolute inset-0 z-10 flex items-center justify-center bg-background/80"
+                role="status"
+              >
+                <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
+                <span className="sr-only">Loading page</span>
+              </div>
             )}
-            <iframe
-              title="Dock browser"
-              src={url}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-              className="h-full w-full flex-1 bg-white"
-            />
-          </>
-        ) : (
-          <div
-            ref={placeholderRef}
-            className="h-full w-full flex-1 bg-white"
-            data-testid="dock-browser-native-host"
-          />
-        )
+            {useIframe ? (
+              <iframe
+                title="Dock browser"
+                src={url}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                className="h-full w-full bg-white"
+                onLoad={() => setPageLoading(false)}
+                onErrorCapture={() => setPageLoading(false)}
+              />
+            ) : (
+              <div
+                ref={placeholderRef}
+                className="h-full w-full bg-white"
+                data-testid="dock-browser-native-host"
+              />
+            )}
+          </div>
+        </>
       ) : (
         <p className="p-4 text-xs text-muted-foreground">
           Open a paper, docs page, or venue site in the dock. Use the arrow to open it in your

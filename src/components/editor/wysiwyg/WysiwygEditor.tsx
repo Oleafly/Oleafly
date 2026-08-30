@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { scanMathExpressions } from "@oleafly/editor/math-source";
+import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import {
   WYSIWYG_EXTENSIONS,
   parseLatexBody,
@@ -118,6 +119,7 @@ function VisualProofreadingPopover({
   onClose: () => void;
   onNavigate: (issue: VisualProofreadingIssue) => void;
 }) {
+  useOccludeNativeWebview(true);
   const panelRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] =
     useState<ProofreadingPopoverPosition | null>(null);

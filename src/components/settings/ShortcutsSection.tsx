@@ -16,12 +16,13 @@ import {
 
 function ShortcutKeys({ binding }: { binding: ShortcutBinding }) {
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-  const keys = [
+  const keys = [...new Set([
     binding.mod ? (mac ? "⌘" : "Ctrl") : null,
+    binding.ctrl && (mac || !binding.mod) ? "Ctrl" : null,
     binding.shift ? "Shift" : null,
     binding.alt ? (mac ? "⌥" : "Alt") : null,
     binding.key === " " ? "Space" : binding.key.length === 1 ? binding.key.toUpperCase() : binding.key,
-  ].filter((key): key is string => Boolean(key));
+  ].filter((key): key is string => Boolean(key)))];
 
   return (
     <KbdGroup>
@@ -75,8 +76,9 @@ function builtInBinding(keys: readonly string[]): ShortcutBinding | null {
   const key = keys.find((value) => !["Mod", "Ctrl", "Shift", "Alt"].includes(value));
   if (!key || key === "Click") return null;
   return {
-    key: key.length === 1 ? key.toLowerCase() : key,
-    mod: true,
+    key: key === "Space" ? " " : key.length === 1 ? key.toLowerCase() : key,
+    mod: keys.includes("Mod"),
+    ctrl: keys.includes("Ctrl"),
     shift: keys.includes("Shift"),
     alt: keys.includes("Alt"),
   };

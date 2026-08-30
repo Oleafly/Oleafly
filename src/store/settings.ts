@@ -78,6 +78,116 @@ export type EditorThemeId =
   | "rose-pine"
   | "catppuccin"
   | "one-dark";
+export type TerminalCursorStyle = "block" | "underline" | "bar";
+export type TerminalColorThemeId = "dark" | "light";
+export type BrowserSearchEngineId = "google" | "duckduckgo" | "bing";
+
+export interface TerminalThemeColors {
+  background: string;
+  foreground: string;
+  cursor: string;
+  cursorAccent: string;
+  selectionBackground: string;
+  selectionForeground: string;
+  selectionInactiveBackground: string;
+  black: string;
+  red: string;
+  green: string;
+  yellow: string;
+  blue: string;
+  magenta: string;
+  cyan: string;
+  white: string;
+  brightBlack: string;
+  brightRed: string;
+  brightGreen: string;
+  brightYellow: string;
+  brightBlue: string;
+  brightMagenta: string;
+  brightCyan: string;
+  brightWhite: string;
+}
+
+export const TERMINAL_COLOR_THEMES: Record<
+  TerminalColorThemeId,
+  { id: TerminalColorThemeId; name: string; colors: TerminalThemeColors }
+> = {
+  dark: {
+    id: "dark",
+    name: "Dark",
+    colors: {
+      background: "#1e1e1e",
+      foreground: "#f2f2f2",
+      cursor: "#ffffff",
+      cursorAccent: "#1e1e1e",
+      selectionBackground: "#264f78",
+      selectionForeground: "#ffffff",
+      selectionInactiveBackground: "#3a3d41",
+      black: "#000000",
+      red: "#cd3131",
+      green: "#0dbc79",
+      yellow: "#e5e510",
+      blue: "#2472c8",
+      magenta: "#bc3fbc",
+      cyan: "#11a8cd",
+      white: "#e5e5e5",
+      brightBlack: "#666666",
+      brightRed: "#f14c4c",
+      brightGreen: "#23d18b",
+      brightYellow: "#f5f543",
+      brightBlue: "#3b8eea",
+      brightMagenta: "#d670d6",
+      brightCyan: "#29b8db",
+      brightWhite: "#ffffff",
+    },
+  },
+  light: {
+    id: "light",
+    name: "Light",
+    colors: {
+      background: "#ffffff",
+      foreground: "#1f2328",
+      cursor: "#1f2328",
+      cursorAccent: "#ffffff",
+      selectionBackground: "#add6ff",
+      selectionForeground: "#1f2328",
+      selectionInactiveBackground: "#d7e7f7",
+      black: "#24292f",
+      red: "#cf222e",
+      green: "#1a7f37",
+      yellow: "#9a6700",
+      blue: "#0969da",
+      magenta: "#8250df",
+      cyan: "#1b7c83",
+      white: "#6e7781",
+      brightBlack: "#57606a",
+      brightRed: "#a40e26",
+      brightGreen: "#2da44e",
+      brightYellow: "#bf8700",
+      brightBlue: "#218bff",
+      brightMagenta: "#a475f9",
+      brightCyan: "#3192aa",
+      brightWhite: "#24292f",
+    },
+  },
+};
+
+export const BROWSER_SEARCH_ENGINES: {
+  id: BrowserSearchEngineId;
+  name: string;
+  searchUrl: string;
+}[] = [
+  { id: "google", name: "Google", searchUrl: "https://www.google.com/search?q=" },
+  {
+    id: "duckduckgo",
+    name: "DuckDuckGo",
+    searchUrl: "https://duckduckgo.com/?q=",
+  },
+  { id: "bing", name: "Bing", searchUrl: "https://www.bing.com/search?q=" },
+];
+
+export const DEFAULT_TERMINAL_FONT_FAMILY =
+  'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace';
 
 function ls(k: string, fb: string): string {
   try {
@@ -109,6 +219,46 @@ function readDefaultView(raw: string): LayoutPreset {
 }
 function readEditorTheme(raw: string): EditorThemeId {
   return EDITOR_THEMES.some((t) => t.id === raw) ? (raw as EditorThemeId) : "system";
+}
+function readNumberInRange(
+  raw: string | number,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= minimum && value <= maximum
+    ? value
+    : fallback;
+}
+function readTerminalCursorStyle(raw: string): TerminalCursorStyle {
+  return raw === "underline" || raw === "bar" ? raw : "block";
+}
+function readTerminalColorTheme(raw: string): TerminalColorThemeId {
+  return raw === "light" ? "light" : "dark";
+}
+function readTerminalColor(raw: string, fallback: string): string {
+  return /^#[\da-f]{6}$/iu.test(raw) ? raw.toLowerCase() : fallback;
+}
+function readBrowserSearchEngine(raw: string): BrowserSearchEngineId {
+  return BROWSER_SEARCH_ENGINES.some(({ id }) => id === raw)
+    ? (raw as BrowserSearchEngineId)
+    : "google";
+}
+function readBrowserHomePage(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "https://www.google.com/";
+  const candidate = /^[a-z][a-z\d+.-]*:/iu.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.toString()
+      : "https://www.google.com/";
+  } catch {
+    return "https://www.google.com/";
+  }
 }
 const GRAMMAR_DIALECT_IDS: GrammarDialect[] = [
   "american",
@@ -162,6 +312,10 @@ export const EDITOR_FONTS: { name: string; value: string }[] = [
   { name: "SF Mono", value: '"SF Mono", ui-monospace, monospace' },
   { name: "Menlo", value: "Menlo, Monaco, monospace" },
   { name: "Consolas", value: "Consolas, ui-monospace, monospace" },
+];
+export const TERMINAL_FONTS: { name: string; value: string }[] = [
+  { name: "Terminal default", value: DEFAULT_TERMINAL_FONT_FAMILY },
+  ...EDITOR_FONTS.filter(({ value }) => value),
 ];
 
 // Syntax/surface colors for each id are defined in globals.css under
@@ -348,6 +502,30 @@ interface SettingsState {
   browserOpen: boolean;
   setBrowserOpen: (v: boolean) => void;
   closeDocks: () => void;
+  terminalFontSize: number;
+  setTerminalFontSize: (v: number) => void;
+  terminalFontFamily: string;
+  setTerminalFontFamily: (v: string) => void;
+  terminalFontWeight: number;
+  setTerminalFontWeight: (v: number) => void;
+  terminalFontWeightBold: number;
+  setTerminalFontWeightBold: (v: number) => void;
+  terminalCursorStyle: TerminalCursorStyle;
+  setTerminalCursorStyle: (v: TerminalCursorStyle) => void;
+  terminalCursorBlink: boolean;
+  setTerminalCursorBlink: (v: boolean) => void;
+  terminalColorTheme: TerminalColorThemeId;
+  setTerminalColorTheme: (v: TerminalColorThemeId) => void;
+  terminalBackground: string;
+  setTerminalBackground: (v: string) => void;
+  terminalForeground: string;
+  setTerminalForeground: (v: string) => void;
+  terminalCursorColor: string;
+  setTerminalCursorColor: (v: string) => void;
+  browserSearchEngine: BrowserSearchEngineId;
+  setBrowserSearchEngine: (v: BrowserSearchEngineId) => void;
+  browserHomePage: string;
+  setBrowserHomePage: (v: string) => void;
   editorFontSize: number;
   setEditorFontSize: (v: number) => void;
   appFontSize: number;
@@ -429,6 +607,18 @@ const PREF_DEFAULTS = {
   hoverPreview: true,
   terminalOpen: false,
   browserOpen: false,
+  terminalFontSize: 14,
+  terminalFontFamily: DEFAULT_TERMINAL_FONT_FAMILY,
+  terminalFontWeight: 500,
+  terminalFontWeightBold: 700,
+  terminalCursorStyle: "block" as TerminalCursorStyle,
+  terminalCursorBlink: true,
+  terminalColorTheme: "dark" as TerminalColorThemeId,
+  terminalBackground: TERMINAL_COLOR_THEMES.dark.colors.background,
+  terminalForeground: TERMINAL_COLOR_THEMES.dark.colors.foreground,
+  terminalCursorColor: TERMINAL_COLOR_THEMES.dark.colors.cursor,
+  browserSearchEngine: "google" as BrowserSearchEngineId,
+  browserHomePage: "https://www.google.com/",
   accentColor: "#2563eb",
   dockPlacement: "left" as DockPlacement,
   bgPattern: "dots" as BackgroundPattern,
@@ -562,6 +752,130 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   closeDocks: () => {
     set({ terminalOpen: false, browserOpen: false });
+  },
+  terminalFontSize: readNumberInRange(
+    ls("oleafly.terminal.fontSize", "14"),
+    14,
+    8,
+    32,
+  ),
+  setTerminalFontSize: (v) => {
+    const value = readNumberInRange(v, 14, 8, 32);
+    saveLs("oleafly.terminal.fontSize", String(value));
+    set({ terminalFontSize: value });
+  },
+  terminalFontFamily: ls(
+    "oleafly.terminal.fontFamily",
+    DEFAULT_TERMINAL_FONT_FAMILY,
+  ),
+  setTerminalFontFamily: (v) => {
+    const value = v.trim() || DEFAULT_TERMINAL_FONT_FAMILY;
+    saveLs("oleafly.terminal.fontFamily", value);
+    set({ terminalFontFamily: value });
+  },
+  terminalFontWeight: readNumberInRange(
+    ls("oleafly.terminal.fontWeight", "500"),
+    500,
+    100,
+    900,
+  ),
+  setTerminalFontWeight: (v) => {
+    const value = readNumberInRange(v, 500, 100, 900);
+    saveLs("oleafly.terminal.fontWeight", String(value));
+    set({ terminalFontWeight: value });
+  },
+  terminalFontWeightBold: readNumberInRange(
+    ls("oleafly.terminal.fontWeightBold", "700"),
+    700,
+    100,
+    900,
+  ),
+  setTerminalFontWeightBold: (v) => {
+    const value = readNumberInRange(v, 700, 100, 900);
+    saveLs("oleafly.terminal.fontWeightBold", String(value));
+    set({ terminalFontWeightBold: value });
+  },
+  terminalCursorStyle: readTerminalCursorStyle(
+    ls("oleafly.terminal.cursorStyle", "block"),
+  ),
+  setTerminalCursorStyle: (v) => {
+    const value = readTerminalCursorStyle(v);
+    saveLs("oleafly.terminal.cursorStyle", value);
+    set({ terminalCursorStyle: value });
+  },
+  terminalCursorBlink: ls("oleafly.terminal.cursorBlink", "1") !== "0",
+  setTerminalCursorBlink: (v) => {
+    saveLs("oleafly.terminal.cursorBlink", v ? "1" : "0");
+    set({ terminalCursorBlink: v });
+  },
+  terminalColorTheme: readTerminalColorTheme(
+    ls("oleafly.terminal.colorTheme", "dark"),
+  ),
+  setTerminalColorTheme: (v) => {
+    const terminalColorTheme = readTerminalColorTheme(v);
+    const colors = TERMINAL_COLOR_THEMES[terminalColorTheme].colors;
+    saveLs("oleafly.terminal.colorTheme", terminalColorTheme);
+    saveLs("oleafly.terminal.background", colors.background);
+    saveLs("oleafly.terminal.foreground", colors.foreground);
+    saveLs("oleafly.terminal.cursorColor", colors.cursor);
+    set({
+      terminalColorTheme,
+      terminalBackground: colors.background,
+      terminalForeground: colors.foreground,
+      terminalCursorColor: colors.cursor,
+    });
+  },
+  terminalBackground: (() => {
+    const theme = readTerminalColorTheme(
+      ls("oleafly.terminal.colorTheme", "dark"),
+    );
+    const fallback = TERMINAL_COLOR_THEMES[theme].colors.background;
+    return readTerminalColor(ls("oleafly.terminal.background", fallback), fallback);
+  })(),
+  setTerminalBackground: (v) => {
+    const value = readTerminalColor(v, get().terminalBackground);
+    saveLs("oleafly.terminal.background", value);
+    set({ terminalBackground: value });
+  },
+  terminalForeground: (() => {
+    const theme = readTerminalColorTheme(
+      ls("oleafly.terminal.colorTheme", "dark"),
+    );
+    const fallback = TERMINAL_COLOR_THEMES[theme].colors.foreground;
+    return readTerminalColor(ls("oleafly.terminal.foreground", fallback), fallback);
+  })(),
+  setTerminalForeground: (v) => {
+    const value = readTerminalColor(v, get().terminalForeground);
+    saveLs("oleafly.terminal.foreground", value);
+    set({ terminalForeground: value });
+  },
+  terminalCursorColor: (() => {
+    const theme = readTerminalColorTheme(
+      ls("oleafly.terminal.colorTheme", "dark"),
+    );
+    const fallback = TERMINAL_COLOR_THEMES[theme].colors.cursor;
+    return readTerminalColor(ls("oleafly.terminal.cursorColor", fallback), fallback);
+  })(),
+  setTerminalCursorColor: (v) => {
+    const value = readTerminalColor(v, get().terminalCursorColor);
+    saveLs("oleafly.terminal.cursorColor", value);
+    set({ terminalCursorColor: value });
+  },
+  browserSearchEngine: readBrowserSearchEngine(
+    ls("oleafly.browser.searchEngine", "google"),
+  ),
+  setBrowserSearchEngine: (v) => {
+    const value = readBrowserSearchEngine(v);
+    saveLs("oleafly.browser.searchEngine", value);
+    set({ browserSearchEngine: value });
+  },
+  browserHomePage: readBrowserHomePage(
+    ls("oleafly.browser.homePage", "https://www.google.com/"),
+  ),
+  setBrowserHomePage: (v) => {
+    const value = readBrowserHomePage(v);
+    saveLs("oleafly.browser.homePage", value);
+    set({ browserHomePage: value });
   },
   openInTree: ls("oleafly.openInTree", "0") !== "0",
   setOpenInTree: (v) => {
@@ -757,6 +1071,27 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.harper.dialect", PREF_DEFAULTS.grammarDialect);
     saveLs("oleafly.harper.regionalism", "1");
     saveLs("oleafly.harper.wordchoice", "1");
+    saveLs("oleafly.terminal.fontSize", String(PREF_DEFAULTS.terminalFontSize));
+    saveLs("oleafly.terminal.fontFamily", PREF_DEFAULTS.terminalFontFamily);
+    saveLs(
+      "oleafly.terminal.fontWeight",
+      String(PREF_DEFAULTS.terminalFontWeight),
+    );
+    saveLs(
+      "oleafly.terminal.fontWeightBold",
+      String(PREF_DEFAULTS.terminalFontWeightBold),
+    );
+    saveLs("oleafly.terminal.cursorStyle", PREF_DEFAULTS.terminalCursorStyle);
+    saveLs(
+      "oleafly.terminal.cursorBlink",
+      PREF_DEFAULTS.terminalCursorBlink ? "1" : "0",
+    );
+    saveLs("oleafly.terminal.colorTheme", PREF_DEFAULTS.terminalColorTheme);
+    saveLs("oleafly.terminal.background", PREF_DEFAULTS.terminalBackground);
+    saveLs("oleafly.terminal.foreground", PREF_DEFAULTS.terminalForeground);
+    saveLs("oleafly.terminal.cursorColor", PREF_DEFAULTS.terminalCursorColor);
+    saveLs("oleafly.browser.searchEngine", PREF_DEFAULTS.browserSearchEngine);
+    saveLs("oleafly.browser.homePage", PREF_DEFAULTS.browserHomePage);
     saveLs("oleafly.fontSize", String(PREF_DEFAULTS.editorFontSize));
     saveLs("oleafly.appFontSize", String(PREF_DEFAULTS.appFontSize));
     saveLs("oleafly.appFont", PREF_DEFAULTS.appFontFamily);

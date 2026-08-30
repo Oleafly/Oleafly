@@ -172,6 +172,20 @@ function seedProjectMetadata() {
 }
 
 describe("transactional project transitions", () => {
+  it("closes both docks before publishing a newly opened project", async () => {
+    useSettingsStore.setState({ terminalOpen: true, browserOpen: true });
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+
+    const opening = useFilesStore.getState().openProject("project");
+    await vi.waitFor(() => expect(useFilesStore.getState().projectId).toBe("project"));
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      terminalOpen: false,
+      browserOpen: false,
+    });
+    await opening;
+  });
+
   it("applies authoritative project metadata events and ignores an older revision", async () => {
     const engine = seedProjectMetadata();
     const revision = ++projectStateRevision;

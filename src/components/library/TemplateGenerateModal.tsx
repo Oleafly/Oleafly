@@ -17,6 +17,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, modKey } from "@/lib/utils";
 import { notifyError, toast } from "@/lib/toast";
+import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import { friendlyHint } from "@/components/ai/chat-parts";
 import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
 import { enabledModels } from "@/lib/ai-model-state";
@@ -86,6 +87,7 @@ export function TemplateGenerateModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  useOccludeNativeWebview(open);
   const [phase, setPhase] = useState<Phase>("prompt");
   const [description, setDescription] = useState("");
   const [runPrompt, setRunPrompt] = useState("");

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { BOOK_COLOR_OPTIONS, DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { logError } from "@/lib/log";
+import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import {
   ensureTemplateAssets,
   templatePreview,
@@ -92,6 +93,7 @@ export function NewProjectDialog(props: {
   allowEnterSubmit?: boolean;
   allowClose?: boolean;
 }) {
+  useOccludeNativeWebview(props.open);
   const [canGenerate, setCanGenerate] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
   useEffect(() => {

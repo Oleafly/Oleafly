@@ -5,6 +5,7 @@ import { CheckCircle2, ChevronDown, Search } from "lucide-react";
 
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import { cn } from "@/lib/utils";
 
 export type ModelSelectorGroup = {
@@ -33,6 +34,7 @@ export function ModelSelector({
   contentClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
+  useOccludeNativeWebview(open);
   const [query, setQuery] = useState("");
 
   const selectedModel = useMemo(

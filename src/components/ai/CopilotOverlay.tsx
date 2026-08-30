@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { PanelBottomClose, GripVertical } from "lucide-react";
 import { ChatCore } from "@/components/ai/ChatCore";
 import { useSettingsStore } from "@/store/settings";
+import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import { clampRect, type Rect } from "@/lib/overlay-rect";
 
 const KEY = "oleafly.ai.overlay.rect";
@@ -22,6 +23,7 @@ function loadRect(): Rect {
 
 export function CopilotOverlay() {
   const floating = useSettingsStore((s) => s.chatFloating);
+  useOccludeNativeWebview(floating);
   const setFloating = useSettingsStore((s) => s.setChatFloating);
   const [rect, setRect] = useState<Rect>(() =>
     clampRect(loadRect(), { width: window.innerWidth, height: window.innerHeight }),

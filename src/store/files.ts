@@ -669,6 +669,7 @@ function beginProjectOpen(id: string, shouldContinue: () => boolean, set: FilesS
   cancelProofreading("source");
   cancelProofreading("visual");
   resetMutationGeneration(id);
+  useSettingsStore.getState().closeDocks();
   set({ ...EMPTY_PROJECT_STATE, loading: true, projectId: id });
   const revision = lastProjectStateRevision;
   let reopenQueued = false;

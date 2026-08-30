@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Bug, RefreshCw } from "lucide-react";
+import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import { openDevtools } from "@/lib/tauri";
 
 // Yields to component-level context menus (e.g. the editor's) by bailing
 // when the event was already handled (`defaultPrevented`).
 export function DevContextMenu() {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  useOccludeNativeWebview(Boolean(menu));
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

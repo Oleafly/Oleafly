@@ -1,6 +1,8 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ColorInput } from "@/components/ui/color-input";
+import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import { cn } from "@/lib/utils";
 
 export function ColorPicker({
@@ -14,8 +16,10 @@ export function ColorPicker({
   allowTransparent?: boolean;
   ariaLabel: string;
 }) {
+  const [open, setOpen] = useState(false);
+  useOccludeNativeWebview(open);
   return (
-    <PopoverPrimitive.Root>
+    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <PopoverPrimitive.Trigger asChild>
         <button
           type="button"

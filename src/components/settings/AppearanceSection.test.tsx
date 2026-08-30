@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getNativeWebviewOccluded } from "@/lib/native-webview-occlusion";
 import {
   ACCENTS,
   DEFAULT_HIDDEN_FILE_PATTERNS,
@@ -20,6 +21,7 @@ vi.mock("@/lib/theme", () => ({
 }));
 
 import { AppearanceSection } from "./AppearanceSection";
+import { ShortcutsSection } from "./ShortcutsSection";
 
 describe("Appearance settings tabs", () => {
   beforeEach(() => {
@@ -44,6 +46,19 @@ describe("Appearance settings tabs", () => {
       pdfZoomShortcuts: false,
       hoverPreview: false,
       homeProjectLayout: "grid",
+      terminalFontSize: 14,
+      terminalFontFamily:
+        'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace',
+      terminalFontWeight: 500,
+      terminalFontWeightBold: 700,
+      terminalCursorStyle: "block",
+      terminalCursorBlink: true,
+      terminalColorTheme: "dark",
+      terminalBackground: "#1e1e1e",
+      terminalForeground: "#f2f2f2",
+      terminalCursorColor: "#ffffff",
+      browserSearchEngine: "google",
+      browserHomePage: "https://www.google.com/",
     });
   });
 
@@ -55,6 +70,8 @@ describe("Appearance settings tabs", () => {
     expect(screen.getByRole("tab", { name: "Editor" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "PDF Preview" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Project" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Terminal" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Browser" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "PDF Preview" }));
     expect(screen.getByRole("switch", { name: "PDF dark mode" })).toBeInTheDocument();
@@ -150,5 +167,130 @@ describe("Appearance settings tabs", () => {
     expect(useSettingsStore.getState().hiddenFilePatterns).toEqual(
       DEFAULT_HIDDEN_FILE_PATTERNS,
     );
+  });
+
+  it("updates terminal appearance controls", async () => {
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: "Terminal" }));
+
+    expect(screen.getByLabelText("Terminal font size")).toBeInTheDocument();
+    expect(screen.getByLabelText("Terminal font family")).toBeInTheDocument();
+    expect(screen.getByLabelText("Regular font weight")).toBeInTheDocument();
+    expect(screen.getByLabelText("Bold font weight")).toBeInTheDocument();
+    expect(screen.getByLabelText("Terminal cursor style")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Blink cursor" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Terminal color theme")).toBeInTheDocument();
+    expect(screen.getByLabelText("Terminal background color")).toBeInTheDocument();
+    expect(screen.getByLabelText("Terminal foreground color")).toBeInTheDocument();
+    expect(screen.getByLabelText("Terminal cursor color")).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("Terminal font size"));
+    await user.click(await screen.findByRole("option", { name: "16px" }));
+    await user.click(screen.getByLabelText("Terminal cursor style"));
+    await user.click(await screen.findByRole("option", { name: "Underline" }));
+    await user.click(screen.getByRole("switch", { name: "Blink cursor" }));
+    await user.click(screen.getByLabelText("Terminal color theme"));
+    await user.click(await screen.findByRole("option", { name: "Light" }));
+    fireEvent.change(screen.getByLabelText("Terminal background color"), {
+      target: { value: "#f8f8f8" },
+    });
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      terminalFontSize: 16,
+      terminalCursorStyle: "underline",
+      terminalCursorBlink: false,
+      terminalColorTheme: "light",
+      terminalBackground: "#f8f8f8",
+    });
+  });
+
+  it("updates browser search and home page controls", async () => {
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: "Browser" }));
+
+    await user.click(screen.getByLabelText("Default search engine"));
+    await user.click(await screen.findByRole("option", { name: "DuckDuckGo" }));
+    const homePage = screen.getByLabelText("Browser home page");
+    await user.clear(homePage);
+    await user.type(homePage, "https://example.com/");
+    fireEvent.blur(homePage);
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      browserSearchEngine: "duckduckgo",
+      browserHomePage: "https://example.com/",
+    });
+  });
+
+  it("occludes native webviews only while a select menu is open", async () => {
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+
+    expect(getNativeWebviewOccluded()).toBe(false);
+
+    await user.click(
+      within(screen.getByTestId("settings-row-app-font-size")).getByRole(
+        "combobox",
+      ),
+    );
+    await waitFor(() => expect(getNativeWebviewOccluded()).toBe(true));
+    await user.click(await screen.findByRole("option", { name: "17px" }));
+    expect(getNativeWebviewOccluded()).toBe(true);
+    await waitFor(() => expect(getNativeWebviewOccluded()).toBe(false));
+  });
+});
+
+describe("Shortcut settings", () => {
+  it("lists both dock toggle shortcuts", () => {
+    render(<ShortcutsSection />);
+
+    expect(screen.getByText("Toggle terminal")).toBeInTheDocument();
+    expect(screen.getByText("Toggle browser")).toBeInTheDocument();
+  });
+
+  it("shows fixed Ctrl in the terminal shortcut", () => {
+    render(<ShortcutsSection />);
+
+    const label = screen.getByText("Toggle terminal");
+    const row = label.parentElement?.parentElement;
+    expect(row).not.toBeNull();
+    if (!row) throw new Error("terminal shortcut row is unavailable");
+    expect(within(row).getByText("Ctrl")).toBeInTheDocument();
+    expect(within(row).getByText("`")).toBeInTheDocument();
+  });
+
+  it("shows fixed Ctrl+Shift+B in the browser shortcut", () => {
+    render(<ShortcutsSection />);
+
+    const label = screen.getByText("Toggle browser");
+    const row = label.parentElement?.parentElement;
+    expect(row).not.toBeNull();
+    if (!row) throw new Error("browser shortcut row is unavailable");
+    expect(within(row).getByText("Ctrl")).toBeInTheDocument();
+    expect(within(row).getByText("Shift")).toBeInTheDocument();
+    expect(within(row).getByText("B")).toBeInTheDocument();
+  });
+
+  it("detects the editor's fixed Ctrl+Space binding on macOS", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
+    try {
+      const user = userEvent.setup();
+      render(<ShortcutsSection />);
+      await user.click(
+        screen.getByRole("button", { name: /Edit Toggle browser/u }),
+      );
+      fireEvent.keyDown(
+        screen.getByRole("button", { name: /Recording Toggle browser/u }),
+        { key: " ", ctrlKey: true },
+      );
+
+      expect(
+        screen.getByText("Already assigned to Trigger autocomplete."),
+      ).toBeInTheDocument();
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
   });
 });

@@ -3,6 +3,7 @@ import { ArrowLeftRight, BookMarked, Check, Maximize2, Sparkles } from "lucide-r
 import { getEditorView } from "@/components/editor/cm/controller";
 import { openInlineEditWithInstruction } from "@/components/editor/cm/inline-ai/openSession";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
+import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import { useSettingsStore } from "@/store/settings";
 
 interface Action {
@@ -23,6 +24,7 @@ export function SelectionActionMenu() {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [text, setText] = useState("");
   const [expanded, setExpanded] = useState(false);
+  useOccludeNativeWebview(Boolean(pos));
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

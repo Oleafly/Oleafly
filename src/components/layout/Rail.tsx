@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 import {
   Globe,
   Moon,
@@ -132,14 +132,15 @@ export function Rail() {
           <div key={tabs[0]?.section ?? i} className="flex flex-col items-center gap-1">
             {i > 0 && <span className="mb-1 mt-1 h-px w-6 bg-border" />}
             {tabs.map((tab) => (
-              <RailTabButton
-                key={tab.id}
-                tab={tab}
-                active={railTab === tab.id && showTree}
-                onSelect={() => select(tab.id as RailTab)}
-              />
+              <Fragment key={tab.id}>
+                <RailTabButton
+                  tab={tab}
+                  active={railTab === tab.id && showTree}
+                  onSelect={() => select(tab.id as RailTab)}
+                />
+                {tab.id === "source" && projectId && <DockToggles />}
+              </Fragment>
             ))}
-            {tabs.some((tab) => tab.id === "ai") && projectId && <DockToggles />}
           </div>
         ))}
       </div>

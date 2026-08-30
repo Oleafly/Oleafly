@@ -398,6 +398,49 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    fn owning_window_and_project_can_write_to_the_shell() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let root = std::env::temp_dir().join(format!(
+            "oleafly-terminal-owner-write-{}",
+            std::process::id()
+        ));
+        std::fs::remove_dir_all(&root).ok();
+        let project = root.join("projects/proj");
+        std::fs::create_dir_all(&project).unwrap();
+        let shell = root.join("test-shell.sh");
+        std::fs::write(
+            &shell,
+            b"#!/bin/sh\nIFS= read -r input\nprintf '%s' \"$input\" > terminal-input.txt\nsleep 10\n",
+        )
+        .unwrap();
+        std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let owner = command_owner("main", "proj").unwrap();
+        let session_id = open_terminal(
+            &project,
+            owner.clone(),
+            80,
+            24,
+            Channel::new(|_| Ok(())),
+            CommandBuilder::new(&shell),
+        )
+        .unwrap();
+
+        write_terminal(&owner, &session_id, "hello from the owner\n").unwrap();
+        let received_path = project.join("terminal-input.txt");
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        while !received_path.exists() && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        let received = std::fs::read_to_string(received_path).unwrap();
+
+        kill_terminal(&owner, &session_id).unwrap();
+        std::fs::remove_dir_all(&root).ok();
+        assert_eq!(received, "hello from the owner");
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn closed_output_channel_kills_the_login_shell() {
         use std::os::unix::fs::PermissionsExt;
         use std::sync::{Arc, Barrier};

@@ -68,6 +68,11 @@ import { TinytexGuards } from "@/components/layout/TinytexGuards";
 import { QuitGuard } from "@/components/layout/QuitGuard";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
+import { handleDockShortcut } from "@/lib/dock-shortcuts";
+import {
+  startNativeDockShortcutBridge,
+  usesNativeDockMenu,
+} from "@/lib/native-dock-shortcuts";
 import type { ProjectStateChanged } from "@/lib/tauri";
 
 type ExternalFileChange =
@@ -281,7 +286,7 @@ function AppContent() {
   const sidebarSizeBeforeAiRef = useRef<number | null>(null);
   const aiResizePendingRef = useRef(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (projectId) closeDocks();
   }, [projectId, closeDocks]);
 
@@ -485,6 +490,19 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
+    let disposed = false;
+    let stop: (() => void) | undefined;
+    void startNativeDockShortcutBridge().then((cleanup) => {
+      if (disposed) cleanup();
+      else stop = cleanup;
+    });
+    return () => {
+      disposed = true;
+      stop?.();
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isTauri()) return;
     // Done here, not at module load, so it never fires IPC at import time.
     void import("@/lib/ai-tools").then((m) => m.initAiPdfCaptureFlag());
@@ -607,6 +625,16 @@ function AppContent() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [recompile]);
+
+  useEffect(() => {
+    if (!projectId || usesNativeDockMenu()) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (useTourStore.getState().activeTourId) return;
+      handleDockShortcut(event);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [projectId]);
 
   // Compile once when a project opens into a layout that shows the PDF pane,
   // so the user lands on a rendered preview instead of the placeholder. Keyed
@@ -867,18 +895,13 @@ function AppContent() {
                           ref={browserPanelRef}
                           id="browser"
                           order={3}
-                          defaultSize={30}
+                          defaultSize={browserOpen ? 30 : 0}
                           minSize={15}
                           collapsible
                           collapsedSize={0}
                           onCollapse={() => {
                             if (useSettingsStore.getState().browserOpen) {
                               useSettingsStore.getState().setBrowserOpen(false);
-                            }
-                          }}
-                          onExpand={() => {
-                            if (!useSettingsStore.getState().browserOpen) {
-                              useSettingsStore.getState().setBrowserOpen(true);
                             }
                           }}
                           className="min-h-0 min-w-0"
@@ -911,18 +934,13 @@ function AppContent() {
                       ref={terminalPanelRef}
                       id="terminal"
                       order={2}
-                      defaultSize={30}
+                      defaultSize={terminalOpen ? 30 : 0}
                       minSize={10}
                       collapsible
                       collapsedSize={0}
                       onCollapse={() => {
                         if (useSettingsStore.getState().terminalOpen) {
                           useSettingsStore.getState().setTerminalOpen(false);
-                        }
-                      }}
-                      onExpand={() => {
-                        if (!useSettingsStore.getState().terminalOpen) {
-                          useSettingsStore.getState().setTerminalOpen(true);
                         }
                       }}
                       className="min-h-0 min-w-0"
