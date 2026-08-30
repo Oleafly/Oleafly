@@ -2564,39 +2564,6 @@ ${sandboxedCustom}`;
                     onOpenProjectRules={openProjectApprovalSettings}
                     disabled={approvalModeLocked}
                   />
-                  <Tooltip label={planMode ? "Plan mode on" : "Plan mode off"}>
-                    <button
-                      type="button"
-                      aria-label="Plan mode"
-                      aria-pressed={planMode}
-                      data-state={planMode ? "on" : "off"}
-                      onClick={changePlanMode}
-                      disabled={approvalModeLocked}
-                      className={cn(
-                        "ai-composer-plan flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50",
-                        planMode
-                          ? "bg-violet-500/15 text-violet-600 hover:bg-violet-500/20 dark:text-violet-300"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      <Lightbulb className={cn("size-4", planMode && "fill-current")} />
-                    </button>
-                  </Tooltip>
-                  {figureModeAvailable && (
-                    <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
-                      <button type="button"
-                        onClick={() => setFigureMode((v) => !v)}
-                        aria-label="Toggle figure mode"
-                        aria-pressed={figureMode}
-                        className={cn(
-                          "ai-composer-figure flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                          figureMode && "bg-primary/15 text-primary hover:bg-primary/20",
-                        )}
-                      >
-                        <Frame className="size-4" />
-                      </button>
-                    </Tooltip>
-                  )}
                   {!figureMode && (
                     <span
                       data-tour="ai-prompts"
@@ -2758,6 +2725,39 @@ ${sandboxedCustom}`;
                         </Popover>
                       </Tooltip>
                     </span>
+                  )}
+                  <Tooltip label={planMode ? "Plan mode on" : "Plan mode off"}>
+                    <button
+                      type="button"
+                      aria-label="Plan mode"
+                      aria-pressed={planMode}
+                      data-state={planMode ? "on" : "off"}
+                      onClick={changePlanMode}
+                      disabled={approvalModeLocked}
+                      className={cn(
+                        "ai-composer-plan flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50",
+                        planMode
+                          ? "bg-violet-500/15 text-violet-600 hover:bg-violet-500/20 dark:text-violet-300"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      <Lightbulb className={cn("size-4", planMode && "fill-current")} />
+                    </button>
+                  </Tooltip>
+                  {figureModeAvailable && (
+                    <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
+                      <button type="button"
+                        onClick={() => setFigureMode((v) => !v)}
+                        aria-label="Toggle figure mode"
+                        aria-pressed={figureMode}
+                        className={cn(
+                          "ai-composer-figure flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                          figureMode && "bg-primary/15 text-primary hover:bg-primary/20",
+                        )}
+                      >
+                        <Frame className="size-4" />
+                      </button>
+                    </Tooltip>
                   )}
                 </div>
                 <div

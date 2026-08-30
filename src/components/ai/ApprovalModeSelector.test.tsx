@@ -41,9 +41,10 @@ describe("ApprovalModeSelector", () => {
       name: "Approval mode. Custom (approvals.toml)",
     });
     expect(trigger).toHaveClass("ai-composer-approval-trigger");
-    expect(screen.getByText("Custom (approvals.toml)")).toHaveClass(
-      "ai-composer-approval-value",
-    );
+    expect(trigger.closest(".ai-composer-approval")).toHaveClass("ml-0.5");
+    const label = screen.getByText("Custom (approvals.toml)");
+    expect(label).toHaveClass("ai-composer-approval-value");
+    expect(label).not.toHaveClass("hidden");
 
     fireEvent.mouseEnter(trigger.parentElement as HTMLElement);
     expect(await screen.findByRole("tooltip")).toHaveTextContent(

@@ -616,25 +616,42 @@ describe("ChatCore agent turns", () => {
     expect(rendered.getByRole("button", { name: "Voice input (coming soon)" })).toBeVisible();
     expect(rendered.getByRole("button", { name: "Send" })).toBeVisible();
 
+    const attach = rendered.getByRole("button", { name: "Add context" });
+    const approval = rendered.getByRole("button", {
+      name: "Approval mode. Approve for me",
+    });
+    const prompts = rendered.getByRole("button", { name: "Prompt shortcuts" });
+    const persona = rendered.getByRole("button", { name: "Choose persona" });
+    const plan = rendered.getByRole("button", { name: "Plan mode" });
+    const figure = rendered.getByRole("button", { name: "Toggle figure mode" });
+    const leftControls = [attach, approval, prompts, persona, plan, figure];
+    for (const control of leftControls) expect(left).toContainElement(control);
+    for (let index = 0; index < leftControls.length - 1; index += 1) {
+      expect(
+        leftControls[index].compareDocumentPosition(leftControls[index + 1]) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    }
+
     fireEvent.click(model);
     expect(rendered.getByRole("textbox", { name: "Search models" })).toBeVisible();
     fireEvent.click(model);
 
-    const prompts = rendered.getByRole("button", { name: "Prompt shortcuts" });
     expect(prompts.querySelector(".lucide-wallet-cards")).not.toBeNull();
-    expect(rendered.getByText("Prompts")).toHaveClass("ai-composer-prompts-value");
+    const promptsLabel = rendered.getByText("Prompts");
+    expect(promptsLabel).toHaveClass("ai-composer-prompts-value");
+    expect(promptsLabel).not.toHaveClass("hidden");
     fireEvent.click(prompts);
     expect(rendered.getByText("Write & edit")).toBeVisible();
     fireEvent.click(prompts);
 
-    const persona = rendered.getByRole("button", { name: "Choose persona" });
     fireEvent.click(persona);
     expect(rendered.getByRole("button", { name: "Create a persona in Settings" })).toBeVisible();
     fireEvent.click(persona);
 
-    const approval = rendered.getByRole("button", {
-      name: "Approval mode. Approve for me",
-    });
+    const approvalLabel = approval.querySelector(".ai-composer-approval-value");
+    expect(approvalLabel).toHaveTextContent("Approve for me");
+    expect(approvalLabel).not.toHaveClass("hidden");
     fireEvent.click(approval);
     expect(rendered.getByRole("button", { name: "Full access" })).toBeVisible();
     fireEvent.click(approval);
@@ -682,6 +699,9 @@ describe("ChatCore agent turns", () => {
       name: /Research Writer active/u,
     });
     expect(activeTrigger).toHaveTextContent("Research Writer");
+    const activePersonaLabel = activeTrigger.querySelector(".ai-composer-persona-value");
+    expect(activePersonaLabel).toHaveTextContent("Research Writer");
+    expect(activePersonaLabel).not.toHaveClass("hidden");
     expect(rendered.getByTestId("ai-active-persona-indicator")).toBeVisible();
     expect(activeTrigger.querySelector(".lucide-chevron-down")).not.toBeNull();
 

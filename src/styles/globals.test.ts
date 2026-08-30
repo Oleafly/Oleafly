@@ -36,15 +36,15 @@ describe("assistant mascot motion", () => {
 });
 
 describe("assistant composer container queries", () => {
-  it("collapses persona, prompts, and approval labels in that order", () => {
+  it("shows labels by default and collapses them right-to-left as space narrows", () => {
     const personaBreakpoint = styles.indexOf(
-      "@container ai-composer (max-width: 52rem)",
+      "@container ai-composer (max-width: 49.5rem)",
     );
     const promptsBreakpoint = styles.indexOf(
-      "@container ai-composer (max-width: 46rem)",
+      "@container ai-composer (max-width: 42rem)",
     );
     const approvalBreakpoint = styles.indexOf(
-      "@container ai-composer (max-width: 40rem)",
+      "@container ai-composer (max-width: 39rem)",
     );
 
     expect(personaBreakpoint).toBeGreaterThan(-1);
@@ -64,6 +64,9 @@ describe("assistant composer container queries", () => {
     expect(promptsRules).toMatch(/\.ai-composer-prompts-trigger\s*\{[^}]*width: 2\.5rem;/su);
     expect(approvalRules).toMatch(/\.ai-composer-approval-value\s*\{\s*display: none;/u);
     expect(approvalRules).toMatch(/\.ai-composer-approval-trigger\s*\{[^}]*width: 2\.5rem;/su);
+    expect(styles.match(/\.ai-composer-persona-value\s*\{[^}]*display:\s*none;/gsu)).toHaveLength(1);
+    expect(styles.match(/\.ai-composer-prompts-value\s*\{[^}]*display:\s*none;/gsu)).toHaveLength(1);
+    expect(styles.match(/\.ai-composer-approval-value\s*\{[^}]*display:\s*none;/gsu)).toHaveLength(1);
     expect(styles).not.toContain(
       ".ai-composer-persona .ai-composer-persona-trigger > svg:last-child",
     );
@@ -95,7 +98,8 @@ describe("assistant composer container queries", () => {
 
     const controls = (1.5 + 2.25 + 1.5 + 1.5 + 1.5 + 2 + 2.25 + 1.5 + 1.75) * 16;
     const gaps = 8 * 2;
-    expect(controls + gaps).toBe(268);
-    expect(controls + gaps).toBeLessThanOrEqual(270);
+    const approvalInset = 0.125 * 16;
+    expect(controls + gaps + approvalInset).toBe(270);
+    expect(controls + gaps + approvalInset).toBeLessThanOrEqual(270);
   });
 });

@@ -1368,7 +1368,7 @@ body[data-tour-active] [data-tour-hide] {
   animation: ai-tool-approval-border-shine var(--ai-tool-approval-border-duration) linear infinite;
 }
 
-@container ai-composer (max-width: 52rem) {
+@container ai-composer (max-width: 49.5rem) {
   .ai-composer-persona .ai-composer-persona-trigger {
     width: 2.5rem;
     min-width: 2.5rem;
@@ -1383,7 +1383,7 @@ body[data-tour-active] [data-tour-hide] {
   }
 }
 
-@container ai-composer (max-width: 46rem) {
+@container ai-composer (max-width: 42rem) {
   .ai-composer-prompts .ai-composer-prompts-trigger {
     width: 2.5rem;
     min-width: 2.5rem;
@@ -1402,7 +1402,7 @@ body[data-tour-active] [data-tour-hide] {
   }
 }
 
-@container ai-composer (max-width: 40rem) {
+@container ai-composer (max-width: 39rem) {
   .ai-composer-approval .ai-composer-approval-trigger {
     width: 2.5rem;
     min-width: 2.5rem;
