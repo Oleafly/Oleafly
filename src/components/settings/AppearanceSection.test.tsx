@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getNativeWebviewOccluded } from "@/lib/native-webview-occlusion";
@@ -11,6 +11,18 @@ import {
 } from "@/store/settings";
 
 const toggleTheme = vi.hoisted(() => vi.fn());
+const browserCookieMocks = vi.hoisted(() => ({
+  detectBrowserCookieSources: vi.fn(),
+  importBrowserCookies: vi.fn(),
+}));
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((next) => {
+    resolve = next;
+  });
+  return { promise, resolve };
+}
 
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({
@@ -20,12 +32,49 @@ vi.mock("@/lib/theme", () => ({
   }),
 }));
 
+vi.mock("@/lib/tauri", () => ({
+  detectBrowserCookieSources: browserCookieMocks.detectBrowserCookieSources,
+  importBrowserCookies: browserCookieMocks.importBrowserCookies,
+}));
+
 import { AppearanceSection } from "./AppearanceSection";
 import { ShortcutsSection } from "./ShortcutsSection";
 
 describe("Appearance settings tabs", () => {
   beforeEach(() => {
     toggleTheme.mockClear();
+    browserCookieMocks.detectBrowserCookieSources.mockReset().mockResolvedValue([
+      {
+        browser: "chrome",
+        browserName: "Google Chrome",
+        profile: "Default",
+        profileName: "Default",
+        status: "available",
+        detail: "Ready to import",
+      },
+      {
+        browser: "firefox",
+        browserName: "Firefox",
+        profile: "empty.default",
+        profileName: "empty.default",
+        status: "no_cookie_store",
+        detail: "Firefox is installed, but this profile has no cookie store.",
+      },
+      {
+        browser: "safari",
+        browserName: "Safari",
+        profile: null,
+        profileName: null,
+        status: "coming_soon",
+        detail: "Safari cookie import is not supported yet.",
+      },
+    ]);
+    browserCookieMocks.importBrowserCookies.mockReset().mockResolvedValue({
+      imported: 12,
+      browserName: "Google Chrome",
+      profileName: "Default",
+      domain: "example.com",
+    });
     Element.prototype.hasPointerCapture = vi.fn(() => false);
     Element.prototype.setPointerCapture = vi.fn();
     Element.prototype.releasePointerCapture = vi.fn();
@@ -276,16 +325,313 @@ describe("Appearance settings tabs", () => {
     ).toBeInTheDocument();
     await user.click(trigger);
 
+    const iconMarkup = new Set<string>();
     for (const engine of [
       { id: "google", name: "Google" },
-      { id: "duckduckgo", name: "DuckDuckGo" },
       { id: "bing", name: "Bing" },
+      { id: "duckduckgo", name: "DuckDuckGo" },
+      { id: "brave", name: "Brave" },
+      { id: "perplexity", name: "Perplexity" },
+      { id: "startpage", name: "Startpage" },
+      { id: "ecosia", name: "Ecosia" },
     ]) {
       const option = await screen.findByRole("option", { name: engine.name });
-      expect(
-        within(option).getByTestId(`search-engine-icon-${engine.id}`),
-      ).toBeInTheDocument();
+      const icon = within(option).getByTestId(`search-engine-icon-${engine.id}`);
+      expect(icon.tagName.toLowerCase()).toBe("svg");
+      expect(icon.querySelector("image, [href^='http']")).toBeNull();
+      const visual = icon.cloneNode(true) as SVGElement;
+      visual.querySelector("title")?.remove();
+      visual.removeAttribute("aria-hidden");
+      visual.removeAttribute("class");
+      visual.removeAttribute("data-testid");
+      iconMarkup.add(visual.outerHTML);
     }
+    expect(iconMarkup.size).toBe(7);
+  });
+
+  it("detects cookie sources only after the user opens the importer", async () => {
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: "Browser" }));
+
+    expect(browserCookieMocks.detectBrowserCookieSources).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Import cookies" }));
+
+    await waitFor(() =>
+      expect(browserCookieMocks.detectBrowserCookieSources).toHaveBeenCalledOnce(),
+    );
+    expect(
+      await screen.findByRole("radio", { name: /Safari.*Coming soon/iu }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("radio", { name: /Firefox.*No cookie store/iu }),
+    ).toBeDisabled();
+    expect(browserCookieMocks.importBrowserCookies).not.toHaveBeenCalled();
+  });
+
+  it("requires final confirmation and reports the imported cookie summary", async () => {
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("button", { name: "Import cookies" }));
+
+    const chrome = await screen.findByRole("radio", {
+      name: /Google Chrome.*Default/iu,
+    });
+    await user.click(chrome);
+    const targetHostname = screen.getByLabelText("Target hostname (optional)");
+    expect(targetHostname).toHaveAttribute(
+      "aria-describedby",
+      "browser-cookie-domain-hint",
+    );
+    await user.type(targetHostname, "example.com");
+    await user.click(screen.getByRole("button", { name: "Review import" }));
+
+    const confirmation = screen.getByRole("alertdialog", {
+      name: "Confirm cookie import",
+    });
+    expect(confirmation).toHaveTextContent("Google Chrome");
+    expect(confirmation).toHaveTextContent("Default");
+    expect(confirmation).toHaveTextContent("example.com");
+    expect(confirmation).toHaveTextContent(
+      "confirm once more in a native dialog",
+    );
+    expect(browserCookieMocks.importBrowserCookies).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(document, { key: "Enter" });
+    expect(browserCookieMocks.importBrowserCookies).not.toHaveBeenCalled();
+
+    await user.click(
+      within(confirmation).getByRole("button", { name: "Import cookies" }),
+    );
+
+    await waitFor(() =>
+      expect(browserCookieMocks.importBrowserCookies).toHaveBeenCalledWith({
+        browser: "chrome",
+        profile: "Default",
+        domain: "example.com",
+      }),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Imported 12 cookies from Google Chrome, Default for example.com.",
+    );
+  });
+
+  it("imports all eligible cookies only after confirming the blank scope", async () => {
+    browserCookieMocks.importBrowserCookies.mockResolvedValueOnce({
+      imported: 1,
+      browserName: "Google Chrome",
+      profileName: "Default",
+      domain: null,
+    });
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("button", { name: "Import cookies" }));
+    await user.click(
+      await screen.findByRole("radio", { name: /Google Chrome.*Default/iu }),
+    );
+    await user.click(screen.getByRole("button", { name: "Review import" }));
+
+    const confirmation = screen.getByRole("alertdialog", {
+      name: "Confirm cookie import",
+    });
+    expect(confirmation).toHaveTextContent("all domains");
+    expect(browserCookieMocks.importBrowserCookies).not.toHaveBeenCalled();
+    await user.click(
+      within(confirmation).getByRole("button", { name: "Import cookies" }),
+    );
+
+    await waitFor(() =>
+      expect(browserCookieMocks.importBrowserCookies).toHaveBeenCalledWith({
+        browser: "chrome",
+        profile: "Default",
+        domain: null,
+      }),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Imported 1 cookie from Google Chrome, Default.",
+    );
+  });
+
+  it("rejects URL-shaped domain filters before review", async () => {
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("button", { name: "Import cookies" }));
+    await user.click(
+      await screen.findByRole("radio", { name: /Google Chrome.*Default/iu }),
+    );
+    await user.type(
+      screen.getByLabelText("Target hostname (optional)"),
+      "https://example.com",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Review import" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Enter a hostname such as example.com.",
+    );
+    expect(screen.getByLabelText("Target hostname (optional)")).toHaveAttribute(
+      "aria-describedby",
+      "browser-cookie-domain-hint browser-cookie-review-error",
+    );
+    expect(
+      screen.queryByRole("alertdialog", { name: "Confirm cookie import" }),
+    ).not.toBeInTheDocument();
+    expect(browserCookieMocks.importBrowserCookies).not.toHaveBeenCalled();
+  });
+
+  it("ignores stale browser detection after the importer is reopened", async () => {
+    const staleDetection = deferred<
+      Awaited<ReturnType<typeof browserCookieMocks.detectBrowserCookieSources>>
+    >();
+    const currentDetection = deferred<
+      Awaited<ReturnType<typeof browserCookieMocks.detectBrowserCookieSources>>
+    >();
+    browserCookieMocks.detectBrowserCookieSources
+      .mockReset()
+      .mockReturnValueOnce(staleDetection.promise)
+      .mockReturnValueOnce(currentDetection.promise);
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("button", { name: "Import cookies" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "Import cookies" }));
+
+    currentDetection.resolve([
+      {
+        browser: "chrome",
+        browserName: "Google Chrome",
+        profile: "Default",
+        profileName: "Default",
+        status: "available",
+        detail: "Ready to import",
+      },
+    ]);
+    expect(
+      await screen.findByRole("radio", { name: /Google Chrome.*Default/iu }),
+    ).toBeEnabled();
+
+    await act(async () => {
+      staleDetection.resolve([
+        {
+          browser: "safari",
+          browserName: "Safari",
+          profile: null,
+          profileName: null,
+          status: "coming_soon",
+          detail: "Safari cookie import is not supported yet.",
+        },
+      ]);
+      await staleDetection.promise;
+    });
+    expect(
+      screen.getByRole("radio", { name: /Google Chrome.*Default/iu }),
+    ).toBeEnabled();
+    expect(screen.queryByRole("radio", { name: /Safari/iu })).not.toBeInTheDocument();
+  });
+
+  it("announces when detection finds no supported profiles", async () => {
+    browserCookieMocks.detectBrowserCookieSources.mockResolvedValueOnce([]);
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("button", { name: "Import cookies" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "No supported browser profiles were found.",
+      ),
+    );
+  });
+
+  it("shows a recoverable source-detection error", async () => {
+    browserCookieMocks.detectBrowserCookieSources.mockRejectedValueOnce(
+      new Error("Browser profile detection failed."),
+    );
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("button", { name: "Import cookies" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Browser profile detection failed.",
+    );
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(
+      await screen.findByRole("radio", { name: /Google Chrome.*Default/iu }),
+    ).toBeEnabled();
+  });
+
+  it("keeps the confirmation open when import fails", async () => {
+    browserCookieMocks.importBrowserCookies.mockRejectedValueOnce(
+      new Error(
+        "Google Chrome's cookie store is locked. Close Google Chrome completely, then try again.",
+      ),
+    );
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("button", { name: "Import cookies" }));
+    await user.click(
+      await screen.findByRole("radio", { name: /Google Chrome.*Default/iu }),
+    );
+    await user.click(screen.getByRole("button", { name: "Review import" }));
+    const confirmation = screen.getByRole("alertdialog", {
+      name: "Confirm cookie import",
+    });
+
+    await user.click(
+      within(confirmation).getByRole("button", { name: "Import cookies" }),
+    );
+
+    expect(await within(confirmation).findByRole("alert")).toHaveTextContent(
+      "Google Chrome's cookie store is locked. Close Google Chrome completely, then try again.",
+    );
+    expect(confirmation).toBeInTheDocument();
+  });
+
+  it("cannot appear canceled while an import is still running", async () => {
+    const pendingImport = deferred<{
+      imported: number;
+      browserName: string;
+      profileName: string;
+      domain: null;
+    }>();
+    browserCookieMocks.importBrowserCookies.mockReturnValueOnce(
+      pendingImport.promise,
+    );
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: "Browser" }));
+    await user.click(screen.getByRole("button", { name: "Import cookies" }));
+    await user.click(
+      await screen.findByRole("radio", { name: /Google Chrome.*Default/iu }),
+    );
+    await user.click(screen.getByRole("button", { name: "Review import" }));
+    const confirmation = screen.getByRole("alertdialog", {
+      name: "Confirm cookie import",
+    });
+    await user.click(
+      within(confirmation).getByRole("button", { name: "Import cookies" }),
+    );
+
+    expect(within(confirmation).getByRole("button", { name: "Close" })).toBeDisabled();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(confirmation).toBeInTheDocument();
+
+    pendingImport.resolve({
+      imported: 2,
+      browserName: "Google Chrome",
+      profileName: "Default",
+      domain: null,
+    });
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Imported 2 cookies from Google Chrome, Default.",
+    );
   });
 
   it("occludes native webviews only while a select menu is open", async () => {

@@ -61,7 +61,50 @@ import type {
 } from "@oleafly/backend-port";
 export type * from "@oleafly/backend-port";
 
+export type BrowserCookieSourceId =
+  | "chrome"
+  | "brave"
+  | "edge"
+  | "firefox"
+  | "safari";
+
+export type BrowserCookieSourceStatus =
+  | "available"
+  | "no_cookie_store"
+  | "not_installed"
+  | "coming_soon";
+
+export interface BrowserCookieSource {
+  browser: BrowserCookieSourceId;
+  browserName: string;
+  profile: string | null;
+  profileName: string | null;
+  status: BrowserCookieSourceStatus;
+  detail: string;
+}
+
+export interface BrowserCookieImportRequest {
+  browser: BrowserCookieSourceId;
+  profile: string;
+  domain: string | null;
+}
+
+export interface BrowserCookieImportSummary {
+  imported: number;
+  browserName: string;
+  profileName: string;
+  domain: string | null;
+}
+
 export const reloadViews = () => invoke<void>("reload_views");
+
+export const detectBrowserCookieSources = () =>
+  invoke<BrowserCookieSource[]>("detect_browser_cookie_sources");
+
+export const importBrowserCookies = (request: BrowserCookieImportRequest) =>
+  invoke<BrowserCookieImportSummary>("import_browser_cookies", {
+    request: { ...request, confirmed: true },
+  });
 
 export const focusCurrentWindow = async () => {
   const window = getCurrentWindow();

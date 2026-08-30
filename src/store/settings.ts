@@ -80,7 +80,14 @@ export type EditorThemeId =
   | "one-dark";
 export type TerminalCursorStyle = "block" | "underline" | "bar";
 export type TerminalColorThemeId = "dark" | "light";
-export type BrowserSearchEngineId = "google" | "duckduckgo" | "bing";
+export type BrowserSearchEngineId =
+  | "google"
+  | "bing"
+  | "duckduckgo"
+  | "brave"
+  | "perplexity"
+  | "startpage"
+  | "ecosia";
 
 export interface TerminalThemeColors {
   background: string;
@@ -178,12 +185,32 @@ export const BROWSER_SEARCH_ENGINES: {
   searchUrl: string;
 }[] = [
   { id: "google", name: "Google", searchUrl: "https://www.google.com/search?q=" },
+  { id: "bing", name: "Bing", searchUrl: "https://www.bing.com/search?q=" },
   {
     id: "duckduckgo",
     name: "DuckDuckGo",
     searchUrl: "https://duckduckgo.com/?q=",
   },
-  { id: "bing", name: "Bing", searchUrl: "https://www.bing.com/search?q=" },
+  {
+    id: "brave",
+    name: "Brave",
+    searchUrl: "https://search.brave.com/search?q=",
+  },
+  {
+    id: "perplexity",
+    name: "Perplexity",
+    searchUrl: "https://www.perplexity.ai/search?s=o&q=",
+  },
+  {
+    id: "startpage",
+    name: "Startpage",
+    searchUrl: "https://www.startpage.com/sp/search?query=",
+  },
+  {
+    id: "ecosia",
+    name: "Ecosia",
+    searchUrl: "https://www.ecosia.org/search?q=",
+  },
 ];
 
 export const DEFAULT_TERMINAL_FONT_FAMILY =

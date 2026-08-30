@@ -3,7 +3,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { acquireNativeWebviewOcclusion } from "@/lib/native-webview-occlusion";
-import { useSettingsStore } from "@/store/settings";
+import { BROWSER_SEARCH_ENGINES, useSettingsStore } from "@/store/settings";
 import { BrowserPane } from "./BrowserPane";
 
 type BrowserPageLoadPayload = {
@@ -228,6 +228,20 @@ describe("BrowserPane", () => {
       expect(frame.src).toBe(
         "https://duckduckgo.com/?q=tauri%20child%20webview%20z%20order",
       );
+    },
+  );
+
+  it.each(BROWSER_SEARCH_ENGINES)(
+    "uses the $name search URL from the engine catalog",
+    ({ id, searchUrl }) => {
+      useSettingsStore.setState({ browserSearchEngine: id });
+      render(<BrowserPane />);
+      const input = screen.getByLabelText("Browser address");
+      fireEvent.change(input, { target: { value: "privacy research" } });
+      fireEvent.click(screen.getByRole("button", { name: "Open" }));
+
+      const frame = screen.getByTitle("Dock browser") as HTMLIFrameElement;
+      expect(frame.src).toBe(`${searchUrl}privacy%20research`);
     },
   );
 

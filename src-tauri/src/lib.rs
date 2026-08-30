@@ -10,6 +10,7 @@ mod approvals;
 mod assets;
 mod biber_toolchain;
 mod browser;
+mod browser_cookie_import;
 mod chats;
 mod chunked;
 mod citation;
@@ -235,6 +236,8 @@ pub fn run() {
             storage::permanently_delete_recycled_project,
             commands::app_version,
             commands::has_orx,
+            browser_cookie_import::detect_browser_cookie_sources,
+            browser_cookie_import::import_browser_cookies,
             protocol::backend_protocol_info,
             initial_state::initial_state,
             chunked::chunked_ack,

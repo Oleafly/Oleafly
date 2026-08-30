@@ -28,8 +28,9 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     overlayClassName?: string;
+    closeDisabled?: boolean;
   }
->(({ className, overlayClassName, children, ...props }, ref) => {
+>(({ className, overlayClassName, closeDisabled, children, ...props }, ref) => {
   const occlusionRef = useNativeWebviewOcclusionRef(ref);
   return (
     <DialogPortal>
@@ -43,7 +44,10 @@ const DialogContent = React.forwardRef<
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+        <DialogPrimitive.Close
+          disabled={closeDisabled}
+          className="absolute right-4 top-4 rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+        >
           <X aria-hidden="true" className="size-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>

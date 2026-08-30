@@ -29,6 +29,7 @@ import {
 } from "@/store/settings";
 import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
+import { BrowserCookieImport } from "@/components/settings/BrowserCookieImport";
 import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
 
 const APPEARANCE_TABS = [
@@ -697,7 +698,7 @@ function BrowserAppearanceTab() {
             setBrowserSearchEngine(value as BrowserSearchEngineId)
           }
         >
-          <SelectTrigger className="w-[140px]" aria-label="Default search engine">
+          <SelectTrigger className="w-44" aria-label="Default search engine">
             <SelectValue>
               <span className="flex items-center gap-2">
                 <SearchEngineIcon engine={selectedSearchEngine.id} />
@@ -741,6 +742,8 @@ function BrowserAppearanceTab() {
           placeholder="https://www.google.com/"
         />
       </div>
+
+      <BrowserCookieImport />
     </div>
   );
 }

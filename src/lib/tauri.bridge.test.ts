@@ -10,7 +10,9 @@ import {
   cancelQuitFlush,
   confirmQuitFlush,
   createFile,
+  detectBrowserCookieSources,
   importDocument,
+  importBrowserCookies,
   isFileConflictError,
   mcpServerAdd,
   mcpServerRemove,
@@ -101,6 +103,38 @@ describe("document import bridge", () => {
     );
     expect(mocks.invoke).toHaveBeenCalledWith("import_document", {
       path: "/tmp/paper.md",
+    });
+  });
+});
+
+describe("browser cookie import bridge", () => {
+  it("uses the dedicated detection command", async () => {
+    mocks.invoke.mockResolvedValue([]);
+    await detectBrowserCookieSources();
+
+    expect(mocks.invoke).toHaveBeenCalledWith("detect_browser_cookie_sources");
+  });
+
+  it("carries the reviewed confirmation to the native boundary", async () => {
+    mocks.invoke.mockResolvedValue({
+      imported: 4,
+      browserName: "Google Chrome",
+      profileName: "Default",
+      domain: "example.com",
+    });
+    await importBrowserCookies({
+      browser: "chrome",
+      profile: "Default",
+      domain: "example.com",
+    });
+
+    expect(mocks.invoke).toHaveBeenCalledWith("import_browser_cookies", {
+      request: {
+        browser: "chrome",
+        profile: "Default",
+        domain: "example.com",
+        confirmed: true,
+      },
     });
   });
 });
