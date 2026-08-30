@@ -286,6 +286,16 @@ export const agentThreadRead = (threadId: string) =>
     }>
   >("agent_thread_read", { threadId });
 
+export const agentThreadArchive = (threadId: string) =>
+  invoke<boolean>("agent_thread_archive", { threadId });
+
+export const agentThreadFork = (threadId: string, projectId: string) =>
+  invoke<string>("agent_thread_fork", {
+    threadId,
+    excludeTurns: null,
+    projectId,
+  });
+
 /** Claim a prewarmed thread for a project (null means: create a fresh one). */
 export const agentThreadClaimPrewarmed = (projectId: string) =>
   invoke<string | null>("agent_thread_claim_prewarmed", { projectId });

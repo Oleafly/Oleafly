@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { useState } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -24,6 +25,37 @@ const groups = [
 ];
 
 describe("ModelSelector", () => {
+  it("opens from an external command and reports when the picker closes", () => {
+    function ControlledPicker() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open model picker
+          </button>
+          <ModelSelector
+            open={open}
+            onOpenChange={setOpen}
+            providerId="openai"
+            modelId="gpt-5.6-luna"
+            groups={groups}
+            onChange={() => {}}
+          />
+        </>
+      );
+    }
+
+    render(<ControlledPicker />);
+    fireEvent.click(screen.getByRole("button", { name: "Open model picker" }));
+    const search = screen.getByRole("combobox", { name: "Search models" });
+    expect(search).toBeInTheDocument();
+    expect(search).toHaveFocus();
+    expect(search.closest("[data-state='open']")).toHaveClass("z-[80]");
+
+    fireEvent.click(screen.getByText("GPT-5.6 Sol"));
+    expect(screen.queryByRole("combobox", { name: "Search models" })).not.toBeInTheDocument();
+  });
+
   it("centers compact model controls without full-size vertical padding", () => {
     render(
       <ModelSelector

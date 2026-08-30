@@ -9,6 +9,7 @@ export function aiSettingsDestination(
   scrollTarget: string | null,
 ): AiSettingsDestination | null {
   if (scrollTarget === "ai-personas") return { tab: "personas" };
+  if (scrollTarget === "ai-skills") return { tab: "skills" };
   if (scrollTarget === "ai-approvals") {
     return { tab: "providers", elementId: "ai-project-approvals" };
   }

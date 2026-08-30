@@ -12,7 +12,12 @@ import { windowFlushScheduler } from "@/lib/agent-stream-scheduler";
 import { useAgentTurnsStore, type QueuedFollowUp } from "@/store/agent-turns";
 import { useAssistantOutputsStore } from "@/store/assistant-outputs";
 import { SubagentActivity } from "./SubagentActivity";
-import { agentSteer, agentThreadClaimPrewarmed } from "@/lib/agent-backend";
+import {
+  agentSteer,
+  agentThreadArchive,
+  agentThreadClaimPrewarmed,
+  agentThreadFork,
+} from "@/lib/agent-backend";
 import {
   ArrowLeftRight,
   ArrowUp,
@@ -36,9 +41,11 @@ import {
   Search,
   Sparkles,
   Square,
+  Target,
   Trash2,
   Workflow,
   Wrench,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
@@ -54,6 +61,17 @@ import { ToolConfirm } from "@/components/ai/ToolConfirm";
 import { ApprovalModeSelector } from "@/components/ai/ApprovalModeSelector";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
 import { ModelSelector } from "@/components/ai/ModelSelector";
+import { ComposerAttachMenu } from "@/components/ai/ComposerAttachMenu";
+import {
+  isSlashCommandInput,
+  slashCommandQuery,
+  SlashCommandMenu,
+  type SlashCommandMenuHandle,
+} from "@/components/ai/SlashCommandMenu";
+import {
+  createAttachCommands,
+  createSlashCommands,
+} from "@/components/ai/composer-command-registry";
 import {
   activeChatRun,
   beginChatRun,
@@ -79,6 +97,8 @@ import {
   useApprovalModeStore,
 } from "@/store/approval-mode";
 import { planModeForProject, usePlanModeStore } from "@/store/plan-mode";
+import { goalForProject, useChatGoalStore } from "@/store/chat-goal";
+import { goalPromptLine } from "@/lib/ai-goal";
 import {
   agentFileChangeTurnForChat,
   agentFileChangeTurnKey,
@@ -260,6 +280,7 @@ export function ChatCore() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const setSettingsScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
+  const setBrowserOpen = useSettingsStore((s) => s.setBrowserOpen);
   const approvalModes = useApprovalModeStore((s) => s.modes);
   const loadApprovalMode = useApprovalModeStore((s) => s.load);
   const setApprovalMode = useApprovalModeStore((s) => s.setMode);
@@ -268,6 +289,11 @@ export function ChatCore() {
   const loadPlanMode = usePlanModeStore((s) => s.load);
   const togglePlanMode = usePlanModeStore((s) => s.toggle);
   const planMode = planModeForProject(planModes, projectId);
+  const goals = useChatGoalStore((s) => s.goalsByProject);
+  const loadGoal = useChatGoalStore((s) => s.load);
+  const setGoal = useChatGoalStore((s) => s.setGoal);
+  const clearGoal = useChatGoalStore((s) => s.clearGoal);
+  const goal = goalForProject(goals, projectId);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const setChatFloating = useSettingsStore((s) => s.setChatFloating);
   const chats = useChatsStore((s) => s.chats);
@@ -276,6 +302,9 @@ export function ChatCore() {
   // chats without queued follow-ups (a fresh [] loops useSyncExternalStore).
   const queuedFollowUps = useAgentTurnsStore((s) =>
     activeChatId ? s.queuedByChat[activeChatId] ?? EMPTY_FOLLOW_UPS : EMPTY_FOLLOW_UPS,
+  );
+  const activeThreadId = useAgentTurnsStore((s) =>
+    activeChatId ? s.threadByChat[activeChatId] ?? null : null,
   );
   const activeRunRequestIdRef = useRef<string | null>(null);
   const loadChats = useChatsStore((s) => s.load);
@@ -297,6 +326,17 @@ export function ChatCore() {
     setSettingsOpen(true);
   }, [setSettingsInitialSection, setSettingsOpen, setSettingsScrollTarget]);
 
+  const openMcpSettings = useCallback(() => {
+    setSettingsInitialSection("mcp");
+    setSettingsOpen(true);
+  }, [setSettingsInitialSection, setSettingsOpen]);
+
+  const openSkillsSettings = useCallback(() => {
+    setSettingsInitialSection("ai");
+    setSettingsScrollTarget("ai-skills");
+    setSettingsOpen(true);
+  }, [setSettingsInitialSection, setSettingsOpen, setSettingsScrollTarget]);
+
   useEffect(() => {
     void loadApprovalMode(projectId).catch(() => {});
   }, [loadApprovalMode, projectId]);
@@ -304,6 +344,10 @@ export function ChatCore() {
   useEffect(() => {
     loadPlanMode(projectId);
   }, [loadPlanMode, projectId]);
+
+  useEffect(() => {
+    loadGoal(projectId);
+  }, [loadGoal, projectId]);
 
   const changeApprovalMode = useCallback(
     (nextMode: ApprovalMode) => {
@@ -351,10 +395,16 @@ export function ChatCore() {
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [modelPickerOpen, setModelPickerOpen] = useState(false);
+  const [goalEditorProjectId, setGoalEditorProjectId] = useState<string | null>(null);
+  const [goalDraft, setGoalDraft] = useState("");
+  const [slashMenuDismissedInput, setSlashMenuDismissedInput] = useState<string | null>(null);
+  const [activeSlashCommandId, setActiveSlashCommandId] = useState<string | null>(null);
   const [currentHead, setCurrentHead] = useState<string | null>(null);
   const [quotaWarning, setQuotaWarning] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<RegisteredApproval | null>(null);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+  const goalEditorOpen = goalEditorProjectId !== null && goalEditorProjectId === projectId;
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [steeringFollowUpIds, setSteeringFollowUpIds] = useState<ReadonlySet<string>>(
     () => new Set(),
@@ -362,6 +412,14 @@ export function ChatCore() {
   const steeringFollowUpIdsRef = useRef(new Set<string>());
   const [sendingFollowUpId, setSendingFollowUpId] = useState<string | null>(null);
   const sendingFollowUpIdRef = useRef<string | null>(null);
+  const openGoalEditor = useCallback(() => {
+    setGoalDraft(useChatGoalStore.getState().goal(projectId));
+    setGoalEditorProjectId(projectId);
+  }, [projectId]);
+  const saveGoal = useCallback(() => {
+    setGoal(projectId, goalDraft);
+    setGoalEditorProjectId(null);
+  }, [goalDraft, projectId, setGoal]);
   // Figure studio mode: swaps in the figure system prompt + figure toolset.
   const [figureMode, setFigureMode] = useState(false);
   const agentTodos = useAgentTodoStore((s) => s.todos);
@@ -403,8 +461,17 @@ export function ChatCore() {
   // default without an extra async round trip.
   const cfgRef = useRef<AppConfig | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const goalInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const slashCommandMenuRef = useRef<SlashCommandMenuHandle>(null);
   const inputShellRef = useRef<HTMLDivElement>(null);
+  const slashMenuOpen =
+    isSlashCommandInput(input) && slashMenuDismissedInput !== input;
+  useEffect(() => {
+    if (!goalEditorOpen) return;
+    const frame = requestAnimationFrame(() => goalInputRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [goalEditorOpen]);
   const inputPlaceholder = !engineLoaded
     ? "Document engine unavailable. AI editing disabled"
     : figureMode
@@ -656,7 +723,6 @@ export function ChatCore() {
       models: available,
     };
   });
-
   // Load sticky agent memory when the project changes. Also drop the in-run
   // todo checklist, which is not project-scoped, so project A's plan does not
   // linger under project B.
@@ -746,6 +812,69 @@ export function ChatCore() {
       setApiKey(keysMap[providerId] || "");
     }
   }, [streaming, setActiveChat, keysMap, setMessages]);
+
+  const archiveCurrentChat = useCallback(async () => {
+    if (!activeChatId || !activeThreadId) return;
+    try {
+      const archived = await agentThreadArchive(activeThreadId);
+      if (!archived) throw new Error("The native thread was not found.");
+      const wasActive = useChatsStore.getState().activeId === activeChatId;
+      removeChat(activeChatId);
+      useAgentTurnsStore.setState((state) => {
+        const threadByChat = { ...state.threadByChat };
+        delete threadByChat[activeChatId];
+        return { threadByChat };
+      });
+      if (wasActive) {
+        setMessages([]);
+        useAgentTodoStore.getState().selectChat(null);
+      }
+      toast.success("Chat archived.");
+    } catch {
+      toast.error("Could not archive this chat.");
+    }
+  }, [activeChatId, activeThreadId, removeChat, setMessages]);
+
+  const forkCurrentChat = useCallback(async () => {
+    if (!activeChatId || !activeThreadId || !projectId) return;
+    const source = useChatsStore.getState().byId(activeChatId);
+    const messages = structuredClone(
+      useChatsStore.getState().liveOrSaved(activeChatId) ?? [],
+    );
+    try {
+      const threadId = await agentThreadFork(activeThreadId, projectId);
+      const chats = useChatsStore.getState();
+      if (chats.projectId !== projectId) return;
+      const fork = chats.create(projectId, source?.headOid ?? currentHead);
+      chats.saveMessages(fork.id, messages);
+      useAgentTurnsStore.setState((state) => ({
+        threadByChat: { ...state.threadByChat, [fork.id]: threadId },
+      }));
+      setMessages(messages);
+      useAgentTodoStore.getState().selectChat(fork.id);
+      toast.success("Chat forked.");
+    } catch {
+      toast.error("Could not fork this chat.");
+    }
+  }, [activeChatId, activeThreadId, currentHead, projectId, setMessages]);
+
+  const canMutateCurrentChat = Boolean(
+    projectId && activeChatId && activeThreadId && !approvalModeLocked,
+  );
+  const commandActions = {
+    archiveChat: canMutateCurrentChat ? () => void archiveCurrentChat() : undefined,
+    attachFiles: projectId ? () => fileInputRef.current?.click() : undefined,
+    forkChat: canMutateCurrentChat ? () => void forkCurrentChat() : undefined,
+    openBrowser: () => setBrowserOpen(true),
+    openGoalEditor: projectId ? openGoalEditor : undefined,
+    openMcpSettings,
+    openModelPicker:
+      configuredProviders.length > 0 ? () => setModelPickerOpen(true) : undefined,
+    openSkillsSettings,
+    togglePlanMode: projectId && !approvalModeLocked ? changePlanMode : undefined,
+  };
+  const slashCommands = createSlashCommands(commandActions);
+  const attachCommands = createAttachCommands(commandActions);
 
   useEffect(() => {
     void messages;
@@ -1098,6 +1227,7 @@ USER_CUSTOM_INSTRUCTIONS`
     }
 
     const mainDocument = useFilesStore.getState().mainDoc || "main.tex";
+    const activeGoalLine = goalPromptLine(useChatGoalStore.getState().goal(projectId));
     const sourceVocabulary = documentEngine.capabilities.formatting_profile === "typst"
       ? "Typst markup and scripting"
       : documentEngine.capabilities.formatting_profile === "markdown"
@@ -1112,7 +1242,7 @@ The current project is "${projectName}" (ID: ${projectId}). Main document: ${mai
         ? `
 This is an IMAGE project, not a text document. The main document is a standalone TikZ/LaTeX figure that compiles to a single cropped image (not a paper). Your job is to build, edit, and fix that ONE figure: shapes, arrows, labels, colors, and layout. Do not add prose, sections, abstracts, bibliographies, or multi-page document structure. Keep the standalone document class and its tikzpicture. When you compile, success means the figure renders cleanly; the "PDF" here is the image.`
         : ""
-    }
+    }${activeGoalLine ? `\n${activeGoalLine}` : ""}
 
 Voice and style:
 - Talk like a warm, encouraging human collaborator, not a manual. Be concise but personable, and let a little personality show.
@@ -1146,7 +1276,9 @@ ${sandboxedCustom}`;
     // Figure mode gets the same untrusted-instruction sandbox as main chat so a
     // crafted custom prompt cannot override figure tools or safety rules.
     const effectiveSystemBase = figure
-      ? `${FIGURE_SYSTEM_PROMPT + sandboxedCustom}\n\n${workspaceCtx}`
+      ? `${FIGURE_SYSTEM_PROMPT + sandboxedCustom}\n\n${workspaceCtx}${
+          activeGoalLine ? `\n\n${activeGoalLine}` : ""
+        }`
       : systemPrompt;
     const effectiveSystem = `${effectiveSystemBase}\n\n${approvalPostureLine(runApprovalMode)}${
       runPlanMode ? `\n\n${PLAN_MODE_POSTURE_LINE}` : ""
@@ -1688,6 +1820,8 @@ ${sandboxedCustom}`;
     sendingFollowUpIdRef.current = null;
     setSendingFollowUpId(null);
     pendingImagesRef.current = [];
+    setGoalEditorProjectId(null);
+    setGoalDraft("");
     setInputState(savedDraft(projectId));
   }, [projectId]);
 
@@ -2194,13 +2328,71 @@ ${sandboxedCustom}`;
                 )}
 
                 <div className="px-3 pb-3 pt-1.5">
+            {goal && (
+              <div className="mb-2 flex min-w-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  aria-label={`Edit goal: ${goal}`}
+                  onClick={openGoalEditor}
+                  className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <Target className="size-3.5 shrink-0" />
+                  <span className="truncate">{goal}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Clear goal"
+                  title="Clear goal"
+                  onClick={() => clearGoal(projectId)}
+                  className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            )}
+            {goalEditorOpen && (
+              <form
+                aria-label="Set persistent goal"
+                className="mb-2 rounded-lg border bg-card p-2.5 shadow-sm"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  saveGoal();
+                }}
+              >
+                <label htmlFor="ai-chat-goal" className="mb-1.5 block text-xs font-medium">
+                  Goal
+                </label>
+                <Input
+                  ref={goalInputRef}
+                  id="ai-chat-goal"
+                  aria-label="Goal"
+                  value={goalDraft}
+                  onChange={(event) => setGoalDraft(event.target.value)}
+                  placeholder="What should the assistant keep working toward?"
+                  className="h-8 text-xs"
+                />
+                <div className="mt-2 flex justify-end gap-1.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setGoalEditorProjectId(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" size="sm" disabled={!goalDraft.trim()}>
+                    Save goal
+                  </Button>
+                </div>
+              </form>
+            )}
             <AttachmentChips
               items={attachments}
               onRemove={(id) => setAttachments((a) => a.filter((x) => x.id !== id))}
             />
             <div
               ref={inputShellRef}
-              className="rounded-[1.375rem] border bg-card px-3 pb-2 pt-2.5 shadow-sm transition-colors focus-within:border-ring"
+              className="relative rounded-[1.375rem] border bg-card px-3 pb-2 pt-2.5 shadow-sm transition-colors focus-within:border-ring"
             >
               <Input
                 ref={fileInputRef}
@@ -2210,12 +2402,50 @@ ${sandboxedCustom}`;
                 className="hidden"
                 onChange={(e) => { void addFiles(e.target.files); e.target.value = ""; }}
               />
+              {slashMenuOpen && (
+                <SlashCommandMenu
+                  ref={slashCommandMenuRef}
+                  commands={slashCommands}
+                  query={slashCommandQuery(input)}
+                  onActiveCommandChange={setActiveSlashCommandId}
+                  onClose={() => {
+                    setSlashMenuDismissedInput(input);
+                    setActiveSlashCommandId(null);
+                  }}
+                  onSelect={() => {
+                    setInput("");
+                    setSlashMenuDismissedInput(null);
+                    setActiveSlashCommandId(null);
+                  }}
+                />
+              )}
               <Textarea
                 ref={textareaRef}
                 data-tour="ai-input"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-controls={slashMenuOpen ? "ai-slash-command-menu" : undefined}
+                aria-expanded={slashMenuOpen}
+                aria-haspopup="listbox"
+                aria-activedescendant={
+                  slashMenuOpen && activeSlashCommandId
+                    ? `ai-slash-command-${activeSlashCommandId}`
+                    : undefined
+                }
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(input); } }}
+                onChange={(e) => {
+                  setSlashMenuDismissedInput(null);
+                  setActiveSlashCommandId(null);
+                  setInput(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.nativeEvent.isComposing) return;
+                  if (slashMenuOpen && slashCommandMenuRef.current?.handleKeyDown(e)) return;
+                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    void send(input);
+                  }
+                }}
                 placeholder={inputPlaceholder}
                 disabled={!engineLoaded}
                 rows={1}
@@ -2223,16 +2453,7 @@ ${sandboxedCustom}`;
               />
               <div className="mt-2 flex min-h-7 flex-wrap items-center justify-between gap-1">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-                  <button
-                    data-tour="ai-attachments"
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    aria-label="Attach a file or image"
-                    title="Attach a file or image"
-                    className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  >
-                    <Plus className="size-4.5" />
-                  </button>
+                  <ComposerAttachMenu commands={attachCommands} />
                   <ApprovalModeSelector
                     mode={approvalMode}
                     onChange={changeApprovalMode}
@@ -2428,6 +2649,8 @@ ${sandboxedCustom}`;
                     >
                       <ModelSelector
                         compact
+                        open={modelPickerOpen}
+                        onOpenChange={setModelPickerOpen}
                         className="h-7 min-w-0 shrink gap-1 px-2 text-xs font-medium text-foreground hover:text-foreground"
                         providerId={provider}
                         modelId={model}

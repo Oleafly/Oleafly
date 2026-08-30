@@ -13,4 +13,8 @@ describe("AI settings navigation", () => {
     expect(aiSettingsDestination("ai-personas")).toEqual({ tab: "personas" });
     expect(aiSettingsDestination("editor-fonts")).toBeNull();
   });
+
+  it("routes skill recording links to the Skills preview", () => {
+    expect(aiSettingsDestination("ai-skills")).toEqual({ tab: "skills" });
+  });
 });

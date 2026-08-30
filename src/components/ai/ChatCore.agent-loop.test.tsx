@@ -34,6 +34,8 @@ const mocks = vi.hoisted(() => ({
   runs: [] as PendingRun[],
   runAgentHarness: vi.fn(),
   agentSteer: vi.fn(),
+  agentThreadArchive: vi.fn(),
+  agentThreadFork: vi.fn(),
   claimPrewarmed: vi.fn(),
   approvalsList: vi.fn(),
   approvalsSet: vi.fn(),
@@ -64,6 +66,13 @@ const mocks = vi.hoisted(() => ({
       preventDefault: () => void;
     }) => void;
   },
+  goalInputProps: null as null | {
+    onChange: (event: { target: { value: string } }) => void;
+  },
+  modelSelectorProps: null as null | {
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+  },
 }));
 
 vi.mock("./agent-turn", async (importOriginal) => ({
@@ -73,6 +82,8 @@ vi.mock("./agent-turn", async (importOriginal) => ({
 
 vi.mock("@/lib/agent-backend", () => ({
   agentSteer: (...args: unknown[]) => mocks.agentSteer(...args),
+  agentThreadArchive: (...args: unknown[]) => mocks.agentThreadArchive(...args),
+  agentThreadFork: (...args: unknown[]) => mocks.agentThreadFork(...args),
   agentThreadClaimPrewarmed: (...args: unknown[]) => mocks.claimPrewarmed(...args),
 }));
 
@@ -171,9 +182,17 @@ vi.mock("@/components/ai/ChatHistoryModal", () => ({
   ChatHistoryModal: () => null,
 }));
 
-vi.mock("@/components/ai/ModelSelector", () => ({
-  ModelSelector: () => null,
-}));
+vi.mock("@/components/ai/ModelSelector", async () => {
+  const React = await import("react");
+  return {
+    ModelSelector: (props: typeof mocks.modelSelectorProps) => {
+      mocks.modelSelectorProps = props;
+      return props?.open
+        ? React.createElement("input", { "aria-label": "Search models", autoFocus: true })
+        : null;
+    },
+  };
+});
 
 vi.mock("@/components/ai/SubagentActivity", () => ({
   SubagentActivity: () => null,
@@ -210,6 +229,18 @@ vi.mock("@/components/ui/textarea", async () => {
   };
 });
 
+vi.mock("@/components/ui/input", async () => {
+  const React = await import("react");
+  return {
+    Input: React.forwardRef<HTMLInputElement, Record<string, unknown>>((props, ref) => {
+      if (props["aria-label"] === "Goal") {
+        mocks.goalInputProps = props as typeof mocks.goalInputProps;
+      }
+      return React.createElement("input", { ...props, ref });
+    }),
+  };
+});
+
 let ChatCore: typeof import("./ChatCore").ChatCore;
 let LATEX_ENGINE: typeof import("@/lib/document-engine").LATEX_ENGINE;
 let useFilesStore: typeof import("@/store/files").useFilesStore;
@@ -222,6 +253,7 @@ let useAgentFileChangesStore: typeof import("@/store/agent-file-changes").useAge
 let agentFileChangeTurnForChat: typeof import("@/store/agent-file-changes").agentFileChangeTurnForChat;
 let useAssistantOutputsStore: typeof import("@/store/assistant-outputs").useAssistantOutputsStore;
 let usePlanModeStore: typeof import("@/store/plan-mode").usePlanModeStore;
+let useChatGoalStore: typeof import("@/store/chat-goal").useChatGoalStore;
 let autoCommitNow: typeof import("@/lib/auto-commit").autoCommitNow;
 let activeChatRun: typeof import("./chat-run-registry").activeChatRun;
 let endChatRun: typeof import("./chat-run-registry").endChatRun;
@@ -272,6 +304,10 @@ beforeAll(async () => {
     configurable: true,
     value: vi.fn(),
   });
+  Object.defineProperties(dom.window.HTMLElement.prototype, {
+    attachEvent: { configurable: true, value: () => {} },
+    detachEvent: { configurable: true, value: () => {} },
+  });
 
   vi.resetModules();
   ({ createElement } = await import("react"));
@@ -287,6 +323,7 @@ beforeAll(async () => {
   ({ useAgentFileChangesStore, agentFileChangeTurnForChat } = await import("@/store/agent-file-changes"));
   ({ useAssistantOutputsStore } = await import("@/store/assistant-outputs"));
   ({ usePlanModeStore } = await import("@/store/plan-mode"));
+  ({ useChatGoalStore } = await import("@/store/chat-goal"));
   ({ autoCommitNow } = await import("@/lib/auto-commit"));
   ({ activeChatRun, endChatRun } = await import("./chat-run-registry"));
 });
@@ -299,7 +336,11 @@ beforeEach(() => {
   mocks.runs.length = 0;
   mocks.runSummaryProps.length = 0;
   mocks.textareaProps = null;
+  mocks.goalInputProps = null;
+  mocks.modelSelectorProps = null;
   mocks.agentSteer.mockReset().mockResolvedValue(undefined);
+  mocks.agentThreadArchive.mockReset().mockResolvedValue(true);
+  mocks.agentThreadFork.mockReset().mockResolvedValue("thread-forked");
   mocks.claimPrewarmed.mockReset().mockResolvedValue(null);
   mocks.approvalsList.mockReset().mockResolvedValue({});
   mocks.approvalsSet.mockReset().mockResolvedValue(undefined);
@@ -358,7 +399,14 @@ beforeEach(() => {
     activeId: chat.id,
     live: {},
   });
-  useSettingsStore.setState({ chatFloating: false, figureModeOpen: false });
+  useSettingsStore.setState({
+    browserOpen: false,
+    chatFloating: false,
+    figureModeOpen: false,
+    settingsInitialSection: "general",
+    settingsOpen: false,
+    settingsScrollTarget: null,
+  });
   useApprovalModeStore.setState({ modes: {}, loaded: {}, persisted: {} });
   useAgentTurnsStore.getState().reset();
   useAgentTodoStore.getState().clear();
@@ -369,6 +417,7 @@ beforeEach(() => {
   });
   useAssistantOutputsStore.setState({ fileOpen: null, pdfEpoch: 0 });
   usePlanModeStore.setState({ enabledByProject: {}, loaded: {} });
+  useChatGoalStore.setState({ goalsByProject: {}, loaded: {} });
 });
 
 function finishRun(index: number, text: string) {
@@ -404,6 +453,28 @@ function submit(rendered: RenderResult, text: string) {
       preventDefault: () => {},
     }),
   );
+}
+
+function changeComposer(text: string) {
+  act(() => mocks.textareaProps?.onChange({ target: { value: text } }));
+}
+
+function pressComposerKey(key: string) {
+  act(() =>
+    mocks.textareaProps?.onKeyDown({
+      key,
+      shiftKey: false,
+      nativeEvent: { isComposing: false },
+      preventDefault: () => {},
+    }),
+  );
+}
+
+function openAttachMenu(rendered: RenderResult) {
+  fireEvent.pointerDown(rendered.getByRole("button", { name: "Add context" }), {
+    button: 0,
+    ctrlKey: false,
+  });
 }
 
 async function beginApprovalCall(
@@ -994,6 +1065,321 @@ describe("ChatCore agent turns", () => {
       "Plan mode: Produce and maintain a step plan with update_todos. Work through the plan step by step before finishing.",
     );
     await act(async () => finishRun(1, "Planned"));
+  });
+
+  it("adds the active project goal to the assembled system prompt", async () => {
+    const projectId = useFilesStore.getState().projectId;
+    useChatGoalStore.getState().setGoal(projectId, "Finish the Stage 3 UX");
+    const rendered = await renderChat();
+
+    submit(rendered, "Keep going");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.runs[0].options.system).toContain(
+      "Persistent goal: Finish the Stage 3 UX",
+    );
+    await act(async () => finishRun(0, "Done"));
+  });
+
+  it("keeps the active project goal in the figure mode system prompt", async () => {
+    const projectId = useFilesStore.getState().projectId;
+    useChatGoalStore.getState().setGoal(projectId, "Finish the diagram");
+    const rendered = await renderChat();
+    fireEvent.click(rendered.getByRole("button", { name: "Toggle figure mode" }));
+
+    changeComposer("Draw the next block");
+    pressComposerKey("Enter");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.runs[0].options.system).toContain("Persistent goal: Finish the diagram");
+    await act(async () => finishRun(0, "Done"));
+  });
+
+  it("edits and clears the active project goal from the composer", async () => {
+    const projectId = useFilesStore.getState().projectId;
+    useChatGoalStore.getState().setGoal(projectId, "Finish the Stage 3 UX");
+    const rendered = await renderChat();
+
+    fireEvent.click(
+      rendered.getByRole("button", { name: "Edit goal: Finish the Stage 3 UX" }),
+    );
+    rendered.getByRole("textbox", { name: "Goal" });
+    act(() =>
+      mocks.goalInputProps?.onChange({ target: { value: "Ship the command menus" } }),
+    );
+    fireEvent.click(rendered.getByRole("button", { name: "Save goal" }));
+
+    expect(useChatGoalStore.getState().goal(projectId)).toBe("Ship the command menus");
+    expect(
+      rendered.getByRole("button", { name: "Edit goal: Ship the command menus" }),
+    ).toBeTruthy();
+
+    fireEvent.click(rendered.getByRole("button", { name: "Clear goal" }));
+    expect(useChatGoalStore.getState().goal(projectId)).toBe("");
+    expect(rendered.queryByRole("button", { name: /Edit goal:/ })).toBeNull();
+  });
+
+  it("opens, filters, and dismisses slash commands only from the leading slash token", async () => {
+    const rendered = await renderChat();
+
+    changeComposer("Please /model this");
+    expect(rendered.queryByRole("listbox", { name: "Slash commands" })).toBeNull();
+
+    changeComposer("/");
+    expect(rendered.getByRole("listbox", { name: "Slash commands" })).toBeTruthy();
+    expect(rendered.getByRole("option", { name: /Goal/ })).toBeTruthy();
+
+    changeComposer("/mod");
+    expect(rendered.getByRole("option", { name: /Model/ })).toBeTruthy();
+    expect(rendered.queryByRole("option", { name: /Goal/ })).toBeNull();
+
+    pressComposerKey("Escape");
+    expect(rendered.queryByRole("listbox", { name: "Slash commands" })).toBeNull();
+    expect(rendered.getByPlaceholderText("Ask AI to help with your document…")).toHaveValue(
+      "/mod",
+    );
+
+    changeComposer("/mode");
+    expect(rendered.getByRole("listbox", { name: "Slash commands" })).toBeTruthy();
+  });
+
+  it("uses arrow keys and Enter to open the real model picker and clear the slash token", async () => {
+    const rendered = await renderChat();
+    changeComposer("/");
+
+    pressComposerKey("ArrowDown");
+    pressComposerKey("ArrowDown");
+    expect(rendered.getByRole("option", { name: /Model/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    pressComposerKey("Enter");
+
+    expect(mocks.modelSelectorProps?.open).toBe(true);
+    expect(rendered.getByPlaceholderText("Ask AI to help with your document…")).toHaveValue("");
+    expect(rendered.queryByRole("listbox", { name: "Slash commands" })).toBeNull();
+    await waitFor(() =>
+      expect(rendered.getByRole("textbox", { name: "Search models" })).toHaveFocus(),
+    );
+  });
+
+  it("opens the real goal editor from the slash command", async () => {
+    const rendered = await renderChat();
+    changeComposer("/goal");
+    pressComposerKey("Enter");
+
+    await waitFor(() => expect(rendered.getByRole("textbox", { name: "Goal" })).toHaveFocus());
+  });
+
+  it.each([
+    ["IME composition", false, true],
+    ["Shift+Enter", true, false],
+  ] as const)("does not run a slash command during %s", async (_label, shiftKey, isComposing) => {
+    const rendered = await renderChat();
+    changeComposer("/goal");
+    const preventDefault = vi.fn();
+
+    act(() =>
+      mocks.textareaProps?.onKeyDown({
+        key: "Enter",
+        shiftKey,
+        nativeEvent: { isComposing },
+        preventDefault,
+      }),
+    );
+
+    expect(rendered.queryByRole("textbox", { name: "Goal" })).toBeNull();
+    expect(rendered.getByRole("listbox", { name: "Slash commands" })).toBeTruthy();
+    expect(preventDefault).not.toHaveBeenCalled();
+  });
+
+  it("opens the real MCP status settings from the slash command", async () => {
+    await renderChat();
+    changeComposer("/mcp");
+    pressComposerKey("Enter");
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      settingsInitialSection: "mcp",
+      settingsOpen: true,
+    });
+  });
+
+  it("toggles the real project plan mode from the slash command", async () => {
+    await renderChat();
+    const projectId = useFilesStore.getState().projectId;
+    changeComposer("/plan");
+    pressComposerKey("Enter");
+
+    expect(usePlanModeStore.getState().isEnabled(projectId)).toBe(true);
+  });
+
+  it("archives a current chat with a mapped native thread", async () => {
+    const rendered = await renderChat();
+    const chatId = useChatsStore.getState().activeId;
+    if (!chatId) throw new Error("active chat missing");
+    act(() => {
+      useAgentTurnsStore.setState({ threadByChat: { [chatId]: "thread-source" } });
+    });
+
+    changeComposer("/archive");
+    pressComposerKey("Enter");
+
+    await waitFor(() => expect(mocks.agentThreadArchive).toHaveBeenCalledWith("thread-source"));
+    expect(useChatsStore.getState().byId(chatId)).toBeUndefined();
+    expect(useChatsStore.getState().activeId).toBeNull();
+    expect(rendered.getByPlaceholderText("Ask AI to help with your document…")).toHaveValue("");
+  });
+
+  it("forks the current chat and binds its native thread", async () => {
+    const chatId = useChatsStore.getState().activeId;
+    const projectId = useFilesStore.getState().projectId;
+    if (!chatId || !projectId) throw new Error("active chat missing");
+    useChatsStore.getState().saveMessages(chatId, [
+      { id: "user-1", role: "user", content: "Review this proof" },
+      { id: "assistant-1", role: "assistant", content: "I found one gap" },
+    ]);
+    const rendered = await renderChat();
+    act(() => {
+      useAgentTurnsStore.setState({ threadByChat: { [chatId]: "thread-source" } });
+    });
+
+    changeComposer("/fork");
+    pressComposerKey("Enter");
+
+    await waitFor(() =>
+      expect(mocks.agentThreadFork).toHaveBeenCalledWith("thread-source", projectId),
+    );
+    const state = useChatsStore.getState();
+    expect(state.activeId).not.toBe(chatId);
+    expect(state.byId(state.activeId ?? "")?.messages).toEqual([
+      { id: "user-1", role: "user", content: "Review this proof" },
+      { id: "assistant-1", role: "assistant", content: "I found one gap" },
+    ]);
+    expect(useAgentTurnsStore.getState().threadByChat[state.activeId ?? ""]).toBe(
+      "thread-forked",
+    );
+    expect(rendered.getByPlaceholderText("Ask AI to help with your document…")).toHaveValue("");
+  });
+
+  it("opens the Skills coming soon surface from the slash command", async () => {
+    await renderChat();
+    changeComposer("/record");
+    pressComposerKey("Enter");
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      settingsInitialSection: "ai",
+      settingsOpen: true,
+      settingsScrollTarget: "ai-skills",
+    });
+  });
+
+  it("opens the existing file attachment input from the plus menu", async () => {
+    const rendered = await renderChat();
+    const input = rendered.container.querySelector('input[type="file"]');
+    if (!(input instanceof HTMLInputElement)) throw new Error("attachment input missing");
+    const click = vi.spyOn(input, "click");
+
+    openAttachMenu(rendered);
+    fireEvent.click(rendered.getByRole("menuitem", { name: /Files/ }));
+
+    expect(click).toHaveBeenCalledOnce();
+  });
+
+  it("opens the browser dock from the plus menu", async () => {
+    const rendered = await renderChat();
+    openAttachMenu(rendered);
+    fireEvent.click(rendered.getByRole("menuitem", { name: /Attach browser/ }));
+
+    expect(useSettingsStore.getState().browserOpen).toBe(true);
+  });
+
+  it("opens the goal editor from the plus menu", async () => {
+    const rendered = await renderChat();
+    openAttachMenu(rendered);
+    fireEvent.click(rendered.getByRole("menuitem", { name: /Goal/ }));
+
+    await waitFor(() => expect(rendered.getByRole("textbox", { name: "Goal" })).toHaveFocus());
+  });
+
+  it("closes an unsaved goal draft when the project changes", async () => {
+    const initialProjectId = useFilesStore.getState().projectId;
+    const rendered = await renderChat();
+    openAttachMenu(rendered);
+    fireEvent.click(rendered.getByRole("menuitem", { name: /Goal/ }));
+    expect(rendered.getByRole("textbox", { name: "Goal" })).toBeTruthy();
+
+    act(() => {
+      useFilesStore.setState({ projectId: "project-next", projectName: "Next project" });
+    });
+
+    expect(rendered.queryByRole("textbox", { name: "Goal" })).toBeNull();
+
+    act(() => {
+      useFilesStore.setState({ projectId: initialProjectId, projectName: "Test project" });
+    });
+
+    expect(rendered.queryByRole("textbox", { name: "Goal" })).toBeNull();
+  });
+
+  it("toggles the real project plan mode from the plus menu", async () => {
+    const rendered = await renderChat();
+    const projectId = useFilesStore.getState().projectId;
+    openAttachMenu(rendered);
+    fireEvent.click(rendered.getByRole("menuitem", { name: /Plan mode/ }));
+
+    expect(usePlanModeStore.getState().isEnabled(projectId)).toBe(true);
+  });
+
+  it("opens the Skills coming soon surface from the plus menu", async () => {
+    const rendered = await renderChat();
+    openAttachMenu(rendered);
+    fireEvent.click(rendered.getByRole("menuitem", { name: /Record a skill/ }));
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      settingsInitialSection: "ai",
+      settingsOpen: true,
+      settingsScrollTarget: "ai-skills",
+    });
+  });
+
+  it("hides Plan mode and chat mutations while a run is active", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "Keep working");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    changeComposer("/");
+    expect(rendered.queryByRole("option", { name: /Plan mode/ })).toBeNull();
+    expect(rendered.queryByRole("option", { name: /Archive/ })).toBeNull();
+    expect(rendered.queryByRole("option", { name: /Fork chat/ })).toBeNull();
+
+    changeComposer("");
+    openAttachMenu(rendered);
+    expect(rendered.queryByRole("menuitem", { name: /Plan mode/ })).toBeNull();
+
+    await act(async () => finishRun(0, "Done"));
+  });
+
+  it("omits project-dependent actions when no project is open", async () => {
+    act(() => {
+      useFilesStore.setState({ projectId: null, projectName: "" });
+      useChatsStore.setState({ projectId: null, chats: [], activeId: null, live: {} });
+    });
+    const rendered = await renderChat();
+
+    changeComposer("/");
+    expect(rendered.queryByRole("option", { name: /^Goal/ })).toBeNull();
+    expect(rendered.queryByRole("option", { name: /Plan mode/ })).toBeNull();
+    expect(rendered.queryByRole("option", { name: /Archive/ })).toBeNull();
+    expect(rendered.queryByRole("option", { name: /Fork chat/ })).toBeNull();
+    expect(rendered.getByRole("option", { name: /Record a skill/ })).toBeTruthy();
+
+    changeComposer("");
+    openAttachMenu(rendered);
+    expect(rendered.queryByRole("menuitem", { name: /Files/ })).toBeNull();
+    expect(rendered.queryByRole("menuitem", { name: /^Goal/ })).toBeNull();
+    expect(rendered.queryByRole("menuitem", { name: /Plan mode/ })).toBeNull();
+    expect(rendered.getByRole("menuitem", { name: /Attach browser/ })).toBeTruthy();
+    expect(rendered.getByRole("menuitem", { name: /Record a skill/ })).toBeTruthy();
   });
 
   it("tracks a successful write from the existing tool-result mirror path", async () => {

@@ -13,6 +13,8 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, Channel: mocks.Ch
 import {
   AgentStreamError,
   agentSteer,
+  agentThreadArchive,
+  agentThreadFork,
   completeText,
   completeViaBackend,
   streamText,
@@ -142,6 +144,26 @@ describe("steering", () => {
     resolveDelivery();
     await pending;
     expect(delivered).toBe(true);
+  });
+});
+
+describe("thread actions", () => {
+  it("archives and forks the requested native thread", async () => {
+    mocks.invoke.mockResolvedValueOnce(true).mockResolvedValueOnce("thread-forked");
+
+    await expect(agentThreadArchive("thread-source")).resolves.toBe(true);
+    await expect(agentThreadFork("thread-source", "project-1")).resolves.toBe(
+      "thread-forked",
+    );
+
+    expect(mocks.invoke).toHaveBeenNthCalledWith(1, "agent_thread_archive", {
+      threadId: "thread-source",
+    });
+    expect(mocks.invoke).toHaveBeenNthCalledWith(2, "agent_thread_fork", {
+      threadId: "thread-source",
+      excludeTurns: null,
+      projectId: "project-1",
+    });
   });
 });
 
