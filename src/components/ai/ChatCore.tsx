@@ -2555,7 +2555,7 @@ ${sandboxedCustom}`;
               >
                 <div
                   data-testid="ai-composer-controls-left"
-                  className="ai-composer-controls-left no-scrollbar flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden [&_button:focus-visible]:outline-offset-[-2px] [&_button:focus-visible]:ring-inset [&_button:focus-visible]:ring-offset-0"
+                  className="ai-composer-controls-left no-scrollbar flex min-w-0 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden [&_button:focus-visible]:outline-offset-[-2px] [&_button:focus-visible]:ring-inset [&_button:focus-visible]:ring-offset-0"
                 >
                   <ComposerAttachMenu commands={attachCommands} />
                   <ApprovalModeSelector

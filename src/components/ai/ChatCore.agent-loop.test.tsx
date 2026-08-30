@@ -604,6 +604,8 @@ describe("ChatCore agent turns", () => {
     );
     expect(controls).not.toHaveClass("flex-wrap");
     expect(left).toHaveClass("min-w-0", "flex-nowrap", "overflow-x-auto");
+    expect(left).not.toHaveClass("flex-1");
+    expect(left).not.toHaveClass("grow");
     expect(left).toHaveClass(
       "[&_button:focus-visible]:outline-offset-[-2px]",
       "[&_button:focus-visible]:ring-inset",

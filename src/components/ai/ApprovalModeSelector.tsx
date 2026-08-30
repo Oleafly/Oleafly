@@ -60,13 +60,13 @@ export function ApprovalModeSelector({
   const ActiveIcon = active.icon;
 
   return (
-    <Tooltip label={active.label} className="ai-composer-approval ml-0.5 shrink-0">
+    <Tooltip label={active.label} className="ai-composer-approval ml-1.5 shrink-0">
       <Popover
         align="left"
         ariaLabel={`Approval mode. ${active.label}`}
         disabled={disabled}
         triggerClassName={cn(
-          "ai-composer-approval-trigger h-7 min-w-0 max-w-48 shrink-0 gap-1.5 rounded-full border px-2 text-xs font-medium",
+          "ai-composer-approval-trigger h-7 min-w-0 max-w-48 shrink-0 gap-1.5 rounded-full border pl-2.5 pr-2 text-xs font-medium",
           mode === "ask-for-approval" &&
             "border-amber-500/30 bg-amber-500/10 text-amber-700 hover:bg-amber-500/15 dark:text-amber-300",
           mode === "approve-for-me" && "border-border/70 bg-muted/40",

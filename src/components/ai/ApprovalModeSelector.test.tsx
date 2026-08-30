@@ -41,7 +41,6 @@ describe("ApprovalModeSelector", () => {
       name: "Approval mode. Custom (approvals.toml)",
     });
     expect(trigger).toHaveClass("ai-composer-approval-trigger");
-    expect(trigger.closest(".ai-composer-approval")).toHaveClass("ml-0.5");
     const label = screen.getByText("Custom (approvals.toml)");
     expect(label).toHaveClass("ai-composer-approval-value");
     expect(label).not.toHaveClass("hidden");
@@ -50,6 +49,22 @@ describe("ApprovalModeSelector", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "Custom (approvals.toml)",
     );
+  });
+
+  it("gives the selector and shield comfortable left spacing", () => {
+    render(
+      <ApprovalModeSelector
+        mode="approve-for-me"
+        onChange={vi.fn()}
+        onOpenProjectRules={vi.fn()}
+      />,
+    );
+
+    const trigger = screen.getByRole("button", {
+      name: "Approval mode. Approve for me",
+    });
+    expect(trigger.closest(".ai-composer-approval")).toHaveClass("ml-1.5");
+    expect(trigger).toHaveClass("pl-2.5", "pr-2");
   });
 
   it("shows the active mode and exposes exactly four choices", () => {

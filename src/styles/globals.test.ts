@@ -63,7 +63,9 @@ describe("assistant composer container queries", () => {
     expect(promptsRules).toMatch(/\.ai-composer-prompts-icon\s*\{\s*display: block;/u);
     expect(promptsRules).toMatch(/\.ai-composer-prompts-trigger\s*\{[^}]*width: 2\.5rem;/su);
     expect(approvalRules).toMatch(/\.ai-composer-approval-value\s*\{\s*display: none;/u);
-    expect(approvalRules).toMatch(/\.ai-composer-approval-trigger\s*\{[^}]*width: 2\.5rem;/su);
+    expect(approvalRules).toMatch(
+      /\.ai-composer-approval-trigger\s*\{[^}]*width: 3rem;[^}]*gap: 0\.125rem;[^}]*padding-left: 0\.5rem;[^}]*padding-right: 0\.25rem;/su,
+    );
     expect(styles.match(/\.ai-composer-persona-value\s*\{[^}]*display:\s*none;/gsu)).toHaveLength(1);
     expect(styles.match(/\.ai-composer-prompts-value\s*\{[^}]*display:\s*none;/gsu)).toHaveLength(1);
     expect(styles.match(/\.ai-composer-approval-value\s*\{[^}]*display:\s*none;/gsu)).toHaveLength(1);
@@ -72,7 +74,7 @@ describe("assistant composer container queries", () => {
     );
   });
 
-  it("fits every persistent control at the supported narrow overlay width", () => {
+  it("compacts persistent controls before the narrow horizontal-scroll fallback", () => {
     const compactBreakpoint = styles.indexOf(
       "@container ai-composer (max-width: 24rem)",
     );
@@ -89,17 +91,19 @@ describe("assistant composer container queries", () => {
       /\.ai-composer-attach,\s*\.ai-composer-plan,\s*\.ai-composer-figure,\s*\.ai-composer-mic\s*\{[^}]*width: 1\.5rem;/su,
     );
     expect(compactRules).toMatch(/\.ai-composer-attach[^}]*width: 1\.5rem;/su);
-    expect(compactRules).toMatch(/\.ai-composer-approval-trigger[^}]*width: 2\.25rem;/su);
+    expect(compactRules).toMatch(
+      /\.ai-composer-approval-trigger[^}]*width: 2\.75rem;[^}]*padding-left: 0\.375rem;[^}]*padding-right: 0\.125rem;/su,
+    );
     expect(compactRules).toMatch(/\.ai-composer-prompts-trigger[^}]*width: 1\.5rem;/su);
     expect(compactRules).toMatch(/\.ai-composer-prompts-chevron\s*\{\s*display: none;/u);
     expect(compactRules).toMatch(/\.ai-composer-persona-trigger[^}]*width: 2rem;/su);
     expect(compactRules).toMatch(/\.ai-model-selector-trigger[^}]*width: 2\.25rem;/su);
     expect(compactRules).toMatch(/\.ai-composer-submit[^}]*width: 1\.75rem;/su);
 
-    const controls = (1.5 + 2.25 + 1.5 + 1.5 + 1.5 + 2 + 2.25 + 1.5 + 1.75) * 16;
+    const controls = (1.5 + 2.75 + 1.5 + 1.5 + 1.5 + 2 + 2.25 + 1.5 + 1.75) * 16;
     const gaps = 8 * 2;
-    const approvalInset = 0.125 * 16;
-    expect(controls + gaps + approvalInset).toBe(270);
-    expect(controls + gaps + approvalInset).toBeLessThanOrEqual(270);
+    const approvalInset = 0.375 * 16;
+    expect(controls + gaps + approvalInset).toBe(282);
+    expect(controls + gaps + approvalInset - 270).toBe(12);
   });
 });
