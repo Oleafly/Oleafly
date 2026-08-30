@@ -2557,24 +2557,24 @@ ${sandboxedCustom}`;
                     onOpenProjectRules={openProjectApprovalSettings}
                     disabled={approvalModeLocked}
                   />
-                  <button
-                    type="button"
-                    aria-label="Plan mode"
-                    aria-pressed={planMode}
-                    data-state={planMode ? "on" : "off"}
-                    title={planMode ? "Plan mode on" : "Plan mode off"}
-                    onClick={changePlanMode}
-                    disabled={approvalModeLocked}
-                    className={cn(
-                      "inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                      planMode
-                        ? "border-amber-500/40 bg-amber-500/15 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
-                        : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground",
-                    )}
-                  >
-                    <Lightbulb className={cn("size-3.5", planMode && "fill-current")} />
-                    <span>Plan mode</span>
-                  </button>
+                  <Tooltip label={planMode ? "Plan mode on" : "Plan mode off"}>
+                    <button
+                      type="button"
+                      aria-label="Plan mode"
+                      aria-pressed={planMode}
+                      data-state={planMode ? "on" : "off"}
+                      onClick={changePlanMode}
+                      disabled={approvalModeLocked}
+                      className={cn(
+                        "flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50",
+                        planMode
+                          ? "bg-amber-500/15 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      <Lightbulb className={cn("size-4", planMode && "fill-current")} />
+                    </button>
+                  </Tooltip>
                   {figureModeAvailable && (
                     <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
                       <button type="button"
