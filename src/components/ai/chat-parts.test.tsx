@@ -174,14 +174,16 @@ describe("AI chat overflow surfaces", () => {
     );
   });
 
-  it("wraps expanded reasoning without horizontal scrolling and renders its markdown", () => {
+  it("wraps expanded reasoning without horizontal scrolling and renders its markdown", async () => {
     const { container } = render(<ReasoningBlock text="**Exploring Project Contents**" />);
 
     fireEvent.click(getByRole(container, "button"));
 
     const body = container.querySelector("div.max-h-56");
     expect(body).toHaveClass("overflow-x-hidden", "overflow-y-auto", "break-words");
-    expect(body?.querySelector("strong")).toHaveTextContent("Exploring Project Contents");
+    await waitFor(() =>
+      expect(body?.querySelector("strong")).toHaveTextContent("Exploring Project Contents")
+    );
   });
 
   it("keeps active reasoning as plain text until streaming completes", () => {
@@ -284,14 +286,54 @@ describe("MessageItem streaming render", () => {
     expect(body).toHaveTextContent("**bold**");
   });
 
-  it("parses the completed assistant message as markdown once streaming ends", () => {
+  it("parses the completed assistant message as markdown once streaming ends", async () => {
     const { container } = render(
       <MessageItem msg={{ role: "assistant", content: streamedContent }} />,
     );
 
     expect(container.querySelector('[data-streaming-text="true"]')).toBeNull();
-    expect(container.querySelector("strong")).toHaveTextContent("bold");
+    await waitFor(() => expect(container.querySelector("strong")).toHaveTextContent("bold"));
     expect(container.querySelector("h1")).toHaveTextContent("Findings");
+  });
+
+  it("parses a completed user message as markdown", async () => {
+    const { container } = render(
+      <MessageItem msg={{ role: "user", content: "A **careful** question" }} />,
+    );
+
+    await waitFor(() =>
+      expect(container.querySelector("strong")).toHaveTextContent("careful")
+    );
+  });
+
+  it("keeps user message links and inline code readable on the primary bubble", async () => {
+    const { container } = render(
+      <MessageItem
+        msg={{ role: "user", content: "Open [the guide](https://example.com) and run `pnpm test`." }}
+      />,
+    );
+
+    await waitFor(() => expect(container.querySelector("a")).toHaveTextContent("the guide"));
+    expect(container.querySelector("a")).toHaveClass("text-white");
+    expect(container.querySelector("code")).toHaveClass(
+      "border-white/20",
+      "bg-white/10",
+      "text-white",
+    );
+  });
+
+  it("keeps math and Mermaid source plain while the assistant message streams", () => {
+    const content = "$x^2$\n\n```mermaid\nflowchart TD\n  A --> B\n```";
+    const { container } = render(
+      <MessageItem msg={{ role: "assistant", content }} live />,
+    );
+
+    expect(container.querySelector(".katex")).toBeNull();
+    expect(container.querySelector('[data-mermaid-diagram="true"]')).toBeNull();
+    expect(container.querySelector('[data-streaming-text="true"]')).toHaveTextContent("$x^2$");
+    expect(container.querySelector('[data-streaming-text="true"]')).toHaveTextContent(
+      "```mermaid flowchart TD A --> B ```",
+    );
   });
 });
 

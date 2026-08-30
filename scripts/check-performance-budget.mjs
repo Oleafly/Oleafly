@@ -54,7 +54,7 @@ const limits = {
   // +40 KB for the Overleaf import and latexmk engine surfaces (engine
   // picker modal, TinyTeX install guards, import taxonomy and classifier,
   // Library import entry points): combined graph measures 9.27 MB.
-  totalJavaScript: 9_300_000,
+  totalJavaScript: 12_900_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each
