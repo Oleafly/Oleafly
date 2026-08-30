@@ -952,7 +952,7 @@ export function AppearanceSection() {
       className="space-y-4"
     >
       <TabsList
-        className="flex h-auto w-full justify-start gap-1 overflow-x-auto no-scrollbar"
+        className="flex h-auto w-fit max-w-full justify-start gap-1 overflow-x-auto no-scrollbar"
         data-testid="appearance-tab-strip"
         onWheel={scrollTabs}
       >

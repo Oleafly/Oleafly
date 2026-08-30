@@ -352,12 +352,13 @@ function AppContent() {
     const wasOpen = previousShowTreeRef.current;
     previousShowTreeRef.current = showTree;
     const isAiTab = railTab === "ai" || railTab === "chat";
+    if (showTree && !wasOpen && isAiTab && !hideEditorArea) {
+      aiResizePendingRef.current = true;
+    }
     if (showTree && !wasOpen && !isAiTab) {
-      // The assistant has its own layout effect below, which balances the
-      // sidebar against the editor and preview panels.
       window.requestAnimationFrame(() => sidebarPanelRef.current?.resize(sidebarDefaultSize));
     }
-  }, [showTree, railTab, sidebarDefaultSize]);
+  }, [showTree, railTab, sidebarDefaultSize, hideEditorArea]);
 
   useEffect(() => {
     // React owns the screen from here: retire the inline HTML splash and
@@ -402,7 +403,7 @@ function AppContent() {
       if (!suppressAutoLayout) setViewMode("pdf");
     }
 
-    if (isAi && aiResizePendingRef.current) {
+    if (isAi && showTree && aiResizePendingRef.current) {
       const frame = window.requestAnimationFrame(() => {
         const panel = sidebarPanelRef.current;
         if (panel) {
@@ -442,7 +443,15 @@ function AppContent() {
         }
       });
     }
-  }, [railTab, setViewMode, viewMode, hideEditorArea, sidebarDefaultSize, browserOpen]);
+  }, [
+    railTab,
+    setViewMode,
+    viewMode,
+    hideEditorArea,
+    sidebarDefaultSize,
+    browserOpen,
+    showTree,
+  ]);
 
   // Panels are sized in percentages, so a window resize would scale the sidebar
   // with it and leave it far from the width it was opened at. Hold its pixel

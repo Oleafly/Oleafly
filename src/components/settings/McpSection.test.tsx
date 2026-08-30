@@ -44,7 +44,13 @@ describe("McpSection", () => {
     const oleaflyTab = screen.getByRole("tab", { name: "Oleafly MCP" });
     const tabStrip = screen.getByTestId("mcp-pane-tab-strip");
 
-    expect(tabStrip).toHaveClass("w-full", "overflow-x-auto", "no-scrollbar");
+    expect(tabStrip).toHaveClass(
+      "w-fit",
+      "max-w-full",
+      "overflow-x-auto",
+      "no-scrollbar",
+    );
+    expect(tabStrip).not.toHaveClass("w-full");
     expect(assistantTab).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByRole("heading", { name: "Assistant MCP servers" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Oleafly MCP server" })).not.toBeInTheDocument();
@@ -57,7 +63,7 @@ describe("McpSection", () => {
     expect(screen.getByRole("switch", { name: "Enable MCP server" })).toBeInTheDocument();
   });
 
-  it("keeps client tabs in one hidden-scrollbar row and reveals the selected tab", async () => {
+  it("fits client tabs in one scrollable row and reveals the selected tab", async () => {
     const user = userEvent.setup();
     render(<McpSection />);
 
@@ -67,10 +73,12 @@ describe("McpSection", () => {
     expect(tabStrip).toHaveClass(
       "flex",
       "flex-nowrap",
-      "w-full",
+      "w-fit",
+      "max-w-full",
       "overflow-x-auto",
       "no-scrollbar",
     );
+    expect(tabStrip).not.toHaveClass("w-full");
 
     const cursorTab = screen.getByRole("tab", { name: "Cursor" });
     const scrollIntoView = vi.fn();

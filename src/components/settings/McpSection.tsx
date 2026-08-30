@@ -425,7 +425,7 @@ export function McpSection() {
         className="space-y-4"
       >
         <TabsList
-          className="flex h-auto w-full justify-start gap-1 overflow-x-auto no-scrollbar"
+          className="flex h-auto w-fit max-w-full justify-start gap-1 overflow-x-auto no-scrollbar"
           data-testid="mcp-pane-tab-strip"
           onWheel={scrollTabs}
         >
@@ -706,7 +706,7 @@ export function McpSection() {
           className="space-y-3"
         >
           <TabsList
-            className="flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto no-scrollbar"
+            className="flex h-auto w-fit max-w-full flex-nowrap justify-start gap-1 overflow-x-auto no-scrollbar"
             data-testid="mcp-client-tab-strip"
             onWheel={scrollTabs}
           >

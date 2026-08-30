@@ -91,11 +91,17 @@ describe("Appearance settings tabs", () => {
     });
   });
 
-  it("keeps the tab strip scrollable and reveals keyboard-selected tabs", async () => {
+  it("fits the tab strip to its tabs while keeping it scrollable", async () => {
     render(<AppearanceSection />);
 
     const tabList = screen.getByRole("tablist");
-    expect(tabList).toHaveClass("w-full", "overflow-x-auto", "no-scrollbar");
+    expect(tabList).toHaveClass(
+      "w-fit",
+      "max-w-full",
+      "overflow-x-auto",
+      "no-scrollbar",
+    );
+    expect(tabList).not.toHaveClass("w-full");
     expect(tabList).not.toHaveClass("max-w-xs");
 
     const appTab = screen.getByRole("tab", { name: "App" });

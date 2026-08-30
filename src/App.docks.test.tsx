@@ -48,6 +48,10 @@ const assistantLayoutMocks = vi.hoisted(() => ({
   sidebarPanelGroupWidth: vi.fn(() => 825),
 }));
 
+const panelHandleMocks = vi.hoisted(() => ({
+  resize: vi.fn(),
+}));
+
 function selectorStore<T extends object>(state: T) {
   const store = (selector: (value: T) => unknown) => selector(state);
   store.getState = () => state;
@@ -61,6 +65,7 @@ vi.mock("react-resizable-panels", async () => {
       props: {
         children?: React.ReactNode;
         defaultSize?: number;
+        id: string;
         onCollapse?: () => void;
         onExpand?: () => void;
       },
@@ -70,11 +75,12 @@ vi.mock("react-resizable-panels", async () => {
         getSize: () => number;
         isCollapsed: () => boolean;
         isExpanded: () => boolean;
-        resize: () => void;
+        resize: (size: number) => void;
       }>,
     ) => {
       const initiallyExpanded = (props.defaultSize ?? 0) > 0;
       const expanded = React.useRef(initiallyExpanded);
+      const size = React.useRef(props.defaultSize ?? 30);
       React.useImperativeHandle(ref, () => ({
         collapse: () => {
           expanded.current = false;
@@ -84,10 +90,13 @@ vi.mock("react-resizable-panels", async () => {
           expanded.current = true;
           props.onExpand?.();
         },
-        getSize: () => (expanded.current ? (props.defaultSize ?? 30) : 0),
+        getSize: () => (expanded.current ? size.current : 0),
         isCollapsed: () => !expanded.current,
         isExpanded: () => expanded.current,
-        resize: () => {},
+        resize: (nextSize) => {
+          size.current = nextSize;
+          panelHandleMocks.resize(props.id, nextSize);
+        },
       }));
       React.useEffect(() => {
         if (!initiallyExpanded) return;
@@ -241,6 +250,7 @@ describe("project dock layout", () => {
     appState.computerUseListeners.clear();
     assistantLayoutMocks.sidebarMinimumPercent.mockClear();
     assistantLayoutMocks.sidebarPanelGroupWidth.mockClear();
+    panelHandleMocks.resize.mockClear();
     const { useSettingsStore } = await import("@/store/settings");
     useSettingsStore.setState({
       browserOpen: false,
@@ -250,6 +260,9 @@ describe("project dock layout", () => {
       chatFloating: false,
       railTab: "files",
       appFontSize: 16,
+      viewMode: "split",
+      defaultView: "editor-preview",
+      openInTree: false,
     });
   });
 
@@ -304,6 +317,41 @@ describe("project dock layout", () => {
 
     expect(assistantLayoutMocks.sidebarPanelGroupWidth).toHaveBeenCalledWith(0, 20);
     expect(assistantLayoutMocks.sidebarMinimumPercent).toHaveBeenCalledWith(825, true, 20);
+  });
+
+  it("restores the assistant half width when its open rail tab reopens the sidebar", async () => {
+    const React = await import("react");
+    const { act } = React;
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const { useSettingsStore } = await import("@/store/settings");
+    useSettingsStore.setState({
+      showTree: true,
+      railTab: "ai",
+      viewMode: "pdf",
+      defaultView: "preview-ai",
+      openInTree: true,
+    });
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<App />);
+    });
+    expect(useSettingsStore.getState()).toMatchObject({ showTree: true, railTab: "ai" });
+    panelHandleMocks.resize.mockClear();
+
+    await act(async () => {
+      useSettingsStore.getState().toggleTree();
+    });
+    expect(useSettingsStore.getState()).toMatchObject({ showTree: false, railTab: "ai" });
+    await act(async () => {
+      useSettingsStore.getState().toggleTree();
+    });
+
+    expect(useSettingsStore.getState()).toMatchObject({ showTree: true, railTab: "ai" });
+    expect(panelHandleMocks.resize).toHaveBeenLastCalledWith("sidebar", 50);
   });
 
   it("toggles project docks from their registered keyboard shortcuts", async () => {
