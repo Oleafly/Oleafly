@@ -1,10 +1,18 @@
-import { gitAutoCommitUpdate } from "@/lib/tauri";
+import { gitAutoCommitUpdate, gitHeadOid } from "@/lib/tauri";
 import { useSettingsStore } from "@/store/settings";
 
 const IDLE_COMMIT_MS = 30_000;
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 let pendingProjectId: string | null = null;
+const listeners = new Set<(event: { projectId: string; oid: string }) => void>();
+
+export function subscribeAutoCommit(
+  listener: (event: { projectId: string; oid: string }) => void,
+): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
 
 // Don't commit while the user is staging in the Source Control panel.
 const sourceControlOpen = () => useSettingsStore.getState().railTab === "source";
@@ -12,7 +20,11 @@ const sourceControlOpen = () => useSettingsStore.getState().railTab === "source"
 async function commit(projectId: string) {
   if (sourceControlOpen()) return;
   try {
-    await gitAutoCommitUpdate(projectId);
+    const committed = await gitAutoCommitUpdate(projectId);
+    if (!committed) return;
+    const oid = await gitHeadOid(projectId);
+    if (!oid) return;
+    for (const listener of listeners) listener({ projectId, oid });
   } catch {
     // A failed auto-commit must never interrupt editing.
   }

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
-import { fireEvent, getByRole, render } from "@testing-library/react";
+import { fireEvent, getByRole, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {
   AgentPlan,
+  AgentRunSummary,
   ExecCard,
   MessageItem,
   ReasoningBlock,
@@ -41,6 +42,8 @@ describe("AgentPlan", () => {
   const todos = [
     { id: "compile", content: "Compile the document", status: "completed" as const },
     { id: "verify", content: "Verify the PDF", status: "in_progress" as const },
+    { id: "publish", content: "Publish the result", status: "pending" as const },
+    { id: "discard", content: "Discard old draft", status: "cancelled" as const },
   ];
 
   it("starts collapsed and toggles its checklist like an accordion", () => {
@@ -59,6 +62,93 @@ describe("AgentPlan", () => {
 
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(queryByText("Compile the document")).not.toBeInTheDocument();
+  });
+
+  it("renders a distinct icon and text treatment for every status", () => {
+    const { container } = render(<AgentPlan todos={todos} />);
+    fireEvent.click(getByRole(container, "button", { name: "Plan" }));
+
+    const completed = container.querySelector('[data-todo-status="completed"]');
+    const active = container.querySelector('[data-todo-status="in_progress"]');
+    const pending = container.querySelector('[data-todo-status="pending"]');
+    const cancelled = container.querySelector('[data-todo-status="cancelled"]');
+
+    expect(completed?.querySelector('[data-todo-icon="completed"]')).not.toBeNull();
+    expect(completed?.querySelector("span:last-child")).not.toHaveClass("line-through");
+    expect(active?.querySelector('[data-todo-icon="in_progress"]')).toHaveClass("animate-spin");
+    expect(pending?.querySelector('[data-todo-icon="pending"]')).not.toBeNull();
+    expect(cancelled?.querySelector('[data-todo-icon="cancelled"]')).not.toBeNull();
+    expect(cancelled?.querySelector("span:last-child")).toHaveClass(
+      "line-through",
+      "text-muted-foreground/60",
+    );
+  });
+});
+
+describe("AgentRunSummary", () => {
+  const todos = [
+    { id: "inspect", content: "Inspect", status: "completed" as const },
+    { id: "edit", content: "Edit", status: "in_progress" as const },
+    { id: "verify", content: "Verify", status: "pending" as const },
+  ];
+  const turn = {
+    chatId: "chat-1",
+    turnId: "turn-1",
+    headOid: "abcdef123456",
+    changedFiles: {
+      "src/current.ts": {
+        path: "src/current.ts",
+        additions: 2,
+        deletions: 1,
+        beforeContent: "old",
+        afterContent: "new",
+      },
+    },
+    committedFiles: [
+      {
+        path: "src/committed.ts",
+        additions: 5,
+        deletions: 2,
+        beforeContent: "before",
+        afterContent: "after",
+        commitId: "abcdef123456",
+      },
+    ],
+    commits: [{ id: "abcdef123456", files: ["src/committed.ts"] }],
+  };
+
+  it("shows todo progress and aggregate file totals", () => {
+    render(<AgentRunSummary todos={todos} turn={turn} />);
+
+    expect(screen.getByTestId("agent-run-pill")).toHaveTextContent(
+      "Step 2 / 3 · 2 files changed +7 -3",
+    );
+  });
+
+  it("shows changed and committed files on hover", async () => {
+    render(<AgentRunSummary todos={todos} turn={turn} />);
+    const pill = screen.getByTestId("agent-run-pill");
+
+    fireEvent.mouseEnter(pill.parentElement ?? pill);
+
+    await waitFor(() => expect(screen.getByRole("tooltip")).toBeInTheDocument());
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toHaveTextContent("Changed");
+    expect(tooltip).toHaveTextContent("src/current.ts");
+    expect(tooltip).toHaveTextContent("Committed abcdef1");
+    expect(tooltip).toHaveTextContent("src/committed.ts");
+    expect(tooltip.querySelector('[data-file-change-state="changed"]')).toHaveTextContent(
+      "src/current.ts+2-1",
+    );
+    expect(tooltip.querySelector('[data-file-change-state="committed"]')).toHaveTextContent(
+      "src/committed.ts+5-2",
+    );
+  });
+
+  it("renders nothing without todos or file changes", () => {
+    const { container } = render(<AgentRunSummary todos={[]} turn={null} />);
+
+    expect(container).toBeEmptyDOMElement();
   });
 });
 

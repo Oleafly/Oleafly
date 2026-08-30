@@ -155,7 +155,9 @@ function harness(
     onReasoningStart: vi.fn(),
     onReasoningDelta: vi.fn(),
     onReasoningEnd: vi.fn(),
-    onToolCall: vi.fn((c: { name: string }) => calls.push(c.name)),
+    onToolCall: vi.fn((c: { name: string }): void | Promise<void> => {
+      calls.push(c.name);
+    }),
     onToolResult: vi.fn(),
     onUsage: vi.fn(),
     onStep: vi.fn(),
@@ -219,6 +221,27 @@ describe("harness", () => {
       name: "read_file",
       args: { path: "main.tex" },
     });
+  });
+
+  it("waits for async pre-tool work before executing the requested tool", async () => {
+    let release!: () => void;
+    const beforeTool = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const execute = vi.fn(async () => ({ ok: true }));
+    const h = harness(
+      [{ kind: "toolRequest", id: "c1", name: "write_file", arguments: '{"path":"main.tex"}' }],
+      { write_file: { execute } } as unknown as ToolSet,
+    );
+    h.handlers.onToolCall.mockImplementationOnce(() => beforeTool);
+
+    const pending = h.run();
+    await vi.waitFor(() => expect(h.handlers.onToolCall).toHaveBeenCalledOnce());
+    expect(execute).not.toHaveBeenCalled();
+
+    release();
+    await pending;
+    expect(execute).toHaveBeenCalledOnce();
   });
 
   it("turns a throwing tool into an error result instead of failing the run", async () => {

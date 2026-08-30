@@ -25,6 +25,7 @@ import {
   FilePlus2,
   History,
   Layers,
+  Lightbulb,
   IndentIncrease as ListIndentIncrease,
   MessageSquareQuote,
   Mic,
@@ -41,7 +42,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { approvalsList, approvalsSet, getConfig, gitLog, gitAutoCommit, usageRecord, type AppConfig, type CustomProvider, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
+import { approvalsList, approvalsSet, getConfig, gitLog, gitAutoCommit, gitHeadOid, gitShow, gitStatus, readFileContent, usageRecord, type AppConfig, type CustomProvider, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
@@ -77,6 +78,13 @@ import {
   approvalModeForProject,
   useApprovalModeStore,
 } from "@/store/approval-mode";
+import { planModeForProject, usePlanModeStore } from "@/store/plan-mode";
+import {
+  agentFileChangeTurnForChat,
+  agentFileChangeTurnKey,
+  useAgentFileChangesStore,
+} from "@/store/agent-file-changes";
+import { subscribeAutoCommit } from "@/lib/auto-commit";
 
 registerAiToolsets();
 import { useAgentTodoStore } from "@/store/agent-todos";
@@ -103,6 +111,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import {
   AgentPlan,
+  AgentRunSummary,
   Shimmer,
   InfoHint,
   MessageItem,
@@ -156,6 +165,9 @@ export const APPROVAL_POSTURE_LINES: Record<ApprovalMode, string> = {
 export function approvalPostureLine(mode: ApprovalMode): string {
   return APPROVAL_POSTURE_LINES[mode];
 }
+
+export const PLAN_MODE_POSTURE_LINE =
+  "Plan mode: Produce and maintain a step plan with update_todos. Work through the plan step by step before finishing.";
 
 export function resolveResponseInstructions(
   personas: Persona[],
@@ -252,6 +264,10 @@ export function ChatCore() {
   const loadApprovalMode = useApprovalModeStore((s) => s.load);
   const setApprovalMode = useApprovalModeStore((s) => s.setMode);
   const approvalMode = approvalModeForProject(approvalModes, projectId);
+  const planModes = usePlanModeStore((s) => s.enabledByProject);
+  const loadPlanMode = usePlanModeStore((s) => s.load);
+  const togglePlanMode = usePlanModeStore((s) => s.toggle);
+  const planMode = planModeForProject(planModes, projectId);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const setChatFloating = useSettingsStore((s) => s.setChatFloating);
   const chats = useChatsStore((s) => s.chats);
@@ -266,6 +282,9 @@ export function ChatCore() {
   const removeChat = useChatsStore((s) => s.remove);
   const setActiveChat = useChatsStore((s) => s.setActive);
   const activeChat = chats.find((c) => c.id === activeChatId) ?? null;
+  const agentFileChangeTurn = useAgentFileChangesStore((state) =>
+    agentFileChangeTurnForChat(state, activeChatId),
+  );
 
   const openAISettings = useCallback(() => {
     setSettingsInitialSection("ai");
@@ -282,6 +301,10 @@ export function ChatCore() {
     void loadApprovalMode(projectId).catch(() => {});
   }, [loadApprovalMode, projectId]);
 
+  useEffect(() => {
+    loadPlanMode(projectId);
+  }, [loadPlanMode, projectId]);
+
   const changeApprovalMode = useCallback(
     (nextMode: ApprovalMode) => {
       void setApprovalMode(projectId, nextMode).catch(() => {
@@ -290,6 +313,10 @@ export function ChatCore() {
     },
     [projectId, setApprovalMode],
   );
+
+  const changePlanMode = useCallback(() => {
+    togglePlanMode(projectId);
+  }, [projectId, togglePlanMode]);
 
   const [messages, setMessagesState] = useState<ChatMessage[]>([]);
   const messagesRef = useRef<ChatMessage[]>([]);
@@ -635,7 +662,7 @@ export function ChatCore() {
   // linger under project B.
   useEffect(() => {
     if (projectId) useAgentMemoryStore.getState().load(projectId);
-    useAgentTodoStore.getState().clear();
+    useAgentTodoStore.getState().bindProject(projectId);
   }, [projectId]);
 
   // The panel unmounts whenever the sidebar collapses or another rail tab is
@@ -697,6 +724,7 @@ export function ChatCore() {
       if (streaming) return;
       setActiveChat(chat.id);
       setMessages(chat.messages);
+      useAgentTodoStore.getState().selectChat(chat.id);
       setHistoryOpen(false);
     },
     [streaming, setActiveChat, setMessages]
@@ -706,6 +734,7 @@ export function ChatCore() {
     if (streaming) return;
     setActiveChat(null);
     setMessages([]);
+    useAgentTodoStore.getState().selectChat(null);
     setActivePersonaId(null);
     // Drop any mid-chat model switch too: a fresh chat starts on the
     // configured default, not whatever the last conversation was left on.
@@ -819,7 +848,13 @@ export function ChatCore() {
     }
     if (!apiKey) { openAISettings(); return; }
     const runIdentity = runIsolationRef.current.begin(projectId);
+    const runProjectId = projectId;
     let runChatId: string | null = null;
+    let trackedTurnId: string | null = null;
+    let stopAutoCommitTracking = () => {};
+    let commitTracking = Promise.resolve();
+    let queueCommitReconciliation: (commitId?: string | null) => Promise<void> = () =>
+      Promise.resolve();
     const runIsCurrent = () => runIsolationRef.current.allows(
       runIdentity,
       useFilesStore.getState().projectId,
@@ -851,6 +886,7 @@ export function ChatCore() {
       !ac.signal.aborted && activeChatRun() === runHandle && runIsCurrent();
 
     let runApprovalMode = DEFAULT_APPROVAL_MODE;
+    const runPlanMode = usePlanModeStore.getState().isEnabled(runProjectId);
     try {
       runApprovalMode = await useApprovalModeStore.getState().ready(projectId);
     } catch {
@@ -946,8 +982,6 @@ export function ChatCore() {
         } else finish(false);
       });
 
-    // Fresh plan checklist each agent run; reset last-run meter (chat totals persist).
-    useAgentTodoStore.getState().clear();
     if (runIsCurrent()) setRunUsage(null);
     let usageIn = 0;
     let usageOut = 0;
@@ -1029,6 +1063,7 @@ export function ChatCore() {
           projectId ? agentThreadClaimPrewarmed(projectId) : Promise.resolve(null),
         );
       useAgentTurnsStore.getState().beginTurn(runChatId, turnThreadId, clientTurnId, text);
+      useAgentTodoStore.getState().beginTurn(runChatId);
     }
 
     // An active persona replaces the user's default custom instructions for
@@ -1113,7 +1148,9 @@ ${sandboxedCustom}`;
     const effectiveSystemBase = figure
       ? `${FIGURE_SYSTEM_PROMPT + sandboxedCustom}\n\n${workspaceCtx}`
       : systemPrompt;
-    const effectiveSystem = `${effectiveSystemBase}\n\n${approvalPostureLine(runApprovalMode)}`;
+    const effectiveSystem = `${effectiveSystemBase}\n\n${approvalPostureLine(runApprovalMode)}${
+      runPlanMode ? `\n\n${PLAN_MODE_POSTURE_LINE}` : ""
+    }`;
 
     // Conversation history: packed (recent + truncated) so long chats fit context.
     const packedPrior = packChatHistory(priorMessages);
@@ -1145,6 +1182,59 @@ ${sandboxedCustom}`;
     };
 
     try {
+      if (runChatId) {
+        const trackingChatId = runChatId;
+        const trackingTurnId = clientTurnId;
+        trackedTurnId = trackingTurnId;
+        useAgentFileChangesStore
+          .getState()
+          .beginTurn(trackingChatId, trackingTurnId, runCheckpointOid, runProjectId);
+        queueCommitReconciliation = (commitId) => {
+          commitTracking = commitTracking
+            .then(async () => {
+              if (!runProjectId) return;
+              const state = useAgentFileChangesStore.getState();
+              const turn = state.turns[agentFileChangeTurnKey(trackingChatId, trackingTurnId)];
+              if (!turn) return;
+              const nextOid = commitId ?? (await gitHeadOid(runProjectId));
+              if (!nextOid || nextOid === turn.headOid) return;
+              const workingChanges = await gitStatus(runProjectId).catch(() => null);
+              const committedContents: Record<string, string> = {};
+              await Promise.all(
+                Object.keys(turn.changedFiles).map(async (path) => {
+                  try {
+                    const headContent = await gitShow(runProjectId, nextOid, path);
+                    const change = turn.changedFiles[path];
+                    const remainsAdded = workingChanges?.some(
+                      (entry) =>
+                        entry.path === path && (entry.status === "?" || entry.status === "A"),
+                    );
+                    if (
+                      change.created &&
+                      headContent === "" &&
+                      (workingChanges === null || remainsAdded)
+                    ) {
+                      return;
+                    }
+                    committedContents[path] = headContent;
+                  } catch {
+                    return;
+                  }
+                }),
+              );
+              useAgentFileChangesStore
+                .getState()
+                .recordCommit(trackingChatId, trackingTurnId, nextOid, committedContents);
+            })
+            .catch(() => {});
+          return commitTracking;
+        };
+        if (runProjectId) {
+          stopAutoCommitTracking = subscribeAutoCommit((event) => {
+            if (event.projectId === runProjectId) void queueCommitReconciliation(event.oid);
+          });
+        }
+      }
       const tools = resolveChatTools(registry.aiToolsets, figure ? "figure" : "chat", {
         confirm,
         onImage: (d: string) => pendingImagesRef.current.push(d),
@@ -1157,38 +1247,100 @@ ${sandboxedCustom}`;
       let reasoningStartedAt: number | null = null;
       let stepContent = "";
       let stepBlocks: ChatMessage["reasoningBlocks"] = [];
-      // Pin the run to the project it started in. Tools resolve their
-      // project at execute time, so without this guard a run surviving a
-      // project switch would silently write into the newly opened project.
-      const runProjectId = useFilesStore.getState().projectId;
-      const outputToolCalls = new Map<string, { name: string; args: unknown }>();
+      type OutputToolCall = {
+        name: string;
+        args: unknown;
+        path?: string;
+        beforeContent?: string;
+        created?: boolean;
+      };
+      const outputToolCalls = new Map<string, OutputToolCall>();
       const assistantOutputs = useAssistantOutputsStore.getState();
+      const argRecord = (args: unknown): Record<string, unknown> | null =>
+        args && typeof args === "object" ? (args as Record<string, unknown>) : null;
       const argPath = (args: unknown): string | null => {
-        if (args && typeof args === "object" && "path" in args) {
-          const p = (args as Record<string, unknown>).path;
-          if (typeof p === "string") return p;
-        }
-        return null;
+        const path = argRecord(args)?.path;
+        return typeof path === "string" ? path : null;
       };
       const openReadOutput = (call: { name: string; args: unknown }) => {
         if (call.name !== "read_file") return;
         const path = argPath(call.args);
         if (path) assistantOutputs.openFile(path, "read");
       };
-      const openWriteOutput = (
-        call: { name: string; args: unknown } | undefined,
+      const captureFileBaseline = async (call: OutputToolCall) => {
+        if (
+          call.name !== "write_file" &&
+          call.name !== "replace_in_file" &&
+          call.name !== "create_file"
+        ) {
+          return;
+        }
+        const path = argPath(call.args);
+        if (!path) return;
+        const args = argRecord(call.args);
+        if (call.name === "create_file" && args?.is_dir === true) return;
+        call.path = path;
+        if (call.name === "create_file") {
+          call.beforeContent = "";
+          call.created = true;
+          return;
+        }
+        const cached = useFilesStore.getState().files[path]?.content;
+        if (cached !== undefined) {
+          call.beforeContent = cached;
+          return;
+        }
+        if (!runProjectId) return;
+        try {
+          call.beforeContent = await readFileContent(runProjectId, path);
+        } catch {
+          call.beforeContent = "";
+          call.created = true;
+        }
+      };
+      const mirrorToolOutput = (
+        call: OutputToolCall | undefined,
         output: unknown,
       ) => {
         if (!call) return;
-        if (call.name === "write_file" || call.name === "create_file") {
-          const failed =
-            !!output && typeof output === "object" && "error" in (output as Record<string, unknown>);
-          const path = argPath(call.args);
-          if (path && !failed) assistantOutputs.openFile(path, "write");
+        const record =
+          output && typeof output === "object" ? (output as Record<string, unknown>) : null;
+        if (
+          record?.success === true &&
+          (call.name === "write_file" ||
+            call.name === "replace_in_file" ||
+            call.name === "create_file")
+        ) {
+          const args = argRecord(call.args);
+          const isDirectory = call.name === "create_file" && (record.is_dir === true || args?.is_dir === true);
+          if (!isDirectory && call.path) {
+            assistantOutputs.openFile(call.path, "write");
+            if (runChatId && trackedTurnId && call.beforeContent !== undefined) {
+              const cachedAfter = useFilesStore.getState().files[call.path]?.content;
+              const argumentContent = args?.content;
+              const afterContent =
+                cachedAfter ?? (typeof argumentContent === "string" ? argumentContent : "");
+              useAgentFileChangesStore
+                .getState()
+                .recordFileChange(
+                  runChatId,
+                  trackedTurnId,
+                  call.path,
+                  call.beforeContent,
+                  afterContent,
+                  call.created ? { created: true } : undefined,
+                );
+            }
+          }
         }
         if (call.name === "compile") {
-          const record = output as Record<string, unknown> | null;
           if (record && record.success === true) assistantOutputs.openPdf();
+        }
+        if (
+          (call.name === "run_command" && record?.exec === true && record.exit_code === 0) ||
+          (call.name === "git_commit" && record?.success === true)
+        ) {
+          void queueCommitReconciliation();
         }
       };
 
@@ -1277,9 +1429,11 @@ ${sandboxedCustom}`;
               return { ...m, reasoningBlocks: blocks };
             });
           },
-          onToolCall: (call) => {
-            outputToolCalls.set(call.id, { name: call.name, args: call.args });
-            openReadOutput(call);
+          onToolCall: async (call) => {
+            const outputCall: OutputToolCall = { name: call.name, args: call.args };
+            outputToolCalls.set(call.id, outputCall);
+            const baseline = captureFileBaseline(outputCall);
+            openReadOutput(outputCall);
             updateRunLast((m) => ({
               ...m,
               toolCalls: [
@@ -1287,13 +1441,14 @@ ${sandboxedCustom}`;
                 { id: call.id, name: call.name, status: "running" as const },
               ],
             }));
+            await baseline;
           },
           onToolResult: ({ id, output }) => {
             // Full output up to a generous safety ceiling: the tool badge
             // scrolls, and the persisted chat must not silently lose payload
             // data the run actually saw.
             const outStr = formatToolOutput(output).slice(0, 40_000);
-            openWriteOutput(outputToolCalls.get(id), output);
+            mirrorToolOutput(outputToolCalls.get(id), output);
             outputToolCalls.delete(id);
             updateRunLast((m) => {
               const calls = [...(m.toolCalls || [])];
@@ -1381,6 +1536,13 @@ ${sandboxedCustom}`;
         }));
       }
     } finally {
+      await queueCommitReconciliation();
+      stopAutoCommitTracking();
+      await commitTracking;
+      if (runChatId && trackedTurnId) {
+        useAgentFileChangesStore.getState().finishTurn(runChatId, trackedTurnId);
+      }
+      if (runChatId) useAgentTodoStore.getState().finishTurn(runChatId);
       if (abortRef.current === ac) abortRef.current = null;
       if (projectId && runChatId && (usageIn > 0 || usageOut > 0 || usageSteps > 0)) {
         const { usd } = estimateUsd(model, usageIn, usageOut);
@@ -1452,6 +1614,10 @@ ${sandboxedCustom}`;
       !messages.slice(index + 1).some((later) => later.role === "assistant"),
     msg,
   }));
+  const agentRunHasActivity =
+    agentTodos.some((todo) => todo.status !== "cancelled") ||
+    Object.keys(agentFileChangeTurn?.changedFiles ?? {}).length > 0 ||
+    (agentFileChangeTurn?.committedFiles.length ?? 0) > 0;
 
   const restoreCheckpoint = useCallback(
     async (message: ChatMessage, isLatest: boolean) => {
@@ -1836,6 +2002,11 @@ ${sandboxedCustom}`;
                   {renderedMessages.map(({ key, live, isLatestAssistant, msg }) => (
                     <div key={key} data-message-role={msg.role} className="min-w-0">
                       <MessageItem msg={msg} live={live} />
+                      {msg.role === "assistant" && isLatestAssistant && agentRunHasActivity && (
+                        <div className="mt-1.5 flex justify-end px-1">
+                          <AgentRunSummary todos={agentTodos} turn={agentFileChangeTurn} />
+                        </div>
+                      )}
                       {msg.role === "assistant" &&
                         msg.checkpointOid &&
                         msg.toolCalls?.some(
@@ -2068,6 +2239,24 @@ ${sandboxedCustom}`;
                     onOpenProjectRules={openProjectApprovalSettings}
                     disabled={approvalModeLocked}
                   />
+                  <button
+                    type="button"
+                    aria-label="Plan mode"
+                    aria-pressed={planMode}
+                    data-state={planMode ? "on" : "off"}
+                    title={planMode ? "Plan mode on" : "Plan mode off"}
+                    onClick={changePlanMode}
+                    disabled={approvalModeLocked}
+                    className={cn(
+                      "inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                      planMode
+                        ? "border-amber-500/40 bg-amber-500/15 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
+                        : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground",
+                    )}
+                  >
+                    <Lightbulb className={cn("size-3.5", planMode && "fill-current")} />
+                    <span>Plan mode</span>
+                  </button>
                   {figureModeAvailable && (
                     <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
                       <button type="button"

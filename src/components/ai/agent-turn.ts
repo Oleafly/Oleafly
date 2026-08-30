@@ -25,7 +25,7 @@ export interface HarnessHandlers {
   onReasoningStart(): void;
   onReasoningDelta(chunk: string): void;
   onReasoningEnd(): void;
-  onToolCall(call: HarnessToolCall): void;
+  onToolCall(call: HarnessToolCall): void | Promise<void>;
   onToolResult(result: { id: string; name: string; output: unknown }): void;
   onUsage(usage: { input: number; output: number }): void;
   onStep(step: number): void;
@@ -306,7 +306,7 @@ export async function runAgentHarness(args: {
         } catch {
           parsed = {};
         }
-        handlers.onToolCall({ id: call.id, name: call.name, args: parsed });
+        await handlers.onToolCall({ id: call.id, name: call.name, args: parsed });
         handlers.onThinking(`Running ${call.name}…`);
 
         const tool = args.tools[call.name] as

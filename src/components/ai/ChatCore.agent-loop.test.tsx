@@ -14,7 +14,8 @@ interface HarnessOptions {
   onRawEvent?: (event: AgentEvent) => void;
   handlers: {
     onText: (text: string) => void;
-    onToolCall: (call: { id: string; name: string; args: unknown }) => void;
+    onToolCall: (call: { id: string; name: string; args: unknown }) => void | Promise<void>;
+    onToolResult: (result: { id: string; output: unknown }) => void;
   };
 }
 
@@ -40,11 +41,20 @@ const mocks = vi.hoisted(() => ({
   approvalsModeSet: vi.fn(),
   getConfig: vi.fn(),
   gitAutoCommit: vi.fn(),
+  gitAutoCommitUpdate: vi.fn(),
+  gitHeadOid: vi.fn(),
   gitLog: vi.fn(),
+  gitShow: vi.fn(),
+  gitStatus: vi.fn(),
   usageRecord: vi.fn(),
   checkProjectBudget: vi.fn(),
   buildWorkspaceContext: vi.fn(),
   retrieveProjectChunks: vi.fn(),
+  readFileContent: vi.fn(),
+  runSummaryProps: [] as Array<{
+    todos: unknown[];
+    turn: { chatId: string; turnId: string } | null;
+  }>,
   textareaProps: null as null | {
     onChange: (event: { target: { value: string } }) => void;
     onKeyDown: (event: {
@@ -74,8 +84,13 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   approvalsModeSet: (...args: unknown[]) => mocks.approvalsModeSet(...args),
   getConfig: (...args: unknown[]) => mocks.getConfig(...args),
   gitAutoCommit: (...args: unknown[]) => mocks.gitAutoCommit(...args),
+  gitAutoCommitUpdate: (...args: unknown[]) => mocks.gitAutoCommitUpdate(...args),
+  gitHeadOid: (...args: unknown[]) => mocks.gitHeadOid(...args),
   gitLog: (...args: unknown[]) => mocks.gitLog(...args),
+  gitShow: (...args: unknown[]) => mocks.gitShow(...args),
+  gitStatus: (...args: unknown[]) => mocks.gitStatus(...args),
   usageRecord: (...args: unknown[]) => mocks.usageRecord(...args),
+  readFileContent: (...args: unknown[]) => mocks.readFileContent(...args),
 }));
 
 vi.mock("@/lib/ai-budget", () => ({
@@ -170,6 +185,13 @@ vi.mock("@/components/branding/OleaflyAssistantMascot", () => ({
 
 vi.mock("@/components/ai/chat-parts", () => ({
   AgentPlan: () => null,
+  AgentRunSummary: (props: {
+    todos: unknown[];
+    turn: { chatId: string; turnId: string } | null;
+  }) => {
+    mocks.runSummaryProps.push(props);
+    return null;
+  },
   InfoHint: () => null,
   MessageItem: () => null,
   Shimmer: () => null,
@@ -195,6 +217,12 @@ let useChatsStore: typeof import("@/store/chats").useChatsStore;
 let useSettingsStore: typeof import("@/store/settings").useSettingsStore;
 let useApprovalModeStore: typeof import("@/store/approval-mode").useApprovalModeStore;
 let useAgentTurnsStore: typeof import("@/store/agent-turns").useAgentTurnsStore;
+let useAgentTodoStore: typeof import("@/store/agent-todos").useAgentTodoStore;
+let useAgentFileChangesStore: typeof import("@/store/agent-file-changes").useAgentFileChangesStore;
+let agentFileChangeTurnForChat: typeof import("@/store/agent-file-changes").agentFileChangeTurnForChat;
+let useAssistantOutputsStore: typeof import("@/store/assistant-outputs").useAssistantOutputsStore;
+let usePlanModeStore: typeof import("@/store/plan-mode").usePlanModeStore;
+let autoCommitNow: typeof import("@/lib/auto-commit").autoCommitNow;
 let activeChatRun: typeof import("./chat-run-registry").activeChatRun;
 let endChatRun: typeof import("./chat-run-registry").endChatRun;
 let act: typeof import("@testing-library/react").act;
@@ -255,6 +283,11 @@ beforeAll(async () => {
   ({ useSettingsStore } = await import("@/store/settings"));
   ({ useApprovalModeStore } = await import("@/store/approval-mode"));
   ({ useAgentTurnsStore } = await import("@/store/agent-turns"));
+  ({ useAgentTodoStore } = await import("@/store/agent-todos"));
+  ({ useAgentFileChangesStore, agentFileChangeTurnForChat } = await import("@/store/agent-file-changes"));
+  ({ useAssistantOutputsStore } = await import("@/store/assistant-outputs"));
+  ({ usePlanModeStore } = await import("@/store/plan-mode"));
+  ({ autoCommitNow } = await import("@/lib/auto-commit"));
   ({ activeChatRun, endChatRun } = await import("./chat-run-registry"));
 });
 
@@ -264,6 +297,7 @@ beforeEach(() => {
   const active = activeChatRun();
   if (active) endChatRun(active);
   mocks.runs.length = 0;
+  mocks.runSummaryProps.length = 0;
   mocks.textareaProps = null;
   mocks.agentSteer.mockReset().mockResolvedValue(undefined);
   mocks.claimPrewarmed.mockReset().mockResolvedValue(null);
@@ -282,11 +316,16 @@ beforeEach(() => {
     ai_personas: [],
   });
   mocks.gitAutoCommit.mockReset().mockResolvedValue(undefined);
+  mocks.gitAutoCommitUpdate.mockReset().mockResolvedValue(false);
+  mocks.gitHeadOid.mockReset().mockResolvedValue(null);
   mocks.gitLog.mockReset().mockResolvedValue([]);
+  mocks.gitShow.mockReset().mockResolvedValue("");
+  mocks.gitStatus.mockReset().mockResolvedValue([]);
   mocks.usageRecord.mockReset().mockResolvedValue(undefined);
   mocks.checkProjectBudget.mockReset().mockResolvedValue("ok");
   mocks.buildWorkspaceContext.mockReset().mockResolvedValue("");
   mocks.retrieveProjectChunks.mockReset().mockResolvedValue([]);
+  mocks.readFileContent.mockReset().mockResolvedValue("");
   mocks.runAgentHarness.mockReset().mockImplementation(
     (options: HarnessOptions) =>
       new Promise((resolve) => {
@@ -322,6 +361,14 @@ beforeEach(() => {
   useSettingsStore.setState({ chatFloating: false, figureModeOpen: false });
   useApprovalModeStore.setState({ modes: {}, loaded: {}, persisted: {} });
   useAgentTurnsStore.getState().reset();
+  useAgentTodoStore.getState().clear();
+  useAgentFileChangesStore.setState({
+    turns: {},
+    activeTurnByChat: {},
+    lastTurnByChat: {},
+  });
+  useAssistantOutputsStore.setState({ fileOpen: null, pdfEpoch: 0 });
+  usePlanModeStore.setState({ enabledByProject: {}, loaded: {} });
 });
 
 function finishRun(index: number, text: string) {
@@ -403,6 +450,24 @@ async function attachTextFile(rendered: RenderResult, name: string, text: string
 }
 
 describe("ChatCore agent turns", () => {
+  it("clears the previous checklist when starting a new chat", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "Finish a planned turn");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await act(async () => finishRun(0, "Done"));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    act(() => {
+      useAgentTodoStore.getState().setTodos([
+        { id: "old", content: "Old chat step", status: "completed" },
+      ]);
+    });
+    expect(useAgentTodoStore.getState().todos).toHaveLength(1);
+
+    fireEvent.click(rendered.getByRole("button", { name: "New chat" }));
+    expect(useAgentTodoStore.getState().todos).toEqual([]);
+  });
+
   it("discards the selected queued follow-up from its chip", async () => {
     const rendered = await renderChat();
     submit(rendered, "First request");
@@ -908,6 +973,375 @@ describe("ChatCore agent turns", () => {
     await act(async () => finishRun(0, "Ready"));
   });
 
+  it("adds the plan posture only after Plan mode is turned on", async () => {
+    const rendered = await renderChat();
+    const toggle = rendered.getByRole("button", { name: "Plan mode" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+
+    submit(rendered, "Run without planning posture");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(mocks.runs[0].options.system).not.toContain(
+      "Plan mode: Produce and maintain a step plan with update_todos. Work through the plan step by step before finishing.",
+    );
+    await act(async () => finishRun(0, "Done"));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    submit(rendered, "Run with planning posture");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    expect(mocks.runs[1].options.system).toContain(
+      "Plan mode: Produce and maintain a step plan with update_todos. Work through the plan step by step before finishing.",
+    );
+    await act(async () => finishRun(1, "Planned"));
+  });
+
+  it("tracks a successful write from the existing tool-result mirror path", async () => {
+    const rendered = await renderChat();
+    act(() => {
+      useFilesStore.setState((state) => ({
+        files: {
+          ...state.files,
+          "main.tex": { content: "alpha\nbeta\n", dirty: false },
+        },
+      }));
+    });
+    submit(rendered, "Edit the file");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    act(() => {
+      mocks.runs[0].options.handlers.onToolCall({
+        id: "write-1",
+        name: "write_file",
+        args: { path: "main.tex", content: "alpha\ngamma\ndelta\n" },
+      });
+      useFilesStore.setState((state) => ({
+        files: {
+          ...state.files,
+          "main.tex": { content: "alpha\ngamma\ndelta\n", dirty: false },
+        },
+      }));
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "write-1",
+        output: { success: true, path: "main.tex" },
+      });
+    });
+
+    const turn = agentFileChangeTurnForChat(useAgentFileChangesStore.getState(), "chat-1");
+    expect(turn?.changedFiles["main.tex"]).toMatchObject({ additions: 2, deletions: 1 });
+    expect(useAssistantOutputsStore.getState().fileOpen).toMatchObject({
+      path: "main.tex",
+      reason: "write",
+    });
+    await waitFor(() =>
+      expect(mocks.runSummaryProps.at(-1)?.turn).toMatchObject({ chatId: "chat-1" }),
+    );
+    await act(async () => finishRun(0, "Edited"));
+  });
+
+  it("preserves create-file and compile output mirroring", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "Create and compile");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    await act(async () => {
+      await mocks.runs[0].options.handlers.onToolCall({
+        id: "create-1",
+        name: "create_file",
+        args: { path: "notes.md", is_dir: false },
+      });
+      useFilesStore.setState((state) => ({
+        files: { ...state.files, "notes.md": { content: "", dirty: false } },
+      }));
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "create-1",
+        output: { success: true, path: "notes.md", is_dir: false },
+      });
+      await mocks.runs[0].options.handlers.onToolCall({
+        id: "compile-1",
+        name: "compile",
+        args: {},
+      });
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "compile-1",
+        output: { success: true, errors: [], has_pdf: true },
+      });
+    });
+
+    expect(useAssistantOutputsStore.getState().fileOpen).toMatchObject({
+      path: "notes.md",
+      reason: "write",
+    });
+    expect(useAssistantOutputsStore.getState().pdfEpoch).toBe(1);
+    await act(async () => finishRun(0, "Compiled"));
+  });
+
+  it("reads an unopened file before a replace and does not track a declined write", async () => {
+    mocks.readFileContent.mockResolvedValue("alpha\nbeta\n");
+    const rendered = await renderChat();
+    submit(rendered, "Edit an unopened file");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    await act(async () => {
+      await mocks.runs[0].options.handlers.onToolCall({
+        id: "replace-1",
+        name: "replace_in_file",
+        args: { path: "chapter.tex", find: "beta", replace: "gamma" },
+      });
+      useFilesStore.setState((state) => ({
+        files: {
+          ...state.files,
+          "chapter.tex": { content: "alpha\ngamma\n", dirty: false },
+        },
+      }));
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "replace-1",
+        output: { success: true, path: "chapter.tex" },
+      });
+      await mocks.runs[0].options.handlers.onToolCall({
+        id: "write-declined",
+        name: "write_file",
+        args: { path: "declined.tex", content: "not written\n" },
+      });
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "write-declined",
+        output: { declined: true, status: "declined", tool: "write_file" },
+      });
+    });
+
+    const turn = agentFileChangeTurnForChat(useAgentFileChangesStore.getState(), "chat-1");
+    expect(turn?.changedFiles["chapter.tex"]).toMatchObject({ additions: 1, deletions: 1 });
+    expect(turn?.changedFiles["declined.tex"]).toBeUndefined();
+    expect(useAssistantOutputsStore.getState().fileOpen).toMatchObject({
+      path: "chapter.tex",
+      reason: "write",
+    });
+    await act(async () => finishRun(0, "Edited"));
+  });
+
+  it("keeps an empty file created through write_file in the turn summary", async () => {
+    mocks.readFileContent.mockRejectedValue(new Error("missing"));
+    const rendered = await renderChat();
+    submit(rendered, "Create an empty file by writing it");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    await act(async () => {
+      await mocks.runs[0].options.handlers.onToolCall({
+        id: "write-empty",
+        name: "write_file",
+        args: { path: "empty.md", content: "" },
+      });
+      useFilesStore.setState((state) => ({
+        files: { ...state.files, "empty.md": { content: "", dirty: false } },
+      }));
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "write-empty",
+        output: { success: true, path: "empty.md" },
+      });
+    });
+
+    const turn = agentFileChangeTurnForChat(useAgentFileChangesStore.getState(), "chat-1");
+    expect(turn?.changedFiles["empty.md"]).toMatchObject({
+      created: true,
+      additions: 0,
+      deletions: 0,
+    });
+    await act(async () => finishRun(0, "Created"));
+  });
+
+  it("marks tracked files committed when an in-turn auto commit succeeds", async () => {
+    mocks.gitLog.mockResolvedValue([
+      { oid: "head-0", short: "head-0", time: 1, message: "Before" },
+    ]);
+    mocks.gitAutoCommitUpdate.mockResolvedValue(true);
+    mocks.gitHeadOid.mockResolvedValue("head-1");
+    mocks.gitShow.mockResolvedValue("alpha\ngamma\n");
+    const rendered = await renderChat();
+    act(() => {
+      useFilesStore.setState((state) => ({
+        files: {
+          ...state.files,
+          "main.tex": { content: "alpha\nbeta\n", dirty: false },
+        },
+      }));
+    });
+    submit(rendered, "Edit and compile");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    await act(async () => {
+      await mocks.runs[0].options.handlers.onToolCall({
+        id: "write-1",
+        name: "write_file",
+        args: { path: "main.tex", content: "alpha\ngamma\n" },
+      });
+      useFilesStore.setState((state) => ({
+        files: {
+          ...state.files,
+          "main.tex": { content: "alpha\ngamma\n", dirty: false },
+        },
+      }));
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "write-1",
+        output: { success: true, path: "main.tex" },
+      });
+      await autoCommitNow(useFilesStore.getState().projectId ?? "");
+    });
+
+    await waitFor(() => {
+      const turn = agentFileChangeTurnForChat(useAgentFileChangesStore.getState(), "chat-1");
+      expect(turn?.committedFiles).toEqual([
+        expect.objectContaining({ path: "main.tex", commitId: "head-1" }),
+      ]);
+      expect(turn?.changedFiles).toEqual({});
+    });
+    await act(async () => finishRun(0, "Committed"));
+  });
+
+  it("reconciles a commit made through run_command", async () => {
+    mocks.gitLog.mockResolvedValue([
+      { oid: "head-0", short: "head-0", time: 1, message: "Before" },
+    ]);
+    mocks.gitHeadOid.mockResolvedValue("head-2");
+    mocks.gitShow.mockResolvedValue("new\n");
+    const rendered = await renderChat();
+    act(() => {
+      useFilesStore.setState((state) => ({
+        files: { ...state.files, "notes.md": { content: "old\n", dirty: false } },
+      }));
+    });
+    submit(rendered, "Edit and commit");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    await act(async () => {
+      await mocks.runs[0].options.handlers.onToolCall({
+        id: "write-1",
+        name: "write_file",
+        args: { path: "notes.md", content: "new\n" },
+      });
+      useFilesStore.setState((state) => ({
+        files: { ...state.files, "notes.md": { content: "new\n", dirty: false } },
+      }));
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "write-1",
+        output: { success: true, path: "notes.md" },
+      });
+      await mocks.runs[0].options.handlers.onToolCall({
+        id: "commit-1",
+        name: "run_command",
+        args: { command: "git add notes.md && git commit -m update" },
+      });
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "commit-1",
+        output: {
+          exec: true,
+          command: "git add notes.md && git commit -m update",
+          output: "",
+          exit_code: 0,
+          status: "Success",
+        },
+      });
+    });
+
+    await waitFor(() => {
+      const turn = agentFileChangeTurnForChat(useAgentFileChangesStore.getState(), "chat-1");
+      expect(turn?.commits).toContainEqual({ id: "head-2", files: ["notes.md"] });
+    });
+    expect(mocks.gitShow).toHaveBeenCalledWith(
+      useFilesStore.getState().projectId,
+      "head-2",
+      "notes.md",
+    );
+    await act(async () => finishRun(0, "Committed"));
+  });
+
+  it("keeps an empty untracked file changed after an unrelated commit", async () => {
+    mocks.gitLog.mockResolvedValue([
+      { oid: "head-0", short: "head-0", time: 1, message: "Before" },
+    ]);
+    mocks.gitHeadOid.mockResolvedValue("head-other");
+    mocks.gitStatus.mockResolvedValue([{ path: "empty.md", status: "?", staged: false }]);
+    mocks.gitShow.mockResolvedValue("");
+    const rendered = await renderChat();
+    submit(rendered, "Create an empty file, then commit something else");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    await act(async () => {
+      await mocks.runs[0].options.handlers.onToolCall({
+        id: "create-1",
+        name: "create_file",
+        args: { path: "empty.md", is_dir: false },
+      });
+      useFilesStore.setState((state) => ({
+        files: { ...state.files, "empty.md": { content: "", dirty: false } },
+      }));
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "create-1",
+        output: { success: true, path: "empty.md", is_dir: false },
+      });
+      await mocks.runs[0].options.handlers.onToolCall({
+        id: "commit-other",
+        name: "run_command",
+        args: { command: "git commit -m unrelated" },
+      });
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "commit-other",
+        output: {
+          exec: true,
+          command: "git commit -m unrelated",
+          output: "",
+          exit_code: 0,
+          status: "Success",
+        },
+      });
+    });
+
+    await waitFor(() => {
+      const turn = agentFileChangeTurnForChat(useAgentFileChangesStore.getState(), "chat-1");
+      expect(turn?.changedFiles["empty.md"]).toMatchObject({ created: true });
+      expect(turn?.committedFiles).toEqual([]);
+    });
+    await act(async () => finishRun(0, "Still changed"));
+  });
+
+  it("reconciles an unannounced HEAD advance before finalizing the turn", async () => {
+    mocks.gitLog.mockResolvedValue([
+      { oid: "head-0", short: "head-0", time: 1, message: "Before" },
+    ]);
+    mocks.gitHeadOid.mockResolvedValue("head-final");
+    mocks.gitShow.mockResolvedValue("new\n");
+    const rendered = await renderChat();
+    act(() => {
+      useFilesStore.setState((state) => ({
+        files: { ...state.files, "notes.md": { content: "old\n", dirty: false } },
+      }));
+    });
+    submit(rendered, "Edit and finish after an external commit");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    await act(async () => {
+      await mocks.runs[0].options.handlers.onToolCall({
+        id: "write-1",
+        name: "write_file",
+        args: { path: "notes.md", content: "new\n" },
+      });
+      useFilesStore.setState((state) => ({
+        files: { ...state.files, "notes.md": { content: "new\n", dirty: false } },
+      }));
+      mocks.runs[0].options.handlers.onToolResult({
+        id: "write-1",
+        output: { success: true, path: "notes.md" },
+      });
+      finishRun(0, "Done");
+    });
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    const turn = agentFileChangeTurnForChat(useAgentFileChangesStore.getState(), "chat-1");
+    expect(turn?.committedFiles).toEqual([
+      expect.objectContaining({ path: "notes.md", commitId: "head-final" }),
+    ]);
+    expect(turn?.changedFiles).toEqual({});
+  });
+
   it("persists a mode selected from the composer footer", async () => {
     const rendered = await renderChat();
     fireEvent.click(
@@ -931,6 +1365,7 @@ describe("ChatCore agent turns", () => {
     expect(
       rendered.getByRole("button", { name: "Approval mode. Ask for approval" }),
     ).toBeDisabled();
+    expect(rendered.getByRole("button", { name: "Plan mode" })).toBeDisabled();
     await waitFor(() => expect(mocks.runs).toHaveLength(1));
     await act(async () => finishRun(0, "Done"));
     await waitFor(() =>
@@ -938,6 +1373,7 @@ describe("ChatCore agent turns", () => {
         rendered.getByRole("button", { name: "Approval mode. Ask for approval" }),
       ).not.toBeDisabled(),
     );
+    expect(rendered.getByRole("button", { name: "Plan mode" })).not.toBeDisabled();
   });
 
   it("keeps the approval mode locked after remounting on another project chat", async () => {

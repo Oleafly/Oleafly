@@ -690,8 +690,7 @@ export const gitUnstageAll = (projectId: string) =>
 export const gitCommit = (projectId: string, message: string) =>
   invoke<boolean>("git_commit", { projectId, message });
 
-// rev = "HEAD" (last commit) or "INDEX" (staged).
-export const gitShow = (projectId: string, rev: "HEAD" | "INDEX", path: string) =>
+export const gitShow = (projectId: string, rev: string, path: string) =>
   invoke<string>("git_show", { projectId, rev, path });
 
 export const downloadProjectZip = (projectId: string, dest: string) =>

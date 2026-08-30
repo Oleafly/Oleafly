@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Circle,
   Copy,
   Info,
   Loader2,
@@ -15,9 +16,15 @@ import {
   XCircle,
 } from "lucide-react";
 import type { ChatMessage, ToolEntry } from "@/store/chats";
-import type { AgentTodo } from "@/store/agent-todos";
+import { agentTodoProgress, type AgentTodo } from "@/store/agent-todos";
+import {
+  agentFileChangeTotals,
+  type AgentFileChange,
+  type AgentFileChangeTurn,
+} from "@/store/agent-file-changes";
 import { Markdown } from "@/components/ui/markdown";
 import { Popover } from "@/components/ui/popover";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 export function Shimmer({ text }: { text?: string }) {
@@ -64,20 +71,43 @@ export function AgentPlan({ todos }: { todos: AgentTodo[] }) {
       {open && (
         <ul id={listId} className="space-y-1 px-3 pb-2">
           {todos.map((todo) => (
-            <li key={todo.id} className="flex items-start gap-1.5 text-[11px] leading-snug">
+            <li
+              key={todo.id}
+              data-todo-status={todo.status}
+              aria-label={`${todo.status.replace("_", " ")}: ${todo.content}`}
+              className="flex items-start gap-1.5 text-[11px] leading-snug"
+            >
+              {todo.status === "completed" && (
+                <Check
+                  aria-hidden="true"
+                  data-todo-icon="completed"
+                  className="mt-px size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                />
+              )}
+              {todo.status === "in_progress" && (
+                <Loader2
+                  aria-hidden="true"
+                  data-todo-icon="in_progress"
+                  className="mt-px size-3.5 shrink-0 animate-spin text-primary motion-reduce:animate-none"
+                />
+              )}
+              {todo.status === "pending" && (
+                <Circle
+                  aria-hidden="true"
+                  data-todo-icon="pending"
+                  className="mt-px size-3.5 shrink-0 text-muted-foreground/50"
+                />
+              )}
+              {todo.status === "cancelled" && (
+                <XCircle
+                  aria-hidden="true"
+                  data-todo-icon="cancelled"
+                  className="mt-px size-3.5 shrink-0 text-muted-foreground/40"
+                />
+              )}
               <span
-                aria-hidden="true"
                 className={cn(
-                  "mt-[0.4em] size-1.5 shrink-0 rounded-full",
-                  todo.status === "completed" && "bg-emerald-500",
-                  todo.status === "in_progress" && "bg-primary",
-                  todo.status === "pending" && "bg-muted-foreground/40",
-                  todo.status === "cancelled" && "bg-muted-foreground/20",
-                )}
-              />
-              <span
-                className={cn(
-                  todo.status === "completed" && "text-muted-foreground line-through",
+                  todo.status === "completed" && "text-muted-foreground",
                   todo.status === "cancelled" && "text-muted-foreground/60 line-through",
                   todo.status === "in_progress" && "font-medium text-foreground",
                 )}
@@ -89,6 +119,119 @@ export function AgentPlan({ todos }: { todos: AgentTodo[] }) {
         </ul>
       )}
     </div>
+  );
+}
+
+function FileChangeRow({
+  file,
+  state,
+}: {
+  file: AgentFileChange;
+  state: "changed" | "committed";
+}) {
+  return (
+    <span
+      data-file-change-state={state}
+      data-file-change-path={file.path}
+      className="flex min-w-0 items-center gap-2 text-[11px]"
+    >
+      <span className="min-w-0 flex-1 truncate text-foreground">{file.path}</span>
+      <span className="shrink-0 tabular-nums text-emerald-600 dark:text-emerald-400">
+        +{file.additions}
+      </span>
+      <span className="shrink-0 tabular-nums text-destructive">-{file.deletions}</span>
+    </span>
+  );
+}
+
+function FileChangeDetails({ turn }: { turn: AgentFileChangeTurn }) {
+  const changed = Object.values(turn.changedFiles);
+  const committed = new Map<string, AgentFileChange[]>();
+  for (const file of turn.committedFiles) {
+    const commitId = file.commitId ?? "committed";
+    const files = committed.get(commitId) ?? [];
+    files.push(file);
+    committed.set(commitId, files);
+  }
+
+  return (
+    <span className="block min-w-56 space-y-2 text-left font-normal">
+      {changed.length > 0 && (
+        <span className="block space-y-1.5">
+          <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Changed
+          </span>
+          {changed.map((file) => (
+            <FileChangeRow key={file.path} file={file} state="changed" />
+          ))}
+        </span>
+      )}
+      {[...committed.entries()].map(([commitId, files]) => (
+        <span key={commitId} data-commit-id={commitId} className="block space-y-1.5">
+          <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Committed {commitId.slice(0, 7)}
+          </span>
+          {files.map((file) => (
+            <FileChangeRow
+              key={file.path}
+              file={file}
+              state="committed"
+            />
+          ))}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+export function AgentRunSummary({
+  todos,
+  turn,
+}: {
+  todos: AgentTodo[];
+  turn: AgentFileChangeTurn | null;
+}) {
+  const progress = agentTodoProgress(todos);
+  const totals = agentFileChangeTotals(turn);
+  if (progress.total === 0 && totals.files === 0) return null;
+  const stepLabel = progress.total > 0 ? `Step ${progress.current} / ${progress.total}` : null;
+  const fileLabel =
+    totals.files > 0
+      ? `${totals.files} files changed +${totals.additions} -${totals.deletions}`
+      : null;
+  const label = [stepLabel, fileLabel].filter(Boolean).join(" · ");
+  const pill = (
+    <span
+      role="status"
+      data-testid="agent-run-pill"
+      aria-label={label}
+      className="inline-flex items-center gap-1.5 rounded-full border bg-muted/60 px-2 py-1 text-[10px] font-medium text-muted-foreground"
+    >
+      {stepLabel && <span>{stepLabel}</span>}
+      {stepLabel && fileLabel && (
+        <>
+          {" "}
+          <span aria-hidden="true">·</span>
+          {" "}
+        </>
+      )}
+      {fileLabel && (
+        <span>
+          {totals.files} files changed{" "}
+          <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
+            +{totals.additions}
+          </span>{" "}
+          <span className="tabular-nums text-destructive">-{totals.deletions}</span>
+        </span>
+      )}
+    </span>
+  );
+
+  if (!turn || totals.files === 0) return pill;
+  return (
+    <Tooltip label={<FileChangeDetails turn={turn} />} side="top" delay={0} wide>
+      {pill}
+    </Tooltip>
   );
 }
 
