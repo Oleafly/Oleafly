@@ -13,7 +13,7 @@ type ActionName =
   | "open-goal"
   | "open-mcp"
   | "open-model"
-  | "open-skills"
+  | "record-skill"
   | "toggle-plan";
 
 function actionLayer(calls: ActionName[]): ComposerCommandActions {
@@ -25,7 +25,7 @@ function actionLayer(calls: ActionName[]): ComposerCommandActions {
     openGoalEditor: () => calls.push("open-goal"),
     openMcpSettings: () => calls.push("open-mcp"),
     openModelPicker: () => calls.push("open-model"),
-    openSkillsSettings: () => calls.push("open-skills"),
+    recordSkill: () => calls.push("record-skill"),
     togglePlanMode: () => calls.push("toggle-plan"),
   };
 }
@@ -38,7 +38,7 @@ describe("composer command registry", () => {
     ["mcp", "open-mcp"],
     ["model", "open-model"],
     ["plan-mode", "toggle-plan"],
-    ["record-skill", "open-skills"],
+    ["record-skill", "record-skill"],
   ] as const)("dispatches the %s slash command to its real action", (id, expected) => {
     const calls: ActionName[] = [];
     const command = createSlashCommands(actionLayer(calls)).find((item) => item.id === id);
@@ -55,16 +55,11 @@ describe("composer command registry", () => {
     actions.forkChat = undefined;
     actions.openGoalEditor = undefined;
     actions.openModelPicker = undefined;
+    actions.recordSkill = undefined;
     actions.togglePlanMode = undefined;
 
-    expect(createSlashCommands(actions).map((command) => command.id)).toEqual([
-      "mcp",
-      "record-skill",
-    ]);
-    expect(createAttachCommands(actions).map((command) => command.id)).toEqual([
-      "browser",
-      "record-skill",
-    ]);
+    expect(createSlashCommands(actions).map((command) => command.id)).toEqual(["mcp"]);
+    expect(createAttachCommands(actions).map((command) => command.id)).toEqual(["browser"]);
   });
 
   it.each([
@@ -72,7 +67,7 @@ describe("composer command registry", () => {
     ["browser", "open-browser"],
     ["goal", "open-goal"],
     ["plan-mode", "toggle-plan"],
-    ["record-skill", "open-skills"],
+    ["record-skill", "record-skill"],
   ] as const)("dispatches the %s attach command to its real action", (id, expected) => {
     const calls: ActionName[] = [];
     const command = createAttachCommands(actionLayer(calls)).find((item) => item.id === id);

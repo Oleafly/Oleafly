@@ -19,7 +19,7 @@ export interface ComposerCommandActions {
   openGoalEditor?: () => void;
   openMcpSettings: () => void;
   openModelPicker?: () => void;
-  openSkillsSettings: () => void;
+  recordSkill?: () => void;
   togglePlanMode?: () => void;
 }
 
@@ -85,13 +85,15 @@ export function createSlashCommands(actions: ComposerCommandActions): ComposerCo
       action: actions.togglePlanMode,
     });
   }
-  commands.push({
-    id: "record-skill",
-    label: "Record a skill (coming soon)",
-    description: "Open the Skills preview in Settings",
-    icon: Sparkles,
-    action: actions.openSkillsSettings,
-  });
+  if (actions.recordSkill) {
+    commands.push({
+      id: "record-skill",
+      label: "Record a skill",
+      description: "Save this chat's approach as an editable draft",
+      icon: Sparkles,
+      action: actions.recordSkill,
+    });
+  }
   return commands;
 }
 
@@ -131,12 +133,14 @@ export function createAttachCommands(actions: ComposerCommandActions): ComposerC
       action: actions.togglePlanMode,
     });
   }
-  commands.push({
-    id: "record-skill",
-    label: "Record a skill (coming soon)",
-    description: "Open the Skills preview in Settings",
-    icon: Sparkles,
-    action: actions.openSkillsSettings,
-  });
+  if (actions.recordSkill) {
+    commands.push({
+      id: "record-skill",
+      label: "Record a skill",
+      description: "Save this chat's approach as an editable draft",
+      icon: Sparkles,
+      action: actions.recordSkill,
+    });
+  }
   return commands;
 }

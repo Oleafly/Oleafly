@@ -339,7 +339,7 @@ export const tourRegistry = {
         target: '[data-tour="ai-settings-tabs"]',
         kind: "informational",
         title: "AI Assistant settings",
-        content: "Providers and keys, Instructions, Personas, and the upcoming Skills library. Everything the assistant does starts here.",
+        content: "Manage providers and keys, instructions, personas, and reusable skills here.",
         waitForTarget: true,
       },
       {

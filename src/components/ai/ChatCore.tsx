@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
 import { runAgentHarness, toAgentMessages } from "./agent-turn";
 import { DeltaQueues, MAX_BATCH } from "@oleafly/ai-core";
@@ -116,7 +117,17 @@ import { estimateUsd, formatUsd } from "@/lib/ai-pricing";
 import { formatRagContext, retrieveProjectChunks } from "@/lib/ai-rag";
 import { ChatHistoryModal } from "@/components/ai/ChatHistoryModal";
 import { PROMPT_CATEGORIES } from "@/components/ai/prompt-shortcuts";
-import { useSkills } from "@/lib/skills";
+import {
+  createLoadSkillTools,
+  createSkill,
+  draftSkillFromChat,
+  enabledSkills,
+  SKILLS_QUERY_KEY,
+  skillCatalogPrompt,
+  type SkillEntry,
+  upsertSkillRecord,
+  useSkills,
+} from "@/lib/skills";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -297,6 +308,7 @@ export function ChatCore() {
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const setChatFloating = useSettingsStore((s) => s.setChatFloating);
   const chats = useChatsStore((s) => s.chats);
+  const chatsProjectId = useChatsStore((s) => s.projectId);
   const activeChatId = useChatsStore((s) => s.activeId);
   // The sentinel keeps the selector's snapshot referentially stable for
   // chats without queued follow-ups (a fresh [] loops useSyncExternalStore).
@@ -373,10 +385,16 @@ export function ChatCore() {
     [],
   );
   const [input, setInputState] = useState(() => savedDraft(useFilesStore.getState().projectId));
+  const inputRef = useRef(input);
+  inputRef.current = input;
+  const inputRevisionRef = useRef(0);
   const setInput = useCallback((text: string) => {
+    inputRef.current = text;
+    inputRevisionRef.current += 1;
     setInputState(text);
     saveDraft(useFilesStore.getState().projectId, text);
   }, []);
+  const sendSequenceRef = useRef(0);
   const [streaming, setStreaming] = useState(false);
   const [approvalModeLocked, setApprovalModeLocked] = useState(false);
   const [provider, setProvider] = useState("openai");
@@ -525,21 +543,55 @@ export function ChatCore() {
   // Persisted per-project decisions (~/.oleafly/approvals.toml), loaded per
   // run: allow skips the prompt, deny skips execution.
   const projectApprovalsRef = useRef<Record<string, ToolDecision>>({});
-  const skills = useSkills().data ?? [];
+  const queryClient = useQueryClient();
+  const skillsQuery = useSkills();
+  const skills = skillsQuery.data ?? [];
+  const skillsRef = useRef(skills);
+  skillsRef.current = skills;
+  const skillsQueryRef = useRef(skillsQuery);
+  skillsQueryRef.current = skillsQuery;
+  const availableSkills = enabledSkills(skills);
   const skillPromptCategories =
-    skills.length > 0
+    availableSkills.length > 0
       ? [
           {
             label: "Skills",
-            items: skills.map((skill) => ({
+            items: availableSkills.map((skill) => ({
               icon: Sparkles,
               label: skill.name,
               description: skill.description,
-              prompt: skill.instructions,
+              prompt: `Use the enabled skill "${skill.name}" for this request. Load its full instructions before you start.`,
             })),
           },
         ]
       : [];
+  const recordCurrentChatSkill = useCallback(async () => {
+    const currentProjectId = useFilesStore.getState().projectId;
+    const currentChats = useChatsStore.getState();
+    if (
+      !currentProjectId ||
+      currentChats.projectId !== currentProjectId ||
+      !currentChats.activeId
+    ) {
+      return;
+    }
+    const draft = draftSkillFromChat({
+      messages: messagesRef.current,
+      todos: useAgentTodoStore.getState().todos,
+    });
+    if (!draft) return;
+    try {
+      const created = await createSkill(draft);
+      queryClient.setQueryData<SkillEntry[]>(SKILLS_QUERY_KEY, (current) =>
+        upsertSkillRecord(current, created),
+      );
+      void Promise.resolve(skillsQueryRef.current.refetch()).catch(() => undefined);
+      openSkillsSettings();
+      toast.success("Draft skill saved. Review it before enabling.");
+    } catch (error) {
+      toast.error(`Could not save the skill draft. ${String(error)}`);
+    }
+  }, [openSkillsSettings, queryClient]);
   // Trailing-debounce timer for persisting the streaming conversation.
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Two-tier stream flushing: text deltas ride the frame cadence (rAF while
@@ -736,7 +788,12 @@ export function ChatCore() {
   // project) restore the active conversation instead of resetting to a new
   // chat. Only a real project switch starts fresh.
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId) {
+      setMessages([]);
+      setActiveChat(null);
+      setCurrentHead(null);
+      return;
+    }
     let cancelled = false;
     const cs = useChatsStore.getState();
     if (cs.projectId === projectId) {
@@ -861,6 +918,13 @@ export function ChatCore() {
   const canMutateCurrentChat = Boolean(
     projectId && activeChatId && activeThreadId && !approvalModeLocked,
   );
+  const canRecordSkill = Boolean(
+    projectId &&
+      chatsProjectId === projectId &&
+      activeChatId &&
+      !approvalModeLocked &&
+      draftSkillFromChat({ messages, todos: agentTodos }),
+  );
   const commandActions = {
     archiveChat: canMutateCurrentChat ? () => void archiveCurrentChat() : undefined,
     attachFiles: projectId ? () => fileInputRef.current?.click() : undefined,
@@ -870,7 +934,7 @@ export function ChatCore() {
     openMcpSettings,
     openModelPicker:
       configuredProviders.length > 0 ? () => setModelPickerOpen(true) : undefined,
-    openSkillsSettings,
+    recordSkill: canRecordSkill ? () => void recordCurrentChatSkill() : undefined,
     togglePlanMode: projectId && !approvalModeLocked ? changePlanMode : undefined,
   };
   const slashCommands = createSlashCommands(commandActions);
@@ -961,6 +1025,9 @@ export function ChatCore() {
       ...attachment,
     }));
     if ((!text.trim() && outgoing.length === 0)) return;
+    const sendSequence = sendSequenceRef.current + 1;
+    sendSequenceRef.current = sendSequence;
+    const inputRevision = inputRevisionRef.current;
     // Steer-vs-queue: while a turn runs, Enter queues the message for the
     // next turn; an explicit Steer injects it mid-run at a message boundary.
     if (streaming || activeChatRun()) {
@@ -976,6 +1043,21 @@ export function ChatCore() {
       return;
     }
     if (!apiKey) { openAISettings(); return; }
+    let runSkills = enabledSkills(skillsRef.current);
+    if (skillsQueryRef.current.data === undefined) {
+      try {
+        const result = await skillsQueryRef.current.refetch();
+        if (!result?.data) {
+          toast.error("Could not load enabled skills. Try again.");
+          return;
+        }
+        runSkills = enabledSkills(result.data);
+      } catch {
+        toast.error("Could not load enabled skills. Try again.");
+        return;
+      }
+    }
+    if (streaming || activeChatRun() || useFilesStore.getState().projectId !== projectId) return;
     const runIdentity = runIsolationRef.current.begin(projectId);
     const runProjectId = projectId;
     let runChatId: string | null = null;
@@ -1160,8 +1242,19 @@ export function ChatCore() {
     ];
     setMessages(nextMessages);
     if (!queued) {
-      setInput("");
-      setAttachments([]);
+      if (
+        sendSequenceRef.current === sendSequence &&
+        inputRevisionRef.current === inputRevision
+      ) {
+        setInput("");
+      }
+      if (
+        sendSequenceRef.current === sendSequence &&
+        attachmentsRef.current.length === outgoing.length &&
+        attachmentsRef.current.every((attachment, index) => attachment.id === outgoing[index]?.id)
+      ) {
+        setAttachments([]);
+      }
     }
     setStreaming(true);
     setRunThinking("Thinking…");
@@ -1228,6 +1321,7 @@ USER_CUSTOM_INSTRUCTIONS`
 
     const mainDocument = useFilesStore.getState().mainDoc || "main.tex";
     const activeGoalLine = goalPromptLine(useChatGoalStore.getState().goal(projectId));
+    const runSkillCatalog = skillCatalogPrompt(runSkills);
     const sourceVocabulary = documentEngine.capabilities.formatting_profile === "typst"
       ? "Typst markup and scripting"
       : documentEngine.capabilities.formatting_profile === "markdown"
@@ -1280,7 +1374,9 @@ ${sandboxedCustom}`;
           activeGoalLine ? `\n\n${activeGoalLine}` : ""
         }`
       : systemPrompt;
-    const effectiveSystem = `${effectiveSystemBase}\n\n${approvalPostureLine(runApprovalMode)}${
+    const effectiveSystem = `${effectiveSystemBase}${
+      runSkillCatalog ? `\n\n${runSkillCatalog}` : ""
+    }\n\n${approvalPostureLine(runApprovalMode)}${
       runPlanMode ? `\n\n${PLAN_MODE_POSTURE_LINE}` : ""
     }`;
 
@@ -1372,6 +1468,7 @@ ${sandboxedCustom}`;
         onImage: (d: string) => pendingImagesRef.current.push(d),
         runId: () => activeRunRequestIdRef.current,
       });
+      Object.assign(tools, createLoadSkillTools(runSkills));
       if (!documentEngine.capabilities.features.includes("document_index")) {
         delete tools.project_map;
       }

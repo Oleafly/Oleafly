@@ -53,6 +53,10 @@ const mocks = vi.hoisted(() => ({
   buildWorkspaceContext: vi.fn(),
   retrieveProjectChunks: vi.fn(),
   readFileContent: vi.fn(),
+  createSkill: vi.fn(),
+  refetchSkills: vi.fn(),
+  skillEntries: [] as Array<Record<string, unknown>>,
+  skillsLoaded: true,
   runSummaryProps: [] as Array<{
     todos: unknown[];
     turn: { chatId: string; turnId: string } | null;
@@ -117,8 +121,13 @@ vi.mock("@/lib/ai-rag", () => ({
   retrieveProjectChunks: (...args: unknown[]) => mocks.retrieveProjectChunks(...args),
 }));
 
-vi.mock("@/lib/skills", () => ({
-  useSkills: () => ({ data: [] }),
+vi.mock("@/lib/skills", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/skills")>()),
+  createSkill: (...args: unknown[]) => mocks.createSkill(...args),
+  useSkills: () => ({
+    data: mocks.skillsLoaded ? mocks.skillEntries : undefined,
+    refetch: mocks.refetchSkills,
+  }),
 }));
 
 vi.mock("@/contributions/ai-toolsets", () => ({
@@ -263,6 +272,9 @@ let fireEvent: typeof import("@testing-library/react").fireEvent;
 let render: typeof import("@testing-library/react").render;
 let waitFor: typeof import("@testing-library/react").waitFor;
 let createElement: typeof import("react").createElement;
+let QueryClientProvider: typeof import("@tanstack/react-query").QueryClientProvider;
+let createAppQueryClient: typeof import("@/lib/query").createAppQueryClient;
+let chatQueryClient: ReturnType<typeof createAppQueryClient>;
 let projectSequence = 0;
 
 beforeAll(async () => {
@@ -312,6 +324,8 @@ beforeAll(async () => {
   vi.resetModules();
   ({ createElement } = await import("react"));
   ({ act, cleanup, fireEvent, render, waitFor } = await import("@testing-library/react"));
+  ({ QueryClientProvider } = await import("@tanstack/react-query"));
+  ({ createAppQueryClient } = await import("@/lib/query"));
   ({ ChatCore } = await import("./ChatCore"));
   ({ LATEX_ENGINE } = await import("@/lib/document-engine"));
   ({ useFilesStore } = await import("@/store/files"));
@@ -367,6 +381,19 @@ beforeEach(() => {
   mocks.buildWorkspaceContext.mockReset().mockResolvedValue("");
   mocks.retrieveProjectChunks.mockReset().mockResolvedValue([]);
   mocks.readFileContent.mockReset().mockResolvedValue("");
+  mocks.createSkill.mockReset().mockResolvedValue({
+    id: "recorded-review",
+    name: "Recorded Review",
+    description: "Repeat the review approach from this chat.",
+    instructions: "Review this draft before enabling it.",
+    source: "user",
+    enabled: false,
+    removable: true,
+    validation: { status: "valid" },
+  });
+  mocks.refetchSkills.mockReset().mockResolvedValue(undefined);
+  mocks.skillEntries.length = 0;
+  mocks.skillsLoaded = true;
   mocks.runAgentHarness.mockReset().mockImplementation(
     (options: HarnessOptions) =>
       new Promise((resolve) => {
@@ -433,7 +460,14 @@ function finishRun(index: number, text: string) {
 }
 
 async function renderChat(): Promise<RenderResult> {
-  const rendered = render(createElement(ChatCore));
+  chatQueryClient = createAppQueryClient();
+  const rendered = render(
+    createElement(
+      QueryClientProvider,
+      { client: chatQueryClient },
+      createElement(ChatCore),
+    ),
+  );
   await waitFor(() => {
     expect(
       rendered.container.querySelector('[data-tour-configured="true"]'),
@@ -518,6 +552,26 @@ async function attachTextFile(rendered: RenderResult, name: string, text: string
     target: { files: [new File([text], name, { type: "text/plain", lastModified: 1 })] },
   });
   await waitFor(() => expect(rendered.getByText(name)).toBeTruthy());
+}
+
+function seedCompletedChat() {
+  useChatsStore.setState((state) => ({
+    chats: state.chats.map((chat) =>
+      chat.id === state.activeId
+        ? {
+            ...chat,
+            messages: [
+              { id: "record-user", role: "user", content: "Review this proof carefully." },
+              {
+                id: "record-assistant",
+                role: "assistant",
+                content: "I mapped the claims, checked each dependency, and listed the gaps.",
+              },
+            ],
+          }
+        : chat,
+    ),
+  }));
 }
 
 describe("ChatCore agent turns", () => {
@@ -1044,6 +1098,132 @@ describe("ChatCore agent turns", () => {
     await act(async () => finishRun(0, "Ready"));
   });
 
+  it("injects enabled skill metadata and loads its full instructions on demand", async () => {
+    mocks.skillEntries.push(
+      {
+        id: "proof-review",
+        name: "Proof Review",
+        description: "Review a proof for logical gaps.",
+        instructions: "Read each claim and verify its dependencies.",
+        source: "user",
+        enabled: true,
+        removable: true,
+        validation: { status: "valid" },
+      },
+      {
+        id: "citation-audit",
+        name: "Citation Audit",
+        description: "Check every citation.",
+        instructions: "Inspect every bibliography entry.",
+        source: "user",
+        enabled: false,
+        removable: true,
+        validation: { status: "valid" },
+      },
+      {
+        id: "broken",
+        name: "Broken Skill",
+        description: "This skill is invalid.",
+        instructions: "Do not load this.",
+        source: "user",
+        enabled: false,
+        removable: true,
+        validation: {
+          status: "invalid",
+          code: "missing-description",
+          message: "Missing description.",
+        },
+      },
+    );
+    const rendered = await renderChat();
+
+    submit(rendered, "Review the prompt");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.runs[0].options.system).toContain("Proof Review");
+    expect(mocks.runs[0].options.system).toContain("Review a proof for logical gaps.");
+    expect(mocks.runs[0].options.system).not.toContain(
+      "Read each claim and verify its dependencies.",
+    );
+    expect(mocks.runs[0].options.system).not.toContain("Citation Audit");
+    expect(mocks.runs[0].options.system).not.toContain("Broken Skill");
+    await expect(
+      mocks.runs[0].options.tools.load_skill.execute?.({ id: "proof-review" }),
+    ).resolves.toContain("Read each claim and verify its dependencies.");
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("waits for the initial skills query before assembling a run", async () => {
+    const skill = {
+      id: "proof-review",
+      name: "Proof Review",
+      description: "Review a proof for logical gaps.",
+      instructions: "Read each claim and verify its dependencies.",
+      source: "user",
+      enabled: true,
+      removable: true,
+      validation: { status: "valid" },
+    };
+    mocks.skillEntries.push(skill);
+    mocks.skillsLoaded = false;
+    const pending = deferred<{ data: Array<Record<string, unknown>>; error: null }>();
+    mocks.refetchSkills.mockReturnValue(pending.promise);
+    const rendered = await renderChat();
+
+    submit(rendered, "Review the prompt immediately");
+
+    await waitFor(() => expect(mocks.refetchSkills).toHaveBeenCalledOnce());
+    expect(mocks.runs).toHaveLength(0);
+    await act(async () => pending.resolve({ data: [skill], error: null }));
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(mocks.runs[0].options.system).toContain("Proof Review");
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("admits only one rapid send while the initial skills query is pending", async () => {
+    mocks.skillsLoaded = false;
+    const pending = deferred<{ data: Array<Record<string, unknown>>; error: null }>();
+    mocks.refetchSkills.mockReturnValue(pending.promise);
+    const rendered = await renderChat();
+    const approvalsBefore = mocks.approvalsModeGet.mock.calls.length;
+
+    submit(rendered, "First immediate request");
+    submit(rendered, "Second immediate request");
+    await waitFor(() => expect(mocks.refetchSkills).toHaveBeenCalledTimes(2));
+    await act(async () => pending.resolve({ data: [], error: null }));
+
+    await waitFor(() =>
+      expect(mocks.approvalsModeGet).toHaveBeenCalledTimes(approvalsBefore + 1),
+    );
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(rendered.getByPlaceholderText("Ask AI to help with your document…")).toHaveValue(
+      "Second immediate request",
+    );
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("abandons a pending cold-start send after the project changes", async () => {
+    mocks.skillsLoaded = false;
+    const pending = deferred<{ data: Array<Record<string, unknown>>; error: null }>();
+    mocks.refetchSkills.mockReturnValue(pending.promise);
+    const rendered = await renderChat();
+
+    submit(rendered, "Request for the original project");
+    await waitFor(() => expect(mocks.refetchSkills).toHaveBeenCalledOnce());
+    act(() => {
+      useFilesStore.setState({ projectId: "project-next", projectName: "Next project" });
+    });
+    await waitFor(() =>
+      expect(mocks.approvalsModeGet).toHaveBeenCalledWith("project-next"),
+    );
+    mocks.approvalsModeGet.mockClear();
+    await act(async () => pending.resolve({ data: [], error: null }));
+
+    expect(mocks.approvalsModeGet).not.toHaveBeenCalled();
+    expect(mocks.runs).toHaveLength(0);
+    expect(activeChatRun()).toBeNull();
+  });
+
   it("adds the plan posture only after Plan mode is turned on", async () => {
     const rendered = await renderChat();
     const toggle = rendered.getByRole("button", { name: "Plan mode" });
@@ -1261,11 +1441,29 @@ describe("ChatCore agent turns", () => {
     expect(rendered.getByPlaceholderText("Ask AI to help with your document…")).toHaveValue("");
   });
 
-  it("opens the Skills coming soon surface from the slash command", async () => {
+  it("records a disabled skill draft from the current chat through slash", async () => {
+    seedCompletedChat();
     await renderChat();
     changeComposer("/record");
     pressComposerKey("Enter");
 
+    await waitFor(() => expect(mocks.createSkill).toHaveBeenCalledOnce());
+    expect(mocks.createSkill).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: expect.stringMatching(/Review This Proof/u),
+        description: expect.stringContaining("Review this proof carefully"),
+        instructions: expect.stringContaining("Replace this scaffold"),
+      }),
+    );
+    await expect(mocks.createSkill.mock.results[0]?.value).resolves.toMatchObject({
+      enabled: false,
+    });
+    await waitFor(() =>
+      expect(chatQueryClient.getQueryData(["skills"])).toEqual([
+        expect.objectContaining({ id: "recorded-review", enabled: false }),
+      ]),
+    );
+    await waitFor(() => expect(mocks.refetchSkills).toHaveBeenCalledOnce());
     expect(useSettingsStore.getState()).toMatchObject({
       settingsInitialSection: "ai",
       settingsOpen: true,
@@ -1330,11 +1528,14 @@ describe("ChatCore agent turns", () => {
     expect(usePlanModeStore.getState().isEnabled(projectId)).toBe(true);
   });
 
-  it("opens the Skills coming soon surface from the plus menu", async () => {
+  it("records a disabled skill draft from the current chat through the plus menu", async () => {
+    seedCompletedChat();
     const rendered = await renderChat();
     openAttachMenu(rendered);
     fireEvent.click(rendered.getByRole("menuitem", { name: /Record a skill/ }));
 
+    await waitFor(() => expect(mocks.createSkill).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.refetchSkills).toHaveBeenCalledOnce());
     expect(useSettingsStore.getState()).toMatchObject({
       settingsInitialSection: "ai",
       settingsOpen: true,
@@ -1355,6 +1556,7 @@ describe("ChatCore agent turns", () => {
     changeComposer("");
     openAttachMenu(rendered);
     expect(rendered.queryByRole("menuitem", { name: /Plan mode/ })).toBeNull();
+    expect(rendered.queryByRole("menuitem", { name: /Record a skill/ })).toBeNull();
 
     await act(async () => finishRun(0, "Done"));
   });
@@ -1371,7 +1573,7 @@ describe("ChatCore agent turns", () => {
     expect(rendered.queryByRole("option", { name: /Plan mode/ })).toBeNull();
     expect(rendered.queryByRole("option", { name: /Archive/ })).toBeNull();
     expect(rendered.queryByRole("option", { name: /Fork chat/ })).toBeNull();
-    expect(rendered.getByRole("option", { name: /Record a skill/ })).toBeTruthy();
+    expect(rendered.queryByRole("option", { name: /Record a skill/ })).toBeNull();
 
     changeComposer("");
     openAttachMenu(rendered);
@@ -1379,7 +1581,27 @@ describe("ChatCore agent turns", () => {
     expect(rendered.queryByRole("menuitem", { name: /^Goal/ })).toBeNull();
     expect(rendered.queryByRole("menuitem", { name: /Plan mode/ })).toBeNull();
     expect(rendered.getByRole("menuitem", { name: /Attach browser/ })).toBeTruthy();
-    expect(rendered.getByRole("menuitem", { name: /Record a skill/ })).toBeTruthy();
+    expect(rendered.queryByRole("menuitem", { name: /Record a skill/ })).toBeNull();
+  });
+
+  it("clears the previous chat and record action when its project closes", async () => {
+    seedCompletedChat();
+    const rendered = await renderChat();
+    await waitFor(() =>
+      expect(rendered.container.querySelectorAll("[data-message-role]")).toHaveLength(2),
+    );
+    changeComposer("/record");
+    expect(rendered.getByRole("option", { name: /Record a skill/ })).toBeTruthy();
+
+    act(() => {
+      useFilesStore.setState({ projectId: null, projectName: "" });
+    });
+
+    await waitFor(() =>
+      expect(rendered.queryByRole("option", { name: /Record a skill/ })).toBeNull(),
+    );
+    expect(rendered.container.querySelectorAll("[data-message-role]")).toHaveLength(0);
+    expect(mocks.createSkill).not.toHaveBeenCalled();
   });
 
   it("tracks a successful write from the existing tool-result mirror path", async () => {

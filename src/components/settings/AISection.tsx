@@ -25,6 +25,7 @@ import { ProjectApprovals } from "./ai/ProjectApprovals";
 import { ProjectBudget } from "./ai/ProjectBudget";
 import { InstructionsTab } from "./ai/InstructionsTab";
 import { PersonasTab } from "./ai/PersonasTab";
+import { SkillsTab } from "./ai/SkillsTab";
 import { AddCustomProviderDialog, type AddCustomProviderInput } from "./ai/AddCustomProviderDialog";
 import { editableKeys, withKey, withoutKey } from "./ai-keys";
 import { agentErrorKind } from "@/lib/agent-backend";
@@ -463,18 +464,7 @@ export function AISection() {
         </TabsContent>
 
         <TabsContent value="skills">
-          <section className="rounded-xl border bg-card p-5">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-foreground">Skills</h3>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Coming soon
-              </span>
-            </div>
-            <p className="mt-2 max-w-xl text-xs leading-relaxed text-muted-foreground">
-              Add reusable capabilities that teach the assistant how to handle specialized
-              research and writing workflows.
-            </p>
-          </section>
+          <SkillsTab />
         </TabsContent>
       </Tabs>
 
