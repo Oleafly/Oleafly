@@ -74,6 +74,10 @@ import {
   usesNativeDockMenu,
 } from "@/lib/native-dock-shortcuts";
 import type { ProjectStateChanged } from "@/lib/tauri";
+import {
+  sidebarMinimumPercent,
+  sidebarPanelGroupWidth,
+} from "@/lib/assistant-layout";
 
 type ExternalFileChange =
   | { kind: "write"; path: string; content: string }
@@ -318,9 +322,7 @@ function AppContent() {
     });
   }, []);
 
-  const RAIL_WIDTH_PX = 48;
   const SIDEBAR_DEFAULT_PX = 340;
-  const SIDEBAR_MIN_PX = 250;
   const panelAreaRef = useRef<HTMLDivElement>(null);
   const [panelAreaWidth, setPanelAreaWidth] = useState(0);
   useEffect(() => {
@@ -334,8 +336,13 @@ function AppContent() {
     observer.observe(el);
     return () => observer.disconnect();
   }, [projectId]);
-  const panelGroupWidth = Math.max(0, panelAreaWidth - RAIL_WIDTH_PX);
-  const sidebarMinSize = panelGroupWidth > 0 ? Math.min(65, (SIDEBAR_MIN_PX / panelGroupWidth) * 100) : 15;
+  const panelGroupWidth = sidebarPanelGroupWidth(panelAreaWidth, appFontSize);
+  const assistantSidebar = railTab === "ai" || railTab === "chat";
+  const sidebarMinSize = sidebarMinimumPercent(
+    panelGroupWidth,
+    assistantSidebar,
+    appFontSize,
+  );
   const sidebarDefaultSize =
     panelGroupWidth > 0 ? Math.min(65, (SIDEBAR_DEFAULT_PX / panelGroupWidth) * 100) : 15;
   const workspacePanelDefaultSize =

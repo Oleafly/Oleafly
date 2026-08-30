@@ -25,6 +25,25 @@ const groups = [
 ];
 
 describe("ModelSelector", () => {
+  it("keeps the selected model name in its tooltip when the label collapses", async () => {
+    render(
+      <ModelSelector
+        compact
+        providerId="openai"
+        modelId="gpt-5.6-luna"
+        groups={groups}
+        onChange={vi.fn()}
+      />,
+    );
+
+    const trigger = screen.getByRole("combobox", { name: "AI model" });
+    fireEvent.mouseEnter(trigger.parentElement as HTMLElement);
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "GPT-5.6 Luna. Switch provider or model",
+    );
+  });
+
   it("opens from an external command and reports when the picker closes", () => {
     function ControlledPicker() {
       const [open, setOpen] = useState(false);

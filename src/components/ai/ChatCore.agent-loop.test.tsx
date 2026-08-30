@@ -74,6 +74,7 @@ const mocks = vi.hoisted(() => ({
     onChange: (event: { target: { value: string } }) => void;
   },
   modelSelectorProps: null as null | {
+    modelId?: string;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
   },
@@ -196,9 +197,22 @@ vi.mock("@/components/ai/ModelSelector", async () => {
   return {
     ModelSelector: (props: typeof mocks.modelSelectorProps) => {
       mocks.modelSelectorProps = props;
-      return props?.open
-        ? React.createElement("input", { "aria-label": "Search models", autoFocus: true })
-        : null;
+      return React.createElement(
+        React.Fragment,
+        null,
+        React.createElement(
+          "button",
+          {
+            "aria-label": "AI model",
+            type: "button",
+            onClick: () => props?.onOpenChange?.(!props.open),
+          },
+          props?.modelId ?? "Select a model",
+        ),
+        props?.open
+          ? React.createElement("input", { "aria-label": "Search models", autoFocus: true })
+          : null,
+      );
     },
   };
 });
@@ -575,6 +589,108 @@ function seedCompletedChat() {
 }
 
 describe("ChatCore agent turns", () => {
+  it("keeps the composer footer on one line with progressively collapsible controls", async () => {
+    const rendered = await renderChat();
+    const controls = rendered.getByTestId("ai-composer-controls");
+    const left = rendered.getByTestId("ai-composer-controls-left");
+    const right = rendered.getByTestId("ai-composer-controls-right");
+
+    expect(controls).toHaveClass(
+      "min-w-0",
+      "flex-nowrap",
+      "gap-0.5",
+      "[container-name:ai-composer]",
+      "[container-type:inline-size]",
+    );
+    expect(controls).not.toHaveClass("flex-wrap");
+    expect(left).toHaveClass("min-w-0", "flex-nowrap", "overflow-x-auto");
+    expect(left).toHaveClass(
+      "[&_button:focus-visible]:outline-offset-[-2px]",
+      "[&_button:focus-visible]:ring-inset",
+      "[&_button:focus-visible]:ring-offset-0",
+    );
+    expect(left).not.toHaveClass("flex-wrap");
+    expect(right).toHaveClass("shrink-0", "flex-nowrap");
+    const model = rendered.getByRole("button", { name: "AI model" });
+    expect(right).toContainElement(model);
+    expect(rendered.getByRole("button", { name: "Voice input (coming soon)" })).toBeVisible();
+    expect(rendered.getByRole("button", { name: "Send" })).toBeVisible();
+
+    fireEvent.click(model);
+    expect(rendered.getByRole("textbox", { name: "Search models" })).toBeVisible();
+    fireEvent.click(model);
+
+    const prompts = rendered.getByRole("button", { name: "Prompt shortcuts" });
+    expect(prompts.querySelector(".lucide-wallet-cards")).not.toBeNull();
+    expect(rendered.getByText("Prompts")).toHaveClass("ai-composer-prompts-value");
+    fireEvent.click(prompts);
+    expect(rendered.getByText("Write & edit")).toBeVisible();
+    fireEvent.click(prompts);
+
+    const persona = rendered.getByRole("button", { name: "Choose persona" });
+    fireEvent.click(persona);
+    expect(rendered.getByRole("button", { name: "Create a persona in Settings" })).toBeVisible();
+    fireEvent.click(persona);
+
+    const approval = rendered.getByRole("button", {
+      name: "Approval mode. Approve for me",
+    });
+    fireEvent.click(approval);
+    expect(rendered.getByRole("button", { name: "Full access" })).toBeVisible();
+    fireEvent.click(approval);
+
+    fireEvent.mouseEnter(prompts.parentElement as HTMLElement);
+    expect(await rendered.findByRole("tooltip")).toHaveTextContent("Prompts");
+  });
+
+  it("shows only the persona dot and chevron until a persona is active", async () => {
+    mocks.getConfig.mockResolvedValue({
+      ai_provider: "openai",
+      ai_model: "gpt-4o",
+      ai_api_key: "test-key",
+      ai_keys: { openai: "test-key" },
+      ai_provider_models: {},
+      ai_custom_providers: [],
+      ai_system_prompt: "",
+      ai_personas: [
+        {
+          id: "starter-research-writer",
+          name: "Research Writer",
+          color: "ocean",
+          prompt: "Write from verified sources.",
+        },
+      ],
+    });
+    const rendered = await renderChat();
+
+    const inactiveTrigger = rendered.getByRole("button", { name: "Choose persona" });
+    expect(inactiveTrigger).not.toHaveTextContent("Persona");
+    const inactiveDot = rendered.getByTestId("ai-inactive-persona-indicator");
+    expect(inactiveDot).toBeVisible();
+    expect(inactiveDot).toHaveClass(
+      "rounded-full",
+      "border",
+      "border-muted-foreground/50",
+    );
+    expect(inactiveDot).not.toHaveAttribute("style");
+    expect(inactiveTrigger.querySelector(".lucide-chevron-down")).not.toBeNull();
+
+    fireEvent.click(inactiveTrigger);
+    fireEvent.click(rendered.getByTestId("ai-persona-Research Writer"));
+
+    const activeTrigger = rendered.getByRole("button", {
+      name: /Research Writer active/u,
+    });
+    expect(activeTrigger).toHaveTextContent("Research Writer");
+    expect(rendered.getByTestId("ai-active-persona-indicator")).toBeVisible();
+    expect(activeTrigger.querySelector(".lucide-chevron-down")).not.toBeNull();
+
+    fireEvent.mouseEnter(activeTrigger.parentElement as HTMLElement);
+    expect(await rendered.findByRole("tooltip")).toHaveTextContent(
+      "Research Writer is active and replaces your default instructions.",
+    );
+  });
+
   it("clears the previous checklist when starting a new chat", async () => {
     const rendered = await renderChat();
     submit(rendered, "Finish a planned turn");
@@ -1241,6 +1357,8 @@ describe("ChatCore agent turns", () => {
 
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(toggle).toHaveClass("bg-violet-500/15", "text-violet-600");
+    expect(toggle.className).not.toContain("amber-");
     submit(rendered, "Run with planning posture");
     await waitFor(() => expect(mocks.runs).toHaveLength(2));
     expect(mocks.runs[1].options.system).toContain(
@@ -1275,6 +1393,20 @@ describe("ChatCore agent turns", () => {
 
     expect(mocks.runs[0].options.system).toContain("Persistent goal: Finish the diagram");
     await act(async () => finishRun(0, "Done"));
+  });
+
+  it("uses a Frame icon and primary color for active figure mode", async () => {
+    const rendered = await renderChat();
+    const toggle = rendered.getByRole("button", { name: "Toggle figure mode" });
+
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(toggle.querySelector(".lucide-frame")).not.toBeNull();
+    expect(toggle.querySelector(".lucide-sparkles")).toBeNull();
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(toggle).toHaveClass("bg-primary/15", "text-primary");
   });
 
   it("edits and clears the active project goal from the composer", async () => {

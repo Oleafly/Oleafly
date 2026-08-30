@@ -67,6 +67,7 @@ const DEFAULT_CFG: AppConfig = {
   ai_provider_models: {},
   ai_custom_providers: [],
   ai_personas: [],
+  ai_starter_personas_seeded: false,
   mcp_enabled: false,
   mcp_port: 5323,
   mcp_read_only: false,

@@ -111,6 +111,8 @@ pub struct AppConfig {
     pub ai_custom_providers: Vec<CustomProvider>,
     #[serde(default)]
     pub ai_personas: Vec<Persona>,
+    #[serde(default)]
+    pub ai_starter_personas_seeded: bool,
     /// MCP server: expose the in-app agent tools to external MCP clients
     /// (Claude Desktop, Claude Code, Cursor, ...). Off by default.
     #[serde(default)]
@@ -160,6 +162,7 @@ impl Default for AppConfig {
             ai_provider_models: std::collections::HashMap::new(),
             ai_custom_providers: Vec::new(),
             ai_personas: Vec::new(),
+            ai_starter_personas_seeded: false,
             mcp_enabled: false,
             mcp_port: default_mcp_port(),
             mcp_read_only: false,
@@ -714,6 +717,33 @@ pub fn get_config() -> Result<AppConfig, String> {
     Ok(cfg)
 }
 
+fn apply_starter_persona_seed(config: &mut AppConfig, starters: &[Persona]) -> bool {
+    if config.ai_starter_personas_seeded {
+        return false;
+    }
+
+    for starter in starters {
+        let starter_name = starter.name.trim().to_lowercase();
+        let installed = config.ai_personas.iter().any(|persona| {
+            persona.id == starter.id || persona.name.trim().to_lowercase() == starter_name
+        });
+        if !installed {
+            config.ai_personas.push(starter.clone());
+        }
+    }
+    config.ai_starter_personas_seeded = true;
+    true
+}
+
+#[tauri::command]
+pub fn seed_starter_personas(starters: Vec<Persona>) -> Result<AppConfig, String> {
+    update_config(|config| {
+        apply_starter_persona_seed(config, &starters);
+        Ok(())
+    })?;
+    get_config()
+}
+
 fn key_unchanged(config: &AppConfig, stored: &AppConfig, id: &str) -> bool {
     config
         .ai_keys
@@ -1246,6 +1276,7 @@ mod tests {
         let cfg = AppConfig {
             github_token: "secret-token".to_string(),
             ai_provider: "anthropic".to_string(),
+            ai_starter_personas_seeded: true,
             ..Default::default()
         };
         write_config_at(&path, &cfg).unwrap();
@@ -1254,7 +1285,53 @@ mod tests {
             serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
         assert_eq!(read.github_token, "secret-token");
         assert_eq!(read.ai_provider, "anthropic");
+        assert!(read.ai_starter_personas_seeded);
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn legacy_config_defaults_starter_persona_seed_flag_to_false() {
+        let config: AppConfig = serde_json::from_str("{}").unwrap();
+        assert!(!config.ai_starter_personas_seeded);
+    }
+
+    #[test]
+    fn starter_persona_seed_is_idempotent_and_preserves_concurrent_fields() {
+        let mut config = AppConfig {
+            ai_personas: vec![Persona {
+                id: "custom".into(),
+                name: "RESEARCH WRITER".into(),
+                color: "slate".into(),
+                prompt: "Keep my instructions.".into(),
+            }],
+            mcp_port: 65001,
+            ..AppConfig::default()
+        };
+        let starters = vec![
+            Persona {
+                id: "starter-research-writer".into(),
+                name: "Research Writer".into(),
+                color: "ocean".into(),
+                prompt: "Research carefully.".into(),
+            },
+            Persona {
+                id: "starter-figure".into(),
+                name: "Draw a Figure".into(),
+                color: "sunset".into(),
+                prompt: "Draw carefully.".into(),
+            },
+        ];
+
+        assert!(apply_starter_persona_seed(&mut config, &starters));
+        assert_eq!(config.mcp_port, 65001);
+        assert_eq!(config.ai_personas.len(), 2);
+        assert_eq!(config.ai_personas[1].id, "starter-figure");
+        assert!(config.ai_starter_personas_seeded);
+
+        config.ai_personas.clear();
+        assert!(!apply_starter_persona_seed(&mut config, &starters));
+        assert!(config.ai_personas.is_empty());
+        assert_eq!(config.mcp_port, 65001);
     }
 
     #[cfg(unix)]
@@ -1346,6 +1423,72 @@ mod tests {
                 env: BTreeMap::from([("SEARCH_TOKEN".to_string(), secret.to_string())]),
             },
         }
+    }
+
+    #[test]
+    fn starter_persona_command_preserves_current_config_and_redacts_its_response() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        let config = AppConfig {
+            github_token: "github-secret".into(),
+            github_user: "octocat".into(),
+            ai_api_key: "legacy-ai-secret".into(),
+            ai_keys: HashMap::from([("openai".into(), "provider-secret".into())]),
+            mcp_token: "mcp-secret".into(),
+            mcp_servers: vec![stdio_server("local-search", "server-secret")],
+            mcp_port: 65001,
+            ..AppConfig::default()
+        };
+        write_config(&config).unwrap();
+        let starters = vec![Persona {
+            id: "starter-figure".into(),
+            name: "Draw a Figure".into(),
+            color: "sunset".into(),
+            prompt: "Draw carefully.".into(),
+        }];
+
+        let visible = seed_starter_personas(starters.clone()).unwrap();
+
+        assert_eq!(visible.mcp_port, 65001);
+        assert_eq!(visible.github_user, "octocat");
+        assert!(visible.ai_starter_personas_seeded);
+        assert_eq!(visible.ai_personas.len(), 1);
+        assert!(visible.github_connected);
+        assert!(visible.github_token.is_empty());
+        assert_eq!(visible.ai_api_key, REDACTED);
+        assert_eq!(
+            visible.ai_keys.get("openai").map(String::as_str),
+            Some(REDACTED)
+        );
+        assert!(visible.mcp_token.is_empty());
+        assert_eq!(
+            visible.mcp_servers,
+            vec![stdio_server("local-search", REDACTED)]
+        );
+
+        let mut persisted = read_config().unwrap();
+        assert_eq!(persisted.mcp_port, 65001);
+        assert_eq!(persisted.github_token, "github-secret");
+        assert_eq!(persisted.ai_api_key, "legacy-ai-secret");
+        assert_eq!(
+            persisted.ai_keys.get("openai").map(String::as_str),
+            Some("provider-secret")
+        );
+        assert_eq!(persisted.mcp_token, "mcp-secret");
+        assert_eq!(
+            persisted.mcp_servers,
+            vec![stdio_server("local-search", "server-secret")]
+        );
+
+        persisted.ai_personas.clear();
+        write_config(&persisted).unwrap();
+        let after_delete = seed_starter_personas(starters).unwrap();
+        assert!(after_delete.ai_personas.is_empty());
+        assert!(after_delete.ai_starter_personas_seeded);
+        assert!(read_config().unwrap().ai_personas.is_empty());
+        std::fs::remove_dir_all(dir).ok();
     }
 
     fn remote_server(name: &str, secret: &str) -> McpServerConfig {

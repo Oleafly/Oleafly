@@ -43,6 +43,11 @@ const appState = vi.hoisted(() => {
   return { analysis, compile, computerUseListeners, files };
 });
 
+const assistantLayoutMocks = vi.hoisted(() => ({
+  sidebarMinimumPercent: vi.fn(() => 48),
+  sidebarPanelGroupWidth: vi.fn(() => 825),
+}));
+
 function selectorStore<T extends object>(state: T) {
   const store = (selector: (value: T) => unknown) => selector(state);
   store.getState = () => state;
@@ -199,6 +204,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 }));
 vi.mock("@/lib/compile-checkpoint", () => ({ COMPILE_SUCCEEDED_EVENT: "compile" }));
 vi.mock("@/lib/compile-sync", () => ({ applyRemoteCompileSuccess: vi.fn() }));
+vi.mock("@/lib/assistant-layout", () => assistantLayoutMocks);
 
 describe("project dock layout", () => {
   let dom: JSDOM;
@@ -233,6 +239,8 @@ describe("project dock layout", () => {
   beforeEach(async () => {
     document.body.innerHTML = "<div id='root'></div>";
     appState.computerUseListeners.clear();
+    assistantLayoutMocks.sidebarMinimumPercent.mockClear();
+    assistantLayoutMocks.sidebarPanelGroupWidth.mockClear();
     const { useSettingsStore } = await import("@/store/settings");
     useSettingsStore.setState({
       browserOpen: false,
@@ -240,6 +248,8 @@ describe("project dock layout", () => {
       showTree: false,
       hideEditorArea: false,
       chatFloating: false,
+      railTab: "files",
+      appFontSize: 16,
     });
   });
 
@@ -275,6 +285,25 @@ describe("project dock layout", () => {
       browserOpen: false,
       terminalOpen: false,
     });
+  });
+
+  it("passes the active assistant tab and app font size into the dock width floor", async () => {
+    const React = await import("react");
+    const { act } = React;
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const { useSettingsStore } = await import("@/store/settings");
+    useSettingsStore.setState({ railTab: "ai", appFontSize: 20 });
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<App />);
+    });
+
+    expect(assistantLayoutMocks.sidebarPanelGroupWidth).toHaveBeenCalledWith(0, 20);
+    expect(assistantLayoutMocks.sidebarMinimumPercent).toHaveBeenCalledWith(825, true, 20);
   });
 
   it("toggles project docks from their registered keyboard shortcuts", async () => {

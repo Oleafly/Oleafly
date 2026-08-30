@@ -3,14 +3,31 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AppConfig } from "@/lib/tauri";
+import { STARTER_PERSONAS } from "@/lib/starter-personas";
 import { PersonasTab } from "./PersonasTab";
 
 function emptyConfig(): AppConfig {
-  return { ai_personas: [] } as unknown as AppConfig;
+  return {
+    ai_personas: [],
+    ai_starter_personas_seeded: true,
+  } as unknown as AppConfig;
+}
+
+function freshSeededConfig(): AppConfig {
+  return {
+    ai_personas: STARTER_PERSONAS.map(({ id, name, color, prompt }) => ({
+      id,
+      name,
+      color,
+      prompt,
+    })),
+    ai_starter_personas_seeded: true,
+  } as unknown as AppConfig;
 }
 
 function configWithPersona(): AppConfig {
   return {
+    ai_starter_personas_seeded: true,
     ai_personas: [
       {
         id: "plain-editor",
@@ -23,10 +40,10 @@ function configWithPersona(): AppConfig {
 }
 
 describe("PersonasTab", () => {
-  it("explains personas and offers research-focused starters", () => {
+  it("shows all starter personas as installed on a fresh seeded config", () => {
     render(
       <PersonasTab
-        cfg={emptyConfig()}
+        cfg={freshSeededConfig()}
         persist={vi.fn()}
         setMsg={vi.fn()}
       />,
@@ -38,6 +55,25 @@ describe("PersonasTab", () => {
     expect(screen.getByText("Research Writer")).toBeInTheDocument();
     expect(screen.getByText("Document Editor")).toBeInTheDocument();
     expect(screen.getByText("Critical Reviewer")).toBeInTheDocument();
+    expect(screen.getByText("Draw a Figure")).toBeInTheDocument();
+    expect(screen.queryByTestId("ai-personas-empty")).toBeNull();
+    expect(screen.queryByText("Suggested personas")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Add .* persona/u })).toBeNull();
+  });
+
+  it("keeps the empty state and manual starter choices after every persona is deleted", () => {
+    render(
+      <PersonasTab
+        cfg={emptyConfig()}
+        persist={vi.fn()}
+        setMsg={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("ai-personas-empty")).toHaveTextContent(
+      "No personas added yet.",
+    );
+    expect(screen.getByRole("button", { name: "Add Draw a Figure persona" })).toBeVisible();
   });
 
   it("explains the instructions when creating a custom persona", () => {
@@ -88,6 +124,7 @@ describe("PersonasTab", () => {
     expect(persist.mock.calls[0][0].ai_personas[0]).not.toHaveProperty(
       "description",
     );
+    expect(persist.mock.calls[0][0].ai_starter_personas_seeded).toBe(true);
   });
 
   it("does not suggest a starter that is already installed", () => {
@@ -173,7 +210,12 @@ describe("PersonasTab", () => {
     fireEvent.click(within(confirmation).getByRole("button", { name: "Delete" }));
 
     await waitFor(() => expect(persist).toHaveBeenCalledOnce());
-    expect(persist).toHaveBeenCalledWith(expect.objectContaining({ ai_personas: [] }));
+    expect(persist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ai_personas: [],
+        ai_starter_personas_seeded: true,
+      }),
+    );
   });
 
   it("reports failures while deleting or installing a starter", async () => {

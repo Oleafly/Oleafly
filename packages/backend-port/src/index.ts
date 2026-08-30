@@ -375,6 +375,7 @@ export interface AppConfig {
     ai_provider_models: Record<string, StoredModel[]>;
     ai_custom_providers: CustomProvider[];
     ai_personas: Persona[];
+    ai_starter_personas_seeded: boolean;
     mcp_enabled: boolean;
     mcp_port: number;
     mcp_read_only: boolean;
@@ -611,6 +612,7 @@ export interface BackendPort {
   searchProject: (projectId: string, query: string) => Promise<SearchHit[]>;
   getConfig: () => Promise<AppConfig>;
   setConfig: (config: AppConfig) => Promise<void>;
+  seedStarterPersonas: (starters: Persona[]) => Promise<AppConfig>;
   mcpStatus: () => Promise<McpStatus>;
   mcpSetEnabled: (enabled: boolean) => Promise<McpStatus>;
   mcpRestartServer: () => Promise<McpStatus>;

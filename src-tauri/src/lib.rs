@@ -381,6 +381,7 @@ pub fn run() {
             config::redacted_secret_marker,
             config::get_config,
             config::set_config,
+            config::seed_starter_personas,
             mcp::mcp_begin_renderer_session,
             mcp::mcp_renderer_heartbeat,
             mcp::mcp_end_renderer_session,

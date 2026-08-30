@@ -37,6 +37,7 @@ import type {
   McpServerValidation,
   McpStatus,
   PackInfo,
+  Persona,
   Prerequisite,
   ProjectInfo,
   ProjectMeta,
@@ -541,6 +542,8 @@ export const searchProject = (projectId: string, query: string) =>
 export const getConfig = () => invoke<AppConfig>("get_config");
 export const setConfig = (config: AppConfig) =>
   invoke<void>("set_config", { config });
+export const seedStarterPersonas = (starters: Persona[]) =>
+  invoke<AppConfig>("seed_starter_personas", { starters });
 
 // --- MCP server (token only via mcp_connection_info while running) ---
 

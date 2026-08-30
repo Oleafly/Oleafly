@@ -29,10 +29,10 @@ import {
   ChevronDown,
   Filter,
   FilePlus2,
+  Frame,
   History,
   Layers,
   Lightbulb,
-  IndentIncrease as ListIndentIncrease,
   MessageSquareQuote,
   Mic,
   Plus,
@@ -44,6 +44,7 @@ import {
   Square,
   Target,
   Trash2,
+  WalletCards,
   Workflow,
   Wrench,
   X,
@@ -2548,8 +2549,14 @@ ${sandboxedCustom}`;
                 rows={1}
                 className="max-h-56 min-h-[32px] w-full resize-none overflow-y-auto rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none outline-none placeholder:text-muted-foreground/70"
               />
-              <div className="mt-2 flex min-h-7 flex-wrap items-center justify-between gap-1">
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+              <div
+                data-testid="ai-composer-controls"
+                className="ai-composer-controls mt-2 flex min-h-7 min-w-0 flex-nowrap items-center justify-between gap-0.5 [container-name:ai-composer] [container-type:inline-size]"
+              >
+                <div
+                  data-testid="ai-composer-controls-left"
+                  className="ai-composer-controls-left no-scrollbar flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden [&_button:focus-visible]:outline-offset-[-2px] [&_button:focus-visible]:ring-inset [&_button:focus-visible]:ring-offset-0"
+                >
                   <ComposerAttachMenu commands={attachCommands} />
                   <ApprovalModeSelector
                     mode={approvalMode}
@@ -2566,9 +2573,9 @@ ${sandboxedCustom}`;
                       onClick={changePlanMode}
                       disabled={approvalModeLocked}
                       className={cn(
-                        "flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50",
+                        "ai-composer-plan flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50",
                         planMode
-                          ? "bg-amber-500/15 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
+                          ? "bg-violet-500/15 text-violet-600 hover:bg-violet-500/20 dark:text-violet-300"
                           : "text-muted-foreground",
                       )}
                     >
@@ -2580,92 +2587,102 @@ ${sandboxedCustom}`;
                       <button type="button"
                         onClick={() => setFigureMode((v) => !v)}
                         aria-label="Toggle figure mode"
+                        aria-pressed={figureMode}
                         className={cn(
-                          "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                          figureMode && "bg-accent text-foreground",
+                          "ai-composer-figure flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                          figureMode && "bg-primary/15 text-primary hover:bg-primary/20",
                         )}
                       >
-                        <Sparkles className="size-4" />
+                        <Frame className="size-4" />
                       </button>
                     </Tooltip>
                   )}
                   {!figureMode && (
                     <span
                       data-tour="ai-prompts"
-                      className="inline-flex"
+                      className="ai-composer-prompts inline-flex shrink-0"
                     >
-                    <Popover
-                      align="left"
-                      ariaLabel="Prompt shortcuts"
-                      triggerClassName="gap-1 px-2 text-xs font-medium"
-                      className="max-h-96 w-80 overflow-y-auto p-1.5"
-                      trigger={
-                        <>
-                          <ListIndentIncrease className="hidden size-4 shrink-0" />
-                          <span>Prompts</span>
-                          <ChevronDown className="size-3.5" />
-                        </>
-                      }
-                    >
-                      {[...PROMPT_CATEGORIES, ...skillPromptCategories].map((category, i) => (
-                        <div
-                          key={category.label}
-                          className={cn("py-2", i > 0 && "mt-1 border-t pt-2.5")}
+                      <Tooltip label="Prompts">
+                        <Popover
+                          align="left"
+                          ariaLabel="Prompt shortcuts"
+                          triggerClassName="ai-composer-prompts-trigger h-7 shrink-0 gap-1 px-2 text-xs font-medium"
+                          className="max-h-96 w-80 overflow-y-auto p-1.5"
+                          trigger={
+                            <>
+                              <WalletCards className="ai-composer-prompts-icon hidden size-4 shrink-0" />
+                              <span className="ai-composer-prompts-value">Prompts</span>
+                              <ChevronDown className="ai-composer-prompts-chevron size-3.5 shrink-0" />
+                            </>
+                          }
                         >
-                          <span className="block px-2.5 pb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                            {category.label}
-                          </span>
-                          <div className="space-y-0.5">
-                            {category.items.map((item) => (
-                              <button
-                                type="button"
-                                key={item.label}
-                                onClick={() => {
-                                  setInput(item.prompt);
-                                  requestAnimationFrame(() =>
-                                    textareaRef.current?.focus({
-                                      preventScroll: true,
-                                    }),
-                                  );
-                                }}
-                                className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2.5 text-left transition-colors hover:bg-accent"
-                              >
-                                <item.icon className="mt-0.5 size-4 shrink-0 text-primary" />
-                                <span className="min-w-0 flex-1">
-                                  <span className="block truncate text-xs font-medium leading-snug">{item.label}</span>
-                                  <span className="block truncate text-[11px] leading-snug text-muted-foreground">
-                                    {item.description}
-                                  </span>
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </Popover>
+                          {[...PROMPT_CATEGORIES, ...skillPromptCategories].map((category, i) => (
+                            <div
+                              key={category.label}
+                              className={cn("py-2", i > 0 && "mt-1 border-t pt-2.5")}
+                            >
+                              <span className="block px-2.5 pb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                                {category.label}
+                              </span>
+                              <div className="space-y-0.5">
+                                {category.items.map((item) => (
+                                  <button
+                                    type="button"
+                                    key={item.label}
+                                    onClick={() => {
+                                      setInput(item.prompt);
+                                      requestAnimationFrame(() =>
+                                        textareaRef.current?.focus({
+                                          preventScroll: true,
+                                        }),
+                                      );
+                                    }}
+                                    className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2.5 text-left transition-colors hover:bg-accent"
+                                  >
+                                    <item.icon className="mt-0.5 size-4 shrink-0 text-primary" />
+                                    <span className="min-w-0 flex-1">
+                                      <span className="block truncate text-xs font-medium leading-snug">{item.label}</span>
+                                      <span className="block truncate text-[11px] leading-snug text-muted-foreground">
+                                        {item.description}
+                                      </span>
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </Popover>
+                      </Tooltip>
                     </span>
                   )}
                   {!figureMode && (
                     <span
                       data-tour="ai-persona"
-                      className="inline-flex min-w-0"
+                      className="ai-composer-persona inline-flex shrink-0"
                     >
-                      <Popover
-                        align="left"
-                        ariaLabel={
+                      <Tooltip
+                        side="top"
+                        label={
                           activePersona
-                            ? `Persona. ${activePersona.name} active and replacing default instructions.`
+                            ? `${activePersona.name} is active and replaces your default instructions.`
                             : "Choose persona"
                         }
-                        triggerClassName="max-w-40 gap-1.5 px-2 text-xs font-medium"
-                        className="max-h-64 w-64 overflow-y-auto p-1.5"
-                        trigger={
-                          <>
-                            {activePersona ? (
-                              <Tooltip
-                                side="top"
-                                label={`${activePersona.name} is active and replaces your default instructions.`}
-                              >
+                      >
+                        <Popover
+                          align="left"
+                          ariaLabel={
+                            activePersona
+                              ? `Persona. ${activePersona.name} active and replacing default instructions.`
+                              : "Choose persona"
+                          }
+                          triggerClassName={cn(
+                            "ai-composer-persona-trigger h-7 max-w-40 shrink-0 gap-1.5 px-2 text-xs font-medium",
+                            !activePersona && "w-10 px-1.5",
+                          )}
+                          className="max-h-64 w-64 overflow-y-auto p-1.5"
+                          trigger={
+                            <>
+                              {activePersona ? (
                                 <span
                                   data-testid="ai-active-persona-indicator"
                                   className="size-2.5 shrink-0 rounded-full ring-1 ring-background"
@@ -2673,82 +2690,90 @@ ${sandboxedCustom}`;
                                     background: personaGradient(activePersona.color),
                                   }}
                                 />
-                              </Tooltip>
-                            ) : (
-                              <span className="size-2.5 shrink-0 rounded-full border border-muted-foreground/50" />
-                            )}
-                            <span className="truncate">
-                              {activePersona?.name ?? "Persona"}
-                            </span>
-                            <ChevronDown className="size-3.5 shrink-0" />
-                          </>
-                        }
-                      >
-                        {personas.length === 0 ? (
-                          <button
-                            type="button"
-                            data-testid="ai-persona-create"
-                            onClick={() => {
-                              setSettingsInitialSection("ai");
-                              setSettingsScrollTarget("ai-personas");
-                              setSettingsOpen(true);
-                            }}
-                            className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                          >
-                            <Plus className="size-3.5 shrink-0" />
-                            Create a persona in Settings
-                          </button>
-                        ) : (
-                          <div className="space-y-0.5">
+                              ) : (
+                                <span
+                                  data-testid="ai-inactive-persona-indicator"
+                                  className="size-2.5 shrink-0 rounded-full border border-muted-foreground/50"
+                                />
+                              )}
+                              {activePersona && (
+                                <span className="ai-composer-persona-value truncate">
+                                  {activePersona.name}
+                                </span>
+                              )}
+                              <ChevronDown className="size-3.5 shrink-0" />
+                            </>
+                          }
+                        >
+                          {personas.length === 0 ? (
                             <button
                               type="button"
-                              data-testid="ai-persona-none"
-                              onClick={() => setActivePersonaId(null)}
-                              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
+                              data-testid="ai-persona-create"
+                              onClick={() => {
+                                setSettingsInitialSection("ai");
+                                setSettingsScrollTarget("ai-personas");
+                                setSettingsOpen(true);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                             >
-                              <span className="size-3 shrink-0 rounded-full border border-muted-foreground/40" />
-                              <span className="min-w-0 flex-1 truncate text-xs font-medium">None</span>
-                              {activePersonaId === null && (
-                                <Check className="size-3.5 shrink-0 text-emerald-500" />
-                              )}
+                              <Plus className="size-3.5 shrink-0" />
+                              Create a persona in Settings
                             </button>
-                            {personas.map((persona) => (
+                          ) : (
+                            <div className="space-y-0.5">
                               <button
                                 type="button"
-                                key={persona.id}
-                                data-testid={`ai-persona-${persona.name}`}
-                                onClick={() => setActivePersonaId(persona.id)}
+                                data-testid="ai-persona-none"
+                                onClick={() => setActivePersonaId(null)}
                                 className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
                               >
-                                <span
-                                  className="size-3 shrink-0 rounded-full"
-                                  style={{ background: personaGradient(persona.color) }}
-                                />
-                                <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                                  {persona.name}
-                                </span>
-                                {activePersonaId === persona.id && (
+                                <span className="size-3 shrink-0 rounded-full border border-muted-foreground/40" />
+                                <span className="min-w-0 flex-1 truncate text-xs font-medium">None</span>
+                                {activePersonaId === null && (
                                   <Check className="size-3.5 shrink-0 text-emerald-500" />
                                 )}
                               </button>
-                            ))}
-                          </div>
-                        )}
-                      </Popover>
+                              {personas.map((persona) => (
+                                <button
+                                  type="button"
+                                  key={persona.id}
+                                  data-testid={`ai-persona-${persona.name}`}
+                                  onClick={() => setActivePersonaId(persona.id)}
+                                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
+                                >
+                                  <span
+                                    className="size-3 shrink-0 rounded-full"
+                                    style={{ background: personaGradient(persona.color) }}
+                                  />
+                                  <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                                    {persona.name}
+                                  </span>
+                                  {activePersonaId === persona.id && (
+                                    <Check className="size-3.5 shrink-0 text-emerald-500" />
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </Popover>
+                      </Tooltip>
                     </span>
                   )}
                 </div>
-                <div className="ml-auto flex min-w-0 items-center gap-1">
+                <div
+                  data-testid="ai-composer-controls-right"
+                  className="ai-composer-controls-right ml-auto flex shrink-0 flex-nowrap items-center gap-1"
+                >
                   {configuredProviders.length > 0 && (
                     <div
                       data-tour="ai-provider-model"
-                      className="min-w-0"
+                      className="ai-composer-model shrink-0"
                     >
                       <ModelSelector
                         compact
                         open={modelPickerOpen}
                         onOpenChange={setModelPickerOpen}
-                        className="h-7 min-w-0 shrink gap-1 px-2 text-xs font-medium text-foreground hover:text-foreground"
+                        className="h-7 min-w-0 shrink-0 gap-1 px-2 text-xs font-medium text-foreground hover:text-foreground"
                         providerId={provider}
                         modelId={model}
                         groups={modelGroups}
@@ -2763,7 +2788,7 @@ ${sandboxedCustom}`;
                       type="button"
                       disabled
                       aria-label="Voice input (coming soon)"
-                      className="flex size-7 shrink-0 cursor-not-allowed items-center justify-center rounded-full text-muted-foreground/40"
+                      className="ai-composer-mic flex size-7 shrink-0 cursor-not-allowed items-center justify-center rounded-full text-muted-foreground/40"
                     >
                       <Mic className="size-4" />
                     </button>
@@ -2773,7 +2798,7 @@ ${sandboxedCustom}`;
                       onClick={stop}
                       aria-label="Stop"
                       title="Stop generating"
-                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:opacity-90"
+                      className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:opacity-90"
                     >
                       <Square className="size-3.5 fill-current" />
                     </button>
@@ -2782,7 +2807,7 @@ ${sandboxedCustom}`;
                       onClick={() => void send(input)}
                       disabled={!engineLoaded || (!input.trim() && attachments.length === 0)}
                       aria-label="Send"
-                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40"
+                      className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40"
                     >
                       <ArrowUp className="size-4" />
                     </button>

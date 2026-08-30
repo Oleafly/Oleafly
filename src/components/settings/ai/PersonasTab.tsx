@@ -5,7 +5,11 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { AppConfig, Persona } from "@/lib/tauri";
 import { personaGradient } from "@/lib/persona-colors";
-import { STARTER_PERSONAS, type StarterPersona } from "@/lib/starter-personas";
+import {
+  isStarterPersonaInstalled,
+  STARTER_PERSONAS,
+  type StarterPersona,
+} from "@/lib/starter-personas";
 import { CreatePersonaDialog } from "./CreatePersonaDialog";
 
 export interface PersonasTabProps {
@@ -21,13 +25,7 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
   const [addingStarterId, setAddingStarterId] = useState<string | null>(null);
   const personas = cfg.ai_personas ?? [];
   const availableStarters = STARTER_PERSONAS.filter(
-    (starter) =>
-      !personas.some(
-        (persona) =>
-          persona.id === starter.id ||
-          persona.name.trim().toLocaleLowerCase() ===
-            starter.name.toLocaleLowerCase(),
-      ),
+    (starter) => !isStarterPersonaInstalled(personas, starter),
   );
 
   const openCreate = () => {

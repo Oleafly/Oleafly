@@ -5,6 +5,52 @@ import { describe, expect, it, vi } from "vitest";
 import { ApprovalModeSelector } from "./ApprovalModeSelector";
 
 describe("ApprovalModeSelector", () => {
+  it.each([
+    ["ask-for-approval", "bg-amber-500/10", true],
+    ["approve-for-me", "bg-muted/40", false],
+    ["full-access", "bg-orange-500/10", true],
+    ["custom", "bg-muted/40", false],
+  ] as const)("styles %s with only its intended selection color", (mode, expectedClass, colored) => {
+    render(
+      <ApprovalModeSelector
+        mode={mode}
+        onChange={vi.fn()}
+        onOpenProjectRules={vi.fn()}
+      />,
+    );
+
+    const trigger = screen.getByRole("button", { name: /Approval mode\./u });
+    expect(trigger).toHaveClass(expectedClass);
+    const tintPattern = /\b(?:bg|border|text)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|primary|destructive)(?:-|\/|\b)/u;
+    expect(tintPattern.test(trigger.className)).toBe(colored);
+    if (!colored) {
+      expect(trigger).toHaveClass("border-border/70", "bg-muted/40");
+    }
+  });
+
+  it("keeps the full active mode in a tooltip when its label collapses", async () => {
+    render(
+      <ApprovalModeSelector
+        mode="custom"
+        onChange={vi.fn()}
+        onOpenProjectRules={vi.fn()}
+      />,
+    );
+
+    const trigger = screen.getByRole("button", {
+      name: "Approval mode. Custom (approvals.toml)",
+    });
+    expect(trigger).toHaveClass("ai-composer-approval-trigger");
+    expect(screen.getByText("Custom (approvals.toml)")).toHaveClass(
+      "ai-composer-approval-value",
+    );
+
+    fireEvent.mouseEnter(trigger.parentElement as HTMLElement);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Custom (approvals.toml)",
+    );
+  });
+
   it("shows the active mode and exposes exactly four choices", () => {
     render(
       <ApprovalModeSelector

@@ -17,7 +17,7 @@ export function ComposerAttachMenu({ commands }: { commands: ComposerCommand[] }
           type="button"
           aria-label="Add context"
           title="Add context"
-          className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="ai-composer-attach flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <Plus className="size-4.5" />
         </button>

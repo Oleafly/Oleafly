@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { assistantMinimumWidth } from "./assistant-layout";
 import { clampRect } from "./overlay-rect";
 
 const vp = { width: 1200, height: 800 };
@@ -14,6 +15,14 @@ describe("clampRect", () => {
     const r = clampRect({ x: 0, y: 0, w: 50, h: 50 }, vp);
     expect(r.w).toBeGreaterThanOrEqual(320);
     expect(r.h).toBeGreaterThanOrEqual(400);
+  });
+  it("keeps the scaled footer reachable at larger app font sizes", () => {
+    const r = clampRect(
+      { x: 0, y: 0, w: 320, h: 600 },
+      vp,
+      assistantMinimumWidth(20),
+    );
+    expect(r.w).toBe(400);
   });
   it("caps size to the viewport (no fullscreen blowout)", () => {
     const r = clampRect({ x: 0, y: 0, w: 5000, h: 5000 }, vp);

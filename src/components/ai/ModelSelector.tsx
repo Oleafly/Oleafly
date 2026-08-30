@@ -84,7 +84,10 @@ export function ModelSelector({
         if (!nextOpen) setQuery("");
       }}
     >
-      <Tooltip label="Switch provider or model" className="min-w-0">
+      <Tooltip
+        label={`${selectedModel?.name || modelId || "Select a model"}. Switch provider or model`}
+        className="min-w-0"
+      >
         <PopoverPrimitive.Trigger asChild>
           <button
             type="button"
@@ -112,7 +115,7 @@ export function ModelSelector({
                 {selectedModel?.name || modelId || "Select a model"}
               </span>
             </span>
-            <ChevronDown className="size-4 shrink-0 self-center opacity-50" />
+            <ChevronDown className="ai-model-selector-chevron size-4 shrink-0 self-center opacity-50" />
           </button>
         </PopoverPrimitive.Trigger>
       </Tooltip>
