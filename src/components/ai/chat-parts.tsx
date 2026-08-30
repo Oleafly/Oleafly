@@ -599,6 +599,13 @@ export const MessageItem = memo(function MessageItem({
   }
   const totalMs = blocks.reduce((sum, block) => sum + (block.ms ?? 0), 0);
   const foldSteps = !live && rows.length > 0 && msg.role === "assistant";
+  const createdAt = msg.createdAt === undefined ? null : new Date(msg.createdAt);
+  const validCreatedAt = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : null;
+  const messageTime = validCreatedAt?.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
   return (
     <div className={cn("flex flex-col gap-1.5", msg.role === "user" && "items-end")}>
       {foldSteps ? <WorkedSteps rows={rows} totalMs={totalMs} /> : rows}
@@ -623,15 +630,14 @@ export const MessageItem = memo(function MessageItem({
       {msg.content ? (
         <div
           className={cn(
-            "group flex w-full items-center gap-2",
-            msg.role === "user" && "justify-end"
+            "group flex w-full flex-col items-start gap-0.5",
+            msg.role === "user" && "items-end",
           )}
         >
-          {msg.role === "user" && <CopyMessageButton text={msg.content} />}
           <div
             className={cn(
               "max-w-[85%] overflow-hidden rounded-lg px-3 py-2 text-sm",
-              msg.role === "user" ? "bg-primary text-white" : "bg-muted text-foreground"
+              msg.role === "user" ? "bg-primary text-white" : "bg-muted text-foreground",
             )}
           >
             {msg.role === "assistant" ? (
@@ -650,7 +656,14 @@ export const MessageItem = memo(function MessageItem({
               <p className="whitespace-pre-wrap break-words">{msg.content}</p>
             )}
           </div>
-          {msg.role === "assistant" && <CopyMessageButton text={msg.content} />}
+          <div className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+            {messageTime && (
+              <time dateTime={validCreatedAt?.toISOString()} className="tabular-nums">
+                {messageTime}
+              </time>
+            )}
+            <CopyMessageButton text={msg.content} />
+          </div>
         </div>
       ) : null}
     </div>

@@ -35,6 +35,7 @@ interface AgentTurnsState {
   rollbackTurn: (chatId: string, clientTurnId: string) => void;
   queueFollowUp: (chatId: string, text: string, attachments?: QueuedAttachment[]) => void;
   markSteered: (chatId: string, followUpId: string) => void;
+  removeFollowUp: (chatId: string, followUpId: string) => void;
   takeFollowUps: (chatId: string) => QueuedFollowUp[];
   acknowledgeFollowUp: (chatId: string, followUpId: string) => void;
   threadFor: (chatId: string, projectId: string | null, claimPrewarmed: () => Promise<string | null>) => Promise<string>;
@@ -236,6 +237,18 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
           ),
         },
       };
+    });
+  },
+
+  removeFollowUp: (chatId, followUpId) => {
+    set((state) => {
+      const queued = state.queuedByChat[chatId] ?? [];
+      const remaining = queued.filter((item) => item.id !== followUpId);
+      if (remaining.length === queued.length) return {};
+      const next = { ...state.queuedByChat };
+      if (remaining.length > 0) next[chatId] = remaining;
+      else delete next[chatId];
+      return { queuedByChat: next };
     });
   },
 

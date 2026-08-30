@@ -283,7 +283,7 @@ describe("TerminalPane", () => {
     const observer = mocks.resizeObservers[0];
 
     mocks.channels[0].onmessage?.({ event: "output", data: "ready\r\n" });
-    expect(terminal.write).toHaveBeenCalledWith("ready\r\n");
+    expect(terminal.write).toHaveBeenCalledWith("ready\r\n", expect.any(Function));
     mocks.channels[0].onmessage?.({ event: "exit" });
 
     await waitFor(() => {
@@ -355,6 +355,7 @@ describe("TerminalPane", () => {
     await waitFor(() => {
       expect(terminal.writeln).toHaveBeenCalledWith(
         "\r\nThe shell could not start: Error: pty unavailable",
+        expect.any(Function),
       );
     });
     expect(screen.queryByTestId("dock-terminal-loading")).toBeNull();
@@ -381,9 +382,11 @@ describe("TerminalPane", () => {
     await waitFor(() => {
       expect(terminal.writeln).toHaveBeenCalledWith(
         "\r\nThe shell could not accept input: Error: write denied",
+        expect.any(Function),
       );
       expect(terminal.writeln).toHaveBeenCalledWith(
         "\r\nThe terminal could not resize: Error: resize denied",
+        expect.any(Function),
       );
     });
   });
@@ -407,6 +410,7 @@ describe("TerminalPane", () => {
       expect(terminal.writeln).toHaveBeenCalledTimes(1);
       expect(terminal.writeln).toHaveBeenCalledWith(
         "\r\nThe shell could not accept input: Error: write denied",
+        expect.any(Function),
       );
     });
   });

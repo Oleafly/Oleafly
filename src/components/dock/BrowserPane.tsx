@@ -393,6 +393,7 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
           <Globe className="size-3.5 shrink-0 text-muted-foreground" />
         )}
         <Input
+          data-testid="dock-browser-address"
           aria-label="Browser address"
           value={draft}
           placeholder="Search or paste a link"
@@ -402,7 +403,14 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
           }}
           className="h-7 flex-1 text-xs"
         />
-        <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={go}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs"
+          data-testid="dock-browser-open"
+          onClick={go}
+        >
           Open
         </Button>
         {url && (

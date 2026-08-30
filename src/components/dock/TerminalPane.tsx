@@ -3,6 +3,7 @@ import { Channel, invoke } from "@tauri-apps/api/core";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { Loader2 } from "lucide-react";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { TERMINAL_COLOR_THEMES, useSettingsStore } from "@/store/settings";
 import "@xterm/xterm/css/xterm.css";
 
@@ -10,8 +11,32 @@ type TerminalChannelMessage =
   | { event: "output"; data: string }
   | { event: "exit" };
 
-function writeTerminalError(terminal: Terminal, message: string, error: unknown) {
-  terminal.writeln(`\r\n${message}: ${String(error)}`);
+function terminalBufferText(terminal: Terminal): string {
+  const buffer = terminal.buffer.active;
+  const lines: string[] = [];
+  for (let index = 0; index < buffer.length; index += 1) {
+    lines.push(buffer.getLine(index)?.translateToString(true) ?? "");
+  }
+  return lines.join("\n");
+}
+
+function terminalOutputCallback(
+  terminal: Terminal,
+  target: HTMLElement | null,
+): (() => void) | undefined {
+  if (!E2E_HOOKS || !target) return undefined;
+  return () => {
+    target.dataset.terminalOutput = terminalBufferText(terminal);
+  };
+}
+
+function writeTerminalError(
+  terminal: Terminal,
+  message: string,
+  error: unknown,
+  onWritten?: () => void,
+) {
+  terminal.writeln(`\r\n${message}: ${String(error)}`, onWritten);
 }
 
 function writeTerminalErrorOnce(
@@ -19,11 +44,12 @@ function writeTerminalErrorOnce(
   surfacedErrors: Set<string>,
   message: string,
   error: unknown,
+  onWritten?: () => void,
 ) {
   const key = `${message}\u0000${String(error)}`;
   if (surfacedErrors.has(key)) return;
   surfacedErrors.add(key);
-  writeTerminalError(terminal, message, error);
+  writeTerminalError(terminal, message, error, onWritten);
 }
 
 export function TerminalPane({
@@ -41,6 +67,7 @@ export function TerminalPane({
   const sessionIdRef = useRef<string | null>(null);
   const sessionLiveRef = useRef(false);
   const surfacedErrorsRef = useRef(new Set<string>());
+  const outputWrittenRef = useRef<(() => void) | undefined>(undefined);
   const visibleRef = useRef(visible);
   const previousVisibleRef = useRef(visible);
   visibleRef.current = visible;
@@ -125,6 +152,10 @@ export function TerminalPane({
     const fit = new FitAddon();
     terminal.loadAddon(fit);
     terminal.open(host);
+    const outputTarget = host.parentElement;
+    const outputWritten = terminalOutputCallback(terminal, outputTarget);
+    outputWrittenRef.current = outputWritten;
+    if (outputWritten && outputTarget) outputTarget.dataset.terminalOutput = "";
     fit.fit();
     terminal.focus();
     terminalRef.current = terminal;
@@ -139,7 +170,11 @@ export function TerminalPane({
       if (disposed || sessionExited) return;
       if (message.event === "output") {
         setBooted(true);
-        terminal.write(message.data);
+        if (E2E_HOOKS) {
+          terminal.write(message.data, outputWritten);
+        } else {
+          terminal.write(message.data);
+        }
         return;
       }
       sessionExited = true;
@@ -171,7 +206,7 @@ export function TerminalPane({
       .catch((error) => {
         if (disposed || sessionExited) return;
         setBooted(true);
-        writeTerminalError(terminal, "The shell could not start", error);
+        writeTerminalError(terminal, "The shell could not start", error, outputWritten);
       });
 
     const dataSub = terminal.onData((data) => {
@@ -183,6 +218,7 @@ export function TerminalPane({
               surfacedErrorsRef.current,
               "The shell could not accept input",
               error,
+              outputWritten,
             );
           }
         });
@@ -204,6 +240,7 @@ export function TerminalPane({
               surfacedErrorsRef.current,
               "The terminal could not resize",
               error,
+              outputWritten,
             );
           }
         });
@@ -221,6 +258,7 @@ export function TerminalPane({
       sessionIdRef.current = null;
       terminalRef.current = null;
       fitRef.current = null;
+      if (outputWrittenRef.current === outputWritten) outputWrittenRef.current = undefined;
       terminal.dispose();
     };
   }, [activatedProjectId, projectId, sessionEnded, setTerminalOpen]);
@@ -260,6 +298,7 @@ export function TerminalPane({
             surfacedErrorsRef.current,
             "The terminal could not resize",
             error,
+            outputWrittenRef.current,
           );
         }
       });
@@ -307,6 +346,7 @@ export function TerminalPane({
               surfacedErrorsRef.current,
               "The terminal could not resize",
               error,
+              outputWrittenRef.current,
             );
           }
         });
@@ -319,11 +359,13 @@ export function TerminalPane({
     <div
       className="relative h-full w-full p-2"
       data-testid="dock-terminal"
+      data-terminal-font-size={terminalFontSize}
+      data-terminal-color-theme={terminalColorTheme}
       aria-hidden={!visible}
       onMouseDown={() => terminalRef.current?.focus()}
       style={{ backgroundColor: terminalBackground }}
     >
-      <div ref={hostRef} className="h-full w-full" />
+      <div ref={hostRef} className="h-full w-full" data-testid="dock-terminal-host" />
       {!booted && (
         <div
           className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-muted-foreground"

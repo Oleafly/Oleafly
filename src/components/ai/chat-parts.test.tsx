@@ -204,3 +204,33 @@ describe("MessageItem streaming render", () => {
     expect(container.querySelector("h1")).toHaveTextContent("Findings");
   });
 });
+
+describe("MessageItem footer", () => {
+  it.each(["user", "assistant"] as const)(
+    "renders the %s message time and copy button in the same footer below the bubble",
+    (role) => {
+      const createdAt = new Date(2026, 0, 15, 17, 41).getTime();
+      const { container, getByRole } = render(
+        <MessageItem msg={{ role, content: "Timestamped message", createdAt }} />,
+      );
+
+      const time = container.querySelector("time");
+      const copyButton = getByRole("button", { name: "Copy message" });
+      const footer = time?.parentElement;
+
+      expect(time).toHaveTextContent("5:41 PM");
+      expect(copyButton.parentElement).toBe(footer);
+      expect(footer?.previousElementSibling).toHaveTextContent("Timestamped message");
+    },
+  );
+
+  it("renders a stored message without a timestamp when createdAt is missing", () => {
+    const { container, getByRole } = render(
+      <MessageItem msg={{ role: "assistant", content: "Legacy message" }} />,
+    );
+
+    expect(getByRole("button", { name: "Copy message" })).toBeInTheDocument();
+    expect(container.querySelector("time")).toBeNull();
+    expect(container).not.toHaveTextContent("Invalid Date");
+  });
+});

@@ -79,6 +79,7 @@ function DockToggles() {
       <Tooltip label={terminalLabel} side="right">
         <button
           type="button"
+          data-testid="rail-terminal-toggle"
           aria-label={terminalLabel}
           aria-pressed={terminalOpen}
           onClick={() => setTerminalOpen(!terminalOpen)}
@@ -90,6 +91,7 @@ function DockToggles() {
       <Tooltip label={browserLabel} side="right">
         <button
           type="button"
+          data-testid="rail-browser-toggle"
           aria-label={browserLabel}
           aria-pressed={browserOpen}
           onClick={() => setBrowserOpen(!browserOpen)}

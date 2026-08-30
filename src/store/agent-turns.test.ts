@@ -83,6 +83,35 @@ describe("useAgentTurnsStore", () => {
     expect(useAgentTurnsStore.getState().queuedByChat["run-chat"][0].status).toBe("steered");
   });
 
+  it("removes only the targeted queued follow-up", () => {
+    const store = useAgentTurnsStore.getState();
+    store.queueFollowUp("chat-1", "keep this one");
+    store.queueFollowUp("chat-1", "discard this one");
+    store.queueFollowUp("chat-2", "keep the other chat");
+    const discarded = useAgentTurnsStore.getState().queuedByChat["chat-1"][1];
+
+    store.removeFollowUp("chat-1", discarded.id);
+
+    expect(useAgentTurnsStore.getState().queuedByChat["chat-1"].map((item) => item.text)).toEqual([
+      "keep this one",
+    ]);
+    expect(useAgentTurnsStore.getState().queuedByChat["chat-2"].map((item) => item.text)).toEqual([
+      "keep the other chat",
+    ]);
+  });
+
+  it("cleans up a chat queue after removing its final follow-up", () => {
+    const store = useAgentTurnsStore.getState();
+    store.queueFollowUp("chat-1", "discard the final message");
+    store.queueFollowUp("chat-2", "keep the other chat");
+    const discarded = useAgentTurnsStore.getState().queuedByChat["chat-1"][0];
+
+    store.removeFollowUp("chat-1", discarded.id);
+
+    expect(useAgentTurnsStore.getState().queuedByChat).not.toHaveProperty("chat-1");
+    expect(useAgentTurnsStore.getState().queuedByChat["chat-2"]).toHaveLength(1);
+  });
+
   it("publishes a burst of text deltas at most once per frame", () => {
     vi.useFakeTimers();
     const clone = vi.spyOn(globalThis, "structuredClone");

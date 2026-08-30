@@ -1,0 +1,211 @@
+import { test, expect } from "../fixtures";
+import { openProject, pressGlobal, type Page } from "../helpers";
+
+const TERMINAL = '[data-testid="dock-terminal"]';
+const TERMINAL_HOST = '[data-testid="dock-terminal-host"]';
+const TERMINAL_TOGGLE = '[data-testid="rail-terminal-toggle"]';
+const BROWSER_TOGGLE = '[data-testid="rail-browser-toggle"]';
+
+async function terminalOutput(page: Page): Promise<string> {
+  return page.evaluate<string>(
+    `document.querySelector(${JSON.stringify(TERMINAL)})?.getAttribute("data-terminal-output") ?? ""`,
+  );
+}
+
+async function enterTerminalCommand(page: Page, command: string): Promise<void> {
+  await page.evaluate(
+    `(() => {
+      const input = document.querySelector(${JSON.stringify(`${TERMINAL_HOST} .xterm-helper-textarea`)});
+      if (!(input instanceof HTMLTextAreaElement)) throw new Error("terminal input is unavailable");
+      input.focus();
+      input.dispatchEvent(new InputEvent("input", {
+        data: ${JSON.stringify(command)},
+        inputType: "insertText",
+        bubbles: true,
+        cancelable: true,
+      }));
+      const keyDown = new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(keyDown, "keyCode", { value: 13 });
+      input.dispatchEvent(keyDown);
+      const keyUp = new KeyboardEvent("keyup", {
+        key: "Enter",
+        code: "Enter",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(keyUp, "keyCode", { value: 13 });
+      input.dispatchEvent(keyUp);
+      return true;
+    })()`,
+  );
+}
+
+async function triggerDockShortcut(
+  page: Page,
+  dock: "terminal" | "browser",
+): Promise<void> {
+  const nativeMenu = await page.evaluate<boolean>(
+    `Boolean(window.__TAURI_INTERNALS__) && /Mac|Linux/.test(navigator.platform)`,
+  );
+  if (nativeMenu) {
+    await page.evaluate(
+      `window.__TAURI_INTERNALS__.invoke("plugin:event|emit", {
+        event: ${JSON.stringify(`menu://toggle-${dock}`)},
+        payload: null,
+      }).then(() => true)`,
+    );
+    return;
+  }
+  if (dock === "terminal") {
+    await pressGlobal(page, "`", { ctrl: true });
+  } else {
+    await pressGlobal(page, "b", { ctrl: true, shift: true });
+  }
+}
+
+test("project docks start closed and their rail controls follow Source Control", async ({
+  tauriPage,
+}) => {
+  await expect(tauriPage.locator(TERMINAL_TOGGLE)).toHaveCount(0);
+  await expect(tauriPage.locator(BROWSER_TOGGLE)).toHaveCount(0);
+
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await expect(tauriPage.locator(TERMINAL)).not.toBeVisible();
+  await expect(tauriPage.getByTestId("dock-browser")).not.toBeVisible();
+  await expect(tauriPage.locator(TERMINAL_TOGGLE)).toBeVisible();
+  await expect(tauriPage.locator(BROWSER_TOGGLE)).toBeVisible();
+
+  const dockOrder = await tauriPage.evaluate<string[]>(`(() => {
+    const buttons = Array.from(document.querySelectorAll('nav[aria-label="Sidebar"] button'));
+    const sourceIndex = buttons.findIndex((button) => button.getAttribute("aria-label") === "Source Control");
+    return buttons.slice(sourceIndex, sourceIndex + 3).map((button) =>
+      button.getAttribute("data-testid") ?? button.getAttribute("aria-label") ?? ""
+    );
+  })()`);
+  expect(dockOrder).toEqual([
+    "Source Control",
+    "rail-terminal-toggle",
+    "rail-browser-toggle",
+  ]);
+
+  const terminalLabel = await tauriPage.getAttribute(TERMINAL_TOGGLE, "aria-label");
+  const browserLabel = await tauriPage.getAttribute(BROWSER_TOGGLE, "aria-label");
+  expect(terminalLabel).toMatch(/^Show terminal \(Ctrl(?:\+)?`\)$/u);
+  expect(browserLabel).toMatch(/^Show browser \(Ctrl(?:\+Shift\+|⇧)B\)$/u);
+});
+
+test("the real terminal survives a browser child webview and exits cleanly", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(90_000);
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+
+  await tauriPage.evaluate(`(() => {
+    window.__e2eTerminalLoadingSeen = false;
+    const update = () => {
+      const loading = document.querySelector('[data-testid="dock-terminal-loading"]');
+      if (loading instanceof HTMLElement && loading.getClientRects().length > 0) {
+        window.__e2eTerminalLoadingSeen = true;
+      }
+    };
+    const observer = new MutationObserver(update);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+    window.__e2eTerminalLoadingObserver = observer;
+    update();
+    return true;
+  })()`);
+  await tauriPage.click(TERMINAL_TOGGLE);
+  await expect(tauriPage.locator(TERMINAL)).toBeVisible();
+  await expect
+    .poll(
+      () => tauriPage.evaluate<boolean>(`window.__e2eTerminalLoadingSeen === true`),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+  await tauriPage.evaluate(`window.__e2eTerminalLoadingObserver?.disconnect()`);
+  await expect(tauriPage.getByTestId("dock-terminal-loading")).toHaveCount(0, {
+    timeout: 30_000,
+  });
+  await expect(tauriPage.locator(`${TERMINAL_HOST} .xterm-helper-textarea`)).toHaveCount(1);
+  await expect
+    .poll(
+      async () => /[$#%>❯➜]\s*$/u.test((await terminalOutput(tauriPage)).trimEnd()),
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+
+  await enterTerminalCommand(tauriPage, "echo e2e-terminal-ok");
+  await expect
+    .poll(
+      async () => (await terminalOutput(tauriPage)).split("e2e-terminal-ok").length - 1,
+      { timeout: 15_000 },
+    )
+    .toBeGreaterThanOrEqual(2);
+
+  await tauriPage.click(BROWSER_TOGGLE);
+  await expect(tauriPage.getByTestId("dock-browser")).toBeVisible();
+  await expect
+    .poll(
+      () =>
+        tauriPage.evaluate<boolean>(
+          `window.__TAURI_INTERNALS__.invoke("plugin:webview|get_all_webviews").then(
+            (webviews) => webviews.some((webview) =>
+              String(webview.label).startsWith("oleafly-browser-pane-")
+            )
+          )`,
+        ),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+
+  await enterTerminalCommand(tauriPage, "echo still-alive");
+  await expect
+    .poll(
+      async () => (await terminalOutput(tauriPage)).split("still-alive").length - 1,
+      { timeout: 15_000 },
+    )
+    .toBeGreaterThanOrEqual(2);
+  expect(await terminalOutput(tauriPage)).toContain("e2e-terminal-ok");
+
+  await enterTerminalCommand(tauriPage, "exit");
+  await expect(tauriPage.locator(TERMINAL)).not.toBeVisible({ timeout: 15_000 });
+  await expect(tauriPage.locator(`${TERMINAL_HOST} .xterm`)).toHaveCount(0, {
+    timeout: 15_000,
+  });
+  await expect(tauriPage.locator(TERMINAL_TOGGLE)).toHaveAttribute("aria-pressed", "false");
+  const output = await terminalOutput(tauriPage);
+  expect(output).not.toContain("The shell could not start");
+  expect(output).not.toContain("The shell could not accept input");
+  expect(output).not.toContain("The terminal could not resize");
+  await tauriPage.click(BROWSER_TOGGLE);
+  await expect(tauriPage.getByTestId("dock-browser")).not.toBeVisible();
+});
+
+test("configured terminal and browser shortcut routes toggle their docks", async ({ tauriPage }) => {
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+
+  await triggerDockShortcut(tauriPage, "terminal");
+  await expect(tauriPage.locator(TERMINAL)).toBeVisible({ timeout: 10_000 });
+  await triggerDockShortcut(tauriPage, "terminal");
+  await expect(tauriPage.locator(TERMINAL)).not.toBeVisible({ timeout: 10_000 });
+
+  await triggerDockShortcut(tauriPage, "browser");
+  await expect(tauriPage.getByTestId("dock-browser")).toBeVisible({ timeout: 10_000 });
+  await triggerDockShortcut(tauriPage, "browser");
+  await expect(tauriPage.getByTestId("dock-browser")).not.toBeVisible({
+    timeout: 10_000,
+  });
+});
+
+test.skip(
+  "native Ctrl dock accelerator keystrokes cannot be synthesized through the app bridge",
+  async () => {},
+);

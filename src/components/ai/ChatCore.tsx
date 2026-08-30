@@ -29,6 +29,7 @@ import {
   Search,
   Sparkles,
   Square,
+  Trash2,
   Workflow,
   Wrench,
   type LucideIcon,
@@ -284,6 +285,8 @@ export function ChatCore() {
     () => new Set(),
   );
   const steeringFollowUpIdsRef = useRef(new Set<string>());
+  const [sendingFollowUpId, setSendingFollowUpId] = useState<string | null>(null);
+  const sendingFollowUpIdRef = useRef<string | null>(null);
   // Figure studio mode: swaps in the figure system prompt + figure toolset.
   const [figureMode, setFigureMode] = useState(false);
   const agentTodos = useAgentTodoStore((s) => s.todos);
@@ -925,10 +928,12 @@ export function ChatCore() {
     }
 
     const priorMessages = messagesRef.current;
+    const createdAt = Date.now();
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
       content: text,
+      createdAt,
       ...(outgoing.length
         ? { attachments: outgoing.map((a) => ({ name: a.name, mediaType: a.mediaType })) }
         : {}),
@@ -937,6 +942,7 @@ export function ChatCore() {
       id: crypto.randomUUID(),
       role: "assistant",
       content: "",
+      createdAt,
       toolCalls: [],
       ...(runCheckpointOid ? { checkpointOid: runCheckpointOid } : {}),
     };
@@ -1151,6 +1157,7 @@ ${sandboxedCustom}`;
         clientTurnId,
         onRequestId: (id) => {
           activeRunRequestIdRef.current = id;
+          acknowledgeQueued();
         },
         onRawEvent: (event) => {
           acknowledgeQueued();
@@ -1345,6 +1352,10 @@ ${sandboxedCustom}`;
         if (runIsCurrent()) setRunUsage({ input: usageIn, output: usageOut, steps: usageSteps, usd });
       }
       if (runIsCurrent()) {
+        const completedAt = Date.now();
+        updateRunLast((message) =>
+          message.id === assistantMsg.id ? { ...message, createdAt: completedAt } : message,
+        );
         await flushStreamPatches();
         if (runIsCurrent()) {
           setStreaming(false);
@@ -1370,7 +1381,15 @@ ${sandboxedCustom}`;
       if (runEndedCleanly && runChatId) {
         const followUps = useAgentTurnsStore.getState().takeFollowUps(runChatId);
         const next = followUps.find((item) => item.status === "pending");
-        if (next) void send(next.text, next);
+        if (next) {
+          sendingFollowUpIdRef.current = next.id;
+          setSendingFollowUpId(next.id);
+          void send(next.text, next).finally(() => {
+            if (sendingFollowUpIdRef.current !== next.id) return;
+            sendingFollowUpIdRef.current = null;
+            setSendingFollowUpId(null);
+          });
+        }
       }
     }
   }, [streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId]);
@@ -1453,6 +1472,8 @@ ${sandboxedCustom}`;
     setStreaming(false);
     setThinkingText(null);
     setPendingApproval(null);
+    sendingFollowUpIdRef.current = null;
+    setSendingFollowUpId(null);
     pendingImagesRef.current = [];
     setInputState(savedDraft(projectId));
   }, [projectId]);
@@ -1851,6 +1872,7 @@ ${sandboxedCustom}`;
                     {queuedFollowUps.map((item) => (
                       <div
                         key={item.id}
+                        data-testid="agent-follow-up-chip"
                         className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground"
                       >
                         <span className="min-w-0 flex-1 truncate">
@@ -1861,13 +1883,19 @@ ${sandboxedCustom}`;
                         {item.status === "pending" && streaming && (
                           <button
                             type="button"
-                            disabled={steeringFollowUpIds.has(item.id)}
+                            data-testid="agent-follow-up-steer"
+                            disabled={
+                              steeringFollowUpIds.has(item.id) || sendingFollowUpId === item.id
+                            }
                             className="shrink-0 rounded-md px-2 py-0.5 font-medium text-primary transition-colors hover:bg-accent"
                             onClick={() => {
                               const runId = activeRunRequestIdRef.current;
                               const chatId = activeChatId;
                               if (!runId || !chatId) return;
-                              if (steeringFollowUpIdsRef.current.has(item.id)) return;
+                              if (
+                                steeringFollowUpIdsRef.current.has(item.id) ||
+                                sendingFollowUpIdRef.current === item.id
+                              ) return;
                               const message = toAgentMessages([
                                 inputModelMessage(item.text, item.attachments),
                               ])[0];
@@ -1890,6 +1918,30 @@ ${sandboxedCustom}`;
                             }}
                           >
                             Steer now
+                          </button>
+                        )}
+                        {item.status === "pending" && (
+                          <button
+                            type="button"
+                            data-testid="agent-follow-up-discard"
+                            aria-label="Discard queued message"
+                            title="Discard queued message"
+                            disabled={
+                              steeringFollowUpIds.has(item.id) || sendingFollowUpId === item.id
+                            }
+                            className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                            onClick={() => {
+                              if (
+                                steeringFollowUpIdsRef.current.has(item.id) ||
+                                sendingFollowUpIdRef.current === item.id
+                              ) return;
+                              const chatId = activeChatId;
+                              if (chatId) {
+                                useAgentTurnsStore.getState().removeFollowUp(chatId, item.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="size-3" />
                           </button>
                         )}
                       </div>

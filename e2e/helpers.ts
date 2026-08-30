@@ -1,19 +1,19 @@
 import { expect } from "./fixtures";
+import type { LocatorLike } from "@srsholmes/tauri-playwright";
 import type { E2ePdfProbe } from "../src/lib/e2e-probe";
 
-// The plugin's page handle (structural: only what the helpers need).
 export interface Page {
   click(selector: string, opts?: { timeout?: number }): Promise<void>;
   fill(selector: string, text: string): Promise<void>;
   press(selector: string, key: string): Promise<void>;
   evaluate<T = unknown>(expression: string): Promise<T>;
   waitForFunction(expression: string, timeout?: number): Promise<unknown>;
-  locator(selector: string): { isVisible(): Promise<boolean>; click(): Promise<void> };
-  getByTestId(id: string): unknown;
+  locator(selector: string): LocatorLike & { click(): Promise<void> };
+  getByTestId(id: string): LocatorLike & { click(): Promise<void> };
   getByText(
     text: string,
     opts?: { exact?: boolean },
-  ): { click(): Promise<void>; isVisible(): Promise<boolean> };
+  ): LocatorLike & { click(): Promise<void> };
 }
 
 /**
@@ -120,15 +120,15 @@ export async function pressGlobal(
 export async function openGallery(page: Page) {
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',
-  ) as unknown as Parameters<typeof expect>[0];
+  ) as unknown as LocatorLike;
   await expect(library).toBeVisible({ timeout: 30_000 });
   const hasWelcome = await page.evaluate<boolean>(
     `!!document.querySelector('[data-testid="create-first-project"]')`,
   );
   await page.click(hasWelcome ? '[data-testid="create-first-project"]' : '[data-testid="new-project"]');
-  const gallery = page.locator('[data-testid="template-gallery"]') as unknown as Parameters<
-    typeof expect
-  >[0];
+  const gallery = page.locator(
+    '[data-testid="template-gallery"]',
+  ) as unknown as LocatorLike;
   await expect(gallery).toBeVisible({ timeout: 30_000 });
 }
 
@@ -312,7 +312,7 @@ export async function compileAndWait(
 ): Promise<number> {
   const compileButton = page.locator(
     '[data-testid="compile-button"]',
-  ) as unknown as Parameters<typeof expect>[0];
+  ) as unknown as LocatorLike;
   type CompileSnapshot = {
     status: string;
     outputRevision: number;
@@ -820,12 +820,12 @@ export async function openProject(page: Page & { getByText(t: string): { click()
   }
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',
-  ) as unknown as Parameters<typeof expect>[0];
+  ) as unknown as LocatorLike;
   await expect(library).toBeVisible({ timeout: 30_000 });
   await page.click(`button[aria-label=${JSON.stringify(`Open ${name}`)}]`);
-  const workspace = page.locator("[data-e2e-project-id]") as unknown as Parameters<
-    typeof expect
-  >[0];
+  const workspace = page.locator(
+    "[data-e2e-project-id]",
+  ) as unknown as LocatorLike;
   await expect(workspace).toBeVisible({ timeout: 30_000 });
 }
 
@@ -1079,7 +1079,7 @@ export async function openSettings(page: Page, section?: string) {
   // the modal never opened, reset and re-open once.
   const appearance = page.locator(
     '[data-testid="settings-section-appearance"]',
-  ) as unknown as Parameters<typeof expect>[0];
+  ) as unknown as LocatorLike;
   await page.click('[aria-label="Settings"]');
   const mounted = await expect(appearance)
     .toBeVisible({ timeout: 8_000 })
@@ -1262,12 +1262,12 @@ export async function openDiagramComposer(page: Page) {
   }
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',
-  ) as unknown as Parameters<typeof expect>[0];
+  ) as unknown as LocatorLike;
   await expect(library).toBeVisible({ timeout: 30_000 });
   await page.click('[data-testid="open-diagram-composer"]');
   const dialog = page.locator(
     '[role="dialog"][data-tour="diagram-composer"]',
-  ) as unknown as Parameters<typeof expect>[0];
+  ) as unknown as LocatorLike;
   await expect(dialog).toBeVisible({ timeout: 20_000 });
   // The dialog mounts before React Flow finishes its first render pass (the
   // starter drawing has ~27 nodes); wait for the canvas to actually settle so

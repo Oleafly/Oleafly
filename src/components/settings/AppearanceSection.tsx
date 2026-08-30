@@ -710,6 +710,7 @@ function BrowserAppearanceTab() {
               <SelectItem
                 key={engine.id}
                 value={engine.id}
+                data-testid={`search-engine-option-${engine.id}`}
                 icon={<SearchEngineIcon engine={engine.id} />}
               >
                 {engine.name}
@@ -951,7 +952,8 @@ export function AppearanceSection() {
       className="space-y-4"
     >
       <TabsList
-        className="flex h-auto w-full justify-start gap-1 overflow-x-auto no-scrollbar"
+        className="flex h-auto w-full max-w-xs justify-start gap-1 overflow-x-auto no-scrollbar"
+        data-testid="appearance-tab-strip"
         onWheel={scrollTabs}
       >
         {APPEARANCE_TABS.map((tab) => (

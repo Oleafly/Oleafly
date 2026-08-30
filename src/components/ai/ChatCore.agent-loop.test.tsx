@@ -364,6 +364,49 @@ async function attachTextFile(rendered: RenderResult, name: string, text: string
 }
 
 describe("ChatCore agent turns", () => {
+  it("discards the selected queued follow-up from its chip", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    submit(rendered, "Keep this queued");
+    submit(rendered, "Discard this queued message");
+
+    const discardButtons = rendered.getAllByRole("button", {
+      name: "Discard queued message",
+    });
+    fireEvent.click(discardButtons[1]);
+
+    expect(rendered.getByText("Queued for the next turn: Keep this queued")).toBeTruthy();
+    expect(rendered.queryByText("Queued for the next turn: Discard this queued message")).toBeNull();
+  });
+
+  it("timestamps the user message at send and the assistant message at finalization", async () => {
+    const rendered = await renderChat();
+    let now = 1_000;
+    const dateNow = vi.spyOn(Date, "now").mockImplementation(() => now);
+
+    try {
+      submit(rendered, "Timestamp this turn");
+      await waitFor(() => expect(mocks.runs).toHaveLength(1));
+      expect(useChatsStore.getState().byId("chat-1")?.messages).toEqual([
+        expect.objectContaining({ role: "user", createdAt: 1_000 }),
+        expect.objectContaining({ role: "assistant", createdAt: 1_000 }),
+      ]);
+
+      now = 2_000;
+      await act(async () => finishRun(0, "Timestamped response"));
+      await waitFor(() => expect(activeChatRun()).toBeNull());
+
+      expect(useChatsStore.getState().byId("chat-1")?.messages).toEqual([
+        expect.objectContaining({ role: "user", createdAt: 1_000 }),
+        expect.objectContaining({ role: "assistant", createdAt: 2_000 }),
+      ]);
+    } finally {
+      dateNow.mockRestore();
+    }
+  });
+
   it("queues follow-ups while streaming and sends every one with the complete transcript", async () => {
     const rendered = await renderChat();
     submit(rendered, "First request");
@@ -378,6 +421,8 @@ describe("ChatCore agent turns", () => {
 
     await act(async () => finishRun(0, "First response"));
     await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    expect(rendered.queryByText("Queued for the next turn: First follow-up")).toBeNull();
+    expect(rendered.getByText("Queued for the next turn: Second follow-up")).toBeTruthy();
     expect(plainTranscript(mocks.runs[1].options.messages)).toEqual([
       { role: "user", content: "First request" },
       { role: "assistant", content: "First response" },
@@ -444,6 +489,32 @@ describe("ChatCore agent turns", () => {
     expect(mocks.runs).toHaveLength(1);
     expect(rendered.getByText("Queued for the next turn: Keep this queued")).toBeTruthy();
     expect(useAgentTurnsStore.getState().queuedByChat["chat-1"]).toHaveLength(1);
+  });
+
+  it("does not discard a follow-up reserved for auto-send during its budget check", async () => {
+    const followUpBudget = deferred<"blocked">();
+    mocks.checkProjectBudget
+      .mockResolvedValueOnce("ok")
+      .mockReturnValueOnce(followUpBudget.promise);
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    submit(rendered, "Reserve this follow-up");
+
+    await act(async () => finishRun(0, "First response"));
+    await waitFor(() => expect(mocks.checkProjectBudget).toHaveBeenCalledTimes(2));
+
+    const discard = rendered.getByRole("button", {
+      name: "Discard queued message",
+    }) as HTMLButtonElement;
+    expect(discard.disabled).toBe(true);
+    fireEvent.click(discard);
+    expect(rendered.getByText("Queued for the next turn: Reserve this follow-up")).toBeTruthy();
+
+    await act(async () => followUpBudget.resolve("blocked"));
+    await waitFor(() => expect(discard.disabled).toBe(false));
+    fireEvent.click(discard);
+    expect(rendered.queryByText("Queued for the next turn: Reserve this follow-up")).toBeNull();
   });
 
   it("keeps a queued follow-up when backend startup fails before acceptance", async () => {
@@ -551,6 +622,9 @@ describe("ChatCore agent turns", () => {
     submit(rendered, "Use this now");
     const queued = useAgentTurnsStore.getState().queuedByChat["chat-1"];
     const steerButton = rendered.getAllByRole("button", { name: "Steer now" })[1];
+    const discardButton = rendered.getAllByRole("button", {
+      name: "Discard queued message",
+    })[1] as HTMLButtonElement;
     fireEvent.click(steerButton);
     fireEvent.click(steerButton);
 
@@ -561,6 +635,7 @@ describe("ChatCore agent turns", () => {
       });
     });
     expect(mocks.agentSteer).toHaveBeenCalledTimes(1);
+    expect(discardButton.disabled).toBe(true);
     expect(useAgentTurnsStore.getState().queuedByChat["chat-1"].map((item) => item.status)).toEqual([
       "pending",
       "pending",
@@ -578,6 +653,10 @@ describe("ChatCore agent turns", () => {
         { id: queued[1].id, status: "steered" },
       ]);
     });
+    const steeredChip = rendered
+      .getByText("Steered into the running turn: Use this now")
+      .closest('[data-testid="agent-follow-up-chip"]');
+    expect(steeredChip?.querySelector('[data-testid="agent-follow-up-discard"]')).toBeNull();
 
     await act(async () => finishRun(0, "First response"));
     await waitFor(() => expect(mocks.runs).toHaveLength(2));
