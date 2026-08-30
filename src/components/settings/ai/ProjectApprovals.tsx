@@ -26,16 +26,19 @@ export function ProjectApprovals() {
   const rules = Object.entries(decisions.data ?? {});
 
   return (
-    <div className="rounded-lg border bg-card p-3" data-testid="project-approvals">
+    <div
+      id="ai-project-approvals"
+      className="rounded-lg border bg-card p-3"
+      data-testid="project-approvals"
+    >
       <div className="text-sm font-medium">Tool approvals</div>
       <div className="mb-2 text-xs text-muted-foreground">
-        Saved decisions for {projectName || "this project"}. Remove a rule and
-        the assistant will ask again before using that tool.
+        Saved rules for {projectName || "this project"}. They apply when the approval mode is
+        Custom. Remove a rule to use the standard risk policy for that tool.
       </div>
       {rules.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          No saved decisions yet. Use "Always in this project" on an approval
-          prompt to add one.
+          No saved rules yet. Use "Always in this project" on an approval prompt to add one.
         </p>
       ) : (
         <ul className="space-y-1">

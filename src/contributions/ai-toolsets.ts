@@ -26,6 +26,6 @@ export function registerAiToolsets() {
   registerAiToolset({
     id: "research-tools",
     mode: "chat",
-    create: () => createResearchAiTools(),
+    create: (opts: { confirm?: ConfirmFn }) => createResearchAiTools(opts),
   });
 }

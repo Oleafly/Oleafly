@@ -7,6 +7,7 @@ import { AiChrome, AiMark, AI_GRADIENT } from "@/components/ai/AiChrome";
 import { gotoLine } from "@/components/editor/cm/controller";
 import { useFilesStore } from "@/store/files";
 import { isAutoApprovable } from "@/store/mcp-approvals";
+import { toolRisk } from "@oleafly/ai-tools";
 
 export function firstChangedLine(oldText: string, newText: string): number {
   const a = oldText.split("\n");
@@ -46,6 +47,12 @@ export function ToolConfirm({
 }) {
   const canSession = isAutoApprovable(req.tool) && !!onApproveSession;
   const commandApproval = req.tool === "run_command";
+  const networkApproval = toolRisk(req.tool) === "network";
+  const approvalLabel = commandApproval
+    ? "Confirm command"
+    : networkApproval
+      ? "Confirm internet access"
+      : "Confirm AI edit";
   const filePath = req.diff?.path ?? req.path;
   const changeLine = req.diff ? firstChangedLine(req.diff.oldText, req.diff.newText) : null;
 
@@ -77,6 +84,8 @@ export function ToolConfirm({
           <p className="text-sm font-semibold leading-snug text-foreground">
             {commandApproval
               ? "The assistant wants to run this command"
+              : networkApproval
+                ? "The assistant wants to access the internet"
               : "The assistant wants to change your files"}
           </p>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -215,7 +224,7 @@ export function ToolConfirm({
       <div
         role="alertdialog"
         aria-modal="true"
-        aria-label={commandApproval ? "Confirm command" : "Confirm AI edit"}
+        aria-label={approvalLabel}
         className="p-1"
       >
         {body}
@@ -228,7 +237,7 @@ export function ToolConfirm({
       <div
         role="alertdialog"
         aria-modal="true"
-        aria-label={commandApproval ? "Confirm command" : "Confirm AI edit"}
+        aria-label={approvalLabel}
       >
         {body}
       </div>

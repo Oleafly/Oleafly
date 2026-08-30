@@ -2,10 +2,12 @@ import { JSDOM } from "jsdom";
 import type { RenderResult } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentEvent } from "@oleafly/ai-core";
+import type { ApprovalMode } from "@oleafly/ai-tools";
 import type { ModelMessage, ToolSet } from "@/lib/chat-types";
 import type { ChatMessage, StoredChat } from "@/store/chats";
 
 interface HarnessOptions {
+  system: string;
   messages: ModelMessage[];
   tools: ToolSet;
   onRequestId?: (requestId: string) => void;
@@ -34,6 +36,8 @@ const mocks = vi.hoisted(() => ({
   claimPrewarmed: vi.fn(),
   approvalsList: vi.fn(),
   approvalsSet: vi.fn(),
+  approvalsModeGet: vi.fn(),
+  approvalsModeSet: vi.fn(),
   getConfig: vi.fn(),
   gitAutoCommit: vi.fn(),
   gitLog: vi.fn(),
@@ -66,6 +70,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   approvalsList: (...args: unknown[]) => mocks.approvalsList(...args),
   approvalsSet: (...args: unknown[]) => mocks.approvalsSet(...args),
+  approvalsModeGet: (...args: unknown[]) => mocks.approvalsModeGet(...args),
+  approvalsModeSet: (...args: unknown[]) => mocks.approvalsModeSet(...args),
   getConfig: (...args: unknown[]) => mocks.getConfig(...args),
   gitAutoCommit: (...args: unknown[]) => mocks.gitAutoCommit(...args),
   gitLog: (...args: unknown[]) => mocks.gitLog(...args),
@@ -117,6 +123,14 @@ vi.mock("@oleafly/registry", () => ({
                 projectId: "project",
                 command: "echo unsafe",
                 cwd: "/project",
+              }),
+            }),
+          },
+          literature_search: {
+            execute: async () => ({
+              approved: await confirm({
+                tool: "literature_search",
+                summary: "Search OpenAlex for approval policies",
               }),
             }),
           },
@@ -179,6 +193,7 @@ let LATEX_ENGINE: typeof import("@/lib/document-engine").LATEX_ENGINE;
 let useFilesStore: typeof import("@/store/files").useFilesStore;
 let useChatsStore: typeof import("@/store/chats").useChatsStore;
 let useSettingsStore: typeof import("@/store/settings").useSettingsStore;
+let useApprovalModeStore: typeof import("@/store/approval-mode").useApprovalModeStore;
 let useAgentTurnsStore: typeof import("@/store/agent-turns").useAgentTurnsStore;
 let activeChatRun: typeof import("./chat-run-registry").activeChatRun;
 let endChatRun: typeof import("./chat-run-registry").endChatRun;
@@ -203,6 +218,7 @@ beforeAll(async () => {
     HTMLTextAreaElement: { configurable: true, value: dom.window.HTMLTextAreaElement },
     Element: { configurable: true, value: dom.window.Element },
     Node: { configurable: true, value: dom.window.Node },
+    NodeFilter: { configurable: true, value: dom.window.NodeFilter },
     Event: { configurable: true, value: dom.window.Event },
     CustomEvent: { configurable: true, value: dom.window.CustomEvent },
     File: { configurable: true, value: dom.window.File },
@@ -237,6 +253,7 @@ beforeAll(async () => {
   ({ useFilesStore } = await import("@/store/files"));
   ({ useChatsStore } = await import("@/store/chats"));
   ({ useSettingsStore } = await import("@/store/settings"));
+  ({ useApprovalModeStore } = await import("@/store/approval-mode"));
   ({ useAgentTurnsStore } = await import("@/store/agent-turns"));
   ({ activeChatRun, endChatRun } = await import("./chat-run-registry"));
 });
@@ -252,6 +269,8 @@ beforeEach(() => {
   mocks.claimPrewarmed.mockReset().mockResolvedValue(null);
   mocks.approvalsList.mockReset().mockResolvedValue({});
   mocks.approvalsSet.mockReset().mockResolvedValue(undefined);
+  mocks.approvalsModeGet.mockReset().mockResolvedValue("approve-for-me");
+  mocks.approvalsModeSet.mockReset().mockResolvedValue(undefined);
   mocks.getConfig.mockReset().mockResolvedValue({
     ai_provider: "openai",
     ai_model: "gpt-4o",
@@ -301,6 +320,7 @@ beforeEach(() => {
     live: {},
   });
   useSettingsStore.setState({ chatFloating: false, figureModeOpen: false });
+  useApprovalModeStore.setState({ modes: {}, loaded: {}, persisted: {} });
   useAgentTurnsStore.getState().reset();
 });
 
@@ -337,6 +357,25 @@ function submit(rendered: RenderResult, text: string) {
       preventDefault: () => {},
     }),
   );
+}
+
+async function beginApprovalCall(
+  mode: ApprovalMode,
+  tool: "write_file" | "run_command" | "literature_search" = "write_file",
+  rules: Record<string, "allow" | "deny"> = {},
+) {
+  mocks.approvalsModeGet.mockResolvedValue(mode);
+  mocks.approvalsList.mockResolvedValue(rules);
+  const rendered = await renderChat();
+  submit(rendered, `Use ${tool}`);
+  await waitFor(() => expect(mocks.runs).toHaveLength(1));
+  mocks.runs[0].options.handlers.onToolCall({
+    id: "call-1",
+    name: tool,
+    args: {},
+  });
+  const result = Promise.resolve(mocks.runs[0].options.tools[tool].execute?.({}));
+  return { rendered, result };
 }
 
 function plainTranscript(messages: ModelMessage[]) {
@@ -763,47 +802,201 @@ describe("ChatCore agent turns", () => {
     }
   });
 
-  it("uses a persisted project approval without showing ToolConfirm", async () => {
-    mocks.approvalsList.mockResolvedValue({ write_file: "allow" });
-    const rendered = await renderChat();
-    submit(rendered, "Update the file");
-    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+  it.each(["ask-for-approval", "approve-for-me"] as const)(
+    "prompts for a risky tool in %s mode",
+    async (mode) => {
+      const { rendered, result } = await beginApprovalCall(mode);
 
-    mocks.runs[0].options.handlers.onToolCall({
-      id: "call-1",
-      name: "write_file",
-      args: { path: "main.tex" },
-    });
-    const result = await mocks.runs[0].options.tools.write_file.execute?.({
-      path: "main.tex",
-    });
+      await waitFor(() =>
+        expect(rendered.getByRole("alertdialog", { name: "Confirm AI edit" })).toBeTruthy(),
+      );
+      fireEvent.click(rendered.getByRole("button", { name: "Reject" }));
+      await expect(result).resolves.toEqual({ approved: false });
+      await act(async () => finishRun(0, "Not changed"));
+    },
+  );
 
-    expect(result).toEqual({ approved: true });
+  it("auto-approves a risky tool without ToolConfirm in Full access", async () => {
+    const { rendered, result } = await beginApprovalCall("full-access");
+
+    await expect(result).resolves.toEqual({ approved: true });
     expect(rendered.queryByRole("alertdialog", { name: "Confirm AI edit" })).toBeNull();
-
     await act(async () => finishRun(0, "Updated"));
   });
 
-  it("never auto-approves a persisted shell allow decision", async () => {
-    mocks.approvalsList.mockResolvedValue({ run_command: "allow" });
-    const rendered = await renderChat();
-    submit(rendered, "Run a command");
-    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+  it("uses an explicit Custom allow without ToolConfirm", async () => {
+    const { rendered, result } = await beginApprovalCall("custom", "write_file", {
+      write_file: "allow",
+    });
 
-    mocks.runs[0].options.handlers.onToolCall({
-      id: "call-1",
-      name: "run_command",
-      args: { command: "echo unsafe" },
+    await expect(result).resolves.toEqual({ approved: true });
+    expect(rendered.queryByRole("alertdialog", { name: "Confirm AI edit" })).toBeNull();
+    await act(async () => finishRun(0, "Updated"));
+  });
+
+  it("denies an explicit Custom rule without ToolConfirm", async () => {
+    const { rendered, result } = await beginApprovalCall("custom", "write_file", {
+      write_file: "deny",
     });
-    const result = mocks.runs[0].options.tools.run_command.execute?.({
-      command: "echo unsafe",
-    });
+
+    await expect(result).resolves.toEqual({ approved: false });
+    expect(rendered.queryByRole("alertdialog", { name: "Confirm AI edit" })).toBeNull();
+    await act(async () => finishRun(0, "Denied"));
+  });
+
+  it("prompts for a risky Custom tool without a saved rule", async () => {
+    const { rendered, result } = await beginApprovalCall("custom");
 
     await waitFor(() =>
-      expect(rendered.getByRole("alertdialog", { name: "Confirm command" })).toBeTruthy(),
+      expect(rendered.getByRole("alertdialog", { name: "Confirm AI edit" })).toBeTruthy(),
     );
     fireEvent.click(rendered.getByRole("button", { name: "Reject" }));
     await expect(result).resolves.toEqual({ approved: false });
-    await act(async () => finishRun(0, "Not run"));
+    await act(async () => finishRun(0, "Not changed"));
+  });
+
+  it("aborts a Custom run when project approval rules cannot be loaded", async () => {
+    mocks.approvalsModeGet.mockResolvedValue("custom");
+    mocks.approvalsList.mockRejectedValue(new Error("unreadable approvals"));
+    const rendered = await renderChat();
+
+    submit(rendered, "Search the literature");
+
+    await waitFor(() => expect(mocks.approvalsList).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(mocks.runAgentHarness).not.toHaveBeenCalled();
+    expect(
+      rendered.getByRole("button", { name: "Approval mode. Custom (approvals.toml)" }),
+    ).not.toBeDisabled();
+  });
+
+  it("prompts before internet access in Ask for approval", async () => {
+    const { rendered, result } = await beginApprovalCall(
+      "ask-for-approval",
+      "literature_search",
+    );
+
+    await waitFor(() =>
+      expect(rendered.getByRole("alertdialog", { name: "Confirm internet access" })).toBeTruthy(),
+    );
+    fireEvent.click(rendered.getByRole("button", { name: "Reject" }));
+    await expect(result).resolves.toEqual({ approved: false });
+    await act(async () => finishRun(0, "Not searched"));
+  });
+
+  it.each([
+    [
+      "ask-for-approval",
+      "Approval posture: Ask for approval before external file changes, internet access, or shell commands.",
+    ],
+    [
+      "approve-for-me",
+      "Approval posture: Safe and read-only actions may run automatically. Ask for approval before risky actions.",
+    ],
+    ["full-access", "Approval posture: Tool actions may run without asking for approval."],
+    [
+      "custom",
+      "Approval posture: Project approval rules apply. Actions without a matching rule follow the standard risk policy.",
+    ],
+  ] as const)("assembles the %s posture into the system prompt", async (mode, posture) => {
+    mocks.approvalsModeGet.mockResolvedValue(mode);
+    const rendered = await renderChat();
+    submit(rendered, "Check the prompt");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.runs[0].options.system).toContain(posture);
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("persists a mode selected from the composer footer", async () => {
+    const rendered = await renderChat();
+    fireEvent.click(
+      rendered.getByRole("button", { name: "Approval mode. Approve for me" }),
+    );
+    fireEvent.click(rendered.getByRole("button", { name: "Full access" }));
+
+    await waitFor(() =>
+      expect(mocks.approvalsModeSet).toHaveBeenCalledWith(
+        useFilesStore.getState().projectId,
+        "full-access",
+      ),
+    );
+  });
+
+  it("keeps the snapshotted approval mode selector disabled during a run", async () => {
+    mocks.approvalsModeGet.mockResolvedValue("ask-for-approval");
+    const rendered = await renderChat();
+    submit(rendered, "Keep this mode for the run");
+
+    expect(
+      rendered.getByRole("button", { name: "Approval mode. Ask for approval" }),
+    ).toBeDisabled();
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await act(async () => finishRun(0, "Done"));
+    await waitFor(() =>
+      expect(
+        rendered.getByRole("button", { name: "Approval mode. Ask for approval" }),
+      ).not.toBeDisabled(),
+    );
+  });
+
+  it("keeps the approval mode locked after remounting on another project chat", async () => {
+    mocks.approvalsModeGet.mockResolvedValue("ask-for-approval");
+    const first = await renderChat();
+    submit(first, "Keep the project mode locked");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    first.unmount();
+
+    const projectId = useFilesStore.getState().projectId;
+    if (!projectId) throw new Error("project missing");
+    act(() => {
+      useChatsStore.setState((state) => ({
+        chats: [
+          ...state.chats,
+          {
+            id: "chat-2",
+            projectId,
+            title: "Another chat",
+            createdAt: 2,
+            updatedAt: 2,
+            messages: [],
+            headOid: null,
+          },
+        ],
+        activeId: "chat-2",
+      }));
+    });
+
+    const second = await renderChat();
+    await waitFor(() =>
+      expect(
+        second.getByRole("button", { name: "Approval mode. Ask for approval" }),
+      ).toBeDisabled(),
+    );
+
+    await act(async () => finishRun(0, "Done"));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+  });
+
+  it("opens the project approval settings from Custom mode", async () => {
+    mocks.approvalsModeGet.mockResolvedValue("custom");
+    const rendered = await renderChat();
+    await waitFor(() =>
+      expect(
+        rendered.getByRole("button", {
+          name: "Approval mode. Custom (approvals.toml)",
+        }),
+      ).toBeTruthy(),
+    );
+    fireEvent.click(
+      rendered.getByRole("button", { name: "Approval mode. Custom (approvals.toml)" }),
+    );
+    fireEvent.click(rendered.getByRole("button", { name: "Edit project rules" }));
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      settingsOpen: true,
+      settingsInitialSection: "ai",
+      settingsScrollTarget: "ai-approvals",
+    });
   });
 });

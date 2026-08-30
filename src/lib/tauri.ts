@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { receiveChunkedText } from "@/lib/chunked-ipc";
+import type { ApprovalMode } from "@oleafly/ai-tools";
 
 import type {
   AheadBehind,
@@ -763,6 +764,10 @@ export const approvalsSet = (
   tool: string,
   decision: ToolDecision | null,
 ) => invoke<void>("approvals_set", { projectId, tool, decision });
+export const approvalsModeGet = (projectId: string) =>
+  invoke<ApprovalMode>("approvals_mode_get", { projectId });
+export const approvalsModeSet = (projectId: string, mode: ApprovalMode) =>
+  invoke<void>("approvals_mode_set", { projectId, mode });
 
 export function base64ToUint8Array(b64: string): Uint8Array {
   const bin = atob(b64);

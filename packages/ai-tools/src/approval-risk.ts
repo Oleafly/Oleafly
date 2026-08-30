@@ -1,4 +1,13 @@
 export type ToolRisk = "read" | "write" | "shell" | "network";
+export type ApprovalMode =
+  | "ask-for-approval"
+  | "approve-for-me"
+  | "full-access"
+  | "custom";
+export type ApprovalGateDecision = "prompt" | "auto-approve" | "deny-per-rules";
+export type ApprovalRuleDecision = "allow" | "deny";
+
+export const DEFAULT_APPROVAL_MODE: ApprovalMode = "approve-for-me";
 
 const READ_TOOLS = new Set([
   "read_file",
@@ -57,4 +66,22 @@ export function toolRisk(tool: string): ToolRisk {
 
 export function riskRequiresConfirm(risk: ToolRisk): boolean {
   return risk === "write" || risk === "shell";
+}
+
+export function decideToolApproval(input: {
+  mode: ApprovalMode;
+  toolCall: { name: string };
+  risk: ToolRisk;
+  projectRules?: Readonly<Record<string, ApprovalRuleDecision>>;
+}): ApprovalGateDecision {
+  if (input.mode === "custom") {
+    const rule = input.projectRules?.[input.toolCall.name];
+    if (rule === "deny") return "deny-per-rules";
+    if (rule === "allow") return "auto-approve";
+  }
+  if (input.mode === "full-access") return "auto-approve";
+  if (input.mode === "ask-for-approval") {
+    return input.risk === "read" ? "auto-approve" : "prompt";
+  }
+  return riskRequiresConfirm(input.risk) ? "prompt" : "auto-approve";
 }

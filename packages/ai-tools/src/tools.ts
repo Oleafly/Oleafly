@@ -706,7 +706,7 @@ export function createOleaflyTools(
     },
 
     set_main_doc: {
-      description: "Set the project's main document (the compile entry point, e.g. main.tex, main.typ, or main.md). Requires user approval.",
+      description: "Set the project's main document (the compile entry point, e.g. main.tex, main.typ, or main.md). Execution follows the active approval policy.",
       inputSchema: {
         type: "object",
         properties: {
@@ -1031,7 +1031,7 @@ export function createOleaflyTools(
     const authorizeExec = opts.authorizeExec;
     tools.run_command = {
       description:
-        "Run a shell command in the current project directory and return its output and exit status. Use for build tooling, git, file inspection, or scripts the dedicated tools do not cover. The command and working directory are confirmed with the user before it runs.",
+        "Run a shell command in the current project directory and return its output and exit status. Use for build tooling, git, file inspection, or scripts the dedicated tools do not cover. Execution follows the active approval policy.",
       inputSchema: {
         type: "object",
         properties: {
@@ -1087,7 +1087,7 @@ export function createOleaflyTools(
     tools.computer_use = {
       description: opts.alwaysConfirmComputerUse
         ? "Operate the local harness browser. Every action requires explicit user approval for external connections."
-        : "Operate the harness browser as a computer-use agent: navigate, read, screenshot, scroll, click, type, submit, or wait. Read-only actions run immediately. Navigate, click, type, and submit are confirmed with the user first. The agent stays inside the local sandbox and never touches your real desktop.",
+        : "Operate the harness browser as a computer-use agent: navigate, read, screenshot, scroll, click, type, submit, or wait. Read-only actions run immediately. Other actions follow the active approval policy. The agent stays inside the local sandbox and never touches your real desktop.",
       inputSchema: {
         type: "object",
         properties: {

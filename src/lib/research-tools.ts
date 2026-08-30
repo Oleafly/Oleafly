@@ -1,4 +1,8 @@
-import { createResearchTools, type ResearchToolsHost } from "@oleafly/ai-tools";
+import {
+  createResearchTools,
+  type ConfirmFn,
+  type ResearchToolsHost,
+} from "@oleafly/ai-tools";
 import { getConnectorKey, crossrefSearch, fetchDoiBibtex } from "@/lib/tauri";
 import { retrieveProjectChunks } from "@/lib/ai-rag";
 
@@ -14,6 +18,6 @@ const HOST: ResearchToolsHost = {
   retrieveProjectChunks,
 };
 
-export function createResearchAiTools() {
-  return createResearchTools(HOST);
+export function createResearchAiTools(opts?: { confirm?: ConfirmFn }) {
+  return createResearchTools(HOST, opts);
 }

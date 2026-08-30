@@ -20,7 +20,16 @@ export {
   type ConnectorAuthMode,
 } from "./connectors";
 export { createResearchTools, type ResearchToolsHost } from "./research-tools";
-export { riskRequiresConfirm, toolRisk, type ToolRisk } from "./approval-risk";
+export {
+  DEFAULT_APPROVAL_MODE,
+  decideToolApproval,
+  riskRequiresConfirm,
+  toolRisk,
+  type ApprovalGateDecision,
+  type ApprovalMode,
+  type ApprovalRuleDecision,
+  type ToolRisk,
+} from "./approval-risk";
 export {
   cuaActionRisk,
   observe,

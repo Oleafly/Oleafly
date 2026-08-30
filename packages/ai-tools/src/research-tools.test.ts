@@ -38,12 +38,42 @@ describe("alphaXiv connector tools", () => {
     expect(res).toMatchObject({ results: [{ id: "1234.5678", title: "A Paper" }] });
   });
 
+  it("does not search alphaXiv before approval", async () => {
+    getConnectorKey.mockResolvedValue("test-key-123");
+    const confirm = vi.fn().mockResolvedValue(false);
+    const tools = createResearchTools(host, { confirm });
+
+    const res = await tools.alphaxiv_search.execute({ query: "diffusion models" });
+
+    expect(confirm).toHaveBeenCalledWith({
+      tool: "alphaxiv_search",
+      summary: "Search alphaXiv for diffusion models",
+    });
+    expect(fetchJson).not.toHaveBeenCalled();
+    expect(res).toMatchObject({ declined: true, tool: "alphaxiv_search" });
+  });
+
   it("alphaxiv_paper_content requires a paper id", async () => {
     getConnectorKey.mockResolvedValue("test-key-123");
     const tools = createResearchTools(host);
     const res = await tools.alphaxiv_paper_content.execute({});
     expect(res).toMatchObject({ error: expect.any(String) });
     expect(fetchJson).not.toHaveBeenCalled();
+  });
+
+  it("does not fetch alphaXiv paper content before approval", async () => {
+    getConnectorKey.mockResolvedValue("test-key-123");
+    const confirm = vi.fn().mockResolvedValue(false);
+    const tools = createResearchTools(host, { confirm });
+
+    const res = await tools.alphaxiv_paper_content.execute({ paper_id: "2410.16464" });
+
+    expect(confirm).toHaveBeenCalledWith({
+      tool: "alphaxiv_paper_content",
+      summary: "Fetch paper 2410.16464 from alphaXiv",
+    });
+    expect(fetchJson).not.toHaveBeenCalled();
+    expect(res).toMatchObject({ declined: true, tool: "alphaxiv_paper_content" });
   });
 });
 
@@ -77,12 +107,42 @@ describe("OpenAlex + citation verification tools", () => {
     expect(res).toMatchObject({ results: [{ id: "W123" }] });
   });
 
+  it("does not start an internet request before approval", async () => {
+    fetchJson.mockResolvedValue({ results: [] });
+    const confirm = vi.fn().mockResolvedValue(false);
+    const tools = createResearchTools(host, { confirm });
+
+    const res = await tools.literature_search.execute({ query: "graph neural networks" });
+
+    expect(confirm).toHaveBeenCalledWith({
+      tool: "literature_search",
+      summary: "Search OpenAlex for graph neural networks",
+    });
+    expect(fetchJson).not.toHaveBeenCalled();
+    expect(res).toMatchObject({ declined: true, tool: "literature_search" });
+  });
+
   it("verify_citation resolves a DOI to BibTeX", async () => {
     fetchDoiBibtex.mockResolvedValue("@article{key, title={A Paper}}");
     const tools = createResearchTools(host);
     const res = await tools.verify_citation.execute({ doi: "10.1000/example" });
     expect(fetchDoiBibtex).toHaveBeenCalledWith("10.1000/example");
     expect(res).toMatchObject({ verified: true, bibtex: expect.stringContaining("A Paper") });
+  });
+
+  it("does not contact Crossref before approval", async () => {
+    const confirm = vi.fn().mockResolvedValue(false);
+    const tools = createResearchTools(host, { confirm });
+
+    const res = await tools.verify_citation.execute({ doi: "10.1000/example" });
+
+    expect(confirm).toHaveBeenCalledWith({
+      tool: "verify_citation",
+      summary: "Verify citation with Crossref",
+    });
+    expect(fetchDoiBibtex).not.toHaveBeenCalled();
+    expect(crossrefSearch).not.toHaveBeenCalled();
+    expect(res).toMatchObject({ declined: true, tool: "verify_citation" });
   });
 
   it("verify_citation falls back to a Crossref title search when no DOI is given", async () => {

@@ -317,6 +317,19 @@ describe("ai-tools: project scoping", () => {
 });
 
 describe("ai-tools: command approval", () => {
+  it("describes approval-gated tools without contradicting the active mode", () => {
+    const tools = createOleaflyTools({ confirm: async () => true, runId: () => "run-1" });
+
+    expect(tools.set_main_doc.description).toContain("active approval policy");
+    expect(tools.run_command.description).toContain("active approval policy");
+    expect(tools.computer_use.description).toContain("active approval policy");
+    expect(
+      [tools.set_main_doc, tools.run_command, tools.computer_use]
+        .map((tool) => tool.description)
+        .join(" "),
+    ).not.toMatch(/confirmed with the user|requires user approval/i);
+  });
+
   it("does not expose shell execution without an approval flow", async () => {
     const result = await createOleaflyTools({ runId: () => "run-1" }).run_command.execute({
       command: "pwd",

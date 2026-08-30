@@ -377,18 +377,22 @@ where
         return Err("the agent run id was empty".to_string());
     }
     validate_execution_owner(agent_state, request.run_id)?;
-    if crate::approvals::decision_for(request.root, request.project_id, "run_command")
-        == Some(crate::approvals::ToolDecision::Deny)
-    {
+    let (mode, decision) =
+        crate::approvals::policy_for(request.root, request.project_id, "run_command")?;
+    if decision == Some(crate::approvals::ToolDecision::Deny) {
         return Err("run_command is denied for this project".to_string());
     }
-    let message = format!(
-        "The assistant wants to run this command:\n\n{}\n\nWorking directory:\n\n{}\n\nRun this command?",
-        request.command,
-        request.cwd.display()
-    );
-    if !confirm(message).await? {
-        return Err("run_command approval was declined".to_string());
+    let needs_confirmation = mode != crate::approvals::ApprovalMode::FullAccess
+        && decision != Some(crate::approvals::ToolDecision::Allow);
+    if needs_confirmation {
+        let message = format!(
+            "The assistant wants to run this command:\n\n{}\n\nWorking directory:\n\n{}\n\nRun this command?",
+            request.command,
+            request.cwd.display()
+        );
+        if !confirm(message).await? {
+            return Err("run_command approval was declined".to_string());
+        }
     }
     validate_execution_owner(agent_state, request.run_id)?;
     state.authorize(request.project_id, request.command, request.run_id)
@@ -485,7 +489,7 @@ async fn execute_command(
                 error
             }
         })?;
-    if crate::approvals::decision_for(root, project_id, "run_command")
+    if crate::approvals::effective_decision_for(root, project_id, "run_command")
         == Some(crate::approvals::ToolDecision::Deny)
     {
         return Err("run_command is denied for this project".to_string());
@@ -820,6 +824,86 @@ mod tests {
         assert_eq!(prompt.lock().unwrap().as_deref(), Some(expected.as_str()));
         assert_eq!(result.unwrap().exit_code, Some(0));
         assert!(marker_exists);
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn full_access_mints_a_usable_one_time_token_without_native_confirmation() {
+        let root = test_root("full-access-token");
+        crate::approvals::set_mode(&root, "proj", crate::approvals::ApprovalMode::FullAccess)
+            .unwrap();
+        let cwd = root.join("projects/proj");
+        let state = AgentExecState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let prompt_count = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let observed = std::sync::Arc::clone(&prompt_count);
+        let run_id = "external:00000000-0000-4000-8000-000000000006";
+        let command = if cfg!(windows) {
+            "type nul > full-access-marker"
+        } else {
+            "touch full-access-marker"
+        };
+
+        let token = authorize_after_confirmation(
+            &state,
+            &agent_state,
+            exec_request(&root, &cwd, command, run_id),
+            move |_| async move {
+                observed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                Ok(true)
+            },
+        )
+        .await
+        .unwrap();
+        let result = execute_command_for_owner(
+            &agent_state,
+            &state,
+            exec_request(&root, &cwd, command, run_id),
+            &token,
+        )
+        .await;
+        let marker_exists = cwd.join("full-access-marker").exists();
+
+        std::fs::remove_dir_all(&root).ok();
+        assert_eq!(prompt_count.load(std::sync::atomic::Ordering::SeqCst), 0);
+        assert_eq!(result.unwrap().exit_code, Some(0));
+        assert!(marker_exists);
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn custom_allow_mints_a_token_without_native_confirmation() {
+        let root = test_root("custom-allow-token");
+        crate::approvals::set_decision(
+            &root,
+            "proj",
+            "run_command",
+            Some(crate::approvals::ToolDecision::Allow),
+        )
+        .unwrap();
+        let cwd = root.join("projects/proj");
+        let state = AgentExecState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let prompt_count = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let observed = std::sync::Arc::clone(&prompt_count);
+
+        let result = authorize_after_confirmation(
+            &state,
+            &agent_state,
+            exec_request(
+                &root,
+                &cwd,
+                "touch custom-allow-marker",
+                "external:00000000-0000-4000-8000-000000000007",
+            ),
+            move |_| async move {
+                observed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                Ok(true)
+            },
+        )
+        .await;
+
+        std::fs::remove_dir_all(&root).ok();
+        assert!(result.is_ok());
+        assert_eq!(prompt_count.load(std::sync::atomic::Ordering::SeqCst), 0);
     }
 
     #[tokio::test(flavor = "current_thread")]

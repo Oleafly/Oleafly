@@ -240,6 +240,8 @@ pub fn run() {
             logsafe::export_log_archive,
             approvals::approvals_list,
             approvals::approvals_set,
+            approvals::approvals_mode_get,
+            approvals::approvals_mode_set,
             skills::skills_list,
             library_db::chats_search,
             library_db::usage_record,

@@ -2,6 +2,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
 import { runAgentHarness, toAgentMessages } from "./agent-turn";
 import { DeltaQueues, MAX_BATCH } from "@oleafly/ai-core";
+import {
+  DEFAULT_APPROVAL_MODE,
+  decideToolApproval,
+  toolRisk,
+  type ApprovalMode,
+} from "@oleafly/ai-tools";
 import { windowFlushScheduler } from "@/lib/agent-stream-scheduler";
 import { useAgentTurnsStore, type QueuedFollowUp } from "@/store/agent-turns";
 import { useAssistantOutputsStore } from "@/store/assistant-outputs";
@@ -43,7 +49,8 @@ import type { ToolApprovalRequest } from "@/lib/ai-tools";
 import { FIGURE_SYSTEM_PROMPT, modelSupportsVision, setFigureInsertTarget } from "@/lib/ai-figure";
 import { canUseFigureMode } from "@/lib/document-engine";
 import { getEditorView } from "@/components/editor/cm/controller";
-import { ToolConfirm, isAutoApprovable } from "@/components/ai/ToolConfirm";
+import { ToolConfirm } from "@/components/ai/ToolConfirm";
+import { ApprovalModeSelector } from "@/components/ai/ApprovalModeSelector";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
 import { ModelSelector } from "@/components/ai/ModelSelector";
 import {
@@ -54,6 +61,7 @@ import {
   savedDraft,
   subscribeChatRun,
   updateChatRun,
+  type RegisteredApproval,
 } from "@/components/ai/chat-run-registry";
 import { personaGradient } from "@/lib/persona-colors";
 import { toast } from "@/lib/toast";
@@ -65,6 +73,10 @@ import { objectKey } from "@/lib/react-key";
 import { registerAiToolsets } from "@/contributions/ai-toolsets";
 import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
 import { useAutoSizeTextarea } from "@/components/ai/use-auto-size-textarea";
+import {
+  approvalModeForProject,
+  useApprovalModeStore,
+} from "@/store/approval-mode";
 
 registerAiToolsets();
 import { useAgentTodoStore } from "@/store/agent-todos";
@@ -130,6 +142,20 @@ const FIGURE_SUGGESTION_ICONS: Record<string, LucideIcon> = {
   "Draw a compiler pipeline: lexer, parser, AST, optimizer, code generator": Workflow,
   "Diagram a data preprocessing flow ending in a training loop": Filter,
 };
+
+export const APPROVAL_POSTURE_LINES: Record<ApprovalMode, string> = {
+  "ask-for-approval":
+    "Approval posture: Ask for approval before external file changes, internet access, or shell commands.",
+  "approve-for-me":
+    "Approval posture: Safe and read-only actions may run automatically. Ask for approval before risky actions.",
+  "full-access": "Approval posture: Tool actions may run without asking for approval.",
+  custom:
+    "Approval posture: Project approval rules apply. Actions without a matching rule follow the standard risk policy.",
+};
+
+export function approvalPostureLine(mode: ApprovalMode): string {
+  return APPROVAL_POSTURE_LINES[mode];
+}
 
 export function resolveResponseInstructions(
   personas: Persona[],
@@ -222,6 +248,10 @@ export function ChatCore() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const setSettingsScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
+  const approvalModes = useApprovalModeStore((s) => s.modes);
+  const loadApprovalMode = useApprovalModeStore((s) => s.load);
+  const setApprovalMode = useApprovalModeStore((s) => s.setMode);
+  const approvalMode = approvalModeForProject(approvalModes, projectId);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const setChatFloating = useSettingsStore((s) => s.setChatFloating);
   const chats = useChatsStore((s) => s.chats);
@@ -242,6 +272,25 @@ export function ChatCore() {
     setSettingsOpen(true);
   }, [setSettingsInitialSection, setSettingsOpen]);
 
+  const openProjectApprovalSettings = useCallback(() => {
+    setSettingsInitialSection("ai");
+    setSettingsScrollTarget("ai-approvals");
+    setSettingsOpen(true);
+  }, [setSettingsInitialSection, setSettingsOpen, setSettingsScrollTarget]);
+
+  useEffect(() => {
+    void loadApprovalMode(projectId).catch(() => {});
+  }, [loadApprovalMode, projectId]);
+
+  const changeApprovalMode = useCallback(
+    (nextMode: ApprovalMode) => {
+      void setApprovalMode(projectId, nextMode).catch(() => {
+        toast.error("Could not save the approval mode.");
+      });
+    },
+    [projectId, setApprovalMode],
+  );
+
   const [messages, setMessagesState] = useState<ChatMessage[]>([]);
   const messagesRef = useRef<ChatMessage[]>([]);
   const setMessages = useCallback(
@@ -258,6 +307,7 @@ export function ChatCore() {
     saveDraft(useFilesStore.getState().projectId, text);
   }, []);
   const [streaming, setStreaming] = useState(false);
+  const [approvalModeLocked, setApprovalModeLocked] = useState(false);
   const [provider, setProvider] = useState("openai");
   const [model, setModel] = useState("gpt-4o");
   const [providerConfigReady, setProviderConfigReady] = useState(false);
@@ -276,9 +326,7 @@ export function ChatCore() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [currentHead, setCurrentHead] = useState<string | null>(null);
   const [quotaWarning, setQuotaWarning] = useState(false);
-  const [pendingApproval, setPendingApproval] = useState<
-    { req: ToolApprovalRequest; resolve: (ok: boolean) => void } | null
-  >(null);
+  const [pendingApproval, setPendingApproval] = useState<RegisteredApproval | null>(null);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [steeringFollowUpIds, setSteeringFollowUpIds] = useState<ReadonlySet<string>>(
@@ -380,8 +428,6 @@ export function ChatCore() {
   // Aborts the in-flight AI run (Stop button, project switch, unmount).
   const abortRef = useRef<AbortController | null>(null);
   const runOwnerRef = useRef(false);
-  // When true, write/replace/create/rename tools skip the prompt for this run's session.
-  const sessionAutoApproveRef = useRef(false);
   // Persisted per-project decisions (~/.oleafly/approvals.toml), loaded per
   // run: allow skips the prompt, deny skips execution.
   const projectApprovalsRef = useRef<Record<string, ToolDecision>>({});
@@ -793,14 +839,29 @@ export function ChatCore() {
     abortRef.current = ac;
     const runHandle = beginChatRun(ac, projectId);
     runOwnerRef.current = true;
+    setApprovalModeLocked(true);
     const releaseRunReservation = () => {
       if (abortRef.current === ac) abortRef.current = null;
       if (activeChatRun() !== runHandle) return;
       runOwnerRef.current = false;
+      setApprovalModeLocked(false);
       endChatRun(runHandle);
     };
     const reservationIsCurrent = () =>
       !ac.signal.aborted && activeChatRun() === runHandle && runIsCurrent();
+
+    let runApprovalMode = DEFAULT_APPROVAL_MODE;
+    try {
+      runApprovalMode = await useApprovalModeStore.getState().ready(projectId);
+    } catch {
+      releaseRunReservation();
+      toast.error("Could not load the approval mode.");
+      return;
+    }
+    if (!reservationIsCurrent()) {
+      releaseRunReservation();
+      return;
+    }
 
     if (projectId) {
       let gate: Awaited<ReturnType<typeof checkProjectBudget>>;
@@ -824,72 +885,54 @@ export function ChatCore() {
       setFigureInsertTarget(sel ? { from: sel.from, to: sel.to } : null);
     }
 
-    projectApprovalsRef.current = projectId
-      ? await approvalsList(projectId).catch(() => ({}))
-      : {};
+    projectApprovalsRef.current = {};
+    if (projectId && runApprovalMode === "custom") {
+      try {
+        projectApprovalsRef.current = await approvalsList(projectId);
+      } catch {
+        releaseRunReservation();
+        toast.error("Could not load the project approval rules.");
+        return;
+      }
+    }
     if (!reservationIsCurrent()) {
       releaseRunReservation();
       return;
     }
 
-    // Human-in-the-loop gate for destructive edits: the tool's execute() awaits
-    // this, which naturally pauses the stream on that tool until the user picks.
-    // Resolves false if the run is stopped while a prompt is open.
+    const recordApproval = (req: ToolApprovalRequest, ok: boolean) => {
+      updateRunLast((m) => {
+        const calls = [...(m.toolCalls || [])];
+        for (let i = calls.length - 1; i >= 0; i--) {
+          if (calls[i].name === req.tool && calls[i].approval === undefined) {
+            calls[i] = ok
+              ? { ...calls[i], approval: "approved" }
+              : { ...calls[i], approval: "rejected", status: "done" };
+            break;
+          }
+        }
+        return { ...m, toolCalls: calls };
+      });
+    };
+
     const confirm = (req: ToolApprovalRequest): Promise<boolean> =>
       new Promise((resolve) => {
         if (ac.signal.aborted) { resolve(false); return; }
-        const persisted = projectApprovalsRef.current[req.tool];
-        if (persisted === "deny" || (persisted === "allow" && isAutoApprovable(req.tool))) {
-          const ok = persisted === "allow";
-          updateRunLast((m) => {
-            const calls = [...(m.toolCalls || [])];
-            for (let i = calls.length - 1; i >= 0; i--) {
-              if (calls[i].name === req.tool && calls[i].approval === undefined) {
-                calls[i] = ok
-                  ? { ...calls[i], approval: "approved" }
-                  : { ...calls[i], approval: "rejected", status: "done" };
-                break;
-              }
-            }
-            return { ...m, toolCalls: calls };
-          });
+        const gate = decideToolApproval({
+          mode: runApprovalMode,
+          toolCall: { name: req.tool },
+          risk: toolRisk(req.tool),
+          projectRules: projectApprovalsRef.current,
+        });
+        if (gate !== "prompt") {
+          const ok = gate === "auto-approve";
+          recordApproval(req, ok);
           resolve(ok);
-          return;
-        }
-        // Session auto-approve covers non-delete writes only.
-        if (sessionAutoApproveRef.current && isAutoApprovable(req.tool)) {
-          updateRunLast((m) => {
-            const calls = [...(m.toolCalls || [])];
-            for (let i = calls.length - 1; i >= 0; i--) {
-              if (calls[i].name === req.tool && calls[i].approval === undefined) {
-                calls[i] = { ...calls[i], approval: "approved" };
-                break;
-              }
-            }
-            return { ...m, toolCalls: calls };
-          });
-          resolve(true);
           return;
         }
         const finish = (ok: boolean) => {
           ac.signal.removeEventListener("abort", onAbort);
-          // Leave a persistent trace on the tool badge so the chat records that
-          // the user approved or rejected this edit (the prompt itself vanishes).
-          updateRunLast((m) => {
-            const calls = [...(m.toolCalls || [])];
-            for (let i = calls.length - 1; i >= 0; i--) {
-              if (calls[i].name === req.tool && calls[i].approval === undefined) {
-                // A rejected tool never ran, so settle its badge state here: the
-                // stream's tool-result may never arrive (abort/retry races) and
-                // the spinner would otherwise spin forever.
-                calls[i] = ok
-                  ? { ...calls[i], approval: "approved" }
-                  : { ...calls[i], approval: "rejected", status: "done" };
-                break;
-              }
-            }
-            return { ...m, toolCalls: calls };
-          });
+          recordApproval(req, ok);
           updateChatRun(runHandle, { pendingApproval: null });
           if (runIsCurrent()) setPendingApproval(null);
           resolve(ok);
@@ -897,8 +940,9 @@ export function ChatCore() {
         const onAbort = () => finish(false);
         ac.signal.addEventListener("abort", onAbort, { once: true });
         if (runIsCurrent()) {
-          updateChatRun(runHandle, { pendingApproval: { req, resolve: finish } });
-          setPendingApproval({ req, resolve: finish });
+          const pending = { req, resolve: finish, mode: runApprovalMode };
+          updateChatRun(runHandle, { pendingApproval: pending });
+          setPendingApproval(pending);
         } else finish(false);
       });
 
@@ -1048,10 +1092,10 @@ Agentic workflow (required for multi-step tasks):
 3. Prefer replace_in_file for small fixes; write_file overwrites the entire file.
 4. read_file supports offset and limit. Large files may be truncated, so read another slice if needed.
 5. After structural or multi-file edits: compile, then verify_pdf_pages (vision) or get_pdf_text (text-only).
-6. set_main_doc requires approval. Deleting files always requires approval.
+6. Use set_main_doc only when the user asks to change the project entry point. Treat file deletion as destructive.
 7. Use remember_note for durable project conventions the user would want kept across chats; forget_note to remove.
 8. For independent parallel work (surveying several papers, reviewing separate sections, checking unrelated claims), delegate with spawn_agent: one focused agent per task, complete self-contained instructions, then wait_agent (prefer long waits over polling) and close_agent when done. Task names are canonical paths under /root. Do the work yourself when steps depend on each other; spawning agents increases usage quickly.
-9. Use run_command for shell work the dedicated tools do not cover (git status, build scripts, listing outputs). It runs in the project directory and is confirmed with the user first. Prefer the dedicated file and compile tools when they fit.
+9. Use run_command for shell work the dedicated tools do not cover (git status, build scripts, listing outputs). It runs in the project directory. Prefer the dedicated file and compile tools when they fit.
 
 Workflow for "fix errors" requests:
 1. Use live compile errors if present, or compile first.
@@ -1066,9 +1110,10 @@ ${sandboxedCustom}`;
     const figure = figureMode && figureModeAvailable;
     // Figure mode gets the same untrusted-instruction sandbox as main chat so a
     // crafted custom prompt cannot override figure tools or safety rules.
-    const effectiveSystem = figure
+    const effectiveSystemBase = figure
       ? `${FIGURE_SYSTEM_PROMPT + sandboxedCustom}\n\n${workspaceCtx}`
       : systemPrompt;
+    const effectiveSystem = `${effectiveSystemBase}\n\n${approvalPostureLine(runApprovalMode)}`;
 
     // Conversation history: packed (recent + truncated) so long chats fit context.
     const packedPrior = packChatHistory(priorMessages);
@@ -1376,6 +1421,7 @@ ${sandboxedCustom}`;
         streamDrainQueuedRef.current = { text: false, output: false };
         activeRunRequestIdRef.current = null;
         runOwnerRef.current = false;
+        setApprovalModeLocked(false);
       }
       endChatRun(runHandle);
       if (runEndedCleanly && runChatId) {
@@ -1470,6 +1516,7 @@ ${sandboxedCustom}`;
       endChatRun(run);
     }
     setStreaming(false);
+    setApprovalModeLocked(false);
     setThinkingText(null);
     setPendingApproval(null);
     sendingFollowUpIdRef.current = null;
@@ -1483,6 +1530,7 @@ ${sandboxedCustom}`;
       const run = activeChatRun();
       const cs = useChatsStore.getState();
       if (run && run.projectId === projectId && cs.projectId === projectId) {
+        setApprovalModeLocked(true);
         if (run.chatId && run.chatId === cs.activeId) {
           abortRef.current = run.controller;
           setStreaming(true);
@@ -1494,6 +1542,7 @@ ${sandboxedCustom}`;
         }
       } else if (!run && !runOwnerRef.current) {
         setStreaming(false);
+        setApprovalModeLocked(false);
         setThinkingText(null);
         setPendingApproval(null);
         if (cs.projectId === projectId && cs.activeId) {
@@ -1953,24 +2002,20 @@ ${sandboxedCustom}`;
                     req={pendingApproval.req}
                     onApprove={() => pendingApproval.resolve(true)}
                     onReject={() => pendingApproval.resolve(false)}
-                    sessionAutoApprove={sessionAutoApproveRef.current}
-                    onApproveSession={() => {
-                      sessionAutoApproveRef.current = true;
-                      pendingApproval.resolve(true);
-                    }}
                     onApproveProject={
-                      projectId
+                      pendingApproval.mode === "custom" && projectId
                         ? () => {
-                            projectApprovalsRef.current = {
-                              ...projectApprovalsRef.current,
-                              [pendingApproval.req.tool]: "allow",
-                            };
-                            void approvalsSet(
-                              projectId,
-                              pendingApproval.req.tool,
-                              "allow",
-                            ).catch(() => {});
-                            pendingApproval.resolve(true);
+                            void approvalsSet(projectId, pendingApproval.req.tool, "allow")
+                              .then(() => {
+                                projectApprovalsRef.current = {
+                                  ...projectApprovalsRef.current,
+                                  [pendingApproval.req.tool]: "allow",
+                                };
+                                pendingApproval.resolve(true);
+                              })
+                              .catch(() => {
+                                toast.error("Could not save the project approval rule.");
+                              });
                           }
                         : undefined
                     }
@@ -2005,8 +2050,8 @@ ${sandboxedCustom}`;
                 rows={1}
                 className="max-h-56 min-h-[32px] w-full resize-none overflow-y-auto rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none outline-none placeholder:text-muted-foreground/70"
               />
-              <div className="mt-2 flex min-h-7 items-center justify-between gap-1">
-                <div className="flex min-w-0 items-center gap-1">
+              <div className="mt-2 flex min-h-7 flex-wrap items-center justify-between gap-1">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
                   <button
                     data-tour="ai-attachments"
                     type="button"
@@ -2017,6 +2062,12 @@ ${sandboxedCustom}`;
                   >
                     <Plus className="size-4.5" />
                   </button>
+                  <ApprovalModeSelector
+                    mode={approvalMode}
+                    onChange={changeApprovalMode}
+                    onOpenProjectRules={openProjectApprovalSettings}
+                    disabled={approvalModeLocked}
+                  />
                   {figureModeAvailable && (
                     <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
                       <button type="button"
@@ -2180,7 +2231,7 @@ ${sandboxedCustom}`;
                     </span>
                   )}
                 </div>
-                <div className="flex min-w-0 items-center gap-1">
+                <div className="ml-auto flex min-w-0 items-center gap-1">
                   {configuredProviders.length > 0 && (
                     <div
                       data-tour="ai-provider-model"

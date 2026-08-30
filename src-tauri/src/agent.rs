@@ -675,14 +675,14 @@ fn approval_classifier(
         let risk = tool_risk(&call.name);
         let decision = project_id.as_deref().and_then(|project| {
             crate::paths::oleafly_root().ok().and_then(|root| {
-                crate::approvals::decision_for(&root, project, &call.name).map(|decision| {
-                    match decision {
+                crate::approvals::effective_decision_for(&root, project, &call.name).map(
+                    |decision| match decision {
                         crate::approvals::ToolDecision::Allow => {
                             oleafly_agent::PolicyDecision::Allow
                         }
                         crate::approvals::ToolDecision::Deny => oleafly_agent::PolicyDecision::Deny,
-                    }
-                })
+                    },
+                )
             })
         });
         oleafly_agent::classification_from_policy(risk, decision)
@@ -912,7 +912,7 @@ pub fn agent_tool_result(
         // webview ran a denied tool, its output never reaches the model.
         let denied = pending.project_id.as_deref().is_some_and(|project| {
             crate::paths::oleafly_root().is_ok_and(|root| {
-                crate::approvals::decision_for(&root, project, &pending.tool_name)
+                crate::approvals::effective_decision_for(&root, project, &pending.tool_name)
                     == Some(crate::approvals::ToolDecision::Deny)
             })
         });

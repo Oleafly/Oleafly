@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { riskRequiresConfirm, toolRisk } from "./approval-risk";
+import { decideToolApproval, riskRequiresConfirm, toolRisk } from "./approval-risk";
 
 describe("toolRisk", () => {
   it("classifies read-only project tools as read", () => {
@@ -64,5 +64,74 @@ describe("riskRequiresConfirm", () => {
     // Network consent is granted when the user configures the connector, so
     // classified network tools do not re-prompt per call.
     expect(riskRequiresConfirm("network")).toBe(false);
+  });
+});
+
+describe("decideToolApproval", () => {
+  it.each([
+    ["ask-for-approval", "read_file", "read", "auto-approve"],
+    ["ask-for-approval", "write_file", "write", "prompt"],
+    ["approve-for-me", "read_file", "read", "auto-approve"],
+    ["approve-for-me", "write_file", "write", "prompt"],
+    ["full-access", "read_file", "read", "auto-approve"],
+    ["full-access", "write_file", "write", "auto-approve"],
+    ["custom", "read_file", "read", "auto-approve"],
+    ["custom", "write_file", "write", "prompt"],
+  ] as const)("routes %s for %s", (mode, name, risk, expected) => {
+    expect(
+      decideToolApproval({
+        mode,
+        toolCall: { name },
+        risk,
+      }),
+    ).toBe(expected);
+  });
+
+  it("prompts for network access only in Ask for approval", () => {
+    expect(
+      decideToolApproval({
+        mode: "ask-for-approval",
+        toolCall: { name: "literature_search" },
+        risk: "network",
+      }),
+    ).toBe("prompt");
+    expect(
+      decideToolApproval({
+        mode: "approve-for-me",
+        toolCall: { name: "literature_search" },
+        risk: "network",
+      }),
+    ).toBe("auto-approve");
+  });
+
+  it("uses explicit project rules only in Custom mode", () => {
+    const projectRules = { write_file: "allow" as const };
+    expect(
+      decideToolApproval({
+        mode: "custom",
+        toolCall: { name: "write_file" },
+        risk: "write",
+        projectRules,
+      }),
+    ).toBe("auto-approve");
+    expect(
+      decideToolApproval({
+        mode: "ask-for-approval",
+        toolCall: { name: "write_file" },
+        risk: "write",
+        projectRules,
+      }),
+    ).toBe("prompt");
+  });
+
+  it("returns deny-per-rules for an explicit Custom denial", () => {
+    expect(
+      decideToolApproval({
+        mode: "custom",
+        toolCall: { name: "read_file" },
+        risk: "read",
+        projectRules: { read_file: "deny" },
+      }),
+    ).toBe("deny-per-rules");
   });
 });

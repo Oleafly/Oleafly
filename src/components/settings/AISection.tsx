@@ -28,8 +28,10 @@ import { PersonasTab } from "./ai/PersonasTab";
 import { AddCustomProviderDialog, type AddCustomProviderInput } from "./ai/AddCustomProviderDialog";
 import { editableKeys, withKey, withoutKey } from "./ai-keys";
 import { agentErrorKind } from "@/lib/agent-backend";
-
-type AITab = "providers" | "instructions" | "personas" | "skills";
+import {
+  aiSettingsDestination,
+  type AiSettingsTab,
+} from "./ai-settings-navigation";
 
 type DiscoveryResult =
   | { ok: true; models: { id: string; name: string }[] }
@@ -71,7 +73,7 @@ const DEFAULT_CFG: AppConfig = {
 };
 
 export function AISection() {
-  const [tab, setTab] = useState<AITab>("providers");
+  const [tab, setTab] = useState<AiSettingsTab>("providers");
   const [cfg, setCfg] = useState<AppConfig>(DEFAULT_CFG);
   const [keys, setKeys] = useState<Record<string, string>>({});
   // Snapshot of persisted keys, used to detect unsaved edits (dirty check below).
@@ -92,9 +94,16 @@ export function AISection() {
   const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
   useEffect(() => {
-    if (scrollTarget !== "ai-personas") return;
-    setTab("personas");
+    const destination = aiSettingsDestination(scrollTarget);
+    if (!destination) return;
+    setTab(destination.tab);
     setScrollTarget(null);
+    const elementId = destination.elementId;
+    if (elementId) {
+      window.requestAnimationFrame(() => {
+        document.getElementById(elementId)?.scrollIntoView({ block: "nearest" });
+      });
+    }
   }, [scrollTarget, setScrollTarget]);
 
   useEffect(() => {
@@ -384,7 +393,7 @@ export function AISection() {
 
   return (
     <div className="space-y-4 text-sm">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as AITab)} className="space-y-4">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as AiSettingsTab)} className="space-y-4">
         <TabsList data-tour="ai-settings-tabs">
           <TabsTrigger value="providers" data-testid="ai-settings-tab-providers">
             Providers and keys

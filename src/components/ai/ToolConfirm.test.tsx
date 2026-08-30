@@ -24,4 +24,22 @@ describe("ToolConfirm", () => {
     expect(html).toContain("pnpm test --filter ai-core");
     expect(html).toContain("/projects/paper-one");
   });
+
+  it("labels internet access separately from file edits", () => {
+    const req = {
+      tool: "literature_search",
+      summary: "Search OpenAlex for approval policies",
+    } as ToolApprovalRequest;
+
+    const html = renderToStaticMarkup(
+      createElement(ToolConfirm, {
+        req,
+        onApprove: vi.fn(),
+        onReject: vi.fn(),
+      }),
+    );
+
+    expect(html).toContain("The assistant wants to access the internet");
+    expect(html).toContain('aria-label="Confirm internet access"');
+  });
 });
