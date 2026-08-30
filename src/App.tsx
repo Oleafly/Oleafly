@@ -207,7 +207,7 @@ function VHandle({
   placement?: "top" | "center" | "bottom";
 }) {
   return (
-    <div className="resize-handle-col relative flex w-3 shrink-0">
+    <div className="resize-handle-col relative flex w-1.5 shrink-0">
       <PanelResizeHandle
         id={id}
         style={{ cursor: "col-resize" }}

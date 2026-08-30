@@ -779,8 +779,10 @@ export const MessageItem = memo(function MessageItem({
         >
           <div
             className={cn(
-              "max-w-[85%] overflow-hidden rounded-lg px-3 py-2 text-sm",
-              msg.role === "user" ? "bg-primary text-white" : "bg-muted text-foreground",
+              "overflow-hidden rounded-lg px-3 py-2 text-sm",
+              msg.role === "user"
+                ? "max-w-[85%] bg-primary text-white"
+                : "w-full bg-muted text-foreground",
             )}
           >
             {live ? (

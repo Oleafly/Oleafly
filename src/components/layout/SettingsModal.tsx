@@ -441,13 +441,13 @@ export function SettingsModal() {
               data-testid={`settings-section-${id}`}
               onClick={() => setSection(id)}
               className={cn(
-                "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
+                "flex items-center gap-2.5 whitespace-nowrap rounded-md px-2.5 py-2 text-sm transition-colors",
                 section === id
                   ? "bg-background font-medium text-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
               )}
             >
-              <Icon className="size-4" aria-hidden />
+              <Icon className="size-4 shrink-0" aria-hidden />
               {label}
             </button>
             ))}
