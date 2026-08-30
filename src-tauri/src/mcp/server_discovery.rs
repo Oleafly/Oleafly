@@ -5,10 +5,16 @@ pub(super) fn ensure_token() -> Result<String, String> {
     if !cfg.mcp_token.is_empty() {
         return Ok(cfg.mcp_token);
     }
-    let token = crate::secrets::generate_mcp_token();
-    let mut updated = cfg;
-    updated.mcp_token = token.clone();
-    crate::config::write_config(&updated)?;
+    let generated = crate::secrets::generate_mcp_token();
+    let mut token = generated.clone();
+    crate::config::update_config(|config| {
+        if config.mcp_token.is_empty() {
+            config.mcp_token = generated;
+        } else {
+            token = config.mcp_token.clone();
+        }
+        Ok(())
+    })?;
     Ok(token)
 }
 

@@ -12,6 +12,12 @@ import {
   createFile,
   importDocument,
   isFileConflictError,
+  mcpServerAdd,
+  mcpServerRemove,
+  mcpServerSetEnabled,
+  mcpServersList,
+  mcpServerUpdate,
+  mcpServerValidate,
   renameFile,
   validateCompileFingerprint,
 } from "./tauri";
@@ -95,6 +101,62 @@ describe("document import bridge", () => {
     );
     expect(mocks.invoke).toHaveBeenCalledWith("import_document", {
       path: "/tmp/paper.md",
+    });
+  });
+});
+
+describe("MCP server management bridge", () => {
+  const server = {
+    name: "filesystem",
+    enabled: true,
+    transport: "stdio" as const,
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp/docs"],
+    env: { NODE_ENV: "production" },
+  };
+
+  it("uses the dedicated list, add, and update commands", async () => {
+    mocks.invoke.mockResolvedValue({
+      config: server,
+      validation: {
+        name: server.name,
+        status: "connected",
+        tool_count: 1,
+        tools: [{ name: "read_file", description: "Read a file" }],
+        error: null,
+      },
+    });
+
+    await mcpServersList();
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_servers_list");
+
+    await mcpServerAdd(server);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_server_add", { server });
+
+    await mcpServerUpdate("old-filesystem", server);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_server_update", {
+      originalName: "old-filesystem",
+      server,
+    });
+  });
+
+  it("uses server names for validate, enable, and remove commands", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+
+    await mcpServerValidate("filesystem");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_server_validate", {
+      name: "filesystem",
+    });
+
+    await mcpServerSetEnabled("filesystem", false);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_server_set_enabled", {
+      name: "filesystem",
+      enabled: false,
+    });
+
+    await mcpServerRemove("filesystem");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_server_remove", {
+      name: "filesystem",
     });
   });
 });

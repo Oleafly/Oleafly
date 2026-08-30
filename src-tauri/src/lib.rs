@@ -122,6 +122,7 @@ pub fn run() {
         .manage(agent_exec::AgentExecState::default())
         .manage(agent_server::AgentServerState::default())
         .manage(mcp::server::McpState::default())
+        .manage(mcp::client::McpClientState::default())
         // Closing the app mid-TinyTeX-install must be a deliberate choice: block
         // the close, let the frontend show a confirm dialog, and only pass a
         // close through after `confirm_quit_during_install`.
@@ -390,6 +391,12 @@ pub fn run() {
             mcp::mcp_restart_server,
             mcp::mcp_connection_info,
             mcp::mcp_regenerate_token,
+            mcp::client::mcp_servers_list,
+            mcp::client::mcp_server_add,
+            mcp::client::mcp_server_update,
+            mcp::client::mcp_server_remove,
+            mcp::client::mcp_server_set_enabled,
+            mcp::client::mcp_server_validate,
             chats::load_project_chats,
             chats::save_project_chats,
             git::git_auto_commit,

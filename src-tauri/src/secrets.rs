@@ -48,11 +48,6 @@ fn lock_secrets(parent: &Path) -> Result<SecretLock, String> {
     })
 }
 
-/// Persist a secret in the encrypted app-secrets store. An empty value removes it.
-pub fn set_secret(account: &str, value: &str) -> Result<(), String> {
-    set_secrets(&[(account, value)])
-}
-
 pub fn set_secrets(values: &[(&str, &str)]) -> Result<(), String> {
     let data = app_secrets_path()?;
     let key = secret_key_path()?;
@@ -331,6 +326,10 @@ fn connector_secrets_path() -> Result<std::path::PathBuf, String> {
     Ok(crate::paths::oleafly_root()?.join("connector-secrets.json"))
 }
 
+fn mcp_server_secrets_path() -> Result<std::path::PathBuf, String> {
+    Ok(crate::paths::oleafly_root()?.join("mcp-server-secrets.json"))
+}
+
 /// Per-connector API keys for the research copilot (alphaXiv, etc.), keyed by
 /// connector id. Separate file from `ai-secrets.json` (AI provider keys) so
 /// the two credential namespaces never collide on key names.
@@ -345,6 +344,24 @@ pub fn read_connector_secrets() -> Result<HashMap<String, String>, String> {
 
 pub fn write_connector_secrets(values: &HashMap<String, String>) -> Result<(), String> {
     let data = connector_secrets_path()?;
+    let parent = data
+        .parent()
+        .ok_or_else(|| "secret path has no parent directory".to_string())?;
+    let _lock = lock_secrets(parent)?;
+    write_secret_map_at(&data, &secret_key_path()?, values)
+}
+
+pub fn read_mcp_server_secrets() -> Result<HashMap<String, String>, String> {
+    let data = mcp_server_secrets_path()?;
+    let parent = data
+        .parent()
+        .ok_or_else(|| "secret path has no parent directory".to_string())?;
+    let _lock = lock_secrets(parent)?;
+    read_secret_map_at(&data, &secret_key_path()?)
+}
+
+pub fn write_mcp_server_secrets(values: &HashMap<String, String>) -> Result<(), String> {
+    let data = mcp_server_secrets_path()?;
     let parent = data
         .parent()
         .ok_or_else(|| "secret path has no parent directory".to_string())?;
@@ -442,6 +459,37 @@ mod tests {
         write_connector_secrets(&values).unwrap();
         let back = read_connector_secrets().unwrap();
         assert_eq!(back.get("alphaxiv").unwrap(), "test-key-123");
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn mcp_server_secrets_round_trip_without_plaintext() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = std::env::temp_dir().join(format!(
+            "oleafly-mcp-server-secrets-{}-{}",
+            std::process::id(),
+            generate_mcp_token()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let values = HashMap::from([
+            (
+                "[\"local-search\",\"env\",\"SEARCH_TOKEN\"]".to_string(),
+                "stdio-secret".to_string(),
+            ),
+            (
+                "[\"hosted-search\",\"header\",\"Authorization\"]".to_string(),
+                "Bearer remote-secret".to_string(),
+            ),
+        ]);
+
+        write_mcp_server_secrets(&values).unwrap();
+
+        let stored = std::fs::read_to_string(dir.join("mcp-server-secrets.json")).unwrap();
+        assert!(!stored.contains("stdio-secret"));
+        assert!(!stored.contains("remote-secret"));
+        assert_eq!(read_mcp_server_secrets().unwrap(), values);
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(dir).ok();
     }

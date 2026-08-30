@@ -2603,6 +2603,7 @@ dependencies = [
 name = "oleafly"
 version = "0.3.13"
 dependencies = [
+ "aho-corasick",
  "atomicwrites",
  "axum",
  "base64 0.23.1",

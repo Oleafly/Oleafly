@@ -71,6 +71,7 @@ const DEFAULT_CFG: AppConfig = {
   mcp_port: 5323,
   mcp_read_only: false,
   mcp_approval_policy: "ask",
+  mcp_servers: [],
 };
 
 export function AISection() {

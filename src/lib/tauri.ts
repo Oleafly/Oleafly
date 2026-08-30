@@ -32,6 +32,9 @@ import type {
   InitialState,
   LibraryStorageSummary,
   McpConnectionInfo,
+  McpManagedServer,
+  McpServerConfig,
+  McpServerValidation,
   McpStatus,
   PackInfo,
   Prerequisite,
@@ -549,6 +552,17 @@ export const mcpSetEnabled = (enabled: boolean) =>
 export const mcpRestartServer = () => invoke<McpStatus>("mcp_restart_server");
 export const mcpConnectionInfo = () => invoke<McpConnectionInfo>("mcp_connection_info");
 export const mcpRegenerateToken = () => invoke<void>("mcp_regenerate_token");
+export const mcpServersList = () => invoke<McpManagedServer[]>("mcp_servers_list");
+export const mcpServerAdd = (server: McpServerConfig) =>
+  invoke<McpManagedServer>("mcp_server_add", { server });
+export const mcpServerUpdate = (originalName: string, server: McpServerConfig) =>
+  invoke<McpManagedServer>("mcp_server_update", { originalName, server });
+export const mcpServerRemove = (name: string) =>
+  invoke<void>("mcp_server_remove", { name });
+export const mcpServerSetEnabled = (name: string, enabled: boolean) =>
+  invoke<McpManagedServer>("mcp_server_set_enabled", { name, enabled });
+export const mcpServerValidate = (name: string) =>
+  invoke<McpServerValidation>("mcp_server_validate", { name });
 let activeMcpRendererSession: number | null = null;
 let mcpRendererBeginSequence = 0;
 export const mcpBeginRendererSession = async () => {

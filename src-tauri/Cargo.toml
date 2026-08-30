@@ -15,6 +15,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+aho-corasick = "1"
 oleafly-agent = { path = "../crates/oleafly-agent" }
 oleafly-core = { path = "../crates/oleafly-core" }
 # `unstable` unlocks the multi-webview APIs (Webview class) that power the

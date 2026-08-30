@@ -19,6 +19,7 @@ import {
 import { refreshMcpRegistry, revokeMcpBridgeCalls } from "@/lib/mcp-bridge";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { cn } from "@/lib/utils";
+import { McpServersManager } from "./McpServersManager";
 
 function CopyBtn({ text, testId }: { text: string; testId?: string }) {
   const [copied, setCopied] = useState(false);
@@ -390,8 +391,16 @@ export function McpSection() {
       <div>
         <h2 className="text-base font-semibold">MCP</h2>
         <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-          Expose Oleafly’s AI tools to external apps over the Model Context Protocol. Claude
-          Desktop, Claude Code, Cursor, and other MCP clients can then read, edit, and compile the
+          Connect the AI Assistant to MCP tools, or let external apps work with the open project.
+        </p>
+      </div>
+
+      <McpServersManager />
+
+      <div className="border-t pt-5">
+        <h3 className="text-sm font-medium">Oleafly MCP server</h3>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Claude Desktop, Claude Code, Cursor, and other MCP clients can read, edit, and compile the
           open project, with your approval for every change.
         </p>
       </div>

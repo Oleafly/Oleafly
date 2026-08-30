@@ -379,6 +379,37 @@ export interface AppConfig {
     mcp_port: number;
     mcp_read_only: boolean;
     mcp_approval_policy: string;
+    mcp_servers: McpServerConfig[];
+}
+export type McpServerConfig = {
+    name: string;
+    enabled: boolean;
+    transport: "stdio";
+    command: string;
+    args: string[];
+    env: Record<string, string>;
+} | {
+    name: string;
+    enabled: boolean;
+    transport: "remote";
+    url: string;
+    headers: Record<string, string>;
+};
+export interface McpServerTool {
+    name: string;
+    description?: string | null;
+}
+export type McpServerValidationStatus = "connected" | "error" | "disabled" | "checking";
+export interface McpServerValidation {
+    name: string;
+    status: McpServerValidationStatus;
+    tool_count: number;
+    tools: McpServerTool[];
+    error: string | null;
+}
+export interface McpManagedServer {
+    config: McpServerConfig;
+    validation: McpServerValidation;
 }
 export interface McpStatus {
     running: boolean;
@@ -585,6 +616,12 @@ export interface BackendPort {
   mcpRestartServer: () => Promise<McpStatus>;
   mcpConnectionInfo: () => Promise<McpConnectionInfo>;
   mcpRegenerateToken: () => Promise<void>;
+  mcpServersList: () => Promise<McpManagedServer[]>;
+  mcpServerAdd: (server: McpServerConfig) => Promise<McpManagedServer>;
+  mcpServerUpdate: (originalName: string, server: McpServerConfig) => Promise<McpManagedServer>;
+  mcpServerRemove: (name: string) => Promise<void>;
+  mcpServerSetEnabled: (name: string, enabled: boolean) => Promise<McpManagedServer>;
+  mcpServerValidate: (name: string) => Promise<McpServerValidation>;
   mcpBeginRendererSession: () => Promise<number>;
   mcpRendererHeartbeat: (rendererSession: number) => Promise<void>;
   mcpEndRendererSession: (rendererSession: number) => Promise<void>;
