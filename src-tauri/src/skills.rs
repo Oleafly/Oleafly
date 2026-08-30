@@ -120,7 +120,7 @@ fn skills_root(root: &Path) -> PathBuf {
     root.join("skills")
 }
 
-const DEFAULT_SKILLS: [(&str, &str, &str); 9] = [
+const DEFAULT_SKILLS: [(&str, &str, &str); 10] = [
     (
         "research-authoring",
         r#"{ "name": "research-authoring", "version": "1.0.0", "description": "Draft or extend a research manuscript section by section." }"#,
@@ -145,6 +145,37 @@ const DEFAULT_SKILLS: [(&str, &str, &str); 9] = [
         "conduct-research",
         r#"{ "name": "conduct-research", "version": "1.0.0", "description": "Run a literature investigation for the current project." }"#,
         "---\nname: conduct-research\ndescription: Run a literature investigation for the current project.\n---\n\nInvestigate the research question I give you. Search the literature tools for relevant work, read what the connectors return, and build an annotated map: the key papers, how they relate, and where the open gap is. Save the findings as notes in the project so authoring can build on them.\n",
+    ),
+    (
+        "openresearch",
+        r#"{ "name": "openresearch", "version": "1.0.0", "description": "Ground research in literature and run or inspect experiments with the local orx CLI." }"#,
+        r#"---
+name: OpenResearch (orx)
+description: Ground research in literature and run or inspect experiments with the local orx CLI.
+---
+
+Use `orx` when a task needs literature evidence, paper metadata, or access to experiments in a local OpenResearch project.
+
+Before using it, check whether `orx` is available on PATH. Run every command through the normal `run_command` tool. Commands follow the current approval mode.
+
+Commands:
+
+- `orx discover keyword <query>` searches the literature by keyword.
+- `orx paper <arxiv-id-or-doi>` shows metadata for an arXiv paper or DOI.
+- `orx projects` lists local OpenResearch projects.
+- `orx project view <id>` shows one project.
+- `orx runs <project-id>` lists experiment runs for a project.
+- `orx logs <run-id>` shows the logs for a run.
+- `orx exp run <experiment-id>` executes an experiment.
+
+Run `orx --help` for the full interface.
+
+If `orx` is not installed, do not install it automatically. Tell the user to run:
+
+```sh
+curl -LsSf https://openresearch.sh/install.sh | sh
+```
+"#,
     ),
     (
         "import-refine",
@@ -1181,6 +1212,34 @@ mod tests {
         assert!(ids.contains(&"template-generate"));
         assert!(ids.contains(&"ai-figure"));
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn bundled_openresearch_skill_is_valid_first_party_and_disabled() {
+        let root = tempfile::tempdir().unwrap();
+
+        let skill = list(root.path())
+            .unwrap()
+            .into_iter()
+            .find(|skill| skill.id == "openresearch")
+            .expect("the bundled OpenResearch skill should be discovered");
+
+        assert_eq!(skill.name, "OpenResearch (orx)");
+        assert_eq!(
+            skill.description,
+            "Ground research in literature and run or inspect experiments with the local orx CLI."
+        );
+        assert!(!skill.instructions.trim().is_empty());
+        assert_eq!(skill.source, SkillSource::FirstParty);
+        assert!(!skill.enabled);
+        assert!(!skill.removable);
+        assert_eq!(skill.validation, SkillValidation::Valid);
+
+        let enabled = set_enabled(root.path(), "openresearch", true).unwrap();
+        assert!(enabled.enabled);
+        assert!(enabled
+            .instructions
+            .contains("orx discover keyword <query>"));
     }
 
     #[test]

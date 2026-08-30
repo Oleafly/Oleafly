@@ -1098,16 +1098,18 @@ describe("ChatCore agent turns", () => {
     await act(async () => finishRun(0, "Ready"));
   });
 
-  it("injects enabled skill metadata and loads its full instructions on demand", async () => {
+  it("injects enabled OpenResearch metadata and loads its full instructions on demand", async () => {
     mocks.skillEntries.push(
       {
-        id: "proof-review",
-        name: "Proof Review",
-        description: "Review a proof for logical gaps.",
-        instructions: "Read each claim and verify its dependencies.",
-        source: "user",
+        id: "openresearch",
+        name: "OpenResearch (orx)",
+        description:
+          "Ground research in literature and run or inspect experiments with the local orx CLI.",
+        instructions:
+          "Before using it, check whether `orx` is available on PATH. Run `orx --help` for the full interface.",
+        source: "first-party",
         enabled: true,
-        removable: true,
+        removable: false,
         validation: { status: "valid" },
       },
       {
@@ -1140,16 +1142,16 @@ describe("ChatCore agent turns", () => {
     submit(rendered, "Review the prompt");
     await waitFor(() => expect(mocks.runs).toHaveLength(1));
 
-    expect(mocks.runs[0].options.system).toContain("Proof Review");
-    expect(mocks.runs[0].options.system).toContain("Review a proof for logical gaps.");
-    expect(mocks.runs[0].options.system).not.toContain(
-      "Read each claim and verify its dependencies.",
+    expect(mocks.runs[0].options.system).toContain("OpenResearch (orx)");
+    expect(mocks.runs[0].options.system).toContain(
+      "Ground research in literature and run or inspect experiments with the local orx CLI.",
     );
+    expect(mocks.runs[0].options.system).not.toContain("Run `orx --help` for the full interface.");
     expect(mocks.runs[0].options.system).not.toContain("Citation Audit");
     expect(mocks.runs[0].options.system).not.toContain("Broken Skill");
     await expect(
-      mocks.runs[0].options.tools.load_skill.execute?.({ id: "proof-review" }),
-    ).resolves.toContain("Read each claim and verify its dependencies.");
+      mocks.runs[0].options.tools.load_skill.execute?.({ id: "openresearch" }),
+    ).resolves.toContain("Run `orx --help` for the full interface.");
     await act(async () => finishRun(0, "Ready"));
   });
 

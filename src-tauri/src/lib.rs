@@ -234,6 +234,7 @@ pub fn run() {
             storage::restore_recycled_project,
             storage::permanently_delete_recycled_project,
             commands::app_version,
+            commands::has_orx,
             protocol::backend_protocol_info,
             initial_state::initial_state,
             chunked::chunked_ack,
