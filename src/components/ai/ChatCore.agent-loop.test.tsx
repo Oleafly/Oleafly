@@ -687,7 +687,7 @@ describe("ChatCore agent turns", () => {
     expect(right).toHaveClass("shrink-0", "flex-nowrap");
     const model = rendered.getByRole("button", { name: "AI model" });
     expect(right).toContainElement(model);
-    expect(rendered.getByRole("button", { name: "Voice input (coming soon)" })).toBeVisible();
+    expect(rendered.queryByRole("button", { name: "Voice input (coming soon)" })).toBeNull();
     expect(rendered.getByRole("button", { name: "Send" })).toBeVisible();
 
     const attach = rendered.getByRole("button", { name: "Add context" });
@@ -734,7 +734,7 @@ describe("ChatCore agent turns", () => {
     expect(await rendered.findByRole("tooltip")).toHaveTextContent("Prompts");
   });
 
-  it("shows only the persona dot and chevron until a persona is active", async () => {
+  it("shows the persona label with a dot until a persona is active", async () => {
     mocks.getConfig.mockResolvedValue({
       ai_provider: "openai",
       ai_model: "gpt-4o",
@@ -755,7 +755,9 @@ describe("ChatCore agent turns", () => {
     const rendered = await renderChat();
 
     const inactiveTrigger = rendered.getByRole("button", { name: "Choose persona" });
-    expect(inactiveTrigger).not.toHaveTextContent("Persona");
+    expect(inactiveTrigger).toHaveTextContent("Persona");
+    const inactiveValue = inactiveTrigger.querySelector(".ai-composer-persona-value");
+    expect(inactiveValue).toHaveTextContent("Persona");
     const inactiveDot = rendered.getByTestId("ai-inactive-persona-indicator");
     expect(inactiveDot).toBeVisible();
     expect(inactiveDot).toHaveClass(
@@ -1955,7 +1957,7 @@ describe("ChatCore agent turns", () => {
     const rendered = await renderChat();
     const projectId = useFilesStore.getState().projectId;
     openAttachMenu(rendered);
-    fireEvent.click(rendered.getByRole("menuitem", { name: /Plan mode/ }));
+    fireEvent.click(rendered.getByRole("menuitem", { name: /Plan Mode/ }));
 
     expect(usePlanModeStore.getState().isEnabled(projectId)).toBe(true);
   });
@@ -1981,13 +1983,13 @@ describe("ChatCore agent turns", () => {
     await waitFor(() => expect(mocks.runs).toHaveLength(1));
 
     changeComposer("/");
-    expect(rendered.queryByRole("option", { name: /Plan mode/ })).toBeNull();
+    expect(rendered.queryByRole("option", { name: /Plan Mode/ })).toBeNull();
     expect(rendered.queryByRole("option", { name: /Archive/ })).toBeNull();
     expect(rendered.queryByRole("option", { name: /Fork chat/ })).toBeNull();
 
     changeComposer("");
     openAttachMenu(rendered);
-    expect(rendered.queryByRole("menuitem", { name: /Plan mode/ })).toBeNull();
+    expect(rendered.queryByRole("menuitem", { name: /Plan Mode/ })).toBeNull();
     expect(rendered.queryByRole("menuitem", { name: /Record a skill/ })).toBeNull();
 
     await act(async () => finishRun(0, "Done"));
@@ -2002,7 +2004,7 @@ describe("ChatCore agent turns", () => {
 
     changeComposer("/");
     expect(rendered.queryByRole("option", { name: /^Goal/ })).toBeNull();
-    expect(rendered.queryByRole("option", { name: /Plan mode/ })).toBeNull();
+    expect(rendered.queryByRole("option", { name: /Plan Mode/ })).toBeNull();
     expect(rendered.queryByRole("option", { name: /Archive/ })).toBeNull();
     expect(rendered.queryByRole("option", { name: /Fork chat/ })).toBeNull();
     expect(rendered.queryByRole("option", { name: /Record a skill/ })).toBeNull();
@@ -2011,7 +2013,7 @@ describe("ChatCore agent turns", () => {
     openAttachMenu(rendered);
     expect(rendered.queryByRole("menuitem", { name: /Files/ })).toBeNull();
     expect(rendered.queryByRole("menuitem", { name: /^Goal/ })).toBeNull();
-    expect(rendered.queryByRole("menuitem", { name: /Plan mode/ })).toBeNull();
+    expect(rendered.queryByRole("menuitem", { name: /Plan Mode/ })).toBeNull();
     expect(rendered.getByRole("menuitem", { name: /Attach browser/ })).toBeTruthy();
     expect(rendered.queryByRole("menuitem", { name: /Record a skill/ })).toBeNull();
   });

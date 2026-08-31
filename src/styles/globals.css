@@ -1402,6 +1402,32 @@ body[data-tour-active] [data-tour-hide] {
   animation: ai-tool-approval-border-shine var(--ai-tool-approval-border-duration) linear infinite;
 }
 
+@container ai-composer (max-width: 46rem) {
+  .ai-composer-figure {
+    width: 1.75rem;
+    justify-content: center;
+    gap: 0;
+    padding-inline: 0;
+  }
+
+  .ai-composer-figure-value {
+    display: none;
+  }
+}
+
+@container ai-composer (max-width: 43rem) {
+  .ai-composer-plan {
+    width: 1.75rem;
+    justify-content: center;
+    gap: 0;
+    padding-inline: 0;
+  }
+
+  .ai-composer-plan-value {
+    display: none;
+  }
+}
+
 @container ai-composer (max-width: 38rem) {
   .ai-composer-persona .ai-composer-persona-trigger {
     width: 2.5rem;

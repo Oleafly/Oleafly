@@ -23,6 +23,7 @@ vi.mock("@lobehub/icons", () => {
     Ollama: stub(),
     Perplexity: stub(),
     ZAI: stub(),
+    MCP: stub(),
   };
 });
 

@@ -5,11 +5,11 @@ import {
   GitFork,
   Lightbulb,
   PanelRightOpen,
-  Server,
   Sparkles,
   Target,
-  type LucideIcon,
 } from "lucide-react";
+import type { ComponentType } from "react";
+import { McpBrandIcon } from "./McpBrandIcon";
 
 export interface ComposerCommandActions {
   archiveChat?: () => void;
@@ -19,6 +19,7 @@ export interface ComposerCommandActions {
   openGoalEditor?: () => void;
   openMcpSettings: () => void;
   openModelPicker?: () => void;
+  planMode?: boolean;
   recordSkill?: () => void;
   togglePlanMode?: () => void;
 }
@@ -27,7 +28,7 @@ export interface ComposerCommand {
   id: string;
   label: string;
   description: string;
-  icon: LucideIcon;
+  icon: ComponentType<{ className?: string }>;
   action: () => void;
 }
 
@@ -64,7 +65,7 @@ export function createSlashCommands(actions: ComposerCommandActions): ComposerCo
     id: "mcp",
     label: "MCP",
     description: "View connected MCP servers and their status",
-    icon: Server,
+    icon: McpBrandIcon,
     action: actions.openMcpSettings,
   });
   if (actions.openModelPicker) {
@@ -79,7 +80,7 @@ export function createSlashCommands(actions: ComposerCommandActions): ComposerCo
   if (actions.togglePlanMode) {
     commands.push({
       id: "plan-mode",
-      label: "Plan mode",
+      label: actions.planMode ? "Disable Plan Mode" : "Enable Plan Mode",
       description: "Turn structured planning on or off",
       icon: Lightbulb,
       action: actions.togglePlanMode,
@@ -127,7 +128,7 @@ export function createAttachCommands(actions: ComposerCommandActions): ComposerC
   if (actions.togglePlanMode) {
     commands.push({
       id: "plan-mode",
-      label: "Plan mode",
+      label: actions.planMode ? "Disable Plan Mode" : "Enable Plan Mode",
       description: "Turn structured planning on or off",
       icon: Lightbulb,
       action: actions.togglePlanMode,

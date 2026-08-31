@@ -6,10 +6,10 @@ import { ApprovalModeSelector } from "./ApprovalModeSelector";
 
 describe("ApprovalModeSelector", () => {
   it.each([
-    ["ask-for-approval", "bg-amber-500/10", true],
-    ["approve-for-me", "bg-muted/40", false],
-    ["full-access", "bg-orange-500/10", true],
-    ["custom", "bg-muted/40", false],
+    ["ask-for-approval", "bg-emerald-500/10", true],
+    ["approve-for-me", "bg-amber-500/10", true],
+    ["full-access", "bg-red-500/10", true],
+    ["custom", "bg-sky-500/10", true],
   ] as const)("styles %s with only its intended selection color", (mode, expectedClass, colored) => {
     render(
       <ApprovalModeSelector

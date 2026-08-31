@@ -34,7 +34,6 @@ import {
   Layers,
   Lightbulb,
   MessageSquareQuote,
-  Mic,
   Plus,
   Quote,
   RotateCcw,
@@ -67,6 +66,7 @@ import { ToolConfirm } from "@/components/ai/ToolConfirm";
 import { ApprovalModeSelector } from "@/components/ai/ApprovalModeSelector";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
 import { AiToolManager } from "@/components/ai/AiToolManager";
+import { McpBrandIcon } from "@/components/ai/McpBrandIcon";
 import { ModelSelector } from "@/components/ai/ModelSelector";
 import { ComposerAttachMenu } from "@/components/ai/ComposerAttachMenu";
 import {
@@ -1023,6 +1023,7 @@ export function ChatCore() {
     openMcpSettings,
     openModelPicker:
       configuredProviders.length > 0 ? () => setModelPickerOpen(true) : undefined,
+    planMode,
     recordSkill: canRecordSkill ? () => void recordCurrentChatSkill() : undefined,
     togglePlanMode: projectId && !approvalModeLocked ? changePlanMode : undefined,
   };
@@ -2200,9 +2201,9 @@ ${sandboxedCustom}`;
                 size="xs"
                 aria-label="Assistant MCP settings"
                 onClick={openMcpSettings}
-                className="shrink-0 text-muted-foreground hover:text-foreground"
+                className="size-7 shrink-0 p-0 text-muted-foreground hover:text-foreground"
               >
-                MCP
+                <McpBrandIcon className="size-4" />
               </Button>
             </Tooltip>
             <AiToolManager
@@ -2844,10 +2845,7 @@ ${sandboxedCustom}`;
                               ? `Persona. ${activePersona.name} active and replacing default instructions.`
                               : "Choose persona"
                           }
-                          triggerClassName={cn(
-                            "ai-composer-persona-trigger h-7 max-w-40 shrink-0 gap-1.5 px-2 text-xs font-medium",
-                            !activePersona && "w-10 px-1.5",
-                          )}
+                          triggerClassName="ai-composer-persona-trigger h-7 max-w-40 shrink-0 gap-1.5 px-2 text-xs font-medium"
                           className="max-h-64 w-64 overflow-y-auto p-1.5"
                           trigger={
                             <>
@@ -2865,11 +2863,9 @@ ${sandboxedCustom}`;
                                   className="size-2.5 shrink-0 rounded-full border border-muted-foreground/50"
                                 />
                               )}
-                              {activePersona && (
-                                <span className="ai-composer-persona-value truncate">
-                                  {activePersona.name}
-                                </span>
-                              )}
+                              <span className="ai-composer-persona-value truncate">
+                                {activePersona ? activePersona.name : "Persona"}
+                              </span>
                               <ChevronDown className="size-3.5 shrink-0" />
                             </>
                           }
@@ -2937,13 +2933,14 @@ ${sandboxedCustom}`;
                       onClick={changePlanMode}
                       disabled={approvalModeLocked}
                       className={cn(
-                        "ai-composer-plan flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50",
+                        "ai-composer-plan flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50",
                         planMode
                           ? "bg-violet-500/15 text-violet-600 hover:bg-violet-500/20 dark:text-violet-300"
                           : "text-muted-foreground",
                       )}
                     >
-                      <Lightbulb className={cn("size-4", planMode && "fill-current")} />
+                      <Lightbulb className={cn("size-4 shrink-0", planMode && "fill-current")} />
+                      <span className="ai-composer-plan-value">Plan</span>
                     </button>
                   </Tooltip>
                   {figureModeAvailable && (
@@ -2953,11 +2950,12 @@ ${sandboxedCustom}`;
                         aria-label="Toggle figure mode"
                         aria-pressed={figureMode}
                         className={cn(
-                          "ai-composer-figure flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                          "ai-composer-figure flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
                           figureMode && "bg-primary/15 text-primary hover:bg-primary/20",
                         )}
                       >
-                        <Frame className="size-4" />
+                        <Frame className="size-4 shrink-0" />
+                        <span className="ai-composer-figure-value">Figure</span>
                       </button>
                     </Tooltip>
                   )}
@@ -2985,16 +2983,6 @@ ${sandboxedCustom}`;
                       />
                     </div>
                   )}
-                  <Tooltip label="Voice input is coming soon">
-                    <button
-                      type="button"
-                      disabled
-                      aria-label="Voice input (coming soon)"
-                      className="ai-composer-mic flex size-7 shrink-0 cursor-not-allowed items-center justify-center rounded-full text-muted-foreground/40"
-                    >
-                      <Mic className="size-4" />
-                    </button>
-                  </Tooltip>
                   {streaming ? (
                     <button type="button"
                       onClick={stop}

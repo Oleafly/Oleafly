@@ -60,19 +60,21 @@ export function ApprovalModeSelector({
   const ActiveIcon = active.icon;
 
   return (
-    <Tooltip label={active.label} className="ai-composer-approval ml-1.5 shrink-0">
+    <Tooltip label={active.label} className="ai-composer-approval ml-1.5 min-w-0">
       <Popover
         align="left"
         ariaLabel={`Approval mode. ${active.label}`}
         disabled={disabled}
         triggerClassName={cn(
-          "ai-composer-approval-trigger h-7 min-w-0 max-w-48 shrink-0 gap-1.5 rounded-full border pl-2.5 pr-2 text-xs font-medium",
+          "ai-composer-approval-trigger h-7 min-w-0 max-w-48 gap-1.5 rounded-full border pl-2.5 pr-2 text-xs font-medium",
           mode === "ask-for-approval" &&
+            "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300",
+          mode === "approve-for-me" &&
             "border-amber-500/30 bg-amber-500/10 text-amber-700 hover:bg-amber-500/15 dark:text-amber-300",
-          mode === "approve-for-me" && "border-border/70 bg-muted/40",
           mode === "full-access" &&
-            "border-orange-500/30 bg-orange-500/10 text-orange-700 hover:bg-orange-500/15 dark:text-orange-300",
-          mode === "custom" && "border-border/70 bg-muted/40",
+            "border-red-500/35 bg-red-500/10 text-red-700 hover:bg-red-500/15 dark:text-red-300",
+          mode === "custom" &&
+            "border-sky-500/30 bg-sky-500/10 text-sky-700 hover:bg-sky-500/15 dark:text-sky-300",
         )}
         className="w-72 p-1.5"
         trigger={
