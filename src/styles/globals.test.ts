@@ -38,13 +38,13 @@ describe("assistant mascot motion", () => {
 describe("assistant composer container queries", () => {
   it("shows labels by default and collapses them right-to-left as space narrows", () => {
     const personaBreakpoint = styles.indexOf(
-      "@container ai-composer (max-width: 49.5rem)",
+      "@container ai-composer (max-width: 38rem)",
     );
     const promptsBreakpoint = styles.indexOf(
-      "@container ai-composer (max-width: 42rem)",
+      "@container ai-composer (max-width: 34rem)",
     );
     const approvalBreakpoint = styles.indexOf(
-      "@container ai-composer (max-width: 39rem)",
+      "@container ai-composer (max-width: 31rem)",
     );
 
     expect(personaBreakpoint).toBeGreaterThan(-1);
@@ -54,7 +54,7 @@ describe("assistant composer container queries", () => {
     const promptsRules = styles.slice(promptsBreakpoint, approvalBreakpoint);
     const approvalRules = styles.slice(
       approvalBreakpoint,
-      styles.indexOf("@container ai-composer (max-width: 32rem)"),
+      styles.indexOf("@container ai-composer (max-width: 28rem)"),
     );
 
     expect(personaRules).toMatch(/\.ai-composer-persona-value\s*\{\s*display: none;/u);
