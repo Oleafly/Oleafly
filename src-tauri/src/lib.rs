@@ -235,6 +235,7 @@ pub fn run() {
             agent_server::agent_thread_read,
             agent_server::agent_thread_fork,
             agent_server::agent_thread_archive,
+            agent_server::agent_thread_delete,
             agent_server::agent_thread_claim_prewarmed,
             agent_config::agent_multi_agent_config,
             commands::reload_views,

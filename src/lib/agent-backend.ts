@@ -289,6 +289,9 @@ export const agentThreadRead = (threadId: string) =>
 export const agentThreadArchive = (threadId: string) =>
   invoke<boolean>("agent_thread_archive", { threadId });
 
+export const agentThreadDelete = (threadId: string) =>
+  invoke<void>("agent_thread_delete", { threadId });
+
 export const agentThreadFork = (threadId: string, projectId: string) =>
   invoke<string>("agent_thread_fork", {
     threadId,

@@ -240,6 +240,33 @@ describe("useAgentTurnsStore", () => {
     expect(thread).toMatch(/^thread-/);
   });
 
+  it("adopts a persisted thread instead of forking after a restart", async () => {
+    const claim = vi.fn().mockResolvedValue("prewarmed-thread");
+    const persist = vi.fn();
+    const store = useAgentTurnsStore.getState();
+    const thread = await store.threadFor("chat-restart", "proj", claim, {
+      persistedThreadId: "thread-from-disk",
+      persist,
+    });
+    expect(thread).toBe("thread-from-disk");
+    // The persisted thread wins: no prewarm claim, no re-persist.
+    expect(claim).not.toHaveBeenCalled();
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  it("persists a freshly minted thread so a later reopen can adopt it", async () => {
+    const persist = vi.fn();
+    const store = useAgentTurnsStore.getState();
+    const thread = await store.threadFor(
+      "chat-fresh",
+      "proj",
+      () => Promise.resolve(null),
+      { persistedThreadId: null, persist },
+    );
+    expect(thread).toMatch(/^thread-/);
+    expect(persist).toHaveBeenCalledWith(thread);
+  });
+
   it("marks interrupted turns and clears the fold", () => {
     const store = useAgentTurnsStore.getState();
     store.beginTurn("chat-1", "thread-1", "c1", "hello");

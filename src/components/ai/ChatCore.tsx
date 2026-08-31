@@ -1445,8 +1445,16 @@ export function ChatCore() {
     if (runChatId) {
       turnThreadId = await useAgentTurnsStore
         .getState()
-        .threadFor(runChatId, projectId, () =>
-          projectId ? agentThreadClaimPrewarmed(projectId) : Promise.resolve(null),
+        .threadFor(
+          runChatId,
+          projectId,
+          () =>
+            projectId ? agentThreadClaimPrewarmed(projectId) : Promise.resolve(null),
+          {
+            persistedThreadId: useChatsStore.getState().byId(runChatId)?.threadId,
+            persist: (threadId) =>
+              useChatsStore.getState().setThreadId(runChatId, threadId),
+          },
         );
       useAgentTurnsStore.getState().beginTurn(runChatId, turnThreadId, clientTurnId, text);
       useAgentTodoStore.getState().beginTurn(runChatId);

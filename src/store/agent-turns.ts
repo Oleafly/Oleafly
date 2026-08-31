@@ -38,7 +38,15 @@ interface AgentTurnsState {
   removeFollowUp: (chatId: string, followUpId: string) => void;
   takeFollowUps: (chatId: string) => QueuedFollowUp[];
   acknowledgeFollowUp: (chatId: string, followUpId: string) => void;
-  threadFor: (chatId: string, projectId: string | null, claimPrewarmed: () => Promise<string | null>) => Promise<string>;
+  threadFor: (
+    chatId: string,
+    projectId: string | null,
+    claimPrewarmed: () => Promise<string | null>,
+    opts?: {
+      persistedThreadId?: string | null;
+      persist?: (threadId: string) => void;
+    },
+  ) => Promise<string>;
   dropChat: (chatId: string) => void;
   reset: () => void;
 }
@@ -282,19 +290,26 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
     });
   },
 
-  threadFor: async (chatId, projectId, claimPrewarmed) => {
+  threadFor: async (chatId, projectId, claimPrewarmed, opts) => {
     const existing = get().threadByChat[chatId];
     if (existing) return existing;
+    // A thread persisted on the chat survives a restart: adopt it so the
+    // conversation continues its rollout instead of forking a new thread.
+    const persisted = opts?.persistedThreadId;
+    if (persisted) {
+      set((state) => ({ threadByChat: { ...state.threadByChat, [chatId]: persisted } }));
+      return persisted;
+    }
+    const adopt = (threadId: string) => {
+      set((state) => ({ threadByChat: { ...state.threadByChat, [chatId]: threadId } }));
+      opts?.persist?.(threadId);
+      return threadId;
+    };
     if (projectId) {
       const prewarmed = await claimPrewarmed().catch(() => null);
-      if (prewarmed) {
-        set((state) => ({ threadByChat: { ...state.threadByChat, [chatId]: prewarmed } }));
-        return prewarmed;
-      }
+      if (prewarmed) return adopt(prewarmed);
     }
-    const fresh = `thread-${crypto.randomUUID()}`;
-    set((state) => ({ threadByChat: { ...state.threadByChat, [chatId]: fresh } }));
-    return fresh;
+    return adopt(`thread-${crypto.randomUUID()}`);
   },
 
   dropChat: (chatId) => {
