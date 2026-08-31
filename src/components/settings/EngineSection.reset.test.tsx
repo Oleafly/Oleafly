@@ -18,7 +18,7 @@ const engineInfo: EngineInfo = {
   latexmk: "/test/tinytex/bin/latexmk",
 };
 
-describe("LaTeX Engine reset", () => {
+describe("Engines reset", () => {
   beforeEach(() => {
     localStorage.clear();
     useSettingsStore.getState().setDefaultLatexEngine("tectonic");
@@ -39,10 +39,10 @@ describe("LaTeX Engine reset", () => {
     fireEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
 
     const confirmation = screen.getByRole("alertdialog", {
-      name: /Reset LaTeX Engine settings/u,
+      name: /Reset Engines settings/u,
     });
     expect(confirmation).toHaveTextContent(
-      "Restore LaTeX Engine preferences to their defaults.",
+      "Restore Engines preferences to their defaults.",
     );
     expect(useSettingsStore.getState().defaultLatexEngine).toBe("latexmk");
 

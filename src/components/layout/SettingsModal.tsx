@@ -118,7 +118,7 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   { id: "dictionary", label: "Dictionary", icon: BookMarked },
   { id: "data", label: "Data Storage", icon: Database },
   { id: "ai", label: "AI Assistant", icon: Sparkles },
-  { id: "engine", label: "LaTeX Engine", icon: Cpu },
+  { id: "engine", label: "Engines", icon: Cpu },
   { id: "downloads", label: "Downloads", icon: HardDriveDownload },
   { id: "integrations", label: "Integrations", icon: Blocks },
   { id: "shortcuts", label: "Keyboard Shortcuts", icon: Keyboard },

@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { cn } from "@/lib/utils";
 
+// Kept in step with scripts/fetch-typst.sh, which pins the bundled sidecar.
+const BUNDLED_TYPST_VERSION = "0.15.0";
+
 const ENGINE_CHOICES: Array<{
   id: DefaultLatexEngine;
   name: string;
@@ -55,6 +58,7 @@ export function EngineSection() {
   const partialDownloadBytes = useEngineStore((s) => s.partialDownloadBytes);
   const [query, setQuery] = useState("");
   const [distros, setDistros] = useState<TexDistribution[]>([]);
+  const [tab, setTab] = useState<"latex" | "typst">("latex");
 
   useEffect(() => {
     // refreshPackages() needs engine info from refresh() first, so run in sequence.
@@ -78,6 +82,55 @@ export function EngineSection() {
 
   return (
     <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-1 self-start rounded-lg border bg-muted/30 p-0.5">
+        {(["latex", "typst"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={cn(
+              "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+              tab === t
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t === "latex" ? "LaTeX" : "Typst"}
+          </button>
+        ))}
+      </div>
+
+      {tab === "typst" && (
+        <>
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Typst compiler</h3>
+            <Tooltip
+              wide
+              side="right"
+              label="Typst ships inside Oleafly, so there is nothing to install or configure. Every Typst project compiles with the bundled compiler."
+            >
+              <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
+            </Tooltip>
+          </div>
+          <div className="rounded-lg border border-primary p-3 ring-1 ring-primary">
+            <div className="flex items-center gap-2">
+              <Cpu className="size-4 text-muted-foreground" />
+              <span className="text-sm">Typst (built in)</span>
+              <Check className="size-3.5 text-primary" />
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Ships with Oleafly. Fast, offline, zero setup. Compiles Typst documents to PDF.
+            </p>
+            <p className="mt-1 font-mono text-[10px] text-muted-foreground/70">Typst {BUNDLED_TYPST_VERSION}</p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Typst projects always use the bundled compiler. Choosing a compiler version, and system Typst, are not available yet.
+          </p>
+        </>
+      )}
+
+      {tab === "latex" && (
+        <>
       <div className="flex items-center gap-1.5">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Default compile engine</h3>
         <Tooltip
@@ -284,8 +337,10 @@ export function EngineSection() {
           })}
         </div>
       </div>
+        </>
+      )}
       <ResetToDefaults
-        sectionName="LaTeX Engine"
+        sectionName="Engines"
         onReset={resetEnginePreferences}
       />
     </div>
