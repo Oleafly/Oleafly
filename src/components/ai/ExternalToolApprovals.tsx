@@ -1,6 +1,6 @@
-import { useMcpApprovalStore } from "@/store/mcp-approvals";
+import { isAutoApprovable, useMcpApprovalStore } from "@/store/mcp-approvals";
 import { AI_PROMPT_SURFACE } from "@/components/ai/AiChrome";
-import { ToolConfirm, isAutoApprovable } from "@/components/ai/ToolConfirm";
+import { ToolConfirm } from "@/components/ai/ToolConfirm";
 import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import { cn } from "@/lib/utils";
 

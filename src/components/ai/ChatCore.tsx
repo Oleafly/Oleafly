@@ -1034,8 +1034,11 @@ export function ChatCore() {
     void messages;
     void thinkingText;
     if (!nearBottomRef.current) return;
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, thinkingText]);
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: streaming ? "auto" : "smooth",
+    });
+  }, [messages, thinkingText, streaming]);
 
   const scrollToBottom = () => {
     nearBottomRef.current = true;
@@ -1096,7 +1099,13 @@ export function ChatCore() {
       streamPatchesRef.current.text.length > 0 ||
       streamPatchesRef.current.output.length > 0
     ) {
-      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      await new Promise<void>((resolve) => {
+        const timer = window.setTimeout(resolve, 32);
+        window.requestAnimationFrame(() => {
+          window.clearTimeout(timer);
+          resolve();
+        });
+      });
       queues.flushFrameText();
       queues.flushOutput();
     }
@@ -2021,12 +2030,17 @@ ${sandboxedCustom}`;
     abortRef.current?.abort();
   }, []);
 
+  let lastAssistantIndex = -1;
+  for (let index = messages.length - 1; index >= 0; index--) {
+    if (messages[index].role === "assistant") {
+      lastAssistantIndex = index;
+      break;
+    }
+  }
   const renderedMessages = messages.map((msg, index) => ({
     key: msg.id ?? objectKey(msg, activeChatId ?? "chat"),
     live: streaming && index === messages.length - 1,
-    isLatestAssistant:
-      msg.role === "assistant" &&
-      !messages.slice(index + 1).some((later) => later.role === "assistant"),
+    isLatestAssistant: index === lastAssistantIndex,
     msg,
   }));
   const agentRunHasActivity =
@@ -2066,14 +2080,22 @@ ${sandboxedCustom}`;
     [activeChatId, projectId, restoringCheckpoint, setMessages],
   );
 
+  // Consume only after the provider config has settled: on a cold mount the
+  // key has not loaded yet, and consuming early would silently downgrade an
+  // auto-send handoff into a draft. A draft handoff appends to whatever the
+  // user already typed instead of clobbering it.
   useEffect(() => {
-    if (!handoffPending || streaming) return;
+    if (!handoffPending || streaming || !providerConfigReady) return;
     const h = useAgentHandoffStore.getState().consume();
     if (!h) return;
     if (h.images.length) pendingImagesRef.current.push(...h.images);
-    if (h.autoSend && apiKey) void send(h.prompt);
-    else setInput(h.prompt);
-  }, [handoffPending, streaming, apiKey, send, setInput]);
+    if (h.autoSend && apiKey) {
+      void send(h.prompt);
+      return;
+    }
+    const existing = inputRef.current;
+    setInput(existing.trim() ? `${existing.replace(/\s+$/u, "")}\n\n${h.prompt}` : h.prompt);
+  }, [handoffPending, streaming, providerConfigReady, apiKey, send, setInput]);
 
   const prevProjectIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {

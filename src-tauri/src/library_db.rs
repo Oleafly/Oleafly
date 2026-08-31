@@ -173,7 +173,24 @@ pub struct ChatSearchHit {
     pub snippet: String,
 }
 
+/// FTS5 MATCH is a query language, so raw user text with `(`, `"`, or `-`
+/// raises a syntax error instead of searching. Quote each token as a phrase.
+fn fts5_match_query(term: &str) -> Option<String> {
+    let tokens: Vec<String> = term
+        .split_whitespace()
+        .map(|token| format!("\"{}\"", token.replace('"', "\"\"")))
+        .collect();
+    if tokens.is_empty() {
+        None
+    } else {
+        Some(tokens.join(" "))
+    }
+}
+
 pub fn search_chats(root: &Path, query: &str, limit: u32) -> Result<Vec<ChatSearchHit>, String> {
+    let Some(fts_query) = fts5_match_query(query) else {
+        return Ok(Vec::new());
+    };
     let conn = open(root)?;
     let mut statement = conn
         .prepare(
@@ -186,7 +203,7 @@ pub fn search_chats(root: &Path, query: &str, limit: u32) -> Result<Vec<ChatSear
         )
         .map_err(|e| format!("library search prepare failed: {e}"))?;
     let rows = statement
-        .query_map(rusqlite::params![query, limit], |row| {
+        .query_map(rusqlite::params![fts_query, limit], |row| {
             Ok(ChatSearchHit {
                 project_id: row.get(0)?,
                 chat_id: row.get(1)?,
@@ -478,6 +495,9 @@ pub fn search_threads(
     query: &str,
     limit: u32,
 ) -> Result<Vec<ThreadSearchHit>, String> {
+    let Some(fts_query) = fts5_match_query(query) else {
+        return Ok(Vec::new());
+    };
     let conn = open(root)?;
     let mut statement = conn
         .prepare(
@@ -491,7 +511,7 @@ pub fn search_threads(
         )
         .map_err(|e| format!("thread search prepare failed: {e}"))?;
     let rows = statement
-        .query_map(rusqlite::params![query, limit], |row| {
+        .query_map(rusqlite::params![fts_query, limit], |row| {
             Ok(ThreadSearchHit {
                 thread_id: row.get(0)?,
                 project_id: row.get(1)?,
@@ -580,6 +600,15 @@ pub async fn budget_set_cmd(project_id: String, budget_usd: Option<f64>) -> Resu
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn fts_queries_are_quoted_phrases() {
+        assert_eq!(
+            super::fts5_match_query("foo( bar\"baz").as_deref(),
+            Some("\"foo(\" \"bar\"\"baz\"")
+        );
+        assert_eq!(super::fts5_match_query("   "), None);
+    }
+
     use super::*;
 
     fn temp_root(tag: &str) -> PathBuf {

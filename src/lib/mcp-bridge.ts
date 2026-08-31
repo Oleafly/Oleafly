@@ -11,8 +11,7 @@ import {
   createFigureTools,
   type ConfirmFn,
 } from "@/lib/ai-tools";
-import { isAutoApprovable } from "@/components/ai/ToolConfirm";
-import { useMcpApprovalStore } from "@/store/mcp-approvals";
+import { isAutoApprovable, useMcpApprovalStore } from "@/store/mcp-approvals";
 import { summarizeMcpResult, useMcpActivityStore } from "@/store/mcp-activity";
 import {
   appendAppLog,

@@ -24,11 +24,19 @@ function optionalString(
 }
 
 function enabledValue(server: Record<string, unknown>, name: string): boolean {
-  if (!Object.hasOwn(server, "enabled")) return true;
-  if (typeof server.enabled !== "boolean") {
-    throw new Error(`MCP server '${name}' field 'enabled' must be a boolean.`);
+  if (Object.hasOwn(server, "enabled")) {
+    if (typeof server.enabled !== "boolean") {
+      throw new Error(`MCP server '${name}' field 'enabled' must be a boolean.`);
+    }
+    return server.enabled;
   }
-  return server.enabled;
+  if (Object.hasOwn(server, "disabled")) {
+    if (typeof server.disabled !== "boolean") {
+      throw new Error(`MCP server '${name}' field 'disabled' must be a boolean.`);
+    }
+    return !server.disabled;
+  }
+  return true;
 }
 
 function stringValue(server: Record<string, unknown>, name: string, field: string): string {

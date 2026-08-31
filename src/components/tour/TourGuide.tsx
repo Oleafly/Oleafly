@@ -958,6 +958,14 @@ export function TourGuide() {
     return () => cancelAnimationFrame(frame);
   }, [activeStep, activeTourId]);
 
+  // The sidebar view switchers only render while the sidebar is open, so the
+  // workspace tour opens it before anchoring its navigation step.
+  useEffect(() => {
+    if (activeTourId !== "workspace" || activeStep?.id !== "workspace-sidebar") return;
+    const settings = useSettingsStore.getState();
+    if (!settings.showTree) settings.toggleTree();
+  }, [activeStep, activeTourId]);
+
   useEffect(() => {
     if (activeTourId === "settings" && previousSettings.current === null) {
       const selected = document.querySelector<HTMLElement>(

@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, BookMarked, Check, Maximize2, Sparkles } from "lucide-react";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { openInlineEditWithInstruction } from "@/components/editor/cm/inline-ai/openSession";
-import { useAgentHandoffStore } from "@/store/agent-handoff";
+import { handoffToAssistant } from "@/features/assistant-handoff";
 import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
-import { useSettingsStore } from "@/store/settings";
 
 interface Action {
   icon: typeof Sparkles;
@@ -76,8 +75,7 @@ export function SelectionActionMenu() {
     // session can start (no editor, or one already running).
     const inline = view ? openInlineEditWithInstruction(view, action.prompt) : false;
     if (!inline) {
-      useAgentHandoffStore.getState().handoff(prompt, { autoSend: true });
-      useSettingsStore.getState().setAssistantOpen(true);
+      handoffToAssistant(prompt, { autoSend: true });
     }
     // Public event for integrations and the deterministic E2E probe.
     window.dispatchEvent(

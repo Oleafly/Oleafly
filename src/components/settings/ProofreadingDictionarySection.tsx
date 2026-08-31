@@ -74,10 +74,14 @@ function WordChips({
   words,
   query,
   onRemove,
+  emptyDescription,
+  compactEmpty = false,
 }: {
   words: string[];
   query: string;
   onRemove: (word: string) => void;
+  emptyDescription: string;
+  compactEmpty?: boolean;
 }) {
   const visible = useMemo(() => {
     const normalizedQuery = query.toLocaleLowerCase("en-US").trim();
@@ -91,6 +95,9 @@ function WordChips({
   }, [query, words]);
 
   if (words.length === 0) {
+    if (compactEmpty) {
+      return <p className="text-xs text-muted-foreground">Nothing ignored yet.</p>;
+    }
     return (
       <Empty className="gap-4 py-8">
         <EmptyHeader>
@@ -98,9 +105,7 @@ function WordChips({
             <BookMarked className="size-5" />
           </EmptyMedia>
           <EmptyTitle className="text-sm">Nothing ignored yet</EmptyTitle>
-          <EmptyDescription className="text-xs">
-            Words you add here are skipped by the proofreader across every project.
-          </EmptyDescription>
+          <EmptyDescription className="text-xs">{emptyDescription}</EmptyDescription>
         </EmptyHeader>
       </Empty>
     );
@@ -277,6 +282,7 @@ export function ProofreadingDictionarySection() {
             words={global}
             query={query}
             onRemove={unignoreGlobal}
+            emptyDescription="Words you add here are skipped by the proofreader across every project."
           />
         </TabsContent>
         <TabsContent value="projects" className="space-y-4">
@@ -330,13 +336,19 @@ export function ProofreadingDictionarySection() {
                   words={words}
                   query={query}
                   onRemove={(word) => unignore(id, word)}
+                  emptyDescription="Words added for this project are skipped by the proofreader only here."
+                  compactEmpty
                 />
               </section>
             ))
           )}
         </TabsContent>
       </Tabs>
-      <ResetToDefaults sectionName="Dictionary" onReset={clearAll} />
+      <ResetToDefaults
+        sectionName="Dictionary"
+        onReset={clearAll}
+        confirmationDescription="This permanently removes every ignored word, global and per-project. Proofreading will flag those words again."
+      />
       <ConfirmationDialog
         open={clearTarget !== null}
         title="Clear ignored words?"

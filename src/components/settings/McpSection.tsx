@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
   type ReactNode,
-  type WheelEvent,
 } from "react";
 import { Check, Copy, Eye, EyeOff, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -53,16 +52,6 @@ function CopyBtn({ text, testId }: { text: string; testId?: string }) {
 type SnippetLang = "json" | "shell" | "toml";
 type McpClientTab = "claude-code" | "claude-desktop" | "cursor" | "codex" | "grok";
 
-function scrollTabs(event: WheelEvent<HTMLDivElement>) {
-  const list = event.currentTarget;
-  if (
-    list.scrollWidth <= list.clientWidth ||
-    Math.abs(event.deltaX) >= Math.abs(event.deltaY)
-  ) {
-    return;
-  }
-  list.scrollLeft += event.deltaY;
-}
 
 // Avoids pulling in a full syntax-highlighter dependency for these small snippets.
 function highlightSnippet(source: string, lang: SnippetLang): ReactNode[] {
@@ -238,6 +227,23 @@ export function McpSection() {
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [clientTab, setClientTab] = useState<McpClientTab>("claude-code");
   const clientTabRefs = useRef<Partial<Record<McpClientTab, HTMLButtonElement | null>>>({});
+  const clientTabStripRef = useRef<HTMLDivElement | null>(null);
+
+  // React attaches wheel listeners passively, so a horizontal-scroll shim on
+  // onWheel cannot preventDefault and the settings panel scrolls with the
+  // strip. A native non-passive listener owns the gesture.
+  useEffect(() => {
+    const list = clientTabStripRef.current;
+    if (!list) return;
+    const onWheel = (event: globalThis.WheelEvent) => {
+      if (list.scrollWidth <= list.clientWidth) return;
+      if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+      event.preventDefault();
+      list.scrollLeft += event.deltaY;
+    };
+    list.addEventListener("wheel", onWheel, { passive: false });
+    return () => list.removeEventListener("wheel", onWheel);
+  }, []);
 
   useEffect(() => {
     clientTabRefs.current[clientTab]?.scrollIntoView?.({
@@ -677,7 +683,7 @@ export function McpSection() {
           <TabsList
             className="flex h-auto w-fit max-w-full flex-nowrap justify-start gap-1 overflow-x-auto no-scrollbar"
             data-testid="mcp-client-tab-strip"
-            onWheel={scrollTabs}
+            ref={clientTabStripRef}
           >
             <TabsTrigger
               ref={(node) => {

@@ -237,6 +237,13 @@ export function AgentRunSummary({
 
 export function CopyMessageButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
+  const resetTimerRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
+    },
+    [],
+  );
   return (
     <button
       type="button"
@@ -245,7 +252,8 @@ export function CopyMessageButton({ text }: { text: string }) {
       onClick={() => {
         void navigator.clipboard.writeText(text).then(() => {
           setCopied(true);
-          window.setTimeout(() => setCopied(false), 1500);
+          if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
+          resetTimerRef.current = window.setTimeout(() => setCopied(false), 1500);
         });
       }}
       className="shrink-0 self-center rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"

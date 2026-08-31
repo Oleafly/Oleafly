@@ -25,7 +25,7 @@ describe("Dictionary reset", () => {
       name: /Reset Dictionary settings/u,
     });
     expect(confirmation).toHaveTextContent(
-      "Restore Dictionary preferences to their defaults.",
+      "This permanently removes every ignored word, global and per-project.",
     );
     expect(useDictionary.getState()).toMatchObject({
       global: ["Oleafly"],

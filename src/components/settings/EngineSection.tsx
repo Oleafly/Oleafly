@@ -82,11 +82,14 @@ export function EngineSection() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center gap-1 self-start rounded-lg border bg-muted/30 p-0.5">
+      <div role="tablist" aria-label="Engines" className="flex items-center gap-1 self-start rounded-lg border bg-muted/30 p-0.5">
         {(["latex", "typst"] as const).map((t) => (
           <button
             key={t}
             type="button"
+            role="tab"
+            aria-selected={tab === t}
+            data-testid={`engines-tab-${t}`}
             onClick={() => setTab(t)}
             className={cn(
               "rounded-md px-3 py-1 text-xs font-medium transition-colors",

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { isTauri } from "@tauri-apps/api/core";
 import { loadProjectChats, saveProjectChats } from "@/lib/tauri";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { useAgentTurnsStore } from "@/store/agent-turns";
 
 export interface ToolEntry {
   id?: string;
@@ -414,6 +415,7 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
     void queuePersist(projectId, updated);
     set({ chats: updated, activeId: activeId === chatId ? null : activeId });
     get().clearLive(chatId);
+    useAgentTurnsStore.getState().dropChat(chatId);
   },
 
   setActive: (chatId) => set({ activeId: chatId }),

@@ -4,7 +4,8 @@ import { hasConfiguredProvider } from "@/lib/ai-providers";
 import { getConfig } from "@/lib/tauri";
 
 export function revealAssistant() {
-  useSettingsStore.getState().setAssistantOpen(true);
+  const settings = useSettingsStore.getState();
+  if (!settings.chatFloating) settings.setAssistantOpen(true);
 }
 
 export async function ensureAiProviderOrOpenSettings(): Promise<boolean> {
@@ -22,7 +23,13 @@ export async function ensureAiProviderOrOpenSettings(): Promise<boolean> {
   return configured;
 }
 
-export function handoffToAssistant(prompt: string, opts?: { autoSend?: boolean }) {
-  useAgentHandoffStore.getState().handoff(prompt, { autoSend: opts?.autoSend ?? false });
+export function handoffToAssistant(
+  prompt: string,
+  opts?: { autoSend?: boolean; images?: string[] },
+) {
+  useAgentHandoffStore.getState().handoff(prompt, {
+    autoSend: opts?.autoSend ?? false,
+    images: opts?.images,
+  });
   revealAssistant();
 }

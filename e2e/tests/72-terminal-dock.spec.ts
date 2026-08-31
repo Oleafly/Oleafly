@@ -68,7 +68,7 @@ async function triggerDockShortcut(
   }
 }
 
-test("project docks start closed and their rail controls follow Source Control", async ({
+test("project docks start closed and their toggles live in the top toolbar", async ({
   tauriPage,
 }) => {
   await expect(tauriPage.locator(TERMINAL_TOGGLE)).toHaveCount(0);
@@ -81,18 +81,9 @@ test("project docks start closed and their rail controls follow Source Control",
   await expect(tauriPage.locator(TERMINAL_TOGGLE)).toBeVisible();
   await expect(tauriPage.locator(BROWSER_TOGGLE)).toBeVisible();
 
-  const dockOrder = await tauriPage.evaluate<string[]>(`(() => {
-    const buttons = Array.from(document.querySelectorAll('nav[aria-label="Sidebar"] button'));
-    const sourceIndex = buttons.findIndex((button) => button.getAttribute("aria-label") === "Source Control");
-    return buttons.slice(sourceIndex, sourceIndex + 3).map((button) =>
-      button.getAttribute("data-testid") ?? button.getAttribute("aria-label") ?? ""
-    );
-  })()`);
-  expect(dockOrder).toEqual([
-    "Source Control",
-    "rail-terminal-toggle",
-    "rail-browser-toggle",
-  ]);
+  await expect(
+    tauriPage.locator('[data-tour="project-sidebar"] [aria-label="Source Control"]'),
+  ).toBeVisible();
 
   const terminalLabel = await tauriPage.getAttribute(TERMINAL_TOGGLE, "aria-label");
   const browserLabel = await tauriPage.getAttribute(BROWSER_TOGGLE, "aria-label");

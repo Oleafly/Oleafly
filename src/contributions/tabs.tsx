@@ -59,7 +59,7 @@ export function registerRailTabs() {
     panel: ReferencesPanel,
   });
   // Live log of tools/call traffic from external MCP clients. Only while the
-  // local MCP server is running (Settings → MCP).
+  // local MCP server is running (Settings → Integrations → Oleafly MCP).
   registerRailTab({
     id: "mcp",
     label: "MCP activity",

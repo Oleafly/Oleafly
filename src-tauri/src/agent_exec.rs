@@ -3,7 +3,7 @@ use std::future::Future;
 use std::path::Path;
 use std::process::Stdio;
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use base64::Engine;
 use rand::RngCore;
@@ -15,6 +15,8 @@ use tokio::io::AsyncReadExt;
 const EXEC_TIMEOUT: Duration = Duration::from_secs(120);
 const MAX_OUTPUT_BYTES: usize = 200 * 1024;
 const MAX_CANCELLED_RUNS: usize = 256;
+const EXEC_APPROVAL_TTL: Duration = Duration::from_secs(30);
+const MAX_EXEC_APPROVALS: usize = 256;
 
 #[derive(Default)]
 pub struct AgentExecState {
@@ -24,6 +26,7 @@ pub struct AgentExecState {
 #[derive(Default)]
 struct ExecRegistry {
     approvals: HashMap<String, ExecApproval>,
+    approval_order: VecDeque<String>,
     active: HashMap<String, HashMap<String, ActiveExec>>,
     cancelled_runs: VecDeque<String>,
 }
@@ -32,6 +35,21 @@ struct ExecApproval {
     project_id: String,
     command: String,
     run_id: String,
+    expires_at: Instant,
+}
+
+fn drop_dangling_order(registry: &mut ExecRegistry) {
+    let approvals = &registry.approvals;
+    registry
+        .approval_order
+        .retain(|token| approvals.contains_key(token));
+}
+
+fn purge_exec_approvals(registry: &mut ExecRegistry, now: Instant) {
+    registry
+        .approvals
+        .retain(|_, approval| approval.expires_at > now);
+    drop_dangling_order(registry);
 }
 
 struct ActiveExec {
@@ -63,6 +81,16 @@ enum UnregisterResult {
 
 impl AgentExecState {
     fn authorize(&self, project_id: &str, command: &str, run_id: &str) -> Result<String, String> {
+        self.authorize_at(project_id, command, run_id, Instant::now())
+    }
+
+    fn authorize_at(
+        &self,
+        project_id: &str,
+        command: &str,
+        run_id: &str,
+        now: Instant,
+    ) -> Result<String, String> {
         let mut bytes = [0u8; 32];
         rand::rngs::OsRng.fill_bytes(&mut bytes);
         let token = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes);
@@ -73,12 +101,22 @@ impl AgentExecState {
         if registry.cancelled_runs.iter().any(|id| id == run_id) {
             return Err("the agent run was cancelled".to_string());
         }
+        purge_exec_approvals(&mut registry, now);
+        while registry.approvals.len() >= MAX_EXEC_APPROVALS {
+            let Some(oldest) = registry.approval_order.pop_front() else {
+                registry.approvals.clear();
+                break;
+            };
+            registry.approvals.remove(&oldest);
+        }
+        registry.approval_order.push_back(token.clone());
         registry.approvals.insert(
             token.clone(),
             ExecApproval {
                 project_id: project_id.to_string(),
                 command: command.to_string(),
                 run_id: run_id.to_string(),
+                expires_at: now + EXEC_APPROVAL_TTL,
             },
         );
         Ok(token)
@@ -91,10 +129,22 @@ impl AgentExecState {
         run_id: &str,
         token: &str,
     ) -> Result<ExecLease<'a>, String> {
+        self.begin_execution_at(project_id, command, run_id, token, Instant::now())
+    }
+
+    fn begin_execution_at<'a>(
+        &'a self,
+        project_id: &str,
+        command: &str,
+        run_id: &str,
+        token: &str,
+        now: Instant,
+    ) -> Result<ExecLease<'a>, String> {
         let mut registry = self
             .registry
             .lock()
             .map_err(|_| "run_command approval registry is unavailable".to_string())?;
+        purge_exec_approvals(&mut registry, now);
         let approval = registry
             .approvals
             .remove(token)
@@ -214,6 +264,7 @@ pub fn cancel_run(state: &AgentExecState, run_id: &str) {
             registry
                 .approvals
                 .retain(|_, approval| approval.run_id != run_id);
+            drop_dangling_order(&mut registry);
             remember_cancelled_run(&mut registry.cancelled_runs, run_id);
             registry
                 .active
@@ -239,6 +290,7 @@ pub fn cancel_all(state: &AgentExecState) {
                 .chain(registry.active.keys().cloned())
                 .collect::<HashSet<_>>();
             registry.approvals.clear();
+            registry.approval_order.clear();
             for run_id in run_ids {
                 remember_cancelled_run(&mut registry.cancelled_runs, &run_id);
             }
@@ -685,6 +737,31 @@ mod tests {
             Some("run_command approval was declined")
         );
         assert!(approvals_are_empty);
+    }
+
+    #[test]
+    fn exec_approvals_expire_and_are_capped() {
+        let state = AgentExecState::default();
+        let now = Instant::now();
+
+        let token = state.authorize_at("proj", "true", "run-ttl", now).unwrap();
+        let expired = state.begin_execution_at(
+            "proj",
+            "true",
+            "run-ttl",
+            &token,
+            now + EXEC_APPROVAL_TTL + Duration::from_secs(1),
+        );
+        assert!(expired.is_err());
+
+        for index in 0..(MAX_EXEC_APPROVALS + 8) {
+            state
+                .authorize_at("proj", "true", &format!("run-{index}"), now)
+                .unwrap();
+        }
+        let registry = state.registry.lock().unwrap();
+        assert!(registry.approvals.len() <= MAX_EXEC_APPROVALS);
+        assert_eq!(registry.approvals.len(), registry.approval_order.len());
     }
 
     #[tokio::test(flavor = "current_thread")]

@@ -118,6 +118,41 @@ fn webview_command_owner<R: Runtime>(
     command_owner(webview.window().label(), project_id)
 }
 
+/// Decode as much valid UTF-8 as `pending` holds, keeping an incomplete
+/// multi-byte tail for the next read. A per-read `from_utf8_lossy` would turn
+/// a character straddling the 8 KiB read boundary into U+FFFD on both sides.
+fn drain_utf8_lossy(pending: &mut Vec<u8>) -> String {
+    let mut out = String::new();
+    let mut start = 0usize;
+    loop {
+        match std::str::from_utf8(&pending[start..]) {
+            Ok(valid) => {
+                out.push_str(valid);
+                start = pending.len();
+                break;
+            }
+            Err(error) => {
+                let valid = error.valid_up_to();
+                out.push_str(
+                    std::str::from_utf8(&pending[start..start + valid]).expect("validated prefix"),
+                );
+                match error.error_len() {
+                    Some(bad) => {
+                        out.push('\u{FFFD}');
+                        start += valid + bad;
+                    }
+                    None => {
+                        start += valid;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    pending.drain(..start);
+    out
+}
+
 fn default_shell() -> CommandBuilder {
     #[cfg(windows)]
     {
@@ -208,17 +243,28 @@ fn open_terminal(
     let session_id = id.clone();
     std::thread::spawn(move || {
         let mut buffer = [0u8; 8192];
+        let mut pending: Vec<u8> = Vec::new();
         let mut channel_open = true;
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) | Err(_) => break,
                 Ok(n) => {
-                    let data = String::from_utf8_lossy(&buffer[..n]).to_string();
+                    pending.extend_from_slice(&buffer[..n]);
+                    let data = drain_utf8_lossy(&mut pending);
+                    if data.is_empty() {
+                        continue;
+                    }
                     if channel.send(TerminalEvent::Output { data }).is_err() {
                         channel_open = false;
                         break;
                     }
                 }
+            }
+        }
+        if channel_open && !pending.is_empty() {
+            let data = String::from_utf8_lossy(&pending).to_string();
+            if channel.send(TerminalEvent::Output { data }).is_err() {
+                channel_open = false;
             }
         }
         let session = {
@@ -333,6 +379,26 @@ fn kill_terminal(owner: &SessionOwner, id: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn drain_utf8_keeps_a_split_multibyte_tail() {
+        let emoji = "café🦀".as_bytes();
+        let (head, tail) = emoji.split_at(emoji.len() - 2);
+        let mut pending = head.to_vec();
+        let mut out = super::drain_utf8_lossy(&mut pending);
+        pending.extend_from_slice(tail);
+        out.push_str(&super::drain_utf8_lossy(&mut pending));
+        assert_eq!(out, "café🦀");
+        assert!(pending.is_empty());
+    }
+
+    #[test]
+    fn drain_utf8_replaces_invalid_bytes() {
+        let mut pending = vec![b'o', b'k', 0xFF, b'!'];
+        let out = super::drain_utf8_lossy(&mut pending);
+        assert_eq!(out, "ok\u{FFFD}!");
+        assert!(pending.is_empty());
+    }
+
     use super::*;
 
     #[test]

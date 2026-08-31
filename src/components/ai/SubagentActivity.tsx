@@ -3,7 +3,7 @@
 // detail line, the agent's full transcript from its rollout thread, and a
 // Stop-all affordance that interrupts the children without stopping the run.
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Bot, CheckCircle2, Loader2, MessageSquareText, Square, XCircle } from "lucide-react";
 import { subagentDisplayStatus } from "@oleafly/ai-core";
 import type { TurnRecord } from "@oleafly/ai-core";
@@ -79,9 +79,10 @@ export function SubagentActivity({
   // A stable empty array keeps the selector's output referentially equal
   // for chats without records (a fresh [] would re-render on every touch).
   const records = useAgentTurnsStore((state) => state.recordsByChat[chatId] ?? EMPTY_RECORDS);
-  const agents = collectAgents(records);
+  const agents = useMemo(() => collectAgents(records), [records]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<{ agent: string; text: string } | null>(null);
+  const transcriptRequestRef = useRef(0);
 
   if (agents.length === 0) return null;
   const anyRunning = agents.some(
@@ -89,9 +90,11 @@ export function SubagentActivity({
   );
 
   const openTranscript = async (agent: AgentState) => {
+    const request = ++transcriptRequestRef.current;
     setTranscript({ agent: agent.id, text: "Loading transcript…" });
     try {
       const turns = await agentThreadRead(`thread-${agent.id}`);
+      if (transcriptRequestRef.current !== request) return;
       const last = [...turns].reverse().find((turn) => turn.status !== "interrupted") ?? turns[0];
       const answer = last?.items
         ?.filter((item) => item.item.type === "agentMessage")
@@ -103,6 +106,7 @@ export function SubagentActivity({
         text: answer || "This agent did not record a final answer.",
       });
     } catch {
+      if (transcriptRequestRef.current !== request) return;
       setTranscript({ agent: agent.id, text: "The transcript could not be loaded." });
     }
   };

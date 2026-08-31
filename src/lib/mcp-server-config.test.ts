@@ -126,6 +126,16 @@ describe("parseMcpServerJson", () => {
         },
       },
       {
+        source: `{"paused":{"type":"http","url":"https://paused.example/mcp","disabled":true}}`,
+        expected: {
+          name: "paused",
+          enabled: false,
+          transport: "remote" as const,
+          url: "https://paused.example/mcp",
+          headers: {},
+        },
+      },
+      {
         source: `{"internal":{"transport":"remote","url":"https://internal.example/mcp","headers":{}}}`,
         expected: {
           name: "internal",

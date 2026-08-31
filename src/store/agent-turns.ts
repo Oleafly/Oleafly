@@ -39,6 +39,7 @@ interface AgentTurnsState {
   takeFollowUps: (chatId: string) => QueuedFollowUp[];
   acknowledgeFollowUp: (chatId: string, followUpId: string) => void;
   threadFor: (chatId: string, projectId: string | null, claimPrewarmed: () => Promise<string | null>) => Promise<string>;
+  dropChat: (chatId: string) => void;
   reset: () => void;
 }
 
@@ -174,6 +175,7 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
     fold.finish(stoppedAtCap);
     pendingPublishes.delete(chatId);
     set((state) => republish(state, chatId, fold));
+    folds.delete(chatId);
   },
 
   interruptTurn: (chatId) => {
@@ -293,6 +295,22 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
     const fresh = `thread-${crypto.randomUUID()}`;
     set((state) => ({ threadByChat: { ...state.threadByChat, [chatId]: fresh } }));
     return fresh;
+  },
+
+  dropChat: (chatId) => {
+    folds.delete(chatId);
+    pendingPublishes.delete(chatId);
+    set((state) => {
+      const recordsByChat = { ...state.recordsByChat };
+      const addedItemsByChat = { ...state.addedItemsByChat };
+      const threadByChat = { ...state.threadByChat };
+      const queuedByChat = { ...state.queuedByChat };
+      delete recordsByChat[chatId];
+      delete addedItemsByChat[chatId];
+      delete threadByChat[chatId];
+      delete queuedByChat[chatId];
+      return { recordsByChat, addedItemsByChat, threadByChat, queuedByChat };
+    });
   },
 
   reset: () => {

@@ -123,14 +123,45 @@ pub fn export_archive_to(dest: &std::path::Path, include_sensitive: bool) -> Res
     Ok(())
 }
 
+/// The destination comes over IPC, so it is validated hard: absolute, a .zip
+/// name, an existing real parent directory, and never through a symlink.
+/// Without this the command would create or truncate any file the user can
+/// write.
+fn validate_archive_dest(dest: &std::path::Path) -> Result<(), String> {
+    if !dest.is_absolute() {
+        return Err("log archive destination must be an absolute path".to_string());
+    }
+    let zip = dest
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("zip"));
+    if !zip {
+        return Err("log archive destination must end in .zip".to_string());
+    }
+    if let Ok(meta) = dest.symlink_metadata() {
+        if meta.file_type().is_symlink() {
+            return Err("log archive destination must not be a symlink".to_string());
+        }
+    }
+    let parent = dest
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .ok_or_else(|| "log archive destination must have a parent directory".to_string())?;
+    let parent_meta = std::fs::metadata(parent)
+        .map_err(|_| "log archive destination directory does not exist".to_string())?;
+    if !parent_meta.is_dir() {
+        return Err("log archive destination parent is not a directory".to_string());
+    }
+    Ok(())
+}
+
 /// Support-archive export; Sensitive fields are stripped unless explicitly
 /// requested from the settings UI.
 #[tauri::command]
 pub fn export_log_archive(dest: String, include_sensitive: Option<bool>) -> Result<(), String> {
-    export_archive_to(
-        std::path::Path::new(&dest),
-        include_sensitive.unwrap_or(false),
-    )
+    let path = std::path::Path::new(&dest);
+    validate_archive_dest(path)?;
+    export_archive_to(path, include_sensitive.unwrap_or(false))
 }
 
 #[cfg(test)]
@@ -210,5 +241,14 @@ mod tests {
         assert!(structured.contains("137"));
         assert!(!structured.contains("TOP-SECRET-VALUE"));
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn archive_destination_is_validated() {
+        assert!(validate_archive_dest(std::path::Path::new("relative.zip")).is_err());
+        let dir = std::env::temp_dir();
+        assert!(validate_archive_dest(&dir.join("notes.txt")).is_err());
+        assert!(validate_archive_dest(&dir.join("missing-dir/logs.zip")).is_err());
+        assert!(validate_archive_dest(&dir.join("logs.zip")).is_ok());
     }
 }

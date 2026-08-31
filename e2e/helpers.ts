@@ -809,10 +809,10 @@ export async function openRailTab(page: Page, ariaLabel: string) {
   for (let attempt = 0; attempt < 12; attempt++) {
     if (await page.evaluate<boolean>(activeExpr)) return;
     await page.evaluate(`(() => {
-      const show = document.querySelector('[aria-label^="Show sidebar"]');
-      if (show) { show.click(); return true; }
       const b = document.querySelector(${sel});
       if (b) { b.click(); return true; }
+      const show = document.querySelector('[aria-label^="Show sidebar"]');
+      if (show) { show.click(); return true; }
       return false;
     })()`);
     try {

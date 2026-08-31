@@ -100,7 +100,7 @@ function activeLayoutPreset(
   if (hideEditorArea) return null;
   if (!showTree) {
     if (viewMode === "editor") return assistantOpen ? "ai-only" : "editor-only";
-    if (viewMode === "pdf") return assistantOpen ? "preview-ai" : "preview-only";
+    if (viewMode === "pdf") return assistantOpen ? null : "preview-only";
     return null;
   }
   if (viewMode === "split") return assistantOpen ? "editor-preview-ai" : "editor-preview";
@@ -113,6 +113,40 @@ function activeLayoutPreset(
 // project | account | Shortcuts + Layout.
 function Divider() {
   return <span className="mx-1 h-5 w-px shrink-0 bg-border" />;
+}
+
+function ViewModeSwitch({
+  viewMode,
+  setViewMode,
+}: {
+  viewMode: ViewMode;
+  setViewMode: (v: ViewMode) => void;
+}) {
+  return (
+    <div className="flex items-center rounded-md border border-border bg-muted/40 p-0.5">
+      {VIEW_OPTIONS.map(({ mode, label, icon: Icon }) => {
+        const active = viewMode === mode;
+        return (
+          <Tooltip key={mode} label={label} side="bottom">
+            <button
+              type="button"
+              aria-label={label}
+              aria-pressed={active}
+              onClick={() => setViewMode(mode)}
+              className={cn(
+                "flex size-7 items-center justify-center rounded transition-colors",
+                active
+                  ? "bg-primary/10 text-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
+              )}
+            >
+              <Icon className="size-4" aria-hidden />
+            </button>
+          </Tooltip>
+        );
+      })}
+    </div>
+  );
 }
 
 export function TopToolbar() {
@@ -347,34 +381,21 @@ export function TopToolbar() {
       </div>
 
       {!hideEditorArea && projectId && (
-        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className="pointer-events-auto flex items-center rounded-md border border-border bg-muted/40 p-0.5">
-            {VIEW_OPTIONS.map(({ mode, label, icon: Icon }) => {
-              const active = viewMode === mode;
-              return (
-                <Tooltip key={mode} label={label} side="bottom">
-                  <button
-                    type="button"
-                    aria-label={label}
-                    aria-pressed={active}
-                    onClick={() => setViewMode(mode)}
-                    className={cn(
-                      "flex size-7 items-center justify-center rounded transition-colors",
-                      active
-                        ? "bg-primary/10 text-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                    )}
-                  >
-                    <Icon className="size-4" aria-hidden />
-                  </button>
-                </Tooltip>
-              );
-            })}
+        <div className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 min-[1200px]:block">
+          <div className="pointer-events-auto">
+            <ViewModeSwitch viewMode={viewMode} setViewMode={setViewMode} />
           </div>
         </div>
       )}
 
       <div data-tauri-drag-region className="ml-auto flex items-center justify-end gap-1.5">
+
+        {!hideEditorArea && projectId && (
+          <div className="flex items-center gap-1.5 min-[1200px]:hidden">
+            <ViewModeSwitch viewMode={viewMode} setViewMode={setViewMode} />
+            <Divider />
+          </div>
+        )}
 
         <CompileControls />
 

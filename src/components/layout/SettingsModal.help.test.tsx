@@ -117,7 +117,7 @@ describe("Settings Help & About support callout", () => {
     expect(screen.getByRole("dialog", { name: "Settings" })).toHaveClass(
       "w-[min(880px,94vw)]",
       "h-[min(900px,88vh)]",
-      "min-h-[540px]",
+      "min-h-[min(540px,88vh)]",
     );
   });
 

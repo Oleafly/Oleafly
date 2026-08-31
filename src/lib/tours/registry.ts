@@ -128,7 +128,7 @@ export const tourRegistry = {
         target: '[data-tour="project-sidebar"]',
         kind: "informational",
         title: "Workspace navigation",
-        content: "Move between files, search, source control, preflight, AI, integrations, and project tools.",
+        content: "Move between files, search, source control, preflight, references, and MCP activity.",
         waitForTarget: true,
         placement: "right",
       },
@@ -312,7 +312,7 @@ export const tourRegistry = {
         title: "Assistant MCP",
         content: "Choose which MCP servers the assistant can use.",
         waitForTarget: true,
-        placement: "left",
+        placement: "bottom",
       },
       {
         id: "settings-help",
