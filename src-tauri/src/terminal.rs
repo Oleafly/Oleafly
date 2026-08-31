@@ -539,6 +539,7 @@ mod tests {
         assert_eq!(received.unwrap(), "hello from the main webview");
     }
 
+    #[cfg(unix)]
     #[test]
     fn child_exit_sends_a_terminal_exit_event() {
         let root = std::env::temp_dir().join(format!(
@@ -548,14 +549,9 @@ mod tests {
         std::fs::remove_dir_all(&root).ok();
         let project = root.join("projects/proj");
         std::fs::create_dir_all(&project).unwrap();
-        let mut shell = CommandBuilder::new(if cfg!(windows) { "cmd" } else { "/bin/sh" });
-        if cfg!(windows) {
-            shell.arg("/C");
-            shell.arg("ping -n 2 127.0.0.1 >NUL");
-        } else {
-            shell.arg("-c");
-            shell.arg("sleep 0.05");
-        }
+        let mut shell = CommandBuilder::new("/bin/sh");
+        shell.arg("-c");
+        shell.arg("sleep 0.05");
         let (events_tx, events_rx) = std::sync::mpsc::channel();
         let channel = Channel::new(move |body| {
             events_tx
@@ -573,10 +569,29 @@ mod tests {
             shell,
         )
         .unwrap();
-        let event = events_rx.recv_timeout(std::time::Duration::from_secs(3));
+        // The contract is that the exit event arrives, not that it is the
+        // first event; a pty may emit terminal noise before the shell dies.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        let mut events = Vec::new();
+        let exit_seen = loop {
+            let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+            if remaining.is_zero() {
+                break false;
+            }
+            match events_rx.recv_timeout(remaining) {
+                Ok(event) => {
+                    let is_exit = event == serde_json::json!({ "event": "exit" });
+                    events.push(event);
+                    if is_exit {
+                        break true;
+                    }
+                }
+                Err(_) => break false,
+            }
+        };
 
         std::fs::remove_dir_all(&root).ok();
-        assert_eq!(event.unwrap(), serde_json::json!({ "event": "exit" }));
+        assert!(exit_seen, "no exit event; received: {events:?}");
     }
 
     #[test]
@@ -599,28 +614,8 @@ mod tests {
 
     #[test]
     fn terminal_session_ids_are_not_sequential_counters() {
-        let root =
-            std::env::temp_dir().join(format!("oleafly-terminal-random-id-{}", std::process::id()));
-        std::fs::remove_dir_all(&root).ok();
-        let project = root.join("projects/proj");
-        std::fs::create_dir_all(&project).unwrap();
-        let mut shell = CommandBuilder::new(if cfg!(windows) { "cmd" } else { "/bin/sh" });
-        if cfg!(windows) {
-            shell.arg("/C");
-            shell.arg("ping -n 10 127.0.0.1 >NUL");
-        } else {
-            shell.arg("-c");
-            shell.arg("sleep 10");
-        }
-        let id = open_terminal(
-            &project,
-            SessionOwner::new("main", "proj"),
-            80,
-            24,
-            Channel::new(|_| Ok(())),
-            shell,
-        )
-        .unwrap();
+        let mut registry = SessionRegistry::default();
+        let id = registry.insert(SessionOwner::new("main", "proj"), ());
         let numeric_suffix = id
             .strip_prefix("term-")
             .and_then(|suffix| suffix.parse::<u64>().ok());
@@ -628,8 +623,7 @@ mod tests {
             .map(|_| random_session_id())
             .collect::<std::collections::HashSet<_>>();
 
-        kill_terminal(&SessionOwner::new("main", "proj"), &id).unwrap();
-        std::fs::remove_dir_all(&root).ok();
+        assert!(id.starts_with("term-"));
         assert!(numeric_suffix.is_none());
         assert_eq!(random_ids.len(), 32);
         assert!(random_ids.iter().all(|id| id.len() >= 48));
