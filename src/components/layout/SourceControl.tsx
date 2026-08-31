@@ -35,6 +35,10 @@ import { useGitStatusStore } from "@/store/git-status";
 import { useGithubStore } from "@/store/github";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PublishToGitHubDialog } from "@/components/integrations/PublishToGitHubDialog";
+import { GithubMenu } from "@/components/layout/GithubMenu";
+import { toGithubWebUrl } from "@/lib/github-url";
+import { toast } from "@/lib/toast";
+import { open } from "@tauri-apps/plugin-shell";
 import { cn } from "@/lib/utils";
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
@@ -60,6 +64,19 @@ export function SourceControl() {
   const [changes, setChanges] = useState<GitFileChange[]>([]);
   const [branch, setBranch] = useState("");
   const [remote, setRemote] = useState<string | null>(null);
+  const githubUrl = remote ? toGithubWebUrl(remote) : null;
+  const openInGithub = () => {
+    if (githubUrl) void open(githubUrl);
+  };
+  const shareGithub = async () => {
+    if (!githubUrl) return;
+    try {
+      await navigator.clipboard.writeText(githubUrl);
+      toast.success("GitHub link copied");
+    } catch {
+      toast.info(githubUrl);
+    }
+  };
   const [hasToken, setHasToken] = useState(false);
   const [aheadBehind, setAheadBehind] = useState<AheadBehind | null>(null);
   const [message, setMessage] = useState("");
@@ -310,6 +327,13 @@ export function SourceControl() {
             <GitBranch className="size-3" />
             {branch}
           </span>
+        )}
+        {githubUrl && (
+          <GithubMenu
+            githubUrl={githubUrl}
+            onOpenInGithub={openInGithub}
+            onCopyLink={() => void shareGithub()}
+          />
         )}
         {remote && aheadBehind?.has_upstream && (aheadBehind.ahead > 0 || aheadBehind.behind > 0) && (
           <Tooltip

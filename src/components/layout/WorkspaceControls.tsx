@@ -89,16 +89,6 @@ export function SidebarViews() {
 
   return (
     <div data-tour="project-sidebar" className="flex items-center gap-0.5">
-      <Tooltip label={showTree ? "Hide sidebar" : "Show sidebar"} side="bottom">
-        <button
-          type="button"
-          aria-label={showTree ? "Hide sidebar" : "Show sidebar"}
-          onClick={toggleTree}
-          className={ctrlBtn(false)}
-        >
-          {showTree ? <PanelLeftClose className="size-4" /> : <PanelLeft className="size-4" />}
-        </button>
-      </Tooltip>
       {sections.map((tabs, i) => (
         <Fragment key={tabs[0]?.section ?? i}>
           {i > 0 && <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />}
@@ -113,6 +103,23 @@ export function SidebarViews() {
         </Fragment>
       ))}
     </div>
+  );
+}
+
+export function SidebarCollapseToggle() {
+  const showTree = useSettingsStore((s) => s.showTree);
+  const toggleTree = useSettingsStore((s) => s.toggleTree);
+  return (
+    <Tooltip label={showTree ? "Hide sidebar" : "Show sidebar"} side="bottom">
+      <button
+        type="button"
+        aria-label={showTree ? "Hide sidebar" : "Show sidebar"}
+        onClick={toggleTree}
+        className={ctrlBtn(false)}
+      >
+        {showTree ? <PanelLeftClose className="size-4" /> : <PanelLeft className="size-4" />}
+      </button>
+    </Tooltip>
   );
 }
 

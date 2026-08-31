@@ -232,19 +232,20 @@ describe("useSettingsStore dock appearance settings", () => {
 });
 
 describe("useSettingsStore layout presets", () => {
-  it("ai-only hides the editor area and shows the AI rail", () => {
+  it("ai-only opens the assistant panel beside a bare editor", () => {
     useSettingsStore.getState().setLayoutPreset("ai-only");
     const s = useSettingsStore.getState();
-    expect(s.hideEditorArea).toBe(true);
-    expect(s.showTree).toBe(true);
-    expect(s.railTab).toBe("ai");
+    expect(s.assistantOpen).toBe(true);
+    expect(s.showTree).toBe(false);
+    expect(s.viewMode).toBe("editor");
+    expect(s.hideEditorArea).toBe(false);
   });
 
-  it("switching away from ai-only clears hideEditorArea", () => {
+  it("switching away from ai-only closes the assistant panel", () => {
     useSettingsStore.getState().setLayoutPreset("ai-only");
-    expect(useSettingsStore.getState().hideEditorArea).toBe(true);
+    expect(useSettingsStore.getState().assistantOpen).toBe(true);
     useSettingsStore.getState().setLayoutPreset("editor-preview");
-    expect(useSettingsStore.getState().hideEditorArea).toBe(false);
+    expect(useSettingsStore.getState().assistantOpen).toBe(false);
   });
 });
 

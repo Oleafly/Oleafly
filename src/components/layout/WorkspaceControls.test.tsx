@@ -3,6 +3,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  SidebarCollapseToggle,
   SidebarViews,
   WorkspaceDockControls,
 } from "@/components/layout/WorkspaceControls";
@@ -30,16 +31,25 @@ describe("WorkspaceControls", () => {
     useFilesStore.setState({ projectId: null });
   });
 
-  it("lists the sidebar view switchers and a collapse toggle", () => {
+  it("lists the sidebar view switchers", () => {
     render(
       <ThemeProvider>
         <SidebarViews />
       </ThemeProvider>,
     );
-    expect(screen.getByLabelText("Hide sidebar")).toBeInTheDocument();
     expect(screen.getByLabelText("Source Tree")).toBeInTheDocument();
     expect(screen.getByLabelText("Search Project")).toBeInTheDocument();
     expect(screen.getByLabelText("Source Control")).toBeInTheDocument();
+  });
+
+  it("toggles the sidebar from the collapse control", () => {
+    render(
+      <ThemeProvider>
+        <SidebarCollapseToggle />
+      </ThemeProvider>,
+    );
+    fireEvent.click(screen.getByLabelText("Hide sidebar"));
+    expect(useSettingsStore.getState().showTree).toBe(false);
   });
 
   it("switches the active sidebar view and keeps the sidebar open", () => {

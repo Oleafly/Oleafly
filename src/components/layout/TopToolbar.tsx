@@ -14,13 +14,11 @@ import {
   LayoutGrid,
   Loader2,
   ImagePlay,
-  Keyboard,
   Maximize,
   Sparkles,
   SquarePen,
   X,
 } from "lucide-react";
-import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,29 +32,30 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { CompileControls } from "@/components/layout/CompileControls";
-import { SidebarViews, WorkspaceDockControls } from "@/components/layout/WorkspaceControls";
+import {
+  SidebarCollapseToggle,
+  SidebarViews,
+  WorkspaceDockControls,
+} from "@/components/layout/WorkspaceControls";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
-import { GithubMenu } from "@/components/layout/GithubMenu";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
-import { useSettingsStore, type LayoutPreset, type RailTab, type ViewMode } from "@/store/settings";
+import { useSettingsStore, type LayoutPreset, type ViewMode } from "@/store/settings";
 import { exportCurrentPdf, exportCurrentImagePng } from "@/features/export";
 import { ensurePandoc } from "@/features/pandoc";
 import {
   downloadProjectZip,
   duplicateProject,
   exportDocument,
-  gitGetRemote,
   revealInDir,
 } from "@/lib/tauri";
-import { toGithubWebUrl } from "@/lib/github-url";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { notifyError, toast } from "@/lib/toast";
-import { cn, isMac, shortcut } from "@/lib/utils";
+import { cn, isMac } from "@/lib/utils";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 
@@ -80,12 +79,6 @@ function classifyDoc(source: string): "presentation" | "book" | "doc" {
   return "doc";
 }
 
-const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] = [
-  { mode: "editor", label: "Source View", icon: SquarePen },
-  { mode: "split", label: "Split View", icon: Columns2 },
-  { mode: "pdf", label: "PDF View", icon: FileText },
-];
-
 export const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: typeof Columns2 }[] = [
   { preset: "editor-preview-ai", label: "Editor + Preview + AI", icon: Columns2 },
   { preset: "editor-preview", label: "Editor + Preview", icon: Columns2 },
@@ -96,22 +89,27 @@ export const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: typeof
   { preset: "ai-only", label: "AI Only", icon: Sparkles },
 ];
 
+const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] = [
+  { mode: "editor", label: "Editor only", icon: SquarePen },
+  { mode: "split", label: "Editor and preview", icon: Columns2 },
+  { mode: "pdf", label: "Preview only", icon: FileText },
+];
+
 function activeLayoutPreset(
   viewMode: ViewMode,
-  railTab: RailTab,
+  assistantOpen: boolean,
   showTree: boolean,
   hideEditorArea: boolean
 ): LayoutPreset | null {
-  const isAi = railTab === "ai" || railTab === "chat";
-  if (hideEditorArea) return isAi ? "ai-only" : null;
+  if (hideEditorArea) return null;
   if (!showTree) {
-    if (viewMode === "editor") return "editor-only";
-    if (viewMode === "pdf") return "preview-only";
+    if (viewMode === "editor") return assistantOpen ? "ai-only" : "editor-only";
+    if (viewMode === "pdf") return assistantOpen ? "preview-ai" : "preview-only";
     return null;
   }
-  if (viewMode === "split") return isAi ? "editor-preview-ai" : "editor-preview";
-  if (viewMode === "editor" && isAi) return "editor-ai";
-  if (viewMode === "pdf" && isAi) return "preview-ai";
+  if (viewMode === "split") return assistantOpen ? "editor-preview-ai" : "editor-preview";
+  if (viewMode === "editor") return assistantOpen ? "editor-ai" : null;
+  if (viewMode === "pdf") return assistantOpen ? "preview-ai" : null;
   return null;
 }
 
@@ -139,10 +137,9 @@ export function TopToolbar() {
   const renameProject = useFilesStore((s) => s.renameProject);
   const pdfBytes = useCompileStore((s) => s.pdfBytes);
   const setHistoryOpen = useSettingsStore((s) => s.setHistoryOpen);
-  const setHotkeysOpen = useSettingsStore((s) => s.setHotkeysOpen);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
-  const railTab = useSettingsStore((s) => s.railTab);
+  const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const showTree = useSettingsStore((s) => s.showTree);
   const hideEditorArea = useSettingsStore((s) => s.hideEditorArea);
   const setLayoutPreset = useSettingsStore((s) => s.setLayoutPreset);
@@ -200,35 +197,6 @@ export function TopToolbar() {
     }
     setDlOpen(open);
   };
-  const [githubUrl, setGithubUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!projectId) {
-      setGithubUrl(null);
-      return;
-    }
-    const load = () =>
-      void gitGetRemote(projectId)
-        .then((r) => setGithubUrl(toGithubWebUrl(r)))
-        .catch(() => setGithubUrl(null));
-    load();
-    window.addEventListener("oleafly:git-changed", load);
-    return () => window.removeEventListener("oleafly:git-changed", load);
-  }, [projectId]);
-
-  const openInGithub = () => {
-    if (githubUrl) void open(githubUrl);
-  };
-  const shareGithub = async () => {
-    if (!githubUrl) return;
-    try {
-      await navigator.clipboard.writeText(githubUrl);
-      toast.success("GitHub link copied");
-    } catch {
-      toast.info(githubUrl);
-    }
-  };
-
   const safeName = () => (projectName || "document").replace(/[^\w.-]+/g, "_");
 
   const doDownloadZip = async () => {
@@ -315,7 +283,7 @@ export function TopToolbar() {
         ? { "data-e2e-project-id": projectId ?? undefined }
         : {})}
       className={cn(
-        "relative z-20 grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b bg-background",
+        "relative z-20 flex h-12 shrink-0 items-center gap-2 border-b bg-background",
         isMac && "pr-3",
         isMac && !fullscreen && "pl-[78px]",
         isMac && fullscreen && "pl-2"
@@ -383,36 +351,49 @@ export function TopToolbar() {
         {!hideEditorArea && projectId && (
           <>
             <span className="mx-1 h-5 w-px shrink-0 bg-border" />
-            <SidebarViews />
+            <SidebarCollapseToggle />
           </>
         )}
       </div>
 
-      <div data-tauri-drag-region className="flex items-center rounded-md border bg-muted/40 p-0.5">
-        {VIEW_OPTIONS.map(({ mode, label, icon: Icon }) => (
-          <Tooltip key={mode} label={label} side="bottom">
-            <button type="button"
-              onClick={() => setViewMode(mode)}
-              aria-label={label}
-              aria-pressed={viewMode === mode}
-              className={cn(
-                "flex h-7 items-center rounded-[5px] px-2 text-muted-foreground transition-colors",
-                viewMode === mode
-                  ? "bg-background text-foreground shadow-sm"
-                  : "hover:text-foreground"
-              )}
-            >
-              <Icon className="size-4" />
-            </button>
-          </Tooltip>
-        ))}
-      </div>
-
-      <div data-tauri-drag-region className="flex items-center justify-end gap-1.5">
+      <div data-tauri-drag-region className="ml-auto flex items-center justify-end gap-1.5">
 
         <CompileControls />
 
+        {!hideEditorArea && projectId && (
+          <>
+            <Divider />
+            <div className="flex items-center rounded-md border border-border bg-muted/40 p-0.5">
+              {VIEW_OPTIONS.map(({ mode, label, icon: Icon }) => {
+                const active = viewMode === mode;
+                return (
+                  <Tooltip key={mode} label={label} side="bottom">
+                    <button
+                      type="button"
+                      aria-label={label}
+                      aria-pressed={active}
+                      onClick={() => setViewMode(mode)}
+                      className={cn(
+                        "flex size-7 items-center justify-center rounded transition-colors",
+                        active
+                          ? "bg-primary/10 text-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                      )}
+                    >
+                      <Icon className="size-4" aria-hidden />
+                    </button>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          </>
+        )}
+
         {engineError && <span className="max-w-48 truncate text-xs text-destructive" title={engineError}>{engineError}</span>}
+
+        <Divider />
+
+        {!hideEditorArea && projectId && <SidebarViews />}
 
         <Divider />
 
@@ -498,18 +479,6 @@ export function TopToolbar() {
 
         <Divider />
 
-        <Tooltip label="History">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="History"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => setHistoryOpen(true)}
-          >
-            <History className="size-4" />
-          </Button>
-        </Tooltip>
-
         <Tooltip label="Fork project">
           <Button
             variant="ghost"
@@ -522,26 +491,19 @@ export function TopToolbar() {
           </Button>
         </Tooltip>
 
-        <Divider />
-
-        <GithubMenu
-          githubUrl={githubUrl}
-          onOpenInGithub={openInGithub}
-          onCopyLink={() => void shareGithub()}
-        />
-
-        <Divider />
-
-        <Tooltip label={`Shortcuts (${shortcut("⌘/")})`}>
+        <Tooltip label="Version history">
           <Button
             variant="ghost"
             size="icon"
+            aria-label="History"
             className="text-muted-foreground hover:text-foreground"
-            onClick={() => setHotkeysOpen(true)}
+            onClick={() => setHistoryOpen(true)}
           >
-            <Keyboard className="size-4" />
+            <History className="size-4" />
           </Button>
         </Tooltip>
+
+        <Divider />
 
         <DropdownMenu>
           <Tooltip label="Layout">
@@ -558,7 +520,7 @@ export function TopToolbar() {
           </Tooltip>
           <DropdownMenuContent align="end" className="w-56">
             {LAYOUT_OPTIONS.map(({ preset, label, icon: Icon }) => {
-              const active = activeLayoutPreset(viewMode, railTab, showTree, hideEditorArea) === preset;
+              const active = activeLayoutPreset(viewMode, assistantOpen, showTree, hideEditorArea) === preset;
               return (
                 <DropdownMenuItem key={preset} onClick={() => setLayoutPreset(preset)}>
                   <Icon className="size-4 text-muted-foreground" />

@@ -1019,58 +1019,25 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setLayoutPreset: (preset) => {
     switch (preset) {
       case "editor-preview-ai":
-        set({
-          suppressAiAutoLayout: true,
-          showTree: true,
-          railTab: "ai",
-          viewMode: "split",
-          hideEditorArea: false,
-        });
+        set({ suppressAiAutoLayout: true, showTree: true, viewMode: "split", assistantOpen: true, hideEditorArea: false });
         break;
       case "editor-preview":
-        set((s) => ({
-          showTree: true,
-          railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
-          viewMode: "split",
-          hideEditorArea: false,
-        }));
+        set({ showTree: true, viewMode: "split", assistantOpen: false, hideEditorArea: false });
         break;
       case "editor-ai":
-        set({
-          suppressAiAutoLayout: true,
-          showTree: true,
-          railTab: "ai",
-          viewMode: "editor",
-          hideEditorArea: false,
-        });
+        set({ suppressAiAutoLayout: true, showTree: true, viewMode: "editor", assistantOpen: true, hideEditorArea: false });
         break;
       case "preview-ai":
-        set({
-          suppressAiAutoLayout: true,
-          showTree: true,
-          railTab: "ai",
-          viewMode: "pdf",
-          hideEditorArea: false,
-        });
+        set({ suppressAiAutoLayout: true, showTree: true, viewMode: "pdf", assistantOpen: true, hideEditorArea: false });
         break;
       case "editor-only":
-        set((s) => ({
-          showTree: false,
-          railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
-          viewMode: "editor",
-          hideEditorArea: false,
-        }));
+        set({ showTree: false, viewMode: "editor", assistantOpen: false, hideEditorArea: false });
         break;
       case "preview-only":
-        set((s) => ({
-          showTree: false,
-          railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
-          viewMode: "pdf",
-          hideEditorArea: false,
-        }));
+        set({ showTree: false, viewMode: "pdf", assistantOpen: false, hideEditorArea: false });
         break;
       case "ai-only":
-        set({ suppressAiAutoLayout: true, showTree: true, railTab: "ai", hideEditorArea: true });
+        set({ suppressAiAutoLayout: true, showTree: false, viewMode: "editor", assistantOpen: true, hideEditorArea: false });
         break;
     }
   },
