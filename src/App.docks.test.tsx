@@ -43,9 +43,13 @@ const appState = vi.hoisted(() => {
   return { analysis, compile, computerUseListeners, files };
 });
 
-const browserWindowMocks = vi.hoisted(() => ({ launchBrowser: vi.fn() }));
+const browserWindowMocks = vi.hoisted(() => ({
+  launchBrowser: vi.fn(),
+  toggleBrowser: vi.fn(),
+}));
 vi.mock("@/lib/browser-window", () => ({
   launchBrowser: browserWindowMocks.launchBrowser,
+  toggleBrowser: browserWindowMocks.toggleBrowser,
   registerBrowserCuaSurface: () => () => {},
 }));
 
@@ -392,6 +396,6 @@ describe("project dock layout", () => {
         }),
       );
     });
-    expect(browserWindowMocks.launchBrowser).toHaveBeenCalled();
+    expect(browserWindowMocks.toggleBrowser).toHaveBeenCalled();
   });
 });

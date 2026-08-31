@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSettingsStore } from "@/store/settings";
 import { useShortcutStore } from "@/store/shortcuts";
 
-const launchBrowser = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/browser-window", () => ({ launchBrowser }));
+const toggleBrowser = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/browser-window", () => ({ toggleBrowser }));
 
 import { handleDockShortcut } from "./dock-shortcuts";
 
@@ -48,7 +48,7 @@ describe("dock shortcuts", () => {
     });
 
     expect(handleDockShortcut(event)).toBe(true);
-    expect(launchBrowser).toHaveBeenCalled();
+    expect(toggleBrowser).toHaveBeenCalled();
     expect(useSettingsStore.getState().terminalOpen).toBe(false);
   });
 

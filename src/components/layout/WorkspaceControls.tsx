@@ -15,7 +15,7 @@ import { useFilesStore } from "@/store/files";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useTheme } from "@/lib/theme";
-import { launchBrowser } from "@/lib/browser-window";
+import { toggleBrowser } from "@/lib/browser-window";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -123,6 +123,7 @@ export function WorkspaceDockControls() {
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
   const setTerminalOpen = useSettingsStore((s) => s.setTerminalOpen);
   const webBrowser = useSettingsStore((s) => s.webBrowser);
+  const browserOpen = useSettingsStore((s) => s.browserOpen);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const setAssistantOpen = useSettingsStore((s) => s.setAssistantOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
@@ -130,9 +131,8 @@ export function WorkspaceDockControls() {
   const terminalShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleTerminal));
   const browserShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleBrowser));
   const terminalLabel = `${terminalOpen ? "Hide" : "Show"} terminal (${terminalShortcut})`;
-  // The browser opens in its own window, so this is a launch action, not a
-  // pane toggle.
-  const browserLabel = `Open browser (${browserShortcut})`;
+  // The browser opens in its own window; the button toggles that window.
+  const browserLabel = `${browserOpen ? "Close" : "Open"} browser (${browserShortcut})`;
   const assistantLabel = `${assistantOpen ? "Hide" : "Show"} AI assistant`;
 
   return (
@@ -157,8 +157,9 @@ export function WorkspaceDockControls() {
               type="button"
               data-testid="rail-browser-toggle"
               aria-label={browserLabel}
-              onClick={() => launchBrowser()}
-              className={ctrlBtn(false)}
+              aria-pressed={browserOpen}
+              onClick={() => toggleBrowser()}
+              className={ctrlBtn(browserOpen)}
             >
               <Browserless size={16} className="size-4" aria-hidden />
             </button>

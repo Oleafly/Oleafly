@@ -3,8 +3,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const launchBrowser = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/browser-window", () => ({ launchBrowser }));
+const toggleBrowser = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/browser-window", () => ({ toggleBrowser, launchBrowser: vi.fn() }));
 import {
   SidebarCollapseToggle,
   SidebarViews,
@@ -87,7 +87,7 @@ describe("WorkspaceControls", () => {
     fireEvent.click(screen.getByTestId("rail-terminal-toggle"));
     expect(useSettingsStore.getState().terminalOpen).toBe(true);
     fireEvent.click(screen.getByTestId("rail-browser-toggle"));
-    expect(launchBrowser).toHaveBeenCalled();
+    expect(toggleBrowser).toHaveBeenCalled();
     fireEvent.click(screen.getByTestId("rail-assistant-toggle"));
     expect(useSettingsStore.getState().assistantOpen).toBe(true);
     expect(screen.getByLabelText("Toggle theme")).toBeInTheDocument();

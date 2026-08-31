@@ -51,6 +51,11 @@ export async function openBrowserWindow(url: string, title?: string): Promise<bo
     focus: true,
   });
   currentWindow = opened;
+  // Keep the toggle state honest when the user closes the OS window directly.
+  void opened.once("tauri://destroyed", () => {
+    if (currentWindow === opened) currentWindow = null;
+    useSettingsStore.getState().setBrowserOpen(false);
+  });
   let created = true;
   await new Promise<void>((resolve) => {
     let settled = false;
@@ -86,7 +91,7 @@ export async function focusBrowserWindow(): Promise<boolean> {
   }
 }
 
-/** Close the browser window if one is open (dock closed, project closed). */
+/** Close the browser window if one is open (toggled off, project closed). */
 export async function closeBrowserWindow(): Promise<void> {
   const open = currentWindow;
   currentWindow = null;
@@ -94,14 +99,27 @@ export async function closeBrowserWindow(): Promise<void> {
 }
 
 /**
- * Launch (or focus) the browser window from a user action. Respects the
- * experimental flag, so the toolbar button and the keyboard shortcut are inert
- * when the browser is off. With no URL it opens the configured home page.
+ * Open (or navigate) the browser window from a user action or the AI. Respects
+ * the experimental flag, so the toolbar button and the keyboard shortcut are
+ * inert when the browser is off. With no URL it opens the configured home page.
  */
 export function launchBrowser(url?: string): void {
   const settings = useSettingsStore.getState();
   if (!settings.webBrowser) return;
+  settings.setBrowserOpen(true);
   void openBrowserWindow(url ?? (settings.browserHomePage || DEFAULT_BROWSER_HOME));
+}
+
+/** Toggle the browser window: open it if closed, close it if open. */
+export function toggleBrowser(): void {
+  const settings = useSettingsStore.getState();
+  if (!settings.webBrowser) return;
+  if (settings.browserOpen) {
+    settings.setBrowserOpen(false);
+    void closeBrowserWindow();
+  } else {
+    launchBrowser();
+  }
 }
 
 /**
