@@ -14,6 +14,9 @@ import {
   importDocument,
   importBrowserCookies,
   isFileConflictError,
+  mcpAgentToolCall,
+  mcpAgentToolAuthorize,
+  mcpAgentToolsList,
   mcpServerAdd,
   mcpServerRemove,
   mcpServerSetEnabled,
@@ -191,6 +194,45 @@ describe("MCP server management bridge", () => {
     await mcpServerRemove("filesystem");
     expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_server_remove", {
       name: "filesystem",
+    });
+  });
+
+  it("lists, authorizes, and calls a discovered raw agent tool handle", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+
+    await mcpAgentToolsList();
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_agent_tools_list");
+
+    await mcpAgentToolAuthorize(
+      "project-1",
+      "filesystem",
+      "read_file",
+      { path: "paper.tex" },
+      "run-1",
+    );
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_agent_tool_authorize", {
+      projectId: "project-1",
+      server: "filesystem",
+      toolHandle: "read_file",
+      arguments: { path: "paper.tex" },
+      runId: "run-1",
+    });
+
+    await mcpAgentToolCall(
+      "project-1",
+      "filesystem",
+      "read_file",
+      { path: "paper.tex" },
+      "run-1",
+      "approval-1",
+    );
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_agent_tool_call", {
+      projectId: "project-1",
+      server: "filesystem",
+      toolHandle: "read_file",
+      arguments: { path: "paper.tex" },
+      runId: "run-1",
+      approvalToken: "approval-1",
     });
   });
 });

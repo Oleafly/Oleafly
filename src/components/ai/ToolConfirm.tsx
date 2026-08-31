@@ -7,6 +7,7 @@ import { AiChrome, AiMark, AI_GRADIENT } from "@/components/ai/AiChrome";
 import { gotoLine } from "@/components/editor/cm/controller";
 import { useFilesStore } from "@/store/files";
 import { isAutoApprovable } from "@/store/mcp-approvals";
+import type { McpApprovalDetails } from "@/lib/mcp-agent-tools";
 import { toolRisk } from "@oleafly/ai-tools";
 
 export function firstChangedLine(oldText: string, newText: string): number {
@@ -22,6 +23,20 @@ export function firstChangedLine(oldText: string, newText: string): number {
 function basename(path: string): string {
   const i = path.lastIndexOf("/");
   return i >= 0 ? path.slice(i + 1) : path;
+}
+
+function mcpApprovalDetails(req: ToolApprovalRequest): McpApprovalDetails | null {
+  const mcp = (req as ToolApprovalRequest & { mcp?: unknown }).mcp;
+  if (!mcp || typeof mcp !== "object") return null;
+  const details = mcp as Partial<McpApprovalDetails>;
+  if (
+    typeof details.server !== "string" ||
+    typeof details.tool !== "string" ||
+    typeof details.argumentsPreview !== "string"
+  ) {
+    return null;
+  }
+  return details as McpApprovalDetails;
 }
 
 // Re-export so MCP shell and others keep a single import path.
@@ -47,10 +62,13 @@ export function ToolConfirm({
 }) {
   const canSession = isAutoApprovable(req.tool) && !!onApproveSession;
   const commandApproval = req.tool === "run_command";
+  const mcpApproval = mcpApprovalDetails(req);
   const networkApproval = toolRisk(req.tool) === "network";
   const approvalLabel = commandApproval
     ? "Confirm command"
-    : networkApproval
+    : mcpApproval
+      ? "Confirm external tool action"
+      : networkApproval
       ? "Confirm internet access"
       : "Confirm AI edit";
   const filePath = req.diff?.path ?? req.path;
@@ -84,13 +102,20 @@ export function ToolConfirm({
           <p className="text-sm font-semibold leading-snug text-foreground">
             {commandApproval
               ? "The assistant wants to run this command"
-              : networkApproval
+              : mcpApproval
+                ? "The assistant wants to use an external tool"
+                : networkApproval
                 ? "The assistant wants to access the internet"
               : "The assistant wants to change your files"}
           </p>
+          {mcpApproval && (
+            <p className="text-[11px] leading-snug text-muted-foreground">
+              This sends the arguments below to the configured MCP server.
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-1.5">
             <code className="inline-flex items-center rounded-md border border-primary/25 bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] font-medium leading-none text-primary">
-              {req.tool}
+              {mcpApproval?.tool ?? req.tool}
             </code>
             {filePath && (
               <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-border/80 bg-muted/50 px-1.5 py-0.5 text-[11px] leading-none text-muted-foreground">
@@ -130,6 +155,27 @@ export function ToolConfirm({
               </code>
             </div>
           )}
+        </div>
+      )}
+
+      {mcpApproval && (
+        <div className="space-y-2 rounded-lg border border-border/80 bg-background p-2.5 shadow-inner">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1.5 text-xs">
+            <span className="text-[11px] font-medium text-muted-foreground">MCP server</span>
+            <code className="min-w-0 break-words font-mono text-foreground">
+              {mcpApproval.server}
+            </code>
+            <span className="text-[11px] font-medium text-muted-foreground">Tool</span>
+            <code className="min-w-0 break-words font-mono text-foreground">
+              {mcpApproval.tool}
+            </code>
+          </div>
+          <div className="space-y-1 border-t border-border/60 pt-2">
+            <p className="text-[11px] font-medium text-muted-foreground">Arguments</p>
+            <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
+              {mcpApproval.argumentsPreview}
+            </pre>
+          </div>
         </div>
       )}
 

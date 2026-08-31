@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
 import { runAgentHarness, toAgentMessages } from "./agent-turn";
@@ -51,17 +51,22 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { approvalsList, approvalsSet, getConfig, gitLog, gitAutoCommit, gitHeadOid, gitShow, gitStatus, readFileContent, usageRecord, type AppConfig, type CustomProvider, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
+import { approvalsList, approvalsSet, getConfig, gitLog, gitAutoCommit, gitHeadOid, gitShow, gitStatus, readFileContent, usageRecord, type AppConfig, type CustomProvider, type McpAgentServer, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
-import { FIGURE_SYSTEM_PROMPT, modelSupportsVision, setFigureInsertTarget } from "@/lib/ai-figure";
+import {
+  buildFigureSystemPrompt,
+  modelSupportsVision,
+  setFigureInsertTarget,
+} from "@/lib/ai-figure";
 import { canUseFigureMode } from "@/lib/document-engine";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { ToolConfirm } from "@/components/ai/ToolConfirm";
 import { ApprovalModeSelector } from "@/components/ai/ApprovalModeSelector";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
+import { AiToolManager } from "@/components/ai/AiToolManager";
 import { ModelSelector } from "@/components/ai/ModelSelector";
 import { ComposerAttachMenu } from "@/components/ai/ComposerAttachMenu";
 import {
@@ -107,11 +112,21 @@ import {
   useAgentFileChangesStore,
 } from "@/store/agent-file-changes";
 import { subscribeAutoCommit } from "@/lib/auto-commit";
+import {
+  filterResolvedTools,
+  resolveAvailableTools,
+  type RuntimeToolset,
+} from "@/lib/ai-tool-availability";
+import {
+  createMcpRuntimeToolsets,
+  useMcpAgentTools,
+} from "@/lib/mcp-agent-tools";
 
 registerAiToolsets();
 import { useAgentTodoStore } from "@/store/agent-todos";
 import { useAgentMemoryStore } from "@/store/agent-memory";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
+import { isToolEnabled, useAiToolSettingsStore } from "@/store/ai-tool-settings";
 import { buildWorkspaceContext } from "@/lib/ai-context";
 import { packChatHistory } from "@/lib/ai-context-pack";
 import { estimateUsd, formatUsd } from "@/lib/ai-pricing";
@@ -151,6 +166,8 @@ import {
   formatToolOutput,
 } from "@/components/ai/chat-parts";
 import type { EngineFeature } from "@/lib/tauri";
+
+const MAX_AGENT_TOOL_DEFINITIONS = 128;
 
 const SUGGESTIONS = [
   "Find papers to cite",
@@ -221,9 +238,30 @@ const CODE_EDIT_TOOLS = new Set([
 ]);
 
 const UNIVERSAL_TOOLS = ["read_file", "write_file", "replace_in_file", "create_file", "delete_file", "rename_file", "list_files", "search_project", "compile", "get_log", "get_pdf_text", "verify_pdf_pages", "update_todos", "get_todos", "remember_note", "forget_note", "list_notes", "set_main_doc", "toggle_theme"];
-export function buildAiToolInventory(features: EngineFeature[], figure: boolean, isolated: boolean): string[] {
-  if (figure) return isolated ? ["preview_figure", "insert_figure", "load_image"] : [];
-  return features.includes("document_index") ? [...UNIVERSAL_TOOLS, "project_map"] : UNIVERSAL_TOOLS;
+export function buildAiToolInventory(
+  features: EngineFeature[],
+  figure: boolean,
+  isolated: boolean,
+  enabledByName: Readonly<Record<string, boolean>> = {},
+  resolvedNames?: readonly string[],
+): string[] {
+  const available = resolvedNames ??
+    (figure
+      ? isolated
+        ? ["preview_figure", "insert_figure", "load_image"]
+        : []
+      : features.includes("document_index")
+        ? [...UNIVERSAL_TOOLS, "project_map"]
+        : UNIVERSAL_TOOLS);
+  return available.filter((name) => isToolEnabled(enabledByName, name));
+}
+
+export function drainPendingImages(
+  pendingImages: string[],
+  supportsVision: boolean,
+): string[] {
+  const images = pendingImages.splice(0);
+  return supportsVision ? images : [];
 }
 
 // Multiple toolsets can share a mode (e.g. "project-tools" and "research-tools"
@@ -396,6 +434,7 @@ export function ChatCore() {
     saveDraft(useFilesStore.getState().projectId, text);
   }, []);
   const sendSequenceRef = useRef(0);
+  const sendPreparingRef = useRef(false);
   const [streaming, setStreaming] = useState(false);
   const [approvalModeLocked, setApprovalModeLocked] = useState(false);
   const [provider, setProvider] = useState("openai");
@@ -450,8 +489,6 @@ export function ChatCore() {
   } | null>(null);
   const [restoringCheckpoint, setRestoringCheckpoint] = useState<string | null>(null);
   const handoffPending = useAgentHandoffStore((s) => s.pendingPrompt);
-  // Images (data URLs) to attach to the NEXT model step so a vision model can
-  // see the rendered figure. Drained each step by the send loop.
   const pendingImagesRef = useRef<string[]>([]);
   // Timestamp of the last stream part, for the stall watchdog.
   const lastPartAtRef = useRef<number>(0);
@@ -551,7 +588,52 @@ export function ChatCore() {
   skillsRef.current = skills;
   const skillsQueryRef = useRef(skillsQuery);
   skillsQueryRef.current = skillsQuery;
-  const availableSkills = enabledSkills(skills);
+  const mcpAgentToolsQuery = useMcpAgentTools();
+  const mcpAgentToolsQueryRef = useRef(mcpAgentToolsQuery);
+  mcpAgentToolsQueryRef.current = mcpAgentToolsQuery;
+  const availableSkills = useMemo(() => enabledSkills(skills), [skills]);
+  const availableSkillTools = useMemo(
+    () => createLoadSkillTools(availableSkills),
+    [availableSkills],
+  );
+  const toolManagerMode = figureMode && figureModeAvailable ? "figure" : "chat";
+  const availableMcpToolsets = useMemo(
+    () =>
+      createMcpRuntimeToolsets(mcpAgentToolsQuery.data ?? [], {
+        confirm: async () => false,
+        isActive: () => false,
+        onImage: () => {},
+        projectId: () => null,
+        runId: () => "tool-manager",
+      }),
+    [mcpAgentToolsQuery.data],
+  );
+  const toolManagerAvailability = useMemo(() => {
+    const additions: RuntimeToolset[] = [
+      ...availableMcpToolsets,
+      ...(Object.keys(availableSkillTools).length > 0
+        ? [{ id: "skills", source: { kind: "skills" } as const, tools: availableSkillTools }]
+        : []),
+    ];
+    return resolveAvailableTools({
+      toolsets: registry.aiToolsets,
+      mode: toolManagerMode,
+      createOpts: {
+        confirm: async () => false,
+        onImage: () => {},
+        runId: () => null,
+      },
+      additions,
+      excludedNames: documentEngine.capabilities.features.includes("document_index")
+        ? []
+        : ["project_map"],
+    });
+  }, [
+    availableMcpToolsets,
+    availableSkillTools,
+    documentEngine.capabilities.features,
+    toolManagerMode,
+  ]);
   const skillPromptCategories =
     availableSkills.length > 0
       ? [
@@ -1044,23 +1126,86 @@ export function ChatCore() {
       return;
     }
     if (!apiKey) { openAISettings(); return; }
+    if (sendPreparingRef.current) return;
+    sendPreparingRef.current = true;
+    setApprovalModeLocked(true);
+    const cancelSendPreparation = () => {
+      sendPreparingRef.current = false;
+      setApprovalModeLocked(false);
+    };
     let runSkills = enabledSkills(skillsRef.current);
     if (skillsQueryRef.current.data === undefined) {
       try {
         const result = await skillsQueryRef.current.refetch();
         if (!result?.data) {
+          cancelSendPreparation();
           toast.error("Could not load enabled skills. Try again.");
           return;
         }
         runSkills = enabledSkills(result.data);
       } catch {
+        cancelSendPreparation();
         toast.error("Could not load enabled skills. Try again.");
         return;
       }
     }
-    if (streaming || activeChatRun() || useFilesStore.getState().projectId !== projectId) return;
+    let runMcpServers: McpAgentServer[] = [];
+    try {
+      const result = await mcpAgentToolsQueryRef.current.refetch();
+      if (!result.error) runMcpServers = result.data ?? [];
+    } catch {
+      runMcpServers = [];
+    }
+    if (streaming || activeChatRun() || useFilesStore.getState().projectId !== projectId) {
+      cancelSendPreparation();
+      return;
+    }
+    const enabledToolsForRun = {
+      ...useAiToolSettingsStore.getState().enabledByName,
+    };
+    const figure = figureMode && figureModeAvailable;
+    const capacitySkillTools = createLoadSkillTools(runSkills);
+    const capacityAdditions: RuntimeToolset[] = [
+      ...createMcpRuntimeToolsets(runMcpServers, {
+        confirm: async () => false,
+        isActive: () => false,
+        onImage: () => {},
+        projectId: () => null,
+        runId: () => "capacity-check",
+      }),
+      ...(Object.keys(capacitySkillTools).length > 0
+        ? [{ id: "skills", source: { kind: "skills" } as const, tools: capacitySkillTools }]
+        : []),
+    ];
+    const enabledToolCount = Object.keys(
+      filterResolvedTools(
+        resolveAvailableTools({
+          toolsets: registry.aiToolsets,
+          mode: figure ? "figure" : "chat",
+          createOpts: {
+            confirm: async () => false,
+            onImage: () => {},
+            runId: () => null,
+          },
+          additions: capacityAdditions,
+          excludedNames: documentEngine.capabilities.features.includes("document_index")
+            ? []
+            : ["project_map"],
+        }),
+        enabledToolsForRun,
+      ).tools,
+    ).length;
+    if (enabledToolCount > MAX_AGENT_TOOL_DEFINITIONS) {
+      cancelSendPreparation();
+      const excess = enabledToolCount - MAX_AGENT_TOOL_DEFINITIONS;
+      toast.error(
+        `${enabledToolCount} tools are enabled, but a run supports up to ${MAX_AGENT_TOOL_DEFINITIONS}. Disable at least ${excess} in Tools and try again.`,
+      );
+      return;
+    }
     const runIdentity = runIsolationRef.current.begin(projectId);
     const runProjectId = projectId;
+    const runPendingImages: string[] = [];
     let runChatId: string | null = null;
     let trackedTurnId: string | null = null;
     let stopAutoCommitTracking = () => {};
@@ -1085,6 +1230,7 @@ export function ChatCore() {
     const ac = new AbortController();
     abortRef.current = ac;
     const runHandle = beginChatRun(ac, projectId);
+    sendPreparingRef.current = false;
     runOwnerRef.current = true;
     setApprovalModeLocked(true);
     const releaseRunReservation = () => {
@@ -1216,6 +1362,7 @@ export function ChatCore() {
       releaseRunReservation();
       return;
     }
+    runPendingImages.push(...pendingImagesRef.current.splice(0));
 
     const priorMessages = messagesRef.current;
     const createdAt = Date.now();
@@ -1322,7 +1469,37 @@ USER_CUSTOM_INSTRUCTIONS`
 
     const mainDocument = useFilesStore.getState().mainDoc || "main.tex";
     const activeGoalLine = goalPromptLine(useChatGoalStore.getState().goal(projectId));
-    const runSkillCatalog = skillCatalogPrompt(runSkills);
+    const runSkillTools = createLoadSkillTools(runSkills);
+    const runToolAdditions: RuntimeToolset[] = [
+      ...createMcpRuntimeToolsets(runMcpServers, {
+        confirm,
+        isActive: () =>
+          !ac.signal.aborted && activeRunRequestIdRef.current !== null,
+        onImage: (dataUrl) => runPendingImages.push(dataUrl),
+        projectId: () => runProjectId,
+        runId: () => activeRunRequestIdRef.current,
+      }),
+      ...(Object.keys(runSkillTools).length > 0
+        ? [{ id: "skills", source: { kind: "skills" } as const, tools: runSkillTools }]
+        : []),
+    ];
+    const resolvedToolsForRun = resolveAvailableTools({
+      toolsets: registry.aiToolsets,
+      mode: figure ? "figure" : "chat",
+      createOpts: {
+        confirm,
+        onImage: (dataUrl: string) => runPendingImages.push(dataUrl),
+        runId: () => activeRunRequestIdRef.current,
+      },
+      additions: runToolAdditions,
+      excludedNames: documentEngine.capabilities.features.includes("document_index")
+        ? []
+        : ["project_map"],
+    });
+    const tools = filterResolvedTools(resolvedToolsForRun, enabledToolsForRun).tools;
+    const runSkillCatalog = isToolEnabled(enabledToolsForRun, "load_skill")
+      ? skillCatalogPrompt(runSkills)
+      : "";
     const sourceVocabulary = documentEngine.capabilities.formatting_profile === "typst"
       ? "Typst markup and scripting"
       : documentEngine.capabilities.formatting_profile === "markdown"
@@ -1330,8 +1507,15 @@ USER_CUSTOM_INSTRUCTIONS`
         : documentEngine.capabilities.formatting_profile === "latex"
           ? "LaTeX"
           : "engine-neutral prose";
+    const toolInventory = buildAiToolInventory(
+      documentEngine.capabilities.features,
+      false,
+      false,
+      enabledToolsForRun,
+      Object.keys(tools),
+    );
     const systemPrompt = `You are Oleafly AI, a fully agentic writing partner inside Oleafly, a local-first technical document editor.
-You have full, reliable control over the project via these tools: ${buildAiToolInventory(documentEngine.capabilities.features, false, false).join(", ")}.
+Available tools for this run: ${toolInventory.length > 0 ? toolInventory.join(", ") : "none"}.
 The current project is "${projectName}" (ID: ${projectId}). Main document: ${mainDocument}. The document engine is ${documentEngine.label}. Use only valid ${sourceVocabulary} source rules.${
       projectKind === "image"
         ? `
@@ -1367,11 +1551,10 @@ Do not stop until the task is genuinely complete, then explain what you did in a
 ${workspaceCtx}
 ${sandboxedCustom}`;
 
-    const figure = figureMode && figureModeAvailable;
     // Figure mode gets the same untrusted-instruction sandbox as main chat so a
     // crafted custom prompt cannot override figure tools or safety rules.
     const effectiveSystemBase = figure
-      ? `${FIGURE_SYSTEM_PROMPT + sandboxedCustom}\n\n${workspaceCtx}${
+      ? `${buildFigureSystemPrompt(Object.keys(tools)) + sandboxedCustom}\n\n${workspaceCtx}${
           activeGoalLine ? `\n\n${activeGoalLine}` : ""
         }`
       : systemPrompt;
@@ -1464,16 +1647,6 @@ ${sandboxedCustom}`;
           });
         }
       }
-      const tools = resolveChatTools(registry.aiToolsets, figure ? "figure" : "chat", {
-        confirm,
-        onImage: (d: string) => pendingImagesRef.current.push(d),
-        runId: () => activeRunRequestIdRef.current,
-      });
-      Object.assign(tools, createLoadSkillTools(runSkills));
-      if (!documentEngine.capabilities.features.includes("document_index")) {
-        delete tools.project_map;
-      }
-
       let reasoningStartedAt: number | null = null;
       let stepContent = "";
       let stepBlocks: ChatMessage["reasoningBlocks"] = [];
@@ -1598,7 +1771,10 @@ ${sandboxedCustom}`;
         },
         providerOverride: { provider_id: provider, model_id: model },
         takePendingImages: () =>
-          modelSupportsVision(provider, model) ? pendingImagesRef.current.splice(0) : [],
+          drainPendingImages(
+            runPendingImages,
+            modelSupportsVision(provider, model),
+          ),
         imageInstruction: figure
           ? "Here is the rendered figure. Check for overlapping labels, cramped spacing, misalignment, and legibility, and refine it if it is not clean."
           : "Here are rendered PDF page image(s) from verify_pdf_pages. Check for overflow, cut-off text, empty regions, and layout problems. Fix source if needed, then recompile and re-verify.",
@@ -1807,6 +1983,7 @@ ${sandboxedCustom}`;
         }
       }
       if (runChatId) useChatsStore.getState().clearLive(runChatId);
+      runPendingImages.length = 0;
       if (activeChatRun() === runHandle) {
         streamQueuesRef.current?.dispose();
         streamQueuesRef.current = null;
@@ -1833,6 +2010,7 @@ ${sandboxedCustom}`;
   }, [streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId]);
 
   const stop = useCallback(() => {
+    pendingImagesRef.current = [];
     abortRef.current?.abort();
   }, []);
 
@@ -2008,6 +2186,10 @@ ${sandboxedCustom}`;
           <InfoHint message="This chat started from an older version of the project. File contents may differ from what the AI saw." />
         )}
         <div className="ml-auto flex items-center gap-0.5">
+          <AiToolManager
+            groups={toolManagerAvailability.groups}
+            onOpen={() => void mcpAgentToolsQuery.refetch()}
+          />
           {configuredProviders.length > 0 && (
             <>
 

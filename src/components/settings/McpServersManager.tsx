@@ -30,6 +30,7 @@ import {
   type McpServerValidationStatus,
 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
+import { notifyMcpAgentToolsChanged } from "@/lib/mcp-agent-tools";
 
 type PairValue = {
   id: number;
@@ -594,6 +595,7 @@ export function McpServersManager() {
           : current;
         return replaceRecord(withoutOriginal, next);
       });
+      notifyMcpAgentToolsChanged();
       setEditor(null);
     } catch (error) {
       setEditorError(errorMessage(error));
@@ -609,6 +611,7 @@ export function McpServersManager() {
       const next = await mcpServerSetEnabled(name, enabled);
       invalidateValidation(name);
       setRecords((current) => replaceRecord(current, next));
+      notifyMcpAgentToolsChanged();
     } catch (error) {
       setRecords((current) => replaceValidation(current, name, validationError(name, error)));
     } finally {
@@ -624,6 +627,7 @@ export function McpServersManager() {
       await mcpServerRemove(name);
       invalidateValidation(name);
       setRecords((current) => current.filter((record) => record.config.name !== name));
+      notifyMcpAgentToolsChanged();
       setRemoveName(null);
     } catch (error) {
       setRecords((current) => replaceValidation(current, name, validationError(name, error)));

@@ -499,6 +499,44 @@ fn the_pipeline_marks_read_tools_parallel_and_everything_else_exclusive() {
     );
 }
 
+#[tokio::test]
+async fn unadvertised_tools_are_rejected_before_native_or_subagent_dispatch() {
+    let calls = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let calls_for_runner = calls.clone();
+    let inner: oleafly_agent::ToolRunner = std::sync::Arc::new(move |_| {
+        let calls = calls_for_runner.clone();
+        Box::pin(async move {
+            calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            oleafly_agent::ToolOutput::text("executed")
+        })
+    });
+    let runner = allowlisted_tool_runner(
+        std::collections::HashSet::from(["read_file".to_string()]),
+        inner,
+    );
+
+    let rejected = runner(oleafly_agent::ToolCall {
+        id: "call-1".into(),
+        name: "compile".into(),
+        arguments: "{}".into(),
+        ..Default::default()
+    })
+    .await;
+    let rejected: serde_json::Value = serde_json::from_str(&rejected.output).unwrap();
+    assert_eq!(rejected["error"], "Unknown tool: compile");
+    assert_eq!(calls.load(std::sync::atomic::Ordering::Relaxed), 0);
+
+    let accepted = runner(oleafly_agent::ToolCall {
+        id: "call-2".into(),
+        name: "read_file".into(),
+        arguments: "{}".into(),
+        ..Default::default()
+    })
+    .await;
+    assert_eq!(accepted.output, "executed");
+    assert_eq!(calls.load(std::sync::atomic::Ordering::Relaxed), 1);
+}
+
 #[test]
 fn the_classifier_skips_without_a_project_and_denies_from_decisions() {
     use oleafly_agent::tools::orchestrator::ApprovalRequirement;
@@ -643,7 +681,16 @@ fn dropping_run_resources_cleans_every_registry() {
     let token = oleafly_agent::CancellationToken::new();
     let child = token.child();
     let manager = std::sync::Arc::new(crate::agent::SubagentManager::default());
-    crate::agent::register_run_resources(&state, "run-1", 7, handle, token, manager);
+    crate::agent::register_run_resources(
+        &state,
+        "run-1",
+        7,
+        handle,
+        token,
+        manager,
+        Some("project-1".into()),
+        std::collections::HashSet::from(["tool-1".into()]),
+    );
 
     drop(crate::agent::RunResourcesGuard::new(&state, "run-1", 7));
 
@@ -651,6 +698,8 @@ fn dropping_run_resources_cleans_every_registry() {
     assert!(crate::agent::subagents_stop(&state, "run-1").is_err());
     assert!(lock_or_recover(&state.steer_senders).get("run-1").is_none());
     assert!(lock_or_recover(&state.run_tokens).get("run-1").is_none());
+    assert!(lock_or_recover(&state.run_projects).get("run-1").is_none());
+    assert!(lock_or_recover(&state.run_tools).get("run-1").is_none());
 }
 
 #[test]
@@ -665,6 +714,8 @@ fn stale_run_cleanup_preserves_replacement_resources() {
         first_handle,
         oleafly_agent::CancellationToken::new(),
         std::sync::Arc::new(crate::agent::SubagentManager::default()),
+        Some("old-project".into()),
+        std::collections::HashSet::from(["old-tool".into()]),
     );
     let replacement = oleafly_agent::CancellationToken::new();
     let replacement_child = replacement.child();
@@ -675,12 +726,73 @@ fn stale_run_cleanup_preserves_replacement_resources() {
         second_handle,
         replacement,
         std::sync::Arc::new(crate::agent::SubagentManager::default()),
+        Some("new-project".into()),
+        std::collections::HashSet::from(["new-tool".into()]),
     );
 
     drop(crate::agent::RunResourcesGuard::new(&state, "same", 1));
 
     assert!(!replacement_child.is_cancelled());
     assert!(crate::agent::subagents_stop(&state, "same").is_ok());
+    assert_eq!(
+        lock_or_recover(&state.run_projects)
+            .get("same")
+            .and_then(|project| project.value.as_deref()),
+        Some("new-project")
+    );
+    assert!(lock_or_recover(&state.run_tools)
+        .get("same")
+        .is_some_and(|tools| tools.value.contains("new-tool")));
+}
+
+#[test]
+fn run_project_ownership_requires_the_active_generation_and_project() {
+    let state = crate::agent::AgentState::default();
+    let generation = crate::agent::register_active_request_for_test(&state, "run-owned");
+    crate::agent::register_run_project_for_test(&state, "run-owned", generation, "project-1");
+    crate::agent::register_run_tools_for_test(
+        &state,
+        "run-owned",
+        generation,
+        ["tool-1".to_string()],
+    );
+
+    assert!(crate::agent::request_owns_project(
+        &state,
+        "run-owned",
+        "project-1"
+    ));
+    assert!(!crate::agent::request_owns_project(
+        &state,
+        "run-owned",
+        "project-2"
+    ));
+    assert!(crate::agent::request_allows_tool(
+        &state,
+        "run-owned",
+        "project-1",
+        "tool-1"
+    ));
+    assert!(!crate::agent::request_allows_tool(
+        &state,
+        "run-owned",
+        "project-1",
+        "tool-2"
+    ));
+
+    crate::agent::finish_active_request_for_test(&state, "run-owned", generation);
+
+    assert!(!crate::agent::request_owns_project(
+        &state,
+        "run-owned",
+        "project-1"
+    ));
+    assert!(!crate::agent::request_allows_tool(
+        &state,
+        "run-owned",
+        "project-1",
+        "tool-1"
+    ));
 }
 
 #[tokio::test]

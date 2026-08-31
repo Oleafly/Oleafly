@@ -384,6 +384,38 @@ fn tool_schemas_reach_every_provider_in_its_own_shape() {
 }
 
 #[test]
+fn google_request_preserves_arbitrary_json_tool_schema() {
+    let schema = json!({
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "$defs": {
+            "target": {
+                "oneOf": [
+                    {"type": "string", "const": "main.tex"},
+                    {"type": "string", "pattern": "^[a-z]+\\.tex$"}
+                ]
+            }
+        },
+        "properties": {"path": {"$ref": "#/$defs/target"}},
+        "required": ["path"]
+    });
+    let request = CompletionRequest {
+        tools: vec![crate::tool::ToolSchema {
+            name: "select_target".into(),
+            description: "Select a target".into(),
+            input_schema: schema.clone(),
+        }],
+        ..CompletionRequest::prompt("sys", "choose")
+    };
+
+    let body = google_body(&google(), &request).unwrap();
+    let declaration = &body["tools"][0]["functionDeclarations"][0];
+
+    assert!(declaration.get("parameters").is_none());
+    assert_eq!(declaration["parametersJsonSchema"], schema);
+}
+
+#[test]
 fn a_request_without_tools_sends_no_tools_field() {
     let request = CompletionRequest::prompt("s", "u");
     assert!(openai_body(&openai(), &request)

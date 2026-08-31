@@ -463,6 +463,8 @@ describe("McpServersManager", () => {
 
   it("persists enable changes and replaces the status returned by the backend", async () => {
     records = [CONNECTED];
+    const changed = vi.fn();
+    window.addEventListener("oleafly:mcp-agent-tools-changed", changed);
     renderManager();
     await screen.findByText("read_file");
 
@@ -477,6 +479,8 @@ describe("McpServersManager", () => {
       expect(screen.getByRole("switch", { name: "Enable files" })).toBeChecked(),
     );
     expect(await screen.findByText("files_search")).toBeInTheDocument();
+    expect(changed).toHaveBeenCalledTimes(2);
+    window.removeEventListener("oleafly:mcp-agent-tools-changed", changed);
   });
 
   it("ignores an older validation result after the server is disabled", async () => {

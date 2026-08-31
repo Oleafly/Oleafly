@@ -8,7 +8,11 @@ export {
   bytesToBase64,
   normalizeFigureCode,
 } from "@oleafly/latex";
-export { modelSupportsVision, FIGURE_SYSTEM_PROMPT } from "@oleafly/ai-core";
+export {
+  buildFigureSystemPrompt,
+  modelSupportsVision,
+  FIGURE_SYSTEM_PROMPT,
+} from "@oleafly/ai-core";
 
 let lastPreview: { pdfBytes: Uint8Array } | null = null;
 export function setLastFigurePreview(v: { pdfBytes: Uint8Array } | null) {

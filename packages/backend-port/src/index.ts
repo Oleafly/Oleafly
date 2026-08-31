@@ -412,6 +412,16 @@ export interface McpManagedServer {
     config: McpServerConfig;
     validation: McpServerValidation;
 }
+export interface McpAgentTool {
+    name: string;
+    tool_handle: string;
+    description: string | null;
+    input_schema: unknown;
+}
+export interface McpAgentServer {
+    name: string;
+    tools: McpAgentTool[];
+}
 export interface McpStatus {
     running: boolean;
     port: number | null;
@@ -624,6 +634,22 @@ export interface BackendPort {
   mcpServerRemove: (name: string) => Promise<void>;
   mcpServerSetEnabled: (name: string, enabled: boolean) => Promise<McpManagedServer>;
   mcpServerValidate: (name: string) => Promise<McpServerValidation>;
+  mcpAgentToolsList: () => Promise<McpAgentServer[]>;
+  mcpAgentToolAuthorize: (
+    projectId: string,
+    server: string,
+    toolHandle: string,
+    argumentsValue: Record<string, unknown>,
+    runId: string,
+  ) => Promise<string>;
+  mcpAgentToolCall: (
+    projectId: string,
+    server: string,
+    toolHandle: string,
+    argumentsValue: Record<string, unknown>,
+    runId: string,
+    approvalToken: string,
+  ) => Promise<unknown>;
   mcpBeginRendererSession: () => Promise<number>;
   mcpRendererHeartbeat: (rendererSession: number) => Promise<void>;
   mcpEndRendererSession: (rendererSession: number) => Promise<void>;

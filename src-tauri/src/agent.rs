@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
@@ -66,6 +66,8 @@ pub struct AgentState {
     /// at run start, cleaned up at run end and on cancel.
     steer_senders: Mutex<HashMap<String, RunResource<oleafly_agent::SteerHandle>>>,
     run_tokens: Mutex<HashMap<String, RunResource<oleafly_agent::CancellationToken>>>,
+    run_projects: Mutex<HashMap<String, RunResource<Option<String>>>>,
+    run_tools: Mutex<HashMap<String, RunResource<HashSet<String>>>>,
     /// Per-run subagent managers, so "stop all subagents" can reach the
     /// children without stopping the parent run.
     subagent_managers: Mutex<HashMap<String, RunResource<std::sync::Arc<SubagentManager>>>>,
@@ -82,6 +84,8 @@ impl Default for AgentState {
             )),
             steer_senders: Mutex::new(HashMap::new()),
             run_tokens: Mutex::new(HashMap::new()),
+            run_projects: Mutex::new(HashMap::new()),
+            run_tools: Mutex::new(HashMap::new()),
             subagent_managers: Mutex::new(HashMap::new()),
         }
     }
@@ -105,6 +109,54 @@ pub(crate) fn request_is_active(state: &AgentState, request_id: &str) -> bool {
         .contains_key(request_id)
 }
 
+pub(crate) fn request_owns_project(state: &AgentState, request_id: &str, project_id: &str) -> bool {
+    let generation = lock_or_recover(&state.requests)
+        .active
+        .get(request_id)
+        .map(|request| request.generation);
+    let projects = lock_or_recover(&state.run_projects);
+    generation.is_some_and(|generation| {
+        projects.get(request_id).is_some_and(|project| {
+            project.generation == generation && project.value.as_deref() == Some(project_id)
+        })
+    })
+}
+
+#[cfg(test)]
+pub(crate) fn request_allows_tool(
+    state: &AgentState,
+    request_id: &str,
+    project_id: &str,
+    tool_name: &str,
+) -> bool {
+    request_tool_generation(state, request_id, project_id, tool_name).is_some()
+}
+
+pub(crate) fn request_tool_generation(
+    state: &AgentState,
+    request_id: &str,
+    project_id: &str,
+    tool_name: &str,
+) -> Option<u64> {
+    let generation = lock_or_recover(&state.requests)
+        .active
+        .get(request_id)
+        .map(|request| request.generation);
+    generation.filter(|generation| {
+        let owns_project = lock_or_recover(&state.run_projects)
+            .get(request_id)
+            .is_some_and(|project| {
+                project.generation == *generation && project.value.as_deref() == Some(project_id)
+            });
+        owns_project
+            && lock_or_recover(&state.run_tools)
+                .get(request_id)
+                .is_some_and(|tools| {
+                    tools.generation == *generation && tools.value.contains(tool_name)
+                })
+    })
+}
+
 #[cfg(test)]
 pub(crate) fn register_active_request_for_test(state: &AgentState, request_id: &str) -> u64 {
     begin_request(state, request_id)
@@ -113,11 +165,45 @@ pub(crate) fn register_active_request_for_test(state: &AgentState, request_id: &
 }
 
 #[cfg(test)]
+pub(crate) fn register_run_project_for_test(
+    state: &AgentState,
+    request_id: &str,
+    generation: u64,
+    project_id: &str,
+) {
+    lock_or_recover(&state.run_projects).insert(
+        request_id.to_string(),
+        RunResource {
+            generation,
+            value: Some(project_id.to_string()),
+        },
+    );
+}
+
+#[cfg(test)]
+pub(crate) fn register_run_tools_for_test(
+    state: &AgentState,
+    request_id: &str,
+    generation: u64,
+    tools: impl IntoIterator<Item = String>,
+) {
+    lock_or_recover(&state.run_tools).insert(
+        request_id.to_string(),
+        RunResource {
+            generation,
+            value: tools.into_iter().collect(),
+        },
+    );
+}
+
+#[cfg(test)]
 pub(crate) fn finish_active_request_for_test(
     state: &AgentState,
     request_id: &str,
     generation: u64,
 ) {
+    remove_run_resource(&state.run_projects, request_id, generation);
+    remove_run_resource(&state.run_tools, request_id, generation);
     finish_request(state, request_id, generation);
 }
 
@@ -212,6 +298,8 @@ pub fn agent_cancel_all(
         token.cancel();
     }
     lock_or_recover(&state.steer_senders).clear();
+    lock_or_recover(&state.run_projects).clear();
+    lock_or_recover(&state.run_tools).clear();
     let managers: Vec<_> = lock_or_recover(&state.subagent_managers)
         .drain()
         .map(|(_, manager)| manager.value)
@@ -243,6 +331,14 @@ fn cancel_run(state: &AgentState, request_id: &str) {
         token.cancel();
     }
     lock_or_recover(&state.steer_senders).remove(request_id);
+    if let Some(generation) = lock_or_recover(&state.requests)
+        .active
+        .get(request_id)
+        .map(|request| request.generation)
+    {
+        remove_run_resource(&state.run_projects, request_id, generation);
+        remove_run_resource(&state.run_tools, request_id, generation);
+    }
     if let Some(manager) = lock_or_recover(&state.subagent_managers).remove(request_id) {
         manager.value.interrupt_all();
     }
@@ -267,6 +363,7 @@ fn remove_run_resource<T>(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn register_run_resources(
     state: &AgentState,
     request_id: &str,
@@ -274,6 +371,8 @@ fn register_run_resources(
     steer: oleafly_agent::SteerHandle,
     token: oleafly_agent::CancellationToken,
     manager: std::sync::Arc<SubagentManager>,
+    project: Option<String>,
+    tools: HashSet<String>,
 ) {
     lock_or_recover(&state.steer_senders).insert(
         request_id.to_string(),
@@ -300,6 +399,20 @@ fn register_run_resources(
     ) {
         previous.value.interrupt_all();
     }
+    lock_or_recover(&state.run_projects).insert(
+        request_id.to_string(),
+        RunResource {
+            generation,
+            value: project,
+        },
+    );
+    lock_or_recover(&state.run_tools).insert(
+        request_id.to_string(),
+        RunResource {
+            generation,
+            value: tools,
+        },
+    );
 }
 
 struct RunResourcesGuard<'a> {
@@ -326,6 +439,8 @@ impl Drop for RunResourcesGuard<'_> {
             token.cancel();
         }
         remove_run_resource(&self.state.steer_senders, self.request_id, self.generation);
+        remove_run_resource(&self.state.run_projects, self.request_id, self.generation);
+        remove_run_resource(&self.state.run_tools, self.request_id, self.generation);
         if let Some(manager) = remove_run_resource(
             &self.state.subagent_managers,
             self.request_id,
@@ -485,6 +600,8 @@ pub async fn agent_run(
         let resolved = resolve_off_thread(provider_override).await?;
         let client = agent_state.client()?;
         let sink = on_event.clone();
+        let allowed_tools: std::collections::HashSet<_> =
+            request.tools.iter().map(|tool| tool.name.clone()).collect();
         let base_tool = composite_tool_runner(
             app,
             run_id,
@@ -499,6 +616,7 @@ pub async fn agent_run(
             base_tool.clone(),
             approval_classifier(pinned_project.clone()),
         );
+        let classified_tool = allowlisted_tool_runner(allowed_tools.clone(), classified_tool);
         let pipeline = tool_pipeline();
         // Sub-agents: threads in this run, managed by the tool dispatcher.
         let multi_agent = crate::agent_config::MultiAgentConfig::load(
@@ -526,6 +644,7 @@ pub async fn agent_run(
             subagent_manager,
             classified_tool.clone(),
         );
+        let run_tool = allowlisted_tool_runner(allowed_tools.clone(), run_tool);
         // Steer channel + token registration: the shell can inject input or
         // interrupt (cascading to subagents through the shared token) while
         // the run is in flight.
@@ -537,6 +656,8 @@ pub async fn agent_run(
             steer_handle,
             pipeline.token.clone(),
             subagent_manager_for_registry,
+            pinned_project.clone(),
+            allowed_tools,
         );
         let _run_resources = RunResourcesGuard::new(agent_state, &run_registration_id, generation);
 
@@ -848,6 +969,23 @@ async fn await_tool_result(
 
 fn tool_error(message: &str) -> ToolOutput {
     ToolOutput::text(serde_json::json!({ "error": message }).to_string())
+}
+
+fn allowlisted_tool_runner(
+    allowed: std::collections::HashSet<String>,
+    inner: oleafly_agent::ToolRunner,
+) -> oleafly_agent::ToolRunner {
+    let allowed = std::sync::Arc::new(allowed);
+    std::sync::Arc::new(move |call| {
+        let allowed = allowed.clone();
+        let inner = inner.clone();
+        Box::pin(async move {
+            if !allowed.contains(&call.name) {
+                return tool_error(&format!("Unknown tool: {}", call.name));
+            }
+            inner(call).await
+        })
+    })
 }
 
 /// Persists an interrupted turn when a run's future is dropped by a cancel:

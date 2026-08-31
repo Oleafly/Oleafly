@@ -12,6 +12,7 @@ interface HarnessOptions {
   tools: ToolSet;
   onRequestId?: (requestId: string) => void;
   onRawEvent?: (event: AgentEvent) => void;
+  takePendingImages: () => string[];
   handlers: {
     onText: (text: string) => void;
     onToolCall: (call: { id: string; name: string; args: unknown }) => void | Promise<void>;
@@ -53,6 +54,10 @@ const mocks = vi.hoisted(() => ({
   buildWorkspaceContext: vi.fn(),
   retrieveProjectChunks: vi.fn(),
   readFileContent: vi.fn(),
+  mcpAgentToolsList: vi.fn(),
+  mcpAgentToolAuthorize: vi.fn(),
+  mcpAgentToolCall: vi.fn(),
+  toastError: vi.fn(),
   createSkill: vi.fn(),
   refetchSkills: vi.fn(),
   skillEntries: [] as Array<Record<string, unknown>>,
@@ -107,10 +112,20 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   gitStatus: (...args: unknown[]) => mocks.gitStatus(...args),
   usageRecord: (...args: unknown[]) => mocks.usageRecord(...args),
   readFileContent: (...args: unknown[]) => mocks.readFileContent(...args),
+  mcpAgentToolsList: (...args: unknown[]) => mocks.mcpAgentToolsList(...args),
+  mcpAgentToolAuthorize: (...args: unknown[]) => mocks.mcpAgentToolAuthorize(...args),
+  mcpAgentToolCall: (...args: unknown[]) => mocks.mcpAgentToolCall(...args),
 }));
 
 vi.mock("@/lib/ai-budget", () => ({
   checkProjectBudget: (...args: unknown[]) => mocks.checkProjectBudget(...args),
+}));
+
+vi.mock("@/lib/toast", () => ({
+  toast: {
+    error: (...args: unknown[]) => mocks.toastError(...args),
+    success: vi.fn(),
+  },
 }));
 
 vi.mock("@/lib/ai-context", () => ({
@@ -277,6 +292,7 @@ let agentFileChangeTurnForChat: typeof import("@/store/agent-file-changes").agen
 let useAssistantOutputsStore: typeof import("@/store/assistant-outputs").useAssistantOutputsStore;
 let usePlanModeStore: typeof import("@/store/plan-mode").usePlanModeStore;
 let useChatGoalStore: typeof import("@/store/chat-goal").useChatGoalStore;
+let useAiToolSettingsStore: typeof import("@/store/ai-tool-settings").useAiToolSettingsStore;
 let autoCommitNow: typeof import("@/lib/auto-commit").autoCommitNow;
 let activeChatRun: typeof import("./chat-run-registry").activeChatRun;
 let endChatRun: typeof import("./chat-run-registry").endChatRun;
@@ -300,6 +316,8 @@ beforeAll(async () => {
     document: { configurable: true, value: dom.window.document },
     navigator: { configurable: true, value: dom.window.navigator },
     HTMLElement: { configurable: true, value: dom.window.HTMLElement },
+    HTMLButtonElement: { configurable: true, value: dom.window.HTMLButtonElement },
+    HTMLFormElement: { configurable: true, value: dom.window.HTMLFormElement },
     HTMLInputElement: { configurable: true, value: dom.window.HTMLInputElement },
     HTMLTextAreaElement: { configurable: true, value: dom.window.HTMLTextAreaElement },
     Element: { configurable: true, value: dom.window.Element },
@@ -352,6 +370,7 @@ beforeAll(async () => {
   ({ useAssistantOutputsStore } = await import("@/store/assistant-outputs"));
   ({ usePlanModeStore } = await import("@/store/plan-mode"));
   ({ useChatGoalStore } = await import("@/store/chat-goal"));
+  ({ useAiToolSettingsStore } = await import("@/store/ai-tool-settings"));
   ({ autoCommitNow } = await import("@/lib/auto-commit"));
   ({ activeChatRun, endChatRun } = await import("./chat-run-registry"));
 });
@@ -395,6 +414,27 @@ beforeEach(() => {
   mocks.buildWorkspaceContext.mockReset().mockResolvedValue("");
   mocks.retrieveProjectChunks.mockReset().mockResolvedValue([]);
   mocks.readFileContent.mockReset().mockResolvedValue("");
+  mocks.mcpAgentToolsList.mockReset().mockResolvedValue([
+    {
+      name: "Papers",
+      tools: [
+        {
+          name: "mcp__papers__search_papers",
+          tool_handle: "search_papers",
+          description: "Search the connected papers server.",
+          input_schema: {
+            type: "object",
+            properties: { query: { type: "string" } },
+          },
+        },
+      ],
+    },
+  ]);
+  mocks.mcpAgentToolAuthorize.mockReset().mockResolvedValue("approval-1");
+  mocks.mcpAgentToolCall.mockReset().mockResolvedValue({
+    content: [{ type: "text", text: "No papers found" }],
+  });
+  mocks.toastError.mockReset();
   mocks.createSkill.mockReset().mockResolvedValue({
     id: "recorded-review",
     name: "Recorded Review",
@@ -459,6 +499,7 @@ beforeEach(() => {
   useAssistantOutputsStore.setState({ fileOpen: null, pdfEpoch: 0 });
   usePlanModeStore.setState({ enabledByProject: {}, loaded: {} });
   useChatGoalStore.setState({ goalsByProject: {}, loaded: {} });
+  useAiToolSettingsStore.setState({ enabledByName: {} });
 });
 
 function finishRun(index: number, text: string) {
@@ -589,6 +630,21 @@ function seedCompletedChat() {
 }
 
 describe("ChatCore agent turns", () => {
+  it("shows the current project and configured MCP tools in the header", async () => {
+    const rendered = await renderChat();
+
+    fireEvent.click(rendered.getByRole("button", { name: "Manage agent tools" }));
+
+    await waitFor(() =>
+      expect(rendered.getByRole("heading", { name: "Project tools" })).toBeTruthy(),
+    );
+    expect(rendered.getByRole("heading", { name: "MCP Papers" })).toBeTruthy();
+    expect(rendered.getByRole("switch", { name: "Enable write_file" })).toBeChecked();
+    expect(
+      rendered.getByRole("switch", { name: "Enable mcp__papers__search_papers" }),
+    ).toBeChecked();
+  });
+
   it("keeps the composer footer on one line with progressively collapsible controls", async () => {
     const rendered = await renderChat();
     const controls = rendered.getByTestId("ai-composer-controls");
@@ -1236,6 +1292,209 @@ describe("ChatCore agent turns", () => {
     await act(async () => finishRun(0, "Ready"));
   });
 
+  it("excludes disabled project and MCP tools from the model schemas and prompt inventory", async () => {
+    useAiToolSettingsStore.setState({
+      enabledByName: {
+        write_file: false,
+        mcp__papers__search_papers: false,
+      },
+    });
+    const rendered = await renderChat();
+
+    submit(rendered, "Check enabled tools");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.runs[0].options.tools).not.toHaveProperty("write_file");
+    expect(mocks.runs[0].options.tools).not.toHaveProperty(
+      "mcp__papers__search_papers",
+    );
+    expect(mocks.runs[0].options.tools).toHaveProperty("run_command");
+    const inventoryLine = mocks.runs[0].options.system
+      .split("\n")
+      .find((line) => line.startsWith("Available tools for this run"));
+    expect(inventoryLine).not.toContain("write_file");
+    expect(inventoryLine).not.toContain("mcp__papers__search_papers");
+    expect(inventoryLine).toContain("run_command");
+
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("uses the refreshed MCP catalog for the run being sent", async () => {
+    const rendered = await renderChat();
+    await waitFor(() =>
+      expect(chatQueryClient.getQueryData(["mcp-agent-tools"])).toBeDefined(),
+    );
+    mocks.mcpAgentToolsList.mockResolvedValue([
+      {
+        name: "Papers",
+        tools: [
+          {
+            name: "mcp__papers__find_current",
+            tool_handle: "find_current",
+            description: "Search the current papers catalog.",
+            input_schema: { type: "object" },
+          },
+        ],
+      },
+    ]);
+
+    submit(rendered, "Use the current catalog");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.runs[0].options.tools).toHaveProperty("mcp__papers__find_current");
+    expect(mocks.runs[0].options.tools).not.toHaveProperty(
+      "mcp__papers__search_papers",
+    );
+    expect(mocks.runs[0].options.system).toContain("mcp__papers__find_current");
+    expect(mocks.runs[0].options.system).not.toContain(
+      "mcp__papers__search_papers",
+    );
+
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("keeps project B tool images when project A settles late", async () => {
+    mocks.approvalsModeGet.mockResolvedValue("full-access");
+    const rendered = await renderChat();
+    submit(rendered, "Start project A");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    const secondProject = `${useFilesStore.getState().projectId}-second`;
+    act(() => {
+      useFilesStore.setState({
+        projectId: secondProject,
+        projectName: "Second project",
+      });
+      useChatsStore.setState({
+        projectId: secondProject,
+        chats: [
+          {
+            id: "chat-2",
+            projectId: secondProject,
+            title: "New chat",
+            createdAt: 2,
+            updatedAt: 2,
+            messages: [],
+            headOid: null,
+          },
+        ],
+        activeId: "chat-2",
+        live: {},
+      });
+    });
+
+    submit(rendered, "Start project B");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    mocks.mcpAgentToolCall.mockResolvedValueOnce({
+      content: [
+        { type: "text", text: "Chart ready" },
+        { type: "image", mimeType: "image/png", data: "UFJPSkVDVC1C" },
+      ],
+    });
+    await mocks.runs[1].options.tools.mcp__papers__search_papers.execute?.({
+      query: "project B chart",
+    });
+    expect(mocks.mcpAgentToolAuthorize).toHaveBeenCalledWith(
+      secondProject,
+      "Papers",
+      "search_papers",
+      { query: "project B chart" },
+      "request-2",
+    );
+    expect(mocks.mcpAgentToolCall).toHaveBeenCalledWith(
+      secondProject,
+      "Papers",
+      "search_papers",
+      { query: "project B chart" },
+      "request-2",
+      "approval-1",
+    );
+
+    await act(async () => finishRun(0, "Late project A response"));
+    expect(mocks.runs[1].options.takePendingImages()).toEqual([
+      "data:image/png;base64,UFJPSkVDVC1C",
+    ]);
+
+    await act(async () => finishRun(1, "Project B response"));
+  });
+
+  it("blocks a send when enabled tools exceed the agent schema limit", async () => {
+    const rendered = await renderChat();
+    await waitFor(() =>
+      expect(chatQueryClient.getQueryData(["mcp-agent-tools"])).toBeDefined(),
+    );
+    mocks.mcpAgentToolsList.mockResolvedValue([
+      {
+        name: "Large catalog",
+        tools: Array.from({ length: 126 }, (_, index) => ({
+          name: `mcp__large__tool_${index}`,
+          tool_handle: `tool_${index}`,
+          description: `Tool ${index}`,
+          input_schema: { type: "object" },
+        })),
+      },
+    ]);
+
+    submit(rendered, "Do not silently truncate tools");
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "129 tools are enabled, but a run supports up to 128. Disable at least 1 in Tools and try again.",
+      ),
+    );
+    expect(mocks.runs).toHaveLength(0);
+    expect(activeChatRun()).toBeNull();
+    expect(rendered.getByPlaceholderText("Ask AI to help with your document…")).toHaveValue(
+      "Do not silently truncate tools",
+    );
+  });
+
+  it("uses an explicit empty inventory when every available tool is disabled", async () => {
+    useAiToolSettingsStore.setState({
+      enabledByName: {
+        write_file: false,
+        run_command: false,
+        literature_search: false,
+        mcp__papers__search_papers: false,
+      },
+    });
+    const rendered = await renderChat();
+
+    submit(rendered, "Answer without tools");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.runs[0].options.tools).toEqual({});
+    expect(mocks.runs[0].options.system).toContain(
+      "Available tools for this run: none.",
+    );
+
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("does not advertise enabled skills when load_skill is disabled", async () => {
+    mocks.skillEntries.push({
+      id: "proof-review",
+      name: "Proof Review",
+      description: "Review a proof carefully.",
+      instructions: "Check every inference.",
+      source: "user",
+      enabled: true,
+      removable: true,
+      validation: { status: "valid" },
+    });
+    useAiToolSettingsStore.setState({ enabledByName: { load_skill: false } });
+    const rendered = await renderChat();
+
+    submit(rendered, "Review this proof");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.runs[0].options.tools).not.toHaveProperty("load_skill");
+    expect(mocks.runs[0].options.system).not.toContain("<enabled_skills>");
+    expect(mocks.runs[0].options.system).not.toContain("load_skill");
+
+    await act(async () => finishRun(0, "Ready"));
+  });
+
   it("injects enabled OpenResearch metadata and loads its full instructions on demand", async () => {
     mocks.skillEntries.push(
       {
@@ -1329,7 +1588,7 @@ describe("ChatCore agent turns", () => {
 
     submit(rendered, "First immediate request");
     submit(rendered, "Second immediate request");
-    await waitFor(() => expect(mocks.refetchSkills).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mocks.refetchSkills).toHaveBeenCalledTimes(1));
     await act(async () => pending.resolve({ data: [], error: null }));
 
     await waitFor(() =>

@@ -32,6 +32,7 @@ import type {
   InitialState,
   LibraryStorageSummary,
   McpConnectionInfo,
+  McpAgentServer,
   McpManagedServer,
   McpServerConfig,
   McpServerValidation,
@@ -609,6 +610,38 @@ export const mcpServerSetEnabled = (name: string, enabled: boolean) =>
   invoke<McpManagedServer>("mcp_server_set_enabled", { name, enabled });
 export const mcpServerValidate = (name: string) =>
   invoke<McpServerValidation>("mcp_server_validate", { name });
+export const mcpAgentToolsList = () =>
+  invoke<McpAgentServer[]>("mcp_agent_tools_list");
+export const mcpAgentToolAuthorize = (
+  projectId: string,
+  server: string,
+  toolHandle: string,
+  argumentsValue: Record<string, unknown>,
+  runId: string,
+) =>
+  invoke<string>("mcp_agent_tool_authorize", {
+    projectId,
+    server,
+    toolHandle,
+    arguments: argumentsValue,
+    runId,
+  });
+export const mcpAgentToolCall = (
+  projectId: string,
+  server: string,
+  toolHandle: string,
+  argumentsValue: Record<string, unknown>,
+  runId: string,
+  approvalToken: string,
+) =>
+  invoke<unknown>("mcp_agent_tool_call", {
+    projectId,
+    server,
+    toolHandle,
+    arguments: argumentsValue,
+    runId,
+    approvalToken,
+  });
 let activeMcpRendererSession: number | null = null;
 let mcpRendererBeginSequence = 0;
 export const mcpBeginRendererSession = async () => {

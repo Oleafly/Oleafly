@@ -11,6 +11,7 @@ interface PopoverProps {
   className?: string;
   triggerClassName?: string;
   ariaLabel?: string;
+  contentAriaLabel?: string;
   closeOnClick?: boolean;
   onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
@@ -23,6 +24,7 @@ export function Popover({
   className,
   triggerClassName,
   ariaLabel,
+  contentAriaLabel,
   closeOnClick = true,
   onOpenChange: onOpenChangeProp,
   disabled = false,
@@ -96,6 +98,7 @@ export function Popover({
         <PopoverPrimitive.Portal>
           <PopoverPrimitive.Content
             ref={contentRef}
+            aria-label={contentAriaLabel}
             align={align === "right" ? "end" : "start"}
             sideOffset={4}
             collisionPadding={12}

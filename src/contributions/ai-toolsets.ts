@@ -10,6 +10,7 @@ export function registerAiToolsets() {
   registerAiToolset({
     id: "project-tools",
     mode: "chat",
+    source: { kind: "project" },
     create: (opts: {
       confirm?: ConfirmFn;
       onImage?: (dataUrl: string) => void;
@@ -20,12 +21,14 @@ export function registerAiToolsets() {
   registerAiToolset({
     id: "figure-tools",
     mode: "figure",
+    source: { kind: "figure" },
     create: (opts: { confirm?: ConfirmFn; onImage?: (dataUrl: string) => void }) =>
       createFigureTools(opts),
   });
   registerAiToolset({
     id: "research-tools",
     mode: "chat",
+    source: { kind: "project" },
     create: (opts: { confirm?: ConfirmFn }) => createResearchAiTools(opts),
   });
 }

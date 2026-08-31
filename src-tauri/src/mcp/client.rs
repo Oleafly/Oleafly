@@ -1,10 +1,12 @@
 use crate::config::{AppConfig, McpServerConfig, McpServerTransport};
 use futures_util::StreamExt;
 use serde::Serialize;
+use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
 use std::process::Stdio;
 use std::time::Duration;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 
 const MAX_SERVER_NAME_BYTES: usize = 64;
@@ -18,10 +20,17 @@ const MAX_VALUE_BYTES: usize = 65_536;
 const MAX_URL_BYTES: usize = 8_192;
 const MAX_TOOL_PAGES: usize = 32;
 const MAX_TOOLS: usize = 2_048;
+const MAX_AGENT_TOOL_ARGUMENT_BYTES: usize = 1024 * 1024;
 const MAX_STDIO_MESSAGE_BYTES: usize = 2 * 1024 * 1024;
 const MAX_REMOTE_RESPONSE_BYTES: usize = 2 * 1024 * 1024;
 const MAX_STDERR_BYTES: usize = 64 * 1024;
 const VALIDATION_TIMEOUT: Duration = Duration::from_secs(10);
+const AGENT_TOOL_TIMEOUT: Duration = Duration::from_secs(15);
+const AGENT_TOOL_CALL_ID: u64 = 65_535;
+const MODERN_STDIO_PROBE_TIMEOUT: Duration = Duration::from_secs(3);
+const AGENT_APPROVAL_TTL: Duration = Duration::from_secs(30);
+const MAX_AGENT_APPROVALS: usize = 256;
+const MAX_SAFE_JAVASCRIPT_INTEGER: u64 = 9_007_199_254_740_991;
 const MODERN_PROTOCOL_VERSION: &str = "2026-07-28";
 const LEGACY_PROTOCOL_VERSIONS: &[&str] = &["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const INHERITED_ENVIRONMENT: &[&str] = &[
@@ -69,6 +78,7 @@ enum McpConnectionError {
     },
     ConnectionRefused,
     Timeout,
+    ToolTimeout,
     Remote {
         detail: String,
     },
@@ -97,6 +107,7 @@ impl std::fmt::Display for McpConnectionError {
             Self::ConnectionRefused => formatter
                 .write_str("Could not connect to the remote MCP server: connection refused."),
             Self::Timeout => formatter.write_str("MCP validation timed out after 10 seconds."),
+            Self::ToolTimeout => formatter.write_str("MCP tool call timed out after 15 seconds."),
             Self::Remote { detail } => {
                 write!(
                     formatter,
@@ -125,6 +136,20 @@ trait McpClientTransport {
 
     fn set_protocol_version(&mut self, _version: Option<&str>) -> Result<(), McpConnectionError> {
         Ok(())
+    }
+
+    fn uses_modern_http_headers(&self) -> bool {
+        false
+    }
+
+    fn send_with_headers<'a>(
+        &'a mut self,
+        message: serde_json::Value,
+        _headers: std::collections::BTreeMap<String, String>,
+    ) -> Pin<
+        Box<dyn Future<Output = Result<Option<serde_json::Value>, McpConnectionError>> + Send + 'a>,
+    > {
+        self.send(message)
     }
 }
 
@@ -347,12 +372,39 @@ struct RemoteTransport {
     headers: reqwest::header::HeaderMap,
     session_id: Option<reqwest::header::HeaderValue>,
     protocol_version: Option<reqwest::header::HeaderValue>,
+    timeout_error: McpConnectionError,
 }
 
 impl RemoteTransport {
     fn new(
         url: &str,
         headers: &std::collections::BTreeMap<String, String>,
+    ) -> Result<Self, McpConnectionError> {
+        Self::new_with_timeout(
+            url,
+            headers,
+            VALIDATION_TIMEOUT,
+            McpConnectionError::Timeout,
+        )
+    }
+
+    fn new_for_tool_call(
+        url: &str,
+        headers: &std::collections::BTreeMap<String, String>,
+    ) -> Result<Self, McpConnectionError> {
+        Self::new_with_timeout(
+            url,
+            headers,
+            AGENT_TOOL_TIMEOUT,
+            McpConnectionError::ToolTimeout,
+        )
+    }
+
+    fn new_with_timeout(
+        url: &str,
+        headers: &std::collections::BTreeMap<String, String>,
+        timeout: Duration,
+        timeout_error: McpConnectionError,
     ) -> Result<Self, McpConnectionError> {
         let url =
             reqwest::Url::parse(url).map_err(|_| protocol_error("remote server URL is invalid"))?;
@@ -367,7 +419,7 @@ impl RemoteTransport {
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .connect_timeout(Duration::from_secs(5))
-            .timeout(VALIDATION_TIMEOUT)
+            .timeout(timeout)
             .build()
             .map_err(|_| protocol_error("remote HTTP client could not be created"))?;
         Ok(Self {
@@ -376,12 +428,14 @@ impl RemoteTransport {
             headers: request_headers,
             session_id: None,
             protocol_version: None,
+            timeout_error,
         })
     }
 
     async fn send_request(
         &mut self,
         message: serde_json::Value,
+        additional_headers: std::collections::BTreeMap<String, String>,
     ) -> Result<Option<serde_json::Value>, McpConnectionError> {
         let expected_id = message.get("id").and_then(serde_json::Value::as_u64);
         let method = message
@@ -413,12 +467,25 @@ impl RemoteTransport {
         }
         if modern {
             request = request.header("Mcp-Method", method.clone());
+            if let Some(name) = modern_request_name(&message, &method)? {
+                request = request.header("Mcp-Name", encode_modern_header_value(name)?);
+            }
+            for (name, value) in additional_headers {
+                if !name.to_ascii_lowercase().starts_with("mcp-param-") {
+                    return Err(protocol_error("an internal MCP request header was invalid"));
+                }
+                let name = reqwest::header::HeaderName::from_bytes(name.as_bytes())
+                    .map_err(|_| protocol_error("an MCP parameter header name was invalid"))?;
+                let value = reqwest::header::HeaderValue::from_str(&value)
+                    .map_err(|_| protocol_error("an MCP parameter header value was invalid"))?;
+                request = request.header(name, value);
+            }
         }
         let response = request
             .json(&message)
             .send()
             .await
-            .map_err(classify_remote_error)?;
+            .map_err(|error| classify_remote_error(error, &self.timeout_error))?;
         let status = response.status();
         if response.status().is_redirection() {
             return Err(McpConnectionError::Remote {
@@ -430,7 +497,8 @@ impl RemoteTransport {
             let mut body = Vec::new();
             let mut stream = response.bytes_stream();
             while let Some(chunk) = stream.next().await {
-                let chunk = chunk.map_err(classify_remote_error)?;
+                let chunk =
+                    chunk.map_err(|error| classify_remote_error(error, &self.timeout_error))?;
                 if body.len().saturating_add(chunk.len()) > MAX_REMOTE_RESPONSE_BYTES {
                     return Err(protocol_error("server response exceeded the 2 MiB limit"));
                 }
@@ -472,7 +540,7 @@ impl RemoteTransport {
         let mut received = 0_usize;
         let mut stream = response.bytes_stream();
         while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(classify_remote_error)?;
+            let chunk = chunk.map_err(|error| classify_remote_error(error, &self.timeout_error))?;
             received = received.saturating_add(chunk.len());
             if received > MAX_REMOTE_RESPONSE_BYTES {
                 return Err(protocol_error("server response exceeded the 2 MiB limit"));
@@ -534,7 +602,7 @@ impl McpClientTransport for RemoteTransport {
     ) -> Pin<
         Box<dyn Future<Output = Result<Option<serde_json::Value>, McpConnectionError>> + Send + 'a>,
     > {
-        Box::pin(self.send_request(message))
+        Box::pin(self.send_request(message, std::collections::BTreeMap::new()))
     }
 
     fn set_protocol_version(&mut self, version: Option<&str>) -> Result<(), McpConnectionError> {
@@ -547,11 +615,28 @@ impl McpClientTransport for RemoteTransport {
         }
         Ok(())
     }
+
+    fn uses_modern_http_headers(&self) -> bool {
+        true
+    }
+
+    fn send_with_headers<'a>(
+        &'a mut self,
+        message: serde_json::Value,
+        headers: std::collections::BTreeMap<String, String>,
+    ) -> Pin<
+        Box<dyn Future<Output = Result<Option<serde_json::Value>, McpConnectionError>> + Send + 'a>,
+    > {
+        Box::pin(self.send_request(message, headers))
+    }
 }
 
-fn classify_remote_error(error: reqwest::Error) -> McpConnectionError {
+fn classify_remote_error(
+    error: reqwest::Error,
+    timeout_error: &McpConnectionError,
+) -> McpConnectionError {
     if error.is_timeout() {
-        return McpConnectionError::Timeout;
+        return timeout_error.clone();
     }
     if error_chain_contains_connection_refused(&error) {
         return McpConnectionError::ConnectionRefused;
@@ -586,6 +671,55 @@ fn error_chain_contains_connection_refused(error: &(dyn std::error::Error + 'sta
 pub struct McpServerTool {
     pub name: String,
     pub description: Option<String>,
+    #[serde(skip_serializing)]
+    pub input_schema: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct McpAgentTool {
+    pub name: String,
+    pub tool_handle: String,
+    pub description: Option<String>,
+    pub input_schema: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct McpAgentServer {
+    pub name: String,
+    pub tools: Vec<McpAgentTool>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct McpAgentApprovalPolicy {
+    mode: crate::approvals::ApprovalMode,
+    decision: Option<crate::approvals::ToolDecision>,
+}
+
+struct McpAgentApproval {
+    project_id: String,
+    server: McpServerConfig,
+    tool_handle: String,
+    argument_digest: [u8; 32],
+    run_id: String,
+    run_generation: u64,
+    policy: McpAgentApprovalPolicy,
+    expires_at: std::time::Instant,
+}
+
+#[derive(Default)]
+struct McpAgentApprovalRegistry {
+    approvals: HashMap<String, McpAgentApproval>,
+    order: VecDeque<String>,
+}
+
+struct McpAgentApprovalBinding<'a> {
+    project_id: &'a str,
+    server: &'a McpServerConfig,
+    tool_handle: &'a str,
+    argument_digest: [u8; 32],
+    run_id: &'a str,
+    run_generation: u64,
+    policy: McpAgentApprovalPolicy,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -679,6 +813,7 @@ fn redact_server_tool_metadata(
                 .map(|_| McpServerTool {
                     name: "[tool metadata hidden]".into(),
                     description: None,
+                    input_schema: serde_json::json!({"type": "object"}),
                 })
                 .collect();
         }
@@ -690,6 +825,7 @@ fn redact_server_tool_metadata(
             description: tool
                 .description
                 .map(|description| redact_with_matcher(&description, matcher.as_ref())),
+            input_schema: tool.input_schema,
         })
         .collect()
 }
@@ -712,9 +848,9 @@ fn server_value_matcher(server: &McpServerConfig) -> Result<Option<aho_corasick:
         .map_err(|_| ())
 }
 
-fn redact_with_matcher(message: &str, matcher: Option<&aho_corasick::AhoCorasick>) -> String {
+fn replace_server_values(message: &str, matcher: Option<&aho_corasick::AhoCorasick>) -> String {
     let Some(matcher) = matcher else {
-        return bounded_message(message);
+        return message.to_string();
     };
     let mut redacted = String::with_capacity(message.len());
     let mut copied = 0;
@@ -724,7 +860,141 @@ fn redact_with_matcher(message: &str, matcher: Option<&aho_corasick::AhoCorasick
         copied = matched.end();
     }
     redacted.push_str(&message[copied..]);
-    bounded_message(&redacted)
+    redacted
+}
+
+fn redact_with_matcher(message: &str, matcher: Option<&aho_corasick::AhoCorasick>) -> String {
+    bounded_message(&replace_server_values(message, matcher))
+}
+
+fn redact_json_value(
+    value: serde_json::Value,
+    matcher: Option<&aho_corasick::AhoCorasick>,
+) -> serde_json::Value {
+    match value {
+        serde_json::Value::String(value) => {
+            serde_json::Value::String(replace_server_values(&value, matcher))
+        }
+        serde_json::Value::Array(values) => serde_json::Value::Array(
+            values
+                .into_iter()
+                .map(|value| redact_json_value(value, matcher))
+                .collect(),
+        ),
+        serde_json::Value::Object(values) => serde_json::Value::Object(
+            values
+                .into_iter()
+                .map(|(key, value)| {
+                    (
+                        replace_server_values(&key, matcher),
+                        redact_json_value(value, matcher),
+                    )
+                })
+                .collect(),
+        ),
+        value => value,
+    }
+}
+
+fn strip_mcp_transport_schema_extensions(value: serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Array(values) => serde_json::Value::Array(
+            values
+                .into_iter()
+                .map(strip_mcp_transport_schema_extensions)
+                .collect(),
+        ),
+        serde_json::Value::Object(values) => serde_json::Value::Object(
+            values
+                .into_iter()
+                .filter(|(key, _)| key != "x-mcp-header")
+                .map(|(key, value)| (key, strip_mcp_transport_schema_extensions(value)))
+                .collect(),
+        ),
+        value => value,
+    }
+}
+
+fn agent_identifier_part(value: &str, fallback: &str, max_len: usize) -> String {
+    let mut output = String::with_capacity(max_len);
+    let mut separator = false;
+    for byte in value.bytes() {
+        if output.len() == max_len {
+            break;
+        }
+        if byte.is_ascii_alphanumeric() {
+            output.push(char::from(byte.to_ascii_lowercase()));
+            separator = false;
+        } else if !output.is_empty() && !separator {
+            output.push('_');
+            separator = true;
+        }
+    }
+    while output.ends_with('_') {
+        output.pop();
+    }
+    if output.is_empty() {
+        fallback.to_string()
+    } else {
+        output
+    }
+}
+
+fn agent_tool_name(server: &str, tool: &str) -> String {
+    use sha2::Digest as _;
+
+    let server_part = agent_identifier_part(server, "server", 16);
+    let tool_part = agent_identifier_part(tool, "tool", 24);
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(server.as_bytes());
+    hasher.update([0]);
+    hasher.update(tool.as_bytes());
+    let digest = hasher.finalize();
+    let suffix = digest[..6]
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    format!("mcp_ext_{server_part}_{tool_part}_{suffix}")
+}
+
+fn build_agent_tool_catalog(
+    mut discovered: Vec<(McpServerConfig, Vec<McpServerTool>)>,
+) -> Vec<McpAgentServer> {
+    discovered.sort_by(|(left, _), (right, _)| left.name.cmp(&right.name));
+    let mut servers = Vec::new();
+    for (server, mut tools) in discovered {
+        let Ok(matcher) = server_value_matcher(&server) else {
+            continue;
+        };
+        tools.sort_by(|left, right| left.name.cmp(&right.name));
+        tools.dedup_by(|left, right| left.name == right.name);
+        let tools = tools
+            .into_iter()
+            .filter(|tool| {
+                matcher
+                    .as_ref()
+                    .map_or(true, |matcher| !matcher.is_match(&tool.name))
+            })
+            .map(|tool| McpAgentTool {
+                name: agent_tool_name(&server.name, &tool.name),
+                tool_handle: tool.name,
+                description: tool
+                    .description
+                    .map(|description| redact_with_matcher(&description, matcher.as_ref())),
+                input_schema: strip_mcp_transport_schema_extensions(redact_json_value(
+                    tool.input_schema,
+                    matcher.as_ref(),
+                )),
+            })
+            .collect::<Vec<_>>();
+        if !tools.is_empty() {
+            servers.push(McpAgentServer {
+                name: server.name,
+                tools,
+            });
+        }
+    }
+    servers
 }
 
 fn connected_validation(validation: McpServerValidation) -> Result<McpServerValidation, String> {
@@ -868,7 +1138,8 @@ fn validate_headers(
     }
     for (key, value) in values {
         let normalized = key.to_ascii_lowercase();
-        if PROTECTED_HEADERS.contains(&normalized.as_str()) {
+        if PROTECTED_HEADERS.contains(&normalized.as_str()) || normalized.starts_with("mcp-param-")
+        {
             return Err(format!("Header '{key}' is managed by Oleafly."));
         }
         reqwest::header::HeaderName::from_bytes(key.as_bytes())
@@ -1104,22 +1375,171 @@ async fn connect_stdio_server(
     args: &[String],
     environment: &std::collections::BTreeMap<String, String>,
 ) -> Result<Vec<McpServerTool>, McpConnectionError> {
+    connect_stdio_server_with_probe_timeout(command, args, environment, MODERN_STDIO_PROBE_TIMEOUT)
+        .await
+}
+
+async fn connect_stdio_server_with_probe_timeout(
+    command: &str,
+    args: &[String],
+    environment: &std::collections::BTreeMap<String, String>,
+    probe_timeout: Duration,
+) -> Result<Vec<McpServerTool>, McpConnectionError> {
     let mut probe = StdioTransport::spawn(command, args, environment).await?;
-    let discovery = discover_server(&mut probe).await;
+    let discovery = tokio::time::timeout(probe_timeout, discover_server(&mut probe)).await;
     match discovery {
-        Ok(true) => {
+        Ok(Ok(true)) => {
             let result = list_tools(&mut probe, 2, true).await;
             probe.shutdown().await;
             result
         }
-        Err(error @ McpConnectionError::ModernProtocol { .. }) => {
+        Ok(Err(error @ McpConnectionError::ModernProtocol { .. })) => {
             probe.shutdown().await;
             Err(error)
         }
-        Ok(false) | Err(_) => {
+        Ok(Ok(false)) | Ok(Err(_)) | Err(_) => {
             probe.shutdown().await;
             let mut transport = StdioTransport::spawn(command, args, environment).await?;
             let result = connect_legacy_and_list_tools(&mut transport).await;
+            transport.shutdown().await;
+            result
+        }
+    }
+}
+
+#[cfg(test)]
+async fn connect_server_and_call<F>(
+    server: McpServerConfig,
+    tool_handle: &str,
+    arguments: serde_json::Value,
+    authorize: F,
+) -> Result<serde_json::Value, McpConnectionError>
+where
+    F: FnOnce() -> Result<(), McpConnectionError>,
+{
+    connect_server_and_call_until(
+        server,
+        tool_handle,
+        arguments,
+        authorize,
+        tokio::time::Instant::now() + AGENT_TOOL_TIMEOUT,
+    )
+    .await
+}
+
+async fn connect_server_and_call_until<F>(
+    server: McpServerConfig,
+    tool_handle: &str,
+    arguments: serde_json::Value,
+    authorize: F,
+    execution_deadline: tokio::time::Instant,
+) -> Result<serde_json::Value, McpConnectionError>
+where
+    F: FnOnce() -> Result<(), McpConnectionError>,
+{
+    match server.transport {
+        McpServerTransport::Stdio { command, args, env } => {
+            connect_stdio_server_and_call_until(
+                &command,
+                &args,
+                &env,
+                tool_handle,
+                arguments,
+                authorize,
+                MODERN_STDIO_PROBE_TIMEOUT,
+                execution_deadline,
+            )
+            .await
+        }
+        McpServerTransport::Remote { url, headers } => {
+            let mut transport = RemoteTransport::new_for_tool_call(&url, &headers)?;
+            let result = tokio::time::timeout_at(
+                execution_deadline,
+                connect_and_call_tool(&mut transport, tool_handle, arguments, authorize),
+            )
+            .await
+            .unwrap_or(Err(McpConnectionError::ToolTimeout));
+            transport.shutdown().await;
+            result
+        }
+    }
+}
+
+#[cfg(test)]
+async fn connect_stdio_server_and_call_with_probe_timeout<F>(
+    command: &str,
+    args: &[String],
+    environment: &std::collections::BTreeMap<String, String>,
+    tool_handle: &str,
+    arguments: serde_json::Value,
+    authorize: F,
+    probe_timeout: Duration,
+) -> Result<serde_json::Value, McpConnectionError>
+where
+    F: FnOnce() -> Result<(), McpConnectionError>,
+{
+    connect_stdio_server_and_call_until(
+        command,
+        args,
+        environment,
+        tool_handle,
+        arguments,
+        authorize,
+        probe_timeout,
+        tokio::time::Instant::now() + AGENT_TOOL_TIMEOUT,
+    )
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn connect_stdio_server_and_call_until<F>(
+    command: &str,
+    args: &[String],
+    environment: &std::collections::BTreeMap<String, String>,
+    tool_handle: &str,
+    arguments: serde_json::Value,
+    authorize: F,
+    probe_timeout: Duration,
+    execution_deadline: tokio::time::Instant,
+) -> Result<serde_json::Value, McpConnectionError>
+where
+    F: FnOnce() -> Result<(), McpConnectionError>,
+{
+    let mut probe = StdioTransport::spawn(command, args, environment).await?;
+    probe.set_protocol_version(Some(MODERN_PROTOCOL_VERSION))?;
+    let probe_deadline = std::cmp::min(
+        execution_deadline,
+        tokio::time::Instant::now() + probe_timeout,
+    );
+    let discovery = tokio::time::timeout_at(probe_deadline, discover_server(&mut probe)).await;
+    match discovery {
+        Ok(Ok(true)) => {
+            let result = tokio::time::timeout_at(
+                execution_deadline,
+                list_authorize_and_call(&mut probe, 2, true, tool_handle, arguments, authorize),
+            )
+            .await
+            .unwrap_or(Err(McpConnectionError::ToolTimeout));
+            probe.shutdown().await;
+            result
+        }
+        Ok(Err(error @ McpConnectionError::ModernProtocol { .. })) => {
+            probe.shutdown().await;
+            Err(error)
+        }
+        Ok(Ok(false)) | Ok(Err(_)) | Err(_) => {
+            probe.shutdown().await;
+            if tokio::time::Instant::now() >= execution_deadline {
+                return Err(McpConnectionError::ToolTimeout);
+            }
+            let mut transport = StdioTransport::spawn(command, args, environment).await?;
+            let result = tokio::time::timeout_at(execution_deadline, async {
+                initialize_legacy(&mut transport).await?;
+                list_authorize_and_call(&mut transport, 3, false, tool_handle, arguments, authorize)
+                    .await
+            })
+            .await
+            .unwrap_or(Err(McpConnectionError::ToolTimeout));
             transport.shutdown().await;
             result
         }
@@ -1144,6 +1564,14 @@ where
 async fn connect_legacy_and_list_tools<T>(
     transport: &mut T,
 ) -> Result<Vec<McpServerTool>, McpConnectionError>
+where
+    T: McpClientTransport,
+{
+    initialize_legacy(transport).await?;
+    list_tools(transport, 3, false).await
+}
+
+async fn initialize_legacy<T>(transport: &mut T) -> Result<(), McpConnectionError>
 where
     T: McpClientTransport,
 {
@@ -1178,7 +1606,93 @@ where
             "notifications/initialized returned an unexpected response",
         ));
     }
-    list_tools(transport, 3, false).await
+    Ok(())
+}
+
+async fn connect_and_call_tool<T, F>(
+    transport: &mut T,
+    tool_handle: &str,
+    arguments: serde_json::Value,
+    authorize: F,
+) -> Result<serde_json::Value, McpConnectionError>
+where
+    T: McpClientTransport,
+    F: FnOnce() -> Result<(), McpConnectionError>,
+{
+    transport.set_protocol_version(Some(MODERN_PROTOCOL_VERSION))?;
+    if discover_server(transport).await? {
+        return list_authorize_and_call(transport, 2, true, tool_handle, arguments, authorize)
+            .await;
+    }
+    transport.set_protocol_version(None)?;
+    initialize_legacy(transport).await?;
+    list_authorize_and_call(transport, 3, false, tool_handle, arguments, authorize).await
+}
+
+async fn list_authorize_and_call<T, F>(
+    transport: &mut T,
+    first_id: u64,
+    modern: bool,
+    tool_handle: &str,
+    arguments: serde_json::Value,
+    authorize: F,
+) -> Result<serde_json::Value, McpConnectionError>
+where
+    T: McpClientTransport,
+    F: FnOnce() -> Result<(), McpConnectionError>,
+{
+    let tools = list_tools(transport, first_id, modern).await?;
+    let Some(tool) = tools.iter().find(|tool| tool.name == tool_handle) else {
+        return Err(protocol_error(&format!(
+            "tool '{tool_handle}' is no longer available from the configured server"
+        )));
+    };
+    let headers = if modern && transport.uses_modern_http_headers() {
+        mirrored_tool_headers(&tool.input_schema, &arguments)?
+    } else {
+        std::collections::BTreeMap::new()
+    };
+    authorize()?;
+    call_tool(transport, tool_handle, arguments, modern, headers).await
+}
+
+async fn call_tool<T>(
+    transport: &mut T,
+    tool_handle: &str,
+    arguments: serde_json::Value,
+    modern: bool,
+    headers: std::collections::BTreeMap<String, String>,
+) -> Result<serde_json::Value, McpConnectionError>
+where
+    T: McpClientTransport,
+{
+    let mut params = serde_json::json!({
+        "name": tool_handle,
+        "arguments": arguments
+    });
+    if modern {
+        params["_meta"] = modern_request_metadata();
+    }
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": AGENT_TOOL_CALL_ID,
+        "method": "tools/call",
+        "params": params
+    });
+    let response = required_response(
+        transport.send_with_headers(request, headers).await?,
+        "tools/call",
+    )?;
+    let result = rpc_result(&response, AGENT_TOOL_CALL_ID, "tools/call")?;
+    if modern && result.get("resultType").and_then(serde_json::Value::as_str) != Some("complete") {
+        let detail = match result.get("resultType").and_then(serde_json::Value::as_str) {
+            Some("input_required") => "tools/call requested unsupported multi-round-trip input",
+            Some(_) => "tools/call returned an unsupported result type",
+            None => "tools/call returned no result type",
+        };
+        return Err(protocol_error(detail));
+    }
+    Ok(result.clone())
 }
 
 async fn discover_server<T>(transport: &mut T) -> Result<bool, McpConnectionError>
@@ -1263,6 +1777,227 @@ fn modern_request_metadata() -> serde_json::Value {
         },
         "io.modelcontextprotocol/clientCapabilities": {}
     })
+}
+
+fn modern_request_name<'a>(
+    message: &'a serde_json::Value,
+    method: &str,
+) -> Result<Option<&'a str>, McpConnectionError> {
+    let field = match method {
+        "tools/call" | "prompts/get" => Some("name"),
+        "resources/read" => Some("uri"),
+        _ => None,
+    };
+    let Some(field) = field else {
+        return Ok(None);
+    };
+    message
+        .pointer(&format!("/params/{field}"))
+        .and_then(serde_json::Value::as_str)
+        .map(Some)
+        .ok_or_else(|| protocol_error(&format!("{method} request has no {field}")))
+}
+
+fn encode_modern_header_value(value: &str) -> Result<String, McpConnectionError> {
+    use base64::Engine as _;
+
+    let bytes = value.as_bytes();
+    let sentinel = value.starts_with("=?base64?") && value.ends_with("?=");
+    let safe = bytes
+        .iter()
+        .all(|byte| *byte == b'\t' || (0x20..=0x7e).contains(byte))
+        && !bytes
+            .first()
+            .is_some_and(|byte| matches!(byte, b' ' | b'\t'))
+        && !bytes
+            .last()
+            .is_some_and(|byte| matches!(byte, b' ' | b'\t'))
+        && !sentinel;
+    let encoded = if safe {
+        value.to_string()
+    } else {
+        format!(
+            "=?base64?{}?=",
+            base64::engine::general_purpose::STANDARD.encode(bytes)
+        )
+    };
+    if encoded.len() > MAX_VALUE_BYTES {
+        return Err(protocol_error(
+            "an MCP mirrored header value exceeded the 64 KiB limit",
+        ));
+    }
+    Ok(encoded)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum McpHeaderParameterType {
+    String,
+    Integer,
+    Boolean,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct McpHeaderBinding {
+    name: String,
+    path: Vec<String>,
+    parameter_type: McpHeaderParameterType,
+}
+
+fn mcp_header_bindings(
+    schema: &serde_json::Value,
+) -> Result<Vec<McpHeaderBinding>, McpConnectionError> {
+    let mut bindings = Vec::new();
+    let mut names = std::collections::HashSet::new();
+    scan_mcp_header_bindings(
+        schema,
+        true,
+        false,
+        &mut Vec::new(),
+        &mut names,
+        &mut bindings,
+    )?;
+    Ok(bindings)
+}
+
+fn scan_mcp_header_bindings(
+    schema: &serde_json::Value,
+    property_chain: bool,
+    annotatable: bool,
+    path: &mut Vec<String>,
+    names: &mut std::collections::HashSet<String>,
+    bindings: &mut Vec<McpHeaderBinding>,
+) -> Result<(), McpConnectionError> {
+    if let Some(values) = schema.as_array() {
+        for value in values {
+            scan_mcp_header_bindings(value, false, false, path, names, bindings)?;
+        }
+        return Ok(());
+    }
+    let Some(object) = schema.as_object() else {
+        return Ok(());
+    };
+    if let Some(annotation) = object.get("x-mcp-header") {
+        if !property_chain || !annotatable {
+            return Err(protocol_error(
+                "x-mcp-header appeared outside a statically reachable property",
+            ));
+        }
+        let name = annotation
+            .as_str()
+            .filter(|name| !name.is_empty() && name.bytes().all(is_http_token_byte))
+            .ok_or_else(|| protocol_error("x-mcp-header contained an invalid header name"))?;
+        let normalized = name.to_ascii_lowercase();
+        if !names.insert(normalized) {
+            return Err(protocol_error(
+                "x-mcp-header names were not case-insensitively unique",
+            ));
+        }
+        let parameter_type = match object.get("type").and_then(serde_json::Value::as_str) {
+            Some("string") => McpHeaderParameterType::String,
+            Some("integer") => McpHeaderParameterType::Integer,
+            Some("boolean") => McpHeaderParameterType::Boolean,
+            _ => {
+                return Err(protocol_error(
+                    "x-mcp-header was applied to a non-primitive parameter",
+                ));
+            }
+        };
+        bindings.push(McpHeaderBinding {
+            name: name.to_string(),
+            path: path.clone(),
+            parameter_type,
+        });
+    }
+    for (key, value) in object {
+        if key == "x-mcp-header" {
+            continue;
+        }
+        if property_chain && key == "properties" {
+            if let Some(properties) = value.as_object() {
+                for (property, property_schema) in properties {
+                    path.push(property.clone());
+                    scan_mcp_header_bindings(property_schema, true, true, path, names, bindings)?;
+                    path.pop();
+                }
+                continue;
+            }
+        }
+        scan_mcp_header_bindings(value, false, false, path, names, bindings)?;
+    }
+    Ok(())
+}
+
+fn is_http_token_byte(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric()
+        || matches!(
+            byte,
+            b'!' | b'#'
+                | b'$'
+                | b'%'
+                | b'&'
+                | b'\''
+                | b'*'
+                | b'+'
+                | b'-'
+                | b'.'
+                | b'^'
+                | b'_'
+                | b'`'
+                | b'|'
+                | b'~'
+        )
+}
+
+fn mirrored_tool_headers(
+    schema: &serde_json::Value,
+    arguments: &serde_json::Value,
+) -> Result<std::collections::BTreeMap<String, String>, McpConnectionError> {
+    let mut headers = std::collections::BTreeMap::new();
+    for binding in mcp_header_bindings(schema)? {
+        let mut value = arguments;
+        let mut missing = false;
+        for segment in &binding.path {
+            let Some(next) = value.as_object().and_then(|object| object.get(segment)) else {
+                missing = true;
+                break;
+            };
+            value = next;
+        }
+        if missing || value.is_null() {
+            continue;
+        }
+        let value = match binding.parameter_type {
+            McpHeaderParameterType::String => value
+                .as_str()
+                .map(str::to_string)
+                .ok_or_else(|| protocol_error("an MCP mirrored string argument was invalid"))?,
+            McpHeaderParameterType::Boolean => value
+                .as_bool()
+                .map(|value| value.to_string())
+                .ok_or_else(|| protocol_error("an MCP mirrored boolean argument was invalid"))?,
+            McpHeaderParameterType::Integer => safe_integer_header_value(value)?,
+        };
+        headers.insert(
+            format!("Mcp-Param-{}", binding.name),
+            encode_modern_header_value(&value)?,
+        );
+    }
+    Ok(headers)
+}
+
+fn safe_integer_header_value(value: &serde_json::Value) -> Result<String, McpConnectionError> {
+    if let Some(value) = value.as_i64() {
+        if value.unsigned_abs() <= MAX_SAFE_JAVASCRIPT_INTEGER {
+            return Ok(value.to_string());
+        }
+    } else if let Some(value) = value.as_u64() {
+        if value <= MAX_SAFE_JAVASCRIPT_INTEGER {
+            return Ok(value.to_string());
+        }
+    }
+    Err(protocol_error(
+        "an MCP mirrored integer argument was outside the safe integer range",
+    ))
 }
 
 fn recognized_modern_error(
@@ -1371,6 +2106,13 @@ where
                     "tools/list returned tool '{name}' without an object input schema"
                 )));
             }
+            let input_schema = tool["inputSchema"].clone();
+            if modern
+                && transport.uses_modern_http_headers()
+                && mcp_header_bindings(&input_schema).is_err()
+            {
+                continue;
+            }
             if tools.len() == MAX_TOOLS {
                 return Err(protocol_error("tools/list exceeded the 2048-tool limit"));
             }
@@ -1381,6 +2123,7 @@ where
             tools.push(McpServerTool {
                 name: name.to_string(),
                 description,
+                input_schema,
             });
         }
         cursor = match result.get("nextCursor") {
@@ -1549,6 +2292,7 @@ fn parse_sse_event(
 pub struct McpClientState {
     mutation: tokio::sync::Mutex<()>,
     validations: tokio::sync::Semaphore,
+    agent_approvals: std::sync::Mutex<McpAgentApprovalRegistry>,
 }
 
 impl Default for McpClientState {
@@ -1556,8 +2300,138 @@ impl Default for McpClientState {
         Self {
             mutation: tokio::sync::Mutex::new(()),
             validations: tokio::sync::Semaphore::new(MAX_CONCURRENT_VALIDATIONS),
+            agent_approvals: std::sync::Mutex::new(McpAgentApprovalRegistry::default()),
         }
     }
+}
+
+impl McpClientState {
+    fn authorize_agent_tool_at(
+        &self,
+        binding: McpAgentApprovalBinding<'_>,
+        now: std::time::Instant,
+    ) -> Result<String, String> {
+        use base64::Engine as _;
+        use rand::RngCore as _;
+
+        let mut registry = self
+            .agent_approvals
+            .lock()
+            .map_err(|_| "MCP tool approval is unavailable.".to_string())?;
+        purge_agent_approvals(&mut registry, now);
+        while registry.approvals.len() >= MAX_AGENT_APPROVALS {
+            let Some(oldest) = registry.order.pop_front() else {
+                registry.approvals.clear();
+                break;
+            };
+            registry.approvals.remove(&oldest);
+        }
+        let token = loop {
+            let mut bytes = [0_u8; 32];
+            rand::rngs::OsRng.fill_bytes(&mut bytes);
+            let token = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes);
+            if !registry.approvals.contains_key(&token) {
+                break token;
+            }
+        };
+        registry.order.push_back(token.clone());
+        registry.approvals.insert(
+            token.clone(),
+            McpAgentApproval {
+                project_id: binding.project_id.to_string(),
+                server: binding.server.clone(),
+                tool_handle: binding.tool_handle.to_string(),
+                argument_digest: binding.argument_digest,
+                run_id: binding.run_id.to_string(),
+                run_generation: binding.run_generation,
+                policy: binding.policy,
+                expires_at: now + AGENT_APPROVAL_TTL,
+            },
+        );
+        Ok(token)
+    }
+
+    fn preflight_agent_tool_at(
+        &self,
+        token: &str,
+        binding: McpAgentApprovalBinding<'_>,
+        now: std::time::Instant,
+    ) -> Result<(), String> {
+        let mut registry = self
+            .agent_approvals
+            .lock()
+            .map_err(|_| "MCP tool approval is unavailable.".to_string())?;
+        let result = match registry.approvals.get(token) {
+            None => Err("MCP tool approval is invalid or has already been used.".to_string()),
+            Some(approval) if approval.expires_at <= now => {
+                Err("MCP tool approval has expired.".to_string())
+            }
+            Some(approval) if !agent_approval_matches(approval, &binding) => {
+                Err("MCP tool approval does not match this call.".to_string())
+            }
+            Some(_) => Ok(()),
+        };
+        if result.is_err() {
+            registry.approvals.remove(token);
+            registry.order.retain(|candidate| candidate != token);
+        }
+        purge_agent_approvals(&mut registry, now);
+        result
+    }
+
+    fn consume_agent_tool_at(
+        &self,
+        token: &str,
+        binding: McpAgentApprovalBinding<'_>,
+        now: std::time::Instant,
+    ) -> Result<(), String> {
+        let mut registry = self
+            .agent_approvals
+            .lock()
+            .map_err(|_| "MCP tool approval is unavailable.".to_string())?;
+        let approval = registry
+            .approvals
+            .remove(token)
+            .ok_or_else(|| "MCP tool approval is invalid or has already been used.".to_string())?;
+        registry.order.retain(|candidate| candidate != token);
+        purge_agent_approvals(&mut registry, now);
+        if approval.expires_at <= now {
+            return Err("MCP tool approval has expired.".to_string());
+        }
+        if !agent_approval_matches(&approval, &binding) {
+            return Err("MCP tool approval does not match this call.".to_string());
+        }
+        Ok(())
+    }
+
+    fn discard_agent_tool(&self, token: &str) {
+        if let Ok(mut registry) = self.agent_approvals.lock() {
+            registry.approvals.remove(token);
+            registry.order.retain(|candidate| candidate != token);
+        }
+    }
+}
+
+fn purge_agent_approvals(registry: &mut McpAgentApprovalRegistry, now: std::time::Instant) {
+    registry
+        .approvals
+        .retain(|_, approval| approval.expires_at > now);
+    registry
+        .order
+        .retain(|token| registry.approvals.contains_key(token));
+}
+
+fn agent_approval_matches(
+    approval: &McpAgentApproval,
+    binding: &McpAgentApprovalBinding<'_>,
+) -> bool {
+    approval.project_id == binding.project_id
+        && approval.server == *binding.server
+        && approval.tool_handle == binding.tool_handle
+        && approval.argument_digest == binding.argument_digest
+        && approval.run_id == binding.run_id
+        && approval.run_generation == binding.run_generation
+        && approval.policy == binding.policy
 }
 
 fn acquire_validation_slot(
@@ -1609,6 +2483,539 @@ fn validation_error(name: String, error: String) -> McpServerValidation {
         tools: Vec::new(),
         error: Some(error),
     }
+}
+
+fn load_enabled_server<R>(repository: &R, name: &str) -> Result<McpServerConfig, String>
+where
+    R: McpConfigRepository,
+{
+    let server = repository
+        .load()?
+        .mcp_servers
+        .into_iter()
+        .find(|server| server.name == name)
+        .ok_or_else(|| format!("MCP server '{name}' was not found."))?;
+    if !server.enabled {
+        return Err(format!("MCP server '{name}' is disabled."));
+    }
+    normalize_server_config(server)
+}
+
+fn authorize_server_unchanged<R>(repository: &R, expected: &McpServerConfig) -> Result<(), String>
+where
+    R: McpConfigRepository,
+{
+    let current = repository
+        .load()?
+        .mcp_servers
+        .into_iter()
+        .find(|server| server.name == expected.name)
+        .ok_or_else(|| {
+            format!(
+                "MCP server '{}' was removed before the tool call.",
+                expected.name
+            )
+        })?;
+    if !current.enabled {
+        return Err(format!(
+            "MCP server '{}' was disabled before the tool call.",
+            expected.name
+        ));
+    }
+    if current != *expected {
+        return Err(format!(
+            "MCP server '{}' changed before the tool call.",
+            expected.name
+        ));
+    }
+    Ok(())
+}
+
+fn validate_agent_tool_request(
+    project_id: &str,
+    server: &str,
+    tool_handle: &str,
+    arguments: &serde_json::Value,
+    run_id: &str,
+) -> Result<(String, [u8; 32]), String> {
+    crate::paths::validate_project_id(project_id)?;
+    let server = normalize_server_name(server)?;
+    if tool_handle.is_empty()
+        || tool_handle.len() > MAX_COMMAND_BYTES
+        || tool_handle.chars().any(char::is_control)
+    {
+        return Err("The MCP tool handle is invalid.".into());
+    }
+    if run_id.trim().is_empty()
+        || run_id.len() > MAX_COMMAND_BYTES
+        || run_id.chars().any(char::is_control)
+    {
+        return Err("The agent run id is invalid.".into());
+    }
+    if !arguments.is_object()
+        || serde_json::to_vec(arguments)
+            .map_err(|_| "The MCP tool arguments could not be encoded.".to_string())?
+            .len()
+            > MAX_AGENT_TOOL_ARGUMENT_BYTES
+    {
+        return Err("MCP tool arguments must be an object no larger than 1 MiB.".into());
+    }
+    Ok((server, agent_argument_digest(arguments)))
+}
+
+fn agent_argument_digest(arguments: &serde_json::Value) -> [u8; 32] {
+    use sha2::Digest as _;
+
+    fn update(hasher: &mut sha2::Sha256, value: &serde_json::Value) {
+        fn bytes(hasher: &mut sha2::Sha256, value: &[u8]) {
+            use sha2::Digest as _;
+
+            hasher.update((value.len() as u64).to_be_bytes());
+            hasher.update(value);
+        }
+
+        use sha2::Digest as _;
+
+        match value {
+            serde_json::Value::Null => hasher.update([0]),
+            serde_json::Value::Bool(value) => hasher.update([1, u8::from(*value)]),
+            serde_json::Value::Number(value) => {
+                hasher.update([2]);
+                bytes(hasher, value.to_string().as_bytes());
+            }
+            serde_json::Value::String(value) => {
+                hasher.update([3]);
+                bytes(hasher, value.as_bytes());
+            }
+            serde_json::Value::Array(values) => {
+                hasher.update([4]);
+                hasher.update((values.len() as u64).to_be_bytes());
+                for value in values {
+                    update(hasher, value);
+                }
+            }
+            serde_json::Value::Object(values) => {
+                hasher.update([5]);
+                hasher.update((values.len() as u64).to_be_bytes());
+                let mut keys = values.keys().collect::<Vec<_>>();
+                keys.sort_unstable();
+                for key in keys {
+                    bytes(hasher, key.as_bytes());
+                    update(hasher, &values[key]);
+                }
+            }
+        }
+    }
+
+    let mut hasher = sha2::Sha256::new();
+    update(&mut hasher, arguments);
+    hasher.finalize().into()
+}
+
+fn agent_tool_policy(
+    root: &std::path::Path,
+    project_id: &str,
+    server: &str,
+    tool_handle: &str,
+) -> Result<McpAgentApprovalPolicy, String> {
+    let (mode, decision) =
+        crate::approvals::policy_for(root, project_id, &agent_tool_name(server, tool_handle))?;
+    Ok(McpAgentApprovalPolicy { mode, decision })
+}
+
+fn ensure_agent_tool_policy_allowed(policy: McpAgentApprovalPolicy) -> Result<(), String> {
+    if policy.decision == Some(crate::approvals::ToolDecision::Deny) {
+        Err("This MCP tool is denied for this project.".to_string())
+    } else {
+        Ok(())
+    }
+}
+
+fn agent_tool_policy_needs_confirmation(policy: McpAgentApprovalPolicy) -> bool {
+    policy.mode != crate::approvals::ApprovalMode::FullAccess
+        && policy.decision != Some(crate::approvals::ToolDecision::Allow)
+}
+
+fn validate_agent_tool_owner(
+    agent_state: &crate::agent::AgentState,
+    project_id: &str,
+    run_id: &str,
+    server: &str,
+    tool_handle: &str,
+) -> Result<u64, String> {
+    if !crate::agent::request_owns_project(agent_state, run_id, project_id) {
+        return Err("The agent run is not active for this project.".to_string());
+    }
+    let tool_name = agent_tool_name(server, tool_handle);
+    crate::agent::request_tool_generation(agent_state, run_id, project_id, &tool_name)
+        .ok_or_else(|| "This MCP tool is not available to the active agent run.".to_string())
+}
+
+struct McpAgentToolRequest<'a> {
+    project_id: &'a str,
+    server: &'a str,
+    tool_handle: &'a str,
+    arguments: &'a serde_json::Value,
+    run_id: &'a str,
+}
+
+async fn authorize_agent_tool_after_confirmation<R, F, Fut>(
+    state: &McpClientState,
+    agent_state: &crate::agent::AgentState,
+    repository: &R,
+    root: &std::path::Path,
+    request: McpAgentToolRequest<'_>,
+    confirm: F,
+) -> Result<String, String>
+where
+    R: McpConfigRepository,
+    F: FnOnce(String) -> Fut,
+    Fut: Future<Output = Result<bool, String>>,
+{
+    let run_generation = validate_agent_tool_owner(
+        agent_state,
+        request.project_id,
+        request.run_id,
+        request.server,
+        request.tool_handle,
+    )?;
+    let server = load_enabled_server(repository, request.server)?;
+    let policy = agent_tool_policy(root, request.project_id, &server.name, request.tool_handle)?;
+    ensure_agent_tool_policy_allowed(policy)?;
+    if agent_tool_policy_needs_confirmation(policy) {
+        let message =
+            agent_tool_confirmation_message(&server.name, request.tool_handle, request.arguments);
+        if !confirm(message).await? {
+            return Err("MCP tool approval was declined.".to_string());
+        }
+    }
+    let current_generation = validate_agent_tool_owner(
+        agent_state,
+        request.project_id,
+        request.run_id,
+        &server.name,
+        request.tool_handle,
+    )?;
+    if current_generation != run_generation {
+        return Err("The agent run changed before the MCP tool was authorized.".to_string());
+    }
+    authorize_server_unchanged(repository, &server)?;
+    let current_policy =
+        agent_tool_policy(root, request.project_id, &server.name, request.tool_handle)?;
+    ensure_agent_tool_policy_allowed(current_policy)?;
+    if current_policy != policy {
+        return Err("Approval settings changed before the MCP tool was authorized.".to_string());
+    }
+    state.authorize_agent_tool_at(
+        McpAgentApprovalBinding {
+            project_id: request.project_id,
+            server: &server,
+            tool_handle: request.tool_handle,
+            argument_digest: agent_argument_digest(request.arguments),
+            run_id: request.run_id,
+            run_generation,
+            policy,
+        },
+        std::time::Instant::now(),
+    )
+}
+
+fn agent_tool_confirmation_message(
+    server: &str,
+    tool_handle: &str,
+    arguments: &serde_json::Value,
+) -> String {
+    let arguments = serde_json::to_string_pretty(&redact_agent_confirmation_arguments(arguments))
+        .unwrap_or_else(|_| "{}".to_string());
+    let mut preview = arguments.chars().take(2_048).collect::<String>();
+    if arguments.chars().count() > 2_048 {
+        preview.push_str("...");
+    }
+    format!(
+        "The assistant wants to use the {tool_handle} tool from the {server} MCP server.\n\nArguments:\n\n{preview}\n\nUse this tool?"
+    )
+}
+
+fn redact_agent_confirmation_arguments(value: &serde_json::Value) -> serde_json::Value {
+    fn credential_key(key: &str) -> bool {
+        const PARTS: &[&str] = &[
+            "accesskey",
+            "accesstoken",
+            "apikey",
+            "authorization",
+            "bearer",
+            "clientsecret",
+            "cookie",
+            "credential",
+            "idtoken",
+            "password",
+            "passwd",
+            "privatekey",
+            "refreshtoken",
+            "secret",
+            "sessionid",
+            "token",
+        ];
+        let normalized = key
+            .bytes()
+            .filter(u8::is_ascii_alphanumeric)
+            .map(|byte| char::from(byte.to_ascii_lowercase()))
+            .collect::<String>();
+        PARTS.iter().any(|part| {
+            normalized == *part || normalized.starts_with(part) || normalized.ends_with(part)
+        })
+    }
+
+    match value {
+        serde_json::Value::Array(values) => serde_json::Value::Array(
+            values
+                .iter()
+                .map(redact_agent_confirmation_arguments)
+                .collect(),
+        ),
+        serde_json::Value::Object(values) => serde_json::Value::Object(
+            values
+                .iter()
+                .map(|(key, value)| {
+                    let value = if credential_key(key) {
+                        serde_json::Value::String("[redacted]".to_string())
+                    } else {
+                        redact_agent_confirmation_arguments(value)
+                    };
+                    (key.clone(), value)
+                })
+                .collect(),
+        ),
+        value => value.clone(),
+    }
+}
+
+async fn native_agent_tool_confirmation(
+    app: tauri::AppHandle,
+    message: String,
+) -> Result<bool, String> {
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    app.dialog()
+        .message(message)
+        .title("Approve MCP tool")
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::OkCancelCustom(
+            "Use tool".to_string(),
+            "Cancel".to_string(),
+        ))
+        .show(move |approved| {
+            let _ = sender.send(approved);
+        });
+    receiver
+        .await
+        .map_err(|_| "The native approval dialog closed unexpectedly.".to_string())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn ensure_agent_tool_binding<R>(
+    state: &McpClientState,
+    agent_state: &crate::agent::AgentState,
+    repository: &R,
+    root: &std::path::Path,
+    token: &str,
+    project_id: &str,
+    tool_handle: &str,
+    run_id: &str,
+    server: &McpServerConfig,
+    argument_digest: [u8; 32],
+    consume: bool,
+) -> Result<(), String>
+where
+    R: McpConfigRepository,
+{
+    let checked = (|| {
+        let run_generation =
+            validate_agent_tool_owner(agent_state, project_id, run_id, &server.name, tool_handle)?;
+        authorize_server_unchanged(repository, server)?;
+        let policy = agent_tool_policy(root, project_id, &server.name, tool_handle)?;
+        ensure_agent_tool_policy_allowed(policy)?;
+        Ok::<_, String>((run_generation, policy))
+    })();
+    let (run_generation, policy) = match checked {
+        Ok(checked) => checked,
+        Err(error) => {
+            if consume {
+                state.discard_agent_tool(token);
+            }
+            return Err(error);
+        }
+    };
+    let binding = McpAgentApprovalBinding {
+        project_id,
+        server,
+        tool_handle,
+        argument_digest,
+        run_id,
+        run_generation,
+        policy,
+    };
+    if consume {
+        state.consume_agent_tool_at(token, binding, std::time::Instant::now())?;
+        let current_generation =
+            validate_agent_tool_owner(agent_state, project_id, run_id, &server.name, tool_handle)?;
+        if current_generation != run_generation {
+            return Err("The agent run changed before the MCP tool call.".to_string());
+        }
+        authorize_server_unchanged(repository, server)?;
+        let current_policy = agent_tool_policy(root, project_id, &server.name, tool_handle)?;
+        ensure_agent_tool_policy_allowed(current_policy)?;
+        if current_policy != policy {
+            return Err("Approval settings changed before the MCP tool call.".to_string());
+        }
+        Ok(())
+    } else {
+        state.preflight_agent_tool_at(token, binding, std::time::Instant::now())
+    }
+}
+
+#[tauri::command]
+pub async fn mcp_agent_tools_list<R: tauri::Runtime>(
+    webview: tauri::Webview<R>,
+    state: tauri::State<'_, McpClientState>,
+) -> Result<Vec<McpAgentServer>, String> {
+    validate_command_webview(webview.label(), webview.window().label())?;
+    let mut servers = AppConfigRepository
+        .load()?
+        .mcp_servers
+        .into_iter()
+        .filter(|server| server.enabled)
+        .filter_map(|server| normalize_server_config(server).ok())
+        .collect::<Vec<_>>();
+    servers.sort_by(|left, right| left.name.cmp(&right.name));
+    let discoveries = futures_util::stream::iter(servers).map(|server| {
+        let state = &state;
+        async move {
+            let _permit = state.validations.acquire().await.ok()?;
+            let tools = connect_server(server.clone()).await.ok()?;
+            authorize_server_unchanged(&AppConfigRepository, &server).ok()?;
+            Some((server, tools))
+        }
+    });
+    let mut discoveries = discoveries.buffer_unordered(MAX_CONCURRENT_VALIDATIONS);
+    let deadline = tokio::time::Instant::now() + AGENT_TOOL_TIMEOUT;
+    let mut connected = Vec::new();
+    loop {
+        match tokio::time::timeout_at(deadline, discoveries.next()).await {
+            Ok(Some(Some(server))) => connected.push(server),
+            Ok(Some(None)) => {}
+            Ok(None) | Err(_) => break,
+        }
+    }
+    Ok(build_agent_tool_catalog(connected))
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn mcp_agent_tool_authorize<R: tauri::Runtime>(
+    webview: tauri::Webview<R>,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, McpClientState>,
+    agent_state: tauri::State<'_, crate::agent::AgentState>,
+    project_id: String,
+    server: String,
+    tool_handle: String,
+    arguments: serde_json::Value,
+    run_id: String,
+) -> Result<String, String> {
+    validate_command_webview(webview.label(), webview.window().label())?;
+    let (server, _) =
+        validate_agent_tool_request(&project_id, &server, &tool_handle, &arguments, &run_id)?;
+    crate::paths::project_dir(&project_id)?;
+    let root = crate::paths::oleafly_root()?;
+    authorize_agent_tool_after_confirmation(
+        state.inner(),
+        agent_state.inner(),
+        &AppConfigRepository,
+        &root,
+        McpAgentToolRequest {
+            project_id: &project_id,
+            server: &server,
+            tool_handle: &tool_handle,
+            arguments: &arguments,
+            run_id: &run_id,
+        },
+        move |message| native_agent_tool_confirmation(app, message),
+    )
+    .await
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn mcp_agent_tool_call<R: tauri::Runtime>(
+    webview: tauri::Webview<R>,
+    state: tauri::State<'_, McpClientState>,
+    agent_state: tauri::State<'_, crate::agent::AgentState>,
+    project_id: String,
+    server: String,
+    tool_handle: String,
+    arguments: serde_json::Value,
+    run_id: String,
+    approval_token: String,
+) -> Result<serde_json::Value, String> {
+    validate_command_webview(webview.label(), webview.window().label())?;
+    if approval_token.is_empty() {
+        return Err("MCP tool approval is required.".to_string());
+    }
+    let (server_name, argument_digest) =
+        validate_agent_tool_request(&project_id, &server, &tool_handle, &arguments, &run_id)?;
+    crate::paths::project_dir(&project_id)?;
+    let root = crate::paths::oleafly_root()?;
+    let deadline = tokio::time::Instant::now() + AGENT_TOOL_TIMEOUT;
+    let server = load_enabled_server(&AppConfigRepository, &server_name)?;
+    ensure_agent_tool_binding(
+        state.inner(),
+        agent_state.inner(),
+        &AppConfigRepository,
+        &root,
+        &approval_token,
+        &project_id,
+        &tool_handle,
+        &run_id,
+        &server,
+        argument_digest,
+        false,
+    )?;
+    let _permit = tokio::time::timeout_at(deadline, state.validations.acquire())
+        .await
+        .map_err(|_| "MCP tool call timed out after 15 seconds.".to_string())?
+        .map_err(|_| "MCP tool execution is unavailable.".to_string())?;
+    let expected = server.clone();
+    let late_project_id = project_id.clone();
+    let late_tool_handle = tool_handle.clone();
+    let late_run_id = run_id.clone();
+    let late_approval_token = approval_token.clone();
+    let result = connect_server_and_call_until(
+        server.clone(),
+        &tool_handle,
+        arguments,
+        || {
+            ensure_agent_tool_binding(
+                state.inner(),
+                agent_state.inner(),
+                &AppConfigRepository,
+                &root,
+                &late_approval_token,
+                &late_project_id,
+                &late_tool_handle,
+                &late_run_id,
+                &expected,
+                argument_digest,
+                true,
+            )
+            .map_err(|error| protocol_error(&error))
+        },
+        deadline,
+    )
+    .await
+    .map_err(|error| redact_server_values(&server, error.to_string()))?;
+    let matcher = server_value_matcher(&server)
+        .map_err(|_| "MCP tool result could not be returned safely.".to_string())?;
+    Ok(redact_json_value(result, matcher.as_ref()))
 }
 
 #[tauri::command]
@@ -1781,12 +3188,34 @@ mod tests {
         }
     }
 
+    fn persist_server(repository: &DiskRepository, server: McpServerConfig) {
+        repository
+            .update(|config| {
+                config.mcp_servers = vec![server];
+                Ok(())
+            })
+            .unwrap();
+    }
+
+    fn register_agent_run(
+        state: &crate::agent::AgentState,
+        run_id: &str,
+        project_id: &str,
+        tools: impl IntoIterator<Item = String>,
+    ) -> u64 {
+        let generation = crate::agent::register_active_request_for_test(state, run_id);
+        crate::agent::register_run_project_for_test(state, run_id, generation, project_id);
+        crate::agent::register_run_tools_for_test(state, run_id, generation, tools);
+        generation
+    }
+
     async fn good_connect(
         _server: McpServerConfig,
     ) -> Result<Vec<McpServerTool>, McpConnectionError> {
         Ok(vec![McpServerTool {
             name: "search".into(),
             description: None,
+            input_schema: serde_json::json!({"type": "object"}),
         }])
     }
 
@@ -1813,6 +3242,1071 @@ mod tests {
         }
     }
 
+    struct ModernHttpFakeTransport {
+        replies: VecDeque<Result<Option<serde_json::Value>, McpConnectionError>>,
+        sent: Vec<serde_json::Value>,
+        headers: Vec<BTreeMap<String, String>>,
+    }
+
+    impl McpClientTransport for ModernHttpFakeTransport {
+        fn send<'a>(
+            &'a mut self,
+            message: serde_json::Value,
+        ) -> Pin<
+            Box<
+                dyn Future<Output = Result<Option<serde_json::Value>, McpConnectionError>>
+                    + Send
+                    + 'a,
+            >,
+        > {
+            Box::pin(async move {
+                self.sent.push(message);
+                self.headers.push(BTreeMap::new());
+                self.replies.pop_front().unwrap()
+            })
+        }
+
+        fn uses_modern_http_headers(&self) -> bool {
+            true
+        }
+
+        fn send_with_headers<'a>(
+            &'a mut self,
+            message: serde_json::Value,
+            headers: BTreeMap<String, String>,
+        ) -> Pin<
+            Box<
+                dyn Future<Output = Result<Option<serde_json::Value>, McpConnectionError>>
+                    + Send
+                    + 'a,
+            >,
+        > {
+            Box::pin(async move {
+                self.sent.push(message);
+                self.headers.push(headers);
+                self.replies.pop_front().unwrap()
+            })
+        }
+    }
+
+    #[test]
+    fn agent_tool_names_are_stable_provider_safe_and_collision_resistant() {
+        let first = agent_tool_name("Paper Search", "find/papers");
+        let repeated = agent_tool_name("Paper Search", "find/papers");
+        let other_server = agent_tool_name("Archive Search", "find/papers");
+        let long = agent_tool_name(&"server".repeat(20), &"tool".repeat(40));
+
+        assert_eq!(first, repeated);
+        assert_ne!(first, other_server);
+        assert!(first.starts_with("mcp_ext_"));
+        assert!(first
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-')));
+        assert!(long.len() <= 64);
+        assert_ne!(first, "read_file");
+    }
+
+    #[test]
+    fn modern_header_values_use_the_required_base64_sentinel() {
+        assert_eq!(encode_modern_header_value("search").unwrap(), "search");
+        assert_eq!(
+            encode_modern_header_value("Hello, 世界").unwrap(),
+            "=?base64?SGVsbG8sIOS4lueVjA==?="
+        );
+        assert_eq!(
+            encode_modern_header_value(" padded ").unwrap(),
+            "=?base64?IHBhZGRlZCA=?="
+        );
+        assert_eq!(
+            encode_modern_header_value("=?base64?literal?=").unwrap(),
+            "=?base64?PT9iYXNlNjQ/bGl0ZXJhbD89?="
+        );
+        assert_eq!(
+            encode_modern_header_value("line1\nline2").unwrap(),
+            "=?base64?bGluZTEKbGluZTI=?="
+        );
+    }
+
+    #[test]
+    fn mcp_parameter_headers_follow_nested_property_paths_and_primitive_types() {
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "region": {"type": "string", "x-mcp-header": "Region"},
+                "context": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {"type": "boolean", "x-mcp-header": "Enabled"},
+                        "count": {"type": "integer", "x-mcp-header": "Count"},
+                        "optional": {"type": "string", "x-mcp-header": "Optional"}
+                    }
+                }
+            }
+        });
+
+        let headers = mirrored_tool_headers(
+            &schema,
+            &serde_json::json!({
+                "region": "Hello, 世界",
+                "context": {"enabled": false, "count": -7, "optional": null}
+            }),
+        )
+        .unwrap();
+
+        assert_eq!(
+            headers["Mcp-Param-Region"],
+            "=?base64?SGVsbG8sIOS4lueVjA==?="
+        );
+        assert_eq!(headers["Mcp-Param-Enabled"], "false");
+        assert_eq!(headers["Mcp-Param-Count"], "-7");
+        assert!(!headers.contains_key("Mcp-Param-Optional"));
+    }
+
+    #[test]
+    fn invalid_mcp_header_schema_extensions_are_rejected() {
+        let invalid = [
+            serde_json::json!({"type": "object", "x-mcp-header": "Root"}),
+            serde_json::json!({
+                "type": "object",
+                "properties": {"value": {"type": "string", "x-mcp-header": "Bad\r\nName"}}
+            }),
+            serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "first": {"type": "string", "x-mcp-header": "Region"},
+                    "second": {"type": "boolean", "x-mcp-header": "region"}
+                }
+            }),
+            serde_json::json!({
+                "type": "object",
+                "properties": {"value": {"type": "number", "x-mcp-header": "Value"}}
+            }),
+            serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "values": {
+                        "type": "array",
+                        "items": {"type": "string", "x-mcp-header": "Item"}
+                    }
+                }
+            }),
+            serde_json::json!({
+                "type": "object",
+                "oneOf": [{
+                    "properties": {"value": {"type": "string", "x-mcp-header": "Value"}}
+                }]
+            }),
+        ];
+
+        for schema in invalid {
+            assert!(mcp_header_bindings(&schema).is_err());
+        }
+
+        let integer_schema = serde_json::json!({
+            "type": "object",
+            "properties": {"count": {"type": "integer", "x-mcp-header": "Count"}}
+        });
+        assert!(mirrored_tool_headers(
+            &integer_schema,
+            &serde_json::json!({"count": 9_007_199_254_740_992_u64})
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn agent_tool_catalog_is_sorted_and_redacts_server_secrets() {
+        let mut secret_server = stdio_server("search-server");
+        secret_server.name = "papers".into();
+        let McpServerTransport::Stdio { env, .. } = &mut secret_server.transport else {
+            unreachable!();
+        };
+        env.insert("MCP_SECRET".into(), "private-token".into());
+        let tools = vec![
+            McpServerTool {
+                name: "zeta".into(),
+                description: Some("Uses private-token internally".into()),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "private-token query"}
+                    }
+                }),
+            },
+            McpServerTool {
+                name: "alpha".into(),
+                description: None,
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "context": {
+                            "type": "object",
+                            "properties": {
+                                "query": {"type": "string", "x-mcp-header": "Query"}
+                            }
+                        }
+                    }
+                }),
+            },
+            McpServerTool {
+                name: "private-token-tool".into(),
+                description: None,
+                input_schema: serde_json::json!({"type": "object"}),
+            },
+        ];
+
+        let servers = build_agent_tool_catalog(vec![(secret_server, tools)]);
+
+        assert_eq!(servers.len(), 1);
+        assert_eq!(servers[0].name, "papers");
+        assert_eq!(servers[0].tools.len(), 2);
+        assert_eq!(servers[0].tools[0].tool_handle, "alpha");
+        assert_eq!(servers[0].tools[1].tool_handle, "zeta");
+        assert!(servers[0].tools[0]
+            .input_schema
+            .pointer("/properties/context/properties/query/x-mcp-header")
+            .is_none());
+        assert_eq!(
+            servers[0].tools[0]
+                .input_schema
+                .pointer("/properties/context/properties/query/type"),
+            Some(&serde_json::json!("string"))
+        );
+        assert_eq!(
+            servers[0].tools[1].description.as_deref(),
+            Some("Uses [stored value] internally")
+        );
+        assert_eq!(
+            servers[0].tools[1].input_schema["properties"]["query"]["description"],
+            "[stored value] query"
+        );
+        assert!(!serde_json::to_string(&servers)
+            .unwrap()
+            .contains("private-token"));
+    }
+
+    #[test]
+    fn agent_tool_result_redaction_preserves_non_secret_text() {
+        let matcher = aho_corasick::AhoCorasick::new(["private-token"]).unwrap();
+        let long_text = "x".repeat(4_096);
+        let value = serde_json::json!({
+            "content": [{"type": "text", "text": long_text}],
+            "metadata": {"credential": "private-token"}
+        });
+
+        let redacted = redact_json_value(value, Some(&matcher));
+
+        assert_eq!(redacted["content"][0]["text"], "x".repeat(4_096));
+        assert_eq!(redacted["metadata"]["credential"], "[stored value]");
+    }
+
+    #[test]
+    fn agent_tool_catalog_returns_every_discovered_tool_in_deterministic_order() {
+        let servers = (0..4)
+            .rev()
+            .map(|server_index| {
+                let mut server = stdio_server("search-server");
+                server.name = format!("server-{server_index}");
+                let tools = (0..24)
+                    .rev()
+                    .map(|tool_index| McpServerTool {
+                        name: format!("tool-{tool_index:02}"),
+                        description: None,
+                        input_schema: serde_json::json!({"type": "object"}),
+                    })
+                    .collect();
+                (server, tools)
+            })
+            .collect();
+
+        let catalog = build_agent_tool_catalog(servers);
+        let names = catalog
+            .iter()
+            .flat_map(|server| {
+                server
+                    .tools
+                    .iter()
+                    .map(move |tool| format!("{}:{}", server.name, tool.tool_handle))
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(names.len(), 96);
+        assert_eq!(names[0], "server-0:tool-00");
+        assert_eq!(names[63], "server-2:tool-15");
+        assert_eq!(names[95], "server-3:tool-23");
+    }
+
+    #[test]
+    fn agent_server_authorization_rejects_disabled_and_raced_configs() {
+        let (_directory, repository) = disk_repository();
+        let mut server = stdio_server("search-server");
+        server.enabled = false;
+        repository
+            .update(|config| {
+                config.mcp_servers = vec![server.clone()];
+                Ok(())
+            })
+            .unwrap();
+
+        assert_eq!(
+            load_enabled_server(&repository, "local-search").unwrap_err(),
+            "MCP server 'local-search' is disabled."
+        );
+
+        server.enabled = true;
+        repository
+            .update(|config| {
+                config.mcp_servers = vec![server.clone()];
+                Ok(())
+            })
+            .unwrap();
+        let expected = load_enabled_server(&repository, "local-search").unwrap();
+        repository
+            .update(|config| {
+                config.mcp_servers[0].enabled = false;
+                Ok(())
+            })
+            .unwrap();
+
+        assert_eq!(
+            authorize_server_unchanged(&repository, &expected).unwrap_err(),
+            "MCP server 'local-search' was disabled before the tool call."
+        );
+    }
+
+    #[tokio::test]
+    async fn agent_tool_authorization_requires_active_run_ownership() {
+        let (_directory, repository) = disk_repository();
+        let server = stdio_server("search-server");
+        persist_server(&repository, server);
+        let root = tempfile::tempdir().unwrap();
+        let state = McpClientState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let arguments = serde_json::json!({"query": "rust"});
+
+        let error = authorize_agent_tool_after_confirmation(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            McpAgentToolRequest {
+                project_id: "project-1",
+                server: "local-search",
+                tool_handle: "search",
+                arguments: &arguments,
+                run_id: "run-inactive",
+            },
+            |_| async { Ok(true) },
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(error, "The agent run is not active for this project.");
+        assert!(state.agent_approvals.lock().unwrap().approvals.is_empty());
+    }
+
+    #[tokio::test]
+    async fn full_access_cannot_authorize_a_tool_absent_from_the_run() {
+        let (_directory, repository) = disk_repository();
+        let server = stdio_server("search-server");
+        persist_server(&repository, server);
+        let root = tempfile::tempdir().unwrap();
+        crate::approvals::set_mode(
+            root.path(),
+            "project-1",
+            crate::approvals::ApprovalMode::FullAccess,
+        )
+        .unwrap();
+        let state = McpClientState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let generation = register_agent_run(
+            &agent_state,
+            "run-unadvertised",
+            "project-1",
+            std::iter::empty(),
+        );
+        let arguments = serde_json::json!({"query": "rust"});
+
+        let error = authorize_agent_tool_after_confirmation(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            McpAgentToolRequest {
+                project_id: "project-1",
+                server: "local-search",
+                tool_handle: "search",
+                arguments: &arguments,
+                run_id: "run-unadvertised",
+            },
+            |_| async { panic!("full access must not confirm an unadvertised tool") },
+        )
+        .await
+        .unwrap_err();
+
+        crate::agent::finish_active_request_for_test(&agent_state, "run-unadvertised", generation);
+        assert_eq!(
+            error,
+            "This MCP tool is not available to the active agent run."
+        );
+        assert!(state.agent_approvals.lock().unwrap().approvals.is_empty());
+    }
+
+    #[tokio::test]
+    async fn denied_and_declined_agent_tool_calls_mint_no_approval() {
+        let (_directory, repository) = disk_repository();
+        let server = stdio_server("search-server");
+        persist_server(&repository, server);
+        let root = tempfile::tempdir().unwrap();
+        let state = McpClientState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let callable = agent_tool_name("local-search", "search");
+        let generation =
+            register_agent_run(&agent_state, "run-policy", "project-1", [callable.clone()]);
+        let arguments = serde_json::json!({"query": "rust"});
+        crate::approvals::set_decision(
+            root.path(),
+            "project-1",
+            &callable,
+            Some(crate::approvals::ToolDecision::Deny),
+        )
+        .unwrap();
+
+        let denied = authorize_agent_tool_after_confirmation(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            McpAgentToolRequest {
+                project_id: "project-1",
+                server: "local-search",
+                tool_handle: "search",
+                arguments: &arguments,
+                run_id: "run-policy",
+            },
+            |_| async { panic!("denied tools must not open a confirmation") },
+        )
+        .await
+        .unwrap_err();
+        crate::approvals::set_decision(root.path(), "project-1", &callable, None).unwrap();
+        let declined = authorize_agent_tool_after_confirmation(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            McpAgentToolRequest {
+                project_id: "project-1",
+                server: "local-search",
+                tool_handle: "search",
+                arguments: &arguments,
+                run_id: "run-policy",
+            },
+            |_| async { Ok(false) },
+        )
+        .await
+        .unwrap_err();
+
+        crate::agent::finish_active_request_for_test(&agent_state, "run-policy", generation);
+        assert_eq!(denied, "This MCP tool is denied for this project.");
+        assert_eq!(declined, "MCP tool approval was declined.");
+        assert!(state.agent_approvals.lock().unwrap().approvals.is_empty());
+    }
+
+    #[tokio::test]
+    async fn agent_tool_approval_is_bound_and_consumed_once_at_the_late_boundary() {
+        let (_directory, repository) = disk_repository();
+        let server = stdio_server("search-server");
+        persist_server(&repository, server.clone());
+        let root = tempfile::tempdir().unwrap();
+        crate::approvals::set_mode(
+            root.path(),
+            "project-1",
+            crate::approvals::ApprovalMode::FullAccess,
+        )
+        .unwrap();
+        let state = McpClientState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let callable = agent_tool_name("local-search", "search");
+        let generation = register_agent_run(&agent_state, "run-once", "project-1", [callable]);
+        let arguments = serde_json::json!({"query": "rust", "limit": 4});
+        let token = authorize_agent_tool_after_confirmation(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            McpAgentToolRequest {
+                project_id: "project-1",
+                server: "local-search",
+                tool_handle: "search",
+                arguments: &arguments,
+                run_id: "run-once",
+            },
+            |_| async { panic!("full access must not open a confirmation") },
+        )
+        .await
+        .unwrap();
+        let digest = agent_argument_digest(&arguments);
+
+        ensure_agent_tool_binding(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            &token,
+            "project-1",
+            "search",
+            "run-once",
+            &server,
+            digest,
+            false,
+        )
+        .unwrap();
+        ensure_agent_tool_binding(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            &token,
+            "project-1",
+            "search",
+            "run-once",
+            &server,
+            digest,
+            true,
+        )
+        .unwrap();
+        let replay = ensure_agent_tool_binding(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            &token,
+            "project-1",
+            "search",
+            "run-once",
+            &server,
+            digest,
+            true,
+        )
+        .unwrap_err();
+
+        crate::agent::finish_active_request_for_test(&agent_state, "run-once", generation);
+        assert_eq!(
+            replay,
+            "MCP tool approval is invalid or has already been used."
+        );
+    }
+
+    #[tokio::test]
+    async fn argument_mismatch_burns_the_agent_tool_approval() {
+        let (_directory, repository) = disk_repository();
+        let server = stdio_server("search-server");
+        persist_server(&repository, server.clone());
+        let root = tempfile::tempdir().unwrap();
+        crate::approvals::set_mode(
+            root.path(),
+            "project-1",
+            crate::approvals::ApprovalMode::FullAccess,
+        )
+        .unwrap();
+        let state = McpClientState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let callable = agent_tool_name("local-search", "search");
+        let generation = register_agent_run(&agent_state, "run-mismatch", "project-1", [callable]);
+        let approved_arguments = serde_json::json!({"query": "rust"});
+        let token = authorize_agent_tool_after_confirmation(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            McpAgentToolRequest {
+                project_id: "project-1",
+                server: "local-search",
+                tool_handle: "search",
+                arguments: &approved_arguments,
+                run_id: "run-mismatch",
+            },
+            |_| async { Ok(true) },
+        )
+        .await
+        .unwrap();
+
+        let mismatch = ensure_agent_tool_binding(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            &token,
+            "project-1",
+            "search",
+            "run-mismatch",
+            &server,
+            agent_argument_digest(&serde_json::json!({"query": "other"})),
+            false,
+        )
+        .unwrap_err();
+        let burned = ensure_agent_tool_binding(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            &token,
+            "project-1",
+            "search",
+            "run-mismatch",
+            &server,
+            agent_argument_digest(&approved_arguments),
+            false,
+        )
+        .unwrap_err();
+
+        crate::agent::finish_active_request_for_test(&agent_state, "run-mismatch", generation);
+        assert_eq!(mismatch, "MCP tool approval does not match this call.");
+        assert_eq!(
+            burned,
+            "MCP tool approval is invalid or has already been used."
+        );
+    }
+
+    #[tokio::test]
+    async fn stopping_a_run_burns_a_preflighted_approval_before_the_tool_call() {
+        let (_directory, repository) = disk_repository();
+        let server = stdio_server("search-server");
+        persist_server(&repository, server.clone());
+        let root = tempfile::tempdir().unwrap();
+        crate::approvals::set_mode(
+            root.path(),
+            "project-1",
+            crate::approvals::ApprovalMode::FullAccess,
+        )
+        .unwrap();
+        let state = McpClientState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let callable = agent_tool_name("local-search", "search");
+        let generation = register_agent_run(&agent_state, "run-stopped", "project-1", [callable]);
+        let arguments = serde_json::json!({"query": "rust"});
+        let digest = agent_argument_digest(&arguments);
+        let token = authorize_agent_tool_after_confirmation(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            McpAgentToolRequest {
+                project_id: "project-1",
+                server: "local-search",
+                tool_handle: "search",
+                arguments: &arguments,
+                run_id: "run-stopped",
+            },
+            |_| async { Ok(true) },
+        )
+        .await
+        .unwrap();
+        ensure_agent_tool_binding(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            &token,
+            "project-1",
+            "search",
+            "run-stopped",
+            &server,
+            digest,
+            false,
+        )
+        .unwrap();
+
+        crate::agent::finish_active_request_for_test(&agent_state, "run-stopped", generation);
+        let error = ensure_agent_tool_binding(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            &token,
+            "project-1",
+            "search",
+            "run-stopped",
+            &server,
+            digest,
+            true,
+        )
+        .unwrap_err();
+
+        assert_eq!(error, "The agent run is not active for this project.");
+        assert!(state.agent_approvals.lock().unwrap().approvals.is_empty());
+    }
+
+    #[test]
+    fn expired_agent_tool_approvals_are_rejected_and_purged() {
+        let state = McpClientState::default();
+        let server = stdio_server("search-server");
+        let policy = McpAgentApprovalPolicy {
+            mode: crate::approvals::ApprovalMode::FullAccess,
+            decision: None,
+        };
+        let digest = agent_argument_digest(&serde_json::json!({"query": "rust"}));
+        let start = std::time::Instant::now();
+        let token = state
+            .authorize_agent_tool_at(
+                McpAgentApprovalBinding {
+                    project_id: "project-1",
+                    server: &server,
+                    tool_handle: "search",
+                    argument_digest: digest,
+                    run_id: "run-expired",
+                    run_generation: 4,
+                    policy,
+                },
+                start,
+            )
+            .unwrap();
+
+        let error = state
+            .preflight_agent_tool_at(
+                &token,
+                McpAgentApprovalBinding {
+                    project_id: "project-1",
+                    server: &server,
+                    tool_handle: "search",
+                    argument_digest: digest,
+                    run_id: "run-expired",
+                    run_generation: 4,
+                    policy,
+                },
+                start + AGENT_APPROVAL_TTL,
+            )
+            .unwrap_err();
+
+        assert_eq!(error, "MCP tool approval has expired.");
+        assert!(state.agent_approvals.lock().unwrap().approvals.is_empty());
+    }
+
+    #[test]
+    fn agent_tool_approval_registry_evicts_the_oldest_entry_at_its_bound() {
+        let state = McpClientState::default();
+        let server = stdio_server("search-server");
+        let policy = McpAgentApprovalPolicy {
+            mode: crate::approvals::ApprovalMode::FullAccess,
+            decision: None,
+        };
+        let digest = agent_argument_digest(&serde_json::json!({"query": "rust"}));
+        let now = std::time::Instant::now();
+        let mut tokens = Vec::new();
+        for _ in 0..=MAX_AGENT_APPROVALS {
+            tokens.push(
+                state
+                    .authorize_agent_tool_at(
+                        McpAgentApprovalBinding {
+                            project_id: "project-1",
+                            server: &server,
+                            tool_handle: "search",
+                            argument_digest: digest,
+                            run_id: "run-bounded",
+                            run_generation: 7,
+                            policy,
+                        },
+                        now,
+                    )
+                    .unwrap(),
+            );
+        }
+
+        let first = state
+            .preflight_agent_tool_at(
+                &tokens[0],
+                McpAgentApprovalBinding {
+                    project_id: "project-1",
+                    server: &server,
+                    tool_handle: "search",
+                    argument_digest: digest,
+                    run_id: "run-bounded",
+                    run_generation: 7,
+                    policy,
+                },
+                now,
+            )
+            .unwrap_err();
+
+        assert_eq!(
+            first,
+            "MCP tool approval is invalid or has already been used."
+        );
+        assert_eq!(
+            state.agent_approvals.lock().unwrap().approvals.len(),
+            MAX_AGENT_APPROVALS
+        );
+    }
+
+    #[test]
+    fn native_agent_tool_confirmation_redacts_nested_credentials() {
+        let message = agent_tool_confirmation_message(
+            "papers",
+            "search",
+            &serde_json::json!({
+                "query": "rust",
+                "api_key": "secret-api-value",
+                "nested": [{
+                    "Authorization": "Bearer private-value",
+                    "client-secret": "client-value",
+                    "cookieJar": "cookie-value",
+                    "private_key": "private-key-value"
+                }]
+            }),
+        );
+
+        assert!(message.contains("\"query\": \"rust\""));
+        assert_eq!(message.matches("[redacted]").count(), 5);
+        for secret in [
+            "secret-api-value",
+            "private-value",
+            "client-value",
+            "cookie-value",
+            "private-key-value",
+        ] {
+            assert!(!message.contains(secret));
+        }
+    }
+
+    #[tokio::test]
+    async fn modern_agent_call_discovers_lists_authorizes_and_calls_on_one_transport() {
+        let mut transport = FakeTransport {
+            replies: VecDeque::from([
+                Ok(Some(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": {
+                        "resultType": "complete",
+                        "supportedVersions": ["2026-07-28"],
+                        "capabilities": {"tools": {}}
+                    }
+                }))),
+                Ok(Some(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "result": {
+                        "resultType": "complete",
+                        "tools": [{
+                            "name": "search",
+                            "description": "Search papers",
+                            "inputSchema": {"type": "object"}
+                        }]
+                    }
+                }))),
+                Ok(Some(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": AGENT_TOOL_CALL_ID,
+                    "result": {
+                        "resultType": "complete",
+                        "content": [{"type": "text", "text": "found"}]
+                    }
+                }))),
+            ]),
+            sent: Vec::new(),
+        };
+        let mut authorized = false;
+
+        let result = connect_and_call_tool(
+            &mut transport,
+            "search",
+            serde_json::json!({"query": "rust"}),
+            || {
+                authorized = true;
+                Ok(())
+            },
+        )
+        .await
+        .unwrap();
+
+        assert!(authorized);
+        assert_eq!(result["content"][0]["text"], "found");
+        assert_eq!(
+            transport
+                .sent
+                .iter()
+                .map(|message| message["method"].as_str().unwrap())
+                .collect::<Vec<_>>(),
+            vec!["server/discover", "tools/list", "tools/call"]
+        );
+        assert_eq!(transport.sent[2]["params"]["name"], "search");
+        assert_eq!(transport.sent[2]["params"]["arguments"]["query"], "rust");
+        assert!(transport.sent[2]["params"].get("_meta").is_some());
+    }
+
+    #[tokio::test]
+    async fn legacy_agent_call_initializes_before_listing_and_calling() {
+        let mut transport = FakeTransport {
+            replies: VecDeque::from([
+                Ok(Some(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "error": {"code": -32601, "message": "Method not found"}
+                }))),
+                Ok(Some(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "result": {
+                        "protocolVersion": "2025-06-18",
+                        "capabilities": {"tools": {}},
+                        "serverInfo": {"name": "legacy", "version": "1"}
+                    }
+                }))),
+                Ok(None),
+                Ok(Some(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 3,
+                    "result": {"tools": [{"name": "fetch", "inputSchema": {"type": "object"}}]}
+                }))),
+                Ok(Some(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": AGENT_TOOL_CALL_ID,
+                    "result": {"content": [{"type": "text", "text": "legacy result"}]}
+                }))),
+            ]),
+            sent: Vec::new(),
+        };
+
+        let result =
+            connect_and_call_tool(&mut transport, "fetch", serde_json::json!({}), || Ok(()))
+                .await
+                .unwrap();
+
+        assert_eq!(result["content"][0]["text"], "legacy result");
+        assert_eq!(
+            transport
+                .sent
+                .iter()
+                .map(|message| message["method"].as_str().unwrap())
+                .collect::<Vec<_>>(),
+            vec![
+                "server/discover",
+                "initialize",
+                "notifications/initialized",
+                "tools/list",
+                "tools/call"
+            ]
+        );
+        assert!(transport.sent[4]["params"].get("_meta").is_none());
+    }
+
+    #[tokio::test]
+    async fn agent_call_stops_when_the_server_changes_after_discovery() {
+        let mut transport = FakeTransport {
+            replies: VecDeque::from([
+                Ok(Some(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": {
+                        "resultType": "complete",
+                        "supportedVersions": ["2026-07-28"],
+                        "capabilities": {"tools": {}}
+                    }
+                }))),
+                Ok(Some(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "result": {
+                        "resultType": "complete",
+                        "tools": [{"name": "search", "inputSchema": {"type": "object"}}]
+                    }
+                }))),
+            ]),
+            sent: Vec::new(),
+        };
+
+        let error = connect_and_call_tool(&mut transport, "search", serde_json::json!({}), || {
+            Err(protocol_error(
+                "MCP server 'papers' was disabled before the tool call",
+            ))
+        })
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "MCP protocol error: MCP server 'papers' was disabled before the tool call."
+        );
+        assert_eq!(transport.sent.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn agent_call_rejects_a_tool_removed_after_the_schema_snapshot() {
+        let mut transport = FakeTransport {
+            replies: VecDeque::from([
+                Ok(Some(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": {
+                        "resultType": "complete",
+                        "supportedVersions": ["2026-07-28"],
+                        "capabilities": {"tools": {}}
+                    }
+                }))),
+                Ok(Some(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "result": {"resultType": "complete", "tools": []}
+                }))),
+            ]),
+            sent: Vec::new(),
+        };
+
+        let error = connect_and_call_tool(
+            &mut transport,
+            "removed_tool",
+            serde_json::json!({}),
+            || Ok(()),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "MCP protocol error: tool 'removed_tool' is no longer available from the configured server."
+        );
+        assert_eq!(transport.sent.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn modern_agent_call_requires_a_complete_final_result() {
+        let cases = [
+            (
+                serde_json::json!({"content": []}),
+                "MCP protocol error: tools/call returned no result type.",
+            ),
+            (
+                serde_json::json!({"resultType": "input_required"}),
+                "MCP protocol error: tools/call requested unsupported multi-round-trip input.",
+            ),
+            (
+                serde_json::json!({"resultType": "future_type"}),
+                "MCP protocol error: tools/call returned an unsupported result type.",
+            ),
+        ];
+
+        for (result, expected) in cases {
+            let mut transport = FakeTransport {
+                replies: VecDeque::from([Ok(Some(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": AGENT_TOOL_CALL_ID,
+                    "result": result
+                })))]),
+                sent: Vec::new(),
+            };
+
+            let error = call_tool(
+                &mut transport,
+                "search",
+                serde_json::json!({}),
+                true,
+                BTreeMap::new(),
+            )
+            .await
+            .unwrap_err();
+
+            assert_eq!(error.to_string(), expected);
+        }
+    }
+
     #[tokio::test]
     async fn successful_validation_reports_every_tool() {
         let result = validate_with(&stdio_server("search-server"), |_| async {
@@ -1820,10 +4314,12 @@ mod tests {
                 McpServerTool {
                     name: "search".into(),
                     description: Some("Search papers".into()),
+                    input_schema: serde_json::json!({"type": "object"}),
                 },
                 McpServerTool {
                     name: "fetch".into(),
                     description: None,
+                    input_schema: serde_json::json!({"type": "object"}),
                 },
             ])
         })
@@ -1845,6 +4341,7 @@ mod tests {
             Ok(vec![McpServerTool {
                 name: "disabled_search".into(),
                 description: None,
+                input_schema: serde_json::json!({"type": "object"}),
             }])
         })
         .await;
@@ -2019,6 +4516,73 @@ mod tests {
         assert_eq!(
             transport.sent[1]["params"]["_meta"]["io.modelcontextprotocol/protocolVersion"],
             "2026-07-28"
+        );
+    }
+
+    #[tokio::test]
+    async fn modern_http_listing_excludes_only_tools_with_invalid_header_extensions() {
+        let mut transport = ModernHttpFakeTransport {
+            replies: VecDeque::from([
+                Ok(Some(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": {
+                        "resultType": "complete",
+                        "supportedVersions": ["2026-07-28"],
+                        "capabilities": {"tools": {}}
+                    }
+                }))),
+                Ok(Some(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "result": {
+                        "resultType": "complete",
+                        "tools": [
+                            {
+                                "name": "valid",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "region": {"type": "string", "x-mcp-header": "Region"}
+                                    }
+                                }
+                            },
+                            {
+                                "name": "injected",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "region": {"type": "string", "x-mcp-header": "Bad\r\nHeader"}
+                                    }
+                                }
+                            },
+                            {
+                                "name": "composed",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "oneOf": [{
+                                        "properties": {
+                                            "region": {"type": "string", "x-mcp-header": "Region"}
+                                        }
+                                    }]
+                                }
+                            }
+                        ]
+                    }
+                }))),
+            ]),
+            sent: Vec::new(),
+            headers: Vec::new(),
+        };
+
+        let tools = connect_and_list_tools(&mut transport).await.unwrap();
+
+        assert_eq!(
+            tools
+                .iter()
+                .map(|tool| tool.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["valid"]
         );
     }
 
@@ -2365,6 +4929,58 @@ mod tests {
         let tools = connect_server(server).await.unwrap();
 
         assert_eq!(tools[0].name, "legacy_search");
+    }
+
+    #[tokio::test]
+    async fn stdio_listing_restarts_a_legacy_server_that_ignores_discovery() {
+        let script = concat!(
+            "const readline=require('node:readline');",
+            "const lines=readline.createInterface({input:process.stdin});",
+            "lines.on('line',(line)=>{",
+            "const message=JSON.parse(line);",
+            "if(message.method==='initialize'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{protocolVersion:'2025-06-18',capabilities:{tools:{}},serverInfo:{name:'silent-legacy',version:'1'}}})+'\\n');}",
+            "if(message.method==='tools/list'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{tools:[{name:'silent_search',inputSchema:{type:'object'}}]}})+'\\n');}",
+            "});"
+        );
+
+        let tools = connect_stdio_server_with_probe_timeout(
+            "node",
+            &["-e".into(), script.into()],
+            &BTreeMap::new(),
+            Duration::from_millis(50),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(tools[0].name, "silent_search");
+    }
+
+    #[tokio::test]
+    async fn stdio_call_restarts_a_legacy_server_that_ignores_discovery() {
+        let script = concat!(
+            "const readline=require('node:readline');",
+            "const lines=readline.createInterface({input:process.stdin});",
+            "lines.on('line',(line)=>{",
+            "const message=JSON.parse(line);",
+            "if(message.method==='initialize'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{protocolVersion:'2025-06-18',capabilities:{tools:{}},serverInfo:{name:'silent-legacy',version:'1'}}})+'\\n');}",
+            "if(message.method==='tools/list'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{tools:[{name:'silent_search',inputSchema:{type:'object'}}]}})+'\\n');}",
+            "if(message.method==='tools/call'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{content:[{type:'text',text:'called'}]}})+'\\n');}",
+            "});"
+        );
+
+        let result = connect_stdio_server_and_call_with_probe_timeout(
+            "node",
+            &["-e".into(), script.into()],
+            &BTreeMap::new(),
+            "silent_search",
+            serde_json::json!({}),
+            || Ok(()),
+            Duration::from_millis(50),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result["content"][0]["text"], "called");
     }
 
     #[tokio::test]
@@ -2798,6 +5414,284 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn modern_remote_tool_call_mirrors_name_and_annotated_arguments() {
+        use axum::extract::State;
+        use axum::http::HeaderMap;
+        use axum::routing::post;
+        use axum::{Json, Router};
+        use std::sync::{Arc, Mutex};
+
+        #[derive(Clone, Default)]
+        struct TestState {
+            calls: Arc<Mutex<Vec<(serde_json::Value, HeaderMap)>>>,
+        }
+
+        async fn handler(
+            State(state): State<TestState>,
+            headers: HeaderMap,
+            Json(message): Json<serde_json::Value>,
+        ) -> Json<serde_json::Value> {
+            state.calls.lock().unwrap().push((message.clone(), headers));
+            match message["method"].as_str() {
+                Some("server/discover") => Json(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": message["id"],
+                    "result": {
+                        "resultType": "complete",
+                        "supportedVersions": ["2026-07-28"],
+                        "capabilities": {"tools": {}}
+                    }
+                })),
+                Some("tools/list") => Json(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": message["id"],
+                    "result": {
+                        "resultType": "complete",
+                        "tools": [{
+                            "name": "weather 世界",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "region": {"type": "string", "x-mcp-header": "Region"},
+                                    "context": {
+                                        "type": "object",
+                                        "properties": {
+                                            "count": {"type": "integer", "x-mcp-header": "Count"},
+                                            "enabled": {"type": "boolean", "x-mcp-header": "Enabled"}
+                                        }
+                                    }
+                                }
+                            }
+                        }]
+                    }
+                })),
+                Some("tools/call") => Json(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": message["id"],
+                    "result": {
+                        "resultType": "complete",
+                        "content": [{"type": "text", "text": "done"}]
+                    }
+                })),
+                _ => unreachable!(),
+            }
+        }
+
+        let state = TestState::default();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let app = Router::new()
+            .route("/mcp", post(handler))
+            .with_state(state.clone());
+        let serve = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let server = McpServerConfig {
+            name: "modern-call".into(),
+            enabled: true,
+            transport: McpServerTransport::Remote {
+                url: format!("http://{address}/mcp"),
+                headers: BTreeMap::new(),
+            },
+        };
+
+        let result = connect_server_and_call(
+            server,
+            "weather 世界",
+            serde_json::json!({
+                "region": "Hello, 世界",
+                "context": {"count": 42, "enabled": true}
+            }),
+            || Ok(()),
+        )
+        .await
+        .unwrap();
+
+        serve.abort();
+        assert_eq!(result["content"][0]["text"], "done");
+        let calls = state.calls.lock().unwrap();
+        assert_eq!(calls.len(), 3);
+        let (body, headers) = &calls[2];
+        assert_eq!(headers["mcp-protocol-version"], "2026-07-28");
+        assert_eq!(headers["mcp-method"], "tools/call");
+        assert_eq!(headers["mcp-name"], "=?base64?d2VhdGhlciDkuJbnlYw=?=");
+        assert_eq!(
+            headers["mcp-param-region"],
+            "=?base64?SGVsbG8sIOS4lueVjA==?="
+        );
+        assert_eq!(headers["mcp-param-count"], "42");
+        assert_eq!(headers["mcp-param-enabled"], "true");
+        assert_eq!(body["params"]["name"], "weather 世界");
+        assert_eq!(body["params"]["arguments"]["context"]["count"], 42);
+    }
+
+    #[tokio::test]
+    async fn remote_tool_transport_uses_a_call_specific_timeout_and_error() {
+        use axum::routing::post;
+        use axum::{Json, Router};
+
+        async fn handler(Json(message): Json<serde_json::Value>) -> Json<serde_json::Value> {
+            tokio::time::sleep(Duration::from_millis(75)).await;
+            Json(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": message["id"],
+                "result": {"resultType": "complete"}
+            }))
+        }
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let app = Router::new().route("/mcp", post(handler));
+        let serve = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let url = format!("http://{address}/mcp");
+        let message = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "server/discover",
+            "params": {"_meta": modern_request_metadata()}
+        });
+
+        let mut validation = RemoteTransport::new_with_timeout(
+            &url,
+            &BTreeMap::new(),
+            Duration::from_millis(20),
+            McpConnectionError::Timeout,
+        )
+        .unwrap();
+        validation
+            .set_protocol_version(Some(MODERN_PROTOCOL_VERSION))
+            .unwrap();
+        let validation_error = validation.send(message.clone()).await.unwrap_err();
+
+        let mut execution = RemoteTransport::new_with_timeout(
+            &url,
+            &BTreeMap::new(),
+            Duration::from_millis(250),
+            McpConnectionError::ToolTimeout,
+        )
+        .unwrap();
+        execution
+            .set_protocol_version(Some(MODERN_PROTOCOL_VERSION))
+            .unwrap();
+        let response = execution.send(message).await.unwrap().unwrap();
+
+        serve.abort();
+        assert_eq!(
+            validation_error.to_string(),
+            "MCP validation timed out after 10 seconds."
+        );
+        assert_eq!(response["result"]["resultType"], "complete");
+        assert_eq!(
+            McpConnectionError::ToolTimeout.to_string(),
+            "MCP tool call timed out after 15 seconds."
+        );
+    }
+
+    #[tokio::test]
+    async fn successful_tool_call_is_not_reclassified_when_cleanup_crosses_deadline() {
+        use axum::extract::State;
+        use axum::http::{HeaderMap, HeaderValue, StatusCode};
+        use axum::response::{IntoResponse, Response};
+        use axum::routing::post;
+        use axum::{Json, Router};
+        use std::sync::{Arc, Mutex};
+
+        #[derive(Clone, Default)]
+        struct TestState {
+            methods: Arc<Mutex<Vec<String>>>,
+        }
+
+        async fn handler(
+            State(state): State<TestState>,
+            Json(message): Json<serde_json::Value>,
+        ) -> Response {
+            let method = message["method"].as_str().unwrap().to_string();
+            state.methods.lock().unwrap().push(method.clone());
+            match method.as_str() {
+                "server/discover" => Json(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": message["id"],
+                    "error": {"code": -32601, "message": "Method not found"}
+                }))
+                .into_response(),
+                "initialize" => {
+                    let mut headers = HeaderMap::new();
+                    headers.insert("mcp-session-id", HeaderValue::from_static("slow-cleanup"));
+                    (
+                        headers,
+                        Json(serde_json::json!({
+                            "jsonrpc": "2.0",
+                            "id": message["id"],
+                            "result": {
+                                "protocolVersion": "2025-06-18",
+                                "capabilities": {"tools": {}},
+                                "serverInfo": {"name": "slow-cleanup", "version": "1"}
+                            }
+                        })),
+                    )
+                        .into_response()
+                }
+                "notifications/initialized" => StatusCode::ACCEPTED.into_response(),
+                "tools/list" => Json(serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": message["id"],
+                    "result": {"tools": [{"name": "publish", "inputSchema": {"type": "object"}}]}
+                }))
+                .into_response(),
+                "tools/call" => {
+                    tokio::time::sleep(Duration::from_millis(200)).await;
+                    Json(serde_json::json!({
+                        "jsonrpc": "2.0",
+                        "id": message["id"],
+                        "result": {"content": [{"type": "text", "text": "published"}]}
+                    }))
+                    .into_response()
+                }
+                _ => StatusCode::BAD_REQUEST.into_response(),
+            }
+        }
+
+        async fn delete_handler() -> StatusCode {
+            tokio::time::sleep(Duration::from_millis(450)).await;
+            StatusCode::NO_CONTENT
+        }
+
+        let state = TestState::default();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let app = Router::new()
+            .route("/mcp", post(handler).delete(delete_handler))
+            .with_state(state.clone());
+        let serve = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let server = McpServerConfig {
+            name: "slow-cleanup".into(),
+            enabled: true,
+            transport: McpServerTransport::Remote {
+                url: format!("http://{address}/mcp"),
+                headers: BTreeMap::new(),
+            },
+        };
+        let started = tokio::time::Instant::now();
+        let deadline = started + Duration::from_millis(500);
+
+        let result = connect_server_and_call_until(
+            server,
+            "publish",
+            serde_json::json!({}),
+            || Ok(()),
+            deadline,
+        )
+        .await
+        .unwrap();
+
+        serve.abort();
+        assert_eq!(result["content"][0]["text"], "published");
+        assert!(tokio::time::Instant::now() > deadline);
+        assert_eq!(
+            state.methods.lock().unwrap().last().map(String::as_str),
+            Some("tools/call")
+        );
+    }
+
+    #[tokio::test]
     async fn remote_validation_allows_slow_modern_discovery_within_the_total_timeout() {
         use axum::routing::post;
         use axum::{Json, Router};
@@ -3212,6 +6106,7 @@ mod tests {
                 Ok(vec![McpServerTool {
                     name: "search".into(),
                     description: None,
+                    input_schema: serde_json::json!({"type": "object"}),
                 }])
             },
         )
@@ -3260,6 +6155,7 @@ mod tests {
                 Ok(vec![McpServerTool {
                     name: "search".into(),
                     description: None,
+                    input_schema: serde_json::json!({"type": "object"}),
                 }])
             },
         )
@@ -3336,6 +6232,15 @@ mod tests {
         assert_eq!(
             normalize_server_config(protected_header).unwrap_err(),
             "Header 'MCP-Protocol-Version' is managed by Oleafly."
+        );
+
+        let mut mirrored_header = remote_server("remote");
+        if let McpServerTransport::Remote { headers, .. } = &mut mirrored_header.transport {
+            headers.insert("Mcp-Param-Region".into(), "forged".into());
+        }
+        assert_eq!(
+            normalize_server_config(mirrored_header).unwrap_err(),
+            "Header 'Mcp-Param-Region' is managed by Oleafly."
         );
 
         let mut reserved_secret = stdio_server("search-server");
