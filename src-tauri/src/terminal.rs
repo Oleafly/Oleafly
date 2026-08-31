@@ -261,6 +261,7 @@ fn open_terminal(
                 }
             }
         }
+        println!("term: session {session_id} reader eof (channel_open={channel_open})");
         if channel_open && !pending.is_empty() {
             let data = String::from_utf8_lossy(&pending).to_string();
             if channel.send(TerminalEvent::Output { data }).is_err() {
@@ -277,7 +278,8 @@ fn open_terminal(
             stop_session(session);
         }
         if channel_open {
-            let _ = channel.send(TerminalEvent::Exit);
+            let delivered = channel.send(TerminalEvent::Exit).is_ok();
+            println!("term: session {session_id} exit event delivered={delivered}");
         }
     });
 

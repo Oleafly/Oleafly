@@ -852,13 +852,15 @@ select:focus-visible {
   word-break: normal;
 }
 
+/* Atoms shatter when prose styles leak break-anywhere wrapping into KaTeX;
+   normal overflow-wrap and word-break stop that, while the container-level
+   nowrap on .katex keeps the expression on one line. Descendants keep normal
+   white-space and KaTeX's own vertical alignment. */
 :where(.chat-markdown .katex *) {
   line-height: normal;
   overflow-wrap: normal;
-  text-align: inherit;
   transform: none;
-  vertical-align: baseline;
-  white-space: nowrap;
+  white-space: normal;
   word-break: normal;
 }
 

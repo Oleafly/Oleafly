@@ -9,15 +9,21 @@ use crate::state::AppState;
 const MAX_QUEUED_PROJECTS: usize = 128;
 const MAX_PROJECT_BINARY_READ_BYTES: u64 = 8 * 1024 * 1024;
 
+// Injects Webview, not WebviewWindow: the latter fails to materialize once
+// the main window hosts a second webview (the browser dock), which turned
+// every reload after opening the dock into a silent error. Iterating windows
+// and their webviews keeps multi-webview windows covered too.
 #[tauri::command]
-pub fn reload_views(app: tauri::AppHandle, window: tauri::WebviewWindow) {
-    let caller = window.label();
-    for (label, view) in app.webview_windows() {
-        if label != caller {
-            let _ = view.reload();
+pub fn reload_views(app: tauri::AppHandle, webview: tauri::Webview) {
+    let caller = webview.label().to_string();
+    for window in app.windows().values() {
+        for view in window.webviews() {
+            if view.label() != caller {
+                let _ = view.eval("window.location.reload()");
+            }
         }
     }
-    let _ = window.eval("setTimeout(() => location.reload(), 0)");
+    let _ = webview.eval("setTimeout(() => location.reload(), 0)");
 }
 
 fn register_compile_ticket(

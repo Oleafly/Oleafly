@@ -251,7 +251,7 @@ test("the shortcuts settings section exposes configurable app shortcuts", async 
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage, "shortcuts");
   await expect(tauriPage.getByText("Command palette", { exact: true })).toBeVisible();
-  await expect(tauriPage.getByText("Reset all shortcuts", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByText("Reset to defaults", { exact: true })).toBeVisible();
 });
 
 test("reset to defaults restores factory preferences", async ({ tauriPage }) => {
@@ -267,9 +267,24 @@ test("reset to defaults restores factory preferences", async ({ tauriPage }) => 
     5_000,
   );
 
-  await openSettings(tauriPage, "general");
+  await openSettings(tauriPage, "appearance");
   await tauriPage.getByText("Reset to defaults").click();
-  await tauriPage.getByText("Reset", { exact: true }).click();
+  // The confirm button shares its label with the section button behind the
+  // dialog, so resolve it strictly inside the alertdialog.
+  await tauriPage.waitForFunction(
+    `!!document.querySelector('[role="alertdialog"]')`,
+    5_000,
+  );
+  await tauriPage.evaluate(
+    `(() => {
+      const dialog = document.querySelector('[role="alertdialog"]');
+      const button = dialog && Array.from(dialog.querySelectorAll("button"))
+        .find((b) => b.textContent?.trim() === "Reset to defaults");
+      if (!(button instanceof HTMLElement)) throw new Error("confirm button not found");
+      button.click();
+      return true;
+    })()`,
+  );
 
   await tauriPage.waitForFunction(
     `getComputedStyle(document.querySelector('.cm-content')).fontSize === '13px'

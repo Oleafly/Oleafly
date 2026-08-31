@@ -318,20 +318,32 @@ export async function compileAndWait(
     outputRevision: number;
     disabled: boolean;
   };
-  const snapshot = () =>
-    page.evaluate<CompileSnapshot>(
-      `(() => {
-        const button = document.querySelector('[data-testid="compile-button"]');
-        if (!(button instanceof HTMLButtonElement)) {
-          throw new Error("compile button is unavailable");
-        }
-        return {
-          status: button.dataset.e2eCompileStatus ?? "",
-          outputRevision: Number(button.dataset.e2eCompileRevision ?? "0"),
-          disabled: button.disabled,
-        };
-      })()`,
-    );
+  // A layout or panel re-render can unmount the toolbar for a frame; tolerate
+  // a brief absence instead of failing the whole compile wait, while a button
+  // that stays gone still throws.
+  const snapshot = async (): Promise<CompileSnapshot> => {
+    const absentDeadline = Date.now() + 3_000;
+    for (;;) {
+      try {
+        return await page.evaluate<CompileSnapshot>(
+          `(() => {
+            const button = document.querySelector('[data-testid="compile-button"]');
+            if (!(button instanceof HTMLButtonElement)) {
+              throw new Error("compile button is unavailable");
+            }
+            return {
+              status: button.dataset.e2eCompileStatus ?? "",
+              outputRevision: Number(button.dataset.e2eCompileRevision ?? "0"),
+              disabled: button.disabled,
+            };
+          })()`,
+        );
+      } catch (error) {
+        if (Date.now() > absentDeadline) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+  };
 
   const deadline = Date.now() + timeoutMs;
   // A project that just opened schedules its first compile from a React

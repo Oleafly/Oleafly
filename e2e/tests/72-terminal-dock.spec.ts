@@ -167,6 +167,20 @@ test("the real terminal survives a browser child webview and exits cleanly", asy
   expect(await terminalOutput(tauriPage)).toContain("e2e-terminal-ok");
 
   await enterTerminalCommand(tauriPage, "exit");
+  // The exit event must reach the webview even while a browser child webview
+  // exists; asserting it separately splits IPC-delivery failures from dock
+  // close failures.
+  await expect
+    .poll(
+      () =>
+        tauriPage.evaluate<string>(
+          `(window.__e2eTerminalEvents ?? [])
+            .filter((entry) => entry.startsWith("exit"))
+            .join(",") || "none"`,
+        ),
+      { timeout: 15_000 },
+    )
+    .not.toBe("none");
   await expect(tauriPage.locator(TERMINAL)).not.toBeVisible({ timeout: 15_000 });
   await expect(tauriPage.locator(`${TERMINAL_HOST} .xterm`)).toHaveCount(0, {
     timeout: 15_000,

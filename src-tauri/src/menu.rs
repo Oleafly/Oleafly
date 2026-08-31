@@ -127,8 +127,13 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
             let _ = app.emit("menu://check-updates", ());
         }
         "reload_views" => {
-            for window in app.webview_windows().values() {
-                let _ = window.reload();
+            // Iterate windows and their webviews, not `webview_windows()`:
+            // that map drops a window the moment it hosts a second webview
+            // (the browser dock), which made Reload Views a silent no-op.
+            for window in app.windows().values() {
+                for webview in window.webviews() {
+                    let _ = webview.eval("window.location.reload()");
+                }
             }
         }
         "restart_app" => {

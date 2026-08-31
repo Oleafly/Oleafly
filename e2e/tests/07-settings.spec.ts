@@ -67,7 +67,7 @@ test("keyboard shortcuts Settings section opens from the home view", async ({ ta
   if (await back.isVisible()) await back.click();
   await openSettings(tauriPage, "shortcuts");
   await expect(tauriPage.getByRole("dialog", { name: "Settings" })).toBeVisible();
-  await expect(tauriPage.getByText("Reset all shortcuts", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByText("Reset to defaults", { exact: true })).toBeVisible();
   await tauriPage.click('[aria-label="Close settings"]');
 });
 

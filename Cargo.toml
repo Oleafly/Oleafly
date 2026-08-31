@@ -10,3 +10,10 @@ opt-level = "s"
 lto = true
 codegen-units = 1
 strip = true
+
+# The upstream bridge resolves windows through `webview_windows()`, which
+# drops a window the moment it hosts a second webview (the browser dock), so
+# every eval after opening the dock failed with "window not found". The
+# vendored copy resolves through the webview map instead.
+[patch.crates-io]
+tauri-plugin-playwright = { path = "vendor/tauri-plugin-playwright" }

@@ -13,17 +13,22 @@ async function selectAppearanceTab(
   tab: "terminal" | "browser",
 ): Promise<void> {
   const selector = `[data-testid="appearance-tab-${tab}"]`;
-  await page.evaluate(
+  await page.waitForFunction(`!!document.querySelector(${JSON.stringify(selector)})`, 15_000);
+  // Radix tab triggers activate on focus or keydown, never on a synthetic
+  // click, so drive both on every poll tick until the tab reports active.
+  await page.waitForFunction(
     `(() => {
       const tab = document.querySelector(${JSON.stringify(selector)});
-      if (!(tab instanceof HTMLButtonElement)) throw new Error("appearance tab is unavailable");
-      tab.click();
-      return true;
+      if (!(tab instanceof HTMLElement)) return false;
+      if (tab.getAttribute("data-state") !== "active") {
+        tab.focus();
+        tab.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
+        );
+      }
+      return tab.getAttribute("data-state") === "active";
     })()`,
-  );
-  await page.waitForFunction(
-    `document.querySelector(${JSON.stringify(selector)})?.getAttribute("data-state") === "active"`,
-    5_000,
+    10_000,
   );
 }
 
@@ -191,6 +196,10 @@ test("Appearance exposes scrollable dock tabs, search icons, and live terminal s
   }>(`(() => {
     const strip = document.querySelector('[data-testid="appearance-tab-strip"]');
     if (!(strip instanceof HTMLElement)) throw new Error("appearance tab strip is unavailable");
+    // The widened settings modal fits every tab at rest, so constrain the
+    // strip to exercise the overflow, hidden-scrollbar, and auto-scroll
+    // behavior this test exists to verify.
+    strip.style.maxWidth = "320px";
     const style = getComputedStyle(strip);
     const webkit = getComputedStyle(strip, "::-webkit-scrollbar");
     strip.scrollLeft = 0;
@@ -227,12 +236,27 @@ test("Appearance exposes scrollable dock tabs, search icons, and live terminal s
     )
     .toBe(true);
 
+  // Release the forced width so the remaining tab selections see every tab.
+  await tauriPage.evaluate(`(() => {
+    const strip = document.querySelector('[data-testid="appearance-tab-strip"]');
+    if (strip instanceof HTMLElement) {
+      strip.style.maxWidth = "";
+      strip.scrollLeft = 0;
+    }
+    return true;
+  })()`);
+
   await tauriPage.click('[role="combobox"][aria-label="Default search engine"]');
   for (const engine of ["google", "duckduckgo", "bing"]) {
     await expect(tauriPage.getByTestId(`search-engine-option-${engine}`)).toBeVisible();
     await expect(tauriPage.getByTestId(`search-engine-icon-${engine}`)).toBeVisible();
   }
-  await tauriPage.press("body", "Escape");
+  // Close the dropdown by selecting an option; Escape routing across the
+  // stacked Radix select and dialog layers is not deterministic here.
+  await tauriPage.click('[data-testid="search-engine-option-google"]');
+  await expect(tauriPage.getByTestId("search-engine-option-google")).toHaveCount(0, {
+    timeout: 5_000,
+  });
 
   await selectAppearanceTab(tauriPage, "terminal");
   await pickOption(

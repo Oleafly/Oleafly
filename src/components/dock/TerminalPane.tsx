@@ -167,6 +167,15 @@ export function TerminalPane({
     let disposed = false;
     const channel = new Channel<TerminalChannelMessage>();
     channel.onmessage = (message) => {
+      if (E2E_HOOKS) {
+        const w = window as typeof window & { __e2eTerminalEvents?: string[] };
+        w.__e2eTerminalEvents = w.__e2eTerminalEvents ?? [];
+        w.__e2eTerminalEvents.push(
+          message.event === "output"
+            ? "output"
+            : `exit(disposed=${disposed},exited=${sessionExited})`,
+        );
+      }
       if (disposed || sessionExited) return;
       if (message.event === "output") {
         setBooted(true);

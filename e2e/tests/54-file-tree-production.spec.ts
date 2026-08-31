@@ -65,10 +65,22 @@ async function openRowAction(page: Page, path: string, action: string) {
     })()`,
   );
   expect(pressed).toBe(true);
-  await page.waitForFunction(
-    `!document.querySelector('[role="menu"][data-state="open"]')`,
-    5_000,
-  );
+  // Radix closes on real pointer selection; the synthetic sequence sometimes
+  // leaves the menu open even though the action ran, so nudge it shut.
+  const closed = await page
+    .waitForFunction(
+      `!document.querySelector('[role="menu"][data-state="open"]')`,
+      2_000,
+    )
+    .then(() => true)
+    .catch(() => false);
+  if (!closed) {
+    await page.press("body", "Escape");
+    await page.waitForFunction(
+      `!document.querySelector('[role="menu"][data-state="open"]')`,
+      5_000,
+    );
+  }
 }
 
 async function createEntry(

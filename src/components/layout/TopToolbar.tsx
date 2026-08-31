@@ -378,7 +378,7 @@ export function TopToolbar() {
       </div>
 
       {projectId && (
-        <div className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 min-[1200px]:block">
+        <div className="shrink-0 min-[1200px]:pointer-events-none min-[1200px]:absolute min-[1200px]:left-1/2 min-[1200px]:top-1/2 min-[1200px]:-translate-x-1/2 min-[1200px]:-translate-y-1/2">
           <div className="pointer-events-auto">
             <ViewModeSwitch viewMode={viewMode} setViewMode={setViewMode} />
           </div>
@@ -386,13 +386,6 @@ export function TopToolbar() {
       )}
 
       <div data-tauri-drag-region className="ml-auto flex items-center justify-end gap-1.5">
-
-        {projectId && (
-          <div className="flex items-center gap-1.5 min-[1200px]:hidden">
-            <ViewModeSwitch viewMode={viewMode} setViewMode={setViewMode} />
-            <Divider />
-          </div>
-        )}
 
         <CompileControls />
 

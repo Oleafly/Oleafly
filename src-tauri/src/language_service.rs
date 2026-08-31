@@ -602,7 +602,7 @@ enum Admission {
 #[tauri::command]
 pub async fn language_service_start(
     app: AppHandle,
-    window: tauri::WebviewWindow,
+    webview: tauri::Webview,
     state: State<'_, LanguageServiceState>,
     request: StartLanguageServiceRequest,
     on_event: Channel<LanguageServiceEvent>,
@@ -644,7 +644,10 @@ pub async fn language_service_start(
     // every session left by the previous runtime in that same window. Using
     // the native window label avoids trusting a caller-provided owner id and
     // preserves the global cap for genuinely independent windows.
-    let owner_label = window.label().to_owned();
+    // Injected as Webview, not WebviewWindow: the latter cannot materialize
+    // once the window hosts a second webview (the browser dock). The owner is
+    // still the host window's label so sessions stay scoped per window.
+    let owner_label = webview.window().label().to_owned();
     let displaced = {
         let registry = lock_unpoisoned(&state.registry.inner);
         registry

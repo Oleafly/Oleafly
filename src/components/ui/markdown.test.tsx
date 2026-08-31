@@ -130,8 +130,9 @@ $$`}
     }
 
     expect(getComputedStyle(math).lineHeight).toBe("normal");
+    expect(getComputedStyle(math).whiteSpace).toBe("nowrap");
     expect(getComputedStyle(descendant).lineHeight).toBe("normal");
-    expect(getComputedStyle(descendant).whiteSpace).toBe("nowrap");
+    expect(getComputedStyle(descendant).whiteSpace).toBe("normal");
     expect(getComputedStyle(base).whiteSpace).toBe("nowrap");
     expect(getComputedStyle(script).textAlign).toBe("left");
     expect(getComputedStyle(fraction).textAlign).toBe("center");

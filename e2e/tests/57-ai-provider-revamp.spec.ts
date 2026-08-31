@@ -212,28 +212,41 @@ test("personas: deep link from persona menu, create, switch in chat", async ({ t
     15_000,
   );
 
+  // The menu's create shortcut only renders while no persona exists; a
+  // profile that already carries personas from earlier specs goes to the
+  // Personas settings tab directly instead. Either path lands on the same
+  // create button, and a unique name keeps reruns independent.
+  const personaName = `Copyeditor-${Date.now()}`;
   await openPersonaMenu(page);
-  await expect(page.locator('[data-testid="ai-persona-create"]')).toBeVisible();
-  await page.click('[data-testid="ai-persona-create"]');
+  const createShortcut = await page.evaluate<boolean>(
+    `!!document.querySelector('[data-testid="ai-persona-create"]')`,
+  );
+  if (createShortcut) {
+    await page.click('[data-testid="ai-persona-create"]');
+  } else {
+    await page.press("body", "Escape");
+    await openSettings(page, "ai");
+    await openAiTab(page, "personas");
+  }
   await expect(page.locator('[data-testid="ai-create-persona"]')).toBeVisible({ timeout: 10_000 });
 
   await page.click('[data-testid="ai-create-persona"]');
   await expect(page.locator('[data-testid="persona-name"]')).toBeVisible({ timeout: 8_000 });
-  await page.fill('[data-testid="persona-name"]', "Copyeditor");
+  await page.fill('[data-testid="persona-name"]', personaName);
   await fillTextarea(page, '[data-testid="persona-prompt"]', "Fix grammar only.");
   await page.click('[data-testid="persona-submit"]');
-  await expect(page.locator('[data-testid="ai-persona-row-Copyeditor"]')).toBeVisible({
+  await expect(page.locator(`[data-testid="ai-persona-row-${personaName}"]`)).toBeVisible({
     timeout: 8_000,
   });
   await page.click('[aria-label="Close settings"]');
 
   await openPersonaMenu(page);
-  await expect(page.locator('[data-testid="ai-persona-Copyeditor"]')).toBeVisible();
-  await page.click('[data-testid="ai-persona-Copyeditor"]');
+  await expect(page.locator(`[data-testid="ai-persona-${personaName}"]`)).toBeVisible();
+  await page.click(`[data-testid="ai-persona-${personaName}"]`);
 
   await openPersonaMenu(page);
   await expect(
-    page.locator('[data-testid="ai-persona-Copyeditor"] svg'),
+    page.locator(`[data-testid="ai-persona-${personaName}"] svg`),
   ).toBeVisible();
   await page.click('[data-testid="ai-persona-none"]');
 });

@@ -2790,11 +2790,11 @@ pub fn set_project_color(project_id: String, color: String) -> Result<ProjectMet
 /// Open the webview devtools. Only does anything in debug builds (`tauri dev`),
 /// where devtools are compiled in; a no-op in release.
 #[tauri::command]
-pub fn open_devtools(window: tauri::WebviewWindow) {
+pub fn open_devtools(webview: tauri::Webview) {
     #[cfg(debug_assertions)]
-    window.open_devtools();
+    webview.open_devtools();
     #[cfg(not(debug_assertions))]
-    let _ = window;
+    let _ = webview;
 }
 
 fn project_meta_for_enumeration(project_id: &str, directory: &Path) -> Result<ProjectMeta, String> {
