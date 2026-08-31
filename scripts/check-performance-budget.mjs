@@ -54,6 +54,20 @@ const limits = {
   // +40 KB for the Overleaf import and latexmk engine surfaces (engine
   // picker modal, TinyTeX install guards, import taxonomy and classifier,
   // Library import entry points): combined graph measures 9.27 MB.
+  //
+  // +3.6 MB for the chat markdown/math/mermaid rendering feature, taking the
+  // whole-graph total to ~12.86 MB. This is entirely lazy weight, not startup
+  // weight: the mermaid ecosystem dominates it (mermaid.core ~0.6 MB, ~30
+  // per-diagram-type chunks ~0.9 MB, the cynefin diagram ~0.68 MB, and
+  // cytoscape ~0.43 MB — together ~2.6 MB) and each piece is dynamically
+  // imported only when a chat actually renders that diagram type; katex
+  // (~0.26 MB) and the markdown renderer with syntax highlighting (~0.19 MB)
+  // make up most of the rest. None of it enters the entry chunk, so the
+  // startup gates below (largestJavaScript / entryJavaScript, still 3.55 MB)
+  // are unchanged and remain the real regression guard. This ceiling counts
+  // every emitted asset, eager or lazy, so it is deliberately accepted at
+  // 12.9 MB for the on-demand rendering graph; reducing it further means
+  // trimming the mermaid diagram set, not the startup path.
   totalJavaScript: 12_900_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
