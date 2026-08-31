@@ -75,6 +75,17 @@ export type BrowserCookieSourceStatus =
   | "not_installed"
   | "coming_soon";
 
+export type McpImportSourceTool =
+  | "claude-desktop"
+  | "claude-code"
+  | "codex"
+  | "cursor"
+  | "windsurf";
+
+export type McpImportedServer = McpServerConfig & {
+  sourceTool: McpImportSourceTool;
+};
+
 export interface BrowserCookieSource {
   browser: BrowserCookieSourceId;
   browserName: string;
@@ -599,11 +610,15 @@ export const mcpSetEnabled = (enabled: boolean) =>
 export const mcpRestartServer = () => invoke<McpStatus>("mcp_restart_server");
 export const mcpConnectionInfo = () => invoke<McpConnectionInfo>("mcp_connection_info");
 export const mcpRegenerateToken = () => invoke<void>("mcp_regenerate_token");
+export const mcpImportSource = (sourceTool: McpImportSourceTool) =>
+  invoke<McpImportedServer[]>("mcp_import_source", { sourceTool });
 export const mcpServersList = () => invoke<McpManagedServer[]>("mcp_servers_list");
 export const mcpServerAdd = (server: McpServerConfig) =>
   invoke<McpManagedServer>("mcp_server_add", { server });
 export const mcpServerUpdate = (originalName: string, server: McpServerConfig) =>
   invoke<McpManagedServer>("mcp_server_update", { originalName, server });
+export const mcpServerUpdateValidated = (originalName: string, server: McpServerConfig) =>
+  invoke<McpManagedServer>("mcp_server_update_validated", { originalName, server });
 export const mcpServerRemove = (name: string) =>
   invoke<void>("mcp_server_remove", { name });
 export const mcpServerSetEnabled = (name: string, enabled: boolean) =>

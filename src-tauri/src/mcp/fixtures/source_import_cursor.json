@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "local-search": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-search"],
+      "env": {
+        "MODE": "safe"
+      }
+    },
+    "docs-api": {
+      "type": "streamable-http",
+      "url": "https://mcp.example.com/cursor",
+      "headers": {
+        "Authorization": "Bearer cursor-token-value"
+      }
+    }
+  }
+}

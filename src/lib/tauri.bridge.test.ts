@@ -17,11 +17,13 @@ import {
   mcpAgentToolCall,
   mcpAgentToolAuthorize,
   mcpAgentToolsList,
+  mcpImportSource,
   mcpServerAdd,
   mcpServerRemove,
   mcpServerSetEnabled,
   mcpServersList,
   mcpServerUpdate,
+  mcpServerUpdateValidated,
   mcpServerValidate,
   renameFile,
   validateCompileFingerprint,
@@ -152,6 +154,16 @@ describe("MCP server management bridge", () => {
     env: { NODE_ENV: "production" },
   };
 
+  it("requests read-only server candidates for one supported source", async () => {
+    mocks.invoke.mockResolvedValue([]);
+
+    await mcpImportSource("cursor");
+
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_import_source", {
+      sourceTool: "cursor",
+    });
+  });
+
   it("uses the dedicated list, add, and update commands", async () => {
     mocks.invoke.mockResolvedValue({
       config: server,
@@ -172,6 +184,12 @@ describe("MCP server management bridge", () => {
 
     await mcpServerUpdate("old-filesystem", server);
     expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_server_update", {
+      originalName: "old-filesystem",
+      server,
+    });
+
+    await mcpServerUpdateValidated("old-filesystem", server);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_server_update_validated", {
       originalName: "old-filesystem",
       server,
     });

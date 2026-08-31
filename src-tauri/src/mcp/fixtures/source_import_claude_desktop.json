@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "  npx  ",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp/library"],
+      "env": {
+        "CLAUDE_TOKEN": "claude-token-value"
+      }
+    }
+  }
+}

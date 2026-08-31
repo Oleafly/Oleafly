@@ -1007,7 +1007,7 @@ fn connected_validation(validation: McpServerValidation) -> Result<McpServerVali
     }
 }
 
-fn normalize_server_config(server: McpServerConfig) -> Result<McpServerConfig, String> {
+pub(super) fn normalize_server_config(server: McpServerConfig) -> Result<McpServerConfig, String> {
     normalize_server_config_with_stored_values(server, false)
 }
 
@@ -1211,11 +1211,18 @@ where
     })
 }
 
-async fn edit_server_with<R, F, Fut>(
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum EditValidationPolicy {
+    WhenEnabled,
+    Always,
+}
+
+async fn edit_server_with_policy<R, F, Fut>(
     repository: &R,
     current_name: &str,
     server: McpServerConfig,
     connect: F,
+    validation_policy: EditValidationPolicy,
 ) -> Result<McpManagedServer, String>
 where
     R: McpConfigRepository,
@@ -1242,7 +1249,7 @@ where
             server.name
         ));
     }
-    let validation = if server.enabled {
+    let validation = if server.enabled || validation_policy == EditValidationPolicy::Always {
         connected_validation(validate_with(&server, connect).await)?
     } else {
         disabled_validation(&server)
@@ -1276,6 +1283,48 @@ where
         config: server,
         validation,
     })
+}
+
+async fn edit_server_with<R, F, Fut>(
+    repository: &R,
+    current_name: &str,
+    server: McpServerConfig,
+    connect: F,
+) -> Result<McpManagedServer, String>
+where
+    R: McpConfigRepository,
+    F: FnOnce(McpServerConfig) -> Fut,
+    Fut: Future<Output = Result<Vec<McpServerTool>, McpConnectionError>>,
+{
+    edit_server_with_policy(
+        repository,
+        current_name,
+        server,
+        connect,
+        EditValidationPolicy::WhenEnabled,
+    )
+    .await
+}
+
+async fn edit_server_validated_with<R, F, Fut>(
+    repository: &R,
+    current_name: &str,
+    server: McpServerConfig,
+    connect: F,
+) -> Result<McpManagedServer, String>
+where
+    R: McpConfigRepository,
+    F: FnOnce(McpServerConfig) -> Fut,
+    Fut: Future<Output = Result<Vec<McpServerTool>, McpConnectionError>>,
+{
+    edit_server_with_policy(
+        repository,
+        current_name,
+        server,
+        connect,
+        EditValidationPolicy::Always,
+    )
+    .await
 }
 
 async fn set_server_enabled_with<R, F, Fut>(
@@ -2443,7 +2492,10 @@ fn acquire_validation_slot(
         .map_err(|_| "MCP validation is busy. Try again in a moment.".to_string())
 }
 
-fn validate_command_webview(webview_label: &str, window_label: &str) -> Result<(), String> {
+pub(super) fn validate_command_webview(
+    webview_label: &str,
+    window_label: &str,
+) -> Result<(), String> {
     if webview_label == "main" && window_label == "main" {
         Ok(())
     } else {
@@ -3092,6 +3144,22 @@ pub async fn mcp_server_update<R: tauri::Runtime>(
         .then(|| acquire_validation_slot(&state))
         .transpose()?;
     edit_server_with(&AppConfigRepository, &original_name, server, connect_server)
+        .await
+        .map(visible_managed_server)
+}
+
+#[tauri::command]
+pub async fn mcp_server_update_validated<R: tauri::Runtime>(
+    webview: tauri::Webview<R>,
+    state: tauri::State<'_, McpClientState>,
+    original_name: String,
+    server: McpServerConfig,
+) -> Result<McpManagedServer, String> {
+    validate_command_webview(webview.label(), webview.window().label())?;
+    let original_name = normalize_server_name(&original_name)?;
+    let _guard = state.mutation.lock().await;
+    let _permit = acquire_validation_slot(&state)?;
+    edit_server_validated_with(&AppConfigRepository, &original_name, server, connect_server)
         .await
         .map(visible_managed_server)
 }
@@ -6083,6 +6151,55 @@ mod tests {
 
         remove_server_with(&repository, "hosted-search").unwrap();
         assert!(repository.load().unwrap().mcp_servers.is_empty());
+    }
+
+    #[tokio::test]
+    async fn validated_edit_checks_a_disabled_server_before_persisting() {
+        let (_directory, repository) = disk_repository();
+        let mut existing = stdio_server("search-server");
+        existing.enabled = false;
+        persist_server(&repository, existing.clone());
+        let mut replacement = remote_server("hosted-search");
+        replacement.enabled = false;
+
+        let result =
+            edit_server_validated_with(&repository, "local-search", replacement, |_| async {
+                Err(McpConnectionError::Protocol {
+                    detail: "tools/list failed".into(),
+                })
+            })
+            .await;
+
+        assert_eq!(
+            result.unwrap_err(),
+            "MCP protocol error: tools/list failed."
+        );
+        assert_eq!(repository.load().unwrap().mcp_servers, vec![existing]);
+    }
+
+    #[tokio::test]
+    async fn ordinary_edit_of_a_disabled_server_does_not_connect() {
+        let (_directory, repository) = disk_repository();
+        let mut existing = stdio_server("search-server");
+        existing.enabled = false;
+        persist_server(&repository, existing);
+        let mut replacement = remote_server("hosted-search");
+        replacement.enabled = false;
+
+        let edited = edit_server_with(&repository, "local-search", replacement, |_| async {
+            panic!("ordinary disabled edit reached the connect boundary")
+        })
+        .await
+        .unwrap();
+
+        assert_eq!(
+            edited.validation.status,
+            McpServerValidationStatus::Disabled
+        );
+        assert_eq!(
+            repository.load().unwrap().mcp_servers[0].name,
+            "hosted-search"
+        );
     }
 
     #[tokio::test]

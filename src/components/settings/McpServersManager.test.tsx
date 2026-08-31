@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import type {
+  McpImportedServer,
   McpManagedServer,
   McpServerConfig,
   McpServerValidation,
@@ -358,6 +359,328 @@ describe("McpServersManager", () => {
 
     expect(await screen.findByText("papers_search")).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Enable papers" })).toBeChecked();
+  });
+
+  it("adds a wrapped JSON configuration through the existing validation path", async () => {
+    records = [];
+    renderManager();
+    await screen.findByText("No servers added.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
+    fireEvent.click(screen.getByRole("button", { name: "JSON" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Full configuration" }), {
+      target: {
+        value: JSON.stringify({
+          mcpServers: {
+            papers: {
+              type: "stdio",
+              command: "node",
+              args: ["server.js", "--root", "/tmp/papers"],
+              env: { API_KEY: "secret" },
+            },
+          },
+        }),
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add and validate" }));
+
+    expect(await screen.findByText("papers_search")).toBeInTheDocument();
+  });
+
+  it("keeps the editor open and explains malformed JSON without adding a server", async () => {
+    records = [];
+    renderManager();
+    await screen.findByText("No servers added.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
+    fireEvent.click(screen.getByRole("button", { name: "JSON" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Full configuration" }), {
+      target: { value: "{" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add and validate" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      'MCP server JSON is malformed. Expected either {"server-name": {...}} or {"mcpServers": {"server-name": {...}}}.',
+    );
+    expect(screen.getByRole("dialog", { name: "Add MCP server" })).toBeInTheDocument();
+    expect(mockInvoke).not.toHaveBeenCalledWith("mcp_server_add", expect.anything());
+  });
+
+  it("preserves an in-progress form configuration through the JSON view", async () => {
+    records = [];
+    renderManager();
+    await screen.findByText("No servers added.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
+    fireEvent.change(screen.getByLabelText("Server name"), { target: { value: "papers" } });
+    fireEvent.change(screen.getByLabelText("Command"), { target: { value: "node" } });
+    fireEvent.change(screen.getByLabelText("Arguments"), {
+      target: { value: "server.js\n--root\n/tmp/papers" },
+    });
+    fireEvent.change(screen.getByLabelText("Environment key 1"), {
+      target: { value: "API_KEY" },
+    });
+    fireEvent.change(screen.getByLabelText("Environment value 1"), {
+      target: { value: "secret" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "JSON" }));
+
+    const fullConfiguration = screen.getByRole("textbox", { name: "Full configuration" });
+    expect((fullConfiguration as HTMLTextAreaElement).value).toContain('"papers"');
+    expect((fullConfiguration as HTMLTextAreaElement).value).toContain('"API_KEY": "secret"');
+
+    fireEvent.click(screen.getByRole("button", { name: "Form" }));
+
+    expect(screen.getByLabelText("Server name")).toHaveValue("papers");
+    expect(screen.getByLabelText("Command")).toHaveValue("node");
+    expect(screen.getByLabelText("Arguments")).toHaveValue(
+      "server.js\n--root\n/tmp/papers",
+    );
+    expect(screen.getByLabelText("Environment key 1")).toHaveValue("API_KEY");
+    expect(screen.getByLabelText("Environment value 1")).toHaveValue("secret");
+  });
+
+  it("keeps in-progress JSON when the active JSON segment is clicked again", async () => {
+    records = [];
+    renderManager();
+    await screen.findByText("No servers added.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
+    fireEvent.click(screen.getByRole("button", { name: "JSON" }));
+    const fullConfiguration = screen.getByRole("textbox", { name: "Full configuration" });
+    const pasted = JSON.stringify({
+      docs: {
+        type: "http",
+        url: "https://docs.example.test/mcp",
+        headers: { Authorization: "Bearer secret" },
+      },
+    });
+    fireEvent.change(fullConfiguration, { target: { value: pasted } });
+
+    fireEvent.click(screen.getByRole("button", { name: "JSON" }));
+
+    expect(fullConfiguration).toHaveValue(pasted);
+  });
+
+  it("maps edited remote JSON back into the form", async () => {
+    records = [];
+    renderManager();
+    await screen.findByText("No servers added.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Add server" }));
+    fireEvent.click(screen.getByRole("button", { name: "JSON" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Full configuration" }), {
+      target: {
+        value: JSON.stringify({
+          docs: {
+            type: "http",
+            url: "https://docs.example.test/mcp",
+            headers: { Authorization: "Bearer secret" },
+          },
+        }),
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Form" }));
+
+    expect(screen.getByLabelText("Server name")).toHaveValue("docs");
+    expect(screen.getByRole("radio", { name: "Remote URL" })).toBeChecked();
+    expect(screen.getByRole("textbox", { name: "Remote URL" })).toHaveValue(
+      "https://docs.example.test/mcp",
+    );
+    expect(screen.getByLabelText("Header key 1")).toHaveValue("Authorization");
+    expect(screen.getByLabelText("Header value 1")).toHaveValue("Bearer secret");
+  });
+
+  it("imports through add validation, skips duplicate names, and reports failures", async () => {
+    records = [CONNECTED];
+    const candidates: McpImportedServer[] = [
+      {
+        name: "files",
+        enabled: true,
+        transport: "stdio",
+        command: "node",
+        args: ["duplicate.js", "--token=argument-secret"],
+        env: { FILES_TOKEN: "duplicate-secret" },
+        sourceTool: "cursor",
+      },
+      {
+        name: "papers",
+        enabled: true,
+        transport: "stdio",
+        command: "node",
+        args: ["imported.js"],
+        env: { PAPERS_TOKEN: "import-secret" },
+        sourceTool: "cursor",
+      },
+      {
+        name: "broken",
+        enabled: true,
+        transport: "remote",
+        url: "https://broken.example.test/mcp?token=query-secret",
+        headers: { Authorization: "header-secret" },
+        sourceTool: "cursor",
+      },
+    ];
+    const addCalls: McpServerConfig[] = [];
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === "mcp_servers_list") return records;
+      if (command === "mcp_server_validate") {
+        const { name } = args as { name: string };
+        return connectedValidation(name);
+      }
+      if (command === "mcp_import_source") {
+        return (args as { sourceTool: string }).sourceTool === "cursor" ? candidates : [];
+      }
+      if (command === "mcp_server_add") {
+        const { server } = args as { server: McpServerConfig };
+        addCalls.push(server);
+        if (server.name === "broken") {
+          throw new Error("Could not connect to the imported server.");
+        }
+        if (server.transport !== "stdio") throw new Error("Expected a stdio server.");
+        const redacted: McpManagedServer = {
+          config: { ...server, env: { PAPERS_TOKEN: "__stored__" } },
+          validation: connectedValidation(server.name),
+        };
+        records = [...records, redacted];
+        return redacted;
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    renderManager();
+    await screen.findByText("read_file");
+
+    fireEvent.click(screen.getByRole("button", { name: "Import from..." }));
+
+    expect(await screen.findByRole("checkbox", { name: /Import papers from Cursor/ })).toBeChecked();
+    expect(screen.getByText("Environment: PAPERS_TOKEN")).toBeInTheDocument();
+    expect(screen.getByText("Headers: Authorization")).toBeInTheDocument();
+    for (const secret of [
+      "argument-secret",
+      "duplicate-secret",
+      "import-secret",
+      "query-secret",
+      "header-secret",
+    ]) {
+      expect(document.body.textContent).not.toContain(secret);
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Import selected" }));
+
+    expect(await screen.findByText("Imported 1, skipped 1, failed 1.")).toBeInTheDocument();
+    expect(screen.getByText("broken: Could not connect to the imported server.")).toBeInTheDocument();
+    expect(screen.getByText("node imported.js")).toBeInTheDocument();
+    expect(addCalls).toEqual([
+      {
+        name: "papers",
+        enabled: true,
+        transport: "stdio",
+        command: "node",
+        args: ["imported.js"],
+        env: { PAPERS_TOKEN: "import-secret" },
+      },
+      {
+        name: "broken",
+        enabled: true,
+        transport: "remote",
+        url: "https://broken.example.test/mcp?token=query-secret",
+        headers: { Authorization: "header-secret" },
+      },
+    ]);
+    expect(document.body.textContent).not.toContain("import-secret");
+  });
+
+  it("keeps import unavailable until the existing server list has loaded", async () => {
+    const listed = deferred<McpManagedServer[]>();
+    mockInvoke.mockImplementation(async (command) => {
+      if (command === "mcp_servers_list") return listed.promise;
+      if (command === "mcp_server_validate") return CONNECTED.validation;
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    renderManager();
+
+    expect(screen.getByRole("button", { name: "Import from..." })).toBeDisabled();
+
+    await act(async () => {
+      listed.resolve([CONNECTED]);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Import from..." })).toBeEnabled(),
+    );
+  });
+
+  it("keeps import unavailable when the existing server list cannot be loaded", async () => {
+    mockInvoke.mockImplementation(async (command) => {
+      if (command === "mcp_servers_list") {
+        throw new Error("Could not load MCP servers.");
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    renderManager();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load MCP servers.");
+    expect(screen.getByRole("button", { name: "Import from..." })).toBeDisabled();
+  });
+
+  it("validates a disabled matching import before overwriting it", async () => {
+    records = [CONNECTED];
+    const replacement: McpImportedServer = {
+      name: "files",
+      enabled: false,
+      transport: "stdio",
+      command: "bun",
+      args: ["replacement.js"],
+      env: { FILES_TOKEN: "replacement-secret" },
+      sourceTool: "claude-code",
+    };
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === "mcp_servers_list") return records;
+      if (command === "mcp_server_validate") return CONNECTED.validation;
+      if (command === "mcp_import_source") {
+        return (args as { sourceTool: string }).sourceTool === "claude-code"
+          ? [replacement]
+          : [];
+      }
+      if (command === "mcp_server_update_validated") {
+        const { originalName, server } = args as {
+          originalName: string;
+          server: McpServerConfig;
+        };
+        expect(originalName).toBe("files");
+        expect(server).toEqual({
+          name: "files",
+          enabled: false,
+          transport: "stdio",
+          command: "bun",
+          args: ["replacement.js"],
+          env: { FILES_TOKEN: "replacement-secret" },
+        });
+        if (server.transport !== "stdio") throw new Error("Expected a stdio server.");
+        const redacted: McpManagedServer = {
+          config: { ...server, env: { FILES_TOKEN: "__stored__" } },
+          validation: connectedValidation("files"),
+        };
+        records = [redacted];
+        return redacted;
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    renderManager();
+    await screen.findByText("read_file");
+
+    fireEvent.click(screen.getByRole("button", { name: "Import from..." }));
+    await screen.findByRole("checkbox", { name: /Import files from Claude Code/ });
+    fireEvent.click(screen.getByRole("radio", { name: "Overwrite existing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import selected" }));
+
+    expect(await screen.findByText("Imported 1, skipped 0, failed 0.")).toBeInTheDocument();
+    expect(screen.getByText("bun replacement.js")).toBeInTheDocument();
+    expect(mockInvoke).not.toHaveBeenCalledWith("mcp_server_add", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith("mcp_server_update", expect.anything());
+    expect(document.body.textContent).not.toContain("replacement-secret");
   });
 
   it("validates a disabled server on demand while keeping its disabled state", async () => {

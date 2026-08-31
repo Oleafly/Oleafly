@@ -2,6 +2,7 @@ pub mod client;
 pub mod native;
 pub mod protocol;
 pub mod server;
+pub mod source_import;
 
 use serde::Serialize;
 use serde_json::Value;
