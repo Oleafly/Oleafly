@@ -125,7 +125,6 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   { id: "experimentation", label: "Experimentation", icon: FlaskConical },
   { id: "help", label: "Help & About", icon: LifeBuoy },
 ];
-const ADVANCED: Section[] = ["dictionary", "engine", "downloads", "data", "experimentation"];
 const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   general: "settings-general",
   appearance: "settings-appearance",
@@ -216,14 +215,6 @@ export function SettingsModal() {
   const tours = useTourStore((s) => s.tours);
   const completedTours = TOUR_IDS.filter((id) => tours[id].status === "completed").length;
   const dismissedTours = TOUR_IDS.filter((id) => tours[id].status === "dismissed").length;
-  const [showAdvanced, setShowAdvanced] = useState(
-    () => typeof localStorage === "undefined" || localStorage.getItem("ol-settings-advanced") !== "0",
-  );
-  const setAdvanced = (v: boolean) => {
-    setShowAdvanced(v);
-    try { localStorage.setItem("ol-settings-advanced", v ? "1" : "0"); } catch { /* ignore */ }
-    if (!v && ADVANCED.includes(section)) setSection("general");
-  };
   const navigation = developerSettings
     ? [
         ...NAV.slice(0, -1),
@@ -259,11 +250,6 @@ export function SettingsModal() {
       ? (settingsInitialSection as Section)
       : "general";
     setSection(next);
-    // Deep-links into advanced sections must surface them in the nav.
-    if (ADVANCED.includes(next)) {
-      setShowAdvanced(true);
-      try { localStorage.setItem("ol-settings-advanced", "1"); } catch {}
-    }
     void libraryRoot().then(setLibRoot).catch(() => {});
   }, [open, settingsInitialSection]);
 
@@ -425,7 +411,7 @@ export function SettingsModal() {
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
           >
             <div className="flex flex-col gap-0.5">
-            {navigation.filter(({ id }) => showAdvanced || !ADVANCED.includes(id)).map(({ id, label, icon: Icon }) => (
+            {navigation.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
@@ -444,24 +430,6 @@ export function SettingsModal() {
             </button>
             ))}
             </div>
-          </div>
-          <div
-            role="switch"
-            aria-checked={showAdvanced}
-            aria-label="Show advanced settings"
-            data-testid="settings-toggle-advanced"
-            tabIndex={0}
-            onClick={() => setAdvanced(!showAdvanced)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setAdvanced(!showAdvanced);
-              }
-            }}
-            className="mt-0.5 flex shrink-0 cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
-          >
-            <span>Show Advanced</span>
-            <SettingsSwitchIndicator checked={showAdvanced} />
           </div>
         </nav>
 

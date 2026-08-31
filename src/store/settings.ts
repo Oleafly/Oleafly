@@ -39,6 +39,12 @@ export function layoutPresetWantsAi(preset: LayoutPreset): boolean {
   );
 }
 
+// Only the AI-only layout hides the editor/preview region entirely; the rest
+// always show it and select panes through the view mode.
+export function layoutPresetHidesWorkspace(preset: LayoutPreset): boolean {
+  return preset === "ai-only";
+}
+
 export type RailTab =
   | "files"
   | "search"
@@ -230,6 +236,7 @@ const LAYOUT_PRESETS: LayoutPreset[] = [
   "preview-ai",
   "editor-only",
   "preview-only",
+  "ai-only",
 ];
 const LEGACY_VIEW_MODE_TO_PRESET: Record<string, LayoutPreset> = {
   split: "editor-preview",
@@ -513,6 +520,9 @@ interface SettingsState {
   setSettingsScrollTarget: (v: string | null) => void;
   viewMode: ViewMode;
   setViewMode: (v: ViewMode) => void;
+  // The editor/preview region is hidden only for the AI-only layout; every
+  // other layout shows it and picks the panes through viewMode.
+  workspaceHidden: boolean;
   defaultView: LayoutPreset;
   setDefaultView: (v: LayoutPreset) => void;
   openInTree: boolean;
@@ -629,7 +639,7 @@ const PREF_DEFAULTS = {
   pdfZoomShortcuts: true,
   hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS] as readonly string[],
   defaultView: "editor-preview" as LayoutPreset,
-  openInTree: false,
+  openInTree: true,
   hoverPreview: true,
   terminalOpen: false,
   browserOpen: false,
@@ -752,7 +762,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   settingsScrollTarget: null,
   setSettingsScrollTarget: (v) => set({ settingsScrollTarget: v }),
   viewMode: "split",
-  setViewMode: (v) => set({ viewMode: v }),
+  // Choosing an explicit editor/split/pdf view always reveals the workspace.
+  setViewMode: (v) => set({ viewMode: v, workspaceHidden: false }),
+  workspaceHidden: false,
   defaultView: readDefaultView(ls("oleafly.defaultView", "editor-preview")),
   setDefaultView: (v) => {
     saveLs("oleafly.defaultView", v);
@@ -778,7 +790,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   assistantOpen: false,
   setAssistantOpen: (v) => {
-    set({ assistantOpen: v });
+    // Closing the assistant while the workspace is hidden (AI-only layout)
+    // would leave nothing on screen, so reveal the workspace as it closes.
+    set(v ? { assistantOpen: true } : { assistantOpen: false, workspaceHidden: false });
   },
   closeDocks: () => {
     set({ terminalOpen: false, browserOpen: false });
@@ -907,7 +921,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.browser.homePage", value);
     set({ browserHomePage: value });
   },
-  openInTree: ls("oleafly.openInTree", "0") !== "0",
+  openInTree: ls("oleafly.openInTree", "1") !== "0",
   setOpenInTree: (v) => {
     saveLs("oleafly.openInTree", v ? "1" : "0");
     set({ openInTree: v });
@@ -1006,28 +1020,33 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setHotkeysOpen: (v) => set({ hotkeysOpen: v }),
   railTab: "files",
   setRailTab: (v) => set({ railTab: v }),
+  // A layout preset controls only the editor/preview/AI panes. The file tree
+  // is an independent surface (its own toggle and the "show file tree on
+  // open" preference), so switching layouts never opens or closes it.
   setLayoutPreset: (preset) => {
     switch (preset) {
       case "editor-preview-ai":
-        set({ showTree: true, viewMode: "split", assistantOpen: true });
+        set({ viewMode: "split", assistantOpen: true, workspaceHidden: false });
         break;
       case "editor-preview":
-        set({ showTree: true, viewMode: "split", assistantOpen: false });
+        set({ viewMode: "split", assistantOpen: false, workspaceHidden: false });
         break;
       case "editor-ai":
-        set({ showTree: true, viewMode: "editor", assistantOpen: true });
+        set({ viewMode: "editor", assistantOpen: true, workspaceHidden: false });
         break;
       case "preview-ai":
-        set({ showTree: true, viewMode: "pdf", assistantOpen: true });
+        set({ viewMode: "pdf", assistantOpen: true, workspaceHidden: false });
         break;
       case "editor-only":
-        set({ showTree: false, viewMode: "editor", assistantOpen: false });
+        set({ viewMode: "editor", assistantOpen: false, workspaceHidden: false });
         break;
       case "preview-only":
-        set({ showTree: false, viewMode: "pdf", assistantOpen: false });
+        set({ viewMode: "pdf", assistantOpen: false, workspaceHidden: false });
         break;
       case "ai-only":
-        set({ showTree: false, viewMode: "editor", assistantOpen: true });
+        // No editor or preview: hide the whole workspace region and let the
+        // assistant fill it.
+        set({ assistantOpen: true, workspaceHidden: true });
         break;
     }
   },

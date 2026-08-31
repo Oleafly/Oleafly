@@ -48,7 +48,7 @@ import {
 } from "@/store/compile";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
-import { layoutPresetViewMode, layoutPresetWantsAi, useSettingsStore } from "@/store/settings";
+import { useSettingsStore } from "@/store/settings";
 import { subscribeToComputerUseStarts } from "@/lib/agent-item-effects";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
@@ -267,7 +267,6 @@ function AppContent() {
     (state) => state.snapshot.identity,
   );
   const viewMode = useSettingsStore((s) => s.viewMode);
-  const setViewMode = useSettingsStore((s) => s.setViewMode);
   const showTree = useSettingsStore((s) => s.showTree);
   const editorFontSize = useSettingsStore((s) => s.editorFontSize);
   const appFontSize = useSettingsStore((s) => s.appFontSize);
@@ -278,6 +277,7 @@ function AppContent() {
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
   const browserOpen = useSettingsStore((s) => s.browserOpen);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
+  const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const closeDocks = useSettingsStore((s) => s.closeDocks);
   const homePage = useHomeViewStore((state) => state.page);
   const toolsOpen = useHomeViewStore((state) => state.toolsOpen);
@@ -496,19 +496,20 @@ function AppContent() {
 
   useEffect(() => {
     const s = useSettingsStore.getState();
-    if (projectId) setViewMode(layoutPresetViewMode(s.defaultView));
     // Clear the previous project's compile output so a stale PDF never shows.
     useCompileStore.getState().reset();
     // Preflight results belong to the previous project; reset them too.
     usePreflightStore.getState().reset();
     if (projectId) {
       s.setRailTab("files");
-      s.setAssistantOpen(layoutPresetWantsAi(s.defaultView));
+      // The default layout drives only the editor/preview/AI panes; the file
+      // tree is independent and follows the "show file tree on open" setting.
+      s.setLayoutPreset(s.defaultView);
       if (s.openInTree && !s.showTree) s.toggleTree();
       else if (!s.openInTree && s.showTree) s.toggleTree();
       void import("@/lib/preview-window").then((m) => m.retargetPreviewWindow(projectId));
     }
-  }, [projectId, setViewMode]);
+  }, [projectId]);
 
   // Detached AI chat / preview windows can mutate disk; reload open buffers
   // and the compiled PDF when they report changes.
@@ -864,6 +865,7 @@ function AppContent() {
                 </Fragment>
               )}
 
+              {!workspaceHidden && (
               <Panel
                   key="editorpdf"
                   id="editorpdf"
@@ -936,16 +938,17 @@ function AppContent() {
                         </Panel>
                   </PanelGroup>
                 </Panel>
+              )}
 
               {assistantOpen && (
                 <Fragment key="assistant">
-                  <VHandle id="h-assistant" />
+                  {!workspaceHidden && <VHandle id="h-assistant" />}
                   <Panel
                     id="assistant"
                     order={3}
-                    defaultSize={Math.max(28, assistantMinSize)}
-                    minSize={assistantMinSize}
-                    maxSize={55}
+                    defaultSize={workspaceHidden ? 100 : Math.max(28, assistantMinSize)}
+                    minSize={workspaceHidden ? 100 : assistantMinSize}
+                    maxSize={workspaceHidden ? 100 : 55}
                     collapsible
                     collapsedSize={0}
                     onCollapse={() => {

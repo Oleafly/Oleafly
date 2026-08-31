@@ -232,19 +232,66 @@ describe("useSettingsStore dock appearance settings", () => {
 });
 
 describe("useSettingsStore layout presets", () => {
-  it("ai-only opens the assistant panel beside a bare editor", () => {
+  it("ai-only hides the whole workspace and shows only the assistant", () => {
     useSettingsStore.getState().setLayoutPreset("ai-only");
     const s = useSettingsStore.getState();
     expect(s.assistantOpen).toBe(true);
-    expect(s.showTree).toBe(false);
-    expect(s.viewMode).toBe("editor");
+    expect(s.workspaceHidden).toBe(true);
   });
 
-  it("switching away from ai-only closes the assistant panel", () => {
+  it("every non-ai-only preset keeps the workspace visible", () => {
+    for (const preset of [
+      "editor-preview-ai",
+      "editor-preview",
+      "editor-ai",
+      "preview-ai",
+      "editor-only",
+      "preview-only",
+    ] as const) {
+      useSettingsStore.getState().setLayoutPreset(preset);
+      expect(useSettingsStore.getState().workspaceHidden).toBe(false);
+    }
+  });
+
+  it("maps each preset to the right editor/preview/AI panes", () => {
+    const expected: Record<string, { viewMode: string; ai: boolean }> = {
+      "editor-preview-ai": { viewMode: "split", ai: true },
+      "editor-preview": { viewMode: "split", ai: false },
+      "editor-ai": { viewMode: "editor", ai: true },
+      "preview-ai": { viewMode: "pdf", ai: true },
+      "editor-only": { viewMode: "editor", ai: false },
+      "preview-only": { viewMode: "pdf", ai: false },
+    };
+    for (const [preset, want] of Object.entries(expected)) {
+      useSettingsStore.getState().setLayoutPreset(preset as never);
+      const s = useSettingsStore.getState();
+      expect(s.viewMode).toBe(want.viewMode);
+      expect(s.assistantOpen).toBe(want.ai);
+    }
+  });
+
+  it("does not touch the file tree: the tree is an independent surface", () => {
+    useSettingsStore.setState({ showTree: true });
+    useSettingsStore.getState().setLayoutPreset("editor-only");
+    expect(useSettingsStore.getState().showTree).toBe(true);
+    useSettingsStore.setState({ showTree: false });
+    useSettingsStore.getState().setLayoutPreset("editor-preview-ai");
+    expect(useSettingsStore.getState().showTree).toBe(false);
+  });
+
+  it("choosing a view mode reveals a hidden workspace", () => {
     useSettingsStore.getState().setLayoutPreset("ai-only");
-    expect(useSettingsStore.getState().assistantOpen).toBe(true);
-    useSettingsStore.getState().setLayoutPreset("editor-preview");
-    expect(useSettingsStore.getState().assistantOpen).toBe(false);
+    expect(useSettingsStore.getState().workspaceHidden).toBe(true);
+    useSettingsStore.getState().setViewMode("split");
+    expect(useSettingsStore.getState().workspaceHidden).toBe(false);
+  });
+
+  it("closing the assistant from ai-only restores the workspace", () => {
+    useSettingsStore.getState().setLayoutPreset("ai-only");
+    useSettingsStore.getState().setAssistantOpen(false);
+    const s = useSettingsStore.getState();
+    expect(s.assistantOpen).toBe(false);
+    expect(s.workspaceHidden).toBe(false);
   });
 });
 

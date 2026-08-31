@@ -106,9 +106,10 @@ describe("Settings Help & About support callout", () => {
 
     const sectionList = screen.getByTestId("settings-section-scroll");
     expect(sectionList).toHaveClass("min-h-0", "flex-1", "overflow-y-auto");
-    expect(sectionList).not.toContainElement(
-      screen.getByTestId("settings-toggle-advanced"),
-    );
+    // The Show Advanced toggle was removed; every section is always listed.
+    expect(screen.queryByTestId("settings-toggle-advanced")).toBeNull();
+    expect(screen.getByTestId("settings-section-dictionary")).toBeInTheDocument();
+    expect(screen.getByTestId("settings-section-engine")).toBeInTheDocument();
   });
 
   it("uses the responsive Settings layout with a height floor", () => {
