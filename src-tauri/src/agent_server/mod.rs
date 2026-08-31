@@ -29,27 +29,41 @@ struct PrewarmRegistry {
     by_project: HashMap<String, Vec<PrewarmedThread>>,
 }
 
+const MAX_PREWARMED_PER_PROJECT: usize = 8;
+
 impl PrewarmRegistry {
+    /// Register a warmed thread, sweeping expired entries and capping the
+    /// per-project backlog so repeated warms with no claim cannot grow the
+    /// registry without bound.
     fn warm(&mut self, thread_id: String, project_id: &str) {
+        let now = Instant::now();
+        self.sweep(now, PREWARM_TTL);
+        let entries = self.by_project.entry(project_id.to_string()).or_default();
+        entries.push(PrewarmedThread {
+            thread_id,
+            warmed_at: now,
+        });
+        while entries.len() > MAX_PREWARMED_PER_PROJECT {
+            entries.remove(0);
+        }
+    }
+
+    fn sweep(&mut self, now: Instant, ttl: Duration) {
         self.by_project
-            .entry(project_id.to_string())
-            .or_default()
-            .push(PrewarmedThread {
-                thread_id,
-                warmed_at: Instant::now(),
-            });
+            .values_mut()
+            .for_each(|entries| entries.retain(|entry| now.duration_since(entry.warmed_at) <= ttl));
+        self.by_project.retain(|_, entries| !entries.is_empty());
     }
 
     /// Hand out one unexpired prewarmed thread for the project, sweeping
     /// expired entries on the way.
     fn claim(&mut self, project_id: &str, now: Instant, ttl: Duration) -> Option<String> {
-        let expired = |entry: &&PrewarmedThread| now.duration_since(entry.warmed_at) > ttl;
-        self.by_project
-            .values_mut()
-            .for_each(|entries| entries.retain(|entry| now.duration_since(entry.warmed_at) <= ttl));
+        self.sweep(now, ttl);
         let entries = self.by_project.get_mut(project_id)?;
-        let position = entries.iter().position(|entry| !expired(&entry))?;
-        Some(entries.remove(position).thread_id)
+        if entries.is_empty() {
+            return None;
+        }
+        Some(entries.remove(0).thread_id)
     }
 }
 

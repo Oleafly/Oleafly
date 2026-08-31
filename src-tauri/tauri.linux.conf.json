@@ -1,0 +1,22 @@
+{
+  "app": {
+    "windows": [
+      {
+        "title": "Oleafly",
+        "width": 1280,
+        "height": 800,
+        "transparent": false,
+        "backgroundColor": "#09090b",
+        "minWidth": 900,
+        "minHeight": 600,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "fullscreen": false,
+        "resizable": true,
+        "center": true,
+        "dragDropEnabled": false
+      }
+    ]
+  }
+}

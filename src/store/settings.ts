@@ -578,8 +578,6 @@ interface SettingsState {
   railTab: RailTab;
   setRailTab: (v: RailTab) => void;
   setLayoutPreset: (v: LayoutPreset) => void;
-  hideEditorArea: boolean;
-  setHideEditorArea: (v: boolean) => void;
   dockPlacement: DockPlacement;
   setDockPlacement: (v: DockPlacement) => void;
   bgPattern: BackgroundPattern;
@@ -1008,30 +1006,28 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setHotkeysOpen: (v) => set({ hotkeysOpen: v }),
   railTab: "files",
   setRailTab: (v) => set({ railTab: v }),
-  hideEditorArea: false,
-  setHideEditorArea: (v) => set({ hideEditorArea: v }),
   setLayoutPreset: (preset) => {
     switch (preset) {
       case "editor-preview-ai":
-        set({ showTree: true, viewMode: "split", assistantOpen: true, hideEditorArea: false });
+        set({ showTree: true, viewMode: "split", assistantOpen: true });
         break;
       case "editor-preview":
-        set({ showTree: true, viewMode: "split", assistantOpen: false, hideEditorArea: false });
+        set({ showTree: true, viewMode: "split", assistantOpen: false });
         break;
       case "editor-ai":
-        set({ showTree: true, viewMode: "editor", assistantOpen: true, hideEditorArea: false });
+        set({ showTree: true, viewMode: "editor", assistantOpen: true });
         break;
       case "preview-ai":
-        set({ showTree: true, viewMode: "pdf", assistantOpen: true, hideEditorArea: false });
+        set({ showTree: true, viewMode: "pdf", assistantOpen: true });
         break;
       case "editor-only":
-        set({ showTree: false, viewMode: "editor", assistantOpen: false, hideEditorArea: false });
+        set({ showTree: false, viewMode: "editor", assistantOpen: false });
         break;
       case "preview-only":
-        set({ showTree: false, viewMode: "pdf", assistantOpen: false, hideEditorArea: false });
+        set({ showTree: false, viewMode: "pdf", assistantOpen: false });
         break;
       case "ai-only":
-        set({ showTree: false, viewMode: "editor", assistantOpen: true, hideEditorArea: false });
+        set({ showTree: false, viewMode: "editor", assistantOpen: true });
         break;
     }
   },

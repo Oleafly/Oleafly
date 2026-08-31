@@ -256,7 +256,6 @@ describe("project dock layout", () => {
       browserOpen: false,
       terminalOpen: false,
       showTree: false,
-      hideEditorArea: false,
       chatFloating: false,
       railTab: "files",
       appFontSize: 16,

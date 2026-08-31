@@ -187,33 +187,67 @@ function scanFlowMath(source: string, fences: readonly SourceRange[]): SourceRan
   return ranges;
 }
 
-function crossBlockSensitiveFrom(source: string) {
+// Reference-style Markdown resolves across the whole document: an explicit
+// reference link, a footnote, or a link definition after this point could
+// bind to text that settled earlier, so nothing at or past the first such
+// construct may settle. Inline links, citations like [1], and task-list
+// checkboxes are self-contained and do not pin.
+function referencePinnedFrom(source: string) {
   const indexes = [
-    /^(?:[ \t]{0,3}>|[ \t]{0,3}(?:[*+-]|\d{1,9}[.)])[ \t]+)/gmu,
-    /^(?:[ ]{4}|\t|[ \t]{0,3}<(?:!--|\/?[A-Za-z]|[!?]))/gmu,
-    /\[/gu,
+    /\[[^\]\n]*\]\[/gu,
+    /\[\^/gu,
+    /^[ \t]{0,3}\[[^\]\n]+\]:/gmu,
   ].flatMap((pattern) => [...source.matchAll(pattern)].map((match) => match.index));
   return indexes.length > 0 ? Math.min(...indexes) : null;
+}
+
+// A block that opens a container construct (list, quote, indented code, raw
+// HTML) or begins indented may be continued by what follows a blank line.
+const STICKY_BLOCK = [
+  /^(?:[ \t]{0,3}>|[ \t]{0,3}(?:[*+-]|\d{1,9}[.)])[ \t]+)/mu,
+  /^(?:[ ]{4}|\t|[ \t]{0,3}<(?:!--|\/?[A-Za-z]|[!?]))/mu,
+  /^[ \t]/u,
+];
+
+function stickyBlock(block: string) {
+  return STICKY_BLOCK.some((pattern) => pattern.test(block));
+}
+
+// The line after a boundary can continue the previous construct only when it
+// begins as a continuation: indented, another item or quote line, or raw HTML.
+const STICKY_START = /^(?:[ \t]|>|(?:[*+-]|\d{1,9}[.)])[ \t]|<(?:!--|\/?[A-Za-z]|[!?]))/u;
+
+function stickyStart(source: string, boundary: number) {
+  const lineEnd = source.indexOf("\n", boundary);
+  const line = source.slice(boundary, lineEnd < 0 ? source.length : lineEnd);
+  return STICKY_START.test(line);
 }
 
 function blockBoundaries(source: string, ranges: readonly SourceRange[]) {
   const boundaries: number[] = [];
   const blankLine = /\r?\n[ \t]*\r?\n/gu;
-  const sensitiveFrom = crossBlockSensitiveFrom(source);
+  const pinnedFrom = referencePinnedFrom(source);
   const sortedRanges = [...ranges].sort((left, right) => left.from - right.from);
   let rangeIndex = 0;
+  let segmentFrom = 0;
   let match = blankLine.exec(source);
 
   while (match) {
     const matchFrom = match.index;
     const boundary = match.index + match[0].length;
-    if (sensitiveFrom !== null && boundary > sensitiveFrom) break;
+    if (pinnedFrom !== null && boundary > pinnedFrom) break;
     while (sortedRanges[rangeIndex]?.to <= matchFrom) rangeIndex++;
     const range = sortedRanges[rangeIndex];
     const protectedRange = Boolean(
       range && range.from < boundary && range.to > matchFrom,
     );
-    if (!protectedRange) boundaries.push(boundary);
+    // A boundary between a container block and a continuation-shaped next
+    // line would split one construct (a loose list, a multi-block quote)
+    // into two renders, so those blocks glue together instead.
+    const glued =
+      stickyBlock(source.slice(segmentFrom, matchFrom)) && stickyStart(source, boundary);
+    if (!protectedRange && !glued) boundaries.push(boundary);
+    segmentFrom = boundary;
     match = blankLine.exec(source);
   }
   return boundaries;

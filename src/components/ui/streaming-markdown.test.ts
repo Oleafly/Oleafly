@@ -94,7 +94,7 @@ describe("partitionStreamingMarkdown", () => {
     expect(partitionStreamingMarkdown("~~~mermaid\nflowchart TD\n~~~").tail.raw).toBe(false);
   });
 
-  it("keeps list, quote, table, math, and fenced content together", () => {
+  it("glues adjacent container blocks but settles finished constructs", () => {
     const source = [
       "- one",
       "- two",
@@ -116,8 +116,35 @@ describe("partitionStreamingMarkdown", () => {
     ].join("\n");
     const result = partitionStreamingMarkdown(source);
 
-    expect(result.settled).toEqual([]);
-    expect(result.tail).toEqual({ raw: false, source });
+    expect(result.settled.map((block) => block.source)).toEqual([
+      "- one\n- two\n\n> quoted\n> line\n\n",
+      "| a | b |\n| - | - |\n| 1 | 2 |\n\n",
+      "$$\nx^2\n$$\n\n",
+    ]);
+    expect(result.tail).toEqual({ raw: false, source: "```ts\nconst x = 1;\n```" });
+  });
+
+  it("settles a list once a plain paragraph terminates it", () => {
+    const result = partitionStreamingMarkdown(
+      "- one\n- two\n\nA closing paragraph.\n\nMore",
+    );
+
+    expect(result.settled.map((block) => block.source)).toEqual([
+      "- one\n- two\n\n",
+      "A closing paragraph.\n\n",
+    ]);
+    expect(result.tail).toEqual({ raw: false, source: "More" });
+  });
+
+  it.each([
+    "See [the docs](https://example.com) here.\n\nNext paragraph.\n\nMore",
+    "Sources [1] and [2] agree.\n\nNext paragraph.\n\nMore",
+    "- [ ] first task\n- [x] second task\n\nDone paragraph.\n\nMore",
+  ])("does not pin self-contained brackets in %j", (source) => {
+    const result = partitionStreamingMarkdown(source);
+
+    expect(result.settled.length).toBeGreaterThan(0);
+    expect(result.tail).toEqual({ raw: false, source: "More" });
   });
 
   it.each([

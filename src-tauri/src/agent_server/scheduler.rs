@@ -68,7 +68,6 @@ pub struct SchedulerState {
     /// priorities), so a flat Vec scanned on admission stays tiny.
     queued: Vec<QueuedRequest>,
     in_flight: usize,
-    per_conversation: HashMap<String, usize>,
     coalesce_tickets: HashMap<String, u64>,
     next_ticket: u64,
 }
@@ -115,10 +114,6 @@ impl SchedulerState {
             priority,
         };
         self.queued.push(request);
-        self.per_conversation
-            .entry(key)
-            .and_modify(|count| *count += 1)
-            .or_insert(1);
         if let Some(coalesce) = coalesce_key(method, conversation) {
             self.coalesce_tickets.insert(coalesce, ticket);
         }
@@ -140,10 +135,6 @@ impl SchedulerState {
             .map(|(index, _)| index)?;
         let request = self.queued.remove(index);
         self.in_flight += 1;
-        let key = Self::conversation_key(request.conversation.as_deref());
-        if let Some(count) = self.per_conversation.get_mut(&key) {
-            *count = count.saturating_sub(1);
-        }
         if let Some(coalesce) = coalesce_key(&request.method, request.conversation.as_deref()) {
             self.coalesce_tickets.remove(&coalesce);
         }
@@ -152,9 +143,8 @@ impl SchedulerState {
 
     /// Release the slot taken by a request that was admitted (directly or via
     /// `next_admission`).
-    pub fn complete(&mut self, conversation: Option<&str>) {
+    pub fn complete(&mut self, _conversation: Option<&str>) {
         self.in_flight = self.in_flight.saturating_sub(1);
-        let _ = Self::conversation_key(conversation);
     }
 
     pub fn in_flight(&self) -> usize {

@@ -39,6 +39,7 @@ pub enum ChunkedMessage {
 }
 
 impl ChunkedMessage {
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn sequence(&self) -> u64 {
         match self {
             ChunkedMessage::Start { sequence, .. }
@@ -49,6 +50,9 @@ impl ChunkedMessage {
 }
 
 /// Splits text into the ordered message sequence, respecting char boundaries.
+/// The live send path slices lazily; this stays as the reference splitting
+/// the tests assert against.
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn chunk_text(transfer_id: &str, text: &str) -> Vec<ChunkedMessage> {
     let mut messages = vec![ChunkedMessage::Start {
         marker: MARKER,
@@ -83,19 +87,25 @@ pub fn chunk_text(transfer_id: &str, text: &str) -> Vec<ChunkedMessage> {
 
 static ACKS: Mutex<Option<HashMap<String, mpsc::UnboundedSender<u64>>>> = Mutex::new(None);
 
-fn register(transfer_id: &str) -> mpsc::UnboundedReceiver<u64> {
+/// Removes the ack entry on drop, so a transfer future cancelled mid-send
+/// (webview closed, command aborted) cannot leak its registry slot.
+struct AckGuard(String);
+
+impl Drop for AckGuard {
+    fn drop(&mut self) {
+        let mut acks = ACKS.lock().expect("chunked ack registry poisoned");
+        if let Some(map) = acks.as_mut() {
+            map.remove(&self.0);
+        }
+    }
+}
+
+fn register(transfer_id: &str) -> (AckGuard, mpsc::UnboundedReceiver<u64>) {
     let (tx, rx) = mpsc::unbounded_channel();
     let mut acks = ACKS.lock().expect("chunked ack registry poisoned");
     acks.get_or_insert_with(HashMap::new)
         .insert(transfer_id.to_string(), tx);
-    rx
-}
-
-fn unregister(transfer_id: &str) {
-    let mut acks = ACKS.lock().expect("chunked ack registry poisoned");
-    if let Some(map) = acks.as_mut() {
-        map.remove(transfer_id);
-    }
+    (AckGuard(transfer_id.to_string()), rx)
 }
 
 #[tauri::command]
@@ -106,37 +116,60 @@ pub fn chunked_ack(transfer_id: String, sequence: u64) {
     }
 }
 
-/// Streams `text` over `channel` with ack-driven backpressure.
+/// Streams `text` over `channel` with ack-driven backpressure. Chunks are
+/// sliced on the fly, so only the in-window copies exist at once instead of
+/// the whole payload being materialized up front.
 pub async fn send_chunked_text(
     channel: &Channel<ChunkedMessage>,
     text: &str,
 ) -> Result<(), String> {
     let transfer_id = uuid_like();
     let mut acked: u64 = 0;
-    let mut rx = register(&transfer_id);
-    let result = async {
-        for message in chunk_text(&transfer_id, text) {
-            let sequence = message.sequence();
-            let is_chunk = matches!(message, ChunkedMessage::Chunk { .. });
-            channel
-                .send(message)
-                .map_err(|e| format!("chunked send failed: {e}"))?;
-            if !is_chunk {
-                continue;
-            }
-            while sequence.saturating_sub(acked) >= WINDOW {
-                match tokio::time::timeout(ACK_TIMEOUT, rx.recv()).await {
-                    Ok(Some(sequence_acked)) => acked = acked.max(sequence_acked),
-                    Ok(None) => return Err("chunked ack channel closed".to_string()),
-                    Err(_) => return Err("chunked ack timeout".to_string()),
-                }
+    let (_guard, mut rx) = register(&transfer_id);
+    channel
+        .send(ChunkedMessage::Start {
+            marker: MARKER,
+            transfer_id: transfer_id.clone(),
+            sequence: 0,
+            total_bytes: text.len() as u64,
+        })
+        .map_err(|e| format!("chunked send failed: {e}"))?;
+    let mut sequence: u64 = 1;
+    let mut rest = text;
+    while !rest.is_empty() {
+        let mut cut = rest.len().min(CHUNK_BYTES);
+        while !rest.is_char_boundary(cut) {
+            cut -= 1;
+        }
+        let (head, tail) = rest.split_at(cut);
+        channel
+            .send(ChunkedMessage::Chunk {
+                marker: MARKER,
+                transfer_id: transfer_id.clone(),
+                sequence,
+                data: head.to_string(),
+            })
+            .map_err(|e| format!("chunked send failed: {e}"))?;
+        while sequence.saturating_sub(acked) >= WINDOW {
+            match tokio::time::timeout(ACK_TIMEOUT, rx.recv()).await {
+                // An ack can only cover what was actually sent; a bogus
+                // higher sequence must not disable backpressure.
+                Ok(Some(sequence_acked)) => acked = acked.max(sequence_acked.min(sequence)),
+                Ok(None) => return Err("chunked ack channel closed".to_string()),
+                Err(_) => return Err("chunked ack timeout".to_string()),
             }
         }
-        Ok(())
+        sequence += 1;
+        rest = tail;
     }
-    .await;
-    unregister(&transfer_id);
-    result
+    channel
+        .send(ChunkedMessage::End {
+            marker: MARKER,
+            transfer_id: transfer_id.clone(),
+            sequence,
+        })
+        .map_err(|e| format!("chunked send failed: {e}"))?;
+    Ok(())
 }
 
 fn uuid_like() -> String {
@@ -148,12 +181,14 @@ fn uuid_like() -> String {
     format!("transfer-{nanos}-{:x}", std::process::id())
 }
 
+const MAX_APP_LOG_READ_BYTES: usize = 8 * 1024 * 1024;
+
 #[tauri::command]
 pub async fn read_app_log_chunked(
     max_bytes: usize,
     channel: Channel<ChunkedMessage>,
 ) -> Result<(), String> {
-    let text = crate::project::read_app_log(max_bytes)?;
+    let text = crate::project::read_app_log(max_bytes.min(MAX_APP_LOG_READ_BYTES))?;
     send_chunked_text(&channel, &text).await
 }
 

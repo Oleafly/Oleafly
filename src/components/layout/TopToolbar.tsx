@@ -94,10 +94,8 @@ const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] =
 function activeLayoutPreset(
   viewMode: ViewMode,
   assistantOpen: boolean,
-  showTree: boolean,
-  hideEditorArea: boolean
+  showTree: boolean
 ): LayoutPreset | null {
-  if (hideEditorArea) return null;
   if (!showTree) {
     if (viewMode === "editor") return assistantOpen ? "ai-only" : "editor-only";
     if (viewMode === "pdf") return assistantOpen ? null : "preview-only";
@@ -171,7 +169,6 @@ export function TopToolbar() {
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const showTree = useSettingsStore((s) => s.showTree);
-  const hideEditorArea = useSettingsStore((s) => s.hideEditorArea);
   const setLayoutPreset = useSettingsStore((s) => s.setLayoutPreset);
   const fullscreen = useFullscreen();
 
@@ -380,7 +377,7 @@ export function TopToolbar() {
         )}
       </div>
 
-      {!hideEditorArea && projectId && (
+      {projectId && (
         <div className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 min-[1200px]:block">
           <div className="pointer-events-auto">
             <ViewModeSwitch viewMode={viewMode} setViewMode={setViewMode} />
@@ -390,7 +387,7 @@ export function TopToolbar() {
 
       <div data-tauri-drag-region className="ml-auto flex items-center justify-end gap-1.5">
 
-        {!hideEditorArea && projectId && (
+        {projectId && (
           <div className="flex items-center gap-1.5 min-[1200px]:hidden">
             <ViewModeSwitch viewMode={viewMode} setViewMode={setViewMode} />
             <Divider />
@@ -526,7 +523,7 @@ export function TopToolbar() {
           </Tooltip>
           <DropdownMenuContent align="end" className="w-56">
             {LAYOUT_OPTIONS.map(({ preset, label, icon: Icon }) => {
-              const active = activeLayoutPreset(viewMode, assistantOpen, showTree, hideEditorArea) === preset;
+              const active = activeLayoutPreset(viewMode, assistantOpen, showTree) === preset;
               return (
                 <DropdownMenuItem key={preset} onClick={() => setLayoutPreset(preset)}>
                   <Icon className="size-4 text-muted-foreground" />

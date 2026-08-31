@@ -19,6 +19,87 @@ open problems, and the exact next steps in flight. Be terse and factual; \
 omit pleasantries. This summary replaces the earlier transcript, so anything \
 you omit is gone.";
 
+// The summarizer's input must itself fit in one provider call: compaction
+// runs precisely because the history grew too large, so shipping it verbatim
+// fails in the one case that matters. Newest messages win the budget.
+pub(crate) const SUMMARY_INPUT_CHAR_BUDGET: usize = 400_000;
+
+fn strip_images(message: &Message) -> Message {
+    Message {
+        role: message.role,
+        content: message
+            .content
+            .iter()
+            .map(|part| match part {
+                ContentPart::Image { .. } => ContentPart::Text {
+                    text: "[image omitted from summary input]".to_string(),
+                },
+                other => other.clone(),
+            })
+            .collect(),
+    }
+}
+
+fn message_chars(message: &Message) -> usize {
+    message
+        .content
+        .iter()
+        .map(|part| match part {
+            ContentPart::Text { text } => text.len(),
+            ContentPart::Image { image } => image.len(),
+            ContentPart::ToolUse {
+                name, arguments, ..
+            } => name.len() + arguments.len(),
+            ContentPart::ToolResult { name, output, .. } => name.len() + output.len(),
+        })
+        .sum()
+}
+
+fn truncate_to(message: &mut Message, budget: usize) {
+    let mut remaining = budget;
+    for part in &mut message.content {
+        let text = match part {
+            ContentPart::Text { text } => text,
+            ContentPart::ToolResult { output, .. } => output,
+            ContentPart::ToolUse { arguments, .. } => arguments,
+            ContentPart::Image { .. } => continue,
+        };
+        if text.len() <= remaining {
+            remaining -= text.len();
+            continue;
+        }
+        let mut cut = remaining;
+        while cut > 0 && !text.is_char_boundary(cut) {
+            cut -= 1;
+        }
+        text.truncate(cut);
+        remaining = 0;
+    }
+}
+
+/// Newest-first selection of the history the summarizer sees: images become a
+/// marker, whole oldest messages fall off once the character budget is spent,
+/// and a single oversized message is truncated rather than shipped verbatim.
+pub(crate) fn summarizable_messages(messages: &[Message]) -> Vec<Message> {
+    let mut kept: Vec<Message> = Vec::new();
+    let mut chars = 0usize;
+    for message in messages.iter().rev() {
+        let mut candidate = strip_images(message);
+        let cost = message_chars(&candidate);
+        if chars + cost > SUMMARY_INPUT_CHAR_BUDGET {
+            if kept.is_empty() {
+                truncate_to(&mut candidate, SUMMARY_INPUT_CHAR_BUDGET);
+                kept.push(candidate);
+            }
+            break;
+        }
+        chars += cost;
+        kept.push(candidate);
+    }
+    kept.reverse();
+    kept
+}
+
 /// Summarize the full history into a compact continuation text. Runs under
 /// the turn's cancellation token so an interrupt does not wait on the
 /// summarization call.
@@ -30,7 +111,7 @@ pub(crate) async fn compact_history(
 ) -> Result<String> {
     let summary_request = CompletionRequest {
         system: Some(DEFAULT_COMPACT_PROMPT.to_string()),
-        messages: request.messages.clone(),
+        messages: summarizable_messages(&request.messages),
         tools: Vec::new(),
         ..CompletionRequest::default()
     };
@@ -176,5 +257,38 @@ mod tests {
             request.messages[2].content.as_slice(),
             [ContentPart::ToolResult { id, .. }] if id == "call-1"
         ));
+    }
+
+    #[test]
+    fn summary_input_drops_oldest_beyond_the_budget() {
+        let messages = vec![
+            Message::user("x".repeat(SUMMARY_INPUT_CHAR_BUDGET)),
+            Message::user("recent-1".to_string()),
+            Message::user("recent-2".to_string()),
+        ];
+        let kept = summarizable_messages(&messages);
+        assert_eq!(kept.len(), 2);
+        assert_eq!(text_of(&kept[0]), "recent-1");
+        assert_eq!(text_of(&kept[1]), "recent-2");
+    }
+
+    #[test]
+    fn summary_input_truncates_a_single_oversized_message() {
+        let messages = vec![Message::user("y".repeat(SUMMARY_INPUT_CHAR_BUDGET + 5))];
+        let kept = summarizable_messages(&messages);
+        assert_eq!(kept.len(), 1);
+        assert_eq!(text_of(&kept[0]).len(), SUMMARY_INPUT_CHAR_BUDGET);
+    }
+
+    #[test]
+    fn summary_input_strips_images() {
+        let messages = vec![Message {
+            role: Role::User,
+            content: vec![ContentPart::Image {
+                image: "data:image/png;base64,AAAA".to_string(),
+            }],
+        }];
+        let kept = summarizable_messages(&messages);
+        assert!(text_of(&kept[0]).contains("image omitted"));
     }
 }

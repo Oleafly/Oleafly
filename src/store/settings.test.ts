@@ -238,7 +238,6 @@ describe("useSettingsStore layout presets", () => {
     expect(s.assistantOpen).toBe(true);
     expect(s.showTree).toBe(false);
     expect(s.viewMode).toBe("editor");
-    expect(s.hideEditorArea).toBe(false);
   });
 
   it("switching away from ai-only closes the assistant panel", () => {

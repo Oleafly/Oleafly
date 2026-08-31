@@ -269,7 +269,6 @@ function AppContent() {
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const showTree = useSettingsStore((s) => s.showTree);
-  const hideEditorArea = useSettingsStore((s) => s.hideEditorArea);
   const editorFontSize = useSettingsStore((s) => s.editorFontSize);
   const appFontSize = useSettingsStore((s) => s.appFontSize);
   const appFontFamily = useSettingsStore((s) => s.appFontFamily);
@@ -294,7 +293,7 @@ function AppContent() {
   }, [projectId, closeDocks]);
 
   useLayoutEffect(() => {
-    if (!projectId || hideEditorArea) return;
+    if (!projectId) return;
     const panel = browserPanelRef.current;
     if (!panel) return;
     if (browserOpen) {
@@ -302,10 +301,10 @@ function AppContent() {
     } else if (panel.isExpanded()) {
       panel.collapse();
     }
-  }, [browserOpen, hideEditorArea, projectId]);
+  }, [browserOpen, projectId]);
 
   useLayoutEffect(() => {
-    if (!projectId || hideEditorArea) return;
+    if (!projectId) return;
     const panel = terminalPanelRef.current;
     if (!panel) return;
     if (terminalOpen) {
@@ -313,7 +312,7 @@ function AppContent() {
     } else if (panel.isExpanded()) {
       panel.collapse();
     }
-  }, [terminalOpen, hideEditorArea, projectId]);
+  }, [terminalOpen, projectId]);
 
   useEffect(() => {
     return subscribeToComputerUseStarts(() => {
@@ -384,7 +383,7 @@ function AppContent() {
   useEffect(() => {
     const previousWidth = lastPanelGroupWidthRef.current;
     lastPanelGroupWidthRef.current = panelGroupWidth;
-    if (!showTree || hideEditorArea || panelGroupWidth <= 0) return;
+    if (!showTree || panelGroupWidth <= 0) return;
     const panel = sidebarPanelRef.current;
     if (!panel) return;
     if (previousWidth <= 0) {
@@ -403,7 +402,6 @@ function AppContent() {
   }, [
     panelGroupWidth,
     showTree,
-    hideEditorArea,
     sidebarMinSize,
     sidebarDefaultSize,
   ]);
@@ -506,7 +504,6 @@ function AppContent() {
     if (projectId) {
       s.setRailTab("files");
       s.setAssistantOpen(layoutPresetWantsAi(s.defaultView));
-      s.setHideEditorArea(false);
       if (s.openInTree && !s.showTree) s.toggleTree();
       else if (!s.openInTree && s.showTree) s.toggleTree();
       void import("@/lib/preview-window").then((m) => m.retargetPreviewWindow(projectId));
@@ -849,10 +846,10 @@ function AppContent() {
                     ref={sidebarPanelRef}
                     id="sidebar"
                     order={1}
-                    defaultSize={hideEditorArea ? 100 : sidebarDefaultSize}
-                    minSize={hideEditorArea ? 100 : sidebarMinSize}
-                    maxSize={hideEditorArea ? 100 : 65}
-                    collapsible={!hideEditorArea}
+                    defaultSize={sidebarDefaultSize}
+                    minSize={sidebarMinSize}
+                    maxSize={65}
+                    collapsible
                     collapsedSize={0}
                     onCollapse={() => {
                       if (useSettingsStore.getState().showTree) {
@@ -863,12 +860,11 @@ function AppContent() {
                   >
                     <Sidebar />
                   </Panel>
-                  {!hideEditorArea && <VHandle id="h-tree" />}
+                  <VHandle id="h-tree" />
                 </Fragment>
               )}
 
-              {!hideEditorArea && (
-                <Panel
+              <Panel
                   key="editorpdf"
                   id="editorpdf"
                   order={2}
@@ -940,9 +936,8 @@ function AppContent() {
                         </Panel>
                   </PanelGroup>
                 </Panel>
-              )}
 
-              {!hideEditorArea && assistantOpen && (
+              {assistantOpen && (
                 <Fragment key="assistant">
                   <VHandle id="h-assistant" />
                   <Panel
