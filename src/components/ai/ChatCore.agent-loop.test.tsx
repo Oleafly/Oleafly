@@ -31,6 +31,9 @@ interface PendingRun {
   }) => void;
 }
 
+const launchBrowser = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/browser-window", () => ({ launchBrowser }));
+
 const mocks = vi.hoisted(() => ({
   runs: [] as PendingRun[],
   runAgentHarness: vi.fn(),
@@ -1918,12 +1921,12 @@ describe("ChatCore agent turns", () => {
     expect(click).toHaveBeenCalledOnce();
   });
 
-  it("opens the browser dock from the plus menu", async () => {
+  it("launches the browser window from the plus menu", async () => {
     const rendered = await renderChat();
     openAttachMenu(rendered);
     fireEvent.click(rendered.getByRole("menuitem", { name: /Attach browser/ }));
 
-    expect(useSettingsStore.getState().browserOpen).toBe(true);
+    expect(launchBrowser).toHaveBeenCalled();
   });
 
   it("opens the goal editor from the plus menu", async () => {

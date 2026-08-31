@@ -15,6 +15,7 @@ import { useFilesStore } from "@/store/files";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useTheme } from "@/lib/theme";
+import { launchBrowser } from "@/lib/browser-window";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -121,8 +122,6 @@ export function SidebarCollapseToggle() {
 export function WorkspaceDockControls() {
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
   const setTerminalOpen = useSettingsStore((s) => s.setTerminalOpen);
-  const browserOpen = useSettingsStore((s) => s.browserOpen);
-  const setBrowserOpen = useSettingsStore((s) => s.setBrowserOpen);
   const webBrowser = useSettingsStore((s) => s.webBrowser);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const setAssistantOpen = useSettingsStore((s) => s.setAssistantOpen);
@@ -131,7 +130,9 @@ export function WorkspaceDockControls() {
   const terminalShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleTerminal));
   const browserShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleBrowser));
   const terminalLabel = `${terminalOpen ? "Hide" : "Show"} terminal (${terminalShortcut})`;
-  const browserLabel = `${browserOpen ? "Hide" : "Show"} browser (${browserShortcut})`;
+  // The browser opens in its own window, so this is a launch action, not a
+  // pane toggle.
+  const browserLabel = `Open browser (${browserShortcut})`;
   const assistantLabel = `${assistantOpen ? "Hide" : "Show"} AI assistant`;
 
   return (
@@ -156,9 +157,8 @@ export function WorkspaceDockControls() {
               type="button"
               data-testid="rail-browser-toggle"
               aria-label={browserLabel}
-              aria-pressed={browserOpen}
-              onClick={() => setBrowserOpen(!browserOpen)}
-              className={ctrlBtn(browserOpen)}
+              onClick={() => launchBrowser()}
+              className={ctrlBtn(false)}
             >
               <Browserless size={16} className="size-4" aria-hidden />
             </button>

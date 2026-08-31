@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSettingsStore } from "@/store/settings";
 import { useShortcutStore } from "@/store/shortcuts";
 
+const launchBrowser = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/browser-window", () => ({ launchBrowser }));
+
 const native = vi.hoisted(() => ({
   invoke: vi.fn(async () => {}),
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
@@ -128,18 +131,15 @@ describe("native dock shortcuts", () => {
 
     native.listeners.get("menu://toggle-terminal")?.({ payload: null });
     native.listeners.get("menu://toggle-browser")?.({ payload: null });
-    expect(useSettingsStore.getState()).toMatchObject({
-      terminalOpen: true,
-      browserOpen: true,
-    });
+    expect(useSettingsStore.getState().terminalOpen).toBe(true);
+    expect(launchBrowser).toHaveBeenCalledTimes(1);
 
     native.projectId = null;
     native.listeners.get("menu://toggle-terminal")?.({ payload: null });
     native.listeners.get("menu://toggle-browser")?.({ payload: null });
-    expect(useSettingsStore.getState()).toMatchObject({
-      terminalOpen: true,
-      browserOpen: true,
-    });
+    // With no project open, neither dock nor the browser responds.
+    expect(useSettingsStore.getState().terminalOpen).toBe(true);
+    expect(launchBrowser).toHaveBeenCalledTimes(1);
 
     stop();
     expect(native.unlisteners).toHaveLength(2);

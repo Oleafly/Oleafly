@@ -1,10 +1,7 @@
 import { test, expect } from "../fixtures";
-import { openProject, openSettings, pressGlobal, type Page } from "../helpers";
+import { openProject, openSettings, type Page } from "../helpers";
 
 const BROWSER = '[data-testid="dock-browser"]';
-const BROWSER_ADDRESS = '[data-testid="dock-browser-address"]';
-const BROWSER_OPEN = '[data-testid="dock-browser-open"]';
-const BROWSER_TOGGLE = '[data-testid="rail-browser-toggle"]';
 const TERMINAL = '[data-testid="dock-terminal"]';
 const TERMINAL_TOGGLE = '[data-testid="rail-terminal-toggle"]';
 
@@ -48,129 +45,6 @@ async function pickOption(
   );
   await page.click(optionSelector);
 }
-
-async function triggerBrowserShortcut(page: Page): Promise<void> {
-  const nativeMenu = await page.evaluate<boolean>(
-    `Boolean(window.__TAURI_INTERNALS__) && /Mac|Linux/.test(navigator.platform)`,
-  );
-  if (nativeMenu) {
-    await page.evaluate(
-      `window.__TAURI_INTERNALS__.invoke("plugin:event|emit", {
-        event: "menu://toggle-browser",
-        payload: null,
-      }).then(() => true)`,
-    );
-    return;
-  }
-  await pressGlobal(page, "b", { ctrl: true, shift: true });
-}
-
-test("browser chrome navigates full URLs and configured searches", async ({
-  tauriPage,
-}) => {
-  test.setTimeout(90_000);
-  await openProject(tauriPage, "E2E Doc");
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-
-  await tauriPage.click(BROWSER_TOGGLE);
-  await expect(tauriPage.locator(BROWSER)).toBeVisible();
-  await expect(tauriPage.locator(BROWSER_ADDRESS)).toBeVisible();
-  await expect(tauriPage.locator(BROWSER_OPEN)).toBeVisible();
-
-  const enteredUrl = "https://example.com/e2e?via=enter";
-  await tauriPage.fill(BROWSER_ADDRESS, enteredUrl);
-  await tauriPage.press(BROWSER_ADDRESS, "Enter");
-  await expect(tauriPage.locator(BROWSER_ADDRESS)).toHaveValue(enteredUrl);
-
-  const openedUrl = "https://example.org/e2e?via=button";
-  await tauriPage.fill(BROWSER_ADDRESS, openedUrl);
-  await tauriPage.click(BROWSER_OPEN);
-  await expect(tauriPage.locator(BROWSER_ADDRESS)).toHaveValue(openedUrl);
-
-  await openSettings(tauriPage, "appearance");
-  await selectAppearanceTab(tauriPage, "browser");
-  await pickOption(
-    tauriPage,
-    '[role="combobox"][aria-label="Default search engine"]',
-    "Google",
-  );
-  await tauriPage.click('[aria-label="Close settings"]');
-
-  await tauriPage.fill(BROWSER_ADDRESS, "hybrid beamforming");
-  await tauriPage.click(BROWSER_OPEN);
-  await expect(tauriPage.locator(BROWSER_ADDRESS)).toHaveValue(
-    "https://www.google.com/search?q=hybrid%20beamforming",
-  );
-
-  await openSettings(tauriPage, "appearance");
-  await selectAppearanceTab(tauriPage, "browser");
-  await pickOption(
-    tauriPage,
-    '[role="combobox"][aria-label="Default search engine"]',
-    "DuckDuckGo",
-  );
-  await expect
-    .poll(
-      () =>
-        tauriPage.evaluate<string>(
-          `import("/src/store/settings.ts").then(({ useSettingsStore }) => useSettingsStore.getState().browserSearchEngine)`,
-        ),
-      { timeout: 5_000 },
-    )
-    .toBe("duckduckgo");
-  await tauriPage.click('[aria-label="Close settings"]');
-
-  await tauriPage.fill(BROWSER_ADDRESS, "hybrid beamforming");
-  await tauriPage.press(BROWSER_ADDRESS, "Enter");
-  await expect(tauriPage.locator(BROWSER_ADDRESS)).toHaveValue(
-    "https://duckduckgo.com/?q=hybrid%20beamforming",
-  );
-
-  await openSettings(tauriPage, "appearance");
-  await selectAppearanceTab(tauriPage, "browser");
-  await pickOption(
-    tauriPage,
-    '[role="combobox"][aria-label="Default search engine"]',
-    "Google",
-  );
-  await tauriPage.click('[aria-label="Close settings"]');
-  await tauriPage.click(BROWSER_TOGGLE);
-  await expect(tauriPage.locator(BROWSER)).not.toBeVisible();
-});
-
-test("the browser remains mounted while collapsed and its configured toggle route works", async ({
-  tauriPage,
-}) => {
-  await openProject(tauriPage, "E2E Doc");
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-
-  const browserLabel = await tauriPage.getAttribute(BROWSER_TOGGLE, "aria-label");
-  expect(browserLabel).toMatch(/^Show browser \(Ctrl(?:\+Shift\+|⇧)B\)$/u);
-
-  await tauriPage.click(BROWSER_TOGGLE);
-  await expect(tauriPage.locator(BROWSER)).toBeVisible();
-  const persistedUrl = "https://example.com/persisted-browser-state";
-  await tauriPage.fill(BROWSER_ADDRESS, persistedUrl);
-  await tauriPage.click(BROWSER_OPEN);
-  await expect(tauriPage.locator(BROWSER_ADDRESS)).toHaveValue(persistedUrl);
-
-  await tauriPage.click(BROWSER_TOGGLE);
-  await expect(tauriPage.locator(BROWSER)).not.toBeVisible();
-  await expect(tauriPage.locator(BROWSER)).toHaveCount(1);
-  await expect(tauriPage.locator(BROWSER)).toHaveAttribute("aria-hidden", "true");
-  await tauriPage.click(BROWSER_TOGGLE);
-  await expect(tauriPage.locator(BROWSER)).toBeVisible();
-  await expect(tauriPage.locator(BROWSER_ADDRESS)).toHaveValue(persistedUrl);
-  await expect(tauriPage.getByTestId("dock-browser-error")).toHaveCount(0);
-
-  await triggerBrowserShortcut(tauriPage);
-  await expect(tauriPage.locator(BROWSER)).not.toBeVisible({ timeout: 10_000 });
-  await triggerBrowserShortcut(tauriPage);
-  await expect(tauriPage.locator(BROWSER)).toBeVisible({ timeout: 10_000 });
-  await expect(tauriPage.locator(BROWSER_ADDRESS)).toHaveValue(persistedUrl);
-  await tauriPage.click(BROWSER_TOGGLE);
-  await expect(tauriPage.locator(BROWSER)).not.toBeVisible();
-});
 
 test("Appearance exposes scrollable dock tabs, search icons, and live terminal styles", async ({
   tauriPage,

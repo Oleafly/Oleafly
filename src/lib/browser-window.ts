@@ -1,5 +1,9 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { registerCuaSurface } from "@/lib/cua-sandbox";
+import { useSettingsStore } from "@/store/settings";
+
+const DEFAULT_BROWSER_HOME = "https://www.google.com";
 
 // The in-app browser opens as its own OS window rather than a child webview
 // composited over the app. A separate window loads any site (unlike an
@@ -16,6 +20,7 @@ const SKIP_WINDOW_FOR_E2E = import.meta.env.VITE_E2E_HOOKS === "1";
 
 let currentWindow: WebviewWindow | null = null;
 let sequence = 0;
+let lastUrl = "";
 
 /** True in a browser/dev context where Tauri windows are unavailable. */
 function isSystemBrowserContext(): boolean {
@@ -28,6 +33,7 @@ function isSystemBrowserContext(): boolean {
  * opened (e.g. a popup blocker).
  */
 export async function openBrowserWindow(url: string, title?: string): Promise<boolean> {
+  lastUrl = url;
   if (isSystemBrowserContext()) {
     return Boolean(window.open(url, "_blank", "noopener,noreferrer"));
   }
@@ -85,4 +91,33 @@ export async function closeBrowserWindow(): Promise<void> {
   const open = currentWindow;
   currentWindow = null;
   if (open) await open.close().catch(() => {});
+}
+
+/**
+ * Launch (or focus) the browser window from a user action. Respects the
+ * experimental flag, so the toolbar button and the keyboard shortcut are inert
+ * when the browser is off. With no URL it opens the configured home page.
+ */
+export function launchBrowser(url?: string): void {
+  const settings = useSettingsStore.getState();
+  if (!settings.webBrowser) return;
+  void openBrowserWindow(url ?? (settings.browserHomePage || DEFAULT_BROWSER_HOME));
+}
+
+/**
+ * Register the CUA surface so the AI's computer_use tool can drive the browser
+ * window even though there is no in-app browser view. Remote pages are
+ * cross-origin, so the surface stays navigate/observe-URL only.
+ */
+export function registerBrowserCuaSurface(): () => void {
+  registerCuaSurface({
+    get document(): Document {
+      throw new Error("The browser window is a separate OS window and is not scriptable.");
+    },
+    url: () => lastUrl,
+    navigate: (url: string) => {
+      void openBrowserWindow(url);
+    },
+  });
+  return () => registerCuaSurface(null);
 }

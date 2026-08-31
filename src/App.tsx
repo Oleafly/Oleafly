@@ -19,7 +19,6 @@ import { ThemeProvider } from "@/lib/theme";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
-import { BrowserPane } from "@/components/dock/BrowserPane";
 import { TerminalPane } from "@/components/dock/TerminalPane";
 import { Editor } from "@/components/editor/Editor";
 import { editorUndo, editorRedo } from "@/components/editor/cm/controller";
@@ -49,7 +48,7 @@ import {
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
 import { useSettingsStore } from "@/store/settings";
-import { subscribeToComputerUseStarts } from "@/lib/agent-item-effects";
+import { registerBrowserCuaSurface } from "@/lib/browser-window";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import { resetOpenCompileMarker, shouldCompileOnOpen } from "@/lib/open-compile";
@@ -275,7 +274,6 @@ function AppContent() {
   const accentColor = useSettingsStore((s) => s.accentColor);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
-  const browserOpen = useSettingsStore((s) => s.browserOpen);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const closeDocks = useSettingsStore((s) => s.closeDocks);
@@ -284,24 +282,12 @@ function AppContent() {
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
   const editorPanelRef = useRef<ImperativePanelHandle>(null);
   const pdfPanelRef = useRef<ImperativePanelHandle>(null);
-  const browserPanelRef = useRef<ImperativePanelHandle>(null);
   const terminalPanelRef = useRef<ImperativePanelHandle>(null);
   const previousShowTreeRef = useRef(showTree);
 
   useLayoutEffect(() => {
     if (projectId) closeDocks();
   }, [projectId, closeDocks]);
-
-  useLayoutEffect(() => {
-    if (!projectId) return;
-    const panel = browserPanelRef.current;
-    if (!panel) return;
-    if (browserOpen) {
-      if (panel.isCollapsed()) panel.expand(30);
-    } else if (panel.isExpanded()) {
-      panel.collapse();
-    }
-  }, [browserOpen, projectId]);
 
   useLayoutEffect(() => {
     if (!projectId) return;
@@ -314,11 +300,10 @@ function AppContent() {
     }
   }, [terminalOpen, projectId]);
 
-  useEffect(() => {
-    return subscribeToComputerUseStarts(() => {
-      useSettingsStore.getState().setBrowserOpen(true);
-    });
-  }, []);
+  // The browser opens as its own window, so computer use just needs a CUA
+  // surface whose navigate opens/replaces that window; there is no dock to
+  // reveal. The computer_use tool is only exposed when the browser flag is on.
+  useEffect(() => registerBrowserCuaSurface(), []);
 
   const SIDEBAR_DEFAULT_PX = 340;
   const panelAreaRef = useRef<HTMLDivElement>(null);
@@ -347,7 +332,7 @@ function AppContent() {
       ? Math.min(55, (assistantMinimumWidth(appFontSize) / panelGroupWidth) * 100)
       : 22;
   const workspacePanelDefaultSize =
-    viewMode === "split" ? (browserOpen ? 35 : 50) : browserOpen ? 70 : 100;
+    viewMode === "split" ? 50 : 100;
 
   useEffect(() => {
     const wasOpen = previousShowTreeRef.current;
@@ -908,35 +893,6 @@ function AppContent() {
                             </ErrorBoundary>
                           </Panel>
                         )}
-                        <div className={cn("flex shrink-0", !browserOpen && "hidden")}>
-                          <VHandle id="h-browser" placement="top" />
-                        </div>
-                        <Panel
-                          ref={browserPanelRef}
-                          id="browser"
-                          order={3}
-                          defaultSize={browserOpen ? 30 : 0}
-                          minSize={15}
-                          collapsible
-                          collapsedSize={0}
-                          onCollapse={() => {
-                            if (useSettingsStore.getState().browserOpen) {
-                              useSettingsStore.getState().setBrowserOpen(false);
-                            }
-                          }}
-                          className="min-h-0 min-w-0"
-                        >
-                          <div
-                            className={cn(
-                              "h-full min-h-0 min-w-0",
-                              !browserOpen && "invisible pointer-events-none",
-                            )}
-                          >
-                            <ErrorBoundary surface="browser dock" resetKey={projectId}>
-                              <BrowserPane visible={browserOpen} />
-                            </ErrorBoundary>
-                          </div>
-                        </Panel>
                   </PanelGroup>
                 </Panel>
               )}

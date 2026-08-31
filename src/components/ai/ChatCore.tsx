@@ -19,6 +19,7 @@ import {
   agentThreadClaimPrewarmed,
   agentThreadFork,
 } from "@/lib/agent-backend";
+import { launchBrowser } from "@/lib/browser-window";
 import {
   ArrowLeftRight,
   ArrowUp,
@@ -331,7 +332,6 @@ export function ChatCore() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const setSettingsScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
-  const setBrowserOpen = useSettingsStore((s) => s.setBrowserOpen);
   const approvalModes = useApprovalModeStore((s) => s.modes);
   const loadApprovalMode = useApprovalModeStore((s) => s.load);
   const setApprovalMode = useApprovalModeStore((s) => s.setMode);
@@ -1018,7 +1018,7 @@ export function ChatCore() {
     archiveChat: canMutateCurrentChat ? () => void archiveCurrentChat() : undefined,
     attachFiles: projectId ? () => fileInputRef.current?.click() : undefined,
     forkChat: canMutateCurrentChat ? () => void forkCurrentChat() : undefined,
-    openBrowser: () => setBrowserOpen(true),
+    openBrowser: () => launchBrowser(),
     openGoalEditor: projectId ? openGoalEditor : undefined,
     openMcpSettings,
     openModelPicker:

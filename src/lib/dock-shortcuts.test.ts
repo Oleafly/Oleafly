@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSettingsStore } from "@/store/settings";
 import { useShortcutStore } from "@/store/shortcuts";
+
+const launchBrowser = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/browser-window", () => ({ launchBrowser }));
+
 import { handleDockShortcut } from "./dock-shortcuts";
 
 function keyboard(
@@ -37,17 +41,15 @@ describe("dock shortcuts", () => {
     expect(event.stopPropagation).toHaveBeenCalledOnce();
   });
 
-  it("toggles the browser with fixed Ctrl+Shift+B", () => {
+  it("launches the browser window with fixed Ctrl+Shift+B", () => {
     const event = keyboard("b", {
       ctrlKey: true,
       shiftKey: true,
     });
 
     expect(handleDockShortcut(event)).toBe(true);
-    expect(useSettingsStore.getState()).toMatchObject({
-      terminalOpen: false,
-      browserOpen: true,
-    });
+    expect(launchBrowser).toHaveBeenCalled();
+    expect(useSettingsStore.getState().terminalOpen).toBe(false);
   });
 
   it("leaves unrelated key events alone", () => {

@@ -43,6 +43,12 @@ const appState = vi.hoisted(() => {
   return { analysis, compile, computerUseListeners, files };
 });
 
+const browserWindowMocks = vi.hoisted(() => ({ launchBrowser: vi.fn() }));
+vi.mock("@/lib/browser-window", () => ({
+  launchBrowser: browserWindowMocks.launchBrowser,
+  registerBrowserCuaSurface: () => () => {},
+}));
+
 const assistantLayoutMocks = vi.hoisted(() => ({
   sidebarMinimumPercent: vi.fn(() => 48),
   sidebarPanelGroupWidth: vi.fn(() => 825),
@@ -123,7 +129,6 @@ vi.mock("@/components/layout/TopToolbar", () => ({ TopToolbar: () => null }));
 vi.mock("@/components/layout/BackendProtocolBanner", () => ({
   BackendProtocolBanner: () => null,
 }));
-vi.mock("@/components/dock/BrowserPane", () => ({ BrowserPane: () => null }));
 vi.mock("@/components/dock/TerminalPane", () => ({ TerminalPane: () => null }));
 vi.mock("@/components/editor/Editor", () => ({ Editor: () => null }));
 vi.mock("@/components/preview/PreviewPane", () => ({ PreviewPane: () => null }));
@@ -387,28 +392,6 @@ describe("project dock layout", () => {
         }),
       );
     });
-    expect(useSettingsStore.getState().browserOpen).toBe(true);
-  });
-
-  it("opens the browser dock when computer use starts", async () => {
-    const React = await import("react");
-    const { act } = React;
-    const { createRoot } = await import("react-dom/client");
-    const { default: App } = await import("./App");
-    const { useSettingsStore } = await import("@/store/settings");
-    const host = document.getElementById("root");
-    if (!host) throw new Error("test root is unavailable");
-    root = createRoot(host);
-
-    await act(async () => {
-      root?.render(<App />);
-    });
-    expect(useSettingsStore.getState().browserOpen).toBe(false);
-
-    await act(async () => {
-      for (const listener of appState.computerUseListeners) listener();
-    });
-
-    expect(useSettingsStore.getState().browserOpen).toBe(true);
+    expect(browserWindowMocks.launchBrowser).toHaveBeenCalled();
   });
 });

@@ -89,14 +89,14 @@ test("project docks start closed and their toggles live in the top toolbar", asy
   const terminalLabel = await tauriPage.getAttribute(TERMINAL_TOGGLE, "aria-label");
   const browserLabel = await tauriPage.getAttribute(BROWSER_TOGGLE, "aria-label");
   expect(terminalLabel).toMatch(/^Show terminal \(Ctrl(?:\+)?`\)$/u);
-  expect(browserLabel).toMatch(/^Show browser \(Ctrl(?:\+Shift\+|⇧)B\)$/u);
+  expect(browserLabel).toMatch(/^Open browser \(Ctrl(?:\+Shift\+|⇧)B\)$/u);
 });
 
-test("the real terminal opens, echoes, and exits cleanly with the browser dock open", async ({
+test("the real terminal opens, echoes, and exits cleanly", async ({
   tauriPage,
 }) => {
   // The prompt nudge alone may take 150s on a cold Windows runner, and the
-  // echo, browser-dock, and exit phases follow it.
+  // echo and exit phases follow it.
   test.setTimeout(300_000);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -158,11 +158,6 @@ test("the real terminal opens, echoes, and exits cleanly with the browser dock o
     )
     .toBeGreaterThanOrEqual(2);
 
-  // The browser now opens in a separate OS window (not a child webview over
-  // the app), so opening its dock cannot disturb the terminal's own webview.
-  await tauriPage.click(BROWSER_TOGGLE);
-  await expect(tauriPage.getByTestId("dock-browser")).toBeVisible();
-
   await enterTerminalCommand(tauriPage, "echo still-alive");
   await expect
     .poll(
@@ -195,8 +190,6 @@ test("the real terminal opens, echoes, and exits cleanly with the browser dock o
   expect(output).not.toContain("The shell could not start");
   expect(output).not.toContain("The shell could not accept input");
   expect(output).not.toContain("The terminal could not resize");
-  await tauriPage.click(BROWSER_TOGGLE);
-  await expect(tauriPage.getByTestId("dock-browser")).not.toBeVisible();
 });
 
 test("configured terminal and browser shortcut routes toggle their docks", async ({ tauriPage }) => {
@@ -208,12 +201,10 @@ test("configured terminal and browser shortcut routes toggle their docks", async
   await triggerDockShortcut(tauriPage, "terminal");
   await expect(tauriPage.locator(TERMINAL)).not.toBeVisible({ timeout: 10_000 });
 
+  // The browser shortcut launches a separate window (no dock), so it is a
+  // safe no-op here; assert only that it does not throw or open a dock.
   await triggerDockShortcut(tauriPage, "browser");
-  await expect(tauriPage.getByTestId("dock-browser")).toBeVisible({ timeout: 10_000 });
-  await triggerDockShortcut(tauriPage, "browser");
-  await expect(tauriPage.getByTestId("dock-browser")).not.toBeVisible({
-    timeout: 10_000,
-  });
+  await expect(tauriPage.getByTestId("dock-browser")).not.toBeVisible();
 });
 
 test.skip(

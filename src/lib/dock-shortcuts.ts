@@ -1,4 +1,5 @@
 import { useSettingsStore } from "@/store/settings";
+import { launchBrowser } from "@/lib/browser-window";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 
 export function handleDockShortcut(event: KeyboardEvent): boolean {
@@ -13,7 +14,7 @@ export function handleDockShortcut(event: KeyboardEvent): boolean {
   if (matchesShortcut(event, bindings.toggleBrowser)) {
     event.preventDefault();
     event.stopPropagation();
-    settings.setBrowserOpen(!settings.browserOpen);
+    launchBrowser();
     return true;
   }
   return false;
