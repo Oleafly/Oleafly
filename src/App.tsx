@@ -62,6 +62,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { cn } from "@/lib/utils";
 import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
+import { ChatPanel } from "@/components/ai/ChatPanel";
 import { AboutModal } from "@/components/layout/AboutModal";
 import { EnginePickerModal } from "@/components/layout/EnginePickerModal";
 import { TinytexGuards } from "@/components/layout/TinytexGuards";
@@ -277,6 +278,7 @@ function AppContent() {
   const railTab = useSettingsStore((s) => s.railTab);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
   const browserOpen = useSettingsStore((s) => s.browserOpen);
+  const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const closeDocks = useSettingsStore((s) => s.closeDocks);
   const homePage = useHomeViewStore((state) => state.page);
   const toolsOpen = useHomeViewStore((state) => state.toolsOpen);
@@ -978,6 +980,33 @@ function AppContent() {
                     </Panel>
                   </PanelGroup>
                 </Panel>
+              )}
+
+              {!hideEditorArea && assistantOpen && (
+                <Fragment key="assistant">
+                  <VHandle id="h-assistant" />
+                  <Panel
+                    id="assistant"
+                    order={3}
+                    defaultSize={26}
+                    minSize={18}
+                    maxSize={48}
+                    collapsible
+                    collapsedSize={0}
+                    onCollapse={() => {
+                      if (useSettingsStore.getState().assistantOpen) {
+                        useSettingsStore.getState().setAssistantOpen(false);
+                      }
+                    }}
+                    className="min-h-0 min-w-0 border-l"
+                  >
+                    <ErrorBoundary surface="AI assistant" resetKey={projectId}>
+                      <Suspense fallback={<SurfaceLoading label="Loading assistant" />}>
+                        <ChatPanel />
+                      </Suspense>
+                    </ErrorBoundary>
+                  </Panel>
+                </Fragment>
               )}
             </PanelGroup>
           </ErrorBoundary>

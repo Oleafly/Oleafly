@@ -22,7 +22,7 @@ describe("Rail dock toggles", () => {
     useFilesStore.setState({ projectId: null });
   });
 
-  it("shows terminal and browser toggles below Source Control", () => {
+  it("shows terminal, browser, and assistant toggles below Source Control", () => {
     render(
       <ThemeProvider>
         <Rail />
@@ -49,6 +49,7 @@ describe("Rail dock toggles", () => {
       "Source Control",
       "Show terminal (Ctrl+`)",
       "Show browser (Ctrl+Shift+B)",
+      "Show AI assistant",
       "Preflight Checks",
     ]);
   });

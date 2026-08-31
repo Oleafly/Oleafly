@@ -5,6 +5,7 @@ import {
   PanelLeft,
   PanelLeftClose,
   Settings as SettingsIcon,
+  Sparkles,
   Sun,
   Terminal,
 } from "lucide-react";
@@ -66,6 +67,9 @@ function DockToggles() {
   const setTerminalOpen = useSettingsStore((s) => s.setTerminalOpen);
   const browserOpen = useSettingsStore((s) => s.browserOpen);
   const setBrowserOpen = useSettingsStore((s) => s.setBrowserOpen);
+  const assistantOpen = useSettingsStore((s) => s.assistantOpen);
+  const setAssistantOpen = useSettingsStore((s) => s.setAssistantOpen);
+  const assistantLabel = `${assistantOpen ? "Hide" : "Show"} AI assistant`;
   const terminalShortcut = useShortcutStore((s) =>
     shortcutLabel(s.bindings.toggleTerminal),
   );
@@ -98,6 +102,18 @@ function DockToggles() {
           className={railBtn(browserOpen)}
         >
           <Globe className="size-[18px]" aria-hidden />
+        </button>
+      </Tooltip>
+      <Tooltip label={assistantLabel} side="right">
+        <button
+          type="button"
+          data-testid="rail-assistant-toggle"
+          aria-label={assistantLabel}
+          aria-pressed={assistantOpen}
+          onClick={() => setAssistantOpen(!assistantOpen)}
+          className={railBtn(assistantOpen)}
+        >
+          <Sparkles className="size-[18px]" aria-hidden />
         </button>
       </Tooltip>
     </>

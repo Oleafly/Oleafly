@@ -527,6 +527,8 @@ interface SettingsState {
   setTerminalOpen: (v: boolean) => void;
   browserOpen: boolean;
   setBrowserOpen: (v: boolean) => void;
+  assistantOpen: boolean;
+  setAssistantOpen: (v: boolean) => void;
   closeDocks: () => void;
   terminalFontSize: number;
   setTerminalFontSize: (v: number) => void;
@@ -779,6 +781,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   browserOpen: false,
   setBrowserOpen: (v) => {
     set({ browserOpen: v });
+  },
+  assistantOpen: false,
+  setAssistantOpen: (v) => {
+    set({ assistantOpen: v });
   },
   closeDocks: () => {
     set({ terminalOpen: false, browserOpen: false });
