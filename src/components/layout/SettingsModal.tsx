@@ -24,7 +24,6 @@ import {
   LifeBuoy,
   MessageCircle,
   Palette,
-  Plug,
   RotateCcw,
   RefreshCw,
   Scale,
@@ -48,7 +47,6 @@ import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { AISection } from "@/components/settings/AISection";
 import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
-import { McpSection } from "@/components/settings/McpSection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShortcutsSection } from "@/components/settings/ShortcutsSection";
 import {
@@ -108,7 +106,6 @@ type Section =
   | "downloads"
   | "integrations"
   | "shortcuts"
-  | "mcp"
   | "experimentation"
   | "developer"
   | "help";
@@ -125,7 +122,6 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   { id: "downloads", label: "Downloads", icon: HardDriveDownload },
   { id: "integrations", label: "Integrations", icon: Blocks },
   { id: "shortcuts", label: "Keyboard Shortcuts", icon: Keyboard },
-  { id: "mcp", label: "MCP", icon: Plug },
   { id: "experimentation", label: "Experimentation", icon: FlaskConical },
   { id: "help", label: "Help & About", icon: LifeBuoy },
 ];
@@ -140,7 +136,6 @@ const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   downloads: "settings-downloads",
   integrations: "settings-integrations",
   shortcuts: "settings-shortcuts",
-  mcp: "settings-mcp",
   help: "settings-help",
 };
 const TOUR_LABELS = {
@@ -1091,8 +1086,6 @@ export function SettingsModal() {
             {section === "integrations" && <IntegrationsSection />}
 
             {section === "shortcuts" && <ShortcutsSection />}
-
-            {section === "mcp" && <McpSection />}
 
             {section === "experimentation" && (
               <div className="space-y-2">

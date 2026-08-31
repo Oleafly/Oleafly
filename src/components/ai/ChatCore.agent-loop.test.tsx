@@ -1,5 +1,5 @@
 import { JSDOM } from "jsdom";
-import type { RenderResult } from "@testing-library/react";
+import { within, type RenderResult } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentEvent } from "@oleafly/ai-core";
 import type { ApprovalMode } from "@oleafly/ai-tools";
@@ -643,6 +643,22 @@ describe("ChatCore agent turns", () => {
     expect(
       rendered.getByRole("switch", { name: "Enable mcp__papers__search_papers" }),
     ).toBeChecked();
+  });
+
+  it("opens assistant MCP settings from the chat header chip", async () => {
+    const rendered = await renderChat();
+    const header = rendered.container.querySelector('[data-tour="ai-assistant-header"]');
+    if (!(header instanceof HTMLElement)) throw new Error("AI assistant header missing");
+
+    const chip = within(header).getByRole("button", { name: "Assistant MCP settings" });
+    expect(within(header).getByRole("button", { name: "Manage agent tools" })).toBeTruthy();
+    fireEvent.click(chip);
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      settingsInitialSection: "ai",
+      settingsScrollTarget: "ai-mcp",
+      settingsOpen: true,
+    });
   });
 
   it("keeps the composer footer on one line with progressively collapsible controls", async () => {
@@ -1788,13 +1804,14 @@ describe("ChatCore agent turns", () => {
     expect(preventDefault).not.toHaveBeenCalled();
   });
 
-  it("opens the real MCP status settings from the slash command", async () => {
+  it("opens the assistant MCP settings from the slash command", async () => {
     await renderChat();
     changeComposer("/mcp");
     pressComposerKey("Enter");
 
     expect(useSettingsStore.getState()).toMatchObject({
-      settingsInitialSection: "mcp",
+      settingsInitialSection: "ai",
+      settingsScrollTarget: "ai-mcp",
       settingsOpen: true,
     });
   });

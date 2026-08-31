@@ -1138,6 +1138,17 @@ export async function openSettings(page: Page, section?: string) {
   }
 }
 
+export async function openOleaflyMcpSettings(page: Page) {
+  await openSettings(page, "integrations");
+  const tab = page.getByTestId("integrations-tab-oleafly-mcp");
+  await tab.click();
+  await expect(tab).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByTestId("oleafly-mcp-server")).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-testid="mcp-enable-toggle"]')).toBeVisible({
+    timeout: 10_000,
+  });
+}
+
 export async function paletteItems(page: Page): Promise<string[]> {
   return page.evaluate<string[]>(
     `Array.from(document.querySelectorAll('[cmdk-item]')).map(e => e.textContent.trim())`,

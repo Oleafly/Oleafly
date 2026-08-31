@@ -84,6 +84,7 @@ export function McpActivityPanel() {
   const clearUnread = useMcpActivityStore((s) => s.clearUnread);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
+  const setSettingsScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
 
   useEffect(() => {
     clearUnread();
@@ -159,7 +160,8 @@ export function McpActivityPanel() {
                   size="sm"
                   className="mt-3"
                   onClick={() => {
-                    setSettingsInitialSection("mcp");
+                    setSettingsInitialSection("integrations");
+                    setSettingsScrollTarget("oleafly-mcp");
                     setSettingsOpen(true);
                   }}
                 >

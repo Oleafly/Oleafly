@@ -68,6 +68,14 @@ describe("useSettingsStore dock appearance settings", () => {
     expect(useSettingsStore.getState().dockPlacement).toBe("left");
   });
 
+  it("rejects the removed top-level MCP settings section", () => {
+    useSettingsStore.setState({ settingsInitialSection: "general" });
+
+    useSettingsStore.getState().setSettingsInitialSection("mcp");
+
+    expect(useSettingsStore.getState().settingsInitialSection).toBe("general");
+  });
+
   it("setDockPlacement updates state and persists to localStorage", () => {
     useSettingsStore.getState().setDockPlacement("bottom");
     expect(useSettingsStore.getState().dockPlacement).toBe("bottom");

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "../fixtures";
-import { createBlankProject, openSettings } from "../helpers";
+import { createBlankProject, openOleaflyMcpSettings } from "../helpers";
 
 async function rpc(url: string, token: string, body: object) {
   const res = await fetch(url, {
@@ -43,8 +43,8 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   await createBlankProject(tauriPage, `MCP E2E ${Date.now()}`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  await openSettings(tauriPage, "mcp");
-  await expect(tauriPage.locator('[data-testid="settings-section-mcp"]')).toBeVisible();
+  await openOleaflyMcpSettings(tauriPage);
+  await expect(tauriPage.getByTestId("oleafly-mcp-server")).toBeVisible();
   const enableToggle = tauriPage.locator('[data-testid="mcp-enable-toggle"]');
   await expect(enableToggle).toHaveAttribute("aria-checked", /^(?:true|false)$/);
   // Retries reuse the same isolated app data directory. Drive the switch to
@@ -75,7 +75,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
   expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
   expect(token.length).toBe(64);
 
-  await openSettings(tauriPage, "mcp");
+  await openOleaflyMcpSettings(tauriPage);
   const discoveryPath = join(dataDir!, "mcp.json");
   const restartButton = tauriPage.locator(
     '[aria-label="Restart MCP server and select an available port"]',
@@ -208,7 +208,7 @@ test("mcp server serves the in-app tool surface end to end", async ({ tauriPage 
 
   // MCP-enabled persists in the shared e2e config, so disable it here or it
   // leaks into later specs (e.g. 36, which asserts the tab is off by default).
-  await openSettings(tauriPage, "mcp");
+  await openOleaflyMcpSettings(tauriPage);
   await tauriPage.click('[data-testid="mcp-enable-toggle"]');
   await tauriPage.click('[aria-label="Close settings"]');
   await tauriPage.waitForFunction(

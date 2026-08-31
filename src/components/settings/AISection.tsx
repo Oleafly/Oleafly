@@ -26,6 +26,7 @@ import { ProjectBudget } from "./ai/ProjectBudget";
 import { InstructionsTab } from "./ai/InstructionsTab";
 import { PersonasTab } from "./ai/PersonasTab";
 import { SkillsTab } from "./ai/SkillsTab";
+import { McpServersManager } from "./McpServersManager";
 import { AddCustomProviderDialog, type AddCustomProviderInput } from "./ai/AddCustomProviderDialog";
 import { editableKeys, withKey, withoutKey } from "./ai-keys";
 import { agentErrorKind } from "@/lib/agent-backend";
@@ -77,6 +78,7 @@ const DEFAULT_CFG: AppConfig = {
 
 export function AISection() {
   const [tab, setTab] = useState<AiSettingsTab>("providers");
+  const [mcpMounted, setMcpMounted] = useState(false);
   const [cfg, setCfg] = useState<AppConfig>(DEFAULT_CFG);
   const [keys, setKeys] = useState<Record<string, string>>({});
   // Snapshot of persisted keys, used to detect unsaved edits (dirty check below).
@@ -99,6 +101,7 @@ export function AISection() {
   useEffect(() => {
     const destination = aiSettingsDestination(scrollTarget);
     if (!destination) return;
+    if (destination.tab === "mcp") setMcpMounted(true);
     setTab(destination.tab);
     setScrollTarget(null);
     const elementId = destination.elementId;
@@ -396,15 +399,31 @@ export function AISection() {
 
   return (
     <div className="space-y-4 text-sm">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as AiSettingsTab)} className="space-y-4">
-        <TabsList data-tour="ai-settings-tabs">
-          <TabsTrigger value="providers" data-testid="ai-settings-tab-providers">
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          const next = value as AiSettingsTab;
+          if (next === "mcp") setMcpMounted(true);
+          setTab(next);
+        }}
+        className="space-y-4"
+      >
+        <TabsList
+          data-tour="ai-settings-tabs"
+          className="flex h-auto w-fit max-w-full justify-start gap-1 overflow-x-auto no-scrollbar"
+        >
+          <TabsTrigger
+            value="providers"
+            data-testid="ai-settings-tab-providers"
+            className="shrink-0"
+          >
             Providers and keys
           </TabsTrigger>
           <TabsTrigger
             value="instructions"
             data-testid="ai-settings-tab-instructions"
             data-tour="ai-settings-tab-instructions"
+            className="shrink-0"
           >
             Instructions
           </TabsTrigger>
@@ -412,11 +431,24 @@ export function AISection() {
             value="personas"
             data-testid="ai-settings-tab-personas"
             data-tour="ai-settings-tab-personas"
+            className="shrink-0"
           >
             Personas
           </TabsTrigger>
-          <TabsTrigger value="skills" data-testid="ai-settings-tab-skills">
+          <TabsTrigger
+            value="skills"
+            data-testid="ai-settings-tab-skills"
+            className="shrink-0"
+          >
             Skills
+          </TabsTrigger>
+          <TabsTrigger
+            value="mcp"
+            data-testid="ai-settings-tab-mcp"
+            data-tour="settings-mcp"
+            className="shrink-0"
+          >
+            MCP
           </TabsTrigger>
         </TabsList>
 
@@ -468,6 +500,17 @@ export function AISection() {
         <TabsContent value="skills">
           <SkillsTab />
         </TabsContent>
+
+        {mcpMounted ? (
+          <TabsContent
+            value="mcp"
+            forceMount
+            hidden={tab !== "mcp"}
+            data-tour="settings-mcp-panel"
+          >
+            <McpServersManager />
+          </TabsContent>
+        ) : null}
       </Tabs>
 
       <AddCustomProviderDialog

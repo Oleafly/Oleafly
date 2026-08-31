@@ -10,7 +10,6 @@ const SETTINGS_SECTIONS = new Set([
   "downloads",
   "integrations",
   "shortcuts",
-  "mcp",
   "experimentation",
   "help",
 ]);

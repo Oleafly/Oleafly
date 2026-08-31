@@ -27,7 +27,6 @@ import {
 import { refreshMcpRegistry, revokeMcpBridgeCalls } from "@/lib/mcp-bridge";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { cn } from "@/lib/utils";
-import { McpServersManager } from "./McpServersManager";
 
 function CopyBtn({ text, testId }: { text: string; testId?: string }) {
   const [copied, setCopied] = useState(false);
@@ -52,7 +51,6 @@ function CopyBtn({ text, testId }: { text: string; testId?: string }) {
 }
 
 type SnippetLang = "json" | "shell" | "toml";
-type McpPaneTab = "assistant" | "oleafly";
 type McpClientTab = "claude-code" | "claude-desktop" | "cursor" | "codex" | "grok";
 
 function scrollTabs(event: WheelEvent<HTMLDivElement>) {
@@ -238,7 +236,6 @@ export function McpSection() {
   const [token, setToken] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
-  const [paneTab, setPaneTab] = useState<McpPaneTab>("assistant");
   const [clientTab, setClientTab] = useState<McpClientTab>("claude-code");
   const clientTabRefs = useRef<Partial<Record<McpClientTab, HTMLButtonElement | null>>>({});
 
@@ -411,42 +408,14 @@ export function McpSection() {
 
   if (!cfg) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="settings-section-mcp">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="oleafly-mcp-server">
         <Loader2 className="size-4 animate-spin" /> Loading…
       </div>
     );
   }
 
   return (
-    <div className="space-y-5" data-testid="settings-section-mcp">
-      <Tabs
-        value={paneTab}
-        onValueChange={(value) => setPaneTab(value as McpPaneTab)}
-        className="space-y-4"
-      >
-        <TabsList
-          className="flex h-auto w-fit max-w-full justify-start gap-1 overflow-x-auto no-scrollbar"
-          data-testid="mcp-pane-tab-strip"
-          onWheel={scrollTabs}
-        >
-          <TabsTrigger value="assistant" className="shrink-0">
-            Assistant MCP
-          </TabsTrigger>
-          <TabsTrigger value="oleafly" className="shrink-0">
-            Oleafly MCP
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="assistant" forceMount hidden={paneTab !== "assistant"}>
-          <McpServersManager />
-        </TabsContent>
-
-        <TabsContent
-          value="oleafly"
-          forceMount
-          hidden={paneTab !== "oleafly"}
-          className="space-y-5"
-        >
+    <div className="space-y-5" data-testid="oleafly-mcp-server">
       <div>
         <h3 className="text-sm font-medium">Oleafly MCP server</h3>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -831,8 +800,6 @@ export function McpSection() {
           {error}
         </p>
       )}
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }

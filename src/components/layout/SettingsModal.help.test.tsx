@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getNativeWebviewOccluded } from "@/lib/native-webview-occlusion";
 import { useSettingsStore } from "@/store/settings";
@@ -117,6 +117,14 @@ describe("Settings Help & About support callout", () => {
     expect(screen.getByRole("dialog", { name: "Settings" })).toHaveClass(
       "w-[min(1040px,94vw)]",
     );
+  });
+
+  it("does not list MCP as a top-level settings section", () => {
+    render(<SettingsModal />);
+
+    const navigation = screen.getByRole("navigation", { name: "Settings sections" });
+    expect(within(navigation).queryByRole("button", { name: "MCP" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("settings-section-mcp")).not.toBeInTheDocument();
   });
 
   it("occludes native webviews for the entire settings session", async () => {

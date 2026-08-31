@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Github, LibraryBig } from "lucide-react";
+import { Github, LibraryBig, Plug } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GitHubSection } from "@/components/settings/GitHubSection";
 import { AlphaXivSection } from "@/components/settings/AlphaXivSection";
 import { ZoteroSection } from "@/components/settings/ZoteroSection";
 import { CitationSearchIntegrationSection } from "@/components/settings/CitationSearchIntegrationSection";
+import { McpSection } from "@/components/settings/McpSection";
 import {
   AlphaXivBrandIcon,
   ZoteroBrandIcon,
@@ -13,6 +14,7 @@ import { useSettingsStore } from "@/store/settings";
 
 export function IntegrationsSection() {
   const [tab, setTab] = useState("github");
+  const [oleaflyMcpVisited, setOleaflyMcpVisited] = useState(false);
   const scrollTarget = useSettingsStore(
     (state) => state.settingsScrollTarget,
   );
@@ -27,11 +29,22 @@ export function IntegrationsSection() {
     } else if (scrollTarget === "citation-search") {
       setTab("citation-search");
       setScrollTarget(null);
+    } else if (scrollTarget === "oleafly-mcp") {
+      setTab("oleafly-mcp");
+      setOleaflyMcpVisited(true);
+      setScrollTarget(null);
     }
   }, [scrollTarget, setScrollTarget]);
 
   return (
-    <Tabs value={tab} onValueChange={setTab} className="space-y-4">
+    <Tabs
+      value={tab}
+      onValueChange={(value) => {
+        setTab(value);
+        if (value === "oleafly-mcp") setOleaflyMcpVisited(true);
+      }}
+      className="space-y-4"
+    >
       <TabsList>
         <TabsTrigger value="github" data-testid="integrations-tab-github">
           <Github className="mr-1.5 size-3.5" /> GitHub
@@ -54,6 +67,13 @@ export function IntegrationsSection() {
           <LibraryBig className="mr-1.5 size-3.5 text-blue-600 dark:text-blue-300" />
           Citation Search
         </TabsTrigger>
+        <TabsTrigger
+          value="oleafly-mcp"
+          data-testid="integrations-tab-oleafly-mcp"
+        >
+          <Plug className="mr-1.5 size-3.5" />
+          Oleafly MCP
+        </TabsTrigger>
       </TabsList>
       <TabsContent value="github">
         <GitHubSection />
@@ -67,6 +87,15 @@ export function IntegrationsSection() {
       <TabsContent value="citation-search">
         <CitationSearchIntegrationSection />
       </TabsContent>
+      {oleaflyMcpVisited ? (
+        <TabsContent
+          value="oleafly-mcp"
+          forceMount
+          hidden={tab !== "oleafly-mcp"}
+        >
+          <McpSection />
+        </TabsContent>
+      ) : null}
     </Tabs>
   );
 }

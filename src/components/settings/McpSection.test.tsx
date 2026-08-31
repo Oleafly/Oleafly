@@ -36,38 +36,23 @@ describe("McpSection", () => {
     });
   });
 
-  it("separates Assistant and Oleafly MCP settings into switchable tabs", async () => {
-    const user = userEvent.setup();
+  it("renders the Oleafly MCP server controls directly", async () => {
     render(<McpSection />);
 
-    const assistantTab = await screen.findByRole("tab", { name: "Assistant MCP" });
-    const oleaflyTab = screen.getByRole("tab", { name: "Oleafly MCP" });
-    const tabStrip = screen.getByTestId("mcp-pane-tab-strip");
-
-    expect(tabStrip).toHaveClass(
-      "w-fit",
-      "max-w-full",
-      "overflow-x-auto",
-      "no-scrollbar",
-    );
-    expect(tabStrip).not.toHaveClass("w-full");
-    expect(assistantTab).toHaveAttribute("aria-selected", "true");
-    expect(await screen.findByRole("heading", { name: "Assistant MCP servers" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Oleafly MCP server" })).not.toBeInTheDocument();
-
-    await user.click(oleaflyTab);
-
-    await waitFor(() => expect(oleaflyTab).toHaveAttribute("aria-selected", "true"));
-    expect(screen.queryByRole("heading", { name: "Assistant MCP servers" })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Oleafly MCP server" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Oleafly MCP server" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Enable MCP server" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Assistant MCP" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Assistant MCP servers" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("mcp-pane-tab-strip")).not.toBeInTheDocument();
   });
 
   it("fits client tabs in one scrollable row and reveals the selected tab", async () => {
     const user = userEvent.setup();
     render(<McpSection />);
 
-    await user.click(await screen.findByRole("tab", { name: "Oleafly MCP" }));
+    await screen.findByRole("heading", { name: "Oleafly MCP server" });
 
     const tabStrip = screen.getByTestId("mcp-client-tab-strip");
     expect(tabStrip).toHaveClass(
@@ -92,21 +77,4 @@ describe("McpSection", () => {
     });
   });
 
-  it("keeps server manager state mounted while switching MCP tabs", async () => {
-    const user = userEvent.setup();
-    render(<McpSection />);
-
-    await screen.findByText("No servers added.");
-    expect(
-      mockInvoke.mock.calls.filter(([command]) => command === "mcp_servers_list"),
-    ).toHaveLength(1);
-
-    await user.click(screen.getByRole("tab", { name: "Oleafly MCP" }));
-    await user.click(screen.getByRole("tab", { name: "Assistant MCP" }));
-    await screen.findByText("No servers added.");
-
-    expect(
-      mockInvoke.mock.calls.filter(([command]) => command === "mcp_servers_list"),
-    ).toHaveLength(1);
-  });
 });

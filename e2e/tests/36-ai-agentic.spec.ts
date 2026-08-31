@@ -1,5 +1,10 @@
 import { test, expect } from "../fixtures";
-import { openProject, openRailTab, openSettings } from "../helpers";
+import {
+  openOleaflyMcpSettings,
+  openProject,
+  openRailTab,
+  openSettings,
+} from "../helpers";
 
 // Agentic AI surface that does NOT require a live model call.
 
@@ -146,7 +151,7 @@ test("MCP activity rail tab appears only when the server is running", async ({
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  await openSettings(tauriPage, "mcp");
+  await openOleaflyMcpSettings(tauriPage);
   const mcpToggle = tauriPage.locator('[data-testid="mcp-enable-toggle"]');
   if ((await mcpToggle.getAttribute("aria-checked")) === "true") {
     await mcpToggle.click();
@@ -157,7 +162,7 @@ test("MCP activity rail tab appears only when the server is running", async ({
   await tauriPage.click('[aria-label="Close settings"]');
   await expect(tauriPage.locator('[aria-label="MCP activity"]')).toHaveCount(0);
 
-  await openSettings(tauriPage, "mcp");
+  await openOleaflyMcpSettings(tauriPage);
   await tauriPage.click('[data-testid="mcp-enable-toggle"]');
   await expect(tauriPage.locator('[data-testid="mcp-status"]')).toContainText("Running", {
     timeout: 15_000,
@@ -172,7 +177,7 @@ test("MCP activity rail tab appears only when the server is running", async ({
   await expect(tauriPage.getByText("Waiting for external agents")).toBeVisible();
 
   // Disable again so later specs see a clean rail.
-  await openSettings(tauriPage, "mcp");
+  await openOleaflyMcpSettings(tauriPage);
   await tauriPage.click('[data-testid="mcp-enable-toggle"]');
   await tauriPage.click('[aria-label="Close settings"]');
   await tauriPage.waitForFunction(

@@ -31,6 +31,7 @@ import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { ACCENTS, useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
+import { settingsTourDestination } from "@/components/tour/settings-tour-navigation";
 
 // react-joyride's control-button props carry a native `title`, which renders
 // the browser's plain system tooltip; drop it and show our own Tooltip instead.
@@ -936,21 +937,10 @@ export function TourGuide() {
 
   useEffect(() => {
     if (activeTourId !== "settings" || !activeStep) return;
-    const sectionByStep: Partial<Record<string, string>> = {
-      "settings-general": "general",
-      "settings-appearance": "appearance",
-      "settings-dictionary": "dictionary",
-      "settings-data": "data",
-      "settings-ai": "ai",
-      "settings-compiler": "engine",
-      "settings-downloads": "downloads",
-      "settings-integrations": "integrations",
-      "settings-shortcuts": "shortcuts",
-      "settings-mcp": "mcp",
-      "settings-help": "help",
-    };
-    const section = sectionByStep[activeStep.id];
-    if (!section) return;
+    const destination = settingsTourDestination(activeStep.id);
+    if (!destination) return;
+    const { section, scrollTarget } = destination;
+    if (scrollTarget) useSettingsStore.getState().setSettingsScrollTarget(scrollTarget);
     if (
       section === "dictionary" ||
       section === "data" ||

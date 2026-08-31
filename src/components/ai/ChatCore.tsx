@@ -379,9 +379,10 @@ export function ChatCore() {
   }, [setSettingsInitialSection, setSettingsOpen, setSettingsScrollTarget]);
 
   const openMcpSettings = useCallback(() => {
-    setSettingsInitialSection("mcp");
+    setSettingsInitialSection("ai");
+    setSettingsScrollTarget("ai-mcp");
     setSettingsOpen(true);
-  }, [setSettingsInitialSection, setSettingsOpen]);
+  }, [setSettingsInitialSection, setSettingsOpen, setSettingsScrollTarget]);
 
   const openSkillsSettings = useCallback(() => {
     setSettingsInitialSection("ai");
@@ -2191,10 +2192,24 @@ ${sandboxedCustom}`;
           <InfoHint message="This chat started from an older version of the project. File contents may differ from what the AI saw." />
         )}
         <div className="ml-auto flex items-center gap-0.5">
-          <AiToolManager
-            groups={toolManagerAvailability.groups}
-            onOpen={() => void mcpAgentToolsQuery.refetch()}
-          />
+          <div className="flex shrink-0 items-center gap-1">
+            <Tooltip label="Configure assistant MCP servers">
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                aria-label="Assistant MCP settings"
+                onClick={openMcpSettings}
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+              >
+                MCP
+              </Button>
+            </Tooltip>
+            <AiToolManager
+              groups={toolManagerAvailability.groups}
+              onOpen={() => void mcpAgentToolsQuery.refetch()}
+            />
+          </div>
           {configuredProviders.length > 0 && (
             <>
 

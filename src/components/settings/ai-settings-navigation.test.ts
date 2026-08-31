@@ -17,4 +17,8 @@ describe("AI settings navigation", () => {
   it("routes skill recording links to the Skills preview", () => {
     expect(aiSettingsDestination("ai-skills")).toEqual({ tab: "skills" });
   });
+
+  it("routes assistant MCP links to the MCP tab", () => {
+    expect(aiSettingsDestination("ai-mcp")).toEqual({ tab: "mcp" });
+  });
 });
