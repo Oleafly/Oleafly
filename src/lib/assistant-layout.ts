@@ -1,7 +1,6 @@
 const BASE_APP_FONT_SIZE = 16;
 export const ASSISTANT_MIN_WIDTH = 480;
 const FILE_SIDEBAR_MIN_WIDTH = 250;
-const RAIL_WIDTH_REM = 3;
 const SIDEBAR_HANDLE_WIDTH_REM = 0.75;
 
 function normalizedFontSize(appFontSize: number): number {
@@ -24,8 +23,7 @@ export function sidebarPanelGroupWidth(
 ): number {
   return Math.max(
     0,
-    panelAreaWidth -
-      (RAIL_WIDTH_REM + SIDEBAR_HANDLE_WIDTH_REM) * normalizedFontSize(appFontSize),
+    panelAreaWidth - SIDEBAR_HANDLE_WIDTH_REM * normalizedFontSize(appFontSize),
   );
 }
 

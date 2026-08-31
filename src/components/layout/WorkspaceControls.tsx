@@ -1,0 +1,195 @@
+import { Fragment, useEffect } from "react";
+import {
+  Globe,
+  Moon,
+  PanelLeft,
+  PanelLeftClose,
+  Settings as SettingsIcon,
+  Sparkles,
+  Sun,
+  Terminal,
+} from "lucide-react";
+import { railSections, type AppContext, type RailTabContribution } from "@oleafly/registry";
+import { useSettingsStore, type RailTab } from "@/store/settings";
+import { useFilesStore } from "@/store/files";
+import { useMcpActivityStore } from "@/store/mcp-activity";
+import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
+import { useTheme } from "@/lib/theme";
+import { Tooltip } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+
+const ctrlBtn = (active: boolean) =>
+  cn(
+    "flex size-7 shrink-0 items-center justify-center rounded-md transition-colors",
+    active
+      ? "bg-primary/10 text-foreground"
+      : "text-muted-foreground hover:bg-accent hover:text-foreground",
+  );
+
+function ViewButton({
+  tab,
+  active,
+  onSelect,
+}: {
+  tab: RailTabContribution;
+  active: boolean;
+  onSelect: () => void;
+}) {
+  const badge = tab.useBadge?.() ?? 0;
+  const Icon = tab.icon;
+  return (
+    <Tooltip label={tab.label} side="bottom">
+      <button
+        type="button"
+        aria-label={tab.label}
+        aria-current={active ? "page" : undefined}
+        onClick={onSelect}
+        className={cn("relative", ctrlBtn(active))}
+      >
+        <Icon className="size-4" aria-hidden />
+        {badge > 0 && (
+          <span
+            role="status"
+            aria-label={`${badge} pending`}
+            className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white ring-1 ring-background"
+          >
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
+      </button>
+    </Tooltip>
+  );
+}
+
+export function SidebarViews() {
+  const railTab = useSettingsStore((s) => s.railTab);
+  const projectId = useFilesStore((s) => s.projectId);
+  const projectKind = useFilesStore((s) => s.projectKind);
+  const setRailTab = useSettingsStore((s) => s.setRailTab);
+  const showTree = useSettingsStore((s) => s.showTree);
+  const toggleTree = useSettingsStore((s) => s.toggleTree);
+  const mcpEnabled = useMcpActivityStore((s) => s.serverRunning);
+  const { theme } = useTheme();
+
+  useEffect(() => {
+    if (!mcpEnabled && railTab === "mcp") setRailTab("files");
+  }, [mcpEnabled, railTab, setRailTab]);
+
+  const select = (tab: RailTab) => {
+    if (tab === railTab && showTree) {
+      toggleTree();
+    } else {
+      setRailTab(tab);
+      if (!showTree) toggleTree();
+    }
+  };
+
+  const ctx: AppContext = { projectId, projectKind, theme, mcpEnabled };
+  const sections = railSections(ctx);
+
+  return (
+    <div data-tour="project-sidebar" className="flex items-center gap-0.5">
+      <Tooltip label={showTree ? "Hide sidebar" : "Show sidebar"} side="bottom">
+        <button
+          type="button"
+          aria-label={showTree ? "Hide sidebar" : "Show sidebar"}
+          onClick={toggleTree}
+          className={ctrlBtn(false)}
+        >
+          {showTree ? <PanelLeftClose className="size-4" /> : <PanelLeft className="size-4" />}
+        </button>
+      </Tooltip>
+      {sections.map((tabs, i) => (
+        <Fragment key={tabs[0]?.section ?? i}>
+          {i > 0 && <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />}
+          {tabs.map((tab) => (
+            <ViewButton
+              key={tab.id}
+              tab={tab}
+              active={railTab === tab.id && showTree}
+              onSelect={() => select(tab.id as RailTab)}
+            />
+          ))}
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+export function WorkspaceDockControls() {
+  const terminalOpen = useSettingsStore((s) => s.terminalOpen);
+  const setTerminalOpen = useSettingsStore((s) => s.setTerminalOpen);
+  const browserOpen = useSettingsStore((s) => s.browserOpen);
+  const setBrowserOpen = useSettingsStore((s) => s.setBrowserOpen);
+  const assistantOpen = useSettingsStore((s) => s.assistantOpen);
+  const setAssistantOpen = useSettingsStore((s) => s.setAssistantOpen);
+  const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
+  const { theme, toggleTheme } = useTheme();
+  const terminalShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleTerminal));
+  const browserShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleBrowser));
+  const terminalLabel = `${terminalOpen ? "Hide" : "Show"} terminal (${terminalShortcut})`;
+  const browserLabel = `${browserOpen ? "Hide" : "Show"} browser (${browserShortcut})`;
+  const assistantLabel = `${assistantOpen ? "Hide" : "Show"} AI assistant`;
+
+  return (
+    <div className="flex items-center gap-0.5">
+      <Tooltip label={terminalLabel} side="bottom">
+        <button
+          type="button"
+          data-testid="rail-terminal-toggle"
+          aria-label={terminalLabel}
+          aria-pressed={terminalOpen}
+          onClick={() => setTerminalOpen(!terminalOpen)}
+          className={ctrlBtn(terminalOpen)}
+        >
+          <Terminal className="size-4" aria-hidden />
+        </button>
+      </Tooltip>
+      <Tooltip label={browserLabel} side="bottom">
+        <button
+          type="button"
+          data-testid="rail-browser-toggle"
+          aria-label={browserLabel}
+          aria-pressed={browserOpen}
+          onClick={() => setBrowserOpen(!browserOpen)}
+          className={ctrlBtn(browserOpen)}
+        >
+          <Globe className="size-4" aria-hidden />
+        </button>
+      </Tooltip>
+      <Tooltip label={assistantLabel} side="bottom">
+        <button
+          type="button"
+          data-testid="rail-assistant-toggle"
+          aria-label={assistantLabel}
+          aria-pressed={assistantOpen}
+          onClick={() => setAssistantOpen(!assistantOpen)}
+          className={ctrlBtn(assistantOpen)}
+        >
+          <Sparkles className="size-4" aria-hidden />
+        </button>
+      </Tooltip>
+      <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+      <Tooltip label={theme === "dark" ? "Light theme" : "Dark theme"} side="bottom">
+        <button
+          type="button"
+          aria-label="Toggle theme"
+          onClick={toggleTheme}
+          className={ctrlBtn(false)}
+        >
+          {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+        </button>
+      </Tooltip>
+      <Tooltip label="Settings" side="bottom">
+        <button
+          type="button"
+          aria-label="Settings"
+          onClick={() => setSettingsOpen(true)}
+          className={ctrlBtn(false)}
+        >
+          <SettingsIcon className="size-4" />
+        </button>
+      </Tooltip>
+    </div>
+  );
+}

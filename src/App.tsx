@@ -24,7 +24,6 @@ import { TerminalPane } from "@/components/dock/TerminalPane";
 import { Editor } from "@/components/editor/Editor";
 import { PreviewPane } from "@/components/preview/PreviewPane";
 import { PdfImportView } from "@/components/import/PdfImportView";
-import { Rail } from "@/components/layout/Rail";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { SearchOmnibar } from "@/components/layout/SearchOmnibar";
@@ -819,7 +818,6 @@ function AppContent() {
         <TopToolbar />
         <BackendProtocolBanner />
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
-          <Rail />
           <ErrorBoundary
             resetKey={projectId}
             fallback={

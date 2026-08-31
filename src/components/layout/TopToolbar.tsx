@@ -34,6 +34,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { CompileControls } from "@/components/layout/CompileControls";
+import { SidebarViews, WorkspaceDockControls } from "@/components/layout/WorkspaceControls";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { GithubMenu } from "@/components/layout/GithubMenu";
 import { WindowControls } from "@/components/layout/WindowControls";
@@ -379,6 +380,12 @@ export function TopToolbar() {
             </button>
           </Tooltip>
         )}
+        {!hideEditorArea && projectId && (
+          <>
+            <span className="mx-1 h-5 w-px shrink-0 bg-border" />
+            <SidebarViews />
+          </>
+        )}
       </div>
 
       <div data-tauri-drag-region className="flex items-center rounded-md border bg-muted/40 p-0.5">
@@ -562,6 +569,8 @@ export function TopToolbar() {
             })}
           </DropdownMenuContent>
         </DropdownMenu>
+        <Divider />
+        <WorkspaceDockControls />
         <WindowControls />
       </div>
     </header>

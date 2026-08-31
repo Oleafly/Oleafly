@@ -19,9 +19,9 @@ describe("assistant layout minimums", () => {
     expect(sidebarMinimumPercent(825, false, 20)).toBeCloseTo((250 / 825) * 100);
   });
 
-  it("subtracts the rem-sized rail and resize handle at the active app font size", () => {
-    expect(sidebarPanelGroupWidth(900, 16)).toBe(840);
-    expect(sidebarPanelGroupWidth(900, 20)).toBe(825);
+  it("subtracts the resize handle at the active app font size", () => {
+    expect(sidebarPanelGroupWidth(900, 16)).toBe(888);
+    expect(sidebarPanelGroupWidth(900, 20)).toBe(885);
   });
 
   it("scales the assistant floor with the supported app font size", () => {
