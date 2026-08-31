@@ -253,6 +253,7 @@ describe("project dock layout", () => {
     panelHandleMocks.resize.mockClear();
     const { useSettingsStore } = await import("@/store/settings");
     useSettingsStore.setState({
+      webBrowser: true,
       browserOpen: false,
       terminalOpen: false,
       showTree: false,

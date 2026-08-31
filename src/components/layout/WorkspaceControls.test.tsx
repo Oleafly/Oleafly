@@ -23,6 +23,7 @@ describe("WorkspaceControls", () => {
       assistantOpen: false,
       showTree: true,
       railTab: "files",
+      webBrowser: true,
     });
     useFilesStore.setState({ projectId: "proj-1" });
     useShortcutStore.getState().resetAll();

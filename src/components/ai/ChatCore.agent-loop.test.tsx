@@ -482,6 +482,7 @@ beforeEach(() => {
   });
   useSettingsStore.setState({
     browserOpen: false,
+    webBrowser: true,
     chatFloating: false,
     figureModeOpen: false,
     settingsInitialSection: "general",

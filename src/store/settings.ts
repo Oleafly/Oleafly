@@ -599,6 +599,11 @@ interface SettingsState {
   setVisualEditor: (v: boolean) => void;
   latexTools: boolean;
   setLatexTools: (v: boolean) => void;
+  // Experimental in-app web browser (the browser dock, its toggle, the
+  // shortcut, and the AI computer_use tool). Off by default; every browser
+  // entry point is gated on this.
+  webBrowser: boolean;
+  setWebBrowser: (v: boolean) => void;
   // Engine for NEW LaTeX projects: "tectonic" (bundled, zero-setup) or
   // "latexmk" (system TeX; full Overleaf tool parity). Existing projects keep
   // their own pin in project.json.
@@ -662,6 +667,7 @@ const PREF_DEFAULTS = {
   homeProjectLayout: "grid" as HomeProjectLayout,
   visualEditor: false,
   latexTools: false,
+  webBrowser: false,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
 
@@ -786,8 +792,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ terminalOpen: v });
   },
   browserOpen: false,
+  // The single chokepoint for opening the browser: it can only open when the
+  // experimental web-browser flag is on, so the button, the shortcut, the AI
+  // openBrowser hook, and computer-use all respect the flag.
   setBrowserOpen: (v) => {
-    set({ browserOpen: v });
+    set({ browserOpen: v && get().webBrowser });
   },
   assistantOpen: false,
   setAssistantOpen: (v) => {
@@ -1015,6 +1024,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.latexTools", v ? "1" : "0");
     set({ latexTools: v });
   },
+  webBrowser: ls("oleafly.webBrowser", "0") === "1",
+  setWebBrowser: (v) => {
+    saveLs("oleafly.webBrowser", v ? "1" : "0");
+    // Turning the browser off must also close any open browser dock.
+    set(v ? { webBrowser: true } : { webBrowser: false, browserOpen: false });
+  },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),
   setShowTree: (v) => set({ showTree: v }),
@@ -1184,9 +1199,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   resetExperimentationPreferences: () => {
     saveLs("oleafly.visualEditor", PREF_DEFAULTS.visualEditor ? "1" : "0");
     saveLs("oleafly.latexTools", PREF_DEFAULTS.latexTools ? "1" : "0");
+    saveLs("oleafly.webBrowser", PREF_DEFAULTS.webBrowser ? "1" : "0");
     set({
       visualEditor: PREF_DEFAULTS.visualEditor,
       latexTools: PREF_DEFAULTS.latexTools,
+      webBrowser: PREF_DEFAULTS.webBrowser,
+      browserOpen: false,
     });
   },
   resetEnginePreferences: () => {

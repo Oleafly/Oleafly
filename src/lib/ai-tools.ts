@@ -286,7 +286,9 @@ export function createOleaflyTools(opts?: {
 }) {
   return createOleaflyToolsCore(HOST, {
     ...opts,
-    cuaSurface: activeCuaSurface,
+    // The computer_use tool is only exposed when the experimental web browser
+    // is enabled; otherwise the AI has no browser tool at all.
+    cuaSurface: useSettingsStore.getState().webBrowser ? activeCuaSurface : undefined,
     resolveExecCwd: agentExecCwd,
     authorizeExec: async (projectId, command) => {
       const nativeRunId = opts?.runId?.();

@@ -123,6 +123,7 @@ export function WorkspaceDockControls() {
   const setTerminalOpen = useSettingsStore((s) => s.setTerminalOpen);
   const browserOpen = useSettingsStore((s) => s.browserOpen);
   const setBrowserOpen = useSettingsStore((s) => s.setBrowserOpen);
+  const webBrowser = useSettingsStore((s) => s.webBrowser);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const setAssistantOpen = useSettingsStore((s) => s.setAssistantOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
@@ -147,19 +148,23 @@ export function WorkspaceDockControls() {
           <SquareTerminal className="size-4" aria-hidden />
         </button>
       </Tooltip>
-      <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
-      <Tooltip label={browserLabel} side="bottom">
-        <button
-          type="button"
-          data-testid="rail-browser-toggle"
-          aria-label={browserLabel}
-          aria-pressed={browserOpen}
-          onClick={() => setBrowserOpen(!browserOpen)}
-          className={ctrlBtn(browserOpen)}
-        >
-          <Browserless size={16} className="size-4" aria-hidden />
-        </button>
-      </Tooltip>
+      {webBrowser && (
+        <>
+          <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+          <Tooltip label={browserLabel} side="bottom">
+            <button
+              type="button"
+              data-testid="rail-browser-toggle"
+              aria-label={browserLabel}
+              aria-pressed={browserOpen}
+              onClick={() => setBrowserOpen(!browserOpen)}
+              className={ctrlBtn(browserOpen)}
+            >
+              <Browserless size={16} className="size-4" aria-hidden />
+            </button>
+          </Tooltip>
+        </>
+      )}
       <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
       <Tooltip label={assistantLabel} side="bottom">
         <button

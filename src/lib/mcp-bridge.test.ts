@@ -85,6 +85,11 @@ import {
   validateToolInput,
 } from "@/lib/mcp-bridge";
 import { registerCuaSurface } from "@/lib/cua-sandbox";
+import { useSettingsStore } from "@/store/settings";
+
+// The registry is built at collection time and computer_use is only exposed
+// when the experimental web browser is on, so enable it before the describe.
+useSettingsStore.getState().setWebBrowser(true);
 
 afterEach(() => registerCuaSurface(null));
 

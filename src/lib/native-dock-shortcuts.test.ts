@@ -44,7 +44,7 @@ describe("native dock shortcuts", () => {
     native.listeners.clear();
     native.projectId = "project-1";
     native.unlisteners = [];
-    useSettingsStore.setState({ terminalOpen: false, browserOpen: false });
+    useSettingsStore.setState({ terminalOpen: false, browserOpen: false, webBrowser: true });
     useShortcutStore.getState().resetAll();
   });
 

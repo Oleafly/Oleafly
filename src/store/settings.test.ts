@@ -89,6 +89,8 @@ describe("useSettingsStore dock appearance settings", () => {
       browserOpen: false,
     });
 
+    // The browser only opens when its experimental flag is on.
+    useSettingsStore.getState().setWebBrowser(true);
     useSettingsStore.getState().setTerminalOpen(true);
     useSettingsStore.getState().setBrowserOpen(true);
 

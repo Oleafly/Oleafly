@@ -182,6 +182,8 @@ export function SettingsModal() {
   const visualEditor = useSettingsStore((s) => s.visualEditor);
   const setVisualEditor = useSettingsStore((s) => s.setVisualEditor);
   const latexTools = useSettingsStore((s) => s.latexTools);
+  const webBrowser = useSettingsStore((s) => s.webBrowser);
+  const setWebBrowser = useSettingsStore((s) => s.setWebBrowser);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
 
   const projectId = useFilesStore((s) => s.projectId);
@@ -1049,6 +1051,12 @@ export function SettingsModal() {
                   description="Show the Oleafly Tools gallery and the individual tools (PDF import, equations, tables, BibTeX, lab and literature search, deadlines) plus their slash commands. Off by default while still in beta."
                   checked={latexTools}
                   onChange={setLatexTools}
+                />
+                <SettingsToggleRow
+                  label="Web browser"
+                  description="Show the in-app web browser (its dock toggle and shortcut) and let the AI drive it with computer use. Off by default while still in beta; when off, there is no browser button and the AI has no browser tool."
+                  checked={webBrowser}
+                  onChange={setWebBrowser}
                 />
                 <ResetToDefaults
                   sectionName="Experimentation"

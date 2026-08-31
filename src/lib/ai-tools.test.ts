@@ -43,8 +43,11 @@ vi.mock("@/lib/pdf-text", () => ({ extractPdfText: vi.fn() }));
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: vi.fn() }));
 
 import { createOleaflyTools } from "./ai-tools";
+import { useSettingsStore } from "@/store/settings";
 
 beforeEach(() => {
+  // computer_use is only exposed when the experimental web browser is on.
+  useSettingsStore.getState().setWebBrowser(true);
   for (const f of Object.values(mocks.api)) f.mockReset();
   mocks.filesState.applyExternalWrite.mockReset().mockReturnValue(true);
   mocks.filesState.applyExternalDelete.mockReset().mockReturnValue(true);
@@ -330,6 +333,12 @@ describe("ai-tools: command approval", () => {
         .map((tool) => tool.description)
         .join(" "),
     ).not.toMatch(/confirmed with the user|requires user approval/i);
+  });
+
+  it("omits computer_use entirely when the web browser is disabled", () => {
+    useSettingsStore.getState().setWebBrowser(false);
+    const tools = createOleaflyTools({ confirm: async () => true, runId: () => "run-1" });
+    expect(tools.computer_use).toBeUndefined();
   });
 
   it("does not expose shell execution without an approval flow", async () => {

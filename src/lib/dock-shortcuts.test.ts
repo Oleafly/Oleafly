@@ -21,7 +21,7 @@ function keyboard(
 
 describe("dock shortcuts", () => {
   beforeEach(() => {
-    useSettingsStore.setState({ terminalOpen: false, browserOpen: false });
+    useSettingsStore.setState({ terminalOpen: false, browserOpen: false, webBrowser: true });
     useShortcutStore.getState().resetAll();
   });
 
