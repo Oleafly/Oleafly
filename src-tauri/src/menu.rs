@@ -22,9 +22,19 @@ pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .item(&quit)
         .build()?;
 
+    // Custom Undo/Redo instead of the predefined items: the predefined ones
+    // bind Cmd/Ctrl+Z to the native responder chain, which does nothing for the
+    // CodeMirror editor, and they never reach `on_event`. These route to the
+    // frontend, which drives the editor's own history.
+    let undo = MenuItemBuilder::with_id("edit_undo", "Undo")
+        .accelerator("CmdOrCtrl+Z")
+        .build(handle)?;
+    let redo = MenuItemBuilder::with_id("edit_redo", "Redo")
+        .accelerator("CmdOrCtrl+Shift+Z")
+        .build(handle)?;
     let edit_menu = SubmenuBuilder::new(handle, "Edit")
-        .undo()
-        .redo()
+        .item(&undo)
+        .item(&redo)
         .separator()
         .cut()
         .copy()
@@ -54,6 +64,8 @@ fn frontend_event(id: &str) -> Option<&'static str> {
     match id {
         "toggle_terminal" => Some("menu://toggle-terminal"),
         "toggle_browser" => Some("menu://toggle-browser"),
+        "edit_undo" => Some("menu://undo"),
+        "edit_redo" => Some("menu://redo"),
         _ => None,
     }
 }
@@ -160,6 +172,8 @@ mod tests {
             frontend_event("toggle_browser"),
             Some("menu://toggle-browser")
         );
+        assert_eq!(frontend_event("edit_undo"), Some("menu://undo"));
+        assert_eq!(frontend_event("edit_redo"), Some("menu://redo"));
         assert_eq!(frontend_event("unknown"), None);
     }
 

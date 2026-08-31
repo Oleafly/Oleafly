@@ -663,26 +663,35 @@ function AppContent() {
     return () => window.removeEventListener("keydown", onKey, true);
   }, []);
 
+  // Undo/redo arrive as menu events, not window keystrokes: the native Edit
+  // menu owns Cmd/Ctrl+Z, so the keydown never reaches the webview. Route by
+  // focus so a plain field (title, search, chat) keeps its own undo while the
+  // editor, its toolbar, and anywhere else drive the document's history.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "z" && e.key !== "Z") return;
-      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
-      if (useTourStore.getState().activeTourId) return;
+    if (!isTauri()) return;
+    const run = (redo: boolean) => {
       if (!useFilesStore.getState().projectId) return;
       const active = document.activeElement as HTMLElement | null;
-      const inCodeEditor = !!active?.closest(".cm-editor");
-      if (!inCodeEditor && active) {
-        if (active.closest(".ProseMirror")) return;
+      const inEditor = !!(active?.closest(".cm-editor") || active?.closest(".ProseMirror"));
+      if (!inEditor && active) {
         const tag = active.tagName;
-        if (tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable) return;
+        if (tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable) {
+          document.execCommand(redo ? "redo" : "undo");
+          return;
+        }
       }
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.shiftKey) editorRedo();
+      if (redo) editorRedo();
       else editorUndo();
     };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
+    const unlisten = [
+      listen("menu://undo", () => run(false)),
+      listen("menu://redo", () => run(true)),
+    ];
+    return () => {
+      void Promise.all(unlisten).then((fns) => {
+        for (const fn of fns) fn();
+      });
+    };
   }, []);
 
   useEffect(() => {
