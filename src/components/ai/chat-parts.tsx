@@ -589,11 +589,12 @@ export function ReasoningBlock({
           ref={scrollRef}
           className="max-h-56 overflow-x-hidden overflow-y-auto break-words border-t px-2.5 py-1.5 text-[11px] leading-relaxed text-muted-foreground"
         >
-          {active ? (
-            <span className="whitespace-pre-wrap">{text}</span>
-          ) : (
-            <Markdown className="chat-markdown">{text}</Markdown>
-          )}
+          {/* The reasoning trace is rendered as plain text, not Markdown. It is
+              a raw thinking dump, often dense with partial LaTeX and long: the
+              full math/mermaid/highlight renderer would choke on the fragments
+              (showing raw source) and block the main thread while parsing the
+              whole trace on expand. Plain pre-wrap opens instantly. */}
+          <span className="whitespace-pre-wrap">{text}</span>
         </div>
       )}
     </div>

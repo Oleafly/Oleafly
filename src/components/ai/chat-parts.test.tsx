@@ -174,16 +174,17 @@ describe("AI chat overflow surfaces", () => {
     );
   });
 
-  it("wraps expanded reasoning without horizontal scrolling and renders its markdown", async () => {
+  it("wraps expanded reasoning as instant plain text, not heavy markdown", () => {
     const { container } = render(<ReasoningBlock text="**Exploring Project Contents**" />);
 
     fireEvent.click(getByRole(container, "button"));
 
     const body = container.querySelector("div.max-h-56");
     expect(body).toHaveClass("overflow-x-hidden", "overflow-y-auto", "break-words");
-    await waitFor(() =>
-      expect(body?.querySelector("strong")).toHaveTextContent("Exploring Project Contents")
-    );
+    // Reasoning is a raw thinking trace: rendered as plain text so a long,
+    // math-dense dump opens instantly and never shows shattered/raw KaTeX.
+    expect(body?.querySelector("strong")).toBeNull();
+    expect(body).toHaveTextContent("**Exploring Project Contents**");
   });
 
   it("keeps active reasoning as plain text until streaming completes", () => {
