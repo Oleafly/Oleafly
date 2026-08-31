@@ -836,7 +836,15 @@ function AppContent() {
               </div>
             }
           >
-            <PanelGroup direction="horizontal" className="min-h-0 min-w-0 flex-1">
+            <PanelGroup direction="vertical" className="min-h-0 min-w-0 flex-1">
+              <Panel
+                id="content-band"
+                order={1}
+                defaultSize={terminalOpen ? 72 : 100}
+                minSize={25}
+                className="min-h-0 min-w-0"
+              >
+                <PanelGroup direction="horizontal" className="h-full min-h-0 min-w-0">
               {showTree && (
                 <Fragment key="sidebar">
                   <Panel
@@ -869,15 +877,7 @@ function AppContent() {
                   defaultSize={showTree ? 85 : 100}
                   className="min-h-0 min-w-0"
                 >
-                  <PanelGroup direction="vertical" className="h-full min-h-0 min-w-0">
-                    <Panel
-                      id="workspace-main"
-                      order={1}
-                      defaultSize={terminalOpen ? 70 : 100}
-                      minSize={15}
-                      className="min-h-0 min-w-0"
-                    >
-                      <PanelGroup direction="horizontal" className="h-full min-h-0 min-w-0">
+                  <PanelGroup direction="horizontal" className="h-full min-h-0 min-w-0">
                         {viewMode !== "pdf" && (
                           <Panel
                             ref={editorPanelRef}
@@ -940,49 +940,6 @@ function AppContent() {
                             </ErrorBoundary>
                           </div>
                         </Panel>
-                      </PanelGroup>
-                    </Panel>
-                    <PanelResizeHandle
-                      id="v-terminal"
-                      style={{ cursor: "row-resize" }}
-                      className={cn(
-                        "resize-handle-row group flex h-2.5 items-center justify-center bg-background",
-                        "transition-colors hover:bg-accent/40",
-                        !terminalOpen && "hidden",
-                      )}
-                    >
-                      <span className="h-0.5 w-8 rounded-full bg-border transition-colors group-hover:bg-ring" />
-                    </PanelResizeHandle>
-                    <Panel
-                      ref={terminalPanelRef}
-                      id="terminal"
-                      order={2}
-                      defaultSize={terminalOpen ? 30 : 0}
-                      minSize={10}
-                      collapsible
-                      collapsedSize={0}
-                      onCollapse={() => {
-                        if (useSettingsStore.getState().terminalOpen) {
-                          useSettingsStore.getState().setTerminalOpen(false);
-                        }
-                      }}
-                      className="min-h-0 min-w-0"
-                    >
-                      <div
-                        className={cn(
-                          "h-full min-h-0 min-w-0",
-                          !terminalOpen && "invisible pointer-events-none",
-                        )}
-                      >
-                        <ErrorBoundary surface="terminal dock" resetKey={projectId}>
-                          <TerminalPane
-                            projectId={projectId}
-                            projectName={projectName}
-                            visible={terminalOpen}
-                          />
-                        </ErrorBoundary>
-                      </div>
-                    </Panel>
                   </PanelGroup>
                 </Panel>
               )}
@@ -1013,6 +970,49 @@ function AppContent() {
                   </Panel>
                 </Fragment>
               )}
+                </PanelGroup>
+              </Panel>
+              <PanelResizeHandle
+                id="v-terminal"
+                style={{ cursor: "row-resize" }}
+                className={cn(
+                  "resize-handle-row group flex h-2.5 items-center justify-center bg-background",
+                  "transition-colors hover:bg-accent/40",
+                  !terminalOpen && "hidden",
+                )}
+              >
+                <span className="h-0.5 w-8 rounded-full bg-border transition-colors group-hover:bg-ring" />
+              </PanelResizeHandle>
+              <Panel
+                ref={terminalPanelRef}
+                id="terminal"
+                order={2}
+                defaultSize={terminalOpen ? 28 : 0}
+                minSize={10}
+                collapsible
+                collapsedSize={0}
+                onCollapse={() => {
+                  if (useSettingsStore.getState().terminalOpen) {
+                    useSettingsStore.getState().setTerminalOpen(false);
+                  }
+                }}
+                className="min-h-0 min-w-0"
+              >
+                <div
+                  className={cn(
+                    "h-full min-h-0 min-w-0",
+                    !terminalOpen && "invisible pointer-events-none",
+                  )}
+                >
+                  <ErrorBoundary surface="terminal dock" resetKey={projectId}>
+                    <TerminalPane
+                      projectId={projectId}
+                      projectName={projectName}
+                      visible={terminalOpen}
+                    />
+                  </ErrorBoundary>
+                </div>
+              </Panel>
             </PanelGroup>
           </ErrorBoundary>
         </div>
