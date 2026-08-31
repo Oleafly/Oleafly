@@ -597,6 +597,10 @@ interface SettingsState {
   // their own pin in project.json.
   defaultLatexEngine: DefaultLatexEngine;
   setDefaultLatexEngine: (v: DefaultLatexEngine) => void;
+  resetGeneralPreferences: () => void;
+  resetAppearancePreferences: () => void;
+  resetExperimentationPreferences: () => void;
+  resetEnginePreferences: () => void;
   resetToDefaults: () => void;
 }
 
@@ -1069,8 +1073,31 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.defaultLatexEngine", v);
     set({ defaultLatexEngine: v });
   },
-  resetToDefaults: () => {
-    // Drop the persisted copies so a restart doesn't resurrect old values.
+  resetGeneralPreferences: () => {
+    saveLs("oleafly.spellcheck", PREF_DEFAULTS.spellcheck ? "1" : "0");
+    saveLs("oleafly.harper", PREF_DEFAULTS.harper ? "1" : "0");
+    saveLs("oleafly.harper.dialect", PREF_DEFAULTS.grammarDialect);
+    saveLs("oleafly.dictionary.locale", PREF_DEFAULTS.dictionaryLocale);
+    saveLs(
+      "oleafly.harper.regionalism",
+      PREF_DEFAULTS.showRegionalism ? "1" : "0",
+    );
+    saveLs(
+      "oleafly.harper.wordchoice",
+      PREF_DEFAULTS.showWordChoice ? "1" : "0",
+    );
+    set({
+      spellcheck: PREF_DEFAULTS.spellcheck,
+      harper: PREF_DEFAULTS.harper,
+      grammarDialect: PREF_DEFAULTS.grammarDialect,
+      dictionaryLocale: PREF_DEFAULTS.dictionaryLocale,
+      showRegionalism: PREF_DEFAULTS.showRegionalism,
+      showWordChoice: PREF_DEFAULTS.showWordChoice,
+      offline: PREF_DEFAULTS.offline,
+    });
+    notifyProofreadingSettingsChanged("reset", get());
+  },
+  resetAppearancePreferences: () => {
     saveLs("oleafly.vim", PREF_DEFAULTS.vim ? "1" : "0");
     saveLs(
       "oleafly.editor.autocomplete",
@@ -1092,11 +1119,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       "oleafly.editor.stickyScroll",
       PREF_DEFAULTS.editorStickyScroll ? "1" : "0",
     );
-    saveLs("oleafly.spellcheck", PREF_DEFAULTS.spellcheck ? "1" : "0");
-    saveLs("oleafly.harper", PREF_DEFAULTS.harper ? "1" : "0");
-    saveLs("oleafly.harper.dialect", PREF_DEFAULTS.grammarDialect);
-    saveLs("oleafly.harper.regionalism", "1");
-    saveLs("oleafly.harper.wordchoice", "1");
     saveLs("oleafly.terminal.fontSize", String(PREF_DEFAULTS.terminalFontSize));
     saveLs("oleafly.terminal.fontFamily", PREF_DEFAULTS.terminalFontFamily);
     saveLs(
@@ -1139,10 +1161,59 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
     saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);
     saveLs("oleafly.library.projectLayout", PREF_DEFAULTS.homeProjectLayout);
+    set({
+      vim: PREF_DEFAULTS.vim,
+      editorAutocomplete: PREF_DEFAULTS.editorAutocomplete,
+      editorAutoCloseBrackets: PREF_DEFAULTS.editorAutoCloseBrackets,
+      editorGhostCompletion: PREF_DEFAULTS.editorGhostCompletion,
+      editorNonBlinkingCursor: PREF_DEFAULTS.editorNonBlinkingCursor,
+      editorStickyScroll: PREF_DEFAULTS.editorStickyScroll,
+      terminalFontSize: PREF_DEFAULTS.terminalFontSize,
+      terminalFontFamily: PREF_DEFAULTS.terminalFontFamily,
+      terminalFontWeight: PREF_DEFAULTS.terminalFontWeight,
+      terminalFontWeightBold: PREF_DEFAULTS.terminalFontWeightBold,
+      terminalCursorStyle: PREF_DEFAULTS.terminalCursorStyle,
+      terminalCursorBlink: PREF_DEFAULTS.terminalCursorBlink,
+      terminalColorTheme: PREF_DEFAULTS.terminalColorTheme,
+      terminalBackground: PREF_DEFAULTS.terminalBackground,
+      terminalForeground: PREF_DEFAULTS.terminalForeground,
+      terminalCursorColor: PREF_DEFAULTS.terminalCursorColor,
+      browserSearchEngine: PREF_DEFAULTS.browserSearchEngine,
+      browserHomePage: PREF_DEFAULTS.browserHomePage,
+      editorFontSize: PREF_DEFAULTS.editorFontSize,
+      appFontSize: PREF_DEFAULTS.appFontSize,
+      appFontFamily: PREF_DEFAULTS.appFontFamily,
+      editorFontFamily: PREF_DEFAULTS.editorFontFamily,
+      editorTheme: PREF_DEFAULTS.editorTheme,
+      pdfDarkMode: PREF_DEFAULTS.pdfDarkMode,
+      pdfZoomShortcuts: PREF_DEFAULTS.pdfZoomShortcuts,
+      hiddenFilePatterns: [...PREF_DEFAULTS.hiddenFilePatterns],
+      defaultView: PREF_DEFAULTS.defaultView,
+      openInTree: PREF_DEFAULTS.openInTree,
+      hoverPreview: PREF_DEFAULTS.hoverPreview,
+      accentColor: PREF_DEFAULTS.accentColor,
+      dockPlacement: PREF_DEFAULTS.dockPlacement,
+      bgPattern: PREF_DEFAULTS.bgPattern,
+      homeProjectLayout: PREF_DEFAULTS.homeProjectLayout,
+    });
+  },
+  resetExperimentationPreferences: () => {
     saveLs("oleafly.visualEditor", PREF_DEFAULTS.visualEditor ? "1" : "0");
     saveLs("oleafly.latexTools", PREF_DEFAULTS.latexTools ? "1" : "0");
+    set({
+      visualEditor: PREF_DEFAULTS.visualEditor,
+      latexTools: PREF_DEFAULTS.latexTools,
+    });
+  },
+  resetEnginePreferences: () => {
     saveLs("oleafly.defaultLatexEngine", PREF_DEFAULTS.defaultLatexEngine);
-    set({ ...PREF_DEFAULTS });
-    notifyProofreadingSettingsChanged("reset", get());
+    set({ defaultLatexEngine: PREF_DEFAULTS.defaultLatexEngine });
+  },
+  resetToDefaults: () => {
+    get().resetGeneralPreferences();
+    get().resetAppearancePreferences();
+    get().resetExperimentationPreferences();
+    get().resetEnginePreferences();
+    set({ terminalOpen: false, browserOpen: false });
   },
 }));

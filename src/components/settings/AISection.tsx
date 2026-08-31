@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   agentListModels,
+  budgetSet,
   getConfig,
   setConfig,
   type AppConfig,
@@ -14,11 +15,18 @@ import {
   mergeFetchedModels,
   pickActiveModel,
   reconcileActiveModel,
+  restoreSeedModels,
   seedProviderModels,
 } from "@/lib/ai-model-state";
 import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettingsStore } from "@/store/settings";
+import { useFilesStore } from "@/store/files";
+import {
+  resetSkillPreferences,
+  SKILLS_QUERY_KEY,
+  type SkillEntry,
+} from "@/lib/skills";
 import { cn } from "@/lib/utils";
 import { ProvidersTab, type ProviderStatus } from "./ai/ProvidersTab";
 import { ProjectApprovals } from "./ai/ProjectApprovals";
@@ -30,6 +38,7 @@ import { McpServersManager } from "./McpServersManager";
 import { AddCustomProviderDialog, type AddCustomProviderInput } from "./ai/AddCustomProviderDialog";
 import { editableKeys, withKey, withoutKey } from "./ai-keys";
 import { agentErrorKind } from "@/lib/agent-backend";
+import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import {
   aiSettingsDestination,
   type AiSettingsTab,
@@ -76,10 +85,43 @@ const DEFAULT_CFG: AppConfig = {
   mcp_servers: [],
 };
 
+function resetProviderModelPreferences(
+  config: AppConfig,
+): AppConfig["ai_provider_models"] {
+  return Object.fromEntries(
+    Object.entries(config.ai_provider_models).map(([providerId, models]) => {
+      const isCustomProvider = config.ai_custom_providers.some(
+        (provider) => provider.id === providerId,
+      );
+      const currentBuiltinIds = new Set(
+        seedProviderModels(providerId).map((model) => model.id),
+      );
+      const currentModels =
+        getProvider(providerId) && !isCustomProvider
+          ? models.filter(
+              (model) =>
+                model.source !== "builtin" ||
+                currentBuiltinIds.has(model.id) ||
+                (providerId === config.ai_provider &&
+                  model.id === config.ai_model),
+            )
+          : models;
+      return [
+        providerId,
+        restoreSeedModels(currentModels, providerId).map((model) => ({
+          ...model,
+          enabled: true,
+        })),
+      ];
+    }),
+  );
+}
+
 export function AISection() {
   const [tab, setTab] = useState<AiSettingsTab>("providers");
   const [mcpMounted, setMcpMounted] = useState(false);
   const [cfg, setCfg] = useState<AppConfig>(DEFAULT_CFG);
+  const [configLoaded, setConfigLoaded] = useState(false);
   const [keys, setKeys] = useState<Record<string, string>>({});
   // Snapshot of persisted keys, used to detect unsaved edits (dirty check below).
   const [savedKeys, setSavedKeys] = useState<Record<string, string>>({});
@@ -92,12 +134,14 @@ export function AISection() {
   // Unset falls back to "open if active", so the in-use provider stays expanded.
   const [openProviders, setOpenProviders] = useState<Record<string, boolean>>({});
   const [customDialogOpen, setCustomDialogOpen] = useState(false);
+  const [preferencesResetVersion, setPreferencesResetVersion] = useState(0);
   // A host the user probed explicitly from the provider card; null follows the
   // saved (or default) host.
   const [probeHost, setProbeHost] = useState<string | null>(null);
 
   const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
+  const projectId = useFilesStore((s) => s.projectId);
   useEffect(() => {
     const destination = aiSettingsDestination(scrollTarget);
     if (!destination) return;
@@ -131,6 +175,7 @@ export function AISection() {
       if (Object.keys(c.ai_keys ?? {}).length === 0 && c.ai_api_key) {
         void setConfig(next);
       }
+      setConfigLoaded(true);
     });
   }, []);
 
@@ -367,6 +412,44 @@ export function AISection() {
     }
   };
 
+  const resetAssistantPreferences = async () => {
+    setMsg(null);
+    const aiProviderModels = resetProviderModelPreferences(cfg);
+    const resetConfig = { ...cfg, ai_provider_models: aiProviderModels };
+    const next = {
+      ...resetConfig,
+      ai_system_prompt: "",
+      ai_pdf_capture: true,
+    };
+    try {
+      await persist(next);
+      try {
+        localStorage.setItem("oleafly:ai_pdf_capture", "1");
+      } catch {}
+      setSysPrompt("");
+      setSysPromptSaved(false);
+      const skills = await resetSkillPreferences();
+      queryClient.setQueryData<SkillEntry[]>(SKILLS_QUERY_KEY, skills);
+      if (projectId) {
+        await budgetSet(projectId, null);
+        queryClient.setQueryData(["project-budget", projectId], null);
+        setPreferencesResetVersion((version) => version + 1);
+      }
+      setMsg({
+        ok: true,
+        text: "AI Assistant preferences restored to their defaults.",
+      });
+    } catch (error) {
+      void queryClient.invalidateQueries({ queryKey: SKILLS_QUERY_KEY });
+      if (projectId) {
+        void queryClient.invalidateQueries({
+          queryKey: ["project-budget", projectId],
+        });
+      }
+      setMsg({ ok: false, text: String(error) });
+    }
+  };
+
   const deleteKey = async (id: string) => {
     setSaving(id);
     setMsg(null);
@@ -475,7 +558,7 @@ export function AISection() {
           />
           <div className="mt-3 space-y-3">
             <ProjectApprovals />
-            <ProjectBudget />
+            <ProjectBudget key={preferencesResetVersion} />
           </div>
         </TabsContent>
 
@@ -531,6 +614,16 @@ export function AISection() {
           {msg.text}
         </div>
       )}
+      <ResetToDefaults
+        sectionName="AI Assistant"
+        disabled={!configLoaded}
+        confirmationDescription={
+          projectId
+            ? "Restore AI Assistant preferences to their defaults, including model availability, enabled skills, and this project's budget. The active provider and model, provider keys, personas, approval rules, usage history, and MCP servers will stay unchanged."
+            : "Restore AI Assistant preferences to their defaults, including model availability and enabled skills. The active provider and model, provider keys, personas, approval rules, usage history, and MCP servers will stay unchanged."
+        }
+        onReset={() => void resetAssistantPreferences()}
+      />
     </div>
   );
 }

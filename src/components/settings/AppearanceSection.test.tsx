@@ -10,7 +10,12 @@ import {
   useSettingsStore,
 } from "@/store/settings";
 
-const toggleTheme = vi.hoisted(() => vi.fn());
+const themeMocks = vi.hoisted(() => ({
+  theme: "dark" as "light" | "dark",
+  setTheme: vi.fn(),
+  toggleTheme: vi.fn(),
+}));
+const toggleTheme = themeMocks.toggleTheme;
 const browserCookieMocks = vi.hoisted(() => ({
   detectBrowserCookieSources: vi.fn(),
   importBrowserCookies: vi.fn(),
@@ -26,9 +31,9 @@ function deferred<T>() {
 
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({
-    theme: "dark",
-    setTheme: vi.fn(),
-    toggleTheme,
+    theme: themeMocks.theme,
+    setTheme: themeMocks.setTheme,
+    toggleTheme: themeMocks.toggleTheme,
   }),
 }));
 
@@ -42,7 +47,9 @@ import { ShortcutsSection } from "./ShortcutsSection";
 
 describe("Appearance settings tabs", () => {
   beforeEach(() => {
-    toggleTheme.mockClear();
+    themeMocks.theme = "dark";
+    themeMocks.setTheme.mockClear();
+    themeMocks.toggleTheme.mockClear();
     browserCookieMocks.detectBrowserCookieSources.mockReset().mockResolvedValue([
       {
         browser: "chrome",
@@ -219,6 +226,69 @@ describe("Appearance settings tabs", () => {
       editorNonBlinkingCursor: true,
       editorStickyScroll: true,
     });
+  });
+
+  it("resets only Appearance preferences after confirmation", async () => {
+    const user = userEvent.setup();
+    const settings = useSettingsStore.getState();
+    settings.setDockPlacement("right");
+    settings.setVisualEditor(true);
+    themeMocks.theme = "light";
+
+    render(<AppearanceSection />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Reset to defaults" }),
+    );
+    const confirmation = screen.getByRole("alertdialog");
+    expect(confirmation).toHaveTextContent("Appearance");
+    expect(useSettingsStore.getState().dockPlacement).toBe("right");
+
+    await user.click(
+      within(confirmation).getByRole("button", { name: "Reset to defaults" }),
+    );
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      dockPlacement: "left",
+      visualEditor: true,
+    });
+    expect(localStorage.getItem("oleafly.dockPlacement")).toBe("left");
+    expect(localStorage.getItem("oleafly.visualEditor")).toBe("1");
+    expect(themeMocks.setTheme).toHaveBeenCalledWith("dark");
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("keeps a reset browser home page from being restored by a stale draft", async () => {
+    const user = userEvent.setup();
+    useSettingsStore
+      .getState()
+      .setBrowserHomePage("https://example.com/research");
+
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: "Browser" }));
+
+    const homePage = screen.getByRole("textbox", {
+      name: "Browser home page",
+    });
+    expect(homePage).toHaveValue("https://example.com/research");
+
+    await user.click(
+      screen.getByRole("button", { name: "Reset to defaults" }),
+    );
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Reset to defaults",
+      }),
+    );
+
+    expect(homePage).toHaveValue("https://www.google.com/");
+    fireEvent.blur(homePage);
+    expect(useSettingsStore.getState().browserHomePage).toBe(
+      "https://www.google.com/",
+    );
+    expect(localStorage.getItem("oleafly.browser.homePage")).toBe(
+      "https://www.google.com/",
+    );
   });
 
   it("uses the shared file-management controls to add and remove patterns", async () => {

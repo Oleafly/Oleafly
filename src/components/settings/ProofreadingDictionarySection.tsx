@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
+import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import {
   Tabs,
   TabsContent,
@@ -154,6 +155,7 @@ export function ProofreadingDictionarySection() {
   );
   const clear = useDictionary((state) => state.clear);
   const clearGlobal = useDictionary((state) => state.clearGlobal);
+  const clearAll = useDictionary((state) => state.clearAll);
   const activeProjectId = useFilesStore((state) => state.projectId);
   const projects = useFilesStore((state) => state.projects);
   const [query, setQuery] = useState("");
@@ -334,6 +336,7 @@ export function ProofreadingDictionarySection() {
           )}
         </TabsContent>
       </Tabs>
+      <ResetToDefaults sectionName="Dictionary" onReset={clearAll} />
       <ConfirmationDialog
         open={clearTarget !== null}
         title="Clear ignored words?"

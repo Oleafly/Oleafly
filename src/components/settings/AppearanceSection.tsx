@@ -31,6 +31,7 @@ import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { BrowserCookieImport } from "@/components/settings/BrowserCookieImport";
 import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
+import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 
 const APPEARANCE_TABS = [
   { id: "app", label: "App" },
@@ -675,6 +676,9 @@ function BrowserAppearanceTab() {
     (state) => state.setBrowserHomePage,
   );
   const [homePageDraft, setHomePageDraft] = useState(browserHomePage);
+  useEffect(() => {
+    setHomePageDraft(browserHomePage);
+  }, [browserHomePage]);
   const selectedSearchEngine =
     BROWSER_SEARCH_ENGINES.find(({ id }) => id === browserSearchEngine) ??
     BROWSER_SEARCH_ENGINES[0];
@@ -926,6 +930,10 @@ function FileManagementTab() {
 
 export function AppearanceSection() {
   const [activeTab, setActiveTab] = useState<AppearanceTabId>("app");
+  const resetAppearancePreferences = useSettingsStore(
+    (state) => state.resetAppearancePreferences,
+  );
+  const { setTheme } = useTheme();
   const tabRefs = useRef<
     Partial<Record<AppearanceTabId, HTMLButtonElement | null>>
   >({});
@@ -949,48 +957,57 @@ export function AppearanceSection() {
   };
 
   return (
-    <Tabs
-      value={activeTab}
-      onValueChange={(value) => setActiveTab(value as AppearanceTabId)}
-      className="space-y-4"
-    >
-      <TabsList
-        className="flex h-auto w-fit max-w-full justify-start gap-1 overflow-x-auto no-scrollbar"
-        data-testid="appearance-tab-strip"
-        onWheel={scrollTabs}
+    <div className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as AppearanceTabId)}
+        className="space-y-4"
       >
-        {APPEARANCE_TABS.map((tab) => (
-          <TabsTrigger
-            key={tab.id}
-            ref={(node) => {
-              tabRefs.current[tab.id] = node;
-            }}
-            value={tab.id}
-            data-testid={`appearance-tab-${tab.id}`}
-            className="shrink-0"
-          >
-            {tab.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-      <TabsContent value="app">
-        <AppAppearanceTab />
-      </TabsContent>
-      <TabsContent value="editor">
-        <EditorAppearanceTab />
-      </TabsContent>
-      <TabsContent value="terminal">
-        <TerminalAppearanceTab />
-      </TabsContent>
-      <TabsContent value="pdf">
-        <PdfPreviewTab />
-      </TabsContent>
-      <TabsContent value="browser">
-        <BrowserAppearanceTab />
-      </TabsContent>
-      <TabsContent value="files">
-        <FileManagementTab />
-      </TabsContent>
-    </Tabs>
+        <TabsList
+          className="flex h-auto w-fit max-w-full justify-start gap-1 overflow-x-auto no-scrollbar"
+          data-testid="appearance-tab-strip"
+          onWheel={scrollTabs}
+        >
+          {APPEARANCE_TABS.map((tab) => (
+            <TabsTrigger
+              key={tab.id}
+              ref={(node) => {
+                tabRefs.current[tab.id] = node;
+              }}
+              value={tab.id}
+              data-testid={`appearance-tab-${tab.id}`}
+              className="shrink-0"
+            >
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value="app">
+          <AppAppearanceTab />
+        </TabsContent>
+        <TabsContent value="editor">
+          <EditorAppearanceTab />
+        </TabsContent>
+        <TabsContent value="terminal">
+          <TerminalAppearanceTab />
+        </TabsContent>
+        <TabsContent value="pdf">
+          <PdfPreviewTab />
+        </TabsContent>
+        <TabsContent value="browser">
+          <BrowserAppearanceTab />
+        </TabsContent>
+        <TabsContent value="files">
+          <FileManagementTab />
+        </TabsContent>
+      </Tabs>
+      <ResetToDefaults
+        sectionName="Appearance"
+        onReset={() => {
+          resetAppearancePreferences();
+          setTheme("dark");
+        }}
+      />
+    </div>
   );
 }

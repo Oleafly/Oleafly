@@ -65,7 +65,6 @@ import {
 } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useGithubStore } from "@/store/github";
-import { useTheme } from "@/lib/theme";
 import {
   appVersion,
   libraryRoot,
@@ -86,6 +85,7 @@ import { TOUR_IDS } from "@/lib/tours/registry";
 import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
+import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import {
   SettingsSwitchIndicator,
   SettingsToggleRow,
@@ -160,8 +160,12 @@ function formatStorageSize(bytes: number): string {
 export function SettingsModal() {
   const open = useSettingsStore((s) => s.settingsOpen);
   const setOpen = useSettingsStore((s) => s.setSettingsOpen);
-  const resetToDefaults = useSettingsStore((s) => s.resetToDefaults);
-  const { setTheme } = useTheme();
+  const resetGeneralPreferences = useSettingsStore(
+    (s) => s.resetGeneralPreferences,
+  );
+  const resetExperimentationPreferences = useSettingsStore(
+    (s) => s.resetExperimentationPreferences,
+  );
   const spellcheck = useSettingsStore((s) => s.spellcheck);
   const toggleSpellcheck = useSettingsStore((s) => s.toggleSpellcheck);
   const harper = useSettingsStore((s) => s.harper);
@@ -204,7 +208,6 @@ export function SettingsModal() {
   const [clearingRecycleBin, setClearingRecycleBin] = useState(false);
   const [confirmDeleteAllProjects, setConfirmDeleteAllProjects] = useState(false);
   const [deletingAllProjects, setDeletingAllProjects] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
   const [tourConfirmation, setTourConfirmation] = useState<"disable" | "dismiss-all" | null>(
     null,
   );
@@ -238,12 +241,6 @@ export function SettingsModal() {
     open,
     closeSettings,
   );
-
-  const doReset = () => {
-    resetToDefaults();
-    setTheme("dark");
-    setConfirmReset(false);
-  };
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -699,35 +696,10 @@ export function SettingsModal() {
                     </div>
                   )}
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-3 border-t pt-4">
-                  <div>
-                    <p className="text-sm">Reset settings</p>
-                    <p className="text-xs text-muted-foreground">
-                      Restore Appearance and General preferences to their
-                      defaults.
-                    </p>
-                  </div>
-                  {confirmReset ? (
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Button variant="destructive" size="sm" onClick={doReset}>
-                        Reset
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setConfirmReset(false)}>
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => setConfirmReset(true)}
-                    >
-                      <RotateCcw className="size-3.5" />
-                      Reset to defaults
-                    </Button>
-                  )}
-                </div>
+                <ResetToDefaults
+                  sectionName="General"
+                  onReset={resetGeneralPreferences}
+                />
               </div>
             )}
 
@@ -1109,6 +1081,10 @@ export function SettingsModal() {
                   description="Show the Oleafly Tools gallery and the individual tools (PDF import, equations, tables, BibTeX, lab and literature search, deadlines) plus their slash commands. Off by default while still in beta."
                   checked={latexTools}
                   onChange={setLatexTools}
+                />
+                <ResetToDefaults
+                  sectionName="Experimentation"
+                  onReset={resetExperimentationPreferences}
                 />
               </div>
             )}

@@ -7,6 +7,7 @@ import { texDistributions, type TexDistribution } from "@/lib/tauri";
 import { isTauri } from "@tauri-apps/api/core";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
+import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { cn } from "@/lib/utils";
 
 const ENGINE_CHOICES: Array<{
@@ -49,6 +50,7 @@ export function EngineSection() {
     useEngineStore();
   const defaultLatexEngine = useSettingsStore((s) => s.defaultLatexEngine);
   const setDefaultLatexEngine = useSettingsStore((s) => s.setDefaultLatexEngine);
+  const resetEnginePreferences = useSettingsStore((s) => s.resetEnginePreferences);
   const installPhase = useEngineStore((s) => s.installPhase);
   const partialDownloadBytes = useEngineStore((s) => s.partialDownloadBytes);
   const [query, setQuery] = useState("");
@@ -282,6 +284,10 @@ export function EngineSection() {
           })}
         </div>
       </div>
+      <ResetToDefaults
+        sectionName="LaTeX Engine"
+        onReset={resetEnginePreferences}
+      />
     </div>
   );
 }

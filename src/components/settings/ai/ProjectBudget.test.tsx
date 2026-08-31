@@ -63,4 +63,29 @@ describe("ProjectBudget", () => {
 
     await vi.waitFor(() => expect(mockSet).toHaveBeenCalledWith("proj-1", null));
   });
+
+  it("discards an unsaved draft when the assistant preferences reset", async () => {
+    const client = createAppQueryClient();
+    const { rerender } = render(
+      <QueryClientProvider client={client}>
+        <ProjectBudget key={0} />
+      </QueryClientProvider>,
+    );
+    const input = await screen.findByLabelText("AI budget in US dollars");
+    fireEvent.change(input, { target: { value: "12.5" } });
+    expect(input).toHaveValue("12.5");
+
+    client.setQueryData(["project-budget", "proj-1"], null);
+    rerender(
+      <QueryClientProvider client={client}>
+        <ProjectBudget key={1} />
+      </QueryClientProvider>,
+    );
+
+    await vi.waitFor(() =>
+      expect(screen.getByLabelText("AI budget in US dollars")).toHaveValue(""),
+    );
+    expect(screen.getByRole("button", { name: "Save budget" })).toBeDisabled();
+    expect(mockSet).not.toHaveBeenCalled();
+  });
 });

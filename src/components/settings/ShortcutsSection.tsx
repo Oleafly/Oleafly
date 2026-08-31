@@ -3,6 +3,7 @@ import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import {
   bindingFromEvent,
   reservedShortcutLabel,
@@ -245,12 +246,10 @@ export function ShortcutsSection() {
         </TabsContent>
       ))}
       </Tabs>
-      <div className="flex justify-end border-t pt-4">
-        <Button variant="secondary" size="sm" onClick={resetAll}>
-          <RotateCcw className="size-3.5" />
-          Reset all shortcuts
-        </Button>
-      </div>
+      <ResetToDefaults
+        sectionName="Keyboard Shortcuts"
+        onReset={resetAll}
+      />
     </div>
   );
 }

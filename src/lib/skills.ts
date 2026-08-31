@@ -87,6 +87,17 @@ export function setSkillEnabled(id: string, enabled: boolean): Promise<SkillEntr
   return invoke<SkillEntry>("skills_set_enabled", { id, enabled });
 }
 
+export async function resetSkillPreferences(): Promise<SkillEntry[]> {
+  const skills = await loadSkills();
+  const resetRecords = await Promise.all(
+    skills
+      .filter((skill) => skill.enabled)
+      .map((skill) => setSkillEnabled(skill.id, false)),
+  );
+  const resetById = new Map(resetRecords.map((skill) => [skill.id, skill]));
+  return skills.map((skill) => resetById.get(skill.id) ?? skill);
+}
+
 export function removeSkill(id: string): Promise<void> {
   return invoke<void>("skills_remove", { id });
 }
