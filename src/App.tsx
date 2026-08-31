@@ -276,7 +276,6 @@ function AppContent() {
   const editorFontFamily = useSettingsStore((s) => s.editorFontFamily);
   const accentColor = useSettingsStore((s) => s.accentColor);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
-  const railTab = useSettingsStore((s) => s.railTab);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
   const browserOpen = useSettingsStore((s) => s.browserOpen);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
@@ -288,10 +287,7 @@ function AppContent() {
   const pdfPanelRef = useRef<ImperativePanelHandle>(null);
   const browserPanelRef = useRef<ImperativePanelHandle>(null);
   const terminalPanelRef = useRef<ImperativePanelHandle>(null);
-  const previousRailTabRef = useRef<string | null>(null);
   const previousShowTreeRef = useRef(showTree);
-  const sidebarSizeBeforeAiRef = useRef<number | null>(null);
-  const aiResizePendingRef = useRef(false);
 
   useLayoutEffect(() => {
     if (projectId) closeDocks();
@@ -340,10 +336,9 @@ function AppContent() {
     return () => observer.disconnect();
   }, [projectId]);
   const panelGroupWidth = sidebarPanelGroupWidth(panelAreaWidth, appFontSize);
-  const assistantSidebar = railTab === "ai" || railTab === "chat";
   const sidebarMinSize = sidebarMinimumPercent(
     panelGroupWidth,
-    assistantSidebar,
+    false,
     appFontSize,
   );
   const sidebarDefaultSize =
@@ -358,14 +353,10 @@ function AppContent() {
   useEffect(() => {
     const wasOpen = previousShowTreeRef.current;
     previousShowTreeRef.current = showTree;
-    const isAiTab = railTab === "ai" || railTab === "chat";
-    if (showTree && !wasOpen && isAiTab && !hideEditorArea) {
-      aiResizePendingRef.current = true;
-    }
-    if (showTree && !wasOpen && !isAiTab) {
+    if (showTree && !wasOpen) {
       window.requestAnimationFrame(() => sidebarPanelRef.current?.resize(sidebarDefaultSize));
     }
-  }, [showTree, railTab, sidebarDefaultSize, hideEditorArea]);
+  }, [showTree, sidebarDefaultSize]);
 
   useEffect(() => {
     // React owns the screen from here: retire the inline HTML splash and
@@ -385,80 +376,6 @@ function AppContent() {
       home.goTo(home.consumeQueuedPageAfterProjectClose() ?? "library");
     }
   }, [projectId]);
-
-  useEffect(() => {
-    // No adjacent editor/pdf panel to balance against in this mode: the
-    // sidebar just stays at its own 100% width.
-    if (hideEditorArea) {
-      previousRailTabRef.current = railTab;
-      return;
-    }
-
-    const suppressAutoLayout = useSettingsStore.getState().suppressAiAutoLayout;
-    if (suppressAutoLayout) useSettingsStore.getState().setSuppressAiAutoLayout(false);
-
-    const wasAi =
-      previousRailTabRef.current === "ai" || previousRailTabRef.current === "chat";
-    const isAi = railTab === "ai" || railTab === "chat";
-    previousRailTabRef.current = railTab;
-
-    if (isAi && !wasAi) {
-      useSettingsStore.getState().setChatFloating(false);
-      aiResizePendingRef.current = true;
-      const panel = sidebarPanelRef.current;
-      if (panel) sidebarSizeBeforeAiRef.current = panel.getSize();
-      if (!suppressAutoLayout) setViewMode("pdf");
-    }
-
-    if (isAi && showTree && aiResizePendingRef.current) {
-      const frame = window.requestAnimationFrame(() => {
-        const panel = sidebarPanelRef.current;
-        if (panel) {
-          if (sidebarSizeBeforeAiRef.current == null) {
-            sidebarSizeBeforeAiRef.current = panel.getSize();
-          }
-          if (viewMode === "split") {
-            panel.resize(30);
-            if (!browserOpen) {
-              editorPanelRef.current?.resize((30 / 70) * 100);
-              pdfPanelRef.current?.resize((40 / 70) * 100);
-            }
-          } else {
-            panel.resize(50);
-            if (!browserOpen) {
-              if (viewMode === "editor") editorPanelRef.current?.resize(100);
-              else if (viewMode === "pdf") pdfPanelRef.current?.resize(100);
-            }
-          }
-        }
-        aiResizePendingRef.current = false;
-      });
-      return () => window.cancelAnimationFrame(frame);
-    }
-
-    if (!isAi && wasAi) {
-      aiResizePendingRef.current = false;
-      const previousSize = sidebarSizeBeforeAiRef.current;
-      sidebarSizeBeforeAiRef.current = null;
-      window.requestAnimationFrame(() => {
-        // Without a remembered size the sidebar would keep the assistant's
-        // half-width for the file tree, so fall back to its normal width.
-        sidebarPanelRef.current?.resize(previousSize ?? sidebarDefaultSize);
-        if (viewMode === "split" && !browserOpen) {
-          editorPanelRef.current?.resize(50);
-          pdfPanelRef.current?.resize(50);
-        }
-      });
-    }
-  }, [
-    railTab,
-    setViewMode,
-    viewMode,
-    hideEditorArea,
-    sidebarDefaultSize,
-    browserOpen,
-    showTree,
-  ]);
 
   // Panels are sized in percentages, so a window resize would scale the sidebar
   // with it and leave it far from the width it was opened at. Hold its pixel
@@ -587,8 +504,9 @@ function AppContent() {
     // Preflight results belong to the previous project; reset them too.
     usePreflightStore.getState().reset();
     if (projectId) {
-      s.setRailTab(layoutPresetWantsAi(s.defaultView) ? "ai" : "files");
-      s.setHideEditorArea(s.defaultView === "ai-only");
+      s.setRailTab("files");
+      s.setAssistantOpen(layoutPresetWantsAi(s.defaultView));
+      s.setHideEditorArea(false);
       if (s.openInTree && !s.showTree) s.toggleTree();
       else if (!s.openInTree && s.showTree) s.toggleTree();
       void import("@/lib/preview-window").then((m) => m.retargetPreviewWindow(projectId));
@@ -654,6 +572,10 @@ function AppContent() {
       if (useTourStore.getState().activeTourId) return;
       if (!useFilesStore.getState().projectId) return;
       if (matchesShortcut(e, useShortcutStore.getState().bindings.toggleSidebar)) {
+        // Cmd/Ctrl+B means bold inside the source and visual editors; the
+        // sidebar toggle must not shadow it there.
+        const el = document.activeElement as HTMLElement | null;
+        if (el?.closest(".cm-editor") || el?.closest(".ProseMirror")) return;
         e.preventDefault();
         e.stopPropagation();
         useSettingsStore.getState().toggleTree();
@@ -671,9 +593,16 @@ function AppContent() {
   // anywhere else drive the document's history. The menu items still work as
   // clicks, routed through the same logic.
   useEffect(() => {
+    // The document editors are contenteditable surfaces (.cm-content,
+    // .ProseMirror), so classify them BEFORE the plain-field check; a plain
+    // field also includes the inputs CodeMirror mounts inside its own panels
+    // (find/replace), which must undo their own text, not the document. Plain
+    // fields get an explicit execCommand undo so the behavior is identical on
+    // every platform's webview.
+    const inEditor = (active: HTMLElement | null): boolean =>
+      !!(active?.closest(".cm-content") || active?.closest(".ProseMirror"));
     const inPlainField = (active: HTMLElement | null): boolean => {
-      if (!active) return false;
-      if (active.closest(".cm-editor") || active.closest(".ProseMirror")) return false;
+      if (!active || inEditor(active)) return false;
       const tag = active.tagName;
       return tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable;
     };
@@ -686,9 +615,12 @@ function AppContent() {
       if (useTourStore.getState().activeTourId) return;
       if (!useFilesStore.getState().projectId) return;
       const active = document.activeElement as HTMLElement | null;
-      if (inPlainField(active)) return;
       e.preventDefault();
       e.stopPropagation();
+      if (inPlainField(active)) {
+        document.execCommand(isRedo ? "redo" : "undo");
+        return;
+      }
       if (isRedo) editorRedo();
       else editorUndo();
     };

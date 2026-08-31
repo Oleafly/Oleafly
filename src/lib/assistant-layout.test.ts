@@ -38,10 +38,7 @@ describe("assistant layout minimums", () => {
 
   it("applies the scaled floor to the docked assistant panel", () => {
     expect(appSource).toMatch(
-      /const assistantSidebar = railTab === "ai" \|\| railTab === "chat";/u,
-    );
-    expect(appSource).toMatch(
-      /sidebarMinimumPercent\(\s*panelGroupWidth,\s*assistantSidebar,\s*appFontSize,?\s*\)/u,
+      /sidebarMinimumPercent\(\s*panelGroupWidth,\s*false,\s*appFontSize,?\s*\)/u,
     );
     expect(appSource).toContain(
       "const panelGroupWidth = sidebarPanelGroupWidth(panelAreaWidth, appFontSize);",

@@ -20,10 +20,21 @@ import { hydrateFromSnapshot } from "@/lib/initial-state";
 import { registerContributions } from "@/contributions";
 import { installDesktopViewportGuard } from "@/lib/desktop-viewport";
 import "@/styles/globals.css";
+import { isTauri } from "@tauri-apps/api/core";
+import { isMac } from "@/lib/utils";
 import { registerE2EImports } from "@/lib/e2e-import-registry";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 markBootStage("entry-evaluated");
+
+// Vibrancy blur exists only on macOS and Windows. Anywhere else (Linux, a
+// plain browser tab) the translucent app surface would sit over the desktop
+// or the page background with no blur, so paint it solid instead.
+const vibrancyCapable =
+  isTauri() && (isMac || navigator.userAgent.includes("Windows"));
+if (!vibrancyCapable) {
+  document.documentElement.style.setProperty("--app-surface", "var(--background)");
+}
 
 // Packaged e2e boots (init script in src-tauri/src/lib.rs) need app modules
 // resolvable by dev-server path; a normal launch never sets the flag.

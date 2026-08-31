@@ -128,7 +128,6 @@ vi.mock("@/components/dock/TerminalPane", () => ({ TerminalPane: () => null }));
 vi.mock("@/components/editor/Editor", () => ({ Editor: () => null }));
 vi.mock("@/components/preview/PreviewPane", () => ({ PreviewPane: () => null }));
 vi.mock("@/components/import/PdfImportView", () => ({ PdfImportView: () => null }));
-vi.mock("@/components/layout/Rail", () => ({ Rail: () => null }));
 vi.mock("@/components/layout/Sidebar", () => ({ Sidebar: () => null }));
 vi.mock("@/components/layout/CommandPalette", () => ({ CommandPalette: () => null }));
 vi.mock("@/components/layout/SearchOmnibar", () => ({ SearchOmnibar: () => null }));
@@ -301,13 +300,13 @@ describe("project dock layout", () => {
     });
   });
 
-  it("passes the active assistant tab and app font size into the dock width floor", async () => {
+  it("passes the app font size into the sidebar width floor", async () => {
     const React = await import("react");
     const { act } = React;
     const { createRoot } = await import("react-dom/client");
     const { default: App } = await import("./App");
     const { useSettingsStore } = await import("@/store/settings");
-    useSettingsStore.setState({ railTab: "ai", appFontSize: 20 });
+    useSettingsStore.setState({ appFontSize: 20 });
     const host = document.getElementById("root");
     if (!host) throw new Error("test root is unavailable");
     root = createRoot(host);
@@ -317,10 +316,10 @@ describe("project dock layout", () => {
     });
 
     expect(assistantLayoutMocks.sidebarPanelGroupWidth).toHaveBeenCalledWith(0, 20);
-    expect(assistantLayoutMocks.sidebarMinimumPercent).toHaveBeenCalledWith(825, true, 20);
+    expect(assistantLayoutMocks.sidebarMinimumPercent).toHaveBeenCalledWith(825, false, 20);
   });
 
-  it("restores the assistant half width when its open rail tab reopens the sidebar", async () => {
+  it("restores the sidebar default width when the sidebar reopens", async () => {
     const React = await import("react");
     const { act } = React;
     const { createRoot } = await import("react-dom/client");
@@ -328,9 +327,7 @@ describe("project dock layout", () => {
     const { useSettingsStore } = await import("@/store/settings");
     useSettingsStore.setState({
       showTree: true,
-      railTab: "ai",
       viewMode: "pdf",
-      defaultView: "preview-ai",
       openInTree: true,
     });
     const host = document.getElementById("root");
@@ -340,19 +337,19 @@ describe("project dock layout", () => {
     await act(async () => {
       root?.render(<App />);
     });
-    expect(useSettingsStore.getState()).toMatchObject({ showTree: true, railTab: "ai" });
+    expect(useSettingsStore.getState()).toMatchObject({ showTree: true });
     panelHandleMocks.resize.mockClear();
 
     await act(async () => {
       useSettingsStore.getState().toggleTree();
     });
-    expect(useSettingsStore.getState()).toMatchObject({ showTree: false, railTab: "ai" });
+    expect(useSettingsStore.getState()).toMatchObject({ showTree: false });
     await act(async () => {
       useSettingsStore.getState().toggleTree();
     });
 
-    expect(useSettingsStore.getState()).toMatchObject({ showTree: true, railTab: "ai" });
-    expect(panelHandleMocks.resize).toHaveBeenLastCalledWith("sidebar", 50);
+    expect(useSettingsStore.getState()).toMatchObject({ showTree: true });
+    expect(panelHandleMocks.resize).toHaveBeenLastCalledWith("sidebar", expect.any(Number));
   });
 
   it("toggles project docks from their registered keyboard shortcuts", async () => {

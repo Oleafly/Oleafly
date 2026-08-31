@@ -42,10 +42,8 @@ export function layoutPresetWantsAi(preset: LayoutPreset): boolean {
 export type RailTab =
   | "files"
   | "search"
-  | "ai"
   | "source"
   | "review"
-  | "chat"
   | "preflight"
   | "refs"
   | "mcp";
@@ -579,8 +577,6 @@ interface SettingsState {
   setHotkeysOpen: (v: boolean) => void;
   railTab: RailTab;
   setRailTab: (v: RailTab) => void;
-  suppressAiAutoLayout: boolean;
-  setSuppressAiAutoLayout: (v: boolean) => void;
   setLayoutPreset: (v: LayoutPreset) => void;
   hideEditorArea: boolean;
   setHideEditorArea: (v: boolean) => void;
@@ -1012,23 +1008,21 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setHotkeysOpen: (v) => set({ hotkeysOpen: v }),
   railTab: "files",
   setRailTab: (v) => set({ railTab: v }),
-  suppressAiAutoLayout: false,
-  setSuppressAiAutoLayout: (v) => set({ suppressAiAutoLayout: v }),
   hideEditorArea: false,
   setHideEditorArea: (v) => set({ hideEditorArea: v }),
   setLayoutPreset: (preset) => {
     switch (preset) {
       case "editor-preview-ai":
-        set({ suppressAiAutoLayout: true, showTree: true, viewMode: "split", assistantOpen: true, hideEditorArea: false });
+        set({ showTree: true, viewMode: "split", assistantOpen: true, hideEditorArea: false });
         break;
       case "editor-preview":
         set({ showTree: true, viewMode: "split", assistantOpen: false, hideEditorArea: false });
         break;
       case "editor-ai":
-        set({ suppressAiAutoLayout: true, showTree: true, viewMode: "editor", assistantOpen: true, hideEditorArea: false });
+        set({ showTree: true, viewMode: "editor", assistantOpen: true, hideEditorArea: false });
         break;
       case "preview-ai":
-        set({ suppressAiAutoLayout: true, showTree: true, viewMode: "pdf", assistantOpen: true, hideEditorArea: false });
+        set({ showTree: true, viewMode: "pdf", assistantOpen: true, hideEditorArea: false });
         break;
       case "editor-only":
         set({ showTree: false, viewMode: "editor", assistantOpen: false, hideEditorArea: false });
@@ -1037,7 +1031,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         set({ showTree: false, viewMode: "pdf", assistantOpen: false, hideEditorArea: false });
         break;
       case "ai-only":
-        set({ suppressAiAutoLayout: true, showTree: false, viewMode: "editor", assistantOpen: true, hideEditorArea: false });
+        set({ showTree: false, viewMode: "editor", assistantOpen: true, hideEditorArea: false });
         break;
     }
   },

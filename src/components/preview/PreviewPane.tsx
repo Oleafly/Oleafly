@@ -80,6 +80,7 @@ import {
 import { useFilesStore } from "@/store/files";
 import { usePdfViewStore } from "@/store/pdf-view";
 import { useSettingsStore } from "@/store/settings";
+import { SidebarCollapseToggle } from "@/components/layout/WorkspaceControls";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useTourStore } from "@/store/tours";
 import {
@@ -665,6 +666,7 @@ export function PreviewPane() {
   const isImage = projectKindForPreview === "image" || projectKindForPreview === "diagram";
   const inverted = useSettingsStore((state) => state.pdfDarkMode);
   const setInverted = useSettingsStore((state) => state.setPdfDarkMode);
+  const viewMode = useSettingsStore((state) => state.viewMode);
   const pdfZoomShortcuts = useSettingsStore(
     (state) => state.pdfZoomShortcuts,
   );
@@ -1740,6 +1742,7 @@ export function PreviewPane() {
           isFs && fsToolbarHidden && "hidden",
         )}
       >
+        {viewMode === "pdf" && <SidebarCollapseToggle />}
         <div
           data-tour="project-compile-logs"
           className="flex items-center gap-1"
