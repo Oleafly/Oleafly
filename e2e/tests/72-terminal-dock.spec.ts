@@ -95,7 +95,9 @@ test("project docks start closed and their toggles live in the top toolbar", asy
 test("the real terminal survives a browser child webview and exits cleanly", async ({
   tauriPage,
 }) => {
-  test.setTimeout(90_000);
+  // The prompt nudge alone may take 150s on a cold Windows runner, and the
+  // echo, child-webview, and exit phases follow it.
+  test.setTimeout(300_000);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
