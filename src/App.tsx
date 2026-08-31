@@ -22,6 +22,7 @@ import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner
 import { BrowserPane } from "@/components/dock/BrowserPane";
 import { TerminalPane } from "@/components/dock/TerminalPane";
 import { Editor } from "@/components/editor/Editor";
+import { editorUndo, editorRedo } from "@/components/editor/cm/controller";
 import { PreviewPane } from "@/components/preview/PreviewPane";
 import { PdfImportView } from "@/components/import/PdfImportView";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -657,6 +658,24 @@ function AppContent() {
         e.stopPropagation();
         useSettingsStore.getState().toggleTree();
       }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "z" && e.key !== "Z") return;
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      if (useTourStore.getState().activeTourId) return;
+      if (!useFilesStore.getState().projectId) return;
+      const active = document.activeElement as HTMLElement | null;
+      if (active?.closest(".cm-editor") || active?.closest(".ProseMirror")) return;
+      const tag = active?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || active?.isContentEditable) return;
+      e.preventDefault();
+      if (e.shiftKey) editorRedo();
+      else editorUndo();
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);

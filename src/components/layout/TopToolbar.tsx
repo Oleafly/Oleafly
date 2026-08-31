@@ -340,7 +340,7 @@ export function TopToolbar() {
                 className="size-2 shrink-0 rounded-full"
                 style={{ backgroundColor: coverColor }}
               />
-              <span className="max-w-[300px] truncate">{projectName || "project"}</span>
+              <span className="min-w-0 max-w-[calc(50vw-260px)] truncate">{projectName || "project"}</span>
             </button>
           </Tooltip>
         )}
