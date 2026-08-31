@@ -268,7 +268,12 @@ async function saveEditor(page: Page, expectedPath: string, expected: string) {
 async function waitForBackendPath(page: Page, path: string, timeoutMs = 20_000) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const paths = (await listProjectEntries(page)).map((entry) => entry.path);
+    let paths: string[] = [];
+    try {
+      paths = (await listProjectEntries(page)).map((entry) => entry.path);
+    } catch {
+      // A rename or copy can briefly race the backend listing on Linux.
+    }
     if (paths.includes(path)) return;
     if (Date.now() > deadline) {
       throw new Error(`backend path missing ${path}; entries=${JSON.stringify(paths)}`);

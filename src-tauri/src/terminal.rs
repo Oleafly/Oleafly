@@ -19,7 +19,7 @@ pub(crate) enum TerminalEvent {
 struct TermSession {
     master: Box<dyn MasterPty + Send>,
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
-    child: Box<dyn portable_pty::Child + Send + Sync>,
+    killer: Box<dyn portable_pty::ChildKiller + Send + Sync>,
     _containment: crate::proc::ProcessTreeGuard,
 }
 
@@ -225,6 +225,7 @@ fn open_terminal(
         .take_writer()
         .map_err(|e| format!("failed to write pty: {e}"))?;
 
+    let killer = child.clone_killer();
     let id = {
         let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
         sessions
@@ -234,11 +235,30 @@ fn open_terminal(
                 TermSession {
                     master: pty.master,
                     writer: Arc::new(Mutex::new(writer)),
-                    child,
+                    killer,
                     _containment: containment,
                 },
             )
     };
+
+    // ConPTY keeps the reader blocked until the pseudo console closes, so a
+    // shell that exits on its own never EOFs the reader on Windows. Reap the
+    // child here and drop the session; closing the master unblocks the reader,
+    // which then delivers the exit event.
+    let waiter_id = id.clone();
+    std::thread::spawn(move || {
+        let status = child.wait();
+        println!("term: session {waiter_id} shell exited ({status:?})");
+        let session = {
+            let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
+            sessions
+                .as_mut()
+                .and_then(|registry| registry.remove_unchecked(&waiter_id))
+        };
+        if let Some(session) = session {
+            stop_session(session);
+        }
+    });
 
     let session_id = id.clone();
     std::thread::spawn(move || {
@@ -288,13 +308,12 @@ fn open_terminal(
 
 fn stop_session(session: TermSession) {
     let TermSession {
-        mut child,
+        mut killer,
         _containment,
         ..
     } = session;
     drop(_containment);
-    let _ = child.kill();
-    let _ = child.wait();
+    let _ = killer.kill();
 }
 
 #[tauri::command]
