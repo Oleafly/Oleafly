@@ -111,11 +111,13 @@ describe("Settings Help & About support callout", () => {
     );
   });
 
-  it("uses the wider responsive Settings layout", () => {
+  it("uses the responsive Settings layout with a height floor", () => {
     render(<SettingsModal />);
 
     expect(screen.getByRole("dialog", { name: "Settings" })).toHaveClass(
-      "w-[min(1040px,94vw)]",
+      "w-[min(880px,94vw)]",
+      "h-[min(900px,88vh)]",
+      "min-h-[540px]",
     );
   });
 

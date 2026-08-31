@@ -209,12 +209,16 @@ export function EngineSection() {
 
       <div className="rounded-lg border p-3">
         <div className="flex items-center gap-2">
-          <Cpu className="size-4 text-muted-foreground" />
+          <Cpu className="size-4 shrink-0 text-muted-foreground" />
           {kind === "system" && <span className="text-sm">Using a system LuaLaTeX / TeX Live</span>}
           {kind === "tinytex" && <span className="text-sm">TinyTeX installed</span>}
           {kind === "none" && <span className="text-sm">No tagging engine installed</span>}
-          {info?.version && <span className="ml-1 truncate text-xs text-muted-foreground">{info.version}</span>}
         </div>
+        {info?.version && (
+          <p className="mt-1 truncate pl-6 font-mono text-[11px] text-muted-foreground">
+            {info.version}
+          </p>
+        )}
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {kind === "none" && (

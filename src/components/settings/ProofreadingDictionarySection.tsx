@@ -1,6 +1,13 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { Plus, Search, Trash2, X } from "lucide-react";
+import { BookMarked, Plus, Search, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
@@ -84,9 +91,17 @@ function WordChips({
 
   if (words.length === 0) {
     return (
-      <p className="text-xs text-muted-foreground">
-        Nothing ignored yet.
-      </p>
+      <Empty className="gap-4 py-8">
+        <EmptyHeader>
+          <EmptyMedia variant="icon" className="size-10 rounded-lg">
+            <BookMarked className="size-5" />
+          </EmptyMedia>
+          <EmptyTitle className="text-sm">Nothing ignored yet</EmptyTitle>
+          <EmptyDescription className="text-xs">
+            Words you add here are skipped by the proofreader across every project.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
   if (visible.length === 0) {
