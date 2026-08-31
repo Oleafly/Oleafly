@@ -19,7 +19,7 @@ pub(crate) enum TerminalEvent {
 struct TermSession {
     master: Box<dyn MasterPty + Send>,
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
-    killer: Box<dyn portable_pty::ChildKiller + Send + Sync>,
+    child: Arc<Mutex<Box<dyn portable_pty::Child + Send + Sync>>>,
     _containment: crate::proc::ProcessTreeGuard,
 }
 
@@ -225,7 +225,7 @@ fn open_terminal(
         .take_writer()
         .map_err(|e| format!("failed to write pty: {e}"))?;
 
-    let killer = child.clone_killer();
+    let child = Arc::new(Mutex::new(child));
     let id = {
         let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
         sessions
@@ -235,29 +235,42 @@ fn open_terminal(
                 TermSession {
                     master: pty.master,
                     writer: Arc::new(Mutex::new(writer)),
-                    killer,
+                    child: Arc::clone(&child),
                     _containment: containment,
                 },
             )
     };
 
     // ConPTY keeps the reader blocked until the pseudo console closes, so a
-    // shell that exits on its own never EOFs the reader on Windows. Reap the
-    // child here and drop the session; closing the master unblocks the reader,
-    // which then delivers the exit event.
-    let waiter_id = id.clone();
-    std::thread::spawn(move || {
-        let status = child.wait();
-        println!("term: session {waiter_id} shell exited ({status:?})");
+    // shell that exits on its own never EOFs the reader on Windows. Poll for
+    // the exit and drop the session; closing the master unblocks the reader,
+    // which then delivers the exit event. The poller ends when the session is
+    // torn down elsewhere and its registry clone of the child goes away.
+    let poll_id = id.clone();
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_millis(250));
+        if Arc::strong_count(&child) == 1 {
+            break;
+        }
+        let exited = child
+            .lock()
+            .ok()
+            .and_then(|mut child| child.try_wait().ok().flatten())
+            .is_some();
+        if !exited {
+            continue;
+        }
+        println!("term: session {poll_id} shell exited");
         let session = {
             let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
             sessions
                 .as_mut()
-                .and_then(|registry| registry.remove_unchecked(&waiter_id))
+                .and_then(|registry| registry.remove_unchecked(&poll_id))
         };
         if let Some(session) = session {
             stop_session(session);
         }
+        break;
     });
 
     let session_id = id.clone();
@@ -308,12 +321,15 @@ fn open_terminal(
 
 fn stop_session(session: TermSession) {
     let TermSession {
-        mut killer,
+        child,
         _containment,
         ..
     } = session;
     drop(_containment);
-    let _ = killer.kill();
+    if let Ok(mut guard) = child.lock() {
+        let _ = guard.kill();
+        let _ = guard.wait();
+    };
 }
 
 #[tauri::command]
