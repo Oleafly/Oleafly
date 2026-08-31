@@ -110,9 +110,12 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
 
   const recomputeOcclusion = useCallback(() => {
     const rect = placeholderRef.current?.getBoundingClientRect() ?? null;
-    occludedRef.current = nativeWebviewOccludedBy(rect);
+    const next = nativeWebviewOccludedBy(rect);
+    const changed = next !== occludedRef.current;
+    occludedRef.current = next;
     desiredVisibilityRef.current =
-      visibleRef.current && !loadingRef.current && !occludedRef.current;
+      visibleRef.current && !loadingRef.current && !next;
+    return changed;
   }, []);
 
   const setPageLoading = useCallback((next: boolean) => {
@@ -393,9 +396,35 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
 
   // An overlay opening, closing, or moving can change whether it covers the
   // browser, so re-evaluate visibility whenever the occluder set changes.
+  // Radix portals position their content a frame after they mount (data-state
+  // flips to "open" before the transform is applied), so a single check would
+  // read a stale/zero rect and miss the overlap. Re-check across the next few
+  // frames so an animated or async-positioned overlay is caught.
   useEffect(() => {
-    return subscribeToNativeWebviewOcclusion(() => syncNativeVisibility());
-  }, [syncNativeVisibility]);
+    let frame = 0;
+    const onChange = () => {
+      // Apply the change now, then re-check across the next few frames so an
+      // overlay whose transform lands a frame later (Radix portals) still hides
+      // the browser. Later frames only re-sync if the overlap actually flipped,
+      // so a stable overlay does not thrash the native show/hide.
+      syncNativeVisibility();
+      cancelAnimationFrame(frame);
+      let remaining = 3;
+      const tick = () => {
+        if (recomputeOcclusion()) {
+          syncNativeVisibility(desiredVisibilityRef.current);
+        }
+        remaining -= 1;
+        if (remaining > 0) frame = requestAnimationFrame(tick);
+      };
+      frame = requestAnimationFrame(tick);
+    };
+    const unsubscribe = subscribeToNativeWebviewOcclusion(onChange);
+    return () => {
+      cancelAnimationFrame(frame);
+      unsubscribe();
+    };
+  }, [recomputeOcclusion, syncNativeVisibility]);
 
   const go = () => {
     const next = resolveNavigation(draft, browserSearchEngine);
