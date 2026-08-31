@@ -503,10 +503,11 @@ function AppContent() {
     if (projectId) {
       s.setRailTab("files");
       // The default layout drives only the editor/preview/AI panes; the file
-      // tree is independent and follows the "show file tree on open" setting.
+      // tree is independent and is honored ONLY here, on project open, from the
+      // "show file tree on open" setting. Switching layouts later never touches
+      // it. Set it directly so open is deterministic.
       s.setLayoutPreset(s.defaultView);
-      if (s.openInTree && !s.showTree) s.toggleTree();
-      else if (!s.openInTree && s.showTree) s.toggleTree();
+      s.setShowTree(s.openInTree);
       void import("@/lib/preview-window").then((m) => m.retargetPreviewWindow(projectId));
     }
   }, [projectId]);

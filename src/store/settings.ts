@@ -583,6 +583,7 @@ interface SettingsState {
   setAccentColor: (v: string) => void;
   showTree: boolean;
   toggleTree: () => void;
+  setShowTree: (v: boolean) => void;
   hotkeysOpen: boolean;
   setHotkeysOpen: (v: boolean) => void;
   railTab: RailTab;
@@ -1016,6 +1017,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),
+  setShowTree: (v) => set({ showTree: v }),
   hotkeysOpen: false,
   setHotkeysOpen: (v) => set({ hotkeysOpen: v }),
   railTab: "files",

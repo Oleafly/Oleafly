@@ -91,19 +91,18 @@ const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] =
   { mode: "pdf", label: "PDF View", icon: FileText },
 ];
 
+// A layout preset is defined only by the editor/preview/AI panes, never the
+// file tree (that is an independent surface), so the dropdown can always check
+// the active layout regardless of whether the tree is open.
 function activeLayoutPreset(
   viewMode: ViewMode,
   assistantOpen: boolean,
-  showTree: boolean
+  workspaceHidden: boolean,
 ): LayoutPreset | null {
-  if (!showTree) {
-    if (viewMode === "editor") return assistantOpen ? "ai-only" : "editor-only";
-    if (viewMode === "pdf") return assistantOpen ? null : "preview-only";
-    return null;
-  }
+  if (workspaceHidden) return assistantOpen ? "ai-only" : null;
   if (viewMode === "split") return assistantOpen ? "editor-preview-ai" : "editor-preview";
-  if (viewMode === "editor") return assistantOpen ? "editor-ai" : null;
-  if (viewMode === "pdf") return assistantOpen ? "preview-ai" : null;
+  if (viewMode === "editor") return assistantOpen ? "editor-ai" : "editor-only";
+  if (viewMode === "pdf") return assistantOpen ? "preview-ai" : "preview-only";
   return null;
 }
 
@@ -168,7 +167,7 @@ export function TopToolbar() {
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
-  const showTree = useSettingsStore((s) => s.showTree);
+  const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const setLayoutPreset = useSettingsStore((s) => s.setLayoutPreset);
   const fullscreen = useFullscreen();
 
@@ -516,7 +515,7 @@ export function TopToolbar() {
           </Tooltip>
           <DropdownMenuContent align="end" className="w-56">
             {LAYOUT_OPTIONS.map(({ preset, label, icon: Icon }) => {
-              const active = activeLayoutPreset(viewMode, assistantOpen, showTree) === preset;
+              const active = activeLayoutPreset(viewMode, assistantOpen, workspaceHidden) === preset;
               return (
                 <DropdownMenuItem key={preset} onClick={() => setLayoutPreset(preset)}>
                   <Icon className="size-4 text-muted-foreground" />
