@@ -145,6 +145,7 @@ import {
   useSkills,
 } from "@/lib/skills";
 import { Tooltip } from "@/components/ui/tooltip";
+import { prefetchMarkdownRenderer } from "@/components/ui/markdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -387,6 +388,10 @@ export function ChatCore() {
     setSettingsScrollTarget("ai-skills");
     setSettingsOpen(true);
   }, [setSettingsInitialSection, setSettingsOpen, setSettingsScrollTarget]);
+
+  useEffect(() => {
+    prefetchMarkdownRenderer();
+  }, []);
 
   useEffect(() => {
     void loadApprovalMode(projectId).catch(() => {});

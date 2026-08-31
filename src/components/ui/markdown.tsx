@@ -2,7 +2,23 @@ import { lazy, Suspense } from "react";
 import "katex/dist/katex.min.css";
 import { cn } from "@/lib/utils";
 
-const MarkdownRenderer = lazy(() => import("./markdown-renderer"));
+let rendererModule: Promise<typeof import("./markdown-renderer")> | null = null;
+
+function loadMarkdownRenderer() {
+  if (!rendererModule) rendererModule = import("./markdown-renderer");
+  return rendererModule;
+}
+
+export function prefetchMarkdownRenderer() {
+  if (rendererModule || typeof window === "undefined") return;
+  const schedule =
+    window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1));
+  schedule(() => {
+    void loadMarkdownRenderer();
+  });
+}
+
+const MarkdownRenderer = lazy(loadMarkdownRenderer);
 
 export function Markdown({
   children,
