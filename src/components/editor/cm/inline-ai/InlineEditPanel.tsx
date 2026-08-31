@@ -183,9 +183,7 @@ export function InlineEditPanel() {
       .filter(Boolean)
       .join("\n");
     useAgentHandoffStore.getState().handoff(prompt, { autoSend: true });
-    const settings = useSettingsStore.getState();
-    settings.setRailTab("ai");
-    if (!settings.showTree) settings.toggleTree();
+    useSettingsStore.getState().setAssistantOpen(true);
     reset();
   };
 

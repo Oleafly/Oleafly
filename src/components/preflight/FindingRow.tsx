@@ -1,8 +1,9 @@
 import { memo, useState } from "react";
-import { AlertCircle, AlertTriangle, ChevronRight, CornerDownLeft, Info } from "lucide-react";
+import { AlertCircle, AlertTriangle, ChevronRight, CornerDownLeft, Info, Sparkles } from "lucide-react";
 import type { Finding, Severity } from "@oleafly/preflight";
 import { gotoRange } from "@/components/editor/cm/controller";
 import { revealSourceEditor } from "@/components/editor/wysiwyg/controller";
+import { askAiAboutFinding } from "@/features/ask-ai-preflight";
 import { useFilesStore } from "@/store/files";
 import { cn } from "@/lib/utils";
 
@@ -61,14 +62,22 @@ export const FindingRow = memo(function FindingRow({ finding }: { finding: Findi
       {open && (
         <div className="border-t border-sidebar-border px-2.5 py-2">
           <p className="text-xs leading-relaxed text-muted-foreground">{finding.detail}</p>
-          {sourceRange && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {sourceRange && (
+              <button type="button"
+                onClick={() => void jumpToSource()}
+                className="inline-flex items-center gap-1.5 rounded border border-input px-2 py-1 text-xs hover:bg-accent"
+              >
+                <CornerDownLeft className="size-3" /> Jump to source
+              </button>
+            )}
             <button type="button"
-              onClick={() => void jumpToSource()}
-              className="mt-2 inline-flex items-center gap-1.5 rounded border border-input px-2 py-1 text-xs hover:bg-accent"
+              onClick={() => void askAiAboutFinding(finding)}
+              className="inline-flex items-center gap-1.5 rounded border border-input px-2 py-1 text-xs text-primary hover:bg-accent"
             >
-              <CornerDownLeft className="size-3" /> Jump to source
+              <Sparkles className="size-3" /> Fix with AI
             </button>
-          )}
+          </div>
         </div>
       )}
     </div>

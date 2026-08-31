@@ -77,9 +77,7 @@ export function SelectionActionMenu() {
     const inline = view ? openInlineEditWithInstruction(view, action.prompt) : false;
     if (!inline) {
       useAgentHandoffStore.getState().handoff(prompt, { autoSend: true });
-      const settings = useSettingsStore.getState();
-      settings.setRailTab("ai");
-      if (!settings.showTree) settings.toggleTree();
+      useSettingsStore.getState().setAssistantOpen(true);
     }
     // Public event for integrations and the deterministic E2E probe.
     window.dispatchEvent(

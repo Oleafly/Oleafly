@@ -144,8 +144,7 @@ export function registerOmnibarCommands() {
     when: (ctx) => !!ctx.projectId && isLatex() && supportsIsolatedCompile(),
     run: () => {
       const s = useSettingsStore.getState();
-      s.setRailTab("ai");
-      if (!s.showTree) s.toggleTree();
+      s.setAssistantOpen(true);
       s.setFigureModeOpen(true);
     },
   });
