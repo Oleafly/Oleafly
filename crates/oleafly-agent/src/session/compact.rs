@@ -77,6 +77,33 @@ fn truncate_to(message: &mut Message, budget: usize) {
     }
 }
 
+/// Drop leading messages whose tool result has no matching tool use inside
+/// the selection. Newest-first budgeting can slice a tool-use/result pair in
+/// half, and a provider rejects a tool result that opens the conversation
+/// without its call, so the summary request would fail exactly when it is
+/// needed most.
+fn strip_leading_orphan_tool_results(messages: &mut Vec<Message>) {
+    use std::collections::HashSet;
+    let uses: HashSet<&str> = messages
+        .iter()
+        .flat_map(|message| &message.content)
+        .filter_map(|part| match part {
+            ContentPart::ToolUse { id, .. } => Some(id.as_str()),
+            _ => None,
+        })
+        .collect();
+    let orphan_result = |message: &Message| {
+        message.content.iter().any(|part| {
+            matches!(part, ContentPart::ToolResult { id, .. } if !uses.contains(id.as_str()))
+        })
+    };
+    let drop_count = messages
+        .iter()
+        .take_while(|message| orphan_result(message))
+        .count();
+    messages.drain(..drop_count);
+}
+
 /// Newest-first selection of the history the summarizer sees: images become a
 /// marker, whole oldest messages fall off once the character budget is spent,
 /// and a single oversized message is truncated rather than shipped verbatim.
@@ -97,6 +124,7 @@ pub(crate) fn summarizable_messages(messages: &[Message]) -> Vec<Message> {
         kept.push(candidate);
     }
     kept.reverse();
+    strip_leading_orphan_tool_results(&mut kept);
     kept
 }
 
@@ -278,6 +306,75 @@ mod tests {
         let kept = summarizable_messages(&messages);
         assert_eq!(kept.len(), 1);
         assert_eq!(text_of(&kept[0]).len(), SUMMARY_INPUT_CHAR_BUDGET);
+    }
+
+    #[test]
+    fn summary_input_drops_a_leading_orphan_tool_result() {
+        // The budget kept the result but its call fell off the front.
+        let messages = vec![
+            Message {
+                role: Role::User,
+                content: vec![ContentPart::ToolResult {
+                    id: "call-9".into(),
+                    name: "read_file".into(),
+                    output: "orphaned".into(),
+                }],
+            },
+            Message::user("recent".to_string()),
+        ];
+        let kept = summarizable_messages(&messages);
+        assert_eq!(kept.len(), 1);
+        assert_eq!(text_of(&kept[0]), "recent");
+    }
+
+    #[test]
+    fn summary_input_keeps_a_result_whose_call_survived() {
+        let messages = vec![
+            Message {
+                role: Role::Assistant,
+                content: vec![ContentPart::ToolUse {
+                    id: "call-1".into(),
+                    name: "read_file".into(),
+                    arguments: "{}".into(),
+                    thought_signature: None,
+                }],
+            },
+            Message {
+                role: Role::User,
+                content: vec![ContentPart::ToolResult {
+                    id: "call-1".into(),
+                    name: "read_file".into(),
+                    output: "kept".into(),
+                }],
+            },
+        ];
+        let kept = summarizable_messages(&messages);
+        assert_eq!(kept.len(), 2);
+    }
+
+    #[test]
+    fn a_provider_context_overflow_is_recognized() {
+        use crate::error::AgentError;
+        assert!(AgentError::Provider {
+            status: 400,
+            message: "This model's maximum context length is 8192 tokens".into(),
+        }
+        .is_context_overflow());
+        assert!(AgentError::Provider {
+            status: 413,
+            message: "prompt is too long".into(),
+        }
+        .is_context_overflow());
+        assert!(!AgentError::Provider {
+            status: 400,
+            message: "invalid api key".into(),
+        }
+        .is_context_overflow());
+        assert!(!AgentError::Provider {
+            status: 500,
+            message: "context length exceeded".into(),
+        }
+        .is_context_overflow());
     }
 
     #[test]

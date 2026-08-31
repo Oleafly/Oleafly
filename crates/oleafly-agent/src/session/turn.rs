@@ -49,13 +49,13 @@ where
     let step_limit = config.max_steps.min(MAX_AGENT_STEPS);
     for step in 0..step_limit {
         on_event(AgentEvent::StepStart { step });
-        let outcome = stream_with_retries(
+        let outcome = stream_step_with_compaction(
             client,
             resolved,
-            &request,
+            &mut request,
             config,
+            pipeline,
             &mut retries_remaining,
-            &pipeline.token,
             &mut on_event,
         )
         .await;
@@ -152,6 +152,60 @@ where
             }
         }
         Err(error) => Err(error),
+    }
+}
+
+/// Stream one step, and if the provider rejects the prompt for exceeding its
+/// real context window, compact once and retry. This makes compaction fire on
+/// the model's actual limit, not only the local safety caps, and turns a
+/// provider context error into a recovery instead of a terminal failure.
+#[allow(clippy::too_many_arguments)]
+async fn stream_step_with_compaction<F>(
+    client: &reqwest::Client,
+    resolved: &Resolved,
+    request: &mut CompletionRequest,
+    config: &RunConfig,
+    pipeline: &ToolPipeline,
+    retries_remaining: &mut u32,
+    on_event: &mut F,
+) -> Result<StreamOutcome>
+where
+    F: FnMut(AgentEvent) + Send,
+{
+    let first = stream_with_retries(
+        client,
+        resolved,
+        request,
+        config,
+        retries_remaining,
+        &pipeline.token,
+        on_event,
+    )
+    .await;
+    match first {
+        Err(error) if config.auto_compact && error.is_context_overflow() => {
+            let summary =
+                match compact::compact_history(client, resolved, request, &pipeline.token).await {
+                    Ok(summary) => summary,
+                    Err(_) => return Err(error),
+                };
+            let dropped = compact::apply_compaction(request, summary);
+            on_event(AgentEvent::Compacted {
+                dropped_messages: u32::try_from(dropped).unwrap_or(u32::MAX),
+                reason: "provider_context_overflow".to_string(),
+            });
+            stream_with_retries(
+                client,
+                resolved,
+                request,
+                config,
+                retries_remaining,
+                &pipeline.token,
+                on_event,
+            )
+            .await
+        }
+        other => other,
     }
 }
 
