@@ -777,26 +777,44 @@ export async function setNextSavePath(
   if (!available) throw new Error("DEV save-dialog adapter is unavailable");
 }
 
-// Clicking a rail tab always reveals the sidebar; re-clicking the active tab
-// collapses it, and that collapsed state persists across restarts.
+// The AI assistant is its own panel now, toggled from the workspace dock
+// controls rather than living as a sidebar tab.
+export async function openAssistant(page: Page) {
+  const openExpr = `document.querySelector('[data-testid="rail-assistant-toggle"]')?.getAttribute('aria-pressed') === 'true'`;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    if (await page.evaluate<boolean>(openExpr)) return;
+    await page.evaluate(
+      `(() => { const b = document.querySelector('[data-testid="rail-assistant-toggle"]'); if (b) b.click(); return true; })()`,
+    );
+    try {
+      await page.waitForFunction(openExpr, 2_000);
+      return;
+    } catch {
+    }
+  }
+  throw new Error("openAssistant: the assistant panel never opened");
+}
+
+// The sidebar view switchers live in a bar at the top of the sidebar, which
+// only renders while the sidebar is open. Reveal the sidebar first, then select
+// the view; a view button reports aria-current="page" when it is the active
+// pane. Selecting a view no longer collapses the sidebar.
 export async function openRailTab(page: Page, ariaLabel: string) {
+  if (ariaLabel === "Research Assistant") return openAssistant(page);
   const sel = JSON.stringify(`[aria-label=${JSON.stringify(ariaLabel)}]`);
-  // Desired end state: this tab is ACTIVE (aria-current="page", set by
-  // Rail.tsx's RailTabButton) and the sidebar is open on it. Click only when
-  // not there yet, then wait for the state to commit - a blind
-  // click-then-probe races React and can collapse the sidebar when the tab
-  // was already active.
   const activeExpr = `(() => {
     const b = document.querySelector(${sel});
-    return !!b && b.getAttribute('aria-current') === 'page'
-      && !!document.querySelector('[aria-label="Hide sidebar"]');
+    return !!b && b.getAttribute('aria-current') === 'page';
   })()`;
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const active = await page.evaluate<boolean>(activeExpr);
-    if (active) return;
-    await page.evaluate(
-      `(() => { const b = document.querySelector(${sel}); if (b) b.click(); return true; })()`,
-    );
+  for (let attempt = 0; attempt < 12; attempt++) {
+    if (await page.evaluate<boolean>(activeExpr)) return;
+    await page.evaluate(`(() => {
+      const show = document.querySelector('[aria-label^="Show sidebar"]');
+      if (show) { show.click(); return true; }
+      const b = document.querySelector(${sel});
+      if (b) { b.click(); return true; }
+      return false;
+    })()`);
     try {
       await page.waitForFunction(activeExpr, 2_000);
       return;

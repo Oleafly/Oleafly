@@ -203,7 +203,7 @@ test("show-file-tree-on-open controls the sidebar", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await tauriPage.waitForFunction(
-    `!!document.querySelector('[aria-label="Show sidebar"]')`,
+    `!!document.querySelector('[aria-label^="Show sidebar"]')`,
     10_000,
   );
 
@@ -220,7 +220,7 @@ test("show-file-tree-on-open controls the sidebar", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await tauriPage.waitForFunction(
-    `!!document.querySelector('[aria-label="Hide sidebar"]')`,
+    `!!document.querySelector('[aria-label^="Hide sidebar"]')`,
     10_000,
   );
 });

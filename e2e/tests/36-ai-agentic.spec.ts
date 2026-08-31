@@ -169,6 +169,9 @@ test("MCP activity rail tab appears only when the server is running", async ({
   });
   await tauriPage.click('[aria-label="Close settings"]');
 
+  // The view switchers render in the sidebar bar; open it so the MCP switcher
+  // that appears once MCP is running is actually mounted.
+  await openRailTab(tauriPage, "Source Tree");
   await expect(tauriPage.locator('[aria-label="MCP activity"]')).toBeVisible({
     timeout: 10_000,
   });

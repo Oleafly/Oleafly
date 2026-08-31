@@ -42,13 +42,13 @@ test("the sidebar collapses and restores from the rail", async ({ tauriPage }) =
       };
     })`,
   );
-  await tauriPage.click('[aria-label="Hide sidebar"]');
-  await expect(tauriPage.locator('[aria-label="Show sidebar"]')).toBeVisible();
+  await tauriPage.click('[aria-label^="Hide sidebar"]');
+  await expect(tauriPage.locator('[aria-label^="Show sidebar"]')).toBeVisible();
   await expect(
     tauriPage.locator('[data-testid="pdf-renderer"][data-e2e-sidebar-renderer="stable"]'),
   ).toBeVisible();
-  await tauriPage.click('[aria-label="Show sidebar"]');
-  await expect(tauriPage.locator('[aria-label="Hide sidebar"]')).toBeVisible();
+  await tauriPage.click('[aria-label^="Show sidebar"]');
+  await expect(tauriPage.locator('[aria-label^="Hide sidebar"]')).toBeVisible();
   await expect(
     tauriPage.locator('[data-testid="pdf-renderer"][data-e2e-sidebar-renderer="stable"]'),
   ).toBeVisible();
