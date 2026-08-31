@@ -129,19 +129,24 @@ test("the real terminal survives a browser child webview and exits cleanly", asy
   // Return the channel breadcrumbs plus the buffer tail so a failure names
   // the stage that broke: open error, no output at all, or a promptless
   // shell. The tail stays last so the end anchor still matches the prompt.
-  // A cold shell start on a busy CI runner can exceed 30s, hence 60s.
-  await expect
-    .poll(
-      () =>
-        tauriPage.evaluate<string>(`(() => {
-          const events = (window.__e2eTerminalEvents ?? []).join(",");
-          const host = document.querySelector('[data-terminal-output]');
-          const tail = (host?.dataset.terminalOutput ?? "").trimEnd().slice(-160);
-          return "events[" + events + "] tail:" + tail;
-        })()`),
-      { timeout: 60_000 },
-    )
-    .toMatch(/[$#%>❯➜]\s*$/u);
+  // A cold Windows shell start on a busy CI runner can take minutes, so keep
+  // nudging with Enter until a prompt paints.
+  const promptState = () =>
+    tauriPage.evaluate<string>(`(() => {
+      const events = (window.__e2eTerminalEvents ?? []).join(",");
+      const host = document.querySelector('[data-terminal-output]');
+      const tail = (host?.dataset.terminalOutput ?? "").trimEnd().slice(-160);
+      return "events[" + events + "] tail:" + tail;
+    })()`);
+  const promptPattern = /[$#%>❯➜]\s*$/u;
+  const promptDeadline = Date.now() + 150_000;
+  let prompt = await promptState();
+  while (!promptPattern.test(prompt) && Date.now() < promptDeadline) {
+    await enterTerminalCommand(tauriPage, "");
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    prompt = await promptState();
+  }
+  expect(prompt).toMatch(promptPattern);
 
   await enterTerminalCommand(tauriPage, "echo e2e-terminal-ok");
   await expect
