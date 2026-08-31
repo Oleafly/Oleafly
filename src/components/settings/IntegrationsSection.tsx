@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Github, LibraryBig, Plug } from "lucide-react";
+import { Github, LibraryBig } from "lucide-react";
+import { McpBrandIcon } from "@/components/ai/McpBrandIcon";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GitHubSection } from "@/components/settings/GitHubSection";
 import { AlphaXivSection } from "@/components/settings/AlphaXivSection";
@@ -71,7 +72,7 @@ export function IntegrationsSection() {
           value="oleafly-mcp"
           data-testid="integrations-tab-oleafly-mcp"
         >
-          <Plug className="mr-1.5 size-3.5" />
+          <McpBrandIcon className="mr-1.5 size-3.5" />
           Oleafly MCP
         </TabsTrigger>
       </TabsList>
