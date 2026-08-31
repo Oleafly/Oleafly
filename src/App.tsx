@@ -207,7 +207,7 @@ function VHandle({
   placement?: "top" | "center" | "bottom";
 }) {
   return (
-    <div className="resize-handle-col relative flex w-1.5 shrink-0">
+    <div className="resize-handle-col relative flex w-1.5 shrink-0 bg-background">
       <PanelResizeHandle
         id={id}
         style={{ cursor: "col-resize" }}
@@ -939,7 +939,7 @@ function AppContent() {
                       id="v-terminal"
                       style={{ cursor: "row-resize" }}
                       className={cn(
-                        "resize-handle-row group flex h-2.5 items-center justify-center",
+                        "resize-handle-row group flex h-2.5 items-center justify-center bg-background",
                         "transition-colors hover:bg-accent/40",
                         !terminalOpen && "hidden",
                       )}

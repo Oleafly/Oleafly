@@ -716,6 +716,7 @@
   }
   :root {
     --app-surface: color-mix(in srgb, var(--background) 32%, transparent);
+    --rail: color-mix(in srgb, var(--muted) 30%, var(--background));
   }
   body {
     margin: 0;
