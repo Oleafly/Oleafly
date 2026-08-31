@@ -52,6 +52,10 @@ pub enum ParallelPolicy {
     /// Mutating tool: takes the gate's write side, excluding all others.
     #[default]
     Exclusive,
+    /// Control-plane orchestration tool that may block on other tools (a
+    /// delegated child inherits the same gate). It acquires no gate at all,
+    /// so waiting on a child never starves the child's mutating tools.
+    Unguarded,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -72,6 +76,13 @@ impl RegisteredTool {
         Self {
             exposure: ToolExposure::Direct,
             parallel: ParallelPolicy::Exclusive,
+        }
+    }
+
+    pub fn unguarded() -> Self {
+        Self {
+            exposure: ToolExposure::Direct,
+            parallel: ParallelPolicy::Unguarded,
         }
     }
 }

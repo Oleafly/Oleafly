@@ -115,6 +115,7 @@ async fn execute_one(
                 let _exclusive = gate.0.write().await;
                 run_with_deadline(call.clone(), &runner, timeout).await
             }
+            ParallelPolicy::Unguarded => run_with_deadline(call.clone(), &runner, timeout).await,
         }
     };
     tokio::select! {
@@ -143,6 +144,53 @@ mod tests {
             registry.register_trusted(name, crate::tools::registry::RegisteredTool::parallel());
         }
         registry
+    }
+
+    #[tokio::test]
+    async fn an_unguarded_orchestration_tool_never_holds_the_gate() {
+        // Models the parent-waits / child-writes deadlock: a long-running
+        // orchestration tool must not block a mutating tool that shares the
+        // gate. Without the Unguarded policy the exclusive "write" would wait
+        // the full 300ms for the orchestration tool's guard to drop.
+        let mut registry = ToolRegistry::default();
+        registry.register_trusted(
+            "wait_agent",
+            crate::tools::registry::RegisteredTool::unguarded(),
+        );
+        registry.register_trusted(
+            "write_file",
+            crate::tools::registry::RegisteredTool::exclusive(),
+        );
+        let write_started_at = Arc::new(std::sync::Mutex::new(None));
+        let recorder = Arc::clone(&write_started_at);
+        let started = Instant::now();
+        let runner: ToolRunner = Arc::new(move |call| {
+            let recorder = Arc::clone(&recorder);
+            let start = started;
+            Box::pin(async move {
+                if call.name == "wait_agent" {
+                    tokio::time::sleep(Duration::from_millis(300)).await;
+                    ToolOutput::text("waited")
+                } else {
+                    *recorder.lock().unwrap() = Some(start.elapsed());
+                    ToolOutput::text("wrote")
+                }
+            })
+        });
+        let results = drive(
+            &registry,
+            vec![call("wait_agent", "1"), call("write_file", "2")],
+            runner,
+            CancellationToken::new(),
+        )
+        .await;
+        let write_delay = write_started_at.lock().unwrap().expect("write ran");
+        assert!(
+            write_delay < Duration::from_millis(150),
+            "the writer waited {write_delay:?} for the orchestration tool's gate"
+        );
+        assert_eq!(results[0].1.output, "waited");
+        assert_eq!(results[1].1.output, "wrote");
     }
 
     fn call(name: &str, id: &str) -> ToolCall {

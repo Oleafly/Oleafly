@@ -778,10 +778,27 @@ fn tool_risk(name: &str) -> oleafly_agent::ToolRisk {
     oleafly_agent::ToolRisk::Write
 }
 
+// Control-plane delegation tools inherit the run's shared tool gate, and
+// wait_agent blocks on a child that needs that same gate to mutate. They take
+// no gate so a parent waiting on a child never starves the child.
+const ORCHESTRATION_TOOLS: [&str; 8] = [
+    "spawn_agent",
+    "spawn_subagents",
+    "wait_agent",
+    "send_message",
+    "followup_task",
+    "interrupt_agent",
+    "list_agents",
+    "close_agent",
+];
+
 fn tool_pipeline() -> oleafly_agent::ToolPipeline {
     let mut registry = oleafly_agent::ToolRegistry::default();
     for name in PARALLEL_SAFE_TOOLS {
         registry.register_trusted(name, oleafly_agent::RegisteredTool::parallel());
+    }
+    for name in ORCHESTRATION_TOOLS {
+        registry.register_trusted(name, oleafly_agent::RegisteredTool::unguarded());
     }
     oleafly_agent::ToolPipeline::from_registry(registry)
 }
