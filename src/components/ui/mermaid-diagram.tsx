@@ -65,23 +65,54 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
     key: renderKey,
     status: "loading",
   });
-  const activeState: DiagramState = state.key === renderKey
-    ? state
-    : { key: renderKey, status: "loading" };
+  // The last diagram that finished rendering. A theme toggle keeps it on
+  // screen (recoloring mermaid means a full re-render) instead of flashing the
+  // skeleton, so switching theme with many diagrams open stays instant.
+  const hasRendered = useRef(false);
+  const activeState: DiagramState =
+    state.status === "ready"
+      ? state
+      : state.key === renderKey
+        ? state
+        : { key: renderKey, status: "loading" };
 
   useEffect(() => {
     let current = true;
-    setState({ key: renderKey, status: "loading" });
-    void renderDiagram(source, renderId, theme).then(
-      (svg) => {
-        if (current) setState({ key: renderKey, status: "ready", svg });
-      },
-      () => {
-        if (current) setState({ key: renderKey, status: "error" });
-      },
-    );
+    // Only show the skeleton before the first successful render; a re-render
+    // for a new theme (or edited source) keeps the previous diagram visible.
+    if (!hasRendered.current) {
+      setState({ key: renderKey, status: "loading" });
+    }
+    const run = () =>
+      renderDiagram(source, renderId, theme).then(
+        (svg) => {
+          if (!current) return;
+          hasRendered.current = true;
+          setState({ key: renderKey, status: "ready", svg });
+        },
+        () => {
+          // Keep the last good diagram on a re-render failure; only surface the
+          // error state when nothing has ever rendered.
+          if (current && !hasRendered.current) {
+            setState({ key: renderKey, status: "error" });
+          }
+        },
+      );
+    // Defer a re-render (theme/source change with a diagram already up) to idle
+    // time so the theme flip paints immediately; the first render runs now.
+    let idle: number | undefined;
+    if (hasRendered.current && typeof requestIdleCallback === "function") {
+      idle = requestIdleCallback(() => {
+        void run();
+      });
+    } else {
+      void run();
+    }
     return () => {
       current = false;
+      if (idle !== undefined && typeof cancelIdleCallback === "function") {
+        cancelIdleCallback(idle);
+      }
     };
   }, [renderId, renderKey, source, theme]);
 
