@@ -338,6 +338,31 @@ describe("BrowserPane", () => {
     await vi.waitFor(() => expect(pane.hide).toHaveBeenCalledTimes(2));
   });
 
+  it("tracks an in-page navigation from the settled page-load URL", async () => {
+    tauri.enabled = true;
+    render(<BrowserPane visible />);
+    fireEvent.change(screen.getByLabelText("Browser address"), {
+      target: { value: "example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    await vi.waitFor(() => expect(tauri.webviews).toHaveLength(1));
+    const pane = tauri.webviews[0];
+
+    // The page navigates itself (a link click) to a URL the address bar
+    // never typed. The settled page-load event must update the tracked URL.
+    emitPageLoad({
+      label: pane.label,
+      state: "finished",
+      url: "https://example.com/deep/article",
+    });
+
+    await vi.waitFor(() =>
+      expect(screen.getByLabelText("Browser address")).toHaveValue(
+        "https://example.com/deep/article",
+      ),
+    );
+  });
+
   it("waits for page-load monitoring before creating the native pane", async () => {
     tauri.enabled = true;
     tauri.deferEventListen = true;

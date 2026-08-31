@@ -199,7 +199,19 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
     let unlisten: (() => void) | null = null;
     void listen<BrowserPageLoadPayload>("browser-page-load", (event) => {
       if (event.payload.label !== webviewLabelRef.current) return;
-      setPageLoading(event.payload.state === "started");
+      const loading = event.payload.state === "started";
+      setPageLoading(loading);
+      // Adopt the settled URL so a link click or redirect inside the page
+      // updates the tracked URL (and therefore the CUA surface and address
+      // bar), not just an address-bar navigation.
+      if (!loading) {
+        const settled = event.payload.url;
+        if (settled && settled !== urlRef.current) {
+          urlRef.current = settled;
+          setUrl(settled);
+          setDraft(settled);
+        }
+      }
     })
       .then((stop) => {
         if (cancelled) stop();

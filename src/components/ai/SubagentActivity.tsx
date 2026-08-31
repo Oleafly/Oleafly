@@ -91,6 +91,17 @@ export function SubagentActivity({
 
   const openTranscript = async (agent: AgentState) => {
     const request = ++transcriptRequestRef.current;
+    // The child rollout is only written when the subagent finishes, so a
+    // read while it is still active would fail. Show its live progress (the
+    // expanded panel already renders "Latest: …") and the accurate status
+    // instead of a spurious load error.
+    if (subagentDisplayStatus(agent.kind) === "active") {
+      setTranscript({
+        agent: agent.id,
+        text: "This subagent is still working. Its full transcript opens when it finishes.",
+      });
+      return;
+    }
     setTranscript({ agent: agent.id, text: "Loading transcript…" });
     try {
       const turns = await agentThreadRead(`thread-${agent.id}`);
