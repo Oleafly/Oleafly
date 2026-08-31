@@ -17,6 +17,8 @@ const MAX_OUTPUT_BYTES: usize = 200 * 1024;
 const MAX_CANCELLED_RUNS: usize = 256;
 const EXEC_APPROVAL_TTL: Duration = Duration::from_secs(30);
 const MAX_EXEC_APPROVALS: usize = 256;
+const EXTERNAL_OWNER_TTL: Duration = Duration::from_secs(600);
+const MAX_EXTERNAL_OWNERS: usize = 256;
 
 #[derive(Default)]
 pub struct AgentExecState {
@@ -29,6 +31,10 @@ struct ExecRegistry {
     approval_order: VecDeque<String>,
     active: HashMap<String, HashMap<String, ActiveExec>>,
     cancelled_runs: VecDeque<String>,
+    // Renderer-minted `external:` owners are only trusted once registered
+    // through a live command. Membership is TTL-bounded and cleared on cancel,
+    // so a compromised renderer cannot execute under an arbitrary forged id.
+    external_owners: HashMap<String, Instant>,
 }
 
 struct ExecApproval {
@@ -80,6 +86,45 @@ enum UnregisterResult {
 }
 
 impl AgentExecState {
+    fn register_external_owner(&self, run_id: &str) -> Result<(), String> {
+        self.register_external_owner_at(run_id, Instant::now())
+    }
+
+    fn register_external_owner_at(&self, run_id: &str, now: Instant) -> Result<(), String> {
+        if !external_owner_has_valid_syntax(run_id) {
+            return Err("the external command owner id is malformed".to_string());
+        }
+        let mut registry = self
+            .registry
+            .lock()
+            .map_err(|_| "run_command approval registry is unavailable".to_string())?;
+        registry.external_owners.retain(|_, expiry| *expiry > now);
+        while registry.external_owners.len() >= MAX_EXTERNAL_OWNERS {
+            let Some(oldest) = registry
+                .external_owners
+                .iter()
+                .min_by_key(|(_, expiry)| **expiry)
+                .map(|(id, _)| id.clone())
+            else {
+                break;
+            };
+            registry.external_owners.remove(&oldest);
+        }
+        registry
+            .external_owners
+            .insert(run_id.to_string(), now + EXTERNAL_OWNER_TTL);
+        Ok(())
+    }
+
+    fn external_owner_is_live(&self, run_id: &str, now: Instant) -> Result<bool, String> {
+        let mut registry = self
+            .registry
+            .lock()
+            .map_err(|_| "run_command approval registry is unavailable".to_string())?;
+        registry.external_owners.retain(|_, expiry| *expiry > now);
+        Ok(registry.external_owners.contains_key(run_id))
+    }
+
     fn authorize(&self, project_id: &str, command: &str, run_id: &str) -> Result<String, String> {
         self.authorize_at(project_id, command, run_id, Instant::now())
     }
@@ -265,6 +310,7 @@ pub fn cancel_run(state: &AgentExecState, run_id: &str) {
                 .approvals
                 .retain(|_, approval| approval.run_id != run_id);
             drop_dangling_order(&mut registry);
+            registry.external_owners.remove(run_id);
             remember_cancelled_run(&mut registry.cancelled_runs, run_id);
             registry
                 .active
@@ -291,6 +337,7 @@ pub fn cancel_all(state: &AgentExecState) {
                 .collect::<HashSet<_>>();
             registry.approvals.clear();
             registry.approval_order.clear();
+            registry.external_owners.clear();
             for run_id in run_ids {
                 remember_cancelled_run(&mut registry.cancelled_runs, &run_id);
             }
@@ -387,6 +434,14 @@ pub async fn agent_exec(
 }
 
 #[tauri::command]
+pub fn agent_exec_register_external(
+    state: State<'_, AgentExecState>,
+    run_id: String,
+) -> Result<(), String> {
+    state.register_external_owner(&run_id)
+}
+
+#[tauri::command]
 pub async fn agent_exec_authorize(
     app: tauri::AppHandle,
     state: State<'_, AgentExecState>,
@@ -428,7 +483,7 @@ where
     if request.run_id.trim().is_empty() {
         return Err("the agent run id was empty".to_string());
     }
-    validate_execution_owner(agent_state, request.run_id)?;
+    validate_execution_owner(state, agent_state, request.run_id)?;
     let (mode, decision) =
         crate::approvals::policy_for(request.root, request.project_id, "run_command")?;
     if decision == Some(crate::approvals::ToolDecision::Deny) {
@@ -446,22 +501,29 @@ where
             return Err("run_command approval was declined".to_string());
         }
     }
-    validate_execution_owner(agent_state, request.run_id)?;
+    validate_execution_owner(state, agent_state, request.run_id)?;
     state.authorize(request.project_id, request.command, request.run_id)
 }
 
 fn validate_execution_owner(
+    state: &AgentExecState,
     agent_state: &crate::agent::AgentState,
     run_id: &str,
 ) -> Result<(), String> {
-    if is_external_execution_owner(run_id) || crate::agent::request_is_active(agent_state, run_id) {
-        Ok(())
-    } else {
-        Err("the agent run is not active".to_string())
+    if crate::agent::request_is_active(agent_state, run_id) {
+        return Ok(());
     }
+    if run_id.starts_with("external:") {
+        return if state.external_owner_is_live(run_id, Instant::now())? {
+            Ok(())
+        } else {
+            Err("the external command owner is not registered".to_string())
+        };
+    }
+    Err("the agent run is not active".to_string())
 }
 
-fn is_external_execution_owner(run_id: &str) -> bool {
+fn external_owner_has_valid_syntax(run_id: &str) -> bool {
     let Some(id) = run_id.strip_prefix("external:") else {
         return false;
     };
@@ -646,7 +708,7 @@ async fn execute_command_for_owner(
     request: ExecRequest<'_>,
     approval_token: &str,
 ) -> Result<ExecResult, String> {
-    validate_execution_owner(agent_state, request.run_id)?;
+    validate_execution_owner(state, agent_state, request.run_id)?;
     execute_command(
         state,
         request.root,
@@ -716,6 +778,9 @@ mod tests {
         let cwd = root.join("projects/proj");
         let state = AgentExecState::default();
         let agent_state = crate::agent::AgentState::default();
+        state
+            .register_external_owner("external:00000000-0000-4000-8000-000000000001")
+            .unwrap();
 
         let result = authorize_after_confirmation(
             &state,
@@ -818,9 +883,67 @@ mod tests {
         let approvals_are_empty = state.registry.lock().unwrap().approvals.is_empty();
 
         std::fs::remove_dir_all(&root).ok();
-        assert_eq!(result.err().as_deref(), Some("the agent run is not active"));
+        assert_eq!(
+            result.err().as_deref(),
+            Some("the external command owner is not registered")
+        );
         assert_eq!(prompt_count.load(std::sync::atomic::Ordering::SeqCst), 0);
         assert!(approvals_are_empty);
+    }
+
+    #[test]
+    fn external_owner_registration_requires_valid_syntax() {
+        let state = AgentExecState::default();
+        assert!(state.register_external_owner("external:forged").is_err());
+        assert!(state
+            .register_external_owner("external:00000000-0000-4000-8000-00000000000a")
+            .is_ok());
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn unregistered_external_owner_cannot_execute_even_under_full_access() {
+        let root = test_root("unregistered-under-full-access");
+        crate::approvals::set_mode(&root, "proj", crate::approvals::ApprovalMode::FullAccess)
+            .unwrap();
+        let cwd = root.join("projects/proj");
+        let state = AgentExecState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let run_id = "external:00000000-0000-4000-8000-000000000009";
+
+        let result = authorize_after_confirmation(
+            &state,
+            &agent_state,
+            exec_request(&root, &cwd, "touch escalation-marker", run_id),
+            |_| async { Ok(true) },
+        )
+        .await;
+
+        std::fs::remove_dir_all(&root).ok();
+        assert_eq!(
+            result.err().as_deref(),
+            Some("the external command owner is not registered")
+        );
+    }
+
+    #[test]
+    fn full_access_confirmation_only_gates_transitions_into_full_access() {
+        use crate::approvals::{full_access_needs_confirmation, ApprovalMode};
+        assert!(full_access_needs_confirmation(
+            ApprovalMode::ApproveForMe,
+            ApprovalMode::FullAccess
+        ));
+        assert!(full_access_needs_confirmation(
+            ApprovalMode::Custom,
+            ApprovalMode::FullAccess
+        ));
+        assert!(!full_access_needs_confirmation(
+            ApprovalMode::FullAccess,
+            ApprovalMode::FullAccess
+        ));
+        assert!(!full_access_needs_confirmation(
+            ApprovalMode::FullAccess,
+            ApprovalMode::ApproveForMe
+        ));
     }
 
     #[tokio::test(flavor = "current_thread")]
@@ -857,6 +980,9 @@ mod tests {
         let agent_state = crate::agent::AgentState::default();
         let prompt = std::sync::Arc::new(std::sync::Mutex::new(None));
         let observed = std::sync::Arc::clone(&prompt);
+        state
+            .register_external_owner("external:00000000-0000-4000-8000-000000000002")
+            .unwrap();
         let command = if cfg!(windows) {
             "type nul > native-approved-marker"
         } else {
@@ -914,6 +1040,7 @@ mod tests {
         let prompt_count = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let observed = std::sync::Arc::clone(&prompt_count);
         let run_id = "external:00000000-0000-4000-8000-000000000006";
+        state.register_external_owner(run_id).unwrap();
         let command = if cfg!(windows) {
             "type nul > full-access-marker"
         } else {
@@ -960,6 +1087,9 @@ mod tests {
         let state = AgentExecState::default();
         let agent_state = crate::agent::AgentState::default();
         let prompt_count = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        state
+            .register_external_owner("external:00000000-0000-4000-8000-000000000007")
+            .unwrap();
         let observed = std::sync::Arc::clone(&prompt_count);
 
         let result = authorize_after_confirmation(

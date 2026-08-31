@@ -276,6 +276,7 @@ pub fn run() {
             cua_policy::cua_action_confirm,
             agent_exec::agent_exec_cwd,
             agent_exec::agent_exec_authorize,
+            agent_exec::agent_exec_register_external,
             agent_exec::agent_exec,
             commands::project_engine,
             language_service::language_service_start,

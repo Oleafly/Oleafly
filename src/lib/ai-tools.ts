@@ -1,6 +1,11 @@
 import { getConfigCached } from "@/lib/config-cache";
 import { activeCuaSurface } from "@/lib/cua-sandbox";
-import { agentExec, agentExecAuthorize, agentExecCwd } from "@/lib/tauri";
+import {
+  agentExec,
+  agentExecAuthorize,
+  agentExecCwd,
+  agentExecRegisterExternal,
+} from "@/lib/tauri";
 import {
   createOleaflyTools as createOleaflyToolsCore,
   createFigureTools as createFigureToolsCore,
@@ -284,10 +289,12 @@ export function createOleaflyTools(opts?: {
     cuaSurface: activeCuaSurface,
     resolveExecCwd: agentExecCwd,
     authorizeExec: async (projectId, command) => {
-      const runId = opts?.runId
-        ? opts.runId()
-        : `external:${crypto.randomUUID()}`;
+      const nativeRunId = opts?.runId?.();
+      const runId = nativeRunId ?? `external:${crypto.randomUUID()}`;
       if (!runId) throw new Error("The agent run ended before command approval.");
+      // A renderer-minted owner has to register with the trusted native
+      // registry before it can authorize; native run ids are already tracked.
+      if (!nativeRunId) await agentExecRegisterExternal(runId);
       const approvalToken = await agentExecAuthorize(projectId, command, runId);
       return { approvalToken, runId };
     },

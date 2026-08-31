@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     listFiles: vi.fn(),
     searchProject: vi.fn(),
     agentExecCwd: vi.fn(),
+    agentExecRegisterExternal: vi.fn(),
     agentExecAuthorize: vi.fn(),
     agentExec: vi.fn(),
   },
@@ -52,6 +53,7 @@ beforeEach(() => {
   mocks.filesState.recordMutationGeneration.mockReset();
   mocks.api.projectMutationGeneration.mockResolvedValue(0);
   mocks.api.agentExecCwd.mockResolvedValue("/library/projects/proj");
+  mocks.api.agentExecRegisterExternal.mockResolvedValue(undefined);
   mocks.api.agentExecAuthorize.mockResolvedValue("approval-token");
   mocks.api.agentExec.mockResolvedValue({
     command: "pwd",
@@ -371,6 +373,25 @@ describe("ai-tools: command approval", () => {
       "run-7",
       "approval-token",
     );
+    // A native run id is already tracked, so no external registration happens.
+    expect(mocks.api.agentExecRegisterExternal).not.toHaveBeenCalled();
+  });
+
+  it("registers a renderer-minted external owner before authorizing it", async () => {
+    const confirm = vi.fn().mockResolvedValue(true);
+    await createOleaflyTools({ confirm }).run_command.execute({ command: "pwd" });
+
+    expect(mocks.api.agentExecRegisterExternal).toHaveBeenCalledTimes(1);
+    const [registeredRunId] =
+      mocks.api.agentExecRegisterExternal.mock.calls[0];
+    expect(registeredRunId).toMatch(/^external:/);
+    const [, , authorizedRunId] = mocks.api.agentExecAuthorize.mock.calls[0];
+    expect(authorizedRunId).toBe(registeredRunId);
+    const registerOrder =
+      mocks.api.agentExecRegisterExternal.mock.invocationCallOrder[0];
+    const authorizeOrder =
+      mocks.api.agentExecAuthorize.mock.invocationCallOrder[0];
+    expect(registerOrder).toBeLessThan(authorizeOrder);
   });
 
   it("preserves an explicit timeout outcome when no exit code exists", async () => {

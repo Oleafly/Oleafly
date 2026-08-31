@@ -817,6 +817,8 @@ export const libraryRoot = () => invoke<string>("library_root");
 export const appVersion = () => invoke<string>("app_version");
 export const agentExecCwd = (projectId: string) =>
   invoke<string>("agent_exec_cwd", { projectId });
+export const agentExecRegisterExternal = (runId: string) =>
+  invoke<void>("agent_exec_register_external", { runId });
 export const agentExecAuthorize = (projectId: string, command: string, runId: string) =>
   invoke<string>("agent_exec_authorize", { projectId, command, runId });
 export const agentExec = (
