@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 const railBtn = (active: boolean) =>
   cn(
-    "flex size-9 items-center justify-center rounded-md transition-colors",
+    "flex size-8 items-center justify-center rounded-md transition-colors",
     active
       ? "bg-primary/10 text-foreground"
       : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
@@ -46,7 +46,7 @@ function RailTabButton({
         onClick={onSelect}
         className={cn("relative", railBtn(active))}
       >
-        <Icon className="size-5" aria-hidden />
+        <Icon className="size-[18px]" aria-hidden />
         {badge > 0 && (
           <span
             role="status"
@@ -85,7 +85,7 @@ function DockToggles() {
           onClick={() => setTerminalOpen(!terminalOpen)}
           className={railBtn(terminalOpen)}
         >
-          <Terminal className="size-5" aria-hidden />
+          <Terminal className="size-[18px]" aria-hidden />
         </button>
       </Tooltip>
       <Tooltip label={browserLabel} side="right">
@@ -97,7 +97,7 @@ function DockToggles() {
           onClick={() => setBrowserOpen(!browserOpen)}
           className={railBtn(browserOpen)}
         >
-          <Globe className="size-5" aria-hidden />
+          <Globe className="size-[18px]" aria-hidden />
         </button>
       </Tooltip>
     </>
@@ -136,7 +136,7 @@ export function Rail() {
     <nav
       aria-label="Sidebar"
       data-tour="project-sidebar"
-      className="flex w-12 shrink-0 flex-col items-center border-r bg-[var(--rail)] py-2"
+      className="flex w-11 shrink-0 flex-col items-center border-r bg-[var(--rail)] py-2"
     >
       <div className="flex flex-1 flex-col items-center gap-1">
         {sections.map((tabs, i) => (
@@ -164,9 +164,9 @@ export function Rail() {
             className={railBtn(false)}
           >
             {showTree ? (
-              <PanelLeftClose className="size-5" />
+              <PanelLeftClose className="size-[18px]" />
             ) : (
-              <PanelLeft className="size-5" />
+              <PanelLeft className="size-[18px]" />
             )}
           </button>
         </Tooltip>
@@ -176,7 +176,7 @@ export function Rail() {
             onClick={toggleTheme}
             className={railBtn(false)}
           >
-            {theme === "dark" ? <Sun className="size-5" /> : <Moon className="size-5" />}
+            {theme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
           </button>
         </Tooltip>
         <Tooltip label="Settings" side="right">
@@ -185,7 +185,7 @@ export function Rail() {
             onClick={() => setSettingsOpen(true)}
             className={railBtn(false)}
           >
-            <SettingsIcon className="size-5" />
+            <SettingsIcon className="size-[18px]" />
           </button>
         </Tooltip>
       </div>
