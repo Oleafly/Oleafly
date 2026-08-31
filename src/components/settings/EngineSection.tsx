@@ -8,6 +8,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 // Kept in step with scripts/fetch-typst.sh, which pins the bundled sidecar.
@@ -81,30 +82,21 @@ export function EngineSection() {
   );
 
   return (
-    <div className="flex flex-col gap-5">
-      <div role="tablist" aria-label="Engines" className="flex items-center gap-1 self-start rounded-lg border bg-muted/30 p-0.5">
-        {(["latex", "typst"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            role="tab"
-            aria-selected={tab === t}
-            data-testid={`engines-tab-${t}`}
-            onClick={() => setTab(t)}
-            className={cn(
-              "rounded-md px-3 py-1 text-xs font-medium transition-colors",
-              tab === t
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {t === "latex" ? "LaTeX" : "Typst"}
-          </button>
-        ))}
-      </div>
+    <Tabs
+      value={tab}
+      onValueChange={(value) => setTab(value as "latex" | "typst")}
+      className="flex flex-col gap-5"
+    >
+      <TabsList aria-label="Engines" className="w-fit self-start">
+        <TabsTrigger value="latex" data-testid="engines-tab-latex">
+          LaTeX
+        </TabsTrigger>
+        <TabsTrigger value="typst" data-testid="engines-tab-typst">
+          Typst
+        </TabsTrigger>
+      </TabsList>
 
-      {tab === "typst" && (
-        <>
+      <TabsContent value="typst" className="flex flex-col gap-5">
           <div className="flex items-center gap-1.5">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Typst compiler</h3>
             <Tooltip
@@ -129,11 +121,9 @@ export function EngineSection() {
           <p className="text-xs text-muted-foreground">
             Typst projects always use the bundled compiler. Choosing a compiler version, and system Typst, are not available yet.
           </p>
-        </>
-      )}
+      </TabsContent>
 
-      {tab === "latex" && (
-        <>
+      <TabsContent value="latex" className="flex flex-col gap-5">
       <div className="flex items-center gap-1.5">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Default compile engine</h3>
         <Tooltip
@@ -340,12 +330,11 @@ export function EngineSection() {
           })}
         </div>
       </div>
-        </>
-      )}
+      </TabsContent>
       <ResetToDefaults
         sectionName="Engines"
         onReset={resetEnginePreferences}
       />
-    </div>
+    </Tabs>
   );
 }
