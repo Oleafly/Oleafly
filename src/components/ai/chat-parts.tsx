@@ -785,19 +785,13 @@ export const MessageItem = memo(function MessageItem({
                 : "w-full bg-muted text-foreground",
             )}
           >
-            {live ? (
-              <div
-                data-streaming-text="true"
-                dir="auto"
-                className="whitespace-pre-wrap break-words [unicode-bidi:plaintext]"
-              >
-                {msg.content}
-              </div>
-            ) : (
-              <Markdown className="chat-markdown" inverted={msg.role === "user"}>
-                {msg.content}
-              </Markdown>
-            )}
+            <Markdown
+              className="chat-markdown"
+              inverted={msg.role === "user"}
+              streaming={live}
+            >
+              {msg.content}
+            </Markdown>
           </div>
           <div className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
             {messageTime && (

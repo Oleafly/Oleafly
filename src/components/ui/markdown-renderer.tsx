@@ -1,14 +1,19 @@
-import { Children, isValidElement, type ReactNode } from "react";
+import { Children, isValidElement, memo, type ReactNode, useRef } from "react";
 import rehypeKatex from "rehype-katex";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { cn } from "@/lib/utils";
 import { HighlightedCode } from "./code-highlighter";
+import { MarkdownBlock } from "./markdown-block";
 import { MermaidDiagram } from "./mermaid-diagram";
+import {
+  type StreamingMarkdownState,
+  updateStreamingMarkdown,
+} from "./streaming-markdown";
 
 const codeBlockClassName =
-  "mb-2 overflow-x-auto rounded-md bg-background/70 p-2.5 text-[0.85em] [scrollbar-width:thin]";
+  "overflow-x-auto rounded-md bg-background/70 p-2.5 text-[0.85em] [scrollbar-width:thin]";
 
 function codeText(children: ReactNode) {
   return Children.toArray(children)
@@ -58,9 +63,21 @@ function createMarkdownComponents(inverted: boolean): Components {
       isValidElement<{ className?: string; children?: ReactNode }>(child) &&
       codeLanguage(child.props.className) === "mermaid"
     ) {
-      return <MermaidDiagram source={codeText(child.props.children).replace(/\n$/, "")} />;
+      const source = codeText(child.props.children).replace(/\n$/, "");
+      return (
+        <MarkdownBlock kind="diagram" source={source}>
+          <MermaidDiagram source={source} />
+        </MarkdownBlock>
+      );
     }
-    return <pre className={codeBlockClassName}>{children}</pre>;
+    const source = isValidElement<{ children?: ReactNode }>(child)
+      ? codeText(child.props.children).replace(/\n$/, "")
+      : codeText(children).replace(/\n$/, "");
+    return (
+      <MarkdownBlock kind="code" source={source}>
+        <pre className={codeBlockClassName}>{children}</pre>
+      </MarkdownBlock>
+    );
   },
   code: ({ className, children }) => {
     const text = codeText(children);
@@ -95,29 +112,98 @@ function createMarkdownComponents(inverted: boolean): Components {
 export const markdownComponents = createMarkdownComponents(false);
 const invertedMarkdownComponents = createMarkdownComponents(true);
 
+function MarkdownDocument({
+  children,
+  inverted,
+}: {
+  children: string;
+  inverted: boolean;
+}) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[rehypeKatex]}
+      components={inverted ? invertedMarkdownComponents : markdownComponents}
+    >
+      {children}
+    </ReactMarkdown>
+  );
+}
+
+const SettledMarkdownBlock = memo(function SettledMarkdownBlock({
+  source,
+  inverted,
+}: {
+  source: string;
+  inverted: boolean;
+}) {
+  return <MarkdownDocument inverted={inverted}>{source}</MarkdownDocument>;
+});
+
 export default function MarkdownRenderer({
   children,
   className,
   inverted = false,
+  streaming = false,
 }: {
   children: string;
   className?: string;
   inverted?: boolean;
+  streaming?: boolean;
 }) {
+  const streamingState = useRef<StreamingMarkdownState | null>(null);
+  const livePartition = streaming
+    ? updateStreamingMarkdown(streamingState.current, children)
+    : null;
+  const preservedPartition = !streaming
+    && streamingState.current?.source === children
+    && !streamingState.current.tail.raw
+    ? streamingState.current
+    : null;
+  const partition = livePartition ?? preservedPartition;
+  if (livePartition) streamingState.current = livePartition;
+  else if (!preservedPartition) streamingState.current = null;
+  const tailKey = partition
+    ? `${children.length - partition.tail.source.length}`
+    : "0";
+  const partitionedContent = partition
+    ? partition.settled.map((block) => (
+        <SettledMarkdownBlock key={block.key} source={block.source} inverted={inverted} />
+      ))
+    : [];
+  if (partition?.tail.source) {
+    partitionedContent.push(
+      partition.tail.raw ? (
+        <div
+          key={tailKey}
+          data-streaming-raw="true"
+          dir="auto"
+          className="whitespace-pre-wrap break-words [unicode-bidi:plaintext]"
+        >
+          {partition.tail.source}
+        </div>
+      ) : (
+        <SettledMarkdownBlock
+          key={tailKey}
+          source={partition.tail.source}
+          inverted={inverted}
+        />
+      ),
+    );
+  }
   return (
     <div
+      data-streaming-markdown={streaming ? "true" : undefined}
       className={cn(
-        "min-w-0 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden",
+        "min-w-0 [&_.katex-display]:overflow-x-auto",
         className,
       )}
     >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
-        components={inverted ? invertedMarkdownComponents : markdownComponents}
-      >
-        {children}
-      </ReactMarkdown>
+      {partition ? (
+        partitionedContent
+      ) : (
+        <MarkdownDocument inverted={inverted}>{children}</MarkdownDocument>
+      )}
     </div>
   );
 }

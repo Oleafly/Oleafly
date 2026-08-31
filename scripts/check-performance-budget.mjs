@@ -91,6 +91,25 @@ const productionTextArtifacts = await Promise.all([
     await readFile(new URL("../dist/index.html", import.meta.url), "utf8"),
   ])(),
 ]);
+const tauriConfig = JSON.parse(
+  await readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
+);
+const katexFontReferences = new Set(
+  productionTextArtifacts.flatMap(([name, source]) =>
+    name.endsWith(".css")
+      ? [...source.matchAll(/url\(["']?(?:\/assets\/)?(KaTeX_[^)"']+\.(?:woff2?|ttf))["']?\)/g)]
+          .map((match) => match[1])
+      : [],
+  ),
+);
+const missingKatexFonts = [...katexFontReferences].filter(
+  (font) => !assets.some((asset) => asset.name === font),
+);
+const csp = tauriConfig?.app?.security?.csp;
+const fontDirective = typeof csp === "string"
+  ? csp.split(";").find((directive) => directive.trim().startsWith("font-src "))
+  : undefined;
+const fontSources = fontDirective?.trim().split(/\s+/).slice(1) ?? [];
 
 if (largestJavaScript > limits.largestJavaScript) {
   failures.push(`largest JavaScript asset is ${largestJavaScript} bytes`);
@@ -114,6 +133,15 @@ if (!hasExternalStylesheet) {
 }
 if (!hasSplashStyles) {
   failures.push("production CSS does not contain the boot splash styles");
+}
+if (katexFontReferences.size < 4) {
+  failures.push(`production CSS references only ${katexFontReferences.size} KaTeX font assets`);
+}
+if (missingKatexFonts.length > 0) {
+  failures.push(`KaTeX font assets are missing: ${missingKatexFonts.join(", ")}`);
+}
+if (!(fontSources.includes("'self'") && fontSources.includes("data:"))) {
+  failures.push("Tauri CSP must allow self-hosted and inlined KaTeX fonts");
 }
 if (totalJavaScript > limits.totalJavaScript) {
   failures.push(`total JavaScript is ${totalJavaScript} bytes`);
@@ -163,6 +191,7 @@ console.log(
     harperWasm: harper.bytes,
     pdfWorkers: workers.length,
     pdfFallbacks: fallbacks.length,
+    katexFonts: katexFontReferences.size,
     devHookTokens: 0,
   }),
 );

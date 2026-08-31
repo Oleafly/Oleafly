@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { memo, useEffect, useState, type ReactNode } from "react";
 import type { Language, StreamParser } from "@codemirror/language";
 import { cn } from "@/lib/utils";
 
@@ -124,7 +124,7 @@ async function highlight(source: string, languageName: string) {
   return nodes;
 }
 
-export function HighlightedCode({
+export const HighlightedCode = memo(function HighlightedCode({
   className,
   language,
   source,
@@ -133,16 +133,19 @@ export function HighlightedCode({
   language?: string;
   source: string;
 }) {
-  const [highlighted, setHighlighted] = useState<ReactNode[] | null>(null);
+  const highlightKey = `${language ?? ""}\u0000${source}`;
+  const [highlighted, setHighlighted] = useState<{
+    key: string;
+    nodes: ReactNode[];
+  } | null>(null);
 
   useEffect(() => {
-    setHighlighted(null);
     if (!language || source.length > MAX_HIGHLIGHT_LENGTH) return;
     let current = true;
     const timer = window.setTimeout(() => {
       void highlight(source, language).then(
         (nodes) => {
-          if (current && nodes) setHighlighted(nodes);
+          if (current && nodes) setHighlighted({ key: highlightKey, nodes });
         },
         () => undefined,
       );
@@ -151,11 +154,13 @@ export function HighlightedCode({
       current = false;
       window.clearTimeout(timer);
     };
-  }, [language, source]);
+  }, [highlightKey, language, source]);
+
+  const nodes = highlighted?.key === highlightKey ? highlighted.nodes : null;
 
   return (
     <code className={cn("font-mono", className)} data-language={language}>
-      {highlighted ?? source}
+      {nodes ?? source}
     </code>
   );
-}
+});

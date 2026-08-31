@@ -8,10 +8,12 @@ export function Markdown({
   children,
   className,
   inverted = false,
+  streaming = false,
 }: {
   children: string;
   className?: string;
   inverted?: boolean;
+  streaming?: boolean;
 }) {
   return (
     <Suspense
@@ -21,7 +23,7 @@ export function Markdown({
         </div>
       }
     >
-      <MarkdownRenderer className={className} inverted={inverted}>
+      <MarkdownRenderer className={className} inverted={inverted} streaming={streaming}>
         {children}
       </MarkdownRenderer>
     </Suspense>

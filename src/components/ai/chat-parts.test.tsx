@@ -272,18 +272,15 @@ describe("MessageItem step grouping", () => {
 describe("MessageItem streaming render", () => {
   const streamedContent = "# Findings\n\n**bold** and `code`";
 
-  it("renders a live assistant message as a plain pre-wrap element, never markdown", () => {
+  it("renders rich markdown while an assistant message streams", async () => {
     const { container } = render(
       <MessageItem msg={{ role: "assistant", content: streamedContent }} live />,
     );
 
-    expect(container.querySelector("strong")).toBeNull();
-    expect(container.querySelector("h1")).toBeNull();
-    const body = container.querySelector('[data-streaming-text="true"]');
-    expect(body).not.toBeNull();
-    expect(body).toHaveAttribute("dir", "auto");
-    expect(body).toHaveClass("whitespace-pre-wrap", "[unicode-bidi:plaintext]");
-    expect(body).toHaveTextContent("**bold**");
+    await waitFor(() => expect(container.querySelector("strong")).toHaveTextContent("bold"));
+    expect(container.querySelector("h1")).toHaveTextContent("Findings");
+    expect(container.querySelector("code")).toHaveTextContent("code");
+    expect(container.querySelector('[data-streaming-markdown="true"]')).not.toBeNull();
   });
 
   it("parses the completed assistant message as markdown once streaming ends", async () => {
@@ -291,7 +288,7 @@ describe("MessageItem streaming render", () => {
       <MessageItem msg={{ role: "assistant", content: streamedContent }} />,
     );
 
-    expect(container.querySelector('[data-streaming-text="true"]')).toBeNull();
+    expect(container.querySelector('[data-streaming-markdown="true"]')).toBeNull();
     await waitFor(() => expect(container.querySelector("strong")).toHaveTextContent("bold"));
     expect(container.querySelector("h1")).toHaveTextContent("Findings");
   });
@@ -322,18 +319,33 @@ describe("MessageItem streaming render", () => {
     );
   });
 
-  it("keeps math and Mermaid source plain while the assistant message streams", () => {
-    const content = "$x^2$\n\n```mermaid\nflowchart TD\n  A --> B\n```";
+  it("renders closed math while the assistant message streams", async () => {
+    const content = "The result is $x^2$.";
     const { container } = render(
       <MessageItem msg={{ role: "assistant", content }} live />,
     );
 
-    expect(container.querySelector(".katex")).toBeNull();
-    expect(container.querySelector('[data-mermaid-diagram="true"]')).toBeNull();
-    expect(container.querySelector('[data-streaming-text="true"]')).toHaveTextContent("$x^2$");
-    expect(container.querySelector('[data-streaming-text="true"]')).toHaveTextContent(
-      "```mermaid flowchart TD A --> B ```",
+    await waitFor(() => expect(container.querySelector(".katex")).not.toBeNull());
+  });
+
+  it.each([
+    ["inline math", "The result is $x^2"],
+    ["display math", "The result is\n\n$$\n\\frac{1}{2}"],
+    ["code fence", "Before\n\n```typescript\nconst value = 1;"],
+    ["Mermaid fence", "Before\n\n```mermaid\nflowchart TD\n  A --> B"],
+  ])("keeps an unfinished %s tail as safe raw text", async (_label, content) => {
+    const { container } = render(
+      <MessageItem msg={{ role: "assistant", content }} live />,
     );
+
+    const separator = content.lastIndexOf("\n\n");
+    const rawTail = content.slice(separator < 0 ? 0 : separator + 2);
+    await waitFor(() =>
+      expect(container.querySelector('[data-streaming-raw="true"]')?.textContent).toBe(rawTail)
+    );
+    expect(container.querySelector(".katex")).toBeNull();
+    expect(container.querySelector("pre code")).toBeNull();
+    expect(container.querySelector('[data-mermaid-diagram="true"]')).toBeNull();
   });
 });
 

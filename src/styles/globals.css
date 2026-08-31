@@ -839,6 +839,40 @@ select:focus-visible {
   --tw-ring-color: transparent;
 }
 
+.chat-markdown .katex {
+  line-height: normal;
+  overflow-wrap: normal;
+  text-align: initial;
+  transform: none;
+  white-space: nowrap;
+  word-break: normal;
+}
+
+:where(.chat-markdown .katex *) {
+  line-height: normal;
+  overflow-wrap: normal;
+  text-align: inherit;
+  transform: none;
+  vertical-align: baseline;
+  white-space: nowrap;
+  word-break: normal;
+}
+
+.chat-markdown .katex-display {
+  display: block;
+  margin: 0.75em 0;
+  overflow-x: auto;
+  padding: 0.2em 0;
+  text-align: center;
+}
+
+.chat-markdown .katex-display > .katex {
+  display: block;
+  min-width: max-content;
+  text-align: center;
+  white-space: nowrap;
+}
+
 /* Shimmering label for AI "thinking" states (inline AI edit, etc.). */
 @keyframes ai-shimmer {
   0% { background-position: 200% 0; }

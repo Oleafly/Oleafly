@@ -365,6 +365,7 @@ else
   # them — skipping here loses no coverage, and the log says so out loud.
   PACKAGED_UNSERVABLE=(
     "e2e/tests/24-pdf-selection-browser.spec.ts"
+    "e2e/tests/27-markdown-rendering-browser.spec.ts"
     "e2e/tests/56-preview-window-browser.spec.ts"
   )
   if [ -n "$APP_BINARY" ]; then
