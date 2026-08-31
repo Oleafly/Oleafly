@@ -91,6 +91,7 @@ enum ImportedSameSite {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 enum CookieImportError {
     ConfirmationRequired,
     ConfirmationCancelled,

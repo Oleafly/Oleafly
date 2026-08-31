@@ -336,6 +336,10 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg_attr(
+        windows,
+        ignore = "WebView2 child-webview creation needs a running message loop that a unit test thread does not provide"
+    )]
     fn terminal_write_resolves_the_parent_of_a_multi_webview_window() {
         #[cfg(not(windows))]
         use std::os::unix::fs::PermissionsExt;
