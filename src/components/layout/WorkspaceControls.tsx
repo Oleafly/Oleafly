@@ -81,21 +81,18 @@ export function SidebarViews() {
   };
 
   const ctx: AppContext = { projectId, projectKind, theme, mcpEnabled };
-  const sections = railSections(ctx);
+  const tabs = railSections(ctx).flat();
 
   return (
     <div data-tour="project-sidebar" className="flex items-center gap-0.5">
-      {sections.map((tabs, i) => (
-        <Fragment key={tabs[0]?.section ?? i}>
+      {tabs.map((tab, i) => (
+        <Fragment key={tab.id}>
           {i > 0 && <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />}
-          {tabs.map((tab) => (
-            <ViewButton
-              key={tab.id}
-              tab={tab}
-              active={railTab === tab.id}
-              onSelect={() => select(tab.id as RailTab)}
-            />
-          ))}
+          <ViewButton
+            tab={tab}
+            active={railTab === tab.id}
+            onSelect={() => select(tab.id as RailTab)}
+          />
         </Fragment>
       ))}
     </div>
@@ -148,6 +145,7 @@ export function WorkspaceDockControls() {
           <Terminal className="size-4" aria-hidden />
         </button>
       </Tooltip>
+      <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
       <Tooltip label={browserLabel} side="bottom">
         <button
           type="button"
@@ -160,6 +158,7 @@ export function WorkspaceDockControls() {
           <Globe className="size-4" aria-hidden />
         </button>
       </Tooltip>
+      <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
       <Tooltip label={assistantLabel} side="bottom">
         <button
           type="button"

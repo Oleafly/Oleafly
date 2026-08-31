@@ -32,10 +32,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { CompileControls } from "@/components/layout/CompileControls";
-import {
-  SidebarCollapseToggle,
-  WorkspaceDockControls,
-} from "@/components/layout/WorkspaceControls";
+import { WorkspaceDockControls } from "@/components/layout/WorkspaceControls";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { useFilesStore } from "@/store/files";
@@ -307,7 +304,7 @@ export function TopToolbar() {
                   setEditingTitle(false);
                 }
               }}
-              className="h-6 w-[180px] rounded border bg-muted px-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+              className="h-6 w-[280px] rounded border bg-muted px-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
             />
             <Tooltip label="Save (Enter)">
               <button
@@ -343,48 +340,41 @@ export function TopToolbar() {
                 className="size-2 shrink-0 rounded-full"
                 style={{ backgroundColor: coverColor }}
               />
-              <span className="max-w-[200px] truncate">{projectName || "project"}</span>
+              <span className="max-w-[300px] truncate">{projectName || "project"}</span>
             </button>
           </Tooltip>
         )}
-        {!hideEditorArea && projectId && (
-          <>
-            <span className="mx-1 h-5 w-px shrink-0 bg-border" />
-            <SidebarCollapseToggle />
-          </>
-        )}
       </div>
 
-      <div data-tauri-drag-region className="ml-auto flex items-center justify-end gap-1.5">
+      {!hideEditorArea && projectId && (
+        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <div className="pointer-events-auto flex items-center rounded-md border border-border bg-muted/40 p-0.5">
+            {VIEW_OPTIONS.map(({ mode, label, icon: Icon }) => {
+              const active = viewMode === mode;
+              return (
+                <Tooltip key={mode} label={label} side="bottom">
+                  <button
+                    type="button"
+                    aria-label={label}
+                    aria-pressed={active}
+                    onClick={() => setViewMode(mode)}
+                    className={cn(
+                      "flex size-7 items-center justify-center rounded transition-colors",
+                      active
+                        ? "bg-primary/10 text-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="size-4" aria-hidden />
+                  </button>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-        {!hideEditorArea && projectId && (
-          <>
-            <div className="flex items-center rounded-md border border-border bg-muted/40 p-0.5">
-              {VIEW_OPTIONS.map(({ mode, label, icon: Icon }) => {
-                const active = viewMode === mode;
-                return (
-                  <Tooltip key={mode} label={label} side="bottom">
-                    <button
-                      type="button"
-                      aria-label={label}
-                      aria-pressed={active}
-                      onClick={() => setViewMode(mode)}
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded transition-colors",
-                        active
-                          ? "bg-primary/10 text-foreground"
-                          : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                      )}
-                    >
-                      <Icon className="size-4" aria-hidden />
-                    </button>
-                  </Tooltip>
-                );
-              })}
-            </div>
-            <Divider />
-          </>
-        )}
+      <div data-tauri-drag-region className="ml-auto flex items-center justify-end gap-1.5">
 
         <CompileControls />
 
