@@ -670,10 +670,14 @@ function AppContent() {
       if (useTourStore.getState().activeTourId) return;
       if (!useFilesStore.getState().projectId) return;
       const active = document.activeElement as HTMLElement | null;
-      if (active?.closest(".cm-editor") || active?.closest(".ProseMirror")) return;
-      const tag = active?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || active?.isContentEditable) return;
+      const inCodeEditor = !!active?.closest(".cm-editor");
+      if (!inCodeEditor && active) {
+        if (active.closest(".ProseMirror")) return;
+        const tag = active.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable) return;
+      }
       e.preventDefault();
+      e.stopPropagation();
       if (e.shiftKey) editorRedo();
       else editorUndo();
     };

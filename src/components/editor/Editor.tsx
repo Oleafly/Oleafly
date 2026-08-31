@@ -4,6 +4,7 @@ import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
 import { EditorToolbar } from "./EditorToolbar";
 import { MarkdownToolbar } from "./MarkdownToolbar";
+import { TypstToolbar } from "./TypstToolbar";
 import { SelectionActionMenu } from "./SelectionActionMenu";
 import { DiffView } from "./diff/DiffView";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
@@ -159,6 +160,8 @@ export function Editor() {
   const showLatexToolbar = engineLoaded && formattingProfile === "latex" && pathUsesEngineSource(engine, activePath);
   const showMarkdownToolbar =
     engineLoaded && formattingProfile === "markdown" && pathUsesEngineSource(engine, activePath);
+  const showTypstToolbar =
+    engineLoaded && formattingProfile === "typst" && pathUsesEngineSource(engine, activePath);
 
   const [wysiwygState, setWysiwygState] = useState(() => (projectId ? getWysiwygMode(projectId) : false));
   useEffect(() => {
@@ -285,10 +288,9 @@ export function Editor() {
               <MarkdownToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} showVisualToggle={visualEnabled} />
             </div>
           )}
-          {isTypstFile && (
-            <div className="shrink-0 border-b bg-muted/30 px-3 py-1 text-[10px] text-muted-foreground">
-              Typst source mode · KaTeX inline preview and Visual editing are not
-              available; use the compiled PDF preview.
+          {showTypstToolbar && (
+            <div className="shrink-0">
+              <TypstToolbar />
             </div>
           )}
           {isDiagramMainFile && wysiwyg && projectId && activePath ? (
