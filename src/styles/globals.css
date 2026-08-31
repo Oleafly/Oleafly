@@ -1466,22 +1466,6 @@ body[data-tour-active] [data-tour-hide] {
   }
 }
 
-@container ai-composer (max-width: 31rem) {
-  .ai-composer-approval .ai-composer-approval-trigger {
-    width: 3rem;
-    min-width: 3rem;
-    max-width: 3rem;
-    justify-content: center;
-    gap: 0.125rem;
-    padding-left: 0.5rem;
-    padding-right: 0.25rem;
-  }
-
-  .ai-composer-approval-value {
-    display: none;
-  }
-}
-
 @container ai-composer (max-width: 28rem) {
   .ai-composer-model .ai-model-selector-trigger {
     width: 2.5rem;

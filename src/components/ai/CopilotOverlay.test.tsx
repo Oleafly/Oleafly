@@ -34,17 +34,17 @@ describe("CopilotOverlay width floor", () => {
 
     render(<CopilotOverlay />);
 
-    expect(screen.getByTestId("copilot-overlay")).toHaveStyle({ width: "400px" });
+    expect(screen.getByTestId("copilot-overlay")).toHaveStyle({ width: "600px" });
   });
 
   it("reclamps an open overlay when the app font size increases", async () => {
     render(<CopilotOverlay />);
-    expect(screen.getByTestId("copilot-overlay")).toHaveStyle({ width: "320px" });
+    expect(screen.getByTestId("copilot-overlay")).toHaveStyle({ width: "480px" });
 
     act(() => useSettingsStore.setState({ appFontSize: 20 }));
 
     await waitFor(() =>
-      expect(screen.getByTestId("copilot-overlay")).toHaveStyle({ width: "400px" }),
+      expect(screen.getByTestId("copilot-overlay")).toHaveStyle({ width: "600px" }),
     );
   });
 });

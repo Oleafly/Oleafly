@@ -76,6 +76,7 @@ import {
 } from "@/lib/native-dock-shortcuts";
 import type { ProjectStateChanged } from "@/lib/tauri";
 import {
+  assistantMinimumWidth,
   sidebarMinimumPercent,
   sidebarPanelGroupWidth,
 } from "@/lib/assistant-layout";
@@ -347,6 +348,10 @@ function AppContent() {
   );
   const sidebarDefaultSize =
     panelGroupWidth > 0 ? Math.min(65, (SIDEBAR_DEFAULT_PX / panelGroupWidth) * 100) : 15;
+  const assistantMinSize =
+    panelGroupWidth > 0
+      ? Math.min(55, (assistantMinimumWidth(appFontSize) / panelGroupWidth) * 100)
+      : 22;
   const workspacePanelDefaultSize =
     viewMode === "split" ? (browserOpen ? 35 : 50) : browserOpen ? 70 : 100;
 
@@ -988,9 +993,9 @@ function AppContent() {
                   <Panel
                     id="assistant"
                     order={3}
-                    defaultSize={26}
-                    minSize={18}
-                    maxSize={48}
+                    defaultSize={Math.max(28, assistantMinSize)}
+                    minSize={assistantMinSize}
+                    maxSize={55}
                     collapsible
                     collapsedSize={0}
                     onCollapse={() => {

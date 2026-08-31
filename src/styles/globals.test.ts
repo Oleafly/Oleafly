@@ -43,32 +43,24 @@ describe("assistant composer container queries", () => {
     const promptsBreakpoint = styles.indexOf(
       "@container ai-composer (max-width: 34rem)",
     );
-    const approvalBreakpoint = styles.indexOf(
-      "@container ai-composer (max-width: 31rem)",
+    const modelBreakpoint = styles.indexOf(
+      "@container ai-composer (max-width: 28rem)",
     );
 
     expect(personaBreakpoint).toBeGreaterThan(-1);
     expect(promptsBreakpoint).toBeGreaterThan(personaBreakpoint);
-    expect(approvalBreakpoint).toBeGreaterThan(promptsBreakpoint);
+    expect(modelBreakpoint).toBeGreaterThan(promptsBreakpoint);
     const personaRules = styles.slice(personaBreakpoint, promptsBreakpoint);
-    const promptsRules = styles.slice(promptsBreakpoint, approvalBreakpoint);
-    const approvalRules = styles.slice(
-      approvalBreakpoint,
-      styles.indexOf("@container ai-composer (max-width: 28rem)"),
-    );
+    const promptsRules = styles.slice(promptsBreakpoint, modelBreakpoint);
 
     expect(personaRules).toMatch(/\.ai-composer-persona-value\s*\{\s*display: none;/u);
     expect(personaRules).toMatch(/\.ai-composer-persona-trigger\s*\{[^}]*width: 2\.5rem;/su);
     expect(promptsRules).toMatch(/\.ai-composer-prompts-value\s*\{\s*display: none;/u);
     expect(promptsRules).toMatch(/\.ai-composer-prompts-icon\s*\{\s*display: block;/u);
     expect(promptsRules).toMatch(/\.ai-composer-prompts-trigger\s*\{[^}]*width: 2\.5rem;/su);
-    expect(approvalRules).toMatch(/\.ai-composer-approval-value\s*\{\s*display: none;/u);
-    expect(approvalRules).toMatch(
-      /\.ai-composer-approval-trigger\s*\{[^}]*width: 3rem;[^}]*gap: 0\.125rem;[^}]*padding-left: 0\.5rem;[^}]*padding-right: 0\.25rem;/su,
-    );
     expect(styles.match(/\.ai-composer-persona-value\s*\{[^}]*display:\s*none;/gsu)).toHaveLength(1);
     expect(styles.match(/\.ai-composer-prompts-value\s*\{[^}]*display:\s*none;/gsu)).toHaveLength(1);
-    expect(styles.match(/\.ai-composer-approval-value\s*\{[^}]*display:\s*none;/gsu)).toHaveLength(1);
+    expect(styles).not.toMatch(/\.ai-composer-approval-value\s*\{[^}]*display:\s*none;/su);
     expect(styles).not.toContain(
       ".ai-composer-persona .ai-composer-persona-trigger > svg:last-child",
     );

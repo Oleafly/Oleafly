@@ -14,8 +14,8 @@ const overlaySource = readFileSync(
 
 describe("assistant layout minimums", () => {
   it("keeps the docked assistant wide enough for the one-line footer", () => {
-    expect(sidebarMinimumPercent(840, true, 16)).toBeCloseTo((320 / 840) * 100);
-    expect(sidebarMinimumPercent(825, true, 20)).toBeCloseTo((400 / 825) * 100);
+    expect(sidebarMinimumPercent(840, true, 16)).toBeCloseTo((480 / 840) * 100);
+    expect(sidebarMinimumPercent(1000, true, 20)).toBeCloseTo((600 / 1000) * 100);
     expect(sidebarMinimumPercent(825, false, 20)).toBeCloseTo((250 / 825) * 100);
   });
 
@@ -25,10 +25,10 @@ describe("assistant layout minimums", () => {
   });
 
   it("scales the assistant floor with the supported app font size", () => {
-    expect(assistantMinimumWidth(13)).toBe(320);
-    expect(assistantMinimumWidth(16)).toBe(320);
-    expect(assistantMinimumWidth(18)).toBe(360);
-    expect(assistantMinimumWidth(20)).toBe(400);
+    expect(assistantMinimumWidth(13)).toBe(480);
+    expect(assistantMinimumWidth(16)).toBe(480);
+    expect(assistantMinimumWidth(18)).toBe(540);
+    expect(assistantMinimumWidth(20)).toBe(600);
   });
 
   it("caps a sidebar floor when the remaining workspace would become too small", () => {

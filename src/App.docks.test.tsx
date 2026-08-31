@@ -46,6 +46,7 @@ const appState = vi.hoisted(() => {
 const assistantLayoutMocks = vi.hoisted(() => ({
   sidebarMinimumPercent: vi.fn(() => 48),
   sidebarPanelGroupWidth: vi.fn(() => 825),
+  assistantMinimumWidth: vi.fn(() => 480),
 }));
 
 const panelHandleMocks = vi.hoisted(() => ({
