@@ -1,14 +1,14 @@
 import { Fragment, useEffect } from "react";
 import {
-  Globe,
   Moon,
   PanelLeft,
   PanelLeftClose,
   Settings as SettingsIcon,
   Sparkles,
   Sun,
-  Terminal,
+  SquareTerminal,
 } from "lucide-react";
+import { Browserless } from "@lobehub/icons";
 import { railSections, type AppContext, type RailTabContribution } from "@oleafly/registry";
 import { useSettingsStore, type RailTab } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
@@ -142,7 +142,7 @@ export function WorkspaceDockControls() {
           onClick={() => setTerminalOpen(!terminalOpen)}
           className={ctrlBtn(terminalOpen)}
         >
-          <Terminal className="size-4" aria-hidden />
+          <SquareTerminal className="size-4" aria-hidden />
         </button>
       </Tooltip>
       <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
@@ -155,7 +155,7 @@ export function WorkspaceDockControls() {
           onClick={() => setBrowserOpen(!browserOpen)}
           className={ctrlBtn(browserOpen)}
         >
-          <Globe className="size-4" aria-hidden />
+          <Browserless size={16} className="size-4" aria-hidden />
         </button>
       </Tooltip>
       <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />

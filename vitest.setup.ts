@@ -24,6 +24,7 @@ vi.mock("@lobehub/icons", () => {
     Perplexity: stub(),
     ZAI: stub(),
     MCP: stub(),
+    Browserless: stub(),
   };
 });
 
