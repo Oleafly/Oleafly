@@ -201,6 +201,11 @@ export function TerminalPane({
       channel,
     })
       .then((id) => {
+        if (E2E_HOOKS) {
+          const w = window as typeof window & { __e2eTerminalEvents?: string[] };
+          w.__e2eTerminalEvents = w.__e2eTerminalEvents ?? [];
+          w.__e2eTerminalEvents.push(`open:ok:${id}`);
+        }
         if (disposed || sessionExited) {
           void invoke("term_kill", { id, projectId }).catch(() => {});
           return;
@@ -213,6 +218,11 @@ export function TerminalPane({
         if (visibleRef.current) terminal.focus();
       })
       .catch((error) => {
+        if (E2E_HOOKS) {
+          const w = window as typeof window & { __e2eTerminalEvents?: string[] };
+          w.__e2eTerminalEvents = w.__e2eTerminalEvents ?? [];
+          w.__e2eTerminalEvents.push(`open:error:${String(error)}`);
+        }
         if (disposed || sessionExited) return;
         setBooted(true);
         writeTerminalError(terminal, "The shell could not start", error, outputWritten);

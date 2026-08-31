@@ -126,12 +126,22 @@ test("the real terminal survives a browser child webview and exits cleanly", asy
     timeout: 30_000,
   });
   await expect(tauriPage.locator(`${TERMINAL_HOST} .xterm-helper-textarea`)).toHaveCount(1);
+  // Return the channel breadcrumbs plus the buffer tail so a failure names
+  // the stage that broke: open error, no output at all, or a promptless
+  // shell. The tail stays last so the end anchor still matches the prompt.
+  // A cold shell start on a busy CI runner can exceed 30s, hence 60s.
   await expect
     .poll(
-      async () => /[$#%>❯➜]\s*$/u.test((await terminalOutput(tauriPage)).trimEnd()),
-      { timeout: 30_000 },
+      () =>
+        tauriPage.evaluate<string>(`(() => {
+          const events = (window.__e2eTerminalEvents ?? []).join(",");
+          const host = document.querySelector('[data-terminal-output]');
+          const tail = (host?.dataset.terminalOutput ?? "").trimEnd().slice(-160);
+          return "events[" + events + "] tail:" + tail;
+        })()`),
+      { timeout: 60_000 },
     )
-    .toBe(true);
+    .toMatch(/[$#%>❯➜]\s*$/u);
 
   await enterTerminalCommand(tauriPage, "echo e2e-terminal-ok");
   await expect
