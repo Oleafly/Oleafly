@@ -297,23 +297,38 @@ pub async fn agent_thread_import_chat(
     let json = crate::chats::load_project_chats(project_id.clone()).await?;
     let thread_id = new_thread_id();
     off_thread(move |root| {
-        let chats: serde_json::Value =
-            serde_json::from_str(&json).map_err(|e| format!("chats json invalid: {e}"))?;
-        let chat = chats
-            .as_array()
-            .and_then(|list| {
-                list.iter()
-                    .find(|chat| chat.get("id").and_then(|v| v.as_str()) == Some(chat_id.as_str()))
-            })
-            .ok_or_else(|| format!("chat {chat_id} was not found in this project"))?;
-        let turns = crate::rollout::turns_from_legacy_chat(chat);
-        for turn in &turns {
-            crate::rollout::append_turn(&root, &thread_id, turn)?;
-        }
-        crate::library_db::resync_thread(&root, &thread_id, &project_id, &turns)?;
+        import_chat_into_thread(&root, &json, &project_id, &chat_id, &thread_id)?;
         Ok(thread_id)
     })
     .await
+}
+
+/// The migration proper, factored out of the command so it can be tested
+/// against a real temp root without the app's filesystem and IPC plumbing:
+/// parse the project's chats, locate the chat, convert it to turn records,
+/// append them to a fresh rollout, and mirror it into the search index.
+fn import_chat_into_thread(
+    root: &std::path::Path,
+    chats_json: &str,
+    project_id: &str,
+    chat_id: &str,
+    thread_id: &str,
+) -> Result<(), String> {
+    let chats: serde_json::Value =
+        serde_json::from_str(chats_json).map_err(|e| format!("chats json invalid: {e}"))?;
+    let chat = chats
+        .as_array()
+        .and_then(|list| {
+            list.iter()
+                .find(|chat| chat.get("id").and_then(|v| v.as_str()) == Some(chat_id))
+        })
+        .ok_or_else(|| format!("chat {chat_id} was not found in this project"))?;
+    let turns = crate::rollout::turns_from_legacy_chat(chat);
+    for turn in &turns {
+        crate::rollout::append_turn(root, thread_id, turn)?;
+    }
+    crate::library_db::resync_thread(root, thread_id, project_id, &turns)?;
+    Ok(())
 }
 
 async fn off_thread<T: Send + 'static>(
@@ -328,6 +343,62 @@ async fn off_thread<T: Send + 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn import_temp_root(tag: &str) -> std::path::PathBuf {
+        let root =
+            std::env::temp_dir().join(format!("oleafly-import-chat-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        root
+    }
+
+    #[test]
+    fn importing_a_legacy_chat_writes_a_replayable_rollout() {
+        let root = import_temp_root("happy");
+        let chats = serde_json::json!([
+            {"id": "chat-1", "title": "Bib", "messages": [
+                {"role": "user", "content": "fix my bib"},
+                {"role": "assistant", "content": "Done."}
+            ]},
+            {"id": "chat-2", "messages": [
+                {"role": "user", "content": "other chat"}
+            ]}
+        ])
+        .to_string();
+
+        import_chat_into_thread(&root, &chats, "proj", "chat-1", "thread-import-1").unwrap();
+
+        let turns = crate::rollout::read_turns(&root, "thread-import-1").unwrap();
+        assert_eq!(turns.len(), 1);
+        // The user message and assistant reply both survived the migration
+        // and round-tripped through the rollout file.
+        let joined = serde_json::to_string(&turns[0].items).unwrap();
+        assert!(joined.contains("fix my bib"));
+        assert!(joined.contains("Done."));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn importing_a_missing_chat_is_an_error_and_writes_nothing() {
+        let root = import_temp_root("missing");
+        let chats = serde_json::json!([{"id": "chat-1", "messages": []}]).to_string();
+
+        let result =
+            import_chat_into_thread(&root, &chats, "proj", "nope", "thread-import-missing");
+
+        assert!(result.unwrap_err().contains("was not found"));
+        assert!(crate::rollout::read_turns(&root, "thread-import-missing").is_err());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn importing_invalid_chats_json_is_an_error() {
+        let root = import_temp_root("badjson");
+        let result =
+            import_chat_into_thread(&root, "{ not json", "proj", "chat-1", "thread-import-bad");
+        assert!(result.unwrap_err().contains("chats json invalid"));
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn prewarmed_threads_are_claimed_once_and_expire() {
