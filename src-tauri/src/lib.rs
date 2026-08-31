@@ -159,6 +159,21 @@ pub fn run() {
                     let _ = window.maximize();
                 }
             }
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            {
+                use tauri::Manager;
+                if let Some(window) = app.get_webview_window("main") {
+                    #[cfg(target_os = "macos")]
+                    let _ = window_vibrancy::apply_vibrancy(
+                        &window,
+                        window_vibrancy::NSVisualEffectMaterial::UnderWindowBackground,
+                        Some(window_vibrancy::NSVisualEffectState::Active),
+                        None,
+                    );
+                    #[cfg(target_os = "windows")]
+                    let _ = window_vibrancy::apply_acrylic(&window, Some((18, 18, 18, 125)));
+                }
+            }
             // The bridge returns eval results through a plugin command, so grant
             // its permission at runtime here; a static capabilities/ entry would
             // break normal builds, where the plugin (and its permission) doesn't exist.

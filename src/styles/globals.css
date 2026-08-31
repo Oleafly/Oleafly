@@ -39,7 +39,7 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   /* The home page is plain white in light mode, independent of any later
      tweak to --background. */
-  --home-background: #ffffff;
+  --home-background: color-mix(in srgb, #ffffff 70%, transparent);
 
   /* CodeMirror syntax tokens (light) */
   --cm-comment: #6a737d;
@@ -78,7 +78,7 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --home-background: oklch(0.155 0.004 266);
+  --home-background: oklch(0.155 0.004 266 / 0.66);
 
   /* CodeMirror syntax tokens (dark) */
   --cm-comment: #8b949e;
@@ -714,9 +714,12 @@
   #root {
     height: 100%;
   }
+  :root {
+    --app-surface: color-mix(in srgb, var(--background) 72%, transparent);
+  }
   body {
     margin: 0;
-    background-color: var(--background);
+    background-color: var(--app-surface, var(--background));
     color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;

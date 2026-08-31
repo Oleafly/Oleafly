@@ -38,6 +38,7 @@ toml = "0.8"
 rusqlite = { version = "0.32", features = ["bundled"] }
 portable-pty = "0.9"
 base64 = "0.23"
+window-vibrancy = "0.6"
 cap-fs-ext = "=4.0.2"
 cap-std = "=4.0.2"
 flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }

@@ -2788,6 +2788,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "toml 0.8.2",
+ "window-vibrancy",
  "windows-sys 0.61.2",
  "zeroize",
  "zip",

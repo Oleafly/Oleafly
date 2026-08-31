@@ -16,7 +16,7 @@
         "title": "Oleafly",
         "width": 1280,
         "height": 800,
-        "backgroundColor": "#09090b",
+        "transparent": true,
         "minWidth": 900,
         "minHeight": 600,
         "decorations": true,
