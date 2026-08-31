@@ -1,29 +1,19 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ExternalLink, Globe, Loader2, Lock, TriangleAlert } from "lucide-react";
-import { isTauri } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import { Webview } from "@tauri-apps/api/webview";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ExternalLink, Globe, Lock, SquareArrowOutUpRight, TriangleAlert } from "lucide-react";
+import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { registerCuaSurface } from "@/lib/cua-sandbox";
 import {
-  nativeWebviewOccludedBy,
-  subscribeToNativeWebviewOcclusion,
-} from "@/lib/native-webview-occlusion";
+  closeBrowserWindow,
+  focusBrowserWindow,
+  openBrowserWindow,
+} from "@/lib/browser-window";
 import {
   BROWSER_SEARCH_ENGINES,
   useSettingsStore,
   type BrowserSearchEngineId,
 } from "@/store/settings";
-import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-type BrowserPageLoadPayload = {
-  label: string;
-  state: "started" | "finished";
-  url: string;
-};
 
 function isDomainUrl(url: URL, raw: string): boolean {
   if (/\s|@/u.test(raw)) return false;
@@ -41,8 +31,7 @@ function normalizeAddress(raw: string): string | null {
   if (!trimmed) return null;
   if (/^https?:\/\//iu.test(trimmed)) {
     try {
-      const url = new URL(trimmed);
-      return url.toString();
+      return new URL(trimmed).toString();
     } catch {
       return null;
     }
@@ -75,306 +64,33 @@ function resolveNavigation(
   return `${engine.searchUrl}${encodeURIComponent(trimmed)}`;
 }
 
-let webviewSeq = 0;
-const nextWebviewLabel = () => `oleafly-browser-pane-${++webviewSeq}`;
-
-const NATIVE_CREATE_TIMEOUT_MS = 4_000;
-
+// The browser opens in its own window (see lib/browser-window); this dock is a
+// launcher and address bar, not an embedded view. The AI drives it through the
+// same registered CUA surface, whose navigate opens the window.
 export function BrowserPane({ visible = true }: { visible?: boolean }) {
-  const browserSearchEngine = useSettingsStore((state) => state.browserSearchEngine);
-  const browserHomePage = useSettingsStore((state) => state.browserHomePage);
+  const browserSearchEngine = useSettingsStore((s) => s.browserSearchEngine);
+  const browserHomePage = useSettingsStore((s) => s.browserHomePage);
   const [draft, setDraft] = useState("");
   const [url, setUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [pageLoadListenerState, setPageLoadListenerState] = useState<
-    "pending" | "ready" | "failed"
-  >(() => (isTauri() ? "pending" : "ready"));
-  const [nativeFailed, setNativeFailed] = useState(false);
-  const [nativeError, setNativeError] = useState<string | null>(null);
-  const placeholderRef = useRef<HTMLDivElement | null>(null);
-  const webviewRef = useRef<Webview | null>(null);
-  const webviewLabelRef = useRef<string | null>(null);
-  const visibleRef = useRef(visible);
-  const loadingRef = useRef(loading);
-  // Occlusion is geometry-driven: true only when an overlay actually covers the
-  // browser's on-screen rect (see recomputeOcclusion), not whenever any overlay
-  // is open.
-  const occludedRef = useRef(false);
-  const urlRef = useRef(url);
-  const desiredVisibilityRef = useRef(visible && !loading);
-  const visibilityRevisionRef = useRef(0);
-  const visibilitySyncRunningRef = useRef(false);
-  visibleRef.current = visible;
-  loadingRef.current = loading;
+  const urlRef = useRef<string | null>(null);
   urlRef.current = url;
 
-  const recomputeOcclusion = useCallback(() => {
-    const rect = placeholderRef.current?.getBoundingClientRect() ?? null;
-    const next = nativeWebviewOccludedBy(rect);
-    const changed = next !== occludedRef.current;
-    occludedRef.current = next;
-    desiredVisibilityRef.current =
-      visibleRef.current && !loadingRef.current && !next;
-    return changed;
+  const openUrl = useCallback((next: string) => {
+    const normalized = normalizeAddress(next);
+    if (!normalized) return;
+    setDraft(normalized);
+    setUrl(normalized);
+    urlRef.current = normalized;
+    void openBrowserWindow(normalized);
   }, []);
 
-  const setPageLoading = useCallback((next: boolean) => {
-    loadingRef.current = next;
-    desiredVisibilityRef.current =
-      visibleRef.current && !next && !occludedRef.current;
-    setLoading(next);
-  }, []);
-
-  const syncBounds = useCallback(async (): Promise<boolean> => {
-    const pane = webviewRef.current;
-    const host = placeholderRef.current;
-    if (
-      !pane ||
-      !host ||
-      !visibleRef.current ||
-      loadingRef.current ||
-      occludedRef.current
-    ) {
-      return false;
-    }
-    const rect = host.getBoundingClientRect();
-    if (rect.width < 1 || rect.height < 1) return false;
-    try {
-      await pane.setPosition(new LogicalPosition(rect.left, rect.top));
-      await pane.setSize(new LogicalSize(rect.width, rect.height));
-      return true;
-    } catch {
-      return false;
-    }
-  }, []);
-
-  const syncNativeVisibility = useCallback(
-    (requestedVisibility?: boolean) => {
-      if (requestedVisibility === undefined) {
-        // Re-evaluate overlap against the browser's current rect: a move or
-        // resize can change whether an open overlay actually covers it.
-        recomputeOcclusion();
-      }
-      desiredVisibilityRef.current =
-        requestedVisibility ??
-        (visibleRef.current && !loadingRef.current && !occludedRef.current);
-      visibilityRevisionRef.current += 1;
-      if (visibilitySyncRunningRef.current) return;
-      visibilitySyncRunningRef.current = true;
-      void (async () => {
-        let handledRevision = -1;
-        while (handledRevision !== visibilityRevisionRef.current) {
-          handledRevision = visibilityRevisionRef.current;
-          const pane = webviewRef.current;
-          if (!pane) continue;
-          try {
-            if (!desiredVisibilityRef.current) {
-              await pane.hide();
-              continue;
-            }
-            const positioned = await syncBounds();
-            if (
-              !positioned ||
-              pane !== webviewRef.current ||
-              !desiredVisibilityRef.current
-            ) {
-              if (pane === webviewRef.current) await pane.hide();
-              continue;
-            }
-            await pane.show();
-            if (
-              pane === webviewRef.current &&
-              !desiredVisibilityRef.current
-            ) {
-              await pane.hide();
-            }
-          } catch {}
-        }
-        visibilitySyncRunningRef.current = false;
-      })();
-    },
-    [syncBounds, recomputeOcclusion],
-  );
-
-  const openUrl = useCallback(
-    (next: string) => {
-      const normalized = normalizeAddress(next);
-      if (!normalized) return;
-      setDraft(normalized);
-      if (urlRef.current === normalized) return;
-      urlRef.current = normalized;
-      setPageLoading(true);
-      setUrl(normalized);
-    },
-    [setPageLoading],
-  );
-
-  useEffect(() => {
-    if (!isTauri()) return;
-    let cancelled = false;
-    let unlisten: (() => void) | null = null;
-    void listen<BrowserPageLoadPayload>("browser-page-load", (event) => {
-      if (event.payload.label !== webviewLabelRef.current) return;
-      const loading = event.payload.state === "started";
-      setPageLoading(loading);
-      // Adopt the settled URL so a link click or redirect inside the page
-      // updates the tracked URL (and therefore the CUA surface and address
-      // bar), not just an address-bar navigation.
-      if (!loading) {
-        const settled = event.payload.url;
-        if (settled && settled !== urlRef.current) {
-          urlRef.current = settled;
-          setUrl(settled);
-          setDraft(settled);
-        }
-      }
-    })
-      .then((stop) => {
-        if (cancelled) stop();
-        else {
-          unlisten = stop;
-          setPageLoadListenerState("ready");
-        }
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        setNativeError(`Page-load monitoring failed: ${String(error)}`);
-        setNativeFailed(true);
-        setPageLoadListenerState("failed");
-      });
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, [setPageLoading]);
-
-  useEffect(() => {
-    if (
-      !isTauri() ||
-      !url ||
-      nativeFailed ||
-      pageLoadListenerState !== "ready"
-    ) {
-      return;
-    }
-    let cancelled = false;
-    let ownedPane: Webview | null = null;
-    let closeOwnedPromise: Promise<void> | null = null;
-    let observer: ResizeObserver | null = null;
-    let watchdog: ReturnType<typeof setTimeout> | null = null;
-    let trackingDisposed = false;
-    const unlistens = new Set<() => void>();
-    const trackUnlisten = (promise: Promise<() => void>) => {
-      void promise
-        .then((unlisten) => {
-          if (cancelled || trackingDisposed) unlisten();
-          else unlistens.add(unlisten);
-        })
-        .catch(() => {});
-    };
-    const disposeTracking = () => {
-      if (trackingDisposed) return;
-      trackingDisposed = true;
-      observer?.disconnect();
-      observer = null;
-      for (const unlisten of unlistens) unlisten();
-      unlistens.clear();
-    };
-    const closeOwnedPane = () => {
-      const pane = ownedPane;
-      if (!pane) return Promise.resolve();
-      if (webviewRef.current === pane) webviewRef.current = null;
-      if (webviewLabelRef.current === pane.label) webviewLabelRef.current = null;
-      closeOwnedPromise ??= pane.close().catch(() => {});
-      return closeOwnedPromise;
-    };
-    const run = async () => {
-      try {
-        const previous = webviewRef.current;
-        webviewRef.current = null;
-        webviewLabelRef.current = null;
-        await previous?.close();
-      } catch {}
-      if (cancelled) return;
-      webviewRef.current = null;
-      const host = placeholderRef.current;
-      if (!host) return;
-      let created = false;
-      try {
-        const pane = new Webview(getCurrentWindow(), nextWebviewLabel(), {
-          url,
-          x: -10_000,
-          y: -10_000,
-          width: 80,
-          height: 80,
-        });
-        ownedPane = pane;
-        if (cancelled) {
-          await closeOwnedPane();
-          return;
-        }
-        webviewRef.current = pane;
-        webviewLabelRef.current = pane.label;
-        trackUnlisten(
-          pane.once("tauri://created", () => {
-            if (cancelled) return;
-            created = true;
-            if (watchdog) clearTimeout(watchdog);
-            void syncNativeVisibility();
-          }),
-        );
-        trackUnlisten(
-          pane.once("tauri://error", (event) => {
-            if (cancelled) return;
-            if (watchdog) clearTimeout(watchdog);
-            setNativeError(
-              String(
-                (event.payload as { message?: string })?.message ??
-                  event.payload ??
-                  "unknown error",
-              ),
-            );
-            setNativeFailed(true);
-            disposeTracking();
-            void closeOwnedPane();
-          }),
-        );
-        watchdog = setTimeout(() => {
-          if (created || cancelled) return;
-          setNativeFailed(true);
-          disposeTracking();
-          void closeOwnedPane();
-        }, NATIVE_CREATE_TIMEOUT_MS);
-        if (cancelled) {
-          await closeOwnedPane();
-          return;
-        }
-        observer = new ResizeObserver(() => syncNativeVisibility());
-        observer.observe(host);
-        const win = getCurrentWindow();
-        trackUnlisten(win.onMoved(() => syncNativeVisibility()));
-        trackUnlisten(win.onResized(() => syncNativeVisibility()));
-      } catch (error) {
-        disposeTracking();
-        void closeOwnedPane();
-        if (cancelled) return;
-        setNativeError(String(error));
-        setNativeFailed(true);
-      }
-    };
-    void run();
-    return () => {
-      cancelled = true;
-      if (watchdog) clearTimeout(watchdog);
-      disposeTracking();
-      void closeOwnedPane();
-    };
-  }, [nativeFailed, pageLoadListenerState, url, syncNativeVisibility]);
-
+  // Register the CUA surface so the AI's computer_use tool can navigate the
+  // browser window. Remote pages are cross-origin, so the surface stays
+  // navigate-and-observe-URL only (no scripting), as before.
   useEffect(() => {
     registerCuaSurface({
       get document(): Document {
-        throw new Error("The native browser page is not scriptable from the app.");
+        throw new Error("The browser window is a separate OS window and is not scriptable.");
       },
       url: () => urlRef.current ?? "",
       navigate: openUrl,
@@ -382,65 +98,24 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
     return () => registerCuaSurface(null);
   }, [openUrl]);
 
+  // Prefill the address bar with the configured home page; opening is explicit
+  // (a window only pops when the user or the AI navigates).
   useEffect(() => {
-    if (!visible || urlRef.current || !browserHomePage) return;
-    openUrl(browserHomePage);
-  }, [browserHomePage, openUrl, visible]);
+    if (browserHomePage && !draft) setDraft(browserHomePage);
+  }, [browserHomePage, draft]);
 
-  useLayoutEffect(() => {
-    // Hidden while the dock is off or a page is loading; otherwise pass no
-    // explicit value so occlusion geometry (the browser's rect vs. open
-    // overlays) decides visibility.
-    syncNativeVisibility(visible && !loading ? undefined : false);
-  }, [loading, visible, syncNativeVisibility]);
-
-  // An overlay opening, closing, or moving can change whether it covers the
-  // browser, so re-evaluate visibility whenever the occluder set changes.
-  // Radix portals position their content a frame after they mount (data-state
-  // flips to "open" before the transform is applied), so a single check would
-  // read a stale/zero rect and miss the overlap. Re-check across the next few
-  // frames so an animated or async-positioned overlay is caught.
+  // Closing the dock closes the window it launched.
   useEffect(() => {
-    let frame = 0;
-    const onChange = () => {
-      // Apply the change now, then re-check across the next few frames so an
-      // overlay whose transform lands a frame later (Radix portals) still hides
-      // the browser. Later frames only re-sync if the overlap actually flipped,
-      // so a stable overlay does not thrash the native show/hide.
-      syncNativeVisibility();
-      cancelAnimationFrame(frame);
-      let remaining = 3;
-      const tick = () => {
-        if (recomputeOcclusion()) {
-          syncNativeVisibility(desiredVisibilityRef.current);
-        }
-        remaining -= 1;
-        if (remaining > 0) frame = requestAnimationFrame(tick);
-      };
-      frame = requestAnimationFrame(tick);
-    };
-    const unsubscribe = subscribeToNativeWebviewOcclusion(onChange);
-    return () => {
-      cancelAnimationFrame(frame);
-      unsubscribe();
-    };
-  }, [recomputeOcclusion, syncNativeVisibility]);
+    if (!visible) void closeBrowserWindow();
+  }, [visible]);
 
   const go = () => {
     const next = resolveNavigation(draft, browserSearchEngine);
-    if (!next) return;
-    openUrl(next);
+    if (next) openUrl(next);
   };
 
-  const useIframe =
-    !isTauri() || nativeFailed || pageLoadListenerState === "failed";
-
   return (
-    <div
-      className="flex h-full flex-col"
-      data-testid="dock-browser"
-      aria-hidden={!visible}
-    >
+    <div className="flex h-full flex-col" data-testid="dock-browser" aria-hidden={!visible}>
       <div className="flex shrink-0 items-center gap-1.5 border-b p-2">
         {url?.startsWith("https://") ? (
           <Lock
@@ -489,52 +164,33 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
           </Button>
         )}
       </div>
-      {nativeError && (
-        <p className="p-3 text-xs text-destructive" data-testid="dock-browser-error">
-          The embedded browser couldn't start ({nativeError}). Use the arrow to open this page in
-          your regular browser.
-        </p>
-      )}
       {url ? (
-        <>
-          {useIframe && isTauri() && (
-            <p className="border-b px-3 py-1.5 text-[11px] text-muted-foreground">
-              The embedded browser is unavailable, so pages render in-app where sites allow it.
-              Sites that refuse embedding only open externally.
-            </p>
-          )}
-          <div className="relative min-h-0 flex-1">
-            {loading && (
-              <div
-                className="absolute inset-0 z-10 flex items-center justify-center bg-background/80"
-                role="status"
-              >
-                <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
-                <span className="sr-only">Loading page</span>
-              </div>
-            )}
-            {useIframe ? (
-              <iframe
-                title="Dock browser"
-                src={url}
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                className="h-full w-full bg-white"
-                onLoad={() => setPageLoading(false)}
-                onErrorCapture={() => setPageLoading(false)}
-              />
-            ) : (
-              <div
-                ref={placeholderRef}
-                className="h-full w-full bg-white"
-                data-testid="dock-browser-native-host"
-              />
-            )}
-          </div>
-        </>
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+          <SquareArrowOutUpRight className="size-6 text-muted-foreground" aria-hidden />
+          <p className="text-xs text-muted-foreground">
+            Showing this page in a separate browser window.
+          </p>
+          <p
+            className="max-w-full truncate text-[11px] font-medium text-foreground"
+            data-testid="dock-browser-current"
+            title={url}
+          >
+            {url}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            data-testid="dock-browser-focus"
+            onClick={() => void focusBrowserWindow()}
+          >
+            Focus window
+          </Button>
+        </div>
       ) : (
         <p className="p-4 text-xs text-muted-foreground">
-          Open a paper, docs page, or venue site in the dock. Use the arrow to open it in your
-          regular browser.
+          Type a link or search and press Open to browse in a separate window.
         </p>
       )}
     </div>

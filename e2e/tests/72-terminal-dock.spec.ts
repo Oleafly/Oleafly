@@ -92,11 +92,11 @@ test("project docks start closed and their toggles live in the top toolbar", asy
   expect(browserLabel).toMatch(/^Show browser \(Ctrl(?:\+Shift\+|⇧)B\)$/u);
 });
 
-test("the real terminal survives a browser child webview and exits cleanly", async ({
+test("the real terminal opens, echoes, and exits cleanly with the browser dock open", async ({
   tauriPage,
 }) => {
   // The prompt nudge alone may take 150s on a cold Windows runner, and the
-  // echo, child-webview, and exit phases follow it.
+  // echo, browser-dock, and exit phases follow it.
   test.setTimeout(300_000);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -158,21 +158,10 @@ test("the real terminal survives a browser child webview and exits cleanly", asy
     )
     .toBeGreaterThanOrEqual(2);
 
+  // The browser now opens in a separate OS window (not a child webview over
+  // the app), so opening its dock cannot disturb the terminal's own webview.
   await tauriPage.click(BROWSER_TOGGLE);
   await expect(tauriPage.getByTestId("dock-browser")).toBeVisible();
-  await expect
-    .poll(
-      () =>
-        tauriPage.evaluate<boolean>(
-          `window.__TAURI_INTERNALS__.invoke("plugin:webview|get_all_webviews").then(
-            (webviews) => webviews.some((webview) =>
-              String(webview.label).startsWith("oleafly-browser-pane-")
-            )
-          )`,
-        ),
-      { timeout: 15_000 },
-    )
-    .toBe(true);
 
   await enterTerminalCommand(tauriPage, "echo still-alive");
   await expect
@@ -184,9 +173,8 @@ test("the real terminal survives a browser child webview and exits cleanly", asy
   expect(await terminalOutput(tauriPage)).toContain("e2e-terminal-ok");
 
   await enterTerminalCommand(tauriPage, "exit");
-  // The exit event must reach the webview even while a browser child webview
-  // exists; asserting it separately splits IPC-delivery failures from dock
-  // close failures.
+  // Asserting the exit event separately splits IPC-delivery failures from
+  // dock-close failures.
   await expect
     .poll(
       () =>
