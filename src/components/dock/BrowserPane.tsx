@@ -6,7 +6,10 @@ import { Webview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { registerCuaSurface } from "@/lib/cua-sandbox";
-import { useNativeWebviewOccluded } from "@/lib/native-webview-occlusion";
+import {
+  nativeWebviewOccludedBy,
+  subscribeToNativeWebviewOcclusion,
+} from "@/lib/native-webview-occlusion";
 import {
   BROWSER_SEARCH_ENGINES,
   useSettingsStore,
@@ -80,7 +83,6 @@ const NATIVE_CREATE_TIMEOUT_MS = 4_000;
 export function BrowserPane({ visible = true }: { visible?: boolean }) {
   const browserSearchEngine = useSettingsStore((state) => state.browserSearchEngine);
   const browserHomePage = useSettingsStore((state) => state.browserHomePage);
-  const nativeWebviewOccluded = useNativeWebviewOccluded();
   const [draft, setDraft] = useState("");
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -94,18 +96,24 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
   const webviewLabelRef = useRef<string | null>(null);
   const visibleRef = useRef(visible);
   const loadingRef = useRef(loading);
-  const occludedRef = useRef(nativeWebviewOccluded);
+  // Occlusion is geometry-driven: true only when an overlay actually covers the
+  // browser's on-screen rect (see recomputeOcclusion), not whenever any overlay
+  // is open.
+  const occludedRef = useRef(false);
   const urlRef = useRef(url);
-  const desiredVisibilityRef = useRef(
-    visible && !loading && !nativeWebviewOccluded,
-  );
+  const desiredVisibilityRef = useRef(visible && !loading);
   const visibilityRevisionRef = useRef(0);
   const visibilitySyncRunningRef = useRef(false);
   visibleRef.current = visible;
   loadingRef.current = loading;
-  occludedRef.current = nativeWebviewOccluded;
   urlRef.current = url;
-  desiredVisibilityRef.current = visible && !loading && !nativeWebviewOccluded;
+
+  const recomputeOcclusion = useCallback(() => {
+    const rect = placeholderRef.current?.getBoundingClientRect() ?? null;
+    occludedRef.current = nativeWebviewOccludedBy(rect);
+    desiredVisibilityRef.current =
+      visibleRef.current && !loadingRef.current && !occludedRef.current;
+  }, []);
 
   const setPageLoading = useCallback((next: boolean) => {
     loadingRef.current = next;
@@ -139,6 +147,11 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
 
   const syncNativeVisibility = useCallback(
     (requestedVisibility?: boolean) => {
+      if (requestedVisibility === undefined) {
+        // Re-evaluate overlap against the browser's current rect: a move or
+        // resize can change whether an open overlay actually covers it.
+        recomputeOcclusion();
+      }
       desiredVisibilityRef.current =
         requestedVisibility ??
         (visibleRef.current && !loadingRef.current && !occludedRef.current);
@@ -177,7 +190,7 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
         visibilitySyncRunningRef.current = false;
       })();
     },
-    [syncBounds],
+    [syncBounds, recomputeOcclusion],
   );
 
   const openUrl = useCallback(
@@ -372,8 +385,17 @@ export function BrowserPane({ visible = true }: { visible?: boolean }) {
   }, [browserHomePage, openUrl, visible]);
 
   useLayoutEffect(() => {
-    syncNativeVisibility(visible && !loading && !nativeWebviewOccluded);
-  }, [loading, nativeWebviewOccluded, syncNativeVisibility, visible]);
+    // Hidden while the dock is off or a page is loading; otherwise pass no
+    // explicit value so occlusion geometry (the browser's rect vs. open
+    // overlays) decides visibility.
+    syncNativeVisibility(visible && !loading ? undefined : false);
+  }, [loading, visible, syncNativeVisibility]);
+
+  // An overlay opening, closing, or moving can change whether it covers the
+  // browser, so re-evaluate visibility whenever the occluder set changes.
+  useEffect(() => {
+    return subscribeToNativeWebviewOcclusion(() => syncNativeVisibility());
+  }, [syncNativeVisibility]);
 
   const go = () => {
     const next = resolveNavigation(draft, browserSearchEngine);
