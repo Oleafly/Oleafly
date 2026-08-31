@@ -328,7 +328,7 @@ export function Library() {
         </Item>
         <Sub>
           <SubTrigger>
-            <Palette className="mr-2 size-4" /> Change book color
+            <Palette className="mr-2 size-4" /> Change project color
           </SubTrigger>
           <SubContent className="w-44">
             {BOOK_COLOR_OPTIONS.map((c) => {
