@@ -22,16 +22,17 @@ pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .item(&quit)
         .build()?;
 
-    // Custom Undo/Redo instead of the predefined items: the predefined ones
-    // bind Cmd/Ctrl+Z to the native responder chain, which does nothing for the
-    // CodeMirror editor, and they never reach `on_event`. These route to the
-    // frontend, which drives the editor's own history.
-    let undo = MenuItemBuilder::with_id("edit_undo", "Undo")
-        .accelerator("CmdOrCtrl+Z")
-        .build(handle)?;
-    let redo = MenuItemBuilder::with_id("edit_redo", "Redo")
-        .accelerator("CmdOrCtrl+Shift+Z")
-        .build(handle)?;
+    // Custom Undo/Redo instead of the predefined items, and deliberately with
+    // NO accelerator. The predefined items bind Cmd/Ctrl+Z to the native
+    // responder chain, which does nothing for the CodeMirror editor. Binding
+    // the accelerator here instead is not portable either: macOS consumes the
+    // key so the webview never sees it, but on Windows and Linux the menu and
+    // the webview can both receive it, double-undoing. So the keystroke is
+    // handled entirely in the webview (uniform on every platform) and these
+    // items exist only as clickable Edit-menu entries that route to the same
+    // editor history.
+    let undo = MenuItemBuilder::with_id("edit_undo", "Undo").build(handle)?;
+    let redo = MenuItemBuilder::with_id("edit_redo", "Redo").build(handle)?;
     let edit_menu = SubmenuBuilder::new(handle, "Edit")
         .item(&undo)
         .item(&redo)

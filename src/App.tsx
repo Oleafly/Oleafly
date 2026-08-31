@@ -663,31 +663,53 @@ function AppContent() {
     return () => window.removeEventListener("keydown", onKey, true);
   }, []);
 
-  // Undo/redo arrive as menu events, not window keystrokes: the native Edit
-  // menu owns Cmd/Ctrl+Z, so the keydown never reaches the webview. Route by
-  // focus so a plain field (title, search, chat) keeps its own undo while the
-  // editor, its toolbar, and anywhere else drive the document's history.
+  // Undo/redo is handled in the webview on every platform. The Edit menu's
+  // Undo/Redo carry no accelerator (that would double-fire on Windows/Linux,
+  // where the menu and the webview can both receive the key), so the keystroke
+  // reaches this handler uniformly. Route by focus: a plain field (title,
+  // search, chat) keeps its own native undo; the editor, its toolbar, and
+  // anywhere else drive the document's history. The menu items still work as
+  // clicks, routed through the same logic.
   useEffect(() => {
-    if (!isTauri()) return;
-    const run = (redo: boolean) => {
+    const inPlainField = (active: HTMLElement | null): boolean => {
+      if (!active) return false;
+      if (active.closest(".cm-editor") || active.closest(".ProseMirror")) return false;
+      const tag = active.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      const isUndo = key === "z" && !e.shiftKey;
+      const isRedo = (key === "z" && e.shiftKey) || key === "y";
+      if (!isUndo && !isRedo) return;
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      if (useTourStore.getState().activeTourId) return;
       if (!useFilesStore.getState().projectId) return;
       const active = document.activeElement as HTMLElement | null;
-      const inEditor = !!(active?.closest(".cm-editor") || active?.closest(".ProseMirror"));
-      if (!inEditor && active) {
-        const tag = active.tagName;
-        if (tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable) {
-          document.execCommand(redo ? "redo" : "undo");
-          return;
-        }
+      if (inPlainField(active)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (isRedo) editorRedo();
+      else editorUndo();
+    };
+    window.addEventListener("keydown", onKey, true);
+
+    const menuRun = (redo: boolean) => {
+      if (!useFilesStore.getState().projectId) return;
+      const active = document.activeElement as HTMLElement | null;
+      if (inPlainField(active)) {
+        document.execCommand(redo ? "redo" : "undo");
+        return;
       }
       if (redo) editorRedo();
       else editorUndo();
     };
-    const unlisten = [
-      listen("menu://undo", () => run(false)),
-      listen("menu://redo", () => run(true)),
-    ];
+    const unlisten: Promise<() => void>[] = isTauri()
+      ? [listen("menu://undo", () => menuRun(false)), listen("menu://redo", () => menuRun(true))]
+      : [];
+
     return () => {
+      window.removeEventListener("keydown", onKey, true);
       void Promise.all(unlisten).then((fns) => {
         for (const fn of fns) fn();
       });
