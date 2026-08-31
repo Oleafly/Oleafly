@@ -48,9 +48,6 @@ mod secrets;
 mod skills;
 mod state;
 mod storage;
-// Infrastructure for Phase 3 sidecar adoption; not all call sites exist yet.
-#[allow(dead_code)]
-mod supervisor;
 mod synctex;
 mod template_packs;
 mod templates;
