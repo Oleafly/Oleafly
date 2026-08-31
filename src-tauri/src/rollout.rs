@@ -1,5 +1,5 @@
 use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 use oleafly_agent::items::TurnRecord;
@@ -35,9 +35,51 @@ pub fn rollout_path(sessions_root: &Path, thread_id: &str) -> Result<PathBuf, St
     ))
 }
 
+/// Truncate a torn trailing line (a crash mid-append leaves bytes with no
+/// closing newline) back to the last complete record. The reader tolerates a
+/// torn final line, but a blind append would fuse the new record onto the
+/// fragment, turning a skippable tail into permanent mid-file corruption.
+fn heal_torn_tail(path: &Path) -> Result<(), String> {
+    let mut file = match OpenOptions::new().read(true).write(true).open(path) {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error.to_string()),
+    };
+    let len = file.metadata().map_err(|e| e.to_string())?.len();
+    if len == 0 {
+        return Ok(());
+    }
+    let mut position = len;
+    let mut chunk = [0u8; 8192];
+    let mut last_newline: Option<u64> = None;
+    while position > 0 {
+        let read_len = position.min(chunk.len() as u64);
+        let start = position - read_len;
+        file.seek(SeekFrom::Start(start))
+            .map_err(|e| e.to_string())?;
+        let slice = &mut chunk[..read_len as usize];
+        file.read_exact(slice).map_err(|e| e.to_string())?;
+        if let Some(offset) = slice.iter().rposition(|byte| *byte == b'\n') {
+            last_newline = Some(start + offset as u64);
+            break;
+        }
+        position = start;
+    }
+    // A complete file ends in '\n'; nothing to heal.
+    if last_newline == Some(len - 1) {
+        return Ok(());
+    }
+    // Truncate to just after the last complete record (or to empty when no
+    // record ever completed).
+    let keep = last_newline.map_or(0, |offset| offset + 1);
+    file.set_len(keep).map_err(|e| e.to_string())?;
+    file.flush().map_err(|e| e.to_string())
+}
+
 /// Append one completed turn to the thread's rollout, creating the file on
 /// first write. Writes are a single `write_all` of one line so a crash
-/// mid-write at worst corrupts the trailing line, which the reader skips.
+/// mid-write at worst corrupts the trailing line, which the reader skips and
+/// the next append heals before writing.
 pub fn append_turn(
     sessions_root: &Path,
     thread_id: &str,
@@ -47,6 +89,7 @@ pub fn append_turn(
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
+    heal_torn_tail(&path)?;
     let mut line = serde_json::to_string(record).map_err(|e| e.to_string())?;
     line.push('\n');
     let mut file = OpenOptions::new()
@@ -406,6 +449,43 @@ mod tests {
         lines = "{\"corrupt\": true}\n".to_string() + &lines;
         fs::write(&path, lines).unwrap();
         assert!(read_turns(&root, "t2").is_err());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn appending_after_a_torn_write_heals_the_tail_and_keeps_replay_valid() {
+        let root = temp_root();
+        append_turn(&root, "t-heal", &record("turn-1", "first")).unwrap();
+        let path = rollout_path(&root, "t-heal").unwrap();
+        // Simulate a crash mid-append: a fragment with no closing newline.
+        let mut file = OpenOptions::new().append(true).open(&path).unwrap();
+        file.write_all(b"{\"turnId\":\"torn").unwrap();
+        drop(file);
+
+        // The next append must heal the fragment rather than fuse onto it.
+        append_turn(&root, "t-heal", &record("turn-2", "second")).unwrap();
+        // A further append proves the healed line did not become permanent
+        // mid-file corruption.
+        append_turn(&root, "t-heal", &record("turn-3", "third")).unwrap();
+
+        let turns = read_turns(&root, "t-heal").unwrap();
+        let ids: Vec<&str> = turns.iter().map(|t| t.turn_id.as_str()).collect();
+        assert_eq!(ids, ["turn-1", "turn-2", "turn-3"]);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn healing_a_fully_torn_file_starts_a_clean_rollout() {
+        let root = temp_root();
+        let path = rollout_path(&root, "t-allbad").unwrap();
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        // A file that never completed a single record (no newline at all).
+        fs::write(&path, b"{\"turnId\":\"never-closed").unwrap();
+
+        append_turn(&root, "t-allbad", &record("turn-1", "first")).unwrap();
+        let turns = read_turns(&root, "t-allbad").unwrap();
+        assert_eq!(turns.len(), 1);
+        assert_eq!(turns[0].turn_id, "turn-1");
         let _ = fs::remove_dir_all(&root);
     }
 
