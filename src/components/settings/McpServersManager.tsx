@@ -785,43 +785,41 @@ export function McpServersManager() {
 
   return (
     <section className="space-y-3" aria-labelledby="assistant-mcp-servers-heading">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h3 id="assistant-mcp-servers-heading" className="text-sm font-medium">
-            Assistant MCP servers
-          </h3>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Connect the AI Assistant to local commands or remote MCP endpoints. Oleafly checks each
-            enabled server when this page opens, every minute, and on demand. It also shows the tools
-            each server provides.
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={loading || loadError !== null}
-            onClick={() => {
-              setImportSummary(null);
-              setImportOpen(true);
-            }}
-          >
-            <Download aria-hidden />
-            Import from...
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => {
-              setEditorError(null);
-              setEditor({ mode: "add", originalName: null, config: emptyStdioConfig() });
-            }}
-          >
-            <Plus aria-hidden />
-            Add server
-          </Button>
-        </div>
+      <div>
+        <h3 id="assistant-mcp-servers-heading" className="text-sm font-medium">
+          Assistant MCP servers
+        </h3>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Connect the AI Assistant to local commands or remote MCP endpoints. Oleafly checks each
+          enabled server when this page opens, every minute, and on demand. It also shows the tools
+          each server provides.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={loading || loadError !== null}
+          onClick={() => {
+            setImportSummary(null);
+            setImportOpen(true);
+          }}
+        >
+          <Download aria-hidden />
+          Import from...
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => {
+            setEditorError(null);
+            setEditor({ mode: "add", originalName: null, config: emptyStdioConfig() });
+          }}
+        >
+          <Plus aria-hidden />
+          Add server
+        </Button>
       </div>
 
       {importSummary ? (
