@@ -4262,7 +4262,7 @@ async fn download_pandoc_impl(
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&staging, std::fs::Permissions::from_mode(0o755))
+        std::fs::set_permissions(&staging, std::fs::Permissions::from_mode(0o700))
             .map_err(|e| e.to_string())?;
     }
     // Windows' FlushFileBuffers rejects read-only handles with "Access is

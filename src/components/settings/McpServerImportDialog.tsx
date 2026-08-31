@@ -57,7 +57,9 @@ function transportSummary(server: McpImportedServer) {
 }
 
 function connectionKeys(server: McpImportedServer) {
-  const keys = Object.keys(server.transport === "stdio" ? server.env : server.headers).sort();
+  const keys = Object.keys(server.transport === "stdio" ? server.env : server.headers).sort(
+    (a, b) => a.localeCompare(b),
+  );
   if (keys.length === 0) return null;
   return `${server.transport === "stdio" ? "Environment" : "Headers"}: ${keys.join(", ")}`;
 }

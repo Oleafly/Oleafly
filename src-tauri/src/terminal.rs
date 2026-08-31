@@ -462,7 +462,7 @@ mod tests {
                 b"#!/bin/sh\nIFS= read -r input\nprintf '%s' \"$input\" > terminal-input.txt\nsleep 10\n",
             )
             .unwrap();
-            std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+            std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o700)).unwrap();
             CommandBuilder::new(shell)
         };
         #[cfg(windows)]
@@ -672,7 +672,7 @@ mod tests {
             b"#!/bin/sh\nIFS= read -r input\nprintf '%s' \"$input\" > terminal-input.txt\nsleep 10\n",
         )
         .unwrap();
-        std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o700)).unwrap();
         let owner = command_owner("main", "proj").unwrap();
         let session_id = open_terminal(
             &project,
@@ -717,7 +717,7 @@ mod tests {
             b"#!/bin/sh\ntrap '' HUP\nprintf '%s\\n' \"$$\" > terminal.pid\nprintf ready\nread ignored\n",
         )
         .unwrap();
-        std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o700)).unwrap();
         let channel_entered = Arc::new(Barrier::new(2));
         let close_channel = Arc::new(Barrier::new(2));
         let send_attempts = Arc::new(AtomicUsize::new(0));
@@ -797,7 +797,7 @@ mod tests {
             b"#!/bin/sh\ntrap '' HUP TERM\n( trap '' HUP TERM; sleep 0.35; touch descendant-marker ) &\nprintf '%s\\n' \"$!\" > descendant.pid\nsleep 10\n",
         )
         .unwrap();
-        std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o700)).unwrap();
         let channel = Channel::new(|_| Ok(()));
         let owner = SessionOwner::new("main", "proj");
         let session_id = open_terminal(

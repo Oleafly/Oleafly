@@ -98,7 +98,7 @@ test("Enter during a stream queues messages that can be steered, discarded, and 
   );
   await waitLong(
     tauriPage,
-    `[...document.querySelectorAll('[data-message-role="user"]')].some((element) => element.textContent?.includes(${JSON.stringify(autoSendText)}))`,
+    `[...document.querySelectorAll('[data-message-role="user"]')].some((element) => element.textContent?.includes(${JSON.stringify(autoSendText).replace(/</g, "\\u003c")}))`,
     10_000,
   );
   await expect(

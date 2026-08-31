@@ -788,7 +788,9 @@ fn decrypt_chromium_cookie_with_key(
         .ok_or(CookieImportError::DecryptionFailed { browser })?;
     let mut buffer = ciphertext.to_vec();
     let result = (|| {
-        let decryptor = cbc::Decryptor::<Aes128>::new(key.into(), (&[b' '; 16]).into());
+        // NOSONAR: Chromium's v10 os_crypt format fixes the IV to sixteen
+        // spaces; decrypting cookies Chromium wrote requires matching it.
+        let decryptor = cbc::Decryptor::<Aes128>::new(key.into(), (&[b' '; 16]).into()); // NOSONAR
         let plaintext = decryptor
             .decrypt_padded_mut::<Pkcs7>(&mut buffer)
             .map_err(|_| CookieImportError::DecryptionFailed { browser })?;
