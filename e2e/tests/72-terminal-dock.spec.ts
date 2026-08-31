@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openProject, pressGlobal, type Page } from "../helpers";
+import { openProject, openRailTab, pressGlobal, type Page } from "../helpers";
 
 const TERMINAL = '[data-testid="dock-terminal"]';
 const TERMINAL_HOST = '[data-testid="dock-terminal-host"]';
@@ -81,6 +81,7 @@ test("project docks start closed and their toggles live in the top toolbar", asy
   await expect(tauriPage.locator(TERMINAL_TOGGLE)).toBeVisible();
   await expect(tauriPage.locator(BROWSER_TOGGLE)).toBeVisible();
 
+  await openRailTab(tauriPage, "Source Control");
   await expect(
     tauriPage.locator('[data-tour="project-sidebar"] [aria-label="Source Control"]'),
   ).toBeVisible();

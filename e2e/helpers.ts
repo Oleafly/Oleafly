@@ -1160,6 +1160,16 @@ export async function openOleaflyMcpSettings(page: Page) {
   await openSettings(page, "integrations");
   const tab = page.getByTestId("integrations-tab-oleafly-mcp");
   await tab.click();
+  // A synthetic click can lose the Radix activation race right after the
+  // section mounts; keyboard activation on the focused trigger is the
+  // deterministic fallback.
+  const selected = await page.evaluate<boolean>(
+    `document.querySelector('[data-testid="integrations-tab-oleafly-mcp"]')?.getAttribute("aria-selected") === "true"`,
+  );
+  if (!selected) {
+    await page.focus('[data-testid="integrations-tab-oleafly-mcp"]');
+    await page.press('[data-testid="integrations-tab-oleafly-mcp"]', "Enter");
+  }
   await expect(tab).toHaveAttribute("aria-selected", "true");
   await expect(page.getByTestId("oleafly-mcp-server")).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('[data-testid="mcp-enable-toggle"]')).toBeVisible({

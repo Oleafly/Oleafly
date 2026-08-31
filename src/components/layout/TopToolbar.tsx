@@ -86,9 +86,9 @@ export const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: typeof
 ];
 
 const VIEW_OPTIONS: { mode: ViewMode; label: string; icon: typeof Columns2 }[] = [
-  { mode: "editor", label: "Editor only", icon: SquarePen },
-  { mode: "split", label: "Editor and preview", icon: Columns2 },
-  { mode: "pdf", label: "Preview only", icon: FileText },
+  { mode: "editor", label: "Source View", icon: SquarePen },
+  { mode: "split", label: "Split View", icon: Columns2 },
+  { mode: "pdf", label: "PDF View", icon: FileText },
 ];
 
 function activeLayoutPreset(
