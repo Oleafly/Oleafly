@@ -102,11 +102,13 @@ export function SidebarViews() {
 export function SidebarCollapseToggle() {
   const showTree = useSettingsStore((s) => s.showTree);
   const toggleTree = useSettingsStore((s) => s.toggleTree);
+  const shortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleSidebar));
+  const label = `${showTree ? "Hide" : "Show"} sidebar (${shortcut})`;
   return (
-    <Tooltip label={showTree ? "Hide sidebar" : "Show sidebar"} side="bottom">
+    <Tooltip label={label} side="bottom">
       <button
         type="button"
-        aria-label={showTree ? "Hide sidebar" : "Show sidebar"}
+        aria-label={label}
         onClick={toggleTree}
         className={ctrlBtn(false)}
       >

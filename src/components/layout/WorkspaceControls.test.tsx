@@ -48,7 +48,7 @@ describe("WorkspaceControls", () => {
         <SidebarCollapseToggle />
       </ThemeProvider>,
     );
-    fireEvent.click(screen.getByLabelText("Hide sidebar"));
+    fireEvent.click(screen.getByLabelText(/Hide sidebar/));
     expect(useSettingsStore.getState().showTree).toBe(false);
   });
 
