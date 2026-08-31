@@ -76,12 +76,8 @@ export function SidebarViews() {
   }, [mcpEnabled, railTab, setRailTab]);
 
   const select = (tab: RailTab) => {
-    if (tab === railTab && showTree) {
-      toggleTree();
-    } else {
-      setRailTab(tab);
-      if (!showTree) toggleTree();
-    }
+    setRailTab(tab);
+    if (!showTree) toggleTree();
   };
 
   const ctx: AppContext = { projectId, projectKind, theme, mcpEnabled };
@@ -96,7 +92,7 @@ export function SidebarViews() {
             <ViewButton
               key={tab.id}
               tab={tab}
-              active={railTab === tab.id && showTree}
+              active={railTab === tab.id}
               onSelect={() => select(tab.id as RailTab)}
             />
           ))}

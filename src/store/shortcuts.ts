@@ -7,7 +7,8 @@ export type ShortcutId =
   | "forwardSync"
   | "shortcutReference"
   | "toggleTerminal"
-  | "toggleBrowser";
+  | "toggleBrowser"
+  | "toggleSidebar";
 
 export interface ShortcutBinding {
   key: string;
@@ -74,6 +75,13 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     description: "Show or hide the project browser.",
     category: "Navigation",
     defaultBinding: { key: "b", ctrl: true, shift: true },
+  },
+  {
+    id: "toggleSidebar",
+    label: "Toggle sidebar",
+    description: "Show or hide the project sidebar.",
+    category: "Navigation",
+    defaultBinding: { key: "b", mod: true },
   },
 ];
 

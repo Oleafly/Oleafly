@@ -63,14 +63,15 @@ describe("WorkspaceControls", () => {
     expect(useSettingsStore.getState().showTree).toBe(true);
   });
 
-  it("collapses the sidebar when the active view is clicked again", () => {
+  it("keeps the sidebar open when the active view is clicked again", () => {
     render(
       <ThemeProvider>
         <SidebarViews />
       </ThemeProvider>,
     );
     fireEvent.click(screen.getByLabelText("Source Tree"));
-    expect(useSettingsStore.getState().showTree).toBe(false);
+    expect(useSettingsStore.getState().railTab).toBe("files");
+    expect(useSettingsStore.getState().showTree).toBe(true);
   });
 
   it("toggles the terminal, browser, and assistant docks and exposes theme and settings", () => {

@@ -34,7 +34,6 @@ import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { CompileControls } from "@/components/layout/CompileControls";
 import {
   SidebarCollapseToggle,
-  SidebarViews,
   WorkspaceDockControls,
 } from "@/components/layout/WorkspaceControls";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
@@ -358,11 +357,8 @@ export function TopToolbar() {
 
       <div data-tauri-drag-region className="ml-auto flex items-center justify-end gap-1.5">
 
-        <CompileControls />
-
         {!hideEditorArea && projectId && (
           <>
-            <Divider />
             <div className="flex items-center rounded-md border border-border bg-muted/40 p-0.5">
               {VIEW_OPTIONS.map(({ mode, label, icon: Icon }) => {
                 const active = viewMode === mode;
@@ -386,14 +382,13 @@ export function TopToolbar() {
                 );
               })}
             </div>
+            <Divider />
           </>
         )}
 
+        <CompileControls />
+
         {engineError && <span className="max-w-48 truncate text-xs text-destructive" title={engineError}>{engineError}</span>}
-
-        <Divider />
-
-        {!hideEditorArea && projectId && <SidebarViews />}
 
         <Divider />
 

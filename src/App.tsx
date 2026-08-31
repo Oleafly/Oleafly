@@ -649,6 +649,20 @@ function AppContent() {
   }, [recompile]);
 
   useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (useTourStore.getState().activeTourId) return;
+      if (!useFilesStore.getState().projectId) return;
+      if (matchesShortcut(e, useShortcutStore.getState().bindings.toggleSidebar)) {
+        e.preventDefault();
+        e.stopPropagation();
+        useSettingsStore.getState().toggleTree();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
+  useEffect(() => {
     if (!projectId || usesNativeDockMenu()) return;
     const onKey = (event: KeyboardEvent) => {
       if (useTourStore.getState().activeTourId) return;
