@@ -707,6 +707,13 @@
 @layer base {
   * {
     border-color: var(--border);
+  }
+  /* Only focusable elements ever paint an outline, so scope the (relatively
+     expensive) oklch color-mix to :focus-visible instead of every element.
+     On the universal selector it forced a color-mix recomputation for every
+     node in the DOM whenever --ring changed, which made a theme toggle take
+     ~1s on a chat full of KaTeX (tens of thousands of spans). */
+  :focus-visible {
     outline-color: color-mix(in oklch, var(--ring) 50%, transparent);
   }
   html,
