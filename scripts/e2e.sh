@@ -254,7 +254,7 @@ fi
 # tours key. Argument: the spec path about to run ("" for non-spec runs).
 boot_seed_for() {
   local spec="${1:-}"
-  local flags='"oleafly.shortcuts":null,"oleafly.visualEditor":"1","oleafly.latexTools":"1"'
+  local flags='"oleafly.shortcuts":null,"oleafly.visualEditor":"1","oleafly.latexTools":"1","oleafly.webBrowser":"1","oleafly.openInTree":"0"'
   case "$spec" in
     *00-tours*) printf '{%s}' "$flags" ;;
     *) printf '{%s,"oleafly.tours":"{\\"state\\":{\\"schemaVersion\\":1,\\"enabled\\":false,\\"tours\\":{}},\\"version\\":1}"}' "$flags" ;;
