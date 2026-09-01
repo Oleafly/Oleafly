@@ -1,8 +1,8 @@
 /// Floor for the adaptive debounce: fast enough that a light document feels
 /// live, slow enough that a burst of keystrokes still coalesces into one build.
 export const AUTO_COMPILE_MIN_DEBOUNCE_MS = 400;
-/// Ceiling for the adaptive debounce, and the wait used for a document whose
-/// cost is not known yet. A heavy document is never debounced longer than this.
+/// Ceiling for the adaptive debounce. A heavy document is never debounced
+/// longer than this; a document with no measured cost yet waits the floor.
 export const AUTO_COMPILE_MAX_DEBOUNCE_MS = 2500;
 export const AUTO_COMPILE_RETRY_MS = 150;
 
