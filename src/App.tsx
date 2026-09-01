@@ -283,7 +283,6 @@ function AppContent() {
   const editorPanelRef = useRef<ImperativePanelHandle>(null);
   const pdfPanelRef = useRef<ImperativePanelHandle>(null);
   const terminalPanelRef = useRef<ImperativePanelHandle>(null);
-  const previousShowTreeRef = useRef(showTree);
 
   useLayoutEffect(() => {
     if (projectId) closeDocks();
@@ -334,13 +333,16 @@ function AppContent() {
   const workspacePanelDefaultSize =
     viewMode === "split" ? 50 : 100;
 
-  useEffect(() => {
-    const wasOpen = previousShowTreeRef.current;
-    previousShowTreeRef.current = showTree;
-    if (showTree && !wasOpen) {
-      window.requestAnimationFrame(() => sidebarPanelRef.current?.resize(sidebarDefaultSize));
+  useLayoutEffect(() => {
+    if (!projectId) return;
+    const panel = sidebarPanelRef.current;
+    if (!panel) return;
+    if (showTree) {
+      if (panel.isCollapsed()) panel.expand(sidebarDefaultSize);
+    } else if (panel.isExpanded()) {
+      panel.collapse();
     }
-  }, [showTree, sidebarDefaultSize]);
+  }, [showTree, projectId, sidebarDefaultSize]);
 
   useEffect(() => {
     // React owns the screen from here: retire the inline HTML splash and
@@ -827,29 +829,36 @@ function AppContent() {
                 className="min-h-0 min-w-0"
               >
                 <PanelGroup direction="horizontal" className="h-full min-h-0 min-w-0">
-              {showTree && (
-                <Fragment key="sidebar">
-                  <Panel
-                    ref={sidebarPanelRef}
-                    id="sidebar"
-                    order={1}
-                    defaultSize={sidebarDefaultSize}
-                    minSize={sidebarMinSize}
-                    maxSize={65}
-                    collapsible
-                    collapsedSize={0}
-                    onCollapse={() => {
-                      if (useSettingsStore.getState().showTree) {
-                        useSettingsStore.getState().toggleTree();
-                      }
-                    }}
-                    className="bg-sidebar"
+              <Fragment key="sidebar">
+                <Panel
+                  ref={sidebarPanelRef}
+                  id="sidebar"
+                  order={1}
+                  defaultSize={showTree ? sidebarDefaultSize : 0}
+                  minSize={sidebarMinSize}
+                  maxSize={65}
+                  collapsible
+                  collapsedSize={0}
+                  onCollapse={() => {
+                    if (useSettingsStore.getState().showTree) {
+                      useSettingsStore.getState().setShowTree(false);
+                    }
+                  }}
+                  className="bg-sidebar"
+                >
+                  <div
+                    className={cn(
+                      "h-full min-h-0 min-w-0",
+                      !showTree && "invisible pointer-events-none",
+                    )}
                   >
                     <Sidebar />
-                  </Panel>
+                  </div>
+                </Panel>
+                <div className={cn("flex shrink-0", !showTree && "hidden")}>
                   <VHandle id="h-tree" />
-                </Fragment>
-              )}
+                </div>
+              </Fragment>
 
               {!workspaceHidden && (
               <Panel
