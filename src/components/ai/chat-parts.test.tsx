@@ -229,6 +229,101 @@ describe("ExecCard run_command contract", () => {
 
     expect(getByText("one test failed")).toBeInTheDocument();
   });
+
+  it("renders a declined command as a terminal declined state, not a spinner", () => {
+    const { container, getByText } = render(
+      <ExecCard
+        tc={{
+          name: "run_command",
+          status: "done",
+          output: JSON.stringify({
+            declined: true,
+            status: "declined",
+            tool: "run_command",
+            command: "rm -rf build",
+          }),
+        }}
+      />,
+    );
+    const card = container.querySelector('[data-testid="exec-card"]');
+    expect(card).toHaveAttribute("data-exec-status", "declined");
+    expect(getByText("$ rm -rf build")).toBeInTheDocument();
+    expect(getByText("Declined")).toBeInTheDocument();
+    expect(card?.querySelector(".animate-spin")).toBeNull();
+    expect(card?.querySelector(".text-destructive")).not.toBeNull();
+  });
+
+  it("renders a caught error as a terminal error state, not a spinner", () => {
+    const { container, getByText } = render(
+      <ExecCard
+        tc={{
+          name: "run_command",
+          status: "done",
+          output: JSON.stringify({ error: "Project changed before mutation." }),
+        }}
+      />,
+    );
+    const card = container.querySelector('[data-testid="exec-card"]');
+    expect(card).toHaveAttribute("data-exec-status", "error");
+    expect(getByText("Project changed before mutation.")).toBeInTheDocument();
+    expect(card?.querySelector(".animate-spin")).toBeNull();
+  });
+
+  it("treats a timed-out command as a failure", () => {
+    const { container, getByText } = render(
+      <ExecCard
+        tc={{
+          name: "run_command",
+          status: "done",
+          output: JSON.stringify({
+            exec: true,
+            command: "sleep 999",
+            output: "",
+            status: "Timed out",
+            exit_code: null,
+            timed_out: true,
+          }),
+        }}
+      />,
+    );
+    const card = container.querySelector('[data-testid="exec-card"]');
+    expect(card).toHaveAttribute("data-exec-status", "Timed out");
+    expect(getByText("Timed out")).toBeInTheDocument();
+    expect(card?.querySelector(".animate-spin")).toBeNull();
+    expect(card?.querySelector(".text-destructive")).not.toBeNull();
+  });
+
+  it("treats a stopped command (null exit) as a failure, not a green check", () => {
+    const { container, getByText } = render(
+      <ExecCard
+        tc={{
+          name: "run_command",
+          status: "done",
+          output: JSON.stringify({
+            exec: true,
+            command: "pnpm dev",
+            output: "partial output",
+            status: "Stopped",
+            exit_code: null,
+          }),
+        }}
+      />,
+    );
+    const card = container.querySelector('[data-testid="exec-card"]');
+    expect(card).toHaveAttribute("data-exec-status", "Stopped");
+    expect(getByText("Stopped")).toBeInTheDocument();
+    expect(card?.querySelector(".text-destructive")).not.toBeNull();
+    expect(card?.querySelector(".text-emerald-500")).toBeNull();
+  });
+
+  it("still spins while the call is running and its envelope is not yet parseable", () => {
+    const { container } = render(
+      <ExecCard tc={{ name: "run_command", status: "running", output: "" }} />,
+    );
+    const card = container.querySelector('[data-testid="exec-card"]');
+    expect(card).toHaveAttribute("data-exec-status", "running");
+    expect(card?.querySelector(".animate-spin")).not.toBeNull();
+  });
 });
 
 describe("MessageItem step grouping", () => {

@@ -156,12 +156,18 @@ export async function runCuaAction(
       };
     }
     case "read":
-    case "screenshot":
+    case "screenshot": {
+      // Reading or capturing needs a scriptable document. A non-scriptable
+      // surface (the separate browser window) cannot honor these, so report
+      // failure rather than a success with an empty observation.
+      const doc = surfaceDocument(surface);
+      if (!doc) return unavailable(surface);
       return {
         ok: true,
         message: action.type === "read" ? "Read the page" : "Captured the page",
         observation: observe(surface),
       };
+    }
     case "scroll": {
       const doc = surfaceDocument(surface);
       if (!doc) return unavailable(surface);

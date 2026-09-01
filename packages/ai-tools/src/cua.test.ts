@@ -101,8 +101,8 @@ describe("runCuaAction", () => {
   });
 
   it.each([
-    ["read", true],
-    ["screenshot", true],
+    ["read", false],
+    ["screenshot", false],
     ["scroll", false],
     ["click", false],
     ["type", false],

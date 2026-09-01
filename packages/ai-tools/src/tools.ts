@@ -1048,7 +1048,7 @@ export function createOleaflyTools(
         if (!command) return { error: "command is required" };
         const projectId = pid();
         if (!projectId) return { error: "No project open" };
-        if (!confirm) return declined("run_command");
+        if (!confirm) return { ...declined("run_command"), command };
         try {
           const cwd = await resolveExecCwd(projectId);
           assertMutationAllowed(projectId);
@@ -1059,7 +1059,7 @@ export function createOleaflyTools(
             command,
             cwd,
           }))) {
-            return declined("run_command");
+            return { ...declined("run_command"), command };
           }
           assertMutationAllowed(projectId);
           const authorization = await authorizeExec(projectId, command);
@@ -1086,27 +1086,17 @@ export function createOleaflyTools(
     const getSurface = opts.cuaSurface;
     tools.computer_use = {
       description: opts.alwaysConfirmComputerUse
-        ? "Operate the local harness browser. Every action requires explicit user approval for external connections."
-        : "Operate the harness browser as a computer-use agent: navigate, read, screenshot, scroll, click, type, submit, or wait. Read-only actions run immediately. Other actions follow the active approval policy. The agent stays inside the local sandbox and never touches your real desktop.",
+        ? "Drive the browser window: navigate to a URL, or wait for a page to load. It opens as a separate OS window whose page content cannot be read or scripted. Every navigation requires explicit user approval for external connections."
+        : "Drive the browser window as a computer-use agent. It opens as a separate OS window, so the only supported actions are navigate (open a URL) and wait (pause while a page loads); the page's content cannot be read, captured, or clicked from here. navigate reports the resulting URL and follows the active approval policy.",
       inputSchema: {
         type: "object",
         properties: {
           action: {
             type: "string",
-            enum: [
-              "navigate",
-              "read",
-              "screenshot",
-              "scroll",
-              "click",
-              "type",
-              "submit",
-              "wait",
-            ],
+            enum: ["navigate", "wait"],
           },
-          selector: { type: "string", description: "CSS selector for click/type/submit" },
-          text: { type: "string", description: "text to type, or URL to navigate to" },
-          amount: { type: "number", description: "scroll pixels or wait milliseconds" },
+          text: { type: "string", description: "URL to navigate to" },
+          amount: { type: "number", description: "wait milliseconds" },
         },
         required: ["action"],
         additionalProperties: false,
@@ -1114,7 +1104,7 @@ export function createOleaflyTools(
       execute: async (input) => {
         const surface = getSurface();
         if (!surface) {
-          return { error: "Open the harness browser panel before using computer_use." };
+          return { error: "The browser window is unavailable; enable the web browser to use computer_use." };
         }
         const action = {
           type: input.action as CuaActionType,

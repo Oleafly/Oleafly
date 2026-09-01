@@ -112,7 +112,7 @@ interface ChatsState {
       estimatedUsd?: number;
     },
   ) => Promise<void>;
-  remove: (chatId: string) => void;
+  remove: (chatId: string, opts?: { deleteThread?: boolean }) => void;
   setThreadId: (chatId: string, threadId: string) => void;
   setActive: (chatId: string | null) => void;
   byId: (chatId: string) => StoredChat | undefined;
@@ -412,7 +412,7 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
     }
   },
 
-  remove: (chatId) => {
+  remove: (chatId, opts) => {
     const { projectId, activeId } = get();
     if (!projectId) return;
     const chats = memoryByProject.get(projectId) ?? get().chats;
@@ -427,7 +427,8 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
     // covers a chat deleted within the same session before it persisted.
     const threadId =
       removed?.threadId ?? useAgentTurnsStore.getState().threadByChat[chatId];
-    if (threadId) void agentThreadDelete(threadId).catch(() => {});
+    if ((opts?.deleteThread ?? true) && threadId)
+      void agentThreadDelete(threadId).catch(() => {});
     useAgentTurnsStore.getState().dropChat(chatId);
   },
 

@@ -299,54 +299,110 @@ export function explorationSummary(tools: ToolEntry[]): string {
   return parts.length === 0 ? "Explored" : `Explored ${parts.join(", ")}`;
 }
 
-function parseExec(output?: string): {
-  command: string;
-  body: string;
-  status: string;
-  exitCode: number | null;
-} | null {
-  if (!output) return null;
+// The terminal result of a run_command tool call, derived from both the
+// entry status and the envelope. A finished call whose envelope is a decline
+// or an error must resolve to a terminal state, never a perpetual spinner.
+type ExecView =
+  | {
+      kind: "exec";
+      command: string;
+      body: string;
+      status: string;
+      exitCode: number | null;
+      timedOut: boolean;
+    }
+  | { kind: "declined"; command: string }
+  | { kind: "error"; message: string }
+  | { kind: "pending" };
+
+function parseExecView(
+  output: string | undefined,
+  entryStatus: ToolEntry["status"],
+): ExecView {
+  const settled = entryStatus !== "running";
+  if (!output) {
+    return settled ? { kind: "error", message: "No result was returned." } : { kind: "pending" };
+  }
+  let parsed: {
+    exec?: boolean;
+    command?: string;
+    output?: string;
+    status?: string;
+    exit_code?: number | null;
+    timed_out?: boolean;
+    declined?: boolean;
+    error?: unknown;
+  };
   try {
-    const parsed = JSON.parse(output) as {
-      exec?: boolean;
-      command?: string;
-      output?: string;
-      status?: string;
-      exit_code?: number | null;
-    };
-    if (!parsed.exec || typeof parsed.command !== "string") return null;
+    parsed = JSON.parse(output);
+  } catch {
+    // A partial envelope mid-stream is still pending; a finished call whose
+    // output will not parse is a genuine error worth surfacing.
+    return settled ? { kind: "error", message: output.slice(0, 300) } : { kind: "pending" };
+  }
+  if (parsed.exec && typeof parsed.command === "string") {
     return {
+      kind: "exec",
       command: parsed.command,
       body: parsed.output ?? "",
-      status: parsed.status ?? "Running",
+      status: parsed.status ?? (settled ? "Done" : "Running"),
       exitCode: parsed.exit_code ?? null,
+      timedOut: Boolean(parsed.timed_out),
     };
-  } catch {
-    return null;
   }
+  if (parsed.declined) {
+    return { kind: "declined", command: typeof parsed.command === "string" ? parsed.command : "" };
+  }
+  if (parsed.error != null) return { kind: "error", message: String(parsed.error) };
+  return settled
+    ? { kind: "error", message: "The command returned an unrecognized result." }
+    : { kind: "pending" };
 }
 
 // Command card for run_command results: `$ command`, aggregated output, and a
-// status pill (Success / Failed with exit code N / Stopped), per the reference
-// exec item.
+// status pill (Success / Failed with exit code N / Stopped / Declined / an
+// error), per the reference exec item.
 export function ExecCard({ tc }: { tc: ToolEntry }) {
   const [expanded, setExpanded] = useState(false);
-  const exec = parseExec(tc.output);
-  const running = tc.status === "running" || !exec;
-  const failed = exec ? exec.exitCode !== 0 && exec.exitCode !== null : false;
-  const command = exec?.command ?? "";
+  const view = parseExecView(tc.output, tc.status);
+  const running = view.kind === "pending";
+  // A finished command succeeds only on a clean exit code 0. A null exit
+  // (stopped or killed) or a timeout is a failure, not a green check.
+  const failed =
+    view.kind === "error" ||
+    view.kind === "declined" ||
+    (view.kind === "exec" && (view.timedOut || view.exitCode !== 0));
+  const command =
+    view.kind === "exec" || view.kind === "declined" ? view.command : "";
+  const body = view.kind === "exec" ? view.body : "";
+  const statusLine =
+    view.kind === "exec"
+      ? view.status
+      : view.kind === "declined"
+        ? "Declined"
+        : view.kind === "error"
+          ? view.message
+          : null;
+  const dataStatus =
+    view.kind === "exec"
+      ? view.status
+      : view.kind === "declined"
+        ? "declined"
+        : view.kind === "error"
+          ? "error"
+          : "running";
   return (
     <div
       data-testid="exec-card"
-      data-exec-status={exec?.status ?? "running"}
+      data-exec-status={dataStatus}
       className="max-w-[85%] overflow-hidden rounded-md border bg-muted text-xs"
     >
       <button
         type="button"
-        onClick={() => exec?.body && setExpanded((v) => !v)}
+        onClick={() => body && setExpanded((v) => !v)}
         className={cn(
           "flex w-full items-center gap-2 px-2.5 py-1.5 text-left",
-          exec?.body && "cursor-pointer hover:bg-accent/50",
+          body && "cursor-pointer hover:bg-accent/50",
         )}
       >
         <Terminal className="size-3.5 shrink-0 text-muted-foreground" />
@@ -360,20 +416,25 @@ export function ExecCard({ tc }: { tc: ToolEntry }) {
         ) : (
           <CheckCircle2 className="size-3 shrink-0 text-emerald-500" />
         )}
-        {exec?.body && (
+        {body && (
           <ChevronRight
             className={cn("size-3 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-90")}
           />
         )}
       </button>
-      {exec && !running && (
-        <div className="border-t px-2.5 py-1 text-[10px] text-muted-foreground">
-          {exec.status}
+      {statusLine && !running && (
+        <div
+          className={cn(
+            "border-t px-2.5 py-1 text-[10px] text-muted-foreground",
+            failed && "text-destructive",
+          )}
+        >
+          {statusLine}
         </div>
       )}
-      {expanded && exec?.body && (
+      {expanded && body && (
         <pre className="max-h-56 animate-in fade-in overflow-auto whitespace-pre-wrap break-words border-t px-2.5 py-1.5 font-mono text-[10px] text-muted-foreground duration-150 motion-reduce:animate-none">
-          {exec.body}
+          {body}
         </pre>
       )}
     </div>

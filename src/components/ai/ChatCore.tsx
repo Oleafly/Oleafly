@@ -965,7 +965,7 @@ export function ChatCore() {
       const archived = await agentThreadArchive(activeThreadId);
       if (!archived) throw new Error("The native thread was not found.");
       const wasActive = useChatsStore.getState().activeId === activeChatId;
-      removeChat(activeChatId);
+      removeChat(activeChatId, { deleteThread: false });
       useAgentTurnsStore.setState((state) => {
         const threadByChat = { ...state.threadByChat };
         delete threadByChat[activeChatId];

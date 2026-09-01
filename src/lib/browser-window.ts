@@ -38,8 +38,11 @@ export async function openBrowserWindow(url: string, title?: string): Promise<bo
     return Boolean(window.open(url, "_blank", "noopener,noreferrer"));
   }
   if (SKIP_WINDOW_FOR_E2E) return true;
+  // Transactional replacement: the previous window stays the tracked current
+  // one until the replacement is confirmed created, so a failed or timed-out
+  // create never leaves the app pointing at a window that does not exist or
+  // orphaning a still-visible one.
   const previous = currentWindow;
-  currentWindow = null;
   sequence += 1;
   const opened = new WebviewWindow(`${BROWSER_WINDOW_PREFIX}-${sequence}`, {
     url,
@@ -50,33 +53,38 @@ export async function openBrowserWindow(url: string, title?: string): Promise<bo
     center: true,
     focus: true,
   });
-  currentWindow = opened;
-  // Keep the toggle state honest when the user closes the OS window directly.
-  void opened.once("tauri://destroyed", () => {
-    if (currentWindow === opened) currentWindow = null;
-    useSettingsStore.getState().setBrowserOpen(false);
-  });
-  let created = true;
-  await new Promise<void>((resolve) => {
+  const created = await new Promise<boolean>((resolve) => {
     let settled = false;
     const done = (ok: boolean) => {
       if (settled) return;
       settled = true;
-      created = ok;
-      resolve();
+      resolve(ok);
     };
     void opened.once("tauri://created", () => done(true));
-    void opened.once("tauri://error", () => {
-      if (currentWindow === opened) currentWindow = null;
-      done(false);
-    });
+    void opened.once("tauri://error", () => done(false));
     // The events are the source of truth, but never hang the caller on them.
-    setTimeout(() => done(created), 2_000);
+    // An unconfirmed create counts as a failure so the existing window is
+    // never torn down for a replacement that may not be there.
+    setTimeout(() => done(false), 5_000);
   });
-  // Close the prior window only once the replacement is up, so a failed
-  // create leaves the existing window in place.
-  if (created && previous) void previous.close().catch(() => {});
-  return created;
+  if (!created) {
+    // Leave the previous window in place and tracked; discard the failed one.
+    void opened.close().catch(() => {});
+    currentWindow = previous;
+    return false;
+  }
+  // Publish the replacement only now, then close the prior window. The
+  // destroyed handler clears shared state only while this window is still the
+  // current one, so closing the previous window here does not flip the toggle
+  // off under the replacement.
+  currentWindow = opened;
+  void opened.once("tauri://destroyed", () => {
+    if (currentWindow !== opened) return;
+    currentWindow = null;
+    useSettingsStore.getState().setBrowserOpen(false);
+  });
+  if (previous) void previous.close().catch(() => {});
+  return true;
 }
 
 /** Focus the current browser window if one is open. */
