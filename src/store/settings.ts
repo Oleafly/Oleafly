@@ -520,6 +520,10 @@ interface SettingsState {
   setSettingsScrollTarget: (v: string | null) => void;
   viewMode: ViewMode;
   setViewMode: (v: ViewMode) => void;
+  // Make the editor pane visible (opening a file from the tree): reveal the
+  // workspace if the AI-only layout hid it, and switch a preview-only view to
+  // a split so the editor is on screen. A no-op when the editor already shows.
+  revealEditor: () => void;
   // The editor/preview region is hidden only for the AI-only layout; every
   // other layout shows it and picks the panes through viewMode.
   workspaceHidden: boolean;
@@ -771,6 +775,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   viewMode: "split",
   // Choosing an explicit editor/split/pdf view always reveals the workspace.
   setViewMode: (v) => set({ viewMode: v, workspaceHidden: false }),
+  revealEditor: () => {
+    const s = get();
+    const needsEditor = s.viewMode === "pdf";
+    if (s.workspaceHidden || needsEditor) {
+      set({ workspaceHidden: false, viewMode: needsEditor ? "split" : s.viewMode });
+    }
+  },
   workspaceHidden: false,
   defaultView: readDefaultView(ls("oleafly.defaultView", "editor-preview")),
   setDefaultView: (v) => {

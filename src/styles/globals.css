@@ -880,7 +880,11 @@ select:focus-visible {
   display: block;
   margin: 0.75em 0;
   overflow-x: auto;
-  padding: 0.2em 0;
+  /* Card styling to match the mermaid diagram block: a subtle inset surface
+     with padding around the formula. No copy affordance. */
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background-color: color-mix(in oklch, var(--background) 70%, transparent);
   text-align: center;
 }
 

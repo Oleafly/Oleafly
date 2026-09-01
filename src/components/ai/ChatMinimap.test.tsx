@@ -36,19 +36,20 @@ describe("ChatMinimap", () => {
     expect(ticks(container)).toHaveLength(0);
   });
 
-  it("renders nothing with fewer than two messages", () => {
-    const { container } = render(<Harness visible count={1} />);
+  it("renders nothing with fewer than two prompts", () => {
+    // count 2 is one user prompt plus one reply.
+    const { container } = render(<Harness visible count={2} />);
     expect(ticks(container)).toHaveLength(0);
   });
 
-  it("renders one tick per message when visible with a conversation", () => {
-    const { container } = render(<Harness visible count={4} />);
-    expect(ticks(container)).toHaveLength(4);
+  it("renders one tick per user prompt, not per message", () => {
+    // count 6 is three user prompts interleaved with three replies.
+    const { container } = render(<Harness visible count={6} />);
+    expect(ticks(container)).toHaveLength(3);
   });
 
   it("previews the turn on hover: the user prompt and its assistant reply", () => {
     const { container, getByText } = render(<Harness visible count={4} />);
-    // Hovering the first user tick shows that prompt and the reply paired with it.
     fireEvent.mouseEnter(ticks(container)[0]);
     expect(getByText("Question number 0")).toBeInTheDocument();
     expect(getByText("Answer number 1")).toBeInTheDocument();

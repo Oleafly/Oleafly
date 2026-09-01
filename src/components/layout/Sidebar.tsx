@@ -57,6 +57,7 @@ export function ProjectSearch() {
   }, [q, projectId]);
 
   const open = async (hit: SearchHit) => {
+    useSettingsStore.getState().revealEditor();
     await openFile(hit.path);
     window.setTimeout(() => gotoLine(hit.line), 80);
   };

@@ -356,3 +356,32 @@ describe("file tree visibility settings", () => {
     );
   });
 });
+
+describe("revealEditor", () => {
+  it("reveals the workspace from the AI-only layout, keeping the view mode", () => {
+    useSettingsStore.setState({ workspaceHidden: true, viewMode: "editor" });
+    useSettingsStore.getState().revealEditor();
+    expect(useSettingsStore.getState()).toMatchObject({
+      workspaceHidden: false,
+      viewMode: "editor",
+    });
+  });
+
+  it("switches a preview-only view to a split so the editor is on screen", () => {
+    useSettingsStore.setState({ workspaceHidden: false, viewMode: "pdf" });
+    useSettingsStore.getState().revealEditor();
+    expect(useSettingsStore.getState()).toMatchObject({
+      workspaceHidden: false,
+      viewMode: "split",
+    });
+  });
+
+  it("is a no-op when the editor already shows", () => {
+    useSettingsStore.setState({ workspaceHidden: false, viewMode: "split" });
+    useSettingsStore.getState().revealEditor();
+    expect(useSettingsStore.getState()).toMatchObject({
+      workspaceHidden: false,
+      viewMode: "split",
+    });
+  });
+});
