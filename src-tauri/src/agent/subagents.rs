@@ -97,6 +97,18 @@ impl Drop for SubagentManager {
     }
 }
 
+/// A random prefix minted once per process launch. The subagent counter
+/// resets to 1 every launch, so without this a restart would remint
+/// `thread-agent-1` and append an unrelated turn onto the previous session's
+/// persisted rollout (and a resync could reattach that spliced history to the
+/// new project). The prefix makes every child's id and thread id unique across
+/// restarts.
+fn session_prefix() -> &'static str {
+    use std::sync::OnceLock;
+    static PREFIX: OnceLock<String> = OnceLock::new();
+    PREFIX.get_or_init(|| format!("{:016x}", rand::random::<u64>()))
+}
+
 fn next_agent_id() -> u64 {
     use std::sync::atomic::{AtomicU64, Ordering};
     static NEXT: AtomicU64 = AtomicU64::new(1);
@@ -394,10 +406,24 @@ impl SubagentManager {
             preview
         });
 
-        let id = format!("agent-{}", next_agent_id());
+        let id = format!("agent-{}-{}", session_prefix(), next_agent_id());
         // Deterministic from the agent id so the shell can read a child's
         // full transcript back from the rollout store without extra plumbing.
         let thread_id = format!("thread-{id}");
+        // A fresh child must never adopt an existing rollout. With the
+        // per-launch prefix this cannot normally happen; guard anyway so a
+        // future id-scheme change fails loudly instead of silently splicing an
+        // unrelated transcript onto the new child.
+        if let Ok(root) = crate::paths::oleafly_root() {
+            if crate::rollout::rollout_path(&root, &thread_id)
+                .map(|path| path.exists())
+                .unwrap_or(false)
+            {
+                return Err(format!(
+                    "a rollout already exists for {thread_id}; refusing to reuse it"
+                ));
+            }
+        }
 
         let mut request = ctx.request_template.clone();
         request.messages = vec![oleafly_agent::Message::user(prompt.to_string())];
