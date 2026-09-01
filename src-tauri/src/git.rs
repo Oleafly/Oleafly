@@ -261,7 +261,13 @@ fn validate_git_oid(oid: &str) -> Result<(), String> {
 
 fn restore_worktree(root: &PathBuf, oid: &str) -> Result<(), String> {
     validate_git_oid(oid)?;
-    ok_or_err(run_git(root, &["checkout", oid, "--", "."])?)
+    // Make the index and working tree exactly match the checkpoint without
+    // moving HEAD: restore modified files, bring back deleted ones, AND remove
+    // files created after the checkpoint. `checkout <oid> -- .` only touched
+    // paths present in <oid>, so files a later response added were left behind
+    // and "restore to before this response" did not actually undo them. The
+    // next auto-commit records the revert as a new commit, keeping history.
+    ok_or_err(run_git(root, &["read-tree", "--reset", "-u", oid])?)
 }
 
 fn out_to_string(out: &std::process::Output) -> String {
@@ -1062,6 +1068,43 @@ mod tests {
         assert_eq!(
             std::fs::read_to_string(root.join("main.tex")).unwrap(),
             "first\n"
+        );
+    }
+
+    #[test]
+    fn restore_removes_files_added_after_the_checkpoint_and_brings_back_deleted_ones() {
+        let root = temp_repo();
+        write(&root, "keep.tex", "base\n");
+        write(&root, "removed-later.tex", "here at checkpoint\n");
+        stage_all(&root).unwrap();
+        assert!(commit_index(&root, "checkpoint").unwrap());
+        let checkpoint =
+            String::from_utf8_lossy(&run_git(&root, &["rev-parse", "HEAD"]).unwrap().stdout)
+                .trim()
+                .to_string();
+
+        // The response's edits, auto-committed like a real run: a new file, a
+        // deletion, and a modification.
+        write(&root, "added-later.tex", "created by the response\n");
+        std::fs::remove_file(root.join("removed-later.tex")).unwrap();
+        write(&root, "keep.tex", "changed by the response\n");
+        stage_all(&root).unwrap();
+        assert!(commit_index(&root, "response edits").unwrap());
+
+        restore_worktree(&root, &checkpoint).unwrap();
+
+        assert!(
+            !root.join("added-later.tex").exists(),
+            "a file created after the checkpoint must be removed on restore"
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("keep.tex")).unwrap(),
+            "base\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("removed-later.tex")).unwrap(),
+            "here at checkpoint\n",
+            "a file deleted after the checkpoint must be restored"
         );
     }
 
