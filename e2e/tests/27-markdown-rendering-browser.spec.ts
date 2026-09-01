@@ -58,7 +58,7 @@ test("chat math keeps KaTeX fonts and vertical layout in the browser", async ({ 
   expect(result.strutDisplay).toBe("inline-block");
   expect(result.mathLineHeight).toBe("normal");
   expect(result.descendantLineHeight).toBe("normal");
-  expect(result.descendantWhiteSpace).toBe("normal");
+  expect(result.descendantWhiteSpace).toBe("nowrap");
   expect(result.scriptTextAlign).toBe("left");
   expect(result.fractionTextAlign).toBe("center");
   expect(result.vlistVerticalAlign).toBe("bottom");
