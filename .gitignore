@@ -49,6 +49,7 @@ e2e/.env
 
 # Claude Code local session state
 .claude/
+.zcode/
 .superpowers/
 e2e-debug/
 src-tauri/tauri.windows-signing.conf.json
