@@ -29,6 +29,7 @@ import { DiagramCanvas } from "./DiagramCanvas";
 import {
   type DiagramModel,
   type EdgeRouting,
+  emptyModel,
   newId,
   modelToTikz,
   serializeDiagram,
@@ -289,6 +290,10 @@ export function DiagramComposer({
   const [previewOpen, setPreviewOpen] = useState(false);
   const cmRef = useRef<CmHandle>(null);
   const codeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True while the code buffer holds hand-written content the drawing model
+  // does not describe. While set, nothing may regenerate code from the model:
+  // that is how pasted TikZ used to be silently replaced on a tab switch.
+  const codeDirtyRef = useRef(false);
   const savePickerRef = useRef<HTMLDivElement>(null);
   const downloadPickerRef = useRef<HTMLDivElement>(null);
 
@@ -299,7 +304,10 @@ export function DiagramComposer({
   const onModelChange = useCallback((m: DiagramModel) => {
     setModel(m);
     if (codeTimerRef.current) clearTimeout(codeTimerRef.current);
-    codeTimerRef.current = setTimeout(() => setCode(modelToTikz(m)), 200);
+    codeTimerRef.current = setTimeout(() => {
+      codeDirtyRef.current = false;
+      setCode(modelToTikz(m));
+    }, 200);
   }, []);
 
   const applyLoadedContent = useCallback((content: string) => {
@@ -312,17 +320,24 @@ export function DiagramComposer({
     }
     const m = parseEmbeddedModel(content);
     if (m) {
+      codeDirtyRef.current = false;
       setModel(m);
       setCode(modelToTikz(m));
       // Keep "" (transparent) if the snippet stored it; only missing → white default.
       setBackground(m.background !== undefined ? m.background : "#ffffff");
       setMode("draw");
     } else {
+      codeDirtyRef.current = true;
       setCode(content);
       setMode("code");
     }
     setPng(null);
     return Boolean(m);
+  }, []);
+
+  const handleCodeChange = useCallback((next: string) => {
+    codeDirtyRef.current = true;
+    setCode(next);
   }, []);
 
   useEffect(() => {
@@ -409,7 +424,8 @@ export function DiagramComposer({
     [projectId, host],
   );
 
-  const snippetCode = hasDrawing ? serializeDiagram({ ...model, background }) : code;
+  const snippetCode =
+    hasDrawing && !codeDirtyRef.current ? serializeDiagram({ ...model, background }) : code;
 
   const [savePickerOpen, setSavePickerOpen] = useState(false);
   const [saveToProjectHover, setSaveToProjectHover] = useState(false);
@@ -440,7 +456,7 @@ export function DiagramComposer({
 
   const saveAsNewProject = useCallback(async () => {
     const src = buildStandaloneDoc({
-      code: hasDrawing ? serializeDiagram({ ...model, background }) : code,
+      code: hasDrawing && !codeDirtyRef.current ? serializeDiagram({ ...model, background }) : code,
       libraries: DIAGRAM_LIBS,
       background,
     });
@@ -517,6 +533,7 @@ export function DiagramComposer({
         toast.error("The AI did not return a fix.");
         return;
       }
+      codeDirtyRef.current = true;
       setCode(fixed);
       setMode("code");
       toast.success("Applied an AI fix. Recompiling…");
@@ -577,10 +594,28 @@ export function DiagramComposer({
   if (!open) return null;
 
   const switchMode = (m: Mode) => {
-    // Entering Code: flush debounced generation so Code mirrors the canvas.
-    if (m === "code" && hasDrawing) {
+    // Entering Code: flush debounced generation so Code mirrors the canvas,
+    // but never over hand-written code the model does not describe.
+    if (m === "code" && hasDrawing && !codeDirtyRef.current) {
       if (codeTimerRef.current) clearTimeout(codeTimerRef.current);
       setCode(modelToTikz(model));
+    }
+    // Entering Draw with hand-written code: adopt it when it embeds a model;
+    // otherwise the canvas empties instead of showing a stale drawing the
+    // code no longer matches (and instead of clobbering the code on return).
+    if (m === "draw" && codeDirtyRef.current) {
+      if (codeTimerRef.current) {
+        clearTimeout(codeTimerRef.current);
+        codeTimerRef.current = null;
+      }
+      const parsed = parseEmbeddedModel(code);
+      if (parsed) {
+        setModel(parsed);
+        setBackground(parsed.background !== undefined ? parsed.background : "#ffffff");
+      } else {
+        setModel(emptyModel());
+      }
+      codeDirtyRef.current = false;
     }
     setMode(m);
   };
@@ -927,7 +962,7 @@ export function DiagramComposer({
                 )}
               </div>
               <div className="min-h-0 flex-1 bg-background">
-                <CmCodeEditor ref={cmRef} value={code} onChange={setCode} extensions={codeExtensions} />
+                <CmCodeEditor ref={cmRef} value={code} onChange={handleCodeChange} extensions={codeExtensions} />
               </div>
             </>
           )}

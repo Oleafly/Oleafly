@@ -5,11 +5,15 @@ export type ShortcutId =
   | "commandPalette"
   | "searchDocuments"
   | "forwardSync"
-  | "shortcutReference";
+  | "shortcutReference"
+  | "toggleTerminal"
+  | "toggleBrowser"
+  | "toggleSidebar";
 
 export interface ShortcutBinding {
   key: string;
   mod?: boolean;
+  ctrl?: boolean;
   shift?: boolean;
   alt?: boolean;
 }
@@ -57,6 +61,27 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     description: "Open the project shortcut reference.",
     category: "Settings",
     defaultBinding: { key: "/", mod: true },
+  },
+  {
+    id: "toggleTerminal",
+    label: "Toggle terminal",
+    description: "Show or hide the project terminal.",
+    category: "Navigation",
+    defaultBinding: { key: "`", ctrl: true },
+  },
+  {
+    id: "toggleBrowser",
+    label: "Toggle browser",
+    description: "Show or hide the project browser.",
+    category: "Navigation",
+    defaultBinding: { key: "b", ctrl: true, shift: true },
+  },
+  {
+    id: "toggleSidebar",
+    label: "Toggle sidebar",
+    description: "Show or hide the project sidebar.",
+    category: "Navigation",
+    defaultBinding: { key: "b", mod: true },
   },
 ];
 
@@ -125,12 +150,12 @@ export const useShortcutStore = create<ShortcutState>((set) => ({
 export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding): boolean {
   const apple =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-  const mod = apple ? event.metaKey : event.ctrlKey;
-  const otherPlatformMod = apple ? event.ctrlKey : event.metaKey;
+  const ctrl = Boolean(binding.ctrl) || (!apple && Boolean(binding.mod));
+  const meta = apple && Boolean(binding.mod);
   return (
     event.key.toLowerCase() === binding.key.toLowerCase() &&
-    mod === Boolean(binding.mod) &&
-    !otherPlatformMod &&
+    event.ctrlKey === ctrl &&
+    event.metaKey === meta &&
     event.shiftKey === Boolean(binding.shift) &&
     event.altKey === Boolean(binding.alt)
   );
@@ -144,16 +169,25 @@ export function bindingFromEvent(event: KeyboardEvent): ShortcutBinding | null {
   ) {
     return null;
   }
+  const apple =
+    typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   return {
     key: event.key.length === 1 ? event.key.toLowerCase() : event.key,
-    mod: event.metaKey || event.ctrlKey,
+    ...(event.metaKey || (event.ctrlKey && !apple) ? { mod: true } : {}),
+    ...(event.ctrlKey && apple ? { ctrl: true } : {}),
     shift: event.shiftKey,
     alt: event.altKey,
   };
 }
 
 export function reservedShortcutLabel(binding: ShortcutBinding): string | null {
-  if (!binding.mod || binding.alt || binding.shift) return null;
+  const apple =
+    typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+  const primaryModifier = apple
+    ? Boolean(binding.mod) && !binding.ctrl
+    : Boolean(binding.mod || binding.ctrl);
+  if (!primaryModifier || binding.alt || binding.shift) return null;
+  if (apple && binding.key === "`") return "Window switching";
   const reserved: Record<string, string> = {
     a: "Select all",
     c: "Copy",
@@ -169,9 +203,16 @@ export function reservedShortcutLabel(binding: ShortcutBinding): string | null {
 }
 
 export function sameShortcutBinding(left: ShortcutBinding, right: ShortcutBinding): boolean {
+  const apple =
+    typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+  const leftCtrl = Boolean(left.ctrl) || (!apple && Boolean(left.mod));
+  const rightCtrl = Boolean(right.ctrl) || (!apple && Boolean(right.mod));
+  const leftMeta = apple && Boolean(left.mod);
+  const rightMeta = apple && Boolean(right.mod);
   return (
     left.key.toLowerCase() === right.key.toLowerCase() &&
-    Boolean(left.mod) === Boolean(right.mod) &&
+    leftCtrl === rightCtrl &&
+    leftMeta === rightMeta &&
     Boolean(left.shift) === Boolean(right.shift) &&
     Boolean(left.alt) === Boolean(right.alt)
   );
@@ -181,6 +222,7 @@ export function shortcutLabel(binding: ShortcutBinding): string {
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   const parts: string[] = [];
   if (binding.mod) parts.push(mac ? "⌘" : "Ctrl");
+  if (binding.ctrl && (mac || !binding.mod)) parts.push("Ctrl");
   if (binding.shift) parts.push(mac ? "⇧" : "Shift");
   if (binding.alt) parts.push(mac ? "⌥" : "Alt");
   const key = binding.key === " " ? "Space" : binding.key;

@@ -2,7 +2,7 @@ import { modelSupportsVision } from "@oleafly/ai-core";
 import { hasConfiguredProvider, pickActiveProvider } from "@/lib/ai-providers";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import { getConfig } from "@/lib/tauri";
-import { useAgentHandoffStore } from "@/store/agent-handoff";
+import { handoffToAssistant } from "@/features/assistant-handoff";
 import { useImportStore } from "@/store/import";
 import { createProjectFromConversion } from "@/features/import";
 
@@ -32,7 +32,7 @@ export async function refineWithAi(): Promise<void> {
     }
   }
   await createProjectFromConversion();
-  useAgentHandoffStore.getState().handoff(
+  handoffToAssistant(
     [
       "This project was imported from a PDF by a deterministic converter. The attached images are the original PDF pages (ground truth).",
       "Improve main.tex to match the originals: fix display math, rebuild tables as tabular, and repair layout. Never invent content that is not visible in the page images.",

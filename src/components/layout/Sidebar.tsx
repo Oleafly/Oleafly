@@ -7,6 +7,7 @@ import { searchDocs, type SearchHit } from "@/lib/tauri";
 import { gotoLine } from "@/components/editor/cm/controller";
 import { registry } from "@oleafly/registry";
 import { FileTree } from "@/components/files/FileTree";
+import { SidebarViews } from "@/components/layout/WorkspaceControls";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
@@ -56,6 +57,7 @@ export function ProjectSearch() {
   }, [q, projectId]);
 
   const open = async (hit: SearchHit) => {
+    useSettingsStore.getState().revealEditor();
     await openFile(hit.path);
     window.setTimeout(() => gotoLine(hit.line), 80);
   };
@@ -156,8 +158,15 @@ export function Sidebar() {
   const railTab = useSettingsStore((s) => s.railTab);
   const ActivePanel = registry.railTabs.find((t) => t.id === railTab)?.panel ?? FilesPanel;
   return (
-    <Suspense fallback={<SidebarPanelFallback />}>
-      <ActivePanel />
-    </Suspense>
+    <div className="flex h-full flex-col bg-sidebar">
+      <div className="flex h-9 shrink-0 items-center gap-0.5 border-b border-sidebar-border bg-background px-1.5">
+        <SidebarViews />
+      </div>
+      <div className="min-h-0 flex-1">
+        <Suspense fallback={<SidebarPanelFallback />}>
+          <ActivePanel />
+        </Suspense>
+      </div>
+    </div>
   );
 }

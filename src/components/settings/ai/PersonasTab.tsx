@@ -5,7 +5,11 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { AppConfig, Persona } from "@/lib/tauri";
 import { personaGradient } from "@/lib/persona-colors";
-import { STARTER_PERSONAS, type StarterPersona } from "@/lib/starter-personas";
+import {
+  isStarterPersonaInstalled,
+  STARTER_PERSONAS,
+  type StarterPersona,
+} from "@/lib/starter-personas";
 import { CreatePersonaDialog } from "./CreatePersonaDialog";
 
 export interface PersonasTabProps {
@@ -21,13 +25,7 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
   const [addingStarterId, setAddingStarterId] = useState<string | null>(null);
   const personas = cfg.ai_personas ?? [];
   const availableStarters = STARTER_PERSONAS.filter(
-    (starter) =>
-      !personas.some(
-        (persona) =>
-          persona.id === starter.id ||
-          persona.name.trim().toLocaleLowerCase() ===
-            starter.name.toLocaleLowerCase(),
-      ),
+    (starter) => !isStarterPersonaInstalled(personas, starter),
   );
 
   const openCreate = () => {
@@ -81,14 +79,14 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="font-medium">Personas</p>
-          <p className="text-xs text-muted-foreground">
-            Reusable instructions for how the assistant should work. Choose one in chat
-            for a task. While selected, it replaces your default instructions.
-          </p>
-        </div>
+      <div>
+        <p className="font-medium">Personas</p>
+        <p className="text-xs text-muted-foreground">
+          Reusable instructions for how the assistant should work. Choose one in chat
+          for a task. While selected, it replaces your default instructions.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
         <Button size="sm" data-testid="ai-create-persona" data-tour="ai-create-persona" onClick={openCreate}>
           <Plus className="size-3.5" />
           Create persona
@@ -105,13 +103,20 @@ export function PersonasTab({ cfg, persist, setMsg }: PersonasTabProps) {
             <div
               key={persona.id}
               data-testid={`ai-persona-row-${persona.name}`}
-              className="flex items-center gap-2 rounded-md border border-transparent px-2 py-1.5 hover:border-border"
+              className="flex items-start gap-2 rounded-md border border-transparent px-2 py-1.5 hover:border-border"
             >
               <span
-                className="size-3 shrink-0 rounded-full"
+                className="mt-1 size-3 shrink-0 rounded-full"
                 style={{ background: personaGradient(persona.color) }}
               />
-              <span className="min-w-0 flex-1 truncate text-xs font-medium">{persona.name}</span>
+              <div className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-medium">{persona.name}</span>
+                {persona.prompt.trim() && (
+                  <span className="mt-0.5 line-clamp-2 block whitespace-pre-wrap text-[11px] leading-snug text-muted-foreground">
+                    {persona.prompt}
+                  </span>
+                )}
+              </div>
               <Tooltip label="Edit persona">
                 <button
                   type="button"

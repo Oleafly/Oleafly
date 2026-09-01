@@ -83,6 +83,14 @@ fn unreadable_configuration_disables_every_mutating_tool() {
 }
 
 #[test]
+fn read_only_server_rejects_shell_and_computer_control() {
+    for name in ["run_command", "computer_use"] {
+        assert!(tool_disabled_by_read_only(true, name));
+        assert!(!tool_disabled_by_read_only(false, name));
+    }
+}
+
+#[test]
 fn no_renderer_rejects_mutations_under_every_approval_policy() {
     for policy in ["ask", "auto_writes", "trust"] {
         for name in [

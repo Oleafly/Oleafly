@@ -1,6 +1,8 @@
+pub mod client;
 pub mod native;
 pub mod protocol;
 pub mod server;
+pub mod source_import;
 
 use serde::Serialize;
 use serde_json::Value;
@@ -77,9 +79,10 @@ pub async fn start_configured(app: AppHandle, _preferred_port: u16) -> Result<u1
         return Ok(running_port.unwrap_or(latest.mcp_port));
     };
     let port = start_available(app.clone(), preferred_port).await?;
-    let mut cfg = crate::config::read_config()?;
-    cfg.mcp_port = port;
-    crate::config::write_config(&cfg)?;
+    crate::config::update_config(|cfg| {
+        cfg.mcp_port = port;
+        Ok(())
+    })?;
     Ok(port)
 }
 
@@ -193,9 +196,10 @@ pub async fn mcp_set_enabled(app: AppHandle, enabled: bool) -> Result<McpStatus,
     if !enabled {
         let stop_result = server::stop(&app).await;
         finish_disable(stop_result, || {
-            let mut cfg = crate::config::read_config()?;
-            cfg.mcp_enabled = false;
-            crate::config::write_config(&cfg)
+            crate::config::update_config(|cfg| {
+                cfg.mcp_enabled = false;
+                Ok(())
+            })
         })?;
         drop(control);
         return status(&app).await;
@@ -208,12 +212,13 @@ pub async fn mcp_set_enabled(app: AppHandle, enabled: bool) -> Result<McpStatus,
     } else {
         None
     };
-    let mut cfg = crate::config::read_config()?;
-    if let Some(port) = started_port {
-        cfg.mcp_port = port;
-    }
-    cfg.mcp_enabled = true;
-    crate::config::write_config(&cfg)?;
+    crate::config::update_config(|cfg| {
+        if let Some(port) = started_port {
+            cfg.mcp_port = port;
+        }
+        cfg.mcp_enabled = true;
+        Ok(())
+    })?;
     drop(control);
     status(&app).await
 }
@@ -244,10 +249,11 @@ pub async fn mcp_restart_server(app: AppHandle) -> Result<McpStatus, String> {
         server::stop(&app).await?;
     }
     let port = start_available(app.clone(), preferred_port).await?;
-    let mut cfg = crate::config::read_config()?;
-    cfg.mcp_port = port;
-    cfg.mcp_enabled = true;
-    crate::config::write_config(&cfg)?;
+    crate::config::update_config(|cfg| {
+        cfg.mcp_port = port;
+        cfg.mcp_enabled = true;
+        Ok(())
+    })?;
     drop(control);
     status(&app).await
 }
@@ -288,12 +294,12 @@ pub async fn mcp_regenerate_token(app: AppHandle) -> Result<(), String> {
     let _control = state.control.lock().await;
     let _lifecycle = state.lifecycle.lock().await;
     let token = crate::secrets::generate_mcp_token();
-    let old_config = crate::config::read_config()?;
-    let mut next_config = old_config.clone();
-    next_config.mcp_token = token.clone();
     let running = state.shutdown.lock().await.is_some();
     if !running {
-        crate::config::write_config(&next_config)?;
+        crate::config::update_config(|config| {
+            config.mcp_token = token.clone();
+            Ok(())
+        })?;
         return Ok(());
     }
 
@@ -308,10 +314,17 @@ pub async fn mcp_regenerate_token(app: AppHandle) -> Result<(), String> {
         return Err("MCP server is running without an active credential".into());
     }
 
-    crate::config::write_config(&next_config)?;
+    let mut previous_token = String::new();
+    crate::config::update_config(|config| {
+        previous_token = std::mem::replace(&mut config.mcp_token, token.clone());
+        Ok(())
+    })?;
     if published_epoch != 0 {
         if let Err(error) = server::rewrite_discovery_file(port, &token) {
-            let rollback = crate::config::write_config(&old_config);
+            let rollback = crate::config::update_config(|config| {
+                config.mcp_token = previous_token;
+                Ok(())
+            });
             return Err(match rollback {
                 Ok(()) => format!("failed to publish regenerated MCP credential: {error}"),
                 Err(rollback_error) => format!(

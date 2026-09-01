@@ -1,9 +1,17 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { receiveChunkedText } from "@/lib/chunked-ipc";
+import type { ApprovalMode } from "@oleafly/ai-tools";
 
 import type {
   AheadBehind,
+  AgentClientCapabilities,
+  AgentClientInfo,
+  AgentRequestDecision,
+  AgentServerInfo,
   AppConfig,
+  BackendProtocolInfo,
+  ChatSearchHit,
   CompileResult,
   ComponentInfo,
   CopyFileResult,
@@ -21,10 +29,16 @@ import type {
   GitHubUser,
   GitPullResult,
   ImportPathsResult,
+  InitialState,
   LibraryStorageSummary,
   McpConnectionInfo,
+  McpAgentServer,
+  McpManagedServer,
+  McpServerConfig,
+  McpServerValidation,
   McpStatus,
   PackInfo,
+  Persona,
   Prerequisite,
   ProjectInfo,
   ProjectMeta,
@@ -42,11 +56,67 @@ import type {
   TexSpec,
   TexStatus,
   TinytexInstallState,
+  ToolDecision,
+  UsageTotals,
   ValidatedCompileFingerprint,
 } from "@oleafly/backend-port";
 export type * from "@oleafly/backend-port";
 
+export type BrowserCookieSourceId =
+  | "chrome"
+  | "brave"
+  | "edge"
+  | "firefox"
+  | "safari";
+
+export type BrowserCookieSourceStatus =
+  | "available"
+  | "no_cookie_store"
+  | "not_installed"
+  | "coming_soon";
+
+export type McpImportSourceTool =
+  | "claude-desktop"
+  | "claude-code"
+  | "codex"
+  | "cursor"
+  | "windsurf";
+
+export type McpImportedServer = McpServerConfig & {
+  sourceTool: McpImportSourceTool;
+};
+
+export interface BrowserCookieSource {
+  browser: BrowserCookieSourceId;
+  browserName: string;
+  profile: string | null;
+  profileName: string | null;
+  status: BrowserCookieSourceStatus;
+  detail: string;
+}
+
+export interface BrowserCookieImportRequest {
+  browser: BrowserCookieSourceId;
+  profile: string;
+  domain: string | null;
+}
+
+export interface BrowserCookieImportSummary {
+  imported: number;
+  browserName: string;
+  profileName: string;
+  domain: string | null;
+}
+
 export const reloadViews = () => invoke<void>("reload_views");
+
+export const detectBrowserCookieSources = () =>
+  invoke<BrowserCookieSource[]>("detect_browser_cookie_sources");
+
+export const importBrowserCookies = (request: BrowserCookieImportRequest) =>
+  invoke<BrowserCookieImportSummary>("import_browser_cookies", {
+    request: { ...request, confirmed: true },
+  });
 
 export const focusCurrentWindow = async () => {
   const window = getCurrentWindow();
@@ -269,6 +339,11 @@ export const appendAppLog = (message: string) =>
 
 export const readAppLog = (maxBytes: number) =>
   invoke<string>("read_app_log", { maxBytes });
+
+export const readAppLogChunked = (maxBytes: number) =>
+  receiveChunkedText((channel) =>
+    invoke<void>("read_app_log_chunked", { maxBytes, channel }),
+  );
 
 export const setMainDocCmd = (projectId: string, mainDoc: string) =>
   invoke<ProjectMeta>("set_main_doc", { projectId, mainDoc });
@@ -522,6 +597,8 @@ export const searchProject = (projectId: string, query: string) =>
 export const getConfig = () => invoke<AppConfig>("get_config");
 export const setConfig = (config: AppConfig) =>
   invoke<void>("set_config", { config });
+export const seedStarterPersonas = (starters: Persona[]) =>
+  invoke<AppConfig>("seed_starter_personas", { starters });
 
 // --- MCP server (token only via mcp_connection_info while running) ---
 
@@ -533,6 +610,53 @@ export const mcpSetEnabled = (enabled: boolean) =>
 export const mcpRestartServer = () => invoke<McpStatus>("mcp_restart_server");
 export const mcpConnectionInfo = () => invoke<McpConnectionInfo>("mcp_connection_info");
 export const mcpRegenerateToken = () => invoke<void>("mcp_regenerate_token");
+export const mcpImportSource = (sourceTool: McpImportSourceTool) =>
+  invoke<McpImportedServer[]>("mcp_import_source", { sourceTool });
+export const mcpServersList = () => invoke<McpManagedServer[]>("mcp_servers_list");
+export const mcpServerAdd = (server: McpServerConfig) =>
+  invoke<McpManagedServer>("mcp_server_add", { server });
+export const mcpServerUpdate = (originalName: string, server: McpServerConfig) =>
+  invoke<McpManagedServer>("mcp_server_update", { originalName, server });
+export const mcpServerUpdateValidated = (originalName: string, server: McpServerConfig) =>
+  invoke<McpManagedServer>("mcp_server_update_validated", { originalName, server });
+export const mcpServerRemove = (name: string) =>
+  invoke<void>("mcp_server_remove", { name });
+export const mcpServerSetEnabled = (name: string, enabled: boolean) =>
+  invoke<McpManagedServer>("mcp_server_set_enabled", { name, enabled });
+export const mcpServerValidate = (name: string) =>
+  invoke<McpServerValidation>("mcp_server_validate", { name });
+export const mcpAgentToolsList = () =>
+  invoke<McpAgentServer[]>("mcp_agent_tools_list");
+export const mcpAgentToolAuthorize = (
+  projectId: string,
+  server: string,
+  toolHandle: string,
+  argumentsValue: Record<string, unknown>,
+  runId: string,
+) =>
+  invoke<string>("mcp_agent_tool_authorize", {
+    projectId,
+    server,
+    toolHandle,
+    arguments: argumentsValue,
+    runId,
+  });
+export const mcpAgentToolCall = (
+  projectId: string,
+  server: string,
+  toolHandle: string,
+  argumentsValue: Record<string, unknown>,
+  runId: string,
+  approvalToken: string,
+) =>
+  invoke<unknown>("mcp_agent_tool_call", {
+    projectId,
+    server,
+    toolHandle,
+    arguments: argumentsValue,
+    runId,
+    approvalToken,
+  });
 let activeMcpRendererSession: number | null = null;
 let mcpRendererBeginSequence = 0;
 export const mcpBeginRendererSession = async () => {
@@ -572,6 +696,29 @@ export const agentListModels = (args: {
     key: args.key ?? null,
     baseUrl: args.baseURL ?? null,
   });
+
+export const agentServerInitialize = (
+  clientInfo: AgentClientInfo,
+  capabilities: AgentClientCapabilities,
+) =>
+  invoke<AgentServerInfo>("agent_server_initialize", {
+    clientInfo,
+    capabilities,
+  });
+
+export const agentServerResolveRequest = (
+  requestId: string,
+  decision: AgentRequestDecision,
+  payload?: unknown,
+) =>
+  invoke<void>("agent_server_resolve_request", {
+    requestId,
+    decision,
+    payload: payload ?? null,
+  });
+
+export const agentServerAbandonRequest = (requestId: string) =>
+  invoke<void>("agent_server_abandon_request", { requestId });
 
 export const mcpSetActiveProject = (projectId: string | null) => {
   if (activeMcpRendererSession === null) {
@@ -651,8 +798,7 @@ export const gitUnstageAll = (projectId: string) =>
 export const gitCommit = (projectId: string, message: string) =>
   invoke<boolean>("git_commit", { projectId, message });
 
-// rev = "HEAD" (last commit) or "INDEX" (staged).
-export const gitShow = (projectId: string, rev: "HEAD" | "INDEX", path: string) =>
+export const gitShow = (projectId: string, rev: string, path: string) =>
   invoke<string>("git_show", { projectId, rev, path });
 
 export const downloadProjectZip = (projectId: string, dest: string) =>
@@ -669,6 +815,68 @@ export const recycleProject = (projectId: string) =>
 
 export const libraryRoot = () => invoke<string>("library_root");
 export const appVersion = () => invoke<string>("app_version");
+export const agentExecCwd = (projectId: string) =>
+  invoke<string>("agent_exec_cwd", { projectId });
+export const agentExecRegisterExternal = (runId: string) =>
+  invoke<void>("agent_exec_register_external", { runId });
+export const agentExecAuthorize = (projectId: string, command: string, runId: string) =>
+  invoke<string>("agent_exec_authorize", { projectId, command, runId });
+export const agentExec = (
+  projectId: string,
+  command: string,
+  runId: string,
+  approvalToken: string,
+) =>
+  invoke<{
+    command: string;
+    output: string;
+    exit_code: number | null;
+    status: string;
+    truncated: boolean;
+    timed_out: boolean;
+  }>("agent_exec", { projectId, command, runId, approvalToken });
+export const backendProtocolInfo = () =>
+  invoke<BackendProtocolInfo>("backend_protocol_info");
+export const initialState = () => invoke<InitialState>("initial_state");
+
+export const chatsSearch = (query: string) =>
+  invoke<ChatSearchHit[]>("chats_search", { query });
+export const usageRecord = (
+  projectId: string,
+  chatId: string,
+  provider: string,
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  costUsd: number,
+) =>
+  invoke<void>("usage_record", {
+    projectId,
+    chatId,
+    provider,
+    model,
+    inputTokens,
+    outputTokens,
+    costUsd,
+  });
+export const usageSummary = (projectId: string) =>
+  invoke<UsageTotals>("usage_summary", { projectId });
+export const budgetGet = (projectId: string) =>
+  invoke<number | null>("budget_get_cmd", { projectId });
+export const budgetSet = (projectId: string, budgetUsd: number | null) =>
+  invoke<void>("budget_set_cmd", { projectId, budgetUsd });
+
+export const approvalsList = (projectId: string) =>
+  invoke<Record<string, ToolDecision>>("approvals_list", { projectId });
+export const approvalsSet = (
+  projectId: string,
+  tool: string,
+  decision: ToolDecision | null,
+) => invoke<void>("approvals_set", { projectId, tool, decision });
+export const approvalsModeGet = (projectId: string) =>
+  invoke<ApprovalMode>("approvals_mode_get", { projectId });
+export const approvalsModeSet = (projectId: string, mode: ApprovalMode) =>
+  invoke<void>("approvals_mode_set", { projectId, mode });
 
 export function base64ToUint8Array(b64: string): Uint8Array {
   const bin = atob(b64);

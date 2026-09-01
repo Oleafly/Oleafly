@@ -1,4 +1,5 @@
 import { ChatCore } from "@/components/ai/ChatCore";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
 
@@ -13,5 +14,11 @@ export function ChatPanel() {
       </div>
     );
   }
-  return <ChatCore />;
+  return (
+    <div className="relative h-full [&_[data-tour=ai-assistant-header]]:pl-[4.5rem]">
+      <ErrorBoundary surface="assistant panel">
+        <ChatCore />
+      </ErrorBoundary>
+    </div>
+  );
 }

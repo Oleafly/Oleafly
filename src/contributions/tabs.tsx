@@ -1,12 +1,11 @@
 import { lazy } from "react";
-import { FileText, GitBranch, Plug, Search, SearchCode, ShieldCheck, Sparkles } from "lucide-react";
+import { FileText, GitBranch, Plug, Search, SearchCode, ShieldCheck } from "lucide-react";
 import { registerRailTab } from "@oleafly/registry";
 import { useGitStatusStore } from "@/store/git-status";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { SourceControl } from "@/components/layout/SourceControl";
 import { PreflightPanel } from "@/components/preflight/PreflightPanel";
 import { McpActivityPanel } from "@/components/layout/McpActivityPanel";
-import { ChatPanel } from "@/components/ai/ChatPanel";
 import { FilesPanel, ProjectSearch } from "@/components/layout/Sidebar";
 
 const ReferencesPanel = lazy(() =>
@@ -59,16 +58,8 @@ export function registerRailTabs() {
     order: 50,
     panel: ReferencesPanel,
   });
-  registerRailTab({
-    id: "ai",
-    label: "Research Assistant",
-    icon: Sparkles,
-    section: "assist",
-    order: 60,
-    panel: ChatPanel,
-  });
   // Live log of tools/call traffic from external MCP clients. Only while the
-  // local MCP server is running (Settings → MCP).
+  // local MCP server is running (Settings → Integrations → Oleafly MCP).
   registerRailTab({
     id: "mcp",
     label: "MCP activity",
@@ -78,16 +69,5 @@ export function registerRailTabs() {
     when: (ctx) => !!ctx.mcpEnabled,
     useBadge: () => useMcpActivityStore((s) => s.unread),
     panel: McpActivityPanel,
-  });
-  // Legacy persisted tab id that opened the same chat panel; keep the panel
-  // resolvable without showing a second rail button.
-  registerRailTab({
-    id: "chat",
-    label: "Chat",
-    icon: Sparkles,
-    section: "assist",
-    order: 70,
-    hidden: true,
-    panel: ChatPanel,
   });
 }

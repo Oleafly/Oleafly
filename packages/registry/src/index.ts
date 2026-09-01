@@ -45,9 +45,16 @@ export interface CommandContribution {
 
 // biome-ignore lint/suspicious/noExplicitAny: opts/tools are typed at both app
 // ends (contribution + chat surface); the registry is just the meeting point.
+export type AiToolsetSource =
+  | { kind: "project" }
+  | { kind: "figure" }
+  | { kind: "skills" }
+  | { kind: "mcp"; server: string };
+
 export interface AiToolsetContribution<O = any, T = any> {
   id: string;
   mode: string;
+  source?: AiToolsetSource;
   create(opts: O): T;
 }
 

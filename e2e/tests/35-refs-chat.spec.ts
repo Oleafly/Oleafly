@@ -151,8 +151,8 @@ test("the active conversation survives tab switches and sidebar collapse", async
     10_000,
   );
 
-  await tauriPage.click('[aria-label="Hide sidebar"]');
-  await tauriPage.click('[aria-label="Show sidebar"]');
+  await tauriPage.click('[aria-label^="Hide sidebar"]');
+  await tauriPage.click('[aria-label^="Show sidebar"]');
   await tauriPage.waitForFunction(
     `document.body.innerText.includes('LEMONGRAPE')`,
     10_000,

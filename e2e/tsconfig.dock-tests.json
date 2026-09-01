@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "files": [
+    "tests/72-terminal-dock.spec.ts",
+    "tests/73-browser-dock.spec.ts",
+    "tests/74-agent-steer.spec.ts"
+  ],
+  "include": ["../src", "../packages"]
+}

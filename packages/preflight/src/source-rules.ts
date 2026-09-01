@@ -30,7 +30,7 @@ const multiColumn: Rule = (text) => {
       make(
         "multi-column",
         "ats",
-        "error",
+        "info",
         "Two-column layout",
         "Resume parsers commonly linearize two columns in the wrong order. Prefer a single-column layout for documents that must be parsed by an ATS.",
         dc ? { from: dc.from, to: dc.to } : undefined,
@@ -54,7 +54,7 @@ const multiColumn: Rule = (text) => {
       make(
         "multi-column",
         "ats",
-        "error",
+        "info",
         "Multi-column layout",
         "Resume parsers commonly linearize columns in the wrong order. Use a single column for ATS-facing documents.",
         { from: hit.index, to: hit.index + hit[0].length },
@@ -185,7 +185,7 @@ const figureAlt: Rule = (text) => {
         make(
           "figure-alt",
           "a11y",
-          "error",
+          "warning",
           "Image without alt text",
           "This image has no descriptive alt text, so a screen reader cannot convey it. Add a description, for example \\includegraphics[alt={A headshot of the author}]{...}. Mark purely decorative images as artifacts instead.",
           { from: m.index, to: m.index + m[0].length },

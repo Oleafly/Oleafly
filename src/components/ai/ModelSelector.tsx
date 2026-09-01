@@ -22,6 +22,8 @@ export function ModelSelector({
   compact,
   className,
   contentClassName,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   providerId: string;
   modelId: string;
@@ -31,9 +33,17 @@ export function ModelSelector({
   compact?: boolean;
   className?: string;
   contentClassName?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
   const [query, setQuery] = useState("");
+
+  const setOpen = (nextOpen: boolean) => {
+    if (controlledOpen === undefined) setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  };
 
   const selectedModel = useMemo(
     () =>
@@ -72,7 +82,10 @@ export function ModelSelector({
         if (!nextOpen) setQuery("");
       }}
     >
-      <Tooltip label="Switch provider or model" className="min-w-0">
+      <Tooltip
+        label={`${selectedModel?.name || modelId || "Select a model"}. Switch provider or model`}
+        className="min-w-0"
+      >
         <PopoverPrimitive.Trigger asChild>
           <button
             type="button"
@@ -100,7 +113,7 @@ export function ModelSelector({
                 {selectedModel?.name || modelId || "Select a model"}
               </span>
             </span>
-            <ChevronDown className="size-4 shrink-0 self-center opacity-50" />
+            <ChevronDown className="ai-model-selector-chevron size-4 shrink-0 self-center opacity-50" />
           </button>
         </PopoverPrimitive.Trigger>
       </Tooltip>
@@ -111,7 +124,7 @@ export function ModelSelector({
           sideOffset={4}
           collisionPadding={12}
           className={cn(
-            "z-50 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+            "z-[80] w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
             contentClassName,
           )}
         >

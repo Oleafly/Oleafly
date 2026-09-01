@@ -1,6 +1,6 @@
-import { useMcpApprovalStore } from "@/store/mcp-approvals";
+import { isAutoApprovable, useMcpApprovalStore } from "@/store/mcp-approvals";
 import { AI_PROMPT_SURFACE } from "@/components/ai/AiChrome";
-import { ToolConfirm, isAutoApprovable } from "@/components/ai/ToolConfirm";
+import { ToolConfirm } from "@/components/ai/ToolConfirm";
 import { cn } from "@/lib/utils";
 
 // Reuses the ToolConfirm card from the in-app chat so approval semantics

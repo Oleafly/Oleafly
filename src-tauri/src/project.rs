@@ -801,7 +801,13 @@ pub(crate) async fn list_files_bounded(project_id: String) -> Result<BoundedFile
 #[tauri::command]
 pub fn read_file(project_id: String, path: String) -> Result<String, String> {
     let p = resolve(&project_id, &path)?;
-    std::fs::read_to_string(&p).map_err(|e| format!("failed to read {path}: {e}"))
+    // Legacy encodings (Latin-1 .bib exports are common) must read, not
+    // error: decode lossily so odd bytes surface as U+FFFD instead of a
+    // hard failure. Genuine binaries still carry NUL bytes downstream,
+    // which the viewers detect.
+    std::fs::read(&p)
+        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+        .map_err(|e| format!("failed to read {path}: {e}"))
 }
 
 pub(crate) fn read_file_limited(
@@ -825,7 +831,9 @@ fn read_utf8_limited(path: &Path, max_bytes: usize) -> Result<String, String> {
     if bytes.len() > max_bytes {
         return Err(format!("file exceeds the {max_bytes}-byte read limit"));
     }
-    String::from_utf8(bytes).map_err(|_| "file is not valid UTF-8 text".to_string())
+    // Same lossy policy as read_file: a stray Latin-1 accent must not make
+    // the whole file unreadable.
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
 #[cfg(test)]
@@ -842,6 +850,19 @@ mod bounded_read_tests {
         assert!(read_utf8_limited(&path, 4)
             .unwrap_err()
             .contains("read limit"));
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn legacy_encoded_text_reads_lossily_instead_of_failing() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("IEEEfull.bib");
+        // Latin-1 "Müller" — the ü byte (0xFC) is invalid UTF-8.
+        std::fs::write(&path, b"author = {M\xFCller}").unwrap();
+
+        let text = read_utf8_limited(&path, 1024).unwrap();
+        assert!(text.starts_with("author = {M"));
+        assert!(text.contains('\u{FFFD}'));
         let _ = std::fs::remove_file(path);
     }
 }
@@ -2769,11 +2790,11 @@ pub fn set_project_color(project_id: String, color: String) -> Result<ProjectMet
 /// Open the webview devtools. Only does anything in debug builds (`tauri dev`),
 /// where devtools are compiled in; a no-op in release.
 #[tauri::command]
-pub fn open_devtools(window: tauri::WebviewWindow) {
+pub fn open_devtools(webview: tauri::Webview) {
     #[cfg(debug_assertions)]
-    window.open_devtools();
+    webview.open_devtools();
     #[cfg(not(debug_assertions))]
-    let _ = window;
+    let _ = webview;
 }
 
 fn project_meta_for_enumeration(project_id: &str, directory: &Path) -> Result<ProjectMeta, String> {
@@ -4241,7 +4262,7 @@ async fn download_pandoc_impl(
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&staging, std::fs::Permissions::from_mode(0o755))
+        std::fs::set_permissions(&staging, std::fs::Permissions::from_mode(0o700))
             .map_err(|e| e.to_string())?;
     }
     // Windows' FlushFileBuffers rejects read-only handles with "Access is
@@ -5165,7 +5186,7 @@ mod tests {
         rename_path_in_project, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
         tex_root_magic_target, validate_conversion_export, validate_tex_flavor, write_meta_at,
         CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta,
-        RenameFileResult, TexSpec, SCRATCH_PROJECT_ID,
+        RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID,
     };
     use std::io::Write;
     use std::path::Path;
@@ -5449,6 +5470,61 @@ mod tests {
         assert!(byte_limited.truncated);
         std::fs::remove_dir_all(root).unwrap();
         std::fs::remove_dir_all(large).unwrap();
+    }
+
+    #[test]
+    fn bounded_search_truncates_previews() {
+        let root = test_dir("bounded-search-preview");
+        let long_line = format!("needle {}", "x".repeat(300));
+        std::fs::write(root.join("doc.tex"), long_line).unwrap();
+        let cancelled = std::sync::atomic::AtomicBool::new(false);
+        let mut search = super::BoundedSearch {
+            hits: Vec::new(),
+            scanned_entries: 0,
+            scanned_files: 0,
+            scanned_bytes: 0,
+            truncated: false,
+        };
+        super::bounded_search_walk(
+            "project",
+            "Project",
+            &root,
+            &root,
+            "needle",
+            &mut search,
+            super::SearchLimits {
+                max_results: 20,
+                max_entries: 20,
+                max_files: 20,
+                max_file_bytes: 1_024,
+                max_total_bytes: 1_024,
+                deadline: std::time::Instant::now() + std::time::Duration::from_secs(1),
+            },
+            &cancelled,
+            0,
+        );
+        assert_eq!(search.hits.len(), 1);
+        assert_eq!(search.hits[0].preview.chars().count(), 160);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn search_walk_truncates_previews_and_caps_results() {
+        let root = test_dir("search-unbounded");
+        let long_line = format!("needle {}", "x".repeat(300));
+        let mut source = String::new();
+        for _ in 0..250 {
+            source.push_str(&long_line);
+            source.push('\n');
+        }
+        std::fs::write(root.join("doc.tex"), source).unwrap();
+        let mut hits: Vec<SearchHit> = Vec::new();
+        super::search_walk("project", "Project", &root, &root, "needle", &mut hits, 0);
+        assert_eq!(hits.len(), 200);
+        for hit in &hits {
+            assert_eq!(hit.preview.chars().count(), 160);
+        }
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

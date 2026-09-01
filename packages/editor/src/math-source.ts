@@ -273,7 +273,9 @@ export function scanMathExpressions(
         cursor = commentEnd < 0 || commentEnd >= to ? to : commentEnd + 3;
         continue;
       }
-      const fence = fenceAt(text, cursor);
+      const fence = text[cursor] === "`" || text[cursor] === "~"
+        ? fenceAt(text, cursor)
+        : null;
       if (fence) {
         cursor = afterMarkdownFence(text, cursor, to, fence);
         continue;

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   agentListModels,
+  budgetSet,
   getConfig,
   setConfig,
   type AppConfig,
@@ -13,20 +15,34 @@ import {
   mergeFetchedModels,
   pickActiveModel,
   reconcileActiveModel,
+  restoreSeedModels,
   seedProviderModels,
 } from "@/lib/ai-model-state";
 import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettingsStore } from "@/store/settings";
+import { useFilesStore } from "@/store/files";
+import {
+  resetSkillPreferences,
+  SKILLS_QUERY_KEY,
+  type SkillEntry,
+} from "@/lib/skills";
 import { cn } from "@/lib/utils";
 import { ProvidersTab, type ProviderStatus } from "./ai/ProvidersTab";
+import { ProjectApprovals } from "./ai/ProjectApprovals";
+import { ProjectBudget } from "./ai/ProjectBudget";
 import { InstructionsTab } from "./ai/InstructionsTab";
 import { PersonasTab } from "./ai/PersonasTab";
+import { SkillsTab } from "./ai/SkillsTab";
+import { McpServersManager } from "./McpServersManager";
 import { AddCustomProviderDialog, type AddCustomProviderInput } from "./ai/AddCustomProviderDialog";
 import { editableKeys, withKey, withoutKey } from "./ai-keys";
 import { agentErrorKind } from "@/lib/agent-backend";
-
-type AITab = "providers" | "instructions" | "personas" | "skills";
+import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+import {
+  aiSettingsDestination,
+  type AiSettingsTab,
+} from "./ai-settings-navigation";
 
 type DiscoveryResult =
   | { ok: true; models: { id: string; name: string }[] }
@@ -61,15 +77,51 @@ const DEFAULT_CFG: AppConfig = {
   ai_provider_models: {},
   ai_custom_providers: [],
   ai_personas: [],
+  ai_starter_personas_seeded: false,
   mcp_enabled: false,
   mcp_port: 5323,
   mcp_read_only: false,
   mcp_approval_policy: "ask",
+  mcp_servers: [],
 };
 
+function resetProviderModelPreferences(
+  config: AppConfig,
+): AppConfig["ai_provider_models"] {
+  return Object.fromEntries(
+    Object.entries(config.ai_provider_models).map(([providerId, models]) => {
+      const isCustomProvider = config.ai_custom_providers.some(
+        (provider) => provider.id === providerId,
+      );
+      const currentBuiltinIds = new Set(
+        seedProviderModels(providerId).map((model) => model.id),
+      );
+      const currentModels =
+        getProvider(providerId) && !isCustomProvider
+          ? models.filter(
+              (model) =>
+                model.source !== "builtin" ||
+                currentBuiltinIds.has(model.id) ||
+                (providerId === config.ai_provider &&
+                  model.id === config.ai_model),
+            )
+          : models;
+      return [
+        providerId,
+        restoreSeedModels(currentModels, providerId).map((model) => ({
+          ...model,
+          enabled: true,
+        })),
+      ];
+    }),
+  );
+}
+
 export function AISection() {
-  const [tab, setTab] = useState<AITab>("providers");
+  const [tab, setTab] = useState<AiSettingsTab>("providers");
+  const [mcpMounted, setMcpMounted] = useState(false);
   const [cfg, setCfg] = useState<AppConfig>(DEFAULT_CFG);
+  const [configLoaded, setConfigLoaded] = useState(false);
   const [keys, setKeys] = useState<Record<string, string>>({});
   // Snapshot of persisted keys, used to detect unsaved edits (dirty check below).
   const [savedKeys, setSavedKeys] = useState<Record<string, string>>({});
@@ -82,17 +134,26 @@ export function AISection() {
   // Unset falls back to "open if active", so the in-use provider stays expanded.
   const [openProviders, setOpenProviders] = useState<Record<string, boolean>>({});
   const [customDialogOpen, setCustomDialogOpen] = useState(false);
-  const [ollama, setOllama] = useState<{
-    status: "idle" | "loading" | "ok" | "down";
-    models: string[];
-  }>({ status: "idle", models: [] });
+  const [preferencesResetVersion, setPreferencesResetVersion] = useState(0);
+  // A host the user probed explicitly from the provider card; null follows the
+  // saved (or default) host.
+  const [probeHost, setProbeHost] = useState<string | null>(null);
 
   const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
+  const projectId = useFilesStore((s) => s.projectId);
   useEffect(() => {
-    if (scrollTarget !== "ai-personas") return;
-    setTab("personas");
+    const destination = aiSettingsDestination(scrollTarget);
+    if (!destination) return;
+    if (destination.tab === "mcp") setMcpMounted(true);
+    setTab(destination.tab);
     setScrollTarget(null);
+    const elementId = destination.elementId;
+    if (elementId) {
+      window.requestAnimationFrame(() => {
+        document.getElementById(elementId)?.scrollIntoView({ block: "nearest" });
+      });
+    }
   }, [scrollTarget, setScrollTarget]);
 
   useEffect(() => {
@@ -114,25 +175,44 @@ export function AISection() {
       if (Object.keys(c.ai_keys ?? {}).length === 0 && c.ai_api_key) {
         void setConfig(next);
       }
+      setConfigLoaded(true);
     });
   }, []);
 
-  const refreshOllama = useCallback(async (host: string) => {
-    setOllama((o) => ({ ...o, status: "loading" }));
-    try {
-      const models = await listOllamaModels(host);
-      setOllama({ status: "ok", models });
-    } catch {
-      setOllama({ status: "down", models: [] });
-    }
-  }, []);
-
-  // Cheap localhost request that fails fast, so it's run proactively instead of
-  // waiting on the user to configure a host first.
+  // Cheap localhost request that fails fast, so the query runs proactively
+  // instead of waiting on the user to configure a host first.
   const savedOllamaHost = cfg.ai_keys?.ollama ?? "";
+  const ollamaHost = probeHost ?? (savedOllamaHost || DEFAULT_OLLAMA_HOST);
+  const queryClient = useQueryClient();
+  const ollamaQuery = useQuery({
+    queryKey: ["ollama-models", ollamaHost],
+    queryFn: () => listOllamaModels(ollamaHost),
+    retry: false,
+    staleTime: 30_000,
+    meta: { silent: true },
+  });
+  const ollama = {
+    status: ollamaQuery.isPending
+      ? ("loading" as const)
+      : ollamaQuery.isError
+        ? ("down" as const)
+        : ("ok" as const),
+    models: ollamaQuery.data ?? [],
+  };
+  const refreshOllama = useCallback(
+    async (host: string) => {
+      setProbeHost(host);
+      await queryClient.invalidateQueries({
+        queryKey: ["ollama-models", host],
+      });
+    },
+    [queryClient],
+  );
+  // Saving a new host takes over from any manual probe.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: savedOllamaHost is the trigger, not a read dependency; the reset must run exactly when the saved host changes
   useEffect(() => {
-    void refreshOllama(savedOllamaHost || DEFAULT_OLLAMA_HOST);
-  }, [savedOllamaHost, refreshOllama]);
+    setProbeHost(null);
+  }, [savedOllamaHost]);
 
   const persist = async (next: AppConfig) => {
     await setConfig(next);
@@ -332,6 +412,44 @@ export function AISection() {
     }
   };
 
+  const resetAssistantPreferences = async () => {
+    setMsg(null);
+    const aiProviderModels = resetProviderModelPreferences(cfg);
+    const resetConfig = { ...cfg, ai_provider_models: aiProviderModels };
+    const next = {
+      ...resetConfig,
+      ai_system_prompt: "",
+      ai_pdf_capture: true,
+    };
+    try {
+      await persist(next);
+      try {
+        localStorage.setItem("oleafly:ai_pdf_capture", "1");
+      } catch {}
+      setSysPrompt("");
+      setSysPromptSaved(false);
+      const skills = await resetSkillPreferences();
+      queryClient.setQueryData<SkillEntry[]>(SKILLS_QUERY_KEY, skills);
+      if (projectId) {
+        await budgetSet(projectId, null);
+        queryClient.setQueryData(["project-budget", projectId], null);
+        setPreferencesResetVersion((version) => version + 1);
+      }
+      setMsg({
+        ok: true,
+        text: "AI Assistant preferences restored to their defaults.",
+      });
+    } catch (error) {
+      void queryClient.invalidateQueries({ queryKey: SKILLS_QUERY_KEY });
+      if (projectId) {
+        void queryClient.invalidateQueries({
+          queryKey: ["project-budget", projectId],
+        });
+      }
+      setMsg({ ok: false, text: String(error) });
+    }
+  };
+
   const deleteKey = async (id: string) => {
     setSaving(id);
     setMsg(null);
@@ -364,15 +482,31 @@ export function AISection() {
 
   return (
     <div className="space-y-4 text-sm">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as AITab)} className="space-y-4">
-        <TabsList data-tour="ai-settings-tabs">
-          <TabsTrigger value="providers" data-testid="ai-settings-tab-providers">
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          const next = value as AiSettingsTab;
+          if (next === "mcp") setMcpMounted(true);
+          setTab(next);
+        }}
+        className="space-y-4"
+      >
+        <TabsList
+          data-tour="ai-settings-tabs"
+          className="flex h-auto w-fit max-w-full justify-start gap-1 overflow-x-auto no-scrollbar"
+        >
+          <TabsTrigger
+            value="providers"
+            data-testid="ai-settings-tab-providers"
+            className="shrink-0"
+          >
             Providers and keys
           </TabsTrigger>
           <TabsTrigger
             value="instructions"
             data-testid="ai-settings-tab-instructions"
             data-tour="ai-settings-tab-instructions"
+            className="shrink-0"
           >
             Instructions
           </TabsTrigger>
@@ -380,11 +514,24 @@ export function AISection() {
             value="personas"
             data-testid="ai-settings-tab-personas"
             data-tour="ai-settings-tab-personas"
+            className="shrink-0"
           >
             Personas
           </TabsTrigger>
-          <TabsTrigger value="skills" data-testid="ai-settings-tab-skills">
+          <TabsTrigger
+            value="skills"
+            data-testid="ai-settings-tab-skills"
+            className="shrink-0"
+          >
             Skills
+          </TabsTrigger>
+          <TabsTrigger
+            value="mcp"
+            data-testid="ai-settings-tab-mcp"
+            data-tour="settings-mcp"
+            className="shrink-0"
+          >
+            MCP
           </TabsTrigger>
         </TabsList>
 
@@ -409,6 +556,10 @@ export function AISection() {
             onAddCustomProvider={() => setCustomDialogOpen(true)}
             deleteCustomProvider={deleteCustomProvider}
           />
+          <div className="mt-3 space-y-3">
+            <ProjectApprovals />
+            <ProjectBudget key={preferencesResetVersion} />
+          </div>
         </TabsContent>
 
         <TabsContent value="instructions">
@@ -430,19 +581,19 @@ export function AISection() {
         </TabsContent>
 
         <TabsContent value="skills">
-          <section className="rounded-xl border bg-card p-5">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-foreground">Skills</h3>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Coming soon
-              </span>
-            </div>
-            <p className="mt-2 max-w-xl text-xs leading-relaxed text-muted-foreground">
-              Add reusable capabilities that teach the assistant how to handle specialized
-              research and writing workflows.
-            </p>
-          </section>
+          <SkillsTab />
         </TabsContent>
+
+        {mcpMounted ? (
+          <TabsContent
+            value="mcp"
+            forceMount
+            hidden={tab !== "mcp"}
+            data-tour="settings-mcp-panel"
+          >
+            <McpServersManager />
+          </TabsContent>
+        ) : null}
       </Tabs>
 
       <AddCustomProviderDialog
@@ -463,6 +614,16 @@ export function AISection() {
           {msg.text}
         </div>
       )}
+      <ResetToDefaults
+        sectionName="AI Assistant"
+        disabled={!configLoaded}
+        confirmationDescription={
+          projectId
+            ? "Restore AI Assistant preferences to their defaults, including model availability, enabled skills, and this project's budget. The active provider and model, provider keys, personas, approval rules, usage history, and MCP servers will stay unchanged."
+            : "Restore AI Assistant preferences to their defaults, including model availability and enabled skills. The active provider and model, provider keys, personas, approval rules, usage history, and MCP servers will stay unchanged."
+        }
+        onReset={() => void resetAssistantPreferences()}
+      />
     </div>
   );
 }

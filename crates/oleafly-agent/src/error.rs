@@ -37,6 +37,30 @@ impl AgentError {
             AgentError::NotConfigured(_) | AgentError::Decode(_) | AgentError::Cancelled => false,
         }
     }
+
+    /// A provider rejection that means the prompt exceeded the model's actual
+    /// context window. The turn loop treats this as a signal to compact and
+    /// retry, honoring the real deployed window rather than a static estimate.
+    pub fn is_context_overflow(&self) -> bool {
+        let AgentError::Provider { status, message } = self else {
+            return false;
+        };
+        // Providers report an oversized prompt as 400 (most) or 413 (payload).
+        if *status != 400 && *status != 413 {
+            return false;
+        }
+        let message = message.to_ascii_lowercase();
+        const MARKERS: [&str; 7] = [
+            "context length",
+            "context window",
+            "context_length_exceeded",
+            "maximum context",
+            "too many tokens",
+            "reduce the length",
+            "prompt is too long",
+        ];
+        MARKERS.iter().any(|marker| message.contains(marker))
+    }
 }
 
 impl fmt::Display for AgentError {

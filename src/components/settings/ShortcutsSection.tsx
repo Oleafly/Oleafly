@@ -3,6 +3,7 @@ import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import {
   bindingFromEvent,
   reservedShortcutLabel,
@@ -16,12 +17,13 @@ import {
 
 function ShortcutKeys({ binding }: { binding: ShortcutBinding }) {
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-  const keys = [
+  const keys = [...new Set([
     binding.mod ? (mac ? "⌘" : "Ctrl") : null,
+    binding.ctrl && (mac || !binding.mod) ? "Ctrl" : null,
     binding.shift ? "Shift" : null,
     binding.alt ? (mac ? "⌥" : "Alt") : null,
     binding.key === " " ? "Space" : binding.key.length === 1 ? binding.key.toUpperCase() : binding.key,
-  ].filter((key): key is string => Boolean(key));
+  ].filter((key): key is string => Boolean(key)))];
 
   return (
     <KbdGroup>
@@ -75,8 +77,9 @@ function builtInBinding(keys: readonly string[]): ShortcutBinding | null {
   const key = keys.find((value) => !["Mod", "Ctrl", "Shift", "Alt"].includes(value));
   if (!key || key === "Click") return null;
   return {
-    key: key.length === 1 ? key.toLowerCase() : key,
-    mod: true,
+    key: key === "Space" ? " " : key.length === 1 ? key.toLowerCase() : key,
+    mod: keys.includes("Mod"),
+    ctrl: keys.includes("Ctrl"),
     shift: keys.includes("Shift"),
     alt: keys.includes("Alt"),
   };
@@ -243,12 +246,10 @@ export function ShortcutsSection() {
         </TabsContent>
       ))}
       </Tabs>
-      <div className="flex justify-end border-t pt-4">
-        <Button variant="secondary" size="sm" onClick={resetAll}>
-          <RotateCcw className="size-3.5" />
-          Reset all shortcuts
-        </Button>
-      </div>
+      <ResetToDefaults
+        sectionName="Keyboard Shortcuts"
+        onReset={resetAll}
+      />
     </div>
   );
 }

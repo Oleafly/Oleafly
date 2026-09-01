@@ -11,7 +11,9 @@
   align-items: center;
   justify-content: center;
   gap: 18px;
-  background: #fbfbfa;
+  background: rgba(251, 251, 250, 0.4);
+  -webkit-backdrop-filter: blur(40px) saturate(140%);
+  backdrop-filter: blur(40px) saturate(140%);
   color: #6b7280;
   font-family:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
@@ -19,17 +21,17 @@
 }
 
 html.dark #oleafly-splash {
-  background: #09090b;
+  background: rgba(9, 9, 11, 0.3);
   color: #71717a;
 }
 
 html.dark body {
-  background: #09090b;
+  background: transparent;
 }
 
 body {
   margin: 0;
-  background: #fbfbfa;
+  background: transparent;
 }
 
 .oleafly-splash-logo {

@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   clearBuildDir: vi.fn(),
   notifyCompileSucceeded: vi.fn(),
   refreshPreviewWindow: vi.fn(),
+  autoCommitNow: vi.fn(),
   ensurePandoc: vi.fn(),
   saveActive: vi.fn(),
   readProjectSources: vi.fn(),
@@ -80,6 +81,7 @@ vi.mock("@/lib/cross-window", () => ({
   currentCompileProducerId: () => "test-window",
   notifyCompileSucceeded: mocks.notifyCompileSucceeded,
 }));
+vi.mock("@/lib/auto-commit", () => ({ autoCommitNow: mocks.autoCommitNow }));
 
 import {
   isCompileCheckpointCurrent,
@@ -123,6 +125,7 @@ beforeEach(() => {
   mocks.clearBuildDir.mockReset().mockResolvedValue(undefined);
   mocks.notifyCompileSucceeded.mockReset();
   mocks.refreshPreviewWindow.mockReset();
+  mocks.autoCommitNow.mockReset().mockResolvedValue(undefined);
   mocks.ensurePandoc.mockReset().mockResolvedValue(true);
   mocks.saveActive.mockReset().mockResolvedValue(undefined);
   mocks.readProjectSources.mockReset().mockImplementation(
@@ -259,6 +262,38 @@ describe("compile output lifecycle", () => {
     expect(mocks.notifyCompileSucceeded).toHaveBeenCalledWith(
       state.lastCompileCheckpoint,
     );
+  });
+
+  it("waits for the successful compile checkpoint commit before finishing", async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    const commit = deferred<void>();
+    mocks.autoCommitNow.mockReturnValue(commit.promise);
+    mocks.compileProject.mockResolvedValue({
+      ok: true,
+      has_pdf: true,
+      output_id: fingerprintCompileOutput(bytes),
+      output_revision: 7,
+      log: "ok",
+      errors: [],
+      synctex_path: null,
+      out_dir: "/build",
+      compile_time_ms: 12,
+    });
+    mocks.readCompiledPdf.mockResolvedValue(bytes.buffer);
+
+    let finished = false;
+    const compiling = useCompileStore
+      .getState()
+      .recompile()
+      .then(() => {
+        finished = true;
+      });
+    await vi.waitFor(() => expect(mocks.autoCommitNow).toHaveBeenCalledWith("project"));
+    expect(finished).toBe(false);
+
+    commit.resolve();
+    await compiling;
+    expect(finished).toBe(true);
   });
 
   it("restores preview and SyncTeX freshness after source text is exactly reverted", async () => {

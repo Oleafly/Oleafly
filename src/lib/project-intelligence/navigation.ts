@@ -30,7 +30,6 @@ export async function navigateToProjectRange(
 
   revealSourceEditor();
   const settings = useSettingsStore.getState();
-  settings.setHideEditorArea(false);
   if (settings.viewMode === "pdf") settings.setViewMode("editor");
 
   if (before.activePath !== target.path) {

@@ -127,11 +127,13 @@ fn renderer_run_budgets_are_clamped_to_backend_limits() {
         max_steps: u32::MAX,
         max_retries: u32::MAX,
         retry_base_ms: u64::MAX,
+        auto_compact: true,
     }));
 
     assert_eq!(config.max_steps, MAX_RUN_STEPS);
     assert_eq!(config.max_retries, MAX_RUN_RETRIES);
     assert_eq!(config.retry_base_ms, MAX_RETRY_BASE_MS);
+    assert!(config.auto_compact);
 }
 
 #[test]
@@ -140,11 +142,13 @@ fn renderer_run_budgets_have_safe_minimums() {
         max_steps: 0,
         max_retries: 0,
         retry_base_ms: 0,
+        auto_compact: false,
     }));
 
     assert_eq!(config.max_steps, 1);
     assert_eq!(config.max_retries, 0);
     assert_eq!(config.retry_base_ms, MIN_RETRY_BASE_MS);
+    assert!(!config.auto_compact);
 }
 
 #[test]
@@ -332,6 +336,8 @@ fn stale_request_cleanup_cannot_remove_replacement_tools() {
         PendingTool {
             generation: 2,
             sender,
+            tool_name: "write_file".to_string(),
+            project_id: None,
         },
     );
 
@@ -449,4 +455,354 @@ fn a_result_that_is_not_an_envelope_passes_through_verbatim() {
 
     let empty_content = serde_json::json!({ "content": [] });
     assert_eq!(unwrap_mcp_text(&empty_content), empty_content.to_string());
+}
+
+#[test]
+fn tool_risk_mirrors_the_shell_approval_table() {
+    // Read class: runs unprompted, may run concurrently.
+    for tool in [
+        "read_file",
+        "list_files",
+        "search_project",
+        "compile",
+        "spawn_agent",
+        "wait_agent",
+        "close_agent",
+    ] {
+        assert_eq!(tool_risk(tool), oleafly_agent::ToolRisk::Read, "{tool}");
+    }
+    // Network class: consent rides on connector configuration.
+    for tool in ["literature_search", "verify_citation"] {
+        assert_eq!(tool_risk(tool), oleafly_agent::ToolRisk::Network, "{tool}");
+    }
+    // Shell and write classes confirm.
+    assert_eq!(tool_risk("run_command"), oleafly_agent::ToolRisk::Shell);
+    for tool in ["write_file", "delete_file", "a_brand_new_tool"] {
+        assert_eq!(tool_risk(tool), oleafly_agent::ToolRisk::Write, "{tool}");
+    }
+}
+
+#[test]
+fn the_pipeline_marks_read_tools_parallel_and_everything_else_exclusive() {
+    let pipeline = tool_pipeline();
+    assert_eq!(
+        pipeline.registry.parallel_policy("read_file"),
+        oleafly_agent::ParallelPolicy::Parallel
+    );
+    assert_eq!(
+        pipeline.registry.parallel_policy("write_file"),
+        oleafly_agent::ParallelPolicy::Exclusive
+    );
+    assert_eq!(
+        pipeline.registry.parallel_policy("unknown_tool"),
+        oleafly_agent::ParallelPolicy::Exclusive
+    );
+}
+
+#[tokio::test]
+async fn unadvertised_tools_are_rejected_before_native_or_subagent_dispatch() {
+    let calls = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let calls_for_runner = calls.clone();
+    let inner: oleafly_agent::ToolRunner = std::sync::Arc::new(move |_| {
+        let calls = calls_for_runner.clone();
+        Box::pin(async move {
+            calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            oleafly_agent::ToolOutput::text("executed")
+        })
+    });
+    let runner = allowlisted_tool_runner(
+        std::collections::HashSet::from(["read_file".to_string()]),
+        inner,
+    );
+
+    let rejected = runner(oleafly_agent::ToolCall {
+        id: "call-1".into(),
+        name: "compile".into(),
+        arguments: "{}".into(),
+        ..Default::default()
+    })
+    .await;
+    let rejected: serde_json::Value = serde_json::from_str(&rejected.output).unwrap();
+    assert_eq!(rejected["error"], "Unknown tool: compile");
+    assert_eq!(calls.load(std::sync::atomic::Ordering::Relaxed), 0);
+
+    let accepted = runner(oleafly_agent::ToolCall {
+        id: "call-2".into(),
+        name: "read_file".into(),
+        arguments: "{}".into(),
+        ..Default::default()
+    })
+    .await;
+    assert_eq!(accepted.output, "executed");
+    assert_eq!(calls.load(std::sync::atomic::Ordering::Relaxed), 1);
+}
+
+#[test]
+fn the_classifier_skips_without_a_project_and_denies_from_decisions() {
+    use oleafly_agent::tools::orchestrator::ApprovalRequirement;
+    let call = oleafly_agent::ToolCall {
+        id: "c1".into(),
+        name: "write_file".into(),
+        arguments: "{}".into(),
+        ..Default::default()
+    };
+    // No project pinned: falls back to the risk table (write asks).
+    let unpinned = approval_classifier(None);
+    assert_eq!(unpinned(&call), ApprovalRequirement::NeedsApproval);
+
+    // Read-class without a project skips.
+    let read_call = oleafly_agent::ToolCall {
+        name: "read_file".into(),
+        ..call.clone()
+    };
+    assert_eq!(unpinned(&read_call), ApprovalRequirement::Skip);
+
+    // A nonexistent project id yields no decisions, so the risk table
+    // governs rather than a blanket deny.
+    let pinned = approval_classifier(Some("no-such-project".into()));
+    assert_eq!(pinned(&call), ApprovalRequirement::NeedsApproval);
+}
+
+#[tokio::test]
+async fn steering_requires_user_content_and_an_active_run() {
+    let state = crate::agent::AgentState::default();
+    let error = crate::agent::steer_run(
+        &state,
+        "no-such-run",
+        oleafly_agent::Message::user("redirect"),
+    )
+    .await
+    .unwrap_err();
+    assert!(error.contains("no active run"));
+    let error = crate::agent::steer_run(&state, "any", oleafly_agent::Message::user("   "))
+        .await
+        .unwrap_err();
+    assert!(error.contains("must contain text or an image"));
+    let error = crate::agent::steer_run(
+        &state,
+        "any",
+        oleafly_agent::Message {
+            role: oleafly_agent::Role::Assistant,
+            content: vec![oleafly_agent::ContentPart::text("redirect")],
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(error.contains("must be a user message"));
+}
+
+#[tokio::test]
+async fn steering_is_acknowledged_only_after_the_run_receives_it() {
+    let state = crate::agent::AgentState::default();
+    let (handle, receiver) = oleafly_agent::SteerHandle::channel();
+    crate::agent::register_steer_for_test(&state, "run-1", handle);
+    drop(receiver);
+    let error = crate::agent::steer_run(
+        &state,
+        "run-1",
+        oleafly_agent::Message::user("redirect now"),
+    )
+    .await
+    .unwrap_err();
+    assert!(error.contains("stopped before receiving"));
+
+    let token = oleafly_agent::CancellationToken::new();
+    let child = token.child();
+    crate::agent::register_token_for_test(&state, "run-1", token);
+    crate::agent::cancel_run(&state, "run-1");
+    assert!(child.is_cancelled());
+    let error = crate::agent::steer_run(&state, "run-1", oleafly_agent::Message::user("again"))
+        .await
+        .unwrap_err();
+    assert!(error.contains("no active run"));
+}
+
+#[test]
+fn initiating_user_text_uses_the_last_user_message() {
+    let request = oleafly_agent::CompletionRequest {
+        messages: vec![
+            oleafly_agent::Message::user("older prompt"),
+            oleafly_agent::Message {
+                role: oleafly_agent::Role::Assistant,
+                content: vec![oleafly_agent::ContentPart::text("older answer")],
+            },
+            oleafly_agent::Message {
+                role: oleafly_agent::Role::User,
+                content: vec![
+                    oleafly_agent::ContentPart::text("current prompt"),
+                    oleafly_agent::ContentPart::Image {
+                        image: "data:image/png;base64,AA".into(),
+                    },
+                ],
+            },
+        ],
+        ..Default::default()
+    };
+
+    assert_eq!(
+        crate::agent::initiating_user_text(&request),
+        "current prompt"
+    );
+}
+
+#[test]
+fn initiating_user_message_survives_rollout_persistence_and_thread_search() {
+    let root = tempfile::tempdir().unwrap();
+    let request = oleafly_agent::CompletionRequest {
+        messages: vec![oleafly_agent::Message::user(
+            "cuttlefishprompt repair the citation",
+        )],
+        ..Default::default()
+    };
+    let mut recorder = crate::agent::turn_recorder_for_request(
+        "turn-search".into(),
+        Some("client-search".into()),
+        &request,
+    );
+    recorder.record(&oleafly_agent::AgentEvent::TextDelta {
+        text: "I repaired it.".into(),
+    });
+    recorder.finish(false);
+    crate::rollout::append_turn(root.path(), "thread-search", &recorder.into_record()).unwrap();
+    let turns = crate::rollout::read_turns(root.path(), "thread-search").unwrap();
+    crate::library_db::resync_thread(root.path(), "thread-search", "project-search", &turns)
+        .unwrap();
+
+    let hits = crate::library_db::search_threads(root.path(), "cuttlefishprompt", 10).unwrap();
+
+    assert_eq!(hits.len(), 1);
+    assert_eq!(hits[0].thread_id, "thread-search");
+}
+
+#[test]
+fn dropping_run_resources_cleans_every_registry() {
+    let state = crate::agent::AgentState::default();
+    let (handle, _receiver) = oleafly_agent::SteerHandle::channel();
+    let token = oleafly_agent::CancellationToken::new();
+    let child = token.child();
+    let manager = std::sync::Arc::new(crate::agent::SubagentManager::default());
+    crate::agent::register_run_resources(
+        &state,
+        "run-1",
+        7,
+        handle,
+        token,
+        manager,
+        Some("project-1".into()),
+        std::collections::HashSet::from(["tool-1".into()]),
+    );
+
+    drop(crate::agent::RunResourcesGuard::new(&state, "run-1", 7));
+
+    assert!(child.is_cancelled());
+    assert!(crate::agent::subagents_stop(&state, "run-1").is_err());
+    assert!(lock_or_recover(&state.steer_senders).get("run-1").is_none());
+    assert!(lock_or_recover(&state.run_tokens).get("run-1").is_none());
+    assert!(lock_or_recover(&state.run_projects).get("run-1").is_none());
+    assert!(lock_or_recover(&state.run_tools).get("run-1").is_none());
+}
+
+#[test]
+fn stale_run_cleanup_preserves_replacement_resources() {
+    let state = crate::agent::AgentState::default();
+    let (first_handle, _first_receiver) = oleafly_agent::SteerHandle::channel();
+    let (second_handle, _second_receiver) = oleafly_agent::SteerHandle::channel();
+    crate::agent::register_run_resources(
+        &state,
+        "same",
+        1,
+        first_handle,
+        oleafly_agent::CancellationToken::new(),
+        std::sync::Arc::new(crate::agent::SubagentManager::default()),
+        Some("old-project".into()),
+        std::collections::HashSet::from(["old-tool".into()]),
+    );
+    let replacement = oleafly_agent::CancellationToken::new();
+    let replacement_child = replacement.child();
+    crate::agent::register_run_resources(
+        &state,
+        "same",
+        2,
+        second_handle,
+        replacement,
+        std::sync::Arc::new(crate::agent::SubagentManager::default()),
+        Some("new-project".into()),
+        std::collections::HashSet::from(["new-tool".into()]),
+    );
+
+    drop(crate::agent::RunResourcesGuard::new(&state, "same", 1));
+
+    assert!(!replacement_child.is_cancelled());
+    assert!(crate::agent::subagents_stop(&state, "same").is_ok());
+    assert_eq!(
+        lock_or_recover(&state.run_projects)
+            .get("same")
+            .and_then(|project| project.value.as_deref()),
+        Some("new-project")
+    );
+    assert!(lock_or_recover(&state.run_tools)
+        .get("same")
+        .is_some_and(|tools| tools.value.contains("new-tool")));
+}
+
+#[test]
+fn run_project_ownership_requires_the_active_generation_and_project() {
+    let state = crate::agent::AgentState::default();
+    let generation = crate::agent::register_active_request_for_test(&state, "run-owned");
+    crate::agent::register_run_project_for_test(&state, "run-owned", generation, "project-1");
+    crate::agent::register_run_tools_for_test(
+        &state,
+        "run-owned",
+        generation,
+        ["tool-1".to_string()],
+    );
+
+    assert!(crate::agent::request_owns_project(
+        &state,
+        "run-owned",
+        "project-1"
+    ));
+    assert!(!crate::agent::request_owns_project(
+        &state,
+        "run-owned",
+        "project-2"
+    ));
+    assert!(crate::agent::request_allows_tool(
+        &state,
+        "run-owned",
+        "project-1",
+        "tool-1"
+    ));
+    assert!(!crate::agent::request_allows_tool(
+        &state,
+        "run-owned",
+        "project-1",
+        "tool-2"
+    ));
+
+    crate::agent::finish_active_request_for_test(&state, "run-owned", generation);
+
+    assert!(!crate::agent::request_owns_project(
+        &state,
+        "run-owned",
+        "project-1"
+    ));
+    assert!(!crate::agent::request_allows_tool(
+        &state,
+        "run-owned",
+        "project-1",
+        "tool-1"
+    ));
+}
+
+#[tokio::test]
+async fn stopping_subagents_targets_the_registered_run_only() {
+    let state = crate::agent::AgentState::default();
+    let error = crate::agent::subagents_stop(&state, "no-such-run").unwrap_err();
+    assert!(error.contains("no active run"));
+
+    let manager = std::sync::Arc::new(crate::agent::SubagentManager::default());
+    crate::agent::register_manager_for_test(&state, "run-1", manager);
+    // No children yet: zero interrupted, no error.
+    assert_eq!(crate::agent::subagents_stop(&state, "run-1").unwrap(), 0);
 }

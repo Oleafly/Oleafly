@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   buildAiToolInventory,
   buildToolContinuation,
+  drainPendingImages,
   resolveChatTools,
   resolveResponseInstructions,
 } from "./ChatCore";
+import { filterResolvedTools } from "@/lib/ai-tool-availability";
 
 describe("AI capability inventory", () => {
   it("omits source-map and figure tools when unavailable", () => {
@@ -15,6 +17,31 @@ describe("AI capability inventory", () => {
   it("includes only capability-backed specialized tools", () => {
     expect(buildAiToolInventory(["document_index"], false, false)).toContain("project_map");
     expect(buildAiToolInventory([], true, true)).toEqual(["preview_figure", "insert_figure", "load_image"]);
+  });
+
+  it("omits disabled tools while keeping unknown tools enabled", () => {
+    const enabledByName = { compile: false, preview_figure: false };
+
+    expect(buildAiToolInventory([], false, false, enabledByName)).not.toContain("compile");
+    expect(buildAiToolInventory([], false, false, enabledByName)).toContain("read_file");
+    expect(buildAiToolInventory([], true, true, enabledByName)).toEqual([
+      "insert_figure",
+      "load_image",
+    ]);
+  });
+});
+
+describe("pending tool images", () => {
+  it("always drains queued images even when the active model cannot receive them", () => {
+    const unsupported = ["data:image/png;base64,QUJD"];
+    expect(drainPendingImages(unsupported, false)).toEqual([]);
+    expect(unsupported).toEqual([]);
+
+    const supported = ["data:image/png;base64,REVG"];
+    expect(drainPendingImages(supported, true)).toEqual([
+      "data:image/png;base64,REVG",
+    ]);
+    expect(supported).toEqual([]);
   });
 });
 
@@ -38,6 +65,22 @@ describe("chat tool resolution", () => {
     ];
     const tools = resolveChatTools(toolsets, "figure", {});
     expect(Object.keys(tools)).toEqual(["preview_figure"]);
+  });
+
+  it("removes a disabled MCP tool from the resolved schemas", () => {
+    const toolsets = [
+      { id: "project-tools", mode: "chat", create: () => ({ read_file: {} }) },
+      {
+        id: "mcp:papers",
+        mode: "chat",
+        create: () => ({ search_papers: {}, fetch_paper: {} }),
+      },
+    ];
+    const tools = resolveChatTools(toolsets, "chat", {});
+
+    expect(Object.keys(filterResolvedTools({ tools, groups: [] }, {
+      search_papers: false,
+    }).tools)).toEqual(["read_file", "fetch_paper"]);
   });
 });
 

@@ -4,6 +4,7 @@ import { PanelBottomClose, GripVertical } from "lucide-react";
 import { ChatCore } from "@/components/ai/ChatCore";
 import { useSettingsStore } from "@/store/settings";
 import { clampRect, type Rect } from "@/lib/overlay-rect";
+import { assistantMinimumWidth } from "@/lib/assistant-layout";
 
 const KEY = "oleafly.ai.overlay.rect";
 
@@ -22,9 +23,15 @@ function loadRect(): Rect {
 
 export function CopilotOverlay() {
   const floating = useSettingsStore((s) => s.chatFloating);
+  const appFontSize = useSettingsStore((s) => s.appFontSize);
   const setFloating = useSettingsStore((s) => s.setChatFloating);
+  const minimumWidth = assistantMinimumWidth(appFontSize);
   const [rect, setRect] = useState<Rect>(() =>
-    clampRect(loadRect(), { width: window.innerWidth, height: window.innerHeight }),
+    clampRect(
+      loadRect(),
+      { width: window.innerWidth, height: window.innerHeight },
+      minimumWidth,
+    ),
   );
 
   const persist = useCallback((r: Rect) => {
@@ -37,11 +44,24 @@ export function CopilotOverlay() {
 
   useEffect(() => {
     if (!floating) return;
+    setRect((r) =>
+      clampRect(
+        r,
+        { width: window.innerWidth, height: window.innerHeight },
+        minimumWidth,
+      ),
+    );
     const onResize = () =>
-      setRect((r) => clampRect(r, { width: window.innerWidth, height: window.innerHeight }));
+      setRect((r) =>
+        clampRect(
+          r,
+          { width: window.innerWidth, height: window.innerHeight },
+          minimumWidth,
+        ),
+      );
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [floating]);
+  }, [floating, minimumWidth]);
 
   const startDrag = (mode: "move" | "resize", e: ReactPointerEvent) => {
     e.preventDefault();
@@ -56,7 +76,7 @@ export function CopilotOverlay() {
         mode === "move"
           ? { ...current, x: ev.clientX - dx, y: ev.clientY - dy }
           : { ...current, w: ev.clientX - current.x, h: ev.clientY - current.y };
-      current = clampRect(next, vp);
+      current = clampRect(next, vp, minimumWidth);
       setRect(current);
     };
     const up = () => {

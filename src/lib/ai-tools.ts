@@ -1,4 +1,11 @@
 import { getConfigCached } from "@/lib/config-cache";
+import { activeCuaSurface } from "@/lib/cua-sandbox";
+import {
+  agentExec,
+  agentExecAuthorize,
+  agentExecCwd,
+  agentExecRegisterExternal,
+} from "@/lib/tauri";
 import {
   createOleaflyTools as createOleaflyToolsCore,
   createFigureTools as createFigureToolsCore,
@@ -274,8 +281,32 @@ export function createOleaflyTools(opts?: {
   confirm?: ConfirmFn;
   onImage?: (dataUrl: string) => void;
   mutationAllowed?: () => boolean;
+  runId?: () => string | null;
+  alwaysConfirmComputerUse?: boolean;
 }) {
-  return createOleaflyToolsCore(HOST, opts);
+  return createOleaflyToolsCore(HOST, {
+    ...opts,
+    // The computer_use tool is only exposed when the experimental web browser
+    // is enabled; otherwise the AI has no browser tool at all.
+    cuaSurface: useSettingsStore.getState().webBrowser ? activeCuaSurface : undefined,
+    resolveExecCwd: agentExecCwd,
+    authorizeExec: async (projectId, command, runIdOverride) => {
+      // A subagent supplies its own external: owner so its commands can be
+      // cancelled independently; otherwise use the run's native id, and mint a
+      // renderer owner only as a last resort.
+      const nativeRunId = runIdOverride ?? opts?.runId?.();
+      const runId = nativeRunId ?? `external:${crypto.randomUUID()}`;
+      if (!runId) throw new Error("The agent run ended before command approval.");
+      // Any external: owner (a subagent's or a renderer-minted one) must
+      // register with the trusted native registry before it can authorize;
+      // native run ids are already tracked.
+      if (runId.startsWith("external:")) await agentExecRegisterExternal(runId);
+      const approvalToken = await agentExecAuthorize(projectId, command, runId);
+      return { approvalToken, runId };
+    },
+    execCommand: (projectId, command, authorization) =>
+      agentExec(projectId, command, authorization.runId, authorization.approvalToken),
+  });
 }
 
 export function createFigureTools(opts?: {

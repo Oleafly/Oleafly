@@ -388,21 +388,25 @@ FOO Foo foo food
     "polite",
   );
   await tauriPage.focus('[aria-label="Find"]');
-  const focusOutline = await tauriPage.evaluate<{
-    style: string;
-    width: number;
+  // The field carries its own fill and border; keyboard focus reads from a
+  // border tint on the box (no inset outline ring), so assert the affordance
+  // by comparing the focused and blurred border colors.
+  const focusAffordance = await tauriPage.evaluate<{
+    focused: string;
+    blurred: string;
   }>(
     `(() => {
       const input = document.querySelector('[aria-label="Find"]');
-      const style = getComputedStyle(input);
-      return {
-        style: style.outlineStyle,
-        width: Number.parseFloat(style.outlineWidth) || 0,
-      };
+      const box = input.closest('.cm-vs-box');
+      input.focus();
+      const focused = getComputedStyle(box).borderColor;
+      input.blur();
+      const blurred = getComputedStyle(box).borderColor;
+      input.focus();
+      return { focused, blurred };
     })()`,
   );
-  expect(focusOutline.style).not.toBe("none");
-  expect(focusOutline.width).toBeGreaterThanOrEqual(2);
+  expect(focusAffordance.focused).not.toBe(focusAffordance.blurred);
 
   const count = async () =>
     tauriPage.evaluate<string>(

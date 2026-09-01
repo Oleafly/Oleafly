@@ -19,7 +19,7 @@ class ResizeObserverMock {
   disconnect = vi.fn();
 }
 
-function ComposerHarness() {
+function InputHarness() {
   const shellRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   useAutoSizeTextarea(
@@ -31,7 +31,7 @@ function ComposerHarness() {
 
   return (
     <div ref={shellRef}>
-      <textarea ref={textareaRef} data-testid="composer-input" />
+      <textarea ref={textareaRef} data-testid="assistant-input" />
     </div>
   );
 }
@@ -51,9 +51,9 @@ describe("useAutoSizeTextarea", () => {
     vi.unstubAllGlobals();
   });
 
-  it("recalculates the textarea height when its composer becomes narrower", () => {
-    render(<ComposerHarness />);
-    const textarea = screen.getByTestId("composer-input");
+  it("recalculates the textarea height when its container becomes narrower", () => {
+    render(<InputHarness />);
+    const textarea = screen.getByTestId("assistant-input");
     expect(textarea).toHaveStyle({ height: "24px" });
 
     measuredScrollHeight = 48;

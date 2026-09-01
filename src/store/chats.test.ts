@@ -3,6 +3,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Deferred per-call resolvers so tests control when each disk load lands.
 const loadCalls: Array<{ pid: string; resolve: (raw: string) => void }> = [];
 const saveProjectChats = vi.hoisted(() => vi.fn(async (_projectId: string, _json: string) => {}));
+const agentThreadDelete = vi.hoisted(() =>
+  vi.fn(async (_threadId: string) => {}),
+);
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true }));
 vi.mock("@/lib/tauri", () => ({
@@ -14,6 +17,7 @@ vi.mock("@/lib/tauri", () => ({
   ),
   saveProjectChats,
 }));
+vi.mock("@/lib/agent-backend", () => ({ agentThreadDelete }));
 
 import { useChatsStore, type ChatUsage, type StoredChat } from "./chats";
 
@@ -25,7 +29,56 @@ const chatJson = (pid: string, id: string) =>
 beforeEach(() => {
   loadCalls.length = 0;
   saveProjectChats.mockClear();
+  agentThreadDelete.mockClear();
   useChatsStore.setState({ projectId: null, chats: [], activeId: null, live: {} });
+});
+
+describe("chats store thread mapping", () => {
+  it("deletes the mapped rollout thread when a chat is removed", () => {
+    useChatsStore.setState({
+      projectId: "thread-map-del",
+      chats: [
+        {
+          id: "c1",
+          projectId: "thread-map-del",
+          title: "t",
+          createdAt: 1,
+          updatedAt: 1,
+          messages: [],
+          headOid: null,
+          threadId: "thread-abc",
+        },
+      ],
+      activeId: "c1",
+    });
+
+    useChatsStore.getState().remove("c1");
+
+    expect(agentThreadDelete).toHaveBeenCalledWith("thread-abc");
+    expect(useChatsStore.getState().chats).toHaveLength(0);
+  });
+
+  it("persists a thread id onto the chat so it survives a reload", () => {
+    useChatsStore.setState({
+      projectId: "thread-map-persist",
+      chats: [
+        {
+          id: "c1",
+          projectId: "thread-map-persist",
+          title: "t",
+          createdAt: 1,
+          updatedAt: 1,
+          messages: [],
+          headOid: null,
+        },
+      ],
+      activeId: "c1",
+    });
+
+    useChatsStore.getState().setThreadId("c1", "thread-xyz");
+
+    expect(useChatsStore.getState().byId("c1")?.threadId).toBe("thread-xyz");
+  });
 });
 
 describe("chats store load", () => {

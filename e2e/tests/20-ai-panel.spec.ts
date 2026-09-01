@@ -7,20 +7,11 @@ test("connect-a-provider leads to Settings -> AI", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Research Assistant");
+  // The assistant is its own side panel now: it opens beside the editor
+  // instead of taking over the sidebar and forcing the PDF view.
   await expect(tauriPage.getByText("Connect an AI provider")).toBeVisible();
-  await expect(tauriPage.locator('[aria-label="PDF View"]')).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(tauriPage.locator(".cm-content")).not.toBeVisible();
-  const sidebarBox = await tauriPage.locator('[data-panel-id="sidebar"]').boundingBox();
-  const viewportWidth = await tauriPage.evaluate<number>("window.innerWidth");
-  expect(sidebarBox).not.toBeNull();
-  expect((sidebarBox?.width ?? 0) / viewportWidth).toBeGreaterThan(0.42);
-  expect((sidebarBox?.width ?? 0) / viewportWidth).toBeLessThan(0.58);
-  await tauriPage.click('[aria-label="Split View"]');
+  await expect(tauriPage.locator('[data-panel-id="assistant"]')).toBeVisible();
   await expect(tauriPage.locator(".cm-content")).toBeVisible();
-  await expect(tauriPage.getByText("Connect an AI provider")).toBeVisible();
   await tauriPage.getByText("Connect a provider").click();
   await expect(tauriPage.getByText("Ollama")).toBeVisible({ timeout: 10_000 });
   await tauriPage.click('[aria-label="Close settings"]');

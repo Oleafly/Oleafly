@@ -1,8 +1,10 @@
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
+import type { ApprovalMode } from "@oleafly/ai-tools";
 
 export interface RegisteredApproval {
   req: ToolApprovalRequest;
   resolve: (ok: boolean) => void;
+  mode: ApprovalMode;
 }
 
 export interface ActiveChatRun {

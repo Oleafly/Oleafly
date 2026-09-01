@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSettingsStore } from "@/store/settings";
 
@@ -105,8 +105,28 @@ describe("Settings Help & About support callout", () => {
 
     const sectionList = screen.getByTestId("settings-section-scroll");
     expect(sectionList).toHaveClass("min-h-0", "flex-1", "overflow-y-auto");
-    expect(sectionList).not.toContainElement(
-      screen.getByTestId("settings-toggle-advanced"),
+    // The Show Advanced toggle was removed; every section is always listed.
+    expect(screen.queryByTestId("settings-toggle-advanced")).toBeNull();
+    expect(screen.getByTestId("settings-section-dictionary")).toBeInTheDocument();
+    expect(screen.getByTestId("settings-section-engine")).toBeInTheDocument();
+  });
+
+  it("uses the responsive Settings layout with a height floor", () => {
+    render(<SettingsModal />);
+
+    expect(screen.getByRole("dialog", { name: "Settings" })).toHaveClass(
+      "w-[min(880px,94vw)]",
+      "h-[min(900px,88vh)]",
+      "min-h-[min(540px,88vh)]",
     );
   });
+
+  it("does not list MCP as a top-level settings section", () => {
+    render(<SettingsModal />);
+
+    const navigation = screen.getByRole("navigation", { name: "Settings sections" });
+    expect(within(navigation).queryByRole("button", { name: "MCP" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("settings-section-mcp")).not.toBeInTheDocument();
+  });
+
 });
