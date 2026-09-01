@@ -158,6 +158,7 @@ import {
 } from "@/lib/chat-run-lifecycle";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
+import { ChatMinimap } from "@/components/ai/ChatMinimap";
 import {
   AgentPlan,
   AgentRunSummary,
@@ -346,6 +347,7 @@ export function ChatCore() {
   const clearGoal = useChatGoalStore((s) => s.clearGoal);
   const goal = goalForProject(goals, projectId);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
+  const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const setChatFloating = useSettingsStore((s) => s.setChatFloating);
   const chats = useChatsStore((s) => s.chats);
   const chatsProjectId = useChatsStore((s) => s.projectId);
@@ -2047,10 +2049,18 @@ ${sandboxedCustom}`;
   }
   const renderedMessages = messages.map((msg, index) => ({
     key: msg.id ?? objectKey(msg, activeChatId ?? "chat"),
+    index,
     live: streaming && index === messages.length - 1,
     isLatestAssistant: index === lastAssistantIndex,
     msg,
   }));
+  // The conversation minimap only earns its space in the full-width AI-only
+  // layout, and only once there is more than one prompt to navigate between.
+  const userPromptCount = messages.reduce(
+    (count, message) => count + (message.role === "user" ? 1 : 0),
+    0,
+  );
+  const showMinimap = workspaceHidden && userPromptCount >= 2;
   const agentRunHasActivity =
     agentTodos.some((todo) => todo.status !== "cancelled") ||
     Object.keys(agentFileChangeTurn?.changedFiles ?? {}).length > 0 ||
@@ -2387,7 +2397,12 @@ ${sandboxedCustom}`;
       {apiKey && (
         <>
           <div className="relative min-h-0 flex-1">
-          <div ref={scrollRef} onScroll={onMessagesScroll} className="h-full overflow-auto px-3 py-3">
+          <ChatMinimap scrollRef={scrollRef} messages={messages} visible={showMinimap} />
+          <div
+            ref={scrollRef}
+            onScroll={onMessagesScroll}
+            className={cn("h-full overflow-auto py-3", showMinimap ? "pl-10 pr-3" : "px-3")}
+          >
             {messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-2">
                 <OleaflyAssistantMascot />
@@ -2464,8 +2479,8 @@ ${sandboxedCustom}`;
                 <div className="flex flex-col gap-3">
                   {/* Key is scoped to the active chat so instances aren't reused
                       across conversations (which would leak expand/scroll state). */}
-                  {renderedMessages.map(({ key, live, isLatestAssistant, msg }) => (
-                    <div key={key} data-message-role={msg.role} className="min-w-0">
+                  {renderedMessages.map(({ key, index, live, isLatestAssistant, msg }) => (
+                    <div key={key} data-message-role={msg.role} data-mm-index={index} className="min-w-0">
                       <MessageItem msg={msg} live={live} />
                       {msg.role === "assistant" && isLatestAssistant && agentRunHasActivity && (
                         <div className="mt-1.5 flex justify-end px-1">
