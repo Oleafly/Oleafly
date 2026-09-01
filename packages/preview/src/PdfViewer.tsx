@@ -41,7 +41,7 @@ import {
 import { safePdfExternalUrl } from "./pdfSecurity";
 import { createPdfScreenReaderLayer } from "./pdfScreenReader";
 import { closestMatchingElement } from "./textHit";
-import { textTargetAtPoint, wordAtPoint } from "./textTarget";
+import { textTargetAtPoint, wordAtPoint, wordForTextTarget } from "./textTarget";
 import type { PreviewTextTarget } from "./typingEcho";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -2006,8 +2006,10 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             ev.clientY || (spanRect ? spanRect.top + spanRect.height / 2 : ev.clientY);
           const hit = pageClickToBp(wrap, p, { clientX, clientY });
           if (hit) {
-            const word = wordAtPoint(clientX, clientY, ev.target, wrap);
             const textTarget = textTargetAtPoint(clientX, clientY, ev.target, wrap);
+            const word = textTarget
+              ? wordForTextTarget(textTarget)
+              : wordAtPoint(clientX, clientY, ev.target, wrap);
             onInverseRef.current?.(
               hit.page,
               hit.x,

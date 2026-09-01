@@ -6,7 +6,9 @@ import {
   findTextLayerSpanAt,
   textTargetAtPoint,
   wordAtPoint,
+  wordForTextTarget,
 } from "./textTarget";
+import type { PreviewTextTarget } from "./typingEcho";
 
 type Rect = { left: number; top: number; width: number; height: number };
 
@@ -246,5 +248,54 @@ describe("wordAtPoint", () => {
     document.elementFromPoint = () => null;
 
     expect(wordAtPoint(10, 10, null, root)).toBeNull();
+  });
+});
+
+describe("word and caret offset agree on one click", () => {
+  const line = "The model uses a model of the model to predict the model output.";
+  // 64 chars laid out over 640px, so the proportional estimator sees 10px per
+  // character. A click at x=235 floors to index 23 ("of") while the browser's
+  // real caret lands on index 22, the space that ends the second "model".
+  const CLICK_X = 235;
+  const CARET_OFFSET = 22;
+
+  function layer() {
+    const root = document.createElement("div");
+    root.className = "textLayer";
+    const span = document.createElement("span");
+    span.textContent = line;
+    span.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 640, height: 20, right: 640, bottom: 20, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    root.appendChild(span);
+    document.body.appendChild(root);
+    (document as { caretRangeFromPoint?: unknown }).caretRangeFromPoint = () => ({
+      startContainer: span.firstChild as Node,
+      startOffset: CARET_OFFSET,
+    });
+    return { root, span };
+  }
+
+  it("the proportional estimator and the caret API disagree on this click", () => {
+    const { root } = layer();
+    expect(wordAtPoint(CLICK_X, 10, null, root)).toBe("of");
+    expect(textTargetAtPoint(CLICK_X, 10, null, root)?.offset).toBe(CARET_OFFSET);
+  });
+
+  it("derives the word from the caret offset the typing echo uses", () => {
+    const { root, span } = layer();
+    const target = textTargetAtPoint(CLICK_X, 10, null, root);
+    expect(target).not.toBeNull();
+    expect(wordForTextTarget(target as PreviewTextTarget)).toBe("model");
+    expect(span.textContent?.slice(0, target?.offset)).toBe("The model uses a model");
+  });
+
+  it("returns the preceding word when the caret lands between two words", () => {
+    const { span } = layer();
+    expect(wordForTextTarget({ span, offset: line.indexOf(" of") })).toBe("model");
+  });
+
+  it("returns the word itself when the caret lands inside one", () => {
+    const { span } = layer();
+    expect(wordForTextTarget({ span, offset: line.indexOf("predict") + 2 })).toBe("predict");
   });
 });

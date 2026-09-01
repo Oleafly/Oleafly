@@ -117,3 +117,7 @@ export function wordAtPoint(
   const text = node.textContent ?? "";
   return wordInText(text, offset);
 }
+
+export function wordForTextTarget(target: PreviewTextTarget): string | null {
+  return wordInText(target.span.textContent ?? "", target.offset);
+}
