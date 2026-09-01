@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Button } from "@/components/ui/button";
-import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import { cn } from "@/lib/utils";
 
 interface PopoverProps {
@@ -30,7 +29,6 @@ export function Popover({
   disabled = false,
 }: PopoverProps) {
   const [open, setOpen] = useState(false);
-  useOccludeNativeWebview(open);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 

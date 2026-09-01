@@ -14,7 +14,6 @@ import { modalCoordinator } from "@oleafly/templates/modal-coordinator";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
-import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import { Kbd } from "@/components/ui/kbd";
 import { Tooltip } from "@/components/ui/tooltip";
 import { celebrate } from "@/lib/confetti";
@@ -837,7 +836,6 @@ export function TourGuide() {
     !newProjectOpen &&
     !settingsOpen &&
     libraryReady;
-  useOccludeNativeWebview(showWelcome || Boolean(activeTourId && activeStep));
 
   useEffect(() => {
     void activeTourId;

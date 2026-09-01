@@ -17,7 +17,6 @@ vi.mock("sonner", () => ({
 
 import { Toaster } from "./sonner";
 import { toast } from "@/lib/toast";
-import { getNativeWebviewOccluded } from "@/lib/native-webview-occlusion";
 import { useToastStore } from "@/store/toast";
 
 describe("Toaster keyed updates", () => {
@@ -63,17 +62,4 @@ describe("Toaster keyed updates", () => {
     expect(mocks.info).not.toHaveBeenCalledWith("Keep me", expect.anything());
   });
 
-  it("occludes native webviews while a toast is visible", async () => {
-    render(<Toaster />);
-    expect(getNativeWebviewOccluded()).toBe(false);
-
-    let id = 0;
-    act(() => {
-      id = useToastStore.getState().push("info", "Saved");
-    });
-    await waitFor(() => expect(getNativeWebviewOccluded()).toBe(true));
-
-    act(() => useToastStore.getState().dismiss(id));
-    await waitFor(() => expect(getNativeWebviewOccluded()).toBe(false));
-  });
 });

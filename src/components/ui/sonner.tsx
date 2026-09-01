@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Toaster as SonnerToaster, toast as sonnerToast } from "sonner";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
-import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import { useToastStore, type Toast } from "@/store/toast";
 
 export function Toaster() {
   const toasts = useToastStore((s) => s.toasts);
-  useOccludeNativeWebview(toasts.length > 0);
   const seenRef = useRef(new Map<number, Toast>());
   // The Toaster mounts outside ThemeProvider in the main window, so follow the
   // root element's theme class instead of the React context.

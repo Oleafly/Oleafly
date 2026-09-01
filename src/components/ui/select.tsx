@@ -2,7 +2,6 @@ import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 
-import { useNativeWebviewOcclusionRef } from "@/lib/native-webview-occlusion";
 import { cn } from "@/lib/utils";
 
 const Select = SelectPrimitive.Root;
@@ -61,11 +60,10 @@ const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
 >(({ className, children, position = "popper", ...props }, ref) => {
-  const occlusionRef = useNativeWebviewOcclusionRef(ref);
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
-        ref={occlusionRef}
+        ref={ref}
         className={cn(
           "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           position === "popper" &&

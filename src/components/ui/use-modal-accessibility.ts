@@ -1,6 +1,5 @@
 import { useEffect, useRef, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
 import { modalCoordinator, visibleFocusable } from "@oleafly/templates/modal-coordinator";
-import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 
 export const appModalCoordinator = modalCoordinator;
 
@@ -20,7 +19,6 @@ export function useModalAccessibility<T extends HTMLElement>(
   dialogRef: RefObject<T | null>;
   onBackdropMouseDown: (event: ReactMouseEvent<HTMLElement>) => void;
 } {
-  useOccludeNativeWebview(open);
   const dialogRef = useRef<T>(null);
   const closeRef = useRef(onClose);
   const modalIdRef = useRef<symbol | null>(null);

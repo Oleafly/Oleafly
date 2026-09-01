@@ -3,7 +3,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getNativeWebviewOccluded } from "@/lib/native-webview-occlusion";
 import {
   ACCENTS,
   DEFAULT_HIDDEN_FILE_PATTERNS,
@@ -704,22 +703,6 @@ describe("Appearance settings tabs", () => {
     );
   });
 
-  it("occludes native webviews only while a select menu is open", async () => {
-    const user = userEvent.setup();
-    render(<AppearanceSection />);
-
-    expect(getNativeWebviewOccluded()).toBe(false);
-
-    await user.click(
-      within(screen.getByTestId("settings-row-app-font-size")).getByRole(
-        "combobox",
-      ),
-    );
-    await waitFor(() => expect(getNativeWebviewOccluded()).toBe(true));
-    await user.click(await screen.findByRole("option", { name: "17px" }));
-    expect(getNativeWebviewOccluded()).toBe(true);
-    await waitFor(() => expect(getNativeWebviewOccluded()).toBe(false));
-  });
 });
 
 describe("Shortcut settings", () => {

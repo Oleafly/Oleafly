@@ -6,9 +6,6 @@ import { useSettingsStore } from "@/store/settings";
 import { CopilotOverlay } from "./CopilotOverlay";
 
 vi.mock("@/components/ai/ChatCore", () => ({ ChatCore: () => null }));
-vi.mock("@/lib/native-webview-occlusion", () => ({
-  useOccludeNativeWebview: vi.fn(),
-}));
 
 const OVERLAY_RECT_KEY = "oleafly.ai.overlay.rect";
 

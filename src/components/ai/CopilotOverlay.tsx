@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { PanelBottomClose, GripVertical } from "lucide-react";
 import { ChatCore } from "@/components/ai/ChatCore";
 import { useSettingsStore } from "@/store/settings";
-import { useOccludeNativeWebview } from "@/lib/native-webview-occlusion";
 import { clampRect, type Rect } from "@/lib/overlay-rect";
 import { assistantMinimumWidth } from "@/lib/assistant-layout";
 
@@ -25,7 +24,6 @@ function loadRect(): Rect {
 export function CopilotOverlay() {
   const floating = useSettingsStore((s) => s.chatFloating);
   const appFontSize = useSettingsStore((s) => s.appFontSize);
-  useOccludeNativeWebview(floating);
   const setFloating = useSettingsStore((s) => s.setChatFloating);
   const minimumWidth = assistantMinimumWidth(appFontSize);
   const [rect, setRect] = useState<Rect>(() =>
