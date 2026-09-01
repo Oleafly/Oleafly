@@ -1,0 +1,37 @@
+\section{Introduction}
+\label{sec:introduction}
+
+Serving a transformer at a 128k-token context is no longer an arithmetic
+problem. On the accelerators most laboratories actually own, the attention
+kernel spends the majority of its wall-clock time moving key and value tiles
+between high-bandwidth memory and the on-chip scratchpad. Doubling the context
+doubles that traffic, and the arithmetic units idle while it drains.
+
+Sparsity is the obvious response, and the literature offers a great deal of
+it~\cite{child2019sparse,beltagy2020longformer,zaheer2020bigbird}. Most of that
+work fixes a sparsity pattern in advance: a sliding window, a dilated stride, a
+handful of global tokens. Fixed patterns are easy to schedule, but they commit
+to a decision before the model has seen the prompt, and the heads that matter
+for a particular prompt are not known in advance.
+
+We take the opposite position. \sysname{} keeps the attention matrix dense in
+principle and decides, per block and per prompt, which blocks can be skipped
+without changing the output beyond a stated tolerance. The decision is made by a
+rank-4 probe over the query and key tiles, which costs roughly 1.5 percent of
+the dense kernel, and it is checked at runtime by a guard that restores dense
+computation whenever the probe's residual bound is violated.
+
+\paragraph{Contributions.}
+This paper makes three contributions.
+\begin{itemize}
+  \item A block-importance predictor that estimates the contribution of an
+        attention block from a low-rank sketch of its query and key tiles,
+        with an error bound that holds for any softmax temperature
+        (Section~\ref{sec:design}).
+  \item A scheduler that turns those predictions into a memory plan, so that
+        skipped blocks are never fetched rather than being fetched and
+        discarded (Section~\ref{sec:design}).
+  \item An evaluation on three open-weight models at contexts from 8k to 128k
+        tokens, including the failure cases where the approximation degrades
+        (Section~\ref{sec:evaluation}).
+\end{itemize}

@@ -224,7 +224,7 @@ function HeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
   return (
     <Popover
       ariaLabel="Heading level"
-      className="w-auto min-w-0"
+      className="w-fit min-w-0 max-w-56"
       triggerClassName={variant === "bar" ? "gap-0.5 px-1.5" : "w-full justify-start gap-2 px-2 font-normal"}
       trigger={
         variant === "bar" ? (

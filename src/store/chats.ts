@@ -1,7 +1,9 @@
 import { create } from "zustand";
 import { isTauri } from "@tauri-apps/api/core";
 import { loadProjectChats, saveProjectChats } from "@/lib/tauri";
+import { agentThreadDelete } from "@/lib/agent-backend";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { useAgentTurnsStore } from "@/store/agent-turns";
 
 export interface ToolEntry {
   id?: string;
@@ -20,10 +22,19 @@ export interface AttachmentMeta {
   mediaType: string;
 }
 
+export interface SubagentEntry {
+  id: string;
+  label: string;
+  state: string;
+  detail?: string;
+}
+
 export interface ChatMessage {
   id?: string;
   role: "user" | "assistant";
   content: string;
+  createdAt?: number;
+  subagents?: SubagentEntry[];
   checkpointOid?: string;
   checkpointRestored?: boolean;
   toolCalls?: ToolEntry[];
@@ -67,6 +78,10 @@ export interface StoredChat {
   // that an older chat refers to an older project snapshot.
   headOid: string | null;
   usage?: ChatUsage;
+  // The persistent rollout thread this chat maps to. Persisted so reopening
+  // the chat after a restart continues the same thread instead of forking a
+  // new one, and so deletion can remove the thread's rollout and search rows.
+  threadId?: string;
 }
 
 interface ChatsState {
@@ -97,7 +112,8 @@ interface ChatsState {
       estimatedUsd?: number;
     },
   ) => Promise<void>;
-  remove: (chatId: string) => void;
+  remove: (chatId: string, opts?: { deleteThread?: boolean }) => void;
+  setThreadId: (chatId: string, threadId: string) => void;
   setActive: (chatId: string | null) => void;
   byId: (chatId: string) => StoredChat | undefined;
   live: Record<string, ChatMessage[]>;
@@ -396,15 +412,37 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
     }
   },
 
-  remove: (chatId) => {
+  remove: (chatId, opts) => {
     const { projectId, activeId } = get();
     if (!projectId) return;
     const chats = memoryByProject.get(projectId) ?? get().chats;
+    const removed = chats.find((c) => c.id === chatId);
     const updated = chats.filter((c) => c.id !== chatId);
     cacheProjectChats(projectId, updated);
     void queuePersist(projectId, updated);
     set({ chats: updated, activeId: activeId === chatId ? null : activeId });
     get().clearLive(chatId);
+    // Delete the mapped rollout and its search-index rows so a removed chat
+    // leaves nothing behind. The persisted mapping wins; the in-memory one
+    // covers a chat deleted within the same session before it persisted.
+    const threadId =
+      removed?.threadId ?? useAgentTurnsStore.getState().threadByChat[chatId];
+    if ((opts?.deleteThread ?? true) && threadId)
+      void agentThreadDelete(threadId).catch(() => {});
+    useAgentTurnsStore.getState().dropChat(chatId);
+  },
+
+  setThreadId: (chatId, threadId) => {
+    const { projectId } = get();
+    if (!projectId) return;
+    const chats = memoryByProject.get(projectId) ?? get().chats;
+    if (chats.find((c) => c.id === chatId)?.threadId === threadId) return;
+    const updated = chats.map((c) =>
+      c.id === chatId ? { ...c, threadId } : c,
+    );
+    cacheProjectChats(projectId, updated);
+    void queuePersist(projectId, updated);
+    if (get().projectId === projectId) set({ chats: updated });
   },
 
   setActive: (chatId) => set({ activeId: chatId }),

@@ -1,0 +1,71 @@
+\chapter{Lattice Coefficients and Moment Transform}
+\label{app:coefficients}
+
+\section{Velocity sets and weights}
+\label{sec:app-weights}
+
+The D3Q27 velocity set used for the momentum population groups into four
+families by squared length. Table~\ref{tab:d3q27-weights} gives the weights of
+the equilibrium~\eqref{eq:equilibrium} for each family.
+
+\begin{table}[h]
+\centering
+\caption[D3Q27 and D3Q7 lattice weights]{Lattice weights for the momentum
+population on D3Q27 and the scalar population on D3Q7. Velocities are given in
+units of $\Delta x / \Delta t$.}
+\label{tab:d3q27-weights}
+\begin{tabular}{llrrl}
+\toprule
+Set & Family & $|\mathbf{c}_i|^{2}$ & Count & Weight \\
+\midrule
+\multirow{4}{*}{D3Q27}
+ & rest      & 0 & 1  & $8/27$ \\
+ & face      & 1 & 6  & $2/27$ \\
+ & edge      & 2 & 12 & $1/54$ \\
+ & corner    & 3 & 8  & $1/216$ \\
+\midrule
+\multirow{2}{*}{D3Q7}
+ & rest      & 0 & 1  & $1/4$ \\
+ & face      & 1 & 6  & $1/8$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Moment ordering and relaxation rates}
+\label{sec:app-moments}
+
+The transform $\mathbf{M}$ of Equation~\eqref{eq:mrt-collision} is built by
+Gram Schmidt orthogonalisation of the polynomial basis
+$\{1, c_x, c_y, c_z, c^{2}, 3c_x^{2}-c^{2}, c_y^{2}-c_z^{2}, c_x c_y, c_y c_z,
+c_x c_z, \dots\}$ against the weighted inner product
+$\langle a, b \rangle = \sum_i w_i a_i b_i$. The production relaxation rates
+are given in Table~\ref{tab:relaxation-rates}. Rates for moments above fourth
+order are set to unity, which is the maximally dissipative choice and is
+appropriate because those moments carry no hydrodynamic information.
+
+\begin{table}[h]
+\centering
+\caption[Relaxation rates by moment order]{Relaxation rates used in the
+production configuration. The shear rate $s_\nu$ is set from the target
+viscosity through Equation~\eqref{eq:viscosity} and is the only rate that varies
+between refinement levels.}
+\label{tab:relaxation-rates}
+\begin{tabular}{llll}
+\toprule
+Moment group & Order & Symbol & Rate \\
+\midrule
+Density, momentum   & 0, 1 & $s_\rho, s_j$ & 1.0 (conserved) \\
+Deviatoric stress   & 2    & $s_\nu$       & from~\eqref{eq:viscosity} \\
+Bulk stress         & 2    & $s_e$         & 1.19 \\
+Heat flux           & 3    & $s_q$         & 1.40 \\
+Fourth order        & 4    & $s_4$         & 1.72 \\
+Ghost               & 5, 6 & $s_g$         & 1.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The value $s_e = 1.19$ is inherited from the linear stability analysis
+of~\citet{manov2017mrt} and was verified here against the Taylor Green decay of
+Section~\ref{sec:val-order}, where a value below $1.1$ produced a visible
+oscillation in the bulk mode and a value above $1.4$ over damped the acoustic
+transient during spin up.

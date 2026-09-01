@@ -1,0 +1,78 @@
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[letterpaper,top=0.85in,bottom=0.9in,left=0.68in,right=0.68in,columnsep=0.26in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{microtype}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{enumitem}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
+
+\newcommand{\cohensd}{\ensuremath{d}}
+\newcommand{\etasq}{\ensuremath{\eta_p^2}}
+
+\title{\vspace{-8mm}\bfseries\large
+Recovering From the Build: The Interruption Cost of\\
+Compile Notifications in Developer Tooling}
+
+\author{
+  \normalsize Delphine Aumont, Grigor Sahakyan, Hyeon-Ju Bae, and Owen Traore-Lund\\[1mm]
+  \footnotesize Ashgrove University, Department of Interaction Science\\
+  \footnotesize \texttt{\{aumont,sahakyan,bae,traorelund\}@ashgrove.example}
+}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+\footnotesize
+Compilation is slow enough in most serious toolchains that developers do
+something else while they wait, and the tool has to tell them when the build is
+done. Nearly every editor answers this with an immediate notification, on the
+implicit theory that a developer who has moved on wants to know at once. We
+tested that theory. In a within-subjects laboratory study with 36 professional
+developers, each completing four instrumented editing tasks under four
+notification conditions, immediate toasts produced the worst outcome on every
+measure we recorded. Mean resumption lag after a compile notification was
+14.2~s under immediate toasts against 6.9~s under an ambient gutter marker, a
+difference of 7.3~s with a 95 percent confidence interval of [5.4, 9.2] and a
+large effect (\cohensd{} = 1.12). Task completion was 18 percent slower and
+self-reported mental demand 21 points higher on a 100-point scale. The ambient
+condition beat the silent control as well, so the finding is not simply that
+notifications are bad; it is that a notification which demands a gaze shift and
+a dismissal action costs more than the information it delivers is worth. We
+give a design recommendation, an estimate of when it stops holding, and the
+instrumentation we used, which is reusable in other editors.
+\end{abstract}
+
+\vspace{2mm}
+{\footnotesize \noindent
+\textbf{CCS Concepts:} Human-centered computing $\rightarrow$ Empirical studies
+in HCI; Software and its engineering $\rightarrow$ Integrated and visual
+development environments.\\[1mm]
+\textbf{Keywords:} interruption, task resumption, developer tools, compile
+feedback, notification design.}
+
+\vspace{3mm}
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/method}
+\input{sections/results}
+\input{sections/discussion}
+\input{sections/limitations}
+\input{sections/conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

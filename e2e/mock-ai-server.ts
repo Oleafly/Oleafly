@@ -11,12 +11,14 @@ export interface MockAiServer {
   url: string;
   close: () => Promise<void>;
   setReply: (text: string) => void;
+  setStreamDelay: (milliseconds: number) => void;
   setToolCall: (call: { name: string; args: Record<string, unknown>; then: string } | null) => void;
   requestCount: () => number;
 }
 
 export async function startMockAiServer(): Promise<MockAiServer> {
   let reply = "MOCKREPLY";
+  let streamDelay = 0;
   let toolCall: { name: string; args: Record<string, unknown>; then: string } | null = null;
   let requests = 0;
 
@@ -49,7 +51,7 @@ export async function startMockAiServer(): Promise<MockAiServer> {
     if (req.method === "POST" && url.startsWith("/v1/chat/completions")) {
       let body = "";
       req.on("data", (c) => (body += c));
-      req.on("end", () => {
+      req.on("end", async () => {
         requests++;
         const hasToolResult = /"role"\s*:\s*"tool"/.test(body);
         // generateText (single-shot, e.g. image-to-LaTeX) posts stream:false and
@@ -91,6 +93,9 @@ export async function startMockAiServer(): Promise<MockAiServer> {
           });
 
         chunk({ role: "assistant" });
+        if (streamDelay > 0) {
+          await new Promise((resolve) => setTimeout(resolve, streamDelay));
+        }
 
         // First turn with a pending tool call and no tool result yet -> emit the
         // tool call. The follow-up request (carrying the tool result) streams
@@ -146,6 +151,9 @@ export async function startMockAiServer(): Promise<MockAiServer> {
     close: () => new Promise((r) => server.close(() => r())),
     setReply: (t) => {
       reply = t;
+    },
+    setStreamDelay: (milliseconds) => {
+      streamDelay = milliseconds;
     },
     setToolCall: (c) => {
       toolCall = c;

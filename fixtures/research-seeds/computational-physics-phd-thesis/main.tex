@@ -1,0 +1,70 @@
+\documentclass[11pt,a4paper,oneside]{report}
+
+\usepackage[a4paper,margin=1.15in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{setspace}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{listings}
+\usepackage[ruled,vlined]{algorithm2e}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
+
+\newtheorem{definition}{Definition}[chapter]
+\newtheorem{proposition}{Proposition}[chapter]
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  columns=fullflexible,
+  keepspaces=true,
+  frame=single,
+  framesep=4pt,
+  showstringspaces=false,
+  breaklines=true,
+  captionpos=b
+}
+
+\newcommand{\Ri}{\mathrm{Ri}}
+\newcommand{\Rey}{\mathrm{Re}}
+\newcommand{\Pran}{\mathrm{Pr}}
+\newcommand{\Frn}{\mathrm{Fr}}
+\newcommand{\solver}{Halomere}
+
+\onehalfspacing
+
+\begin{document}
+
+\pagenumbering{roman}
+\input{frontmatter/titlepage}
+\input{frontmatter/abstract}
+\input{frontmatter/acknowledgements}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+\cleardoublepage
+\pagenumbering{arabic}
+
+\input{chapters/introduction}
+\input{chapters/theory}
+\input{chapters/method}
+\input{chapters/validation}
+\input{chapters/results}
+\input{chapters/conclusion}
+
+\appendix
+\input{appendices/lattice-coefficients}
+\input{appendices/solver-configuration}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

@@ -259,21 +259,23 @@ pub async fn gh_set_token(token: String) -> Result<GitHubUser, String> {
         return Err("Empty token.".into());
     }
     let user = fetch_user(&token).await?;
-    let mut cfg = config::read_config()?;
-    cfg.github_token = token;
-    cfg.github_user = user.login.clone();
-    config::write_config(&cfg)?;
+    let login = user.login.clone();
+    config::update_config(move |cfg| {
+        cfg.github_token = token;
+        cfg.github_user = login;
+        Ok(())
+    })?;
     Ok(user)
 }
 
 /// Clear the stored GitHub token + cached login (disconnect).
 #[tauri::command]
 pub fn gh_clear_token() -> Result<(), String> {
-    let mut cfg = config::read_config()?;
-    cfg.github_token = String::new();
-    cfg.github_user = String::new();
-    let _ = crate::secrets::set_secret(crate::secrets::github_token_account(), "");
-    config::write_config(&cfg)
+    config::update_config(|cfg| {
+        cfg.github_token = String::new();
+        cfg.github_user = String::new();
+        Ok(())
+    })
 }
 
 /// List the authenticated user's repositories (most recently updated first).

@@ -367,7 +367,8 @@ const searchTheme = EditorView.theme({
     gap: "2px",
     paddingLeft: "6px",
     borderRadius: "0.375rem",
-    background: "transparent",
+    border: "1px solid var(--border, rgba(128,128,128,0.3))",
+    background: "var(--background, #000)",
   },
   ".cm-vs-lead": {
     width: "14px",
@@ -391,16 +392,12 @@ const searchTheme = EditorView.theme({
     font: "12px system-ui, sans-serif",
   },
   ".cm-vs-input::placeholder": { color: "var(--muted-foreground, #999)" },
-  // Keyboard users need a persistent focus target even though the search panel
-  // is already a distinct surface. Keep the ring inside the borderless field
-  // so it does not resize the panel or read as a second nested input box.
-  ".cm-vs-input:focus": {
-    outline: "2px solid var(--ring, #2563eb)",
-    outlineOffset: "-2px",
-  },
-  ".cm-vs-input:focus-visible": {
-    outline: "2px solid var(--ring, #2563eb)",
-    outlineOffset: "-2px",
+  ".cm-vs-input:focus": { outline: "none" },
+  ".cm-vs-input:focus-visible": { outline: "none" },
+  // The field carries its own border and fill, so focus reads from the caret
+  // and a keyboard-only border tint rather than a nested outline ring.
+  ".cm-vs-box:focus-within": {
+    borderColor: "var(--ring, #2563eb)",
   },
   ".cm-vs-btn": {
     flexShrink: "0",

@@ -12,6 +12,9 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, Channel: mocks.Ch
 
 import {
   AgentStreamError,
+  agentSteer,
+  agentThreadArchive,
+  agentThreadFork,
   completeText,
   completeViaBackend,
   streamText,
@@ -107,6 +110,60 @@ describe("cancellation", () => {
   it("reports a genuine provider failure as an error, not an abort", async () => {
     mocks.invoke.mockRejectedValue("The provider returned 401. Incorrect API key provided");
     await expect(completeText({ user: "hi" })).rejects.toThrow(/401/);
+  });
+});
+
+describe("steering", () => {
+  it("sends the complete user message and waits for backend delivery", async () => {
+    let resolveDelivery!: () => void;
+    mocks.invoke.mockImplementation(
+      () => new Promise<void>((resolve) => {
+        resolveDelivery = resolve;
+      }),
+    );
+    const message = {
+      role: "user" as const,
+      content: [
+        { type: "text" as const, text: "Use this image" },
+        { type: "image" as const, image: "data:image/png;base64,AA==" },
+      ],
+    };
+
+    let delivered = false;
+    const pending = agentSteer("run-1", message).then(() => {
+      delivered = true;
+    });
+    await Promise.resolve();
+
+    expect(mocks.invoke).toHaveBeenCalledWith("agent_steer", {
+      requestId: "run-1",
+      message,
+    });
+    expect(delivered).toBe(false);
+
+    resolveDelivery();
+    await pending;
+    expect(delivered).toBe(true);
+  });
+});
+
+describe("thread actions", () => {
+  it("archives and forks the requested native thread", async () => {
+    mocks.invoke.mockResolvedValueOnce(true).mockResolvedValueOnce("thread-forked");
+
+    await expect(agentThreadArchive("thread-source")).resolves.toBe(true);
+    await expect(agentThreadFork("thread-source", "project-1")).resolves.toBe(
+      "thread-forked",
+    );
+
+    expect(mocks.invoke).toHaveBeenNthCalledWith(1, "agent_thread_archive", {
+      threadId: "thread-source",
+    });
+    expect(mocks.invoke).toHaveBeenNthCalledWith(2, "agent_thread_fork", {
+      threadId: "thread-source",
+      excludeTurns: null,
+      projectId: "project-1",
+    });
   });
 });
 

@@ -328,7 +328,12 @@ export function FileTree() {
     activePath,
     selected: selected?.path ?? null,
     onSelect: (path, isDir) => setSelected({ path, isDir }),
-    onOpen: openFile,
+    onOpen: (path) => {
+      // Opening a file from the tree brings the editor forward if a layout was
+      // hiding it (AI-only or preview-only), then shows the file.
+      useSettingsStore.getState().revealEditor();
+      return openFile(path);
+    },
     onDelete: (path) => {
       void deleteEntry(path).catch((error) =>
         notifyError("delete file", error, `Could not delete "${path}".`),

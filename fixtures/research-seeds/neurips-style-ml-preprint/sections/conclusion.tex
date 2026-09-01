@@ -1,0 +1,25 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+Data selection under distribution shift is a directional problem, and the
+criteria the field reaches for by default are magnitude criteria. \method{}
+replaces the magnitude question with an alignment question, pays roughly 3
+percent of fine-tuning compute to answer it on a sketch, and reaches full-pool
+accuracy on four shifted benchmarks with about a third of the tokens. The
+excess-risk bound in Proposition~\ref{prop:risk} separates what the curriculum
+controls from what it cannot, and the anchor-size corollary it yields is
+confirmed by a sharp empirical threshold near 128 examples.
+
+Two limitations bound the result. The method needs a target anchor, so it does
+not apply when the deployment distribution is genuinely unknown at training
+time. It also assumes the pool contains aligned examples to find; on a pool
+with no legal text at all, alignment scoring cannot manufacture any, and our
+\textsc{LegalQA-S} gains come from a pool where roughly 4 percent of examples
+carry target-relevant structure. Characterising that floor, and combining
+alignment with an explicit coverage constraint, are the directions we consider
+most likely to pay.
+
+\section*{Acknowledgements}
+We thank the Northfield cluster staff for reserved capacity during the sweep,
+and the reviewers who pressed us to report the anchor-starvation regime rather
+than the anchor sizes that work.

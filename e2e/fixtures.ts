@@ -227,6 +227,8 @@ function createNativeTest(dismissTours: boolean) {
           localStorage.removeItem("oleafly.shortcuts");
           localStorage.setItem("oleafly.visualEditor", "1");
           localStorage.setItem("oleafly.latexTools", "1");
+          localStorage.setItem("oleafly.webBrowser", "1");
+          localStorage.setItem("oleafly.openInTree", "0");
           return true;
         })()`);
         await reloadNativePage(page);

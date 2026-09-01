@@ -1,0 +1,122 @@
+\section{Work plan}
+\label{sec:workplan}
+
+\subsection{Work packages}
+
+\workpackage{wp:theory}{Theory of linkage error propagation}{M1 to M30, lead: PI}
+Sharp bounds for Equation~\eqref{eq:bias} under regression, Cox, and inverse-probability-weighting
+estimands. Identification of the certificate quantities that a protocol must report for the bounds
+to be computable. Deliverables: D1.1 bound theory report (M14), D1.2 diagnostic software (M26),
+D1.3 validation against three gold-standard studies (M30). Serves \ref{obj:theory}.
+
+\workpackage{wp:encoding}{Attack-resistant encodings}{M1 to M36, lead: postdoc 1}
+Sketch construction, privacy proof, parameter accounting under composition across fields and across
+custodians. Adversarial evaluation against frequency, pattern-mining, and graph alignment attacks.
+Deliverables: D2.1 construction and proof (M18), D2.2 adversarial evaluation report (M30),
+D2.3 reference implementation (M36). Serves \ref{obj:encoding}.
+
+\workpackage{wp:protocol}{Federated protocol and implementation}{M7 to M48, lead: software engineer}
+Secure comparison protocol, scheduling and blocking under encryption, certificate generation, and
+the engineering needed to run 8 million records per custodian. Deliverables: D3.1 protocol
+specification (M20), D3.2 single-custodian prototype (M30), D3.3 three-custodian deployment (M46).
+Serves \ref{obj:protocol}, and depends on D2.1 from \ref{wp:encoding}.
+
+\workpackage{wp:inference}{Inference under uncertain linkage}{M13 to M54, lead: postdoc 2}
+Estimators that treat links as latent, with correct coverage under the certificate. Extension to
+survival outcomes and to the federated case where the analyst never sees a link. Deliverables:
+D4.1 estimator family and theory (M28), D4.2 software release (M40), D4.3 three published
+reanalyses (M54). Serves \ref{obj:inference}, and depends on D1.1 from \ref{wp:theory}.
+
+\workpackage{wp:governance}{Governance, ethics, and dissemination}{M1 to M60, lead: PI and legal adviser}
+Data access agreements with three custodians, the ethics framework, the public engagement
+programme, and all dissemination. Deliverables: D5.1 tripartite access agreement (M12),
+D5.2 governance model paper (M24), D5.3 open release of all software and the final synthesis (M60).
+
+\subsection{Milestones}
+
+\begin{center}
+\small
+\begin{tabular}{@{}l L{8.6cm} c l@{}}
+  \toprule
+  ID & Milestone & Month & Verified by \\
+  \midrule
+  MS1 & Tripartite data access agreement signed by all three custodians & 12 & Signed agreement \\
+  MS2 & Encoding construction and privacy proof accepted for publication & 20 & Acceptance \\
+  MS3 & Bounds computable from certificate quantities, validated in simulation & 22 & D1.1, D1.2 \\
+  MS4 & Single-custodian prototype linking 8 million records within 72 hours & 30 & Benchmark log \\
+  MS5 & Three-custodian deployment producing a certified linkage & 46 & Custodian sign-off \\
+  MS6 & Three reanalyses published with linkage cost stated & 54 & Publications \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Timeline}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=0.19cm,y=0.58cm]
+    \foreach \m in {0,6,12,18,24,30,36,42,48,54,60} {
+      \draw[gray!35] (\m,0.55) -- (\m,-14.4);
+      \node[font=\scriptsize,anchor=south,inner sep=1.5pt] at (\m,0.55) {M\m};
+    }
+    \draw[gray!60,thick] (0,0.4) -- (60,0.4);
+
+    \node[anchor=east,font=\scriptsize\bfseries] at (-1.2,-0.4) {WP1 Theory};
+    \node[anchor=east,font=\scriptsize] at (-1.2,-1.2) {T1.1 Bound theory};
+    \node[anchor=east,font=\scriptsize] at (-1.2,-2.0) {T1.2 Diagnostic};
+    \node[anchor=east,font=\scriptsize] at (-1.2,-2.8) {T1.3 Validation};
+
+    \node[anchor=east,font=\scriptsize\bfseries] at (-1.2,-3.8) {WP2 Encoding};
+    \node[anchor=east,font=\scriptsize] at (-1.2,-4.6) {T2.1 Construction};
+    \node[anchor=east,font=\scriptsize] at (-1.2,-5.4) {T2.2 Attack eval};
+    \node[anchor=east,font=\scriptsize] at (-1.2,-6.2) {T2.3 Reference code};
+
+    \node[anchor=east,font=\scriptsize\bfseries] at (-1.2,-7.2) {WP3 Protocol};
+    \node[anchor=east,font=\scriptsize] at (-1.2,-8.0) {T3.1 Specification};
+    \node[anchor=east,font=\scriptsize] at (-1.2,-8.8) {T3.2 Prototype};
+    \node[anchor=east,font=\scriptsize] at (-1.2,-9.6) {T3.3 Deployment};
+
+    \node[anchor=east,font=\scriptsize\bfseries] at (-1.2,-10.6) {WP4 Inference};
+    \node[anchor=east,font=\scriptsize] at (-1.2,-11.4) {T4.1 Estimators};
+    \node[anchor=east,font=\scriptsize] at (-1.2,-12.2) {T4.2 Software};
+    \node[anchor=east,font=\scriptsize] at (-1.2,-13.0) {T4.3 Reanalyses};
+
+    \node[anchor=east,font=\scriptsize\bfseries] at (-1.2,-14.0) {WP5 Governance};
+
+    \fill[wpone!75] (1,-1.45) rectangle (14,-0.95);
+    \fill[wpone!55] (12,-2.25) rectangle (26,-1.75);
+    \fill[wpone!35] (24,-3.05) rectangle (30,-2.55);
+
+    \fill[wptwo!75] (1,-4.85) rectangle (18,-4.35);
+    \fill[wptwo!55] (16,-5.65) rectangle (30,-5.15);
+    \fill[wptwo!35] (26,-6.45) rectangle (36,-5.95);
+
+    \fill[wpthree!75] (7,-8.25) rectangle (20,-7.75);
+    \fill[wpthree!55] (19,-9.05) rectangle (30,-8.55);
+    \fill[wpthree!35] (30,-9.85) rectangle (48,-9.35);
+
+    \fill[wpfour!75] (13,-11.65) rectangle (28,-11.15);
+    \fill[wpfour!55] (27,-12.45) rectangle (40,-11.95);
+    \fill[wpfour!35] (38,-13.25) rectangle (54,-12.75);
+
+    \fill[wpfive!70] (1,-14.25) rectangle (60,-13.75);
+
+    \foreach \ms/\m/\y in {MS1/12/-14.0, MS2/20/-4.6, MS3/22/-2.0, MS4/30/-8.8, MS5/46/-9.6, MS6/54/-13.0} {
+      \node[diamond,draw,fill=white,inner sep=1.1pt,minimum size=3pt] at (\m,\y) {};
+      \node[font=\tiny,anchor=west,inner sep=2.5pt] at (\m,\y) {\ms};
+    }
+
+    \draw[gray,dashed,-{Stealth[length=1.6mm]}] (18,-4.6) -- (18,-8.0);
+    \draw[gray,dashed,-{Stealth[length=1.6mm]}] (14,-1.2) -- (14,-11.4);
+  \end{tikzpicture}
+  \caption{Work package timeline over 60 months. Diamonds are milestones MS1 to MS6. Dashed arrows
+  mark the two hard dependencies: the encoding construction gates the protocol specification, and
+  the bound theory gates the estimator family.}
+  \label{fig:gantt}
+\end{figure}
+
+\noindent
+Figure~\ref{fig:gantt} shows two deliberate design choices. \ref{wp:theory} and \ref{wp:encoding}
+both start in month 1, because neither can be specified without the other's vocabulary. And
+\ref{wp:governance} runs the full 60 months, because the access agreement is the single item whose
+delay would stall everything downstream of month 30.

@@ -3,6 +3,7 @@ import {
   lazy,
   Suspense,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -17,10 +18,12 @@ import { RefreshCw } from "lucide-react";
 import { ThemeProvider } from "@/lib/theme";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
+import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
+import { TerminalPane } from "@/components/dock/TerminalPane";
 import { Editor } from "@/components/editor/Editor";
+import { editorUndo, editorRedo } from "@/components/editor/cm/controller";
 import { PreviewPane } from "@/components/preview/PreviewPane";
 import { PdfImportView } from "@/components/import/PdfImportView";
-import { Rail } from "@/components/layout/Rail";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { SearchOmnibar } from "@/components/layout/SearchOmnibar";
@@ -44,7 +47,8 @@ import {
 } from "@/store/compile";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
-import { layoutPresetViewMode, layoutPresetWantsAi, useSettingsStore } from "@/store/settings";
+import { useSettingsStore } from "@/store/settings";
+import { registerBrowserCuaSurface } from "@/lib/browser-window";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import { resetOpenCompileMarker, shouldCompileOnOpen } from "@/lib/open-compile";
@@ -61,13 +65,24 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { cn } from "@/lib/utils";
 import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
+import { ChatPanel } from "@/components/ai/ChatPanel";
 import { AboutModal } from "@/components/layout/AboutModal";
 import { EnginePickerModal } from "@/components/layout/EnginePickerModal";
 import { TinytexGuards } from "@/components/layout/TinytexGuards";
 import { QuitGuard } from "@/components/layout/QuitGuard";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
+import { handleDockShortcut } from "@/lib/dock-shortcuts";
+import {
+  startNativeDockShortcutBridge,
+  usesNativeDockMenu,
+} from "@/lib/native-dock-shortcuts";
 import type { ProjectStateChanged } from "@/lib/tauri";
+import {
+  assistantMinimumWidth,
+  sidebarMinimumPercent,
+  sidebarPanelGroupWidth,
+} from "@/lib/assistant-layout";
 
 type ExternalFileChange =
   | { kind: "write"; path: string; content: string }
@@ -197,7 +212,7 @@ function VHandle({
   placement?: "top" | "center" | "bottom";
 }) {
   return (
-    <div className="resize-handle-col relative flex w-3 shrink-0">
+    <div className="resize-handle-col relative flex w-1.5 shrink-0 bg-background">
       <PanelResizeHandle
         id={id}
         style={{ cursor: "col-resize" }}
@@ -235,6 +250,7 @@ const RESTORE_PREVIEW_FROM_FINGERPRINT = false;
 function AppContent() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const projectId = useFilesStore((s) => s.projectId);
+  const projectName = useFilesStore((s) => s.projectName);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const projectLoading = useFilesStore((state) => state.loading);
   const mainDocument = useFilesStore((state) => state.mainDoc);
@@ -253,29 +269,45 @@ function AppContent() {
     (state) => state.snapshot.identity,
   );
   const viewMode = useSettingsStore((s) => s.viewMode);
-  const setViewMode = useSettingsStore((s) => s.setViewMode);
   const showTree = useSettingsStore((s) => s.showTree);
-  const hideEditorArea = useSettingsStore((s) => s.hideEditorArea);
   const editorFontSize = useSettingsStore((s) => s.editorFontSize);
   const appFontSize = useSettingsStore((s) => s.appFontSize);
   const appFontFamily = useSettingsStore((s) => s.appFontFamily);
   const editorFontFamily = useSettingsStore((s) => s.editorFontFamily);
   const accentColor = useSettingsStore((s) => s.accentColor);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
-  const railTab = useSettingsStore((s) => s.railTab);
+  const terminalOpen = useSettingsStore((s) => s.terminalOpen);
+  const assistantOpen = useSettingsStore((s) => s.assistantOpen);
+  const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
+  const closeDocks = useSettingsStore((s) => s.closeDocks);
   const homePage = useHomeViewStore((state) => state.page);
   const toolsOpen = useHomeViewStore((state) => state.toolsOpen);
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
   const editorPanelRef = useRef<ImperativePanelHandle>(null);
   const pdfPanelRef = useRef<ImperativePanelHandle>(null);
-  const previousRailTabRef = useRef<string | null>(null);
-  const previousShowTreeRef = useRef(showTree);
-  const sidebarSizeBeforeAiRef = useRef<number | null>(null);
-  const aiResizePendingRef = useRef(false);
+  const terminalPanelRef = useRef<ImperativePanelHandle>(null);
 
-  const RAIL_WIDTH_PX = 48;
+  useLayoutEffect(() => {
+    if (projectId) closeDocks();
+  }, [projectId, closeDocks]);
+
+  useLayoutEffect(() => {
+    if (!projectId) return;
+    const panel = terminalPanelRef.current;
+    if (!panel) return;
+    if (terminalOpen) {
+      if (panel.isCollapsed()) panel.expand(30);
+    } else if (panel.isExpanded()) {
+      panel.collapse();
+    }
+  }, [terminalOpen, projectId]);
+
+  // The browser opens as its own window, so computer use just needs a CUA
+  // surface whose navigate opens/replaces that window; there is no dock to
+  // reveal. The computer_use tool is only exposed when the browser flag is on.
+  useEffect(() => registerBrowserCuaSurface(), []);
+
   const SIDEBAR_DEFAULT_PX = 340;
-  const SIDEBAR_MIN_PX = 250;
   const panelAreaRef = useRef<HTMLDivElement>(null);
   const [panelAreaWidth, setPanelAreaWidth] = useState(0);
   useEffect(() => {
@@ -289,21 +321,20 @@ function AppContent() {
     observer.observe(el);
     return () => observer.disconnect();
   }, [projectId]);
-  const panelGroupWidth = Math.max(0, panelAreaWidth - RAIL_WIDTH_PX);
-  const sidebarMinSize = panelGroupWidth > 0 ? Math.min(65, (SIDEBAR_MIN_PX / panelGroupWidth) * 100) : 15;
+  const panelGroupWidth = sidebarPanelGroupWidth(panelAreaWidth, appFontSize);
+  const sidebarMinSize = sidebarMinimumPercent(
+    panelGroupWidth,
+    false,
+    appFontSize,
+  );
   const sidebarDefaultSize =
     panelGroupWidth > 0 ? Math.min(65, (SIDEBAR_DEFAULT_PX / panelGroupWidth) * 100) : 15;
-
-  useEffect(() => {
-    const wasOpen = previousShowTreeRef.current;
-    previousShowTreeRef.current = showTree;
-    const isAiTab = railTab === "ai" || railTab === "chat";
-    if (showTree && !wasOpen && !isAiTab) {
-      // The assistant has its own layout effect below, which balances the
-      // sidebar against the editor and preview panels.
-      window.requestAnimationFrame(() => sidebarPanelRef.current?.resize(sidebarDefaultSize));
-    }
-  }, [showTree, railTab, sidebarDefaultSize]);
+  const assistantMinSize =
+    panelGroupWidth > 0
+      ? Math.min(55, (assistantMinimumWidth(appFontSize) / panelGroupWidth) * 100)
+      : 22;
+  const workspacePanelDefaultSize =
+    viewMode === "split" ? 50 : 100;
 
   useEffect(() => {
     // React owns the screen from here: retire the inline HTML splash and
@@ -324,68 +355,6 @@ function AppContent() {
     }
   }, [projectId]);
 
-  useEffect(() => {
-    // No adjacent editor/pdf panel to balance against in this mode: the
-    // sidebar just stays at its own 100% width.
-    if (hideEditorArea) {
-      previousRailTabRef.current = railTab;
-      return;
-    }
-
-    const suppressAutoLayout = useSettingsStore.getState().suppressAiAutoLayout;
-    if (suppressAutoLayout) useSettingsStore.getState().setSuppressAiAutoLayout(false);
-
-    const wasAi =
-      previousRailTabRef.current === "ai" || previousRailTabRef.current === "chat";
-    const isAi = railTab === "ai" || railTab === "chat";
-    previousRailTabRef.current = railTab;
-
-    if (isAi && !wasAi) {
-      useSettingsStore.getState().setChatFloating(false);
-      aiResizePendingRef.current = true;
-      const panel = sidebarPanelRef.current;
-      if (panel) sidebarSizeBeforeAiRef.current = panel.getSize();
-      if (!suppressAutoLayout) setViewMode("pdf");
-    }
-
-    if (isAi && aiResizePendingRef.current) {
-      const frame = window.requestAnimationFrame(() => {
-        const panel = sidebarPanelRef.current;
-        if (panel) {
-          if (sidebarSizeBeforeAiRef.current == null) {
-            sidebarSizeBeforeAiRef.current = panel.getSize();
-          }
-          if (viewMode === "split") {
-            panel.resize(30);
-            editorPanelRef.current?.resize((30 / 70) * 100);
-            pdfPanelRef.current?.resize((40 / 70) * 100);
-          } else {
-            panel.resize(50);
-            if (viewMode === "editor") editorPanelRef.current?.resize(100);
-            else if (viewMode === "pdf") pdfPanelRef.current?.resize(100);
-          }
-        }
-        aiResizePendingRef.current = false;
-      });
-      return () => window.cancelAnimationFrame(frame);
-    }
-
-    if (!isAi && wasAi) {
-      aiResizePendingRef.current = false;
-      const previousSize = sidebarSizeBeforeAiRef.current;
-      sidebarSizeBeforeAiRef.current = null;
-      window.requestAnimationFrame(() => {
-        // Without a remembered size the sidebar would keep the assistant's
-        // half-width for the file tree, so fall back to its normal width.
-        sidebarPanelRef.current?.resize(previousSize ?? sidebarDefaultSize);
-        if (viewMode === "split") {
-          editorPanelRef.current?.resize(50);
-          pdfPanelRef.current?.resize(50);
-        }
-      });
-    }
-  }, [railTab, setViewMode, viewMode, hideEditorArea, sidebarDefaultSize]);
-
   // Panels are sized in percentages, so a window resize would scale the sidebar
   // with it and leave it far from the width it was opened at. Hold its pixel
   // width steady and let the editor and preview absorb the change instead.
@@ -393,7 +362,7 @@ function AppContent() {
   useEffect(() => {
     const previousWidth = lastPanelGroupWidthRef.current;
     lastPanelGroupWidthRef.current = panelGroupWidth;
-    if (!showTree || hideEditorArea || panelGroupWidth <= 0) return;
+    if (!showTree || panelGroupWidth <= 0) return;
     const panel = sidebarPanelRef.current;
     if (!panel) return;
     if (previousWidth <= 0) {
@@ -412,10 +381,25 @@ function AppContent() {
   }, [
     panelGroupWidth,
     showTree,
-    hideEditorArea,
     sidebarMinSize,
     sidebarDefaultSize,
   ]);
+
+  // A pane-layout change (the assistant appearing, or the view mode switching)
+  // makes react-resizable-panels renormalize the group, which shrinks the file
+  // tree well below its intended width because the other panes' default sizes
+  // sum past 100. Re-assert the tree's width once the new layout has settled.
+  // Window resizes are handled above and are deliberately not a dependency here,
+  // so a width the user dragged is left alone until the layout itself changes.
+  const sidebarDefaultSizeRef = useRef(sidebarDefaultSize);
+  sidebarDefaultSizeRef.current = sidebarDefaultSize;
+  useLayoutEffect(() => {
+    if (!projectId || !showTree) return;
+    const raf = window.requestAnimationFrame(() => {
+      sidebarPanelRef.current?.resize(sidebarDefaultSizeRef.current);
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [projectId, showTree, assistantOpen, viewMode, workspaceHidden]);
 
   // No-op in dev / the browser; only prompts if an update is actually available.
   useEffect(() => {
@@ -436,6 +420,19 @@ function AppContent() {
     if (!isTauri()) return;
     const unlisten = listen("menu://about", () => setAboutOpen(true));
     return () => void unlisten.then((off) => off());
+  }, []);
+
+  useEffect(() => {
+    let disposed = false;
+    let stop: (() => void) | undefined;
+    void startNativeDockShortcutBridge().then((cleanup) => {
+      if (disposed) cleanup();
+      else stop = cleanup;
+    });
+    return () => {
+      disposed = true;
+      stop?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -494,19 +491,21 @@ function AppContent() {
 
   useEffect(() => {
     const s = useSettingsStore.getState();
-    if (projectId) setViewMode(layoutPresetViewMode(s.defaultView));
     // Clear the previous project's compile output so a stale PDF never shows.
     useCompileStore.getState().reset();
     // Preflight results belong to the previous project; reset them too.
     usePreflightStore.getState().reset();
     if (projectId) {
-      s.setRailTab(layoutPresetWantsAi(s.defaultView) ? "ai" : "files");
-      s.setHideEditorArea(s.defaultView === "ai-only");
-      if (s.openInTree && !s.showTree) s.toggleTree();
-      else if (!s.openInTree && s.showTree) s.toggleTree();
+      s.setRailTab("files");
+      // The default layout drives only the editor/preview/AI panes; the file
+      // tree is independent and is honored ONLY here, on project open, from the
+      // "show file tree on open" setting. Switching layouts later never touches
+      // it. Set it directly so open is deterministic.
+      s.setLayoutPreset(s.defaultView);
+      s.setShowTree(s.openInTree);
       void import("@/lib/preview-window").then((m) => m.retargetPreviewWindow(projectId));
     }
-  }, [projectId, setViewMode]);
+  }, [projectId]);
 
   // Detached AI chat / preview windows can mutate disk; reload open buffers
   // and the compiled PDF when they report changes.
@@ -561,6 +560,97 @@ function AppContent() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [recompile]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (useTourStore.getState().activeTourId) return;
+      if (!useFilesStore.getState().projectId) return;
+      if (matchesShortcut(e, useShortcutStore.getState().bindings.toggleSidebar)) {
+        // Cmd/Ctrl+B means bold inside the source and visual editors; the
+        // sidebar toggle must not shadow it there.
+        const el = document.activeElement as HTMLElement | null;
+        if (el?.closest(".cm-editor") || el?.closest(".ProseMirror")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        useSettingsStore.getState().toggleTree();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
+  // Undo/redo is handled in the webview on every platform. The Edit menu's
+  // Undo/Redo carry no accelerator (that would double-fire on Windows/Linux,
+  // where the menu and the webview can both receive the key), so the keystroke
+  // reaches this handler uniformly. Route by focus: a plain field (title,
+  // search, chat) keeps its own native undo; the editor, its toolbar, and
+  // anywhere else drive the document's history. The menu items still work as
+  // clicks, routed through the same logic.
+  useEffect(() => {
+    // The document editors are contenteditable surfaces (.cm-content,
+    // .ProseMirror), so classify them BEFORE the plain-field check; a plain
+    // field also includes the inputs CodeMirror mounts inside its own panels
+    // (find/replace), which must undo their own text, not the document. Plain
+    // fields get an explicit execCommand undo so the behavior is identical on
+    // every platform's webview.
+    const inEditor = (active: HTMLElement | null): boolean =>
+      !!(active?.closest(".cm-content") || active?.closest(".ProseMirror"));
+    const inPlainField = (active: HTMLElement | null): boolean => {
+      if (!active || inEditor(active)) return false;
+      const tag = active.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      const isUndo = key === "z" && !e.shiftKey;
+      const isRedo = (key === "z" && e.shiftKey) || key === "y";
+      if (!isUndo && !isRedo) return;
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      if (useTourStore.getState().activeTourId) return;
+      if (!useFilesStore.getState().projectId) return;
+      const active = document.activeElement as HTMLElement | null;
+      e.preventDefault();
+      e.stopPropagation();
+      if (inPlainField(active)) {
+        document.execCommand(isRedo ? "redo" : "undo");
+        return;
+      }
+      if (isRedo) editorRedo();
+      else editorUndo();
+    };
+    window.addEventListener("keydown", onKey, true);
+
+    const menuRun = (redo: boolean) => {
+      if (!useFilesStore.getState().projectId) return;
+      const active = document.activeElement as HTMLElement | null;
+      if (inPlainField(active)) {
+        document.execCommand(redo ? "redo" : "undo");
+        return;
+      }
+      if (redo) editorRedo();
+      else editorUndo();
+    };
+    const unlisten: Promise<() => void>[] = isTauri()
+      ? [listen("menu://undo", () => menuRun(false)), listen("menu://redo", () => menuRun(true))]
+      : [];
+
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      void Promise.all(unlisten).then((fns) => {
+        for (const fn of fns) fn();
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!projectId || usesNativeDockMenu()) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (useTourStore.getState().activeTourId) return;
+      handleDockShortcut(event);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [projectId]);
 
   // Compile once when a project opens into a layout that shows the PDF pane,
   // so the user lands on a rendered preview instead of the placeholder. Keyed
@@ -720,8 +810,8 @@ function AppContent() {
           (see globals.css). */}
       <div data-sidebar-open={showTree ? "true" : "false"} className="flex h-full flex-col">
         <TopToolbar />
+        <BackendProtocolBanner />
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
-          <Rail />
           <ErrorBoundary
             resetKey={projectId}
             fallback={
@@ -738,33 +828,34 @@ function AppContent() {
               </div>
             }
           >
-            <PanelGroup direction="horizontal" className="min-h-0 min-w-0 flex-1">
+            <PanelGroup direction="vertical" className="min-h-0 min-w-0 flex-1">
+              <Panel
+                id="content-band"
+                order={1}
+                defaultSize={terminalOpen ? 72 : 100}
+                minSize={25}
+                className="min-h-0 min-w-0"
+              >
+                <PanelGroup direction="horizontal" className="h-full min-h-0 min-w-0">
               {showTree && (
                 <Fragment key="sidebar">
                   <Panel
                     ref={sidebarPanelRef}
                     id="sidebar"
                     order={1}
-                    defaultSize={hideEditorArea ? 100 : sidebarDefaultSize}
-                    minSize={hideEditorArea ? 100 : sidebarMinSize}
-                    maxSize={hideEditorArea ? 100 : 65}
-                    collapsible={!hideEditorArea}
-                    collapsedSize={0}
-                    onCollapse={() => {
-                      if (useSettingsStore.getState().showTree) {
-                        useSettingsStore.getState().toggleTree();
-                      }
-                    }}
+                    defaultSize={sidebarDefaultSize}
+                    minSize={sidebarMinSize}
+                    maxSize={65}
                     className="bg-sidebar"
                   >
                     <Sidebar />
                   </Panel>
-                  {!hideEditorArea && <VHandle id="h-tree" />}
+                  <VHandle id="h-tree" />
                 </Fragment>
               )}
 
-              {!hideEditorArea && (
-                <Panel
+              {!workspaceHidden && (
+              <Panel
                   key="editorpdf"
                   id="editorpdf"
                   order={2}
@@ -772,38 +863,112 @@ function AppContent() {
                   className="min-h-0 min-w-0"
                 >
                   <PanelGroup direction="horizontal" className="h-full min-h-0 min-w-0">
-                    {viewMode !== "pdf" && (
-                      <Panel
-                        ref={editorPanelRef}
-                        id="editor"
-                        order={1}
-                        defaultSize={viewMode === "editor" ? 100 : 50}
-                        minSize={15}
-                        className="min-h-0 min-w-0"
-                      >
-                        <Suspense fallback={<SurfaceLoading label="Loading editor" />}>
-                          <Editor />
-                        </Suspense>
-                      </Panel>
-                    )}
-                    {viewMode === "split" && <VHandle id="h-mid" placement="top" />}
-                    {viewMode !== "editor" && (
-                      <Panel
-                        ref={pdfPanelRef}
-                        id="pdf"
-                        order={2}
-                        defaultSize={viewMode === "pdf" ? 100 : 50}
-                        minSize={15}
-                        className="min-h-0 min-w-0"
-                      >
-                        <Suspense fallback={<SurfaceLoading label="Loading preview" />}>
-                          <PreviewPane />
-                        </Suspense>
-                      </Panel>
-                    )}
+                        {viewMode !== "pdf" && (
+                          <Panel
+                            ref={editorPanelRef}
+                            id="editor"
+                            order={1}
+                            defaultSize={workspacePanelDefaultSize}
+                            minSize={15}
+                            className="min-h-0 min-w-0"
+                          >
+                            <ErrorBoundary surface="editor" resetKey={projectId}>
+                              <Suspense fallback={<SurfaceLoading label="Loading editor" />}>
+                                <Editor />
+                              </Suspense>
+                            </ErrorBoundary>
+                          </Panel>
+                        )}
+                        {viewMode === "split" && <VHandle id="h-mid" placement="top" />}
+                        {viewMode !== "editor" && (
+                          <Panel
+                            ref={pdfPanelRef}
+                            id="pdf"
+                            order={2}
+                            defaultSize={workspacePanelDefaultSize}
+                            minSize={15}
+                            className="min-h-0 min-w-0"
+                          >
+                            <ErrorBoundary surface="PDF preview" resetKey={projectId}>
+                              <Suspense fallback={<SurfaceLoading label="Loading preview" />}>
+                                <PreviewPane />
+                              </Suspense>
+                            </ErrorBoundary>
+                          </Panel>
+                        )}
                   </PanelGroup>
                 </Panel>
               )}
+
+              {assistantOpen && (
+                <Fragment key="assistant">
+                  {!workspaceHidden && <VHandle id="h-assistant" />}
+                  <Panel
+                    id="assistant"
+                    order={3}
+                    defaultSize={workspaceHidden ? 100 : Math.max(28, assistantMinSize)}
+                    minSize={assistantMinSize}
+                    maxSize={workspaceHidden ? 100 : 55}
+                    collapsible
+                    collapsedSize={0}
+                    onCollapse={() => {
+                      if (useSettingsStore.getState().assistantOpen) {
+                        useSettingsStore.getState().setAssistantOpen(false);
+                      }
+                    }}
+                    className="min-h-0 min-w-0 border-l"
+                  >
+                    <ErrorBoundary surface="AI assistant" resetKey={projectId}>
+                      <Suspense fallback={<SurfaceLoading label="Loading assistant" />}>
+                        <ChatPanel />
+                      </Suspense>
+                    </ErrorBoundary>
+                  </Panel>
+                </Fragment>
+              )}
+                </PanelGroup>
+              </Panel>
+              <PanelResizeHandle
+                id="v-terminal"
+                style={{ cursor: "row-resize" }}
+                className={cn(
+                  "resize-handle-row group flex h-2.5 items-center justify-center bg-background",
+                  "transition-colors hover:bg-accent/40",
+                  !terminalOpen && "hidden",
+                )}
+              >
+                <span className="h-0.5 w-8 rounded-full bg-border transition-colors group-hover:bg-ring" />
+              </PanelResizeHandle>
+              <Panel
+                ref={terminalPanelRef}
+                id="terminal"
+                order={2}
+                defaultSize={terminalOpen ? 28 : 0}
+                minSize={10}
+                collapsible
+                collapsedSize={0}
+                onCollapse={() => {
+                  if (useSettingsStore.getState().terminalOpen) {
+                    useSettingsStore.getState().setTerminalOpen(false);
+                  }
+                }}
+                className="min-h-0 min-w-0"
+              >
+                <div
+                  className={cn(
+                    "h-full min-h-0 min-w-0",
+                    !terminalOpen && "invisible pointer-events-none",
+                  )}
+                >
+                  <ErrorBoundary surface="terminal dock" resetKey={projectId}>
+                    <TerminalPane
+                      projectId={projectId}
+                      projectName={projectName}
+                      visible={terminalOpen}
+                    />
+                  </ErrorBoundary>
+                </div>
+              </Panel>
             </PanelGroup>
           </ErrorBoundary>
         </div>

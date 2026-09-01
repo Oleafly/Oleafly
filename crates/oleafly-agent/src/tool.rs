@@ -65,30 +65,11 @@ pub fn google_tools(tools: &[ToolSchema]) -> Value {
             json!({
                 "name": tool.name,
                 "description": tool.description,
-                "parameters": strip_unsupported_schema_keys(&tool.input_schema),
+                "parametersJsonSchema": tool.input_schema,
             })
         })
         .collect();
     json!([{ "functionDeclarations": declarations }])
-}
-
-fn strip_unsupported_schema_keys(schema: &Value) -> Value {
-    match schema {
-        Value::Object(map) => {
-            let mut out = serde_json::Map::new();
-            for (key, value) in map {
-                if key == "additionalProperties" || key == "$schema" || key == "default" {
-                    continue;
-                }
-                out.insert(key.clone(), strip_unsupported_schema_keys(value));
-            }
-            Value::Object(out)
-        }
-        Value::Array(items) => {
-            Value::Array(items.iter().map(strip_unsupported_schema_keys).collect())
-        }
-        other => other.clone(),
-    }
 }
 
 #[cfg(test)]
@@ -134,40 +115,55 @@ mod tests {
     }
 
     #[test]
-    fn google_nests_declarations_and_drops_keys_it_rejects() {
+    fn google_nests_declarations_and_uses_arbitrary_json_schema() {
         let out = google_tools(&sample());
         let declaration = &out[0]["functionDeclarations"][0];
         assert_eq!(declaration["name"], "read_file");
-        assert!(declaration["parameters"]
-            .get("additionalProperties")
-            .is_none());
-        assert!(declaration["parameters"]["properties"]["path"]
-            .get("default")
-            .is_none());
+        assert!(declaration.get("parameters").is_none());
         assert_eq!(
-            declaration["parameters"]["properties"]["path"]["type"],
+            declaration["parametersJsonSchema"]["additionalProperties"],
+            false
+        );
+        assert_eq!(
+            declaration["parametersJsonSchema"]["properties"]["path"]["default"],
+            "main.tex"
+        );
+        assert_eq!(
+            declaration["parametersJsonSchema"]["properties"]["path"]["type"],
             "string"
         );
     }
 
     #[test]
-    fn stripping_reaches_nested_schemas() {
-        let nested = json!({
+    fn google_preserves_defs_refs_composition_and_const() {
+        let schema = json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
             "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": { "type": "object", "additionalProperties": false }
+            "$defs": {
+                "target": {
+                    "oneOf": [
+                        {"type": "string", "const": "main.tex"},
+                        {"type": "string", "pattern": "^[a-z]+\\.tex$"}
+                    ]
                 }
             },
-            "additionalProperties": false
+            "properties": {
+                "path": {"$ref": "#/$defs/target"}
+            },
+            "required": ["path"]
         });
-        let cleaned = strip_unsupported_schema_keys(&nested);
-        assert!(cleaned.get("additionalProperties").is_none());
-        assert!(cleaned["properties"]["items"]["items"]
-            .get("additionalProperties")
-            .is_none());
-        assert_eq!(cleaned["properties"]["items"]["type"], "array");
+        let tools = vec![ToolSchema {
+            name: "select_target".into(),
+            description: "Select a target".into(),
+            input_schema: schema.clone(),
+        }];
+
+        let out = google_tools(&tools);
+
+        assert_eq!(
+            out[0]["functionDeclarations"][0]["parametersJsonSchema"],
+            schema
+        );
     }
 
     #[test]

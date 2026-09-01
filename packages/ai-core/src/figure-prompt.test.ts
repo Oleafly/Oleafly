@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { modelSupportsVision } from "./figure-prompt";
+import { buildFigureSystemPrompt, modelSupportsVision } from "./figure-prompt";
 
 describe("vision capability", () => {
   it("recognises GLM's vision line", () => {
@@ -24,5 +24,25 @@ describe("vision capability", () => {
   it("stays false for models with no image support", () => {
     expect(modelSupportsVision("deepseek", "deepseek-chat")).toBe(false);
     expect(modelSupportsVision("groq", "llama-3.3-70b-versatile")).toBe(false);
+  });
+});
+
+describe("figure tool prompt", () => {
+  it("advertises and instructs only the tools available for the run", () => {
+    const prompt = buildFigureSystemPrompt(["preview_figure", "mcp__images__search"]);
+
+    expect(prompt).toContain(
+      "Available tools for this run: preview_figure, mcp__images__search.",
+    );
+    expect(prompt).toContain("Call preview_figure");
+    expect(prompt).not.toContain("insert_figure");
+  });
+
+  it("handles a figure run with no tools", () => {
+    const prompt = buildFigureSystemPrompt([]);
+
+    expect(prompt).toContain("Available tools for this run: none.");
+    expect(prompt).not.toContain("preview_figure");
+    expect(prompt).not.toContain("insert_figure");
   });
 });

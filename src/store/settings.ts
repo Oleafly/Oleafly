@@ -10,7 +10,6 @@ const SETTINGS_SECTIONS = new Set([
   "downloads",
   "integrations",
   "shortcuts",
-  "mcp",
   "experimentation",
   "help",
 ]);
@@ -40,13 +39,17 @@ export function layoutPresetWantsAi(preset: LayoutPreset): boolean {
   );
 }
 
+// Only the AI-only layout hides the editor/preview region entirely; the rest
+// always show it and select panes through the view mode.
+export function layoutPresetHidesWorkspace(preset: LayoutPreset): boolean {
+  return preset === "ai-only";
+}
+
 export type RailTab =
   | "files"
   | "search"
-  | "ai"
   | "source"
   | "review"
-  | "chat"
   | "preflight"
   | "refs"
   | "mcp";
@@ -78,6 +81,143 @@ export type EditorThemeId =
   | "rose-pine"
   | "catppuccin"
   | "one-dark";
+export type TerminalCursorStyle = "block" | "underline" | "bar";
+export type TerminalColorThemeId = "dark" | "light";
+export type BrowserSearchEngineId =
+  | "google"
+  | "bing"
+  | "duckduckgo"
+  | "brave"
+  | "perplexity"
+  | "startpage"
+  | "ecosia";
+
+export interface TerminalThemeColors {
+  background: string;
+  foreground: string;
+  cursor: string;
+  cursorAccent: string;
+  selectionBackground: string;
+  selectionForeground: string;
+  selectionInactiveBackground: string;
+  black: string;
+  red: string;
+  green: string;
+  yellow: string;
+  blue: string;
+  magenta: string;
+  cyan: string;
+  white: string;
+  brightBlack: string;
+  brightRed: string;
+  brightGreen: string;
+  brightYellow: string;
+  brightBlue: string;
+  brightMagenta: string;
+  brightCyan: string;
+  brightWhite: string;
+}
+
+export const TERMINAL_COLOR_THEMES: Record<
+  TerminalColorThemeId,
+  { id: TerminalColorThemeId; name: string; colors: TerminalThemeColors }
+> = {
+  dark: {
+    id: "dark",
+    name: "Dark",
+    colors: {
+      background: "#1e1e1e",
+      foreground: "#f2f2f2",
+      cursor: "#ffffff",
+      cursorAccent: "#1e1e1e",
+      selectionBackground: "#264f78",
+      selectionForeground: "#ffffff",
+      selectionInactiveBackground: "#3a3d41",
+      black: "#000000",
+      red: "#cd3131",
+      green: "#0dbc79",
+      yellow: "#e5e510",
+      blue: "#2472c8",
+      magenta: "#bc3fbc",
+      cyan: "#11a8cd",
+      white: "#e5e5e5",
+      brightBlack: "#666666",
+      brightRed: "#f14c4c",
+      brightGreen: "#23d18b",
+      brightYellow: "#f5f543",
+      brightBlue: "#3b8eea",
+      brightMagenta: "#d670d6",
+      brightCyan: "#29b8db",
+      brightWhite: "#ffffff",
+    },
+  },
+  light: {
+    id: "light",
+    name: "Light",
+    colors: {
+      background: "#ffffff",
+      foreground: "#1f2328",
+      cursor: "#1f2328",
+      cursorAccent: "#ffffff",
+      selectionBackground: "#add6ff",
+      selectionForeground: "#1f2328",
+      selectionInactiveBackground: "#d7e7f7",
+      black: "#24292f",
+      red: "#cf222e",
+      green: "#1a7f37",
+      yellow: "#9a6700",
+      blue: "#0969da",
+      magenta: "#8250df",
+      cyan: "#1b7c83",
+      white: "#6e7781",
+      brightBlack: "#57606a",
+      brightRed: "#a40e26",
+      brightGreen: "#2da44e",
+      brightYellow: "#bf8700",
+      brightBlue: "#218bff",
+      brightMagenta: "#a475f9",
+      brightCyan: "#3192aa",
+      brightWhite: "#24292f",
+    },
+  },
+};
+
+export const BROWSER_SEARCH_ENGINES: {
+  id: BrowserSearchEngineId;
+  name: string;
+  searchUrl: string;
+}[] = [
+  { id: "google", name: "Google", searchUrl: "https://www.google.com/search?q=" },
+  { id: "bing", name: "Bing", searchUrl: "https://www.bing.com/search?q=" },
+  {
+    id: "duckduckgo",
+    name: "DuckDuckGo",
+    searchUrl: "https://duckduckgo.com/?q=",
+  },
+  {
+    id: "brave",
+    name: "Brave",
+    searchUrl: "https://search.brave.com/search?q=",
+  },
+  {
+    id: "perplexity",
+    name: "Perplexity",
+    searchUrl: "https://www.perplexity.ai/search?s=o&q=",
+  },
+  {
+    id: "startpage",
+    name: "Startpage",
+    searchUrl: "https://www.startpage.com/sp/search?query=",
+  },
+  {
+    id: "ecosia",
+    name: "Ecosia",
+    searchUrl: "https://www.ecosia.org/search?q=",
+  },
+];
+
+export const DEFAULT_TERMINAL_FONT_FAMILY =
+  'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace';
 
 function ls(k: string, fb: string): string {
   try {
@@ -96,6 +236,7 @@ const LAYOUT_PRESETS: LayoutPreset[] = [
   "preview-ai",
   "editor-only",
   "preview-only",
+  "ai-only",
 ];
 const LEGACY_VIEW_MODE_TO_PRESET: Record<string, LayoutPreset> = {
   split: "editor-preview",
@@ -109,6 +250,46 @@ function readDefaultView(raw: string): LayoutPreset {
 }
 function readEditorTheme(raw: string): EditorThemeId {
   return EDITOR_THEMES.some((t) => t.id === raw) ? (raw as EditorThemeId) : "system";
+}
+function readNumberInRange(
+  raw: string | number,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= minimum && value <= maximum
+    ? value
+    : fallback;
+}
+function readTerminalCursorStyle(raw: string): TerminalCursorStyle {
+  return raw === "underline" || raw === "bar" ? raw : "block";
+}
+function readTerminalColorTheme(raw: string): TerminalColorThemeId {
+  return raw === "light" ? "light" : "dark";
+}
+function readTerminalColor(raw: string, fallback: string): string {
+  return /^#[\da-f]{6}$/iu.test(raw) ? raw.toLowerCase() : fallback;
+}
+function readBrowserSearchEngine(raw: string): BrowserSearchEngineId {
+  return BROWSER_SEARCH_ENGINES.some(({ id }) => id === raw)
+    ? (raw as BrowserSearchEngineId)
+    : "google";
+}
+function readBrowserHomePage(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "https://www.google.com/";
+  const candidate = /^[a-z][a-z\d+.-]*:/iu.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.toString()
+      : "https://www.google.com/";
+  } catch {
+    return "https://www.google.com/";
+  }
 }
 const GRAMMAR_DIALECT_IDS: GrammarDialect[] = [
   "american",
@@ -162,6 +343,10 @@ export const EDITOR_FONTS: { name: string; value: string }[] = [
   { name: "SF Mono", value: '"SF Mono", ui-monospace, monospace' },
   { name: "Menlo", value: "Menlo, Monaco, monospace" },
   { name: "Consolas", value: "Consolas, ui-monospace, monospace" },
+];
+export const TERMINAL_FONTS: { name: string; value: string }[] = [
+  { name: "Terminal default", value: DEFAULT_TERMINAL_FONT_FAMILY },
+  ...EDITOR_FONTS.filter(({ value }) => value),
 ];
 
 // Syntax/surface colors for each id are defined in globals.css under
@@ -335,6 +520,13 @@ interface SettingsState {
   setSettingsScrollTarget: (v: string | null) => void;
   viewMode: ViewMode;
   setViewMode: (v: ViewMode) => void;
+  // Make the editor pane visible (opening a file from the tree): reveal the
+  // workspace if the AI-only layout hid it, and switch a preview-only view to
+  // a split so the editor is on screen. A no-op when the editor already shows.
+  revealEditor: () => void;
+  // The editor/preview region is hidden only for the AI-only layout; every
+  // other layout shows it and picks the panes through viewMode.
+  workspaceHidden: boolean;
   defaultView: LayoutPreset;
   setDefaultView: (v: LayoutPreset) => void;
   openInTree: boolean;
@@ -343,6 +535,37 @@ interface SettingsState {
   setHoverPreview: (v: boolean) => void;
   chatFloating: boolean;
   setChatFloating: (v: boolean) => void;
+  terminalOpen: boolean;
+  setTerminalOpen: (v: boolean) => void;
+  browserOpen: boolean;
+  setBrowserOpen: (v: boolean) => void;
+  assistantOpen: boolean;
+  setAssistantOpen: (v: boolean) => void;
+  closeDocks: () => void;
+  terminalFontSize: number;
+  setTerminalFontSize: (v: number) => void;
+  terminalFontFamily: string;
+  setTerminalFontFamily: (v: string) => void;
+  terminalFontWeight: number;
+  setTerminalFontWeight: (v: number) => void;
+  terminalFontWeightBold: number;
+  setTerminalFontWeightBold: (v: number) => void;
+  terminalCursorStyle: TerminalCursorStyle;
+  setTerminalCursorStyle: (v: TerminalCursorStyle) => void;
+  terminalCursorBlink: boolean;
+  setTerminalCursorBlink: (v: boolean) => void;
+  terminalColorTheme: TerminalColorThemeId;
+  setTerminalColorTheme: (v: TerminalColorThemeId) => void;
+  terminalBackground: string;
+  setTerminalBackground: (v: string) => void;
+  terminalForeground: string;
+  setTerminalForeground: (v: string) => void;
+  terminalCursorColor: string;
+  setTerminalCursorColor: (v: string) => void;
+  browserSearchEngine: BrowserSearchEngineId;
+  setBrowserSearchEngine: (v: BrowserSearchEngineId) => void;
+  browserHomePage: string;
+  setBrowserHomePage: (v: string) => void;
   editorFontSize: number;
   setEditorFontSize: (v: number) => void;
   appFontSize: number;
@@ -364,15 +587,12 @@ interface SettingsState {
   setAccentColor: (v: string) => void;
   showTree: boolean;
   toggleTree: () => void;
+  setShowTree: (v: boolean) => void;
   hotkeysOpen: boolean;
   setHotkeysOpen: (v: boolean) => void;
   railTab: RailTab;
   setRailTab: (v: RailTab) => void;
-  suppressAiAutoLayout: boolean;
-  setSuppressAiAutoLayout: (v: boolean) => void;
   setLayoutPreset: (v: LayoutPreset) => void;
-  hideEditorArea: boolean;
-  setHideEditorArea: (v: boolean) => void;
   dockPlacement: DockPlacement;
   setDockPlacement: (v: DockPlacement) => void;
   bgPattern: BackgroundPattern;
@@ -385,11 +605,20 @@ interface SettingsState {
   setPreviewTyping: (v: boolean) => void;
   latexTools: boolean;
   setLatexTools: (v: boolean) => void;
+  // Experimental in-app web browser (the browser dock, its toggle, the
+  // shortcut, and the AI computer_use tool). Off by default; every browser
+  // entry point is gated on this.
+  webBrowser: boolean;
+  setWebBrowser: (v: boolean) => void;
   // Engine for NEW LaTeX projects: "tectonic" (bundled, zero-setup) or
   // "latexmk" (system TeX; full Overleaf tool parity). Existing projects keep
   // their own pin in project.json.
   defaultLatexEngine: DefaultLatexEngine;
   setDefaultLatexEngine: (v: DefaultLatexEngine) => void;
+  resetGeneralPreferences: () => void;
+  resetAppearancePreferences: () => void;
+  resetExperimentationPreferences: () => void;
+  resetEnginePreferences: () => void;
   resetToDefaults: () => void;
 }
 
@@ -422,14 +651,29 @@ const PREF_DEFAULTS = {
   pdfZoomShortcuts: true,
   hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS] as readonly string[],
   defaultView: "editor-preview" as LayoutPreset,
-  openInTree: false,
+  openInTree: true,
   hoverPreview: true,
+  terminalOpen: false,
+  browserOpen: false,
+  terminalFontSize: 14,
+  terminalFontFamily: DEFAULT_TERMINAL_FONT_FAMILY,
+  terminalFontWeight: 500,
+  terminalFontWeightBold: 700,
+  terminalCursorStyle: "block" as TerminalCursorStyle,
+  terminalCursorBlink: true,
+  terminalColorTheme: "dark" as TerminalColorThemeId,
+  terminalBackground: TERMINAL_COLOR_THEMES.dark.colors.background,
+  terminalForeground: TERMINAL_COLOR_THEMES.dark.colors.foreground,
+  terminalCursorColor: TERMINAL_COLOR_THEMES.dark.colors.cursor,
+  browserSearchEngine: "google" as BrowserSearchEngineId,
+  browserHomePage: "https://www.google.com/",
   accentColor: "#2563eb",
   dockPlacement: "left" as DockPlacement,
   bgPattern: "dots" as BackgroundPattern,
   homeProjectLayout: "grid" as HomeProjectLayout,
   visualEditor: false,
   latexTools: false,
+  webBrowser: false,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
 
@@ -531,7 +775,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   settingsScrollTarget: null,
   setSettingsScrollTarget: (v) => set({ settingsScrollTarget: v }),
   viewMode: "split",
-  setViewMode: (v) => set({ viewMode: v }),
+  // Choosing an explicit editor/split/pdf view always reveals the workspace.
+  setViewMode: (v) => set({ viewMode: v, workspaceHidden: false }),
+  revealEditor: () => {
+    const s = get();
+    const needsEditor = s.viewMode === "pdf";
+    if (s.workspaceHidden || needsEditor) {
+      set({ workspaceHidden: false, viewMode: needsEditor ? "split" : s.viewMode });
+    }
+  },
+  workspaceHidden: false,
   defaultView: readDefaultView(ls("oleafly.defaultView", "editor-preview")),
   setDefaultView: (v) => {
     saveLs("oleafly.defaultView", v);
@@ -547,7 +800,151 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.ai.floating", v ? "1" : "0");
     set({ chatFloating: v });
   },
-  openInTree: ls("oleafly.openInTree", "0") !== "0",
+  terminalOpen: false,
+  setTerminalOpen: (v) => {
+    set({ terminalOpen: v });
+  },
+  browserOpen: false,
+  // The single chokepoint for opening the browser: it can only open when the
+  // experimental web-browser flag is on, so the button, the shortcut, the AI
+  // openBrowser hook, and computer-use all respect the flag.
+  setBrowserOpen: (v) => {
+    set({ browserOpen: v && get().webBrowser });
+  },
+  assistantOpen: false,
+  setAssistantOpen: (v) => {
+    // Closing the assistant while the workspace is hidden (AI-only layout)
+    // would leave nothing on screen, so reveal the workspace as it closes.
+    set(v ? { assistantOpen: true } : { assistantOpen: false, workspaceHidden: false });
+  },
+  closeDocks: () => {
+    set({ terminalOpen: false, browserOpen: false });
+  },
+  terminalFontSize: readNumberInRange(
+    ls("oleafly.terminal.fontSize", "14"),
+    14,
+    8,
+    32,
+  ),
+  setTerminalFontSize: (v) => {
+    const value = readNumberInRange(v, 14, 8, 32);
+    saveLs("oleafly.terminal.fontSize", String(value));
+    set({ terminalFontSize: value });
+  },
+  terminalFontFamily: ls(
+    "oleafly.terminal.fontFamily",
+    DEFAULT_TERMINAL_FONT_FAMILY,
+  ),
+  setTerminalFontFamily: (v) => {
+    const value = v.trim() || DEFAULT_TERMINAL_FONT_FAMILY;
+    saveLs("oleafly.terminal.fontFamily", value);
+    set({ terminalFontFamily: value });
+  },
+  terminalFontWeight: readNumberInRange(
+    ls("oleafly.terminal.fontWeight", "500"),
+    500,
+    100,
+    900,
+  ),
+  setTerminalFontWeight: (v) => {
+    const value = readNumberInRange(v, 500, 100, 900);
+    saveLs("oleafly.terminal.fontWeight", String(value));
+    set({ terminalFontWeight: value });
+  },
+  terminalFontWeightBold: readNumberInRange(
+    ls("oleafly.terminal.fontWeightBold", "700"),
+    700,
+    100,
+    900,
+  ),
+  setTerminalFontWeightBold: (v) => {
+    const value = readNumberInRange(v, 700, 100, 900);
+    saveLs("oleafly.terminal.fontWeightBold", String(value));
+    set({ terminalFontWeightBold: value });
+  },
+  terminalCursorStyle: readTerminalCursorStyle(
+    ls("oleafly.terminal.cursorStyle", "block"),
+  ),
+  setTerminalCursorStyle: (v) => {
+    const value = readTerminalCursorStyle(v);
+    saveLs("oleafly.terminal.cursorStyle", value);
+    set({ terminalCursorStyle: value });
+  },
+  terminalCursorBlink: ls("oleafly.terminal.cursorBlink", "1") !== "0",
+  setTerminalCursorBlink: (v) => {
+    saveLs("oleafly.terminal.cursorBlink", v ? "1" : "0");
+    set({ terminalCursorBlink: v });
+  },
+  terminalColorTheme: readTerminalColorTheme(
+    ls("oleafly.terminal.colorTheme", "dark"),
+  ),
+  setTerminalColorTheme: (v) => {
+    const terminalColorTheme = readTerminalColorTheme(v);
+    const colors = TERMINAL_COLOR_THEMES[terminalColorTheme].colors;
+    saveLs("oleafly.terminal.colorTheme", terminalColorTheme);
+    saveLs("oleafly.terminal.background", colors.background);
+    saveLs("oleafly.terminal.foreground", colors.foreground);
+    saveLs("oleafly.terminal.cursorColor", colors.cursor);
+    set({
+      terminalColorTheme,
+      terminalBackground: colors.background,
+      terminalForeground: colors.foreground,
+      terminalCursorColor: colors.cursor,
+    });
+  },
+  terminalBackground: (() => {
+    const theme = readTerminalColorTheme(
+      ls("oleafly.terminal.colorTheme", "dark"),
+    );
+    const fallback = TERMINAL_COLOR_THEMES[theme].colors.background;
+    return readTerminalColor(ls("oleafly.terminal.background", fallback), fallback);
+  })(),
+  setTerminalBackground: (v) => {
+    const value = readTerminalColor(v, get().terminalBackground);
+    saveLs("oleafly.terminal.background", value);
+    set({ terminalBackground: value });
+  },
+  terminalForeground: (() => {
+    const theme = readTerminalColorTheme(
+      ls("oleafly.terminal.colorTheme", "dark"),
+    );
+    const fallback = TERMINAL_COLOR_THEMES[theme].colors.foreground;
+    return readTerminalColor(ls("oleafly.terminal.foreground", fallback), fallback);
+  })(),
+  setTerminalForeground: (v) => {
+    const value = readTerminalColor(v, get().terminalForeground);
+    saveLs("oleafly.terminal.foreground", value);
+    set({ terminalForeground: value });
+  },
+  terminalCursorColor: (() => {
+    const theme = readTerminalColorTheme(
+      ls("oleafly.terminal.colorTheme", "dark"),
+    );
+    const fallback = TERMINAL_COLOR_THEMES[theme].colors.cursor;
+    return readTerminalColor(ls("oleafly.terminal.cursorColor", fallback), fallback);
+  })(),
+  setTerminalCursorColor: (v) => {
+    const value = readTerminalColor(v, get().terminalCursorColor);
+    saveLs("oleafly.terminal.cursorColor", value);
+    set({ terminalCursorColor: value });
+  },
+  browserSearchEngine: readBrowserSearchEngine(
+    ls("oleafly.browser.searchEngine", "google"),
+  ),
+  setBrowserSearchEngine: (v) => {
+    const value = readBrowserSearchEngine(v);
+    saveLs("oleafly.browser.searchEngine", value);
+    set({ browserSearchEngine: value });
+  },
+  browserHomePage: readBrowserHomePage(
+    ls("oleafly.browser.homePage", "https://www.google.com/"),
+  ),
+  setBrowserHomePage: (v) => {
+    const value = readBrowserHomePage(v);
+    saveLs("oleafly.browser.homePage", value);
+    set({ browserHomePage: value });
+  },
+  openInTree: ls("oleafly.openInTree", "1") !== "0",
   setOpenInTree: (v) => {
     saveLs("oleafly.openInTree", v ? "1" : "0");
     set({ openInTree: v });
@@ -645,71 +1042,46 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.latexTools", v ? "1" : "0");
     set({ latexTools: v });
   },
+  webBrowser: ls("oleafly.webBrowser", "0") === "1",
+  setWebBrowser: (v) => {
+    saveLs("oleafly.webBrowser", v ? "1" : "0");
+    // Turning the browser off must also close any open browser dock.
+    set(v ? { webBrowser: true } : { webBrowser: false, browserOpen: false });
+  },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),
+  setShowTree: (v) => set({ showTree: v }),
   hotkeysOpen: false,
   setHotkeysOpen: (v) => set({ hotkeysOpen: v }),
   railTab: "files",
   setRailTab: (v) => set({ railTab: v }),
-  suppressAiAutoLayout: false,
-  setSuppressAiAutoLayout: (v) => set({ suppressAiAutoLayout: v }),
-  hideEditorArea: false,
-  setHideEditorArea: (v) => set({ hideEditorArea: v }),
+  // A layout preset controls only the editor/preview/AI panes. The file tree
+  // is an independent surface (its own toggle and the "show file tree on
+  // open" preference), so switching layouts never opens or closes it.
   setLayoutPreset: (preset) => {
     switch (preset) {
       case "editor-preview-ai":
-        set({
-          suppressAiAutoLayout: true,
-          showTree: true,
-          railTab: "ai",
-          viewMode: "split",
-          hideEditorArea: false,
-        });
+        set({ viewMode: "split", assistantOpen: true, workspaceHidden: false });
         break;
       case "editor-preview":
-        set((s) => ({
-          showTree: true,
-          railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
-          viewMode: "split",
-          hideEditorArea: false,
-        }));
+        set({ viewMode: "split", assistantOpen: false, workspaceHidden: false });
         break;
       case "editor-ai":
-        set({
-          suppressAiAutoLayout: true,
-          showTree: true,
-          railTab: "ai",
-          viewMode: "editor",
-          hideEditorArea: false,
-        });
+        set({ viewMode: "editor", assistantOpen: true, workspaceHidden: false });
         break;
       case "preview-ai":
-        set({
-          suppressAiAutoLayout: true,
-          showTree: true,
-          railTab: "ai",
-          viewMode: "pdf",
-          hideEditorArea: false,
-        });
+        set({ viewMode: "pdf", assistantOpen: true, workspaceHidden: false });
         break;
       case "editor-only":
-        set((s) => ({
-          showTree: false,
-          railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
-          viewMode: "editor",
-          hideEditorArea: false,
-        }));
+        set({ viewMode: "editor", assistantOpen: false, workspaceHidden: false });
         break;
       case "preview-only":
-        set((s) => ({
-          showTree: false,
-          railTab: s.railTab === "ai" || s.railTab === "chat" ? "files" : s.railTab,
-          viewMode: "pdf",
-          hideEditorArea: false,
-        }));
+        set({ viewMode: "pdf", assistantOpen: false, workspaceHidden: false });
         break;
       case "ai-only":
-        set({ suppressAiAutoLayout: true, showTree: true, railTab: "ai", hideEditorArea: true });
+        // No editor or preview: hide the whole workspace region and let the
+        // assistant fill it.
+        set({ assistantOpen: true, workspaceHidden: true });
         break;
     }
   },
@@ -718,8 +1090,31 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.defaultLatexEngine", v);
     set({ defaultLatexEngine: v });
   },
-  resetToDefaults: () => {
-    // Drop the persisted copies so a restart doesn't resurrect old values.
+  resetGeneralPreferences: () => {
+    saveLs("oleafly.spellcheck", PREF_DEFAULTS.spellcheck ? "1" : "0");
+    saveLs("oleafly.harper", PREF_DEFAULTS.harper ? "1" : "0");
+    saveLs("oleafly.harper.dialect", PREF_DEFAULTS.grammarDialect);
+    saveLs("oleafly.dictionary.locale", PREF_DEFAULTS.dictionaryLocale);
+    saveLs(
+      "oleafly.harper.regionalism",
+      PREF_DEFAULTS.showRegionalism ? "1" : "0",
+    );
+    saveLs(
+      "oleafly.harper.wordchoice",
+      PREF_DEFAULTS.showWordChoice ? "1" : "0",
+    );
+    set({
+      spellcheck: PREF_DEFAULTS.spellcheck,
+      harper: PREF_DEFAULTS.harper,
+      grammarDialect: PREF_DEFAULTS.grammarDialect,
+      dictionaryLocale: PREF_DEFAULTS.dictionaryLocale,
+      showRegionalism: PREF_DEFAULTS.showRegionalism,
+      showWordChoice: PREF_DEFAULTS.showWordChoice,
+      offline: PREF_DEFAULTS.offline,
+    });
+    notifyProofreadingSettingsChanged("reset", get());
+  },
+  resetAppearancePreferences: () => {
     saveLs("oleafly.vim", PREF_DEFAULTS.vim ? "1" : "0");
     saveLs(
       "oleafly.editor.autocomplete",
@@ -741,11 +1136,27 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       "oleafly.editor.stickyScroll",
       PREF_DEFAULTS.editorStickyScroll ? "1" : "0",
     );
-    saveLs("oleafly.spellcheck", PREF_DEFAULTS.spellcheck ? "1" : "0");
-    saveLs("oleafly.harper", PREF_DEFAULTS.harper ? "1" : "0");
-    saveLs("oleafly.harper.dialect", PREF_DEFAULTS.grammarDialect);
-    saveLs("oleafly.harper.regionalism", "1");
-    saveLs("oleafly.harper.wordchoice", "1");
+    saveLs("oleafly.terminal.fontSize", String(PREF_DEFAULTS.terminalFontSize));
+    saveLs("oleafly.terminal.fontFamily", PREF_DEFAULTS.terminalFontFamily);
+    saveLs(
+      "oleafly.terminal.fontWeight",
+      String(PREF_DEFAULTS.terminalFontWeight),
+    );
+    saveLs(
+      "oleafly.terminal.fontWeightBold",
+      String(PREF_DEFAULTS.terminalFontWeightBold),
+    );
+    saveLs("oleafly.terminal.cursorStyle", PREF_DEFAULTS.terminalCursorStyle);
+    saveLs(
+      "oleafly.terminal.cursorBlink",
+      PREF_DEFAULTS.terminalCursorBlink ? "1" : "0",
+    );
+    saveLs("oleafly.terminal.colorTheme", PREF_DEFAULTS.terminalColorTheme);
+    saveLs("oleafly.terminal.background", PREF_DEFAULTS.terminalBackground);
+    saveLs("oleafly.terminal.foreground", PREF_DEFAULTS.terminalForeground);
+    saveLs("oleafly.terminal.cursorColor", PREF_DEFAULTS.terminalCursorColor);
+    saveLs("oleafly.browser.searchEngine", PREF_DEFAULTS.browserSearchEngine);
+    saveLs("oleafly.browser.homePage", PREF_DEFAULTS.browserHomePage);
     saveLs("oleafly.fontSize", String(PREF_DEFAULTS.editorFontSize));
     saveLs("oleafly.appFontSize", String(PREF_DEFAULTS.appFontSize));
     saveLs("oleafly.appFont", PREF_DEFAULTS.appFontFamily);
@@ -767,10 +1178,62 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
     saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);
     saveLs("oleafly.library.projectLayout", PREF_DEFAULTS.homeProjectLayout);
+    set({
+      vim: PREF_DEFAULTS.vim,
+      editorAutocomplete: PREF_DEFAULTS.editorAutocomplete,
+      editorAutoCloseBrackets: PREF_DEFAULTS.editorAutoCloseBrackets,
+      editorGhostCompletion: PREF_DEFAULTS.editorGhostCompletion,
+      editorNonBlinkingCursor: PREF_DEFAULTS.editorNonBlinkingCursor,
+      editorStickyScroll: PREF_DEFAULTS.editorStickyScroll,
+      terminalFontSize: PREF_DEFAULTS.terminalFontSize,
+      terminalFontFamily: PREF_DEFAULTS.terminalFontFamily,
+      terminalFontWeight: PREF_DEFAULTS.terminalFontWeight,
+      terminalFontWeightBold: PREF_DEFAULTS.terminalFontWeightBold,
+      terminalCursorStyle: PREF_DEFAULTS.terminalCursorStyle,
+      terminalCursorBlink: PREF_DEFAULTS.terminalCursorBlink,
+      terminalColorTheme: PREF_DEFAULTS.terminalColorTheme,
+      terminalBackground: PREF_DEFAULTS.terminalBackground,
+      terminalForeground: PREF_DEFAULTS.terminalForeground,
+      terminalCursorColor: PREF_DEFAULTS.terminalCursorColor,
+      browserSearchEngine: PREF_DEFAULTS.browserSearchEngine,
+      browserHomePage: PREF_DEFAULTS.browserHomePage,
+      editorFontSize: PREF_DEFAULTS.editorFontSize,
+      appFontSize: PREF_DEFAULTS.appFontSize,
+      appFontFamily: PREF_DEFAULTS.appFontFamily,
+      editorFontFamily: PREF_DEFAULTS.editorFontFamily,
+      editorTheme: PREF_DEFAULTS.editorTheme,
+      pdfDarkMode: PREF_DEFAULTS.pdfDarkMode,
+      pdfZoomShortcuts: PREF_DEFAULTS.pdfZoomShortcuts,
+      hiddenFilePatterns: [...PREF_DEFAULTS.hiddenFilePatterns],
+      defaultView: PREF_DEFAULTS.defaultView,
+      openInTree: PREF_DEFAULTS.openInTree,
+      hoverPreview: PREF_DEFAULTS.hoverPreview,
+      accentColor: PREF_DEFAULTS.accentColor,
+      dockPlacement: PREF_DEFAULTS.dockPlacement,
+      bgPattern: PREF_DEFAULTS.bgPattern,
+      homeProjectLayout: PREF_DEFAULTS.homeProjectLayout,
+    });
+  },
+  resetExperimentationPreferences: () => {
     saveLs("oleafly.visualEditor", PREF_DEFAULTS.visualEditor ? "1" : "0");
     saveLs("oleafly.latexTools", PREF_DEFAULTS.latexTools ? "1" : "0");
+    saveLs("oleafly.webBrowser", PREF_DEFAULTS.webBrowser ? "1" : "0");
+    set({
+      visualEditor: PREF_DEFAULTS.visualEditor,
+      latexTools: PREF_DEFAULTS.latexTools,
+      webBrowser: PREF_DEFAULTS.webBrowser,
+      browserOpen: false,
+    });
+  },
+  resetEnginePreferences: () => {
     saveLs("oleafly.defaultLatexEngine", PREF_DEFAULTS.defaultLatexEngine);
-    set({ ...PREF_DEFAULTS });
-    notifyProofreadingSettingsChanged("reset", get());
+    set({ defaultLatexEngine: PREF_DEFAULTS.defaultLatexEngine });
+  },
+  resetToDefaults: () => {
+    get().resetGeneralPreferences();
+    get().resetAppearancePreferences();
+    get().resetExperimentationPreferences();
+    get().resetEnginePreferences();
+    set({ terminalOpen: false, browserOpen: false });
   },
 }));

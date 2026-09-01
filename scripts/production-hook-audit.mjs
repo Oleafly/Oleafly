@@ -24,7 +24,13 @@ export function assertNoProductionDevHookTokens(artifacts) {
  * style-mod/CodeMirror from mounting its un-nonced runtime stylesheet.
  */
 export function findInlineStyleElementCount(source) {
-  const markup = source.replace(/<!--[\s\S]*?-->/g, "");
+  let markup = source;
+  for (;;) {
+    const stripped = markup.replace(/<!--[\s\S]*?-->/g, "");
+    if (stripped === markup) break;
+    markup = stripped;
+  }
+  markup = markup.replace(/<!--[\s\S]*$/, "");
   return markup.match(/<style(?:\s[^>]*)?>/gi)?.length ?? 0;
 }
 

@@ -1,0 +1,66 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{What the transcriptome does}
+
+The induced set reads as a single coherent strategy rather than a collection of
+stress responses, and it agrees in direction with earlier work on shifting
+nitrogen supply in a related diatom \citep{alexander2015metabolic}. NRT2.1 and AMT1.3 raise the affinity of the cell for the two
+inorganic nitrogen species still present at trace concentration, glutamine
+synthetase III raises the rate at which whatever is taken up is fixed into
+glutamine, and the urea and purine catabolism group reclaims nitrogen already
+committed to nucleotides. The order of effect sizes matches that logic: uptake
+first, assimilation second, internal salvage third.
+
+The repressed set is the mirror image and is dominated by two groups that both
+represent large nitrogen investments. Fucoxanthin chlorophyll proteins are
+among the most abundant proteins in a diatom cell, and cytosolic ribosomes are
+the largest single sink for cellular nitrogen. Repressing both frees nitrogen
+without requiring any new machinery. The drop in
+$F_v/F_m$ from 0.66 to 0.38 in Table~\ref{tab:physiology} is consistent with
+the antenna repression being realised at the protein level and not only in
+transcript abundance.
+
+The urea cycle result deserves a note of caution. Carbamoyl phosphate synthase
+and the urea transporter DUR3 both clear our threshold, but their adjusted
+$p$ values are three to four orders of magnitude weaker than those of the
+transporters, and in the leave-one-out reanalysis DUR3 fell below significance
+when NL-3 was dropped. A study designed to resolve the urea cycle specifically
+would need more replicates rather than more depth, because the limiting
+quantity is between-flask variance and not counting noise.
+
+\subsection{Limitations}
+
+Three limitations bound what this experiment can claim. The design contrasts a
+single time point, so it cannot separate the immediate response to nitrogen
+depletion from the acclimated state reached after several generations. The
+comparison is between regimes that also differ in growth rate, and a growth
+rate difference alone produces ribosomal protein repression, so part of the
+translation signal is confounded. Finally, transcript abundance is a poor proxy
+for flux, and the salvage pathways in particular are known to be regulated
+post-translationally in this species.
+
+\subsection{Recommendations for the next cohort}
+
+Retain the duplication threshold at 15 percent as a flag rather than a
+rejection criterion, and require the leave-one-out check that we ran here
+before any flagged library is kept. Add a mid-limitation time point at 48 hours
+so that the response can be ordered in time. Increase biological replication
+from three to five flasks per regime at the same total sequencing budget: the
+analysis in Section~\ref{sec:results} shows that the significant set is
+variance-limited rather than depth-limited beyond about 25 million read pairs.
+
+\section*{Data availability}
+
+Raw reads, the container manifest, the design matrix, and the analysis scripts
+are archived in the unit repository under experiment series NL-08. Count
+matrices and the full differential expression table are included with this
+report.
+
+\section*{Contributions}
+
+I. Karvonen maintained the cultures and performed the extractions.
+A. Diallo prepared the libraries and ran the sequencing.
+R. Ferreira-Bax wrote the analysis pipeline and the statistical model. All
+three authors reviewed the quality control decisions described in
+Section~\ref{sec:results}.

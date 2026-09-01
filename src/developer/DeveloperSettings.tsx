@@ -196,7 +196,7 @@ export function DeveloperSettings() {
     },
     "reset-and-seed": {
       title: "Reset and seed the development library?",
-      description: `Every current development project moves to the Recycle Bin, then Oleafly copies ${RESEARCH_SEED_PROJECTS.length} pinned real-world fixtures from the local oleafly-seed cache.`,
+      description: `Every current development project moves to the Recycle Bin, then Oleafly copies ${RESEARCH_SEED_PROJECTS.length} research fixtures from the local oleafly-seed cache.`,
       label: "Reset and seed",
     },
   } as const;
@@ -245,7 +245,7 @@ export function DeveloperSettings() {
         />
         <SettingAction
           title="Seed research corpus"
-          description={`Copy ${RESEARCH_SEED_PROJECTS.length} pinned projects from ~/Codespace/Oleafly/oleafly-seed. Includes LaTeX, Typst, Markdown, image, diagram, bibliography, CJK, mixed-asset, and external-tool stress cases. Existing fixtures are kept.`}
+          description={`Copy ${RESEARCH_SEED_PROJECTS.length} research projects from ~/Codespace/Oleafly/oleafly-seed. Papers, theses, books, talks, posters, and figures across LaTeX and Typst, every one verified to compile with the bundled engines. Existing fixtures are kept.`}
           icon={FolderPlus}
           buttonLabel={seedProgress || "Seed corpus"}
           action={() => {

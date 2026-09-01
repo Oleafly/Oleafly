@@ -10,8 +10,10 @@ interface PopoverProps {
   className?: string;
   triggerClassName?: string;
   ariaLabel?: string;
+  contentAriaLabel?: string;
   closeOnClick?: boolean;
   onOpenChange?: (open: boolean) => void;
+  disabled?: boolean;
 }
 
 export function Popover({
@@ -21,12 +23,20 @@ export function Popover({
   className,
   triggerClassName,
   ariaLabel,
+  contentAriaLabel,
   closeOnClick = true,
   onOpenChange: onOpenChangeProp,
+  disabled = false,
 }: PopoverProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!disabled || !open) return;
+    onOpenChangeProp?.(false);
+    setOpen(false);
+  }, [disabled, onOpenChangeProp, open]);
 
   useEffect(() => {
     if (!open || closeOnClick) return;
@@ -60,6 +70,7 @@ export function Popover({
     <PopoverPrimitive.Root
       open={open}
       onOpenChange={(next) => {
+        if (disabled && next) return;
         onOpenChangeProp?.(next);
         setOpen(next);
       }}
@@ -71,6 +82,7 @@ export function Popover({
           variant="ghost"
           size={triggerClassName ? "sm" : "icon"}
           aria-label={ariaLabel}
+          disabled={disabled}
           className={cn(
             triggerClassName ? "text-foreground" : "size-7 text-muted-foreground",
             open && "bg-accent text-foreground",
@@ -80,49 +92,52 @@ export function Popover({
           {trigger}
         </Button>
       </PopoverPrimitive.Trigger>
-      <PopoverPrimitive.Portal>
-        <PopoverPrimitive.Content
-          ref={contentRef}
-          align={align === "right" ? "end" : "start"}
-          sideOffset={4}
-          collisionPadding={12}
-          onClick={closeOnClick ? () => setOpen(false) : undefined}
-          onPointerDownOutside={(event) => {
-            if (closeOnClick) return;
-            const target = event.target;
-            if (
-              target instanceof Element &&
-              target.closest('[role="listbox"], [data-radix-popper-content-wrapper]')
-            ) {
-              event.preventDefault();
-            }
-          }}
-          onInteractOutside={(event) => {
-            if (
-              !closeOnClick &&
-              event.target instanceof Element &&
-              event.target.closest('[role="listbox"], [data-radix-popper-content-wrapper]')
-            ) {
-              event.preventDefault();
-            }
-          }}
-          onFocusOutside={(event) => {
-            if (
-              !closeOnClick &&
-              event.target instanceof Element &&
-              event.target.closest('[role="listbox"], [data-radix-popper-content-wrapper]')
-            ) {
-              event.preventDefault();
-            }
-          }}
-          className={cn(
-            "z-50 min-w-42 rounded-md border bg-card p-1 text-card-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-            className,
-          )}
-        >
-          {children}
-        </PopoverPrimitive.Content>
-      </PopoverPrimitive.Portal>
+      {!disabled && (
+        <PopoverPrimitive.Portal>
+          <PopoverPrimitive.Content
+            ref={contentRef}
+            aria-label={contentAriaLabel}
+            align={align === "right" ? "end" : "start"}
+            sideOffset={4}
+            collisionPadding={12}
+            onClick={closeOnClick ? () => setOpen(false) : undefined}
+            onPointerDownOutside={(event) => {
+              if (closeOnClick) return;
+              const target = event.target;
+              if (
+                target instanceof Element &&
+                target.closest('[role="listbox"], [data-radix-popper-content-wrapper]')
+              ) {
+                event.preventDefault();
+              }
+            }}
+            onInteractOutside={(event) => {
+              if (
+                !closeOnClick &&
+                event.target instanceof Element &&
+                event.target.closest('[role="listbox"], [data-radix-popper-content-wrapper]')
+              ) {
+                event.preventDefault();
+              }
+            }}
+            onFocusOutside={(event) => {
+              if (
+                !closeOnClick &&
+                event.target instanceof Element &&
+                event.target.closest('[role="listbox"], [data-radix-popper-content-wrapper]')
+              ) {
+                event.preventDefault();
+              }
+            }}
+            className={cn(
+              "z-50 min-w-42 rounded-md border bg-card p-1 text-card-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+              className,
+            )}
+          >
+            {children}
+          </PopoverPrimitive.Content>
+        </PopoverPrimitive.Portal>
+      )}
     </PopoverPrimitive.Root>
   );
 }

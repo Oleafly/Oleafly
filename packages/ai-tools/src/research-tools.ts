@@ -1,4 +1,5 @@
 import { registerConnector } from "./connectors";
+import type { ConfirmFn } from "./tools";
 
 type RawSchema = {
   type: "object";
@@ -65,10 +66,17 @@ async function requireKey(
   return key;
 }
 
-export function createResearchTools(host: ResearchToolsHost): Record<
-  string,
-  { description: string; inputSchema: RawSchema; execute: RawToolDef["execute"] }
-> {
+export function createResearchTools(
+  host: ResearchToolsHost,
+  opts?: { confirm?: ConfirmFn },
+): Record<string, { description: string; inputSchema: RawSchema; execute: RawToolDef["execute"] }> {
+  const declined = (tool: string) => ({
+    message: "The user declined internet access.",
+    declined: true as const,
+    status: "declined" as const,
+    tool,
+  });
+  const confirm = opts?.confirm;
   const tools: Record<string, RawToolDef> = {
     alphaxiv_search: {
       description:
@@ -86,6 +94,15 @@ export function createResearchTools(host: ResearchToolsHost): Record<
         if (typeof keyOrError !== "string") return keyOrError;
         const query = String(input.query ?? "");
         if (!query.trim()) return { error: "query must not be empty" };
+        if (
+          confirm &&
+          !(await confirm({
+            tool: "alphaxiv_search",
+            summary: `Search alphaXiv for ${query}`,
+          }))
+        ) {
+          return declined("alphaxiv_search");
+        }
         try {
           return await host.fetchJson(
             `${ALPHAXIV_API_BASE}/search?q=${encodeURIComponent(query)}`,
@@ -115,6 +132,15 @@ export function createResearchTools(host: ResearchToolsHost): Record<
         }
         const keyOrError = await requireKey(host, "alphaxiv", "alphaXiv");
         if (typeof keyOrError !== "string") return keyOrError;
+        if (
+          confirm &&
+          !(await confirm({
+            tool: "alphaxiv_paper_content",
+            summary: `Fetch paper ${paperId} from alphaXiv`,
+          }))
+        ) {
+          return declined("alphaxiv_paper_content");
+        }
         try {
           return await host.fetchJson(
             `${ALPHAXIV_API_BASE}/papers/${encodeURIComponent(paperId)}`,
@@ -142,6 +168,15 @@ export function createResearchTools(host: ResearchToolsHost): Record<
         const query = String(input.query ?? "");
         if (!query.trim()) return { error: "query must not be empty" };
         const limit = Math.min(Math.max(1, Math.floor(Number(input.limit) || 10)), 25);
+        if (
+          confirm &&
+          !(await confirm({
+            tool: "literature_search",
+            summary: `Search OpenAlex for ${query}`,
+          }))
+        ) {
+          return declined("literature_search");
+        }
         try {
           return await host.fetchJson(
             `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=${limit}`,
@@ -168,6 +203,15 @@ export function createResearchTools(host: ResearchToolsHost): Record<
         const doi = typeof input.doi === "string" ? input.doi.trim() : "";
         const title = typeof input.title === "string" ? input.title.trim() : "";
         if (!doi && !title) return { error: "Provide either doi or title." };
+        if (
+          confirm &&
+          !(await confirm({
+            tool: "verify_citation",
+            summary: "Verify citation with Crossref",
+          }))
+        ) {
+          return declined("verify_citation");
+        }
         try {
           if (doi) {
             const bibtex = await host.fetchDoiBibtex(doi);

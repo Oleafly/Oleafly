@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Check, Copy, Eye, EyeOff, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,6 +50,8 @@ function CopyBtn({ text, testId }: { text: string; testId?: string }) {
 }
 
 type SnippetLang = "json" | "shell" | "toml";
+type McpClientTab = "claude-code" | "claude-desktop" | "cursor" | "codex" | "grok";
+
 
 // Avoids pulling in a full syntax-highlighter dependency for these small snippets.
 function highlightSnippet(source: string, lang: SnippetLang): ReactNode[] {
@@ -216,6 +225,32 @@ export function McpSection() {
   const [token, setToken] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
+  const [clientTab, setClientTab] = useState<McpClientTab>("claude-code");
+  const clientTabRefs = useRef<Partial<Record<McpClientTab, HTMLButtonElement | null>>>({});
+  const clientTabStripRef = useRef<HTMLDivElement | null>(null);
+
+  // React attaches wheel listeners passively, so a horizontal-scroll shim on
+  // onWheel cannot preventDefault and the settings panel scrolls with the
+  // strip. A native non-passive listener owns the gesture.
+  useEffect(() => {
+    const list = clientTabStripRef.current;
+    if (!list) return;
+    const onWheel = (event: globalThis.WheelEvent) => {
+      if (list.scrollWidth <= list.clientWidth) return;
+      if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+      event.preventDefault();
+      list.scrollLeft += event.deltaY;
+    };
+    list.addEventListener("wheel", onWheel, { passive: false });
+    return () => list.removeEventListener("wheel", onWheel);
+  }, []);
+
+  useEffect(() => {
+    clientTabRefs.current[clientTab]?.scrollIntoView?.({
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [clientTab]);
 
   const loadToken = useCallback(async (running: boolean) => {
     if (!running) {
@@ -379,19 +414,18 @@ export function McpSection() {
 
   if (!cfg) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="settings-section-mcp">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="oleafly-mcp-server">
         <Loader2 className="size-4 animate-spin" /> Loading…
       </div>
     );
   }
 
   return (
-    <div className="space-y-5" data-testid="settings-section-mcp">
+    <div className="space-y-5" data-testid="oleafly-mcp-server">
       <div>
-        <h2 className="text-base font-semibold">MCP</h2>
-        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-          Expose Oleafly’s AI tools to external apps over the Model Context Protocol. Claude
-          Desktop, Claude Code, Cursor, and other MCP clients can then read, edit, and compile the
+        <h3 className="text-sm font-medium">Oleafly MCP server</h3>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Claude Desktop, Claude Code, Cursor, and other MCP clients can read, edit, and compile the
           open project, with your approval for every change.
         </p>
       </div>
@@ -523,8 +557,8 @@ export function McpSection() {
           <span>
             <span className="font-medium">Trust this connection</span>
             <span className="block text-xs text-muted-foreground">
-              Oleafly never prompts. Your MCP client's own approval is the only gate, deletes
-              included. Best when your client already confirms tool use.
+              File changes do not prompt. Shell commands and computer control always require
+              approval. Your MCP client remains an additional gate.
             </span>
           </span>
         </label>
@@ -640,22 +674,65 @@ export function McpSection() {
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold">Connect your app</h3>
-        <Tabs defaultValue="claude-code" className="space-y-3">
-          <TabsList className="flex-wrap">
-            <TabsTrigger value="claude-code" data-testid="mcp-tab-claude-code">
+        <h3 className="text-sm font-semibold">Connect your apps</h3>
+        <Tabs
+          value={clientTab}
+          onValueChange={(value) => setClientTab(value as McpClientTab)}
+          className="space-y-3"
+        >
+          <TabsList
+            className="flex h-auto w-fit max-w-full flex-nowrap justify-start gap-1 overflow-x-auto no-scrollbar"
+            data-testid="mcp-client-tab-strip"
+            ref={clientTabStripRef}
+          >
+            <TabsTrigger
+              ref={(node) => {
+                clientTabRefs.current["claude-code"] = node;
+              }}
+              value="claude-code"
+              data-testid="mcp-tab-claude-code"
+              className="shrink-0"
+            >
               Claude Code
             </TabsTrigger>
-            <TabsTrigger value="claude-desktop" data-testid="mcp-tab-claude-desktop">
+            <TabsTrigger
+              ref={(node) => {
+                clientTabRefs.current["claude-desktop"] = node;
+              }}
+              value="claude-desktop"
+              data-testid="mcp-tab-claude-desktop"
+              className="shrink-0"
+            >
               Claude Desktop
             </TabsTrigger>
-            <TabsTrigger value="cursor" data-testid="mcp-tab-cursor">
+            <TabsTrigger
+              ref={(node) => {
+                clientTabRefs.current.cursor = node;
+              }}
+              value="cursor"
+              data-testid="mcp-tab-cursor"
+              className="shrink-0"
+            >
               Cursor
             </TabsTrigger>
-            <TabsTrigger value="codex" data-testid="mcp-tab-codex">
+            <TabsTrigger
+              ref={(node) => {
+                clientTabRefs.current.codex = node;
+              }}
+              value="codex"
+              data-testid="mcp-tab-codex"
+              className="shrink-0"
+            >
               Codex CLI
             </TabsTrigger>
-            <TabsTrigger value="grok" data-testid="mcp-tab-grok">
+            <TabsTrigger
+              ref={(node) => {
+                clientTabRefs.current.grok = node;
+              }}
+              value="grok"
+              data-testid="mcp-tab-grok"
+              className="shrink-0"
+            >
               Grok CLI
             </TabsTrigger>
           </TabsList>

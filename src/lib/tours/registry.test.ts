@@ -63,7 +63,9 @@ describe("tour registry", () => {
     ]);
     expect(tourRegistry.settings.steps.map((step) => step.placement)).toEqual([
       "right",
-      ...Array.from({ length: 11 }, () => "left"),
+      ...Array.from({ length: 9 }, () => "left"),
+      "bottom",
+      "left",
     ]);
   });
 

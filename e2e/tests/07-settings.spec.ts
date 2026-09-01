@@ -27,9 +27,14 @@ test("settings modal opens with all sections", async ({ tauriPage }) => {
   await openSettingsProject(tauriPage);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openSettings(tauriPage);
-  for (const s of ["appearance", "general", "ai", "integrations", "mcp"]) {
+  for (const s of ["appearance", "general", "ai", "integrations"]) {
     await expect(tauriPage.locator(`[data-testid="settings-section-${s}"]`)).toBeVisible();
   }
+  await expect(
+    tauriPage.locator(
+      '[aria-label="Settings sections"] [data-testid="settings-section-mcp"]',
+    ),
+  ).toHaveCount(0);
   // The "Show advanced" toggle persists (localStorage), so only click it when
   // advanced sections are currently hidden.
   const dictionary = tauriPage.locator('[data-testid="settings-section-dictionary"]');
@@ -62,7 +67,7 @@ test("keyboard shortcuts Settings section opens from the home view", async ({ ta
   if (await back.isVisible()) await back.click();
   await openSettings(tauriPage, "shortcuts");
   await expect(tauriPage.getByRole("dialog", { name: "Settings" })).toBeVisible();
-  await expect(tauriPage.getByText("Reset all shortcuts", { exact: true })).toBeVisible();
+  await expect(tauriPage.getByText("Reset to defaults", { exact: true })).toBeVisible();
   await tauriPage.click('[aria-label="Close settings"]');
 });
 

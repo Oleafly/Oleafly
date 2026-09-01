@@ -1,0 +1,37 @@
+\section{Related Work}
+\label{sec:related}
+
+\paragraph*{Interruption and resumption.}
+The resumption lag construct, the interval between the end of an interruption
+and the resumption of productive work on the primary task, is the standard
+dependent measure in this
+literature~\citep{brandt2011resumption,ferreiro2014fragmentation}. Its
+magnitude depends on the depth of the suspended state and on whether the
+interruption arrives at a subtask boundary. Work on peripheral and ambient
+displays argues that the cost is driven by attention shifts rather than by
+information volume~\citep{okonjo2016peripheral}, which is the mechanism our
+conditions are designed to separate.
+
+\paragraph*{Developer interruption in the field.}
+Field studies of programmers report interruption rates of several per hour and
+recovery times in the range of ten to twenty minutes for deep
+interruptions~\citep{ferreiro2014fragmentation,steinbach2019telemetry}. Those
+figures come from telemetry over long windows and cannot isolate the cost of
+one notification design, because a field deployment cannot hold task difficulty
+constant. Our contribution is complementary: a controlled setting that trades
+ecological validity for the ability to attribute a difference to modality.
+
+\paragraph*{Notification design.}
+Deferring notifications to breakpoints reduces their
+cost~\citep{ravichandran2018deferral}, and batching them reduces it
+further~\citep{nkemdirim2020batching}, but both of these delay the information.
+For a build result the delay is the thing under test, since a developer waiting
+on a compile has a reason to want the result promptly. Our batched condition
+quantifies that trade directly.
+
+\paragraph*{Compile feedback specifically.}
+Studies of continuous compilation and incremental type checking focus on
+latency and correctness rather than on how the result is
+presented~\citep{lindqvist2017continuous}. To our knowledge the presentation
+question has not been tested experimentally in this setting, which is the gap
+this paper fills.

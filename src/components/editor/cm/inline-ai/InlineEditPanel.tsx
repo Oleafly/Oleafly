@@ -12,7 +12,7 @@ import { useSettingsStore } from "@/store/settings";
 import { listOllamaModels } from "@/lib/ollama";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { AiChrome, AiMark } from "@/components/ai/AiChrome";
-import { useAgentHandoffStore } from "@/store/agent-handoff";
+import { handoffToAssistant } from "@/features/assistant-handoff";
 import { useFilesStore } from "@/store/files";
 import { useTourStore } from "@/store/tours";
 import { acceptInlineEdit, rejectInlineEdit } from "./plugin";
@@ -182,10 +182,7 @@ export function InlineEditPanel() {
     ]
       .filter(Boolean)
       .join("\n");
-    useAgentHandoffStore.getState().handoff(prompt, { autoSend: true });
-    const settings = useSettingsStore.getState();
-    settings.setRailTab("ai");
-    if (!settings.showTree) settings.toggleTree();
+    handoffToAssistant(prompt, { autoSend: true });
     reset();
   };
 

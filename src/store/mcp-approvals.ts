@@ -1,6 +1,16 @@
 import { create } from "zustand";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
-import { isAutoApprovable } from "@/components/ai/ToolConfirm";
+
+const AUTO_APPROVABLE_TOOLS = new Set([
+  "write_file",
+  "replace_in_file",
+  "create_file",
+  "rename_file",
+]);
+
+export function isAutoApprovable(tool: string): boolean {
+  return AUTO_APPROVABLE_TOOLS.has(tool);
+}
 
 export interface PendingApproval {
   id: number;

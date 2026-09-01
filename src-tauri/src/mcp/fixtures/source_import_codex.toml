@@ -1,0 +1,12 @@
+[mcp_servers.stdio-tool]
+command = "npx"
+args = ["-y", "@example/codex-mcp"]
+env = { LITERAL = "literal-value" }
+env_vars = ["CODEX_FORWARDED", "MISSING_VALUE"]
+
+[mcp_servers.remote-api]
+url = "https://mcp.example.com/codex"
+headers = { X-Alias = "alias-value" }
+http_headers = { X-Literal = "literal-value" }
+bearer_token_env_var = "CODEX_BEARER"
+env_http_headers = { X-Forwarded = "CODEX_HEADER", X-Missing = "MISSING_HEADER" }

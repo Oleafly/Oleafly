@@ -4,9 +4,11 @@ import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
 import { EditorToolbar } from "./EditorToolbar";
 import { MarkdownToolbar } from "./MarkdownToolbar";
+import { TypstToolbar } from "./TypstToolbar";
 import { SelectionActionMenu } from "./SelectionActionMenu";
 import { DiffView } from "./diff/DiffView";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
+import { SidebarCollapseToggle } from "@/components/layout/WorkspaceControls";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { wrapSelection } from "./cm/controller";
 import { useFilesStore } from "@/store/files";
@@ -158,6 +160,8 @@ export function Editor() {
   const showLatexToolbar = engineLoaded && formattingProfile === "latex" && pathUsesEngineSource(engine, activePath);
   const showMarkdownToolbar =
     engineLoaded && formattingProfile === "markdown" && pathUsesEngineSource(engine, activePath);
+  const showTypstToolbar =
+    engineLoaded && formattingProfile === "typst" && pathUsesEngineSource(engine, activePath);
 
   const [wysiwygState, setWysiwygState] = useState(() => (projectId ? getWysiwygMode(projectId) : false));
   useEffect(() => {
@@ -181,7 +185,11 @@ export function Editor() {
       data-tour="project-editor"
       className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background"
     >
-      <div className="flex h-9 shrink-0 items-center gap-1 overflow-x-auto border-b px-2 no-scrollbar">
+      <div className="flex h-9 shrink-0 items-center border-b">
+        <div className="flex shrink-0 items-center border-r border-border pl-2 pr-1">
+          <SidebarCollapseToggle />
+        </div>
+        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-2 no-scrollbar">
         {tabs.length === 0 && (
           <span className="px-2 text-xs text-muted-foreground">No file open</span>
         )}
@@ -250,6 +258,7 @@ export function Editor() {
             </div>
           )
         )}
+        </div>
       </div>
       {!diffFocused ? (
         <ProofreadingNotifications
@@ -279,10 +288,9 @@ export function Editor() {
               <MarkdownToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} showVisualToggle={visualEnabled} />
             </div>
           )}
-          {isTypstFile && (
-            <div className="shrink-0 border-b bg-muted/30 px-3 py-1 text-[10px] text-muted-foreground">
-              Typst source mode · KaTeX inline preview and Visual editing are not
-              available; use the compiled PDF preview.
+          {showTypstToolbar && (
+            <div className="shrink-0">
+              <TypstToolbar />
             </div>
           )}
           {isDiagramMainFile && wysiwyg && projectId && activePath ? (

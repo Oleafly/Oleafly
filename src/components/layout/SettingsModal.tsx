@@ -24,7 +24,6 @@ import {
   LifeBuoy,
   MessageCircle,
   Palette,
-  Plug,
   RotateCcw,
   RefreshCw,
   Scale,
@@ -48,7 +47,6 @@ import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { AISection } from "@/components/settings/AISection";
 import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
-import { McpSection } from "@/components/settings/McpSection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShortcutsSection } from "@/components/settings/ShortcutsSection";
 import {
@@ -67,7 +65,6 @@ import {
 } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useGithubStore } from "@/store/github";
-import { useTheme } from "@/lib/theme";
 import {
   appVersion,
   libraryRoot,
@@ -88,6 +85,7 @@ import { TOUR_IDS } from "@/lib/tours/registry";
 import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
+import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import {
   SettingsSwitchIndicator,
   SettingsToggleRow,
@@ -108,7 +106,6 @@ type Section =
   | "downloads"
   | "integrations"
   | "shortcuts"
-  | "mcp"
   | "experimentation"
   | "developer"
   | "help";
@@ -121,15 +118,13 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   { id: "dictionary", label: "Dictionary", icon: BookMarked },
   { id: "data", label: "Data Storage", icon: Database },
   { id: "ai", label: "AI Assistant", icon: Sparkles },
-  { id: "engine", label: "LaTeX Engine", icon: Cpu },
+  { id: "engine", label: "Engines", icon: Cpu },
   { id: "downloads", label: "Downloads", icon: HardDriveDownload },
   { id: "integrations", label: "Integrations", icon: Blocks },
   { id: "shortcuts", label: "Keyboard Shortcuts", icon: Keyboard },
-  { id: "mcp", label: "MCP", icon: Plug },
   { id: "experimentation", label: "Experimentation", icon: FlaskConical },
   { id: "help", label: "Help & About", icon: LifeBuoy },
 ];
-const ADVANCED: Section[] = ["dictionary", "engine", "downloads", "data", "experimentation"];
 const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   general: "settings-general",
   appearance: "settings-appearance",
@@ -140,7 +135,6 @@ const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   downloads: "settings-downloads",
   integrations: "settings-integrations",
   shortcuts: "settings-shortcuts",
-  mcp: "settings-mcp",
   help: "settings-help",
 };
 const TOUR_LABELS = {
@@ -165,8 +159,12 @@ function formatStorageSize(bytes: number): string {
 export function SettingsModal() {
   const open = useSettingsStore((s) => s.settingsOpen);
   const setOpen = useSettingsStore((s) => s.setSettingsOpen);
-  const resetToDefaults = useSettingsStore((s) => s.resetToDefaults);
-  const { setTheme } = useTheme();
+  const resetGeneralPreferences = useSettingsStore(
+    (s) => s.resetGeneralPreferences,
+  );
+  const resetExperimentationPreferences = useSettingsStore(
+    (s) => s.resetExperimentationPreferences,
+  );
   const spellcheck = useSettingsStore((s) => s.spellcheck);
   const toggleSpellcheck = useSettingsStore((s) => s.toggleSpellcheck);
   const harper = useSettingsStore((s) => s.harper);
@@ -186,6 +184,8 @@ export function SettingsModal() {
   const previewTyping = useSettingsStore((s) => s.previewTyping);
   const setPreviewTyping = useSettingsStore((s) => s.setPreviewTyping);
   const latexTools = useSettingsStore((s) => s.latexTools);
+  const webBrowser = useSettingsStore((s) => s.webBrowser);
+  const setWebBrowser = useSettingsStore((s) => s.setWebBrowser);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
 
   const projectId = useFilesStore((s) => s.projectId);
@@ -211,7 +211,6 @@ export function SettingsModal() {
   const [clearingRecycleBin, setClearingRecycleBin] = useState(false);
   const [confirmDeleteAllProjects, setConfirmDeleteAllProjects] = useState(false);
   const [deletingAllProjects, setDeletingAllProjects] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
   const [tourConfirmation, setTourConfirmation] = useState<"disable" | "dismiss-all" | null>(
     null,
   );
@@ -220,14 +219,6 @@ export function SettingsModal() {
   const tours = useTourStore((s) => s.tours);
   const completedTours = TOUR_IDS.filter((id) => tours[id].status === "completed").length;
   const dismissedTours = TOUR_IDS.filter((id) => tours[id].status === "dismissed").length;
-  const [showAdvanced, setShowAdvanced] = useState(
-    () => typeof localStorage === "undefined" || localStorage.getItem("ol-settings-advanced") !== "0",
-  );
-  const setAdvanced = (v: boolean) => {
-    setShowAdvanced(v);
-    try { localStorage.setItem("ol-settings-advanced", v ? "1" : "0"); } catch { /* ignore */ }
-    if (!v && ADVANCED.includes(section)) setSection("general");
-  };
   const navigation = developerSettings
     ? [
         ...NAV.slice(0, -1),
@@ -246,12 +237,6 @@ export function SettingsModal() {
     closeSettings,
   );
 
-  const doReset = () => {
-    resetToDefaults();
-    setTheme("dark");
-    setConfirmReset(false);
-  };
-
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     let active = true;
@@ -269,11 +254,6 @@ export function SettingsModal() {
       ? (settingsInitialSection as Section)
       : "general";
     setSection(next);
-    // Deep-links into advanced sections must surface them in the nav.
-    if (ADVANCED.includes(next)) {
-      setShowAdvanced(true);
-      try { localStorage.setItem("ol-settings-advanced", "1"); } catch {}
-    }
     void libraryRoot().then(setLibRoot).catch(() => {});
   }, [open, settingsInitialSection]);
 
@@ -417,7 +397,7 @@ export function SettingsModal() {
         data-modal-initial-focus
         aria-modal="true"
         aria-label="Settings"
-        className="relative flex h-[min(620px,86vh)] w-[min(820px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl outline-none"
+        className="relative flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(880px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl outline-none"
       >
         <nav
           aria-label="Settings sections"
@@ -435,7 +415,7 @@ export function SettingsModal() {
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
           >
             <div className="flex flex-col gap-0.5">
-            {navigation.filter(({ id }) => showAdvanced || !ADVANCED.includes(id)).map(({ id, label, icon: Icon }) => (
+            {navigation.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
@@ -443,35 +423,17 @@ export function SettingsModal() {
               data-testid={`settings-section-${id}`}
               onClick={() => setSection(id)}
               className={cn(
-                "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
+                "flex items-center gap-2.5 whitespace-nowrap rounded-md px-2.5 py-2 text-sm transition-colors",
                 section === id
                   ? "bg-background font-medium text-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
               )}
             >
-              <Icon className="size-4" aria-hidden />
+              <Icon className="size-4 shrink-0" aria-hidden />
               {label}
             </button>
             ))}
             </div>
-          </div>
-          <div
-            role="switch"
-            aria-checked={showAdvanced}
-            aria-label="Show advanced settings"
-            data-testid="settings-toggle-advanced"
-            tabIndex={0}
-            onClick={() => setAdvanced(!showAdvanced)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setAdvanced(!showAdvanced);
-              }
-            }}
-            className="mt-0.5 flex shrink-0 cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
-          >
-            <span>Show Advanced</span>
-            <SettingsSwitchIndicator checked={showAdvanced} />
           </div>
         </nav>
 
@@ -706,35 +668,10 @@ export function SettingsModal() {
                     </div>
                   )}
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-3 border-t pt-4">
-                  <div>
-                    <p className="text-sm">Reset settings</p>
-                    <p className="text-xs text-muted-foreground">
-                      Restore Appearance and General preferences to their
-                      defaults.
-                    </p>
-                  </div>
-                  {confirmReset ? (
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Button variant="destructive" size="sm" onClick={doReset}>
-                        Reset
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setConfirmReset(false)}>
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => setConfirmReset(true)}
-                    >
-                      <RotateCcw className="size-3.5" />
-                      Reset to defaults
-                    </Button>
-                  )}
-                </div>
+                <ResetToDefaults
+                  sectionName="General"
+                  onReset={resetGeneralPreferences}
+                />
               </div>
             )}
 
@@ -1094,8 +1031,6 @@ export function SettingsModal() {
 
             {section === "shortcuts" && <ShortcutsSection />}
 
-            {section === "mcp" && <McpSection />}
-
             {section === "experimentation" && (
               <div className="space-y-2">
                 <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs text-foreground">
@@ -1124,6 +1059,16 @@ export function SettingsModal() {
                   description="Show the Oleafly Tools gallery and the individual tools (PDF import, equations, tables, BibTeX, lab and literature search, deadlines) plus their slash commands. Off by default while still in beta."
                   checked={latexTools}
                   onChange={setLatexTools}
+                />
+                <SettingsToggleRow
+                  label="Web browser"
+                  description="Show the in-app web browser (its dock toggle and shortcut) and let the AI drive it with computer use. Off by default while still in beta; when off, there is no browser button and the AI has no browser tool."
+                  checked={webBrowser}
+                  onChange={setWebBrowser}
+                />
+                <ResetToDefaults
+                  sectionName="Experimentation"
+                  onReset={resetExperimentationPreferences}
                 />
               </div>
             )}

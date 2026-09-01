@@ -65,10 +65,22 @@ async function openRowAction(page: Page, path: string, action: string) {
     })()`,
   );
   expect(pressed).toBe(true);
-  await page.waitForFunction(
-    `!document.querySelector('[role="menu"][data-state="open"]')`,
-    5_000,
-  );
+  // Radix closes on real pointer selection; the synthetic sequence sometimes
+  // leaves the menu open even though the action ran, so nudge it shut.
+  const closed = await page
+    .waitForFunction(
+      `!document.querySelector('[role="menu"][data-state="open"]')`,
+      2_000,
+    )
+    .then(() => true)
+    .catch(() => false);
+  if (!closed) {
+    await page.press("body", "Escape");
+    await page.waitForFunction(
+      `!document.querySelector('[role="menu"][data-state="open"]')`,
+      5_000,
+    );
+  }
 }
 
 async function createEntry(
@@ -256,7 +268,12 @@ async function saveEditor(page: Page, expectedPath: string, expected: string) {
 async function waitForBackendPath(page: Page, path: string, timeoutMs = 20_000) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const paths = (await listProjectEntries(page)).map((entry) => entry.path);
+    let paths: string[] = [];
+    try {
+      paths = (await listProjectEntries(page)).map((entry) => entry.path);
+    } catch {
+      // A rename or copy can briefly race the backend listing on Linux.
+    }
     if (paths.includes(path)) return;
     if (Date.now() > deadline) {
       throw new Error(`backend path missing ${path}; entries=${JSON.stringify(paths)}`);

@@ -602,7 +602,7 @@ enum Admission {
 #[tauri::command]
 pub async fn language_service_start(
     app: AppHandle,
-    window: tauri::WebviewWindow,
+    webview: tauri::Webview,
     state: State<'_, LanguageServiceState>,
     request: StartLanguageServiceRequest,
     on_event: Channel<LanguageServiceEvent>,
@@ -644,7 +644,10 @@ pub async fn language_service_start(
     // every session left by the previous runtime in that same window. Using
     // the native window label avoids trusting a caller-provided owner id and
     // preserves the global cap for genuinely independent windows.
-    let owner_label = window.label().to_owned();
+    // Injected as Webview, not WebviewWindow: the latter cannot materialize
+    // once the window hosts a second webview (the browser dock). The owner is
+    // still the host window's label so sessions stay scoped per window.
+    let owner_label = webview.window().label().to_owned();
     let displaced = {
         let registry = lock_unpoisoned(&state.registry.inner);
         registry
@@ -2698,17 +2701,24 @@ mod tests {
     #[cfg(unix)]
     #[tokio::test]
     async fn containment_drop_kills_a_helper_after_its_leader_exits() {
+        #[cfg(target_os = "linux")]
         fn process_is_running(pid: u32) -> bool {
-            let output = std::process::Command::new("ps")
-                .args(["-o", "stat=", "-p", &pid.to_string()])
-                .output()
-                .expect("inspect helper process");
-            output.status.success()
-                && String::from_utf8_lossy(&output.stdout)
-                    .trim_start()
-                    .chars()
-                    .next()
-                    .is_some_and(|state| state != 'Z')
+            std::fs::read_to_string(format!("/proc/{pid}/stat"))
+                .ok()
+                .is_some_and(|stat| {
+                    stat.rsplit_once(") ")
+                        .and_then(|(_, tail)| tail.chars().next())
+                        .is_some_and(|state| state != 'Z')
+                })
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        fn process_is_running(pid: u32) -> bool {
+            std::process::Command::new("/bin/kill")
+                .args(["-0", &pid.to_string()])
+                .stderr(Stdio::null())
+                .status()
+                .is_ok_and(|status| status.success())
         }
 
         let args = vec![

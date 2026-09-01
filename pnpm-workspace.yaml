@@ -9,6 +9,7 @@ allowBuilds:
 # GHSA-2v37-7h3g-55p8: custom generators loop forever on size zero, < 3.3.18.
 # Force transitive build and test dependencies to patched versions.
 overrides:
+  "rehype-katex>katex": "0.18.1"
   nanoid@<3.3.18: "3.3.18"
   # GHSA-6g55-p6wh-862q: source map disclosure in postcss < 8.5.23.
   postcss@<8.5.23: "8.5.23"

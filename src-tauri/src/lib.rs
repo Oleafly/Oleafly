@@ -1,36 +1,57 @@
 mod agent;
+mod agent_config;
+mod agent_exec;
+// Protocol-vocabulary + scheduler foundation; emitters and command call
+// sites land with the session/tool restructure.
+#[allow(dead_code)]
+mod agent_server;
 mod ai_model_registry;
+mod approvals;
 mod assets;
 mod biber_toolchain;
+mod browser;
+mod browser_cookie_import;
 mod chats;
+mod chunked;
 mod citation;
 mod commands;
 mod compile_fingerprint;
 mod config;
 mod connectors;
+mod cua_policy;
 mod deadlines;
 mod document_engine;
 mod fsperm;
 mod git;
 mod github;
+mod initial_state;
 mod language_service;
 mod latex_engine;
+mod library_db;
 mod literature;
+// Two-bucket logging; emit sites land with per-sidecar adoption.
+#[allow(dead_code)]
+mod logsafe;
 mod mcp;
-#[cfg(not(target_os = "windows"))]
 mod menu;
 mod ollama;
 mod paths;
 mod proc;
 mod project;
+mod protocol;
 mod quit_gate;
+// Thread persistence; the thread-store commands land on top of it next.
+#[allow(dead_code)]
+mod rollout;
 mod sandbox;
 mod secrets;
+mod skills;
 mod state;
 mod storage;
 mod synctex;
 mod template_packs;
 mod templates;
+mod terminal;
 mod tex_distro;
 mod tinytex_archive;
 
@@ -43,6 +64,7 @@ pub fn run() {
     git::scrub_remote_credentials();
 
     let mut builder = tauri::Builder::default()
+        .on_page_load(browser::on_page_load)
         .manage(language_service::LanguageServiceState::default())
         .plugin(language_service::lifecycle_plugin())
         .plugin(tauri_plugin_shell::init())
@@ -95,7 +117,10 @@ pub fn run() {
     builder
         .manage(AppState::default())
         .manage(agent::AgentState::default())
+        .manage(agent_exec::AgentExecState::default())
+        .manage(agent_server::AgentServerState::default())
         .manage(mcp::server::McpState::default())
+        .manage(mcp::client::McpClientState::default())
         // Closing the app mid-TinyTeX-install must be a deliberate choice: block
         // the close, let the frontend show a confirm dialog, and only pass a
         // close through after `confirm_quit_during_install`.
@@ -129,6 +154,21 @@ pub fn run() {
                         let _ = window.set_decorations(false);
                     }
                     let _ = window.maximize();
+                }
+            }
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            {
+                use tauri::Manager;
+                if let Some(window) = app.get_webview_window("main") {
+                    #[cfg(target_os = "macos")]
+                    let _ = window_vibrancy::apply_vibrancy(
+                        &window,
+                        window_vibrancy::NSVisualEffectMaterial::UnderWindowBackground,
+                        Some(window_vibrancy::NSVisualEffectState::Active),
+                        None,
+                    );
+                    #[cfg(target_os = "windows")]
+                    let _ = window_vibrancy::apply_acrylic(&window, Some((18, 18, 18, 125)));
                 }
             }
             // The bridge returns eval results through a plugin command, so grant
@@ -180,10 +220,21 @@ pub fn run() {
             agent::agent_complete,
             agent::agent_cancel,
             agent::agent_cancel_all,
+            agent::agent_steer,
+            agent::agent_subagents_stop,
             agent::agent_stream,
             agent::agent_run,
             agent::agent_tool_result,
             agent::agent_list_models,
+            agent_server::agent_server_initialize,
+            agent_server::agent_server_resolve_request,
+            agent_server::agent_server_abandon_request,
+            agent_server::agent_thread_read,
+            agent_server::agent_thread_fork,
+            agent_server::agent_thread_archive,
+            agent_server::agent_thread_delete,
+            agent_server::agent_thread_claim_prewarmed,
+            agent_config::agent_multi_agent_config,
             commands::reload_views,
             commands::library_root,
             storage::library_storage_summary,
@@ -191,6 +242,40 @@ pub fn run() {
             storage::restore_recycled_project,
             storage::permanently_delete_recycled_project,
             commands::app_version,
+            commands::has_orx,
+            browser_cookie_import::detect_browser_cookie_sources,
+            browser_cookie_import::import_browser_cookies,
+            protocol::backend_protocol_info,
+            initial_state::initial_state,
+            chunked::chunked_ack,
+            chunked::read_app_log_chunked,
+            logsafe::export_log_archive,
+            approvals::approvals_list,
+            approvals::approvals_set,
+            approvals::approvals_mode_get,
+            approvals::approvals_mode_set,
+            skills::skills_list,
+            skills::skills_add,
+            skills::skills_create,
+            skills::skills_update,
+            skills::skills_validate,
+            skills::skills_set_enabled,
+            skills::skills_remove,
+            library_db::chats_search,
+            library_db::usage_record,
+            library_db::usage_summary,
+            library_db::budget_get_cmd,
+            library_db::budget_set_cmd,
+            terminal::term_open,
+            terminal::term_write,
+            terminal::term_resize,
+            terminal::term_kill,
+            menu::set_dock_shortcut_accelerators,
+            cua_policy::cua_action_confirm,
+            agent_exec::agent_exec_cwd,
+            agent_exec::agent_exec_authorize,
+            agent_exec::agent_exec_register_external,
+            agent_exec::agent_exec,
             commands::project_engine,
             language_service::language_service_start,
             language_service::language_service_send,
@@ -307,6 +392,7 @@ pub fn run() {
             config::redacted_secret_marker,
             config::get_config,
             config::set_config,
+            config::seed_starter_personas,
             mcp::mcp_begin_renderer_session,
             mcp::mcp_renderer_heartbeat,
             mcp::mcp_end_renderer_session,
@@ -318,6 +404,17 @@ pub fn run() {
             mcp::mcp_restart_server,
             mcp::mcp_connection_info,
             mcp::mcp_regenerate_token,
+            mcp::client::mcp_servers_list,
+            mcp::client::mcp_server_add,
+            mcp::client::mcp_server_update,
+            mcp::client::mcp_server_update_validated,
+            mcp::client::mcp_server_remove,
+            mcp::client::mcp_server_set_enabled,
+            mcp::client::mcp_server_validate,
+            mcp::source_import::mcp_import_source,
+            mcp::client::mcp_agent_tools_list,
+            mcp::client::mcp_agent_tool_authorize,
+            mcp::client::mcp_agent_tool_call,
             chats::load_project_chats,
             chats::save_project_chats,
             git::git_auto_commit,

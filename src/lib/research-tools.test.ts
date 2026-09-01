@@ -30,4 +30,18 @@ describe("app-level research tools wiring", () => {
     expect(mocks.fetchDoiBibtex).toHaveBeenCalledWith("10.1/x");
     expect(res).toMatchObject({ verified: true });
   });
+
+  it("forwards internet approval before invoking citation commands", async () => {
+    const confirm = vi.fn().mockResolvedValue(false);
+    const tools = createResearchAiTools({ confirm });
+
+    const res = await tools.verify_citation.execute({ doi: "10.1/x" });
+
+    expect(confirm).toHaveBeenCalledWith({
+      tool: "verify_citation",
+      summary: "Verify citation with Crossref",
+    });
+    expect(mocks.fetchDoiBibtex).not.toHaveBeenCalled();
+    expect(res).toMatchObject({ declined: true, tool: "verify_citation" });
+  });
 });

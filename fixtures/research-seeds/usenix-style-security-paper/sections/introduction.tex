@@ -1,0 +1,53 @@
+\section{Introduction}
+\label{sec:introduction}
+
+A developer who adds a dependency expects to download files. What actually
+happens in three of the largest language ecosystems is that the client
+downloads an archive, unpacks it, and then executes code the package author
+supplied, with the developer's full user privileges, before anything has been
+imported or called.
+
+This exists for a reason. Packages that wrap native libraries need to compile
+against the local toolchain, and install-time hooks are how they do it. The
+mechanism is old, load bearing, and enabled by default in every client we
+examined. It is also the shortest path from a compromised maintainer account to
+code execution on every machine that installs the package, and unlike a
+malicious library function it does not require the victim to call anything.
+
+The published incidents are well known and individually
+analysed~\citep{ferrante2021incidents,mbeki2022typosquat}. What has not been
+measured is the surface itself: how many packages use hooks, what those hooks
+actually do when they run, and whether the malicious ones are distinguishable
+from the legitimate ones by behaviour rather than by hindsight. Answering that
+requires running the hooks, which is why it has mostly not been done. Static
+analysis of hook scripts is defeated by two lines of indirection, and every
+serious sample we examined used at least that much.
+
+We ran them. \tool{} is an instrumented installer that executes each hook in a
+namespaced sandbox with a synthetic home directory, a seeded credential
+honeypot, and a network stack that answers every connection while logging it.
+Over 19 months we processed every new version published to three registries,
+1.42~million versions in total, and recorded 6.1~million hook executions.
+
+\paragraph*{Findings.}
+Four results stand out.
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
+  \item Hooks are concentrated where they do the most damage. Only 8.4 percent
+        of versions declare one, but those versions account for 31 percent of
+        installs by download volume, because hooks live in build tooling that
+        sits deep in nearly every dependency tree
+        (Section~\ref{sec:results}).
+  \item Behaviour separates cleanly. Legitimate compilation hooks touch a
+        compiler, the package directory, and nothing else. Only 1.9 percent of
+        hooks contact a non-registry network host, and that single feature
+        recovers 94 percent of our confirmed malicious set
+        (Section~\ref{sec:results}).
+  \item The registries hold a strong precursor signal and do not use it. Of
+        the 47 packages we assess as malicious, 35 were published within 72
+        hours of a maintainer account changing its recovery email address
+        (Section~\ref{sec:results}).
+  \item Turning hooks off is cheaper than the ecosystem assumes. Installing the
+        10{,}000 most downloaded packages with hooks disabled succeeds for 96.2
+        percent of them (Section~\ref{sec:defenses}).
+\end{enumerate}

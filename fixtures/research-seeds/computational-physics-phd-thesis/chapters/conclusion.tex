@@ -1,0 +1,85 @@
+\chapter{Conclusions}
+\label{chap:conclusion}
+
+\section{What the work establishes}
+\label{sec:conclusion-established}
+
+Three claims are supported by the evidence in Chapters~\ref{chap:validation}
+and~\ref{chap:results}.
+
+The first is numerical. A refined lattice kinetic hierarchy can be made second
+order accurate across refinement interfaces, and the requirement is a rescaling
+of the non equilibrium population rather than a better interpolation of the
+populations themselves. Table~\ref{tab:interface-error} shows that without the
+rescaling the interface error is independent of the grid, so the failure is not
+one that a finer mesh repairs. This resolves a question that has limited refined
+lattice solvers at the Reynolds numbers where adaptivity is worth having.
+
+The second is methodological. Refining on the resolved fraction of the Ozmidov
+scale rather than on a velocity gradient produces a hierarchy that tracks the
+active mixing regions, and it does so at a cost that does not grow with
+stratification. Table~\ref{tab:case-matrix} holds the saving at between twenty
+three and twenty seven times across the whole matrix. A gradient based criterion
+applied to the same cases refines the strongly sheared but sterile layers and
+achieves an active mixing fraction of $0.71$ at case S09, where the Ozmidov
+criterion achieves $0.958$.
+
+The third is physical. The turbulent Prandtl number in a stably stratified
+channel is not a constant, does not depend on the gradient Richardson number
+alone, and its apparent saturation near $2.0$ in the literature is a resolution
+artefact rather than a property of the flow. The closure of
+Equation~\eqref{eq:closure} carries the resolved fraction explicitly and reduces
+the error in predicted scalar flux from 34 percent to 9 percent.
+
+\section{Limitations}
+\label{sec:conclusion-limits}
+
+The campaign is channel flow. A channel has a fixed forcing, no large scale
+pressure gradient variation, and no surface heterogeneity, and all three matter
+in the atmospheric boundary layer that motivates the work. The closure
+of~\eqref{eq:closure} should be read as calibrated for this configuration and
+tested elsewhere before being trusted.
+
+The Reynolds number is 950, which is high for a resolved stratified simulation
+and low for the atmosphere. The buoyancy Reynolds numbers in
+Table~\ref{tab:case-matrix} fall below 100 for the four most stable cases, which
+is the regime where the flow is genuinely intermittent, so the physical regime of
+interest is reached. Whether the closure coefficients drift with $\Rey_\tau$ is
+not settled by this work, and the two point check at $\Rey_\tau = 590$ reported
+in Section~\ref{sec:val-channel} constrains only the neutral end.
+
+Case S11 is resolution limited by the solver's own diagnostic. It is reported
+because the collapse behaviour is informative, and it is excluded from every
+quantitative fit.
+
+The scalar is a single active scalar with a linear background gradient. Two
+scalar problems, where heat and a solute have different diffusivities and
+compete for the same overturning events, are not addressed and are known to
+behave differently near the collapse threshold \citep{nakagawa2018twoscalar}.
+
+\section{Future work}
+\label{sec:conclusion-future}
+
+Three directions follow directly.
+
+The load imbalance transient described in Section~\ref{sec:results-cost} is a
+scheduling problem rather than a physics problem. The rebalance currently
+assigns work by static weight $8^{\ell}$, which is correct in aggregate and
+wrong for the first hundred steps after a hierarchy change because newly refined
+blocks carry a larger share of interface work. A measured weight, updated from
+the previous interval, should remove most of it.
+
+The refinement criterion uses a block averaged dissipation, which smooths across
+the thin sheets that the criterion exists to capture. A criterion evaluated on
+the non equilibrium stress at each site, with a block level reduction that takes
+a high quantile rather than a mean, would refine on the sheet rather than on the
+block that contains it. The cost is one additional reduction per block per
+regridding pass, which Table~\ref{tab:cost-breakdown} suggests is affordable.
+
+Finally, the closure of~\eqref{eq:closure} carries a resolved fraction that a
+large eddy simulation does not have access to, because it does not know its own
+dissipation rate independently of its subgrid model. Making the closure usable
+in that setting requires an estimator for $r$ from resolved quantities alone.
+The scalar variance spectra of Figure~\ref{fig:spectra} suggest that the ratio
+of variance above and below a fixed wavenumber is a usable proxy
+\citep{devereux2023les}, and testing that is the natural next step.

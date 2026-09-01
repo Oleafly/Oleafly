@@ -281,6 +281,7 @@ fn watch_recovers_from_environment_errors_and_reloads_the_manifest() {
         .current_dir(project.path())
         .env("PATH", "")
         .env("OLEAFLY_LATEXMK", &compiler)
+        .env("OLEAFLY_WATCH_POLL", "1")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()

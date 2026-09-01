@@ -38,6 +38,11 @@ const chromeTheme = EditorView.theme({
     backgroundColor: "transparent",
     color: "var(--cm-gutter-fg, var(--muted-foreground))",
     border: "none",
+    // Line numbers are chrome, not content: a drag-select over the editor
+    // must not pick them up, and a click on the gutter must not select them.
+    userSelect: "none",
+    WebkitUserSelect: "none",
+    cursor: "default",
     // Defaults are the roomier values. The app tightens these through the
     // custom properties when the sidebar is open, because that is the only
     // time the horizontal space is worth reclaiming.

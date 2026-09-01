@@ -61,4 +61,5 @@ describe("Toaster keyed updates", () => {
     );
     expect(mocks.info).not.toHaveBeenCalledWith("Keep me", expect.anything());
   });
+
 });

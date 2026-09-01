@@ -15,9 +15,12 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+aho-corasick = "1"
 oleafly-agent = { path = "../crates/oleafly-agent" }
 oleafly-core = { path = "../crates/oleafly-core" }
-tauri = { version = "2", features = ["macos-private-api"] }
+# `unstable` unlocks the multi-webview APIs (Webview class) that power the
+# composer's embedded browser pane; supported on macOS, Windows, and Linux.
+tauri = { version = "2", features = ["macos-private-api", "unstable"] }
 tokio = { version = "1", features = ["time", "sync", "macros", "process", "io-util"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 tauri-plugin-shell = "2"
@@ -31,7 +34,13 @@ tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+toml = "0.8"
+rusqlite = { version = "0.32", features = ["bundled"] }
+portable-pty = "0.9"
 base64 = "0.23"
+window-vibrancy = "0.6"
+cap-fs-ext = "=4.0.2"
+cap-std = "=4.0.2"
 flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }
 zip = { version = "4", default-features = false, features = ["deflate"] }
 # Extracting the Linux pandoc tarball on-demand (macOS/Windows ship a zip).
@@ -47,8 +56,14 @@ sha2 = "0.10"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
 rand = "0.8"
 ring = "0.17"
+aes = { version = "0.8", features = ["zeroize"] }
+cbc = { version = "0.1", features = ["zeroize"] }
+zeroize = "=1.8.1"
 libc = "0.2"
 serde_yaml = "0.9"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "=2.11.1"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [
@@ -72,4 +87,5 @@ custom-protocol = ["tauri/custom-protocol"]
 e2e-testing = ["dep:tauri-plugin-playwright"]
 
 [dev-dependencies]
+tauri = { version = "2", features = ["test"] }
 tempfile = { workspace = true }

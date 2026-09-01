@@ -1044,7 +1044,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       // project (compiling already saved the active file first).
       if (checkpoint && capturedProjectId) {
         const pid = capturedProjectId;
-        void import("@/lib/auto-commit").then((m) => m.autoCommitNow(pid)).catch(() => {});
+        await import("@/lib/auto-commit").then((m) => m.autoCommitNow(pid)).catch(() => {});
       }
       return result;
     } catch (e) {

@@ -30,6 +30,7 @@ import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { ACCENTS, useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
+import { settingsTourDestination } from "@/components/tour/settings-tour-navigation";
 
 // react-joyride's control-button props carry a native `title`, which renders
 // the browser's plain system tooltip; drop it and show our own Tooltip instead.
@@ -749,12 +750,12 @@ function currentContext(
   projectId: string | null,
   settingsOpen: boolean,
   diagramOpen: boolean,
-  railTab: string,
+  assistantOpen: boolean,
   chatFloating: boolean,
 ): TourContext {
   if (diagramOpen) return "diagram";
   if (settingsOpen) return "settings";
-  if (projectId && (chatFloating || railTab === "ai" || railTab === "chat")) return "ai";
+  if (projectId && (chatFloating || assistantOpen)) return "ai";
   return projectId ? "project" : "home";
 }
 
@@ -763,7 +764,7 @@ export function TourGuide() {
   const newProjectOpen = useSettingsStore((state) => state.newProjectOpen);
   const settingsOpen = useSettingsStore((state) => state.settingsOpen);
   const diagramOpen = useHomeViewStore((state) => state.page === "diagram-composer");
-  const railTab = useSettingsStore((state) => state.railTab);
+  const assistantOpen = useSettingsStore((state) => state.assistantOpen);
   const chatFloating = useSettingsStore((state) => state.chatFloating);
   const enabled = useTourStore((state) => state.enabled);
   const tours = useTourStore((state) => state.tours);
@@ -861,7 +862,7 @@ export function TourGuide() {
     void aiReadinessRevision;
     if (showWelcome || activeTourId) return;
     if (!projectId && tours.home.status === "pending" && !libraryReady) return;
-    const context = currentContext(projectId, settingsOpen, diagramOpen, railTab, chatFloating);
+    const context = currentContext(projectId, settingsOpen, diagramOpen, assistantOpen, chatFloating);
     const evaluateCurrentContext = () => {
       const state = useTourStore.getState();
       return evaluateTour(
@@ -921,12 +922,12 @@ export function TourGuide() {
   }, [
     activeTourId,
     aiReadinessRevision,
+    assistantOpen,
     chatFloating,
     diagramOpen,
     libraryReady,
     newProjectOpen,
     projectId,
-    railTab,
     settingsOpen,
     showWelcome,
     tours,
@@ -934,21 +935,10 @@ export function TourGuide() {
 
   useEffect(() => {
     if (activeTourId !== "settings" || !activeStep) return;
-    const sectionByStep: Partial<Record<string, string>> = {
-      "settings-general": "general",
-      "settings-appearance": "appearance",
-      "settings-dictionary": "dictionary",
-      "settings-data": "data",
-      "settings-ai": "ai",
-      "settings-compiler": "engine",
-      "settings-downloads": "downloads",
-      "settings-integrations": "integrations",
-      "settings-shortcuts": "shortcuts",
-      "settings-mcp": "mcp",
-      "settings-help": "help",
-    };
-    const section = sectionByStep[activeStep.id];
-    if (!section) return;
+    const destination = settingsTourDestination(activeStep.id);
+    if (!destination) return;
+    const { section, scrollTarget } = destination;
+    if (scrollTarget) useSettingsStore.getState().setSettingsScrollTarget(scrollTarget);
     if (
       section === "dictionary" ||
       section === "data" ||
@@ -964,6 +954,14 @@ export function TourGuide() {
       document.querySelector<HTMLElement>(`[data-testid="settings-section-${section}"]`)?.click(),
     );
     return () => cancelAnimationFrame(frame);
+  }, [activeStep, activeTourId]);
+
+  // The sidebar view switchers only render while the sidebar is open, so the
+  // workspace tour opens it before anchoring its navigation step.
+  useEffect(() => {
+    if (activeTourId !== "workspace" || activeStep?.id !== "workspace-sidebar") return;
+    const settings = useSettingsStore.getState();
+    if (!settings.showTree) settings.toggleTree();
   }, [activeStep, activeTourId]);
 
   useEffect(() => {
@@ -1125,7 +1123,7 @@ export function TourGuide() {
           ? "diagram"
           : settingsOpen
             ? "settings"
-            : projectId && (chatFloating || railTab === "ai" || railTab === "chat")
+            : projectId && (chatFloating || assistantOpen)
               ? "ai"
               : projectId
                 ? "workspace"
@@ -1143,7 +1141,7 @@ export function TourGuide() {
       window.removeEventListener(START_TOUR_EVENT, manualStart);
       if (pendingFrame !== null) cancelAnimationFrame(pendingFrame);
     };
-  }, [chatFloating, diagramOpen, projectId, railTab, settingsOpen]);
+  }, [assistantOpen, chatFloating, diagramOpen, projectId, settingsOpen]);
 
   useEffect(() => {
     if (!activeTourId) return;

@@ -42,32 +42,109 @@ describe("shortcut bindings", () => {
   });
 
   it("records non-modifier keys and ignores modifier-only presses", async () => {
-    const { bindingFromEvent, sameShortcutBinding } = await import("@/store/shortcuts");
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Linux x86_64" });
+    try {
+      const { bindingFromEvent, sameShortcutBinding } = await import(
+        "@/store/shortcuts"
+      );
 
-    expect(bindingFromEvent(keyboard("Shift"))).toBeNull();
-    expect(bindingFromEvent(keyboard("g"))).toBeNull();
-    expect(bindingFromEvent(keyboard("Tab", { metaKey: true }))).toBeNull();
-    expect(bindingFromEvent(keyboard("Escape", { metaKey: true }))).toBeNull();
-    expect(
-      bindingFromEvent(
-        keyboard("J", {
-          ctrlKey: true,
-          shiftKey: true,
-          altKey: true,
+      expect(bindingFromEvent(keyboard("Shift"))).toBeNull();
+      expect(bindingFromEvent(keyboard("g"))).toBeNull();
+      expect(bindingFromEvent(keyboard("Tab", { metaKey: true }))).toBeNull();
+      expect(bindingFromEvent(keyboard("Escape", { metaKey: true }))).toBeNull();
+      expect(
+        bindingFromEvent(
+          keyboard("J", {
+            ctrlKey: true,
+            shiftKey: true,
+            altKey: true,
+          }),
+        ),
+      ).toEqual({
+        key: "j",
+        mod: true,
+        shift: true,
+        alt: true,
+      });
+      expect(
+        sameShortcutBinding(
+          { key: "b", mod: true },
+          { key: "B", mod: true, shift: false, alt: false },
+        ),
+      ).toBe(true);
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("records macOS Ctrl as a fixed modifier", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
+    try {
+      const { bindingFromEvent } = await import("@/store/shortcuts");
+
+      expect(bindingFromEvent(keyboard("`", { ctrlKey: true }))).toEqual({
+        key: "`",
+        ctrl: true,
+        shift: false,
+        alt: false,
+      });
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("keeps fixed Ctrl distinct from the macOS platform modifier", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
+    try {
+      const { matchesShortcut, sameShortcutBinding } = await import(
+        "@/store/shortcuts"
+      );
+
+      expect(
+        matchesShortcut(keyboard("`", { ctrlKey: true }), {
+          key: "`",
+          ctrl: true,
         }),
-      ),
-    ).toEqual({
-      key: "j",
-      mod: true,
+      ).toBe(true);
+      expect(
+        matchesShortcut(keyboard("`", { metaKey: true }), {
+          key: "`",
+          ctrl: true,
+        }),
+      ).toBe(false);
+      expect(
+        sameShortcutBinding(
+          { key: "`", ctrl: true },
+          { key: "`", mod: true },
+        ),
+      ).toBe(false);
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("registers unused dock toggle defaults", async () => {
+    const { SHORTCUT_DEFINITIONS, useShortcutStore } = await import(
+      "@/store/shortcuts"
+    );
+
+    expect(useShortcutStore.getState().bindings.toggleTerminal).toEqual({
+      key: "`",
+      ctrl: true,
+    });
+    expect(useShortcutStore.getState().bindings.toggleBrowser).toEqual({
+      key: "b",
+      ctrl: true,
       shift: true,
-      alt: true,
     });
     expect(
-      sameShortcutBinding(
-        { key: "b", mod: true },
-        { key: "B", mod: true, shift: false, alt: false },
-      ),
-    ).toBe(true);
+      SHORTCUT_DEFINITIONS.filter(({ id }) =>
+        ["toggleTerminal", "toggleBrowser"].includes(id),
+      ).map(({ label }) => label),
+    ).toEqual(["Toggle terminal", "Toggle browser"]);
   });
 
   it("persists edits and restores individual and global defaults", async () => {
@@ -106,6 +183,15 @@ describe("shortcut bindings", () => {
     const stored = await import("@/store/shortcuts");
     expect(stored.useShortcutStore.getState().bindings.commandPalette.key).toBe("p");
     expect(stored.useShortcutStore.getState().bindings.recompile.key).toBe("Enter");
+    expect(stored.useShortcutStore.getState().bindings.toggleTerminal).toEqual({
+      key: "`",
+      ctrl: true,
+    });
+    expect(stored.useShortcutStore.getState().bindings.toggleBrowser).toEqual({
+      key: "b",
+      ctrl: true,
+      shift: true,
+    });
 
     vi.resetModules();
     localStorage.setItem("oleafly.shortcuts", "{");
@@ -120,5 +206,19 @@ describe("shortcut bindings", () => {
     expect(reservedShortcutLabel({ key: "s", mod: true })).toBe("Save");
     expect(reservedShortcutLabel({ key: "k", mod: true })).toBeNull();
     expect(reservedShortcutLabel({ key: "s", mod: true, shift: true })).toBeNull();
+  });
+
+  it("reserves the macOS window switching shortcut", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
+    try {
+      const { reservedShortcutLabel } = await import("@/store/shortcuts");
+      expect(reservedShortcutLabel({ key: "`", mod: true })).toBe(
+        "Window switching",
+      );
+      expect(reservedShortcutLabel({ key: "`", ctrl: true })).toBeNull();
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
   });
 });

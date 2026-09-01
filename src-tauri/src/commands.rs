@@ -9,15 +9,21 @@ use crate::state::AppState;
 const MAX_QUEUED_PROJECTS: usize = 128;
 const MAX_PROJECT_BINARY_READ_BYTES: u64 = 8 * 1024 * 1024;
 
+// Injects Webview, not WebviewWindow: the latter fails to materialize once
+// the main window hosts a second webview (the browser dock), which turned
+// every reload after opening the dock into a silent error. Iterating windows
+// and their webviews keeps multi-webview windows covered too.
 #[tauri::command]
-pub fn reload_views(app: tauri::AppHandle, window: tauri::WebviewWindow) {
-    let caller = window.label();
-    for (label, view) in app.webview_windows() {
-        if label != caller {
-            let _ = view.reload();
+pub fn reload_views(app: tauri::AppHandle, webview: tauri::Webview) {
+    let caller = webview.label().to_string();
+    for window in app.windows().values() {
+        for view in window.webviews() {
+            if view.label() != caller {
+                let _ = view.eval("window.location.reload()");
+            }
         }
     }
-    let _ = window.eval("setTimeout(() => location.reload(), 0)");
+    let _ = webview.eval("setTimeout(() => location.reload(), 0)");
 }
 
 fn register_compile_ticket(
@@ -54,6 +60,33 @@ pub fn library_root() -> Result<std::path::PathBuf, String> {
 #[tauri::command]
 pub fn app_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
+}
+
+fn orx_on_path(path: Option<&std::ffi::OsStr>) -> bool {
+    let Some(path) = path else {
+        return false;
+    };
+    std::env::split_paths(path)
+        .map(|directory| directory.join(if cfg!(windows) { "orx.exe" } else { "orx" }))
+        .any(|candidate| executable_file(&candidate))
+}
+
+#[cfg(unix)]
+fn executable_file(path: &std::path::Path) -> bool {
+    use std::os::unix::fs::PermissionsExt as _;
+    path.metadata()
+        .is_ok_and(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
+}
+
+#[cfg(not(unix))]
+fn executable_file(path: &std::path::Path) -> bool {
+    path.is_file()
+}
+
+#[tauri::command]
+pub fn has_orx() -> bool {
+    let path = std::env::var_os("PATH");
+    orx_on_path(path.as_deref())
 }
 
 #[tauri::command]
@@ -779,5 +812,33 @@ mod tests {
         assert!(assert_revealable(&exported, &allow).is_ok());
         assert!(assert_revealable(exported.parent().unwrap(), &allow).is_err());
         assert!(assert_revealable(&exported.join("child"), &allow).is_err());
+    }
+
+    #[test]
+    fn orx_detection_reports_present_when_the_binary_resolves() {
+        let directory = tempfile::tempdir().unwrap();
+        let binary = directory
+            .path()
+            .join(if cfg!(windows) { "orx.exe" } else { "orx" });
+        std::fs::write(&binary, b"orx").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            let mut permissions = std::fs::metadata(&binary).unwrap().permissions();
+            permissions.set_mode(0o700);
+            std::fs::set_permissions(&binary, permissions).unwrap();
+        }
+        let path = std::env::join_paths([directory.path()]).unwrap();
+
+        assert!(orx_on_path(Some(&path)));
+    }
+
+    #[test]
+    fn orx_detection_reports_absent_when_the_binary_does_not_resolve() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = std::env::join_paths([directory.path()]).unwrap();
+
+        assert!(!orx_on_path(Some(&path)));
+        assert!(!orx_on_path(None));
     }
 }

@@ -1,0 +1,106 @@
+\section{Design}
+\label{sec:design}
+
+\subsection{Overview}
+
+\sysname{} sits between the model runtime and the attention kernel. For each
+attention layer it receives the query and key tiles, produces a block mask,
+and hands the mask to a scheduler that issues only the surviving fetches.
+Figure~\ref{fig:architecture} shows the arrangement.
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[
+      node distance=6mm and 8mm,
+      box/.style={draw,rounded corners=2pt,align=center,font=\small,
+                  minimum height=8mm,inner xsep=4pt},
+      flow/.style={-{Stealth[length=2mm]},thick},
+    ]
+    \node[box] (runtime) {Model runtime};
+    \node[box,below=of runtime] (probe) {Low-rank probe\\\scriptsize rank 4 sketch};
+    \node[box,below=of probe] (sched) {Block scheduler\\\scriptsize mask to fetch plan};
+    \node[box,below=of sched] (kernel) {Tiled attention kernel};
+    \node[box,right=14mm of sched] (guard) {Residual guard};
+
+    \draw[flow] (runtime) -- node[right,font=\scriptsize] {$Q,K$ tiles} (probe);
+    \draw[flow] (probe) -- node[right,font=\scriptsize] {block mask} (sched);
+    \draw[flow] (sched) -- node[right,font=\scriptsize] {fetch plan} (kernel);
+    \draw[flow] (kernel.east) -- ++(6mm,0) |- (guard.east);
+    \draw[flow] (guard) -- node[above,font=\scriptsize] {fallback} (sched);
+
+    \begin{scope}[on background layer]
+      \node[draw,dashed,rounded corners=3pt,fit=(probe)(sched)(guard),
+            inner sep=3mm,label={[font=\scriptsize]above right:\sysname}] {};
+    \end{scope}
+  \end{tikzpicture}
+  \caption{\sysname{} intercepts tiles between the runtime and the attention
+  kernel. The guard observes realised residuals and can restore dense
+  computation for a head without restarting the request.}
+  \label{fig:architecture}
+\end{figure}
+
+\subsection{Block importance from a low-rank probe}
+
+Let $Q_i \in \mathbb{R}^{B \times d}$ and $K_j \in \mathbb{R}^{B \times d}$ be
+the tiles of query block $i$ and key block $j$. We maintain a shared random
+projection $\Pi \in \mathbb{R}^{d \times r}$ with $r = 4$ and compute the
+sketched score
+\begin{equation}
+  \label{eq:probe}
+  \tilde{s}_{ij} = \frac{1}{\sqrt{d}} \left\lVert Q_i \Pi \right\rVert_{F}
+                   \left\lVert K_j \Pi \right\rVert_{F}
+                   + \frac{1}{\sqrt{d}} \mu_i^{\top} \nu_j,
+\end{equation}
+where $\mu_i$ and $\nu_j$ are the tile means. The first term bounds the
+magnitude of the block's inner products and the second recovers the dominant
+direction, which the norm term alone discards.
+
+\begin{proposition}
+\label{prop:bound}
+For any temperature $\tau > 0$, the softmax mass of block $(i,j)$ satisfies
+$S_{ij} \le \exp(\tilde{s}_{ij}/\tau) / Z_i$, where $Z_i$ is the row
+normaliser of query block $i$.
+\end{proposition}
+
+The proposition lets us discard blocks by mass rather than by count: given a
+budget $\varepsilon$, we retain the smallest set of blocks whose complementary
+upper bound sums to less than $\varepsilon$.
+
+\subsection{Scheduling}
+
+The mask alone does not save traffic. A naive kernel still walks the full key
+array and tests the mask per block, which issues the fetch before the test
+resolves. \sysname{} instead compacts the surviving block indices into a dense
+fetch list and issues that list to the memory pipeline, so a skipped block is
+never requested. Algorithm~\ref{alg:schedule} states the procedure.
+
+\begin{algorithm}[t]
+  \caption{Block schedule for one query block}
+  \label{alg:schedule}
+  \SetAlgoLined
+  \KwIn{query tile $Q_i$, key tiles $\{K_j\}$, budget $\varepsilon$}
+  \KwOut{ordered fetch list $F$}
+  compute $\tilde{s}_{ij}$ for all $j$ using Eq.~\eqref{eq:probe}\;
+  sort blocks by $\tilde{s}_{ij}$ descending into order $\pi$\;
+  $m \gets 0$; $F \gets \langle\,\rangle$\;
+  \ForEach{$j$ in $\pi$}{
+    \If{$m \ge 1 - \varepsilon$}{\textbf{break}\;}
+    append $j$ to $F$\;
+    $m \gets m + \exp(\tilde{s}_{ij}/\tau)/Z_i$\;
+  }
+  sort $F$ ascending by address to preserve coalescing\;
+  \Return{$F$}
+\end{algorithm}
+
+The final sort matters more than it appears. Fetching in importance order
+scatters the reads across the key array and costs 18 percent more time than
+fetching the same blocks in address order.
+
+\subsection{Runtime guard}
+
+Proposition~\ref{prop:bound} bounds the discarded mass, but the bound is loose
+for heads whose key tiles are nearly isotropic. The guard accumulates the
+realised normaliser during the kernel and compares it against the predicted
+one. If the relative gap exceeds $3\varepsilon$ for a head, that head is marked
+dense for the remainder of the request. In our evaluation the guard fires on
+1.9 percent of heads.

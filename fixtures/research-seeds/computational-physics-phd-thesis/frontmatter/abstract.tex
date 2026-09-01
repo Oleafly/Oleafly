@@ -1,0 +1,40 @@
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+Stable stratification suppresses vertical mixing in the atmospheric and oceanic
+boundary layer, and the resulting transport is intermittent, anisotropic, and
+poorly resolved by the eddy diffusivity closures that operational models still
+rely on. Direct simulation of the regime is expensive because the buoyancy
+Ozmidov scale collapses faster than the viscous scale as the Richardson number
+grows, so a uniform grid is wasted almost everywhere. This dissertation
+develops \solver, an adaptive lattice kinetic solver for the coupled momentum
+and scalar problem, and uses it to characterise the turbulent Prandtl number
+across the transition from continuous to intermittent turbulence.
+
+The numerical contribution is threefold. First, a two population lattice
+Boltzmann formulation is derived in which the momentum population carries a
+multiple relaxation time collision operator and the scalar population carries a
+single relaxation time operator on a reduced velocity set, giving a scheme whose
+scalar diffusivity is independent of the momentum relaxation rate over the full
+range of Prandtl numbers considered. Second, a block structured refinement
+criterion is introduced that keys on the local buoyancy Ozmidov scale rather than on
+a velocity gradient magnitude, so refinement follows the layers where mixing is
+actually active instead of following shear that stratification has already
+sterilised. Third, the coupling between refinement levels is shown to conserve
+the second order moments of both populations to machine precision under a
+rescaling of the non equilibrium parts, which removes the spurious entropy
+production that has limited earlier refined lattice schemes at high Reynolds
+number.
+
+The solver reproduces reference statistics for unstratified channel flow at
+friction Reynolds number 590 to within 1.4 percent in mean velocity and 3.1
+percent in scalar variance, and reproduces the collapse of the momentum flux at
+bulk Richardson number 0.25 reported by earlier spectral studies. Production
+runs cover twelve stratification levels on grids of up to 1.1 billion active
+lattice sites. The turbulent Prandtl number is found to rise from 0.86 in the
+neutral limit to 1.9 near the critical Richardson number, and the rise is
+governed by the ratio of the buoyancy Ozmidov scale to the local grid spacing rather
+than by the gradient Richardson number alone, which explains the resolution
+sensitivity that has confounded previous estimates. A revised closure is
+proposed that carries this ratio explicitly and reduces the error in the
+predicted scalar flux from 34 percent to 9 percent across the case matrix.

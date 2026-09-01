@@ -16,6 +16,19 @@ vi.mock("@/features/project-import", () => ({
   importSelectedFile: vi.fn(),
 }));
 
+vi.mock("@oleafly/templates", () => ({
+  NewProjectDialog: ({ open }: { open: boolean }) =>
+    open ? <div role="dialog">New project</div> : null,
+}));
+
+vi.mock("@/features/template-generate", () => ({
+  generateTemplateAvailable: vi.fn(async () => false),
+}));
+
+vi.mock("@/components/library/TemplateGenerateModal", () => ({
+  TemplateGenerateModal: () => null,
+}));
+
 import { ProjectImportMenu } from "./ProjectImportMenu";
 
 describe("ProjectImportMenu", () => {
@@ -57,6 +70,8 @@ describe("ProjectImportMenu", () => {
     act(() => vi.advanceTimersByTime(300));
 
     expect(screen.getByRole("tooltip")).toHaveTextContent("Import");
+    fireEvent.mouseLeave(trigger.parentElement as HTMLElement);
     vi.useRealTimers();
   });
+
 });

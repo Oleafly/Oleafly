@@ -1,4 +1,5 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ColorInput } from "@/components/ui/color-input";
 import { cn } from "@/lib/utils";
@@ -14,8 +15,9 @@ export function ColorPicker({
   allowTransparent?: boolean;
   ariaLabel: string;
 }) {
+  const [open, setOpen] = useState(false);
   return (
-    <PopoverPrimitive.Root>
+    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <PopoverPrimitive.Trigger asChild>
         <button
           type="button"

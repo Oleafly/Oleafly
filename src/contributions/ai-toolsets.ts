@@ -10,18 +10,25 @@ export function registerAiToolsets() {
   registerAiToolset({
     id: "project-tools",
     mode: "chat",
-    create: (opts: { confirm?: ConfirmFn; onImage?: (dataUrl: string) => void }) =>
+    source: { kind: "project" },
+    create: (opts: {
+      confirm?: ConfirmFn;
+      onImage?: (dataUrl: string) => void;
+      runId?: () => string | null;
+    }) =>
       createOleaflyTools(opts),
   });
   registerAiToolset({
     id: "figure-tools",
     mode: "figure",
+    source: { kind: "figure" },
     create: (opts: { confirm?: ConfirmFn; onImage?: (dataUrl: string) => void }) =>
       createFigureTools(opts),
   });
   registerAiToolset({
     id: "research-tools",
     mode: "chat",
-    create: () => createResearchAiTools(),
+    source: { kind: "project" },
+    create: (opts: { confirm?: ConfirmFn }) => createResearchAiTools(opts),
   });
 }

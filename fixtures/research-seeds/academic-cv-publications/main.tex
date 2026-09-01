@@ -1,0 +1,264 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[margin=0.85in,bottom=0.9in]{geometry}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{microtype}
+\usepackage{fancyhdr}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\raggedbottom
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[L]{\footnotesize Rhiannon Oyelaran-Fitch}
+\fancyfoot[R]{\footnotesize \thepage{} of \pageref{cv:end}}
+
+\newcommand{\cvsection}[1]{%
+  \vspace{10pt}%
+  {\normalsize\bfseries\MakeUppercase{#1}}%
+  \vspace{2pt}\hrule height 0.9pt%
+  \vspace{6pt}%
+}
+
+\newcommand{\cvsubsection}[1]{%
+  \vspace{7pt}{\small\bfseries #1}\vspace{3pt}%
+}
+
+\newenvironment{dated}[1][2.4cm]{%
+  \begin{list}{}{%
+    \setlength{\labelwidth}{#1}%
+    \setlength{\leftmargin}{\dimexpr#1+0.5cm\relax}%
+    \setlength{\labelsep}{0.5cm}%
+    \setlength{\itemsep}{4pt}%
+    \setlength{\parsep}{2pt}%
+    \setlength{\topsep}{2pt}%
+    \renewcommand{\makelabel}[1]{\small##1\hfill}%
+  }%
+}{\end{list}}
+
+\newcommand{\role}[2]{\textbf{#1}, #2}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries Rhiannon Oyelaran-Fitch}\\[4pt]
+  {\small Associate Professor of Computational Ecology}\\[2pt]
+  {\small Department of Ecosystem Informatics, Wrenford University}
+\end{center}
+
+\vspace{4pt}
+\hrule height 0.9pt
+\vspace{4pt}
+
+\begin{center}\small
+  Hallam Building, 14 Marchwood Road, Wrenford WR4 2LX
+  \quad$\cdot$\quad
+  +44 1632 960 418\\[2pt]
+  \texttt{r.oyelaran-fitch@wrenford.example.ac.uk}
+  \quad$\cdot$\quad
+  \texttt{ecosysinf.wrenford.example.ac.uk/oyelaran-fitch}
+  \quad$\cdot$\quad
+  ORCID 0000-0002-4417-9103\\[2pt]
+  {\footnotesize Last revised August 2026}
+\end{center}
+
+\vspace{2pt}
+\hrule height 0.9pt
+
+\cvsection{Research statement}
+
+I build inference methods for terrestrial ecosystems where the measurement is indirect, the model
+is structurally wrong, and the field campaign is small. My group works on three linked problems:
+propagating uncertainty from raw reflectance through to carbon flux estimates, deciding where to
+send a field team when the travel budget binds, and detecting when an ecosystem model is right for
+the wrong reason. The methods are developed against long-running sites in temperate mixed forest
+and are released as open software.
+
+\cvsection{Education}
+
+\begin{dated}
+  \item[2015 -- 2019] \role{PhD, Ecosystem Informatics}{Wrenford University}\\
+    \small Dissertation: Structural constraints on productivity inference in heterogeneous
+    canopies. Advisor: Prof. Marguerite Adeyemi-Stroud. Faculty dissertation prize, 2019.
+  \item[2013 -- 2015] \role{MSc, Environmental Modelling}{Kesterly Institute of Technology}\\
+    \small Distinction. Thesis on radiative transfer inversion under partial canopy cover.
+  \item[2010 -- 2013] \role{BSc, Mathematics and Biology}{University of Ardsleet}\\
+    \small First class honours. Minor in scientific computing.
+\end{dated}
+
+\cvsection{Appointments}
+
+\begin{dated}
+  \item[2024 -- present] \role{Associate Professor}{Department of Ecosystem Informatics, Wrenford University}\\
+    \small Lead of the Inference for Terrestrial Systems group. Six doctoral students, two
+    postdoctoral researchers, one research software engineer.
+  \item[2021 -- 2024] \role{Assistant Professor}{Department of Ecosystem Informatics, Wrenford University}\\
+    \small Tenure track. Founded the group and the Marchwood long-term observation transect.
+  \item[2019 -- 2021] \role{Postdoctoral Research Fellow}{Kesterly Institute of Technology}\\
+    \small Data assimilation for coupled carbon and water models. Supervisor: Prof. Ivar Bergsvik.
+  \item[2022 -- present] \role{Visiting Scientist}{Halvard Environmental Observatory}, one month per year\\
+    \small Joint appointment covering the observatory's flux tower reprocessing programme.
+\end{dated}
+
+\cvsection{Grants and fellowships}
+
+\begin{center}\small
+\begin{tabular}{@{}l l l r r@{}}
+  \toprule
+  Period & Award & Role & Total & Share \\
+  \midrule
+  2025 -- 2030 & Marchwood Foundation Consolidator Award \texttt{MF-CON-2025-0913}  & PI         & 1{,}940{,}000 & 1{,}940{,}000 \\
+  2024 -- 2027 & Terrestrial Inference Network \texttt{TIN-2024-0261}               & Co-PI      & 2{,}610{,}000 & 640{,}000 \\
+  2024 -- 2026 & Wrenford Strategic Instrumentation Fund \texttt{WSIF-24-118}       & PI         & 310{,}000     & 310{,}000 \\
+  2023 -- 2026 & Open Environmental Software Programme \texttt{OESP-2023-0074}      & PI         & 425{,}000     & 425{,}000 \\
+  2022 -- 2025 & Kesterly Collaborative Modelling Grant \texttt{KCM-22-3391}        & Co-I       & 880{,}000     & 190{,}000 \\
+  2021 -- 2024 & Early Career Establishment Award \texttt{ECE-2021-1140}            & PI         & 640{,}000     & 640{,}000 \\
+  2019 -- 2021 & Postdoctoral Mobility Fellowship \texttt{PMF-2019-0827}            & Fellow     & 145{,}000     & 145{,}000 \\
+  \midrule
+  \multicolumn{3}{@{}l}{\textbf{Total awarded as principal or co-principal investigator}} & \textbf{6{,}950{,}000} & \textbf{4{,}290{,}000} \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{3pt}
+{\small All figures in pounds sterling. Share is the amount administered by Wrenford University.}
+
+\cvsection{Publications}
+
+{\small Names in the author lists below are group members and external collaborators. Numbering is
+reverse chronological. A current citation record is maintained on the group site.}
+
+\vspace{4pt}
+{\small
+\renewcommand{\refname}{}
+\vspace{-2.2em}
+\setlength{\bibsep}{2.5pt}
+\nocite{*}
+\bibliographystyle{unsrtnat}
+\bibliography{refs}
+}
+
+\cvsection{Selected invited talks}
+
+\begin{dated}[2.4cm]
+  \item[Jun 2026] \textit{Inference when the model is wrong on purpose.} Keynote, International
+    Meeting on Terrestrial Modelling, Halvard.
+  \item[Mar 2026] \textit{Where to send the field team.} Departmental colloquium, Kesterly
+    Institute of Technology.
+  \item[Nov 2025] \textit{Gap filling is not free.} Invited seminar, Ardsleet Centre for
+    Environmental Statistics.
+  \item[Sep 2024] \textit{Calibrated uncertainty for biomass retrieval.} Plenary, Conference on
+    Environmental Machine Learning.
+  \item[May 2023] \textit{Twelve years of drought legacy in one transect.} Public lecture,
+    Marchwood Natural History Society.
+\end{dated}
+
+\cvsection{Teaching}
+
+\begin{center}\small
+\begin{tabular}{@{}l l c c@{}}
+  \toprule
+  Course & Level & Enrolment & Terms taught \\
+  \midrule
+  ECI 401 Statistical Inference for Ecologists      & Postgraduate  & 34  & 2022, 2023, 2024, 2025 \\
+  ECI 312 Remote Sensing of Vegetation              & Undergraduate & 96  & 2021, 2022, 2024, 2026 \\
+  ECI 208 Scientific Computing for Field Scientists & Undergraduate & 140 & 2021, 2022, 2023 \\
+  ECI 590 Research Software Practice                & Postgraduate  & 18  & 2024, 2025, 2026 \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{5pt}
+\cvsubsection{Curriculum development}
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt,topsep=2pt]
+  \item Designed ECI 590, the department's first credit-bearing course on version control, testing,
+    and reproducible analysis. Now required for all incoming doctoral students.
+  \item Rebuilt ECI 208 around a single field dataset carried through the whole term, which raised
+    the completion rate from 71 to 92 percent over three offerings.
+\end{itemize}
+
+\cvsection{Research supervision}
+
+\begin{dated}[2.4cm]
+  \item[2023 -- present] \textbf{Emi Nakamura-Voss}, doctoral candidate. Bias propagation in cloud
+    reconstruction.
+  \item[2023 -- present] \textbf{Salifou Traoré-Wexler}, doctoral candidate. Radar and optical
+    fusion across sensor discontinuities.
+  \item[2022 -- present] \textbf{Nkiru Adesuwa-Klein}, doctoral candidate. Limits of spectral trait
+    retrieval.
+  \item[2021 -- 2025] \textbf{Peder Halloway}, PhD awarded 2025. Now postdoctoral fellow, Halvard
+    Environmental Observatory.
+  \item[2021 -- 2025] \textbf{Duda Ferreira-Lindqvist}, PhD awarded 2025. Now research scientist,
+    Marchwood Catchment Authority.
+  \item[2022 -- present] \textbf{Aksel Bergsvik}, postdoctoral researcher. Ecosystem model
+    emulation.
+\end{dated}
+
+\cvsection{Software and data}
+
+\begin{itemize}[leftmargin=1.2em,itemsep=3pt,topsep=2pt]
+  \item \textbf{canopyfit}. Radiative transfer inversion with physically constrained priors.
+    Approximately 4{,}100 downloads per month, 61 external contributors, used in the reprocessing
+    pipeline at two national observatories.
+  \item \textbf{transect-tools}. Field campaign planning under travel and labour budgets. Adopted
+    by the Terrestrial Inference Network as its reference planner.
+  \item \textbf{Marchwood transect archive}. Twelve years of paired lidar, spectral, and
+    destructive-sample records from 42 plots, released annually under an open licence.
+\end{itemize}
+
+\cvsection{Service}
+
+\cvsubsection{Editorial}
+\begin{dated}[2.4cm]
+  \item[2025 -- present] Associate Editor, \textit{Journal of Ecosystem Informatics}.
+  \item[2023 -- present] Editorial Board, \textit{Ecological Methods and Inference}.
+\end{dated}
+
+\cvsubsection{Programme committees and review}
+\begin{dated}[2.4cm]
+  \item[2024, 2026] Area Chair, Conference on Environmental Machine Learning.
+  \item[2022 -- present] Programme Committee, Workshop on Machine Learning for the Earth System.
+  \item[2021 -- present] Reviewer for eleven journals across ecology, remote sensing, and applied
+    statistics. Approximately 25 reviews per year.
+  \item[2024 -- present] Panel member, Open Environmental Software Programme.
+\end{dated}
+
+\cvsubsection{Institutional}
+\begin{dated}[2.4cm]
+  \item[2025 -- present] Chair, Departmental Research Ethics Committee.
+  \item[2024 -- present] Member, Faculty Research Computing Board.
+  \item[2022 -- 2024] Doctoral Admissions Lead, Department of Ecosystem Informatics.
+\end{dated}
+
+\cvsubsection{Outreach}
+\begin{dated}[2.4cm]
+  \item[2022 -- present] Coordinator, Marchwood Schools Transect. Sixty pupils per year contribute
+    plot measurements that enter the public archive.
+\end{dated}
+
+\cvsection{Honours}
+
+\begin{dated}[2.4cm]
+  \item[2026] Wrenford University Award for Excellence in Doctoral Supervision.
+  \item[2025] Best Paper, Conference on Environmental Machine Learning.
+  \item[2023] Reproducibility Prize, Symposium on Research Software Engineering.
+  \item[2019] Faculty Dissertation Prize, Wrenford University.
+\end{dated}
+
+\cvsection{Referees}
+
+\begin{itemize}[leftmargin=1.2em,itemsep=3pt,topsep=2pt]
+  \item Prof. Marguerite Adeyemi-Stroud, Department of Ecosystem Informatics, Wrenford University.
+  \item Prof. Ivar Bergsvik, Kesterly Institute of Technology.
+  \item Dr. Solveig Ranthorpe, Director, Halvard Environmental Observatory.
+\end{itemize}
+
+\label{cv:end}
+
+\end{document}

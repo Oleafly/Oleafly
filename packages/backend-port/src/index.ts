@@ -6,6 +6,74 @@
 // HTTP/WS. Grow the contract here first; the conformance check then demands
 // the desktop implementation.
 
+/**
+ * Version of this contract. Bump on any breaking change to the command
+ * surface. The desktop backend reports its own version through
+ * `backendProtocolInfo`; a mismatch means the shell and backend were built
+ * against different contracts and the shell must degrade gracefully.
+ * src-tauri/src/protocol.rs mirrors both constants; the vitest conformance
+ * test (src/lib/backend-port-protocol.test.ts) fails on drift.
+ */
+export const PROTOCOL_VERSION = 2;
+/** Feature areas the shell requires from its backend. Keep sorted. */
+export const BACKEND_CAPABILITIES = [
+    "agent-server",
+    "agent-stream",
+    "chats",
+    "compile",
+    "git",
+    "initial-state",
+    "mcp",
+    "search",
+    "synctex",
+    "templates",
+] as const;
+export type BackendCapability = (typeof BACKEND_CAPABILITIES)[number];
+export interface BackendProtocolInfo {
+    protocol_version: number;
+    capabilities: string[];
+}
+/** Agent-server handshake reply (protocol v2). Mirrors
+ * src-tauri/src/agent_server/protocol.rs. */
+export interface AgentServerInfo {
+    app_server_protocol_version: number;
+    native_host_protocol_version: number;
+    schema_version: number;
+    server_version: string;
+}
+export interface AgentClientInfo {
+    name: string;
+    version: string;
+}
+export interface AgentClientCapabilities {
+    optOutNotificationMethods: string[];
+}
+/** Decision on a server-initiated request (approval / user input /
+ * elicitation). Legacy wire spellings are accepted by the backend. */
+export type AgentRequestDecision =
+    | "accept"
+    | "acceptForSession"
+    | "acceptWithExecpolicyAmendment"
+    | "decline";
+/** One-round-trip startup snapshot the backend pre-computes; fields are
+ * best-effort and never block first paint. */
+export interface InitialState {
+    config: AppConfig | null;
+    projects: ProjectInfo[];
+}
+/** Persisted per-project tool-approval decision (~/.oleafly/approvals.toml). */
+export type ToolDecision = "allow" | "deny";
+export interface ChatSearchHit {
+    project_id: string;
+    chat_id: string;
+    title: string;
+    snippet: string;
+}
+export interface UsageTotals {
+    input_tokens: number;
+    output_tokens: number;
+    cost_usd: number;
+}
 export interface CompileError {
     line: number | null;
     file: string | null;
@@ -307,10 +375,52 @@ export interface AppConfig {
     ai_provider_models: Record<string, StoredModel[]>;
     ai_custom_providers: CustomProvider[];
     ai_personas: Persona[];
+    ai_starter_personas_seeded: boolean;
     mcp_enabled: boolean;
     mcp_port: number;
     mcp_read_only: boolean;
     mcp_approval_policy: string;
+    mcp_servers: McpServerConfig[];
+}
+export type McpServerConfig = {
+    name: string;
+    enabled: boolean;
+    transport: "stdio";
+    command: string;
+    args: string[];
+    env: Record<string, string>;
+} | {
+    name: string;
+    enabled: boolean;
+    transport: "remote";
+    url: string;
+    headers: Record<string, string>;
+};
+export interface McpServerTool {
+    name: string;
+    description?: string | null;
+}
+export type McpServerValidationStatus = "connected" | "error" | "disabled" | "checking";
+export interface McpServerValidation {
+    name: string;
+    status: McpServerValidationStatus;
+    tool_count: number;
+    tools: McpServerTool[];
+    error: string | null;
+}
+export interface McpManagedServer {
+    config: McpServerConfig;
+    validation: McpServerValidation;
+}
+export interface McpAgentTool {
+    name: string;
+    tool_handle: string;
+    description: string | null;
+    input_schema: unknown;
+}
+export interface McpAgentServer {
+    name: string;
+    tools: McpAgentTool[];
 }
 export interface McpStatus {
     running: boolean;
@@ -380,6 +490,15 @@ export interface FileConflictInfo {
 }
 
 export interface BackendPort {
+  backendProtocolInfo: () => Promise<BackendProtocolInfo>;
+  initialState: () => Promise<InitialState>;
+  approvalsList: (projectId: string) => Promise<Record<string, ToolDecision>>;
+  approvalsSet: (projectId: string, tool: string, decision: ToolDecision | null) => Promise<void>;
+  chatsSearch: (query: string) => Promise<ChatSearchHit[]>;
+  usageRecord: (projectId: string, chatId: string, provider: string, model: string, inputTokens: number, outputTokens: number, costUsd: number) => Promise<void>;
+  usageSummary: (projectId: string) => Promise<UsageTotals>;
+  budgetGet: (projectId: string) => Promise<number | null>;
+  budgetSet: (projectId: string, budgetUsd: number | null) => Promise<void>;
   reloadViews: () => Promise<void>;
   focusCurrentWindow: () => Promise<void>;
   getProjectEngine: (projectId: string) => Promise<DocumentEngineDescriptor>;
@@ -420,6 +539,9 @@ export interface BackendPort {
   createProjectFromDocx: (name: string, dataBase64: string) => Promise<string>;
   appendAppLog: (message: string) => Promise<void>;
   readAppLog: (maxBytes: number) => Promise<string>;
+  /** Same data as readAppLog, streamed in acknowledged chunks so a large log
+   * cannot jank the webview with one giant IPC return. */
+  readAppLogChunked: (maxBytes: number) => Promise<string>;
   setMainDocCmd: (projectId: string, mainDoc: string) => Promise<ProjectMeta>;
   setProjectEngineCmd: (projectId: string, engine: string, flavor?: TexFlavor | null) => Promise<ProjectMeta>;
   setProjectShellEscapeCmd: (projectId: string, allowShellEscape: boolean) => Promise<ProjectMeta>;
@@ -500,11 +622,34 @@ export interface BackendPort {
   searchProject: (projectId: string, query: string) => Promise<SearchHit[]>;
   getConfig: () => Promise<AppConfig>;
   setConfig: (config: AppConfig) => Promise<void>;
+  seedStarterPersonas: (starters: Persona[]) => Promise<AppConfig>;
   mcpStatus: () => Promise<McpStatus>;
   mcpSetEnabled: (enabled: boolean) => Promise<McpStatus>;
   mcpRestartServer: () => Promise<McpStatus>;
   mcpConnectionInfo: () => Promise<McpConnectionInfo>;
   mcpRegenerateToken: () => Promise<void>;
+  mcpServersList: () => Promise<McpManagedServer[]>;
+  mcpServerAdd: (server: McpServerConfig) => Promise<McpManagedServer>;
+  mcpServerUpdate: (originalName: string, server: McpServerConfig) => Promise<McpManagedServer>;
+  mcpServerRemove: (name: string) => Promise<void>;
+  mcpServerSetEnabled: (name: string, enabled: boolean) => Promise<McpManagedServer>;
+  mcpServerValidate: (name: string) => Promise<McpServerValidation>;
+  mcpAgentToolsList: () => Promise<McpAgentServer[]>;
+  mcpAgentToolAuthorize: (
+    projectId: string,
+    server: string,
+    toolHandle: string,
+    argumentsValue: Record<string, unknown>,
+    runId: string,
+  ) => Promise<string>;
+  mcpAgentToolCall: (
+    projectId: string,
+    server: string,
+    toolHandle: string,
+    argumentsValue: Record<string, unknown>,
+    runId: string,
+    approvalToken: string,
+  ) => Promise<unknown>;
   mcpBeginRendererSession: () => Promise<number>;
   mcpRendererHeartbeat: (rendererSession: number) => Promise<void>;
   mcpEndRendererSession: (rendererSession: number) => Promise<void>;
@@ -519,7 +664,20 @@ export interface BackendPort {
     providerId: string;
     key?: string;
     baseURL?: string;
-}) => Promise<ProviderModel[]>;
+  }) => Promise<ProviderModel[]>;
+  /** Agent-server capability handshake; call once at shell startup. */
+  agentServerInitialize: (
+    clientInfo: AgentClientInfo,
+    capabilities: AgentClientCapabilities,
+  ) => Promise<AgentServerInfo>;
+  /** Answer a server-initiated request the shell received. */
+  agentServerResolveRequest: (
+    requestId: string,
+    decision: AgentRequestDecision,
+    payload?: unknown,
+  ) => Promise<void>;
+  /** Drop a server-initiated request without a decision. */
+  agentServerAbandonRequest: (requestId: string) => Promise<void>;
   mcpSetActiveProject: (projectId: string | null) => Promise<void>;
   mcpToolResult: (callId: number, result: unknown, rendererSession: number) => Promise<void>;
   ghCurrentUser: () => Promise<GitHubUser>;

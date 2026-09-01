@@ -128,19 +128,8 @@ export async function completeViaBackend(
   });
 }
 
-export type AgentEvent =
-  | { kind: "stepStart"; step: number }
-  | { kind: "retry"; attempt: number; max: number }
-  | { kind: "toolRequest"; id: string; name: string; arguments: string }
-  | { kind: "toolOutcome"; id: string; output: string }
-  | { kind: "textDelta"; text: string }
-  | { kind: "reasoningDelta"; text: string }
-  | { kind: "toolCallStart"; id: string; name: string }
-  | { kind: "toolCallArgsDelta"; id: string; json: string }
-  | { kind: "toolCallEnd"; id: string; arguments: string }
-  | { kind: "usage"; usage: { input: number; output: number } }
-  | { kind: "done"; stopReason: string | null }
-  | { kind: "error"; message: string; retryable: boolean };
+export type { AgentEvent } from "@oleafly/ai-core";
+import type { AgentEvent } from "@oleafly/ai-core";
 
 export class AgentStreamError extends Error {
   readonly retryable: boolean;
@@ -215,6 +204,14 @@ export async function runViaBackend(
   config?: AgentRunConfig,
   providerOverride?: ProviderOverride,
   projectId?: string | null,
+  run?: {
+    /** Thread this turn is recorded into (rollouts + mirror). */
+    threadId?: string;
+    /** Client-generated turn id, echoed into the persisted record. */
+    clientTurnId?: string;
+    /** Fires with the backend request id once the run is registered. */
+    onRequestId?: (id: string) => void;
+  },
 ): Promise<AgentRunOutcome> {
   const channel = new Channel<AgentEvent>();
   let replyTo = "";
@@ -252,17 +249,59 @@ export async function runViaBackend(
         providerOverride: providerOverride ?? null,
         // Pins native tool dispatch to the project the run started in.
         projectId: projectId ?? null,
+        threadId: run?.threadId ?? null,
+        clientTurnId: run?.clientTurnId ?? null,
         onEvent: channel,
       },
       signal,
       onRequestId: (id) => {
         replyTo = id;
+        run?.onRequestId?.(id);
       },
     });
   } finally {
     channel.onmessage = () => {};
   }
 }
+
+/** Inject mid-run input into an active run; lands at the next message boundary. */
+export const agentSteer = (requestId: string, message: AgentMessage) =>
+  invoke<void>("agent_steer", { requestId, message });
+
+/** Stop every running subagent of a run without stopping the run. */
+export const agentSubagentsStop = (requestId: string) =>
+  invoke<number>("agent_subagents_stop", { requestId });
+
+/** Replay a thread's recorded turns (subagent transcripts included). */
+export const agentThreadRead = (threadId: string) =>
+  invoke<
+    Array<{
+      turnId: string;
+      clientTurnId: string | null;
+      status: string;
+      items: Array<{ id: string; item: { type: string } & Record<string, unknown>; completed: boolean }>;
+      usage: { input: number; output: number };
+      error: string | null;
+      stoppedAtCap: boolean;
+    }>
+  >("agent_thread_read", { threadId });
+
+export const agentThreadArchive = (threadId: string) =>
+  invoke<boolean>("agent_thread_archive", { threadId });
+
+export const agentThreadDelete = (threadId: string) =>
+  invoke<void>("agent_thread_delete", { threadId });
+
+export const agentThreadFork = (threadId: string, projectId: string) =>
+  invoke<string>("agent_thread_fork", {
+    threadId,
+    excludeTurns: null,
+    projectId,
+  });
+
+/** Claim a prewarmed thread for a project (null means: create a fresh one). */
+export const agentThreadClaimPrewarmed = (projectId: string) =>
+  invoke<string | null>("agent_thread_claim_prewarmed", { projectId });
 
 export async function streamText(args: {
   system?: string;

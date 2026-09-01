@@ -1,19 +1,19 @@
 import { expect } from "./fixtures";
+import type { LocatorLike } from "@srsholmes/tauri-playwright";
 import type { E2ePdfProbe } from "../src/lib/e2e-probe";
 
-// The plugin's page handle (structural: only what the helpers need).
 export interface Page {
   click(selector: string, opts?: { timeout?: number }): Promise<void>;
   fill(selector: string, text: string): Promise<void>;
   press(selector: string, key: string): Promise<void>;
   evaluate<T = unknown>(expression: string): Promise<T>;
   waitForFunction(expression: string, timeout?: number): Promise<unknown>;
-  locator(selector: string): { isVisible(): Promise<boolean>; click(): Promise<void> };
-  getByTestId(id: string): unknown;
+  locator(selector: string): LocatorLike & { click(): Promise<void> };
+  getByTestId(id: string): LocatorLike & { click(): Promise<void> };
   getByText(
     text: string,
     opts?: { exact?: boolean },
-  ): { click(): Promise<void>; isVisible(): Promise<boolean> };
+  ): LocatorLike & { click(): Promise<void> };
 }
 
 /**
@@ -120,15 +120,15 @@ export async function pressGlobal(
 export async function openGallery(page: Page) {
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',
-  ) as unknown as Parameters<typeof expect>[0];
+  ) as unknown as LocatorLike;
   await expect(library).toBeVisible({ timeout: 30_000 });
   const hasWelcome = await page.evaluate<boolean>(
     `!!document.querySelector('[data-testid="create-first-project"]')`,
   );
   await page.click(hasWelcome ? '[data-testid="create-first-project"]' : '[data-testid="new-project"]');
-  const gallery = page.locator('[data-testid="template-gallery"]') as unknown as Parameters<
-    typeof expect
-  >[0];
+  const gallery = page.locator(
+    '[data-testid="template-gallery"]',
+  ) as unknown as LocatorLike;
   await expect(gallery).toBeVisible({ timeout: 30_000 });
 }
 
@@ -312,26 +312,38 @@ export async function compileAndWait(
 ): Promise<number> {
   const compileButton = page.locator(
     '[data-testid="compile-button"]',
-  ) as unknown as Parameters<typeof expect>[0];
+  ) as unknown as LocatorLike;
   type CompileSnapshot = {
     status: string;
     outputRevision: number;
     disabled: boolean;
   };
-  const snapshot = () =>
-    page.evaluate<CompileSnapshot>(
-      `(() => {
-        const button = document.querySelector('[data-testid="compile-button"]');
-        if (!(button instanceof HTMLButtonElement)) {
-          throw new Error("compile button is unavailable");
-        }
-        return {
-          status: button.dataset.e2eCompileStatus ?? "",
-          outputRevision: Number(button.dataset.e2eCompileRevision ?? "0"),
-          disabled: button.disabled,
-        };
-      })()`,
-    );
+  // A layout or panel re-render can unmount the toolbar for a frame; tolerate
+  // a brief absence instead of failing the whole compile wait, while a button
+  // that stays gone still throws.
+  const snapshot = async (): Promise<CompileSnapshot> => {
+    const absentDeadline = Date.now() + 3_000;
+    for (;;) {
+      try {
+        return await page.evaluate<CompileSnapshot>(
+          `(() => {
+            const button = document.querySelector('[data-testid="compile-button"]');
+            if (!(button instanceof HTMLButtonElement)) {
+              throw new Error("compile button is unavailable");
+            }
+            return {
+              status: button.dataset.e2eCompileStatus ?? "",
+              outputRevision: Number(button.dataset.e2eCompileRevision ?? "0"),
+              disabled: button.disabled,
+            };
+          })()`,
+        );
+      } catch (error) {
+        if (Date.now() > absentDeadline) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+  };
 
   const deadline = Date.now() + timeoutMs;
   // A project that just opened schedules its first compile from a React
@@ -777,26 +789,44 @@ export async function setNextSavePath(
   if (!available) throw new Error("DEV save-dialog adapter is unavailable");
 }
 
-// Clicking a rail tab always reveals the sidebar; re-clicking the active tab
-// collapses it, and that collapsed state persists across restarts.
+// The AI assistant is its own panel now, toggled from the workspace dock
+// controls rather than living as a sidebar tab.
+export async function openAssistant(page: Page) {
+  const openExpr = `document.querySelector('[data-testid="rail-assistant-toggle"]')?.getAttribute('aria-pressed') === 'true'`;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    if (await page.evaluate<boolean>(openExpr)) return;
+    await page.evaluate(
+      `(() => { const b = document.querySelector('[data-testid="rail-assistant-toggle"]'); if (b) b.click(); return true; })()`,
+    );
+    try {
+      await page.waitForFunction(openExpr, 2_000);
+      return;
+    } catch {
+    }
+  }
+  throw new Error("openAssistant: the assistant panel never opened");
+}
+
+// The sidebar view switchers live in a bar at the top of the sidebar, which
+// only renders while the sidebar is open. Reveal the sidebar first, then select
+// the view; a view button reports aria-current="page" when it is the active
+// pane. Selecting a view no longer collapses the sidebar.
 export async function openRailTab(page: Page, ariaLabel: string) {
+  if (ariaLabel === "Research Assistant") return openAssistant(page);
   const sel = JSON.stringify(`[aria-label=${JSON.stringify(ariaLabel)}]`);
-  // Desired end state: this tab is ACTIVE (aria-current="page", set by
-  // Rail.tsx's RailTabButton) and the sidebar is open on it. Click only when
-  // not there yet, then wait for the state to commit - a blind
-  // click-then-probe races React and can collapse the sidebar when the tab
-  // was already active.
   const activeExpr = `(() => {
     const b = document.querySelector(${sel});
-    return !!b && b.getAttribute('aria-current') === 'page'
-      && !!document.querySelector('[aria-label="Hide sidebar"]');
+    return !!b && b.getAttribute('aria-current') === 'page';
   })()`;
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const active = await page.evaluate<boolean>(activeExpr);
-    if (active) return;
-    await page.evaluate(
-      `(() => { const b = document.querySelector(${sel}); if (b) b.click(); return true; })()`,
-    );
+  for (let attempt = 0; attempt < 12; attempt++) {
+    if (await page.evaluate<boolean>(activeExpr)) return;
+    await page.evaluate(`(() => {
+      const b = document.querySelector(${sel});
+      if (b) { b.click(); return true; }
+      const show = document.querySelector('[aria-label^="Show sidebar"]');
+      if (show) { show.click(); return true; }
+      return false;
+    })()`);
     try {
       await page.waitForFunction(activeExpr, 2_000);
       return;
@@ -820,12 +850,12 @@ export async function openProject(page: Page & { getByText(t: string): { click()
   }
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',
-  ) as unknown as Parameters<typeof expect>[0];
+  ) as unknown as LocatorLike;
   await expect(library).toBeVisible({ timeout: 30_000 });
   await page.click(`button[aria-label=${JSON.stringify(`Open ${name}`)}]`);
-  const workspace = page.locator("[data-e2e-project-id]") as unknown as Parameters<
-    typeof expect
-  >[0];
+  const workspace = page.locator(
+    "[data-e2e-project-id]",
+  ) as unknown as LocatorLike;
   await expect(workspace).toBeVisible({ timeout: 30_000 });
 }
 
@@ -1079,7 +1109,7 @@ export async function openSettings(page: Page, section?: string) {
   // the modal never opened, reset and re-open once.
   const appearance = page.locator(
     '[data-testid="settings-section-appearance"]',
-  ) as unknown as Parameters<typeof expect>[0];
+  ) as unknown as LocatorLike;
   await page.click('[aria-label="Settings"]');
   const mounted = await expect(appearance)
     .toBeVisible({ timeout: 8_000 })
@@ -1136,6 +1166,27 @@ export async function openSettings(page: Page, section?: string) {
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
   }
+}
+
+export async function openOleaflyMcpSettings(page: Page) {
+  await openSettings(page, "integrations");
+  const tab = page.getByTestId("integrations-tab-oleafly-mcp");
+  await tab.click();
+  // A synthetic click can lose the Radix activation race right after the
+  // section mounts; keyboard activation on the focused trigger is the
+  // deterministic fallback.
+  const selected = await page.evaluate<boolean>(
+    `document.querySelector('[data-testid="integrations-tab-oleafly-mcp"]')?.getAttribute("aria-selected") === "true"`,
+  );
+  if (!selected) {
+    await page.focus('[data-testid="integrations-tab-oleafly-mcp"]');
+    await page.press('[data-testid="integrations-tab-oleafly-mcp"]', "Enter");
+  }
+  await expect(tab).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByTestId("oleafly-mcp-server")).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-testid="mcp-enable-toggle"]')).toBeVisible({
+    timeout: 10_000,
+  });
 }
 
 export async function paletteItems(page: Page): Promise<string[]> {
@@ -1262,12 +1313,12 @@ export async function openDiagramComposer(page: Page) {
   }
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',
-  ) as unknown as Parameters<typeof expect>[0];
+  ) as unknown as LocatorLike;
   await expect(library).toBeVisible({ timeout: 30_000 });
   await page.click('[data-testid="open-diagram-composer"]');
   const dialog = page.locator(
     '[role="dialog"][data-tour="diagram-composer"]',
-  ) as unknown as Parameters<typeof expect>[0];
+  ) as unknown as LocatorLike;
   await expect(dialog).toBeVisible({ timeout: 20_000 });
   // The dialog mounts before React Flow finishes its first render pass (the
   // starter drawing has ~27 nodes); wait for the canvas to actually settle so

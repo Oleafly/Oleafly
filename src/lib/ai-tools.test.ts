@@ -13,6 +13,10 @@ const mocks = vi.hoisted(() => ({
     setMainDocCmd: vi.fn(),
     listFiles: vi.fn(),
     searchProject: vi.fn(),
+    agentExecCwd: vi.fn(),
+    agentExecRegisterExternal: vi.fn(),
+    agentExecAuthorize: vi.fn(),
+    agentExec: vi.fn(),
   },
   filesState: {
     projectId: "proj" as string | null,
@@ -39,8 +43,11 @@ vi.mock("@/lib/pdf-text", () => ({ extractPdfText: vi.fn() }));
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: vi.fn() }));
 
 import { createOleaflyTools } from "./ai-tools";
+import { useSettingsStore } from "@/store/settings";
 
 beforeEach(() => {
+  // computer_use is only exposed when the experimental web browser is on.
+  useSettingsStore.getState().setWebBrowser(true);
   for (const f of Object.values(mocks.api)) f.mockReset();
   mocks.filesState.applyExternalWrite.mockReset().mockReturnValue(true);
   mocks.filesState.applyExternalDelete.mockReset().mockReturnValue(true);
@@ -48,6 +55,17 @@ beforeEach(() => {
   mocks.filesState.prepareExternalMutation.mockReset().mockResolvedValue(0);
   mocks.filesState.recordMutationGeneration.mockReset();
   mocks.api.projectMutationGeneration.mockResolvedValue(0);
+  mocks.api.agentExecCwd.mockResolvedValue("/library/projects/proj");
+  mocks.api.agentExecRegisterExternal.mockResolvedValue(undefined);
+  mocks.api.agentExecAuthorize.mockResolvedValue("approval-token");
+  mocks.api.agentExec.mockResolvedValue({
+    command: "pwd",
+    output: "/library/projects/proj",
+    exit_code: 0,
+    status: "Success",
+    truncated: false,
+    timed_out: false,
+  });
   mocks.filesState.projectId = "proj";
   mocks.filesState.files = {};
 });
@@ -266,6 +284,22 @@ describe("ai-tools: project scoping", () => {
     expect(mocks.api.searchProject).toHaveBeenCalledWith("proj", "theorem");
   });
 
+  it("search_project returns every hit instead of a capped prefix", async () => {
+    const hits = Array.from({ length: 47 }, (_, i) => ({
+      path: `doc-${i}.tex`,
+      line: i + 1,
+      preview: `theorem match ${i}`,
+    }));
+    mocks.api.searchProject.mockResolvedValue(hits);
+    const tools = createOleaflyTools();
+    const result = (await tools.search_project.execute({ query: "theorem" })) as {
+      results: unknown[];
+      total: number;
+    };
+    expect(result.results).toHaveLength(47);
+    expect(result.total).toBe(47);
+  });
+
   it("does not write when the active project changes during approval", async () => {
     mocks.api.readFileContent.mockResolvedValue("old");
     let approve!: (value: boolean) => void;
@@ -284,6 +318,142 @@ describe("ai-tools: project scoping", () => {
     await expect(pending).resolves.toMatchObject({ error: expect.stringContaining("Project changed") });
     expect(mocks.api.writeFileContent).not.toHaveBeenCalled();
     expect(mocks.filesState.applyExternalWrite).not.toHaveBeenCalled();
+  });
+});
+
+describe("ai-tools: command approval", () => {
+  it("describes approval-gated tools without contradicting the active mode", () => {
+    const tools = createOleaflyTools({ confirm: async () => true, runId: () => "run-1" });
+
+    expect(tools.set_main_doc.description).toContain("active approval policy");
+    expect(tools.run_command.description).toContain("active approval policy");
+    expect(tools.computer_use.description).toContain("active approval policy");
+    expect(
+      [tools.set_main_doc, tools.run_command, tools.computer_use]
+        .map((tool) => tool.description)
+        .join(" "),
+    ).not.toMatch(/confirmed with the user|requires user approval/i);
+  });
+
+  it("omits computer_use entirely when the web browser is disabled", () => {
+    useSettingsStore.getState().setWebBrowser(false);
+    const tools = createOleaflyTools({ confirm: async () => true, runId: () => "run-1" });
+    expect(tools.computer_use).toBeUndefined();
+  });
+
+  it("does not expose shell execution without an approval flow", async () => {
+    const result = await createOleaflyTools({ runId: () => "run-1" }).run_command.execute({
+      command: "pwd",
+    });
+
+    expect(result).toMatchObject({ declined: true, tool: "run_command" });
+    expect(result).toMatchObject({ status: "declined", message: expect.stringContaining("declined") });
+    expect(result).not.toHaveProperty("error");
+    expect(mocks.api.agentExecAuthorize).not.toHaveBeenCalled();
+    expect(mocks.api.agentExec).not.toHaveBeenCalled();
+  });
+
+  it("shows the exact command and working directory before authorization", async () => {
+    const confirm = vi.fn().mockResolvedValue(false);
+    await createOleaflyTools({ confirm, runId: () => "run-1" }).run_command.execute({
+      command: "pnpm test",
+    });
+
+    expect(confirm).toHaveBeenCalledWith({
+      tool: "run_command",
+      summary: "$ pnpm test",
+      projectId: "proj",
+      command: "pnpm test",
+      cwd: "/library/projects/proj",
+    });
+    expect(mocks.api.agentExecAuthorize).not.toHaveBeenCalled();
+  });
+
+  it("mints and consumes an approval bound to the originating project and run", async () => {
+    const confirm = vi.fn().mockResolvedValue(true);
+    await createOleaflyTools({ confirm, runId: () => "run-7" }).run_command.execute({
+      command: "pwd",
+    });
+
+    expect(mocks.api.agentExecAuthorize).toHaveBeenCalledWith("proj", "pwd", "run-7");
+    expect(mocks.api.agentExec).toHaveBeenCalledWith(
+      "proj",
+      "pwd",
+      "run-7",
+      "approval-token",
+    );
+    // A native run id is already tracked, so no external registration happens.
+    expect(mocks.api.agentExecRegisterExternal).not.toHaveBeenCalled();
+  });
+
+  it("runs a subagent command under its own registered execution owner", async () => {
+    const confirm = vi.fn().mockResolvedValue(true);
+    const owner = "external:00000000-0000-4000-8000-000000000abc";
+    await createOleaflyTools({ confirm, runId: () => "run-7" }).run_command.execute({
+      command: "pwd",
+      __execOwner: owner,
+    });
+
+    // The child's owner wins over the run's native id, and is registered
+    // before authorizing so the native registry trusts it.
+    expect(mocks.api.agentExecRegisterExternal).toHaveBeenCalledWith(owner);
+    expect(mocks.api.agentExecAuthorize).toHaveBeenCalledWith("proj", "pwd", owner);
+    expect(mocks.api.agentExec).toHaveBeenCalledWith("proj", "pwd", owner, "approval-token");
+  });
+
+  it("registers a renderer-minted external owner before authorizing it", async () => {
+    const confirm = vi.fn().mockResolvedValue(true);
+    await createOleaflyTools({ confirm }).run_command.execute({ command: "pwd" });
+
+    expect(mocks.api.agentExecRegisterExternal).toHaveBeenCalledTimes(1);
+    const [registeredRunId] =
+      mocks.api.agentExecRegisterExternal.mock.calls[0];
+    expect(registeredRunId).toMatch(/^external:/);
+    const [, , authorizedRunId] = mocks.api.agentExecAuthorize.mock.calls[0];
+    expect(authorizedRunId).toBe(registeredRunId);
+    const registerOrder =
+      mocks.api.agentExecRegisterExternal.mock.invocationCallOrder[0];
+    const authorizeOrder =
+      mocks.api.agentExecAuthorize.mock.invocationCallOrder[0];
+    expect(registerOrder).toBeLessThan(authorizeOrder);
+  });
+
+  it("preserves an explicit timeout outcome when no exit code exists", async () => {
+    mocks.api.agentExec.mockResolvedValue({
+      command: "sleep 180",
+      output: "",
+      exit_code: null,
+      status: "Stopped: timed out",
+      truncated: false,
+      timed_out: true,
+    });
+
+    const result = await createOleaflyTools({
+      confirm: async () => true,
+      runId: () => "run-timeout",
+    }).run_command.execute({ command: "sleep 180" });
+
+    expect(result).toMatchObject({ exit_code: null, timed_out: true });
+  });
+
+  it("refuses an approved command if the project switches while approval is pending", async () => {
+    let approve!: (value: boolean) => void;
+    const confirm = vi.fn(
+      () => new Promise<boolean>((resolve) => {
+        approve = resolve;
+      }),
+    );
+    const pending = createOleaflyTools({ confirm, runId: () => "run-1" }).run_command.execute({
+      command: "pwd",
+    });
+    await vi.waitFor(() => expect(confirm).toHaveBeenCalledOnce());
+
+    mocks.filesState.projectId = "other";
+    approve(true);
+
+    await expect(pending).resolves.toMatchObject({ error: expect.stringContaining("Project changed") });
+    expect(mocks.api.agentExecAuthorize).not.toHaveBeenCalled();
+    expect(mocks.api.agentExec).not.toHaveBeenCalled();
   });
 });
 

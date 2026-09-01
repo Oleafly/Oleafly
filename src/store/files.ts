@@ -50,6 +50,7 @@ import {
   useEnginePickerStore,
 } from "@/store/engine-picker";
 import { useSettingsStore } from "@/store/settings";
+import { useMcpApprovalStore } from "@/store/mcp-approvals";
 import { nextTabSeq } from "@/store/tab-order";
 import { recordProjectStateRevision } from "@/lib/project-state-revision";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
@@ -651,6 +652,7 @@ async function prepareProjectSwitch(
     set({ loading: false });
     return null;
   }
+  useMcpApprovalStore.getState().cancelAll();
   await mcpSetActiveProject(null).catch(() => {});
   if (shouldContinue()) return { previousProjectId };
   await mcpSetActiveProject(previousProjectId).catch(() => {});
@@ -667,6 +669,7 @@ function beginProjectOpen(id: string, shouldContinue: () => boolean, set: FilesS
   cancelProofreading("source");
   cancelProofreading("visual");
   resetMutationGeneration(id);
+  useSettingsStore.getState().closeDocks();
   set({ ...EMPTY_PROJECT_STATE, loading: true, projectId: id });
   const revision = lastProjectStateRevision;
   let reopenQueued = false;
@@ -997,6 +1000,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     cancelPendingAutosave();
     cancelProofreading("source");
     cancelProofreading("visual");
+    useMcpApprovalStore.getState().cancelAll();
     await mcpSetActiveProject(null).catch(() => {});
     invalidateWysiwygProjectSession();
     resetMutationGeneration();

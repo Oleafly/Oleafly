@@ -1,0 +1,14 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+\sysname{} shows that per-prompt block selection is affordable. A rank-4 probe
+costing 1.5 percent of the dense kernel recovers enough structure to cut
+attention traffic by more than half at a 64k context, and a residual guard
+keeps the failure mode observable rather than silent. The clearest direction
+for future work is composing the fetch plan with key-value eviction, so that a
+block skipped at prefill is also a block never retained.
+
+\section*{Acknowledgements}
+We thank the operators of the Delft shared accelerator pool for scheduling
+priority during the evaluation window, and our anonymous reviewers for pressing
+on the diffuse-attention regime.

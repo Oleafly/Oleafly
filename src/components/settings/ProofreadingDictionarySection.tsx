@@ -1,9 +1,17 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { Plus, Search, Trash2, X } from "lucide-react";
+import { BookMarked, Plus, Search, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
+import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import {
   Tabs,
   TabsContent,
@@ -66,10 +74,14 @@ function WordChips({
   words,
   query,
   onRemove,
+  emptyDescription,
+  compactEmpty = false,
 }: {
   words: string[];
   query: string;
   onRemove: (word: string) => void;
+  emptyDescription: string;
+  compactEmpty?: boolean;
 }) {
   const visible = useMemo(() => {
     const normalizedQuery = query.toLocaleLowerCase("en-US").trim();
@@ -83,10 +95,19 @@ function WordChips({
   }, [query, words]);
 
   if (words.length === 0) {
+    if (compactEmpty) {
+      return <p className="text-xs text-muted-foreground">Nothing ignored yet.</p>;
+    }
     return (
-      <p className="text-xs text-muted-foreground">
-        Nothing ignored yet.
-      </p>
+      <Empty className="gap-4 py-8">
+        <EmptyHeader>
+          <EmptyMedia variant="icon" className="size-10 rounded-lg">
+            <BookMarked className="size-5" />
+          </EmptyMedia>
+          <EmptyTitle className="text-sm">Nothing ignored yet</EmptyTitle>
+          <EmptyDescription className="text-xs">{emptyDescription}</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
   if (visible.length === 0) {
@@ -139,6 +160,7 @@ export function ProofreadingDictionarySection() {
   );
   const clear = useDictionary((state) => state.clear);
   const clearGlobal = useDictionary((state) => state.clearGlobal);
+  const clearAll = useDictionary((state) => state.clearAll);
   const activeProjectId = useFilesStore((state) => state.projectId);
   const projects = useFilesStore((state) => state.projects);
   const [query, setQuery] = useState("");
@@ -260,6 +282,7 @@ export function ProofreadingDictionarySection() {
             words={global}
             query={query}
             onRemove={unignoreGlobal}
+            emptyDescription="Words you add here are skipped by the proofreader across every project."
           />
         </TabsContent>
         <TabsContent value="projects" className="space-y-4">
@@ -313,12 +336,19 @@ export function ProofreadingDictionarySection() {
                   words={words}
                   query={query}
                   onRemove={(word) => unignore(id, word)}
+                  emptyDescription="Words added for this project are skipped by the proofreader only here."
+                  compactEmpty
                 />
               </section>
             ))
           )}
         </TabsContent>
       </Tabs>
+      <ResetToDefaults
+        sectionName="Dictionary"
+        onReset={clearAll}
+        confirmationDescription="This permanently removes every ignored word, global and per-project. Proofreading will flag those words again."
+      />
       <ConfirmationDialog
         open={clearTarget !== null}
         title="Clear ignored words?"

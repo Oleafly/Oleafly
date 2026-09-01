@@ -54,7 +54,21 @@ const limits = {
   // +40 KB for the Overleaf import and latexmk engine surfaces (engine
   // picker modal, TinyTeX install guards, import taxonomy and classifier,
   // Library import entry points): combined graph measures 9.27 MB.
-  totalJavaScript: 9_300_000,
+  //
+  // +3.6 MB for the chat markdown/math/mermaid rendering feature, taking the
+  // whole-graph total to ~12.86 MB. This is entirely lazy weight, not startup
+  // weight: the mermaid ecosystem dominates it (mermaid.core ~0.6 MB, ~30
+  // per-diagram-type chunks ~0.9 MB, the cynefin diagram ~0.68 MB, and
+  // cytoscape ~0.43 MB — together ~2.6 MB) and each piece is dynamically
+  // imported only when a chat actually renders that diagram type; katex
+  // (~0.26 MB) and the markdown renderer with syntax highlighting (~0.19 MB)
+  // make up most of the rest. None of it enters the entry chunk, so the
+  // startup gates below (largestJavaScript / entryJavaScript, still 3.55 MB)
+  // are unchanged and remain the real regression guard. This ceiling counts
+  // every emitted asset, eager or lazy, so it is deliberately accepted at
+  // 12.9 MB for the on-demand rendering graph; reducing it further means
+  // trimming the mermaid diagram set, not the startup path.
+  totalJavaScript: 12_900_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each
@@ -91,6 +105,25 @@ const productionTextArtifacts = await Promise.all([
     await readFile(new URL("../dist/index.html", import.meta.url), "utf8"),
   ])(),
 ]);
+const tauriConfig = JSON.parse(
+  await readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
+);
+const katexFontReferences = new Set(
+  productionTextArtifacts.flatMap(([name, source]) =>
+    name.endsWith(".css")
+      ? [...source.matchAll(/url\(["']?(?:\/assets\/)?(KaTeX_[^)"']+\.(?:woff2?|ttf))["']?\)/g)]
+          .map((match) => match[1])
+      : [],
+  ),
+);
+const missingKatexFonts = [...katexFontReferences].filter(
+  (font) => !assets.some((asset) => asset.name === font),
+);
+const csp = tauriConfig?.app?.security?.csp;
+const fontDirective = typeof csp === "string"
+  ? csp.split(";").find((directive) => directive.trim().startsWith("font-src "))
+  : undefined;
+const fontSources = fontDirective?.trim().split(/\s+/).slice(1) ?? [];
 
 if (largestJavaScript > limits.largestJavaScript) {
   failures.push(`largest JavaScript asset is ${largestJavaScript} bytes`);
@@ -114,6 +147,15 @@ if (!hasExternalStylesheet) {
 }
 if (!hasSplashStyles) {
   failures.push("production CSS does not contain the boot splash styles");
+}
+if (katexFontReferences.size < 4) {
+  failures.push(`production CSS references only ${katexFontReferences.size} KaTeX font assets`);
+}
+if (missingKatexFonts.length > 0) {
+  failures.push(`KaTeX font assets are missing: ${missingKatexFonts.join(", ")}`);
+}
+if (!(fontSources.includes("'self'") && fontSources.includes("data:"))) {
+  failures.push("Tauri CSP must allow self-hosted and inlined KaTeX fonts");
 }
 if (totalJavaScript > limits.totalJavaScript) {
   failures.push(`total JavaScript is ${totalJavaScript} bytes`);
@@ -163,6 +205,7 @@ console.log(
     harperWasm: harper.bytes,
     pdfWorkers: workers.length,
     pdfFallbacks: fallbacks.length,
+    katexFonts: katexFontReferences.size,
     devHookTokens: 0,
   }),
 );

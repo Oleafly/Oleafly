@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type WheelEvent } from "react";
 import { Check, Plus } from "lucide-react";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { GridPattern } from "@/components/ui/grid-pattern";
@@ -17,12 +17,32 @@ import { cn } from "@/lib/utils";
 import {
   ACCENTS,
   APP_FONTS,
+  BROWSER_SEARCH_ENGINES,
   EDITOR_FONTS,
   EDITOR_THEMES,
+  TERMINAL_COLOR_THEMES,
+  TERMINAL_FONTS,
+  type BrowserSearchEngineId,
+  type TerminalColorThemeId,
+  type TerminalCursorStyle,
   useSettingsStore,
 } from "@/store/settings";
 import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
+import { BrowserCookieImport } from "@/components/settings/BrowserCookieImport";
+import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
+import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+
+const APPEARANCE_TABS = [
+  { id: "app", label: "App" },
+  { id: "editor", label: "Editor" },
+  { id: "terminal", label: "Terminal" },
+  { id: "pdf", label: "PDF Preview" },
+  { id: "browser", label: "Browser" },
+  { id: "files", label: "Project" },
+] as const;
+
+type AppearanceTabId = (typeof APPEARANCE_TABS)[number]["id"];
 
 function AppAppearanceTab() {
   const { theme, toggleTheme } = useTheme();
@@ -390,6 +410,348 @@ function EditorAppearanceTab() {
   );
 }
 
+function TerminalAppearanceTab() {
+  const terminalFontSize = useSettingsStore((state) => state.terminalFontSize);
+  const setTerminalFontSize = useSettingsStore(
+    (state) => state.setTerminalFontSize,
+  );
+  const terminalFontFamily = useSettingsStore(
+    (state) => state.terminalFontFamily,
+  );
+  const setTerminalFontFamily = useSettingsStore(
+    (state) => state.setTerminalFontFamily,
+  );
+  const terminalFontWeight = useSettingsStore(
+    (state) => state.terminalFontWeight,
+  );
+  const setTerminalFontWeight = useSettingsStore(
+    (state) => state.setTerminalFontWeight,
+  );
+  const terminalFontWeightBold = useSettingsStore(
+    (state) => state.terminalFontWeightBold,
+  );
+  const setTerminalFontWeightBold = useSettingsStore(
+    (state) => state.setTerminalFontWeightBold,
+  );
+  const terminalCursorStyle = useSettingsStore(
+    (state) => state.terminalCursorStyle,
+  );
+  const setTerminalCursorStyle = useSettingsStore(
+    (state) => state.setTerminalCursorStyle,
+  );
+  const terminalCursorBlink = useSettingsStore(
+    (state) => state.terminalCursorBlink,
+  );
+  const setTerminalCursorBlink = useSettingsStore(
+    (state) => state.setTerminalCursorBlink,
+  );
+  const terminalColorTheme = useSettingsStore(
+    (state) => state.terminalColorTheme,
+  );
+  const setTerminalColorTheme = useSettingsStore(
+    (state) => state.setTerminalColorTheme,
+  );
+  const terminalBackground = useSettingsStore(
+    (state) => state.terminalBackground,
+  );
+  const setTerminalBackground = useSettingsStore(
+    (state) => state.setTerminalBackground,
+  );
+  const terminalForeground = useSettingsStore(
+    (state) => state.terminalForeground,
+  );
+  const setTerminalForeground = useSettingsStore(
+    (state) => state.setTerminalForeground,
+  );
+  const terminalCursorColor = useSettingsStore(
+    (state) => state.terminalCursorColor,
+  );
+  const setTerminalCursorColor = useSettingsStore(
+    (state) => state.setTerminalCursorColor,
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
+        <div>
+          <div className="text-sm font-medium">Terminal font size</div>
+          <div className="text-xs text-muted-foreground">
+            Set the text size in the terminal.
+          </div>
+        </div>
+        <Select
+          value={String(terminalFontSize)}
+          onValueChange={(value) => setTerminalFontSize(Number(value))}
+        >
+          <SelectTrigger className="w-[88px]" aria-label="Terminal font size">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            {[11, 12, 13, 14, 15, 16, 18, 20, 22, 24].map((size) => (
+              <SelectItem key={size} value={String(size)}>
+                {size}px
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
+        <div>
+          <div className="text-sm font-medium">Terminal font</div>
+          <div className="text-xs text-muted-foreground">
+            Choose the monospace font used by the terminal.
+          </div>
+        </div>
+        <Select value={terminalFontFamily} onValueChange={setTerminalFontFamily}>
+          <SelectTrigger className="w-[168px]" aria-label="Terminal font family">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            {TERMINAL_FONTS.map((font) => (
+              <SelectItem key={font.name} value={font.value}>
+                {font.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
+        <div>
+          <div className="text-sm font-medium">Regular font weight</div>
+          <div className="text-xs text-muted-foreground">
+            Set the weight for regular terminal text.
+          </div>
+        </div>
+        <Select
+          value={String(terminalFontWeight)}
+          onValueChange={(value) => setTerminalFontWeight(Number(value))}
+        >
+          <SelectTrigger className="w-[100px]" aria-label="Regular font weight">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            {[400, 500, 600, 700].map((weight) => (
+              <SelectItem key={weight} value={String(weight)}>
+                {weight}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
+        <div>
+          <div className="text-sm font-medium">Bold font weight</div>
+          <div className="text-xs text-muted-foreground">
+            Set the weight for bold terminal text.
+          </div>
+        </div>
+        <Select
+          value={String(terminalFontWeightBold)}
+          onValueChange={(value) => setTerminalFontWeightBold(Number(value))}
+        >
+          <SelectTrigger className="w-[100px]" aria-label="Bold font weight">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            {[600, 700, 800, 900].map((weight) => (
+              <SelectItem key={weight} value={String(weight)}>
+                {weight}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
+        <div>
+          <div className="text-sm font-medium">Cursor style</div>
+          <div className="text-xs text-muted-foreground">
+            Choose the shape of the terminal cursor.
+          </div>
+        </div>
+        <Select
+          value={terminalCursorStyle}
+          onValueChange={(value) =>
+            setTerminalCursorStyle(value as TerminalCursorStyle)
+          }
+        >
+          <SelectTrigger className="w-[120px]" aria-label="Terminal cursor style">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            <SelectItem value="block">Block</SelectItem>
+            <SelectItem value="underline">Underline</SelectItem>
+            <SelectItem value="bar">Bar</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <SettingsToggleRow
+        label="Blink cursor"
+        description="Make the terminal cursor blink."
+        checked={terminalCursorBlink}
+        onChange={setTerminalCursorBlink}
+      />
+
+      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
+        <div>
+          <div className="text-sm font-medium">Color theme</div>
+          <div className="text-xs text-muted-foreground">
+            Choose the terminal's ANSI color palette.
+          </div>
+        </div>
+        <Select
+          value={terminalColorTheme}
+          onValueChange={(value) =>
+            setTerminalColorTheme(value as TerminalColorThemeId)
+          }
+        >
+          <SelectTrigger className="w-[120px]" aria-label="Terminal color theme">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            {Object.values(TERMINAL_COLOR_THEMES).map((theme) => (
+              <SelectItem key={theme.id} value={theme.id}>
+                {theme.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="rounded-lg border bg-card p-3">
+        <div className="text-sm font-medium">Terminal colors</div>
+        <div className="mb-3 text-xs text-muted-foreground">
+          Adjust the base colors while keeping the selected ANSI palette.
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <label className="flex items-center justify-between gap-2 text-xs">
+            <span>Background</span>
+            <input
+              type="color"
+              aria-label="Terminal background color"
+              value={terminalBackground}
+              onChange={(event) => setTerminalBackground(event.target.value)}
+              className="size-8 cursor-pointer rounded border bg-transparent p-0.5"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-2 text-xs">
+            <span>Text</span>
+            <input
+              type="color"
+              aria-label="Terminal foreground color"
+              value={terminalForeground}
+              onChange={(event) => setTerminalForeground(event.target.value)}
+              className="size-8 cursor-pointer rounded border bg-transparent p-0.5"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-2 text-xs">
+            <span>Cursor</span>
+            <input
+              type="color"
+              aria-label="Terminal cursor color"
+              value={terminalCursorColor}
+              onChange={(event) => setTerminalCursorColor(event.target.value)}
+              className="size-8 cursor-pointer rounded border bg-transparent p-0.5"
+            />
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BrowserAppearanceTab() {
+  const browserSearchEngine = useSettingsStore(
+    (state) => state.browserSearchEngine,
+  );
+  const setBrowserSearchEngine = useSettingsStore(
+    (state) => state.setBrowserSearchEngine,
+  );
+  const browserHomePage = useSettingsStore((state) => state.browserHomePage);
+  const setBrowserHomePage = useSettingsStore(
+    (state) => state.setBrowserHomePage,
+  );
+  const [homePageDraft, setHomePageDraft] = useState(browserHomePage);
+  useEffect(() => {
+    setHomePageDraft(browserHomePage);
+  }, [browserHomePage]);
+  const selectedSearchEngine =
+    BROWSER_SEARCH_ENGINES.find(({ id }) => id === browserSearchEngine) ??
+    BROWSER_SEARCH_ENGINES[0];
+  const saveHomePage = () => {
+    setBrowserHomePage(homePageDraft);
+    setHomePageDraft(useSettingsStore.getState().browserHomePage);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
+        <div>
+          <div className="text-sm font-medium">Default search engine</div>
+          <div className="text-xs text-muted-foreground">
+            Choose the search engine used for text searches.
+          </div>
+        </div>
+        <Select
+          value={browserSearchEngine}
+          onValueChange={(value) =>
+            setBrowserSearchEngine(value as BrowserSearchEngineId)
+          }
+        >
+          <SelectTrigger className="w-44" aria-label="Default search engine">
+            <SelectValue>
+              <span className="flex items-center gap-2">
+                <SearchEngineIcon engine={selectedSearchEngine.id} />
+                <span>{selectedSearchEngine.name}</span>
+              </span>
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent className="z-[100]">
+            {BROWSER_SEARCH_ENGINES.map((engine) => (
+              <SelectItem
+                key={engine.id}
+                value={engine.id}
+                data-testid={`search-engine-option-${engine.id}`}
+                icon={<SearchEngineIcon engine={engine.id} />}
+              >
+                {engine.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="rounded-lg border bg-card p-3">
+        <label htmlFor="browser-home-page" className="text-sm font-medium">
+          Home page
+        </label>
+        <div className="mb-2 text-xs text-muted-foreground">
+          Choose the page that opens with the browser dock.
+        </div>
+        <Input
+          id="browser-home-page"
+          aria-label="Browser home page"
+          value={homePageDraft}
+          onChange={(event) => setHomePageDraft(event.target.value)}
+          onBlur={saveHomePage}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            saveHomePage();
+          }}
+          placeholder="https://www.google.com/"
+        />
+      </div>
+
+      <BrowserCookieImport />
+    </div>
+  );
+}
+
 function PdfPreviewTab() {
   const pdfDarkMode = useSettingsStore((state) => state.pdfDarkMode);
   const setPdfDarkMode = useSettingsStore((state) => state.setPdfDarkMode);
@@ -567,34 +929,85 @@ function FileManagementTab() {
 }
 
 export function AppearanceSection() {
+  const [activeTab, setActiveTab] = useState<AppearanceTabId>("app");
+  const resetAppearancePreferences = useSettingsStore(
+    (state) => state.resetAppearancePreferences,
+  );
+  const { setTheme } = useTheme();
+  const tabRefs = useRef<
+    Partial<Record<AppearanceTabId, HTMLButtonElement | null>>
+  >({});
+
+  useEffect(() => {
+    tabRefs.current[activeTab]?.scrollIntoView?.({
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [activeTab]);
+
+  const scrollTabs = (event: WheelEvent<HTMLDivElement>) => {
+    const list = event.currentTarget;
+    if (
+      list.scrollWidth <= list.clientWidth ||
+      Math.abs(event.deltaX) >= Math.abs(event.deltaY)
+    ) {
+      return;
+    }
+    list.scrollLeft += event.deltaY;
+  };
+
   return (
-    <Tabs defaultValue="app" className="space-y-4">
-      <TabsList className="grid h-auto w-full grid-cols-4">
-        <TabsTrigger value="app" data-testid="appearance-tab-app">
-          App
-        </TabsTrigger>
-        <TabsTrigger value="editor" data-testid="appearance-tab-editor">
-          Editor
-        </TabsTrigger>
-        <TabsTrigger value="pdf" data-testid="appearance-tab-pdf">
-          PDF Preview
-        </TabsTrigger>
-        <TabsTrigger value="files" data-testid="appearance-tab-files">
-          Project
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent value="app">
-        <AppAppearanceTab />
-      </TabsContent>
-      <TabsContent value="editor">
-        <EditorAppearanceTab />
-      </TabsContent>
-      <TabsContent value="pdf">
-        <PdfPreviewTab />
-      </TabsContent>
-      <TabsContent value="files">
-        <FileManagementTab />
-      </TabsContent>
-    </Tabs>
+    <div className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as AppearanceTabId)}
+        className="space-y-4"
+      >
+        <TabsList
+          className="flex h-auto w-fit max-w-full justify-start gap-1 overflow-x-auto no-scrollbar"
+          data-testid="appearance-tab-strip"
+          onWheel={scrollTabs}
+        >
+          {APPEARANCE_TABS.map((tab) => (
+            <TabsTrigger
+              key={tab.id}
+              ref={(node) => {
+                tabRefs.current[tab.id] = node;
+              }}
+              value={tab.id}
+              data-testid={`appearance-tab-${tab.id}`}
+              className="shrink-0"
+            >
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value="app">
+          <AppAppearanceTab />
+        </TabsContent>
+        <TabsContent value="editor">
+          <EditorAppearanceTab />
+        </TabsContent>
+        <TabsContent value="terminal">
+          <TerminalAppearanceTab />
+        </TabsContent>
+        <TabsContent value="pdf">
+          <PdfPreviewTab />
+        </TabsContent>
+        <TabsContent value="browser">
+          <BrowserAppearanceTab />
+        </TabsContent>
+        <TabsContent value="files">
+          <FileManagementTab />
+        </TabsContent>
+      </Tabs>
+      <ResetToDefaults
+        sectionName="Appearance"
+        onReset={() => {
+          resetAppearancePreferences();
+          setTheme("dark");
+        }}
+      />
+    </div>
   );
 }

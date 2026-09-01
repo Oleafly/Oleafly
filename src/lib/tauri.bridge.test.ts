@@ -10,8 +10,21 @@ import {
   cancelQuitFlush,
   confirmQuitFlush,
   createFile,
+  detectBrowserCookieSources,
   importDocument,
+  importBrowserCookies,
   isFileConflictError,
+  mcpAgentToolCall,
+  mcpAgentToolAuthorize,
+  mcpAgentToolsList,
+  mcpImportSource,
+  mcpServerAdd,
+  mcpServerRemove,
+  mcpServerSetEnabled,
+  mcpServersList,
+  mcpServerUpdate,
+  mcpServerUpdateValidated,
+  mcpServerValidate,
   renameFile,
   validateCompileFingerprint,
 } from "./tauri";
@@ -95,6 +108,149 @@ describe("document import bridge", () => {
     );
     expect(mocks.invoke).toHaveBeenCalledWith("import_document", {
       path: "/tmp/paper.md",
+    });
+  });
+});
+
+describe("browser cookie import bridge", () => {
+  it("uses the dedicated detection command", async () => {
+    mocks.invoke.mockResolvedValue([]);
+    await detectBrowserCookieSources();
+
+    expect(mocks.invoke).toHaveBeenCalledWith("detect_browser_cookie_sources");
+  });
+
+  it("carries the reviewed confirmation to the native boundary", async () => {
+    mocks.invoke.mockResolvedValue({
+      imported: 4,
+      browserName: "Google Chrome",
+      profileName: "Default",
+      domain: "example.com",
+    });
+    await importBrowserCookies({
+      browser: "chrome",
+      profile: "Default",
+      domain: "example.com",
+    });
+
+    expect(mocks.invoke).toHaveBeenCalledWith("import_browser_cookies", {
+      request: {
+        browser: "chrome",
+        profile: "Default",
+        domain: "example.com",
+        confirmed: true,
+      },
+    });
+  });
+});
+
+describe("MCP server management bridge", () => {
+  const server = {
+    name: "filesystem",
+    enabled: true,
+    transport: "stdio" as const,
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp/docs"],
+    env: { NODE_ENV: "production" },
+  };
+
+  it("requests read-only server candidates for one supported source", async () => {
+    mocks.invoke.mockResolvedValue([]);
+
+    await mcpImportSource("cursor");
+
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_import_source", {
+      sourceTool: "cursor",
+    });
+  });
+
+  it("uses the dedicated list, add, and update commands", async () => {
+    mocks.invoke.mockResolvedValue({
+      config: server,
+      validation: {
+        name: server.name,
+        status: "connected",
+        tool_count: 1,
+        tools: [{ name: "read_file", description: "Read a file" }],
+        error: null,
+      },
+    });
+
+    await mcpServersList();
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_servers_list");
+
+    await mcpServerAdd(server);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_server_add", { server });
+
+    await mcpServerUpdate("old-filesystem", server);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_server_update", {
+      originalName: "old-filesystem",
+      server,
+    });
+
+    await mcpServerUpdateValidated("old-filesystem", server);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_server_update_validated", {
+      originalName: "old-filesystem",
+      server,
+    });
+  });
+
+  it("uses server names for validate, enable, and remove commands", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+
+    await mcpServerValidate("filesystem");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_server_validate", {
+      name: "filesystem",
+    });
+
+    await mcpServerSetEnabled("filesystem", false);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_server_set_enabled", {
+      name: "filesystem",
+      enabled: false,
+    });
+
+    await mcpServerRemove("filesystem");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_server_remove", {
+      name: "filesystem",
+    });
+  });
+
+  it("lists, authorizes, and calls a discovered raw agent tool handle", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+
+    await mcpAgentToolsList();
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_agent_tools_list");
+
+    await mcpAgentToolAuthorize(
+      "project-1",
+      "filesystem",
+      "read_file",
+      { path: "paper.tex" },
+      "run-1",
+    );
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_agent_tool_authorize", {
+      projectId: "project-1",
+      server: "filesystem",
+      toolHandle: "read_file",
+      arguments: { path: "paper.tex" },
+      runId: "run-1",
+    });
+
+    await mcpAgentToolCall(
+      "project-1",
+      "filesystem",
+      "read_file",
+      { path: "paper.tex" },
+      "run-1",
+      "approval-1",
+    );
+    expect(mocks.invoke).toHaveBeenLastCalledWith("mcp_agent_tool_call", {
+      projectId: "project-1",
+      server: "filesystem",
+      toolHandle: "read_file",
+      arguments: { path: "paper.tex" },
+      runId: "run-1",
+      approvalToken: "approval-1",
     });
   });
 });

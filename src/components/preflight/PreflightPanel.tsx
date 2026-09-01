@@ -12,7 +12,9 @@ import {
   Send,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
+import { askAiAboutFindings } from "@/features/ask-ai-preflight";
 import { usePreflightStore } from "@/store/preflight";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
@@ -383,11 +385,12 @@ export function PreflightPanel() {
 
 const CheckResults = memo(function CheckResults({ id, report }: { id: CheckId; report: PreflightReport }) {
   const coverage = report.coverage[id];
-  const { findings, src, out } = useMemo(() => {
+  const { findings, fixable, src, out } = useMemo(() => {
     const shown = Object.fromEntries(CHECK_IDS.map((check) => [check, check === id])) as Flags;
     const f = report.findings.filter((x) => includes(x, shown));
     return {
       findings: f,
+      fixable: f.filter((x) => x.severity === "error" || x.severity === "warning"),
       src: bySeverity(f.filter((x) => !isOutputFinding(x))),
       out: bySeverity(f.filter(isOutputFinding)),
     };
@@ -437,6 +440,16 @@ const CheckResults = memo(function CheckResults({ id, report }: { id: CheckId; r
 
       {group("Project & source", src)}
       {group("Compiled output", out)}
+
+      {fixable.length > 1 && (
+        <button
+          type="button"
+          onClick={() => void askAiAboutFindings(fixable)}
+          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-input px-2 py-1.5 text-xs text-primary hover:bg-accent"
+        >
+          <Sparkles className="size-3.5" /> Fix all {fixable.length} with AI
+        </button>
+      )}
 
       {findings.length === 0 && coverage === "evaluated" && (
         <p className="mt-2 rounded-md border border-sidebar-border bg-black/[0.03] px-2.5 py-4 text-center text-xs text-muted-foreground dark:bg-background">

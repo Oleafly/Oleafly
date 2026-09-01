@@ -5,6 +5,12 @@ import {
   normalizeFigureCode,
 } from "@oleafly/latex";
 import { pickPagesToVerify } from "./pick-pages";
+import {
+  cuaActionRisk,
+  runCuaAction,
+  type CuaActionType,
+  type CuaSurface,
+} from "./cua";
 
 export interface IndexDefView {
   kind: string;
@@ -124,12 +130,20 @@ type RawToolDef = {
 export interface ToolApprovalRequest {
   tool: string;
   summary: string;
+  projectId?: string;
+  command?: string;
+  cwd?: string;
   path?: string;
   diff?: { path: string; oldText: string; newText: string };
   image?: string;
 }
 
 export type ConfirmFn = (req: ToolApprovalRequest) => Promise<boolean>;
+
+export interface ExecAuthorization {
+  approvalToken: string;
+  runId: string;
+}
 
 const MAX_MUTATION_BYTES = 16 * 1024 * 1024;
 const MAX_REPLACEMENTS = 100_000;
@@ -161,6 +175,27 @@ export function createOleaflyTools(
     confirm?: ConfirmFn;
     onImage?: (dataUrl: string) => void;
     mutationAllowed?: () => boolean;
+    /** When present, exposes the computer_use tool over this sandbox surface. */
+    cuaSurface?: () => CuaSurface | null;
+    alwaysConfirmComputerUse?: boolean;
+    resolveExecCwd?: (projectId: string) => Promise<string>;
+    authorizeExec?: (
+      projectId: string,
+      command: string,
+      runIdOverride?: string,
+    ) => Promise<ExecAuthorization>;
+    execCommand?: (
+      projectId: string,
+      command: string,
+      authorization: ExecAuthorization,
+    ) => Promise<{
+      command: string;
+      output: string;
+      exit_code: number | null;
+      status: string;
+      truncated: boolean;
+      timed_out: boolean;
+    }>;
   },
 ) {
   const confirm = opts?.confirm;
@@ -190,8 +225,9 @@ export function createOleaflyTools(
     return generation;
   };
   const declined = (tool: string) => ({
-    error: "The user declined this change.",
+    message: "The user declined this change.",
     declined: true as const,
+    status: "declined" as const,
     tool,
   });
   const approveStateMutation = async (tool: string, summary: string): Promise<boolean> => {
@@ -204,6 +240,117 @@ export function createOleaflyTools(
   };
 
   const tools: Record<string, RawToolDef> = {
+    spawn_agent: {
+      description:
+        "Spawn a subagent that works on one delegated task in the background. Task names are canonical: spawning task_3 while your task is /root/task1 gives the agent the path /root/task1/task_3 (list_agents filters by that path). The agent inherits your current model unless the user asks for a different one. It shares your project tools and approval gates but cannot spawn further agents. Returns { id, taskPath, status } immediately; use wait_agent to collect its answer.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          task_name: {
+            type: "string",
+            description: "Short unique name for the task (alphanumeric, _ and -)",
+          },
+          prompt: {
+            type: "string",
+            description: "Complete, self-contained instructions for the subagent",
+          },
+          label: {
+            type: "string",
+            description: "Optional display name shown while it works",
+          },
+        },
+        required: ["task_name", "prompt"],
+        additionalProperties: false,
+      },
+      // The backend intercepts the multi-agent tools before webview
+      // dispatch; reaching this executor means the run is not agentic.
+      execute: async () => ({ error: "subagents are only available in agentic runs" }),
+    },
+    send_message: {
+      description:
+        "Send a message to a running agent without triggering a new turn; it is delivered at the agent's next message boundary. Use either message or items, not both.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          agent: { type: "string", description: "Agent id or canonical task name" },
+          message: { type: "string", description: "The message text" },
+        },
+        required: ["agent", "message"],
+        additionalProperties: false,
+      },
+      execute: async () => ({ error: "subagents are only available in agentic runs" }),
+    },
+    followup_task: {
+      description:
+        "Give an agent a new task and trigger a turn: a running agent receives it at its next boundary; a finished agent starts fresh work in its own thread with its prior answer as context.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          agent: { type: "string", description: "Agent id or canonical task name" },
+          message: { type: "string", description: "The new task" },
+        },
+        required: ["agent", "message"],
+        additionalProperties: false,
+      },
+      execute: async () => ({ error: "subagents are only available in agentic runs" }),
+    },
+    wait_agent: {
+      description:
+        "Wait for the listed agents and return whichever finishes first, with a bounded view of its final answer. Prefer longer waits (minutes) over busy polling. Pass multiple ids to wait on whichever finishes first.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          ids: {
+            type: "array",
+            items: { type: "string" },
+            description: "Agent ids to wait on (omitting waits on all)",
+          },
+          timeout_ms: { type: "number", description: "Optional wait window in milliseconds" },
+          max_output_chars: {
+            type: "number",
+            description: "Optional character budget for the returned answer",
+          },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+      execute: async () => ({ error: "subagents are only available in agentic runs" }),
+    },
+    interrupt_agent: {
+      description:
+        "Interrupt an agent's current turn, if any. The agent stays available for messages and follow-up tasks.",
+      inputSchema: {
+        type: "object",
+        properties: { agent: { type: "string" } },
+        required: ["agent"],
+        additionalProperties: false,
+      },
+      execute: async () => ({ error: "subagents are only available in agentic runs" }),
+    },
+    list_agents: {
+      description:
+        "List the live agents in this run with their canonical task paths and statuses. Optionally filter by task-path prefix.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          path_prefix: { type: "string", description: "Canonical path prefix filter" },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+      execute: async () => ({ error: "subagents are only available in agentic runs" }),
+    },
+    close_agent: {
+      description:
+        "Close an agent when its work is done. Completed agents stay open and count toward the concurrency limit until closed, so close agents you no longer need.",
+      inputSchema: {
+        type: "object",
+        properties: { agent: { type: "string" } },
+        required: ["agent"],
+        additionalProperties: false,
+      },
+      execute: async () => ({ error: "subagents are only available in agentic runs" }),
+    },
     read_file: {
       description:
         "Read a file in the current project. Prefer offset/limit for large files. Returns truncated content when over the size cap. Read another slice if needed.",
@@ -243,12 +390,22 @@ export function createOleaflyTools(
             content = content.slice(0, MAX_CHARS);
             truncated = true;
           }
+          // Legacy encodings decode lossily on the backend; flag it so the
+          // model knows a rewrite would bake U+FFFD in permanently.
+          const legacy = content.includes("\uFFFD");
           return {
             path,
             offset,
             lines_returned: slice.length,
             total_lines: lines.length,
             truncated,
+            ...(legacy
+              ? {
+                  encoding: "lossy-utf8" as const,
+                  encoding_note:
+                    "This file contains bytes outside UTF-8 (likely a legacy encoding like Latin-1); unreadable characters appear as \uFFFD. Do not rewrite the whole file from this read — edit only the exact lines you must change.",
+                }
+              : {}),
             content,
           };
         } catch (e) {
@@ -553,7 +710,7 @@ export function createOleaflyTools(
     },
 
     set_main_doc: {
-      description: "Set the project's main document (the compile entry point, e.g. main.tex, main.typ, or main.md). Requires user approval.",
+      description: "Set the project's main document (the compile entry point, e.g. main.tex, main.typ, or main.md). Execution follows the active approval policy.",
       inputSchema: {
         type: "object",
         properties: {
@@ -600,7 +757,7 @@ export function createOleaflyTools(
         if (!id) return { error: "No project open" };
         try {
           const hits = await searchProject(id, query);
-          return { results: hits.slice(0, 20), total: hits.length };
+          return { results: hits, total: hits.length };
         } catch (e) {
           return { error: String(e) };
         }
@@ -872,6 +1029,112 @@ export function createOleaflyTools(
     },
   };
 
+  if (opts?.execCommand && opts.resolveExecCwd && opts.authorizeExec) {
+    const execCommand = opts.execCommand;
+    const resolveExecCwd = opts.resolveExecCwd;
+    const authorizeExec = opts.authorizeExec;
+    tools.run_command = {
+      description:
+        "Run a shell command in the current project directory and return its output and exit status. Use for build tooling, git, file inspection, or scripts the dedicated tools do not cover. Execution follows the active approval policy.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          command: {
+            type: "string",
+            description: "A single shell command line, run from the project root",
+          },
+        },
+        required: ["command"],
+        additionalProperties: false,
+      },
+      execute: async (input) => {
+        const command = String(input.command ?? "").trim();
+        if (!command) return { error: "command is required" };
+        const projectId = pid();
+        if (!projectId) return { error: "No project open" };
+        if (!confirm) return { ...declined("run_command"), command };
+        // A subagent tags its commands with its own execution owner so that
+        // stopping the subagent cancels exactly its process tree. Absent for a
+        // top-level run, which uses the run's own id.
+        const ownerOverride =
+          typeof input.__execOwner === "string" ? input.__execOwner : undefined;
+        try {
+          const cwd = await resolveExecCwd(projectId);
+          assertMutationAllowed(projectId);
+          if (!(await confirm({
+            tool: "run_command",
+            summary: `$ ${command}`,
+            projectId,
+            command,
+            cwd,
+          }))) {
+            return { ...declined("run_command"), command };
+          }
+          assertMutationAllowed(projectId);
+          const authorization = await authorizeExec(projectId, command, ownerOverride);
+          assertMutationAllowed(projectId);
+          const result = await execCommand(projectId, command, authorization);
+          return {
+            // Structured so the exec card renders command, output, and status;
+            // the model also reads the flat fields.
+            exec: true,
+            command: result.command,
+            output: result.output,
+            exit_code: result.exit_code,
+            status: result.status,
+            timed_out: result.timed_out,
+          };
+        } catch (e) {
+          return { error: String(e) };
+        }
+      },
+    };
+  }
+
+  if (opts?.cuaSurface) {
+    const getSurface = opts.cuaSurface;
+    tools.computer_use = {
+      description: opts.alwaysConfirmComputerUse
+        ? "Drive the browser window: navigate to a URL, or wait for a page to load. It opens as a separate OS window whose page content cannot be read or scripted. Every navigation requires explicit user approval for external connections."
+        : "Drive the browser window as a computer-use agent. It opens as a separate OS window, so the only supported actions are navigate (open a URL) and wait (pause while a page loads). Its page content cannot be read, captured, or clicked from here. navigate reports the resulting URL and follows the active approval policy.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          action: {
+            type: "string",
+            enum: ["navigate", "wait"],
+          },
+          text: { type: "string", description: "URL to navigate to" },
+          amount: { type: "number", description: "wait milliseconds" },
+        },
+        required: ["action"],
+        additionalProperties: false,
+      },
+      execute: async (input) => {
+        const surface = getSurface();
+        if (!surface) {
+          return { error: "The browser window is unavailable. Enable the web browser to use computer_use." };
+        }
+        const action = {
+          type: input.action as CuaActionType,
+          selector: input.selector as string | undefined,
+          text: input.text as string | undefined,
+          amount: input.amount as number | undefined,
+        };
+        if (opts.alwaysConfirmComputerUse || cuaActionRisk(action.type) === "confirm") {
+          if (!confirm) return declined("computer_use");
+          if (!(await confirm({
+            tool: "computer_use",
+            summary: `${action.type}${action.selector ? ` ${action.selector}` : action.text ? ` ${action.text}` : ""}`,
+          }))) {
+            return declined("computer_use");
+          }
+        }
+        return runCuaAction(surface, action);
+      },
+    };
+  }
+
   return tools;
 }
 
@@ -986,8 +1249,9 @@ export function createFigureTools(
     return generation;
   };
   const declined = (tool: string) => ({
-    error: "The user declined this change.",
+    message: "The user declined this change.",
     declined: true as const,
+    status: "declined" as const,
     tool,
   });
 

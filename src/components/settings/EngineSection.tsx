@@ -7,7 +7,12 @@ import { texDistributions, type TexDistribution } from "@/lib/tauri";
 import { isTauri } from "@tauri-apps/api/core";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
+import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+
+// Kept in step with scripts/fetch-typst.sh, which pins the bundled sidecar.
+const BUNDLED_TYPST_VERSION = "0.15.0";
 
 const ENGINE_CHOICES: Array<{
   id: DefaultLatexEngine;
@@ -49,10 +54,12 @@ export function EngineSection() {
     useEngineStore();
   const defaultLatexEngine = useSettingsStore((s) => s.defaultLatexEngine);
   const setDefaultLatexEngine = useSettingsStore((s) => s.setDefaultLatexEngine);
+  const resetEnginePreferences = useSettingsStore((s) => s.resetEnginePreferences);
   const installPhase = useEngineStore((s) => s.installPhase);
   const partialDownloadBytes = useEngineStore((s) => s.partialDownloadBytes);
   const [query, setQuery] = useState("");
   const [distros, setDistros] = useState<TexDistribution[]>([]);
+  const [tab, setTab] = useState<"latex" | "typst">("latex");
 
   useEffect(() => {
     // refreshPackages() needs engine info from refresh() first, so run in sequence.
@@ -75,7 +82,48 @@ export function EngineSection() {
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <Tabs
+      value={tab}
+      onValueChange={(value) => setTab(value as "latex" | "typst")}
+      className="flex flex-col gap-5"
+    >
+      <TabsList aria-label="Engines" className="w-fit self-start">
+        <TabsTrigger value="latex" data-testid="engines-tab-latex">
+          LaTeX
+        </TabsTrigger>
+        <TabsTrigger value="typst" data-testid="engines-tab-typst">
+          Typst
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="typst" className="flex flex-col gap-5">
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Typst compiler</h3>
+            <Tooltip
+              wide
+              side="right"
+              label="Typst ships inside Oleafly, so there is nothing to install or configure. Every Typst project compiles with the bundled compiler."
+            >
+              <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
+            </Tooltip>
+          </div>
+          <div className="rounded-lg border border-primary p-3 ring-1 ring-primary">
+            <div className="flex items-center gap-2">
+              <Cpu className="size-4 text-muted-foreground" />
+              <span className="text-sm">Typst (built in)</span>
+              <Check className="size-3.5 text-primary" />
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Ships with Oleafly. Fast, offline, zero setup. Compiles Typst documents to PDF.
+            </p>
+            <p className="mt-1 font-mono text-[10px] text-muted-foreground/70">Typst {BUNDLED_TYPST_VERSION}</p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Typst projects always use the bundled compiler. Choosing a compiler version, and system Typst, are not available yet.
+          </p>
+      </TabsContent>
+
+      <TabsContent value="latex" className="flex flex-col gap-5">
       <div className="flex items-center gap-1.5">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Default compile engine</h3>
         <Tooltip
@@ -209,12 +257,16 @@ export function EngineSection() {
 
       <div className="rounded-lg border p-3">
         <div className="flex items-center gap-2">
-          <Cpu className="size-4 text-muted-foreground" />
+          <Cpu className="size-4 shrink-0 text-muted-foreground" />
           {kind === "system" && <span className="text-sm">Using a system LuaLaTeX / TeX Live</span>}
           {kind === "tinytex" && <span className="text-sm">TinyTeX installed</span>}
           {kind === "none" && <span className="text-sm">No tagging engine installed</span>}
-          {info?.version && <span className="ml-1 truncate text-xs text-muted-foreground">{info.version}</span>}
         </div>
+        {info?.version && (
+          <p className="mt-1 truncate pl-6 font-mono text-[11px] text-muted-foreground">
+            {info.version}
+          </p>
+        )}
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {kind === "none" && (
@@ -278,6 +330,11 @@ export function EngineSection() {
           })}
         </div>
       </div>
-    </div>
+      </TabsContent>
+      <ResetToDefaults
+        sectionName="Engines"
+        onReset={resetEnginePreferences}
+      />
+    </Tabs>
   );
 }

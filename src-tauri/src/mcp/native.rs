@@ -20,6 +20,8 @@ const MUTATING: &[&str] = &[
     "update_todos",
     "remember_note",
     "forget_note",
+    "run_command",
+    "computer_use",
 ];
 
 pub fn is_mutating(name: &str) -> bool {
@@ -278,6 +280,8 @@ mod tests {
             "update_todos",
             "remember_note",
             "forget_note",
+            "run_command",
+            "computer_use",
         ] {
             let error = match call("unused", name, &json!({})).await {
                 Ok(_) => panic!("{name} unexpectedly ran natively"),
@@ -290,6 +294,9 @@ mod tests {
     #[test]
     fn read_only_mode_can_reject_every_mutating_tool_server_side() {
         for name in MUTATING {
+            assert!(is_mutating(name), "{name}");
+        }
+        for name in ["run_command", "computer_use"] {
             assert!(is_mutating(name), "{name}");
         }
         for name in READ_ONLY {

@@ -1,0 +1,93 @@
+\documentclass[11pt,a4paper,twoside,openright]{book}
+
+\usepackage[a4paper,inner=1.25in,outer=1.0in,top=1.15in,bottom=1.25in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{microtype}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage[ruled,vlined]{algorithm2e}
+\usepackage{makeidx}
+\usepackage[authoryear,round]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta,positioning,fit,calc,decorations.pathmorphing}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}[theorem]{Assumption}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\indep}{\perp\!\!\!\perp}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\ATE}{\mathrm{ATE}}
+\newcommand{\ATT}{\mathrm{ATT}}
+\newcommand{\LATE}{\mathrm{LATE}}
+
+\makeindex
+
+\title{Causal Inference for Observational Data}
+\author{Rosalind Achterberg}
+
+\begin{document}
+
+\frontmatter
+
+\begin{titlepage}
+\centering
+\vspace*{3cm}
+{\Huge\bfseries Causal Inference for\\[0.4cm] Observational Data\par}
+\vspace{1.0cm}
+{\Large Identification, Estimation, and Sensitivity\par}
+\vspace{3.5cm}
+{\Large Rosalind Achterberg\par}
+\vspace{0.5cm}
+{\large Department of Statistical Science\\ Kestrel Hill University}
+\vfill
+{\large Fourth edition}
+\end{titlepage}
+
+\input{frontmatter/preface}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+\mainmatter
+
+\part{Identification}
+\label{part:identification}
+\input{chapters/potential-outcomes}
+\input{chapters/graphical-criteria}
+
+\part{Estimation}
+\label{part:estimation}
+\input{chapters/propensity-scores}
+\input{chapters/doubly-robust}
+
+\part{Design and Sensitivity}
+\label{part:design}
+\input{chapters/sensitivity}
+\input{chapters/design-based}
+
+\backmatter
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\printindex
+
+\end{document}

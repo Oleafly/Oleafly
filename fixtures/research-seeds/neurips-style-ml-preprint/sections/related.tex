@@ -1,0 +1,37 @@
+\section{Related work}
+\label{sec:related}
+
+\paragraph{Difficulty-based selection.}
+Selecting on loss or on gradient norm has a long history in curriculum learning
+and in coreset construction~\citep{arbogast2021gradnorm,vasquez2019curriculum}.
+The assumption underneath is that the pool and the evaluation distribution
+agree, in which case difficulty is a reasonable proxy for information. Our
+contribution is to show that the proxy inverts under shift, and to give a
+criterion that does not depend on the assumption.
+
+\paragraph{Retrieval and submodular selection.}
+Embedding-space retrieval against a target set~\citep{iwasaki2022retrieval} is
+the closest baseline in spirit: it is anchored, and it outperforms every
+magnitude criterion in our tables. It is anchored in representation space
+rather than in gradient space, which makes it insensitive to the loss and
+therefore unable to distinguish an example the model already handles from one
+it does not. Submodular coverage
+objectives~\citep{delacroix2020submodular,penrose2021coverage} optimise for
+diversity within the selected set and are complementary; combining a coverage
+constraint with our alignment score is the obvious next experiment and we did
+not run it.
+
+\paragraph{Influence functions.}
+Influence estimation answers a strictly more precise version of our
+question~\citep{marchetti2020influence}, at a cost that is prohibitive for
+pools of millions of examples even with the standard approximations. The
+sketched cosine alignment can be read as a first-order, curvature-free
+influence estimate against a target anchor, and the comparison in
+Section~\ref{sec:analysis} between sketched and full-gradient scoring suggests
+how little the extra precision buys at this scale.
+
+\paragraph{Proximal fine-tuning.}
+The proximal term in Eq.~\eqref{eq:objective} follows standard practice for
+limiting drift during domain adaptation~\citep{halvorsen2023proximal}. It is
+not the source of our gains: removing it costs every method, including random
+selection, between 0.5 and 0.9 points.

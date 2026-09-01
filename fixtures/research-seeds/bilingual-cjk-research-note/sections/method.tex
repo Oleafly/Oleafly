@@ -1,0 +1,47 @@
+\section{方法 Method}
+\label{sec:method}
+
+\subsection{形态先验}
+
+设源语言词表为 $V_s$，目标语言语料为 $\mathcal{D}_t$。我们首先从 $V_s$ 中
+抽取一组形态模式 $\mathcal{M}$，每个模式 $m \in \mathcal{M}$ 是一个带权重
+$w_m$ 的字符级重写规则。目标语言的词表学习目标为
+\begin{equation}
+  \label{eq:objective}
+  \max_{V_t} \; \sum_{x \in \mathcal{D}_t} \log p(x \mid V_t)
+  \; - \; \lambda \sum_{m \in \mathcal{M}} w_m \, \mathrm{viol}(V_t, m),
+\end{equation}
+其中 $\mathrm{viol}(V_t, m)$ 统计词表 $V_t$ 中违反模式 $m$ 的切分数量，
+$\lambda$ 控制先验强度。
+
+当 $\lambda = 0$ 时，式~\eqref{eq:objective} 退化为标准的一元语言模型分词
+目标~\cite{kudo2018subword}。先验项的作用是在数据不足以支撑统计判断时，
+用源语言的形态结构补足证据。
+
+\subsection{迁移流程}
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[
+      node distance=5mm and 7mm,
+      box/.style={draw,rounded corners=2pt,align=center,font=\small,
+                  minimum height=8mm,inner xsep=4pt},
+      flow/.style={-{Stealth[length=2mm]},thick},
+    ]
+    \node[box] (src) {源语言词表\\\scriptsize $V_s$};
+    \node[box,right=of src] (pat) {形态模式抽取\\\scriptsize $\mathcal{M}$};
+    \node[box,right=of pat] (fit) {约束词表学习\\\scriptsize Eq.~\eqref{eq:objective}};
+    \node[box,below=of fit] (out) {目标语言词表\\\scriptsize $V_t$};
+    \node[box,left=of out] (tgt) {目标语料\\\scriptsize $\mathcal{D}_t$};
+
+    \draw[flow] (src) -- (pat);
+    \draw[flow] (pat) -- (fit);
+    \draw[flow] (fit) -- (out);
+    \draw[flow] (tgt) -- (out);
+  \end{tikzpicture}
+  \caption{迁移流程。形态模式从源语言词表抽取，作为软约束参与目标词表学习。}
+  \label{fig:pipeline}
+\end{figure}
+
+图~\ref{fig:pipeline} 给出整体流程。抽取阶段不需要平行语料，这是该方法可以
+应用于真正低资源场景的前提。

@@ -1,0 +1,143 @@
+\section{System Model}
+\label{sec:system-model}
+
+\subsection{Received signal}
+
+Consider a hybrid receiver with $N_a$ antennas, $N_{rf}$ radio frequency
+chains, and an OFDM waveform of $N$ subcarriers with sampling interval $T_s$.
+Write $\vect{s} \in \mathbb{C}^{N}$ for the transmitted frequency-domain
+symbols, $\vect{h} \in \mathbb{C}^{L}$ for the $L$-tap combined channel after
+analog beamforming, and $\mat{F} \in \mathbb{C}^{N \times L}$ for the first $L$
+columns of the unitary discrete Fourier transform matrix. Let
+$\phi_n$, $n = 0, \dots, N-1$, denote the oscillator phase during sample $n$ of
+the symbol. The time-domain received samples are
+\begin{equation}
+  \label{eq:time-domain}
+  y_n = e^{j \phi_n} \sum_{\ell=0}^{L-1} h_\ell \, x_{n-\ell} + w_n ,
+  \qquad w_n \sim \mathcal{CN}(0, \sigma^2) ,
+\end{equation}
+where $\vect{x} = \mat{W}^{\mathsf{H}} \vect{s}$ is the transmitted time-domain
+block. Because the phase multiplies the signal after combining, it is a scalar
+sequence rather than a per-antenna one, which is what makes the hybrid case
+harder than the digital case and also what makes joint estimation tractable.
+
+Transforming Eq.~\eqref{eq:time-domain} to the frequency domain gives the
+familiar decomposition into a common rotation and a leakage term,
+\begin{align}
+  \label{eq:freq-domain}
+  Y_k
+  &= \underbrace{J_0 H_k s_k}_{\text{common}}
+     + \underbrace{\sum_{m \ne k} J_{k-m} H_m s_m}_{\text{ICI}}
+     + W_k , \\
+  \label{eq:jdef}
+  J_q &= \frac{1}{N} \sum_{n=0}^{N-1} e^{j \phi_n} e^{-j 2\pi q n / N} ,
+\end{align}
+with $H_k$ the channel frequency response at subcarrier $k$. Equation
+\eqref{eq:jdef} defines the phase-noise spectral coefficients, and every
+approximation in the literature amounts to a claim about how quickly $J_q$
+decays in $q$.
+
+\subsection{Leakage statistics without the small-phase approximation}
+
+The usual step is to write $e^{j\phi_n} \approx 1 + j \phi_n$ and propagate a
+Gaussian $\phi_n$ through the linearisation. That approximation fails once the
+accumulated phase variance over a symbol approaches one radian, which at
+$\beta = 200$~kHz and $N T_s = 3.2~\mu$s it does. We instead use the exact
+characteristic function of the Wiener phase process. For a free-running
+oscillator, $\phi_n = \phi_{n-1} + u_n$ with
+$u_n \sim \mathcal{N}(0, 2\pi \beta T_s)$, so for any lag $\Delta$
+\begin{align}
+  \label{eq:charfun}
+  \mathbb{E}\!\left[ e^{j(\phi_n - \phi_{n-\Delta})} \right]
+    &= e^{-\pi \beta T_s |\Delta|} , \\
+  \label{eq:ici-cov}
+  \mathbb{E}\!\left[ J_q J_{q'}^{*} \right]
+    &= \frac{1}{N^2} \sum_{n,n'} e^{-\pi \beta T_s |n - n'|}
+       e^{-j 2\pi (qn - q'n')/N} .
+\end{align}
+Equation~\eqref{eq:ici-cov} is exact, not a second-order expansion, and it
+holds for any linewidth. Collecting the coefficients into
+$\vect{J} = [J_{-N/2}, \dots, J_{N/2-1}]^{\mathsf{T}}$ and writing
+$\mat{C} = \mathbb{E}[\vect{J} \vect{J}^{\mathsf{H}}]$, the sum in
+Eq.~\eqref{eq:ici-cov} is a doubly indexed geometric series and evaluates in
+closed form to
+\begin{equation}
+  \label{eq:cov-closed}
+  [\mat{C}]_{q,q'} =
+  \frac{1}{N^2} \cdot
+  \frac{\bigl(1 - e^{-2\pi\beta T_s N}\bigr) \, \gamma^{|q-q'|}}
+       {\bigl(1 - \gamma e^{j 2\pi (q-q')/N}\bigr)
+        \bigl(1 - \gamma e^{-j 2\pi (q-q')/N}\bigr)} ,
+\end{equation}
+with $\gamma = e^{-\pi \beta T_s}$. The matrix is Hermitian Toeplitz and its
+eigenvalues decay geometrically away from the main diagonal.
+
+\begin{proposition}[Numerical rank of the leakage covariance]
+\label{prop:rank}
+Fix a tolerance $\epsilon$. The number of eigenvalues of $\mat{C}$ exceeding
+$\epsilon \tr(\mat{C})$ satisfies
+$R(\epsilon) \le 2 \lceil \beta T_s N \rceil + 1 +
+ O\!\bigl(\log(1/\epsilon)\bigr)$.
+\end{proposition}
+
+Proposition~\ref{prop:rank} is the structural fact the estimator exploits. At
+our operating point, $\beta T_s N = 0.64$ and $R(10^{-3}) = 9$ against
+$N = 1024$. The leakage lives in a nine-dimensional subspace, and an estimator
+that models that subspace recovers almost all of the energy that a least
+squares estimator discards.
+
+\subsection{Signal chain}
+
+Figure~\ref{fig:chain} shows where each quantity enters. The single local
+oscillator feeding the mixer is the source of the common phase process, and the
+estimator sits after the fast Fourier transform, so it observes
+Eq.~\eqref{eq:freq-domain} directly.
+
+\begin{figure*}[t]
+  \centering
+  \begin{tikzpicture}[
+      node distance=6mm and 7mm,
+      blk/.style={draw,rounded corners=1.5pt,align=center,font=\scriptsize,
+                  minimum height=8.5mm,minimum width=15mm,inner xsep=3pt},
+      osc/.style={draw,circle,align=center,font=\scriptsize,minimum size=10mm},
+      flow/.style={-{Stealth[length=1.8mm]},semithick},
+    ]
+    \node[blk,align=center] (arr) {Antenna\\array $N_a$};
+    \node[blk,right=of arr] (ps) {Analog\\combiner};
+    \node[blk,right=of ps] (lna) {LNA};
+    \node[blk,right=of lna] (mix) {Mixer};
+    \node[blk,right=of mix] (adc) {ADC};
+    \node[blk,right=of adc] (fft) {Remove CP\\and FFT};
+    \node[blk,right=of fft,fill=black!6] (est) {\est{}\\estimator};
+    \node[blk,right=of est] (eq) {Equalizer\\and demapper};
+
+    \node[osc,below=9mm of mix] (lo) {LO};
+    \node[font=\scriptsize,below=1.5mm of lo,align=center]
+      {free running\\$\beta = 200$\,kHz};
+
+    \draw[flow] (arr) -- (ps);
+    \draw[flow] (ps) -- node[above,font=\scriptsize] {$N_{rf}$} (lna);
+    \draw[flow] (lna) -- (mix);
+    \draw[flow] (mix) -- (adc);
+    \draw[flow] (adc) -- node[above,font=\scriptsize] {$y_n$} (fft);
+    \draw[flow] (fft) -- node[above,font=\scriptsize] {$Y_k$} (est);
+    \draw[flow] (est) -- node[above,font=\scriptsize] {$\hat{H}_k$} (eq);
+    \draw[flow] (lo) -- node[right,font=\scriptsize] {$e^{j\phi_n}$} (mix);
+
+    \draw[flow,dashed] (est.north) -- ++(0,5mm)
+      -| node[pos=0.25,above,font=\scriptsize] {$\hat{\phi}_n$ feedback} (fft.north);
+
+    \begin{scope}[on background layer]
+      \node[draw,dashed,rounded corners=2pt,fit=(arr)(ps),inner sep=2.5mm,
+            label={[font=\scriptsize]below:analog domain}] {};
+      \node[draw,dashed,rounded corners=2pt,fit=(fft)(est)(eq),inner sep=2.5mm,
+            label={[font=\scriptsize]below:digital baseband}] {};
+    \end{scope}
+  \end{tikzpicture}
+  \caption{Receiver signal chain. A single local oscillator drives the whole
+  analog combining network, so its phase noise multiplies the beamformed signal
+  and is common to every spatial stream. The estimator observes the
+  frequency-domain samples of Eq.~\eqref{eq:freq-domain} and returns both a
+  channel estimate and a phase trajectory.}
+  \label{fig:chain}
+\end{figure*}
