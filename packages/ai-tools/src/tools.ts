@@ -1096,7 +1096,7 @@ export function createOleaflyTools(
     tools.computer_use = {
       description: opts.alwaysConfirmComputerUse
         ? "Drive the browser window: navigate to a URL, or wait for a page to load. It opens as a separate OS window whose page content cannot be read or scripted. Every navigation requires explicit user approval for external connections."
-        : "Drive the browser window as a computer-use agent. It opens as a separate OS window, so the only supported actions are navigate (open a URL) and wait (pause while a page loads); the page's content cannot be read, captured, or clicked from here. navigate reports the resulting URL and follows the active approval policy.",
+        : "Drive the browser window as a computer-use agent. It opens as a separate OS window, so the only supported actions are navigate (open a URL) and wait (pause while a page loads). Its page content cannot be read, captured, or clicked from here. navigate reports the resulting URL and follows the active approval policy.",
       inputSchema: {
         type: "object",
         properties: {
@@ -1113,7 +1113,7 @@ export function createOleaflyTools(
       execute: async (input) => {
         const surface = getSurface();
         if (!surface) {
-          return { error: "The browser window is unavailable; enable the web browser to use computer_use." };
+          return { error: "The browser window is unavailable. Enable the web browser to use computer_use." };
         }
         const action = {
           type: input.action as CuaActionType,

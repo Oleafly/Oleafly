@@ -46,7 +46,7 @@ export async function openBrowserWindow(url: string, title?: string): Promise<bo
   sequence += 1;
   const opened = new WebviewWindow(`${BROWSER_WINDOW_PREFIX}-${sequence}`, {
     url,
-    title: title ? `Browser — ${title}` : "Oleafly Browser",
+    title: title ? `Browser: ${title}` : "Oleafly Browser",
     width: 1024,
     height: 768,
     resizable: true,

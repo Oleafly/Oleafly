@@ -508,7 +508,7 @@ impl SubagentManager {
                 .unwrap_or(false)
             {
                 return Err(format!(
-                    "a rollout already exists for {thread_id}; refusing to reuse it"
+                    "a rollout already exists for {thread_id}. Refusing to reuse it"
                 ));
             }
         }
