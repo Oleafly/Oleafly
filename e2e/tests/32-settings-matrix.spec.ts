@@ -206,6 +206,8 @@ test("show-file-tree-on-open controls the sidebar", async ({ tauriPage }) => {
     `!!document.querySelector('[aria-label^="Show sidebar"]')`,
     10_000,
   );
+  // With the setting off the sidebar panel is not rendered at all.
+  await expect(tauriPage.locator('[aria-label="Source Tree"]')).toHaveCount(0);
 
   await openAppearanceTab(tauriPage, "files");
   await tauriPage.evaluate(
@@ -223,6 +225,10 @@ test("show-file-tree-on-open controls the sidebar", async ({ tauriPage }) => {
     `!!document.querySelector('[aria-label^="Hide sidebar"]')`,
     10_000,
   );
+  // The panel must actually be on screen, not merely reported open: a zero
+  // width sidebar (a collapsed panel) fails this even though the toggle label
+  // says "Hide sidebar".
+  await expect(tauriPage.locator('[aria-label="Source Tree"]')).toBeVisible();
 });
 
 test("offline mode compiles from the local cache", async ({ tauriPage }) => {
