@@ -382,6 +382,22 @@ function AppContent() {
     sidebarDefaultSize,
   ]);
 
+  // A pane-layout change (the assistant appearing, or the view mode switching)
+  // makes react-resizable-panels renormalize the group, which shrinks the file
+  // tree well below its intended width because the other panes' default sizes
+  // sum past 100. Re-assert the tree's width once the new layout has settled.
+  // Window resizes are handled above and are deliberately not a dependency here,
+  // so a width the user dragged is left alone until the layout itself changes.
+  const sidebarDefaultSizeRef = useRef(sidebarDefaultSize);
+  sidebarDefaultSizeRef.current = sidebarDefaultSize;
+  useLayoutEffect(() => {
+    if (!projectId || !showTree) return;
+    const raf = window.requestAnimationFrame(() => {
+      sidebarPanelRef.current?.resize(sidebarDefaultSizeRef.current);
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [projectId, showTree, assistantOpen, viewMode, workspaceHidden]);
+
   // No-op in dev / the browser; only prompts if an update is actually available.
   useEffect(() => {
     const id = window.setTimeout(() => checkForUpdatesOnStartup(), 3000);
@@ -888,7 +904,7 @@ function AppContent() {
                     id="assistant"
                     order={3}
                     defaultSize={workspaceHidden ? 100 : Math.max(28, assistantMinSize)}
-                    minSize={workspaceHidden ? 100 : assistantMinSize}
+                    minSize={assistantMinSize}
                     maxSize={workspaceHidden ? 100 : 55}
                     collapsible
                     collapsedSize={0}
