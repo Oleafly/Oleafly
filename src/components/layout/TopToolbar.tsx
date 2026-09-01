@@ -32,7 +32,10 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { CompileControls } from "@/components/layout/CompileControls";
-import { WorkspaceDockControls } from "@/components/layout/WorkspaceControls";
+import {
+  SidebarCollapseToggle,
+  WorkspaceDockControls,
+} from "@/components/layout/WorkspaceControls";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { useFilesStore } from "@/store/files";
@@ -527,6 +530,7 @@ export function TopToolbar() {
           </DropdownMenuContent>
         </DropdownMenu>
         <Divider />
+        {workspaceHidden && <SidebarCollapseToggle />}
         <WorkspaceDockControls />
         <WindowControls />
       </div>

@@ -634,6 +634,10 @@ export function ReasoningBlock({
       ? `Thought for ${Math.max(1, Math.round(durationMs / 1000))}s`
       : "Reasoning";
 
+  // A finished reasoning block with no text carries nothing to read; hide it
+  // rather than render an empty "Reasoning" collapsible.
+  if (!active && !text.trim()) return null;
+
   return (
     <div className="max-w-[85%] rounded-md border bg-muted text-xs">
       <button
