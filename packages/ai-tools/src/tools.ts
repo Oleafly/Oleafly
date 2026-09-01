@@ -179,7 +179,11 @@ export function createOleaflyTools(
     cuaSurface?: () => CuaSurface | null;
     alwaysConfirmComputerUse?: boolean;
     resolveExecCwd?: (projectId: string) => Promise<string>;
-    authorizeExec?: (projectId: string, command: string) => Promise<ExecAuthorization>;
+    authorizeExec?: (
+      projectId: string,
+      command: string,
+      runIdOverride?: string,
+    ) => Promise<ExecAuthorization>;
     execCommand?: (
       projectId: string,
       command: string,
@@ -1049,6 +1053,11 @@ export function createOleaflyTools(
         const projectId = pid();
         if (!projectId) return { error: "No project open" };
         if (!confirm) return { ...declined("run_command"), command };
+        // A subagent tags its commands with its own execution owner so that
+        // stopping the subagent cancels exactly its process tree. Absent for a
+        // top-level run, which uses the run's own id.
+        const ownerOverride =
+          typeof input.__execOwner === "string" ? input.__execOwner : undefined;
         try {
           const cwd = await resolveExecCwd(projectId);
           assertMutationAllowed(projectId);
@@ -1062,7 +1071,7 @@ export function createOleaflyTools(
             return { ...declined("run_command"), command };
           }
           assertMutationAllowed(projectId);
-          const authorization = await authorizeExec(projectId, command);
+          const authorization = await authorizeExec(projectId, command, ownerOverride);
           assertMutationAllowed(projectId);
           const result = await execCommand(projectId, command, authorization);
           return {

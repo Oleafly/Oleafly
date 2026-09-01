@@ -386,6 +386,21 @@ describe("ai-tools: command approval", () => {
     expect(mocks.api.agentExecRegisterExternal).not.toHaveBeenCalled();
   });
 
+  it("runs a subagent command under its own registered execution owner", async () => {
+    const confirm = vi.fn().mockResolvedValue(true);
+    const owner = "external:00000000-0000-4000-8000-000000000abc";
+    await createOleaflyTools({ confirm, runId: () => "run-7" }).run_command.execute({
+      command: "pwd",
+      __execOwner: owner,
+    });
+
+    // The child's owner wins over the run's native id, and is registered
+    // before authorizing so the native registry trusts it.
+    expect(mocks.api.agentExecRegisterExternal).toHaveBeenCalledWith(owner);
+    expect(mocks.api.agentExecAuthorize).toHaveBeenCalledWith("proj", "pwd", owner);
+    expect(mocks.api.agentExec).toHaveBeenCalledWith("proj", "pwd", owner, "approval-token");
+  });
+
   it("registers a renderer-minted external owner before authorizing it", async () => {
     const confirm = vi.fn().mockResolvedValue(true);
     await createOleaflyTools({ confirm }).run_command.execute({ command: "pwd" });

@@ -70,6 +70,10 @@ struct SubAgentEntry {
     task_path: String,
     label: String,
     thread_id: String,
+    /// The `external:` owner every command this child runs is tagged with, so
+    /// stopping the child cancels its native process tree without touching the
+    /// parent's or a sibling's commands.
+    exec_owner: String,
     status: Arc<Mutex<SubagentStatus>>,
     final_output: Arc<Mutex<Option<String>>>,
     token: CancellationToken,
@@ -82,17 +86,28 @@ struct SubAgentEntry {
 #[derive(Default)]
 pub struct SubagentManager {
     agents: Mutex<HashMap<String, SubAgentEntry>>,
+    /// Cancels a child's native command owner (its process tree and pending
+    /// approvals). Wired to the exec registry in production; None in tests.
+    #[allow(clippy::type_complexity)]
+    cancel_exec: Option<Arc<dyn Fn(&str) + Send + Sync>>,
 }
 
 impl Drop for SubagentManager {
     fn drop(&mut self) {
-        let agents = self
-            .agents
-            .get_mut()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        for entry in agents.values() {
-            entry.token.cancel();
-            entry.handle.abort();
+        let mut owners = Vec::new();
+        {
+            let agents = self
+                .agents
+                .get_mut()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            for entry in agents.values() {
+                entry.token.cancel();
+                entry.handle.abort();
+                owners.push(entry.exec_owner.clone());
+            }
+        }
+        for owner in owners {
+            self.cancel_owner(&owner);
         }
     }
 }
@@ -107,6 +122,42 @@ fn session_prefix() -> &'static str {
     use std::sync::OnceLock;
     static PREFIX: OnceLock<String> = OnceLock::new();
     PREFIX.get_or_init(|| format!("{:016x}", rand::random::<u64>()))
+}
+
+/// A fresh `external:<uuid-v4>` command owner for a child. Every command the
+/// child runs is tagged with it (see `exec_owner_tagging_runner`), so stopping
+/// the child cancels exactly its process tree. The shape matches the exec
+/// registry's `external:` owner syntax.
+fn new_exec_owner() -> String {
+    let mut bytes = rand::random::<u128>().to_be_bytes();
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    format!(
+        "external:{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+        bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
+    )
+}
+
+/// Tag a child's run_command calls with its exec owner so the frontend runs
+/// them under that owner and the manager can cancel them independently. Other
+/// tools pass through untouched; a malformed argument object is left as-is.
+fn exec_owner_tagging_runner(owner: String, inner: ToolRunner) -> ToolRunner {
+    Arc::new(move |mut call| {
+        let inner = inner.clone();
+        let owner = owner.clone();
+        Box::pin(async move {
+            if call.name == "run_command" {
+                if let Ok(Value::Object(mut map)) = serde_json::from_str::<Value>(&call.arguments) {
+                    map.insert("__execOwner".to_string(), Value::String(owner.clone()));
+                    if let Ok(serialized) = serde_json::to_string(&Value::Object(map)) {
+                        call.arguments = serialized;
+                    }
+                }
+            }
+            inner(call).await
+        })
+    })
 }
 
 fn next_agent_id() -> u64 {
@@ -222,6 +273,21 @@ fn collect_wait_targets(
 }
 
 impl SubagentManager {
+    /// Build a manager that cancels each child's native command owner through
+    /// `cancel` on interrupt, close, and teardown.
+    pub fn with_exec_canceller(cancel: Arc<dyn Fn(&str) + Send + Sync>) -> Self {
+        Self {
+            agents: Mutex::new(HashMap::new()),
+            cancel_exec: Some(cancel),
+        }
+    }
+
+    fn cancel_owner(&self, owner: &str) {
+        if let Some(cancel) = &self.cancel_exec {
+            cancel(owner);
+        }
+    }
+
     fn running_count(&self) -> usize {
         lock(&self.agents)
             .values()
@@ -254,44 +320,66 @@ impl SubagentManager {
     /// Interrupt every running agent (the "stop all subagents" affordance):
     /// the parent run keeps going. Returns how many were interrupted.
     pub fn interrupt_all(&self) -> usize {
-        let agents = lock(&self.agents);
-        let mut interrupted = 0;
-        for entry in agents.values() {
-            if *lock_status(&entry.status) == SubagentStatus::Running {
-                entry.token.cancel();
-                entry.handle.abort();
-                *lock_status(&entry.status) = SubagentStatus::Interrupted;
-                let _ = entry.done_tx.send(true);
-                interrupted += 1;
+        let mut owners = Vec::new();
+        let interrupted = {
+            let agents = lock(&self.agents);
+            let mut count = 0;
+            for entry in agents.values() {
+                if *lock_status(&entry.status) == SubagentStatus::Running {
+                    entry.token.cancel();
+                    entry.handle.abort();
+                    *lock_status(&entry.status) = SubagentStatus::Interrupted;
+                    let _ = entry.done_tx.send(true);
+                    owners.push(entry.exec_owner.clone());
+                    count += 1;
+                }
             }
+            count
+        };
+        // Cancel each child's native commands after releasing the agents lock,
+        // so the exec registry lock is never taken while holding it.
+        for owner in &owners {
+            self.cancel_owner(owner);
         }
         interrupted
     }
 
     pub fn interrupt(&self, agent: &str) -> Result<Value, String> {
-        let agents = lock(&self.agents);
-        let entry = agents
-            .get(agent)
-            .ok_or_else(|| format!("no agent {agent}"))?;
-        entry.token.cancel();
-        *lock_status(&entry.status) = SubagentStatus::Interrupted;
-        let _ = entry.done_tx.send(true);
-        Ok(serde_json::json!({ "id": entry.id, "status": "interrupted" }))
+        let (result, owner) = {
+            let agents = lock(&self.agents);
+            let entry = agents
+                .get(agent)
+                .ok_or_else(|| format!("no agent {agent}"))?;
+            entry.token.cancel();
+            *lock_status(&entry.status) = SubagentStatus::Interrupted;
+            let _ = entry.done_tx.send(true);
+            (
+                serde_json::json!({ "id": entry.id, "status": "interrupted" }),
+                entry.exec_owner.clone(),
+            )
+        };
+        self.cancel_owner(&owner);
+        Ok(result)
     }
 
     pub fn close(&self, agent: &str) -> Result<Value, String> {
-        let mut agents = lock(&self.agents);
-        let entry = agents
-            .get(agent)
-            .ok_or_else(|| format!("no agent {agent}"))?;
-        let status = *lock_status(&entry.status);
-        entry.token.cancel();
-        entry.handle.abort();
-        let summary = serde_json::json!({
-            "id": entry.id,
-            "status": status.as_str(),
-        });
-        agents.remove(agent);
+        let (summary, owner) = {
+            let mut agents = lock(&self.agents);
+            let entry = agents
+                .get(agent)
+                .ok_or_else(|| format!("no agent {agent}"))?;
+            let status = *lock_status(&entry.status);
+            entry.token.cancel();
+            entry.handle.abort();
+            let owner = entry.exec_owner.clone();
+            let summary = serde_json::json!({
+                "id": entry.id,
+                "status": status.as_str(),
+            });
+            agents.remove(agent);
+            (summary, owner)
+        };
+        self.cancel_owner(&owner);
         Ok(summary)
     }
 
@@ -425,6 +513,8 @@ impl SubagentManager {
             }
         }
 
+        let exec_owner = new_exec_owner();
+
         let mut request = ctx.request_template.clone();
         request.messages = vec![oleafly_agent::Message::user(prompt.to_string())];
         request.system = Some(format!(
@@ -451,6 +541,7 @@ impl SubagentManager {
             id.clone(),
             label.clone(),
             thread_id.clone(),
+            exec_owner.clone(),
             status.clone(),
             final_output.clone(),
             done_tx.clone(),
@@ -461,6 +552,7 @@ impl SubagentManager {
             task_path,
             label,
             thread_id,
+            exec_owner,
             status,
             final_output,
             token,
@@ -564,6 +656,7 @@ fn spawn_child_run(
     id: String,
     label: String,
     thread_id: String,
+    exec_owner: String,
     status: Arc<Mutex<SubagentStatus>>,
     final_output: Arc<Mutex<Option<String>>>,
     done_tx: watch::Sender<bool>,
@@ -615,7 +708,7 @@ fn spawn_child_run(
             &ctx.config,
             pipeline,
             Some(steer_rx),
-            ctx.tool_runner.clone(),
+            exec_owner_tagging_runner(exec_owner.clone(), ctx.tool_runner.clone()),
             move |event| {
                 let state = match &event {
                     AgentEvent::StepStart { .. } => Some(("thinking", None)),
@@ -1003,6 +1096,7 @@ mod tests {
             task_path: format!("/root/{id}"),
             label: id.to_string(),
             thread_id: format!("thread-{id}"),
+            exec_owner: format!("external:{id}"),
             status: Arc::new(Mutex::new(status)),
             final_output: Arc::new(Mutex::new(None)),
             token: CancellationToken::new(),
@@ -1042,6 +1136,57 @@ mod tests {
         // A second sweep finds nothing running.
         drop(agents);
         assert_eq!(manager.interrupt_all(), 0);
+    }
+
+    #[tokio::test]
+    async fn interrupt_cancels_each_running_child_command_owner() {
+        let cancelled: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let recorder = cancelled.clone();
+        let manager = SubagentManager::with_exec_canceller(Arc::new(move |owner: &str| {
+            recorder.lock().unwrap().push(owner.to_string());
+        }));
+        let mut running = dummy_entry("agent-1", SubagentStatus::Running);
+        running.handle = tokio::spawn(std::future::pending());
+        lock(&manager.agents).insert("agent-1".into(), running);
+        // A finished child must not have its owner cancelled by a stop-all.
+        lock(&manager.agents).insert(
+            "agent-2".into(),
+            dummy_entry("agent-2", SubagentStatus::Done),
+        );
+
+        assert_eq!(manager.interrupt_all(), 1);
+        assert_eq!(cancelled.lock().unwrap().as_slice(), ["external:agent-1"]);
+
+        // Closing the finished child still cancels its owner (its process may
+        // outlive the agent), and does so exactly once.
+        manager.close("agent-2").unwrap();
+        assert_eq!(
+            cancelled.lock().unwrap().as_slice(),
+            ["external:agent-1", "external:agent-2"]
+        );
+    }
+
+    #[tokio::test]
+    async fn a_missing_canceller_never_panics_on_interrupt() {
+        let manager = SubagentManager::default();
+        let mut entry = dummy_entry("agent-1", SubagentStatus::Running);
+        entry.handle = tokio::spawn(std::future::pending());
+        lock(&manager.agents).insert("agent-1".into(), entry);
+        assert_eq!(manager.interrupt_all(), 1);
+    }
+
+    #[test]
+    fn minted_exec_owners_match_the_external_owner_syntax() {
+        let owner = new_exec_owner();
+        let id = owner.strip_prefix("external:").expect("external: prefix");
+        assert_eq!(id.len(), 36);
+        let bytes = id.as_bytes();
+        assert_eq!(bytes[14], b'4');
+        assert!(matches!(
+            bytes[19].to_ascii_lowercase(),
+            b'8' | b'9' | b'a' | b'b'
+        ));
+        assert!(new_exec_owner() != new_exec_owner());
     }
 
     #[tokio::test]

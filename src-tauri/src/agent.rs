@@ -602,6 +602,7 @@ pub async fn agent_run(
         let sink = on_event.clone();
         let allowed_tools: std::collections::HashSet<_> =
             request.tools.iter().map(|tool| tool.name.clone()).collect();
+        let app_for_exec_cancel = app.clone();
         let base_tool = composite_tool_runner(
             app,
             run_id,
@@ -622,7 +623,12 @@ pub async fn agent_run(
         let multi_agent = crate::agent_config::MultiAgentConfig::load(
             &crate::paths::oleafly_root().unwrap_or_default(),
         );
-        let subagent_manager = std::sync::Arc::new(SubagentManager::default());
+        let subagent_manager = std::sync::Arc::new(SubagentManager::with_exec_canceller(
+            std::sync::Arc::new(move |owner: &str| {
+                let exec_state = app_for_exec_cancel.state::<crate::agent_exec::AgentExecState>();
+                crate::agent_exec::cancel_run(exec_state.inner(), owner);
+            }),
+        ));
         let run_context = subagents::RunContext {
             client: client.clone(),
             resolved: resolved.clone(),
