@@ -274,6 +274,60 @@ describe("TerminalPane", () => {
     });
   });
 
+  it("queues xterm data sent before term_open resolves and flushes it in order", async () => {
+    const open = deferred<string>();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "term_open" ? open.promise : Promise.resolve(undefined),
+    );
+    render(<TerminalPane projectId="project-1" visible />);
+    const terminal = mocks.terminals[0];
+    await waitFor(() => expect(terminal.dataHandler).not.toBeNull());
+    await waitFor(() => {
+      expect(mocks.invoke).toHaveBeenCalledWith("term_open", expect.anything());
+    });
+
+    terminal.dataHandler?.("\x1b[?1;2c");
+    terminal.dataHandler?.("echo first\r");
+    await Promise.resolve();
+    expect(mocks.invoke).not.toHaveBeenCalledWith("term_write", expect.anything());
+
+    open.resolve("term-1");
+
+    await waitFor(() => {
+      const writes = mocks.invoke.mock.calls
+        .filter(([command]) => command === "term_write")
+        .map(([, payload]) => (payload as { data: string }).data);
+      expect(writes).toEqual(["\x1b[?1;2c", "echo first\r"]);
+    });
+    expect(mocks.invoke).toHaveBeenCalledWith("term_write", {
+      id: "term-1",
+      projectId: "project-1",
+      data: "\x1b[?1;2c",
+    });
+  });
+
+  it("drops queued input when the pane is torn down before term_open resolves", async () => {
+    const open = deferred<string>();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "term_open" ? open.promise : Promise.resolve(undefined),
+    );
+    const { unmount } = render(<TerminalPane projectId="project-1" visible />);
+    const terminal = mocks.terminals[0];
+    await waitFor(() => expect(terminal.dataHandler).not.toBeNull());
+
+    terminal.dataHandler?.("\x1b[?1;2c");
+    unmount();
+    open.resolve("term-1");
+
+    await waitFor(() => {
+      expect(mocks.invoke).toHaveBeenCalledWith("term_kill", {
+        id: "term-1",
+        projectId: "project-1",
+      });
+    });
+    expect(mocks.invoke).not.toHaveBeenCalledWith("term_write", expect.anything());
+  });
+
   it("closes and disposes an exited session without accepting later input or resize", async () => {
     render(<TerminalPane projectId="project-1" visible />);
     const terminal = mocks.terminals[0];

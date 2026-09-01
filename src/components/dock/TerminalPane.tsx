@@ -165,6 +165,20 @@ export function TerminalPane({
     let sessionLive = false;
     let sessionExited = false;
     let disposed = false;
+    const pendingInput: string[] = [];
+    const writeInput = (id: string, data: string) => {
+      void invoke("term_write", { id, projectId, data }).catch((error) => {
+        if (!disposed && sessionLive) {
+          writeTerminalErrorOnce(
+            terminal,
+            surfacedErrorsRef.current,
+            "The shell could not accept input",
+            error,
+            outputWritten,
+          );
+        }
+      });
+    };
     const channel = new Channel<TerminalChannelMessage>();
     channel.onmessage = (message) => {
       if (E2E_HOOKS) {
@@ -214,6 +228,7 @@ export function TerminalPane({
         sessionIdRef.current = id;
         sessionLive = true;
         sessionLiveRef.current = true;
+        for (const data of pendingInput.splice(0)) writeInput(id, data);
         setBooted(true);
         if (visibleRef.current) terminal.focus();
       })
@@ -223,6 +238,7 @@ export function TerminalPane({
           w.__e2eTerminalEvents = w.__e2eTerminalEvents ?? [];
           w.__e2eTerminalEvents.push(`open:error:${String(error)}`);
         }
+        pendingInput.length = 0;
         if (disposed || sessionExited) return;
         setBooted(true);
         writeTerminalError(terminal, "The shell could not start", error, outputWritten);
@@ -230,18 +246,10 @@ export function TerminalPane({
 
     const dataSub = terminal.onData((data) => {
       if (sessionLive && sessionId) {
-        void invoke("term_write", { id: sessionId, projectId, data }).catch((error) => {
-          if (!disposed && sessionLive) {
-            writeTerminalErrorOnce(
-              terminal,
-              surfacedErrorsRef.current,
-              "The shell could not accept input",
-              error,
-              outputWritten,
-            );
-          }
-        });
+        writeInput(sessionId, data);
+        return;
       }
+      if (!sessionId && !sessionExited && !disposed) pendingInput.push(data);
     });
     const observer = new ResizeObserver(() => {
       if (!visibleRef.current) return;
@@ -271,6 +279,7 @@ export function TerminalPane({
       disposed = true;
       sessionLive = false;
       sessionLiveRef.current = false;
+      pendingInput.length = 0;
       observer.disconnect();
       dataSub.dispose();
       if (sessionId) void invoke("term_kill", { id: sessionId, projectId }).catch(() => {});
