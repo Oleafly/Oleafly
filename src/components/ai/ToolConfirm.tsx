@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { CheckCircle2, FileText, XCircle } from "lucide-react";
+import { CheckCircle2, FileText, Wrench, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InlineDiffPreview } from "@/components/editor/diff/InlineDiffPreview";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
@@ -97,7 +97,7 @@ export function ToolConfirm({
   const body = (
     <div className="flex flex-col gap-3">
       <div className="flex items-start gap-2.5">
-        <AiMark className="mt-0.5" />
+        <AiMark className="mt-0.5 text-foreground" />
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="text-sm font-semibold leading-snug text-foreground">
             {commandApproval
@@ -114,7 +114,8 @@ export function ToolConfirm({
             </p>
           )}
           <div className="flex flex-wrap items-center gap-1.5">
-            <code className="inline-flex items-center rounded-md border border-primary/25 bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] font-medium leading-none text-primary">
+            <code className="inline-flex items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] font-medium leading-none text-primary">
+              <Wrench className="size-3 shrink-0 opacity-70" aria-hidden />
               {mcpApproval?.tool ?? req.tool}
             </code>
             {filePath && (
