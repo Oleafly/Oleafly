@@ -299,6 +299,23 @@ $$`}
     });
   });
 
+  it("accepts Mermaid output whose HTML labels are not well-formed XML", async () => {
+    mermaidRender.mockResolvedValueOnce({
+      svg:
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+        + '<foreignObject width="10" height="10">'
+        + '<div xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel"><p>Remove NSP only<br>drops on QNLI&nbsp;MNLI</p></span></div>'
+        + "</foreignObject></svg>",
+    });
+
+    renderWithTheme('```mermaid\nflowchart TD\n  A["x: y"] --> B["Remove NSP only<br/>drops on QNLI, MNLI"]\n```');
+
+    const diagram = await screen.findByRole("img", { name: "Diagram" });
+    expect(diagram.querySelector("svg foreignObject br")).not.toBeNull();
+    expect(diagram).toHaveTextContent("Remove NSP only");
+    expect(screen.queryByText("Unable to render diagram.")).toBeNull();
+  });
+
   it("shows the raw Mermaid source and an error note when rendering fails", async () => {
     const source = "not a valid diagram";
     mermaidRender.mockRejectedValueOnce(new Error("Parse error"));

@@ -27,9 +27,13 @@ function renderDiagram(source: string, id: string, theme: "light" | "dark") {
       theme: theme === "dark" ? "dark" : "default",
     });
     const rendered = await mermaid.render(id, source);
-    const parsed = new DOMParser().parseFromString(rendered.svg, "image/svg+xml");
-    const svg = parsed.documentElement;
-    if (svg.localName !== "svg" || parsed.querySelector("parsererror")) {
+    const parsed = new DOMParser().parseFromString(rendered.svg, "text/html");
+    const svg = parsed.body.firstElementChild;
+    if (
+      svg?.localName !== "svg" ||
+      svg.namespaceURI !== "http://www.w3.org/2000/svg" ||
+      parsed.body.childElementCount !== 1
+    ) {
       throw new Error("Invalid Mermaid SVG");
     }
     return svg;
