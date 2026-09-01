@@ -260,6 +260,7 @@ export function isCompileCheckpointCurrent(
 export interface CompileState {
   status: CompileStatus;
   phase: CompilePhase;
+  compileStartedAt: number | null;
   log: string;
   errors: CompileError[];
   pdfBytes: Uint8Array | null;
@@ -466,6 +467,7 @@ function maybePromptEngineGap(log: string, errors: CompileError[]): void {
 export const useCompileStore = create<CompileState>((set, get) => ({
   status: "idle",
   phase: "idle",
+  compileStartedAt: null,
   log: "",
   errors: [],
   pdfBytes: null,
@@ -715,6 +717,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     set({
       status: "compiling",
       phase: "saving",
+      compileStartedAt: Date.now(),
       errors: [],
       failureReason: null,
       lastAttemptIdentity: savingIdentity,

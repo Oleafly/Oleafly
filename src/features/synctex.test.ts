@@ -150,8 +150,27 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
 
     await inverseFromClick(1, 10, 10, "Introduction");
 
-    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction");
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction", 0);
     expect(mocks.gotoLine).not.toHaveBeenCalled();
+  });
+
+  it("passes the clicked occurrence through so a repeated word lands on the right one", async () => {
+    mocks.synctexInverse.mockResolvedValue({ file: "main.tex", line: 9 });
+    mocks.selectWordNearLine.mockReturnValue(true);
+
+    await inverseFromClick(1, 10, 10, "model", null, 2);
+
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(9, "model", 2);
+    expect(mocks.gotoLine).not.toHaveBeenCalled();
+  });
+
+  it("defaults to the first occurrence when the caller supplies none", async () => {
+    mocks.synctexInverse.mockResolvedValue({ file: "main.tex", line: 9 });
+    mocks.selectWordNearLine.mockReturnValue(true);
+
+    await inverseFromClick(1, 10, 10, "model");
+
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(9, "model", 0);
   });
 
   it("selects the clicked word before native inverse lookup finishes", async () => {
@@ -165,7 +184,7 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
 
     const inverse = inverseFromClick(1, 10, 10, "Introduction");
 
-    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction");
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction", 0);
     resolveHit(null);
     await inverse;
   });
@@ -176,7 +195,7 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
 
     await inverseFromClick(1, 10, 10, "Introduction");
 
-    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction");
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction", 0);
   });
 
   it("no-ops with no project open (never calls into the backend)", async () => {
@@ -196,7 +215,7 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
     mocks.synctexInverse.mockResolvedValue({ file: "main.tex", line: 7 });
     mocks.selectWordNearLine.mockReturnValue(true);
     await inverseFromClick(1, 10, 10, "If");
-    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(7, "If");
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(7, "If", 0);
     expect(mocks.gotoLine).not.toHaveBeenCalled();
   });
 
@@ -204,7 +223,7 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
     mocks.synctexInverse.mockResolvedValue({ file: "main.tex", line: 7 });
     mocks.selectWordNearLine.mockReturnValue(false);
     await inverseFromClick(1, 10, 10, "If");
-    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(7, "If");
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(7, "If", 0);
     expect(mocks.gotoLine).toHaveBeenCalledWith(7);
   });
 });

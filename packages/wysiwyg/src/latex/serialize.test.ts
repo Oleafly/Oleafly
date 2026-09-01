@@ -71,6 +71,56 @@ describe("serializeLatexBody", () => {
     expect(serializeLatexBody(doc)).toBe("\\begin{enumerate}\n  \\item one\n  \\item two\n\\end{enumerate}\n");
   });
 
+  it("serializes a nested list with indentation and round-trips it", () => {
+    const doc: import("@tiptap/core").JSONContent = {
+      type: "doc",
+      content: [
+        {
+          type: "bulletList",
+          content: [
+            {
+              type: "listItem",
+              content: [
+                { type: "paragraph", content: [{ type: "text", text: "top" }] },
+                {
+                  type: "bulletList",
+                  content: [
+                    {
+                      type: "listItem",
+                      content: [{ type: "paragraph", content: [{ type: "text", text: "inner" }] }],
+                    },
+                  ],
+                },
+              ],
+            },
+            { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "second" }] }] },
+          ],
+        },
+      ],
+    };
+    const expected =
+      "\\begin{itemize}\n  \\item top\n  \\begin{itemize}\n    \\item inner\n  \\end{itemize}\n  \\item second\n\\end{itemize}\n";
+    expect(serializeLatexBody(doc)).toBe(expected);
+    expect(serializeLatexBody(parseLatexBody(expected))).toBe(expected);
+  });
+
+  it("serializes a heading whose title carries marks and raw inline content", () => {
+    const doc: import("@tiptap/core").JSONContent = {
+      type: "doc",
+      content: [
+        {
+          type: "heading",
+          attrs: { level: 1 },
+          content: [
+            { type: "text", text: "Big", marks: [{ type: "bold" }] },
+            { type: "text", text: " idea" },
+          ],
+        },
+      ],
+    };
+    expect(serializeLatexBody(doc)).toBe("\\section{\\textbf{Big} idea}\n");
+  });
+
   it("serializes a rawBlock mixed with a heading and paragraph without losing either", () => {
     const doc: import("@tiptap/core").JSONContent = {
       type: "doc",

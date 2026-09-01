@@ -87,6 +87,11 @@ import {
   canUseSyncTexForCheckpoint,
   inverseFromClick,
 } from "@/features/synctex";
+import {
+  disarmPreviewTyping,
+  settlePreviewTyping,
+} from "@/features/preview-typing";
+import { wordOccurrenceIndex } from "@oleafly/preview/textHit";
 import { askAiAboutCompileErrors } from "@/features/ask-ai-compile-errors";
 import {
   revealInDir,
@@ -801,6 +806,14 @@ export function PreviewPane() {
   }, [compileCheckpoint, pdfBytes]);
 
   const displayedCheckpoint = viewerDocument?.checkpoint ?? null;
+  const viewerIdentity = viewerDocument?.identity ?? null;
+  useEffect(() => {
+    void viewerIdentity;
+    disarmPreviewTyping();
+    return () => {
+      disarmPreviewTyping();
+    };
+  }, [viewerIdentity]);
   const pdfIsCurrent =
     viewerDocument !== null &&
     displayedCheckpoint !== null &&
@@ -2079,14 +2092,25 @@ export function PreviewPane() {
                     onOutlineStateChange={setOutlineState}
                     onInverse={
                       syncTexAvailable
-                        ? (pageNumber, clickX, clickY, word) =>
+                        ? (pageNumber, clickX, clickY, word, textTarget) => {
+                            const typingEnabled =
+                              useSettingsStore.getState().previewTyping;
                             void inverseFromClick(
                               pageNumber,
                               clickX,
                               clickY,
                               word,
                               displayedCheckpoint,
-                            )
+                              textTarget
+                                ? wordOccurrenceIndex(
+                                    textTarget.span.textContent ?? "",
+                                    textTarget.offset,
+                                  )
+                                : 0,
+                            ).then((placed) =>
+                              settlePreviewTyping(placed, textTarget, typingEnabled),
+                            );
+                          }
                         : undefined
                     }
                     onPageChange={(current, total) => {

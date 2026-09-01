@@ -357,6 +357,22 @@ describe("file tree visibility settings", () => {
   });
 });
 
+describe("useSettingsStore previewTyping", () => {
+  it("defaults to off so clicks in the PDF stay a plain inverse search", () => {
+    expect(useSettingsStore.getState().previewTyping).toBe(false);
+  });
+
+  it("setPreviewTyping updates state and persists the toggle", () => {
+    useSettingsStore.getState().setPreviewTyping(true);
+    expect(useSettingsStore.getState().previewTyping).toBe(true);
+    expect(localStorage.getItem("oleafly.previewTyping")).toBe("1");
+
+    useSettingsStore.getState().setPreviewTyping(false);
+    expect(useSettingsStore.getState().previewTyping).toBe(false);
+    expect(localStorage.getItem("oleafly.previewTyping")).toBe("0");
+  });
+});
+
 describe("revealEditor", () => {
   it("reveals the workspace from the AI-only layout, keeping the view mode", () => {
     useSettingsStore.setState({ workspaceHidden: true, viewMode: "editor" });

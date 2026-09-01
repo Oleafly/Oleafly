@@ -135,6 +135,54 @@ function itemsOf(env: Environment): LatexNode[][] {
   return items;
 }
 
+function trimInlineEdges(nodes: JSONContent[]): JSONContent[] {
+  const out = [...nodes];
+  const trimEdge = (index: number, trim: (text: string) => string) => {
+    const node = out[index];
+    if (node?.type !== "text") return true;
+    const text = trim(node.text ?? "");
+    if (text === (node.text ?? "")) return true;
+    if (text.length === 0) {
+      out.splice(index, 1);
+      return false;
+    }
+    out[index] = { ...node, text };
+    return true;
+  };
+  while (out.length && !trimEdge(0, (t) => t.replace(/^\s+/, ""))) {}
+  while (out.length && !trimEdge(out.length - 1, (t) => t.replace(/\s+$/, ""))) {}
+  return out;
+}
+
+function listItemBlocks(itemNodes: LatexNode[]): JSONContent[] {
+  const blocks: JSONContent[] = [];
+  let inlineRun: LatexNode[] = [];
+  const flushRun = () => {
+    const content = trimInlineEdges(inlineNodesToJSON(inlineRun));
+    inlineRun = [];
+    if (content.length) blocks.push({ type: "paragraph", content });
+  };
+  for (const node of itemNodes) {
+    if (
+      node.type === "environment" &&
+      (node.env === "itemize" || node.env === "enumerate")
+    ) {
+      const mapped = environmentToJSON(node);
+      if (mapped) {
+        flushRun();
+        blocks.push(mapped);
+        continue;
+      }
+    }
+    inlineRun.push(node);
+  }
+  flushRun();
+  if (!blocks.length || blocks[0].type !== "paragraph") {
+    blocks.unshift({ type: "paragraph" });
+  }
+  return blocks;
+}
+
 function environmentToJSON(env: Environment): JSONContent | null {
   if (env.env === "quote") {
     return { type: "blockquote", content: [{ type: "paragraph", content: inlineNodesToJSON(env.content.filter((n) => n.type !== "parbreak")) }] };
@@ -144,7 +192,7 @@ function environmentToJSON(env: Environment): JSONContent | null {
       type: env.env === "itemize" ? "bulletList" : "orderedList",
       content: itemsOf(env).map((itemNodes) => ({
         type: "listItem",
-        content: [{ type: "paragraph", content: inlineNodesToJSON(itemNodes) }],
+        content: listItemBlocks(itemNodes),
       })),
     };
   }
@@ -196,7 +244,7 @@ export function parseLatexBody(
         content.push({
           type: "heading",
           attrs: { level: HEADING_LEVEL[node.content] },
-          content: [{ type: "text", text: astToText(titleNodes) }],
+          content: trimInlineEdges(inlineNodesToJSON(titleNodes)),
         });
         continue;
       }

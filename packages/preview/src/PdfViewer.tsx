@@ -40,7 +40,9 @@ import {
 } from "./pdfSearch";
 import { safePdfExternalUrl } from "./pdfSecurity";
 import { createPdfScreenReaderLayer } from "./pdfScreenReader";
-import { closestMatchingElement, wordAtHorizontalPosition, wordInText } from "./textHit";
+import { closestMatchingElement } from "./textHit";
+import { textTargetAtPoint, wordAtPoint, wordForTextTarget } from "./textTarget";
+import type { PreviewTextTarget } from "./typingEcho";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -232,58 +234,6 @@ async function probePageText(doc: pdfjsLib.PDFDocumentProxy): Promise<PageTextCo
   } finally {
     page.cleanup();
   }
-}
-
-function wordAtPoint(
-  clientX: number,
-  clientY: number,
-  eventTarget?: EventTarget | null,
-  root: ParentNode = document,
-): string | null {
-  const d = document as Document & {
-    caretRangeFromPoint?: (x: number, y: number) => Range | null;
-    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
-  };
-  const clickedSpan = closestMatchingElement<HTMLElement>(eventTarget, ".textLayer span");
-  const containingSpan =
-    clickedSpan ??
-    Array.from(root.querySelectorAll<HTMLElement>(".textLayer span")).find((span) => {
-      const rect = span.getBoundingClientRect();
-      return (
-        clientX >= rect.left &&
-        clientX <= rect.right &&
-        clientY >= rect.top &&
-        clientY <= rect.bottom
-      );
-    });
-  if (containingSpan) {
-    const text = containingSpan.textContent ?? "";
-    const rect = containingSpan.getBoundingClientRect();
-    const word = wordAtHorizontalPosition(text, rect.left, rect.width, clientX);
-    if (word) return word;
-  }
-  let node: Node | null = null;
-  let offset = 0;
-  const range = d.caretRangeFromPoint?.(clientX, clientY); // WebKit + Chromium
-  if (range) {
-    node = range.startContainer;
-    offset = range.startOffset;
-  } else {
-    const pos = d.caretPositionFromPoint?.(clientX, clientY); // Firefox / standard
-    if (pos) {
-      node = pos.offsetNode;
-      offset = pos.offset;
-    }
-  }
-  if (!node || node.nodeType !== Node.TEXT_NODE || (containingSpan && !containingSpan.contains(node))) {
-    const fallbackText =
-      containingSpan?.textContent?.trim() ??
-      document.elementFromPoint(clientX, clientY)?.closest(".textLayer span")?.textContent?.trim() ??
-      "";
-    return fallbackText || null;
-  }
-  const text = node.textContent ?? "";
-  return wordInText(text, offset);
 }
 
 // Render pages within this many CSS pixels of the viewport (above and below), so
@@ -808,7 +758,13 @@ export interface PdfViewerProps {
   /** Exact compile/PDF-load identity; never use a filename as this value. */
   documentIdentity?: string;
   scale: number;
-  onInverse?: (page: number, x: number, y: number, word?: string) => void;
+  onInverse?: (
+    page: number,
+    x: number,
+    y: number,
+    word?: string,
+    textTarget?: PreviewTextTarget,
+  ) => void;
   onPageChange?: (current: number, total: number) => void;
   layout?: PdfLayout;
   onOpenLink?: (url: string) => void;
@@ -2050,8 +2006,17 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             ev.clientY || (spanRect ? spanRect.top + spanRect.height / 2 : ev.clientY);
           const hit = pageClickToBp(wrap, p, { clientX, clientY });
           if (hit) {
-            const word = wordAtPoint(clientX, clientY, ev.target, wrap);
-            onInverseRef.current?.(hit.page, hit.x, hit.y, word ?? undefined);
+            const textTarget = textTargetAtPoint(clientX, clientY, ev.target, wrap);
+            const word = textTarget
+              ? wordForTextTarget(textTarget)
+              : wordAtPoint(clientX, clientY, ev.target, wrap);
+            onInverseRef.current?.(
+              hit.page,
+              hit.x,
+              hit.y,
+              word ?? undefined,
+              textTarget ?? undefined,
+            );
           }
         });
         container.appendChild(wrap);

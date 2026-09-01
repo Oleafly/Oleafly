@@ -10,6 +10,8 @@ const FIXTURES = [
   "\\newcommand{\\role}[4]{\\textbf{#1} \\hfill #2 \\\\\n\\textit{#3} \\hfill \\textit{#4}}\n\\role{Senior Engineer}{Google}{Mountain View}{2020 -- Present}\n",
   "\\begin{itemize}\n  \\item cut latency 38\\% and saved \\$14M/year\n\\end{itemize}\n",
   "\\textbf{Ratel} \\hfill \\href{https://x.com}{y} \\\\\n\\textit{Go} --- a rate limiter.\n",
+  "\\begin{itemize}\n  \\item top\n  \\begin{itemize}\n    \\item inner\n  \\end{itemize}\n  \\item second\n\\end{itemize}\n",
+  "\\section{\\textbf{Big} idea}\nBody text.\n",
 ];
 
 describe("LaTeX parse/serialize round-trip", () => {

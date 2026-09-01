@@ -55,6 +55,10 @@ import { resetOpenCompileMarker, shouldCompileOnOpen } from "@/lib/open-compile"
 import { useGitStatusStore } from "@/store/git-status";
 import { useGithubStore } from "@/store/github";
 import { forwardFromCursor } from "@/features/synctex";
+import {
+  autoCompileDebounceMs,
+  scheduleAutoCompile,
+} from "@/features/auto-compile";
 import { checkForUpdatesOnStartup, openUpdateWindow } from "@/lib/updater";
 import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -240,7 +244,6 @@ function VHandle({
   );
 }
 
-const AUTO_COMPILE_DEBOUNCE_MS = 2500;
 // Deactivated for 0.3.7 — see the comment at its use in the on-open effect.
 const RESTORE_PREVIEW_FROM_FINGERPRINT = false;
 
@@ -1006,6 +1009,7 @@ function AutoCompileKeeper() {
   const activeContent = useActiveContent();
   const autoCompile = useCompileStore((state) => state.autoCompile);
   const recompile = useCompileStore((state) => state.recompile);
+  const stopCompile = useCompileStore((state) => state.stopCompile);
   const pathRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -1020,22 +1024,14 @@ function AutoCompileKeeper() {
       pathRef.current = activePath;
       return;
     }
-    let timer: ReturnType<typeof setTimeout>;
-    let cancelled = false;
-    const attempt = () => {
-      if (cancelled) return;
-      if (useCompileStore.getState().status === "compiling") {
-        timer = setTimeout(attempt, 500);
-        return;
-      }
-      void recompile();
-    };
-    timer = setTimeout(attempt, AUTO_COMPILE_DEBOUNCE_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [activeContent, activePath, autoCompile, projectId, recompile]);
+    return scheduleAutoCompile({
+      editedAt: Date.now(),
+      getSnapshot: useCompileStore.getState,
+      recompile,
+      stopCompile,
+      debounceMs: autoCompileDebounceMs(useCompileStore.getState().compileTimeMs),
+    });
+  }, [activeContent, activePath, autoCompile, projectId, recompile, stopCompile]);
 
   return null;
 }

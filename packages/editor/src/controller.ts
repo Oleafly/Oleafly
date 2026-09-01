@@ -156,7 +156,18 @@ export function gotoLine(line: number) {
   revealEditorRange(v, lineObj.from);
 }
 
-export function selectWordNearLine(line: number, word: string): boolean {
+/**
+ * `occurrence` disambiguates a word that repeats on the target line. SyncTeX
+ * resolves a click to a line but not a column, so without it a click on the
+ * third "model" of a line lands the cursor on the first one. A line with fewer
+ * matches than requested falls back to the first, which is the behavior of a
+ * caller that cannot supply an index.
+ */
+export function selectWordNearLine(
+  line: number,
+  word: string,
+  occurrence = 0,
+): boolean {
   const v = getEditorView();
   if (!v) return false;
   const needle = word.trim();
@@ -170,17 +181,18 @@ export function selectWordNearLine(line: number, word: string): boolean {
     if (ln < 1 || ln > total) return null;
     const l = doc.line(ln);
     const text = l.text;
-    let whole = -1;
+    const whole: number[] = [];
     let anySub = -1;
     for (let i = text.indexOf(needle); i >= 0; i = text.indexOf(needle, i + 1)) {
       if (anySub < 0) anySub = i;
       if (!isWordChar(text[i - 1]) && !isWordChar(text[i + needle.length])) {
-        whole = i; // prefer a standalone occurrence
-        break;
+        whole.push(i); // prefer standalone occurrences
       }
     }
-    const idx = whole >= 0 ? whole : anySub;
-    return idx < 0 ? null : { from: l.from + idx, to: l.from + idx + needle.length };
+    const idx = whole[occurrence] ?? whole[0] ?? anySub;
+    return idx === undefined || idx < 0
+      ? null
+      : { from: l.from + idx, to: l.from + idx + needle.length };
   };
 
   const furthestLine = Math.max(target - 1, total - target);

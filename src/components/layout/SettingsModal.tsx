@@ -181,6 +181,8 @@ export function SettingsModal() {
   const setOffline = useSettingsStore((s) => s.setOffline);
   const visualEditor = useSettingsStore((s) => s.visualEditor);
   const setVisualEditor = useSettingsStore((s) => s.setVisualEditor);
+  const previewTyping = useSettingsStore((s) => s.previewTyping);
+  const setPreviewTyping = useSettingsStore((s) => s.setPreviewTyping);
   const latexTools = useSettingsStore((s) => s.latexTools);
   const webBrowser = useSettingsStore((s) => s.webBrowser);
   const setWebBrowser = useSettingsStore((s) => s.setWebBrowser);
@@ -1045,6 +1047,12 @@ export function SettingsModal() {
                   description="Show the Visual/Code toggle in the document editor. Off by default, so documents open in the code editor only. Diagrams always keep their own canvas toggle."
                   checked={visualEditor}
                   onChange={setVisualEditor}
+                />
+                <SettingsToggleRow
+                  label="Type in the preview"
+                  description="Click text in the compiled PDF to put the cursor at that spot in your source, then keep typing. Keystrokes go into the source file and show up at the click point until the next compile redraws the page. Needs a compiler with source sync."
+                  checked={previewTyping}
+                  onChange={setPreviewTyping}
                 />
                 <SettingsToggleRow
                   label="LaTeX tools"
