@@ -9,6 +9,7 @@ import {
   validateCompileFingerprint,
   type CompileError,
   type CompileResult,
+  type LogDiagnostic,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { engineHintDismissed, useEnginePickerStore } from "@/store/engine-picker";
@@ -264,6 +265,7 @@ export interface CompileState {
   phase: CompilePhase;
   log: string;
   errors: CompileError[];
+  diagnostics: LogDiagnostic[] | null;
   pdfBytes: Uint8Array | null;
   lastAttemptIdentity: CompileRequestIdentity | null;
   failureReason: string | null;
@@ -470,6 +472,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
   phase: "idle",
   log: "",
   errors: [],
+  diagnostics: null,
   pdfBytes: null,
   lastAttemptIdentity: null,
   failureReason: null,
@@ -521,6 +524,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       phase: "idle",
       log: "",
       errors: [],
+      diagnostics: null,
       pdfBytes: null,
       lastAttemptIdentity: null,
       failureReason: null,
@@ -564,6 +568,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       pdfBytes: bytes,
       failureReason: null,
       errors: [],
+      diagnostics: null,
       log: validated.log,
       lastCompiledAt: checkpoint.completedAt,
       lastCompileCheckpoint: checkpoint,
@@ -718,6 +723,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       status: "compiling",
       phase: "saving",
       errors: [],
+      diagnostics: null,
       failureReason: null,
       lastAttemptIdentity: savingIdentity,
     });
@@ -841,6 +847,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         phase: "building",
         log: offlinePolicy.notice ? `${offlinePolicy.notice}\n` : "",
         errors: [],
+        diagnostics: null,
         lastAttemptIdentity: requestIdentity,
         failureReason: null,
       };
@@ -1004,6 +1011,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
             : outputIdentityError.trim() ||
               "Compilation did not produce a valid current PDF.",
           errors: result.errors,
+          diagnostics: result.diagnostics ?? null,
           log: `${offlinePolicy.notice ? `${offlinePolicy.notice}\n` : ""}${result.log}${outputIdentityError}`,
           lastCompiledAt: checkpoint?.completedAt ?? state.lastCompiledAt,
           lastCompileCheckpoint:

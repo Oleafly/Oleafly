@@ -21,12 +21,14 @@ import type {
   ProjectFileUpsert,
   ProjectUnreadableFile,
 } from "@/lib/project-intelligence/worker-protocol";
-import { readFileContent } from "@/lib/tauri";
+import {
+  readProjectSourcesBatch,
+  resetProjectSourcesCache,
+} from "@/lib/project-sources";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useFilesStore } from "@/store/files";
 
 const PROJECT_ANALYSIS_IDLE_MS = 300;
-const READ_CONCURRENCY = 8;
 
 export interface IndexStore {
   index: ProjectIndex | null;
@@ -100,6 +102,7 @@ function stopAnalysisTimer(): void {
 
 function resetRuntimeState(): void {
   stopAnalysisTimer();
+  resetProjectSourcesCache();
   activeProjectId = null;
   projectRevision = 0;
   filesystemEpoch = 0;
@@ -116,6 +119,7 @@ function resetRuntimeState(): void {
 function ensureProject(projectId: string): void {
   if (activeProjectId === projectId) return;
   stopAnalysisTimer();
+  resetProjectSourcesCache();
   activeProjectId = projectId;
   projectRevision = 0;
   filesystemEpoch = 0;
@@ -245,31 +249,19 @@ export async function readProjectSources(
   unreadable: Set<string>;
 }> {
   const texts: Record<string, string> = {};
-  const unreadable = new Set<string>();
-  let cursor = 0;
   const files = useFilesStore.getState();
-  const readers = Array.from(
-    { length: Math.min(READ_CONCURRENCY, Math.max(1, paths.length)) },
-    async () => {
-      for (;;) {
-        const index = cursor++;
-        if (index >= paths.length) return;
-        const path = paths[index];
-        const open = files.files[path];
-        if (open && (!options.diskForDirty || !open.dirty)) {
-          texts[path] = open.content;
-          continue;
-        }
-        try {
-          texts[path] = await readFileContent(projectId, path);
-        } catch {
-          unreadable.add(path);
-        }
-      }
-    },
-  );
-  await Promise.all(readers);
-  return { texts, unreadable };
+  const diskPaths: string[] = [];
+  for (const path of paths) {
+    const open = files.files[path];
+    if (open && (!options.diskForDirty || !open.dirty)) {
+      texts[path] = open.content;
+    } else {
+      diskPaths.push(path);
+    }
+  }
+  const loaded = await readProjectSourcesBatch(projectId, diskPaths);
+  Object.assign(texts, loaded.texts);
+  return { texts, unreadable: loaded.unreadable };
 }
 
 export const useIndexStore = create<IndexStore>((set, get) => {

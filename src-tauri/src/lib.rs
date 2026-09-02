@@ -42,6 +42,7 @@ mod ollama;
 mod paths;
 mod proc;
 mod project;
+mod project_sources;
 mod protocol;
 mod quit_gate;
 // Thread persistence; the thread-store commands land on top of it next.
@@ -351,6 +352,7 @@ pub fn run() {
             project::append_app_log,
             project::read_app_log,
             project::has_pandoc,
+            project_sources::read_project_sources,
             project::download_pandoc,
             latex_engine::latex_engine_info,
             latex_engine::tinytex_install_state,

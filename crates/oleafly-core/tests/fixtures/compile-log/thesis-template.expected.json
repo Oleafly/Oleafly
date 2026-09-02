@@ -1,0 +1,82 @@
+{
+ "rootFile": "main.tex",
+ "diagnostics": [
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./fontenc.sty",
+   "line": 11,
+   "message": "LaTeX Font: Trying to load font information for T1+lmr\n2.\n (t1lmr.fd\nFile: t1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern\n)) (geometry.sty\nPackage: geometry 2020/01/02 v5.9 Page Geometry\n (keyval.sty\nPackage: keyval 2014/10/28 v1.15 key=value parser (DPC)\n\\KV@toks@=\\toks16\n) (ifvtex.sty\nPackage: ifvtex 2019/10/25 v1.7 ifvtex legacy package. Use iftex instead."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./amsmath.sty",
+   "line": 234,
+   "message": "LaTeX: Redefining \\frac.\n\\uproot@=\\count194\n\\leftroot@=\\count195\nLaTeX Info: Redefining \\overline on input line 399.\n\\classnum@=\\count196\n\\DOTSCASE@=\\count197\nLaTeX Info: Redefining \\ldots on input line 496.\nLaTeX Info: Redefining \\dots on input line 499.\nLaTeX Info: Redefining \\cdots on input line 620.\n\\Mathstrutbox@=\\box50\n\\strutbox@=\\box51\n\\big@size=\\dimen149\nLaTeX Font Info:    Redeclaring font encoding OML on input line 743.\nLaTeX Font Info:    Redeclaring font encoding OMS on input line 744.\n\\macc@depth=\\count198\n\\c@MaxMatrixCols=\\count199\n\\dotsspace@=\\muskip16\n\\c@parentequation=\\count266\n\\dspbrk@lvl=\\count267\n\\tag@help=\\toks19\n\\row@=\\count268\n\\column@=\\count269\n\\maxfields@=\\count270\n\\andhelp@=\\toks20\n\\eqnshift@=\\dimen150\n\\alignsep@=\\dimen151\n\\tagshift@=\\dimen152\n\\tagwidth@=\\dimen153\n\\totwidth@=\\dimen154\n\\lineht@=\\dimen155\n\\@envbody=\\toks21\n\\multlinegap=\\skip50\n\\multlinetaggap=\\skip51\n\\mathdisplay@stack=\\toks22\nLaTeX Info: Redefining \\[ on input line 2938.\nLaTeX Info: Redefining \\] on input line 2939.\n) (amssymb.sty\nPackage: amssymb 2013/01/14 v3.01 AMS font symbols"
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./amsfonts.sty",
+   "line": 106,
+   "message": "LaTeX Font: Redeclaring math symbol \\hbar.\nLaTeX Font Info:    Overwriting math alphabet `\\mathfrak' in version `bold'\n(Font)\tU/euf/m/n --> U/euf/b/n.\n)) (graphicx.sty\nPackage: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)\n (graphics.sty\nPackage: graphics 2021/03/04 v1.4d Standard LaTeX Graphics (DPC,SPQR)\n (trig.sty\nPackage: trig 2021/08/11 v1.11 sin cos tan (DPC)\n) (graphics.cfg\nFile: graphics.cfg 2016/06/04 v1.11 sample graphics configuration\n)\nPackage graphics Info: Driver file: xetex.def on input line 107."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./pdftexcmds.sty",
+   "line": null,
+   "message": "Package pdftexcmds: \\pdf@primitive is available.\nPackage pdftexcmds Info: \\pdf@ifprimitive is available.\nPackage pdftexcmds Info: \\pdfdraftmode not found.\n) (kvsetkeys.sty\nPackage: kvsetkeys 2019/12/15 v1.18 Key value parser (HO)\n) (kvdefinekeys.sty\nPackage: kvdefinekeys 2019-12-19 v1.6 Define keys (HO)\n) (pdfescape.sty\nPackage: pdfescape 2019/12/09 v1.15 Implements pdfTeX's escape features (HO)\n)\n(hycolor.sty\nPackage: hycolor 2020-01-27 v1.10 Color options for hyperref/bookmark (HO)\n) (letltxmacro.sty\nPackage: letltxmacro 2019/12/03 v1.6 Let assignment for LaTeX macros (HO)\n) (auxhook.sty\nPackage: auxhook 2019-12-17 v1.6 Hooks for auxiliary files (HO)\n) (kvoptions.sty\nPackage: kvoptions 2020-10-07 v3.14 Key value format for package options (HO)\n)\n\\@linkdim=\\dimen158\n\\Hy@linkcounter=\\count271\n\\Hy@pagecounter=\\count272\n (pd1enc.def\nFile: pd1enc.def 2022-02-21 v7.00n Hyperref: PDFDocEncoding definition (HO)\n)\n(intcalc.sty\nPackage: intcalc 2019/12/15 v1.3 Expandable calculations with integers (HO)\n) (etexcmds.sty\nPackage: etexcmds 2019/12/15 v1.7 Avoid name clashes with e-TeX commands (HO)\n)\n\\Hy@SavedSpaceFactor=\\count273\n (puenc.def\nFile: puenc.def 2022-02-21 v7.00n Hyperref: PDF Unicode definition (HO)\n)\nPackage hyperref Info: Hyper figures OFF on input line 4137.\nPackage hyperref Info: Link nesting OFF on input line 4142.\nPackage hyperref Info: Hyper index ON on input line 4145.\nPackage hyperref Info: Plain pages OFF on input line 4152.\nPackage hyperref Info: Backreferencing OFF on input line 4157.\nPackage hyperref Info: Implicit mode ON; LaTeX internals redefined.\nPackage hyperref Info: Bookmarks ON on input line 4390.\n\\c@Hy@tempcnt=\\count274\n (url.sty\n\\Urlmuskip=\\muskip17\nPackage: url 2013/09/16  ver 3.4  Verb mode for urls, etc.\n)\nLaTeX Info: Redefining \\url on input line 4749.\n\\XeTeXLinkMargin=\\dimen159\n (bitset.sty\nPackage: bitset 2019/12/09 v1.3 Handle bit-vector datatype (HO)\n (bigintcalc.sty\nPackage: bigintcalc 2019/12/15 v1.5 Expandable calculations on big integers (HO\n)\n))\n\\Fld@menulength=\\count275\n\\Field@Width=\\dimen160\n\\Fld@charsize=\\dimen161\nPackage hyperref Info: Hyper figures OFF on input line 6027.\nPackage hyperref Info: Link nesting OFF on input line 6032.\nPackage hyperref Info: Hyper index ON on input line 6035.\nPackage hyperref Info: backreferencing OFF on input line 6042.\nPackage hyperref Info: Link coloring OFF on input line 6047.\nPackage hyperref Info: Link coloring with OCG OFF on input line 6052.\nPackage hyperref Info: PDF/A mode OFF on input line 6057.\nLaTeX Info: Redefining \\ref on input line 6097.\nLaTeX Info: Redefining \\pageref on input line 6101.\n (atbegshi-ltx.sty\nPackage: atbegshi-ltx 2021/01/10 v1.0c Emulation of the original atbegshi\npackage with kernel methods\n)\n\\Hy@abspage=\\count276\n\\c@Item=\\count277\n\\c@Hfootnote=\\count278\n)\nPackage hyperref Info: Driver (autodetected): hxetex.\n (hxetex.def\nFile: hxetex.def 2022-02-21 v7.00n Hyperref driver for XeTeX\n (stringenc.sty\nPackage: stringenc 2019/11/29 v1.12 Convert strings between diff. encodings (HO\n)\n)\n\\pdfm@box=\\box52\n\\c@Hy@AnnotLevel=\\count279\n\\HyField@AnnotCount=\\count280\n\\Fld@listcount=\\count281\n\\c@bookmark@seq@number=\\count282\n (rerunfilecheck.sty\nPackage: rerunfilecheck 2019/12/05 v1.9 Rerun checks for auxiliary files (HO)"
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./pdftexcmds.sty",
+   "line": 2,
+   "message": "Package uniquecounter: New unique counter `rerunfilecheck'\n86.\n)\n\\Hy@SectionHShift=\\skip52\n) (l3backend-xetex.def\nFile: l3backend-xetex.def 2022-02-07 L3 backend support: XeTeX\n\\c__kernel_sys_dvipdfmx_version_int=\\count283\n\\l__color_backend_stack_int=\\count284\n\\g__color_backend_stack_int=\\count285\n\\g__graphics_track_int=\\count286\n\\l__pdf_internal_box=\\box53\n\\g__pdf_backend_object_int=\\count287\n\\g__pdf_backend_annotation_int=\\count288\n\\g__pdf_backend_link_int=\\count289\n) (main.aux)\n\\openout1 = `main.aux'."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./pdftexcmds.sty",
+   "line": 11,
+   "message": "LaTeX Font: Checking defaults for OML/cmm/m/it.\nLaTeX Font Info:    ... okay on input line 11.\nLaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 11.\nLaTeX Font Info:    ... okay on input line 11.\nLaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 11.\nLaTeX Font Info:    ... okay on input line 11.\nLaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 11.\nLaTeX Font Info:    ... okay on input line 11.\nLaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 11.\nLaTeX Font Info:    Trying to load font information for TS1+cmr on input line 1\n1."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./pdftexcmds.sty",
+   "line": 11,
+   "message": "LaTeX Font: ... okay.\nLaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 11.\nLaTeX Font Info:    ... okay on input line 11.\nLaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 11.\nLaTeX Font Info:    ... okay on input line 11.\nLaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 11.\nLaTeX Font Info:    ... okay on input line 11.\nLaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 11.\nLaTeX Font Info:    ... okay on input line 11.\nLaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 11.\nLaTeX Font Info:    ... okay on input line 11."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./pdftexcmds.sty",
+   "line": 11,
+   "message": "Package hyperref: Link coloring OFF.\n(nameref.sty\nPackage: nameref 2021-04-02 v2.47 Cross-referencing by name of section\n (refcount.sty\nPackage: refcount 2019/12/15 v3.6 Data extraction from label references (HO)\n) (gettitlestring.sty\nPackage: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)\n)\n\\c@section@level=\\count290\n)\nLaTeX Info: Redefining \\ref on input line 11.\nLaTeX Info: Redefining \\pageref on input line 11.\nLaTeX Info: Redefining \\nameref on input line 11.\n (main.out) (main.out)\n\\@outlinefile=\\write3\n\\openout3 = `main.out'."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.toc",
+   "line": 2,
+   "message": "LaTeX Font: Trying to load font information for U+msa.\n (umsa.fd\nFile: umsa.fd 2013/01/14 v3.01 AMS symbols A\n)\nLaTeX Font Info:    Trying to load font information for U+msb on input line 2.\n (umsb.fd\nFile: umsb.fd 2013/01/14 v3.01 AMS symbols B\n))\n\\tf@toc=\\write4\n\\openout4 = `main.toc'."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.toc",
+   "line": 3,
+   "message": "LaTeX Font: Trying to load font information for T1+lmtt\n4.\n(t1lmtt.fd\nFile: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern\n) [2"
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./main.toc",
+   "line": null,
+   "message": "Package rerunfilecheck: File `main.out' has not changed.\n(rerunfilecheck)\tChecksum: DDC52F4181788BD20ED715AAE4B55FA5;663.\n )\nOutput written on main.xdv (8 pages, 7192 bytes)."
+  }
+ ]
+}

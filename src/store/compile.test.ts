@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
+import type { CompileResult, LogDiagnostic } from "@oleafly/backend-port";
 
 const mocks = vi.hoisted(() => ({
   events: new Map<string, (event: { payload: string }) => void>(),
@@ -917,5 +918,52 @@ describe("compile options", () => {
   it("asks the backend to end the running compile", async () => {
     await useCompileStore.getState().stopCompile();
     expect(mocks.cancelCompile).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("compile log diagnostics", () => {
+  const diagnostic: LogDiagnostic = {
+    severity: "warning",
+    category: "undefined-reference",
+    file: "./main.tex",
+    line: 10,
+    message: "Cannot find reference `fig:x`.",
+  };
+  const failedResult: CompileResult = {
+    ok: false,
+    has_pdf: false,
+    output_id: null,
+    output_revision: null,
+    log: "failed",
+    errors: [],
+    synctex_path: null,
+    out_dir: null,
+    compile_time_ms: 1,
+  };
+
+  it("resets diagnostics when a compile starts and stores the backend diagnostics from the result", async () => {
+    useCompileStore.setState({ diagnostics: [diagnostic] });
+    const compile = deferred<CompileResult>();
+    mocks.compileProject.mockReturnValue(compile.promise);
+    const compiling = useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalled());
+    expect(useCompileStore.getState().diagnostics).toBeNull();
+    compile.resolve({ ...failedResult, diagnostics: [diagnostic] });
+    await compiling;
+    expect(useCompileStore.getState().status).toBe("error");
+    expect(useCompileStore.getState().diagnostics).toEqual([diagnostic]);
+  });
+
+  it("leaves diagnostics unset when the backend result carries none", async () => {
+    mocks.compileProject.mockResolvedValue(failedResult);
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().status).toBe("error");
+    expect(useCompileStore.getState().diagnostics).toBeNull();
+  });
+
+  it("clears diagnostics on reset", () => {
+    useCompileStore.setState({ diagnostics: [diagnostic] });
+    useCompileStore.getState().reset();
+    expect(useCompileStore.getState().diagnostics).toBeNull();
   });
 });

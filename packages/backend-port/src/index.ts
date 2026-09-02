@@ -82,6 +82,26 @@ export interface CompileError {
     kind: string;
     explanation: string | null;
 }
+export type LogSeverity = "error" | "warning" | "info" | "typesetting";
+export type LogCategory =
+    | "error"
+    | "undefined-reference"
+    | "undefined-citation"
+    | "package-warning"
+    | "overfull-box"
+    | "underfull-box"
+    | "missing-character"
+    | "info"
+    | "bibtex"
+    | "biber";
+export interface LogDiagnostic {
+    readonly severity: LogSeverity;
+    readonly message: string;
+    readonly file: string | null;
+    readonly line: number | null;
+    readonly category: LogCategory;
+    readonly errorContext?: string;
+}
 export type CheckpointSkipReason =
     | "invalid_policy"
     | "dependency_evidence_unavailable"
@@ -113,6 +133,7 @@ export interface CompileResult {
     output_revision: number | null;
     log: string;
     errors: CompileError[];
+    diagnostics?: LogDiagnostic[];
     synctex_path: string | null;
     out_dir: string | null;
     compile_time_ms: number;
@@ -154,6 +175,30 @@ export interface ValidatedCompileFingerprint {
     compiled_at_ms: number;
     /** Log of the fingerprinted compile; restores the logs pane on reopen. */
     log: string;
+}
+export interface ProjectSourcesKnownHash {
+    path: string;
+    hash: string;
+}
+export interface ProjectSourcesRequest {
+    paths: string[];
+    known: ProjectSourcesKnownHash[];
+}
+export interface ProjectSourceFile {
+    path: string;
+    hash: string;
+    text: string;
+}
+export interface ProjectSourcesUnreadable {
+    path: string;
+    message: string;
+}
+export interface ProjectSourcesResult {
+    files: ProjectSourceFile[];
+    unchanged: string[];
+    unreadable: ProjectSourcesUnreadable[];
+    oversized?: string[];
+    truncated: boolean;
 }
 /** Null means the persisted record is missing or stale: compile normally. */
 export interface FileEntry {
@@ -628,6 +673,7 @@ export interface BackendPort {
   saveProjectChats: (projectId: string, json: string) => Promise<void>;
   listFiles: (projectId: string) => Promise<FileEntry[]>;
   readFileContent: (projectId: string, path: string) => Promise<string>;
+  readProjectSourcesBatch: (projectId: string, request: ProjectSourcesRequest) => Promise<ProjectSourcesResult>;
   writeFileContent: (projectId: string, path: string, content: string, expectedGeneration?: number) => Promise<FileMutationResult>;
   createFile(projectId: string, path: string, isDir: boolean, conflictStrategy?: FileConflictStrategy, expectedGeneration?: number): Promise<{
     path: string;

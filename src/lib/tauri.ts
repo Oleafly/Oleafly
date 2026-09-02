@@ -48,6 +48,8 @@ import type {
   Prerequisite,
   ProjectInfo,
   ProjectMeta,
+  ProjectSourcesRequest,
+  ProjectSourcesResult,
   ProjectStateChanged,
   ProviderModel,
   RecycledProjectInfo,
@@ -293,6 +295,11 @@ export const listFiles = (projectId: string) =>
 
 export const readFileContent = (projectId: string, path: string) =>
   invoke<string>("read_file", { projectId, path });
+
+export const readProjectSourcesBatch = (
+  projectId: string,
+  request: ProjectSourcesRequest,
+) => invoke<ProjectSourcesResult>("read_project_sources", { projectId, request });
 
 export const writeFileContent = (
   projectId: string,

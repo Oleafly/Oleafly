@@ -33,6 +33,13 @@ making document engines, filesystem policy, and external integrations explicit.
 5. The preview consumes the accepted artifact and optional SyncTeX map.
 6. Preflight and AI tools consume the same project snapshot and result policy.
 
+Step 2 reads project source through a single `read_project_sources` call
+instead of one `read_file` per path. Rust hashes every file and sends text back
+only where the hash differs from what the caller already holds, so a rebuild
+after one edit returns a list of paths rather than the whole project. The cache
+of those hashes lives in `src/lib/project-sources.ts`, which reverts to
+per-file reads when the batch command is missing.
+
 ## Extension model
 
 The contribution registry is the supported application extension point. Tabs,
@@ -70,6 +77,13 @@ Within the desktop adapter, `DocumentEngine` is the capability contract for
 LaTeX, Typst, and Markdown. It declares source extensions, formatting profile,
 compile policy, SyncTeX/offline/isolated-compile capabilities, and conversion
 exports. The UI must not infer engine behavior from a filename extension.
+
+LaTeX log parsing lives in `oleafly-core::parse_latex_log`, next to the project
+policy both runtimes share. The desktop calls it once a compile finishes and
+returns the grouped result in `CompileResult.diagnostics`, so the log pane no
+longer reparses the whole log on every streamed chunk. The TypeScript parser in
+`@oleafly/latex` remains the fallback for a backend that does not send the
+field.
 
 ## Security boundary
 

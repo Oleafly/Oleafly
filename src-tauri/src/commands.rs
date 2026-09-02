@@ -298,6 +298,7 @@ pub async fn compile_project(
                 output_revision: None,
                 log: "superseded by a newer compile request".into(),
                 errors: Vec::new(),
+                diagnostics: Vec::new(),
                 synctex_path: None,
                 out_dir: None,
                 compile_time_ms: 0,

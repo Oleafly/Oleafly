@@ -1281,6 +1281,7 @@ pub struct CompileResult {
     pub output_revision: Option<u64>,
     pub log: String,
     pub errors: Vec<CompileError>,
+    pub diagnostics: Vec<oleafly_core::LogDiagnostic>,
     pub synctex_path: Option<String>,
     pub out_dir: Option<String>,
     pub compile_time_ms: u64,
@@ -1740,6 +1741,11 @@ async fn finish_compile(
     let ok = compile_succeeded(
         request, &spec, stopped, has_pdf, exit_code, &errors, &mut log,
     );
+    let root_file = match request.target {
+        CompileTarget::Main { main_document } => Some(main_document.to_string()),
+        CompileTarget::Isolated { .. } => None,
+    };
+    let (log, diagnostics) = parse_log_diagnostics(request.engine.id(), log, root_file).await?;
     Ok(build_compile_result(
         capabilities,
         spec,
@@ -1750,9 +1756,27 @@ async fn finish_compile(
             has_pdf,
             output_id,
             errors,
+            diagnostics,
             log,
         },
     ))
+}
+
+async fn parse_log_diagnostics(
+    engine: DocumentEngineId,
+    log: String,
+    root_file: Option<String>,
+) -> Result<(String, Vec<oleafly_core::LogDiagnostic>), String> {
+    let is_tex = matches!(engine, DocumentEngineId::Latex | DocumentEngineId::Latexmk);
+    if !is_tex || root_file.is_none() {
+        return Ok((log, Vec::new()));
+    }
+    tokio::task::spawn_blocking(move || {
+        let diagnostics = oleafly_core::parse_latex_log(&log, root_file.as_deref());
+        (log, diagnostics)
+    })
+    .await
+    .map_err(|error| format!("failed to parse the compile log: {error}"))
 }
 
 fn compile_succeeded(
@@ -1893,6 +1917,7 @@ struct CompileResultParts {
     has_pdf: bool,
     output_id: Option<String>,
     errors: Vec<CompileError>,
+    diagnostics: Vec<oleafly_core::LogDiagnostic>,
     log: String,
 }
 
@@ -1915,6 +1940,7 @@ fn build_compile_result(
         output_id: parts.output_id,
         output_revision: None,
         errors: parts.errors,
+        diagnostics: parts.diagnostics,
         log: parts.log,
         synctex_path,
         out_dir: Some(spec.artifacts.output_dir.to_string_lossy().into_owned()),
