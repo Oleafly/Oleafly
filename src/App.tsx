@@ -19,7 +19,6 @@ import { ThemeProvider } from "@/lib/theme";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
-import { TerminalPane } from "@/components/dock/TerminalPane";
 import { Editor } from "@/components/editor/Editor";
 import { editorUndo, editorRedo } from "@/components/editor/cm/controller";
 import { PreviewPane } from "@/components/preview/PreviewPane";
@@ -180,6 +179,9 @@ const LiteratureSearchToolView = lazy(() =>
   import("@/components/tools/LiteratureSearchToolView").then((m) => ({
     default: m.LiteratureSearchToolView,
   })),
+);
+const TerminalPane = lazy(() =>
+  import("@/components/dock/TerminalPane").then((m) => ({ default: m.TerminalPane })),
 );
 
 // fallback must stay null - a visible one blocks the whole screen (these mount unconditionally, closed by default).
@@ -970,11 +972,13 @@ function AppContent() {
                   )}
                 >
                   <ErrorBoundary surface="terminal dock" resetKey={projectId}>
-                    <TerminalPane
-                      projectId={projectId}
-                      projectName={projectName}
-                      visible={terminalOpen}
-                    />
+                    <Suspense fallback={<SurfaceLoading label="Loading terminal" />}>
+                      <TerminalPane
+                        projectId={projectId}
+                        projectName={projectName}
+                        visible={terminalOpen}
+                      />
+                    </Suspense>
                   </ErrorBoundary>
                 </div>
               </Panel>

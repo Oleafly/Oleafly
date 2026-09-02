@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -28,6 +29,13 @@ function terminalOutputCallback(
   return () => {
     target.dataset.terminalOutput = terminalBufferText(terminal);
   };
+}
+
+function recordTerminalEvent(entry: string) {
+  if (!E2E_HOOKS) return;
+  const w = window as typeof window & { __e2eTerminalEvents?: string[] };
+  w.__e2eTerminalEvents = w.__e2eTerminalEvents ?? [];
+  w.__e2eTerminalEvents.push(entry);
 }
 
 function writeTerminalError(
@@ -71,10 +79,12 @@ export function TerminalPane({
   const visibleRef = useRef(visible);
   const previousVisibleRef = useRef(visible);
   visibleRef.current = visible;
+  const startWithProject = useSettingsStore((state) => state.terminalStartWithProject);
   const [booted, setBooted] = useState(false);
-  const [sessionEnded, setSessionEnded] = useState(false);
+  const [endedProjectId, setEndedProjectId] = useState<string | null>(null);
+  const sessionEnded = endedProjectId === projectId;
   const [activatedProjectId, setActivatedProjectId] = useState<string | null>(
-    visible ? projectId : null,
+    visible || startWithProject ? projectId : null,
   );
   const setTerminalOpen = useSettingsStore((state) => state.setTerminalOpen);
   const terminalFontSize = useSettingsStore((state) => state.terminalFontSize);
@@ -116,14 +126,14 @@ export function TerminalPane({
     const becameVisible = visible && !previousVisibleRef.current;
     previousVisibleRef.current = visible;
     if (
-      visible &&
+      (visible || startWithProject) &&
       activatedProjectId !== projectId &&
       (!sessionEnded || becameVisible)
     ) {
       setActivatedProjectId(projectId);
     }
-    if (becameVisible && sessionEnded) setSessionEnded(false);
-  }, [activatedProjectId, projectId, sessionEnded, visible]);
+    if (becameVisible && sessionEnded) setEndedProjectId(null);
+  }, [activatedProjectId, projectId, sessionEnded, startWithProject, visible]);
 
   useEffect(() => {
     if (activatedProjectId !== projectId || sessionEnded) return;
@@ -156,8 +166,13 @@ export function TerminalPane({
     const outputWritten = terminalOutputCallback(terminal, outputTarget);
     outputWrittenRef.current = outputWritten;
     if (outputWritten && outputTarget) outputTarget.dataset.terminalOutput = "";
-    fit.fit();
-    terminal.focus();
+    if (visibleRef.current) {
+      fit.fit();
+      terminal.focus();
+    } else if (host.clientWidth > 0) {
+      const proposed = fit.proposeDimensions();
+      if (proposed) terminal.resize(proposed.cols, terminal.rows);
+    }
     terminalRef.current = terminal;
     fitRef.current = fit;
 
@@ -181,15 +196,11 @@ export function TerminalPane({
     };
     const channel = new Channel<TerminalChannelMessage>();
     channel.onmessage = (message) => {
-      if (E2E_HOOKS) {
-        const w = window as typeof window & { __e2eTerminalEvents?: string[] };
-        w.__e2eTerminalEvents = w.__e2eTerminalEvents ?? [];
-        w.__e2eTerminalEvents.push(
-          message.event === "output"
-            ? "output"
-            : `exit(disposed=${disposed},exited=${sessionExited})`,
-        );
-      }
+      recordTerminalEvent(
+        message.event === "output"
+          ? "output"
+          : `exit(disposed=${disposed},exited=${sessionExited})`,
+      );
       if (disposed || sessionExited) return;
       if (message.event === "output") {
         setBooted(true);
@@ -205,21 +216,21 @@ export function TerminalPane({
       sessionLiveRef.current = false;
       sessionId = null;
       sessionIdRef.current = null;
-      setSessionEnded(true);
+      setEndedProjectId(projectId);
       setTerminalOpen(false);
     };
-    void invoke<string>("term_open", {
-      projectId,
-      cols: terminal.cols,
-      rows: terminal.rows,
-      channel,
-    })
+    const openedCols = terminal.cols;
+    const openedRows = terminal.rows;
+    let openTimer: number | null = window.setTimeout(() => {
+      openTimer = null;
+      void invoke<string>("term_open", {
+        projectId,
+        cols: openedCols,
+        rows: openedRows,
+        channel,
+      })
       .then((id) => {
-        if (E2E_HOOKS) {
-          const w = window as typeof window & { __e2eTerminalEvents?: string[] };
-          w.__e2eTerminalEvents = w.__e2eTerminalEvents ?? [];
-          w.__e2eTerminalEvents.push(`open:ok:${id}`);
-        }
+        recordTerminalEvent(`open:ok:${id}`);
         if (disposed || sessionExited) {
           void invoke("term_kill", { id, projectId }).catch(() => {});
           return;
@@ -230,19 +241,34 @@ export function TerminalPane({
         sessionLiveRef.current = true;
         for (const data of pendingInput.splice(0)) writeInput(id, data);
         setBooted(true);
+        if (visibleRef.current || terminal.cols !== openedCols || terminal.rows !== openedRows) {
+          void invoke("term_resize", {
+            id,
+            projectId,
+            cols: terminal.cols,
+            rows: terminal.rows,
+          }).catch((error) => {
+            if (!disposed && sessionLive) {
+              writeTerminalErrorOnce(
+                terminal,
+                surfacedErrorsRef.current,
+                "The terminal could not resize",
+                error,
+                outputWritten,
+              );
+            }
+          });
+        }
         if (visibleRef.current) terminal.focus();
       })
       .catch((error) => {
-        if (E2E_HOOKS) {
-          const w = window as typeof window & { __e2eTerminalEvents?: string[] };
-          w.__e2eTerminalEvents = w.__e2eTerminalEvents ?? [];
-          w.__e2eTerminalEvents.push(`open:error:${String(error)}`);
-        }
+        recordTerminalEvent(`open:error:${String(error)}`);
         pendingInput.length = 0;
         if (disposed || sessionExited) return;
         setBooted(true);
         writeTerminalError(terminal, "The shell could not start", error, outputWritten);
       });
+    }, 0);
 
     const dataSub = terminal.onData((data) => {
       if (sessionLive && sessionId) {
@@ -277,6 +303,10 @@ export function TerminalPane({
 
     return () => {
       disposed = true;
+      if (openTimer !== null) {
+        window.clearTimeout(openTimer);
+        openTimer = null;
+      }
       sessionLive = false;
       sessionLiveRef.current = false;
       pendingInput.length = 0;
@@ -307,9 +337,10 @@ export function TerminalPane({
       foreground: terminalForeground,
       cursor: terminalCursorColor,
     };
+    if (!visibleRef.current) return;
     fitRef.current?.fit();
     const id = sessionIdRef.current;
-    if (id && sessionLiveRef.current && visibleRef.current) {
+    if (id && sessionLiveRef.current) {
       void invoke("term_resize", {
         id,
         projectId,
@@ -385,7 +416,7 @@ export function TerminalPane({
 
   return (
     <div
-      className="relative h-full w-full p-2"
+      className={cn("relative w-full", visible ? "h-full p-2" : "h-0 overflow-hidden p-0")}
       data-testid="dock-terminal"
       data-terminal-font-size={terminalFontSize}
       data-terminal-color-theme={terminalColorTheme}

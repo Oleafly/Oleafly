@@ -445,6 +445,12 @@ function TerminalAppearanceTab() {
   const setTerminalCursorBlink = useSettingsStore(
     (state) => state.setTerminalCursorBlink,
   );
+  const terminalStartWithProject = useSettingsStore(
+    (state) => state.terminalStartWithProject,
+  );
+  const setTerminalStartWithProject = useSettingsStore(
+    (state) => state.setTerminalStartWithProject,
+  );
   const terminalColorTheme = useSettingsStore(
     (state) => state.terminalColorTheme,
   );
@@ -594,6 +600,13 @@ function TerminalAppearanceTab() {
         description="Make the terminal cursor blink."
         checked={terminalCursorBlink}
         onChange={setTerminalCursorBlink}
+      />
+
+      <SettingsToggleRow
+        label="Start shell with project"
+        description="Start the shell when a project opens rather than the first time you show the terminal."
+        checked={terminalStartWithProject}
+        onChange={setTerminalStartWithProject}
       />
 
       <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">

@@ -98,36 +98,23 @@ test("the real terminal opens, echoes, and exits cleanly", async ({
   // The prompt nudge alone may take 150s on a cold Windows runner, and the
   // echo and exit phases follow it.
   test.setTimeout(300_000);
+  await tauriPage.evaluate(`(() => {
+    window.__e2eTerminalEvents = [];
+    return true;
+  })()`);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  await tauriPage.evaluate(`(() => {
-    window.__e2eTerminalLoadingSeen = false;
-    const update = () => {
-      const loading = document.querySelector('[data-testid="dock-terminal-loading"]');
-      if (loading instanceof HTMLElement && loading.getClientRects().length > 0) {
-        window.__e2eTerminalLoadingSeen = true;
-      }
-    };
-    const observer = new MutationObserver(update);
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
-    window.__e2eTerminalLoadingObserver = observer;
-    update();
-    return true;
-  })()`);
+  const sessionOpenState = () =>
+    tauriPage.evaluate<string>(`(window.__e2eTerminalEvents ?? [])
+      .filter((entry) => entry.startsWith("open:"))
+      .join(",") || "none"`);
+  await expect(tauriPage.locator(TERMINAL)).not.toBeVisible();
+  await expect.poll(sessionOpenState, { timeout: 60_000 }).toMatch(/^open:ok:/u);
+  await expect(tauriPage.locator(`${TERMINAL_HOST} .xterm-helper-textarea`)).toHaveCount(1);
   await tauriPage.click(TERMINAL_TOGGLE);
   await expect(tauriPage.locator(TERMINAL)).toBeVisible();
-  await expect
-    .poll(
-      () => tauriPage.evaluate<boolean>(`window.__e2eTerminalLoadingSeen === true`),
-      { timeout: 10_000 },
-    )
-    .toBe(true);
-  await tauriPage.evaluate(`window.__e2eTerminalLoadingObserver?.disconnect()`);
-  await expect(tauriPage.getByTestId("dock-terminal-loading")).toHaveCount(0, {
-    timeout: 30_000,
-  });
-  await expect(tauriPage.locator(`${TERMINAL_HOST} .xterm-helper-textarea`)).toHaveCount(1);
+  await expect(tauriPage.getByTestId("dock-terminal-loading")).toHaveCount(0);
   // Return the channel breadcrumbs plus the buffer tail so a failure names
   // the stage that broke: open error, no output at all, or a promptless
   // shell. The tail stays last so the end anchor still matches the prompt.

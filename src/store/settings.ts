@@ -562,6 +562,8 @@ interface SettingsState {
   setTerminalCursorStyle: (v: TerminalCursorStyle) => void;
   terminalCursorBlink: boolean;
   setTerminalCursorBlink: (v: boolean) => void;
+  terminalStartWithProject: boolean;
+  setTerminalStartWithProject: (v: boolean) => void;
   terminalColorTheme: TerminalColorThemeId;
   setTerminalColorTheme: (v: TerminalColorThemeId) => void;
   terminalBackground: string;
@@ -667,6 +669,7 @@ const PREF_DEFAULTS = {
   terminalFontWeightBold: 700,
   terminalCursorStyle: "block" as TerminalCursorStyle,
   terminalCursorBlink: true,
+  terminalStartWithProject: true,
   terminalColorTheme: "dark" as TerminalColorThemeId,
   terminalBackground: TERMINAL_COLOR_THEMES.dark.colors.background,
   terminalForeground: TERMINAL_COLOR_THEMES.dark.colors.foreground,
@@ -891,6 +894,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setTerminalCursorBlink: (v) => {
     saveLs("oleafly.terminal.cursorBlink", v ? "1" : "0");
     set({ terminalCursorBlink: v });
+  },
+  terminalStartWithProject: ls("oleafly.terminal.startWithProject", "1") !== "0",
+  setTerminalStartWithProject: (v) => {
+    saveLs("oleafly.terminal.startWithProject", v ? "1" : "0");
+    set({ terminalStartWithProject: v });
   },
   terminalColorTheme: readTerminalColorTheme(
     ls("oleafly.terminal.colorTheme", "dark"),
@@ -1163,6 +1171,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       "oleafly.terminal.cursorBlink",
       PREF_DEFAULTS.terminalCursorBlink ? "1" : "0",
     );
+    saveLs(
+      "oleafly.terminal.startWithProject",
+      PREF_DEFAULTS.terminalStartWithProject ? "1" : "0",
+    );
     saveLs("oleafly.terminal.colorTheme", PREF_DEFAULTS.terminalColorTheme);
     saveLs("oleafly.terminal.background", PREF_DEFAULTS.terminalBackground);
     saveLs("oleafly.terminal.foreground", PREF_DEFAULTS.terminalForeground);
@@ -1203,6 +1215,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       terminalFontWeightBold: PREF_DEFAULTS.terminalFontWeightBold,
       terminalCursorStyle: PREF_DEFAULTS.terminalCursorStyle,
       terminalCursorBlink: PREF_DEFAULTS.terminalCursorBlink,
+      terminalStartWithProject: PREF_DEFAULTS.terminalStartWithProject,
       terminalColorTheme: PREF_DEFAULTS.terminalColorTheme,
       terminalBackground: PREF_DEFAULTS.terminalBackground,
       terminalForeground: PREF_DEFAULTS.terminalForeground,

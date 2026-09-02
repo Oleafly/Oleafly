@@ -65,9 +65,13 @@ use state::AppState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default()
-        .on_page_load(browser::on_page_load)
+        .on_page_load(|webview, payload| {
+            browser::on_page_load(webview, payload);
+            terminal::on_page_load(webview, payload);
+        })
         .manage(language_service::LanguageServiceState::default())
         .plugin(language_service::lifecycle_plugin())
+        .plugin(terminal::lifecycle_plugin())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_dialog::init());
