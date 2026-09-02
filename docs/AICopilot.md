@@ -26,6 +26,17 @@ it is not a second document model.
 - Tool results are scoped to the project and are not an authorization to read
   unrelated local files.
 
+Plan mode (the Plan button, or the Enable Plan Mode slash command) makes the
+assistant plan first. While it is on, the assistant can read and search the
+project, but no tool that writes a file, compiles, or runs a command is
+offered to it, and a call to one of those is refused if the model tries
+anyway. The turn ends with a numbered checklist marked "Awaiting approval".
+Approve plan runs that checklist under whatever approval mode the project
+already uses, so Ask for approval, Approve for me, and Full access work exactly
+as they do outside plan mode. Revise, or anything you type while the plan is
+waiting, goes back as feedback and produces a fresh plan. Turn Plan off and the
+pending approval is dropped, so the next turn is a normal one.
+
 ## Provider and data boundary
 
 Provider credentials are stored in encrypted app state and are never written

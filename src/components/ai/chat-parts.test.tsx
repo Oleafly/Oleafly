@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { fireEvent, getByRole, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   AgentPlan,
   AgentRunSummary,
@@ -82,6 +82,58 @@ describe("AgentPlan", () => {
       "line-through",
       "text-muted-foreground/60",
     );
+  });
+
+  it("shows no approval controls without an approval state", () => {
+    const { container } = render(<AgentPlan todos={todos} />);
+    expect(container.querySelector('[data-testid="agent-plan-status"]')).toBeNull();
+    expect(screen.queryByRole("button", { name: "Approve plan" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Revise" })).toBeNull();
+    expect(container.firstElementChild).toHaveAttribute("data-plan-status", "none");
+  });
+
+  it("opens the checklist and offers Approve plan and Revise while awaiting approval", () => {
+    const onApprove = vi.fn();
+    const onRevise = vi.fn();
+    const { container, getByText } = render(
+      <AgentPlan
+        todos={todos}
+        approval={{ status: "awaiting", onApprove, onRevise }}
+      />,
+    );
+
+    expect(getByText("Awaiting approval")).toBeInTheDocument();
+    expect(container.firstElementChild).toHaveAttribute("data-plan-status", "awaiting");
+    expect(getByText("Compile the document")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve plan" }));
+    expect(onApprove).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Revise" }));
+    expect(onRevise).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables the approval buttons while a turn is busy", () => {
+    render(
+      <AgentPlan
+        todos={todos}
+        approval={{ status: "awaiting", busy: true, onApprove: () => {}, onRevise: () => {} }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Approve plan" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Revise" })).toBeDisabled();
+  });
+
+  it("shows Approved without buttons during execution", () => {
+    const { container, getByText } = render(
+      <AgentPlan
+        todos={todos}
+        approval={{ status: "approved", onApprove: () => {}, onRevise: () => {} }}
+      />,
+    );
+    expect(getByText("Approved")).toBeInTheDocument();
+    expect(container.firstElementChild).toHaveAttribute("data-plan-status", "approved");
+    expect(screen.queryByRole("button", { name: "Approve plan" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Revise" })).toBeNull();
   });
 });
 

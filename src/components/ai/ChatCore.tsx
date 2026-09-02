@@ -5,7 +5,10 @@ import { runAgentHarness, toAgentMessages } from "./agent-turn";
 import { DeltaQueues, MAX_BATCH } from "@oleafly/ai-core";
 import {
   DEFAULT_APPROVAL_MODE,
+  PLAN_MODE_TOOL_ERROR,
   decideToolApproval,
+  isReadOnlyTool,
+  planModeTools,
   toolRisk,
   type ApprovalMode,
 } from "@oleafly/ai-tools";
@@ -105,6 +108,11 @@ import {
   useApprovalModeStore,
 } from "@/store/approval-mode";
 import { planModeForProject, usePlanModeStore } from "@/store/plan-mode";
+import {
+  planApprovalForChat,
+  usePlanApprovalStore,
+  type PlanApprovalStatus,
+} from "@/store/plan-approval";
 import { goalForProject, useChatGoalStore } from "@/store/chat-goal";
 import { goalPromptLine } from "@/lib/ai-goal";
 import {
@@ -123,7 +131,7 @@ import {
 } from "@/lib/mcp-agent-tools";
 
 registerAiToolsets();
-import { useAgentTodoStore } from "@/store/agent-todos";
+import { useAgentTodoStore, type AgentTodo } from "@/store/agent-todos";
 import { useAgentMemoryStore } from "@/store/agent-memory";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
 import { isToolEnabled, useAiToolSettingsStore } from "@/store/ai-tool-settings";
@@ -223,8 +231,28 @@ export function approvalPostureLine(mode: ApprovalMode): string {
   return APPROVAL_POSTURE_LINES[mode];
 }
 
-export const PLAN_MODE_POSTURE_LINE =
-  "Plan mode: Produce and maintain a step plan with update_todos. Work through the plan step by step before finishing.";
+export const PLAN_MODE_HINT = "Plan mode: the assistant proposes a plan before editing.";
+export const PLAN_REVISION_PLACEHOLDER = "Describe what to change in the plan";
+export const PLAN_APPROVED_MESSAGE = "Carry out the approved plan.";
+export const PLAN_MODE_PLANNING_PROMPT =
+  "Plan mode: this is a planning turn. Read and inspect the project freely with the tools offered, but do not edit files, compile, or run commands; those tools are not offered in this turn. Finish by calling update_todos with a numbered plan, one pending item per file or section to touch, then reply with a short summary of the plan. Stop there and wait for the user to approve the plan. Do not start the work.";
+export const PLAN_MODE_REVISION_LINE =
+  "The user asked for changes to the current plan. Apply the feedback by calling update_todos with the revised numbered plan as pending items, reply with a short summary of what changed, then stop and wait for approval again.";
+
+export type PlanTurn = "planning" | "revision" | "execution";
+
+export function planModeExecutionPrompt(todos: readonly AgentTodo[]): string {
+  const items = todos
+    .filter((todo) => todo.status !== "cancelled")
+    .map((todo, index) => `${index + 1}. ${todo.content}`);
+  return `Plan mode: the user approved this plan:\n${items.join("\n")}\nCarry out the approved items in order. Keep the checklist current with update_todos: mark each item in_progress when you start it and completed when it is done. Stay within the approved plan and tell the user if something needs to change.`;
+}
+
+export function planTurnPrompt(turn: PlanTurn, todos: readonly AgentTodo[]): string {
+  if (turn === "execution") return planModeExecutionPrompt(todos);
+  if (turn === "revision") return `${PLAN_MODE_PLANNING_PROMPT}\n${PLAN_MODE_REVISION_LINE}`;
+  return PLAN_MODE_PLANNING_PROMPT;
+}
 
 export function resolveResponseInstructions(
   personas: Persona[],
@@ -357,6 +385,10 @@ export function ChatCore() {
   const chats = useChatsStore((s) => s.chats);
   const chatsProjectId = useChatsStore((s) => s.projectId);
   const activeChatId = useChatsStore((s) => s.activeId);
+  const planApprovalByChat = usePlanApprovalStore((s) => s.byChat);
+  const planApprovalStatus: PlanApprovalStatus = planMode
+    ? planApprovalForChat(planApprovalByChat, activeChatId)
+    : "planning";
   // The sentinel keeps the selector's snapshot referentially stable for
   // chats without queued follow-ups (a fresh [] loops useSyncExternalStore).
   const queuedFollowUps = useAgentTurnsStore((s) =>
@@ -423,6 +455,13 @@ export function ChatCore() {
   );
 
   const changePlanMode = useCallback(() => {
+    if (usePlanModeStore.getState().isEnabled(projectId)) {
+      const projectChatIds = useChatsStore
+        .getState()
+        .chats.filter((chat) => chat.projectId === projectId)
+        .map((chat) => chat.id);
+      usePlanApprovalStore.getState().discardForChats(projectChatIds);
+    }
     togglePlanMode(projectId);
   }, [projectId, togglePlanMode]);
 
@@ -557,7 +596,9 @@ export function ChatCore() {
     ? "Document engine unavailable. AI editing disabled"
     : figureMode
       ? "Describe a figure to draw…"
-      : "Ask AI to help with your document…";
+      : planApprovalStatus === "awaiting"
+        ? PLAN_REVISION_PLACEHOLDER
+        : "Ask AI to help with your document…";
   useAutoSizeTextarea(
     textareaRef,
     inputShellRef,
@@ -871,6 +912,18 @@ export function ChatCore() {
     useAgentTodoStore.getState().bindProject(projectId);
   }, [projectId]);
 
+  useEffect(() => {
+    if (!activeChatId) return;
+    const approval = usePlanApprovalStore.getState();
+    if (approval.load(activeChatId) === "approved" && !activeChatRun()) {
+      approval.setStatus(activeChatId, "planning");
+    }
+    const todoState = useAgentTodoStore.getState();
+    if (todoState.activeChatId === null && todoState.todosByChat[activeChatId] === undefined) {
+      todoState.selectChat(activeChatId);
+    }
+  }, [activeChatId]);
+
   // The panel unmounts whenever the sidebar collapses or another rail tab is
   // shown, so this effect also runs on every REMOUNT - in that case (same
   // project) restore the active conversation instead of resetting to a new
@@ -1122,7 +1175,11 @@ export function ChatCore() {
     [queueStreamDrain],
   );
 
-  const send = useCallback(async (text: string, queued?: QueuedFollowUp) => {
+  const send = useCallback(async (
+    text: string,
+    queued?: QueuedFollowUp,
+    options?: { approvedPlan?: boolean },
+  ) => {
     const outgoing = (queued?.attachments ?? attachmentsRef.current).map((attachment) => ({
       ...attachment,
     }));
@@ -1425,27 +1482,42 @@ export function ChatCore() {
       updateChatRun(runHandle, { chatId });
       if (chatId) cs.saveMessages(chatId, nextMessages);
     }
+    const planTurn: PlanTurn | null = !runPlanMode
+      ? null
+      : options?.approvedPlan
+        ? "execution"
+        : usePlanApprovalStore.getState().status(runChatId) === "awaiting"
+          ? "revision"
+          : "planning";
+    const planGated = planTurn === "planning" || planTurn === "revision";
 
     // Optimistic turn + thread scoping: the record exists before any
     // request, and the chat keeps one rollout thread across sends.
     const clientTurnId = crypto.randomUUID();
     let turnThreadId: string | null = null;
+    let turnSetupError: unknown = null;
     if (runChatId) {
-      turnThreadId = await useAgentTurnsStore
-        .getState()
-        .threadFor(
-          runChatId,
-          projectId,
-          () =>
-            projectId ? agentThreadClaimPrewarmed(projectId) : Promise.resolve(null),
-          {
-            persistedThreadId: useChatsStore.getState().byId(runChatId)?.threadId,
-            persist: (threadId) =>
-              useChatsStore.getState().setThreadId(runChatId, threadId),
-          },
-        );
-      useAgentTurnsStore.getState().beginTurn(runChatId, turnThreadId, clientTurnId, text);
-      useAgentTodoStore.getState().beginTurn(runChatId);
+      try {
+        turnThreadId = await useAgentTurnsStore
+          .getState()
+          .threadFor(
+            runChatId,
+            projectId,
+            () =>
+              projectId ? agentThreadClaimPrewarmed(projectId) : Promise.resolve(null),
+            {
+              persistedThreadId: useChatsStore.getState().byId(runChatId)?.threadId,
+              persist: (threadId) =>
+                useChatsStore.getState().setThreadId(runChatId, threadId),
+            },
+          );
+        useAgentTurnsStore.getState().beginTurn(runChatId, turnThreadId, clientTurnId, text);
+        useAgentTodoStore.getState().beginTurn(runChatId, {
+          keep: planTurn === "revision" || planTurn === "execution",
+        });
+      } catch (error) {
+        turnSetupError = error;
+      }
     }
 
     // An active persona replaces the user's default custom instructions for
@@ -1508,7 +1580,8 @@ USER_CUSTOM_INSTRUCTIONS`
         ? []
         : ["project_map"],
     });
-    const tools = filterResolvedTools(resolvedToolsForRun, enabledToolsForRun).tools;
+    const enabledTools = filterResolvedTools(resolvedToolsForRun, enabledToolsForRun).tools;
+    const tools = planGated ? planModeTools(enabledTools) : enabledTools;
     const runSkillCatalog = isToolEnabled(enabledToolsForRun, "load_skill")
       ? skillCatalogPrompt(runSkills)
       : "";
@@ -1573,7 +1646,12 @@ ${sandboxedCustom}`;
     const effectiveSystem = `${effectiveSystemBase}${
       runSkillCatalog ? `\n\n${runSkillCatalog}` : ""
     }\n\n${approvalPostureLine(runApprovalMode)}${
-      runPlanMode ? `\n\n${PLAN_MODE_POSTURE_LINE}` : ""
+      planTurn
+        ? `\n\n${planTurnPrompt(
+            planTurn,
+            runChatId ? useAgentTodoStore.getState().todosForChat(runChatId) : [],
+          )}`
+        : ""
     }`;
 
     // Conversation history: packed (recent + truncated) so long chats fit context.
@@ -1605,7 +1683,9 @@ ${sandboxedCustom}`;
       useAgentTurnsStore.getState().rollbackTurn(runChatId, clientTurnId);
     };
 
+    let planApproved = false;
     try {
+      if (turnSetupError) throw turnSetupError;
       if (runChatId) {
         const trackingChatId = runChatId;
         const trackingTurnId = clientTurnId;
@@ -1757,6 +1837,11 @@ ${sandboxedCustom}`;
         }
       };
 
+      if (planTurn === "execution") {
+        usePlanApprovalStore.getState().setStatus(runChatId, "approved");
+        planApproved = true;
+      }
+
       const outcomePromise = runAgentHarness({
         system: effectiveSystem,
         messages: apiMessages,
@@ -1774,7 +1859,8 @@ ${sandboxedCustom}`;
           if (!runChatId) return;
           useAgentTurnsStore.getState().applyEvent(runChatId, event);
         },
-        guardToolCall: () => {
+        guardToolCall: (call) => {
+          if (planGated && !isReadOnlyTool(call.name)) return PLAN_MODE_TOOL_ERROR;
           const current = useFilesStore.getState().projectId;
           if (current === runProjectId) return null;
           return `The open project changed while this run was active. The tool was not executed to protect the newly opened project. Ask the user to re-run the request in the project it applies to.`;
@@ -1958,6 +2044,16 @@ ${sandboxedCustom}`;
         useAgentFileChangesStore.getState().finishTurn(runChatId, trackedTurnId);
       }
       if (runChatId) useAgentTodoStore.getState().finishTurn(runChatId);
+      if (runChatId && planTurn) {
+        const approval = usePlanApprovalStore.getState();
+        if (planTurn === "execution") {
+          approval.setStatus(runChatId, planApproved ? "planning" : "awaiting");
+        } else if (useAgentTodoStore.getState().todosForChat(runChatId).length > 0) {
+          approval.setStatus(runChatId, "awaiting");
+        } else {
+          approval.setStatus(runChatId, "planning");
+        }
+      }
       if (abortRef.current === ac) abortRef.current = null;
       if (projectId && runChatId && (usageIn > 0 || usageOut > 0 || usageSteps > 0)) {
         const { usd } = estimateUsd(model, usageIn, usageOut);
@@ -2023,6 +2119,15 @@ ${sandboxedCustom}`;
     abortRef.current?.abort();
   }, []);
 
+  const approvePlan = useCallback(() => {
+    if (!activeChatId || streaming || activeChatRun()) return;
+    void send(PLAN_APPROVED_MESSAGE, undefined, { approvedPlan: true });
+  }, [activeChatId, send, streaming]);
+
+  const revisePlan = useCallback(() => {
+    requestAnimationFrame(() => textareaRef.current?.focus({ preventScroll: true }));
+  }, []);
+
   let lastAssistantIndex = -1;
   for (let index = messages.length - 1; index >= 0; index--) {
     if (messages[index].role === "assistant") {
@@ -2073,6 +2178,10 @@ ${sandboxedCustom}`;
           return restored;
         });
         useAgentTodoStore.getState().clear();
+        const approval = usePlanApprovalStore.getState();
+        if (activeChatId && approval.status(activeChatId) === "awaiting") {
+          approval.setStatus(activeChatId, "planning");
+        }
         toast.success("Restored project files. The conversation was kept.");
       } catch (error) {
         toast.error(`Could not restore: ${error}`);
@@ -2353,7 +2462,21 @@ ${sandboxedCustom}`;
       )}
 
       {/* Visible even keyless so e2e/hooks can assert it */}
-      {agentTodos.length > 0 && <AgentPlan todos={agentTodos} />}
+      {agentTodos.length > 0 && (
+        <AgentPlan
+          todos={agentTodos}
+          approval={
+            planApprovalStatus === "planning"
+              ? undefined
+              : {
+                  status: planApprovalStatus,
+                  busy: streaming || approvalModeLocked,
+                  onApprove: approvePlan,
+                  onRevise: revisePlan,
+                }
+          }
+        />
+      )}
 
       {!providerConfigReady && !apiKey && (
         <div data-testid="ai-provider-loading" className="min-h-0 flex-1" />
@@ -3045,6 +3168,14 @@ ${sandboxedCustom}`;
                 </div>
               </div>
             </div>
+            {planMode && (
+              <p
+                data-testid="ai-plan-mode-hint"
+                className="mt-1.5 px-1 text-[11px] leading-snug text-muted-foreground"
+              >
+                {PLAN_MODE_HINT}
+              </p>
+            )}
           </div>
           </div>
         </>

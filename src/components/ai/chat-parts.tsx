@@ -40,25 +40,56 @@ export function InfoHint({ message }: { message: string }) {
   );
 }
 
-export function AgentPlan({ todos }: { todos: AgentTodo[] }) {
-  const [open, setOpen] = useState(false);
+export interface AgentPlanApproval {
+  status: "awaiting" | "approved";
+  busy?: boolean;
+  onApprove: () => void;
+  onRevise: () => void;
+}
+
+export function AgentPlan({
+  todos,
+  approval,
+}: {
+  todos: AgentTodo[];
+  approval?: AgentPlanApproval;
+}) {
+  const awaiting = approval?.status === "awaiting";
+  const [open, setOpen] = useState(awaiting);
   const listId = useId();
+  useEffect(() => {
+    if (awaiting) setOpen(true);
+  }, [awaiting]);
 
   return (
     <div
       className="shrink-0 border-b bg-black/[0.03] dark:bg-black/20"
       data-testid="agent-todos"
+      data-plan-status={approval?.status ?? "none"}
     >
       <button
         type="button"
         aria-controls={listId}
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center px-3 py-2 text-left transition-colors hover:bg-black/[0.035] dark:hover:bg-white/[0.035]"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-black/[0.035] dark:hover:bg-white/[0.035]"
       >
         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           Plan
         </span>
+        {approval && (
+          <span
+            data-testid="agent-plan-status"
+            className={cn(
+              "rounded-full px-1.5 py-px text-[10px] font-medium",
+              approval.status === "awaiting"
+                ? "bg-violet-500/15 text-violet-600 dark:text-violet-300"
+                : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+            )}
+          >
+            {approval.status === "awaiting" ? "Awaiting approval" : "Approved"}
+          </span>
+        )}
         <ChevronDown
           aria-hidden="true"
           className={cn(
@@ -117,6 +148,30 @@ export function AgentPlan({ todos }: { todos: AgentTodo[] }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {awaiting && approval && (
+        <div className="flex items-center gap-1.5 px-3 pb-2">
+          <button
+            type="button"
+            aria-label="Approve plan"
+            onClick={approval.onApprove}
+            disabled={approval.busy}
+            className="flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-primary px-2.5 text-xs font-medium text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Check aria-hidden="true" className="size-3.5 shrink-0" />
+            Approve plan
+          </button>
+          <button
+            type="button"
+            aria-label="Revise"
+            onClick={approval.onRevise}
+            disabled={approval.busy}
+            className="flex h-7 shrink-0 items-center rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Revise
+          </button>
+        </div>
       )}
     </div>
   );

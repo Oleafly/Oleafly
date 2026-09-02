@@ -22,7 +22,10 @@ export {
 export { createResearchTools, type ResearchToolsHost } from "./research-tools";
 export {
   DEFAULT_APPROVAL_MODE,
+  PLAN_MODE_TOOL_ERROR,
   decideToolApproval,
+  isReadOnlyTool,
+  planModeTools,
   riskRequiresConfirm,
   toolRisk,
   type ApprovalGateDecision,

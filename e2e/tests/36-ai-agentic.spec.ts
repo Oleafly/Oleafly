@@ -1,10 +1,14 @@
 import { test, expect } from "../fixtures";
 import {
+  fillTextarea,
   openOleaflyMcpSettings,
   openProject,
   openRailTab,
   openSettings,
+  waitLong,
+  type Page,
 } from "../helpers";
+import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
 // Agentic AI surface that does NOT require a live model call.
 
@@ -187,4 +191,93 @@ test("MCP activity rail tab appears only when the server is running", async ({
     `!document.querySelector('[aria-label="MCP activity"]')`,
     10_000,
   );
+});
+
+let planServer: MockAiServer | undefined;
+
+test.afterAll(async () => {
+  await planServer?.close();
+});
+
+async function connectMockAndOpenChat(page: Page, server: MockAiServer) {
+  await openProject(page, "E2E Doc");
+  await expect(page.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  const connected = await page.evaluate<boolean>(
+    `window.__aiConnect?.("ollama", ${JSON.stringify(server.url)}, "llama3.2") ?? false`,
+  );
+  expect(connected, "__aiConnect devtools hook must be present").toBe(true);
+  await openRailTab(page, "Research Assistant");
+  await expect(page.locator('textarea[placeholder*="Ask AI"]')).toBeVisible({ timeout: 10_000 });
+}
+
+async function expandPlanChecklist(page: Page) {
+  const expanded = await page.evaluate<boolean>(
+    `!!document.querySelector('[data-testid="agent-todos"] [data-todo-status]')`,
+  );
+  if (!expanded) await page.click('[data-testid="agent-todos"] > button');
+}
+
+test("plan mode proposes a plan, waits for approval, then works through it", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
+  planServer = await startMockAiServer();
+  await connectMockAndOpenChat(tauriPage, planServer);
+
+  const planButton = tauriPage.locator('button[aria-label="Plan mode"]');
+  await expect(planButton).toHaveAttribute("data-state", "off");
+  await planButton.click();
+  await expect(planButton).toHaveAttribute("data-state", "on");
+  await expect(tauriPage.getByTestId("ai-plan-mode-hint")).toHaveText(
+    "Plan mode: the assistant proposes a plan before editing.",
+  );
+
+  const steps = [
+    { id: "title", content: "E2E plan: retitle main.tex", status: "pending" },
+    { id: "abstract", content: "E2E plan: shorten the abstract", status: "pending" },
+  ];
+  planServer.setReply("PLANFALLBACK");
+  planServer.setToolCall({ name: "update_todos", args: { todos: steps }, then: "PLANREADY51" });
+  const composer = 'textarea[placeholder*="Ask AI"]';
+  await fillTextarea(tauriPage, composer, "Retitle the document and shorten the abstract.");
+  await tauriPage.press(composer, "Enter");
+
+  await waitLong(
+    tauriPage,
+    `document.body.innerText.includes('PLANREADY51') && !document.querySelector('[aria-label="Stop"]')`,
+    45_000,
+  );
+  const checklist = tauriPage.getByTestId("agent-todos");
+  await expect(checklist).toHaveAttribute("data-plan-status", "awaiting", { timeout: 10_000 });
+  await expect(tauriPage.getByText("Awaiting approval")).toBeVisible();
+  await expect(tauriPage.locator('button[aria-label="Approve plan"]')).toBeVisible();
+  await expect(tauriPage.locator('button[aria-label="Revise"]')).toBeVisible();
+  await expect(
+    tauriPage.locator('textarea[placeholder="Describe what to change in the plan"]'),
+  ).toBeVisible();
+  await expandPlanChecklist(tauriPage);
+  await expect(tauriPage.locator('[data-todo-status="pending"]')).toHaveCount(2);
+
+  planServer.setToolCall({
+    name: "update_todos",
+    args: { todos: steps.map((step) => ({ ...step, status: "completed" })) },
+    then: "PLANDONE52",
+  });
+  await tauriPage.click('button[aria-label="Approve plan"]');
+
+  await waitLong(
+    tauriPage,
+    `document.body.innerText.includes('PLANDONE52') && !document.querySelector('[aria-label="Stop"]')`,
+    45_000,
+  );
+  await expandPlanChecklist(tauriPage);
+  await expect(tauriPage.locator('[data-todo-status="completed"]')).toHaveCount(2, {
+    timeout: 10_000,
+  });
+  await expect(checklist).toHaveAttribute("data-plan-status", "none", { timeout: 10_000 });
+  await expect(tauriPage.locator('button[aria-label="Approve plan"]')).toHaveCount(0);
+  await expect(planButton).toHaveAttribute("data-state", "on");
+  await expect(tauriPage.locator(composer)).toBeVisible();
+
+  planServer.setToolCall(null);
+  await planButton.click();
+  await expect(planButton).toHaveAttribute("data-state", "off");
 });
