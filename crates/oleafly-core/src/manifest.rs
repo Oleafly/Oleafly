@@ -261,6 +261,38 @@ impl CheckpointPolicy {
         }
         Ok(())
     }
+
+    pub fn is_always_included(&self, relative_path: &str) -> bool {
+        self.always_include
+            .iter()
+            .any(|pattern| checkpoint_pattern_matches(pattern, relative_path))
+    }
+
+    pub fn is_ignored(&self, relative_path: &str) -> bool {
+        self.ignored
+            .iter()
+            .any(|pattern| checkpoint_pattern_matches(pattern, relative_path))
+    }
+}
+
+fn checkpoint_pattern_matches(pattern: &str, relative_path: &str) -> bool {
+    let pattern_segments = pattern.split('/').collect::<Vec<_>>();
+    let path_segments = relative_path.split('/').collect::<Vec<_>>();
+    let contains_wildcard = pattern.contains(['*', '?']);
+    if !contains_wildcard
+        && path_segments.len() >= pattern_segments.len()
+        && pattern_segments
+            .iter()
+            .zip(&path_segments)
+            .all(|(expected, actual)| expected.eq_ignore_ascii_case(actual))
+    {
+        return true;
+    }
+    pattern_segments.len() == path_segments.len()
+        && pattern_segments
+            .iter()
+            .zip(path_segments)
+            .all(|(expected, actual)| wildcard_matches_ascii_case_insensitive(expected, actual))
 }
 
 fn validate_checkpoint_pattern(
@@ -345,19 +377,19 @@ fn is_windows_reserved_component(stem: &str) -> bool {
 }
 
 fn wildcard_matches_ascii_case_insensitive(pattern: &str, candidate: &str) -> bool {
-    let pattern = pattern.to_ascii_lowercase().into_bytes();
-    let candidate = candidate.to_ascii_lowercase().into_bytes();
+    let pattern = pattern.to_ascii_lowercase().chars().collect::<Vec<_>>();
+    let candidate = candidate.to_ascii_lowercase().chars().collect::<Vec<_>>();
     let (mut pattern_index, mut candidate_index) = (0, 0);
     let (mut star_index, mut star_candidate_index) = (None, 0);
 
     while candidate_index < candidate.len() {
         if pattern_index < pattern.len()
-            && (pattern[pattern_index] == b'?'
+            && (pattern[pattern_index] == '?'
                 || pattern[pattern_index] == candidate[candidate_index])
         {
             pattern_index += 1;
             candidate_index += 1;
-        } else if pattern_index < pattern.len() && pattern[pattern_index] == b'*' {
+        } else if pattern_index < pattern.len() && pattern[pattern_index] == '*' {
             star_index = Some(pattern_index);
             pattern_index += 1;
             star_candidate_index = candidate_index;
@@ -369,7 +401,7 @@ fn wildcard_matches_ascii_case_insensitive(pattern: &str, candidate: &str) -> bo
             return false;
         }
     }
-    while pattern_index < pattern.len() && pattern[pattern_index] == b'*' {
+    while pattern_index < pattern.len() && pattern[pattern_index] == '*' {
         pattern_index += 1;
     }
     pattern_index == pattern.len()
@@ -545,6 +577,31 @@ mod tests {
         .unwrap();
 
         policy.validate().unwrap();
+    }
+
+    #[test]
+    fn checkpoint_policy_matches_capture_and_ignore_paths_by_segment() {
+        let policy: CheckpointPolicy = serde_json::from_value(serde_json::json!({
+            "always_include": ["figures/*.png", "research/notes"],
+            "ignored": ["scratch/*.tmp"]
+        }))
+        .unwrap();
+        policy.validate().unwrap();
+
+        assert!(policy.is_always_included("figures/plot.png"));
+        assert!(!policy.is_always_included("figures/deep/plot.png"));
+        assert!(policy.is_always_included("research/notes"));
+        assert!(policy.is_always_included("research/notes/day-1.md"));
+        assert!(policy.is_ignored("scratch/draft.tmp"));
+        assert!(!policy.is_ignored("chapters/scratch/draft.tmp"));
+
+        let unicode: CheckpointPolicy = serde_json::from_value(serde_json::json!({
+            "always_include": ["references/secret-?.bib"]
+        }))
+        .unwrap();
+        unicode.validate().unwrap();
+        assert!(unicode.is_always_included("references/secret-é.bib"));
+        assert!(!unicode.is_always_included("references/secret-ab.bib"));
     }
 
     #[test]

@@ -226,10 +226,6 @@ fn checkpoint_keep_latest_sync(project_id: &str) -> Result<(), String> {
 fn checkpoint_reset_sync(project_id: &str) -> Result<(), String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
     require_active_project(project_id)?;
-    let Some(store) = open_existing_store(project_id)? else {
-        return Ok(());
-    };
-    drop(store);
     remove_project_checkpoint_data(project_id)
 }
 

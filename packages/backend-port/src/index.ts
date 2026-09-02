@@ -93,6 +93,11 @@ export type CheckpointPublicationOutcome =
     | { status: "not_attempted" }
     | { status: "published"; snapshot_root: string; created: boolean }
     | {
+        status: "published_durability_uncertain";
+        snapshot_root: string;
+        created: boolean;
+    }
+    | {
         status: "skipped";
         reason: CheckpointSkipReason;
         message: string;

@@ -238,12 +238,19 @@ pub async fn compile_project(
     fast: Option<bool>,
     halt_on_error: Option<bool>,
 ) -> Result<CompileResult, String> {
+    let source_date_epoch = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0);
     let options = crate::document_engine::CompileOptions {
         offline: offline.unwrap_or(false),
         fast: fast.unwrap_or(false),
         halt_on_error: halt_on_error.unwrap_or(false),
         latex_flavor: None,
         allow_shell_escape: false,
+        checkpoint_mode: crate::document_engine::CheckpointCompileMode::Disabled,
+        checkpoint_persistent_cache: false,
+        source_date_epoch: Some(source_date_epoch),
     };
     let ticket = state
         .compile_ticket
@@ -287,6 +294,7 @@ pub async fn compile_project(
             });
         }
     }
+    let cancel_scope = crate::document_engine::CompileCancelScope::new(Some(&state.compile_cancel));
 
     let project_dir = paths::project_dir(&project_id)?;
     let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
@@ -346,12 +354,36 @@ pub async fn compile_project(
             .push_str(&format!("\nOleafly rejected the compile output: {error}"));
         return Ok(result);
     }
+    if result.ok && !state.compile_cancel.is_requested() {
+        result.checkpoint_publication =
+            crate::checkpoint_publication::publish_after_successful_compile(
+                &app,
+                &project_id,
+                &project_dir,
+                &build_dir,
+                &meta.engine,
+                &main_doc,
+                &meta.checkpoints,
+                options,
+                Some(&state.compile_cancel),
+            )
+            .await;
+    }
+    let stopped = cancel_scope.finish();
+    if stopped {
+        result.ok = false;
+        result.stopped = true;
+        result.output_revision = None;
+        if !result
+            .log
+            .contains("Oleafly stopped the compile on request.")
+        {
+            result
+                .log
+                .push_str("\nOleafly stopped the compile on request.\n");
+        }
+    }
     if result.ok {
-        result.checkpoint_publication = crate::checkpoint_publication::current_adapter_outcome(
-            &meta.engine,
-            meta.allow_shell_escape,
-            &meta.checkpoints,
-        );
         result.output_revision = Some(
             state
                 .compile_output_revision

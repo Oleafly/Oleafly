@@ -51,6 +51,38 @@ pub fn figures_cache_root() -> Result<PathBuf, String> {
     Ok(dir)
 }
 
+/// Shared content-addressed compiler cache. Checkpoint probes isolate compiler
+/// configuration and temporary files but reuse verified bundle bytes here.
+pub fn compiler_cache_root() -> Result<PathBuf, String> {
+    let data = oleafly_root()?;
+    ensure_data_directory(&data)?;
+    let data = data
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve Oleafly data directory: {error}"))?;
+    let cache = data.join("compiler-cache");
+    ensure_real_directory(&cache, "compiler cache")?;
+    let cache = cache
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve compiler cache: {error}"))?;
+    if cache.parent() != Some(data.as_path()) {
+        return Err("compiler cache escapes the Oleafly data root".into());
+    }
+    Ok(cache)
+}
+
+pub fn tectonic_cache_root() -> Result<PathBuf, String> {
+    let compiler_cache = compiler_cache_root()?;
+    let tectonic = compiler_cache.join("tectonic");
+    ensure_real_directory(&tectonic, "Tectonic cache")?;
+    let tectonic = tectonic
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve Tectonic cache: {error}"))?;
+    if tectonic.parent() != Some(compiler_cache.as_path()) {
+        return Err("Tectonic cache escapes the compiler cache root".into());
+    }
+    Ok(tectonic)
+}
+
 /// The projects directory: `~/.oleafly/projects/` (created if missing).
 pub fn projects_root() -> Result<PathBuf, String> {
     let root = oleafly_root()?.join("projects");
@@ -505,6 +537,30 @@ mod tests {
 
         assert!(checkpoint_store_dir("paper").is_err());
         assert!(existing_checkpoint_store_dir("paper").is_err());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn compiler_cache_paths_reject_symlink_substitution() {
+        use std::os::unix::fs::symlink;
+
+        let _env_guard = data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        let outside = directory.path().join("outside");
+        std::fs::create_dir(&data).unwrap();
+        std::fs::create_dir(&outside).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        symlink(&outside, data.join("compiler-cache")).unwrap();
+
+        assert!(compiler_cache_root().is_err());
+
+        std::fs::remove_file(data.join("compiler-cache")).unwrap();
+        std::fs::create_dir(data.join("compiler-cache")).unwrap();
+        symlink(&outside, data.join("compiler-cache/tectonic")).unwrap();
+        assert!(tectonic_cache_root().is_err());
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }

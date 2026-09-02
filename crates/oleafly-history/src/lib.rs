@@ -17,6 +17,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use fastcdc::v2020::StreamCDC;
 use rand::RngCore;
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension, TransactionBehavior};
+use serde::ser::SerializeSeq;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use unicode_normalization::UnicodeNormalization;
@@ -34,10 +35,13 @@ const MAX_HISTORY_CHECKPOINTS: u64 = 4_096;
 const MAX_HISTORY_METADATA_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_HISTORY_CHUNK_REFERENCES: u64 = 250_000;
 const MAX_HISTORY_LOGICAL_BYTES: u64 = 128 * 1024 * 1024 * 1024;
+const MAX_CHECKPOINT_FILE_BYTES: u64 = 16 * 1024 * 1024 * 1024;
 const MAX_PROJECT_MANIFEST_BYTES: u64 = 4 * 1024 * 1024;
 const STORE_LINEAGE_BYTES: usize = 36;
 const OPERATION_LOCK_FILE: &str = "operation.lock";
 const NAMESPACE_LOCK_FILE: &str = ".oleafly-checkpoint-stores.lock";
+const INITIALIZATION_LOCK_PREFIX: &str = ".oleafly-checkpoint-init-lock-";
+const INITIALIZATION_DIR_PREFIX: &str = ".oleafly-checkpoint-init-";
 const DELETE_RECORD_VERSION: u8 = 1;
 const DELETE_RECORD_PREFIX: &str = ".oleafly-checkpoint-delete-";
 const DELETE_RECORD_SUFFIX: &str = ".json";
@@ -70,9 +74,58 @@ pub enum HistoryError {
     Corrupt(String),
     #[error("checkpoint {0} was not found")]
     CheckpointNotFound(String),
+    #[error("checkpoint publication was cancelled")]
+    PublicationCancelled,
 }
 
 pub type Result<T> = std::result::Result<T, HistoryError>;
+
+/// Coordinates cancellation with the one operation that makes a checkpoint
+/// visible.
+///
+/// `commit_visibility` must serialize its cancellation decision with `commit`.
+/// Returning `false` means cancellation won and `commit` was not invoked.
+pub trait PublicationGate {
+    fn is_cancelled(&self) -> bool;
+
+    fn commit_visibility(&self, commit: &mut dyn FnMut() -> Result<()>) -> Result<bool>;
+}
+
+struct UncancelledPublication;
+
+impl PublicationGate for UncancelledPublication {
+    fn is_cancelled(&self) -> bool {
+        false
+    }
+
+    fn commit_visibility(&self, commit: &mut dyn FnMut() -> Result<()>) -> Result<bool> {
+        commit()?;
+        Ok(true)
+    }
+}
+
+struct DeferredVisibility<'a>(&'a dyn PublicationGate);
+
+impl PublicationGate for DeferredVisibility<'_> {
+    fn is_cancelled(&self) -> bool {
+        self.0.is_cancelled()
+    }
+
+    fn commit_visibility(&self, commit: &mut dyn FnMut() -> Result<()>) -> Result<bool> {
+        if self.0.is_cancelled() {
+            return Ok(false);
+        }
+        commit()?;
+        Ok(true)
+    }
+}
+
+fn ensure_publication_active(gate: &dyn PublicationGate) -> Result<()> {
+    if gate.is_cancelled() {
+        return Err(HistoryError::PublicationCancelled);
+    }
+    Ok(())
+}
 
 /// A BLAKE3 content identity.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -81,6 +134,26 @@ pub struct ContentHash([u8; 32]);
 impl ContentHash {
     pub fn digest(bytes: &[u8]) -> Self {
         Self(*blake3::hash(bytes).as_bytes())
+    }
+
+    /// Streams one regular file into a BLAKE3 identity without retaining its
+    /// contents in memory. Callers must still seal and identity-check the file
+    /// before treating this hash as replay evidence.
+    pub fn digest_file(path: impl AsRef<Path>) -> Result<Self> {
+        let file = File::open(path)?;
+        let mut reader = BufReader::new(file);
+        let mut hasher = blake3::Hasher::new();
+        io::copy(&mut reader, &mut hasher)?;
+        Ok(Self::from_bytes(*hasher.finalize().as_bytes()))
+    }
+
+    /// Streams a file identity while polling the same gate used for staging
+    /// and publication.
+    pub fn digest_file_controlled(
+        path: impl AsRef<Path>,
+        gate: &dyn PublicationGate,
+    ) -> Result<Self> {
+        hash_file_controlled(path.as_ref(), gate)
     }
 
     pub fn from_bytes(bytes: [u8; 32]) -> Self {
@@ -144,10 +217,14 @@ enum CaptureBasis {
         resolved_path: PathBuf,
         first_read_hash: ContentHash,
     },
+    ReplayRequired {
+        resolved_path: PathBuf,
+        preseal_hash: ContentHash,
+    },
 }
 
-/// One project-local regular file from an explicit policy selection or a
-/// compiler report that binds its resolved identity and first-read bytes.
+/// One project-local regular file from explicit policy, direct compiler
+/// evidence, or a dependency that must be proven by sealed replay.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CaptureInput {
     relative_path: String,
@@ -182,6 +259,31 @@ impl CaptureInput {
             basis: CaptureBasis::CompilerRead {
                 resolved_path,
                 first_read_hash,
+            },
+        })
+    }
+
+    /// Marks a compiler-discovered path whose exact sealed bytes must appear
+    /// in the authoritative replay evidence. Unlike `proven`, `preseal_hash`
+    /// is not represented as a first-read hash from the live compile.
+    pub fn replay_required(
+        relative_path: impl Into<String>,
+        resolved_path: impl Into<PathBuf>,
+        preseal_hash: ContentHash,
+    ) -> Result<Self> {
+        let relative_path = relative_path.into();
+        validate_portable_relative_path(&relative_path)?;
+        let resolved_path = resolved_path.into();
+        if !resolved_path.is_absolute() {
+            return Err(HistoryError::InvalidInput(format!(
+                "resolved replay input for {relative_path} must be absolute"
+            )));
+        }
+        Ok(Self {
+            relative_path,
+            basis: CaptureBasis::ReplayRequired {
+                resolved_path,
+                preseal_hash,
             },
         })
     }
@@ -443,10 +545,208 @@ impl Drop for Candidate {
     }
 }
 
+fn advance_capture_budget(
+    file_bytes: u64,
+    checkpoint_bytes: u64,
+    chunk_references: u64,
+    chunk_bytes: u64,
+) -> Result<(u64, u64, u64)> {
+    let file_bytes = file_bytes
+        .checked_add(chunk_bytes)
+        .ok_or_else(|| HistoryError::InvalidInput("checkpoint file size overflow".into()))?;
+    if file_bytes > MAX_CHECKPOINT_FILE_BYTES {
+        return Err(HistoryError::InvalidInput(
+            "checkpoint file exceeds the 16 GiB capture limit".into(),
+        ));
+    }
+    let checkpoint_bytes = checkpoint_bytes
+        .checked_add(chunk_bytes)
+        .ok_or_else(|| HistoryError::InvalidInput("checkpoint size overflow".into()))?;
+    if checkpoint_bytes > MAX_HISTORY_LOGICAL_BYTES {
+        return Err(HistoryError::InvalidInput(
+            "checkpoint exceeds the portable history logical-size limit".into(),
+        ));
+    }
+    let chunk_references = chunk_references
+        .checked_add(1)
+        .ok_or_else(|| HistoryError::InvalidInput("checkpoint chunk count overflow".into()))?;
+    if chunk_references > MAX_HISTORY_CHUNK_REFERENCES {
+        return Err(HistoryError::InvalidInput(
+            "checkpoint exceeds the portable history chunk-reference limit".into(),
+        ));
+    }
+    Ok((file_bytes, checkpoint_bytes, chunk_references))
+}
+
 /// A single project's independent checkpoint store.
 #[derive(Clone, Debug)]
 pub struct Store {
     root: PathBuf,
+}
+
+/// A store used by automatic publication.
+///
+/// A first publication is assembled below a private sibling directory. The
+/// final store path remains absent until [`PublicationStore::commit`] installs
+/// a nonempty store with one same-filesystem rename.
+pub struct PublicationStore {
+    store: Option<Store>,
+    target_root: PathBuf,
+    initialization_dir: Option<PathBuf>,
+    _initialization_lock: File,
+}
+
+/// Result of committing an automatic publication store.
+#[derive(Debug)]
+pub enum PublicationCommitOutcome {
+    /// The store is visible and its parent directory was durably synchronized.
+    Durable(Store),
+    /// The initial store is visible, but parent-directory synchronization could
+    /// not prove that the install will survive a system crash.
+    InstalledDurabilityUncertain(Store),
+}
+
+impl PublicationCommitOutcome {
+    pub fn into_store(self) -> Store {
+        match self {
+            Self::Durable(store) | Self::InstalledDurabilityUncertain(store) => store,
+        }
+    }
+}
+
+impl PublicationStore {
+    pub fn store(&self) -> &Store {
+        self.store
+            .as_ref()
+            .expect("publication store is available until commit")
+    }
+
+    /// Makes a successfully published initial store visible. Existing stores
+    /// need no installation and are returned unchanged.
+    pub fn commit(self) -> Result<PublicationCommitOutcome> {
+        self.commit_with_parent_sync(sync_directory)
+    }
+
+    /// Publishes and installs a checkpoint without cancellation.
+    pub fn publish(
+        self,
+        candidate: Candidate,
+        evidence: CompileEvidence,
+    ) -> Result<(PublishOutcome, PublicationCommitOutcome)> {
+        self.publish_controlled(candidate, evidence, &UncancelledPublication)
+    }
+
+    /// Publishes with one cancellation cutoff at the operation that first
+    /// makes the checkpoint visible. Existing stores cross the cutoff at the
+    /// catalog commit. A first store crosses it at the final directory rename.
+    pub fn publish_controlled(
+        self,
+        candidate: Candidate,
+        evidence: CompileEvidence,
+        gate: &dyn PublicationGate,
+    ) -> Result<(PublishOutcome, PublicationCommitOutcome)> {
+        let requires_install = self.initialization_dir.is_some();
+        let published = if requires_install {
+            self.store().publish_inner_controlled(
+                candidate,
+                evidence,
+                PublishFault::None,
+                &DeferredVisibility(gate),
+            )?
+        } else {
+            self.store().publish_controlled(candidate, evidence, gate)?
+        };
+        let committed = if requires_install {
+            self.commit_controlled(gate)?
+        } else {
+            self.commit()?
+        };
+        Ok((published, committed))
+    }
+
+    fn commit_controlled(self, gate: &dyn PublicationGate) -> Result<PublicationCommitOutcome> {
+        self.commit_inner(sync_directory, Some(gate))
+    }
+
+    fn commit_with_parent_sync(
+        self,
+        sync_parent: impl FnMut(&Path) -> Result<()>,
+    ) -> Result<PublicationCommitOutcome> {
+        self.commit_inner(sync_parent, None)
+    }
+
+    fn commit_inner(
+        mut self,
+        mut sync_parent: impl FnMut(&Path) -> Result<()>,
+        gate: Option<&dyn PublicationGate>,
+    ) -> Result<PublicationCommitOutcome> {
+        let mut store = self
+            .store
+            .take()
+            .expect("publication store is available until commit");
+        let Some(initialization_dir) = self.initialization_dir.as_ref() else {
+            return Ok(PublicationCommitOutcome::Durable(store));
+        };
+
+        if store.list()?.is_empty() {
+            return Err(HistoryError::InvalidInput(
+                "cannot install a checkpoint store without a visible checkpoint".into(),
+            ));
+        }
+
+        let parent = store_parent(&self.target_root)?;
+        let namespace_lock = open_namespace_lock(parent, true)?;
+        fs4::FileExt::lock(&namespace_lock)?;
+        if self.target_root.try_exists()? {
+            return Err(HistoryError::Corrupt(format!(
+                "checkpoint store appeared while its first publication was being installed: {}",
+                self.target_root.display()
+            )));
+        }
+
+        let mut install = || {
+            fs::rename(&store.root, &self.target_root)?;
+            Ok(())
+        };
+        let installed = if let Some(gate) = gate {
+            gate.commit_visibility(&mut install)?
+        } else {
+            install()?;
+            true
+        };
+        if !installed {
+            return Err(HistoryError::PublicationCancelled);
+        }
+        let mut durable = sync_parent(parent).is_ok();
+        store.root = self.target_root.clone();
+        let initialization_dir = initialization_dir.clone();
+        self.initialization_dir = None;
+        drop(namespace_lock);
+
+        // Any residue here is private and will also be reaped before the next
+        // publication attempt. A later successful parent sync also makes the
+        // already-completed install durable.
+        let _ = remove_path_without_following_links(&initialization_dir);
+        durable |= sync_parent(parent).is_ok();
+        if durable {
+            Ok(PublicationCommitOutcome::Durable(store))
+        } else {
+            Ok(PublicationCommitOutcome::InstalledDurabilityUncertain(
+                store,
+            ))
+        }
+    }
+}
+
+impl Drop for PublicationStore {
+    fn drop(&mut self) {
+        if let Some(initialization_dir) = self.initialization_dir.take() {
+            let _ = remove_path_without_following_links(&initialization_dir);
+            if let Some(parent) = initialization_dir.parent() {
+                let _ = sync_directory(parent);
+            }
+        }
+    }
 }
 
 /// An exclusive, cross-process store operation. Keep this guard alive while
@@ -483,7 +783,11 @@ impl Store {
         fs::create_dir_all(requested_parent)?;
         validate_real_directory(requested_parent, "checkpoint store parent")?;
         let parent = requested_parent.canonicalize()?;
-        let root = parent.join(store_name(requested_root)?);
+        let name = store_name(requested_root)?;
+        let _initialization_lock = lock_initialization(&parent, name, true)?.ok_or_else(|| {
+            HistoryError::Corrupt("blocking checkpoint initialization lock was not acquired".into())
+        })?;
+        let root = parent.join(name);
         let namespace_lock = open_namespace_lock(&parent, true)?;
         fs4::FileExt::lock_shared(&namespace_lock)?;
         fs::create_dir_all(&root)?;
@@ -512,6 +816,70 @@ impl Store {
         remove_stale_staging(&store.root)?;
         store.recover_orphan_packs_inner()?;
         Ok(store)
+    }
+
+    /// Opens an existing store for automatic publication or creates a private
+    /// first-publication store whose final path stays absent until commit.
+    pub fn open_for_publication(root: impl AsRef<Path>) -> Result<PublicationStore> {
+        Self::open_for_publication_checked(root.as_ref(), true)?.ok_or_else(|| {
+            HistoryError::Corrupt("blocking checkpoint publication lock was not acquired".into())
+        })
+    }
+
+    /// Tries to reserve one store for automatic publication without waiting.
+    /// `None` means another process currently owns the publication lock.
+    pub fn try_open_for_publication(root: impl AsRef<Path>) -> Result<Option<PublicationStore>> {
+        Self::open_for_publication_checked(root.as_ref(), false)
+    }
+
+    fn open_for_publication_checked(
+        requested_root: &Path,
+        wait_for_initialization: bool,
+    ) -> Result<Option<PublicationStore>> {
+        let requested_parent = store_parent(requested_root)?;
+        fs::create_dir_all(requested_parent)?;
+        validate_real_directory(requested_parent, "checkpoint store parent")?;
+        let parent = requested_parent.canonicalize()?;
+        let name = store_name(requested_root)?;
+        let target_root = parent.join(name);
+        let Some(initialization_lock) =
+            lock_initialization(&parent, name, wait_for_initialization)?
+        else {
+            return Ok(None);
+        };
+        reap_initialization_directories(&parent, name)?;
+
+        if target_root.try_exists()? {
+            let store = Self::open_existing(&target_root)?.ok_or_else(|| {
+                HistoryError::Corrupt(format!(
+                    "checkpoint store disappeared while it was opened: {}",
+                    target_root.display()
+                ))
+            })?;
+            return Ok(Some(PublicationStore {
+                store: Some(store),
+                target_root,
+                initialization_dir: None,
+                _initialization_lock: initialization_lock,
+            }));
+        }
+
+        let initialization_dir = create_initialization_directory(&parent, name)?;
+        let pending_root = initialization_dir.join("store");
+        let store = match Self::open(&pending_root) {
+            Ok(store) => store,
+            Err(error) => {
+                let _ = remove_path_without_following_links(&initialization_dir);
+                let _ = sync_directory(&parent);
+                return Err(error);
+            }
+        };
+        Ok(Some(PublicationStore {
+            store: Some(store),
+            target_root,
+            initialization_dir: Some(initialization_dir),
+            _initialization_lock: initialization_lock,
+        }))
     }
 
     /// Opens a previously created store without creating any path or file.
@@ -568,20 +936,56 @@ impl Store {
     /// Store handles in this namespace. The namespace lock remains beside the
     /// stores so a later recreation cannot race on a replacement lock inode.
     pub fn destroy(root: impl AsRef<Path>) -> Result<bool> {
-        let requested_root = root.as_ref();
+        Ok(Self::destroy_checked(root.as_ref(), false, true)?.unwrap_or(false))
+    }
+
+    /// Atomically removes a store only when it has no visible checkpoints.
+    /// The emptiness check and detach share the namespace lock, so a cleanup
+    /// attempt cannot race with publication in another process.
+    pub fn destroy_if_empty(root: impl AsRef<Path>) -> Result<bool> {
+        Ok(Self::destroy_checked(root.as_ref(), true, true)?.unwrap_or(false))
+    }
+
+    /// Tries to atomically remove an empty store without waiting on another
+    /// process. `None` means the namespace is currently busy.
+    pub fn try_destroy_if_empty(root: impl AsRef<Path>) -> Result<Option<bool>> {
+        Self::destroy_checked(root.as_ref(), true, false)
+    }
+
+    fn destroy_checked(
+        requested_root: &Path,
+        only_if_empty: bool,
+        wait_for_namespace: bool,
+    ) -> Result<Option<bool>> {
         let requested_parent = store_parent(requested_root)?;
         if !requested_parent.try_exists()? {
-            return Ok(false);
+            return Ok(Some(false));
         }
         validate_real_directory(requested_parent, "checkpoint store parent")?;
         let parent = requested_parent.canonicalize()?;
         let name = store_name(requested_root)?;
         let root = parent.join(name);
+        let Some(_initialization_lock) = lock_initialization(&parent, name, wait_for_namespace)?
+        else {
+            return Ok(None);
+        };
         let namespace_lock = open_namespace_lock(&parent, true)?;
-        fs4::FileExt::lock(&namespace_lock)?;
-        let mut removed = reap_detached_stores(&parent, name, root.try_exists()?)?;
+        if wait_for_namespace {
+            fs4::FileExt::lock(&namespace_lock)?;
+        } else {
+            match fs4::FileExt::try_lock(&namespace_lock) {
+                Ok(()) => {}
+                Err(fs4::TryLockError::WouldBlock) => return Ok(None),
+                Err(fs4::TryLockError::Error(error)) => return Err(error.into()),
+            }
+        }
+        let mut removed = if wait_for_namespace {
+            reap_detached_stores(&parent, name, root.try_exists()?)?
+        } else {
+            false
+        };
         if !root.try_exists()? {
-            return Ok(removed);
+            return Ok(Some(removed));
         }
         validate_real_directory(&root, "checkpoint store root")?;
         validate_regular_file(&root.join(OPERATION_LOCK_FILE), "checkpoint operation lock")?;
@@ -589,6 +993,19 @@ impl Store {
         validate_regular_file(&root.join("catalog.sqlite3"), "checkpoint catalog")?;
         validate_real_directory(&root.join("packs"), "checkpoint packs directory")?;
         validate_real_directory(&root.join("staging"), "checkpoint staging directory")?;
+        if only_if_empty {
+            let store = Self { root: root.clone() };
+            let connection = store.connection()?;
+            let has_visible: bool = connection.query_row(
+                "SELECT EXISTS(SELECT 1 FROM checkpoints LIMIT 1)",
+                [],
+                |row| row.get(0),
+            )?;
+            drop(connection);
+            if has_visible {
+                return Ok(Some(false));
+            }
+        }
         let (record_path, record) = prepare_delete_record(&parent, name)?;
         let tombstone = detached_store_path(&parent, name, &record.token);
         if tombstone.try_exists()? {
@@ -604,7 +1021,7 @@ impl Store {
         remove_delete_record(&record_path)?;
         sync_directory(&parent)?;
         removed = true;
-        Ok(removed)
+        Ok(Some(removed))
     }
 
     /// Seals only the explicit regular files in `inputs` into a private tree.
@@ -614,8 +1031,21 @@ impl Store {
         project_root: impl AsRef<Path>,
         inputs: &[CaptureInput],
     ) -> Result<Candidate> {
+        self.stage_candidate_controlled(project_root, inputs, &UncancelledPublication)
+    }
+
+    /// Seals a candidate while polling a caller-owned cancellation gate between
+    /// files and bounded content chunks.
+    pub fn stage_candidate_controlled(
+        &self,
+        project_root: impl AsRef<Path>,
+        inputs: &[CaptureInput],
+        gate: &dyn PublicationGate,
+    ) -> Result<Candidate> {
+        ensure_publication_active(gate)?;
         let store_locks = self.acquire_exclusive_locks()?;
-        self.stage_candidate_locked(project_root.as_ref(), inputs, store_locks)
+        ensure_publication_active(gate)?;
+        self.stage_candidate_locked_controlled(project_root.as_ref(), inputs, store_locks, gate)
     }
 
     fn stage_candidate_locked(
@@ -624,6 +1054,22 @@ impl Store {
         inputs: &[CaptureInput],
         store_locks: StoreLocks,
     ) -> Result<Candidate> {
+        self.stage_candidate_locked_controlled(
+            project_root,
+            inputs,
+            store_locks,
+            &UncancelledPublication,
+        )
+    }
+
+    fn stage_candidate_locked_controlled(
+        &self,
+        project_root: &Path,
+        inputs: &[CaptureInput],
+        store_locks: StoreLocks,
+        gate: &dyn PublicationGate,
+    ) -> Result<Candidate> {
+        ensure_publication_active(gate)?;
         let canonical_project_root = project_root.canonicalize()?;
         if !canonical_project_root.is_dir() {
             return Err(HistoryError::InvalidInput(
@@ -658,6 +1104,7 @@ impl Store {
             &sealed_root,
             &staged_pack,
             store_locks,
+            gate,
         );
         if result.is_err() {
             let _ = fs::remove_dir_all(&staging_dir);
@@ -665,6 +1112,7 @@ impl Store {
         result
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn capture_candidate(
         &self,
         canonical_project_root: &Path,
@@ -673,7 +1121,9 @@ impl Store {
         sealed_root: &Path,
         staged_pack: &Path,
         store_locks: StoreLocks,
+        gate: &dyn PublicationGate,
     ) -> Result<Candidate> {
+        ensure_publication_active(gate)?;
         let connection = self.connection()?;
         let mut pack = OpenOptions::new()
             .create_new(true)
@@ -686,8 +1136,17 @@ impl Store {
         let mut proven_files = Vec::new();
         let mut staged_hashes = HashSet::new();
         let mut new_chunks = Vec::new();
+        let mut candidate_logical_size = 0_u64;
+        let mut candidate_chunk_references = 0_u64;
+
+        if inputs.len() as u64 > MAX_HISTORY_CHUNK_REFERENCES {
+            return Err(HistoryError::InvalidInput(
+                "checkpoint file count exceeds the portable history limit".into(),
+            ));
+        }
 
         for input in inputs {
+            ensure_publication_active(gate)?;
             let source = canonical_project_root.join(path_from_portable(&input.relative_path));
             validate_unsymlinked_regular_file(canonical_project_root, &input.relative_path)?;
             let mut source_options = OpenOptions::new();
@@ -721,10 +1180,15 @@ impl Store {
                     input.relative_path
                 )));
             }
-            if let CaptureBasis::CompilerRead { resolved_path, .. } = &input.basis {
+            let expected_resolved_path = match &input.basis {
+                CaptureBasis::CompilerRead { resolved_path, .. }
+                | CaptureBasis::ReplayRequired { resolved_path, .. } => Some(resolved_path),
+                CaptureBasis::Explicit => None,
+            };
+            if let Some(resolved_path) = expected_resolved_path {
                 if &canonical_source != resolved_path {
                     return Err(HistoryError::InvalidInput(format!(
-                        "proven input {} resolved as {}, expected {}",
+                        "replay input {} resolved as {}, expected {}",
                         input.relative_path,
                         canonical_source.display(),
                         resolved_path.display()
@@ -753,11 +1217,19 @@ impl Store {
                 MAX_CHUNK_SIZE,
             ) {
                 let chunk = chunk.map_err(io::Error::from)?;
+                ensure_publication_active(gate)?;
+                let (next_file_size, next_candidate_size, next_chunk_references) =
+                    advance_capture_budget(
+                        logical_size,
+                        candidate_logical_size,
+                        candidate_chunk_references,
+                        chunk.length as u64,
+                    )?;
                 destination_file.write_all(&chunk.data)?;
                 content_hasher.update(&chunk.data);
-                logical_size = logical_size
-                    .checked_add(chunk.length as u64)
-                    .ok_or_else(|| HistoryError::InvalidInput("input is too large".into()))?;
+                logical_size = next_file_size;
+                candidate_logical_size = next_candidate_size;
+                candidate_chunk_references = next_chunk_references;
 
                 let chunk_hash = ContentHash::digest(&chunk.data);
                 let chunk_hash_hex = chunk_hash.to_hex();
@@ -777,9 +1249,12 @@ impl Store {
                 if !already_published && staged_hashes.insert(chunk_hash_hex.clone()) {
                     new_chunks.push(write_pack_chunk(&mut pack, chunk_hash, &chunk.data)?);
                 }
+                ensure_publication_active(gate)?;
             }
             drop(source_reader);
+            ensure_publication_active(gate)?;
             destination_file.sync_all()?;
+            ensure_publication_active(gate)?;
 
             if source_handle != same_file::Handle::from_path(&source)? {
                 return Err(HistoryError::InvalidInput(format!(
@@ -797,13 +1272,19 @@ impl Store {
             }
 
             let content_hash = ContentHash::from_bytes(*content_hasher.finalize().as_bytes());
-            if let CaptureBasis::CompilerRead {
-                first_read_hash, ..
-            } = &input.basis
-            {
-                if &content_hash != first_read_hash {
+            let expected_hash = match &input.basis {
+                CaptureBasis::CompilerRead {
+                    first_read_hash, ..
+                } => Some((*first_read_hash, "changed after the compiler first read it")),
+                CaptureBasis::ReplayRequired { preseal_hash, .. } => {
+                    Some((*preseal_hash, "changed before it was sealed for replay"))
+                }
+                CaptureBasis::Explicit => None,
+            };
+            if let Some((expected_hash, changed_message)) = expected_hash {
+                if content_hash != expected_hash {
                     return Err(HistoryError::InvalidInput(format!(
-                        "proven input {} changed after the compiler first read it",
+                        "replay input {} {changed_message}",
                         input.relative_path
                     )));
                 }
@@ -823,11 +1304,13 @@ impl Store {
             });
         }
 
+        ensure_publication_active(gate)?;
         pack.sync_all()?;
+        ensure_publication_active(gate)?;
         sync_directory(staging_dir)?;
         let pack_len = pack.metadata()?.len();
         drop(pack);
-        let pack_id = hash_file(staged_pack)?;
+        let pack_id = hash_file_controlled(staged_pack, gate)?;
         let manifest = Manifest {
             format_version: FORMAT_VERSION,
             files: manifest_files,
@@ -861,25 +1344,75 @@ impl Store {
         self.publish_inner(candidate, evidence, PublishFault::None)
     }
 
+    /// Publishes through a cancellation gate whose commit callback is the
+    /// single cutoff between cancellation and a visible checkpoint root.
+    pub fn publish_controlled(
+        &self,
+        candidate: Candidate,
+        evidence: CompileEvidence,
+        gate: &dyn PublicationGate,
+    ) -> Result<PublishOutcome> {
+        self.publish_inner_controlled(candidate, evidence, PublishFault::None, gate)
+    }
+
     fn publish_inner(
+        &self,
+        candidate: Candidate,
+        evidence: CompileEvidence,
+        fault: PublishFault,
+    ) -> Result<PublishOutcome> {
+        self.publish_inner_controlled(candidate, evidence, fault, &UncancelledPublication)
+    }
+
+    fn publish_inner_controlled(
         &self,
         mut candidate: Candidate,
         evidence: CompileEvidence,
         fault: PublishFault,
+        gate: &dyn PublicationGate,
     ) -> Result<PublishOutcome> {
         if candidate.store_root != self.root {
             return Err(HistoryError::InvalidInput(
                 "candidate belongs to a different checkpoint store".into(),
             ));
         }
-        verify_candidate_sealed_tree(&candidate)?;
+        ensure_publication_active(gate)?;
+        verify_candidate_sealed_tree_controlled(&candidate, gate)?;
+        ensure_publication_active(gate)?;
         validate_compile_evidence(&candidate, &evidence)?;
 
-        let root_hex = candidate.snapshot_root.as_hex();
+        let logical_bytes = candidate
+            .manifest
+            .files
+            .iter()
+            .try_fold(0_u64, |total, file| {
+                total
+                    .checked_add(file.logical_size)
+                    .ok_or_else(|| HistoryError::InvalidInput("snapshot length overflow".into()))
+            })?;
+        let checkpoint = Checkpoint {
+            snapshot_root: candidate.snapshot_root,
+            completed_at_unix_ms: evidence.completed_at_unix_ms,
+            engine: evidence.engine,
+            toolchain_identity: evidence.toolchain_identity,
+            main_document: evidence.main_document,
+            output_hash: evidence.output_hash,
+            file_count: candidate.manifest.files.len() as u64,
+            logical_bytes,
+            replayed_inputs: evidence.replayed_inputs,
+        };
+
+        let root_hex = checkpoint.snapshot_root.as_hex();
         let mut connection = self.connection()?;
         let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
         let root_already_visible = query_checkpoint(&transaction, &root_hex)?.is_some();
+        validate_portable_history_after_publication(
+            &transaction,
+            &checkpoint,
+            &candidate.manifest,
+            root_already_visible,
+        )?;
 
         let mut published_pack_path = None;
         if !candidate.new_chunks.is_empty() {
@@ -887,7 +1420,7 @@ impl Store {
             let file_name = format!("{pack_id}.pack");
             let destination = self.root.join("packs").join(&file_name);
             if destination.exists() {
-                if hash_file(&destination)? != candidate.pack_id {
+                if hash_file_controlled(&destination, gate)? != candidate.pack_id {
                     return Err(HistoryError::Corrupt(format!(
                         "immutable pack collision for {pack_id}"
                     )));
@@ -961,27 +1494,6 @@ impl Store {
             )));
         }
 
-        let logical_bytes = candidate
-            .manifest
-            .files
-            .iter()
-            .try_fold(0_u64, |total, file| {
-                total
-                    .checked_add(file.logical_size)
-                    .ok_or_else(|| HistoryError::InvalidInput("snapshot length overflow".into()))
-            })?;
-        let checkpoint = Checkpoint {
-            snapshot_root: candidate.snapshot_root,
-            completed_at_unix_ms: evidence.completed_at_unix_ms,
-            engine: evidence.engine,
-            toolchain_identity: evidence.toolchain_identity,
-            main_document: evidence.main_document,
-            output_hash: evidence.output_hash,
-            file_count: candidate.manifest.files.len() as u64,
-            logical_bytes,
-            replayed_inputs: evidence.replayed_inputs,
-        };
-
         // Reinsert an existing root so its catalog sequence records this
         // validated publication as the newest recovery point. The delete and
         // insert are one transaction, while the immutable manifest and packs
@@ -1018,7 +1530,17 @@ impl Store {
             )));
         }
 
-        transaction.commit()?;
+        let mut transaction = Some(transaction);
+        let mut commit = || {
+            transaction
+                .take()
+                .expect("checkpoint transaction is committed at most once")
+                .commit()
+                .map_err(HistoryError::from)
+        };
+        if !gate.commit_visibility(&mut commit)? {
+            return Err(HistoryError::PublicationCancelled);
+        }
         // Visibility is committed. Cleanup must not turn success into an error
         // that a caller could mistake for a safe retry or rollback point.
         let _ = candidate.cleanup();
@@ -1054,7 +1576,13 @@ impl Store {
         let connection = self.connection()?;
         let mut statement = connection.prepare(
             "SELECT snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
-                    main_document, output_hash, file_count, logical_bytes, replayed_inputs_json
+                    main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
+                    length(CAST(snapshot_root AS BLOB))
+                      + length(CAST(engine AS BLOB))
+                      + length(CAST(toolchain_identity AS BLOB))
+                      + length(CAST(main_document AS BLOB))
+                      + length(CAST(output_hash AS BLOB))
+                      + length(CAST(replayed_inputs_json AS BLOB))
              FROM checkpoints
              ORDER BY sequence DESC",
         )?;
@@ -1468,10 +1996,10 @@ impl Store {
             .checkpoint_inner(root)?
             .ok_or_else(|| HistoryError::CheckpointNotFound(root.as_hex()))?;
         let connection = self.connection()?;
-        let summary =
+        let record =
             self.write_portable_checkpoint_record(&connection, &checkpoint, &mut writer)?;
         writer.flush()?;
-        Ok(summary)
+        Ok(record.export)
     }
 
     /// Imports one logical checkpoint stream invisibly, then publishes its
@@ -1591,41 +2119,36 @@ impl Store {
         let mut connection = self.connection()?;
         let transaction = connection.transaction_with_behavior(TransactionBehavior::Deferred)?;
         let checkpoint_count = query_count(&transaction, "checkpoints")?;
-        if checkpoint_count > MAX_HISTORY_CHECKPOINTS {
-            return Err(HistoryError::InvalidInput(
-                "checkpoint history exceeds the portable export limit".into(),
-            ));
-        }
+        PortableHistoryBudget::validate_checkpoint_count(checkpoint_count)?;
         let lineage = self.lineage_with_connection(&transaction)?;
         writer.write_all(HISTORY_EXPORT_MAGIC)?;
         writer.write_all(lineage.as_bytes())?;
         writer.write_all(&checkpoint_count.to_le_bytes())?;
-        let mut logical_bytes = 0_u64;
+        let mut budget = PortableHistoryBudget::default();
         let mut statement = transaction.prepare(
             "SELECT snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
-                    main_document, output_hash, file_count, logical_bytes, replayed_inputs_json
+                    main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
+                    length(CAST(snapshot_root AS BLOB))
+                      + length(CAST(engine AS BLOB))
+                      + length(CAST(toolchain_identity AS BLOB))
+                      + length(CAST(main_document AS BLOB))
+                      + length(CAST(output_hash AS BLOB))
+                      + length(CAST(replayed_inputs_json AS BLOB))
              FROM checkpoints ORDER BY sequence ASC",
         )?;
         let checkpoints = statement.query_map([], checkpoint_from_row)?;
         for checkpoint in checkpoints {
             let checkpoint = checkpoint?;
-            let summary =
+            let record =
                 self.write_portable_checkpoint_record(&transaction, &checkpoint, &mut writer)?;
-            logical_bytes = logical_bytes
-                .checked_add(summary.logical_bytes)
-                .ok_or_else(|| HistoryError::Corrupt("history length overflow".into()))?;
-            if logical_bytes > MAX_HISTORY_LOGICAL_BYTES {
-                return Err(HistoryError::InvalidInput(
-                    "checkpoint history exceeds the portable logical-size limit".into(),
-                ));
-            }
+            budget.include(record.budget)?;
         }
         drop(statement);
         writer.flush()?;
         transaction.commit()?;
         Ok(HistoryExportSummary {
-            checkpoint_count,
-            logical_bytes,
+            checkpoint_count: budget.checkpoint_count,
+            logical_bytes: budget.logical_bytes,
         })
     }
 
@@ -1667,11 +2190,7 @@ impl Store {
         let mut count_bytes = [0_u8; 8];
         reader.read_exact(&mut count_bytes)?;
         let count = u64::from_le_bytes(count_bytes);
-        if count > MAX_HISTORY_CHECKPOINTS {
-            return Err(HistoryError::InvalidInput(format!(
-                "portable history checkpoint count {count} is invalid"
-            )));
-        }
+        PortableHistoryBudget::validate_checkpoint_count(count)?;
 
         let mut connection = self.connection()?;
         let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -1707,22 +2226,10 @@ impl Store {
         let mut new_chunks = Vec::new();
         let mut imported_roots = HashSet::new();
         let mut checkpoints = Vec::with_capacity(count.min(4096) as usize);
-        let mut metadata_bytes = 0_u64;
-        let mut logical_bytes = 0_u64;
-        let mut chunk_references = 0_u64;
+        let mut budget = PortableHistoryBudget::default();
         for _ in 0..count {
-            let remaining = ImportBudget {
-                metadata_bytes: MAX_HISTORY_METADATA_BYTES.saturating_sub(metadata_bytes),
-                logical_bytes: MAX_HISTORY_LOGICAL_BYTES.saturating_sub(logical_bytes),
-                chunk_references: MAX_HISTORY_CHUNK_REFERENCES.saturating_sub(chunk_references),
-            };
-            let (
-                checkpoint,
-                project_json,
-                checkpoint_metadata_bytes,
-                checkpoint_logical_bytes,
-                checkpoint_chunk_references,
-            ) = self.read_portable_checkpoint_record(
+            let remaining = budget.remaining();
+            let (checkpoint, project_json) = self.read_portable_checkpoint_record(
                 &transaction,
                 &mut reader,
                 &mut pack,
@@ -1741,36 +2248,7 @@ impl Store {
                     checkpoint.root
                 ))
             })?;
-            metadata_bytes = metadata_bytes
-                .checked_add(checkpoint_metadata_bytes)
-                .ok_or_else(|| {
-                    HistoryError::InvalidInput("portable history metadata is too large".into())
-                })?;
-            if metadata_bytes > MAX_HISTORY_METADATA_BYTES {
-                return Err(HistoryError::InvalidInput(
-                    "portable history metadata exceeds the import limit".into(),
-                ));
-            }
-            logical_bytes = logical_bytes
-                .checked_add(checkpoint_logical_bytes)
-                .ok_or_else(|| {
-                    HistoryError::InvalidInput("portable history is too large".into())
-                })?;
-            if logical_bytes > MAX_HISTORY_LOGICAL_BYTES {
-                return Err(HistoryError::InvalidInput(
-                    "portable history exceeds the import logical-size limit".into(),
-                ));
-            }
-            chunk_references = chunk_references
-                .checked_add(checkpoint_chunk_references)
-                .ok_or_else(|| {
-                    HistoryError::InvalidInput("portable history has too many chunks".into())
-                })?;
-            if chunk_references > MAX_HISTORY_CHUNK_REFERENCES {
-                return Err(HistoryError::InvalidInput(
-                    "portable history contains too many chunk references".into(),
-                ));
-            }
+            budget.include(checkpoint.portable_budget)?;
             let root_hex = checkpoint.root.as_hex();
             if !imported_roots.insert(root_hex.clone()) {
                 return Err(HistoryError::InvalidInput(format!(
@@ -1928,30 +2406,13 @@ impl Store {
         connection: &Connection,
         checkpoint: &Checkpoint,
         writer: &mut W,
-    ) -> Result<ExportSummary> {
+    ) -> Result<PortableCheckpointRecordSummary> {
         let root = checkpoint.snapshot_root;
         let manifest = load_visible_manifest(connection, &root)?;
-        verify_manifest_root(&root, &manifest)?;
-        let metadata = PortableCheckpoint {
-            export_version: 1,
-            snapshot_root: root.as_hex(),
-            completed_at_unix_ms: checkpoint.completed_at_unix_ms,
-            engine: checkpoint.engine.clone(),
-            toolchain_identity: checkpoint.toolchain_identity.clone(),
-            main_document: checkpoint.main_document.clone(),
-            output_hash: checkpoint.output_hash.to_hex(),
-            replayed_inputs: encode_portable_replayed_inputs(&checkpoint.replayed_inputs),
-            manifest: manifest.clone(),
-        };
-        let header = serde_json::to_vec(&metadata)?;
-        if header.len() as u64 > MAX_EXPORT_HEADER_BYTES {
-            return Err(HistoryError::InvalidInput(
-                "portable checkpoint header exceeds 16 MiB".into(),
-            ));
-        }
+        let prepared = prepare_portable_checkpoint(checkpoint, &manifest)?;
         writer.write_all(EXPORT_MAGIC)?;
-        writer.write_all(&(header.len() as u64).to_le_bytes())?;
-        writer.write_all(&header)?;
+        writer.write_all(&(prepared.header.len() as u64).to_le_bytes())?;
+        writer.write_all(&prepared.header)?;
 
         let mut logical_bytes = 0_u64;
         for manifest_file in &manifest.files {
@@ -1977,10 +2438,13 @@ impl Store {
                 "checkpoint {root} summary does not match its manifest"
             )));
         }
-        Ok(ExportSummary {
-            snapshot_root: root,
-            file_count: manifest.files.len() as u64,
-            logical_bytes,
+        Ok(PortableCheckpointRecordSummary {
+            export: ExportSummary {
+                snapshot_root: root,
+                file_count: manifest.files.len() as u64,
+                logical_bytes,
+            },
+            budget: prepared.budget,
         })
     }
 
@@ -1992,7 +2456,7 @@ impl Store {
         staged_hashes: &mut HashSet<String>,
         new_chunks: &mut Vec<StagedChunk>,
         remaining: ImportBudget,
-    ) -> Result<(ImportedCheckpoint, Vec<u8>, u64, u64, u64)> {
+    ) -> Result<(ImportedCheckpoint, Vec<u8>)> {
         let (metadata, metadata_bytes) = read_portable_checkpoint_metadata(reader)?;
         if metadata_bytes > remaining.metadata_bytes {
             return Err(HistoryError::InvalidInput(
@@ -2101,11 +2565,13 @@ impl Store {
                 root,
                 evidence,
                 manifest: metadata.manifest,
+                portable_budget: PortableCheckpointBudget {
+                    metadata_bytes,
+                    logical_bytes: declared_logical_bytes,
+                    chunk_references: declared_chunk_references,
+                },
             },
             project_json,
-            metadata_bytes,
-            declared_logical_bytes,
-            declared_chunk_references,
         ))
     }
 
@@ -2310,6 +2776,120 @@ struct PortableReplayedInput {
     content_hash: String,
 }
 
+#[derive(Serialize)]
+struct PortableCheckpointView<'a> {
+    export_version: u32,
+    snapshot_root: PortableSnapshotRoot<'a>,
+    completed_at_unix_ms: i64,
+    engine: &'a str,
+    toolchain_identity: &'a str,
+    main_document: &'a str,
+    output_hash: PortableContentHash<'a>,
+    replayed_inputs: PortableReplayedInputs<'a>,
+    manifest: &'a Manifest,
+}
+
+struct PortableSnapshotRoot<'a>(&'a SnapshotRoot);
+
+impl Serialize for PortableSnapshotRoot<'_> {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self.0)
+    }
+}
+
+struct PortableContentHash<'a>(&'a ContentHash);
+
+impl Serialize for PortableContentHash<'_> {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self.0)
+    }
+}
+
+struct PortableReplayedInputs<'a>(&'a [ReplayedInput]);
+
+impl Serialize for PortableReplayedInputs<'_> {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut sequence = serializer.serialize_seq(Some(self.0.len()))?;
+        for input in self.0 {
+            sequence.serialize_element(&PortableReplayedInputView {
+                relative_path: &input.relative_path,
+                content_hash: PortableContentHash(&input.content_hash),
+            })?;
+        }
+        sequence.end()
+    }
+}
+
+#[derive(Serialize)]
+struct PortableReplayedInputView<'a> {
+    relative_path: &'a str,
+    content_hash: PortableContentHash<'a>,
+}
+
+struct BoundedPortableWriter<W> {
+    inner: W,
+    written: u64,
+    limit: u64,
+    overflowed: bool,
+}
+
+impl<W> BoundedPortableWriter<W> {
+    fn new(inner: W, limit: u64) -> Self {
+        Self {
+            inner,
+            written: 0,
+            limit,
+            overflowed: false,
+        }
+    }
+}
+
+impl<W: Write> Write for BoundedPortableWriter<W> {
+    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
+        let requested = u64::try_from(buffer.len()).unwrap_or(u64::MAX);
+        if requested > self.limit.saturating_sub(self.written) {
+            self.overflowed = true;
+            return Err(io::Error::other(
+                "portable checkpoint header limit exceeded",
+            ));
+        }
+        let written = self.inner.write(buffer)?;
+        self.written = self
+            .written
+            .checked_add(written as u64)
+            .ok_or_else(|| io::Error::other("portable checkpoint header length overflow"))?;
+        Ok(written)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush()
+    }
+}
+
+fn write_bounded_portable_json<T: Serialize, W: Write>(
+    value: &T,
+    writer: W,
+    limit: u64,
+) -> Result<u64> {
+    let mut writer = BoundedPortableWriter::new(writer, limit);
+    match serde_json::to_writer(&mut writer, value) {
+        Ok(()) => Ok(writer.written),
+        Err(_) if writer.overflowed => Err(HistoryError::InvalidInput(
+            "portable checkpoint header exceeds 16 MiB".into(),
+        )),
+        Err(error) => Err(error.into()),
+    }
+}
+
 fn encode_portable_replayed_inputs(inputs: &[ReplayedInput]) -> Vec<PortableReplayedInput> {
     inputs
         .iter()
@@ -2345,10 +2925,139 @@ fn decode_replayed_inputs(json: &str) -> Result<Vec<ReplayedInput>> {
     decode_portable_replayed_inputs(inputs)
 }
 
+fn portable_checkpoint_view<'a>(
+    checkpoint: &'a Checkpoint,
+    manifest: &'a Manifest,
+) -> Result<(PortableCheckpointView<'a>, PortableCheckpointBudget)> {
+    verify_manifest_root(&checkpoint.snapshot_root, manifest)?;
+    let logical_bytes = manifest.files.iter().try_fold(0_u64, |total, file| {
+        total
+            .checked_add(file.logical_size)
+            .ok_or_else(|| HistoryError::Corrupt("snapshot length overflow".into()))
+    })?;
+    let chunk_references = manifest.files.iter().try_fold(0_u64, |total, file| {
+        total
+            .checked_add(file.chunks.len() as u64)
+            .ok_or_else(|| HistoryError::Corrupt("checkpoint chunk count overflow".into()))
+    })?;
+    if checkpoint.file_count != manifest.files.len() as u64
+        || checkpoint.logical_bytes != logical_bytes
+    {
+        return Err(HistoryError::Corrupt(format!(
+            "checkpoint {} summary does not match its manifest",
+            checkpoint.snapshot_root
+        )));
+    }
+    let project_manifest = manifest
+        .files
+        .iter()
+        .find(|file| file.path == "project.json")
+        .ok_or(HistoryError::MissingProjectManifest)?;
+    if project_manifest.logical_size > MAX_PROJECT_MANIFEST_BYTES {
+        return Err(HistoryError::InvalidInput(
+            "portable project.json exceeds the import limit".into(),
+        ));
+    }
+
+    let metadata = PortableCheckpointView {
+        export_version: 1,
+        snapshot_root: PortableSnapshotRoot(&checkpoint.snapshot_root),
+        completed_at_unix_ms: checkpoint.completed_at_unix_ms,
+        engine: &checkpoint.engine,
+        toolchain_identity: &checkpoint.toolchain_identity,
+        main_document: &checkpoint.main_document,
+        output_hash: PortableContentHash(&checkpoint.output_hash),
+        replayed_inputs: PortableReplayedInputs(&checkpoint.replayed_inputs),
+        manifest,
+    };
+    Ok((
+        metadata,
+        PortableCheckpointBudget {
+            metadata_bytes: 0,
+            logical_bytes,
+            chunk_references,
+        },
+    ))
+}
+
+fn portable_checkpoint_budget(
+    checkpoint: &Checkpoint,
+    manifest: &Manifest,
+) -> Result<PortableCheckpointBudget> {
+    let (metadata, mut budget) = portable_checkpoint_view(checkpoint, manifest)?;
+    budget.metadata_bytes =
+        write_bounded_portable_json(&metadata, io::sink(), MAX_EXPORT_HEADER_BYTES)?;
+    Ok(budget)
+}
+
+fn prepare_portable_checkpoint(
+    checkpoint: &Checkpoint,
+    manifest: &Manifest,
+) -> Result<PreparedPortableCheckpoint> {
+    let (metadata, mut budget) = portable_checkpoint_view(checkpoint, manifest)?;
+    let metadata_bytes =
+        write_bounded_portable_json(&metadata, io::sink(), MAX_EXPORT_HEADER_BYTES)?;
+    let capacity = usize::try_from(metadata_bytes).map_err(|_| {
+        HistoryError::InvalidInput("portable checkpoint header is too large".into())
+    })?;
+    let mut header = Vec::with_capacity(capacity);
+    let retained_bytes =
+        write_bounded_portable_json(&metadata, &mut header, MAX_EXPORT_HEADER_BYTES)?;
+    if retained_bytes != metadata_bytes || header.len() as u64 != metadata_bytes {
+        return Err(HistoryError::Corrupt(
+            "portable checkpoint header serialization changed between passes".into(),
+        ));
+    }
+    budget.metadata_bytes = metadata_bytes;
+
+    Ok(PreparedPortableCheckpoint { budget, header })
+}
+
+fn validate_portable_history_after_publication(
+    connection: &Connection,
+    checkpoint: &Checkpoint,
+    manifest: &Manifest,
+    root_already_visible: bool,
+) -> Result<PortableHistoryBudget> {
+    let candidate_budget = portable_checkpoint_budget(checkpoint, manifest)?;
+    let existing_count = query_count(connection, "checkpoints")?;
+    let resulting_count = existing_count
+        .checked_add(u64::from(!root_already_visible))
+        .ok_or_else(|| HistoryError::InvalidInput("portable history count overflow".into()))?;
+    PortableHistoryBudget::validate_checkpoint_count(resulting_count)?;
+
+    let mut budget = PortableHistoryBudget::default();
+    let mut statement = connection.prepare(
+        "SELECT snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
+                main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
+                length(CAST(snapshot_root AS BLOB))
+                  + length(CAST(engine AS BLOB))
+                  + length(CAST(toolchain_identity AS BLOB))
+                  + length(CAST(main_document AS BLOB))
+                  + length(CAST(output_hash AS BLOB))
+                  + length(CAST(replayed_inputs_json AS BLOB))
+         FROM checkpoints ORDER BY sequence ASC",
+    )?;
+    let checkpoints = statement.query_map([], checkpoint_from_row)?;
+    for existing in checkpoints {
+        let existing = existing?;
+        if existing.snapshot_root == checkpoint.snapshot_root {
+            continue;
+        }
+        let existing_manifest = load_visible_manifest(connection, &existing.snapshot_root)?;
+        budget.include(portable_checkpoint_budget(&existing, &existing_manifest)?)?;
+    }
+    drop(statement);
+    budget.include(candidate_budget)?;
+    debug_assert_eq!(budget.checkpoint_count, resulting_count);
+    Ok(budget)
+}
+
 struct ImportedCheckpoint {
     root: SnapshotRoot,
     evidence: CompileEvidence,
     manifest: Manifest,
+    portable_budget: PortableCheckpointBudget,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -2356,6 +3065,100 @@ struct ImportBudget {
     metadata_bytes: u64,
     logical_bytes: u64,
     chunk_references: u64,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct PortableCheckpointBudget {
+    metadata_bytes: u64,
+    logical_bytes: u64,
+    chunk_references: u64,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct PortableHistoryBudget {
+    checkpoint_count: u64,
+    metadata_bytes: u64,
+    logical_bytes: u64,
+    chunk_references: u64,
+}
+
+impl PortableHistoryBudget {
+    fn validate_checkpoint_count(checkpoint_count: u64) -> Result<()> {
+        if checkpoint_count > MAX_HISTORY_CHECKPOINTS {
+            return Err(HistoryError::InvalidInput(
+                "portable history exceeds the checkpoint-count limit".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn include(&mut self, checkpoint: PortableCheckpointBudget) -> Result<()> {
+        let checkpoint_count = self
+            .checkpoint_count
+            .checked_add(1)
+            .ok_or_else(|| HistoryError::InvalidInput("portable history count overflow".into()))?;
+        Self::validate_checkpoint_count(checkpoint_count)?;
+
+        let metadata_bytes = self
+            .metadata_bytes
+            .checked_add(checkpoint.metadata_bytes)
+            .ok_or_else(|| {
+                HistoryError::InvalidInput("portable history metadata is too large".into())
+            })?;
+        if metadata_bytes > MAX_HISTORY_METADATA_BYTES {
+            return Err(HistoryError::InvalidInput(
+                "portable history metadata exceeds the limit".into(),
+            ));
+        }
+
+        let logical_bytes = self
+            .logical_bytes
+            .checked_add(checkpoint.logical_bytes)
+            .ok_or_else(|| HistoryError::InvalidInput("portable history is too large".into()))?;
+        if logical_bytes > MAX_HISTORY_LOGICAL_BYTES {
+            return Err(HistoryError::InvalidInput(
+                "portable history exceeds the logical-size limit".into(),
+            ));
+        }
+
+        let chunk_references = self
+            .chunk_references
+            .checked_add(checkpoint.chunk_references)
+            .ok_or_else(|| {
+                HistoryError::InvalidInput("portable history has too many chunks".into())
+            })?;
+        if chunk_references > MAX_HISTORY_CHUNK_REFERENCES {
+            return Err(HistoryError::InvalidInput(
+                "portable history contains too many chunk references".into(),
+            ));
+        }
+
+        *self = Self {
+            checkpoint_count,
+            metadata_bytes,
+            logical_bytes,
+            chunk_references,
+        };
+        Ok(())
+    }
+
+    fn remaining(self) -> ImportBudget {
+        ImportBudget {
+            metadata_bytes: MAX_HISTORY_METADATA_BYTES.saturating_sub(self.metadata_bytes),
+            logical_bytes: MAX_HISTORY_LOGICAL_BYTES.saturating_sub(self.logical_bytes),
+            chunk_references: MAX_HISTORY_CHUNK_REFERENCES.saturating_sub(self.chunk_references),
+        }
+    }
+}
+
+struct PreparedPortableCheckpoint {
+    header: Vec<u8>,
+    budget: PortableCheckpointBudget,
+}
+
+struct PortableCheckpointRecordSummary {
+    export: ExportSummary,
+    budget: PortableCheckpointBudget,
 }
 
 struct StagingGuard {
@@ -2490,8 +3293,12 @@ fn validate_compile_evidence(candidate: &Candidate, evidence: &CompileEvidence) 
     Ok(())
 }
 
-fn verify_candidate_sealed_tree(candidate: &Candidate) -> Result<()> {
+fn verify_candidate_sealed_tree_controlled(
+    candidate: &Candidate,
+    gate: &dyn PublicationGate,
+) -> Result<()> {
     for file in &candidate.manifest.files {
+        ensure_publication_active(gate)?;
         let metadata = validate_unsymlinked_regular_file(&candidate.sealed_root, &file.path)?;
         if metadata.len() != file.logical_size {
             return Err(HistoryError::InvalidInput(format!(
@@ -2499,7 +3306,10 @@ fn verify_candidate_sealed_tree(candidate: &Candidate) -> Result<()> {
                 file.path
             )));
         }
-        let actual = hash_file(&candidate.sealed_root.join(path_from_portable(&file.path)))?;
+        let actual = hash_file_controlled(
+            &candidate.sealed_root.join(path_from_portable(&file.path)),
+            gate,
+        )?;
         if actual != ContentHash::from_hex(&file.content_hash)? {
             return Err(HistoryError::InvalidInput(format!(
                 "sealed replay input {} changed before publication",
@@ -2507,6 +3317,7 @@ fn verify_candidate_sealed_tree(candidate: &Candidate) -> Result<()> {
             )));
         }
     }
+    ensure_publication_active(gate)?;
     Ok(())
 }
 
@@ -2527,7 +3338,7 @@ fn validate_archived_evidence(manifest: &Manifest, evidence: &CompileEvidence) -
         .find(|input| input.relative_path == evidence.main_document)
         .ok_or_else(|| {
             HistoryError::InvalidInput(format!(
-                "compiled main document {} lacks first-read dependency evidence",
+                "compiled main document {} lacks sealed replay evidence",
                 evidence.main_document
             ))
         })?;
@@ -2567,7 +3378,13 @@ fn query_checkpoint(connection: &Connection, root: &str) -> Result<Option<Checkp
     connection
         .query_row(
             "SELECT snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
-                    main_document, output_hash, file_count, logical_bytes, replayed_inputs_json
+                    main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
+                    length(CAST(snapshot_root AS BLOB))
+                      + length(CAST(engine AS BLOB))
+                      + length(CAST(toolchain_identity AS BLOB))
+                      + length(CAST(main_document AS BLOB))
+                      + length(CAST(output_hash AS BLOB))
+                      + length(CAST(replayed_inputs_json AS BLOB))
              FROM checkpoints WHERE snapshot_root = ?1",
             [root],
             checkpoint_from_row,
@@ -2579,7 +3396,13 @@ fn query_checkpoint(connection: &Connection, root: &str) -> Result<Option<Checkp
 fn query_checkpoints_oldest_first(connection: &Connection) -> Result<Vec<Checkpoint>> {
     let mut statement = connection.prepare(
         "SELECT snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
-                main_document, output_hash, file_count, logical_bytes, replayed_inputs_json
+                main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
+                length(CAST(snapshot_root AS BLOB))
+                  + length(CAST(engine AS BLOB))
+                  + length(CAST(toolchain_identity AS BLOB))
+                  + length(CAST(main_document AS BLOB))
+                  + length(CAST(output_hash AS BLOB))
+                  + length(CAST(replayed_inputs_json AS BLOB))
          FROM checkpoints ORDER BY sequence ASC",
     )?;
     let rows = statement.query_map([], checkpoint_from_row)?;
@@ -2609,6 +3432,12 @@ fn insert_checkpoint(connection: &Connection, checkpoint: &Checkpoint) -> Result
 }
 
 fn checkpoint_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Checkpoint> {
+    let summary_bytes = row.get::<_, i64>(9)?;
+    if summary_bytes < 0 || summary_bytes as u64 > MAX_EXPORT_HEADER_BYTES {
+        return Err(to_sql_conversion_error(HistoryError::Corrupt(
+            "checkpoint summary exceeds the portable header limit".into(),
+        )));
+    }
     let root: String = row.get(0)?;
     let output_hash: String = row.get(5)?;
     let replayed_inputs_json: String = row.get(8)?;
@@ -2629,16 +3458,25 @@ fn checkpoint_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Checkpoint> 
 }
 
 fn load_visible_manifest(connection: &Connection, root: &SnapshotRoot) -> Result<Manifest> {
-    let bytes = connection
+    let bounded_bytes = connection
         .query_row(
-            "SELECT m.manifest_json
+            "SELECT length(CAST(m.manifest_json AS BLOB)), m.manifest_json
              FROM manifests m JOIN checkpoints c ON c.snapshot_root = m.snapshot_root
              WHERE m.snapshot_root = ?1",
             [root.as_hex()],
-            |row| row.get::<_, Vec<u8>>(0),
+            |row| {
+                let manifest_bytes = row.get::<_, i64>(0)?;
+                if manifest_bytes < 0 || manifest_bytes as u64 > MAX_EXPORT_HEADER_BYTES {
+                    return Ok(None);
+                }
+                row.get::<_, Vec<u8>>(1).map(Some)
+            },
         )
         .optional()?
         .ok_or_else(|| HistoryError::CheckpointNotFound(root.as_hex()))?;
+    let bytes = bounded_bytes.ok_or_else(|| {
+        HistoryError::Corrupt("manifest exceeds the portable header limit".into())
+    })?;
     Ok(serde_json::from_slice(&bytes)?)
 }
 
@@ -2834,6 +3672,114 @@ fn open_namespace_lock(parent: &Path, create: bool) -> Result<File> {
         sync_directory(parent)?;
     }
     Ok(file)
+}
+
+fn initialization_lock_path(parent: &Path, name: &std::ffi::OsStr) -> PathBuf {
+    parent.join(format!(
+        "{INITIALIZATION_LOCK_PREFIX}{}.lock",
+        store_name_hash(name)
+    ))
+}
+
+fn open_initialization_lock(parent: &Path, name: &std::ffi::OsStr) -> Result<File> {
+    let path = initialization_lock_path(parent, name);
+    if let Ok(metadata) = fs::symlink_metadata(&path) {
+        if !metadata.is_file() || metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
+            return Err(HistoryError::Corrupt(format!(
+                "checkpoint initialization lock {} is not a regular file",
+                path.display()
+            )));
+        }
+    }
+    let mut options = OpenOptions::new();
+    options.create(true).read(true).write(true);
+    let file = open_with_no_follow(&mut options, &path)?;
+    validate_regular_file(&path, "checkpoint initialization lock")?;
+    set_private_file_permissions(&path)?;
+    sync_directory(parent)?;
+    Ok(file)
+}
+
+fn lock_initialization(parent: &Path, name: &std::ffi::OsStr, wait: bool) -> Result<Option<File>> {
+    let path = initialization_lock_path(parent, name);
+    let file = open_initialization_lock(parent, name)?;
+    let opened = same_file::Handle::from_file(file.try_clone()?)?;
+    if opened != same_file::Handle::from_path(&path)? {
+        return Err(HistoryError::Corrupt(format!(
+            "checkpoint initialization lock changed while it was opened: {}",
+            path.display()
+        )));
+    }
+    if wait {
+        fs4::FileExt::lock(&file)?;
+    } else {
+        match fs4::FileExt::try_lock(&file) {
+            Ok(()) => {}
+            Err(fs4::TryLockError::WouldBlock) => return Ok(None),
+            Err(fs4::TryLockError::Error(error)) => return Err(error.into()),
+        }
+    }
+    if opened != same_file::Handle::from_path(&path)? {
+        return Err(HistoryError::Corrupt(format!(
+            "checkpoint initialization lock changed while it was acquired: {}",
+            path.display()
+        )));
+    }
+    Ok(Some(file))
+}
+
+fn initialization_directory_prefix(name: &std::ffi::OsStr) -> String {
+    format!("{INITIALIZATION_DIR_PREFIX}{}-", store_name_hash(name))
+}
+
+fn create_initialization_directory(parent: &Path, name: &std::ffi::OsStr) -> Result<PathBuf> {
+    let prefix = initialization_directory_prefix(name);
+    for _ in 0..32 {
+        let token = generate_delete_token();
+        let path = parent.join(format!("{prefix}{token}"));
+        match fs::create_dir(&path) {
+            Ok(()) => {
+                set_private_directory_permissions(&path)?;
+                sync_directory(parent)?;
+                return Ok(path);
+            }
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Err(HistoryError::Corrupt(
+        "could not reserve a checkpoint initialization directory".into(),
+    ))
+}
+
+fn reap_initialization_directories(parent: &Path, name: &std::ffi::OsStr) -> Result<()> {
+    let prefix = initialization_directory_prefix(name);
+    for entry in fs::read_dir(parent)? {
+        let entry = entry?;
+        let file_name = entry.file_name();
+        let Some(file_name) = file_name.to_str() else {
+            continue;
+        };
+        let Some(token) = file_name.strip_prefix(&prefix) else {
+            continue;
+        };
+        if !valid_delete_token(token) {
+            return Err(HistoryError::Corrupt(format!(
+                "checkpoint initialization directory has an invalid name {file_name:?}"
+            )));
+        }
+        let path = entry.path();
+        let metadata = fs::symlink_metadata(&path)?;
+        if !metadata.is_dir() || metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
+            return Err(HistoryError::Corrupt(format!(
+                "checkpoint initialization path {} is not a real directory",
+                path.display()
+            )));
+        }
+        remove_path_without_following_links(&path)?;
+        sync_directory(parent)?;
+    }
+    Ok(())
 }
 
 fn store_name_hash(name: &std::ffi::OsStr) -> String {
@@ -3352,6 +4298,11 @@ fn create_candidate_directory(staging_root: &Path) -> Result<PathBuf> {
 }
 
 fn hash_file(path: &Path) -> Result<ContentHash> {
+    hash_file_controlled(path, &UncancelledPublication)
+}
+
+fn hash_file_controlled(path: &Path, gate: &dyn PublicationGate) -> Result<ContentHash> {
+    ensure_publication_active(gate)?;
     validate_regular_file(path, "checkpoint payload")?;
     let mut options = OpenOptions::new();
     options.read(true);
@@ -3359,12 +4310,14 @@ fn hash_file(path: &Path) -> Result<ContentHash> {
     let mut hasher = blake3::Hasher::new();
     let mut buffer = [0_u8; 64 * 1024];
     loop {
+        ensure_publication_active(gate)?;
         let count = file.read(&mut buffer)?;
         if count == 0 {
             break;
         }
         hasher.update(&buffer[..count]);
     }
+    ensure_publication_active(gate)?;
     Ok(ContentHash::from_bytes(*hasher.finalize().as_bytes()))
 }
 
@@ -3555,6 +4508,270 @@ mod tests {
     use super::*;
     use tempfile::tempdir;
 
+    fn published_test_store(root: &Path) -> (Store, SnapshotRoot) {
+        let project = root.join("project");
+        fs::create_dir(&project).unwrap();
+        fs::write(project.join("project.json"), b"{}").unwrap();
+        fs::write(project.join("main.tex"), b"source").unwrap();
+        let main = project.join("main.tex").canonicalize().unwrap();
+        let store = Store::open(root.join("history")).unwrap();
+        let candidate = store
+            .stage_candidate(
+                &project,
+                &[
+                    CaptureInput::explicit("project.json").unwrap(),
+                    CaptureInput::proven("main.tex", &main, ContentHash::digest(b"source"))
+                        .unwrap(),
+                ],
+            )
+            .unwrap();
+        let snapshot_root = *candidate.snapshot_root();
+        let evidence = CompileEvidence::new(
+            "tectonic",
+            "tectonic-test@1",
+            "main.tex",
+            ContentHash::digest(b"output"),
+            1,
+            vec![ReplayedInput::new("main.tex", ContentHash::digest(b"source")).unwrap()],
+        )
+        .unwrap();
+        store.publish(candidate, evidence).unwrap();
+        (store, snapshot_root)
+    }
+
+    #[test]
+    fn capture_budget_is_enforced_before_oversized_chunk_bytes_are_written() {
+        assert!(advance_capture_budget(MAX_CHECKPOINT_FILE_BYTES, 0, 0, 1).is_err());
+        assert!(advance_capture_budget(0, MAX_HISTORY_LOGICAL_BYTES, 0, 1).is_err());
+        assert!(advance_capture_budget(0, 0, MAX_HISTORY_CHUNK_REFERENCES, 1).is_err());
+        assert_eq!(advance_capture_budget(1, 2, 3, 4).unwrap(), (5, 6, 4));
+    }
+
+    #[test]
+    fn portable_history_budget_accepts_exact_limits_and_rejects_each_overflow() {
+        let one = PortableCheckpointBudget {
+            metadata_bytes: 1,
+            logical_bytes: 1,
+            chunk_references: 1,
+        };
+        let mut exact = PortableHistoryBudget {
+            checkpoint_count: MAX_HISTORY_CHECKPOINTS - 1,
+            metadata_bytes: MAX_HISTORY_METADATA_BYTES - 1,
+            logical_bytes: MAX_HISTORY_LOGICAL_BYTES - 1,
+            chunk_references: MAX_HISTORY_CHUNK_REFERENCES - 1,
+        };
+        exact.include(one).unwrap();
+        assert_eq!(exact.checkpoint_count, MAX_HISTORY_CHECKPOINTS);
+        assert_eq!(exact.metadata_bytes, MAX_HISTORY_METADATA_BYTES);
+        assert_eq!(exact.logical_bytes, MAX_HISTORY_LOGICAL_BYTES);
+        assert_eq!(exact.chunk_references, MAX_HISTORY_CHUNK_REFERENCES);
+
+        for mut usage in [
+            PortableHistoryBudget {
+                checkpoint_count: MAX_HISTORY_CHECKPOINTS,
+                ..PortableHistoryBudget::default()
+            },
+            PortableHistoryBudget {
+                metadata_bytes: MAX_HISTORY_METADATA_BYTES,
+                ..PortableHistoryBudget::default()
+            },
+            PortableHistoryBudget {
+                logical_bytes: MAX_HISTORY_LOGICAL_BYTES,
+                ..PortableHistoryBudget::default()
+            },
+            PortableHistoryBudget {
+                chunk_references: MAX_HISTORY_CHUNK_REFERENCES,
+                ..PortableHistoryBudget::default()
+            },
+        ] {
+            let before = usage;
+            assert!(matches!(
+                usage.include(one),
+                Err(HistoryError::InvalidInput(_))
+            ));
+            assert_eq!(usage, before);
+        }
+    }
+
+    #[test]
+    fn portable_header_writer_counts_exact_bytes_and_stops_at_limit() {
+        let content_hash = ContentHash::digest(b"");
+        let manifest = Manifest {
+            format_version: FORMAT_VERSION,
+            files: vec![
+                ManifestFile {
+                    path: "main.tex".into(),
+                    logical_size: 0,
+                    content_hash: content_hash.to_hex(),
+                    chunks: Vec::new(),
+                },
+                ManifestFile {
+                    path: "project.json".into(),
+                    logical_size: 0,
+                    content_hash: content_hash.to_hex(),
+                    chunks: Vec::new(),
+                },
+            ],
+        };
+        let snapshot_root = compute_snapshot_root(&manifest).unwrap();
+        let output_hash = ContentHash::digest(b"output");
+        let checkpoint = Checkpoint {
+            snapshot_root,
+            completed_at_unix_ms: 17,
+            engine: "tectonic".into(),
+            toolchain_identity: "tectonic-test@1".into(),
+            main_document: "main.tex".into(),
+            output_hash,
+            file_count: 2,
+            logical_bytes: 0,
+            replayed_inputs: vec![ReplayedInput::new("main.tex", content_hash).unwrap()],
+        };
+        let metadata = PortableCheckpoint {
+            export_version: 1,
+            snapshot_root: snapshot_root.as_hex(),
+            completed_at_unix_ms: checkpoint.completed_at_unix_ms,
+            engine: checkpoint.engine.clone(),
+            toolchain_identity: checkpoint.toolchain_identity.clone(),
+            main_document: checkpoint.main_document.clone(),
+            output_hash: output_hash.to_hex(),
+            replayed_inputs: vec![PortableReplayedInput {
+                relative_path: "main.tex".into(),
+                content_hash: content_hash.to_hex(),
+            }],
+            manifest: manifest.clone(),
+        };
+        let canonical = serde_json::to_vec(&metadata).unwrap();
+        let exact_limit = canonical.len() as u64;
+        let (view, _) = portable_checkpoint_view(&checkpoint, &manifest).unwrap();
+
+        let counted = write_bounded_portable_json(&view, io::sink(), exact_limit).unwrap();
+        let mut retained = Vec::new();
+        let retained_count =
+            write_bounded_portable_json(&view, &mut retained, exact_limit).unwrap();
+
+        assert_eq!(counted, exact_limit);
+        assert_eq!(retained_count, exact_limit);
+        assert_eq!(retained, canonical);
+
+        let mut rejected = Vec::new();
+        let error =
+            write_bounded_portable_json(&view, &mut rejected, exact_limit.checked_sub(1).unwrap())
+                .unwrap_err();
+        assert!(
+            error.to_string().contains("header exceeds 16 MiB"),
+            "unexpected error: {error}"
+        );
+        assert!(rejected.len() < canonical.len());
+    }
+
+    #[test]
+    fn oversized_legacy_checkpoint_summary_is_rejected_before_owned_loading() {
+        let temp = tempdir().unwrap();
+        let (store, root) = published_test_store(temp.path());
+        let connection = store.connection().unwrap();
+        connection
+            .execute(
+                "UPDATE checkpoints
+                 SET replayed_inputs_json = CAST(zeroblob(?1) AS TEXT)
+                 WHERE snapshot_root = ?2",
+                params![MAX_EXPORT_HEADER_BYTES as i64 + 1, root.as_hex()],
+            )
+            .unwrap();
+        drop(connection);
+
+        let error = store.export_history(io::sink()).unwrap_err();
+
+        assert!(
+            error
+                .to_string()
+                .contains("checkpoint summary exceeds the portable header limit"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn oversized_legacy_manifest_is_rejected_before_owned_loading() {
+        let temp = tempdir().unwrap();
+        let (store, root) = published_test_store(temp.path());
+        let connection = store.connection().unwrap();
+        connection
+            .execute(
+                "UPDATE manifests
+                 SET manifest_json = zeroblob(?1)
+                 WHERE snapshot_root = ?2",
+                params![MAX_EXPORT_HEADER_BYTES as i64 + 1, root.as_hex()],
+            )
+            .unwrap();
+        drop(connection);
+
+        let error = store.export_history(io::sink()).unwrap_err();
+
+        assert!(
+            error
+                .to_string()
+                .contains("manifest exceeds the portable header limit"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn portable_budget_replaces_an_existing_root_instead_of_counting_it_twice() {
+        let temp = tempdir().unwrap();
+        let project = temp.path().join("project");
+        fs::create_dir(&project).unwrap();
+        fs::write(project.join("project.json"), b"{}").unwrap();
+        fs::write(project.join("main.tex"), b"source").unwrap();
+        let main = project.join("main.tex").canonicalize().unwrap();
+        let store = Store::open(temp.path().join("history")).unwrap();
+        let candidate = store
+            .stage_candidate(
+                &project,
+                &[
+                    CaptureInput::explicit("project.json").unwrap(),
+                    CaptureInput::proven("main.tex", &main, ContentHash::digest(b"source"))
+                        .unwrap(),
+                ],
+            )
+            .unwrap();
+        let evidence = CompileEvidence::new(
+            "tectonic",
+            "tectonic-test@1",
+            "main.tex",
+            ContentHash::digest(b"output"),
+            1,
+            vec![ReplayedInput::new("main.tex", ContentHash::digest(b"source")).unwrap()],
+        )
+        .unwrap();
+        store.publish(candidate, evidence).unwrap();
+
+        let mut replacement = store.list().unwrap().pop().unwrap();
+        replacement.completed_at_unix_ms = 2;
+        replacement.toolchain_identity = "tectonic-test@replacement".into();
+        let connection = store.connection().unwrap();
+        let manifest = load_visible_manifest(&connection, &replacement.snapshot_root).unwrap();
+        let expected = portable_checkpoint_budget(&replacement, &manifest).unwrap();
+        assert_eq!(
+            expected,
+            prepare_portable_checkpoint(&replacement, &manifest)
+                .unwrap()
+                .budget
+        );
+
+        let usage =
+            validate_portable_history_after_publication(&connection, &replacement, &manifest, true)
+                .unwrap();
+
+        assert_eq!(
+            usage,
+            PortableHistoryBudget {
+                checkpoint_count: 1,
+                metadata_bytes: expected.metadata_bytes,
+                logical_bytes: expected.logical_bytes,
+                chunk_references: expected.chunk_references,
+            }
+        );
+    }
+
     #[test]
     fn portable_paths_reject_parent_and_platform_prefixes() {
         for invalid in [
@@ -3585,6 +4802,72 @@ mod tests {
             "chapters/one.tex"
         );
         assert!(CaptureInput::explicit("caf\u{e9}.tex").is_ok());
+    }
+
+    #[test]
+    fn replay_required_inputs_are_bound_to_preseal_bytes_and_replay_closure() {
+        let temp = tempdir().unwrap();
+        let project = temp.path().join("project");
+        fs::create_dir(&project).unwrap();
+        fs::write(project.join("project.json"), b"{}").unwrap();
+        fs::write(project.join("main.typ"), b"= Replayed").unwrap();
+        let main = project.join("main.typ").canonicalize().unwrap();
+        let hash = ContentHash::digest_file(&main).unwrap();
+        let store = Store::open(temp.path().join("history")).unwrap();
+
+        let candidate = store
+            .stage_candidate(
+                &project,
+                &[
+                    CaptureInput::explicit("project.json").unwrap(),
+                    CaptureInput::replay_required("main.typ", &main, hash).unwrap(),
+                ],
+            )
+            .unwrap();
+
+        assert_eq!(candidate.proven_files().len(), 1);
+        assert_eq!(candidate.proven_files()[0].relative_path, "main.typ");
+        assert_eq!(candidate.proven_files()[0].content_hash, hash);
+    }
+
+    #[test]
+    fn replay_required_input_rejects_bytes_changed_before_sealing() {
+        let temp = tempdir().unwrap();
+        let project = temp.path().join("project");
+        fs::create_dir(&project).unwrap();
+        fs::write(project.join("project.json"), b"{}").unwrap();
+        fs::write(project.join("main.typ"), b"= Before").unwrap();
+        let main = project.join("main.typ").canonicalize().unwrap();
+        let hash = ContentHash::digest_file(&main).unwrap();
+        fs::write(&main, b"= After").unwrap();
+        let store = Store::open(temp.path().join("history")).unwrap();
+
+        let error = store
+            .stage_candidate(
+                &project,
+                &[
+                    CaptureInput::explicit("project.json").unwrap(),
+                    CaptureInput::replay_required("main.typ", &main, hash).unwrap(),
+                ],
+            )
+            .unwrap_err();
+
+        assert!(error
+            .to_string()
+            .contains("changed before it was sealed for replay"));
+    }
+
+    #[test]
+    fn digest_file_matches_the_in_memory_blake3_identity() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("large.bin");
+        let bytes = vec![0xa5; 2 * 1024 * 1024 + 17];
+        fs::write(&path, &bytes).unwrap();
+
+        assert_eq!(
+            ContentHash::digest_file(&path).unwrap(),
+            ContentHash::digest(&bytes)
+        );
     }
 
     #[test]
@@ -3694,6 +4977,68 @@ mod tests {
                 .next()
                 .is_none());
         }
+    }
+
+    #[test]
+    fn first_publication_reports_installed_when_parent_sync_fails_after_rename() {
+        let temp = tempdir().unwrap();
+        let project = temp.path().join("project");
+        fs::create_dir(&project).unwrap();
+        fs::write(project.join("project.json"), b"{}").unwrap();
+        fs::write(project.join("main.tex"), b"source").unwrap();
+        let history = temp.path().join("history");
+        let publication = Store::open_for_publication(&history).unwrap();
+        let candidate = publication
+            .store()
+            .stage_candidate(
+                &project,
+                &[
+                    CaptureInput::explicit("project.json").unwrap(),
+                    CaptureInput::proven(
+                        "main.tex",
+                        project.join("main.tex").canonicalize().unwrap(),
+                        ContentHash::digest(b"source"),
+                    )
+                    .unwrap(),
+                ],
+            )
+            .unwrap();
+        let evidence = CompileEvidence::new(
+            "tectonic",
+            "tectonic-test@1",
+            "main.tex",
+            ContentHash::digest(b"output"),
+            1,
+            candidate
+                .proven_files()
+                .iter()
+                .map(|file| ReplayedInput::new(&file.relative_path, file.content_hash).unwrap())
+                .collect(),
+        )
+        .unwrap();
+        publication.store().publish(candidate, evidence).unwrap();
+
+        let outcome = publication
+            .commit_with_parent_sync(|_| {
+                Err(HistoryError::Io(io::Error::other(
+                    "injected parent sync failure",
+                )))
+            })
+            .unwrap();
+
+        let PublicationCommitOutcome::InstalledDurabilityUncertain(store) = outcome else {
+            panic!("post-rename sync failure must preserve the installed outcome");
+        };
+        assert_eq!(store.list().unwrap().len(), 1);
+        assert_eq!(
+            Store::open_existing(&history)
+                .unwrap()
+                .unwrap()
+                .list()
+                .unwrap()
+                .len(),
+            1
+        );
     }
 
     #[test]

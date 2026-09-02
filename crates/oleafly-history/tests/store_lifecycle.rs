@@ -1,11 +1,13 @@
 use std::fs;
 use std::io::{Read, Seek, SeekFrom, Write};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc, Barrier};
 use std::thread;
 use std::time::Duration;
 
 use oleafly_history::{
-    Candidate, CaptureInput, CompileEvidence, ContentHash, PublishOutcome, ReplayedInput, Store,
+    Candidate, CaptureInput, CompileEvidence, ContentHash, HistoryError, PublicationGate,
+    PublishOutcome, ReplayedInput, Store,
 };
 use rusqlite::Connection;
 use tempfile::tempdir;
@@ -66,6 +68,109 @@ fn publish(
 ) -> oleafly_history::Result<PublishOutcome> {
     let evidence = evidence(&candidate, completed_at_unix_ms);
     store.publish(candidate, evidence)
+}
+
+struct CancelAfterChecks {
+    checks: AtomicUsize,
+    cancel_on: usize,
+}
+
+impl CancelAfterChecks {
+    fn new(cancel_on: usize) -> Self {
+        Self {
+            checks: AtomicUsize::new(0),
+            cancel_on,
+        }
+    }
+}
+
+impl PublicationGate for CancelAfterChecks {
+    fn is_cancelled(&self) -> bool {
+        self.checks.fetch_add(1, Ordering::SeqCst) + 1 >= self.cancel_on
+    }
+
+    fn commit_visibility(
+        &self,
+        commit: &mut dyn FnMut() -> oleafly_history::Result<()>,
+    ) -> oleafly_history::Result<bool> {
+        if self.is_cancelled() {
+            return Ok(false);
+        }
+        commit()?;
+        Ok(true)
+    }
+}
+
+struct InstallVisibilityGate {
+    target: std::path::PathBuf,
+    calls: Arc<AtomicUsize>,
+    cancel: bool,
+}
+
+impl PublicationGate for InstallVisibilityGate {
+    fn is_cancelled(&self) -> bool {
+        false
+    }
+
+    fn commit_visibility(
+        &self,
+        commit: &mut dyn FnMut() -> oleafly_history::Result<()>,
+    ) -> oleafly_history::Result<bool> {
+        assert_eq!(self.calls.fetch_add(1, Ordering::SeqCst), 0);
+        assert!(!self.target.exists());
+        if self.cancel {
+            return Ok(false);
+        }
+        commit()?;
+        assert!(self.target.is_dir());
+        Ok(true)
+    }
+}
+
+#[test]
+fn candidate_staging_observes_cancellation_and_removes_private_bytes() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), br#"{"main":"main.tex"}"#).unwrap();
+    fs::write(project.join("main.tex"), vec![7_u8; 8 * 1024 * 1024]).unwrap();
+    let store = Store::open(temp.path().join("history")).unwrap();
+    let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
+
+    let error = store
+        .stage_candidate_controlled(&project, &inputs, &CancelAfterChecks::new(6))
+        .unwrap_err();
+
+    assert!(matches!(error, HistoryError::PublicationCancelled));
+    assert!(store.list().unwrap().is_empty());
+    assert_eq!(
+        fs::read_dir(store.root().join("staging")).unwrap().count(),
+        0
+    );
+}
+
+#[test]
+fn candidate_verification_observes_cancellation_before_root_publication() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), br#"{"main":"main.tex"}"#).unwrap();
+    fs::write(project.join("main.tex"), vec![11_u8; 8 * 1024 * 1024]).unwrap();
+    let store = Store::open(temp.path().join("history")).unwrap();
+    let candidate = store
+        .stage_candidate(
+            &project,
+            &capture_inputs(&project, &["project.json", "main.tex"]),
+        )
+        .unwrap();
+    let evidence = evidence(&candidate, 1);
+
+    let error = store
+        .publish_controlled(candidate, evidence, &CancelAfterChecks::new(2))
+        .unwrap_err();
+
+    assert!(matches!(error, HistoryError::PublicationCancelled));
+    assert!(store.list().unwrap().is_empty());
 }
 
 #[test]
@@ -812,7 +917,7 @@ fn publication_requires_exact_replay_evidence_and_a_proven_main_document() {
     let error = store
         .publish(explicit_candidate, missing_main_evidence)
         .unwrap_err();
-    assert!(error.to_string().contains("lacks first-read"));
+    assert!(error.to_string().contains("lacks sealed replay evidence"));
 
     let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
     let candidate = store.stage_candidate(&project, &inputs).unwrap();
@@ -881,6 +986,116 @@ fn publication_rejects_a_mutated_sealed_replay_tree() {
         "unexpected error: {error}"
     );
     assert!(store.list().unwrap().is_empty());
+}
+
+#[test]
+fn republication_rejects_an_unportable_header_without_replacing_the_root() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    fs::write(project.join("main.tex"), b"source").unwrap();
+    let store = Store::open(temp.path().join("history")).unwrap();
+    let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
+    let candidate = store.stage_candidate(&project, &inputs).unwrap();
+    let root = *candidate.snapshot_root();
+    publish(&store, candidate, 1).unwrap();
+
+    let candidate = store.stage_candidate(&project, &inputs).unwrap();
+    let evidence = CompileEvidence::new(
+        "tectonic",
+        "x".repeat(16 * 1024 * 1024),
+        "main.tex",
+        ContentHash::digest(b"validated-pdf"),
+        2,
+        candidate
+            .proven_files()
+            .iter()
+            .map(|file| ReplayedInput::new(&file.relative_path, file.content_hash).unwrap())
+            .collect(),
+    )
+    .unwrap();
+
+    let error = store.publish(candidate, evidence).unwrap_err();
+
+    assert!(
+        error.to_string().contains("header exceeds 16 MiB"),
+        "unexpected error: {error}"
+    );
+    assert_eq!(
+        store
+            .checkpoint(&root)
+            .unwrap()
+            .unwrap()
+            .completed_at_unix_ms,
+        1
+    );
+    assert_eq!(store.list().unwrap().len(), 1);
+}
+
+#[test]
+fn publication_fails_closed_when_an_existing_summary_is_not_portable() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    fs::write(project.join("main.tex"), b"first").unwrap();
+    let history = temp.path().join("history");
+    let store = Store::open(&history).unwrap();
+    let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
+    let first = store.stage_candidate(&project, &inputs).unwrap();
+    let first_root = *first.snapshot_root();
+    publish(&store, first, 1).unwrap();
+
+    let connection = Connection::open(history.join("catalog.sqlite3")).unwrap();
+    connection
+        .execute(
+            "UPDATE checkpoints SET logical_bytes = logical_bytes + 1 \
+             WHERE snapshot_root = ?1",
+            [first_root.as_hex()],
+        )
+        .unwrap();
+    drop(connection);
+
+    fs::write(project.join("main.tex"), b"second").unwrap();
+    let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
+    let second = store.stage_candidate(&project, &inputs).unwrap();
+    let second_root = *second.snapshot_root();
+    let error = publish(&store, second, 2).unwrap_err();
+
+    assert!(
+        error.to_string().contains("summary does not match"),
+        "unexpected error: {error}"
+    );
+    assert!(store.checkpoint(&second_root).unwrap().is_none());
+    assert_eq!(store.list().unwrap().len(), 1);
+}
+
+#[test]
+fn publication_rejects_a_project_manifest_that_history_import_cannot_accept() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(
+        project.join("project.json"),
+        vec![b' '; 4 * 1024 * 1024 + 1],
+    )
+    .unwrap();
+    fs::write(project.join("main.tex"), b"source").unwrap();
+    let store = Store::open(temp.path().join("history")).unwrap();
+    let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
+    let candidate = store.stage_candidate(&project, &inputs).unwrap();
+    let root = *candidate.snapshot_root();
+
+    let error = publish(&store, candidate, 1).unwrap_err();
+
+    assert!(
+        error
+            .to_string()
+            .contains("project.json exceeds the import limit"),
+        "unexpected error: {error}"
+    );
+    assert!(store.checkpoint(&root).unwrap().is_none());
 }
 
 #[test]
@@ -964,6 +1179,313 @@ fn namespace_locked_destroy_waits_for_candidates_and_allows_clean_recreation() {
 
     let recreated = Store::open(&history).unwrap();
     assert!(recreated.list().unwrap().is_empty());
+}
+
+#[test]
+fn first_publication_store_is_invisible_until_nonempty_commit() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    fs::write(project.join("main.tex"), b"source").unwrap();
+    let history = temp.path().join("history");
+
+    let publication = Store::open_for_publication(&history).unwrap();
+    assert!(!history.exists());
+    assert!(Store::open_existing(&history).unwrap().is_none());
+
+    let candidate = publication
+        .store()
+        .stage_candidate(
+            &project,
+            &capture_inputs(&project, &["project.json", "main.tex"]),
+        )
+        .unwrap();
+    publish(publication.store(), candidate, 1).unwrap();
+    assert!(!history.exists());
+
+    let store = publication.commit().unwrap().into_store();
+    assert_eq!(store.list().unwrap().len(), 1);
+    assert_eq!(
+        Store::open_existing(&history)
+            .unwrap()
+            .unwrap()
+            .list()
+            .unwrap()
+            .len(),
+        1
+    );
+}
+
+#[test]
+fn first_publication_cancelled_at_install_cutoff_never_becomes_visible() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    fs::write(project.join("main.tex"), b"source").unwrap();
+    let history = temp.path().join("history");
+    let publication = Store::open_for_publication(&history).unwrap();
+    let candidate = publication
+        .store()
+        .stage_candidate(
+            &project,
+            &capture_inputs(&project, &["project.json", "main.tex"]),
+        )
+        .unwrap();
+    let evidence = evidence(&candidate, 1);
+    let calls = Arc::new(AtomicUsize::new(0));
+
+    let error = publication
+        .publish_controlled(
+            candidate,
+            evidence,
+            &InstallVisibilityGate {
+                target: history.clone(),
+                calls: calls.clone(),
+                cancel: true,
+            },
+        )
+        .unwrap_err();
+
+    assert!(matches!(error, HistoryError::PublicationCancelled));
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    assert!(!history.exists());
+    assert!(Store::open_existing(&history).unwrap().is_none());
+}
+
+#[test]
+fn first_publication_crosses_its_only_visibility_cutoff_at_install() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    fs::write(project.join("main.tex"), b"source").unwrap();
+    let history = temp.path().join("history");
+    let publication = Store::open_for_publication(&history).unwrap();
+    let candidate = publication
+        .store()
+        .stage_candidate(
+            &project,
+            &capture_inputs(&project, &["project.json", "main.tex"]),
+        )
+        .unwrap();
+    let evidence = evidence(&candidate, 1);
+    let calls = Arc::new(AtomicUsize::new(0));
+
+    let (published, committed) = publication
+        .publish_controlled(
+            candidate,
+            evidence,
+            &InstallVisibilityGate {
+                target: history.clone(),
+                calls: calls.clone(),
+                cancel: false,
+            },
+        )
+        .unwrap();
+
+    assert!(matches!(published, PublishOutcome::Created(_)));
+    assert!(matches!(
+        committed,
+        oleafly_history::PublicationCommitOutcome::Durable(_)
+    ));
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    assert_eq!(
+        Store::open_existing(&history)
+            .unwrap()
+            .unwrap()
+            .list()
+            .unwrap()
+            .len(),
+        1
+    );
+}
+
+#[test]
+fn failed_first_publication_removes_private_initialization_store() {
+    let temp = tempdir().unwrap();
+    let history = temp.path().join("history");
+
+    let publication = Store::open_for_publication(&history).unwrap();
+    assert!(publication.commit().is_err());
+    assert!(!history.exists());
+    assert!(Store::open_existing(&history).unwrap().is_none());
+    assert!(fs::read_dir(temp.path()).unwrap().all(|entry| {
+        let entry = entry.unwrap();
+        !entry.path().is_dir()
+            || !entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".oleafly-checkpoint-init-")
+    }));
+}
+
+#[test]
+fn next_first_publication_reaps_a_crash_left_initialization_directory() {
+    let temp = tempdir().unwrap();
+    let history = temp.path().join("history");
+    let publication = Store::open_for_publication(&history).unwrap();
+    let stale = fs::read_dir(temp.path())
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .find(|path| {
+            path.is_dir()
+                && path
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .starts_with(".oleafly-checkpoint-init-")
+        })
+        .unwrap();
+    drop(publication);
+    fs::create_dir(&stale).unwrap();
+    fs::write(stale.join("crash-residue"), b"partial").unwrap();
+
+    let next = Store::open_for_publication(&history).unwrap();
+
+    assert!(!stale.exists());
+    drop(next);
+    assert!(!history.exists());
+}
+
+#[test]
+fn destroy_waits_for_first_publication_install_and_then_removes_it() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    fs::write(project.join("main.tex"), b"source").unwrap();
+    let history = temp.path().join("history");
+    let publication = Store::open_for_publication(&history).unwrap();
+    let candidate = publication
+        .store()
+        .stage_candidate(
+            &project,
+            &capture_inputs(&project, &["project.json", "main.tex"]),
+        )
+        .unwrap();
+    publish(publication.store(), candidate, 1).unwrap();
+
+    assert!(matches!(
+        Store::try_open_for_publication(&history),
+        Ok(None)
+    ));
+    assert_eq!(Store::try_destroy_if_empty(&history).unwrap(), None);
+    let (sent, received) = mpsc::channel();
+    let removed_history = history.clone();
+    let worker = thread::spawn(move || {
+        sent.send(Store::destroy(&removed_history)).unwrap();
+    });
+    assert!(matches!(
+        received.recv_timeout(Duration::from_millis(100)),
+        Err(mpsc::RecvTimeoutError::Timeout)
+    ));
+
+    let store = publication.commit().unwrap().into_store();
+    assert!(received
+        .recv_timeout(Duration::from_secs(5))
+        .unwrap()
+        .unwrap());
+    worker.join().unwrap();
+    assert!(!history.exists());
+    assert!(store.list().is_err());
+}
+
+#[test]
+fn destroy_if_empty_removes_only_an_unpublished_store() {
+    let temp = tempdir().unwrap();
+    let empty_history = temp.path().join("empty-history");
+    drop(Store::open(&empty_history).unwrap());
+
+    assert!(Store::destroy_if_empty(&empty_history).unwrap());
+    assert!(!empty_history.exists());
+
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    fs::write(project.join("main.tex"), b"source").unwrap();
+    let published_history = temp.path().join("published-history");
+    let store = Store::open(&published_history).unwrap();
+    let candidate = store
+        .stage_candidate(
+            &project,
+            &capture_inputs(&project, &["project.json", "main.tex"]),
+        )
+        .unwrap();
+    publish(&store, candidate, 1).unwrap();
+    drop(store);
+
+    assert!(!Store::destroy_if_empty(&published_history).unwrap());
+    assert_eq!(
+        Store::open_existing(&published_history)
+            .unwrap()
+            .unwrap()
+            .list()
+            .unwrap()
+            .len(),
+        1
+    );
+}
+
+#[test]
+fn destroy_if_empty_waits_for_concurrent_publication_and_preserves_it() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    fs::write(project.join("main.tex"), b"source").unwrap();
+    let history = temp.path().join("history");
+    let store = Store::open(&history).unwrap();
+    let candidate = store
+        .stage_candidate(
+            &project,
+            &capture_inputs(&project, &["project.json", "main.tex"]),
+        )
+        .unwrap();
+
+    let (sent, received) = mpsc::channel();
+    let cleanup_history = history.clone();
+    let worker = thread::spawn(move || {
+        sent.send(Store::destroy_if_empty(&cleanup_history))
+            .unwrap();
+    });
+    assert!(matches!(
+        received.recv_timeout(Duration::from_millis(100)),
+        Err(mpsc::RecvTimeoutError::Timeout)
+    ));
+
+    publish(&store, candidate, 1).unwrap();
+    assert!(!received
+        .recv_timeout(Duration::from_secs(5))
+        .unwrap()
+        .unwrap());
+    worker.join().unwrap();
+    assert_eq!(store.list().unwrap().len(), 1);
+}
+
+#[test]
+fn try_destroy_if_empty_never_waits_for_concurrent_publication() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    fs::write(project.join("main.tex"), b"source").unwrap();
+    let history = temp.path().join("history");
+    let store = Store::open(&history).unwrap();
+    let candidate = store
+        .stage_candidate(
+            &project,
+            &capture_inputs(&project, &["project.json", "main.tex"]),
+        )
+        .unwrap();
+
+    let started = std::time::Instant::now();
+    assert_eq!(Store::try_destroy_if_empty(&history).unwrap(), None);
+    assert!(started.elapsed() < Duration::from_secs(1));
+
+    publish(&store, candidate, 1).unwrap();
+    assert_eq!(Store::try_destroy_if_empty(&history).unwrap(), Some(false));
 }
 
 #[cfg(unix)]

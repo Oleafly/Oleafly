@@ -15,15 +15,19 @@ Oleafly never widens an uncertain dependency set to the whole project. If the
 engine cannot prove every input, the document still compiles and Oleafly shows
 a non-blocking reason for skipping the Checkpoint.
 
-The currently shipped engine adapters do not yet provide complete evidence
-for every supported compile path. Automatic publication therefore stays
-disabled for those paths until the adapters can meet the recovery contract.
+Automatic publication supports controlled Tectonic, Typst, and
+Markdown-with-Pandoc compile paths. Oleafly skips publication when controlled
+discovery cannot reproduce the visible PDF or when evidence includes an
+external, protected, ignored, or otherwise untracked input. latexmk, Biber,
+shell escape, and draft mode remain unavailable for Checkpoints.
 
 ## Storage and recovery
 
 - History is stored outside the project in a per-project content-addressed
   store.
 - Duplicate content is reused across Checkpoints for the same project.
+- Capture is streamed with bounded memory and explicit file, Checkpoint, and
+  chunk-reference limits. Oversized capture is skipped without publishing.
 - Restoring replaces project files transactionally while preserving `.git`
   and `.oleafly`.
 - Deleting a project permanently removes its external Checkpoints data.
