@@ -315,6 +315,7 @@ test("creating a taken name offers Keep both and never offers Replace", async ({
   await expect(tauriPage.locator(`[data-path=${JSON.stringify(kept)}]`)).toBeVisible({
     timeout: 15_000,
   });
+  await waitEditorShowsFile(tauriPage, kept);
   await tauriPage.click(`[data-path=${JSON.stringify(taken)}]`);
   await waitEditorShowsFile(tauriPage, taken);
   await expect(tauriPage.locator(".cm-content")).toContainText(`original-${run}`);
