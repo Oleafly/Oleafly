@@ -180,8 +180,8 @@ const LiteratureSearchToolView = lazy(() =>
     default: m.LiteratureSearchToolView,
   })),
 );
-const TerminalPane = lazy(() =>
-  import("@/components/dock/TerminalPane").then((m) => ({ default: m.TerminalPane })),
+const TerminalDock = lazy(() =>
+  import("@/components/dock/TerminalDock").then((m) => ({ default: m.TerminalDock })),
 );
 
 // fallback must stay null - a visible one blocks the whole screen (these mount unconditionally, closed by default).
@@ -973,7 +973,7 @@ function AppContent() {
                 >
                   <ErrorBoundary surface="terminal dock" resetKey={projectId}>
                     <Suspense fallback={<SurfaceLoading label="Loading terminal" />}>
-                      <TerminalPane
+                      <TerminalDock
                         projectId={projectId}
                         projectName={projectName}
                         visible={terminalOpen}

@@ -17,6 +17,7 @@ import {
   Sigma,
   Sparkles,
   Square,
+  SquareTerminal,
   Sun,
   Table,
   Tag,
@@ -40,6 +41,8 @@ import { exportCurrentPdf } from "@/features/export";
 import { useFilesStore } from "@/store/files";
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
+import { TERMINAL_LIMIT, TERMINAL_LIMIT_MESSAGE, useTerminalsStore } from "@/store/terminals";
+import { toast } from "@/lib/toast";
 import {
   formattingForEngine,
   pathUsesEngineSource,
@@ -303,6 +306,24 @@ export function registerPaletteCommands() {
     icon: () => <ClockCheck className="size-4" />,
     order: 315,
     run: () => useSettingsStore.getState().openVersioning("checkpoints"),
+  });
+  palette({
+    id: "palette.new-terminal",
+    group: "Tools",
+    label: "New terminal",
+    keywords: "terminal shell console new",
+    icon: () => <SquareTerminal className="size-4" />,
+    order: 318,
+    when: (ctx) => !!ctx.projectId,
+    run: () => {
+      const terminals = useTerminalsStore.getState();
+      if (terminals.projectId && terminals.tabs.length >= TERMINAL_LIMIT) {
+        toast.info(TERMINAL_LIMIT_MESSAGE);
+        return;
+      }
+      useSettingsStore.getState().setTerminalOpen(true);
+      terminals.addTerminal();
+    },
   });
   palette({
     id: "palette.add-citation",

@@ -60,15 +60,23 @@ function writeTerminalErrorOnce(
   writeTerminalError(terminal, message, error, onWritten);
 }
 
+export interface TerminalPaneProps {
+  projectId: string;
+  projectName?: string;
+  visible?: boolean;
+  active?: boolean;
+  autoStart?: boolean;
+  onExit?: () => void;
+}
+
 export function TerminalPane({
   projectId,
   projectName,
   visible = true,
-}: {
-  projectId: string;
-  projectName?: string;
-  visible?: boolean;
-}) {
+  active = true,
+  autoStart = false,
+  onExit,
+}: TerminalPaneProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -77,16 +85,14 @@ export function TerminalPane({
   const surfacedErrorsRef = useRef(new Set<string>());
   const outputWrittenRef = useRef<(() => void) | undefined>(undefined);
   const visibleRef = useRef(visible);
-  const previousVisibleRef = useRef(visible);
+  const onExitRef = useRef(onExit);
   visibleRef.current = visible;
+  onExitRef.current = onExit;
   const startWithProject = useSettingsStore((state) => state.terminalStartWithProject);
+  const shouldStart = visible || autoStart || startWithProject;
   const [booted, setBooted] = useState(false);
-  const [endedProjectId, setEndedProjectId] = useState<string | null>(null);
-  const sessionEnded = endedProjectId === projectId;
-  const [activatedProjectId, setActivatedProjectId] = useState<string | null>(
-    visible || startWithProject ? projectId : null,
-  );
-  const setTerminalOpen = useSettingsStore((state) => state.setTerminalOpen);
+  const [ended, setEnded] = useState(false);
+  const [activated, setActivated] = useState(shouldStart);
   const terminalFontSize = useSettingsStore((state) => state.terminalFontSize);
   const terminalFontFamily = useSettingsStore((state) => state.terminalFontFamily);
   const terminalFontWeight = useSettingsStore((state) => state.terminalFontWeight);
@@ -123,20 +129,11 @@ export function TerminalPane({
   };
 
   useEffect(() => {
-    const becameVisible = visible && !previousVisibleRef.current;
-    previousVisibleRef.current = visible;
-    if (
-      (visible || startWithProject) &&
-      activatedProjectId !== projectId &&
-      (!sessionEnded || becameVisible)
-    ) {
-      setActivatedProjectId(projectId);
-    }
-    if (becameVisible && sessionEnded) setEndedProjectId(null);
-  }, [activatedProjectId, projectId, sessionEnded, startWithProject, visible]);
+    if (shouldStart && !activated) setActivated(true);
+  }, [activated, shouldStart]);
 
   useEffect(() => {
-    if (activatedProjectId !== projectId || sessionEnded) return;
+    if (!activated || ended) return;
     const host = hostRef.current;
     if (!host) return;
     setBooted(false);
@@ -216,8 +213,8 @@ export function TerminalPane({
       sessionLiveRef.current = false;
       sessionId = null;
       sessionIdRef.current = null;
-      setEndedProjectId(projectId);
-      setTerminalOpen(false);
+      setEnded(true);
+      onExitRef.current?.();
     };
     const openedCols = terminal.cols;
     const openedRows = terminal.rows;
@@ -319,7 +316,7 @@ export function TerminalPane({
       if (outputWrittenRef.current === outputWritten) outputWrittenRef.current = undefined;
       terminal.dispose();
     };
-  }, [activatedProjectId, projectId, sessionEnded, setTerminalOpen]);
+  }, [activated, ended, projectId]);
 
   useEffect(() => {
     const terminal = terminalRef.current;
@@ -377,9 +374,9 @@ export function TerminalPane({
   ]);
 
   useEffect(() => {
-    if (!projectName || activatedProjectId !== projectId) return;
+    if (!projectName || !activated) return;
     terminalRef.current?.write(`\x1b]2;${projectName} - project shell\x07`);
-  }, [activatedProjectId, projectId, projectName]);
+  }, [activated, projectName]);
 
   useEffect(() => {
     if (!visible) return;
@@ -416,19 +413,26 @@ export function TerminalPane({
 
   return (
     <div
-      className={cn("relative w-full", visible ? "h-full p-2" : "h-0 overflow-hidden p-0")}
-      data-testid="dock-terminal"
+      className={cn(
+        "relative w-full",
+        visible ? "h-full min-h-0 flex-1 p-2" : "h-0 shrink-0 overflow-hidden p-0",
+      )}
+      data-testid={active ? "dock-terminal" : "dock-terminal-inactive"}
       data-terminal-font-size={terminalFontSize}
       data-terminal-color-theme={terminalColorTheme}
       aria-hidden={!visible}
       onMouseDown={() => terminalRef.current?.focus()}
       style={{ backgroundColor: terminalBackground }}
     >
-      <div ref={hostRef} className="h-full w-full" data-testid="dock-terminal-host" />
+      <div
+        ref={hostRef}
+        className="h-full w-full"
+        data-testid={active ? "dock-terminal-host" : "dock-terminal-host-inactive"}
+      />
       {!booted && (
         <div
           className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-muted-foreground"
-          data-testid="dock-terminal-loading"
+          data-testid={active ? "dock-terminal-loading" : "dock-terminal-loading-inactive"}
           style={{ backgroundColor: terminalBackground }}
         >
           <Loader2 className="size-6 animate-spin motion-reduce:animate-none" />
