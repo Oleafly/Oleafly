@@ -284,6 +284,7 @@ mod tests {
 
     #[test]
     fn base_url_env_override_wins() {
+        let _env_guard = crate::paths::data_dir_env_lock();
         std::env::set_var("OLEAFLY_PACKS_BASE_URL", "http://127.0.0.1:9999/");
         assert_eq!(super::packs_base_url(), "http://127.0.0.1:9999");
         std::env::remove_var("OLEAFLY_PACKS_BASE_URL");

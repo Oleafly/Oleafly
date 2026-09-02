@@ -7,16 +7,26 @@ use ring::{aead, pbkdf2, rand as ring_rand};
 use zeroize::Zeroize;
 
 const MAGIC: &[u8; 16] = b"OLEAFLYCPARCHIVE";
-const FORMAT_VERSION: u16 = 1;
+const FORMAT_VERSION_PBKDF2: u16 = 1;
+const FORMAT_VERSION_ARGON2ID: u16 = 2;
 const KDF_PBKDF2_SHA256: u8 = 1;
+const KDF_ARGON2ID: u8 = 2;
 const AEAD_AES_256_GCM: u8 = 1;
-const KDF_ITERATIONS: u32 = 600_000;
 const MIN_KDF_ITERATIONS: u32 = 100_000;
 const MAX_KDF_ITERATIONS: u32 = 2_000_000;
+const ARGON2_MEMORY_KIB: u32 = 65_536;
+const ARGON2_TIME_COST: u32 = 3;
+const ARGON2_PARALLELISM: u32 = 1;
+const MAX_ARGON2_MEMORY_KIB: u32 = 262_144;
+const MAX_ARGON2_TIME_COST: u32 = 10;
+const MAX_ARGON2_PARALLELISM: u32 = 16;
 const FRAME_PLAINTEXT_BYTES: usize = 1024 * 1024;
 const MAX_FRAME_PLAINTEXT_BYTES: usize = 8 * 1024 * 1024;
 const SALT_BYTES: usize = 16;
 const NONCE_PREFIX_BYTES: usize = 4;
+const HEADER_PREFIX_BYTES: usize = 20;
+const HEADER_V1_BYTES: usize = 48;
+const HEADER_V2_BYTES: usize = 56;
 const DATA_FRAME: u8 = 0;
 const FINAL_FRAME: u8 = 1;
 
@@ -80,7 +90,15 @@ impl<W: Write> ArchiveEncryptWriter<W> {
         encrypted
             .write_all(&header)
             .map_err(|error| format!("could not write archive header: {error}"))?;
-        let key = archive_key(password, &salt, KDF_ITERATIONS)?;
+        let key = archive_key(
+            password,
+            &salt,
+            KeyDerivation::Argon2id {
+                memory_kib: ARGON2_MEMORY_KIB,
+                time_cost: ARGON2_TIME_COST,
+                parallelism: ARGON2_PARALLELISM,
+            },
+        )?;
         Ok(Self {
             encrypted,
             key,
@@ -170,7 +188,7 @@ impl<R: Read> ArchiveDecryptReader<R> {
         validate_password(password)?;
         let header = read_header(&mut encrypted)?;
         let decoded = decode_header(&header)?;
-        let key = archive_key(password, &decoded.salt, decoded.iterations)?;
+        let key = archive_key(password, &decoded.salt, decoded.derivation)?;
         Ok(Self {
             encrypted,
             key,
@@ -273,20 +291,34 @@ fn archive_io_error(error: String) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::InvalidData, error)
 }
 
+#[derive(Clone, Copy)]
+enum KeyDerivation {
+    Pbkdf2Sha256 {
+        iterations: u32,
+    },
+    Argon2id {
+        memory_kib: u32,
+        time_cost: u32,
+        parallelism: u32,
+    },
+}
+
 struct DecodedHeader {
-    iterations: u32,
+    derivation: KeyDerivation,
     frame_bytes: usize,
     salt: [u8; SALT_BYTES],
     nonce_prefix: [u8; NONCE_PREFIX_BYTES],
 }
 
 fn encode_header(salt: &[u8; SALT_BYTES], nonce_prefix: &[u8; NONCE_PREFIX_BYTES]) -> Vec<u8> {
-    let mut header = Vec::with_capacity(48);
+    let mut header = Vec::with_capacity(HEADER_V2_BYTES);
     header.extend_from_slice(MAGIC);
-    header.extend_from_slice(&FORMAT_VERSION.to_le_bytes());
-    header.push(KDF_PBKDF2_SHA256);
+    header.extend_from_slice(&FORMAT_VERSION_ARGON2ID.to_le_bytes());
+    header.push(KDF_ARGON2ID);
     header.push(AEAD_AES_256_GCM);
-    header.extend_from_slice(&KDF_ITERATIONS.to_le_bytes());
+    header.extend_from_slice(&ARGON2_MEMORY_KIB.to_le_bytes());
+    header.extend_from_slice(&ARGON2_TIME_COST.to_le_bytes());
+    header.extend_from_slice(&ARGON2_PARALLELISM.to_le_bytes());
     header.extend_from_slice(&(FRAME_PLAINTEXT_BYTES as u32).to_le_bytes());
     header.extend_from_slice(salt);
     header.extend_from_slice(nonce_prefix);
@@ -294,55 +326,136 @@ fn encode_header(salt: &[u8; SALT_BYTES], nonce_prefix: &[u8; NONCE_PREFIX_BYTES
 }
 
 fn read_header(reader: &mut impl Read) -> Result<Vec<u8>, String> {
-    let mut header = vec![0_u8; 48];
+    let mut header = vec![0_u8; HEADER_PREFIX_BYTES];
     reader
         .read_exact(&mut header)
+        .map_err(|error| truncated("archive header", error))?;
+    if &header[..MAGIC.len()] != MAGIC {
+        return Err("this is not an Oleafly Checkpoints archive".into());
+    }
+    let version = u16::from_le_bytes(header[16..18].try_into().expect("two bytes"));
+    let total = match version {
+        FORMAT_VERSION_PBKDF2 => HEADER_V1_BYTES,
+        FORMAT_VERSION_ARGON2ID => HEADER_V2_BYTES,
+        _ => {
+            return Err(format!(
+                "checkpoint archive version {version} is not supported"
+            ))
+        }
+    };
+    header.resize(total, 0);
+    reader
+        .read_exact(&mut header[HEADER_PREFIX_BYTES..])
         .map_err(|error| truncated("archive header", error))?;
     Ok(header)
 }
 
 fn decode_header(header: &[u8]) -> Result<DecodedHeader, String> {
-    if header.len() != 48 || &header[..MAGIC.len()] != MAGIC {
+    if header.len() < HEADER_PREFIX_BYTES || &header[..MAGIC.len()] != MAGIC {
         return Err("this is not an Oleafly Checkpoints archive".into());
     }
     let version = u16::from_le_bytes(header[16..18].try_into().expect("two bytes"));
-    if version != FORMAT_VERSION {
-        return Err(format!(
-            "checkpoint archive version {version} is not supported"
-        ));
-    }
-    if header[18] != KDF_PBKDF2_SHA256 || header[19] != AEAD_AES_256_GCM {
+    if header[19] != AEAD_AES_256_GCM {
         return Err("checkpoint archive encryption is not supported".into());
     }
-    let iterations = u32::from_le_bytes(header[20..24].try_into().expect("four bytes"));
-    if !(MIN_KDF_ITERATIONS..=MAX_KDF_ITERATIONS).contains(&iterations) {
-        return Err("checkpoint archive key settings are unsafe or unsupported".into());
-    }
-    let frame_bytes = u32::from_le_bytes(header[24..28].try_into().expect("four bytes")) as usize;
+    let (derivation, frame_offset) = match version {
+        FORMAT_VERSION_PBKDF2 => {
+            if header.len() != HEADER_V1_BYTES || header[18] != KDF_PBKDF2_SHA256 {
+                return Err("checkpoint archive encryption is not supported".into());
+            }
+            let iterations = u32::from_le_bytes(header[20..24].try_into().expect("four bytes"));
+            if !(MIN_KDF_ITERATIONS..=MAX_KDF_ITERATIONS).contains(&iterations) {
+                return Err("checkpoint archive key settings are unsafe or unsupported".into());
+            }
+            (KeyDerivation::Pbkdf2Sha256 { iterations }, 24)
+        }
+        FORMAT_VERSION_ARGON2ID => {
+            if header.len() != HEADER_V2_BYTES || header[18] != KDF_ARGON2ID {
+                return Err("checkpoint archive encryption is not supported".into());
+            }
+            let memory_kib = u32::from_le_bytes(header[20..24].try_into().expect("four bytes"));
+            let time_cost = u32::from_le_bytes(header[24..28].try_into().expect("four bytes"));
+            let parallelism = u32::from_le_bytes(header[28..32].try_into().expect("four bytes"));
+            if !(1..=MAX_ARGON2_PARALLELISM).contains(&parallelism)
+                || !(1..=MAX_ARGON2_TIME_COST).contains(&time_cost)
+                || memory_kib > MAX_ARGON2_MEMORY_KIB
+                || memory_kib < parallelism.saturating_mul(8)
+            {
+                return Err("checkpoint archive key settings are unsafe or unsupported".into());
+            }
+            (
+                KeyDerivation::Argon2id {
+                    memory_kib,
+                    time_cost,
+                    parallelism,
+                },
+                32,
+            )
+        }
+        _ => {
+            return Err(format!(
+                "checkpoint archive version {version} is not supported"
+            ))
+        }
+    };
+    let frame_bytes = u32::from_le_bytes(
+        header[frame_offset..frame_offset + 4]
+            .try_into()
+            .expect("four bytes"),
+    ) as usize;
     if frame_bytes == 0 || frame_bytes > MAX_FRAME_PLAINTEXT_BYTES {
         return Err("checkpoint archive frame size is invalid".into());
     }
-    let salt = header[28..44].try_into().expect("sixteen bytes");
-    let nonce_prefix = header[44..48].try_into().expect("four bytes");
+    let salt_offset = frame_offset + 4;
+    let nonce_offset = salt_offset + SALT_BYTES;
+    let salt = header[salt_offset..nonce_offset]
+        .try_into()
+        .expect("sixteen bytes");
+    let nonce_prefix = header[nonce_offset..nonce_offset + NONCE_PREFIX_BYTES]
+        .try_into()
+        .expect("four bytes");
     Ok(DecodedHeader {
-        iterations,
+        derivation,
         frame_bytes,
         salt,
         nonce_prefix,
     })
 }
 
-fn archive_key(password: &str, salt: &[u8], iterations: u32) -> Result<aead::LessSafeKey, String> {
-    let iterations = NonZeroU32::new(iterations)
-        .ok_or_else(|| "checkpoint archive key settings are invalid".to_string())?;
+fn archive_key(
+    password: &str,
+    salt: &[u8],
+    derivation: KeyDerivation,
+) -> Result<aead::LessSafeKey, String> {
     let mut bytes = [0_u8; 32];
-    pbkdf2::derive(
-        pbkdf2::PBKDF2_HMAC_SHA256,
-        iterations,
-        salt,
-        password.as_bytes(),
-        &mut bytes,
-    );
+    let derived = match derivation {
+        KeyDerivation::Pbkdf2Sha256 { iterations } => NonZeroU32::new(iterations)
+            .ok_or_else(|| "checkpoint archive key settings are invalid".to_string())
+            .map(|iterations| {
+                pbkdf2::derive(
+                    pbkdf2::PBKDF2_HMAC_SHA256,
+                    iterations,
+                    salt,
+                    password.as_bytes(),
+                    &mut bytes,
+                )
+            }),
+        KeyDerivation::Argon2id {
+            memory_kib,
+            time_cost,
+            parallelism,
+        } => argon2::Params::new(memory_kib, time_cost, parallelism, Some(bytes.len()))
+            .map_err(|_| "checkpoint archive key settings are invalid".to_string())
+            .and_then(|params| {
+                argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params)
+                    .hash_password_into(password.as_bytes(), salt, &mut bytes)
+                    .map_err(|_| "could not derive the archive key".to_string())
+            }),
+    };
+    if let Err(error) = derived {
+        bytes.zeroize();
+        return Err(error);
+    }
     let unbound = aead::UnboundKey::new(&aead::AES_256_GCM, &bytes)
         .map_err(|_| "could not initialize archive encryption".to_string());
     bytes.zeroize();
@@ -459,6 +572,46 @@ mod tests {
         output.clear();
         assert!(decrypt(Cursor::new(&encrypted), &mut output, "right-password").is_err());
         assert!(encrypt(Cursor::new(b"checkpoint data"), Vec::new(), "short").is_err());
+    }
+
+    #[test]
+    fn hostile_argon2_parameters_are_rejected_before_any_key_derivation() {
+        let mut encrypted = Vec::new();
+        encrypt(Cursor::new(b"checkpoint data"), &mut encrypted, "password").unwrap();
+
+        for (offset, value) in [
+            (20_usize, super::MAX_ARGON2_MEMORY_KIB + 1),
+            (24, super::MAX_ARGON2_TIME_COST + 1),
+            (28, super::MAX_ARGON2_PARALLELISM + 1),
+            (24, 0),
+            (28, 0),
+        ] {
+            let mut hostile = encrypted.clone();
+            hostile[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+            let mut output = Vec::new();
+            let error = decrypt(Cursor::new(hostile), &mut output, "password").unwrap_err();
+            assert!(error.contains("key settings"), "{offset}/{value}: {error}");
+        }
+    }
+
+    #[test]
+    fn unsupported_envelope_versions_and_kdf_ids_are_rejected() {
+        let mut encrypted = Vec::new();
+        encrypt(Cursor::new(b"checkpoint data"), &mut encrypted, "password").unwrap();
+
+        let mut future = encrypted.clone();
+        future[16..18].copy_from_slice(&3_u16.to_le_bytes());
+        let mut output = Vec::new();
+        assert!(decrypt(Cursor::new(future), &mut output, "password")
+            .unwrap_err()
+            .contains("version 3 is not supported"));
+
+        let mut swapped = encrypted;
+        swapped[18] = super::KDF_PBKDF2_SHA256;
+        output.clear();
+        assert!(decrypt(Cursor::new(swapped), &mut output, "password")
+            .unwrap_err()
+            .contains("encryption is not supported"));
     }
 
     #[test]

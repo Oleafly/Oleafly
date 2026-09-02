@@ -2472,7 +2472,12 @@ async fn run_supervised_process_with_environment(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
-    isolate_process_tree(&mut command);
+    if environment.clear_ambient {
+        crate::proc::isolate_process_tree_low_priority(&mut command);
+    } else {
+        isolate_process_tree(&mut command);
+    }
+
     let mut child = command
         .spawn()
         .map_err(|e| format!("failed to spawn {}: {e}", path.display()))?;
@@ -2688,7 +2693,7 @@ fn artifact_is_fresh(path: &Path, retained: &[RetainedArtifact]) -> bool {
 /// Cloudflare, so Tectonic's content-addressed cache is shared across origins.
 const TEX_BUNDLE_MIRROR_URL: &str = "https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar";
 
-fn tex_bundle_url() -> String {
+pub(crate) fn tex_bundle_url() -> String {
     std::env::var("OLEAFLY_TEX_BUNDLE_URL")
         .ok()
         .filter(|value| !value.trim().is_empty())

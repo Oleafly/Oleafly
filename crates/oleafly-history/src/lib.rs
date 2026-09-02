@@ -22,7 +22,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use unicode_normalization::UnicodeNormalization;
 
-const FORMAT_VERSION: u32 = 1;
+const FORMAT_VERSION: u32 = 2;
+const UNSTORED_MANIFEST_VERSION: u32 = 2;
 const PACK_MAGIC: &[u8; 12] = b"OLEAPACK\0\0\0\x01";
 const MIN_CHUNK_SIZE: u32 = 256 * 1024;
 const AVG_CHUNK_SIZE: u32 = 1024 * 1024;
@@ -229,6 +230,7 @@ enum CaptureBasis {
 pub struct CaptureInput {
     relative_path: String,
     basis: CaptureBasis,
+    stored: bool,
 }
 
 impl CaptureInput {
@@ -238,6 +240,7 @@ impl CaptureInput {
         Ok(Self {
             relative_path,
             basis: CaptureBasis::Explicit,
+            stored: true,
         })
     }
 
@@ -260,6 +263,7 @@ impl CaptureInput {
                 resolved_path,
                 first_read_hash,
             },
+            stored: true,
         })
     }
 
@@ -271,8 +275,30 @@ impl CaptureInput {
         resolved_path: impl Into<PathBuf>,
         preseal_hash: ContentHash,
     ) -> Result<Self> {
+        Self::replay_required_with_storage(relative_path, resolved_path, preseal_hash, true)
+    }
+
+    pub fn replay_required_unstored(
+        relative_path: impl Into<String>,
+        resolved_path: impl Into<PathBuf>,
+        preseal_hash: ContentHash,
+    ) -> Result<Self> {
+        Self::replay_required_with_storage(relative_path, resolved_path, preseal_hash, false)
+    }
+
+    fn replay_required_with_storage(
+        relative_path: impl Into<String>,
+        resolved_path: impl Into<PathBuf>,
+        preseal_hash: ContentHash,
+        stored: bool,
+    ) -> Result<Self> {
         let relative_path = relative_path.into();
         validate_portable_relative_path(&relative_path)?;
+        if !stored && relative_path == "project.json" {
+            return Err(HistoryError::InvalidInput(
+                "project.json must always retain its checkpoint bytes".into(),
+            ));
+        }
         let resolved_path = resolved_path.into();
         if !resolved_path.is_absolute() {
             return Err(HistoryError::InvalidInput(format!(
@@ -285,11 +311,16 @@ impl CaptureInput {
                 resolved_path,
                 preseal_hash,
             },
+            stored,
         })
     }
 
     pub fn relative_path(&self) -> &str {
         &self.relative_path
+    }
+
+    pub fn is_stored(&self) -> bool {
+        self.stored
     }
 }
 
@@ -381,11 +412,21 @@ pub struct Checkpoint {
     replayed_inputs: Vec<ReplayedInput>,
     portable_metadata_bytes: u64,
     chunk_references: u64,
+    unstored_file_count: u64,
+    unstored_logical_bytes: u64,
 }
 
 impl Checkpoint {
     pub fn replayed_inputs(&self) -> &[ReplayedInput] {
         &self.replayed_inputs
+    }
+
+    pub fn unstored_file_count(&self) -> u64 {
+        self.unstored_file_count
+    }
+
+    pub fn unstored_logical_bytes(&self) -> u64 {
+        self.unstored_logical_bytes
     }
 }
 
@@ -396,6 +437,37 @@ pub struct SealedFile {
     pub logical_bytes: u64,
     pub content_hash: ContentHash,
     pub chunk_count: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CheckpointFile {
+    pub relative_path: String,
+    pub logical_bytes: u64,
+    pub content_hash: ContentHash,
+    pub stored: bool,
+    pub chunk_count: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PackInspection {
+    pub file_name: String,
+    pub encoded_bytes: u64,
+    pub chunk_count: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StoreInspection {
+    pub root: PathBuf,
+    pub catalog_path: PathBuf,
+    pub catalog_bytes: u64,
+    pub format_version: u32,
+    pub lineage: String,
+    pub checkpoint_count: u64,
+    pub manifest_count: u64,
+    pub pack_count: u64,
+    pub chunk_count: u64,
+    pub manifest_chunk_count: u64,
+    pub packs: Vec<PackInspection>,
 }
 
 /// Whether publication created a new visible root or reused an exact one.
@@ -420,6 +492,8 @@ pub struct StoreStats {
     pub stored_chunk_bytes: u64,
     pub visible_logical_bytes: u64,
     pub reclaimable_pack_bytes: u64,
+    pub unstored_file_count: u64,
+    pub unstored_logical_bytes: u64,
 }
 
 /// Results of conservative reachability garbage collection.
@@ -436,6 +510,7 @@ pub struct GarbageCollection {
 pub struct Materialization {
     pub file_count: u64,
     pub logical_bytes: u64,
+    pub omitted: Vec<String>,
 }
 
 /// Work performed by a complete integrity verification pass.
@@ -498,6 +573,15 @@ impl Candidate {
 
     pub fn snapshot_root(&self) -> &SnapshotRoot {
         &self.snapshot_root
+    }
+
+    /// Reports whether this candidate's root is already a visible checkpoint,
+    /// using the store locks the candidate already holds.
+    pub fn root_is_visible(&self) -> Result<bool> {
+        let store = Store {
+            root: self.store_root.clone(),
+        };
+        Ok(store.checkpoint_inner(&self.snapshot_root)?.is_some())
     }
 
     pub fn sealed_files(&self) -> Vec<SealedFile> {
@@ -578,6 +662,30 @@ fn advance_capture_budget(
         ));
     }
     Ok((file_bytes, checkpoint_bytes, chunk_references))
+}
+
+fn advance_unstored_capture_budget(
+    file_bytes: u64,
+    checkpoint_bytes: u64,
+    read_bytes: u64,
+) -> Result<(u64, u64)> {
+    let file_bytes = file_bytes
+        .checked_add(read_bytes)
+        .ok_or_else(|| HistoryError::InvalidInput("checkpoint file size overflow".into()))?;
+    if file_bytes > MAX_CHECKPOINT_FILE_BYTES {
+        return Err(HistoryError::InvalidInput(
+            "checkpoint file exceeds the 16 GiB capture limit".into(),
+        ));
+    }
+    let checkpoint_bytes = checkpoint_bytes
+        .checked_add(read_bytes)
+        .ok_or_else(|| HistoryError::InvalidInput("checkpoint size overflow".into()))?;
+    if checkpoint_bytes > MAX_HISTORY_LOGICAL_BYTES {
+        return Err(HistoryError::InvalidInput(
+            "checkpoint exceeds the portable history logical-size limit".into(),
+        ));
+    }
+    Ok((file_bytes, checkpoint_bytes))
 }
 
 /// A single project's independent checkpoint store.
@@ -814,6 +922,7 @@ impl Store {
 
         let store = Self { root };
         store.initialize_catalog()?;
+        upgrade_existing_format(&store.root)?;
         sync_directory(&store.root)?;
         remove_stale_staging(&store.root)?;
         store.recover_orphan_packs_inner()?;
@@ -918,6 +1027,7 @@ impl Store {
         validate_real_directory(&root.join("packs"), "checkpoint packs directory")?;
         validate_real_directory(&root.join("staging"), "checkpoint staging directory")?;
         store.validate_catalog_version()?;
+        upgrade_existing_format(&root)?;
         drop(operation_lock);
         drop(namespace_lock);
         Ok(Some(store))
@@ -1212,46 +1322,66 @@ impl Store {
             let mut logical_size = 0_u64;
             let mut chunks = Vec::new();
             let mut source_reader = BufReader::new(source_handle.as_file_mut());
-            for chunk in StreamCDC::new(
-                &mut source_reader,
-                MIN_CHUNK_SIZE,
-                AVG_CHUNK_SIZE,
-                MAX_CHUNK_SIZE,
-            ) {
-                let chunk = chunk.map_err(io::Error::from)?;
-                ensure_publication_active(gate)?;
-                let (next_file_size, next_candidate_size, next_chunk_references) =
-                    advance_capture_budget(
+            if input.stored {
+                for chunk in StreamCDC::new(
+                    &mut source_reader,
+                    MIN_CHUNK_SIZE,
+                    AVG_CHUNK_SIZE,
+                    MAX_CHUNK_SIZE,
+                ) {
+                    let chunk = chunk.map_err(io::Error::from)?;
+                    ensure_publication_active(gate)?;
+                    let (next_file_size, next_candidate_size, next_chunk_references) =
+                        advance_capture_budget(
+                            logical_size,
+                            candidate_logical_size,
+                            candidate_chunk_references,
+                            chunk.length as u64,
+                        )?;
+                    destination_file.write_all(&chunk.data)?;
+                    content_hasher.update(&chunk.data);
+                    logical_size = next_file_size;
+                    candidate_logical_size = next_candidate_size;
+                    candidate_chunk_references = next_chunk_references;
+
+                    let chunk_hash = ContentHash::digest(&chunk.data);
+                    let chunk_hash_hex = chunk_hash.to_hex();
+                    chunks.push(ManifestChunk {
+                        hash: chunk_hash_hex.clone(),
+                        raw_len: chunk.length as u64,
+                    });
+
+                    let already_published = connection
+                        .query_row(
+                            "SELECT 1 FROM chunks WHERE chunk_hash = ?1",
+                            [&chunk_hash_hex],
+                            |_| Ok(()),
+                        )
+                        .optional()?
+                        .is_some();
+                    if !already_published && staged_hashes.insert(chunk_hash_hex.clone()) {
+                        new_chunks.push(write_pack_chunk(&mut pack, chunk_hash, &chunk.data)?);
+                    }
+                    ensure_publication_active(gate)?;
+                }
+            } else {
+                let mut buffer = vec![0_u8; 64 * 1024];
+                loop {
+                    ensure_publication_active(gate)?;
+                    let count = source_reader.read(&mut buffer)?;
+                    if count == 0 {
+                        break;
+                    }
+                    let (next_file_size, next_candidate_size) = advance_unstored_capture_budget(
                         logical_size,
                         candidate_logical_size,
-                        candidate_chunk_references,
-                        chunk.length as u64,
+                        count as u64,
                     )?;
-                destination_file.write_all(&chunk.data)?;
-                content_hasher.update(&chunk.data);
-                logical_size = next_file_size;
-                candidate_logical_size = next_candidate_size;
-                candidate_chunk_references = next_chunk_references;
-
-                let chunk_hash = ContentHash::digest(&chunk.data);
-                let chunk_hash_hex = chunk_hash.to_hex();
-                chunks.push(ManifestChunk {
-                    hash: chunk_hash_hex.clone(),
-                    raw_len: chunk.length as u64,
-                });
-
-                let already_published = connection
-                    .query_row(
-                        "SELECT 1 FROM chunks WHERE chunk_hash = ?1",
-                        [&chunk_hash_hex],
-                        |_| Ok(()),
-                    )
-                    .optional()?
-                    .is_some();
-                if !already_published && staged_hashes.insert(chunk_hash_hex.clone()) {
-                    new_chunks.push(write_pack_chunk(&mut pack, chunk_hash, &chunk.data)?);
+                    destination_file.write_all(&buffer[..count])?;
+                    content_hasher.update(&buffer[..count]);
+                    logical_size = next_file_size;
+                    candidate_logical_size = next_candidate_size;
                 }
-                ensure_publication_active(gate)?;
             }
             drop(source_reader);
             ensure_publication_active(gate)?;
@@ -1300,6 +1430,7 @@ impl Store {
                 path: input.relative_path.clone(),
                 logical_size,
                 content_hash: content_hash.to_hex(),
+                stored: input.stored,
                 chunks,
             });
         }
@@ -1381,6 +1512,13 @@ impl Store {
         ensure_publication_active(gate)?;
         validate_compile_evidence(&candidate, &evidence)?;
 
+        let root_hex = candidate.snapshot_root.as_hex();
+        let mut connection = self.connection()?;
+        if let Some(existing) = query_checkpoint(&connection, &root_hex)? {
+            let _ = candidate.cleanup();
+            return Ok(PublishOutcome::Existing(existing));
+        }
+
         let logical_bytes = candidate
             .manifest
             .files
@@ -1390,6 +1528,7 @@ impl Store {
                     .checked_add(file.logical_size)
                     .ok_or_else(|| HistoryError::InvalidInput("snapshot length overflow".into()))
             })?;
+        let unstored = manifest_unstored_totals(&candidate.manifest)?;
         let mut checkpoint = Checkpoint {
             snapshot_root: candidate.snapshot_root,
             completed_at_unix_ms: evidence.completed_at_unix_ms,
@@ -1402,13 +1541,12 @@ impl Store {
             replayed_inputs: evidence.replayed_inputs,
             portable_metadata_bytes: 0,
             chunk_references: 0,
+            unstored_file_count: unstored.file_count,
+            unstored_logical_bytes: unstored.logical_bytes,
         };
 
-        let root_hex = checkpoint.snapshot_root.as_hex();
-        let mut connection = self.connection()?;
         let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
-        let root_already_visible = query_checkpoint(&transaction, &root_hex)?.is_some();
         let (_, candidate_budget) = validate_portable_history_after_publication(
             &transaction,
             &checkpoint,
@@ -1497,17 +1635,6 @@ impl Store {
             )));
         }
 
-        // Reinsert an existing root so its catalog sequence records this
-        // validated publication as the newest recovery point. The delete and
-        // insert are one transaction, while the immutable manifest and packs
-        // remain unchanged.
-        if root_already_visible {
-            transaction.execute(
-                "DELETE FROM checkpoints WHERE snapshot_root = ?1",
-                [&root_hex],
-            )?;
-        }
-
         // The visible root is intentionally the final catalog mutation.
         insert_checkpoint(&transaction, &checkpoint)?;
 
@@ -1536,11 +1663,7 @@ impl Store {
         // injected failure, the immutable file is an unreachable orphan that
         // recovery can remove without exposing a checkpoint.
         drop(published_pack_path);
-        if root_already_visible {
-            Ok(PublishOutcome::Existing(checkpoint))
-        } else {
-            Ok(PublishOutcome::Created(checkpoint))
-        }
+        Ok(PublishOutcome::Created(checkpoint))
     }
 
     pub fn checkpoint(&self, root: &SnapshotRoot) -> Result<Option<Checkpoint>> {
@@ -1551,6 +1674,96 @@ impl Store {
     fn checkpoint_inner(&self, root: &SnapshotRoot) -> Result<Option<Checkpoint>> {
         let connection = self.connection()?;
         query_checkpoint(&connection, &root.as_hex())
+    }
+
+    pub fn latest_checkpoint(&self) -> Result<Option<Checkpoint>> {
+        let _store_locks = self.acquire_shared_locks()?;
+        let connection = self.connection()?;
+        connection
+            .query_row(
+                "SELECT snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
+                        main_document, output_hash, file_count, logical_bytes,
+                        replayed_inputs_json,
+                        length(CAST(snapshot_root AS BLOB))
+                          + length(CAST(engine AS BLOB))
+                          + length(CAST(toolchain_identity AS BLOB))
+                          + length(CAST(main_document AS BLOB))
+                          + length(CAST(output_hash AS BLOB))
+                          + length(CAST(replayed_inputs_json AS BLOB)),
+                 portable_metadata_bytes, chunk_references,
+                 unstored_file_count, unstored_logical_bytes
+                 FROM checkpoints
+                 ORDER BY sequence DESC
+                 LIMIT 1",
+                [],
+                checkpoint_from_row,
+            )
+            .optional()
+            .map_err(Into::into)
+    }
+
+    pub fn checkpoint_files(&self, root: &SnapshotRoot) -> Result<Option<Vec<CheckpointFile>>> {
+        let _store_locks = self.acquire_shared_locks()?;
+        let connection = self.connection()?;
+        if query_checkpoint(&connection, &root.as_hex())?.is_none() {
+            return Ok(None);
+        }
+        let manifest = load_visible_manifest(&connection, root)?;
+        verify_manifest_root(root, &manifest)?;
+        let mut files = Vec::with_capacity(manifest.files.len());
+        for file in &manifest.files {
+            files.push(CheckpointFile {
+                relative_path: file.path.clone(),
+                logical_bytes: file.logical_size,
+                content_hash: ContentHash::from_hex(&file.content_hash)?,
+                stored: file.stored,
+                chunk_count: file.chunks.len() as u64,
+            });
+        }
+        Ok(Some(files))
+    }
+
+    pub fn inspect(&self) -> Result<StoreInspection> {
+        let _store_locks = self.acquire_shared_locks()?;
+        let catalog_path = self.root.join("catalog.sqlite3");
+        validate_regular_file(&catalog_path, "checkpoint catalog")?;
+        let catalog_bytes = fs::symlink_metadata(&catalog_path)?.len();
+        let connection = self.connection()?;
+        let format_version: u32 =
+            connection.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+        let lineage = self.lineage_with_connection(&connection)?;
+        let mut packs = Vec::new();
+        {
+            let mut statement = connection.prepare(
+                "SELECT p.file_name, p.encoded_size,
+                        (SELECT COUNT(*) FROM chunks c WHERE c.pack_id = p.pack_id)
+                 FROM packs p
+                 ORDER BY p.file_name ASC",
+            )?;
+            let rows = statement.query_map([], |row| {
+                Ok(PackInspection {
+                    file_name: row.get::<_, String>(0)?,
+                    encoded_bytes: row.get::<_, i64>(1)?.max(0) as u64,
+                    chunk_count: row.get::<_, i64>(2)?.max(0) as u64,
+                })
+            })?;
+            for pack in rows {
+                packs.push(pack?);
+            }
+        }
+        Ok(StoreInspection {
+            root: self.root.clone(),
+            catalog_path,
+            catalog_bytes,
+            format_version,
+            lineage,
+            checkpoint_count: query_count(&connection, "checkpoints")?,
+            manifest_count: query_count(&connection, "manifests")?,
+            pack_count: query_count(&connection, "packs")?,
+            chunk_count: query_count(&connection, "chunks")?,
+            manifest_chunk_count: query_count(&connection, "manifest_chunks")?,
+            packs,
+        })
     }
 
     /// Lists visible checkpoints newest first. Candidates are never listed.
@@ -1570,7 +1783,8 @@ impl Store {
                       + length(CAST(main_document AS BLOB))
                       + length(CAST(output_hash AS BLOB))
                       + length(CAST(replayed_inputs_json AS BLOB)),
-             portable_metadata_bytes, chunk_references
+             portable_metadata_bytes, chunk_references,
+             unstored_file_count, unstored_logical_bytes
              FROM checkpoints
              ORDER BY sequence DESC",
         )?;
@@ -1601,6 +1815,21 @@ impl Store {
                 ))
             },
         )?;
+        let checkpoint_totals = connection.query_row(
+            "SELECT
+                COALESCE(SUM(logical_bytes), 0),
+                COALESCE(SUM(unstored_file_count), 0),
+                COALESCE(SUM(unstored_logical_bytes), 0)
+             FROM checkpoints",
+            [],
+            |row| {
+                Ok((
+                    row.get::<_, i64>(0)? as u64,
+                    row.get::<_, i64>(1)? as u64,
+                    row.get::<_, i64>(2)? as u64,
+                ))
+            },
+        )?;
         Ok(StoreStats {
             checkpoint_count: query_count(&connection, "checkpoints")?,
             manifest_count: query_count(&connection, "manifests")?,
@@ -1616,11 +1845,9 @@ impl Store {
             max_raw_chunk_bytes: chunk_stats.2,
             logical_chunk_bytes: chunk_stats.3,
             stored_chunk_bytes: chunk_stats.4,
-            visible_logical_bytes: connection.query_row(
-                "SELECT COALESCE(SUM(logical_bytes), 0) FROM checkpoints",
-                [],
-                |row| row.get::<_, i64>(0),
-            )? as u64,
+            visible_logical_bytes: checkpoint_totals.0,
+            unstored_file_count: checkpoint_totals.1,
+            unstored_logical_bytes: checkpoint_totals.2,
             reclaimable_pack_bytes: connection.query_row(
                 "SELECT COALESCE(SUM(p.encoded_size), 0)
                  FROM packs p
@@ -1774,8 +2001,14 @@ impl Store {
         verify_manifest_root(root, &manifest)?;
 
         let mut logical_bytes = 0_u64;
+        let mut file_count = 0_u64;
+        let mut omitted = Vec::new();
         for manifest_file in &manifest.files {
             validate_portable_relative_path(&manifest_file.path)?;
+            if !manifest_file.stored {
+                omitted.push(manifest_file.path.clone());
+                continue;
+            }
             let output = destination.join(path_from_portable(&manifest_file.path));
             if let Some(parent) = output.parent() {
                 fs::create_dir_all(parent)?;
@@ -1800,11 +2033,13 @@ impl Store {
             logical_bytes = logical_bytes
                 .checked_add(file_bytes)
                 .ok_or_else(|| HistoryError::Corrupt("snapshot length overflow".into()))?;
+            file_count += 1;
         }
         sync_materialized_directory_tree(destination)?;
         Ok(Materialization {
-            file_count: manifest.files.len() as u64,
+            file_count,
             logical_bytes,
+            omitted,
         })
     }
 
@@ -1849,24 +2084,32 @@ impl Store {
             validate_archived_evidence(&manifest, &evidence)?;
             let mut logical_bytes = 0_u64;
             for manifest_file in &manifest.files {
-                let mut file_hasher = blake3::Hasher::new();
-                let mut file_bytes = 0_u64;
-                for manifest_chunk in &manifest_file.chunks {
-                    let raw = self.read_verified_chunk(&connection, manifest_chunk)?;
-                    file_hasher.update(&raw);
-                    file_bytes = file_bytes
-                        .checked_add(raw.len() as u64)
-                        .ok_or_else(|| HistoryError::Corrupt("file length overflow".into()))?;
-                    verification.checked_chunk_references += 1;
-                }
-                verify_file_digest(manifest_file, file_bytes, &file_hasher)?;
+                let file_bytes = if manifest_file.stored {
+                    let mut file_hasher = blake3::Hasher::new();
+                    let mut file_bytes = 0_u64;
+                    for manifest_chunk in &manifest_file.chunks {
+                        let raw = self.read_verified_chunk(&connection, manifest_chunk)?;
+                        file_hasher.update(&raw);
+                        file_bytes = file_bytes
+                            .checked_add(raw.len() as u64)
+                            .ok_or_else(|| HistoryError::Corrupt("file length overflow".into()))?;
+                        verification.checked_chunk_references += 1;
+                    }
+                    verify_file_digest(manifest_file, file_bytes, &file_hasher)?;
+                    file_bytes
+                } else {
+                    manifest_file.logical_size
+                };
                 logical_bytes = logical_bytes
                     .checked_add(file_bytes)
                     .ok_or_else(|| HistoryError::Corrupt("snapshot length overflow".into()))?;
                 verification.checked_files += 1;
             }
+            let unstored = manifest_unstored_totals(&manifest)?;
             if checkpoint.file_count != manifest.files.len() as u64
                 || checkpoint.logical_bytes != logical_bytes
+                || checkpoint.unstored_file_count != unstored.file_count
+                || checkpoint.unstored_logical_bytes != unstored.logical_bytes
             {
                 return Err(HistoryError::Corrupt(format!(
                     "checkpoint {} summary does not match its manifest",
@@ -2020,6 +2263,12 @@ impl Store {
         let expected_root = SnapshotRoot::parse(&metadata.snapshot_root)?;
         verify_archive_manifest(&metadata.manifest)?;
         verify_manifest_root(&expected_root, &metadata.manifest)?;
+        if let Some(unstored) = metadata.manifest.files.iter().find(|file| !file.stored) {
+            return Err(HistoryError::InvalidInput(format!(
+                "portable checkpoint records {} without its bytes",
+                unstored.path
+            )));
+        }
         let output_hash = ContentHash::from_hex(&metadata.output_hash)?;
         let evidence = CompileEvidence::new(
             metadata.engine,
@@ -2122,7 +2371,8 @@ impl Store {
                       + length(CAST(main_document AS BLOB))
                       + length(CAST(output_hash AS BLOB))
                       + length(CAST(replayed_inputs_json AS BLOB)),
-             portable_metadata_bytes, chunk_references
+             portable_metadata_bytes, chunk_references,
+             unstored_file_count, unstored_logical_bytes
              FROM checkpoints ORDER BY sequence ASC",
         )?;
         let checkpoints = statement.query_map([], checkpoint_from_row)?;
@@ -2347,12 +2597,14 @@ impl Store {
                             .checked_add(file.logical_size)
                             .ok_or_else(|| HistoryError::Corrupt("snapshot length overflow".into()))
                     })?;
+            let unstored = manifest_unstored_totals(&checkpoint.manifest)?;
             transaction.execute(
                 "INSERT INTO checkpoints(
                     snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
                     main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
-                    portable_metadata_bytes, chunk_references
-                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                    portable_metadata_bytes, chunk_references,
+                    unstored_file_count, unstored_logical_bytes
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
                 params![
                     checkpoint.root.as_hex(),
                     checkpoint.evidence.completed_at_unix_ms,
@@ -2365,6 +2617,8 @@ impl Store {
                     encode_replayed_inputs(&checkpoint.evidence.replayed_inputs)?,
                     checkpoint.portable_budget.metadata_bytes as i64,
                     checkpoint.portable_budget.chunk_references as i64,
+                    unstored.file_count as i64,
+                    unstored.logical_bytes as i64,
                 ],
             )?;
         }
@@ -2408,17 +2662,22 @@ impl Store {
 
         let mut logical_bytes = 0_u64;
         for manifest_file in &manifest.files {
-            let mut file_hasher = blake3::Hasher::new();
-            let mut file_bytes = 0_u64;
-            for manifest_chunk in &manifest_file.chunks {
-                let raw = self.read_verified_chunk(connection, manifest_chunk)?;
-                writer.write_all(&raw)?;
-                file_hasher.update(&raw);
-                file_bytes = file_bytes
-                    .checked_add(raw.len() as u64)
-                    .ok_or_else(|| HistoryError::Corrupt("file length overflow".into()))?;
-            }
-            verify_file_digest(manifest_file, file_bytes, &file_hasher)?;
+            let file_bytes = if manifest_file.stored {
+                let mut file_hasher = blake3::Hasher::new();
+                let mut file_bytes = 0_u64;
+                for manifest_chunk in &manifest_file.chunks {
+                    let raw = self.read_verified_chunk(connection, manifest_chunk)?;
+                    writer.write_all(&raw)?;
+                    file_hasher.update(&raw);
+                    file_bytes = file_bytes
+                        .checked_add(raw.len() as u64)
+                        .ok_or_else(|| HistoryError::Corrupt("file length overflow".into()))?;
+                }
+                verify_file_digest(manifest_file, file_bytes, &file_hasher)?;
+                file_bytes
+            } else {
+                manifest_file.logical_size
+            };
             logical_bytes = logical_bytes
                 .checked_add(file_bytes)
                 .ok_or_else(|| HistoryError::Corrupt("snapshot length overflow".into()))?;
@@ -2512,6 +2771,9 @@ impl Store {
 
         let mut project_json = Vec::with_capacity(project_manifest.logical_size as usize);
         for file in &metadata.manifest.files {
+            if !file.stored {
+                continue;
+            }
             let mut file_hasher = blake3::Hasher::new();
             let mut file_bytes = 0_u64;
             for chunk in &file.chunks {
@@ -2570,7 +2832,7 @@ impl Store {
     fn initialize_catalog(&self) -> Result<()> {
         let connection = self.open_connection(true)?;
         let version: u32 = connection.query_row("PRAGMA user_version", [], |row| row.get(0))?;
-        if version != 0 && version != FORMAT_VERSION {
+        if version > FORMAT_VERSION {
             return Err(HistoryError::UnsupportedFormat(version));
         }
         connection.execute_batch(
@@ -2610,14 +2872,16 @@ impl Store {
                 ,logical_bytes INTEGER NOT NULL CHECK(logical_bytes >= 0)
                 ,portable_metadata_bytes INTEGER NOT NULL DEFAULT 0 CHECK(portable_metadata_bytes >= 0)
                 ,chunk_references INTEGER NOT NULL DEFAULT 0 CHECK(chunk_references >= 0)
+                ,unstored_file_count INTEGER NOT NULL DEFAULT 0 CHECK(unstored_file_count >= 0)
+                ,unstored_logical_bytes INTEGER NOT NULL DEFAULT 0 CHECK(unstored_logical_bytes >= 0)
              );
              CREATE TABLE IF NOT EXISTS store_identity(
                 singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
                 lineage TEXT NOT NULL UNIQUE
              );
-             PRAGMA user_version = 1;
              COMMIT;",
         )?;
+        migrate_catalog_to_current_version(&connection)?;
         let existing = connection
             .query_row(
                 "SELECT lineage FROM store_identity WHERE singleton = 1",
@@ -2638,11 +2902,11 @@ impl Store {
     fn validate_catalog_version(&self) -> Result<()> {
         let connection = self.connection()?;
         let version: u32 = connection.query_row("PRAGMA user_version", [], |row| row.get(0))?;
-        if version != FORMAT_VERSION {
+        if version == 0 || version > FORMAT_VERSION {
             return Err(HistoryError::UnsupportedFormat(version));
         }
         self.lineage_with_connection(&connection)?;
-        ensure_catalog_budget_columns(&connection)?;
+        migrate_catalog_to_current_version(&connection)?;
         Ok(())
     }
 
@@ -2743,7 +3007,20 @@ struct ManifestFile {
     path: String,
     logical_size: u64,
     content_hash: String,
+    #[serde(
+        default = "manifest_file_stored_default",
+        skip_serializing_if = "manifest_file_stored_is_default"
+    )]
+    stored: bool,
     chunks: Vec<ManifestChunk>,
+}
+
+fn manifest_file_stored_default() -> bool {
+    true
+}
+
+fn manifest_file_stored_is_default(stored: &bool) -> bool {
+    *stored
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -3260,18 +3537,22 @@ fn write_pack_chunk(pack: &mut File, hash: ContentHash, raw: &[u8]) -> Result<St
 }
 
 fn compute_snapshot_root(manifest: &Manifest) -> Result<SnapshotRoot> {
-    if manifest.format_version != FORMAT_VERSION {
-        return Err(HistoryError::UnsupportedFormat(manifest.format_version));
+    let version = manifest.format_version;
+    if version == 0 || version > FORMAT_VERSION {
+        return Err(HistoryError::UnsupportedFormat(version));
     }
     let mut hasher = blake3::Hasher::new();
     hasher.update(b"oleafly-snapshot\0");
-    hasher.update(&FORMAT_VERSION.to_le_bytes());
+    hasher.update(&version.to_le_bytes());
     hasher.update(&(manifest.files.len() as u64).to_le_bytes());
     for file in &manifest.files {
         hash_length_prefixed(&mut hasher, file.path.as_bytes());
         hasher.update(&file.logical_size.to_le_bytes());
         let content_hash = ContentHash::from_hex(&file.content_hash)?;
         hasher.update(content_hash.as_bytes());
+        if version >= UNSTORED_MANIFEST_VERSION {
+            hasher.update(&[u8::from(file.stored)]);
+        }
         hasher.update(&(file.chunks.len() as u64).to_le_bytes());
         for chunk in &file.chunks {
             let chunk_hash = ContentHash::from_hex(&chunk.hash)?;
@@ -3343,6 +3624,12 @@ fn validate_archived_evidence(manifest: &Manifest, evidence: &CompileEvidence) -
                 evidence.main_document
             ))
         })?;
+    if !main_file.stored {
+        return Err(HistoryError::InvalidInput(format!(
+            "compiled main document {} must always retain its checkpoint bytes",
+            evidence.main_document
+        )));
+    }
     let main_replay = evidence
         .replayed_inputs
         .iter()
@@ -3396,7 +3683,8 @@ fn query_checkpoint(connection: &Connection, root: &str) -> Result<Option<Checkp
                       + length(CAST(main_document AS BLOB))
                       + length(CAST(output_hash AS BLOB))
                       + length(CAST(replayed_inputs_json AS BLOB)),
-             portable_metadata_bytes, chunk_references
+             portable_metadata_bytes, chunk_references,
+             unstored_file_count, unstored_logical_bytes
              FROM checkpoints WHERE snapshot_root = ?1",
             [root],
             checkpoint_from_row,
@@ -3415,7 +3703,8 @@ fn query_checkpoints_oldest_first(connection: &Connection) -> Result<Vec<Checkpo
                   + length(CAST(main_document AS BLOB))
                   + length(CAST(output_hash AS BLOB))
                   + length(CAST(replayed_inputs_json AS BLOB)),
-         portable_metadata_bytes, chunk_references
+         portable_metadata_bytes, chunk_references,
+         unstored_file_count, unstored_logical_bytes
          FROM checkpoints ORDER BY sequence ASC",
     )?;
     let rows = statement.query_map([], checkpoint_from_row)?;
@@ -3428,8 +3717,9 @@ fn insert_checkpoint(connection: &Connection, checkpoint: &Checkpoint) -> Result
         "INSERT INTO checkpoints(
             snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
             main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
-            portable_metadata_bytes, chunk_references
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            portable_metadata_bytes, chunk_references,
+            unstored_file_count, unstored_logical_bytes
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         params![
             checkpoint.snapshot_root.as_hex(),
             checkpoint.completed_at_unix_ms,
@@ -3442,49 +3732,116 @@ fn insert_checkpoint(connection: &Connection, checkpoint: &Checkpoint) -> Result
             encode_replayed_inputs(&checkpoint.replayed_inputs)?,
             checkpoint.portable_metadata_bytes as i64,
             checkpoint.chunk_references as i64,
+            checkpoint.unstored_file_count as i64,
+            checkpoint.unstored_logical_bytes as i64,
         ],
     )?;
     Ok(())
 }
 
-fn catalog_has_budget_columns(connection: &Connection) -> Result<bool> {
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct UnstoredTotals {
+    file_count: u64,
+    logical_bytes: u64,
+}
+
+fn manifest_unstored_totals(manifest: &Manifest) -> Result<UnstoredTotals> {
+    let mut totals = UnstoredTotals::default();
+    for file in &manifest.files {
+        if file.stored {
+            continue;
+        }
+        totals.file_count = totals
+            .file_count
+            .checked_add(1)
+            .ok_or_else(|| HistoryError::Corrupt("unstored file count overflow".into()))?;
+        totals.logical_bytes = totals
+            .logical_bytes
+            .checked_add(file.logical_size)
+            .ok_or_else(|| HistoryError::Corrupt("unstored length overflow".into()))?;
+    }
+    Ok(totals)
+}
+
+const CATALOG_VERSION_2_COLUMNS: &[(&str, &str)] = &[
+    (
+        "portable_metadata_bytes",
+        "INTEGER NOT NULL DEFAULT 0 CHECK(portable_metadata_bytes >= 0)",
+    ),
+    (
+        "chunk_references",
+        "INTEGER NOT NULL DEFAULT 0 CHECK(chunk_references >= 0)",
+    ),
+    (
+        "unstored_file_count",
+        "INTEGER NOT NULL DEFAULT 0 CHECK(unstored_file_count >= 0)",
+    ),
+    (
+        "unstored_logical_bytes",
+        "INTEGER NOT NULL DEFAULT 0 CHECK(unstored_logical_bytes >= 0)",
+    ),
+];
+
+fn missing_catalog_columns(
+    connection: &Connection,
+) -> Result<Vec<&'static (&'static str, &'static str)>> {
     let mut statement = connection.prepare("PRAGMA table_info(checkpoints)")?;
     let columns = statement
         .query_map([], |row| row.get::<_, String>(1))?
         .collect::<std::result::Result<Vec<_>, _>>()?;
-    Ok(columns
+    Ok(CATALOG_VERSION_2_COLUMNS
         .iter()
-        .any(|column| column == "portable_metadata_bytes")
-        && columns.iter().any(|column| column == "chunk_references"))
+        .filter(|(name, _)| !columns.iter().any(|column| column == name))
+        .collect())
 }
 
-fn ensure_catalog_budget_columns(connection: &Connection) -> Result<()> {
-    if catalog_has_budget_columns(connection)? {
+fn catalog_user_version(connection: &Connection) -> Result<u32> {
+    Ok(connection.query_row("PRAGMA user_version", [], |row| row.get(0))?)
+}
+
+fn migrate_catalog_to_current_version(connection: &Connection) -> Result<()> {
+    let version = catalog_user_version(connection)?;
+    if version > FORMAT_VERSION {
+        return Err(HistoryError::UnsupportedFormat(version));
+    }
+    if version == FORMAT_VERSION && missing_catalog_columns(connection)?.is_empty() {
         return Ok(());
     }
     let transaction =
         rusqlite::Transaction::new_unchecked(connection, TransactionBehavior::Immediate)?;
-    if !catalog_has_budget_columns(&transaction)? {
-        transaction.execute_batch(
-            "ALTER TABLE checkpoints ADD COLUMN portable_metadata_bytes
-                 INTEGER NOT NULL DEFAULT 0 CHECK(portable_metadata_bytes >= 0);
-             ALTER TABLE checkpoints ADD COLUMN chunk_references
-                 INTEGER NOT NULL DEFAULT 0 CHECK(chunk_references >= 0);",
-        )?;
+    let version = catalog_user_version(&transaction)?;
+    if version > FORMAT_VERSION {
+        return Err(HistoryError::UnsupportedFormat(version));
+    }
+    let missing = missing_catalog_columns(&transaction)?;
+    let requires_backfill = !missing.is_empty() || version < FORMAT_VERSION;
+    for (name, declaration) in missing {
+        transaction.execute_batch(&format!(
+            "ALTER TABLE checkpoints ADD COLUMN {name} {declaration};"
+        ))?;
+    }
+    if requires_backfill {
         for checkpoint in query_checkpoints_oldest_first(&transaction)? {
             let manifest = load_visible_manifest(&transaction, &checkpoint.snapshot_root)?;
             let budget = portable_checkpoint_budget(&checkpoint, &manifest)?;
+            let unstored = manifest_unstored_totals(&manifest)?;
             transaction.execute(
                 "UPDATE checkpoints
-                 SET portable_metadata_bytes = ?2, chunk_references = ?3
+                 SET portable_metadata_bytes = ?2, chunk_references = ?3,
+                     unstored_file_count = ?4, unstored_logical_bytes = ?5
                  WHERE snapshot_root = ?1",
                 params![
                     checkpoint.snapshot_root.as_hex(),
                     budget.metadata_bytes as i64,
                     budget.chunk_references as i64,
+                    unstored.file_count as i64,
+                    unstored.logical_bytes as i64,
                 ],
             )?;
         }
+    }
+    if version != FORMAT_VERSION {
+        transaction.execute_batch(&format!("PRAGMA user_version = {FORMAT_VERSION};"))?;
     }
     transaction.commit()?;
     Ok(())
@@ -3515,6 +3872,8 @@ fn checkpoint_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Checkpoint> 
             .map_err(to_sql_conversion_error)?,
         portable_metadata_bytes: row.get::<_, i64>(10)? as u64,
         chunk_references: row.get::<_, i64>(11)? as u64,
+        unstored_file_count: row.get::<_, i64>(12)? as u64,
+        unstored_logical_bytes: row.get::<_, i64>(13)? as u64,
     })
 }
 
@@ -3574,6 +3933,9 @@ fn verify_file_digest(
 }
 
 fn verify_archive_manifest(manifest: &Manifest) -> Result<()> {
+    if manifest.format_version == 0 || manifest.format_version > FORMAT_VERSION {
+        return Err(HistoryError::UnsupportedFormat(manifest.format_version));
+    }
     if manifest.files.is_empty() {
         return Err(HistoryError::InvalidInput(
             "portable checkpoint contains no files".into(),
@@ -3591,6 +3953,27 @@ fn verify_archive_manifest(manifest: &Manifest) -> Result<()> {
         }
         previous = Some(&file.path);
         has_project_json |= file.path == "project.json";
+        if !file.stored {
+            if manifest.format_version < UNSTORED_MANIFEST_VERSION {
+                return Err(HistoryError::Corrupt(format!(
+                    "file {} omits its bytes in a version {} manifest",
+                    file.path, manifest.format_version
+                )));
+            }
+            if file.path == "project.json" {
+                return Err(HistoryError::InvalidInput(
+                    "project.json must always retain its checkpoint bytes".into(),
+                ));
+            }
+            if !file.chunks.is_empty() {
+                return Err(HistoryError::Corrupt(format!(
+                    "file {} omits its bytes but references chunks",
+                    file.path
+                )));
+            }
+            ContentHash::from_hex(&file.content_hash)?;
+            continue;
+        }
         let chunk_bytes = file.chunks.iter().try_fold(0_u64, |total, chunk| {
             ContentHash::from_hex(&chunk.hash)?;
             total
@@ -4147,6 +4530,21 @@ fn remove_stale_staging(root: &Path) -> Result<()> {
 }
 
 fn initialize_format(root: &Path) -> Result<()> {
+    if root.join("format.json").exists() {
+        validate_existing_format(root)?;
+        return Ok(());
+    }
+    write_format_marker(root)
+}
+
+fn upgrade_existing_format(root: &Path) -> Result<()> {
+    if validate_existing_format(root)? == FORMAT_VERSION {
+        return Ok(());
+    }
+    write_format_marker(root)
+}
+
+fn write_format_marker(root: &Path) -> Result<()> {
     #[derive(Deserialize, Serialize)]
     struct FormatMarker<'a> {
         format: &'a str,
@@ -4157,10 +4555,6 @@ fn initialize_format(root: &Path) -> Result<()> {
     }
 
     let marker_path = root.join("format.json");
-    if marker_path.exists() {
-        return validate_existing_format(root);
-    }
-
     let marker = FormatMarker {
         format: "oleafly-checkpoints",
         version: FORMAT_VERSION,
@@ -4181,18 +4575,17 @@ fn initialize_format(root: &Path) -> Result<()> {
     }
     set_private_file_permissions(&temporary)?;
     if let Err(error) = fs::rename(&temporary, &marker_path) {
-        if marker_path.exists() {
-            let _ = fs::remove_file(&temporary);
-            validate_existing_format(root)?;
-        } else {
+        let _ = fs::remove_file(&temporary);
+        if !marker_path.exists() {
             return Err(error.into());
         }
+        validate_existing_format(root)?;
     }
     sync_directory(root)?;
     Ok(())
 }
 
-fn validate_existing_format(root: &Path) -> Result<()> {
+fn validate_existing_format(root: &Path) -> Result<u32> {
     #[derive(Deserialize)]
     struct ExistingFormat {
         format: String,
@@ -4210,7 +4603,10 @@ fn validate_existing_format(root: &Path) -> Result<()> {
     let mut bytes = Vec::new();
     marker_file.read_to_end(&mut bytes)?;
     let marker: ExistingFormat = serde_json::from_slice(&bytes)?;
-    if marker.format != "oleafly-checkpoints" || marker.version != FORMAT_VERSION {
+    if marker.format != "oleafly-checkpoints"
+        || marker.version == 0
+        || marker.version > FORMAT_VERSION
+    {
         return Err(HistoryError::UnsupportedFormat(marker.version));
     }
     if marker.hash != "blake3"
@@ -4218,10 +4614,10 @@ fn validate_existing_format(root: &Path) -> Result<()> {
         || marker.compression != "zstd-3-if-smaller"
     {
         return Err(HistoryError::Corrupt(
-            "checkpoint format algorithms do not match version 1".into(),
+            "checkpoint format algorithms do not match a supported checkpoint store".into(),
         ));
     }
-    Ok(())
+    Ok(marker.version)
 }
 
 fn validate_portable_relative_path(path: &str) -> Result<()> {
@@ -4600,8 +4996,288 @@ mod tests {
         (store, snapshot_root)
     }
 
+    fn catalog_user_version_at(root: &Path) -> u32 {
+        let connection = Connection::open(root.join("catalog.sqlite3")).unwrap();
+        connection
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .unwrap()
+    }
+
+    fn write_legacy_format_marker(root: &Path) {
+        let marker = serde_json::json!({
+            "format": "oleafly-checkpoints",
+            "version": 1,
+            "hash": "blake3",
+            "chunker": "fastcdc-v2020-256k-1m-4m",
+            "compression": "zstd-3-if-smaller",
+        });
+        fs::write(
+            root.join("format.json"),
+            serde_json::to_vec_pretty(&marker).unwrap(),
+        )
+        .unwrap();
+    }
+
+    fn rewrite_store_as_version_one(store: &Store, root: &SnapshotRoot) -> SnapshotRoot {
+        let connection = store.connection().unwrap();
+        let manifest = load_visible_manifest(&connection, root).unwrap();
+        let checkpoint = query_checkpoint(&connection, &root.as_hex())
+            .unwrap()
+            .unwrap();
+        let legacy = Manifest {
+            format_version: 1,
+            files: manifest.files.clone(),
+        };
+        let legacy_root = compute_snapshot_root(&legacy).unwrap();
+        assert_ne!(legacy_root, *root);
+        let legacy_json = serde_json::to_vec(&legacy).unwrap();
+        assert!(!String::from_utf8(legacy_json.clone())
+            .unwrap()
+            .contains("stored"));
+
+        connection
+            .execute(
+                "INSERT INTO manifests(snapshot_root, manifest_json) VALUES (?1, ?2)",
+                params![legacy_root.as_hex(), &legacy_json],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO manifest_chunks(snapshot_root, chunk_hash)
+                 SELECT ?1, chunk_hash FROM manifest_chunks WHERE snapshot_root = ?2",
+                params![legacy_root.as_hex(), root.as_hex()],
+            )
+            .unwrap();
+        connection
+            .execute_batch(
+                "DROP TABLE checkpoints;
+                 CREATE TABLE checkpoints(
+                    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                    snapshot_root TEXT NOT NULL UNIQUE REFERENCES manifests(snapshot_root),
+                    completed_at_unix_ms INTEGER NOT NULL CHECK(completed_at_unix_ms >= 0),
+                    engine TEXT NOT NULL,
+                    toolchain_identity TEXT NOT NULL,
+                    main_document TEXT NOT NULL,
+                    output_hash TEXT NOT NULL,
+                    replayed_inputs_json TEXT NOT NULL
+                    ,file_count INTEGER NOT NULL CHECK(file_count >= 0)
+                    ,logical_bytes INTEGER NOT NULL CHECK(logical_bytes >= 0)
+                 );",
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO checkpoints(
+                    snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
+                    main_document, output_hash, file_count, logical_bytes, replayed_inputs_json
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                params![
+                    legacy_root.as_hex(),
+                    checkpoint.completed_at_unix_ms,
+                    checkpoint.engine,
+                    checkpoint.toolchain_identity,
+                    checkpoint.main_document,
+                    checkpoint.output_hash.to_hex(),
+                    checkpoint.file_count as i64,
+                    checkpoint.logical_bytes as i64,
+                    encode_replayed_inputs(&checkpoint.replayed_inputs).unwrap(),
+                ],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "DELETE FROM manifests WHERE snapshot_root = ?1",
+                [root.as_hex()],
+            )
+            .unwrap();
+        connection
+            .execute_batch("PRAGMA user_version = 1;")
+            .unwrap();
+        drop(connection);
+        write_legacy_format_marker(store.root());
+        legacy_root
+    }
+
+    #[test]
+    fn version_one_catalog_and_manifest_migrate_in_place_on_open() {
+        for reopen_existing in [false, true] {
+            let temp = tempdir().unwrap();
+            let (store, root) = published_test_store(temp.path());
+            let history = store.root().to_path_buf();
+            let legacy_root = rewrite_store_as_version_one(&store, &root);
+            drop(store);
+            assert_eq!(catalog_user_version_at(&history), 1);
+            assert_eq!(validate_existing_format(&history).unwrap(), 1);
+
+            let migrated = if reopen_existing {
+                Store::open_existing(&history).unwrap().unwrap()
+            } else {
+                Store::open(&history).unwrap()
+            };
+
+            assert_eq!(catalog_user_version_at(&history), FORMAT_VERSION);
+            assert_eq!(validate_existing_format(&history).unwrap(), FORMAT_VERSION);
+            let checkpoint = migrated.checkpoint(&legacy_root).unwrap().unwrap();
+            assert_eq!(checkpoint.file_count, 2);
+            assert!(checkpoint.portable_metadata_bytes > 0);
+            assert_eq!(checkpoint.chunk_references, 2);
+            assert_eq!(checkpoint.unstored_file_count, 0);
+            assert_eq!(checkpoint.unstored_logical_bytes, 0);
+
+            let verified = migrated.verify().unwrap();
+            assert_eq!(verified.checked_checkpoints, 1);
+            assert_eq!(verified.checked_files, 2);
+            let files = migrated.checkpoint_files(&legacy_root).unwrap().unwrap();
+            assert_eq!(files.len(), 2);
+            assert!(files.iter().all(|file| file.stored));
+
+            let restored = temp.path().join("restored");
+            let materialized = migrated.materialize(&legacy_root, &restored).unwrap();
+            assert_eq!(materialized.file_count, 2);
+            assert!(materialized.omitted.is_empty());
+            assert_eq!(fs::read(restored.join("main.tex")).unwrap(), b"source");
+
+            let mut archive = Vec::new();
+            migrated.export_history(&mut archive).unwrap();
+            let elsewhere = Store::open(temp.path().join("elsewhere")).unwrap();
+            assert_eq!(
+                elsewhere
+                    .import_history(archive.as_slice())
+                    .unwrap()
+                    .created_checkpoints,
+                1
+            );
+            assert!(elsewhere.checkpoint(&legacy_root).unwrap().is_some());
+        }
+    }
+
+    #[test]
+    fn a_catalog_newer_than_this_build_is_never_opened() {
+        let temp = tempdir().unwrap();
+        let (store, _) = published_test_store(temp.path());
+        let history = store.root().to_path_buf();
+        drop(store);
+        let connection = Connection::open(history.join("catalog.sqlite3")).unwrap();
+        connection
+            .execute_batch(&format!("PRAGMA user_version = {};", FORMAT_VERSION + 1))
+            .unwrap();
+        drop(connection);
+
+        assert!(matches!(
+            Store::open_existing(&history),
+            Err(HistoryError::UnsupportedFormat(version)) if version == FORMAT_VERSION + 1
+        ));
+        assert!(matches!(
+            Store::open(&history),
+            Err(HistoryError::UnsupportedFormat(version)) if version == FORMAT_VERSION + 1
+        ));
+    }
+
+    #[test]
+    fn the_stored_flag_changes_a_version_two_root_and_round_trips_as_json() {
+        let content_hash = ContentHash::digest(b"");
+        let stored = Manifest {
+            format_version: FORMAT_VERSION,
+            files: vec![
+                ManifestFile {
+                    path: "figures/data.csv".into(),
+                    logical_size: 0,
+                    content_hash: content_hash.to_hex(),
+                    stored: true,
+                    chunks: Vec::new(),
+                },
+                ManifestFile {
+                    path: "project.json".into(),
+                    logical_size: 0,
+                    content_hash: content_hash.to_hex(),
+                    stored: true,
+                    chunks: Vec::new(),
+                },
+            ],
+        };
+        let mut unstored = stored.clone();
+        unstored.files[0].stored = false;
+
+        assert_ne!(
+            compute_snapshot_root(&stored).unwrap(),
+            compute_snapshot_root(&unstored).unwrap()
+        );
+
+        let stored_json = serde_json::to_vec(&stored).unwrap();
+        let unstored_json = serde_json::to_vec(&unstored).unwrap();
+        assert!(!String::from_utf8(stored_json.clone())
+            .unwrap()
+            .contains("stored"));
+        assert!(String::from_utf8(unstored_json.clone())
+            .unwrap()
+            .contains(r#""stored":false"#));
+        for (manifest, json) in [(&stored, stored_json), (&unstored, unstored_json)] {
+            let parsed: Manifest = serde_json::from_slice(&json).unwrap();
+            assert_eq!(serde_json::to_vec(&parsed).unwrap(), json);
+            assert_eq!(
+                compute_snapshot_root(&parsed).unwrap(),
+                compute_snapshot_root(manifest).unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn a_version_one_manifest_may_never_omit_stored_bytes() {
+        let content_hash = ContentHash::digest(b"");
+        let manifest = Manifest {
+            format_version: 1,
+            files: vec![
+                ManifestFile {
+                    path: "figures/data.csv".into(),
+                    logical_size: 4,
+                    content_hash: content_hash.to_hex(),
+                    stored: false,
+                    chunks: Vec::new(),
+                },
+                ManifestFile {
+                    path: "project.json".into(),
+                    logical_size: 0,
+                    content_hash: content_hash.to_hex(),
+                    stored: true,
+                    chunks: Vec::new(),
+                },
+            ],
+        };
+
+        let error = verify_archive_manifest(&manifest).unwrap_err();
+
+        assert!(
+            error.to_string().contains("version 1 manifest"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn project_json_can_never_be_recorded_without_its_bytes() {
+        let temp = tempdir().unwrap();
+        let resolved = temp.path().canonicalize().unwrap().join("project.json");
+
+        assert!(matches!(
+            CaptureInput::replay_required_unstored(
+                "project.json",
+                &resolved,
+                ContentHash::digest(b"{}")
+            ),
+            Err(HistoryError::InvalidInput(_))
+        ));
+        assert!(CaptureInput::replay_required(
+            "project.json",
+            &resolved,
+            ContentHash::digest(b"{}")
+        )
+        .is_ok());
+    }
+
     #[test]
     fn capture_budget_is_enforced_before_oversized_chunk_bytes_are_written() {
+        assert!(advance_unstored_capture_budget(MAX_CHECKPOINT_FILE_BYTES, 0, 1).is_err());
+        assert!(advance_unstored_capture_budget(0, MAX_HISTORY_LOGICAL_BYTES, 1).is_err());
+        assert_eq!(advance_unstored_capture_budget(1, 2, 4).unwrap(), (5, 6));
         assert!(advance_capture_budget(MAX_CHECKPOINT_FILE_BYTES, 0, 0, 1).is_err());
         assert!(advance_capture_budget(0, MAX_HISTORY_LOGICAL_BYTES, 0, 1).is_err());
         assert!(advance_capture_budget(0, 0, MAX_HISTORY_CHUNK_REFERENCES, 1).is_err());
@@ -4664,12 +5340,14 @@ mod tests {
                     path: "main.tex".into(),
                     logical_size: 0,
                     content_hash: content_hash.to_hex(),
+                    stored: true,
                     chunks: Vec::new(),
                 },
                 ManifestFile {
                     path: "project.json".into(),
                     logical_size: 0,
                     content_hash: content_hash.to_hex(),
+                    stored: true,
                     chunks: Vec::new(),
                 },
             ],
@@ -4688,6 +5366,8 @@ mod tests {
             replayed_inputs: vec![ReplayedInput::new("main.tex", content_hash).unwrap()],
             portable_metadata_bytes: 0,
             chunk_references: 0,
+            unstored_file_count: 0,
+            unstored_logical_bytes: 0,
         };
         let metadata = PortableCheckpoint {
             export_version: 1,
@@ -5127,12 +5807,14 @@ mod tests {
                     path: "main.tex".into(),
                     logical_size: MAX_HISTORY_LOGICAL_BYTES + 1,
                     content_hash: main_hash.to_hex(),
+                    stored: true,
                     chunks,
                 },
                 ManifestFile {
                     path: "project.json".into(),
                     logical_size: 0,
                     content_hash: ContentHash::digest(b"").to_hex(),
+                    stored: true,
                     chunks: Vec::new(),
                 },
             ],

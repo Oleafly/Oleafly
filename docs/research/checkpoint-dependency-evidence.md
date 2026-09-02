@@ -18,7 +18,16 @@ The default dependency snapshot contains:
 - `project.json`, always
 - the configured main document, always
 - every project-local file reported by controlled compiler discovery
-- portable files selected by the project's `always_include` policy.
+- portable files selected by the project's `always_include` policy
+- for a compiler-reported file matched by `ignored`, its path and content
+  hash only, with no stored bytes.
+
+A checkpoint is written only when the sources changed. Before any probe runs,
+the lane hashes the files of the newest checkpoint and compares the current
+explicit input set and stored flags against it. If nothing differs, the
+outcome is `unchanged` and no compiler starts. After sealing, a candidate whose
+snapshot root is already visible is dropped with the same outcome, so history
+never gains duplicates and never reorders.
 
 Unused files, compiler output, `.git`, `.oleafly`, `node_modules`, and
 unrelated assets are excluded. Protected directories are pruned at every
@@ -42,9 +51,11 @@ For a successful main-document compile, Oleafly:
    home, configuration, data, cache, and executable search path.
 3. Requires the discovery PDF to byte-match the visible ordinary PDF.
 4. Canonicalizes every reported input and rejects external, linked, protected,
-   missing, or policy-ignored required paths.
+   or missing paths. A reported input matched by `ignored` is kept as a
+   replay-required input whose bytes are not stored.
 5. Hashes and stages only those inputs, `project.json`, and explicit Always
-   include files into a private candidate.
+   include files into a private candidate, and stops with `unchanged` when the
+   candidate's root is already visible.
 6. Recompiles from the candidate in a fresh output directory.
 7. Requires the replay dependency closure to contain every and only the
    compiler-required candidate file.
@@ -63,20 +74,28 @@ the Tectonic cache identity where applicable. Tectonic identity binds the
 selected bundle marker, index, cached resource bytes, and generated formats.
 
 Checkpoint probes share a private persistent Tectonic cache that ordinary
-compiles do not use. A cooperative cross-process lock covers discovery,
-identity hashing, replay, and publication. Contention waits for at most two
-seconds and then skips this supplementary publication. Cache hashing runs on a
-blocking worker and is bounded by file count, per-file size, total size, and
-traversal depth.
+compiles do not use. Before each probe Oleafly seeds that cache from the
+ordinary Tectonic cache for the selected bundle, linking or copying the bundle
+marker, index, resource files, and generated formats, so the first checkpoint
+never downloads and an offline user can still publish. A cooperative
+cross-process lock covers seeding, discovery, identity hashing, replay, and
+publication. A lane that finds the cache busy waits for it in the background,
+checking for cancellation, and skips only after ten minutes. Cache hashing runs
+on a blocking worker and is
+
+bounded by file count, per-file size, total size, and traversal depth.
+
 
 Publication is scheduled after the ordinary compile has returned. The compile
 command records the visible PDF hash and the Biber marker while it still holds
-the compile lock. Everything else runs later in a per-project lane: discovery,
-sealing, replay, and the store write. The lane reports each outcome to the
-window through an event. It takes the shared worktree lock only while it seals
-inputs, so a running probe does not block editor saves. A worktree mutation,
-restore, reset, import, or deletion cancels the lane before taking its own
-locks. Compiler binaries keep their recorded hash while size and modification
+the compile lock. Everything else runs later in a per-project lane: the
+unchanged check, discovery, sealing, replay, and the store write. The lane
+reports each outcome to the window through an event. It takes the shared
+worktree lock only while it hashes or seals inputs, so a running probe does not
+block editor saves. There is no queue: a newer successful compile cancels the
+running lane and becomes its single successor. A worktree mutation, restore,
+reset, import, or deletion cancels the lane before taking its own locks.
+ Compiler binaries keep their recorded hash while size and modification
 time are unchanged. The Tectonic cache keeps its recorded identity while a stat
 fingerprint of the cache matches and every entry is at least two seconds old. A
 cache that Tectonic has just changed is always rehashed.
@@ -165,8 +184,9 @@ The implementation was exercised with the checksum-pinned shipped tools:
   relative dependency closure. A live source mutation after sealing did not
   affect replay.
 - Modifying a cached Tectonic resource changed the recorded toolchain identity.
-- Paths containing spaces were accepted. Parent escapes, symlinks, protected
-  directories, and ignored required inputs were rejected.
+- Paths containing spaces were accepted. Parent escapes, symlinks, and
+  protected directories were rejected. An ignored required input was recorded
+  by identity and replayed from its sealed copy without storing its bytes.
 
 Focused unit and integration tests cover parser bounds, policy matching,
 Unicode wildcard semantics, protected-directory pruning, exact replay closure,
@@ -195,7 +215,9 @@ destinations, URLs, or credentials.
 Policy is applied after compiler discovery:
 
 - an unread ignored path stays omitted
-- a required ignored path leaves the compile successful and skips publication
+- a required ignored path is sealed for replay and recorded by path and hash,
+  but its bytes are not stored and a restore leaves it as it is on disk
+- `project.json` and the main document are always stored
 - Always include expands only explicitly selected project paths.
 
 Compatibility rules:

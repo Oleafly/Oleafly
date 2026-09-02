@@ -437,10 +437,8 @@ fn is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
     false
 }
 
-/// Tests across modules (`secrets`, `template_packs`) mutate the process-global
-/// `OLEAFLY_DATA_DIR` env var for isolation; `cargo test` runs them in parallel
-/// by default, so unsynchronized mutation of that shared var is racy. Every
-/// such test must acquire this lock for the duration of its env-var mutation.
+/// Serializes every process environment mutation a test performs, because a
+/// change to any variable can make a concurrent read of another one miss.
 #[cfg(test)]
 pub(crate) fn data_dir_env_lock() -> std::sync::MutexGuard<'static, ()> {
     static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();

@@ -1,4 +1,5 @@
 import type { CheckpointPublicationOutcome } from "@oleafly/backend-port";
+import { getConfig } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -14,10 +15,16 @@ export type CheckpointPublicationEvent =
       outcome: CheckpointPublicationOutcome;
     };
 
-export function notifyCheckpointPublicationSkipped(
+export async function notifyCheckpointPublicationSkipped(
   outcome: CheckpointPublicationOutcome | undefined,
-): void {
+): Promise<void> {
   if (outcome?.status !== "skipped") return;
+  try {
+    const config = await getConfig();
+    if (config.checkpoint_notifications === false) return;
+  } catch {
+    return;
+  }
   toast.infoUnique(
     `checkpoint-publication-${outcome.reason}`,
     `${outcome.message} ${outcome.suggestion}`,
@@ -49,9 +56,10 @@ export function applyCheckpointPublicationEvent(payload: unknown): void {
   }
   if (!isActiveProject) return;
   const status = payload.outcome.status;
+  if (status === "unchanged") return;
   if (status === "published" || status === "published_durability_uncertain") {
     settings.bumpCheckpointsRevision();
     return;
   }
-  notifyCheckpointPublicationSkipped(payload.outcome);
+  void notifyCheckpointPublicationSkipped(payload.outcome);
 }

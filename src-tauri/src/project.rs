@@ -581,20 +581,6 @@ fn normalize_loaded_tex_flavor(meta: &mut ProjectMeta) -> Result<(), String> {
     Ok(())
 }
 
-/// Copies the validated global policy into newly synthesized project
-/// metadata. Old or malformed config falls back to the fail-closed default and
-/// never prevents project creation.
-fn configured_checkpoint_defaults() -> oleafly_core::CheckpointPolicy {
-    let policy = crate::config::read_config()
-        .map(|config| config.checkpoint_defaults)
-        .unwrap_or_default();
-    if policy.validate().is_ok() {
-        policy
-    } else {
-        oleafly_core::CheckpointPolicy::default()
-    }
-}
-
 pub fn write_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
     let p = meta_path(project_id)?;
     write_meta_at(&p, meta)
@@ -2930,7 +2916,7 @@ fn create_markdown_project_in(
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
-                checkpoints: configured_checkpoint_defaults(),
+                checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
             },
         )
@@ -3031,6 +3017,94 @@ pub async fn set_checkpoint_policy(
         project_mutation_generation(project_id.clone()).ok(),
     );
     Ok(meta)
+}
+
+fn portable_project_relative_path(path: &str) -> Result<String, String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("Choose a file inside this project to ignore.".into());
+    }
+    if trimmed.contains('\\') {
+        return Err("Use forward slashes in a project path.".into());
+    }
+    if trimmed.starts_with('/') {
+        return Err("Use a path relative to the project folder.".into());
+    }
+    if trimmed.chars().any(char::is_control) {
+        return Err("This path contains characters Oleafly cannot store.".into());
+    }
+    let segments: Vec<&str> = trimmed.split('/').collect();
+    if segments
+        .iter()
+        .any(|segment| segment.is_empty() || *segment == "." || *segment == "..")
+    {
+        return Err("Use a path relative to the project folder.".into());
+    }
+    Ok(segments.join("/"))
+}
+
+fn checkpoint_ignorable_path(project_id: &str, path: &str) -> Result<String, String> {
+    let relative = portable_project_relative_path(path)?;
+    if relative.eq_ignore_ascii_case("project.json") {
+        return Err("Project settings are always saved in a checkpoint.".into());
+    }
+    let main_document = read_meta(project_id)?.main_doc;
+    if relative.eq_ignore_ascii_case(main_document.trim()) {
+        return Err("The main document is always saved in a checkpoint.".into());
+    }
+    Ok(relative)
+}
+
+async fn update_checkpoint_ignore_list(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    path: String,
+    ignore: bool,
+) -> Result<ProjectMeta, String> {
+    let _guard = state.compile_lock.lock().await;
+    let relative = checkpoint_ignorable_path(&project_id, &path)?;
+    let mut policy = read_meta(&project_id)?.checkpoints;
+    policy.validate().map_err(|error| error.to_string())?;
+    let present = policy.ignored.iter().any(|entry| entry == &relative);
+    if ignore {
+        if !present {
+            policy.ignored.push(relative);
+        }
+    } else {
+        policy.ignored.retain(|entry| entry != &relative);
+    }
+    let meta = set_checkpoint_policy_unlocked(&project_id, policy)?;
+    let _ = publish_project_state_changed(
+        &app,
+        &state,
+        &project_id,
+        meta.clone(),
+        "checkpoint-policy-changed",
+        false,
+        project_mutation_generation(project_id.clone()).ok(),
+    );
+    Ok(meta)
+}
+
+#[tauri::command]
+pub async fn checkpoint_ignore_path(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    path: String,
+) -> Result<ProjectMeta, String> {
+    update_checkpoint_ignore_list(app, state, project_id, path, true).await
+}
+
+#[tauri::command]
+pub async fn checkpoint_unignore_path(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    path: String,
+) -> Result<ProjectMeta, String> {
+    update_checkpoint_ignore_list(app, state, project_id, path, false).await
 }
 
 fn set_checkpoint_policy_unlocked(
@@ -3259,7 +3333,7 @@ pub fn create_project(name: String) -> Result<String, String> {
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
-                checkpoints: configured_checkpoint_defaults(),
+                checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
             },
         )
@@ -3341,7 +3415,7 @@ pub fn create_project_from_pdf_conversion(
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
-                checkpoints: configured_checkpoint_defaults(),
+                checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
             },
         )?;
@@ -3386,7 +3460,7 @@ fn create_typst_project_in(
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
-                checkpoints: configured_checkpoint_defaults(),
+                checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
             },
         )
@@ -3466,7 +3540,7 @@ fn import_overleaf_project_blocking_with(
                     name: project_name.clone(),
                     main_doc,
                     engine,
-                    checkpoints: configured_checkpoint_defaults(),
+                    checkpoints: oleafly_core::CheckpointPolicy::default(),
                     ..Default::default()
                 }
             }
@@ -3800,7 +3874,7 @@ fn create_image_project_in(
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
-                checkpoints: configured_checkpoint_defaults(),
+                checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
             },
         )
@@ -3849,7 +3923,7 @@ pub fn create_diagram_project(name: String, source: String) -> Result<String, St
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
-                checkpoints: configured_checkpoint_defaults(),
+                checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
             },
         )
@@ -3879,7 +3953,7 @@ pub fn get_or_create_scratch_project() -> Result<String, String> {
                     tex: None,
                     tex_flavor: None,
                     allow_shell_escape: false,
-                    checkpoints: configured_checkpoint_defaults(),
+                    checkpoints: oleafly_core::CheckpointPolicy::default(),
                     extra: HashMap::new(),
                 },
             )?;
@@ -4497,7 +4571,7 @@ async fn create_project_from_pandoc_source(
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
-                checkpoints: configured_checkpoint_defaults(),
+                checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
             },
         )?;
@@ -4847,7 +4921,7 @@ pub fn create_project_from_template(
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
-                checkpoints: configured_checkpoint_defaults(),
+                checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
             },
         )
@@ -7673,6 +7747,75 @@ mod tests {
     }
 
     #[test]
+    fn checkpoint_ignore_list_edits_are_portable_and_protect_required_inputs() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("checkpoint-ignore-path");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_project("Ignore".into()).unwrap();
+
+        assert_eq!(
+            super::checkpoint_ignorable_path(&project_id, "scratch/notes.txt").unwrap(),
+            "scratch/notes.txt"
+        );
+        for rejected in [
+            "",
+            "   ",
+            "/absolute/path.tex",
+            "..\\escape.tex",
+            "../outside.tex",
+            "chapters//one.tex",
+            "./one.tex",
+        ] {
+            assert!(
+                super::checkpoint_ignorable_path(&project_id, rejected).is_err(),
+                "{rejected} must be rejected"
+            );
+        }
+        assert_eq!(
+            super::checkpoint_ignorable_path(&project_id, "project.json").unwrap_err(),
+            "Project settings are always saved in a checkpoint."
+        );
+        assert_eq!(
+            super::checkpoint_ignorable_path(&project_id, "Project.JSON").unwrap_err(),
+            "Project settings are always saved in a checkpoint."
+        );
+        assert_eq!(
+            super::checkpoint_ignorable_path(&project_id, "main.tex").unwrap_err(),
+            "The main document is always saved in a checkpoint."
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn checkpoint_ignore_list_adds_once_and_removes_exactly_one_entry() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("checkpoint-ignore-list");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_project("Ignore list".into()).unwrap();
+        let mut policy = read_meta(&project_id).unwrap().checkpoints;
+        policy.ignored.push("scratch/*.tmp".into());
+        super::set_checkpoint_policy_unlocked(&project_id, policy).unwrap();
+
+        let mut policy = read_meta(&project_id).unwrap().checkpoints;
+        policy.ignored.push("scratch/notes.txt".into());
+        policy.ignored.push("scratch/notes.txt".into());
+        policy.ignored.dedup();
+        super::set_checkpoint_policy_unlocked(&project_id, policy).unwrap();
+        let stored = read_meta(&project_id).unwrap().checkpoints;
+        assert_eq!(stored.ignored, ["scratch/*.tmp", "scratch/notes.txt"]);
+
+        let mut policy = stored;
+        policy.ignored.retain(|entry| entry != "scratch/notes.txt");
+        let updated = super::set_checkpoint_policy_unlocked(&project_id, policy).unwrap();
+        assert_eq!(updated.checkpoints.ignored, ["scratch/*.tmp"]);
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn malformed_checkpoint_policy_does_not_block_desktop_project_reads() {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("checkpoint-policy-malformed-read");
@@ -8128,29 +8271,18 @@ mod tests {
     }
 
     #[test]
-    fn new_project_receives_validated_global_checkpoint_defaults() {
+    fn new_project_starts_from_the_safe_checkpoint_policy() {
         let _env_guard = crate::paths::data_dir_env_lock();
-        let root = test_dir("new-project-checkpoint-defaults");
+        let root = test_dir("new-project-checkpoint-policy");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         std::fs::create_dir_all(&root).unwrap();
-        let policy: oleafly_core::CheckpointPolicy = serde_json::from_value(serde_json::json!({
-            "mode": "engine_dependencies",
-            "always_include": ["figures/*.png"],
-            "ignored": ["scratch/*.tmp"]
-        }))
-        .unwrap();
-        let config = crate::config::AppConfig {
-            checkpoint_defaults: policy.clone(),
-            ..Default::default()
-        };
-        std::fs::write(
-            root.join("config.json"),
-            serde_json::to_vec_pretty(&config).unwrap(),
-        )
-        .unwrap();
 
         let project_id = super::create_project("Configured".to_string()).unwrap();
-        assert_eq!(read_meta(&project_id).unwrap().checkpoints, policy);
+        let policy = read_meta(&project_id).unwrap().checkpoints;
+        assert_eq!(policy, oleafly_core::CheckpointPolicy::default());
+        assert_eq!(policy.mode.as_str(), "engine_dependencies");
+        assert!(policy.always_include.is_empty());
+        assert!(policy.ignored.is_empty());
         assert!(crate::paths::existing_checkpoint_store_dir(&project_id)
             .unwrap()
             .is_none());

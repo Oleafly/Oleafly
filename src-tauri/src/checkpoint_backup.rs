@@ -230,8 +230,9 @@ pub async fn checkpoint_export(
     let operation = crate::checkpoints::checkpoint_operation_lock(&project_id)?;
     let _compile = state.compile_lock.lock().await;
     let _operation = operation.lock().await;
+    let password = zeroize::Zeroizing::new(password);
     let exported = tauri::async_runtime::spawn_blocking(move || {
-        export_checkpoint_archive_sync(&project_id, &dest, &password)
+        export_checkpoint_archive_sync(&project_id, &dest, password.as_str())
     })
     .await
     .map_err(|error| format!("Checkpoints export task failed: {error}"))??;
@@ -258,8 +259,9 @@ pub async fn checkpoint_import(
     let operation = crate::checkpoints::checkpoint_operation_lock(&project_id)?;
     let _compile = state.compile_lock.lock().await;
     let _operation = operation.lock().await;
+    let password = zeroize::Zeroizing::new(password);
     tauri::async_runtime::spawn_blocking(move || {
-        import_checkpoint_archive_sync(&project_id, &source, &password)
+        import_checkpoint_archive_sync(&project_id, &source, password.as_str())
     })
     .await
     .map_err(|error| format!("Checkpoints import task failed: {error}"))?
@@ -450,28 +452,64 @@ mod tests {
         }
     }
 
-    #[test]
-    fn encrypted_v1_golden_archive_remains_importable() {
+    fn assert_golden_archive_imports(name: &str, bytes: &[u8], password: &str) {
         let directory = tempdir().unwrap();
-        let archive = directory.path().join("checkpoint-v1.oleafly-checkpoints");
-        fs::write(
-            &archive,
-            include_bytes!("fixtures/checkpoint_archive_v1.oleafly-checkpoints"),
-        )
-        .unwrap();
+        let archive = directory.path().join(name);
+        fs::write(&archive, bytes).unwrap();
         let destination = Store::open(directory.path().join("destination-history")).unwrap();
 
-        import_archive_into_store(
-            &destination,
-            File::open(archive).unwrap(),
+        import_archive_into_store(&destination, File::open(archive).unwrap(), password).unwrap();
+
+        let checkpoints = destination.list().unwrap();
+        assert_eq!(checkpoints.len(), 1, "{name}");
+        assert_eq!(checkpoints[0].engine, "xetex", "{name}");
+        assert_eq!(checkpoints[0].main_document, "main.tex", "{name}");
+    }
+
+    #[test]
+    fn encrypted_v1_golden_archive_remains_importable() {
+        assert_golden_archive_imports(
+            "checkpoint-v1.oleafly-checkpoints",
+            include_bytes!("fixtures/checkpoint_archive_v1.oleafly-checkpoints"),
             "checkpoint-fixture-v1",
+        );
+    }
+
+    #[test]
+    fn encrypted_v2_golden_archive_remains_importable() {
+        assert_golden_archive_imports(
+            "checkpoint-v2.oleafly-checkpoints",
+            include_bytes!("fixtures/checkpoint_archive_v2.oleafly-checkpoints"),
+            "checkpoint-fixture-v2",
+        );
+    }
+
+    #[test]
+    fn new_archives_are_written_as_argon2id_envelope_version_two() {
+        let directory = tempdir().unwrap();
+        let source = populated_store(
+            &directory.path().join("source-history"),
+            &directory.path().join("project"),
+        );
+        let archive = directory.path().join("written.oleafly-checkpoints");
+        export_store_to_path(
+            &source,
+            archive.to_str().unwrap(),
+            "correct horse battery staple",
         )
         .unwrap();
 
-        let checkpoints = destination.list().unwrap();
-        assert_eq!(checkpoints.len(), 1);
-        assert_eq!(checkpoints[0].engine, "xetex");
-        assert_eq!(checkpoints[0].main_document, "main.tex");
+        let header = fs::read(&archive).unwrap();
+        assert_eq!(&header[..16], b"OLEAFLYCPARCHIVE");
+        assert_eq!(u16::from_le_bytes([header[16], header[17]]), 2);
+        assert_eq!(header[18], 2);
+        assert_eq!(header[19], 1);
+        assert_eq!(
+            u32::from_le_bytes(header[20..24].try_into().unwrap()),
+            65_536
+        );
+        assert_eq!(u32::from_le_bytes(header[24..28].try_into().unwrap()), 3);
+        assert_eq!(u32::from_le_bytes(header[28..32].try_into().unwrap()), 1);
     }
 
     #[test]

@@ -160,6 +160,10 @@ pub fn reveal_in_dir(path: String, state: State<'_, AppState>) -> Result<(), Str
         let allow = state.reveal_allowlist.blocking_lock();
         assert_revealable(&canonical, &allow)?;
     }
+    reveal_canonical_path(&canonical)
+}
+
+pub(crate) fn reveal_canonical_path(canonical: &std::path::Path) -> Result<(), String> {
     let path = canonical.to_string_lossy().to_string();
     #[cfg(target_os = "macos")]
     {

@@ -1040,7 +1040,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         .catch(() => {});
       if (checkpoint) {
         notifyCompileSucceeded(checkpoint);
-        notifyCheckpointPublicationSkipped(result.checkpoint_publication);
+        void notifyCheckpointPublicationSkipped(result.checkpoint_publication);
       }
       return result;
 

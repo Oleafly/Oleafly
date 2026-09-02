@@ -116,11 +116,8 @@ function configuredAiConfig(): AppConfig {
       },
     ],
     ai_starter_personas_seeded: true,
-    checkpoint_defaults: {
-      mode: "engine_dependencies",
-      always_include: [],
-      ignored: [],
-    },
+    checkpoints_enabled: true,
+    checkpoint_notifications: true,
     mcp_enabled: true,
     mcp_port: 6123,
     mcp_read_only: true,

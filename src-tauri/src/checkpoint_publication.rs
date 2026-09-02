@@ -15,11 +15,13 @@ const MAX_TECTONIC_CACHE_FILE_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_TECTONIC_CACHE_TOTAL_BYTES: u64 = 1024 * 1024 * 1024;
 const MAX_TECTONIC_CACHE_FILES: usize = 100_000;
 const MAX_TECTONIC_CACHE_DESCRIPTOR_BYTES: usize = 32 * 1024 * 1024;
-const TECTONIC_CACHE_LOCK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
-const TECTONIC_CACHE_LOCK_RETRY: std::time::Duration = std::time::Duration::from_millis(25);
+const TECTONIC_CACHE_LOCK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600);
+const TECTONIC_CACHE_LOCK_RETRY: std::time::Duration = std::time::Duration::from_millis(50);
+
 const CACHE_FINGERPRINT_SETTLE: std::time::Duration = std::time::Duration::from_secs(2);
 const PUBLICATION_DRAIN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 const PUBLICATION_DRAIN_POLL: std::time::Duration = std::time::Duration::from_millis(50);
+const PUBLICATION_START_DELAY: std::time::Duration = std::time::Duration::from_millis(1500);
 
 /// Why a successful compile could not publish a durable Checkpoint.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -29,7 +31,6 @@ pub enum CheckpointSkipReason {
     DependencyEvidenceUnavailable,
     UntrackedExternalCommands,
     ExternalDependency,
-    IgnoredRequiredDependency,
     InsufficientSpace,
 }
 
@@ -41,6 +42,7 @@ pub enum CheckpointPublicationOutcome {
     #[default]
     NotAttempted,
     Scheduled,
+    Unchanged,
     Published {
         snapshot_root: String,
         created: bool,
@@ -665,15 +667,6 @@ fn build_capture_inputs(
             "the compiler did not report the main document",
         ));
     }
-    for dependency in &required {
-        if policy.is_ignored(dependency) {
-            return Err(AdapterFailure {
-                reason: CheckpointSkipReason::IgnoredRequiredDependency,
-                detail: format!("required compiler input {dependency} is ignored by policy"),
-            });
-        }
-    }
-
     let mut all = collect_always_included_files(project_root, policy, cancel)?;
     all.extend(required.iter().cloned());
     all.insert("project.json".into());
@@ -697,13 +690,15 @@ fn build_capture_inputs(
                     "required compiler input {relative} could not be hashed: {error}"
                 ))
             })?;
-            inputs.push(
-                CaptureInput::replay_required(relative, resolved, hash).map_err(|error| {
-                    AdapterFailure::unavailable(format!(
-                        "required compiler input is unsafe: {error}"
-                    ))
-                })?,
-            );
+            let always_stored = relative == "project.json" || relative == main_document;
+            let sealed = if always_stored || !policy.is_ignored(&relative) {
+                CaptureInput::replay_required(relative, resolved, hash)
+            } else {
+                CaptureInput::replay_required_unstored(relative, resolved, hash)
+            };
+            inputs.push(sealed.map_err(|error| {
+                AdapterFailure::unavailable(format!("required compiler input is unsafe: {error}"))
+            })?);
         } else {
             inputs.push(CaptureInput::explicit(relative).map_err(|error| {
                 AdapterFailure::unavailable(format!("explicit checkpoint input is unsafe: {error}"))
@@ -1433,6 +1428,384 @@ fn record_directory_entry(
     Ok(())
 }
 
+fn ordinary_tectonic_cache_root() -> Option<PathBuf> {
+    if let Some(configured) = std::env::var_os("TECTONIC_CACHE_DIR") {
+        if !configured.is_empty() {
+            return Some(PathBuf::from(configured));
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::env::var_os("HOME")
+            .filter(|home| !home.is_empty())
+            .map(|home| PathBuf::from(home).join("Library").join("Caches"))
+            .map(|caches| caches.join("Tectonic"))
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::env::var_os("LOCALAPPDATA")
+            .filter(|data| !data.is_empty())
+            .map(|data| {
+                PathBuf::from(data)
+                    .join("TectonicProject")
+                    .join("Tectonic")
+                    .join("cache")
+            })
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        std::env::var_os("XDG_CACHE_HOME")
+            .filter(|cache| !cache.is_empty())
+            .map(PathBuf::from)
+            .or_else(|| {
+                std::env::var_os("HOME")
+                    .filter(|home| !home.is_empty())
+                    .map(|home| PathBuf::from(home).join(".cache"))
+            })
+            .map(|cache| cache.join("Tectonic"))
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        None
+    }
+}
+
+fn opened_regular_cache_file(path: &Path) -> Result<(std::fs::File, u64), String> {
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt as _;
+        use windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT;
+        options.custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+    }
+    let file = options
+        .open(path)
+        .map_err(|error| format!("could not open {}: {error}", path.display()))?;
+    let metadata = file
+        .metadata()
+        .map_err(|error| format!("could not inspect {}: {error}", path.display()))?;
+    if !metadata.is_file() || metadata_is_reparse_point(&metadata) {
+        return Err(format!("{} is not a regular file", path.display()));
+    }
+    Ok((file, metadata.len()))
+}
+
+fn seed_one_cache_file(source: &Path, destination: &Path, max_bytes: u64) -> Result<u64, String> {
+    let metadata = std::fs::symlink_metadata(source)
+        .map_err(|error| format!("could not inspect {}: {error}", source.display()))?;
+    if !metadata.is_file()
+        || metadata.file_type().is_symlink()
+        || metadata_is_reparse_point(&metadata)
+    {
+        return Err(format!("{} is not a regular file", source.display()));
+    }
+    if metadata.len() > max_bytes {
+        return Err(format!(
+            "{} exceeds the cache safety limit",
+            source.display()
+        ));
+    }
+    if std::fs::symlink_metadata(destination).is_ok() {
+        return Ok(0);
+    }
+    let parent = destination
+        .parent()
+        .ok_or_else(|| "cache destination has no parent".to_string())?;
+    std::fs::create_dir_all(parent)
+        .map_err(|error| format!("could not prepare {}: {error}", parent.display()))?;
+    match std::fs::hard_link(source, destination) {
+        Ok(()) => return Ok(metadata.len()),
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => return Ok(0),
+        Err(_) => {}
+    }
+    let (mut opened, length) = opened_regular_cache_file(source)?;
+    if length > max_bytes {
+        return Err(format!(
+            "{} exceeds the cache safety limit",
+            source.display()
+        ));
+    }
+    let staging = parent.join(format!(".oleafly-seed-{:016x}", rand::random::<u64>()));
+    let copied = (|| -> Result<u64, String> {
+        let mut staged = std::fs::File::create(&staging)
+            .map_err(|error| format!("could not stage a cache file: {error}"))?;
+        let copied = std::io::copy(&mut opened, &mut staged)
+            .map_err(|error| format!("could not copy a cache file: {error}"))?;
+        staged
+            .sync_all()
+            .map_err(|error| format!("could not save a cache file: {error}"))?;
+        Ok(copied)
+    })();
+    let copied = match copied {
+        Ok(copied) => copied,
+        Err(error) => {
+            let _ = std::fs::remove_file(&staging);
+            return Err(error);
+        }
+    };
+    match std::fs::rename(&staging, destination) {
+        Ok(()) => Ok(copied),
+        Err(error) => {
+            let _ = std::fs::remove_file(&staging);
+            if std::fs::symlink_metadata(destination).is_ok() {
+                Ok(0)
+            } else {
+                Err(format!("could not publish a cache file: {error}"))
+            }
+        }
+    }
+}
+
+struct CacheSeedBudget {
+    files: usize,
+    bytes: u64,
+}
+
+impl CacheSeedBudget {
+    fn new() -> Self {
+        Self { files: 0, bytes: 0 }
+    }
+
+    fn charge(&mut self, bytes: u64) -> Result<(), String> {
+        self.files = self
+            .files
+            .checked_add(1)
+            .ok_or_else(|| "cache seed file count overflowed".to_string())?;
+        if self.files > MAX_TECTONIC_CACHE_FILES {
+            return Err("cache seed exceeds the file safety limit".into());
+        }
+        self.bytes = self
+            .bytes
+            .checked_add(bytes)
+            .ok_or_else(|| "cache seed size overflowed".to_string())?;
+        if self.bytes > MAX_TECTONIC_CACHE_TOTAL_BYTES {
+            return Err("cache seed exceeds the cache safety limit".into());
+        }
+        Ok(())
+    }
+}
+
+fn safe_cache_component(name: &str) -> bool {
+    !name.is_empty()
+        && name != "."
+        && name != ".."
+        && !name.contains(['/', '\\'])
+        && !name.chars().any(char::is_control)
+}
+
+fn ordinary_bundle_marker(
+    ordinary: &Path,
+    bundle_locator: &str,
+) -> Result<(PathBuf, String), String> {
+    let hashes = ordinary.join("bundles").join("hashes");
+    let mut marker = None;
+    let mut inspected = 0_usize;
+    for entry in std::fs::read_dir(&hashes)
+        .map_err(|error| format!("could not read the Tectonic bundle cache: {error}"))?
+    {
+        inspected += 1;
+        if inspected > 1_024 {
+            return Err("the Tectonic bundle cache has too many locator records".into());
+        }
+        let entry =
+            entry.map_err(|error| format!("could not inspect a bundle locator: {error}"))?;
+        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+        if !safe_cache_component(&name) {
+            continue;
+        }
+        if decode_tectonic_cache_key(&name).as_deref() == Some(bundle_locator)
+            && marker.replace(name).is_some()
+        {
+            return Err("the Tectonic bundle cache has duplicate locator records".into());
+        }
+    }
+    let name = marker.ok_or_else(|| "the Tectonic bundle is not cached".to_string())?;
+    let path = hashes.join(&name);
+    let (mut file, length) = opened_regular_cache_file(&path)?;
+    if length > 65 {
+        return Err("the Tectonic bundle marker is not a content identity".into());
+    }
+    let mut bytes = Vec::new();
+    std::io::Read::read_to_end(&mut file, &mut bytes)
+        .map_err(|error| format!("could not read the Tectonic bundle marker: {error}"))?;
+    let bundle_id = bytes.strip_suffix(b"\n").unwrap_or(&bytes);
+    if bundle_id.len() != 64
+        || !bundle_id
+            .iter()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+    {
+        return Err("the Tectonic bundle marker is not a content identity".into());
+    }
+    let bundle_id = std::str::from_utf8(bundle_id)
+        .map_err(|_| "the Tectonic bundle identity is not Unicode".to_string())?
+        .to_owned();
+    Ok((path, bundle_id))
+}
+
+fn seed_flat_bundle_directory(
+    ordinary: &Path,
+    probe: &Path,
+    bundle_id: &str,
+    budget: &mut CacheSeedBudget,
+) -> Result<(), String> {
+    let source_root = ordinary.join("bundles").join("data").join(bundle_id);
+    let metadata = match std::fs::symlink_metadata(&source_root) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(format!("could not inspect the bundle cache: {error}")),
+    };
+    if !metadata.is_dir()
+        || metadata.file_type().is_symlink()
+        || metadata_is_reparse_point(&metadata)
+    {
+        return Err("the Tectonic bundle cache is not a real directory".into());
+    }
+    let destination_root = probe.join("bundles").join("data").join(bundle_id);
+    for entry in std::fs::read_dir(&source_root)
+        .map_err(|error| format!("could not read the bundle cache: {error}"))?
+    {
+        let entry = entry.map_err(|error| format!("could not inspect a bundle file: {error}"))?;
+        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+        if !safe_cache_component(&name) {
+            continue;
+        }
+        let source = source_root.join(&name);
+        let source_metadata = std::fs::symlink_metadata(&source)
+            .map_err(|error| format!("could not inspect a bundle file: {error}"))?;
+        if !source_metadata.is_file()
+            || source_metadata.file_type().is_symlink()
+            || metadata_is_reparse_point(&source_metadata)
+        {
+            continue;
+        }
+        let seeded = seed_one_cache_file(
+            &source,
+            &destination_root.join(&name),
+            MAX_TECTONIC_CACHE_FILE_BYTES,
+        )?;
+        budget.charge(seeded)?;
+    }
+    Ok(())
+}
+
+fn seed_bundle_formats(
+    ordinary: &Path,
+    probe: &Path,
+    bundle_id: &str,
+    budget: &mut CacheSeedBudget,
+) -> Result<(), String> {
+    let source_root = ordinary.join("formats");
+    let metadata = match std::fs::symlink_metadata(&source_root) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(format!("could not inspect the format cache: {error}")),
+    };
+    if !metadata.is_dir()
+        || metadata.file_type().is_symlink()
+        || metadata_is_reparse_point(&metadata)
+    {
+        return Err("the Tectonic format cache is not a real directory".into());
+    }
+    let prefix = format!("{bundle_id}-");
+    let destination_root = probe.join("formats");
+    for entry in std::fs::read_dir(&source_root)
+        .map_err(|error| format!("could not read the format cache: {error}"))?
+    {
+        let entry = entry.map_err(|error| format!("could not inspect a format file: {error}"))?;
+        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+        if !safe_cache_component(&name) || !name.starts_with(&prefix) {
+            continue;
+        }
+        let source = source_root.join(&name);
+        let source_metadata = std::fs::symlink_metadata(&source)
+            .map_err(|error| format!("could not inspect a format file: {error}"))?;
+        if !source_metadata.is_file()
+            || source_metadata.file_type().is_symlink()
+            || metadata_is_reparse_point(&source_metadata)
+        {
+            continue;
+        }
+        let seeded = seed_one_cache_file(
+            &source,
+            &destination_root.join(&name),
+            MAX_TECTONIC_CACHE_FILE_BYTES,
+        )?;
+        budget.charge(seeded)?;
+    }
+    Ok(())
+}
+
+fn seed_probe_tectonic_cache_from(
+    ordinary: &Path,
+    probe: &Path,
+    bundle_locator: &str,
+) -> Result<(), String> {
+    let metadata = match std::fs::symlink_metadata(ordinary) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(format!("could not inspect the Tectonic cache: {error}")),
+    };
+    if !metadata.is_dir()
+        || metadata.file_type().is_symlink()
+        || metadata_is_reparse_point(&metadata)
+    {
+        return Err("the Tectonic cache is not a real directory".into());
+    }
+    if same_file::Handle::from_path(ordinary)
+        .ok()
+        .zip(same_file::Handle::from_path(probe).ok())
+        .is_some_and(|(left, right)| left == right)
+    {
+        return Ok(());
+    }
+    let (marker, bundle_id) = ordinary_bundle_marker(ordinary, bundle_locator)?;
+    let mut budget = CacheSeedBudget::new();
+    let index_name = format!("{bundle_id}.index");
+    let index = ordinary.join("bundles").join("data").join(&index_name);
+    if std::fs::symlink_metadata(&index).is_ok() {
+        let seeded = seed_one_cache_file(
+            &index,
+            &probe.join("bundles").join("data").join(&index_name),
+            MAX_TECTONIC_BUNDLE_INDEX_BYTES,
+        )?;
+        budget.charge(seeded)?;
+    }
+    seed_flat_bundle_directory(ordinary, probe, &bundle_id, &mut budget)?;
+    seed_bundle_formats(ordinary, probe, &bundle_id, &mut budget)?;
+    let marker_name = marker
+        .file_name()
+        .and_then(std::ffi::OsStr::to_str)
+        .ok_or_else(|| "the Tectonic bundle marker has no name".to_string())?;
+    let seeded = seed_one_cache_file(
+        &marker,
+        &probe.join("bundles").join("hashes").join(marker_name),
+        65,
+    )?;
+    budget.charge(seeded)
+}
+
+fn seed_probe_tectonic_cache(bundle_locator: &str) {
+    let Ok(probe) = crate::paths::tectonic_cache_root() else {
+        return;
+    };
+    let Some(ordinary) = ordinary_tectonic_cache_root() else {
+        return;
+    };
+    let _ = seed_probe_tectonic_cache_from(&ordinary, &probe, bundle_locator);
+}
+
 fn resolve_tectonic_bundle_id(
     cache_root: &Path,
     bundle_locator: &str,
@@ -2032,9 +2405,6 @@ fn skip_from_failure(failure: AdapterFailure) -> CheckpointPublicationOutcome {
         CheckpointSkipReason::ExternalDependency => {
             "Move the required file into this project, then compile again."
         }
-        CheckpointSkipReason::IgnoredRequiredDependency => {
-            "Remove the required file from the Checkpoints ignore list, then compile again."
-        }
         CheckpointSkipReason::UntrackedExternalCommands => {
             "Use a compile without untracked helper commands, then compile again."
         }
@@ -2048,6 +2418,125 @@ fn skip_from_failure(failure: AdapterFailure) -> CheckpointPublicationOutcome {
         format!("Checkpoint not saved because {}.", failure.detail),
         suggestion,
     )
+}
+
+fn worktree_file_matches(
+    project_root: &Path,
+    file: &oleafly_history::CheckpointFile,
+    cancel: Option<&crate::state::CompileCancel>,
+) -> bool {
+    let path = project_root.join(
+        file.relative_path
+            .replace('/', std::path::MAIN_SEPARATOR_STR),
+    );
+    let Ok(metadata) = std::fs::symlink_metadata(&path) else {
+        return false;
+    };
+    if !metadata.is_file()
+        || metadata.file_type().is_symlink()
+        || metadata_is_reparse_point(&metadata)
+        || metadata.len() != file.logical_bytes
+    {
+        return false;
+    }
+    let hash = if let Some(cancel) = cancel {
+        ContentHash::digest_file_controlled(&path, cancel)
+    } else {
+        ContentHash::digest_file(&path)
+    };
+    hash.is_ok_and(|hash| hash == file.content_hash)
+}
+
+fn manifest_matches_worktree(
+    project_root: &Path,
+    main_document: &str,
+    policy: &CheckpointPolicy,
+    checkpoint: &oleafly_history::Checkpoint,
+    files: &[oleafly_history::CheckpointFile],
+    cancel: Option<&crate::state::CompileCancel>,
+) -> bool {
+    let replayed = checkpoint
+        .replayed_inputs()
+        .iter()
+        .map(|input| input.relative_path.clone())
+        .collect::<BTreeSet<_>>();
+    let recorded_explicit = files
+        .iter()
+        .filter(|file| !replayed.contains(&file.relative_path))
+        .map(|file| file.relative_path.clone())
+        .collect::<BTreeSet<_>>();
+    let Ok(mut current_explicit) = collect_always_included_files(project_root, policy, cancel)
+    else {
+        return false;
+    };
+    current_explicit.insert("project.json".into());
+    current_explicit.retain(|path| !replayed.contains(path));
+    if current_explicit != recorded_explicit {
+        return false;
+    }
+    for file in files {
+        if ensure_checkpoint_not_cancelled(cancel).is_err() {
+            return false;
+        }
+        if replayed.contains(&file.relative_path) {
+            let stored = file.relative_path == "project.json"
+                || file.relative_path == main_document
+                || !policy.is_ignored(&file.relative_path);
+            if stored != file.stored {
+                return false;
+            }
+        }
+        if !worktree_file_matches(project_root, file, cancel) {
+            return false;
+        }
+    }
+    true
+}
+
+async fn publication_would_be_unchanged(
+    project_id: &str,
+    project_root: &Path,
+    main_document: &str,
+    policy: &CheckpointPolicy,
+    cancel: Option<&crate::state::CompileCancel>,
+) -> bool {
+    let project_id = project_id.to_owned();
+    let project_root = project_root.to_path_buf();
+    let main_document = main_document.to_owned();
+    let policy = policy.clone();
+    let cancel = cancel.cloned();
+    tokio::task::spawn_blocking(move || {
+        let Ok(_worktree) = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id) else {
+            return false;
+        };
+        let Ok(Some(store_path)) = crate::paths::existing_checkpoint_store_dir(&project_id) else {
+            return false;
+        };
+        let Ok(Some(store)) = oleafly_history::Store::open_existing(store_path) else {
+            return false;
+        };
+        let Ok(Some(checkpoint)) = store.latest_checkpoint() else {
+            return false;
+        };
+        let Ok(Some(files)) = store.checkpoint_files(&checkpoint.snapshot_root) else {
+            return false;
+        };
+        manifest_matches_worktree(
+            &project_root,
+            &main_document,
+            &policy,
+            &checkpoint,
+            &files,
+            cancel.as_ref(),
+        )
+    })
+    .await
+    .unwrap_or(false)
+}
+
+enum SealedPublication {
+    Prepared(Box<PreparedCheckpointPublication>),
+    Unchanged,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2065,7 +2554,7 @@ async fn stage_and_replay(
     discovery_hash: ContentHash,
     discovery_identity: &str,
     cancel: Option<&crate::state::CompileCancel>,
-) -> Result<PreparedCheckpointPublication, AdapterFailure> {
+) -> Result<SealedPublication, AdapterFailure> {
     ensure_checkpoint_not_cancelled(cancel)?;
     let seal_project_id = project_id.to_owned();
     let seal_project_root = project_root.to_path_buf();
@@ -2105,6 +2594,23 @@ async fn stage_and_replay(
     })??;
 
     ensure_checkpoint_not_cancelled(cancel)?;
+    let (candidate, already_visible) = tokio::task::spawn_blocking(move || {
+        let visible = candidate.root_is_visible();
+        (candidate, visible)
+    })
+    .await
+    .map_err(|error| {
+        AdapterFailure::unavailable(format!("checkpoint lookup task failed: {error}"))
+    })?;
+    let already_visible = already_visible.map_err(|error| {
+        AdapterFailure::unavailable(format!("checkpoint history could not be read: {error}"))
+    })?;
+    if already_visible {
+        let _ = tokio::task::spawn_blocking(move || drop(candidate)).await;
+        return Ok(SealedPublication::Unchanged);
+    }
+
+    trace_lane(project_id, "candidate sealed");
     let replay = run_probe(
         app,
         engine,
@@ -2122,6 +2628,7 @@ async fn stage_and_replay(
             "the compiler toolchain changed between discovery and replay",
         ));
     }
+    trace_lane(project_id, "replay compile finished");
     let replay_dependencies = dependencies_from_probe(
         engine.id(),
         &workspace.replay(),
@@ -2152,11 +2659,13 @@ async fn stage_and_replay(
     .map_err(|error| {
         AdapterFailure::unavailable(format!("compile evidence is invalid: {error}"))
     })?;
-    Ok(PreparedCheckpointPublication {
-        snapshot_root: candidate.snapshot_root().to_string(),
-        candidate,
-        evidence,
-    })
+    Ok(SealedPublication::Prepared(Box::new(
+        PreparedCheckpointPublication {
+            snapshot_root: candidate.snapshot_root().to_string(),
+            candidate,
+            evidence,
+        },
+    )))
 }
 
 struct PreparedCheckpointPublication {
@@ -2212,7 +2721,7 @@ struct PublicationEvent<'a> {
 #[derive(Default)]
 struct PublicationLane {
     in_flight: Option<crate::state::CompileCancel>,
-    pending: Option<PublicationRequest>,
+    successor: Option<PublicationRequest>,
 }
 
 struct PublicationRegistry {
@@ -2235,13 +2744,24 @@ fn lock_publication_lanes() -> std::sync::MutexGuard<'static, HashMap<String, Pu
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
+fn stop_in_flight_publication(lane: &mut PublicationLane) {
+    if let Some(pid) = lane
+        .in_flight
+        .as_ref()
+        .and_then(crate::state::CompileCancel::request)
+    {
+        tauri::async_runtime::spawn(crate::proc::terminate_process_tree(pid));
+    }
+}
+
 fn admit_publication(
     request: PublicationRequest,
 ) -> Option<(PublicationRequest, crate::state::CompileCancel)> {
     let mut lanes = lock_publication_lanes();
     let lane = lanes.entry(request.project_id.clone()).or_default();
     if lane.in_flight.is_some() {
-        lane.pending = Some(request);
+        stop_in_flight_publication(lane);
+        lane.successor = Some(request);
         return None;
     }
     let cancel = crate::state::CompileCancel::default();
@@ -2261,7 +2781,7 @@ fn finish_publication(
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     let _ = finished.detach();
     let next = lanes.get_mut(project_id).and_then(|lane| {
-        lane.pending.take().map(|request| {
+        lane.successor.take().map(|request| {
             let cancel = crate::state::CompileCancel::default();
             cancel.begin();
             lane.in_flight = Some(cancel.clone());
@@ -2275,6 +2795,14 @@ fn finish_publication(
     next
 }
 
+#[cfg(test)]
+fn lane_successor_epoch(project_id: &str) -> Option<u64> {
+    lock_publication_lanes()
+        .get(project_id)
+        .and_then(|lane| lane.successor.as_ref())
+        .and_then(|request| request.options.source_date_epoch)
+}
+
 fn request_publication_cancel(
     lanes: &mut HashMap<String, PublicationLane>,
     project_id: &str,
@@ -2282,19 +2810,13 @@ fn request_publication_cancel(
     let Some(lane) = lanes.get_mut(project_id) else {
         return false;
     };
-    lane.pending = None;
-    if let Some(pid) = lane
-        .in_flight
-        .as_ref()
-        .and_then(crate::state::CompileCancel::request)
-    {
-        tauri::async_runtime::spawn(crate::proc::terminate_process_tree(pid));
-    }
+    lane.successor = None;
+    stop_in_flight_publication(lane);
     true
 }
 
-/// Stops the in-flight background publication for a project and drops any
-/// queued one. Worktree mutations and store deletions call this first so they
+/// Stops the in-flight background publication for a project and drops its
+/// successor. Worktree mutations and store deletions call this first so they
 /// never wait behind supplementary work.
 pub(crate) fn cancel_project_publications(project_id: &str) {
     let mut lanes = lock_publication_lanes();
@@ -2338,6 +2860,14 @@ fn emit_publication_phase(
     );
 }
 
+#[cfg(debug_assertions)]
+fn trace_lane(project_id: &str, phase: &str) {
+    eprintln!("checkpoint: {project_id} {phase}");
+}
+
+#[cfg(not(debug_assertions))]
+fn trace_lane(_project_id: &str, _phase: &str) {}
+
 async fn run_publication_lane(
     app: tauri::AppHandle,
     mut request: PublicationRequest,
@@ -2345,13 +2875,41 @@ async fn run_publication_lane(
 ) {
     loop {
         emit_publication_phase(&app, &request, PublicationPhase::Started);
-        let outcome = publish_after_successful_compile(&app, &request, Some(&cancel)).await;
-        if let CheckpointPublicationOutcome::Skipped { message, .. } = &outcome {
-            let _ = crate::project::append_app_log(format!(
-                "Checkpoint publication skipped for project {}: {message}",
-                request.project_id
-            ));
-        }
+        trace_lane(&request.project_id, "lane started");
+        let started = std::time::Instant::now();
+        let outcome = if wait_for_lane_start(&cancel, PUBLICATION_START_DELAY).await {
+            publish_after_successful_compile(&app, &request, Some(&cancel)).await
+        } else {
+            skip_from_failure(AdapterFailure::unavailable(
+                "checkpoint publication was cancelled",
+            ))
+        };
+        let elapsed_ms = started.elapsed().as_millis();
+        let summary = match &outcome {
+            CheckpointPublicationOutcome::Skipped { message, .. } => {
+                format!("skipped after {elapsed_ms} ms: {message}")
+            }
+            CheckpointPublicationOutcome::Published { snapshot_root, .. } => {
+                format!("published {snapshot_root} after {elapsed_ms} ms")
+            }
+            CheckpointPublicationOutcome::PublishedDurabilityUncertain {
+                snapshot_root, ..
+            } => {
+                format!("published {snapshot_root} after {elapsed_ms} ms with uncertain durability")
+            }
+            CheckpointPublicationOutcome::Unchanged => {
+                format!("unchanged after {elapsed_ms} ms")
+            }
+            CheckpointPublicationOutcome::NotAttempted
+            | CheckpointPublicationOutcome::Scheduled => {
+                format!("not attempted after {elapsed_ms} ms")
+            }
+        };
+        let _ = crate::project::append_app_log(format!(
+            "Checkpoint publication for project {} {summary}",
+            request.project_id
+        ));
+
         emit_publication_phase(
             &app,
             &request,
@@ -2365,6 +2923,26 @@ async fn run_publication_lane(
             None => return,
         }
     }
+}
+
+async fn wait_for_lane_start(
+    cancel: &crate::state::CompileCancel,
+    delay: std::time::Duration,
+) -> bool {
+    let deadline = tokio::time::Instant::now() + delay;
+    while tokio::time::Instant::now() < deadline {
+        if cancel.is_requested() {
+            return false;
+        }
+        tokio::time::sleep(PUBLICATION_DRAIN_POLL).await;
+    }
+    !cancel.is_requested()
+}
+
+fn checkpoints_are_enabled() -> bool {
+    crate::config::read_config()
+        .map(|config| config.checkpoints_enabled)
+        .unwrap_or(true)
 }
 
 fn preflight_publication(
@@ -2423,9 +3001,10 @@ pub(crate) fn capture_primary_evidence(
     ))
 }
 
-/// Binds the visible PDF and queues controlled discovery, sealing, replay, and
-/// publication behind the compile result. One lane runs per project; a newer
-/// request replaces a queued one so rapid recompiles coalesce.
+/// Binds the visible PDF and hands controlled discovery, sealing, replay, and
+/// publication to the background lane behind the compile result. At most one
+/// publication runs per project. A newer request cancels the running one and
+/// becomes its single successor, so there is never a queue.
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn schedule_after_successful_compile(
     app: &tauri::AppHandle,
@@ -2437,6 +3016,9 @@ pub(crate) async fn schedule_after_successful_compile(
     policy: &CheckpointPolicy,
     options: crate::document_engine::CompileOptions,
 ) -> CheckpointPublicationOutcome {
+    if !checkpoints_are_enabled() {
+        return CheckpointPublicationOutcome::NotAttempted;
+    }
     let engine = match preflight_publication(engine_name, main_document, policy, options) {
         Ok(engine) => engine,
         Err(outcome) => return outcome,
@@ -2521,6 +3103,12 @@ pub async fn publish_after_successful_compile(
         Ok(guard) => guard,
         Err(error) => return skip_from_failure(error),
     };
+    trace_lane(project_id, "operation lock acquired");
+    if publication_would_be_unchanged(project_id, project_root, main_document, policy, cancel).await
+    {
+        return CheckpointPublicationOutcome::Unchanged;
+    }
+    trace_lane(project_id, "sources differ from the newest checkpoint");
     let _compiler_cache_lock = if matches!(
         engine.id(),
         crate::document_engine::DocumentEngineId::Latex
@@ -2533,6 +3121,11 @@ pub async fn publish_after_successful_compile(
     } else {
         None
     };
+    if _compiler_cache_lock.is_some() {
+        let locator = crate::document_engine::tex_bundle_url();
+        let _ = tokio::task::spawn_blocking(move || seed_probe_tectonic_cache(&locator)).await;
+    }
+    trace_lane(project_id, "compiler cache ready");
     let workspace = match ProbeWorkspace::create() {
         Ok(workspace) => workspace,
         Err(error) => return skip_from_failure(error),
@@ -2553,6 +3146,7 @@ pub async fn publish_after_successful_compile(
         Ok(discovery) => discovery,
         Err(error) => return skip_from_failure(error),
     };
+    trace_lane(project_id, "discovery compile finished");
     let discovery_hash = match output_hash(&workspace.discovery(), cancel).await {
         Ok(hash) => hash,
         Err(error) => return skip_from_failure(error),
@@ -2601,6 +3195,7 @@ pub async fn publish_after_successful_compile(
             )))
         }
     };
+    trace_lane(project_id, "store opened");
     let prepared = stage_and_replay(
         app,
         publication.store(),
@@ -2618,8 +3213,14 @@ pub async fn publish_after_successful_compile(
     )
     .await;
     match prepared {
-        Ok(prepared) => {
+        Ok(SealedPublication::Unchanged) => {
+            let _ = tokio::task::spawn_blocking(move || drop(publication)).await;
+            CheckpointPublicationOutcome::Unchanged
+        }
+        Ok(SealedPublication::Prepared(prepared)) => {
+            trace_lane(project_id, "publishing");
             let publish_cancel = cancel.cloned();
+            let prepared = *prepared;
             let snapshot_root = prepared.snapshot_root;
             match tokio::task::spawn_blocking(move || {
                 ensure_checkpoint_not_cancelled(publish_cancel.as_ref())?;
@@ -2632,23 +3233,24 @@ pub async fn publish_after_successful_compile(
             })
             .await
             {
-                Ok(Ok((published, committed))) => {
-                    let created = matches!(published, oleafly_history::PublishOutcome::Created(_));
-                    match committed {
-                        oleafly_history::PublicationCommitOutcome::Durable(_store) => {
-                            CheckpointPublicationOutcome::Published {
-                                snapshot_root,
-                                created,
-                            }
-                        }
-                        oleafly_history::PublicationCommitOutcome::InstalledDurabilityUncertain(
-                            _store,
-                        ) => CheckpointPublicationOutcome::PublishedDurabilityUncertain {
-                            snapshot_root,
-                            created,
-                        },
-                    }
+                Ok(Ok((oleafly_history::PublishOutcome::Existing(_), _committed))) => {
+                    CheckpointPublicationOutcome::Unchanged
                 }
+                Ok(Ok((oleafly_history::PublishOutcome::Created(_), committed))) => match committed
+                {
+                    oleafly_history::PublicationCommitOutcome::Durable(_store) => {
+                        CheckpointPublicationOutcome::Published {
+                            snapshot_root,
+                            created: true,
+                        }
+                    }
+                    oleafly_history::PublicationCommitOutcome::InstalledDurabilityUncertain(
+                        _store,
+                    ) => CheckpointPublicationOutcome::PublishedDurabilityUncertain {
+                        snapshot_root,
+                        created: true,
+                    },
+                },
                 Ok(Err(error)) => skip_from_failure(error),
                 Err(error) => skip_from_failure(AdapterFailure::unavailable(format!(
                     "checkpoint storage task failed: {error}"
@@ -2708,13 +3310,14 @@ mod tests {
     use tempfile::tempdir;
 
     use super::{
-        admit_publication, build_capture_inputs, cancel_project_publications,
-        cancel_project_publications_and_wait, finish_publication,
-        latex_output_requires_untracked_helper, parse_pandoc_resources,
+        admit_publication, build_capture_inputs, cancel_project_publications_and_wait,
+        checkpoints_are_enabled, finish_publication, lane_successor_epoch,
+        latex_output_requires_untracked_helper, manifest_matches_worktree, parse_pandoc_resources,
         parse_tectonic_dependencies, parse_typst_dependencies, read_tectonic_bundle_identity,
-        record_directory_entry, replayed_inputs_for, tectonic_cache_fingerprint,
-        unavailable_adapter_outcome, wait_for_tectonic_cache_lock, CheckpointPublicationOutcome,
-        CheckpointSkipReason, PublicationRequest, TectonicDependencyLayout,
+        record_directory_entry, replayed_inputs_for, seed_probe_tectonic_cache_from,
+        tectonic_cache_fingerprint, unavailable_adapter_outcome, wait_for_tectonic_cache_lock,
+        CheckpointPublicationOutcome, CheckpointSkipReason, PublicationRequest,
+        TectonicDependencyLayout,
     };
 
     fn publication_candidate(
@@ -2938,6 +3541,52 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn the_checkpoints_switch_gates_publication_and_defaults_to_on() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+
+        assert!(checkpoints_are_enabled());
+
+        let mut config = crate::config::AppConfig {
+            checkpoints_enabled: false,
+            ..Default::default()
+        };
+        crate::config::write_config(&config).unwrap();
+        assert!(!checkpoints_are_enabled());
+
+        config.checkpoints_enabled = true;
+        crate::config::write_config(&config).unwrap();
+        assert!(checkpoints_are_enabled());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn publication_outcomes_serialize_their_documented_status_shapes() {
+        assert_eq!(
+            serde_json::to_value(CheckpointPublicationOutcome::Unchanged).unwrap(),
+            serde_json::json!({"status": "unchanged"})
+        );
+        assert_eq!(
+            serde_json::to_value(CheckpointPublicationOutcome::NotAttempted).unwrap(),
+            serde_json::json!({"status": "not_attempted"})
+        );
+        assert_eq!(
+            serde_json::to_value(CheckpointPublicationOutcome::Scheduled).unwrap(),
+            serde_json::json!({"status": "scheduled"})
+        );
+        assert_eq!(
+            serde_json::to_value(CheckpointPublicationOutcome::Published {
+                snapshot_root: "abc".into(),
+                created: true,
+            })
+            .unwrap(),
+            serde_json::json!({"status": "published", "snapshot_root": "abc", "created": true})
+        );
     }
 
     #[test]
@@ -3183,45 +3832,47 @@ mod tests {
     }
 
     #[test]
-    fn publication_lanes_run_one_request_per_project_and_keep_only_the_latest_queued_one() {
-        let project = "lane-coalesce";
+    fn a_newer_request_cancels_the_running_publication_and_becomes_its_successor() {
+        let project = "lane-successor";
         let (first, cancel) = admit_publication(lane_request(project, 1)).unwrap();
         assert_eq!(first.options.source_date_epoch, Some(1));
-        assert!(admit_publication(lane_request(project, 2)).is_none());
-        assert!(admit_publication(lane_request(project, 3)).is_none());
         assert!(!cancel.is_requested());
 
+        assert!(admit_publication(lane_request(project, 2)).is_none());
+
+        assert!(cancel.is_requested());
         let (next, next_cancel) = finish_publication(project, &cancel).unwrap();
-        assert_eq!(next.options.source_date_epoch, Some(3));
+        assert_eq!(next.options.source_date_epoch, Some(2));
         assert!(!next_cancel.is_requested());
         assert!(finish_publication(project, &next_cancel).is_none());
-        let (_, reopened) = admit_publication(lane_request(project, 4)).unwrap();
+        let (_, reopened) = admit_publication(lane_request(project, 3)).unwrap();
         assert!(finish_publication(project, &reopened).is_none());
     }
 
     #[test]
-    fn cancelling_a_lane_stops_in_flight_work_and_drops_the_queued_request() {
-        let project = "lane-cancel";
+    fn a_third_request_replaces_the_successor_and_leaves_the_first_cancelled() {
+        let project = "lane-replace-successor";
         let (_, cancel) = admit_publication(lane_request(project, 1)).unwrap();
         assert!(admit_publication(lane_request(project, 2)).is_none());
-
-        cancel_project_publications(project);
+        assert!(admit_publication(lane_request(project, 3)).is_none());
 
         assert!(cancel.is_requested());
-        assert!(finish_publication(project, &cancel).is_none());
-        let (_, fresh) = admit_publication(lane_request(project, 3)).unwrap();
-        assert!(!fresh.is_requested());
-        assert!(finish_publication(project, &fresh).is_none());
+        let (next, next_cancel) = finish_publication(project, &cancel).unwrap();
+        assert_eq!(next.options.source_date_epoch, Some(3));
+        assert!(!next_cancel.is_requested());
+        assert!(finish_publication(project, &next_cancel).is_none());
     }
 
     #[test]
-    fn waiting_for_a_lane_returns_once_the_cancelled_publication_finishes() {
+    fn cancel_and_wait_drains_the_running_publication_and_its_successor() {
         let project = "lane-drain";
         cancel_project_publications_and_wait(project);
         let (_, cancel) = admit_publication(lane_request(project, 1)).unwrap();
+        assert!(admit_publication(lane_request(project, 2)).is_none());
+        assert_eq!(lane_successor_epoch(project), Some(2));
         let finisher_cancel = cancel.clone();
         let finisher = std::thread::spawn(move || {
-            while !finisher_cancel.is_requested() {
+            while lane_successor_epoch("lane-drain").is_some() {
                 std::thread::sleep(std::time::Duration::from_millis(5));
             }
             std::thread::sleep(std::time::Duration::from_millis(40));
@@ -3233,8 +3884,290 @@ mod tests {
 
         assert!(started.elapsed() < std::time::Duration::from_secs(5));
         finisher.join().unwrap();
-        let (_, reopened) = admit_publication(lane_request(project, 2)).unwrap();
+        assert_eq!(lane_successor_epoch(project), None);
+        let (_, reopened) = admit_publication(lane_request(project, 3)).unwrap();
         assert!(finish_publication(project, &reopened).is_none());
+    }
+
+    fn unchanged_fixture(
+        project: &std::path::Path,
+        store: &Store,
+        policy: &CheckpointPolicy,
+    ) -> (
+        oleafly_history::Checkpoint,
+        Vec<oleafly_history::CheckpointFile>,
+    ) {
+        let inputs = build_capture_inputs(
+            project,
+            &["main.typ".into(), "scratch/data.csv".into()],
+            "main.typ",
+            policy,
+            None,
+        )
+        .unwrap();
+        let candidate = store.stage_candidate(project, &inputs).unwrap();
+        let root = *candidate.snapshot_root();
+        let replayed = candidate
+            .proven_files()
+            .iter()
+            .map(|file| ReplayedInput::new(&file.relative_path, file.content_hash).unwrap())
+            .collect::<Vec<_>>();
+        let evidence = CompileEvidence::new(
+            "typst",
+            "typst-test@1",
+            "main.typ",
+            ContentHash::digest(b"pdf"),
+            10,
+            replayed,
+        )
+        .unwrap();
+        store.publish(candidate, evidence).unwrap();
+        let checkpoint = store.latest_checkpoint().unwrap().unwrap();
+        assert_eq!(checkpoint.snapshot_root, root);
+        let files = store.checkpoint_files(&root).unwrap().unwrap();
+        (checkpoint, files)
+    }
+
+    #[test]
+    fn an_identical_worktree_matches_the_newest_checkpoint_manifest() {
+        let temp = tempdir().unwrap();
+        let project = temp.path().join("project");
+        fs::create_dir_all(project.join("scratch")).unwrap();
+        fs::create_dir_all(project.join("figures")).unwrap();
+        fs::write(project.join("project.json"), b"{}").unwrap();
+        fs::write(project.join("main.typ"), b"main").unwrap();
+        fs::write(project.join("scratch/data.csv"), b"data").unwrap();
+        fs::write(project.join("figures/plot.png"), b"plot").unwrap();
+        let policy: CheckpointPolicy = serde_json::from_value(serde_json::json!({
+            "always_include": ["figures/*.png"],
+            "ignored": ["scratch/*.csv"]
+        }))
+        .unwrap();
+        let store = Store::open(temp.path().join("history")).unwrap();
+        let (checkpoint, files) = unchanged_fixture(&project, &store, &policy);
+        assert!(files
+            .iter()
+            .any(|file| file.relative_path == "scratch/data.csv" && !file.stored));
+
+        assert!(manifest_matches_worktree(
+            &project,
+            "main.typ",
+            &policy,
+            &checkpoint,
+            &files,
+            None
+        ));
+
+        fs::write(project.join("main.typ"), b"edited").unwrap();
+        assert!(
+            !manifest_matches_worktree(&project, "main.typ", &policy, &checkpoint, &files, None),
+            "an edited compiler input must not read as unchanged"
+        );
+        fs::write(project.join("main.typ"), b"main").unwrap();
+
+        fs::write(project.join("scratch/data.csv"), b"edited data").unwrap();
+        assert!(
+            !manifest_matches_worktree(&project, "main.typ", &policy, &checkpoint, &files, None),
+            "an edited unstored input must not read as unchanged"
+        );
+        fs::write(project.join("scratch/data.csv"), b"data").unwrap();
+
+        fs::write(project.join("figures/extra.png"), b"extra").unwrap();
+        assert!(
+            !manifest_matches_worktree(&project, "main.typ", &policy, &checkpoint, &files, None),
+            "a new always-included file must not read as unchanged"
+        );
+        fs::remove_file(project.join("figures/extra.png")).unwrap();
+
+        let unignored: CheckpointPolicy =
+            serde_json::from_value(serde_json::json!({"always_include": ["figures/*.png"]}))
+                .unwrap();
+        assert!(
+            !manifest_matches_worktree(&project, "main.typ", &unignored, &checkpoint, &files, None),
+            "clearing the ignore list changes the stored flags and must not read as unchanged"
+        );
+
+        fs::remove_file(project.join("figures/plot.png")).unwrap();
+        assert!(
+            !manifest_matches_worktree(&project, "main.typ", &policy, &checkpoint, &files, None),
+            "a removed recorded file must not read as unchanged"
+        );
+    }
+
+    fn encode_tectonic_cache_key(key: &str) -> String {
+        let mut encoded = String::new();
+        for byte in key.bytes() {
+            if byte.is_ascii_alphanumeric() || byte == b'.' || byte == b'-' {
+                encoded.push(byte as char);
+            } else {
+                encoded.push_str(&format!(",{byte},"));
+            }
+        }
+        encoded
+    }
+
+    fn fake_ordinary_tectonic_cache(root: &std::path::Path, locator: &str, bundle_id: &str) {
+        fs::create_dir_all(root.join("bundles/hashes")).unwrap();
+        fs::create_dir_all(root.join("bundles/data").join(bundle_id)).unwrap();
+        fs::create_dir_all(root.join("formats")).unwrap();
+        fs::write(
+            root.join("bundles/hashes")
+                .join(encode_tectonic_cache_key(locator)),
+            format!("{bundle_id}\n"),
+        )
+        .unwrap();
+        fs::write(
+            root.join("bundles/data").join(format!("{bundle_id}.index")),
+            b"index bytes",
+        )
+        .unwrap();
+        fs::write(
+            root.join("bundles/data")
+                .join(bundle_id)
+                .join("article.cls"),
+            b"class bytes",
+        )
+        .unwrap();
+        fs::write(
+            root.join("bundles/data").join(bundle_id).join("latex.ltx"),
+            b"format source",
+        )
+        .unwrap();
+        fs::write(
+            root.join("formats")
+                .join(format!("{bundle_id}-xelatex.fmt")),
+            b"format bytes",
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn probe_cache_seeding_copies_only_the_selected_bundle_and_keeps_existing_files() {
+        let directory = tempdir().unwrap();
+        let ordinary = directory.path().join("ordinary");
+        let probe = directory.path().join("probe");
+        let locator = "https://mirrors.oleafly.test/tex-bundles/tlextras-2022.0r0.tar";
+        let other_locator = "https://mirrors.oleafly.test/tex-bundles/other.tar";
+        let bundle = "a".repeat(64);
+        let other_bundle = "b".repeat(64);
+        fake_ordinary_tectonic_cache(&ordinary, locator, &bundle);
+        fake_ordinary_tectonic_cache(&ordinary, other_locator, &other_bundle);
+        fs::create_dir_all(probe.join("bundles/data").join(&bundle)).unwrap();
+        fs::write(
+            probe.join("bundles/data").join(&bundle).join("article.cls"),
+            b"already cached",
+        )
+        .unwrap();
+
+        seed_probe_tectonic_cache_from(&ordinary, &probe, locator).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(
+                probe
+                    .join("bundles/hashes")
+                    .join(encode_tectonic_cache_key(locator))
+            )
+            .unwrap(),
+            format!("{bundle}\n")
+        );
+        assert_eq!(
+            fs::read(probe.join("bundles/data").join(format!("{bundle}.index"))).unwrap(),
+            b"index bytes"
+        );
+        assert_eq!(
+            fs::read(probe.join("bundles/data").join(&bundle).join("latex.ltx")).unwrap(),
+            b"format source"
+        );
+        assert_eq!(
+            fs::read(probe.join("bundles/data").join(&bundle).join("article.cls")).unwrap(),
+            b"already cached",
+            "an already cached file must never be replaced"
+        );
+        assert_eq!(
+            fs::read(probe.join("formats").join(format!("{bundle}-xelatex.fmt"))).unwrap(),
+            b"format bytes"
+        );
+        assert!(!probe.join("bundles/data").join(&other_bundle).exists());
+        assert!(!probe
+            .join("formats")
+            .join(format!("{other_bundle}-xelatex.fmt"))
+            .exists());
+        assert!(!probe
+            .join("bundles/hashes")
+            .join(encode_tectonic_cache_key(other_locator))
+            .exists());
+
+        seed_probe_tectonic_cache_from(&ordinary, &probe, locator).unwrap();
+        assert_eq!(
+            fs::read(probe.join("bundles/data").join(&bundle).join("latex.ltx")).unwrap(),
+            b"format source"
+        );
+    }
+
+    #[test]
+    fn probe_cache_seeding_is_silent_without_an_ordinary_cache_or_the_bundle() {
+        let directory = tempdir().unwrap();
+        let probe = directory.path().join("probe");
+        let missing = directory.path().join("absent");
+
+        seed_probe_tectonic_cache_from(&missing, &probe, "https://example.test/bundle.tar")
+            .unwrap();
+        assert!(!probe.exists());
+
+        let ordinary = directory.path().join("ordinary");
+        fake_ordinary_tectonic_cache(&ordinary, "https://example.test/one.tar", &"c".repeat(64));
+        assert!(
+            seed_probe_tectonic_cache_from(&ordinary, &probe, "https://example.test/two.tar")
+                .is_err()
+        );
+        assert!(!probe.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn probe_cache_seeding_never_follows_a_link_in_the_ordinary_cache() {
+        use std::os::unix::fs::symlink;
+
+        let directory = tempdir().unwrap();
+        let ordinary = directory.path().join("ordinary");
+        let probe = directory.path().join("probe");
+        let locator = "https://example.test/linked.tar";
+        let bundle = "d".repeat(64);
+        fake_ordinary_tectonic_cache(&ordinary, locator, &bundle);
+        let outside = directory.path().join("outside.tex");
+        fs::write(&outside, b"outside bytes").unwrap();
+        symlink(
+            &outside,
+            ordinary
+                .join("bundles/data")
+                .join(&bundle)
+                .join("linked.tex"),
+        )
+        .unwrap();
+        symlink(
+            &outside,
+            ordinary
+                .join("formats")
+                .join(format!("{bundle}-linked.fmt")),
+        )
+        .unwrap();
+
+        seed_probe_tectonic_cache_from(&ordinary, &probe, locator).unwrap();
+
+        assert!(!probe
+            .join("bundles/data")
+            .join(&bundle)
+            .join("linked.tex")
+            .exists());
+        assert!(!probe
+            .join("formats")
+            .join(format!("{bundle}-linked.fmt"))
+            .exists());
+        assert!(probe
+            .join("bundles/data")
+            .join(&bundle)
+            .join("latex.ltx")
+            .is_file());
     }
 
     fn backdate(path: &std::path::Path, modified: std::time::SystemTime) {
@@ -3346,7 +4279,8 @@ mod tests {
     }
 
     #[test]
-    fn capture_inputs_reject_ignored_dependencies_and_expand_only_explicit_policy_matches() {
+    fn capture_inputs_record_ignored_dependencies_by_identity_and_expand_only_explicit_policy_matches(
+    ) {
         let temp = tempdir().unwrap();
         let project = temp.path().join("project");
         fs::create_dir_all(project.join("figures/deep")).unwrap();
@@ -3363,21 +4297,29 @@ mod tests {
         fs::write(project.join("figures/deep/unused.png"), b"unused").unwrap();
         fs::write(project.join("scratch/data.csv"), b"data").unwrap();
         let ignored: CheckpointPolicy = serde_json::from_value(serde_json::json!({
-            "ignored": ["scratch/*.csv"]
+            "ignored": ["scratch/*.csv", "main.typ"]
         }))
         .unwrap();
 
-        let error = build_capture_inputs(
+        let inputs = build_capture_inputs(
             &project,
             &["main.typ".into(), "scratch/data.csv".into()],
             "main.typ",
             &ignored,
             None,
         )
-        .unwrap_err();
+        .unwrap();
+        let stored = inputs
+            .iter()
+            .map(|input| (input.relative_path(), input.is_stored()))
+            .collect::<Vec<_>>();
         assert_eq!(
-            error.reason,
-            CheckpointSkipReason::IgnoredRequiredDependency
+            stored,
+            [
+                ("main.typ", true),
+                ("project.json", true),
+                ("scratch/data.csv", false),
+            ]
         );
 
         let include: CheckpointPolicy = serde_json::from_value(serde_json::json!({

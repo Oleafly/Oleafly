@@ -12,8 +12,10 @@ import type {
   AppConfig,
   BackendProtocolInfo,
   ChatSearchHit,
+  CheckpointFileSummary,
   CheckpointIntegrity,
   CheckpointPolicy,
+  CheckpointStoreInspection,
   CheckpointStoreStats,
   CheckpointSummary,
   CompileResult,
@@ -189,6 +191,21 @@ export const compileProject = (
 
 export const checkpointList = (projectId: string) =>
   invoke<CheckpointSummary[]>("checkpoint_list", { projectId });
+
+export const checkpointFiles = (projectId: string, snapshotRoot: string) =>
+  invoke<CheckpointFileSummary[]>("checkpoint_files", { projectId, snapshotRoot });
+
+export const checkpointInspect = (projectId: string) =>
+  invoke<CheckpointStoreInspection>("checkpoint_inspect", { projectId });
+
+export const checkpointRevealStore = (projectId: string) =>
+  invoke<void>("checkpoint_reveal_store", { projectId });
+
+export const checkpointIgnorePath = (projectId: string, path: string) =>
+  invoke<ProjectMeta>("checkpoint_ignore_path", { projectId, path });
+
+export const checkpointUnignorePath = (projectId: string, path: string) =>
+  invoke<ProjectMeta>("checkpoint_unignore_path", { projectId, path });
 
 export const checkpointStats = (projectId: string) =>
   invoke<CheckpointStoreStats>("checkpoint_stats", { projectId });
@@ -639,13 +656,10 @@ export const searchProject = (projectId: string, query: string) =>
 export const getConfig = () => invoke<AppConfig>("get_config");
 export const setConfig = (config: AppConfig) =>
   invoke<void>("set_config", { config });
-export const setCheckpointDefaults = (policy: CheckpointPolicy) =>
-  invoke<void>("set_checkpoint_defaults", { policy });
 export const setCheckpointPolicy = (
   projectId: string,
   policy: CheckpointPolicy,
 ) => invoke<ProjectMeta>("set_checkpoint_policy", { projectId, policy });
-export const setProjectCheckpointPolicy = setCheckpointPolicy;
 export const seedStarterPersonas = (starters: Persona[]) =>
   invoke<AppConfig>("seed_starter_personas", { starters });
 

@@ -416,6 +416,8 @@ fn kill_terminal(owner: &SessionOwner, id: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
+    use crate::proc::NoConsole as _;
     #[test]
     fn drain_utf8_keeps_a_split_multibyte_tail() {
         let emoji = "café🦀".as_bytes();
@@ -754,6 +756,7 @@ mod tests {
         let mut stopped = false;
         while std::time::Instant::now() < deadline {
             if !std::process::Command::new("kill")
+                .no_console()
                 .args(["-0", &pid])
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
@@ -767,6 +770,7 @@ mod tests {
         }
         if !stopped {
             let _ = std::process::Command::new("kill")
+                .no_console()
                 .args(["-KILL", &pid])
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
@@ -820,6 +824,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(500));
         let marker_exists = project.join("descendant-marker").exists();
         let _ = std::process::Command::new("kill")
+            .no_console()
             .args(["-KILL", descendant_pid.trim()])
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())

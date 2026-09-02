@@ -57,6 +57,7 @@ sha2 = "0.10"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
 rand = "0.8"
 ring = "0.17"
+argon2 = "0.5"
 aes = { version = "0.8", features = ["zeroize"] }
 cbc = { version = "0.1", features = ["zeroize"] }
 zeroize = "=1.8.1"

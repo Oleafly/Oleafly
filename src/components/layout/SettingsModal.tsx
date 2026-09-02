@@ -29,6 +29,7 @@ import {
   Scale,
   ScrollText,
   Settings,
+  ShieldCheck,
   Sparkles,
   Star,
   Trash2,
@@ -84,7 +85,7 @@ import { TOUR_IDS } from "@/lib/tours/registry";
 import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
-import { CheckpointDefaultsSection } from "@/components/settings/CheckpointDefaultsSection";
+import { CheckpointsSection } from "@/components/settings/CheckpointsSection";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import {
   SettingsSwitchIndicator,
@@ -101,6 +102,7 @@ type Section =
   | "general"
   | "dictionary"
   | "data"
+  | "checkpoints"
   | "ai"
   | "engine"
   | "downloads"
@@ -117,6 +119,7 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "dictionary", label: "Dictionary", icon: BookMarked },
   { id: "data", label: "Data Storage", icon: Database },
+  { id: "checkpoints", label: "Checkpoints", icon: ShieldCheck },
   { id: "ai", label: "AI Assistant", icon: Sparkles },
   { id: "engine", label: "Engines", icon: Cpu },
   { id: "downloads", label: "Downloads", icon: HardDriveDownload },
@@ -130,6 +133,7 @@ const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   appearance: "settings-appearance",
   dictionary: "settings-dictionary",
   data: "settings-data",
+  checkpoints: "settings-checkpoints",
   ai: "settings-ai",
   engine: "settings-compiler",
   downloads: "settings-downloads",
@@ -710,7 +714,6 @@ export function SettingsModal() {
                   Each project is a plain folder. Git history is optional, and nothing leaves
                   your machine unless you push to GitHub.
                 </p>
-                <CheckpointDefaultsSection />
                 <section
                   aria-labelledby="storage-usage-title"
                   className="overflow-hidden rounded-xl border bg-card/60"
@@ -1019,6 +1022,8 @@ export function SettingsModal() {
                 </TabsContent>
               </Tabs>
             )}
+
+            {section === "checkpoints" && <CheckpointsSection />}
 
             {section === "ai" && <AISection />}
 

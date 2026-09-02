@@ -1,11 +1,11 @@
 //! External Checkpoints lifecycle and transactional worktree restore.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs::{self, File, OpenOptions};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex, OnceLock, Weak};
 
-use oleafly_history::{Checkpoint, SnapshotRoot, Store, StoreStats};
+use oleafly_history::{Checkpoint, SnapshotRoot, Store, StoreInspection, StoreStats};
 use serde::{Deserialize, Serialize};
 
 use crate::worktree_lock::RESTORE_PENDING_FILE;
@@ -56,6 +56,8 @@ pub struct CheckpointStats {
     pub stored_pack_bytes: u64,
     pub logical_bytes: u64,
     pub reclaimable_bytes: u64,
+    pub unstored_file_count: u64,
+    pub unstored_logical_bytes: u64,
 }
 
 impl From<StoreStats> for CheckpointStats {
@@ -65,6 +67,72 @@ impl From<StoreStats> for CheckpointStats {
             stored_pack_bytes: stats.stored_pack_bytes,
             logical_bytes: stats.visible_logical_bytes,
             reclaimable_bytes: stats.reclaimable_pack_bytes,
+            unstored_file_count: stats.unstored_file_count,
+            unstored_logical_bytes: stats.unstored_logical_bytes,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CheckpointFileSummary {
+    pub path: String,
+    pub bytes: u64,
+    pub content_hash: String,
+    pub stored: bool,
+    pub replayed: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct CheckpointStoreTableCounts {
+    pub checkpoints: u64,
+    pub manifests: u64,
+    pub packs: u64,
+    pub chunks: u64,
+    pub manifest_chunks: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CheckpointPackSummary {
+    pub file_name: String,
+    pub bytes: u64,
+    pub chunk_count: u64,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct CheckpointStoreInspection {
+    pub store_path: Option<String>,
+    pub catalog_path: Option<String>,
+    pub catalog_bytes: u64,
+    pub format_version: u32,
+    pub lineage: Option<String>,
+    pub table_counts: CheckpointStoreTableCounts,
+    pub packs: Vec<CheckpointPackSummary>,
+}
+
+impl From<StoreInspection> for CheckpointStoreInspection {
+    fn from(inspection: StoreInspection) -> Self {
+        Self {
+            store_path: Some(inspection.root.to_string_lossy().into_owned()),
+            catalog_path: Some(inspection.catalog_path.to_string_lossy().into_owned()),
+            catalog_bytes: inspection.catalog_bytes,
+            format_version: inspection.format_version,
+            lineage: Some(inspection.lineage),
+            table_counts: CheckpointStoreTableCounts {
+                checkpoints: inspection.checkpoint_count,
+                manifests: inspection.manifest_count,
+                packs: inspection.pack_count,
+                chunks: inspection.chunk_count,
+                manifest_chunks: inspection.manifest_chunk_count,
+            },
+            packs: inspection
+                .packs
+                .into_iter()
+                .map(|pack| CheckpointPackSummary {
+                    file_name: pack.file_name,
+                    bytes: pack.encoded_bytes,
+                    chunk_count: pack.chunk_count,
+                })
+                .collect(),
         }
     }
 }
@@ -189,6 +257,68 @@ fn checkpoint_stats_sync(project_id: &str) -> Result<CheckpointStats, String> {
         .map_err(|_| "Could not measure this project's Checkpoints history.".to_string())
 }
 
+fn checkpoint_files_sync(
+    project_id: &str,
+    snapshot_root: &str,
+) -> Result<Vec<CheckpointFileSummary>, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
+    require_active_project(project_id)?;
+    let root = parse_snapshot_root(snapshot_root)?;
+    let store = require_existing_store(project_id)?;
+    let checkpoint = store
+        .checkpoint(&root)
+        .map_err(|_| "Could not read the selected Checkpoint.".to_string())?
+        .ok_or_else(|| "The selected Checkpoint no longer exists.".to_string())?;
+    let replayed = checkpoint
+        .replayed_inputs()
+        .iter()
+        .map(|input| input.relative_path.as_str())
+        .collect::<HashSet<_>>();
+    let files = store
+        .checkpoint_files(&root)
+        .map_err(|_| "Could not read the selected Checkpoint's files.".to_string())?
+        .ok_or_else(|| "The selected Checkpoint no longer exists.".to_string())?;
+    Ok(files
+        .into_iter()
+        .map(|file| CheckpointFileSummary {
+            replayed: replayed.contains(file.relative_path.as_str()),
+            path: file.relative_path,
+            bytes: file.logical_bytes,
+            content_hash: file.content_hash.to_string(),
+            stored: file.stored,
+        })
+        .collect())
+}
+
+fn checkpoint_inspect_sync(project_id: &str) -> Result<CheckpointStoreInspection, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
+    require_active_project(project_id)?;
+    let Some(store) = open_existing_store(project_id)? else {
+        return Ok(CheckpointStoreInspection::default());
+    };
+    store
+        .inspect()
+        .map(Into::into)
+        .map_err(|_| "Could not inspect this project's Checkpoints storage.".to_string())
+}
+
+#[tauri::command]
+pub async fn checkpoint_files(
+    project_id: String,
+    snapshot_root: String,
+) -> Result<Vec<CheckpointFileSummary>, String> {
+    tauri::async_runtime::spawn_blocking(move || checkpoint_files_sync(&project_id, &snapshot_root))
+        .await
+        .map_err(|error| format!("Checkpoint files task failed: {error}"))?
+}
+
+#[tauri::command]
+pub async fn checkpoint_inspect(project_id: String) -> Result<CheckpointStoreInspection, String> {
+    tauri::async_runtime::spawn_blocking(move || checkpoint_inspect_sync(&project_id))
+        .await
+        .map_err(|error| format!("Checkpoints storage inspection task failed: {error}"))?
+}
+
 fn parse_snapshot_root(value: &str) -> Result<SnapshotRoot, String> {
     SnapshotRoot::parse(value).map_err(|_| "The selected Checkpoint id is invalid.".to_string())
 }
@@ -305,6 +435,33 @@ pub async fn checkpoint_reset(
     tauri::async_runtime::spawn_blocking(move || checkpoint_reset_sync(&project_id))
         .await
         .map_err(|error| format!("Checkpoint reset task failed: {error}"))?
+}
+
+fn existing_store_to_reveal(project_id: &str) -> Result<PathBuf, String> {
+    require_active_project(project_id)?;
+    let store = crate::paths::existing_checkpoint_store_dir(project_id)?
+        .ok_or_else(|| "This project does not have any Checkpoints yet.".to_string())?;
+    store
+        .canonicalize()
+        .map_err(|error| format!("Could not resolve this project's Checkpoints store: {error}"))
+}
+
+#[tauri::command]
+pub async fn checkpoint_reveal_store(
+    project_id: String,
+    state: tauri::State<'_, crate::state::AppState>,
+) -> Result<(), String> {
+    let store = tauri::async_runtime::spawn_blocking(move || existing_store_to_reveal(&project_id))
+        .await
+        .map_err(|error| format!("Checkpoints store task failed: {error}"))??;
+    {
+        let mut allow = state.reveal_allowlist.lock().await;
+        if allow.len() >= 1024 {
+            allow.pop_front();
+        }
+        allow.push_back(store.clone());
+    }
+    crate::commands::reveal_canonical_path(&store)
 }
 
 #[tauri::command]
@@ -556,12 +713,29 @@ pub(crate) fn validate_checkpoint_project_metadata(
     if project.main_doc != recorded_main_document {
         return Err("The Checkpoint metadata does not match its recorded main document.".into());
     }
-    if project.engine != recorded_engine {
+    let engine = crate::document_engine::engine_for(&project.engine, &project.main_doc)
+        .map_err(|error| format!("The Checkpoint has an unusable document engine: {error}"))?;
+    if project.engine != recorded_engine && engine.id().as_str() != recorded_engine {
         return Err("The Checkpoint metadata does not match its recorded engine.".into());
     }
-    crate::document_engine::engine_for(&project.engine, &project.main_doc)
-        .map_err(|error| format!("The Checkpoint has an unusable document engine: {error}"))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod metadata_identity_tests {
+    use super::validate_checkpoint_project_metadata;
+
+    #[test]
+    fn recorded_engine_ids_match_the_project_engine_name_they_were_compiled_from() {
+        let tectonic = br#"{"name":"Paper","main_doc":"main.tex","engine":"tectonic"}"#;
+        assert!(validate_checkpoint_project_metadata(tectonic, "latex", "main.tex").is_ok());
+        assert!(validate_checkpoint_project_metadata(tectonic, "tectonic", "main.tex").is_ok());
+        assert!(validate_checkpoint_project_metadata(tectonic, "typst", "main.tex").is_err());
+        assert!(validate_checkpoint_project_metadata(tectonic, "latex", "other.tex").is_err());
+        let typst = br#"{"name":"Paper","main_doc":"main.typ","engine":"typst"}"#;
+        assert!(validate_checkpoint_project_metadata(typst, "typst", "main.typ").is_ok());
+        assert!(validate_checkpoint_project_metadata(typst, "latex", "main.typ").is_err());
+    }
 }
 
 fn restore_pending_marker(project: &Path) -> PathBuf {
@@ -1025,6 +1199,7 @@ fn backup_restore_paths(
     fault: RestoreFault,
 ) -> Result<(), String> {
     let mut moved = 0_u64;
+    let mut touched = BTreeSet::new();
     for relative in &plan.files {
         let source = restore_path(project, relative)?;
         let metadata = match fs::symlink_metadata(&source) {
@@ -1043,17 +1218,18 @@ fn backup_restore_paths(
         }
         fs::rename(&source, &destination)
             .map_err(|error| format!("could not back up a project path during restore: {error}"))?;
-        sync_parent(&source)?;
-        sync_parent(&destination)?;
+        record_touched_parent(&mut touched, &source)?;
+        record_touched_parent(&mut touched, &destination)?;
         moved += 1;
 
         #[cfg(test)]
         if moved == 1 && fault == RestoreFault::AfterFirstBackup {
+            sync_touched_parents(touched)?;
             return Err("injected restore failure".into());
         }
     }
     let _ = (fault, moved);
-    Ok(())
+    sync_touched_parents(touched)
 }
 
 fn install_restore_paths(
@@ -1081,6 +1257,7 @@ fn install_restore_paths(
     }
 
     let mut moved = 0_u64;
+    let mut touched = BTreeSet::new();
     for relative in &plan.files {
         let source = restore_path(incoming, relative)?;
         let destination = restore_path(project, relative)?;
@@ -1091,16 +1268,17 @@ fn install_restore_paths(
         }
         fs::rename(&source, &destination)
             .map_err(|error| format!("could not install a project path during restore: {error}"))?;
-        sync_parent(&source)?;
-        sync_parent(&destination)?;
+        record_touched_parent(&mut touched, &source)?;
+        record_touched_parent(&mut touched, &destination)?;
         moved += 1;
         #[cfg(test)]
         if moved == 1 && fault.fails_after_first_install() {
+            sync_touched_parents(touched)?;
             return Err("injected restore failure".into());
         }
     }
     let _ = (fault, moved);
-    Ok(())
+    sync_touched_parents(touched)
 }
 
 fn read_entries(directory: &Path) -> Result<Vec<fs::DirEntry>, String> {
@@ -1396,6 +1574,7 @@ fn move_installed_paths_back(
     incoming: &Path,
     plan: &RestorePlan,
 ) -> Result<(), String> {
+    let mut touched = BTreeSet::new();
     for relative in &plan.files {
         let staged = restore_path(incoming, relative)?;
         match fs::symlink_metadata(&staged) {
@@ -1416,13 +1595,14 @@ fn move_installed_paths_back(
         }
         fs::rename(&installed, &staged)
             .map_err(|error| format!("could not roll back installed path {relative}: {error}"))?;
-        sync_parent(&installed)?;
-        sync_parent(&staged)?;
+        record_touched_parent(&mut touched, &installed)?;
+        record_touched_parent(&mut touched, &staged)?;
     }
-    Ok(())
+    sync_touched_parents(touched)
 }
 
 fn restore_backup_paths(backup: &Path, project: &Path, plan: &RestorePlan) -> Result<(), String> {
+    let mut touched = BTreeSet::new();
     for relative in &plan.files {
         let saved = restore_path(backup, relative)?;
         match fs::symlink_metadata(&saved) {
@@ -1441,10 +1621,10 @@ fn restore_backup_paths(backup: &Path, project: &Path, plan: &RestorePlan) -> Re
         }
         fs::rename(&saved, &destination)
             .map_err(|error| format!("could not restore project path {relative}: {error}"))?;
-        sync_parent(&saved)?;
-        sync_parent(&destination)?;
+        record_touched_parent(&mut touched, &saved)?;
+        record_touched_parent(&mut touched, &destination)?;
     }
-    Ok(())
+    sync_touched_parents(touched)
 }
 
 fn remove_created_project_directories(project: &Path, plan: &RestorePlan) -> Result<(), String> {
@@ -1481,6 +1661,21 @@ fn sync_parent(path: &Path) -> Result<(), String> {
         .parent()
         .ok_or_else(|| "restore staging has no parent".to_string())?;
     sync_directory(parent)
+}
+
+fn record_touched_parent(touched: &mut BTreeSet<PathBuf>, path: &Path) -> Result<(), String> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| "restore staging has no parent".to_string())?;
+    touched.insert(parent.to_path_buf());
+    Ok(())
+}
+
+fn sync_touched_parents(touched: BTreeSet<PathBuf>) -> Result<(), String> {
+    for parent in touched {
+        sync_directory(&parent)?;
+    }
+    Ok(())
 }
 
 #[cfg(unix)]
@@ -1554,8 +1749,19 @@ mod tests {
 
     use super::{
         checkpoint_keep_latest_sync, checkpoint_list_sync, checkpoint_reset_sync,
-        checkpoint_stats_sync, restore_checkpoint_sync, CheckpointStats, RestoreFault,
+        checkpoint_stats_sync, restore_checkpoint_sync, CheckpointStats, CheckpointStoreInspection,
+        RestoreFault,
     };
+
+    fn isolated_project_dir(data_dir: &std::path::Path, project_id: &str) -> std::path::PathBuf {
+        let project = crate::paths::create_project_dir(project_id).unwrap();
+        assert!(
+            project.starts_with(data_dir.canonicalize().unwrap()),
+            "the project directory resolved outside the test data directory, \
+             which means an unsynchronized environment mutation raced this test"
+        );
+        project
+    }
 
     fn publish(store: &Store, project: &std::path::Path, source: &[u8], time: i64) -> SnapshotRoot {
         fs::write(project.join("main.tex"), source).unwrap();
@@ -1629,7 +1835,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let directory = tempfile::tempdir().unwrap();
         std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
-        let project = crate::paths::create_project_dir("paper").unwrap();
+        let project = isolated_project_dir(directory.path(), "paper");
         fs::write(
             project.join("project.json"),
             br#"{"name":"Paper","main_doc":"main.tex","engine":"xetex"}"#,
@@ -1662,6 +1868,78 @@ mod tests {
         );
         assert_eq!(store.list().unwrap(), before);
         assert!(!store.root().join(super::RESTORE_TRANSACTION).exists());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn restore_never_touches_a_file_the_checkpoint_recorded_without_bytes() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let project = isolated_project_dir(directory.path(), "paper");
+        let metadata = br#"{"name":"Paper","main_doc":"main.tex","engine":"xetex","checkpoints":{"ignored":["notes.txt"]}}"#;
+        fs::write(project.join("project.json"), metadata).unwrap();
+        fs::write(project.join("main.tex"), b"checkpoint source").unwrap();
+        fs::write(project.join("notes.txt"), b"sealed notes").unwrap();
+        let store = Store::open(crate::paths::checkpoint_store_dir("paper").unwrap()).unwrap();
+        let inputs = [
+            CaptureInput::explicit("project.json").unwrap(),
+            CaptureInput::proven(
+                "main.tex",
+                project.join("main.tex").canonicalize().unwrap(),
+                ContentHash::digest(b"checkpoint source"),
+            )
+            .unwrap(),
+            CaptureInput::replay_required_unstored(
+                "notes.txt",
+                project.join("notes.txt").canonicalize().unwrap(),
+                ContentHash::digest(b"sealed notes"),
+            )
+            .unwrap(),
+        ];
+        let candidate = store.stage_candidate(&project, &inputs).unwrap();
+        let root = *candidate.snapshot_root();
+        let evidence = CompileEvidence::new(
+            "xetex",
+            "tectonic-test@1",
+            "main.tex",
+            ContentHash::digest(b"validated output"),
+            10,
+            vec![
+                ReplayedInput::new("main.tex", ContentHash::digest(b"checkpoint source")).unwrap(),
+                ReplayedInput::new("notes.txt", ContentHash::digest(b"sealed notes")).unwrap(),
+            ],
+        )
+        .unwrap();
+        assert!(matches!(
+            store.publish(candidate, evidence).unwrap(),
+            PublishOutcome::Created(_)
+        ));
+        let recorded = store.checkpoint_files(&root).unwrap().unwrap();
+        let notes = recorded
+            .iter()
+            .find(|file| file.relative_path == "notes.txt")
+            .expect("the ignored input is recorded by identity");
+        assert!(!notes.stored);
+        assert_eq!(notes.content_hash, ContentHash::digest(b"sealed notes"));
+        assert_eq!(store.stats().unwrap().unstored_file_count, 1);
+
+        fs::write(project.join("main.tex"), b"current source").unwrap();
+        fs::write(project.join("notes.txt"), b"current notes").unwrap();
+
+        restore_checkpoint_sync(&store, &root, &project, RestoreFault::None).unwrap();
+
+        assert_eq!(
+            fs::read(project.join("main.tex")).unwrap(),
+            b"checkpoint source"
+        );
+        assert_eq!(
+            fs::read(project.join("notes.txt")).unwrap(),
+            b"current notes",
+            "a file the Checkpoint stored by identity only must survive a restore untouched"
+        );
+        assert_eq!(fs::read(project.join("project.json")).unwrap(), metadata);
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
@@ -1881,7 +2159,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let directory = tempfile::tempdir().unwrap();
         std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
-        let project = crate::paths::create_project_dir("paper").unwrap();
+        let project = isolated_project_dir(directory.path(), "paper");
         let checkpoint_metadata = br#"{"name":"Paper","main_doc":"main.tex","engine":"xetex"}"#;
         fs::write(project.join("project.json"), checkpoint_metadata).unwrap();
         let store = Store::open(crate::paths::checkpoint_store_dir("paper").unwrap()).unwrap();
@@ -2156,6 +2434,148 @@ mod tests {
             b"keep me"
         );
         assert!(super::has_restore_pending_marker(&project));
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn checkpoint_payloads_serialize_their_documented_field_names() {
+        assert_eq!(
+            serde_json::to_value(CheckpointStats::default()).unwrap(),
+            serde_json::json!({
+                "checkpoint_count": 0,
+                "stored_pack_bytes": 0,
+                "logical_bytes": 0,
+                "reclaimable_bytes": 0,
+                "unstored_file_count": 0,
+                "unstored_logical_bytes": 0
+            })
+        );
+        assert_eq!(
+            serde_json::to_value(CheckpointStoreInspection::default()).unwrap(),
+            serde_json::json!({
+                "store_path": null,
+                "catalog_path": null,
+                "catalog_bytes": 0,
+                "format_version": 0,
+                "lineage": null,
+                "table_counts": {
+                    "checkpoints": 0,
+                    "manifests": 0,
+                    "packs": 0,
+                    "chunks": 0,
+                    "manifest_chunks": 0
+                },
+                "packs": []
+            })
+        );
+        assert_eq!(
+            serde_json::to_value(super::CheckpointFileSummary {
+                path: "main.tex".into(),
+                bytes: 7,
+                content_hash: "abc".into(),
+                stored: false,
+                replayed: true,
+            })
+            .unwrap(),
+            serde_json::json!({
+                "path": "main.tex",
+                "bytes": 7,
+                "content_hash": "abc",
+                "stored": false,
+                "replayed": true
+            })
+        );
+    }
+
+    #[test]
+    fn file_and_store_inspection_are_lazy_and_describe_the_recorded_manifest() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let project = isolated_project_dir(directory.path(), "paper");
+        fs::write(
+            project.join("project.json"),
+            br#"{"name":"Paper","main_doc":"main.tex","engine":"xetex"}"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            super::checkpoint_inspect_sync("paper").unwrap(),
+            CheckpointStoreInspection::default()
+        );
+        assert!(super::checkpoint_inspect_sync("paper")
+            .unwrap()
+            .store_path
+            .is_none());
+        assert!(crate::paths::existing_checkpoint_store_dir("paper")
+            .unwrap()
+            .is_none());
+
+        let store_path = crate::paths::checkpoint_store_dir("paper").unwrap();
+        let store = Store::open(&store_path).unwrap();
+        let root = publish(&store, &project, b"checkpoint source", 10);
+        drop(store);
+
+        let files = super::checkpoint_files_sync("paper", &root.to_string()).unwrap();
+        assert_eq!(
+            files
+                .iter()
+                .map(|file| (file.path.as_str(), file.stored, file.replayed))
+                .collect::<Vec<_>>(),
+            [("main.tex", true, true), ("project.json", true, false)]
+        );
+        assert_eq!(
+            files[0].content_hash,
+            ContentHash::digest(b"checkpoint source").to_string()
+        );
+        assert_eq!(files[0].bytes, b"checkpoint source".len() as u64);
+
+        let inspection = super::checkpoint_inspect_sync("paper").unwrap();
+        assert_eq!(
+            inspection.store_path.as_deref(),
+            Some(
+                store_path
+                    .canonicalize()
+                    .unwrap()
+                    .to_string_lossy()
+                    .as_ref()
+            )
+        );
+        assert!(inspection.catalog_path.is_some());
+        assert!(inspection.catalog_bytes > 0);
+        assert!(inspection.format_version > 0);
+        assert!(inspection.lineage.is_some());
+        assert_eq!(inspection.table_counts.checkpoints, 1);
+        assert_eq!(inspection.table_counts.manifests, 1);
+        assert_eq!(inspection.packs.len() as u64, inspection.table_counts.packs);
+        assert!(inspection.packs.iter().all(|pack| pack.bytes > 0));
+
+        assert!(super::checkpoint_files_sync("paper", "not-a-root").is_err());
+        let missing = "0".repeat(64);
+        assert!(super::checkpoint_files_sync("paper", &missing).is_err());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn revealing_the_store_requires_one_and_resolves_inside_the_data_root() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let project = isolated_project_dir(directory.path(), "paper");
+        fs::write(project.join("project.json"), br#"{"name":"Paper"}"#).unwrap();
+
+        let error = super::existing_store_to_reveal("paper").unwrap_err();
+        assert_eq!(error, "This project does not have any Checkpoints yet.");
+
+        let store_path = crate::paths::checkpoint_store_dir("paper").unwrap();
+        Store::open(&store_path).unwrap();
+        let revealed = super::existing_store_to_reveal("paper").unwrap();
+        assert_eq!(revealed, store_path.canonicalize().unwrap());
+        assert!(revealed.starts_with(directory.path().canonicalize().unwrap()));
+
+        assert!(super::existing_store_to_reveal("missing-project").is_err());
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }

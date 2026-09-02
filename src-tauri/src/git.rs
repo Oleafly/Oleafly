@@ -653,7 +653,7 @@ pub async fn git_ahead_behind(project_id: String) -> Result<AheadBehind, String>
 
 #[tauri::command]
 pub async fn git_push(project_id: String) -> Result<String, String> {
-    let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let root = existing_repo(&project_id)?;
     let cfg = config::read_config()?;
     if cfg.github_token.is_empty() {
@@ -1066,6 +1066,8 @@ mod tests {
     };
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::mpsc;
+    use std::time::Duration;
 
     static COUNTER: AtomicU32 = AtomicU32::new(0);
 
@@ -1142,6 +1144,41 @@ mod tests {
             !repository_was_created,
             "observing Source Control must not initialize Git"
         );
+    }
+
+    #[test]
+    fn pushing_reads_the_worktree_and_never_takes_the_exclusive_lock() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let previous_data_dir = std::env::var_os("OLEAFLY_DATA_DIR");
+        let data = temp_dir("push-shared-worktree");
+        let project_id = "plain-project";
+        std::fs::create_dir_all(data.join("projects").join(project_id)).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+
+        let reader = crate::worktree_lock::ProjectWorktreeLock::shared(project_id).unwrap();
+        let (finished_tx, finished_rx) = mpsc::channel();
+        let pusher = std::thread::spawn(move || {
+            let result = tokio::runtime::Builder::new_current_thread()
+                .build()
+                .unwrap()
+                .block_on(super::git_push(project_id.to_string()));
+            let _ = finished_tx.send(());
+            result
+        });
+        let finished = finished_rx.recv_timeout(Duration::from_secs(5)).is_ok();
+        drop(reader);
+        let result = pusher.join().unwrap();
+
+        if let Some(previous) = previous_data_dir {
+            std::env::set_var("OLEAFLY_DATA_DIR", previous);
+        } else {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+        }
+        assert!(
+            finished,
+            "pushing waited for the exclusive worktree lock a reader already held"
+        );
+        assert!(result.is_err(), "an uninitialized project cannot be pushed");
     }
 
     #[tokio::test(flavor = "current_thread")]

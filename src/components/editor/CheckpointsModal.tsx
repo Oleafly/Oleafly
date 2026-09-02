@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ArchiveRestore,
-  Database,
+  Check,
+  ChevronRight,
+  Copy,
   Download,
-  FileCog,
   FileUp,
   History,
   Loader2,
@@ -12,30 +13,34 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import {
   checkpointDelete,
+  checkpointEngineLabel,
   checkpointExport,
+  checkpointFiles,
+
+  checkpointIgnorePath,
   checkpointImport,
   checkpointKeepLatest,
   checkpointList,
   checkpointReset,
   checkpointRestore,
   checkpointStats,
+  checkpointUnignorePath,
+  type CheckpointFileSummary,
   type CheckpointStoreStats,
   type CheckpointSummary,
 } from "@/lib/checkpoints";
 import { logError } from "@/lib/log";
 import { pickOpenPath, pickSavePath } from "@/lib/native-file-dialog";
-import {
-  getProject,
-  setProjectCheckpointPolicy,
-  type CheckpointPolicy,
-} from "@/lib/tauri";
+import { getProject } from "@/lib/tauri";
 import { notifyError, toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
@@ -44,20 +49,12 @@ type Confirmation =
   | { kind: "keep-latest" | "reset" }
   | null;
 
-const DEFAULT_CHECKPOINT_POLICY: CheckpointPolicy = {
-  mode: "engine_dependencies",
-  always_include: [],
-  ignored: [],
-};
+type FileState =
+  | { status: "loading" }
+  | { status: "ready"; files: CheckpointFileSummary[] }
+  | { status: "error" };
 
-type PolicyIssue = {
-  kind: "malformed" | "unsupported";
-  preview: string;
-};
-
-type ParsedPolicy =
-  | { kind: "supported"; policy: CheckpointPolicy }
-  | PolicyIssue;
+type ProjectPolicy = { mainDocument: string; ignored: string[] };
 
 type ModalActionToken = {
   projectId: string;
@@ -65,48 +62,16 @@ type ModalActionToken = {
   request: number;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+const PROTECTED_FILE = "project.json";
 
-function normalizePatternArray(value: unknown): string[] | null {
-  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
-    return null;
-  }
-  return [...new Set(value.map((item) => item.trim()).filter(Boolean))];
-}
-
-function policyPreview(value: unknown): string {
-  try {
-    return JSON.stringify(value, null, 2) ?? String(value);
-  } catch {
-    return "Stored policy data could not be displayed.";
-  }
-}
-
-function parsePolicy(value: unknown): ParsedPolicy {
-  const preview = policyPreview(value);
-  if (!isRecord(value) || typeof value.mode !== "string") {
-    return { kind: "malformed", preview };
-  }
-  const alwaysInclude = normalizePatternArray(value.always_include);
-  const ignored = normalizePatternArray(value.ignored);
-  if (!alwaysInclude || !ignored) {
-    return { kind: "malformed", preview };
-  }
-  if (value.mode !== "engine_dependencies") {
-    return { kind: "unsupported", preview };
-  }
-  return {
-    kind: "supported",
-    policy: {
-      ...value,
-      mode: "engine_dependencies",
-      always_include: alwaysInclude,
-      ignored,
-    },
-  };
-}
+const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["year", 31_536_000_000],
+  ["month", 2_592_000_000],
+  ["week", 604_800_000],
+  ["day", 86_400_000],
+  ["hour", 3_600_000],
+  ["minute", 60_000],
+];
 
 function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -123,13 +88,45 @@ function formatCompletedAt(value: number): string {
   return Number.isNaN(date.getTime()) ? "Time not recorded" : date.toLocaleString();
 }
 
+function formatRelativeTime(value: number, now: number): string {
+  if (!Number.isFinite(value)) return "Time not recorded";
+  const elapsed = now - value;
+  if (elapsed < 60_000) return "Just now";
+  const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  for (const [unit, span] of RELATIVE_UNITS) {
+    if (elapsed >= span) return formatter.format(-Math.round(elapsed / span), unit);
+  }
+  return "Just now";
+}
+
+function isoTimestamp(value: number): string | undefined {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+function shortRoot(snapshotRoot: string): string {
+  return snapshotRoot.slice(0, 8);
+}
+
 function safeArchiveName(name: string): string {
   const safe = name.trim().replace(/[^\w.-]+/g, "_").replace(/^\.+|\.+$/g, "");
   return safe || "project";
 }
 
-function patternLines(value: string): string[] {
-  return [...new Set(value.split(/\r?\n/u).map((line) => line.trim()).filter(Boolean))];
+function readProjectPolicy(meta: unknown): ProjectPolicy {
+  const record = (meta ?? {}) as Record<string, unknown>;
+  const mainDocument = typeof record.main_doc === "string" ? record.main_doc : "";
+  const policy = (record.checkpoints ?? {}) as Record<string, unknown>;
+  const ignored = Array.isArray(policy.ignored)
+    ? policy.ignored.filter((entry): entry is string => typeof entry === "string")
+    : [];
+  return { mainDocument, ignored };
+}
+
+function unstoredSentence(count: number): string {
+  return count === 1
+    ? "1 file was not stored, so it stays as it is on disk."
+    : `${count} files were not stored, so they stay as they are on disk.`;
 }
 
 function StoreSummary({ stats }: { stats: CheckpointStoreStats }) {
@@ -141,7 +138,7 @@ function StoreSummary({ stats }: { stats: CheckpointStoreStats }) {
   ];
 
   return (
-    <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-y bg-muted/20 px-4 py-3 sm:grid-cols-4">
+    <dl className="grid shrink-0 grid-cols-2 gap-x-4 gap-y-3 border-y bg-muted/20 px-4 py-3 sm:grid-cols-4">
       {items.map((item) => (
         <div key={item.label} className="min-w-0">
           <dt className="text-[11px] text-muted-foreground">{item.label}</dt>
@@ -152,125 +149,317 @@ function StoreSummary({ stats }: { stats: CheckpointStoreStats }) {
   );
 }
 
-interface CheckpointRowProps {
-  checkpoint: CheckpointSummary;
+interface FileListProps {
+  id: string;
+  label: string;
+  state: FileState | undefined;
+  policy: ProjectPolicy | null;
+  mainDocument: string;
+  pendingPath: string | null;
   busy: boolean;
-  confirmation: Confirmation;
-  onConfirm: (confirmation: Confirmation) => void;
-  onRestore: (checkpoint: CheckpointSummary) => void;
-  onDelete: (checkpoint: CheckpointSummary) => void;
+  onRetry: () => void;
+  onIgnore: (path: string) => void;
+  onUnignore: (path: string) => void;
 }
 
-function CheckpointRow({
-  checkpoint,
+function FileList({
+  id,
+  label,
+  state,
+  policy,
+  mainDocument,
+  pendingPath,
   busy,
+  onRetry,
+  onIgnore,
+  onUnignore,
+}: FileListProps) {
+  if (!state || state.status === "loading") {
+    return (
+      <div
+        id={id}
+        role="status"
+        className="mt-2 flex items-center gap-2 rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground"
+      >
+        <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden />
+        Loading files.
+      </div>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <div id={id} className="mt-2 rounded-md border bg-muted/20 px-3 py-2 text-xs">
+        <p className="text-destructive" role="alert">
+          Couldn't load the files in this checkpoint.
+        </p>
+        <Button variant="outline" size="sm" className="mt-2" onClick={onRetry}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  if (state.files.length === 0) {
+    return (
+      <p id={id} className="mt-2 rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+        This checkpoint recorded no files.
+      </p>
+    );
+  }
+
+  return (
+    <ul id={id} aria-label={`Files in ${label}`} className="mt-2 list-none rounded-md border bg-muted/20 p-0">
+      {state.files.map((file) => {
+        const protectedPath =
+          file.path === PROTECTED_FILE ||
+          file.path === mainDocument ||
+          file.path === policy?.mainDocument;
+        const ignored = policy?.ignored.includes(file.path) ?? false;
+        const pending = pendingPath === file.path;
+        return (
+          <li
+            key={file.path}
+            data-testid="checkpoint-file"
+            data-path={file.path}
+            className="flex items-start gap-3 border-b px-3 py-2 last:border-b-0"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="truncate font-mono text-xs" title={file.path}>
+                  {file.path}
+                </span>
+                {file.stored ? null : (
+                  <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                    Not stored
+                  </Badge>
+                )}
+              </div>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {formatBytes(file.bytes)} · {file.replayed ? "Compiler input" : "Included by policy"}
+              </p>
+            </div>
+            {policy && !protectedPath ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 shrink-0 text-[11px] text-muted-foreground hover:text-foreground"
+                disabled={busy || pending}
+                onClick={() => (ignored ? onUnignore(file.path) : onIgnore(file.path))}
+              >
+                {pending ? (
+                  <Loader2 className="size-3 animate-spin motion-reduce:animate-none" aria-hidden />
+                ) : null}
+                {ignored ? "Stop ignoring" : "Ignore in future checkpoints"}
+              </Button>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+interface TimelineEntryProps {
+  checkpoint: CheckpointSummary;
+  label: string;
+  now: number;
+  busy: boolean;
+  expanded: boolean;
+  confirmation: Confirmation;
+  fileState: FileState | undefined;
+  policy: ProjectPolicy | null;
+  pendingPath: string | null;
+  copied: boolean;
+  onToggleFiles: () => void;
+  onConfirm: (confirmation: Confirmation) => void;
+  onRestore: () => void;
+  onDelete: () => void;
+  onCopyRoot: () => void;
+  onRetryFiles: () => void;
+  onIgnore: (path: string) => void;
+  onUnignore: (path: string) => void;
+}
+
+function TimelineEntry({
+  checkpoint,
+  label,
+  now,
+  busy,
+  expanded,
   confirmation,
+  fileState,
+  policy,
+  pendingPath,
+  copied,
+  onToggleFiles,
   onConfirm,
   onRestore,
   onDelete,
-}: CheckpointRowProps) {
-  const restoring =
-    confirmation?.kind === "restore" && confirmation.snapshotRoot === checkpoint.snapshot_root;
-  const deleting =
-    confirmation?.kind === "delete" && confirmation.snapshotRoot === checkpoint.snapshot_root;
-  const completedAt = formatCompletedAt(checkpoint.completed_at_unix_ms);
+  onCopyRoot,
+  onRetryFiles,
+  onIgnore,
+  onUnignore,
+}: TimelineEntryProps) {
+  const root = checkpoint.snapshot_root;
+  const restoring = confirmation?.kind === "restore" && confirmation.snapshotRoot === root;
+  const deleting = confirmation?.kind === "delete" && confirmation.snapshotRoot === root;
+  const filesId = `checkpoint-files-${root}`;
+  const unstored =
+    fileState?.status === "ready" ? fileState.files.filter((file) => !file.stored).length : 0;
 
   return (
-    <li className="rounded-lg border bg-background/70 px-3 py-3">
+    <li
+      data-testid="checkpoint-entry"
+      data-version={label}
+      data-root={root}
+      className="group relative rounded-md py-3 pl-10 pr-2 hover:bg-accent/60"
+    >
+      <span
+        aria-hidden
+        className="absolute left-[14px] top-[18px] z-10 size-2.5 rounded-full border-2 border-popover bg-primary ring-1 ring-primary/35"
+      />
       <div className="flex items-start gap-3">
-        <span
-          aria-hidden
-          className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
-        >
-          <ShieldCheck className="size-3.5" />
-        </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-medium">{completedAt}</h3>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {checkpoint.engine || "Unknown engine"} ·{" "}
-            {checkpoint.toolchain_identity || "Toolchain not recorded"} ·{" "}
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <span className="text-sm font-medium tabular-nums">{label}</span>
+            <time
+              dateTime={isoTimestamp(checkpoint.completed_at_unix_ms)}
+              className="text-xs text-muted-foreground"
+            >
+              {formatRelativeTime(checkpoint.completed_at_unix_ms, now)}
+            </time>
+          </div>
+          <div className="mt-0.5 truncate text-xs text-muted-foreground">
+            {checkpoint.engine ? checkpointEngineLabel(checkpoint.engine) : "Unknown engine"} ·{" "}
             {checkpoint.main_document || "Main document not recorded"}
-          </p>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <span>{formatCompletedAt(checkpoint.completed_at_unix_ms)}</span>
+            <span aria-hidden>·</span>
+            <span>
+              {checkpoint.file_count.toLocaleString()}{" "}
+              {checkpoint.file_count === 1 ? "file" : "files"}
+            </span>
+            <span aria-hidden>·</span>
+            <span>{formatBytes(checkpoint.logical_bytes)}</span>
+            {root ? (
+              <>
+                <span aria-hidden>·</span>
+                <Tooltip
+                  label={copied ? "Checkpoint id copied" : "Copy full checkpoint id"}
+                  side="top"
+                >
+                  <button
+                    type="button"
+                    aria-label={`Copy checkpoint id ${shortRoot(root)}`}
+                    onClick={onCopyRoot}
+                    className="inline-flex items-center gap-1 rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] text-foreground/80 hover:border-primary/40 hover:bg-accent hover:text-foreground"
+                  >
+                    {shortRoot(root)}
+                    {copied ? (
+                      <Check className="size-2.5 text-emerald-500" />
+                    ) : (
+                      <Copy className="size-2.5 opacity-60" />
+                    )}
+                  </button>
+                </Tooltip>
+              </>
+            ) : null}
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={busy}
-            onClick={() =>
-              onConfirm({ kind: "restore", snapshotRoot: checkpoint.snapshot_root })
-            }
-          >
-            <RotateCcw className="size-3.5" />
-            Restore
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            aria-label={`Delete checkpoint from ${completedAt}`}
-            disabled={busy}
-            onClick={() =>
-              onConfirm({ kind: "delete", snapshotRoot: checkpoint.snapshot_root })
-            }
-          >
-            <Trash2 className="size-3.5" />
-          </Button>
+          {restoring ? (
+            <>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={busy}
+                onClick={onRestore}
+                title={`Overwrite all files with ${label}`}
+              >
+                Overwrite all
+              </Button>
+              <Button variant="ghost" size="sm" disabled={busy} onClick={() => onConfirm(null)}>
+                Cancel
+              </Button>
+            </>
+          ) : deleting ? (
+            <>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={busy}
+                onClick={onDelete}
+                title={`Delete ${label} permanently`}
+              >
+                Delete checkpoint
+              </Button>
+              <Button variant="ghost" size="sm" disabled={busy} onClick={() => onConfirm(null)}>
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`Restore ${label}`}
+                disabled={busy}
+                onClick={() => onConfirm({ kind: "restore", snapshotRoot: root })}
+              >
+                <RotateCcw className="size-3.5" />
+                Restore
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                aria-label={`Delete ${label}`}
+                disabled={busy}
+                onClick={() => onConfirm({ kind: "delete", snapshotRoot: root })}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      <dl className="mt-3 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-1 pl-10 text-xs">
-        <dt className="text-muted-foreground">Snapshot root</dt>
-        <dd className="truncate font-mono" title={checkpoint.snapshot_root}>
-          {checkpoint.snapshot_root || "Not recorded"}
-        </dd>
-        <dt className="text-muted-foreground">Output proof</dt>
-        <dd className="truncate font-mono" title={checkpoint.output_hash}>
-          {checkpoint.output_hash || "Not recorded"}
-        </dd>
-        <dt className="text-muted-foreground">Captured source</dt>
-        <dd>
-          {checkpoint.file_count.toLocaleString()} {checkpoint.file_count === 1 ? "file" : "files"} ·{" "}
-          {formatBytes(checkpoint.logical_bytes)}
-        </dd>
-      </dl>
-
-      {restoring ? (
-        <div className="mt-3 rounded-md bg-amber-500/10 px-3 py-2 text-xs" role="status">
-          <p className="text-foreground">
-            Restore this checkpoint? Current project files will be replaced. No new checkpoint is created.
-          </p>
-          <div className="mt-2 flex items-center gap-2">
-            <Button autoFocus size="sm" disabled={busy} onClick={() => onRestore(checkpoint)}>
-              Restore checkpoint
-            </Button>
-            <Button variant="ghost" size="sm" disabled={busy} onClick={() => onConfirm(null)}>
-              Keep current files
-            </Button>
-          </div>
-        </div>
+      {restoring && unstored > 0 ? (
+        <p className="mt-2 rounded-md bg-amber-500/10 px-3 py-2 text-xs" role="status">
+          {unstoredSentence(unstored)}
+        </p>
       ) : null}
 
-      {deleting ? (
-        <div className="mt-3 rounded-md bg-destructive/10 px-3 py-2 text-xs" role="status">
-          <p className="text-foreground">
-            Delete this checkpoint permanently? This cannot be undone.
-          </p>
-          <div className="mt-2 flex items-center gap-2">
-            <Button
-              autoFocus
-              variant="destructive"
-              size="sm"
-              disabled={busy}
-              onClick={() => onDelete(checkpoint)}
-            >
-              Delete checkpoint
-            </Button>
-            <Button variant="ghost" size="sm" disabled={busy} onClick={() => onConfirm(null)}>
-              Keep checkpoint
-            </Button>
-          </div>
-        </div>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={expanded ? filesId : undefined}
+        aria-label={`${expanded ? "Hide" : "Show"} files for ${label}`}
+        onClick={onToggleFiles}
+        className="mt-1.5 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-xs text-muted-foreground hover:text-foreground"
+      >
+        <ChevronRight
+          aria-hidden
+          className={cn("size-3 transition-transform", expanded && "rotate-90")}
+        />
+        {expanded ? "Hide files" : "Show files"}
+      </button>
+
+      {expanded ? (
+        <FileList
+          id={filesId}
+          label={label}
+          state={fileState}
+          policy={policy}
+          mainDocument={checkpoint.main_document}
+          pendingPath={pendingPath}
+          busy={busy}
+          onRetry={onRetryFiles}
+          onIgnore={onIgnore}
+          onUnignore={onUnignore}
+        />
       ) : null}
     </li>
   );
@@ -291,41 +480,25 @@ export function CheckpointsModal() {
   const [confirmation, setConfirmation] = useState<Confirmation>(null);
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [savedPolicy, setSavedPolicy] = useState<CheckpointPolicy | null>(null);
-  const [policyIssue, setPolicyIssue] = useState<PolicyIssue | null>(null);
-  const [alwaysInclude, setAlwaysInclude] = useState("");
-  const [ignored, setIgnored] = useState("");
-  const [policyLoading, setPolicyLoading] = useState(false);
-  const [policySaving, setPolicySaving] = useState(false);
-  const [policyError, setPolicyError] = useState<string | null>(null);
+  const [policy, setPolicy] = useState<ProjectPolicy | null>(null);
+  const [expanded, setExpanded] = useState<string[]>([]);
+  const [fileStates, setFileStates] = useState<Record<string, FileState>>({});
+  const [pendingFile, setPendingFile] = useState<string | null>(null);
+  const [copiedRoot, setCopiedRoot] = useState<string | null>(null);
   const loadRequest = useRef(0);
   const policyRequest = useRef(0);
   const sessionRequest = useRef(0);
   const actionRequest = useRef(0);
+  const fileRequests = useRef(new Map<string, number>());
+  const copyTimer = useRef<number | null>(null);
   const seenRevision = useRef(checkpointsRevision);
   const renderedIdentity = useRef({ open, projectId });
   const renderIdentityChanged =
-    renderedIdentity.current.open !== open ||
-    renderedIdentity.current.projectId !== projectId;
+    renderedIdentity.current.open !== open || renderedIdentity.current.projectId !== projectId;
   const close = useCallback(() => {
-    if (!busyAction && !policySaving) setOpen(false);
-  }, [busyAction, policySaving, setOpen]);
+    if (!busyAction) setOpen(false);
+  }, [busyAction, setOpen]);
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, close);
-
-  const applyLoadedPolicy = useCallback((value: unknown) => {
-    const parsed = parsePolicy(value);
-    if (parsed.kind === "supported") {
-      setSavedPolicy(parsed.policy);
-      setPolicyIssue(null);
-      setAlwaysInclude(parsed.policy.always_include.join("\n"));
-      setIgnored(parsed.policy.ignored.join("\n"));
-      return;
-    }
-    setSavedPolicy(null);
-    setPolicyIssue(parsed);
-    setAlwaysInclude("");
-    setIgnored("");
-  }, []);
 
   const isCurrentSession = useCallback(
     (targetProjectId: string | null, session: number) =>
@@ -349,8 +522,7 @@ export function CheckpointsModal() {
 
   const isCurrentAction = useCallback(
     (token: ModalActionToken) =>
-      token.request === actionRequest.current &&
-      isCurrentSession(token.projectId, token.session),
+      token.request === actionRequest.current && isCurrentSession(token.projectId, token.session),
     [isCurrentSession],
   );
 
@@ -372,28 +544,15 @@ export function CheckpointsModal() {
           checkpointList(targetProjectId),
           checkpointStats(targetProjectId),
         ]);
-        if (
-          request !== loadRequest.current ||
-          !isCurrentSession(targetProjectId, session)
-        ) {
-          return;
-        }
+        if (request !== loadRequest.current || !isCurrentSession(targetProjectId, session)) return;
         setCheckpoints(nextCheckpoints);
         setStats(nextStats);
       } catch (error) {
-        if (
-          request !== loadRequest.current ||
-          !isCurrentSession(targetProjectId, session)
-        ) {
-          return;
-        }
+        if (request !== loadRequest.current || !isCurrentSession(targetProjectId, session)) return;
         void logError("load checkpoints", error);
         setLoadError("Couldn't load checkpoints. Try again.");
       } finally {
-        if (
-          request === loadRequest.current &&
-          isCurrentSession(targetProjectId, session)
-        ) {
+        if (request === loadRequest.current && isCurrentSession(targetProjectId, session)) {
           setLoading(false);
         }
       }
@@ -406,47 +565,45 @@ export function CheckpointsModal() {
       if (!isCurrentSession(targetProjectId, session)) return;
       const request = ++policyRequest.current;
       if (!targetProjectId) {
-        setSavedPolicy(null);
-        setPolicyIssue(null);
-        setAlwaysInclude("");
-        setIgnored("");
-        setPolicyLoading(false);
-        setPolicyError(null);
+        setPolicy(null);
         return;
       }
-      setPolicyLoading(true);
-      setPolicyError(null);
       try {
         const meta = await getProject(targetProjectId);
-        if (
-          request !== policyRequest.current ||
-          !isCurrentSession(targetProjectId, session)
-        ) {
-          return;
-        }
-        const storedPolicy: unknown = (meta as { checkpoints?: unknown }).checkpoints;
-        applyLoadedPolicy(
-          storedPolicy === undefined ? DEFAULT_CHECKPOINT_POLICY : storedPolicy,
-        );
+        if (request !== policyRequest.current || !isCurrentSession(targetProjectId, session)) return;
+        setPolicy(readProjectPolicy(meta));
       } catch (error) {
-        if (
-          request !== policyRequest.current ||
-          !isCurrentSession(targetProjectId, session)
-        ) {
-          return;
-        }
+        if (request !== policyRequest.current || !isCurrentSession(targetProjectId, session)) return;
         void logError("load checkpoint policy", error);
-        setPolicyError("Couldn't load this project's checkpoint policy.");
-      } finally {
-        if (
-          request === policyRequest.current &&
-          isCurrentSession(targetProjectId, session)
-        ) {
-          setPolicyLoading(false);
-        }
+        setPolicy(null);
       }
     },
-    [applyLoadedPolicy, isCurrentSession],
+    [isCurrentSession],
+  );
+
+  const loadFiles = useCallback(
+    async (targetProjectId: string, snapshotRoot: string, session: number) => {
+      if (!isCurrentSession(targetProjectId, session)) return;
+      const request = (fileRequests.current.get(snapshotRoot) ?? 0) + 1;
+      fileRequests.current.set(snapshotRoot, request);
+      const stillCurrent = () =>
+        request === fileRequests.current.get(snapshotRoot) &&
+        isCurrentSession(targetProjectId, session);
+      setFileStates((current) => ({ ...current, [snapshotRoot]: { status: "loading" } }));
+      try {
+        const files = await checkpointFiles(targetProjectId, snapshotRoot);
+        if (!stillCurrent()) return;
+        setFileStates((current) => ({
+          ...current,
+          [snapshotRoot]: { status: "ready", files },
+        }));
+      } catch (error) {
+        if (!stillCurrent()) return;
+        void logError("load checkpoint files", error);
+        setFileStates((current) => ({ ...current, [snapshotRoot]: { status: "error" } }));
+      }
+    },
+    [isCurrentSession],
   );
 
   useLayoutEffect(() => {
@@ -455,24 +612,39 @@ export function CheckpointsModal() {
     actionRequest.current += 1;
     loadRequest.current += 1;
     policyRequest.current += 1;
+    fileRequests.current.clear();
+    if (copyTimer.current !== null) {
+      window.clearTimeout(copyTimer.current);
+      copyTimer.current = null;
+    }
     setBusyAction(null);
-    setPolicySaving(false);
     setConfirmation(null);
     setPassword("");
     setPasswordError(null);
+    setExpanded([]);
+    setFileStates({});
+    setPendingFile(null);
+    setCopiedRoot(null);
     if (!open) {
       setLoading(false);
-      setPolicyLoading(false);
       return;
     }
     setCheckpoints([]);
     setStats(null);
-    setSavedPolicy(null);
-    setPolicyIssue(null);
-    setAlwaysInclude("");
-    setIgnored("");
+    setPolicy(null);
     void refresh(projectId, true, session);
     void loadPolicy(projectId, session);
+    return () => {
+      sessionRequest.current += 1;
+      actionRequest.current += 1;
+      loadRequest.current += 1;
+      policyRequest.current += 1;
+      fileRequests.current.clear();
+      if (copyTimer.current !== null) {
+        window.clearTimeout(copyTimer.current);
+        copyTimer.current = null;
+      }
+    };
   }, [open, projectId, loadPolicy, refresh]);
 
   useEffect(() => {
@@ -482,7 +654,90 @@ export function CheckpointsModal() {
     void refresh(projectId, false, sessionRequest.current);
   }, [checkpointsRevision, open, projectId, refresh]);
 
+  const visibleCheckpoints = renderIdentityChanged ? [] : checkpoints;
+  const versionLabels = useMemo(() => {
+    const labels = new Map<string, string>();
+    [...visibleCheckpoints].reverse().forEach((entry, index) => {
+      labels.set(entry.snapshot_root, `V${index + 1}`);
+    });
+    return labels;
+  }, [visibleCheckpoints]);
+
   if (!open) return null;
+
+  const visibleStats = renderIdentityChanged ? null : stats;
+  const visiblePolicy = renderIdentityChanged ? null : policy;
+  const visibleLoading = Boolean(projectId) && (renderIdentityChanged || loading);
+  const checkpointCount = visibleStats?.checkpoint_count ?? visibleCheckpoints.length;
+  const busy = busyAction !== null;
+  const publishing = Boolean(projectId) && publishingProjectId === projectId;
+  const now = Date.now();
+  const labelFor = (snapshotRoot: string) => versionLabels.get(snapshotRoot) ?? "Checkpoint";
+
+  const ensureFiles = (snapshotRoot: string) => {
+    if (!projectId) return;
+    if (fileStates[snapshotRoot]?.status === "ready") return;
+    void loadFiles(projectId, snapshotRoot, sessionRequest.current);
+  };
+
+  const toggleFiles = (snapshotRoot: string) => {
+    const willExpand = !expanded.includes(snapshotRoot);
+    setExpanded((current) =>
+      willExpand
+        ? [...current, snapshotRoot]
+        : current.filter((entry) => entry !== snapshotRoot),
+    );
+    if (willExpand) ensureFiles(snapshotRoot);
+  };
+
+  const confirm = (next: Confirmation) => {
+    setConfirmation(next);
+    if (next?.kind === "restore") ensureFiles(next.snapshotRoot);
+  };
+
+  const copyRoot = async (snapshotRoot: string) => {
+    try {
+      await navigator.clipboard.writeText(snapshotRoot);
+      setCopiedRoot(snapshotRoot);
+      if (copyTimer.current !== null) window.clearTimeout(copyTimer.current);
+      copyTimer.current = window.setTimeout(() => {
+        copyTimer.current = null;
+        setCopiedRoot((current) => (current === snapshotRoot ? null : current));
+      }, 1500);
+    } catch (error) {
+      notifyError("copy checkpoint id", error, "Couldn't copy that checkpoint id.");
+    }
+  };
+
+  const changeIgnore = async (path: string, ignore: boolean) => {
+    if (!projectId) return;
+    const action = beginAction(projectId);
+    if (!action || !isCurrentAction(action)) return;
+    setPendingFile(path);
+    setBusyAction(`ignore:${path}`);
+    try {
+      const meta = ignore
+        ? await checkpointIgnorePath(action.projectId, path)
+        : await checkpointUnignorePath(action.projectId, path);
+      if (!isCurrentAction(action)) return;
+      setPolicy(readProjectPolicy(meta));
+      toast.success(
+        ignore ? "Ignored in future checkpoints." : "Stopped ignoring this file.",
+      );
+    } catch (error) {
+      if (!isCurrentAction(action)) return;
+      notifyError(
+        "change checkpoint ignore list",
+        error,
+        "Couldn't change this project's ignore list.",
+      );
+    } finally {
+      if (isCurrentAction(action)) {
+        setPendingFile(null);
+        setBusyAction(null);
+      }
+    }
+  };
 
   const restore = async (checkpoint: CheckpointSummary) => {
     if (!projectId) return;
@@ -499,13 +754,11 @@ export function CheckpointsModal() {
         expectedGeneration,
       );
       if (!isCurrentAction(action)) return;
-      const applied = await useFilesStore.getState().applyProjectStateChanged(event);
+      await useFilesStore.getState().applyProjectStateChanged(event);
       if (!isCurrentAction(action)) return;
-      if (!applied) {
-        throw new Error("The open project changed before the restored files could be shown.");
-      }
       toast.success("Checkpoint restored.");
       setOpen(false);
+
     } catch (error) {
       if (!isCurrentAction(action)) return;
       notifyError(
@@ -581,70 +834,6 @@ export function CheckpointsModal() {
     }
   };
 
-  const savePolicy = async () => {
-    if (!projectId || !savedPolicy) return;
-    const action = beginAction(projectId);
-    if (!action || !isCurrentAction(action)) return;
-    const nextPolicy: CheckpointPolicy = {
-      ...savedPolicy,
-      mode: "engine_dependencies",
-      always_include: patternLines(alwaysInclude),
-      ignored: patternLines(ignored),
-    };
-    setPolicySaving(true);
-    setPolicyError(null);
-    try {
-      const meta = await setProjectCheckpointPolicy(action.projectId, nextPolicy);
-      if (!isCurrentAction(action)) return;
-      const persisted: unknown = (meta as { checkpoints?: unknown }).checkpoints;
-      applyLoadedPolicy(persisted === undefined ? nextPolicy : persisted);
-      toast.success("Checkpoint policy saved.");
-    } catch (error) {
-      if (!isCurrentAction(action)) return;
-      void logError("save checkpoint policy", error);
-      const detail =
-        error instanceof Error ? error.message : typeof error === "string" ? error : "";
-      setPolicyError(detail || "Couldn't save this project's checkpoint policy.");
-    } finally {
-      if (isCurrentAction(action)) setPolicySaving(false);
-    }
-  };
-
-  const discardPolicyChanges = () => {
-    if (!savedPolicy) return;
-    setAlwaysInclude(savedPolicy.always_include.join("\n"));
-    setIgnored(savedPolicy.ignored.join("\n"));
-    setPolicyError(null);
-  };
-
-  const resetToSafePolicy = async () => {
-    if (!projectId) return;
-    const action = beginAction(projectId);
-    if (!action || !isCurrentAction(action)) return;
-    const safePolicy: CheckpointPolicy = {
-      mode: "engine_dependencies",
-      always_include: [],
-      ignored: [],
-    };
-    setPolicySaving(true);
-    setPolicyError(null);
-    try {
-      const meta = await setProjectCheckpointPolicy(action.projectId, safePolicy);
-      if (!isCurrentAction(action)) return;
-      const persisted: unknown = (meta as { checkpoints?: unknown }).checkpoints;
-      applyLoadedPolicy(persisted === undefined ? safePolicy : persisted);
-      toast.success("Checkpoint policy reset.");
-    } catch (error) {
-      if (!isCurrentAction(action)) return;
-      void logError("reset checkpoint policy", error);
-      const detail =
-        error instanceof Error ? error.message : typeof error === "string" ? error : "";
-      setPolicyError(detail || "Couldn't reset this project's checkpoint policy.");
-    } finally {
-      if (isCurrentAction(action)) setPolicySaving(false);
-    }
-  };
-
   const archivePasswordIsValid = () => {
     if (Array.from(password).length >= 8) return true;
     setPasswordError("Password needs at least 8 characters.");
@@ -704,23 +893,13 @@ export function CheckpointsModal() {
     }
   };
 
-  const visibleCheckpoints = renderIdentityChanged ? [] : checkpoints;
-  const visibleStats = renderIdentityChanged ? null : stats;
-  const visibleLoading = Boolean(projectId) && (renderIdentityChanged || loading);
-  const checkpointCount = visibleStats?.checkpoint_count ?? visibleCheckpoints.length;
-  const policyDirty = Boolean(
-    savedPolicy &&
-      (savedPolicy.mode !== "engine_dependencies" ||
-        alwaysInclude !== savedPolicy.always_include.join("\n") ||
-        ignored !== savedPolicy.ignored.join("\n")),
-  );
-  const busy = busyAction !== null || policySaving;
+  const railVisible = visibleCheckpoints.length + (publishing ? 1 : 0) > 1;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <button
         type="button"
-        aria-label="Close checkpoints"
+        aria-label="Dismiss checkpoints"
         className="absolute inset-0"
         onMouseDown={onBackdropMouseDown}
       />
@@ -732,7 +911,7 @@ export function CheckpointsModal() {
         aria-labelledby="checkpoints-title"
         className="relative flex h-[min(42rem,88vh)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl"
       >
-        <header className="flex items-start gap-3 px-4 py-4">
+        <header className="flex shrink-0 items-start gap-3 px-4 py-4">
           <span
             aria-hidden
             className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
@@ -744,7 +923,7 @@ export function CheckpointsModal() {
               Checkpoints
             </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Validated source snapshots from successful compiles.
+              One version per successful compile that changed the source.
             </p>
           </div>
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
@@ -764,29 +943,25 @@ export function CheckpointsModal() {
 
         {visibleStats ? <StoreSummary stats={visibleStats} /> : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-          {projectId && publishingProjectId === projectId ? (
-            <div
-              className="mb-3 flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground"
-              role="status"
-            >
-              <Loader2 className="size-3.5 animate-spin" aria-hidden />
-              Saving a checkpoint from the latest compile.
-            </div>
-          ) : null}
+        <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
           {!projectId ? (
-
             <div className="flex min-h-44 flex-col items-center justify-center text-center">
               <ArchiveRestore className="size-7 text-muted-foreground" />
               <p className="mt-3 text-sm font-medium">Open a project to view its checkpoints.</p>
             </div>
           ) : visibleLoading ? (
-            <div className="flex min-h-44 items-center justify-center gap-2 text-sm text-muted-foreground" role="status">
-              <Loader2 className="size-4 animate-spin" />
-              Loading checkpoints…
+            <div
+              className="flex min-h-44 items-center justify-center gap-2 text-sm text-muted-foreground"
+              role="status"
+            >
+              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+              Loading checkpoints.
             </div>
           ) : loadError ? (
-            <div className="flex min-h-44 flex-col items-center justify-center text-center" role="alert">
+            <div
+              className="flex min-h-44 flex-col items-center justify-center text-center"
+              role="alert"
+            >
               <p className="text-sm text-destructive">{loadError}</p>
               <Button
                 variant="outline"
@@ -797,309 +972,214 @@ export function CheckpointsModal() {
                 Try again
               </Button>
             </div>
-          ) : visibleCheckpoints.length === 0 ? (
+          ) : visibleCheckpoints.length === 0 && !publishing ? (
             <div className="flex min-h-44 flex-col items-center justify-center text-center">
               <ShieldCheck className="size-7 text-muted-foreground" />
               <p className="mt-3 text-sm font-medium">No checkpoints yet</p>
               <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-                A checkpoint appears after a successful compile when Oleafly can verify every source dependency.
+                A checkpoint appears after a successful compile when Oleafly can verify every source
+                dependency.
               </p>
             </div>
           ) : (
-            <ul className="list-none space-y-2 p-0" aria-label="Project checkpoints">
+            <ol
+              data-testid="checkpoint-timeline"
+              aria-label="Project checkpoints"
+              className="relative list-none p-0"
+            >
+              {railVisible ? (
+                <span
+                  data-testid="checkpoint-rail"
+                  aria-hidden
+                  className="absolute bottom-6 left-[18px] top-6 w-px bg-primary/40"
+                />
+              ) : null}
+              {publishing ? (
+                <li
+                  data-testid="checkpoint-publishing"
+                  className="relative py-3 pl-10 pr-2"
+                >
+                  <span
+                    aria-hidden
+                    className="absolute left-[14px] top-[18px] z-10 size-2.5 rounded-full border-2 border-dashed border-primary/60 bg-popover"
+                  />
+                  <span
+                    role="status"
+                    className="flex items-center gap-2 text-xs text-muted-foreground"
+                  >
+                    <Loader2
+                      className="size-3.5 animate-spin motion-reduce:animate-none"
+                      aria-hidden
+                    />
+                    Saving a checkpoint from the latest compile.
+                  </span>
+                </li>
+              ) : null}
               {visibleCheckpoints.map((checkpoint) => (
-                <CheckpointRow
+                <TimelineEntry
                   key={checkpoint.snapshot_root}
                   checkpoint={checkpoint}
+                  label={labelFor(checkpoint.snapshot_root)}
+                  now={now}
                   busy={busy}
+                  expanded={expanded.includes(checkpoint.snapshot_root)}
                   confirmation={confirmation}
-                  onConfirm={setConfirmation}
-                  onRestore={(value) => void restore(value)}
-                  onDelete={(value) => void deleteCheckpoint(value)}
+                  fileState={fileStates[checkpoint.snapshot_root]}
+                  policy={visiblePolicy}
+                  pendingPath={pendingFile}
+                  copied={copiedRoot === checkpoint.snapshot_root}
+                  onToggleFiles={() => toggleFiles(checkpoint.snapshot_root)}
+                  onConfirm={confirm}
+                  onRestore={() => void restore(checkpoint)}
+                  onDelete={() => void deleteCheckpoint(checkpoint)}
+                  onCopyRoot={() => void copyRoot(checkpoint.snapshot_root)}
+                  onRetryFiles={() => ensureFiles(checkpoint.snapshot_root)}
+                  onIgnore={(path) => void changeIgnore(path, true)}
+                  onUnignore={(path) => void changeIgnore(path, false)}
                 />
               ))}
-            </ul>
+            </ol>
           )}
+        </div>
 
-          {projectId && !visibleLoading ? (
-            <section className="mt-5 border-t pt-4" aria-labelledby="checkpoint-storage-title">
-              <div className="flex items-start gap-3">
-                <Database className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-                <div className="min-w-0 flex-1">
-                  <h3 id="checkpoint-storage-title" className="text-sm font-medium">
-                    Storage
-                  </h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Checkpoints are stored outside the project and version control.
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
+        {projectId ? (
+          <footer className="shrink-0 border-t px-4 py-3">
+            {confirmation?.kind === "keep-latest" ? (
+              <div className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-xs" role="status">
+                <p>Delete every checkpoint except the latest one? This cannot be undone.</p>
+                <div className="mt-2 flex gap-2">
                   <Button
-                    variant="outline"
+                    autoFocus
+                    variant="destructive"
                     size="sm"
-                    disabled={busy || checkpointCount <= 1}
-                    onClick={() => setConfirmation({ kind: "keep-latest" })}
+                    disabled={busy}
+                    onClick={() => void keepLatest()}
                   >
-                    Keep latest
+                    Delete older checkpoints
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    disabled={busy || checkpointCount === 0}
-                    onClick={() => setConfirmation({ kind: "reset" })}
+                    disabled={busy}
+                    onClick={() => setConfirmation(null)}
                   >
-                    Reset
+                    Keep all checkpoints
                   </Button>
                 </div>
               </div>
+            ) : null}
 
-              {confirmation?.kind === "keep-latest" ? (
-                <div className="mt-3 rounded-md bg-destructive/10 px-3 py-2 text-xs" role="status">
-                  <p>Delete every checkpoint except the latest one? This cannot be undone.</p>
-                  <div className="mt-2 flex gap-2">
-                    <Button
-                      autoFocus
-                      variant="destructive"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => void keepLatest()}
-                    >
-                      Delete older checkpoints
-                    </Button>
-                    <Button variant="ghost" size="sm" disabled={busy} onClick={() => setConfirmation(null)}>
-                      Keep all checkpoints
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-
-              {confirmation?.kind === "reset" ? (
-                <div className="mt-3 rounded-md bg-destructive/10 px-3 py-2 text-xs" role="status">
-                  <p>
-                    Delete all checkpoints for this project? Current project files stay unchanged. This cannot be undone.
-                  </p>
-                  <div className="mt-2 flex gap-2">
-                    <Button
-                      autoFocus
-                      variant="destructive"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => void reset()}
-                    >
-                      Delete all checkpoints
-                    </Button>
-                    <Button variant="ghost" size="sm" disabled={busy} onClick={() => setConfirmation(null)}>
-                      Keep checkpoints
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-
-              <section className="mt-4 rounded-lg border p-3" aria-labelledby="checkpoint-policy-title">
-                <div className="flex items-start gap-3">
-                  <FileCog className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-                  <div className="min-w-0 flex-1">
-                    <h3 id="checkpoint-policy-title" className="text-sm font-medium">
-                      Project policy
-                    </h3>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Choose which project files can be added to a checkpoint.
-                    </p>
-                  </div>
-                </div>
-
-                {policyLoading ? (
-                  <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground" role="status">
-                    <Loader2 className="size-3.5 animate-spin" />
-                    Loading project policy…
-                  </div>
-                ) : savedPolicy ? (
-                  <div className="mt-3 space-y-3">
-                    <div>
-                      <span className="text-xs font-medium">Mode</span>
-                      <div className="mt-1 rounded-md border bg-muted/35 px-2.5 py-1.5 font-mono text-xs">
-                        engine_dependencies
-                      </div>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div>
-                        <label htmlFor="checkpoint-always-include" className="text-xs font-medium">
-                          Always include
-                        </label>
-                        <Textarea
-                          id="checkpoint-always-include"
-                          value={alwaysInclude}
-                          disabled={busy}
-                          placeholder="figures/*.png"
-                          className="mt-1 min-h-20 font-mono text-xs"
-                          onChange={(event) => {
-                            setAlwaysInclude(event.target.value);
-                            setPolicyError(null);
-                          }}
-                        />
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          Add files even when the engine does not report them.
-                        </p>
-                      </div>
-                      <div>
-                        <label htmlFor="checkpoint-ignored" className="text-xs font-medium">
-                          Ignored
-                        </label>
-                        <Textarea
-                          id="checkpoint-ignored"
-                          value={ignored}
-                          disabled={busy}
-                          placeholder="scratch/*.tmp"
-                          className="mt-1 min-h-20 font-mono text-xs"
-                          onChange={(event) => {
-                            setIgnored(event.target.value);
-                            setPolicyError(null);
-                          }}
-                        />
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          Needed files still stop checkpoint creation.
-                        </p>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      Enter one relative pattern per line. Use forward slashes with * and ?.
-                    </p>
-                    {policyError ? (
-                      <p className="text-xs text-destructive" role="alert">
-                        {policyError}
-                      </p>
-                    ) : null}
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" disabled={busy || !policyDirty} onClick={() => void savePolicy()}>
-                        {policySaving ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                        Save policy
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={busy || !policyDirty}
-                        onClick={discardPolicyChanges}
-                      >
-                        Discard changes
-                      </Button>
-                    </div>
-                  </div>
-                ) : policyIssue ? (
-                  <div className="mt-3 space-y-3">
-                    <p className="text-xs text-foreground" role="status">
-                      {policyIssue.kind === "unsupported"
-                        ? "This project uses a checkpoint policy this version of Oleafly does not support."
-                        : "This project's checkpoint policy is malformed and cannot be edited safely."}
-                    </p>
-                    <section
-                      aria-label="Stored checkpoint policy"
-                      className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/35 p-2.5 text-[11px]"
-                    >
-                      <pre>{policyIssue.preview}</pre>
-                    </section>
-                    <p className="text-[11px] text-muted-foreground">
-                      Resetting replaces the stored policy with the safe engine dependency policy.
-                    </p>
-                    {policyError ? (
-                      <p className="text-xs text-destructive" role="alert">
-                        {policyError}
-                      </p>
-                    ) : null}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => void resetToSafePolicy()}
-                    >
-                      {policySaving ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                      Reset to safe policy
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="mt-3">
-                    <p className="text-xs text-destructive" role="alert">
-                      {policyError || "Couldn't load this project's checkpoint policy."}
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-2"
-                      onClick={() =>
-                        void loadPolicy(projectId, sessionRequest.current)
-                      }
-                    >
-                      Try again
-                    </Button>
-                  </div>
-                )}
-              </section>
-
-              <div className="mt-4 rounded-lg bg-muted/35 p-3">
-                <div className="flex items-start gap-3">
-                  <ArchiveRestore className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-medium">Portable archive</h3>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Export or import an encrypted checkpoint archive.
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
-                  <div>
-                    <label htmlFor="checkpoint-archive-password" className="text-xs font-medium">
-                      Archive password
-                    </label>
-                    <Input
-                      id="checkpoint-archive-password"
-                      type="password"
-                      autoComplete="new-password"
-                      minLength={8}
-                      value={password}
-                      disabled={busy}
-                      aria-invalid={Boolean(passwordError)}
-                      aria-describedby="checkpoint-password-help"
-                      onChange={(event) => {
-                        const next = event.target.value;
-                        setPassword(next);
-                        if (Array.from(next).length >= 8) setPasswordError(null);
-                      }}
-                      className="mt-1 h-8"
-                    />
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={busy || checkpointCount === 0}
-                    onClick={() => void exportArchive()}
-                  >
-                    {busyAction === "export" ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <Download className="size-3.5" />
-                    )}
-                    Export
-                  </Button>
-                  <Button variant="outline" size="sm" disabled={busy} onClick={() => void importArchive()}>
-                    {busyAction === "import" ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <FileUp className="size-3.5" />
-                    )}
-                    Import
-                  </Button>
-                </div>
-                <p
-                  id="checkpoint-password-help"
-                  className={`mt-1.5 text-[11px] ${passwordError ? "text-destructive" : "text-muted-foreground"}`}
-                  role={passwordError ? "alert" : undefined}
-                >
-                  {passwordError || "Use at least 8 characters. Oleafly does not save this password."}
+            {confirmation?.kind === "reset" ? (
+              <div className="mb-3 rounded-md bg-destructive/10 px-3 py-2 text-xs" role="status">
+                <p>
+                  Delete all checkpoints for this project? Current project files stay unchanged. This
+                  cannot be undone.
                 </p>
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    autoFocus
+                    variant="destructive"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => void reset()}
+                  >
+                    Delete all checkpoints
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => setConfirmation(null)}
+                  >
+                    Keep checkpoints
+                  </Button>
+                </div>
               </div>
-            </section>
-          ) : null}
-        </div>
+            ) : null}
+
+            <div className="flex flex-wrap items-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy || checkpointCount <= 1}
+                onClick={() => setConfirmation({ kind: "keep-latest" })}
+              >
+                Keep latest
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                disabled={busy || checkpointCount === 0}
+                onClick={() => setConfirmation({ kind: "reset" })}
+              >
+                Reset
+              </Button>
+              <div className="ml-auto flex items-end gap-2">
+                <div>
+                  <label
+                    htmlFor="checkpoint-archive-password"
+                    className="text-[11px] font-medium text-muted-foreground"
+                  >
+                    Archive password
+                  </label>
+                  <Input
+                    id="checkpoint-archive-password"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    value={password}
+                    disabled={busy}
+                    aria-invalid={Boolean(passwordError)}
+                    aria-describedby="checkpoint-password-help"
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setPassword(next);
+                      if (Array.from(next).length >= 8) setPasswordError(null);
+                    }}
+                    className="mt-1 h-8 w-40"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={busy || checkpointCount === 0}
+                  onClick={() => void exportArchive()}
+                >
+                  {busyAction === "export" ? (
+                    <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+                  ) : (
+                    <Download className="size-3.5" />
+                  )}
+                  Export
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void importArchive()}
+                >
+                  {busyAction === "import" ? (
+                    <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+                  ) : (
+                    <FileUp className="size-3.5" />
+                  )}
+                  Import
+                </Button>
+              </div>
+            </div>
+            <p
+              id="checkpoint-password-help"
+              className={cn(
+                "mt-1.5 text-[11px]",
+                passwordError ? "text-destructive" : "text-muted-foreground",
+              )}
+              role={passwordError ? "alert" : undefined}
+            >
+              {passwordError || "Use at least 8 characters. Oleafly does not save this password."}
+            </p>
+          </footer>
+        ) : null}
       </div>
     </div>
   );

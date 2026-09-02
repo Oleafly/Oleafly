@@ -10,11 +10,16 @@ import {
   cancelQuitFlush,
   checkpointDelete,
   checkpointExport,
+  checkpointFiles,
+  checkpointIgnorePath,
   checkpointImport,
+  checkpointInspect,
   checkpointKeepLatest,
   checkpointList,
   checkpointReset,
   checkpointRestore,
+  checkpointRevealStore,
+  checkpointUnignorePath,
   checkpointStats,
   checkpointVerify,
   confirmQuitFlush,
@@ -38,7 +43,6 @@ import {
   mcpServerUpdateValidated,
   mcpServerValidate,
   renameFile,
-  setCheckpointDefaults,
   setCheckpointPolicy,
   validateCompileFingerprint,
 } from "./tauri";
@@ -219,7 +223,7 @@ describe("Checkpoints bridge", () => {
     });
   });
 
-  it("routes portable project policy and local defaults independently", async () => {
+  it("routes the portable project policy through its native handler", async () => {
     mocks.invoke.mockResolvedValue(undefined);
     const policy = {
       mode: "engine_dependencies" as const,
@@ -232,10 +236,37 @@ describe("Checkpoints bridge", () => {
       projectId: "project",
       policy,
     });
+  });
 
-    await setCheckpointDefaults(policy);
-    expect(mocks.invoke).toHaveBeenLastCalledWith("set_checkpoint_defaults", {
-      policy,
+  it("routes inspection, file listing, reveal, and per-file ignore changes", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+
+    await checkpointFiles("project", "root-1");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_files", {
+      projectId: "project",
+      snapshotRoot: "root-1",
+    });
+
+    await checkpointInspect("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_inspect", {
+      projectId: "project",
+    });
+
+    await checkpointRevealStore("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_reveal_store", {
+      projectId: "project",
+    });
+
+    await checkpointIgnorePath("project", "scratch/notes.txt");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_ignore_path", {
+      projectId: "project",
+      path: "scratch/notes.txt",
+    });
+
+    await checkpointUnignorePath("project", "scratch/notes.txt");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_unignore_path", {
+      projectId: "project",
+      path: "scratch/notes.txt",
     });
   });
 });

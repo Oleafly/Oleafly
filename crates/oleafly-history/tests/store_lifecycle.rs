@@ -204,21 +204,22 @@ fn explicit_inputs_publish_once_without_capturing_unlisted_files() {
     let repeated_evidence = evidence_with_output(&repeated, 20, b"revalidated-pdf");
     assert!(matches!(
         store.publish(repeated, repeated_evidence).unwrap(),
-        PublishOutcome::Existing(checkpoint) if checkpoint.snapshot_root == first_root
+        PublishOutcome::Existing(checkpoint)
+            if checkpoint.snapshot_root == first_root && checkpoint.completed_at_unix_ms == 10
     ));
 
     let checkpoints = store.list().unwrap();
     assert_eq!(checkpoints.len(), 1);
-    assert_eq!(checkpoints[0].completed_at_unix_ms, 20);
+    assert_eq!(checkpoints[0].completed_at_unix_ms, 10);
     assert_eq!(
         checkpoints[0].output_hash,
-        ContentHash::digest(b"revalidated-pdf")
+        ContentHash::digest(b"validated-pdf")
     );
     assert_eq!(store.stats().unwrap(), stats_after_first);
 }
 
 #[test]
-fn repeated_root_becomes_newest_and_keep_latest_uses_catalog_sequence() {
+fn repeated_root_never_reorders_history_and_keep_latest_uses_catalog_sequence() {
     let temp = tempdir().unwrap();
     let project = temp.path().join("project");
     fs::create_dir_all(&project).unwrap();
@@ -251,6 +252,7 @@ fn repeated_root_becomes_newest_and_keep_latest_uses_catalog_sequence() {
         PublishOutcome::Created(checkpoint) if checkpoint.snapshot_root == root_b
     ));
 
+    let stats_before_repeat = store.stats().unwrap();
     fs::write(project.join("main.tex"), b"source-a").unwrap();
     let repeated_a = store
         .stage_candidate(
@@ -262,20 +264,21 @@ fn repeated_root_becomes_newest_and_keep_latest_uses_catalog_sequence() {
     assert!(matches!(
         publish(&store, repeated_a, 50).unwrap(),
         PublishOutcome::Existing(checkpoint)
-            if checkpoint.snapshot_root == root_a && checkpoint.completed_at_unix_ms == 50
+            if checkpoint.snapshot_root == root_a && checkpoint.completed_at_unix_ms == 100
     ));
+    assert_eq!(store.stats().unwrap(), stats_before_repeat);
 
     let listed = store.list().unwrap();
     assert_eq!(listed.len(), 2);
-    assert_eq!(listed[0].snapshot_root, root_a);
-    assert_eq!(listed[0].completed_at_unix_ms, 50);
-    assert_eq!(listed[1].snapshot_root, root_b);
-    assert_eq!(listed[1].completed_at_unix_ms, 200);
+    assert_eq!(listed[0].snapshot_root, root_b);
+    assert_eq!(listed[0].completed_at_unix_ms, 200);
+    assert_eq!(listed[1].snapshot_root, root_a);
+    assert_eq!(listed[1].completed_at_unix_ms, 100);
 
     assert_eq!(store.keep_latest().unwrap(), 1);
     let retained = store.list().unwrap();
     assert_eq!(retained.len(), 1);
-    assert_eq!(retained[0].snapshot_root, root_a);
+    assert_eq!(retained[0].snapshot_root, root_b);
 }
 
 #[test]
@@ -989,7 +992,7 @@ fn publication_rejects_a_mutated_sealed_replay_tree() {
 }
 
 #[test]
-fn republication_rejects_an_unportable_header_without_replacing_the_root() {
+fn publication_rejects_an_unportable_header_without_replacing_the_root() {
     let temp = tempdir().unwrap();
     let project = temp.path().join("project");
     fs::create_dir_all(&project).unwrap();
@@ -1001,7 +1004,10 @@ fn republication_rejects_an_unportable_header_without_replacing_the_root() {
     let root = *candidate.snapshot_root();
     publish(&store, candidate, 1).unwrap();
 
+    fs::write(project.join("main.tex"), b"changed source").unwrap();
+    let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
     let candidate = store.stage_candidate(&project, &inputs).unwrap();
+    let rejected_root = *candidate.snapshot_root();
     let evidence = CompileEvidence::new(
         "tectonic",
         "x".repeat(16 * 1024 * 1024),
@@ -1022,6 +1028,7 @@ fn republication_rejects_an_unportable_header_without_replacing_the_root() {
         error.to_string().contains("header exceeds 16 MiB"),
         "unexpected error: {error}"
     );
+    assert!(store.checkpoint(&rejected_root).unwrap().is_none());
     assert_eq!(
         store
             .checkpoint(&root)
@@ -1573,6 +1580,377 @@ fn store_open_rejects_symlinked_roots_locks_and_internal_nodes() {
     fs::write(&outside_lock, b"not a store lock").unwrap();
     symlink(&outside_lock, history.join("operation.lock")).unwrap();
     assert!(Store::open_existing(&history).is_err());
+}
+
+#[test]
+fn unstored_required_inputs_are_proven_without_retaining_their_bytes() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(project.join("figures")).unwrap();
+    let project_json = br#"{"main":"main.tex"}"#;
+    let source = b"source that reads the ignored data set";
+    let data = vec![b'x'; 4096];
+    fs::write(project.join("project.json"), project_json).unwrap();
+    fs::write(project.join("main.tex"), source).unwrap();
+    fs::write(project.join("figures/data.csv"), &data).unwrap();
+    let store = Store::open(temp.path().join("history")).unwrap();
+    let inputs = vec![
+        CaptureInput::explicit("project.json").unwrap(),
+        CaptureInput::proven(
+            "main.tex",
+            project.join("main.tex").canonicalize().unwrap(),
+            ContentHash::digest(source),
+        )
+        .unwrap(),
+        CaptureInput::replay_required_unstored(
+            "figures/data.csv",
+            project.join("figures/data.csv").canonicalize().unwrap(),
+            ContentHash::digest(&data),
+        )
+        .unwrap(),
+    ];
+
+    let candidate = store.stage_candidate(&project, &inputs).unwrap();
+    let root = *candidate.snapshot_root();
+    assert_eq!(
+        fs::read(candidate.sealed_root().join("figures/data.csv")).unwrap(),
+        data,
+        "an unstored input is still sealed for the replay compile"
+    );
+    assert_eq!(
+        candidate
+            .proven_files()
+            .iter()
+            .map(|file| file.relative_path.as_str())
+            .collect::<Vec<_>>(),
+        vec!["figures/data.csv", "main.tex"]
+    );
+    assert!(matches!(
+        publish(&store, candidate, 10).unwrap(),
+        PublishOutcome::Created(checkpoint) if checkpoint.snapshot_root == root
+    ));
+
+    let files = store.checkpoint_files(&root).unwrap().unwrap();
+    assert_eq!(
+        files
+            .iter()
+            .map(|file| (file.relative_path.as_str(), file.stored, file.chunk_count))
+            .collect::<Vec<_>>(),
+        vec![
+            ("figures/data.csv", false, 0),
+            ("main.tex", true, 1),
+            ("project.json", true, 1),
+        ]
+    );
+    assert_eq!(files[0].logical_bytes, data.len() as u64);
+    assert_eq!(files[0].content_hash, ContentHash::digest(&data));
+
+    let stats = store.stats().unwrap();
+    assert_eq!(stats.unstored_file_count, 1);
+    assert_eq!(stats.unstored_logical_bytes, data.len() as u64);
+    assert_eq!(
+        stats.visible_logical_bytes,
+        (project_json.len() + source.len() + data.len()) as u64
+    );
+    assert_eq!(
+        stats.logical_chunk_bytes,
+        (project_json.len() + source.len()) as u64
+    );
+
+    let verified = store.verify().unwrap();
+    assert_eq!(verified.checked_checkpoints, 1);
+    assert_eq!(verified.checked_files, 3);
+    assert_eq!(verified.checked_chunk_references, 2);
+
+    let restored = temp.path().join("restored");
+    let materialized = store.materialize(&root, &restored).unwrap();
+    assert_eq!(materialized.file_count, 2);
+    assert_eq!(materialized.omitted, vec!["figures/data.csv".to_string()]);
+    assert_eq!(
+        materialized.logical_bytes,
+        (project_json.len() + source.len()) as u64
+    );
+    assert!(!restored.join("figures/data.csv").exists());
+    assert_eq!(fs::read(restored.join("main.tex")).unwrap(), source);
+
+    let mut archive = Vec::new();
+    let exported = store.export_history(&mut archive).unwrap();
+    assert_eq!(exported.checkpoint_count, 1);
+    assert_eq!(
+        exported.logical_bytes,
+        (project_json.len() + source.len() + data.len()) as u64
+    );
+    let imported_store = Store::open(temp.path().join("imported-history")).unwrap();
+    let imported = imported_store.import_history(archive.as_slice()).unwrap();
+    assert_eq!(imported.created_checkpoints, 1);
+    assert_eq!(
+        imported_store.checkpoint_files(&root).unwrap().unwrap(),
+        files
+    );
+    assert_eq!(imported_store.stats().unwrap().unstored_file_count, 1);
+    assert_eq!(
+        imported_store.stats().unwrap().unstored_logical_bytes,
+        data.len() as u64
+    );
+    imported_store.verify().unwrap();
+
+    let mut single = Vec::new();
+    store.export_checkpoint(&root, &mut single).unwrap();
+    let single_store = Store::open(temp.path().join("single-history")).unwrap();
+    let error = single_store
+        .import_checkpoint(single.as_slice())
+        .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("records figures/data.csv without its bytes"),
+        "unexpected error: {error}"
+    );
+}
+
+#[test]
+fn an_unstored_main_document_is_never_publishable() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    fs::write(project.join("main.tex"), b"source").unwrap();
+    let store = Store::open(temp.path().join("history")).unwrap();
+    let candidate = store
+        .stage_candidate(
+            &project,
+            &[
+                CaptureInput::explicit("project.json").unwrap(),
+                CaptureInput::replay_required_unstored(
+                    "main.tex",
+                    project.join("main.tex").canonicalize().unwrap(),
+                    ContentHash::digest(b"source"),
+                )
+                .unwrap(),
+            ],
+        )
+        .unwrap();
+
+    let error = publish(&store, candidate, 1).unwrap_err();
+
+    assert!(
+        error
+            .to_string()
+            .contains("must always retain its checkpoint bytes"),
+        "unexpected error: {error}"
+    );
+    assert!(store.list().unwrap().is_empty());
+}
+
+#[test]
+fn a_sealed_candidate_reports_root_visibility_without_taking_new_locks() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    fs::write(project.join("main.tex"), b"source").unwrap();
+    let history = temp.path().join("history");
+    let store = Store::open(&history).unwrap();
+    let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
+    let fresh = store.stage_candidate(&project, &inputs).unwrap();
+    assert!(!fresh.root_is_visible().unwrap());
+    let root = *fresh.snapshot_root();
+    publish(&store, fresh, 10).unwrap();
+
+    let repeated = store.stage_candidate(&project, &inputs).unwrap();
+    let (sender, receiver) = std::sync::mpsc::channel();
+    let probe = std::thread::spawn(move || {
+        let visible = repeated.root_is_visible();
+        sender.send(()).unwrap();
+        (repeated, visible)
+    });
+    receiver
+        .recv_timeout(std::time::Duration::from_secs(10))
+        .expect("visibility must not wait on the locks the candidate already holds");
+    let (repeated, visible) = probe.join().unwrap();
+    assert!(visible.unwrap());
+    assert_eq!(repeated.snapshot_root(), &root);
+    drop(repeated);
+    assert_eq!(store.list().unwrap().len(), 1);
+}
+
+#[test]
+fn publishing_an_existing_root_never_mutates_the_catalog() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    fs::write(project.join("main.tex"), b"source").unwrap();
+    let history = temp.path().join("history");
+    let store = Store::open(&history).unwrap();
+    let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
+    let candidate = store.stage_candidate(&project, &inputs).unwrap();
+    let root = *candidate.snapshot_root();
+    publish(&store, candidate, 10).unwrap();
+    let before = catalog_checkpoint_row(&history, &root);
+    let stats_before = store.stats().unwrap();
+
+    let repeated = store.stage_candidate(&project, &inputs).unwrap();
+    assert_eq!(repeated.snapshot_root(), &root);
+    let outcome = publish(&store, repeated, 999).unwrap();
+
+    let PublishOutcome::Existing(existing) = outcome else {
+        panic!("an already visible root is never republished");
+    };
+    assert_eq!(existing.snapshot_root, root);
+    assert_eq!(existing.completed_at_unix_ms, 10);
+    assert_eq!(catalog_checkpoint_row(&history, &root), before);
+    assert_eq!(store.stats().unwrap(), stats_before);
+    assert_eq!(store.list().unwrap().len(), 1);
+    assert_eq!(
+        fs::read_dir(store.root().join("staging")).unwrap().count(),
+        0
+    );
+}
+
+fn catalog_checkpoint_row(
+    history: &std::path::Path,
+    root: &oleafly_history::SnapshotRoot,
+) -> (i64, i64) {
+    let connection = Connection::open(history.join("catalog.sqlite3")).unwrap();
+    connection
+        .query_row(
+            "SELECT sequence, completed_at_unix_ms FROM checkpoints WHERE snapshot_root = ?1",
+            [root.as_hex()],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap()
+}
+
+#[test]
+fn latest_checkpoint_follows_the_catalog_sequence() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    let store = Store::open(temp.path().join("history")).unwrap();
+    assert!(store.latest_checkpoint().unwrap().is_none());
+
+    fs::write(project.join("main.tex"), b"first").unwrap();
+    let first = store
+        .stage_candidate(
+            &project,
+            &capture_inputs(&project, &["project.json", "main.tex"]),
+        )
+        .unwrap();
+    let first_root = *first.snapshot_root();
+    publish(&store, first, 100).unwrap();
+    assert_eq!(
+        store.latest_checkpoint().unwrap().unwrap().snapshot_root,
+        first_root
+    );
+
+    fs::write(project.join("main.tex"), b"second").unwrap();
+    let second = store
+        .stage_candidate(
+            &project,
+            &capture_inputs(&project, &["project.json", "main.tex"]),
+        )
+        .unwrap();
+    let second_root = *second.snapshot_root();
+    publish(&store, second, 200).unwrap();
+
+    let latest = store.latest_checkpoint().unwrap().unwrap();
+    assert_eq!(latest.snapshot_root, second_root);
+    assert_eq!(latest.completed_at_unix_ms, 200);
+
+    fs::write(project.join("main.tex"), b"first").unwrap();
+    let repeated = store
+        .stage_candidate(
+            &project,
+            &capture_inputs(&project, &["project.json", "main.tex"]),
+        )
+        .unwrap();
+    publish(&store, repeated, 300).unwrap();
+    assert_eq!(
+        store.latest_checkpoint().unwrap().unwrap().snapshot_root,
+        second_root
+    );
+
+    assert!(store.delete_checkpoint(&second_root).unwrap());
+    assert_eq!(
+        store.latest_checkpoint().unwrap().unwrap().snapshot_root,
+        first_root
+    );
+    assert!(store.checkpoint_files(&second_root).unwrap().is_none());
+    assert!(store
+        .checkpoint_files(
+            &oleafly_history::SnapshotRoot::parse(
+                "0000000000000000000000000000000000000000000000000000000000000000"
+            )
+            .unwrap()
+        )
+        .unwrap()
+        .is_none());
+}
+
+#[test]
+fn inspect_reports_catalog_counts_without_creating_files() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    let history = temp.path().join("history");
+    let store = Store::open(&history).unwrap();
+    for (time, source) in [(10, "first"), (20, "second")] {
+        fs::write(project.join("main.tex"), source).unwrap();
+        let candidate = store
+            .stage_candidate(
+                &project,
+                &capture_inputs(&project, &["project.json", "main.tex"]),
+            )
+            .unwrap();
+        publish(&store, candidate, time).unwrap();
+    }
+    let history = store.root().to_path_buf();
+    let before = store_entries(&history);
+
+    let inspection = store.inspect().unwrap();
+
+    assert_eq!(inspection.root, history);
+    assert_eq!(inspection.catalog_path, history.join("catalog.sqlite3"));
+    assert!(inspection.catalog_bytes > 0);
+    assert_eq!(inspection.format_version, 2);
+    assert_eq!(inspection.lineage.len(), 36);
+    assert_eq!(inspection.checkpoint_count, 2);
+    assert_eq!(inspection.manifest_count, 2);
+    assert_eq!(inspection.pack_count, inspection.packs.len() as u64);
+    assert_eq!(inspection.pack_count, 2);
+    assert_eq!(inspection.chunk_count, 3);
+    assert_eq!(inspection.manifest_chunk_count, 4);
+    assert_eq!(
+        inspection
+            .packs
+            .iter()
+            .map(|pack| pack.chunk_count)
+            .sum::<u64>(),
+        inspection.chunk_count
+    );
+    assert!(inspection
+        .packs
+        .iter()
+        .all(|pack| pack.encoded_bytes > 0 && pack.file_name.ends_with(".pack")));
+    assert_eq!(store_entries(&history), before);
+}
+
+fn store_entries(history: &std::path::Path) -> Vec<String> {
+    let mut entries = Vec::new();
+    for directory in [
+        history.to_path_buf(),
+        history.join("packs"),
+        history.join("staging"),
+    ] {
+        for entry in fs::read_dir(&directory).unwrap() {
+            entries.push(entry.unwrap().path().display().to_string());
+        }
+    }
+    entries.sort();
+    entries
 }
 
 #[cfg(unix)]

@@ -92,6 +92,7 @@ export type CheckpointSkipReason =
 export type CheckpointPublicationOutcome =
     | { status: "not_attempted" }
     | { status: "scheduled" }
+    | { status: "unchanged" }
     | { status: "published"; snapshot_root: string; created: boolean }
 
     | {
@@ -206,6 +207,34 @@ export interface CheckpointIntegrity {
     checked_files: number;
     checked_chunk_references: number;
     checked_packs: number;
+}
+export interface CheckpointFileSummary {
+    path: string;
+    bytes: number;
+    content_hash: string;
+    stored: boolean;
+    replayed: boolean;
+}
+export interface CheckpointStoreTableCounts {
+    checkpoints: number;
+    manifests: number;
+    packs: number;
+    chunks: number;
+    manifest_chunks: number;
+}
+export interface CheckpointStorePack {
+    file_name: string;
+    bytes: number;
+    chunk_count: number;
+}
+export interface CheckpointStoreInspection {
+    store_path: string | null;
+    catalog_path: string | null;
+    catalog_bytes: number;
+    format_version: number;
+    lineage: string | null;
+    table_counts: CheckpointStoreTableCounts;
+    packs: CheckpointStorePack[];
 }
 export interface TexSpec {
     distribution: string;
@@ -433,7 +462,8 @@ export interface AppConfig {
     ai_custom_providers: CustomProvider[];
     ai_personas: Persona[];
     ai_starter_personas_seeded: boolean;
-    checkpoint_defaults: CheckpointPolicy;
+    checkpoints_enabled: boolean;
+    checkpoint_notifications: boolean;
     mcp_enabled: boolean;
     mcp_port: number;
     mcp_read_only: boolean;
@@ -571,6 +601,11 @@ export interface BackendPort {
   projectTexStatus: (projectId: string) => Promise<TexStatus | null>;
   compileProject: (projectId: string, mainDoc: string, offline?: boolean, fast?: boolean, haltOnError?: boolean) => Promise<CompileResult>;
   checkpointList: (projectId: string) => Promise<CheckpointSummary[]>;
+  checkpointFiles: (projectId: string, snapshotRoot: string) => Promise<CheckpointFileSummary[]>;
+  checkpointInspect: (projectId: string) => Promise<CheckpointStoreInspection>;
+  checkpointRevealStore: (projectId: string) => Promise<void>;
+  checkpointIgnorePath: (projectId: string, path: string) => Promise<ProjectMeta>;
+  checkpointUnignorePath: (projectId: string, path: string) => Promise<ProjectMeta>;
   checkpointStats: (projectId: string) => Promise<CheckpointStoreStats>;
   checkpointRestore: (projectId: string, snapshotRoot: string, expectedGeneration: number) => Promise<ProjectStateChanged>;
   checkpointDelete: (projectId: string, snapshotRoot: string) => Promise<void>;
@@ -691,7 +726,6 @@ export interface BackendPort {
   getConfig: () => Promise<AppConfig>;
   setConfig: (config: AppConfig) => Promise<void>;
   setCheckpointPolicy: (projectId: string, policy: CheckpointPolicy) => Promise<ProjectMeta>;
-  setCheckpointDefaults: (policy: CheckpointPolicy) => Promise<void>;
   seedStarterPersonas: (starters: Persona[]) => Promise<AppConfig>;
   mcpStatus: () => Promise<McpStatus>;
   mcpSetEnabled: (enabled: boolean) => Promise<McpStatus>;

@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   readFileContent: vi.fn(),
   cancelCompile: vi.fn(),
   clearBuildDir: vi.fn(),
+  getConfig: vi.fn(async () => ({ checkpoint_notifications: true })),
   notifyCompileSucceeded: vi.fn(),
   toastInfoUnique: vi.fn(),
   refreshPreviewWindow: vi.fn(),
@@ -64,6 +65,7 @@ vi.mock("@/lib/tauri", () => ({
   readFileContent: mocks.readFileContent,
   cancelCompile: mocks.cancelCompile,
   clearBuildDir: mocks.clearBuildDir,
+  getConfig: mocks.getConfig,
   gitPreparePublish: mocks.gitPreparePublish,
 }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
@@ -137,6 +139,7 @@ beforeEach(() => {
   mocks.readFileContent.mockReset().mockResolvedValue("\\documentclass{article}\n");
   mocks.cancelCompile.mockReset().mockResolvedValue(true);
   mocks.clearBuildDir.mockReset().mockResolvedValue(undefined);
+  mocks.getConfig.mockReset().mockResolvedValue({ checkpoint_notifications: true });
   mocks.notifyCompileSucceeded.mockReset();
   mocks.toastInfoUnique.mockReset();
   mocks.refreshPreviewWindow.mockReset();
@@ -325,10 +328,12 @@ describe("compile output lifecycle", () => {
     await useCompileStore.getState().recompile();
 
     expect(useCompileStore.getState().status).toBe("success");
-    expect(mocks.toastInfoUnique).toHaveBeenCalledWith(
-      "checkpoint-publication-dependency_evidence_unavailable",
-      "Checkpoint not saved. The document still compiled successfully.",
-      expect.objectContaining({ label: "View Checkpoints" }),
+    await vi.waitFor(() =>
+      expect(mocks.toastInfoUnique).toHaveBeenCalledWith(
+        "checkpoint-publication-dependency_evidence_unavailable",
+        "Checkpoint not saved. The document still compiled successfully.",
+        expect.objectContaining({ label: "View Checkpoints" }),
+      ),
     );
     const action = mocks.toastInfoUnique.mock.calls[0]?.[2] as
       | { onClick?: () => void }

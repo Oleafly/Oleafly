@@ -2715,6 +2715,7 @@ mod tests {
         #[cfg(not(target_os = "linux"))]
         fn process_is_running(pid: u32) -> bool {
             std::process::Command::new("/bin/kill")
+                .no_console()
                 .args(["-0", &pid.to_string()])
                 .stderr(Stdio::null())
                 .status()

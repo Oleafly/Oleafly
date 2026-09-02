@@ -12,6 +12,8 @@ use tauri::State;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tokio::io::AsyncReadExt;
 
+use crate::proc::NoConsole;
+
 const EXEC_TIMEOUT: Duration = Duration::from_secs(120);
 const MAX_OUTPUT_BYTES: usize = 200 * 1024;
 const MAX_CANCELLED_RUNS: usize = 256;
@@ -619,7 +621,8 @@ async fn execute_command(
         c.arg("-lc").arg(&command);
         c
     };
-    cmd.current_dir(cwd)
+    cmd.no_console()
+        .current_dir(cwd)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -1562,7 +1565,7 @@ mod tests {
             .begin_execution("proj", "sleep", "run-complete", &token)
             .unwrap();
         let mut command = tokio::process::Command::new("/bin/sh");
-        command.arg("-c").arg("sleep 2");
+        command.no_console().arg("-c").arg("sleep 2");
         crate::proc::isolate_process_tree(&mut command);
         let mut child = command.spawn().unwrap();
         let pid = child.id().unwrap();

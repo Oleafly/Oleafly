@@ -113,10 +113,10 @@ pub struct AppConfig {
     pub ai_personas: Vec<Persona>,
     #[serde(default)]
     pub ai_starter_personas_seeded: bool,
-    /// Defaults copied into newly created projects. Existing project policies
-    /// travel with the project and are never replaced by this value.
-    #[serde(default)]
-    pub checkpoint_defaults: oleafly_core::CheckpointPolicy,
+    #[serde(default = "default_true")]
+    pub checkpoints_enabled: bool,
+    #[serde(default = "default_true")]
+    pub checkpoint_notifications: bool,
     /// MCP server: expose the in-app agent tools to external MCP clients
     /// (Claude Desktop, Claude Code, Cursor, ...). Off by default.
     #[serde(default)]
@@ -167,7 +167,8 @@ impl Default for AppConfig {
             ai_custom_providers: Vec::new(),
             ai_personas: Vec::new(),
             ai_starter_personas_seeded: false,
-            checkpoint_defaults: oleafly_core::CheckpointPolicy::default(),
+            checkpoints_enabled: true,
+            checkpoint_notifications: true,
             mcp_enabled: false,
             mcp_port: default_mcp_port(),
             mcp_read_only: false,
@@ -829,48 +830,21 @@ pub fn set_config(mut config: AppConfig) -> Result<(), String> {
     restore_ai_secrets(&mut config, &stored);
     drop_keys_for_moved_endpoints(&mut config, &stored);
     config.mcp_servers = stored.mcp_servers;
-    // Checkpoint defaults have their own validated setter. Generic settings
-    // snapshots can be stale or come from older clients that omit this field.
-    config.checkpoint_defaults = stored.checkpoint_defaults;
     config.github_connected = false;
     write_config_unlocked(&config)
-}
-
-fn validate_checkpoint_defaults(policy: &oleafly_core::CheckpointPolicy) -> Result<(), String> {
-    policy.validate().map_err(|error| error.to_string())
-}
-
-#[tauri::command]
-pub fn set_checkpoint_defaults(policy: oleafly_core::CheckpointPolicy) -> Result<(), String> {
-    validate_checkpoint_defaults(&policy)?;
-    update_config(move |config| {
-        config.checkpoint_defaults = policy;
-        Ok(())
-    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::proc::NoConsole as _;
 
     #[test]
-    fn old_configs_receive_safe_checkpoint_defaults() {
+    fn old_configs_keep_checkpoints_and_their_notifications_on() {
         let config: AppConfig = serde_json::from_str("{}").unwrap();
 
-        assert_eq!(
-            config.checkpoint_defaults.mode.as_str(),
-            "engine_dependencies"
-        );
-        assert!(config.checkpoint_defaults.always_include.is_empty());
-        assert!(config.checkpoint_defaults.ignored.is_empty());
-    }
-
-    #[test]
-    fn checkpoint_defaults_are_validated_before_being_saved() {
-        let mut policy = oleafly_core::CheckpointPolicy::default();
-        policy.ignored.push("../outside/**".to_string());
-
-        assert!(validate_checkpoint_defaults(&policy).is_err());
+        assert!(config.checkpoints_enabled);
+        assert!(config.checkpoint_notifications);
     }
 
     fn custom(id: &str, base: &str) -> CustomProvider {
@@ -1228,6 +1202,7 @@ mod tests {
         write_config(&AppConfig::default()).unwrap();
         let executable = std::env::current_exe().unwrap();
         let mut first = std::process::Command::new(&executable)
+            .no_console()
             .arg("--exact")
             .arg("config::tests::config_transaction_process_worker")
             .env("OLEAFLY_CONFIG_TRANSACTION_ROLE", "first")
@@ -1250,6 +1225,7 @@ mod tests {
         ));
 
         let mut second = std::process::Command::new(&executable)
+            .no_console()
             .arg("--exact")
             .arg("config::tests::config_transaction_process_worker")
             .env("OLEAFLY_CONFIG_TRANSACTION_ROLE", "second")
@@ -1728,27 +1704,25 @@ mod tests {
     }
 
     #[test]
-    fn generic_settings_updates_preserve_dedicated_checkpoint_defaults() {
+    fn generic_settings_updates_carry_the_checkpoint_switches() {
         let _env_guard = crate::paths::data_dir_env_lock();
         let dir = temp_dir();
         std::env::set_var("OLEAFLY_DATA_DIR", &dir);
         let _guard = DataDirGuard;
-        let mut policy = oleafly_core::CheckpointPolicy::default();
-        policy.always_include.push("references/**".into());
-        let stored = AppConfig {
-            checkpoint_defaults: policy.clone(),
-            ..AppConfig::default()
-        };
-        write_config(&stored).unwrap();
+        write_config(&AppConfig::default()).unwrap();
         let mut incoming = get_config().unwrap();
+        assert!(incoming.checkpoints_enabled);
+        assert!(incoming.checkpoint_notifications);
         incoming.github_user = "octocat".to_string();
-        incoming.checkpoint_defaults = oleafly_core::CheckpointPolicy::default();
+        incoming.checkpoints_enabled = false;
+        incoming.checkpoint_notifications = false;
 
         set_config(incoming).unwrap();
 
         let persisted = read_config().unwrap();
         assert_eq!(persisted.github_user, "octocat");
-        assert_eq!(persisted.checkpoint_defaults, policy);
+        assert!(!persisted.checkpoints_enabled);
+        assert!(!persisted.checkpoint_notifications);
         std::fs::remove_dir_all(dir).ok();
     }
 

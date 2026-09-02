@@ -5,6 +5,7 @@ const SETTINGS_SECTIONS = new Set([
   "appearance",
   "dictionary",
   "data",
+  "checkpoints",
   "ai",
   "engine",
   "downloads",
