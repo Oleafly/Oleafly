@@ -3,8 +3,10 @@
 use oleafly_core::CheckpointPolicy;
 use oleafly_history::{Candidate, CaptureInput, ContentHash, ReplayedInput};
 use serde::Serialize;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::path::{Component, Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
+use tauri::Emitter as _;
 
 const MAX_DEPENDENCY_REPORT_BYTES: usize = 4 * 1024 * 1024;
 const MAX_DEPENDENCY_COUNT: usize = 10_000;
@@ -15,6 +17,9 @@ const MAX_TECTONIC_CACHE_FILES: usize = 100_000;
 const MAX_TECTONIC_CACHE_DESCRIPTOR_BYTES: usize = 32 * 1024 * 1024;
 const TECTONIC_CACHE_LOCK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
 const TECTONIC_CACHE_LOCK_RETRY: std::time::Duration = std::time::Duration::from_millis(25);
+const CACHE_FINGERPRINT_SETTLE: std::time::Duration = std::time::Duration::from_secs(2);
+const PUBLICATION_DRAIN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+const PUBLICATION_DRAIN_POLL: std::time::Duration = std::time::Duration::from_millis(50);
 
 /// Why a successful compile could not publish a durable Checkpoint.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -35,6 +40,7 @@ pub enum CheckpointSkipReason {
 pub enum CheckpointPublicationOutcome {
     #[default]
     NotAttempted,
+    Scheduled,
     Published {
         snapshot_root: String,
         created: bool,
@@ -1427,16 +1433,13 @@ fn record_directory_entry(
     Ok(())
 }
 
-fn read_tectonic_bundle_identity(
+fn resolve_tectonic_bundle_id(
     cache_root: &Path,
     bundle_locator: &str,
 ) -> Result<String, AdapterFailure> {
-    let cache_root = cache_root.canonicalize().map_err(|error| {
-        AdapterFailure::unavailable(format!("Tectonic cache could not be resolved: {error}"))
-    })?;
     let hashes = checked_cache_directory(
         &cache_root.join("bundles/hashes"),
-        &cache_root,
+        cache_root,
         "Tectonic bundle cache",
     )?;
     let mut marker = None;
@@ -1469,7 +1472,7 @@ fn read_tectonic_bundle_identity(
     let marker = marker.ok_or_else(|| {
         AdapterFailure::unavailable("Tectonic did not record the selected bundle identity")
     })?;
-    let bytes = read_stable_cache_file(&marker, &cache_root, "Tectonic bundle marker", 65)?;
+    let bytes = read_stable_cache_file(&marker, cache_root, "Tectonic bundle marker", 65)?;
     let bundle_id = bytes.strip_suffix(b"\n").unwrap_or(&bytes);
     if bundle_id.len() != 64
         || !bundle_id
@@ -1480,26 +1483,243 @@ fn read_tectonic_bundle_identity(
             "Tectonic bundle marker has an invalid content identity",
         ));
     }
-    let bundle_id = std::str::from_utf8(bundle_id)
-        .map_err(|_| AdapterFailure::unavailable("Tectonic bundle identity is not Unicode"))?;
+    std::str::from_utf8(bundle_id)
+        .map(str::to_owned)
+        .map_err(|_| AdapterFailure::unavailable("Tectonic bundle identity is not Unicode"))
+}
+
+fn hash_tectonic_bundle_identity(
+    cache_root: &Path,
+    bundle_id: &str,
+) -> Result<String, AdapterFailure> {
     let index = cache_root
         .join("bundles/data")
         .join(format!("{bundle_id}.index"));
     let (_, _, index_hash) = hash_stable_cache_file(
         &index,
-        &cache_root,
+        cache_root,
         "Tectonic bundle index",
         MAX_TECTONIC_BUNDLE_INDEX_BYTES,
     )?;
     let resources = hash_tectonic_cache_tree(
         &cache_root.join("bundles/data").join(bundle_id),
-        &cache_root,
+        cache_root,
         "Tectonic bundle resource cache",
     )?;
-    let formats = hash_tectonic_formats(&cache_root.join("formats"), &cache_root, bundle_id)?;
+    let formats = hash_tectonic_formats(&cache_root.join("formats"), cache_root, bundle_id)?;
     Ok(format!(
         "bundle-sha256={bundle_id};bundle-index-blake3={index_hash};bundle-resources={resources};bundle-formats={formats}"
     ))
+}
+
+struct CacheFingerprint {
+    digest: String,
+    settled: bool,
+}
+
+type CacheStatEntry = (String, u64, std::time::SystemTime);
+
+fn fingerprint_cache_file(
+    entries: &mut Vec<CacheStatEntry>,
+    relative: String,
+    metadata: &std::fs::Metadata,
+    label: &str,
+) -> Result<(), AdapterFailure> {
+    if metadata.file_type().is_symlink()
+        || metadata_is_reparse_point(metadata)
+        || !metadata.is_file()
+    {
+        return Err(AdapterFailure::unavailable(format!(
+            "{label} contains an unsafe entry"
+        )));
+    }
+    let modified = metadata.modified().map_err(|error| {
+        AdapterFailure::unavailable(format!("{label} entry has no modification time: {error}"))
+    })?;
+    entries.push((relative, metadata.len(), modified));
+    Ok(())
+}
+
+fn fingerprint_cache_tree(
+    root: &Path,
+    prefix: &str,
+    entries: &mut Vec<CacheStatEntry>,
+    inspected: &mut usize,
+    label: &str,
+) -> Result<(), AdapterFailure> {
+    let mut pending = vec![(root.to_path_buf(), 0_usize)];
+    while let Some((directory, depth)) = pending.pop() {
+        if depth > 16 {
+            return Err(AdapterFailure::unavailable(format!(
+                "{label} exceeded the traversal depth limit"
+            )));
+        }
+        for entry in std::fs::read_dir(&directory).map_err(|error| {
+            AdapterFailure::unavailable(format!("{label} could not be read: {error}"))
+        })? {
+            record_directory_entry(inspected, MAX_TECTONIC_CACHE_FILES, label)?;
+            let entry = entry.map_err(|error| {
+                AdapterFailure::unavailable(format!("{label} entry could not be read: {error}"))
+            })?;
+            let path = entry.path();
+            let metadata = std::fs::symlink_metadata(&path).map_err(|error| {
+                AdapterFailure::unavailable(format!(
+                    "{label} entry {} could not be inspected: {error}",
+                    path.display()
+                ))
+            })?;
+            if metadata.file_type().is_symlink() || metadata_is_reparse_point(&metadata) {
+                return Err(AdapterFailure::unavailable(format!(
+                    "{label} contains a link or reparse point"
+                )));
+            }
+            if metadata.is_dir() {
+                pending.push((path, depth + 1));
+                continue;
+            }
+            let relative = portable_cache_relative(path.strip_prefix(root).map_err(|_| {
+                AdapterFailure::unavailable(format!("{label} file escaped its cache tree"))
+            })?)?;
+            fingerprint_cache_file(entries, format!("{prefix}{relative}"), &metadata, label)?;
+        }
+    }
+    Ok(())
+}
+
+fn tectonic_cache_fingerprint(
+    cache_root: &Path,
+    bundle_id: &str,
+) -> Result<CacheFingerprint, AdapterFailure> {
+    let data = cache_root.join("bundles/data");
+    let mut entries = Vec::new();
+    let mut inspected = 0_usize;
+    let index = data.join(format!("{bundle_id}.index"));
+    let index_metadata = std::fs::symlink_metadata(&index).map_err(|error| {
+        AdapterFailure::unavailable(format!(
+            "Tectonic bundle index {} is unavailable: {error}",
+            index.display()
+        ))
+    })?;
+    fingerprint_cache_file(
+        &mut entries,
+        format!("index/{bundle_id}.index"),
+        &index_metadata,
+        "Tectonic bundle index",
+    )?;
+    fingerprint_cache_tree(
+        &data.join(bundle_id),
+        "resources/",
+        &mut entries,
+        &mut inspected,
+        "Tectonic bundle resource cache",
+    )?;
+    let formats = cache_root.join("formats");
+    let prefix = format!("{bundle_id}-");
+    for entry in std::fs::read_dir(&formats).map_err(|error| {
+        AdapterFailure::unavailable(format!("Tectonic format cache could not be read: {error}"))
+    })? {
+        record_directory_entry(
+            &mut inspected,
+            MAX_TECTONIC_CACHE_FILES,
+            "Tectonic format cache",
+        )?;
+        let entry = entry.map_err(|error| {
+            AdapterFailure::unavailable(format!(
+                "Tectonic format cache entry could not be read: {error}"
+            ))
+        })?;
+        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+        if !name.starts_with(&prefix) {
+            continue;
+        }
+        let metadata = std::fs::symlink_metadata(entry.path()).map_err(|error| {
+            AdapterFailure::unavailable(format!(
+                "Tectonic format cache entry could not be inspected: {error}"
+            ))
+        })?;
+        fingerprint_cache_file(
+            &mut entries,
+            format!("formats/{name}"),
+            &metadata,
+            "Tectonic format cache",
+        )?;
+    }
+    entries.sort_by(|left, right| left.0.cmp(&right.0));
+    let settled_before = std::time::SystemTime::now().checked_sub(CACHE_FINGERPRINT_SETTLE);
+    let mut settled = true;
+    let mut descriptor = Vec::new();
+    descriptor.extend_from_slice(b"oleafly-tectonic-cache-stat-v1\0");
+    for (relative, len, modified) in &entries {
+        if settled_before.map_or(true, |limit| *modified > limit) {
+            settled = false;
+        }
+        let (seconds, nanos) = match modified.duration_since(std::time::UNIX_EPOCH) {
+            Ok(elapsed) => (elapsed.as_secs() as i64, elapsed.subsec_nanos()),
+            Err(before) => (
+                -(before.duration().as_secs() as i64),
+                before.duration().subsec_nanos(),
+            ),
+        };
+        descriptor.extend_from_slice(&(relative.len() as u64).to_le_bytes());
+        descriptor.extend_from_slice(relative.as_bytes());
+        descriptor.extend_from_slice(&len.to_le_bytes());
+        descriptor.extend_from_slice(&seconds.to_le_bytes());
+        descriptor.extend_from_slice(&nanos.to_le_bytes());
+    }
+    Ok(CacheFingerprint {
+        digest: ContentHash::digest(&descriptor).to_hex(),
+        settled,
+    })
+}
+
+type CacheIdentityKey = (PathBuf, String);
+type CacheIdentityRecord = (String, String);
+
+fn tectonic_cache_identities() -> &'static Mutex<HashMap<CacheIdentityKey, CacheIdentityRecord>> {
+    static IDENTITIES: OnceLock<Mutex<HashMap<CacheIdentityKey, CacheIdentityRecord>>> =
+        OnceLock::new();
+    IDENTITIES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// Resolves the selected bundle and returns its content identity. A settled
+/// cache whose stat fingerprint is unchanged reuses the recorded identity, so
+/// steady-state probes cost a directory walk instead of rehashing every byte.
+fn read_tectonic_bundle_identity(
+    cache_root: &Path,
+    bundle_locator: &str,
+) -> Result<String, AdapterFailure> {
+    let cache_root = cache_root.canonicalize().map_err(|error| {
+        AdapterFailure::unavailable(format!("Tectonic cache could not be resolved: {error}"))
+    })?;
+    let bundle_id = resolve_tectonic_bundle_id(&cache_root, bundle_locator)?;
+    let fingerprint = tectonic_cache_fingerprint(&cache_root, &bundle_id)?;
+    let key = (cache_root.clone(), bundle_id.clone());
+    if fingerprint.settled {
+        let identities = tectonic_cache_identities()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some((known, identity)) = identities.get(&key) {
+            if *known == fingerprint.digest {
+                return Ok(identity.clone());
+            }
+        }
+    }
+    let identity = hash_tectonic_bundle_identity(&cache_root, &bundle_id)?;
+    let confirmation = tectonic_cache_fingerprint(&cache_root, &bundle_id)?;
+    if confirmation.digest != fingerprint.digest {
+        return Err(AdapterFailure::unavailable(
+            "Tectonic cache changed while its identity was recorded",
+        ));
+    }
+    if confirmation.settled {
+        tectonic_cache_identities()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(key, (fingerprint.digest, identity.clone()));
+    }
+    Ok(identity)
 }
 
 fn tectonic_bundle_locator(
@@ -1543,11 +1763,59 @@ fn complete_toolchain_identity(
     Ok(format!("{executable_identity};{bundle_identity}"))
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct FileStamp {
+    len: u64,
+    modified: std::time::SystemTime,
+}
+
+fn file_stamp(path: &Path, label: &str) -> Result<FileStamp, AdapterFailure> {
+    let metadata = std::fs::metadata(path).map_err(|error| {
+        AdapterFailure::unavailable(format!(
+            "{label} {} could not be inspected: {error}",
+            path.display()
+        ))
+    })?;
+    if !metadata.is_file() {
+        return Err(AdapterFailure::unavailable(format!(
+            "{label} {} is not a regular file",
+            path.display()
+        )));
+    }
+    let modified = metadata.modified().map_err(|error| {
+        AdapterFailure::unavailable(format!(
+            "{label} {} has no modification time: {error}",
+            path.display()
+        ))
+    })?;
+    Ok(FileStamp {
+        len: metadata.len(),
+        modified,
+    })
+}
+
+fn binary_identities() -> &'static Mutex<HashMap<PathBuf, (FileStamp, ContentHash)>> {
+    static IDENTITIES: OnceLock<Mutex<HashMap<PathBuf, (FileStamp, ContentHash)>>> =
+        OnceLock::new();
+    IDENTITIES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
 async fn checked_binary_identity(
     path: &Path,
     expected_version: &str,
     cancel: Option<&crate::state::CompileCancel>,
 ) -> Result<ContentHash, AdapterFailure> {
+    let stamp = file_stamp(path, "compiler")?;
+    let known = binary_identities()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(path)
+        .copied();
+    if let Some((known_stamp, hash)) = known {
+        if known_stamp == stamp {
+            return Ok(hash);
+        }
+    }
     let args = vec!["--version".to_string()];
     let working_dir = path.parent().unwrap_or_else(|| Path::new("."));
     let (version, status) = if let Some(cancel) = cancel {
@@ -1574,9 +1842,9 @@ async fn checked_binary_identity(
         )));
     }
     ensure_checkpoint_not_cancelled(cancel)?;
-    let path = path.to_path_buf();
+    let hash_path = path.to_path_buf();
     let display = path.display().to_string();
-    let hash = tokio::task::spawn_blocking(move || ContentHash::digest_file(path))
+    let hash = tokio::task::spawn_blocking(move || ContentHash::digest_file(hash_path))
         .await
         .map_err(|error| {
             AdapterFailure::unavailable(format!(
@@ -1589,6 +1857,15 @@ async fn checked_binary_identity(
             ))
         })?;
     ensure_checkpoint_not_cancelled(cancel)?;
+    if file_stamp(path, "compiler")? != stamp {
+        return Err(AdapterFailure::unavailable(format!(
+            "compiler {display} changed while it was fingerprinted"
+        )));
+    }
+    binary_identities()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .insert(path.to_path_buf(), (stamp, hash));
     Ok(hash)
 }
 
@@ -1779,6 +2056,7 @@ async fn stage_and_replay(
     store: &oleafly_history::Store,
     workspace: &ProbeWorkspace,
     engine: &'static dyn crate::document_engine::DocumentEngine,
+    project_id: &str,
     project_root: &Path,
     main_document: &str,
     policy: &CheckpointPolicy,
@@ -1789,38 +2067,33 @@ async fn stage_and_replay(
     cancel: Option<&crate::state::CompileCancel>,
 ) -> Result<PreparedCheckpointPublication, AdapterFailure> {
     ensure_checkpoint_not_cancelled(cancel)?;
-    let capture_project_root = project_root.to_path_buf();
-    let capture_dependencies = discovery_dependencies.to_vec();
-    let capture_main_document = main_document.to_owned();
-    let capture_policy = policy.clone();
-    let capture_cancel = cancel.cloned();
-    let inputs = tokio::task::spawn_blocking(move || {
-        build_capture_inputs(
-            &capture_project_root,
-            &capture_dependencies,
-            &capture_main_document,
-            &capture_policy,
-            capture_cancel.as_ref(),
-        )
-    })
-    .await
-    .map_err(|error| {
-        AdapterFailure::unavailable(format!("checkpoint input discovery task failed: {error}"))
-    })??;
-    let stage_store = store.clone();
-    let stage_project_root = project_root.to_path_buf();
-    let stage_cancel = cancel.cloned();
+    let seal_project_id = project_id.to_owned();
+    let seal_project_root = project_root.to_path_buf();
+    let seal_dependencies = discovery_dependencies.to_vec();
+    let seal_main_document = main_document.to_owned();
+    let seal_policy = policy.clone();
+    let seal_store = store.clone();
+    let seal_cancel = cancel.cloned();
     let candidate = tokio::task::spawn_blocking(move || {
-        ensure_checkpoint_not_cancelled(stage_cancel.as_ref())?;
-        let candidate = if let Some(cancel) = stage_cancel.as_ref() {
-            stage_store.stage_candidate_controlled(&stage_project_root, &inputs, cancel)
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&seal_project_id)
+            .map_err(AdapterFailure::unavailable)?;
+        ensure_checkpoint_not_cancelled(seal_cancel.as_ref())?;
+        let inputs = build_capture_inputs(
+            &seal_project_root,
+            &seal_dependencies,
+            &seal_main_document,
+            &seal_policy,
+            seal_cancel.as_ref(),
+        )?;
+        let candidate = if let Some(cancel) = seal_cancel.as_ref() {
+            seal_store.stage_candidate_controlled(&seal_project_root, &inputs, cancel)
         } else {
-            stage_store.stage_candidate(&stage_project_root, &inputs)
+            seal_store.stage_candidate(&seal_project_root, &inputs)
         }
         .map_err(|error| {
             AdapterFailure::unavailable(format!("inputs could not be sealed: {error}"))
         })?;
-        if let Err(error) = ensure_checkpoint_not_cancelled(stage_cancel.as_ref()) {
+        if let Err(error) = ensure_checkpoint_not_cancelled(seal_cancel.as_ref()) {
             drop(candidate);
             return Err(error);
         }
@@ -1830,6 +2103,7 @@ async fn stage_and_replay(
     .map_err(|error| {
         AdapterFailure::unavailable(format!("checkpoint input sealing task failed: {error}"))
     })??;
+
     ensure_checkpoint_not_cancelled(cancel)?;
     let replay = run_probe(
         app,
@@ -1904,10 +2178,256 @@ fn publication_failure(error: oleafly_history::HistoryError) -> AdapterFailure {
     }
 }
 
-/// Runs controlled discovery and sealed replay after an ordinary successful
-/// compile. Every failure remains supplementary and returns a skipped outcome.
+#[derive(Clone)]
+pub(crate) struct PublicationRequest {
+    pub project_id: String,
+    pub project_root: PathBuf,
+    pub engine_name: String,
+    pub main_document: String,
+    pub policy: CheckpointPolicy,
+    pub options: crate::document_engine::CompileOptions,
+    pub primary_hash: ContentHash,
+    pub primary_requires_untracked_helper: bool,
+}
+
+pub(crate) const PUBLICATION_EVENT: &str = "checkpoint:publication";
+
+#[derive(Clone, Serialize)]
+#[serde(tag = "phase", rename_all = "snake_case")]
+enum PublicationPhase<'a> {
+    Started,
+    Finished {
+        outcome: &'a CheckpointPublicationOutcome,
+    },
+}
+
+#[derive(Clone, Serialize)]
+struct PublicationEvent<'a> {
+    project_id: &'a str,
+    main_document: &'a str,
+    #[serde(flatten)]
+    phase: PublicationPhase<'a>,
+}
+
+#[derive(Default)]
+struct PublicationLane {
+    in_flight: Option<crate::state::CompileCancel>,
+    pending: Option<PublicationRequest>,
+}
+
+struct PublicationRegistry {
+    lanes: Mutex<HashMap<String, PublicationLane>>,
+    idle: std::sync::Condvar,
+}
+
+fn publication_registry() -> &'static PublicationRegistry {
+    static REGISTRY: OnceLock<PublicationRegistry> = OnceLock::new();
+    REGISTRY.get_or_init(|| PublicationRegistry {
+        lanes: Mutex::new(HashMap::new()),
+        idle: std::sync::Condvar::new(),
+    })
+}
+
+fn lock_publication_lanes() -> std::sync::MutexGuard<'static, HashMap<String, PublicationLane>> {
+    publication_registry()
+        .lanes
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+fn admit_publication(
+    request: PublicationRequest,
+) -> Option<(PublicationRequest, crate::state::CompileCancel)> {
+    let mut lanes = lock_publication_lanes();
+    let lane = lanes.entry(request.project_id.clone()).or_default();
+    if lane.in_flight.is_some() {
+        lane.pending = Some(request);
+        return None;
+    }
+    let cancel = crate::state::CompileCancel::default();
+    cancel.begin();
+    lane.in_flight = Some(cancel.clone());
+    Some((request, cancel))
+}
+
+fn finish_publication(
+    project_id: &str,
+    finished: &crate::state::CompileCancel,
+) -> Option<(PublicationRequest, crate::state::CompileCancel)> {
+    let registry = publication_registry();
+    let mut lanes = registry
+        .lanes
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let _ = finished.detach();
+    let next = lanes.get_mut(project_id).and_then(|lane| {
+        lane.pending.take().map(|request| {
+            let cancel = crate::state::CompileCancel::default();
+            cancel.begin();
+            lane.in_flight = Some(cancel.clone());
+            (request, cancel)
+        })
+    });
+    if next.is_none() {
+        lanes.remove(project_id);
+        registry.idle.notify_all();
+    }
+    next
+}
+
+fn request_publication_cancel(
+    lanes: &mut HashMap<String, PublicationLane>,
+    project_id: &str,
+) -> bool {
+    let Some(lane) = lanes.get_mut(project_id) else {
+        return false;
+    };
+    lane.pending = None;
+    if let Some(pid) = lane
+        .in_flight
+        .as_ref()
+        .and_then(crate::state::CompileCancel::request)
+    {
+        tauri::async_runtime::spawn(crate::proc::terminate_process_tree(pid));
+    }
+    true
+}
+
+/// Stops the in-flight background publication for a project and drops any
+/// queued one. Worktree mutations and store deletions call this first so they
+/// never wait behind supplementary work.
+pub(crate) fn cancel_project_publications(project_id: &str) {
+    let mut lanes = lock_publication_lanes();
+    request_publication_cancel(&mut lanes, project_id);
+}
+
+/// Cancels like [`cancel_project_publications`] and then waits, bounded, for
+/// the lane to drain so a store deletion cannot race a late publication.
+pub(crate) fn cancel_project_publications_and_wait(project_id: &str) {
+    let registry = publication_registry();
+    let deadline = std::time::Instant::now() + PUBLICATION_DRAIN_TIMEOUT;
+    let mut lanes = registry
+        .lanes
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    while request_publication_cancel(&mut lanes, project_id) {
+        let now = std::time::Instant::now();
+        if now >= deadline {
+            return;
+        }
+        lanes = registry
+            .idle
+            .wait_timeout(lanes, (deadline - now).min(PUBLICATION_DRAIN_POLL))
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .0;
+    }
+}
+
+fn emit_publication_phase(
+    app: &tauri::AppHandle,
+    request: &PublicationRequest,
+    phase: PublicationPhase<'_>,
+) {
+    let _ = app.emit(
+        PUBLICATION_EVENT,
+        PublicationEvent {
+            project_id: &request.project_id,
+            main_document: &request.main_document,
+            phase,
+        },
+    );
+}
+
+async fn run_publication_lane(
+    app: tauri::AppHandle,
+    mut request: PublicationRequest,
+    mut cancel: crate::state::CompileCancel,
+) {
+    loop {
+        emit_publication_phase(&app, &request, PublicationPhase::Started);
+        let outcome = publish_after_successful_compile(&app, &request, Some(&cancel)).await;
+        if let CheckpointPublicationOutcome::Skipped { message, .. } = &outcome {
+            let _ = crate::project::append_app_log(format!(
+                "Checkpoint publication skipped for project {}: {message}",
+                request.project_id
+            ));
+        }
+        emit_publication_phase(
+            &app,
+            &request,
+            PublicationPhase::Finished { outcome: &outcome },
+        );
+        match finish_publication(&request.project_id, &cancel) {
+            Some((next_request, next_cancel)) => {
+                request = next_request;
+                cancel = next_cancel;
+            }
+            None => return,
+        }
+    }
+}
+
+fn preflight_publication(
+    engine_name: &str,
+    main_document: &str,
+    policy: &CheckpointPolicy,
+    options: crate::document_engine::CompileOptions,
+) -> Result<&'static dyn crate::document_engine::DocumentEngine, CheckpointPublicationOutcome> {
+    if policy.validate().is_err() {
+        return Err(CheckpointPublicationOutcome::skipped(
+            CheckpointSkipReason::InvalidPolicy,
+            "Checkpoint not saved because this project's Checkpoints settings are invalid.",
+            "Review the project Checkpoints settings, then compile again.",
+        ));
+    }
+    if options.allow_shell_escape {
+        return Err(CheckpointPublicationOutcome::skipped(
+            CheckpointSkipReason::UntrackedExternalCommands,
+            "Checkpoint not saved because this compile allowed external commands whose inputs cannot be proven.",
+            "Turn off external TeX commands for this project, then compile again.",
+        ));
+    }
+    if options.fast {
+        return Err(CheckpointPublicationOutcome::skipped(
+            CheckpointSkipReason::DependencyEvidenceUnavailable,
+            "Checkpoint not saved because draft mode does not run a complete reproducible compile.",
+            "Turn off draft mode, then compile again.",
+        ));
+    }
+    match crate::document_engine::engine_for(engine_name, main_document) {
+        Ok(engine) if engine.id() != crate::document_engine::DocumentEngineId::Latexmk => {
+            Ok(engine)
+        }
+        Ok(_) => Err(unavailable_adapter_outcome(engine_name, false, policy)),
+        Err(error) => Err(skip_from_failure(AdapterFailure::unavailable(error))),
+    }
+}
+
+fn biber_publication_skip() -> CheckpointPublicationOutcome {
+    skip_from_failure(AdapterFailure {
+        reason: CheckpointSkipReason::UntrackedExternalCommands,
+        detail: "the validated LaTeX compile used Biber, whose complete input closure is not yet tracked"
+            .into(),
+    })
+}
+
+pub(crate) fn capture_primary_evidence(
+    primary_output_dir: &Path,
+) -> Result<(ContentHash, bool), String> {
+    let pdf = primary_output_dir.join(format!("{}.pdf", crate::paths::ENTRY_STEM));
+    let hash = ContentHash::digest_file(&pdf)
+        .map_err(|error| format!("compiled PDF could not be fingerprinted: {error}"))?;
+    Ok((
+        hash,
+        latex_output_requires_untracked_helper(primary_output_dir),
+    ))
+}
+
+/// Binds the visible PDF and queues controlled discovery, sealing, replay, and
+/// publication behind the compile result. One lane runs per project; a newer
+/// request replaces a queued one so rapid recompiles coalesce.
 #[allow(clippy::too_many_arguments)]
-pub async fn publish_after_successful_compile(
+pub(crate) async fn schedule_after_successful_compile(
     app: &tauri::AppHandle,
     project_id: &str,
     project_root: &Path,
@@ -1915,35 +2435,73 @@ pub async fn publish_after_successful_compile(
     engine_name: &str,
     main_document: &str,
     policy: &CheckpointPolicy,
-    mut options: crate::document_engine::CompileOptions,
+    options: crate::document_engine::CompileOptions,
+) -> CheckpointPublicationOutcome {
+    let engine = match preflight_publication(engine_name, main_document, policy, options) {
+        Ok(engine) => engine,
+        Err(outcome) => return outcome,
+    };
+    let evidence_dir = primary_output_dir.to_path_buf();
+    let (primary_hash, primary_requires_untracked_helper) =
+        match tokio::task::spawn_blocking(move || capture_primary_evidence(&evidence_dir)).await {
+            Ok(Ok(evidence)) => evidence,
+            Ok(Err(error)) => return skip_from_failure(AdapterFailure::unavailable(error)),
+            Err(error) => {
+                return skip_from_failure(AdapterFailure::unavailable(format!(
+                    "compiled PDF identity task failed: {error}"
+                )))
+            }
+        };
+    if engine.id() == crate::document_engine::DocumentEngineId::Latex
+        && primary_requires_untracked_helper
+    {
+        return biber_publication_skip();
+    }
+    let request = PublicationRequest {
+        project_id: project_id.to_owned(),
+        project_root: project_root.to_path_buf(),
+        engine_name: engine_name.to_owned(),
+        main_document: main_document.to_owned(),
+        policy: policy.clone(),
+        options,
+        primary_hash,
+        primary_requires_untracked_helper,
+    };
+    if let Some((request, cancel)) = admit_publication(request) {
+        tauri::async_runtime::spawn(run_publication_lane(app.clone(), request, cancel));
+    }
+    CheckpointPublicationOutcome::Scheduled
+}
+
+async fn acquire_operation_lock_cancellable(
+    operation: std::sync::Arc<tokio::sync::Mutex<()>>,
+    cancel: Option<&crate::state::CompileCancel>,
+) -> Result<tokio::sync::OwnedMutexGuard<()>, AdapterFailure> {
+    loop {
+        ensure_checkpoint_not_cancelled(cancel)?;
+        match std::sync::Arc::clone(&operation).try_lock_owned() {
+            Ok(guard) => return Ok(guard),
+            Err(_) => tokio::time::sleep(TECTONIC_CACHE_LOCK_RETRY).await,
+        }
+    }
+}
+
+/// Runs controlled discovery and sealed replay for one validated compile.
+/// Every failure remains supplementary and returns a skipped outcome.
+pub async fn publish_after_successful_compile(
+    app: &tauri::AppHandle,
+    request: &PublicationRequest,
     cancel: Option<&crate::state::CompileCancel>,
 ) -> CheckpointPublicationOutcome {
     let _cancel_scope = CheckpointCancelScope::new(cancel);
-    if policy.validate().is_err() {
-        return CheckpointPublicationOutcome::skipped(
-            CheckpointSkipReason::InvalidPolicy,
-            "Checkpoint not saved because this project's Checkpoints settings are invalid.",
-            "Review the project Checkpoints settings, then compile again.",
-        );
-    }
-    if options.allow_shell_escape {
-        return CheckpointPublicationOutcome::skipped(
-            CheckpointSkipReason::UntrackedExternalCommands,
-            "Checkpoint not saved because this compile allowed external commands whose inputs cannot be proven.",
-            "Turn off external TeX commands for this project, then compile again.",
-        );
-    }
-    if options.fast {
-        return CheckpointPublicationOutcome::skipped(
-            CheckpointSkipReason::DependencyEvidenceUnavailable,
-            "Checkpoint not saved because draft mode does not run a complete reproducible compile.",
-            "Turn off draft mode, then compile again.",
-        );
-    }
-    let engine = match crate::document_engine::engine_for(engine_name, main_document) {
-        Ok(engine) if engine.id() != crate::document_engine::DocumentEngineId::Latexmk => engine,
-        Ok(_) => return unavailable_adapter_outcome(engine_name, false, policy),
-        Err(error) => return skip_from_failure(AdapterFailure::unavailable(error)),
+    let project_id = request.project_id.as_str();
+    let project_root = request.project_root.as_path();
+    let main_document = request.main_document.as_str();
+    let policy = &request.policy;
+    let mut options = request.options;
+    let engine = match preflight_publication(&request.engine_name, main_document, policy, options) {
+        Ok(engine) => engine,
+        Err(outcome) => return outcome,
     };
     options.checkpoint_persistent_cache = matches!(
         engine.id(),
@@ -1951,19 +2509,18 @@ pub async fn publish_after_successful_compile(
             | crate::document_engine::DocumentEngineId::Markdown
     );
     if engine.id() == crate::document_engine::DocumentEngineId::Latex
-        && latex_output_requires_untracked_helper(primary_output_dir)
+        && request.primary_requires_untracked_helper
     {
-        return skip_from_failure(AdapterFailure {
-            reason: CheckpointSkipReason::UntrackedExternalCommands,
-            detail: "the validated LaTeX compile used Biber, whose complete input closure is not yet tracked"
-                .into(),
-        });
+        return biber_publication_skip();
     }
     let operation = match crate::checkpoints::checkpoint_operation_lock(project_id) {
         Ok(operation) => operation,
         Err(error) => return skip_from_failure(AdapterFailure::unavailable(error)),
     };
-    let _operation = operation.lock().await;
+    let _operation = match acquire_operation_lock_cancellable(operation, cancel).await {
+        Ok(guard) => guard,
+        Err(error) => return skip_from_failure(error),
+    };
     let _compiler_cache_lock = if matches!(
         engine.id(),
         crate::document_engine::DocumentEngineId::Latex
@@ -1980,10 +2537,7 @@ pub async fn publish_after_successful_compile(
         Ok(workspace) => workspace,
         Err(error) => return skip_from_failure(error),
     };
-    let primary_hash = match output_hash(primary_output_dir, cancel).await {
-        Ok(hash) => hash,
-        Err(error) => return skip_from_failure(error),
-    };
+    let primary_hash = request.primary_hash;
     let discovery = match run_probe(
         app,
         engine,
@@ -2022,6 +2576,9 @@ pub async fn publish_after_successful_compile(
         Ok(path) => path,
         Err(error) => return skip_from_failure(AdapterFailure::unavailable(error)),
     };
+    if let Err(error) = ensure_checkpoint_not_cancelled(cancel) {
+        return skip_from_failure(error);
+    }
     let publication = match tokio::task::spawn_blocking(move || {
         oleafly_history::Store::try_open_for_publication(store_path)
     })
@@ -2049,6 +2606,7 @@ pub async fn publish_after_successful_compile(
         publication.store(),
         &workspace,
         engine,
+        project_id,
         project_root,
         main_document,
         policy,
@@ -2150,11 +2708,13 @@ mod tests {
     use tempfile::tempdir;
 
     use super::{
-        build_capture_inputs, latex_output_requires_untracked_helper, parse_pandoc_resources,
+        admit_publication, build_capture_inputs, cancel_project_publications,
+        cancel_project_publications_and_wait, finish_publication,
+        latex_output_requires_untracked_helper, parse_pandoc_resources,
         parse_tectonic_dependencies, parse_typst_dependencies, read_tectonic_bundle_identity,
-        record_directory_entry, replayed_inputs_for, unavailable_adapter_outcome,
-        wait_for_tectonic_cache_lock, CheckpointPublicationOutcome, CheckpointSkipReason,
-        TectonicDependencyLayout,
+        record_directory_entry, replayed_inputs_for, tectonic_cache_fingerprint,
+        unavailable_adapter_outcome, wait_for_tectonic_cache_lock, CheckpointPublicationOutcome,
+        CheckpointSkipReason, PublicationRequest, TectonicDependencyLayout,
     };
 
     fn publication_candidate(
@@ -2604,6 +3164,144 @@ mod tests {
         let error =
             parse_pandoc_resources(&serde_json::to_vec(&fetched).unwrap(), &project).unwrap_err();
         assert_eq!(error.reason, CheckpointSkipReason::ExternalDependency);
+    }
+
+    fn lane_request(project_id: &str, epoch: u64) -> PublicationRequest {
+        PublicationRequest {
+            project_id: project_id.to_owned(),
+            project_root: std::path::PathBuf::from("/project"),
+            engine_name: "typst".into(),
+            main_document: "main.typ".into(),
+            policy: CheckpointPolicy::default(),
+            options: crate::document_engine::CompileOptions {
+                source_date_epoch: Some(epoch),
+                ..Default::default()
+            },
+            primary_hash: ContentHash::digest(b"pdf"),
+            primary_requires_untracked_helper: false,
+        }
+    }
+
+    #[test]
+    fn publication_lanes_run_one_request_per_project_and_keep_only_the_latest_queued_one() {
+        let project = "lane-coalesce";
+        let (first, cancel) = admit_publication(lane_request(project, 1)).unwrap();
+        assert_eq!(first.options.source_date_epoch, Some(1));
+        assert!(admit_publication(lane_request(project, 2)).is_none());
+        assert!(admit_publication(lane_request(project, 3)).is_none());
+        assert!(!cancel.is_requested());
+
+        let (next, next_cancel) = finish_publication(project, &cancel).unwrap();
+        assert_eq!(next.options.source_date_epoch, Some(3));
+        assert!(!next_cancel.is_requested());
+        assert!(finish_publication(project, &next_cancel).is_none());
+        let (_, reopened) = admit_publication(lane_request(project, 4)).unwrap();
+        assert!(finish_publication(project, &reopened).is_none());
+    }
+
+    #[test]
+    fn cancelling_a_lane_stops_in_flight_work_and_drops_the_queued_request() {
+        let project = "lane-cancel";
+        let (_, cancel) = admit_publication(lane_request(project, 1)).unwrap();
+        assert!(admit_publication(lane_request(project, 2)).is_none());
+
+        cancel_project_publications(project);
+
+        assert!(cancel.is_requested());
+        assert!(finish_publication(project, &cancel).is_none());
+        let (_, fresh) = admit_publication(lane_request(project, 3)).unwrap();
+        assert!(!fresh.is_requested());
+        assert!(finish_publication(project, &fresh).is_none());
+    }
+
+    #[test]
+    fn waiting_for_a_lane_returns_once_the_cancelled_publication_finishes() {
+        let project = "lane-drain";
+        cancel_project_publications_and_wait(project);
+        let (_, cancel) = admit_publication(lane_request(project, 1)).unwrap();
+        let finisher_cancel = cancel.clone();
+        let finisher = std::thread::spawn(move || {
+            while !finisher_cancel.is_requested() {
+                std::thread::sleep(std::time::Duration::from_millis(5));
+            }
+            std::thread::sleep(std::time::Duration::from_millis(40));
+            assert!(finish_publication("lane-drain", &finisher_cancel).is_none());
+        });
+
+        let started = std::time::Instant::now();
+        cancel_project_publications_and_wait(project);
+
+        assert!(started.elapsed() < std::time::Duration::from_secs(5));
+        finisher.join().unwrap();
+        let (_, reopened) = admit_publication(lane_request(project, 2)).unwrap();
+        assert!(finish_publication(project, &reopened).is_none());
+    }
+
+    fn backdate(path: &std::path::Path, modified: std::time::SystemTime) {
+        fs::OpenOptions::new()
+            .write(true)
+            .open(path)
+            .unwrap()
+            .set_modified(modified)
+            .unwrap();
+    }
+
+    #[test]
+    fn settled_tectonic_cache_identity_is_reused_until_its_stat_fingerprint_changes() {
+        let temp = tempdir().unwrap();
+        let cache = temp.path();
+        let hashes = cache.join("bundles/hashes");
+        let data = cache.join("bundles/data");
+        fs::create_dir_all(&hashes).unwrap();
+        fs::create_dir_all(&data).unwrap();
+        let locator = "https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar";
+        let cache_key =
+            "https,58,,47,,47,mirrors.oleafly.com,47,tex-bundles,47,tlextras-2022.0r0.tar";
+        let bundle_id = "6ffe055852f8faf66c0acbe1a7fb27f87b869a90bad1204f3bf4d9683f597c7c";
+        fs::write(hashes.join(cache_key), format!("{bundle_id}\n")).unwrap();
+        let index = data.join(format!("{bundle_id}.index"));
+        fs::write(&index, b"index-v1").unwrap();
+        let resources = data.join(bundle_id);
+        fs::create_dir(&resources).unwrap();
+        let class = resources.join("article.cls");
+        fs::write(&class, b"class-v1").unwrap();
+        let formats = cache.join("formats");
+        fs::create_dir(&formats).unwrap();
+        let format = formats.join(format!("{bundle_id}-latex-33.fmt"));
+        fs::write(&format, b"format-v1").unwrap();
+        let canonical = cache.canonicalize().unwrap();
+        assert!(
+            !tectonic_cache_fingerprint(&canonical, bundle_id)
+                .unwrap()
+                .settled
+        );
+
+        let old = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+        for path in [&index, &class, &format] {
+            backdate(path, old);
+        }
+        assert!(
+            tectonic_cache_fingerprint(&canonical, bundle_id)
+                .unwrap()
+                .settled
+        );
+        let identity = read_tectonic_bundle_identity(cache, locator).unwrap();
+
+        fs::write(&class, b"class-v2").unwrap();
+        backdate(&class, old);
+        assert_eq!(
+            read_tectonic_bundle_identity(cache, locator).unwrap(),
+            identity,
+            "an unchanged stat fingerprint reuses the recorded identity"
+        );
+
+        fs::write(&class, b"class-v2-longer").unwrap();
+        backdate(&class, old);
+        assert_ne!(
+            read_tectonic_bundle_identity(cache, locator).unwrap(),
+            identity,
+            "a changed length invalidates the recorded identity"
+        );
     }
 
     #[test]

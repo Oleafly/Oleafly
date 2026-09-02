@@ -509,6 +509,10 @@ interface SettingsState {
   setHistoryOpen: (v: boolean) => void;
   checkpointsOpen: boolean;
   setCheckpointsOpen: (v: boolean) => void;
+  checkpointsRevision: number;
+  bumpCheckpointsRevision: () => void;
+  checkpointPublishingProjectId: string | null;
+  setCheckpointPublishingProjectId: (projectId: string | null) => void;
   searchOpen: boolean;
   setSearchOpen: (v: boolean) => void;
   settingsOpen: boolean;
@@ -767,7 +771,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setHistoryOpen: (v) => set({ historyOpen: v }),
   checkpointsOpen: false,
   setCheckpointsOpen: (v) => set({ checkpointsOpen: v }),
+  checkpointsRevision: 0,
+  bumpCheckpointsRevision: () =>
+    set((state) => ({ checkpointsRevision: state.checkpointsRevision + 1 })),
+  checkpointPublishingProjectId: null,
+  setCheckpointPublishingProjectId: (projectId) =>
+    set({ checkpointPublishingProjectId: projectId }),
   searchOpen: false,
+
   setSearchOpen: (v) => set({ searchOpen: v }),
   settingsOpen: false,
   setSettingsOpen: (v) => set({ settingsOpen: v }),

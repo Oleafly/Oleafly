@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ArchiveRestore,
   Database,
@@ -279,6 +279,8 @@ function CheckpointRow({
 export function CheckpointsModal() {
   const open = useSettingsStore((state) => state.checkpointsOpen);
   const setOpen = useSettingsStore((state) => state.setCheckpointsOpen);
+  const checkpointsRevision = useSettingsStore((state) => state.checkpointsRevision);
+  const publishingProjectId = useSettingsStore((state) => state.checkpointPublishingProjectId);
   const projectId = useFilesStore((state) => state.projectId);
   const projectName = useFilesStore((state) => state.projectName);
   const [checkpoints, setCheckpoints] = useState<CheckpointSummary[]>([]);
@@ -300,6 +302,7 @@ export function CheckpointsModal() {
   const policyRequest = useRef(0);
   const sessionRequest = useRef(0);
   const actionRequest = useRef(0);
+  const seenRevision = useRef(checkpointsRevision);
   const renderedIdentity = useRef({ open, projectId });
   const renderIdentityChanged =
     renderedIdentity.current.open !== open ||
@@ -471,6 +474,13 @@ export function CheckpointsModal() {
     void refresh(projectId, true, session);
     void loadPolicy(projectId, session);
   }, [open, projectId, loadPolicy, refresh]);
+
+  useEffect(() => {
+    if (seenRevision.current === checkpointsRevision) return;
+    seenRevision.current = checkpointsRevision;
+    if (!open || !projectId) return;
+    void refresh(projectId, false, sessionRequest.current);
+  }, [checkpointsRevision, open, projectId, refresh]);
 
   if (!open) return null;
 
@@ -755,7 +765,17 @@ export function CheckpointsModal() {
         {visibleStats ? <StoreSummary stats={visibleStats} /> : null}
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+          {projectId && publishingProjectId === projectId ? (
+            <div
+              className="mb-3 flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground"
+              role="status"
+            >
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              Saving a checkpoint from the latest compile.
+            </div>
+          ) : null}
           {!projectId ? (
+
             <div className="flex min-h-44 flex-col items-center justify-center text-center">
               <ArchiveRestore className="size-7 text-muted-foreground" />
               <p className="mt-3 text-sm font-medium">Open a project to view its checkpoints.</p>

@@ -254,6 +254,7 @@ pub async fn checkpoint_import(
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<(), String> {
     require_active_project(&project_id)?;
+    crate::checkpoint_publication::cancel_project_publications(&project_id);
     let operation = crate::checkpoints::checkpoint_operation_lock(&project_id)?;
     let _compile = state.compile_lock.lock().await;
     let _operation = operation.lock().await;

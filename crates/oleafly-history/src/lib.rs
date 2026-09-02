@@ -379,6 +379,8 @@ pub struct Checkpoint {
     pub file_count: u64,
     pub logical_bytes: u64,
     replayed_inputs: Vec<ReplayedInput>,
+    portable_metadata_bytes: u64,
+    chunk_references: u64,
 }
 
 impl Checkpoint {
@@ -1253,8 +1255,6 @@ impl Store {
             }
             drop(source_reader);
             ensure_publication_active(gate)?;
-            destination_file.sync_all()?;
-            ensure_publication_active(gate)?;
 
             if source_handle != same_file::Handle::from_path(&source)? {
                 return Err(HistoryError::InvalidInput(format!(
@@ -1390,7 +1390,7 @@ impl Store {
                     .checked_add(file.logical_size)
                     .ok_or_else(|| HistoryError::InvalidInput("snapshot length overflow".into()))
             })?;
-        let checkpoint = Checkpoint {
+        let mut checkpoint = Checkpoint {
             snapshot_root: candidate.snapshot_root,
             completed_at_unix_ms: evidence.completed_at_unix_ms,
             engine: evidence.engine,
@@ -1400,6 +1400,8 @@ impl Store {
             file_count: candidate.manifest.files.len() as u64,
             logical_bytes,
             replayed_inputs: evidence.replayed_inputs,
+            portable_metadata_bytes: 0,
+            chunk_references: 0,
         };
 
         let root_hex = checkpoint.snapshot_root.as_hex();
@@ -1407,12 +1409,13 @@ impl Store {
         let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
         let root_already_visible = query_checkpoint(&transaction, &root_hex)?.is_some();
-        validate_portable_history_after_publication(
+        let (_, candidate_budget) = validate_portable_history_after_publication(
             &transaction,
             &checkpoint,
             &candidate.manifest,
-            root_already_visible,
         )?;
+        checkpoint.portable_metadata_bytes = candidate_budget.metadata_bytes;
+        checkpoint.chunk_references = candidate_budget.chunk_references;
 
         let mut published_pack_path = None;
         if !candidate.new_chunks.is_empty() {
@@ -1506,23 +1509,7 @@ impl Store {
         }
 
         // The visible root is intentionally the final catalog mutation.
-        transaction.execute(
-            "INSERT INTO checkpoints(
-                snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
-                main_document, output_hash, file_count, logical_bytes, replayed_inputs_json
-             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-            params![
-                root_hex,
-                checkpoint.completed_at_unix_ms,
-                checkpoint.engine,
-                checkpoint.toolchain_identity,
-                checkpoint.main_document,
-                checkpoint.output_hash.to_hex(),
-                checkpoint.file_count as i64,
-                checkpoint.logical_bytes as i64,
-                encode_replayed_inputs(&checkpoint.replayed_inputs)?,
-            ],
-        )?;
+        insert_checkpoint(&transaction, &checkpoint)?;
 
         if fault == PublishFault::BeforeCommit {
             return Err(HistoryError::Io(io::Error::other(
@@ -1582,7 +1569,8 @@ impl Store {
                       + length(CAST(toolchain_identity AS BLOB))
                       + length(CAST(main_document AS BLOB))
                       + length(CAST(output_hash AS BLOB))
-                      + length(CAST(replayed_inputs_json AS BLOB))
+                      + length(CAST(replayed_inputs_json AS BLOB)),
+             portable_metadata_bytes, chunk_references
              FROM checkpoints
              ORDER BY sequence DESC",
         )?;
@@ -2075,8 +2063,8 @@ impl Store {
                 hasher.update(&buffer[..count]);
                 remaining -= count as u64;
             }
-            output.sync_all()?;
             verify_file_digest(manifest_file, manifest_file.logical_size, &hasher)?;
+
             let input = if evidence
                 .replayed_inputs
                 .iter()
@@ -2133,7 +2121,8 @@ impl Store {
                       + length(CAST(toolchain_identity AS BLOB))
                       + length(CAST(main_document AS BLOB))
                       + length(CAST(output_hash AS BLOB))
-                      + length(CAST(replayed_inputs_json AS BLOB))
+                      + length(CAST(replayed_inputs_json AS BLOB)),
+             portable_metadata_bytes, chunk_references
              FROM checkpoints ORDER BY sequence ASC",
         )?;
         let checkpoints = statement.query_map([], checkpoint_from_row)?;
@@ -2361,8 +2350,9 @@ impl Store {
             transaction.execute(
                 "INSERT INTO checkpoints(
                     snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
-                    main_document, output_hash, file_count, logical_bytes, replayed_inputs_json
-                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                    main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
+                    portable_metadata_bytes, chunk_references
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
                 params![
                     checkpoint.root.as_hex(),
                     checkpoint.evidence.completed_at_unix_ms,
@@ -2373,6 +2363,8 @@ impl Store {
                     checkpoint.manifest.files.len() as i64,
                     logical_bytes as i64,
                     encode_replayed_inputs(&checkpoint.evidence.replayed_inputs)?,
+                    checkpoint.portable_budget.metadata_bytes as i64,
+                    checkpoint.portable_budget.chunk_references as i64,
                 ],
             )?;
         }
@@ -2616,6 +2608,8 @@ impl Store {
                 replayed_inputs_json TEXT NOT NULL
                 ,file_count INTEGER NOT NULL CHECK(file_count >= 0)
                 ,logical_bytes INTEGER NOT NULL CHECK(logical_bytes >= 0)
+                ,portable_metadata_bytes INTEGER NOT NULL DEFAULT 0 CHECK(portable_metadata_bytes >= 0)
+                ,chunk_references INTEGER NOT NULL DEFAULT 0 CHECK(chunk_references >= 0)
              );
              CREATE TABLE IF NOT EXISTS store_identity(
                 singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
@@ -2648,6 +2642,7 @@ impl Store {
             return Err(HistoryError::UnsupportedFormat(version));
         }
         self.lineage_with_connection(&connection)?;
+        ensure_catalog_budget_columns(&connection)?;
         Ok(())
     }
 
@@ -3017,40 +3012,27 @@ fn validate_portable_history_after_publication(
     connection: &Connection,
     checkpoint: &Checkpoint,
     manifest: &Manifest,
-    root_already_visible: bool,
-) -> Result<PortableHistoryBudget> {
+) -> Result<(PortableHistoryBudget, PortableCheckpointBudget)> {
     let candidate_budget = portable_checkpoint_budget(checkpoint, manifest)?;
-    let existing_count = query_count(connection, "checkpoints")?;
-    let resulting_count = existing_count
-        .checked_add(u64::from(!root_already_visible))
-        .ok_or_else(|| HistoryError::InvalidInput("portable history count overflow".into()))?;
-    PortableHistoryBudget::validate_checkpoint_count(resulting_count)?;
-
-    let mut budget = PortableHistoryBudget::default();
-    let mut statement = connection.prepare(
-        "SELECT snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
-                main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
-                length(CAST(snapshot_root AS BLOB))
-                  + length(CAST(engine AS BLOB))
-                  + length(CAST(toolchain_identity AS BLOB))
-                  + length(CAST(main_document AS BLOB))
-                  + length(CAST(output_hash AS BLOB))
-                  + length(CAST(replayed_inputs_json AS BLOB))
-         FROM checkpoints ORDER BY sequence ASC",
+    let totals = connection.query_row(
+        "SELECT COUNT(*),
+                COALESCE(SUM(portable_metadata_bytes), 0),
+                COALESCE(SUM(logical_bytes), 0),
+                COALESCE(SUM(chunk_references), 0)
+         FROM checkpoints WHERE snapshot_root <> ?1",
+        [checkpoint.snapshot_root.as_hex()],
+        |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, i64>(3)?,
+            ))
+        },
     )?;
-    let checkpoints = statement.query_map([], checkpoint_from_row)?;
-    for existing in checkpoints {
-        let existing = existing?;
-        if existing.snapshot_root == checkpoint.snapshot_root {
-            continue;
-        }
-        let existing_manifest = load_visible_manifest(connection, &existing.snapshot_root)?;
-        budget.include(portable_checkpoint_budget(&existing, &existing_manifest)?)?;
-    }
-    drop(statement);
+    let mut budget = PortableHistoryBudget::from_totals(totals.0, totals.1, totals.2, totals.3)?;
     budget.include(candidate_budget)?;
-    debug_assert_eq!(budget.checkpoint_count, resulting_count);
-    Ok(budget)
+    Ok((budget, candidate_budget))
 }
 
 struct ImportedCheckpoint {
@@ -3083,6 +3065,35 @@ struct PortableHistoryBudget {
 }
 
 impl PortableHistoryBudget {
+    fn from_totals(
+        checkpoint_count: i64,
+        metadata_bytes: i64,
+        logical_bytes: i64,
+        chunk_references: i64,
+    ) -> Result<Self> {
+        let convert = |value: i64, label: &str| {
+            u64::try_from(value).map_err(|_| {
+                HistoryError::Corrupt(format!("portable history {label} total is negative"))
+            })
+        };
+        let budget = Self {
+            checkpoint_count: convert(checkpoint_count, "checkpoint count")?,
+            metadata_bytes: convert(metadata_bytes, "metadata")?,
+            logical_bytes: convert(logical_bytes, "logical size")?,
+            chunk_references: convert(chunk_references, "chunk reference")?,
+        };
+        Self::validate_checkpoint_count(budget.checkpoint_count)?;
+        if budget.metadata_bytes > MAX_HISTORY_METADATA_BYTES
+            || budget.logical_bytes > MAX_HISTORY_LOGICAL_BYTES
+            || budget.chunk_references > MAX_HISTORY_CHUNK_REFERENCES
+        {
+            return Err(HistoryError::Corrupt(
+                "portable history totals exceed the format limits".into(),
+            ));
+        }
+        Ok(budget)
+    }
+
     fn validate_checkpoint_count(checkpoint_count: u64) -> Result<()> {
         if checkpoint_count > MAX_HISTORY_CHECKPOINTS {
             return Err(HistoryError::InvalidInput(
@@ -3384,7 +3395,8 @@ fn query_checkpoint(connection: &Connection, root: &str) -> Result<Option<Checkp
                       + length(CAST(toolchain_identity AS BLOB))
                       + length(CAST(main_document AS BLOB))
                       + length(CAST(output_hash AS BLOB))
-                      + length(CAST(replayed_inputs_json AS BLOB))
+                      + length(CAST(replayed_inputs_json AS BLOB)),
+             portable_metadata_bytes, chunk_references
              FROM checkpoints WHERE snapshot_root = ?1",
             [root],
             checkpoint_from_row,
@@ -3402,7 +3414,8 @@ fn query_checkpoints_oldest_first(connection: &Connection) -> Result<Vec<Checkpo
                   + length(CAST(toolchain_identity AS BLOB))
                   + length(CAST(main_document AS BLOB))
                   + length(CAST(output_hash AS BLOB))
-                  + length(CAST(replayed_inputs_json AS BLOB))
+                  + length(CAST(replayed_inputs_json AS BLOB)),
+         portable_metadata_bytes, chunk_references
          FROM checkpoints ORDER BY sequence ASC",
     )?;
     let rows = statement.query_map([], checkpoint_from_row)?;
@@ -3414,8 +3427,9 @@ fn insert_checkpoint(connection: &Connection, checkpoint: &Checkpoint) -> Result
     connection.execute(
         "INSERT INTO checkpoints(
             snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
-            main_document, output_hash, file_count, logical_bytes, replayed_inputs_json
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
+            portable_metadata_bytes, chunk_references
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         params![
             checkpoint.snapshot_root.as_hex(),
             checkpoint.completed_at_unix_ms,
@@ -3426,8 +3440,53 @@ fn insert_checkpoint(connection: &Connection, checkpoint: &Checkpoint) -> Result
             checkpoint.file_count as i64,
             checkpoint.logical_bytes as i64,
             encode_replayed_inputs(&checkpoint.replayed_inputs)?,
+            checkpoint.portable_metadata_bytes as i64,
+            checkpoint.chunk_references as i64,
         ],
     )?;
+    Ok(())
+}
+
+fn catalog_has_budget_columns(connection: &Connection) -> Result<bool> {
+    let mut statement = connection.prepare("PRAGMA table_info(checkpoints)")?;
+    let columns = statement
+        .query_map([], |row| row.get::<_, String>(1))?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok(columns
+        .iter()
+        .any(|column| column == "portable_metadata_bytes")
+        && columns.iter().any(|column| column == "chunk_references"))
+}
+
+fn ensure_catalog_budget_columns(connection: &Connection) -> Result<()> {
+    if catalog_has_budget_columns(connection)? {
+        return Ok(());
+    }
+    let transaction =
+        rusqlite::Transaction::new_unchecked(connection, TransactionBehavior::Immediate)?;
+    if !catalog_has_budget_columns(&transaction)? {
+        transaction.execute_batch(
+            "ALTER TABLE checkpoints ADD COLUMN portable_metadata_bytes
+                 INTEGER NOT NULL DEFAULT 0 CHECK(portable_metadata_bytes >= 0);
+             ALTER TABLE checkpoints ADD COLUMN chunk_references
+                 INTEGER NOT NULL DEFAULT 0 CHECK(chunk_references >= 0);",
+        )?;
+        for checkpoint in query_checkpoints_oldest_first(&transaction)? {
+            let manifest = load_visible_manifest(&transaction, &checkpoint.snapshot_root)?;
+            let budget = portable_checkpoint_budget(&checkpoint, &manifest)?;
+            transaction.execute(
+                "UPDATE checkpoints
+                 SET portable_metadata_bytes = ?2, chunk_references = ?3
+                 WHERE snapshot_root = ?1",
+                params![
+                    checkpoint.snapshot_root.as_hex(),
+                    budget.metadata_bytes as i64,
+                    budget.chunk_references as i64,
+                ],
+            )?;
+        }
+    }
+    transaction.commit()?;
     Ok(())
 }
 
@@ -3454,6 +3513,8 @@ fn checkpoint_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Checkpoint> 
         logical_bytes: row.get::<_, i64>(7)? as u64,
         replayed_inputs: decode_replayed_inputs(&replayed_inputs_json)
             .map_err(to_sql_conversion_error)?,
+        portable_metadata_bytes: row.get::<_, i64>(10)? as u64,
+        chunk_references: row.get::<_, i64>(11)? as u64,
     })
 }
 
@@ -4625,6 +4686,8 @@ mod tests {
             file_count: 2,
             logical_bytes: 0,
             replayed_inputs: vec![ReplayedInput::new("main.tex", content_hash).unwrap()],
+            portable_metadata_bytes: 0,
+            chunk_references: 0,
         };
         let metadata = PortableCheckpoint {
             export_version: 1,
@@ -4757,10 +4820,11 @@ mod tests {
                 .budget
         );
 
-        let usage =
-            validate_portable_history_after_publication(&connection, &replacement, &manifest, true)
+        let (usage, candidate) =
+            validate_portable_history_after_publication(&connection, &replacement, &manifest)
                 .unwrap();
 
+        assert_eq!(candidate, expected);
         assert_eq!(
             usage,
             PortableHistoryBudget {

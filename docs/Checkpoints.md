@@ -33,6 +33,13 @@ shell escape, and draft mode remain unavailable for Checkpoints.
 - Deleting a project permanently removes its external Checkpoints data.
   Moving a project to the Recycle Bin keeps the history recoverable.
 - A duplicated project receives a new identity and starts with empty history.
+- Publication does not hold up the compile. The compile returns as soon as the
+  ordinary build succeeds, and the discovery, sealing, and replay steps run in
+  the background afterwards. If a newer compile finishes while a publication is
+  still running, it replaces the queued one. Only the most recent successful
+  compile is published next.
+
+
 
 The Checkpoints panel can restore or delete one record, keep only the latest
 record, reset the history, and show reclaimable space.

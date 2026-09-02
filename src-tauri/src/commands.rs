@@ -266,7 +266,7 @@ pub async fn compile_project(
     let req_at = std::time::Instant::now();
 
     let _guard = state.compile_lock.lock().await;
-    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+    let worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
 
     #[cfg(debug_assertions)]
     eprintln!(
@@ -324,6 +324,7 @@ pub async fn compile_project(
     )
     .await?;
     crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta.engine)?;
+    drop(worktree);
 
     let mut result = crate::document_engine::compile(CompileRequest {
         app: &app,
@@ -353,21 +354,6 @@ pub async fn compile_project(
             .log
             .push_str(&format!("\nOleafly rejected the compile output: {error}"));
         return Ok(result);
-    }
-    if result.ok && !state.compile_cancel.is_requested() {
-        result.checkpoint_publication =
-            crate::checkpoint_publication::publish_after_successful_compile(
-                &app,
-                &project_id,
-                &project_dir,
-                &build_dir,
-                &meta.engine,
-                &main_doc,
-                &meta.checkpoints,
-                options,
-                Some(&state.compile_cancel),
-            )
-            .await;
     }
     let stopped = cancel_scope.finish();
     if stopped {
@@ -445,6 +431,18 @@ pub async fn compile_project(
                 );
             });
         }
+        result.checkpoint_publication =
+            crate::checkpoint_publication::schedule_after_successful_compile(
+                &app,
+                &project_id,
+                &project_dir,
+                &build_dir,
+                &meta.engine,
+                &main_doc,
+                &meta.checkpoints,
+                options,
+            )
+            .await;
     }
     #[cfg(debug_assertions)]
     eprintln!(

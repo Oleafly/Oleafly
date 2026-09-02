@@ -1034,7 +1034,7 @@ fn republication_rejects_an_unportable_header_without_replacing_the_root() {
 }
 
 #[test]
-fn publication_fails_closed_when_an_existing_summary_is_not_portable() {
+fn export_fails_closed_when_an_existing_summary_is_not_portable() {
     let temp = tempdir().unwrap();
     let project = temp.path().join("project");
     fs::create_dir_all(&project).unwrap();
@@ -1061,14 +1061,21 @@ fn publication_fails_closed_when_an_existing_summary_is_not_portable() {
     let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
     let second = store.stage_candidate(&project, &inputs).unwrap();
     let second_root = *second.snapshot_root();
-    let error = publish(&store, second, 2).unwrap_err();
+    publish(&store, second, 2).unwrap();
+    assert!(store.checkpoint(&second_root).unwrap().is_some());
+    assert_eq!(store.list().unwrap().len(), 2);
+
+    let error = store.export_history(Vec::new()).unwrap_err();
 
     assert!(
         error.to_string().contains("summary does not match"),
         "unexpected error: {error}"
     );
-    assert!(store.checkpoint(&second_root).unwrap().is_none());
-    assert_eq!(store.list().unwrap().len(), 1);
+    let error = store.verify().unwrap_err();
+    assert!(
+        error.to_string().contains("summary does not match"),
+        "unexpected error: {error}"
+    );
 }
 
 #[test]

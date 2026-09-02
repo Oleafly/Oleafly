@@ -91,7 +91,9 @@ export type CheckpointSkipReason =
     | "insufficient_space";
 export type CheckpointPublicationOutcome =
     | { status: "not_attempted" }
+    | { status: "scheduled" }
     | { status: "published"; snapshot_root: string; created: boolean }
+
     | {
         status: "published_durability_uncertain";
         snapshot_root: string;

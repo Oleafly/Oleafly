@@ -233,8 +233,10 @@ fn checkpoint_reset_sync(project_id: &str) -> Result<(), String> {
 /// Store::destroy serializes the directory lifecycle across app processes.
 pub(crate) fn remove_project_checkpoint_data(project_id: &str) -> Result<(), String> {
     crate::paths::validate_project_id(project_id)?;
+    crate::checkpoint_publication::cancel_project_publications_and_wait(project_id);
     let _activity = ActiveRestore::acquire(project_id);
     // Resolve the exact validated namespace path even when the visible store
+
     // has already been detached. Store::destroy also reaps its durable
     // `.deleting.*` record, so retry must not stop at a missing original root.
     let store = crate::paths::checkpoint_store_dir(project_id)?;
@@ -264,6 +266,7 @@ pub async fn checkpoint_delete(
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<(), String> {
     require_active_project(&project_id)?;
+    crate::checkpoint_publication::cancel_project_publications(&project_id);
     let operation = checkpoint_operation_lock(&project_id)?;
     let _compile = state.compile_lock.lock().await;
     let _operation = operation.lock().await;
@@ -280,6 +283,7 @@ pub async fn checkpoint_keep_latest(
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<(), String> {
     require_active_project(&project_id)?;
+    crate::checkpoint_publication::cancel_project_publications(&project_id);
     let operation = checkpoint_operation_lock(&project_id)?;
     let _compile = state.compile_lock.lock().await;
     let _operation = operation.lock().await;
@@ -294,6 +298,7 @@ pub async fn checkpoint_reset(
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<(), String> {
     require_active_project(&project_id)?;
+    crate::checkpoint_publication::cancel_project_publications(&project_id);
     let operation = checkpoint_operation_lock(&project_id)?;
     let _compile = state.compile_lock.lock().await;
     let _operation = operation.lock().await;

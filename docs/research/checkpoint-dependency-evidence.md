@@ -69,6 +69,20 @@ seconds and then skips this supplementary publication. Cache hashing runs on a
 blocking worker and is bounded by file count, per-file size, total size, and
 traversal depth.
 
+Publication is scheduled after the ordinary compile has returned. The compile
+command records the visible PDF hash and the Biber marker while it still holds
+the compile lock. Everything else runs later in a per-project lane: discovery,
+sealing, replay, and the store write. The lane reports each outcome to the
+window through an event. It takes the shared worktree lock only while it seals
+inputs, so a running probe does not block editor saves. A worktree mutation,
+restore, reset, import, or deletion cancels the lane before taking its own
+locks. Compiler binaries keep their recorded hash while size and modification
+time are unchanged. The Tectonic cache keeps its recorded identity while a stat
+fingerprint of the cache matches and every entry is at least two seconds old. A
+cache that Tectonic has just changed is always rehashed.
+
+
+
 The final history-store path is created only after discovery, sealing, replay,
 and root-last publication succeed. A first publication builds a complete
 nonempty store in a private sibling directory, then installs it with one

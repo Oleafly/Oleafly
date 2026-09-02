@@ -1423,6 +1423,7 @@ where
     F: FnOnce(&Path) -> Result<(T, bool), String> + Send + 'static,
 {
     paths::validate_project_id(&project_id)?;
+    crate::checkpoint_publication::cancel_project_publications(&project_id);
     let scopes = vec![MutationScope::subtree(String::new())];
     let admission = if allow_pending_restore_recovery {
         admit_restore_recovery_mutation(&project_id, scopes, expected_generation)?
@@ -5646,6 +5647,7 @@ async fn recycle_project_synchronized(
     project_id: String,
 ) -> Result<(), String> {
     paths::validate_project_id(&project_id)?;
+    crate::checkpoint_publication::cancel_project_publications(&project_id);
     let admission = admit_mutation(
         &project_id,
         vec![MutationScope::subtree(String::new())],

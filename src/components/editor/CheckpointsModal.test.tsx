@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useLayoutEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -147,6 +147,36 @@ beforeEach(() => {
 });
 
 describe("CheckpointsModal", () => {
+  it("shows a running publication and reloads once it lands", async () => {
+    render(<CheckpointsModal />);
+    expect(await screen.findByRole("button", { name: "Keep latest" })).toBeInTheDocument();
+    expect(mocks.checkpointList).toHaveBeenCalledTimes(1);
+
+    act(() => useSettingsStore.getState().setCheckpointPublishingProjectId("project"));
+    expect(
+      screen.getByText("Saving a checkpoint from the latest compile."),
+    ).toBeInTheDocument();
+
+    act(() => {
+      useSettingsStore.getState().setCheckpointPublishingProjectId(null);
+      useSettingsStore.getState().bumpCheckpointsRevision();
+    });
+
+    await waitFor(() => expect(mocks.checkpointList).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText("Saving a checkpoint from the latest compile.")).toBeNull();
+    expect(screen.getByRole("button", { name: "Keep latest" })).toBeInTheDocument();
+  });
+
+  it("ignores publication markers that belong to another project", async () => {
+    render(<CheckpointsModal />);
+    expect(await screen.findByRole("button", { name: "Keep latest" })).toBeInTheDocument();
+
+    act(() => useSettingsStore.getState().setCheckpointPublishingProjectId("elsewhere"));
+
+    expect(screen.queryByText("Saving a checkpoint from the latest compile.")).toBeNull();
+  });
+
+
   it("cannot run an old row action during the first render of a new project", async () => {
     function ImmediateProjectSwitch({ switchProject }: { switchProject: boolean }) {
       const renderedProjectId = useFilesStore((state) => state.projectId);

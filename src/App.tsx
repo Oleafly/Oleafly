@@ -67,6 +67,11 @@ import { EnginePickerModal } from "@/components/layout/EnginePickerModal";
 import { TinytexGuards } from "@/components/layout/TinytexGuards";
 import { QuitGuard } from "@/components/layout/QuitGuard";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
+import {
+  CHECKPOINT_PUBLICATION_EVENT,
+  applyCheckpointPublicationEvent,
+} from "@/lib/checkpoint-publication";
+
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 import { handleDockShortcut } from "@/lib/dock-shortcuts";
 import {
@@ -520,6 +525,9 @@ function AppContent() {
     const unCompile = listen<unknown>(COMPILE_SUCCEEDED_EVENT, (event) => {
       void applyRemoteCompileSuccess(event.payload, selfLabel);
     });
+    const unCheckpointPublication = listen<unknown>(CHECKPOINT_PUBLICATION_EVENT, (event) => {
+      applyCheckpointPublicationEvent(event.payload);
+    });
     const unProjectState = listen<ProjectStateChanged>("project-state-changed", (event) => {
       const files = useFilesStore.getState();
       if (!event.payload || event.payload.projectId !== files.projectId) return;
@@ -535,7 +543,9 @@ function AppContent() {
     return () => {
       void unFiles.then((f) => f());
       void unCompile.then((f) => f());
+      void unCheckpointPublication.then((f) => f());
       void unProjectState.then((f) => f());
+
       void unSettings.then((f) => f());
     };
   }, []);

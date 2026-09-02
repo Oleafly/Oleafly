@@ -20,6 +20,8 @@ import {
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
 import { notifyError, toast } from "@/lib/toast";
+import { notifyCheckpointPublicationSkipped } from "@/lib/checkpoint-publication";
+
 import { compileOfflineForEngine } from "@/lib/document-engine";
 import { ensurePandoc } from "@/features/pandoc";
 import {
@@ -1036,22 +1038,12 @@ export const useCompileStore = create<CompileState>((set, get) => ({
           }),
         )
         .catch(() => {});
-      if (checkpoint) notifyCompileSucceeded(checkpoint);
-      if (
-        checkpoint &&
-        result.checkpoint_publication?.status === "skipped"
-      ) {
-        const publication = result.checkpoint_publication;
-        toast.infoUnique(
-          `checkpoint-publication-${publication.reason}`,
-          `${publication.message} ${publication.suggestion}`,
-          {
-            label: "View Checkpoints",
-            onClick: () => useSettingsStore.getState().setCheckpointsOpen(true),
-          },
-        );
+      if (checkpoint) {
+        notifyCompileSucceeded(checkpoint);
+        notifyCheckpointPublicationSkipped(result.checkpoint_publication);
       }
       return result;
+
     } catch (e) {
       set((state) => {
         if (
