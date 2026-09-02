@@ -90,7 +90,15 @@ pub fn has_orx() -> bool {
 }
 
 #[tauri::command]
-pub fn project_engine(
+pub async fn project_engine(
+    project_id: String,
+) -> Result<crate::document_engine::EngineDescriptor, String> {
+    tauri::async_runtime::spawn_blocking(move || project_engine_sync(project_id))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn project_engine_sync(
     project_id: String,
 ) -> Result<crate::document_engine::EngineDescriptor, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;

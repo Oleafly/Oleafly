@@ -2944,6 +2944,18 @@ pub async fn get_project(
     project_id: String,
 ) -> Result<ProjectMeta, String> {
     paths::validate_project_id(&project_id)?;
+    let marker_project_id = project_id.clone();
+    let recovery_pending = tauri::async_runtime::spawn_blocking(move || {
+        crate::worktree_lock::pending_restore_marker_exists(&marker_project_id)
+    })
+    .await
+    .map_err(|error| format!("project open task failed: {error}"))??;
+    if !recovery_pending {
+        let read_project_id = project_id.clone();
+        return tauri::async_runtime::spawn_blocking(move || read_meta(&read_project_id))
+            .await
+            .map_err(|error| format!("project open task failed: {error}"))?;
+    }
     let admission = admit_restore_recovery_mutation(
         &project_id,
         vec![MutationScope::subtree(String::new())],

@@ -74,6 +74,11 @@ async function openHistory(page: Page) {
 }
 
 async function restoreCommit(page: Page, message: string) {
+  await page.waitForFunction(
+    `Array.from(document.querySelectorAll('div.truncate'))
+      .some((d) => d.textContent.trim() === ${JSON.stringify(message)})`,
+    15_000,
+  );
   const clicked = await page.evaluate<boolean>(
     `(() => {
       const rows = Array.from(document.querySelectorAll('div.truncate'))

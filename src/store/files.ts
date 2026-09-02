@@ -693,32 +693,46 @@ async function loadOpenedProject(
   const [meta, generation] = await Promise.all([getProject(id), projectMutationGeneration(id)]);
   if (superseded()) return;
   rememberMutationGeneration(id, generation);
-  await mcpSetActiveProject(id).catch(() => {});
+  const activation = mcpSetActiveProject(id).catch(() => {});
+  const [tree, engine] = await Promise.all([listFiles(id), loadOpenedProjectEngine(id)]);
   if (superseded()) return;
-  const tree = await listFiles(id);
-  if (superseded()) return;
-  set({ projectName: meta.name, projectKind: meta.kind ?? "", mainDoc: meta.main_doc, tree });
-  await loadOpenedProjectEngine(id, superseded, set);
-  if (superseded()) return;
+  set({
+    projectName: meta.name,
+    projectKind: meta.kind ?? "",
+    mainDoc: meta.main_doc,
+    tree,
+    ...engine.state,
+  });
+  if (engine.failure !== null) {
+    notifyError("load document engine", engine.failure, ENGINE_LOAD_FAILURE_MESSAGE);
+  }
   await preloadBibliographies(id, tree, superseded, set);
   await get().openFile(meta.main_doc || "main.tex");
   if (superseded()) return;
+  await activation;
   if (seq === openSeq) void scanOpenProjectCompatibility(id, meta, tree, seq, get);
 }
 
+const ENGINE_LOAD_FAILURE_MESSAGE =
+  "Document engine details could not be loaded. Engine-specific actions are disabled.";
+
+type ProjectEngineState = Pick<FilesStore, "engine" | "engineLoaded" | "engineError">;
+
 async function loadOpenedProjectEngine(
   id: string,
-  superseded: () => boolean,
-  set: FilesSet,
-): Promise<void> {
+): Promise<{ state: ProjectEngineState; failure: unknown }> {
   try {
     const engine = await getProjectEngine(id);
-    if (!superseded()) set({ engine, engineLoaded: true, engineError: null });
-  } catch (error) {
-    if (superseded()) return;
-    const message = "Document engine details could not be loaded. Engine-specific actions are disabled.";
-    set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: message });
-    notifyError("load document engine", error, message);
+    return { state: { engine, engineLoaded: true, engineError: null }, failure: null };
+  } catch (failure) {
+    return {
+      state: {
+        engine: UNKNOWN_ENGINE,
+        engineLoaded: false,
+        engineError: ENGINE_LOAD_FAILURE_MESSAGE,
+      },
+      failure,
+    };
   }
 }
 

@@ -131,6 +131,58 @@ pub struct EngineEnvironment {
     variables: Vec<(String, String)>,
 }
 
+fn controlled_path_value(path: &Path) -> String {
+    let value = path.to_string_lossy().into_owned();
+    #[cfg(windows)]
+    {
+        if let Some(rest) = value.strip_prefix(r"\\?\UNC\") {
+            return format!(r"\\{rest}");
+        }
+        if let Some(rest) = value.strip_prefix(r"\\?\") {
+            return rest.to_owned();
+        }
+    }
+    value
+}
+
+#[cfg(windows)]
+fn push_platform_variables(variables: &mut Vec<(String, String)>, bin: &Path) {
+    const PASSTHROUGH: [&str; 10] = [
+        "SystemRoot",
+        "SystemDrive",
+        "windir",
+        "ComSpec",
+        "PATHEXT",
+        "ProgramData",
+        "ALLUSERSPROFILE",
+        "NUMBER_OF_PROCESSORS",
+        "PROCESSOR_ARCHITECTURE",
+        "OS",
+    ];
+    for name in PASSTHROUGH {
+        if let Some(value) = std::env::var_os(name) {
+            variables.push((name.into(), value.to_string_lossy().into_owned()));
+        }
+    }
+    let Some(system_root) = std::env::var_os("SystemRoot") else {
+        return;
+    };
+    let system_root = PathBuf::from(system_root);
+    let entries = [
+        PathBuf::from(controlled_path_value(bin)),
+        system_root.join("System32"),
+        system_root,
+    ];
+    if let Ok(joined) = std::env::join_paths(entries) {
+        if let Some(entry) = variables.iter_mut().find(|(name, _)| name == "PATH") {
+            entry.1 = joined.to_string_lossy().into_owned();
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn push_platform_variables(_variables: &mut [(String, String)], _bin: &Path) {}
+
 impl EngineEnvironment {
     fn inherited(source_date_epoch: Option<u64>) -> Self {
         let variables = source_date_epoch
@@ -162,32 +214,34 @@ impl EngineEnvironment {
         } else {
             cache.join("tectonic")
         };
-        let display = |path: &Path| path.to_string_lossy().into_owned();
+        let display = controlled_path_value;
+        let mut variables = vec![
+            ("SOURCE_DATE_EPOCH".into(), epoch.to_string()),
+            ("HOME".into(), display(&home)),
+            ("USERPROFILE".into(), display(&home)),
+            ("XDG_CONFIG_HOME".into(), display(&config)),
+            ("XDG_DATA_HOME".into(), display(&data)),
+            ("XDG_CACHE_HOME".into(), display(&cache)),
+            ("APPDATA".into(), display(&config)),
+            ("LOCALAPPDATA".into(), display(&data)),
+            ("TMPDIR".into(), display(&temp)),
+            ("TMP".into(), display(&temp)),
+            ("TEMP".into(), display(&temp)),
+            ("PATH".into(), display(&bin)),
+            ("TECTONIC_CACHE_DIR".into(), display(&tectonic_cache)),
+            (
+                "TYPST_PACKAGE_PATH".into(),
+                display(&data.join("typst-packages")),
+            ),
+            (
+                "TYPST_PACKAGE_CACHE_PATH".into(),
+                display(&cache.join("typst-packages")),
+            ),
+        ];
+        push_platform_variables(&mut variables, &bin);
         Ok(Self {
             clear_ambient: true,
-            variables: vec![
-                ("SOURCE_DATE_EPOCH".into(), epoch.to_string()),
-                ("HOME".into(), display(&home)),
-                ("USERPROFILE".into(), display(&home)),
-                ("XDG_CONFIG_HOME".into(), display(&config)),
-                ("XDG_DATA_HOME".into(), display(&data)),
-                ("XDG_CACHE_HOME".into(), display(&cache)),
-                ("APPDATA".into(), display(&config)),
-                ("LOCALAPPDATA".into(), display(&data)),
-                ("TMPDIR".into(), display(&temp)),
-                ("TMP".into(), display(&temp)),
-                ("TEMP".into(), display(&temp)),
-                ("PATH".into(), display(&bin)),
-                ("TECTONIC_CACHE_DIR".into(), display(&tectonic_cache)),
-                (
-                    "TYPST_PACKAGE_PATH".into(),
-                    display(&data.join("typst-packages")),
-                ),
-                (
-                    "TYPST_PACKAGE_CACHE_PATH".into(),
-                    display(&cache.join("typst-packages")),
-                ),
-            ],
+            variables,
         })
     }
 
@@ -207,8 +261,19 @@ impl EngineEnvironment {
             "TYPST_PACKAGE_CACHE_PATH",
         ] {
             if let Some((_, value)) = self.variables.iter().find(|(name, _)| name == key) {
-                std::fs::create_dir_all(value).map_err(|error| {
-                    format!("failed to prepare checkpoint compiler environment {value}: {error}")
+                let directory = if key == "PATH" {
+                    std::env::split_paths(value).next()
+                } else {
+                    Some(PathBuf::from(value))
+                };
+                let Some(directory) = directory else {
+                    continue;
+                };
+                std::fs::create_dir_all(&directory).map_err(|error| {
+                    format!(
+                        "failed to prepare checkpoint compiler environment {}: {error}",
+                        directory.display()
+                    )
                 })?;
             }
         }
@@ -3988,8 +4053,11 @@ mod tests {
         );
         assert!(spec.args.iter().any(|arg| arg == "--ignore-system-fonts"));
         assert!(spec.environment.clear_ambient);
-        assert!(Path::new(spec.environment.variable("PATH").unwrap())
-            .ends_with(Path::new("checkpoint-home").join("bin")));
+        assert!(
+            std::env::split_paths(spec.environment.variable("PATH").unwrap())
+                .next()
+                .is_some_and(|entry| entry.ends_with(Path::new("checkpoint-home").join("bin")))
+        );
     }
 
     #[tokio::test]

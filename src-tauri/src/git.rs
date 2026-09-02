@@ -138,14 +138,26 @@ pub struct GitCommit {
 }
 
 #[tauri::command]
-pub fn git_is_initialized(project_id: String) -> Result<bool, String> {
+pub async fn git_is_initialized(project_id: String) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || git_is_initialized_sync(project_id))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn git_is_initialized_sync(project_id: String) -> Result<bool, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     Ok(initialized_repo(&project_id)?.is_some())
 }
 
 /// Initialize Source Control only in response to a direct user action.
 #[tauri::command]
-pub fn git_initialize(project_id: String) -> Result<String, String> {
+pub async fn git_initialize(project_id: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || git_initialize_sync(project_id))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn git_initialize_sync(project_id: String) -> Result<String, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
     let root = project_root(&project_id)?;
     if !root.join(".git").exists() {
@@ -364,7 +376,15 @@ fn clean_remote_credentials(root: &PathBuf) -> Result<bool, String> {
 }
 
 #[tauri::command]
-pub fn git_remote_credentials_need_cleanup(project_id: String) -> Result<bool, String> {
+pub async fn git_remote_credentials_need_cleanup(project_id: String) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        git_remote_credentials_need_cleanup_sync(project_id)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+fn git_remote_credentials_need_cleanup_sync(project_id: String) -> Result<bool, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let Some(root) = initialized_repo(&project_id)? else {
         return Ok(false);
@@ -375,7 +395,13 @@ pub fn git_remote_credentials_need_cleanup(project_id: String) -> Result<bool, S
 /// Removes cleartext credentials left in origin URLs by older Oleafly builds.
 /// This writes Git config only after the user chooses the repair action.
 #[tauri::command]
-pub fn git_clean_remote_credentials(project_id: String) -> Result<bool, String> {
+pub async fn git_clean_remote_credentials(project_id: String) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || git_clean_remote_credentials_sync(project_id))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn git_clean_remote_credentials_sync(project_id: String) -> Result<bool, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
     let root = existing_repo(&project_id)?;
     clean_remote_credentials(&root)
@@ -528,7 +554,13 @@ where
 }
 
 #[tauri::command]
-pub fn git_set_remote(project_id: String, url: String) -> Result<(), String> {
+pub async fn git_set_remote(project_id: String, url: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || git_set_remote_sync(project_id, url))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn git_set_remote_sync(project_id: String, url: String) -> Result<(), String> {
     if !is_allowed_remote_url(&url) {
         return Err(format!("unsupported remote URL: {url}"));
     }
@@ -545,7 +577,13 @@ pub fn git_set_remote(project_id: String, url: String) -> Result<(), String> {
 
 /// Remove the `origin` remote (unlink a project from GitHub).
 #[tauri::command]
-pub fn git_remove_remote(project_id: String) -> Result<(), String> {
+pub async fn git_remove_remote(project_id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || git_remove_remote_sync(project_id))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn git_remove_remote_sync(project_id: String) -> Result<(), String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
     let root = existing_repo(&project_id)?;
     let check = run_git(&root, &["remote", "get-url", "origin"])?;
@@ -556,7 +594,13 @@ pub fn git_remove_remote(project_id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn git_get_remote(project_id: String) -> Result<Option<String>, String> {
+pub async fn git_get_remote(project_id: String) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || git_get_remote_sync(project_id))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn git_get_remote_sync(project_id: String) -> Result<Option<String>, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let Some(root) = initialized_repo(&project_id)? else {
         return Ok(None);
@@ -582,7 +626,13 @@ fn current_branch(root: &PathBuf) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn git_current_branch(project_id: String) -> Result<String, String> {
+pub async fn git_current_branch(project_id: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || git_current_branch_sync(project_id))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn git_current_branch_sync(project_id: String) -> Result<String, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let root = existing_repo(&project_id)?;
     current_branch(&root)
@@ -653,6 +703,12 @@ pub async fn git_ahead_behind(project_id: String) -> Result<AheadBehind, String>
 
 #[tauri::command]
 pub async fn git_push(project_id: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || git_push_sync(project_id))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn git_push_sync(project_id: String) -> Result<String, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let root = existing_repo(&project_id)?;
     let cfg = config::read_config()?;
@@ -878,7 +934,13 @@ pub async fn git_discard(
 }
 
 #[tauri::command]
-pub fn git_head_oid(project_id: String) -> Result<Option<String>, String> {
+pub async fn git_head_oid(project_id: String) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || git_head_oid_sync(project_id))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+fn git_head_oid_sync(project_id: String) -> Result<Option<String>, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let Some(root) = initialized_repo(&project_id)? else {
         return Ok(None);
@@ -1128,7 +1190,7 @@ mod tests {
         std::fs::create_dir_all(data.join("projects").join(project_id)).unwrap();
         std::env::set_var("OLEAFLY_DATA_DIR", &data);
 
-        let branch = super::git_current_branch(project_id.to_string());
+        let branch = super::git_current_branch_sync(project_id.to_string());
         let repository_was_created = data.join("projects").join(project_id).join(".git").exists();
 
         if let Some(previous) = previous_data_dir {
@@ -1193,7 +1255,7 @@ mod tests {
         write(&project, "main.tex", "unchanged\n");
         std::env::set_var("OLEAFLY_DATA_DIR", &data);
 
-        let branch = super::git_current_branch(project_id.to_string());
+        let branch = super::git_current_branch_sync(project_id.to_string());
         let log = super::git_log(project_id.to_string()).await.unwrap();
         let status = super::git_status(project_id.to_string()).await.unwrap();
         let diff = super::git_diff(project_id.to_string(), None, false)

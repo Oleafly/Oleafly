@@ -444,6 +444,8 @@ export function terminalTourAction(action: string, status: string) {
   return "interrupt" as const;
 }
 
+const MISSING_TARGET_GRACE_MS = 750;
+
 export function missingTargetAction(
   direction: "next" | "prev",
   kind: TourStepDefinition["kind"],
@@ -1204,15 +1206,22 @@ export function TourGuide() {
       const state = useTourStore.getState();
       return state.activeTourId === tourId && state.activeStepIndex === stepIndex;
     };
+    let fallback: number | null = null;
+    let unsubscribeLoading: (() => void) | null = null;
     const observer = new MutationObserver(() => {
       if (!isCurrentStep() || !document.querySelector(target)) return;
-      observer.disconnect();
-      window.clearTimeout(fallback);
+      settle();
       setJoyrideInstance((value) => value + 1);
     });
-    observer.observe(document.body, { childList: true, subtree: true });
-    const fallback = window.setTimeout(() => {
+    const settle = () => {
       observer.disconnect();
+      if (fallback !== null) window.clearTimeout(fallback);
+      fallback = null;
+      unsubscribeLoading?.();
+      unsubscribeLoading = null;
+    };
+    const skipMissingTarget = () => {
+      settle();
       if (!isCurrentStep()) return;
       const action = missingTargetAction(
         navigationDirection.current,
@@ -1220,11 +1229,22 @@ export function TourGuide() {
         activeStepIndex >= (definition?.steps.length ?? 1) - 1,
       );
       useTourStore.getState()[action](action === "dismiss" || action === "complete" ? tourId : undefined);
-    }, 750);
-    return () => {
-      observer.disconnect();
-      window.clearTimeout(fallback);
     };
+    const armFallback = () => {
+      if (fallback === null) fallback = window.setTimeout(skipMissingTarget, MISSING_TARGET_GRACE_MS);
+    };
+    observer.observe(document.body, { childList: true, subtree: true });
+    if (useFilesStore.getState().loading) {
+      unsubscribeLoading = useFilesStore.subscribe((state) => {
+        if (state.loading) return;
+        unsubscribeLoading?.();
+        unsubscribeLoading = null;
+        armFallback();
+      });
+    } else {
+      armFallback();
+    }
+    return settle;
   }, [activeStep, activeStepIndex, activeTourId, definition]);
 
   useEffect(() => {

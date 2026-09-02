@@ -2287,7 +2287,7 @@ async fn executable_toolchain_identity(
             )
         })?;
     let mut identity = format!(
-        "checkpoint-evidence-v1;engine={};compiler-blake3={primary_hash};controlled-env=v1;source-date-epoch={source_date_epoch}",
+        "checkpoint-evidence-v1;engine={};compiler-blake3={primary_hash};controlled-env=v2;source-date-epoch={source_date_epoch}",
         engine.as_str(),
     );
     if engine == crate::document_engine::DocumentEngineId::Markdown {
@@ -2310,6 +2310,35 @@ async fn executable_toolchain_identity(
 
 struct ProbeRun {
     toolchain_identity: String,
+}
+
+fn record_probe_failure(
+    mode: crate::document_engine::CheckpointCompileMode,
+    result: &crate::document_engine::CompileResult,
+) {
+    let errors: Vec<&str> = result
+        .errors
+        .iter()
+        .map(|error| error.message.as_str())
+        .take(3)
+        .collect();
+    let tail_start = result
+        .log
+        .char_indices()
+        .rev()
+        .nth(799)
+        .map_or(0, |(index, _)| index);
+    let tail = result.log[tail_start..]
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let summary = format!(
+        "checkpoint {mode:?} compile failed: ok={} pdf={} errors={errors:?} log tail: {tail}",
+        result.ok, result.has_pdf
+    );
+    #[cfg(debug_assertions)]
+    eprintln!("checkpoint: {summary}");
+    let _ = crate::project::append_app_log(summary);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2354,6 +2383,7 @@ async fn run_probe(
     .map_err(AdapterFailure::unavailable)?;
     ensure_checkpoint_not_cancelled(cancel)?;
     if !result.ok || !result.has_pdf {
+        record_probe_failure(mode, &result);
         return Err(AdapterFailure::unavailable(
             "the controlled checkpoint compile did not produce a valid PDF",
         ));
