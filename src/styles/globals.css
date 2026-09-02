@@ -1595,3 +1595,30 @@ body[data-tour-active] [data-tour-hide] {
   width: 0;
   height: 0;
 }
+
+.oleafly-diff-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  margin-left: -5px;
+  cursor: col-resize;
+  z-index: 5;
+  touch-action: none;
+  outline: none;
+}
+.oleafly-diff-resizer::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+.oleafly-diff-resizer:hover::after,
+.oleafly-diff-resizer:focus-visible::after,
+.oleafly-diff-resizer[data-dragging="true"]::after {
+  background: var(--primary);
+}

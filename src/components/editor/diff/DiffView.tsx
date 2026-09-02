@@ -16,6 +16,7 @@ import { useFilesStore } from "@/store/files";
 import { useGitStatusStore } from "@/store/git-status";
 import { cn } from "@/lib/utils";
 import { diffSides } from "./sides";
+import { attachSplitResizer } from "./split-resizer";
 
 const BINARY_EXTS = new Set([
   "png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "svgz", "pdf", "zip", "gz",
@@ -60,6 +61,7 @@ export function DiffView() {
     const { path, side } = diff;
     let cancelled = false;
     let view: { destroy: () => void } | null = null;
+    let detachResizer: () => void = () => {};
     let writeTimer: ReturnType<typeof setTimeout> | null = null;
     setLoading(true);
     setError(null);
@@ -137,6 +139,7 @@ export function DiffView() {
           });
           view = mv;
           navViewRef.current = mv.b;
+          detachResizer = attachSplitResizer(host);
         } else {
           const ev = new EditorView({
             doc: newText,
@@ -163,6 +166,8 @@ export function DiffView() {
       cancelled = true;
       if (writeTimer) clearTimeout(writeTimer);
       if (pending !== null) void persist(pending);
+      detachResizer();
+      detachResizer = () => {};
       view?.destroy();
       navViewRef.current = null;
       if (hostRef.current) hostRef.current.innerHTML = "";
