@@ -335,11 +335,14 @@ export function TopToolbar() {
         isMac && fullscreen && "pl-2"
       )}
     >
-      <div data-tauri-drag-region className="flex min-w-0 items-center gap-2">
-        <HomeBrandButton onClick={() => void closeProject()} />
-        <ChevronRight className="size-4 text-muted-foreground/50" />
+      <HomeBrandButton className="shrink-0" onClick={() => void closeProject()} />
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+      <div
+        data-tauri-drag-region
+        className="flex min-w-0 flex-1 items-center overflow-hidden"
+      >
         {editingTitle ? (
-          <span ref={titleEditRef} className="flex items-center gap-1">
+          <span ref={titleEditRef} className="flex min-w-0 items-center gap-1">
             <Input
               ref={titleInputRef}
               aria-label="Project name"
@@ -378,7 +381,7 @@ export function TopToolbar() {
             </Tooltip>
           </span>
         ) : (
-          <Tooltip label={projectName || "project"} side="bottom">
+          <Tooltip label={projectName || "project"} side="bottom" className="min-w-0">
             <button
                 data-testid="project-title"
               type="button"
@@ -394,17 +397,19 @@ export function TopToolbar() {
             </button>
           </Tooltip>
         )}
+        {projectId && (
+          <div className="ml-2 shrink-0 min-[1200px]:pointer-events-none min-[1200px]:absolute min-[1200px]:left-1/2 min-[1200px]:top-1/2 min-[1200px]:-translate-x-1/2 min-[1200px]:-translate-y-1/2">
+            <div className="pointer-events-auto">
+              <ViewModeSwitch viewMode={viewMode} setViewMode={setViewMode} />
+            </div>
+          </div>
+        )}
       </div>
 
-      {projectId && (
-        <div className="shrink-0 min-[1200px]:pointer-events-none min-[1200px]:absolute min-[1200px]:left-1/2 min-[1200px]:top-1/2 min-[1200px]:-translate-x-1/2 min-[1200px]:-translate-y-1/2">
-          <div className="pointer-events-auto">
-            <ViewModeSwitch viewMode={viewMode} setViewMode={setViewMode} />
-          </div>
-        </div>
-      )}
-
-      <div data-tauri-drag-region className="ml-auto flex items-center justify-end gap-1.5">
+      <div
+        data-tauri-drag-region
+        className="ml-auto flex min-w-0 items-center justify-end gap-1.5 overflow-x-clip"
+      >
 
         <CompileControls />
 

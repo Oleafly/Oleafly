@@ -136,7 +136,7 @@ export function WorkspaceDockControls() {
   const assistantLabel = `${assistantOpen ? "Hide" : "Show"} AI assistant`;
 
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex shrink-0 items-center gap-0.5">
       <Tooltip label={terminalLabel} side="bottom">
         <button
           type="button"
