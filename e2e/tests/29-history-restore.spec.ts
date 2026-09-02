@@ -76,6 +76,9 @@ async function openHistory(page: import("../helpers").Page) {
 }
 
 async function restoreCommit(page: import("../helpers").Page, message: string) {
+  await expect(page.getByText(message, { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
   const clicked = await page.evaluate<boolean>(
     `(() => {
       const rows = Array.from(document.querySelectorAll('div.truncate'))

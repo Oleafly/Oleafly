@@ -431,6 +431,7 @@ fn sync_directory(path: &Path) -> Result<(), String> {
     maybe_fail_directory_sync()?;
     OpenOptions::new()
         .read(true)
+        .write(true)
         .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
         .open(path)
         .and_then(|directory| directory.sync_all())

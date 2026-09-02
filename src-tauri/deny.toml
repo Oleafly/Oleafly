@@ -37,6 +37,7 @@ allow = [
   "MIT",
   "Apache-2.0",
   "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
   "BSD-3-Clause",
   "ISC",
   "Zlib",
@@ -53,6 +54,7 @@ exceptions = [
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-agent" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-cli" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-core" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-history" },
 ]
 
 [bans]
