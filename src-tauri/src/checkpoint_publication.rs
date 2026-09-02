@@ -2767,4 +2767,339 @@ mod tests {
             CheckpointSkipReason::DependencyEvidenceUnavailable
         );
     }
+
+    #[test]
+    fn report_and_project_path_validation_fail_closed() {
+        let skipped = CheckpointPublicationOutcome::skipped(
+            CheckpointSkipReason::DependencyEvidenceUnavailable,
+            "missing evidence",
+            "compile again",
+        );
+        assert!(matches!(
+            skipped,
+            CheckpointPublicationOutcome::Skipped { .. }
+        ));
+        assert_eq!(
+            super::AdapterFailure::unavailable("missing").detail,
+            "missing"
+        );
+        assert_eq!(super::AdapterFailure::external("outside").detail, "outside");
+
+        super::ensure_checkpoint_not_cancelled(None).unwrap();
+        let cancel = crate::state::CompileCancel::default();
+        {
+            let _scope = super::CheckpointCancelScope::new(Some(&cancel));
+            assert_eq!(cancel.request(), None);
+            let error = super::ensure_checkpoint_not_cancelled(Some(&cancel)).unwrap_err();
+            assert!(error.detail.contains("cancelled"));
+        }
+        assert!(!cancel.is_requested());
+        let _scope = super::CheckpointCancelScope::new(None);
+
+        assert!(super::validate_report_size(b"").is_err());
+        assert!(super::validate_report_size(b"complete").is_ok());
+        assert!(
+            super::validate_report_size(&vec![0; super::MAX_DEPENDENCY_REPORT_BYTES + 1]).is_err()
+        );
+
+        assert_eq!(
+            super::portable_relative(std::path::Path::new("chapters/one.typ")).unwrap(),
+            "chapters/one.typ"
+        );
+        for unsafe_path in ["", "../outside", ".git/config", "bad\nname"] {
+            assert!(super::portable_relative(std::path::Path::new(unsafe_path)).is_err());
+        }
+
+        let temp = tempdir().unwrap();
+        let project = temp.path().join("project");
+        let outside = temp.path().join("outside.typ");
+        fs::create_dir(&project).unwrap();
+        fs::write(project.join("main.typ"), b"main").unwrap();
+        fs::write(&outside, b"outside").unwrap();
+        assert_eq!(
+            super::normalize_project_dependency(std::path::Path::new("main.typ"), &project)
+                .unwrap(),
+            "main.typ"
+        );
+        assert!(super::normalize_project_dependency(&outside, &project).is_err());
+        assert!(
+            super::normalize_project_dependency(std::path::Path::new("missing.typ"), &project)
+                .is_err()
+        );
+        assert!(super::normalize_project_dependency(std::path::Path::new("."), &project).is_err());
+
+        assert!(super::path_is_inside_any(
+            &project.join("main.typ"),
+            std::slice::from_ref(&project)
+        ));
+        assert!(!super::path_is_lexically_inside_any(
+            &project.join("../outside.typ"),
+            std::slice::from_ref(&project)
+        ));
+
+        let mut dependencies = std::collections::BTreeSet::new();
+        for index in 0..super::MAX_DEPENDENCY_COUNT {
+            dependencies.insert(format!("input-{index}"));
+        }
+        assert!(super::insert_dependency(&mut dependencies, "one-too-many".into()).is_err());
+    }
+
+    #[test]
+    fn dependency_report_parsers_reject_ambiguous_or_incomplete_evidence() {
+        let temp = tempdir().unwrap();
+        let project = temp.path().join("project");
+        fs::create_dir(&project).unwrap();
+        fs::write(project.join("main.typ"), b"main").unwrap();
+
+        for report in [
+            b"not-a-rule\n".as_slice(),
+            b"target : input".as_slice(),
+            b"target : \nother-rule\n".as_slice(),
+            b"target : input\n".as_slice(),
+        ] {
+            assert!(parse_tectonic_dependencies(
+                report,
+                &project,
+                TectonicDependencyLayout::ResolvedPaths,
+                &[],
+            )
+            .is_err());
+        }
+        assert!(parse_tectonic_dependencies(
+            b"target : \xff\n",
+            &project,
+            TectonicDependencyLayout::ResolvedPaths,
+            &[],
+        )
+        .is_err());
+
+        assert!(parse_typst_dependencies(b"main.typ", &project).is_err());
+        assert!(parse_typst_dependencies(b"\xff\0", &project).is_err());
+        assert!(parse_typst_dependencies(b"\0", &project).is_err());
+
+        assert!(parse_pandoc_resources(b"not-json", &project).is_err());
+        let ignored = serde_json::to_vec(&serde_json::json!([{"type": "Diagnostic"}])).unwrap();
+        assert!(parse_pandoc_resources(&ignored, &project)
+            .unwrap()
+            .is_empty());
+        let missing_path =
+            serde_json::to_vec(&serde_json::json!([{"type": "LoadedResource"}])).unwrap();
+        assert!(parse_pandoc_resources(&missing_path, &project).is_err());
+        for source in ["data:image/png;base64,AAAA", "file:///tmp/outside.png"] {
+            let remote = serde_json::to_vec(&serde_json::json!([{
+                "type": "LoadedResource",
+                "from": source
+            }]))
+            .unwrap();
+            assert_eq!(
+                parse_pandoc_resources(&remote, &project)
+                    .unwrap_err()
+                    .reason,
+                CheckpointSkipReason::ExternalDependency
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn probe_workspace_dispatches_reports_and_cleans_up() {
+        let workspace = super::ProbeWorkspace::create().unwrap();
+        let workspace_root = workspace.root.clone();
+        assert!(workspace.discovery().is_dir());
+        assert!(workspace.replay().is_dir());
+        assert_eq!(
+            workspace.create_output("discovery").unwrap(),
+            workspace.discovery()
+        );
+        fs::create_dir_all(workspace.generated_temp_root()).unwrap();
+
+        let temp = tempdir().unwrap();
+        let project = temp.path().join("project");
+        let output = temp.path().join("output");
+        fs::create_dir(&project).unwrap();
+        fs::create_dir(&output).unwrap();
+        fs::write(project.join("main.typ"), b"main").unwrap();
+
+        let typst_report = [project.join("main.typ").to_string_lossy().as_bytes(), b"\0"].concat();
+        fs::write(output.join("checkpoint-typst-deps.zero"), typst_report).unwrap();
+        assert_eq!(
+            super::dependencies_from_probe(
+                crate::document_engine::DocumentEngineId::Typst,
+                &output,
+                &project,
+                "main.typ",
+                &workspace,
+            )
+            .unwrap(),
+            ["main.typ"]
+        );
+
+        let latex_report = format!(
+            "{output}/entry.pdf : {output}/entry.tex \\\n  {output}/main.typ\n",
+            output = output.display()
+        );
+        fs::write(output.join("checkpoint-tectonic-deps.mk"), &latex_report).unwrap();
+        assert_eq!(
+            super::dependencies_from_probe(
+                crate::document_engine::DocumentEngineId::Latex,
+                &output,
+                &project,
+                "main.typ",
+                &workspace,
+            )
+            .unwrap(),
+            ["main.typ"]
+        );
+
+        fs::write(output.join("checkpoint-pandoc-log.json"), b"[]").unwrap();
+        let markdown_report = format!(
+            "{output}/entry.pdf : {output}/entry.tex \\\n  {main}\n",
+            output = output.display(),
+            main = project.join("main.typ").display()
+        );
+        fs::write(output.join("checkpoint-tectonic-deps.mk"), markdown_report).unwrap();
+        assert_eq!(
+            super::dependencies_from_probe(
+                crate::document_engine::DocumentEngineId::Markdown,
+                &output,
+                &project,
+                "main.typ",
+                &workspace,
+            )
+            .unwrap(),
+            ["main.typ"]
+        );
+        assert!(super::dependencies_from_probe(
+            crate::document_engine::DocumentEngineId::Latexmk,
+            &output,
+            &project,
+            "main.typ",
+            &workspace,
+        )
+        .is_err());
+
+        fs::write(
+            output.join(format!("{}.bcf", crate::paths::ENTRY_STEM)),
+            b"biber",
+        )
+        .unwrap();
+        assert_eq!(
+            super::dependencies_from_probe(
+                crate::document_engine::DocumentEngineId::Latex,
+                &output,
+                &project,
+                "main.typ",
+                &workspace,
+            )
+            .unwrap_err()
+            .reason,
+            CheckpointSkipReason::UntrackedExternalCommands
+        );
+
+        let report = output.join("checkpoint-pandoc-log.json");
+        assert_eq!(super::read_dependency_report(&report).unwrap(), b"[]");
+        let unsafe_report = output.join("unsafe-report");
+        fs::create_dir(&unsafe_report).unwrap();
+        assert!(super::read_dependency_report(&unsafe_report).is_err());
+
+        let lock_path = temp.path().join("available.lock");
+        let lock = fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .read(true)
+            .write(true)
+            .open(&lock_path)
+            .unwrap();
+        let locked = wait_for_tectonic_cache_lock(
+            lock,
+            &lock_path,
+            std::time::Duration::from_millis(50),
+            None,
+        )
+        .await
+        .unwrap();
+        fs4::FileExt::unlock(&locked).unwrap();
+
+        drop(workspace);
+        assert!(!workspace_root.exists());
+    }
+
+    #[test]
+    fn cache_helpers_validate_shape_and_hash_stable_inputs() {
+        assert_eq!(
+            super::decode_tectonic_cache_key("https,58,,47,,47,example.test"),
+            Some("https://example.test".into())
+        );
+        for malformed in [",", ",x,", ",999,", ",12"] {
+            assert_eq!(super::decode_tectonic_cache_key(malformed), None);
+        }
+
+        let temp = tempdir().unwrap();
+        let cache = temp.path().canonicalize().unwrap();
+        let tree = cache.join("tree");
+        let nested = tree.join("nested");
+        fs::create_dir_all(&nested).unwrap();
+        let input = nested.join("input.dat");
+        fs::write(&input, b"stable-input").unwrap();
+
+        assert_eq!(
+            super::checked_cache_file(&input, &cache, "cache file", 64).unwrap(),
+            input.canonicalize().unwrap()
+        );
+        assert!(super::checked_cache_file(&input, &cache, "cache file", 1).is_err());
+        assert!(super::checked_cache_file(&nested, &cache, "cache file", 64).is_err());
+        assert_eq!(
+            super::checked_cache_directory(&nested, &cache, "cache directory").unwrap(),
+            nested.canonicalize().unwrap()
+        );
+        assert!(super::checked_cache_directory(&input, &cache, "cache directory").is_err());
+        assert!(!super::metadata_is_reparse_point(
+            &fs::metadata(&input).unwrap()
+        ));
+
+        let (_, length, hash) =
+            super::hash_stable_cache_file(&input, &cache, "cache file", 64).unwrap();
+        assert_eq!(length, b"stable-input".len() as u64);
+        assert_eq!(hash, ContentHash::digest(b"stable-input"));
+        assert_eq!(
+            super::read_stable_cache_file(&input, &cache, "cache file", 64).unwrap(),
+            b"stable-input"
+        );
+        assert!(super::hash_tectonic_cache_tree(&tree, &cache, "cache tree")
+            .unwrap()
+            .contains("files=1"));
+
+        assert_eq!(
+            super::portable_cache_relative(std::path::Path::new("nested/input.dat")).unwrap(),
+            "nested/input.dat"
+        );
+        for unsafe_path in ["", "../outside", "bad\nname"] {
+            assert!(super::portable_cache_relative(std::path::Path::new(unsafe_path)).is_err());
+        }
+
+        assert!(super::hash_cache_entries("empty cache", Vec::new()).is_err());
+        assert!(super::hash_cache_entries(
+            "oversized cache",
+            vec![(
+                "huge".into(),
+                super::MAX_TECTONIC_CACHE_TOTAL_BYTES + 1,
+                ContentHash::digest(b"huge"),
+            )],
+        )
+        .is_err());
+        assert!(super::hash_cache_entries(
+            "stable cache",
+            vec![
+                ("b".into(), 1, ContentHash::digest(b"b")),
+                ("a".into(), 1, ContentHash::digest(b"a")),
+            ],
+        )
+        .unwrap()
+        .contains("files=2;bytes=2"));
+
+        let empty_formats = cache.join("formats");
+        fs::create_dir(&empty_formats).unwrap();
+        assert!(super::hash_tectonic_formats(&empty_formats, &cache, "bundle").is_err());
+        let mut inspected = usize::MAX;
+        assert!(super::record_directory_entry(&mut inspected, usize::MAX, "cache").is_err());
+    }
 }
