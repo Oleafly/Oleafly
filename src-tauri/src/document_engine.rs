@@ -209,6 +209,8 @@ impl EngineEnvironment {
         let cache = home.join("cache");
         let temp = home.join("tmp");
         let bin = home.join("bin");
+        let roaming = home.join("AppData").join("Roaming");
+        let local = home.join("AppData").join("Local");
         let tectonic_cache = if persistent_cache {
             crate::paths::tectonic_cache_root()?
         } else {
@@ -222,8 +224,8 @@ impl EngineEnvironment {
             ("XDG_CONFIG_HOME".into(), display(&config)),
             ("XDG_DATA_HOME".into(), display(&data)),
             ("XDG_CACHE_HOME".into(), display(&cache)),
-            ("APPDATA".into(), display(&config)),
-            ("LOCALAPPDATA".into(), display(&data)),
+            ("APPDATA".into(), display(&roaming)),
+            ("LOCALAPPDATA".into(), display(&local)),
             ("TMPDIR".into(), display(&temp)),
             ("TMP".into(), display(&temp)),
             ("TEMP".into(), display(&temp)),
@@ -251,6 +253,8 @@ impl EngineEnvironment {
         }
         for key in [
             "HOME",
+            "APPDATA",
+            "LOCALAPPDATA",
             "XDG_CONFIG_HOME",
             "XDG_DATA_HOME",
             "XDG_CACHE_HOME",
