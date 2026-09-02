@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   recycleProject: vi.fn(),
   refreshProjects: vi.fn(),
   closeProject: vi.fn(),
+  getConfig: vi.fn(),
+  setConfig: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true }));
@@ -27,6 +29,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   restoreRecycledProject: mocks.restoreRecycledProject,
   permanentlyDeleteRecycledProject: mocks.permanentlyDeleteRecycledProject,
   recycleProject: mocks.recycleProject,
+  getConfig: mocks.getConfig,
+  setConfig: mocks.setConfig,
 }));
 vi.mock("@/components/layout/UpdateChecker", () => ({
   UpdateChecker: () => null,
@@ -82,6 +86,11 @@ describe("Settings Data Storage recycle bin", () => {
     mocks.recycleProject.mockResolvedValue(undefined);
     mocks.refreshProjects.mockResolvedValue(undefined);
     mocks.closeProject.mockResolvedValue(undefined);
+    mocks.getConfig.mockResolvedValue({
+      checkpoints_enabled: true,
+      checkpoint_notifications: true,
+    });
+    mocks.setConfig.mockResolvedValue(undefined);
     useFilesStore.setState({
       projectId: null,
       projects: [

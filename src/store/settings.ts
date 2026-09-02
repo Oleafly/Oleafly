@@ -5,7 +5,6 @@ const SETTINGS_SECTIONS = new Set([
   "appearance",
   "dictionary",
   "data",
-  "checkpoints",
   "ai",
   "engine",
   "downloads",
@@ -16,6 +15,7 @@ const SETTINGS_SECTIONS = new Set([
 ]);
 
 export type ViewMode = "split" | "editor" | "pdf";
+export type VersioningTab = "git" | "checkpoints";
 export type LayoutPreset =
   | "editor-preview-ai"
   | "editor-preview"
@@ -506,10 +506,11 @@ interface SettingsState {
   setFigureModeOpen: (v: boolean) => void;
   wordCountOpen: boolean;
   setWordCountOpen: (v: boolean) => void;
-  historyOpen: boolean;
-  setHistoryOpen: (v: boolean) => void;
-  checkpointsOpen: boolean;
-  setCheckpointsOpen: (v: boolean) => void;
+  versioningOpen: boolean;
+  versioningTab: VersioningTab;
+  openVersioning: (tab?: VersioningTab) => void;
+  closeVersioning: () => void;
+  setVersioningTab: (tab: VersioningTab) => void;
   checkpointsRevision: number;
   bumpCheckpointsRevision: () => void;
   checkpointPublishingProjectId: string | null;
@@ -768,10 +769,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setFigureModeOpen: (v) => set({ figureModeOpen: v }),
   wordCountOpen: false,
   setWordCountOpen: (v) => set({ wordCountOpen: v }),
-  historyOpen: false,
-  setHistoryOpen: (v) => set({ historyOpen: v }),
-  checkpointsOpen: false,
-  setCheckpointsOpen: (v) => set({ checkpointsOpen: v }),
+  versioningOpen: false,
+  versioningTab: "checkpoints",
+  openVersioning: (tab) =>
+    set(tab ? { versioningOpen: true, versioningTab: tab } : { versioningOpen: true }),
+  closeVersioning: () => set({ versioningOpen: false }),
+  setVersioningTab: (tab) => set({ versioningTab: tab }),
   checkpointsRevision: 0,
   bumpCheckpointsRevision: () =>
     set((state) => ({ checkpointsRevision: state.checkpointsRevision + 1 })),

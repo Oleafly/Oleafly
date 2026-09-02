@@ -10,16 +10,15 @@ import {
   FileType,
   GitFork,
   Presentation,
-  History,
   LayoutGrid,
   Loader2,
   ImagePlay,
   Maximize,
   Sparkles,
   SquarePen,
-  ShieldCheck,
   X,
 } from "lucide-react";
+import { ClockCheck } from "@/components/icons/ClockCheck";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -110,41 +109,27 @@ function activeLayoutPreset(
   return null;
 }
 
-// Groups the right-side toolbar into: Recompile | Export | Fork + Git history
-// + Checkpoints | Layout + workspace controls.
+// Groups the right-side toolbar into: Recompile | Export | Fork + Versioning |
+// Layout + workspace controls.
 function Divider() {
   return <span className="mx-1 h-5 w-px shrink-0 bg-border" />;
 }
 
 export function ProjectHistoryActions() {
-  const setHistoryOpen = useSettingsStore((state) => state.setHistoryOpen);
-  const setCheckpointsOpen = useSettingsStore((state) => state.setCheckpointsOpen);
+  const openVersioning = useSettingsStore((state) => state.openVersioning);
 
   return (
-    <>
-      <Tooltip label="Git history">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Git history"
-          className="text-muted-foreground hover:text-foreground"
-          onClick={() => setHistoryOpen(true)}
-        >
-          <History className="size-4" />
-        </Button>
-      </Tooltip>
-      <Tooltip label="Checkpoints">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Checkpoints"
-          className="text-muted-foreground hover:text-foreground"
-          onClick={() => setCheckpointsOpen(true)}
-        >
-          <ShieldCheck className="size-4" />
-        </Button>
-      </Tooltip>
-    </>
+    <Tooltip label="Versioning">
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Versioning"
+        className="text-muted-foreground hover:text-foreground"
+        onClick={() => openVersioning()}
+      >
+        <ClockCheck className="size-4" />
+      </Button>
+    </Tooltip>
   );
 }
 

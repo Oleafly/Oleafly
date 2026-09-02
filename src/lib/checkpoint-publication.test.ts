@@ -41,7 +41,8 @@ describe("checkpoint publication events", () => {
     mocks.getConfig.mockResolvedValue({ checkpoint_notifications: true });
     useFilesStore.setState({ projectId: "active" });
     useSettingsStore.setState({
-      checkpointsOpen: false,
+      versioningOpen: false,
+      versioningTab: "git",
       checkpointsRevision: 0,
       checkpointPublishingProjectId: null,
     });
@@ -90,7 +91,7 @@ describe("checkpoint publication events", () => {
     expect(mocks.getConfig).not.toHaveBeenCalled();
   });
 
-  it("shows one skipped notice whose action opens the Checkpoints panel", async () => {
+  it("shows one skipped notice whose action opens the checkpoints tab", async () => {
     applyCheckpointPublicationEvent({
       project_id: "active",
       main_document: "main.tex",
@@ -108,7 +109,8 @@ describe("checkpoint publication events", () => {
     );
     const action = mocks.infoUnique.mock.calls[0]?.[2] as { onClick?: () => void } | undefined;
     action?.onClick?.();
-    expect(useSettingsStore.getState().checkpointsOpen).toBe(true);
+    expect(useSettingsStore.getState().versioningOpen).toBe(true);
+    expect(useSettingsStore.getState().versioningTab).toBe("checkpoints");
   });
 
   it("stays silent when skipped notices are turned off", async () => {

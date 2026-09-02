@@ -8,21 +8,32 @@ import { ProjectHistoryActions } from "./TopToolbar";
 
 beforeEach(() => {
   useSettingsStore.setState({
-    historyOpen: false,
-    checkpointsOpen: false,
+    versioningOpen: false,
+    versioningTab: "checkpoints",
   });
 });
 
 describe("ProjectHistoryActions", () => {
-  it("opens Git history and Checkpoints as separate surfaces", async () => {
+  it("opens the versioning window from one button", async () => {
     const user = userEvent.setup();
     render(<ProjectHistoryActions />);
 
-    await user.click(screen.getByRole("button", { name: "Checkpoints" }));
-    expect(useSettingsStore.getState().checkpointsOpen).toBe(true);
-    expect(useSettingsStore.getState().historyOpen).toBe(false);
+    expect(screen.getAllByRole("button")).toHaveLength(1);
 
-    await user.click(screen.getByRole("button", { name: "Git history" }));
-    expect(useSettingsStore.getState().historyOpen).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Versioning" }));
+
+    expect(useSettingsStore.getState().versioningOpen).toBe(true);
+    expect(useSettingsStore.getState().versioningTab).toBe("checkpoints");
+  });
+
+  it("reopens on the tab that was last selected", async () => {
+    useSettingsStore.setState({ versioningTab: "git" });
+    const user = userEvent.setup();
+    render(<ProjectHistoryActions />);
+
+    await user.click(screen.getByRole("button", { name: "Versioning" }));
+
+    expect(useSettingsStore.getState().versioningOpen).toBe(true);
+    expect(useSettingsStore.getState().versioningTab).toBe("git");
   });
 });

@@ -70,7 +70,11 @@ async function openHistory(page: import("../helpers").Page) {
   await fillCommandPalette(page, "history");
   await page.press("[cmdk-input]", "Enter");
   await page.waitForFunction(
-    `Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Version History')`,
+    `Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Versioning')`,
+    10_000,
+  );
+  await page.waitForFunction(
+    `document.querySelector('[data-testid="versioning-tab-git"]')?.getAttribute('aria-selected') === 'true'`,
     10_000,
   );
 }
@@ -96,7 +100,7 @@ async function restoreCommit(page: import("../helpers").Page, message: string) {
   await page.getByText("Overwrite all").click();
   // The modal closes itself once the restore lands.
   await page.waitForFunction(
-    `!Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Version History')`,
+    `!Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Versioning')`,
     15_000,
   );
 }

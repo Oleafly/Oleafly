@@ -25,13 +25,14 @@ const mocks = vi.hoisted(() => ({
   readProjectSources: vi.fn(),
   settings: {
     offline: false,
-    historyOpen: false,
-    checkpointsOpen: false,
-    setHistoryOpen: (open: boolean) => {
-      mocks.settings.historyOpen = open;
+    versioningOpen: false,
+    versioningTab: "git" as "git" | "checkpoints",
+    openVersioning: (tab?: "git" | "checkpoints") => {
+      mocks.settings.versioningOpen = true;
+      if (tab) mocks.settings.versioningTab = tab;
     },
-    setCheckpointsOpen: (open: boolean) => {
-      mocks.settings.checkpointsOpen = open;
+    closeVersioning: () => {
+      mocks.settings.versioningOpen = false;
     },
   },
   index: {
@@ -145,8 +146,8 @@ beforeEach(() => {
   mocks.refreshPreviewWindow.mockReset();
   mocks.gitPreparePublish.mockReset().mockResolvedValue(undefined);
   mocks.ensurePandoc.mockReset().mockResolvedValue(true);
-  mocks.settings.historyOpen = false;
-  mocks.settings.checkpointsOpen = false;
+  mocks.settings.versioningOpen = false;
+  mocks.settings.versioningTab = "git";
   mocks.saveActive.mockReset().mockResolvedValue(undefined);
   mocks.readProjectSources.mockReset().mockImplementation(
     async (_projectId: string, paths: readonly string[]) => ({
@@ -339,8 +340,8 @@ describe("compile output lifecycle", () => {
       | { onClick?: () => void }
       | undefined;
     action?.onClick?.();
-    expect(mocks.settings.checkpointsOpen).toBe(true);
-    expect(mocks.settings.historyOpen).toBe(false);
+    expect(mocks.settings.versioningOpen).toBe(true);
+    expect(mocks.settings.versioningTab).toBe("checkpoints");
   });
 
   it("restores preview and SyncTeX freshness after source text is exactly reverted", async () => {

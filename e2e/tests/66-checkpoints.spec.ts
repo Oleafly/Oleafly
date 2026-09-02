@@ -14,15 +14,17 @@ async function compileOk(page: Page) {
 }
 
 async function openCheckpoints(page: Page) {
-  await page.click('[aria-label="Checkpoints"]');
-  await expect(page.locator('[role="dialog"][aria-labelledby="checkpoints-title"]')).toBeVisible({
+  await page.click('[aria-label="Versioning"]');
+  await page.click('[data-testid="versioning-tab-checkpoints"]');
+  await expect(page.locator('[role="dialog"][aria-labelledby="versioning-title"]')).toBeVisible({
     timeout: 10_000,
   });
+  await expect(page.getByTestId("versioning-panel-checkpoints")).toBeVisible({ timeout: 10_000 });
 }
 
 async function closeCheckpoints(page: Page) {
-  await page.click('[aria-label="Close checkpoints"]');
-  await expect(page.locator('[role="dialog"][aria-labelledby="checkpoints-title"]')).toHaveCount(0, {
+  await page.click('[aria-label="Close versioning"]');
+  await expect(page.locator('[role="dialog"][aria-labelledby="versioning-title"]')).toHaveCount(0, {
     timeout: 10_000,
   });
 }
@@ -53,6 +55,22 @@ test("a successful compile stores one checkpoint and unchanged sources add nothi
     `document.querySelector('[data-testid="checkpoint-entry"]')?.getAttribute('data-root') || ''`,
   );
   expect(firstRoot).toMatch(/^[0-9a-f]{64}$/);
+
+  const advanced = tauriPage.getByTestId("checkpoints-advanced");
+  await expect(advanced).toHaveAttribute("aria-expanded", "false", { timeout: 10_000 });
+  await expect(tauriPage.getByText("Keep latest", { exact: true })).toBeHidden({ timeout: 5_000 });
+  await advanced.click();
+  await expect(advanced).toHaveAttribute("aria-expanded", "true", { timeout: 10_000 });
+  await expect(tauriPage.getByText("Keep latest", { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(tauriPage.getByText("Export", { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(tauriPage.getByText("Import", { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(
+    tauriPage.locator('[data-testid="versioning-panel-checkpoints"] code'),
+  ).toBeVisible({ timeout: 20_000 });
+  await advanced.click();
+  await expect(advanced).toHaveAttribute("aria-expanded", "false", { timeout: 10_000 });
+  await expect(tauriPage.getByText("Keep latest", { exact: true })).toBeHidden({ timeout: 5_000 });
+
   await closeCheckpoints(tauriPage);
 
   await compileOk(tauriPage);
@@ -92,7 +110,7 @@ test("a successful compile stores one checkpoint and unchanged sources add nothi
     })()`,
     30_000,
   );
-  await expect(tauriPage.locator('[role="dialog"][aria-labelledby="checkpoints-title"]')).toHaveCount(0, {
+  await expect(tauriPage.locator('[role="dialog"][aria-labelledby="versioning-title"]')).toHaveCount(0, {
     timeout: 10_000,
   });
 

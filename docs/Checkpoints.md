@@ -56,27 +56,40 @@ and restoring that checkpoint leaves the file as it is on disk. `project.json`
 and the main document cannot be ignored.
 
 Patterns are project-relative, use forward slashes, and support `*` and `?`.
-They cannot target `.git` or `.oleafly` or escape the project. The Checkpoints
+They cannot target `.git` or `.oleafly` or escape the project. The Versioning
 window offers an ignore action on any file of a checkpoint, and the same list
 can be edited by hand.
 
-## The Checkpoints window
+## The Versioning window
 
-The window shows the project's checkpoints as a timeline, newest on top, with
-the version number, time, engine, main document, file count, and stored size.
-Expand an entry to see its files and which of them were compiler inputs, which
-were included by rule, and which were recorded but not stored. Restore
-replaces the files in the checkpoint transactionally and preserves `.git`,
-`.oleafly`, and every file the checkpoint does not contain. Delete removes one
-record. Keep latest and Reset trim the history, and Export and Import move a
-complete history as an encrypted archive.
+The Versioning window has two tabs. Git History lists the project's commits and
+their labels, and restores the project to any of them. Saved Checkpoints lists
+the checkpoints.
+
+The checkpoints tab opens on the timeline, newest on top, with the version
+number, time, engine, main document, file count, and stored size. Expand an
+entry to see its files and which of them were compiler inputs, which were
+included by rule, and which were recorded but not stored. Restore replaces the
+files in the checkpoint transactionally and preserves `.git`, `.oleafly`, and
+every file the checkpoint does not contain. Delete removes one record.
+
+An Advanced section sits below the timeline and starts collapsed. It reports
+how many checkpoints exist and how much room they take. It shows where the
+store lives, opens that folder, and inspects the store's SQLite catalog:
+format version, lineage, table counts, and packs. Export and Import move a
+complete history as an encrypted archive. Keep latest and Reset trim the
+history.
+
+The toolbar has one Versioning button, and it opens the window on the tab used
+last. The command palette has two entries. "Git history" opens the Git History
+tab and "Checkpoints" opens the Saved Checkpoints tab.
 
 ## Settings
 
-Settings has a Checkpoints section. It can turn automatic checkpoints off, hide
-the notice shown when a checkpoint is skipped, show where the store lives,
-open that folder, and inspect the store's SQLite catalog: format version,
-lineage, table counts, packs, and the files of each checkpoint.
+Settings has two checkpoint switches, under Data Storage in the Local store
+tab. One turns automatic checkpoints off. The other hides the notice shown when
+a checkpoint is skipped. The storage location and the catalog inspector are no
+longer in Settings. They are in the Advanced section of the Versioning window.
 
 ## Storage
 

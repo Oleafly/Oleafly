@@ -30,7 +30,7 @@ export async function notifyCheckpointPublicationSkipped(
     `${outcome.message} ${outcome.suggestion}`,
     {
       label: "View Checkpoints",
-      onClick: () => useSettingsStore.getState().setCheckpointsOpen(true),
+      onClick: () => useSettingsStore.getState().openVersioning("checkpoints"),
     },
   );
 }

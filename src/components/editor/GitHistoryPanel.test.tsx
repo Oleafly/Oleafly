@@ -20,7 +20,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   gitSetVersionLabel: mocks.gitSetVersionLabel,
 }));
 
-import { HistoryModal } from "./HistoryModal";
+import { GitHistoryPanel } from "./GitHistoryPanel";
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -52,27 +52,27 @@ beforeEach(() => {
     [commits[0].oid]: "Stable one",
   });
   mocks.gitSetVersionLabel.mockResolvedValue(undefined);
-  useSettingsStore.setState({ historyOpen: true });
+  useSettingsStore.setState({ versioningOpen: true, versioningTab: "git" });
   useFilesStore.setState({
     projectId: "project",
     restoreFromGit: vi.fn().mockResolvedValue(undefined),
   });
 });
 
-describe("HistoryModal", () => {
+describe("GitHistoryPanel", () => {
   it("hides the previous project's rows while the next project loads", async () => {
     const projectBCommits = deferred<typeof commits>();
     mocks.gitLog.mockImplementation((projectId: string) =>
       projectId === "project-b" ? projectBCommits.promise : Promise.resolve(commits),
     );
     useFilesStore.setState({ projectId: "project-a" });
-    render(<HistoryModal />);
+    render(<GitHistoryPanel />);
 
     expect(await screen.findByText("Update: project.json")).toBeInTheDocument();
 
-    act(() => useSettingsStore.setState({ historyOpen: false }));
+    act(() => useSettingsStore.setState({ versioningOpen: false }));
     act(() => useFilesStore.setState({ projectId: "project-b" }));
-    act(() => useSettingsStore.setState({ historyOpen: true }));
+    act(() => useSettingsStore.setState({ versioningOpen: true, versioningTab: "git" }));
 
     expect(screen.queryByText("Update: project.json")).not.toBeInTheDocument();
     expect(screen.getByText(/No Git history yet/)).toBeInTheDocument();
@@ -111,7 +111,7 @@ describe("HistoryModal", () => {
         : Promise.resolve({ [projectBCommit.oid]: "Project B label" }),
     );
     useFilesStore.setState({ projectId: "project-a" });
-    render(<HistoryModal />);
+    render(<GitHistoryPanel />);
 
     act(() => {
       useFilesStore.setState({ projectId: "project-b" });
@@ -148,7 +148,7 @@ describe("HistoryModal", () => {
         }
       }, [renderedProjectId, switchProject]);
 
-      return <HistoryModal />;
+      return <GitHistoryPanel />;
     }
 
     useFilesStore.setState({ projectId: "project-a" });
@@ -168,7 +168,7 @@ describe("HistoryModal", () => {
 
   it("shows a primary history rail and filters Labels to manual labels", async () => {
     const user = userEvent.setup();
-    render(<HistoryModal />);
+    render(<GitHistoryPanel />);
 
     expect(await screen.findByText("Stable one")).toBeInTheDocument();
     expect(screen.getByTestId("history-graph-rail")).toHaveClass(
@@ -204,7 +204,7 @@ describe("HistoryModal", () => {
 
   it("creates or edits a label from All History", async () => {
     mocks.gitReadVersionLabels.mockResolvedValue({});
-    render(<HistoryModal />);
+    render(<GitHistoryPanel />);
 
     await screen.findByText("Compile V2");
     fireEvent.click(
@@ -231,7 +231,7 @@ describe("HistoryModal", () => {
     const writeText = vi
       .spyOn(navigator.clipboard, "writeText")
       .mockResolvedValue(undefined);
-    render(<HistoryModal />);
+    render(<GitHistoryPanel />);
 
     await user.click(
       await screen.findByRole("button", { name: "Copy commit ID 6138cce" }),
@@ -267,7 +267,7 @@ describe("HistoryModal", () => {
     const writeText = vi
       .spyOn(navigator.clipboard, "writeText")
       .mockResolvedValue(undefined);
-    render(<HistoryModal />);
+    render(<GitHistoryPanel />);
 
     await user.click(
       await screen.findByRole("button", { name: "Edit label for 6138cce" }),

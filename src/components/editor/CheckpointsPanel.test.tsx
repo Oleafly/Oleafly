@@ -13,10 +13,12 @@ const mocks = vi.hoisted(() => ({
   checkpointFiles: vi.fn(),
   checkpointIgnorePath: vi.fn(),
   checkpointImport: vi.fn(),
+  checkpointInspect: vi.fn(),
   checkpointKeepLatest: vi.fn(),
   checkpointList: vi.fn(),
   checkpointReset: vi.fn(),
   checkpointRestore: vi.fn(),
+  checkpointRevealStore: vi.fn(),
   checkpointStats: vi.fn(),
   checkpointUnignorePath: vi.fn(),
   getProject: vi.fn(),
@@ -32,15 +34,16 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/checkpoints", () => ({
   checkpointDelete: mocks.checkpointDelete,
   checkpointEngineLabel: (engine: string) => engine,
-
   checkpointExport: mocks.checkpointExport,
   checkpointFiles: mocks.checkpointFiles,
   checkpointIgnorePath: mocks.checkpointIgnorePath,
   checkpointImport: mocks.checkpointImport,
+  checkpointInspect: mocks.checkpointInspect,
   checkpointKeepLatest: mocks.checkpointKeepLatest,
   checkpointList: mocks.checkpointList,
   checkpointReset: mocks.checkpointReset,
   checkpointRestore: mocks.checkpointRestore,
+  checkpointRevealStore: mocks.checkpointRevealStore,
   checkpointStats: mocks.checkpointStats,
   checkpointUnignorePath: mocks.checkpointUnignorePath,
 }));
@@ -61,7 +64,7 @@ vi.mock("@/lib/toast", () => ({
   toast: { success: mocks.toastSuccess },
 }));
 
-import { CheckpointsModal } from "./CheckpointsModal";
+import { CheckpointsPanel } from "./CheckpointsPanel";
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -130,6 +133,22 @@ const stats = {
   reclaimable_bytes: 512,
 };
 
+const inspection = {
+  store_path: "/data/checkpoints/project",
+  catalog_path: "/data/checkpoints/project/catalog.sqlite",
+  catalog_bytes: 8192,
+  format_version: 3,
+  lineage: "lineage-1234",
+  table_counts: {
+    checkpoints: 2,
+    manifests: 2,
+    packs: 1,
+    chunks: 9,
+    manifest_chunks: 4,
+  },
+  packs: [{ file_name: "pack-0001.pack", bytes: 2048, chunk_count: 9 }],
+};
+
 const restoredEvent = {
   projectId: "project",
   revision: 12,
@@ -151,6 +170,10 @@ const projectMeta = {
   },
 };
 
+async function openAdvanced(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByTestId("checkpoints-advanced"));
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(Date, "now").mockReturnValue(NOW);
@@ -161,16 +184,18 @@ beforeEach(() => {
   mocks.checkpointFiles.mockResolvedValue(newestFiles);
   mocks.checkpointIgnorePath.mockResolvedValue(projectMeta);
   mocks.checkpointImport.mockResolvedValue(undefined);
+  mocks.checkpointInspect.mockResolvedValue(inspection);
   mocks.checkpointKeepLatest.mockResolvedValue(undefined);
   mocks.checkpointReset.mockResolvedValue(undefined);
   mocks.checkpointRestore.mockResolvedValue(restoredEvent);
+  mocks.checkpointRevealStore.mockResolvedValue(undefined);
   mocks.checkpointUnignorePath.mockResolvedValue(projectMeta);
   mocks.getProject.mockResolvedValue(projectMeta);
   mocks.pickOpenPath.mockResolvedValue(null);
   mocks.pickSavePath.mockResolvedValue(null);
   mocks.prepareExternalMutation.mockResolvedValue(17);
   mocks.applyProjectStateChanged.mockResolvedValue(true);
-  useSettingsStore.setState({ checkpointsOpen: true });
+  useSettingsStore.setState({ versioningOpen: true, versioningTab: "checkpoints" });
   useFilesStore.setState({
     projectId: "project",
     projectName: "Research draft",
@@ -183,9 +208,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("CheckpointsModal timeline", () => {
+describe("CheckpointsPanel timeline", () => {
   it("numbers versions from the oldest and shows the newest on top", async () => {
-    render(<CheckpointsModal />);
+    render(<CheckpointsPanel />);
 
     const timeline = await screen.findByTestId("checkpoint-timeline");
     const entries = within(timeline).getAllByTestId("checkpoint-entry");
@@ -204,12 +229,38 @@ describe("CheckpointsModal timeline", () => {
     ).toBeInTheDocument();
     expect(within(entries[1]).getByText(/Typst · paper\.typ/)).toBeInTheDocument();
 
+    expect(
+      screen.getByText("One version per successful compile that changed the source."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Source only")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Restore V2" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete V1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Show files for V2" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Copy checkpoint id root-aaa/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Close checkpoints" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Dismiss checkpoints" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Always include")).toBeNull();
+    expect(screen.queryByLabelText("Ignored")).toBeNull();
+    expect(screen.queryByText(/commit/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps the store details out of the basic view until Advanced is expanded", async () => {
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    const advanced = await screen.findByTestId("checkpoints-advanced");
+    expect(advanced).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Reclaimable")).toBeNull();
+    expect(screen.queryByLabelText("Archive password")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Keep latest" })).toBeNull();
+    expect(mocks.checkpointInspect).not.toHaveBeenCalled();
+
+    await user.click(advanced);
+
+    expect(advanced).toHaveAttribute("aria-expanded", "true");
+    await waitFor(() => expect(mocks.checkpointInspect).toHaveBeenCalledWith("project"));
+    expect(screen.getByRole("heading", { name: "Overview" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Storage" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Archive" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Maintenance" })).toBeInTheDocument();
 
     const summary = screen.getByText("Reclaimable").closest("dl") as HTMLElement;
     const summaryValue = (term: string) =>
@@ -218,9 +269,30 @@ describe("CheckpointsModal timeline", () => {
     expect(summaryValue("Stored")).toHaveTextContent("2 KB");
     expect(summaryValue("Source size")).toHaveTextContent("6 KB");
     expect(summaryValue("Reclaimable")).toHaveTextContent("512 B");
-    expect(screen.queryByLabelText("Always include")).toBeNull();
-    expect(screen.queryByLabelText("Ignored")).toBeNull();
-    expect(screen.queryByText(/commit/i)).not.toBeInTheDocument();
+
+    expect(await screen.findByText("/data/checkpoints/project")).toBeInTheDocument();
+    expect(screen.getByLabelText("Archive password")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Keep latest" })).toBeInTheDocument();
+  });
+
+  it("reveals the catalog facts and pack table on demand", async () => {
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await openAdvanced(user);
+    const inspect = await screen.findByRole("button", { name: "Inspect catalog" });
+    await waitFor(() => expect(inspect).toBeEnabled());
+    await user.click(inspect);
+
+    expect(screen.getByText("/data/checkpoints/project/catalog.sqlite")).toBeInTheDocument();
+    expect(screen.getByText("lineage-1234")).toBeInTheDocument();
+    expect(screen.getByText("pack-0001.pack")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show catalog files for V2" }));
+    await waitFor(() =>
+      expect(mocks.checkpointFiles).toHaveBeenCalledWith("project", checkpoints[0].snapshot_root),
+    );
+    expect(await screen.findByText("figures/plot.png")).toBeInTheDocument();
   });
 
   it("copies the full snapshot root from the short id button", async () => {
@@ -230,7 +302,7 @@ describe("CheckpointsModal timeline", () => {
       configurable: true,
       value: { writeText },
     });
-    render(<CheckpointsModal />);
+    render(<CheckpointsPanel />);
 
     await user.click(await screen.findByRole("button", { name: /Copy checkpoint id root-aaa/ }));
 
@@ -238,8 +310,8 @@ describe("CheckpointsModal timeline", () => {
   });
 
   it("shows a running publication and reloads once it lands", async () => {
-    render(<CheckpointsModal />);
-    expect(await screen.findByRole("button", { name: "Keep latest" })).toBeInTheDocument();
+    render(<CheckpointsPanel />);
+    expect(await screen.findByTestId("checkpoint-timeline")).toBeInTheDocument();
     expect(mocks.checkpointList).toHaveBeenCalledTimes(1);
 
     act(() => useSettingsStore.getState().setCheckpointPublishingProjectId("project"));
@@ -254,12 +326,11 @@ describe("CheckpointsModal timeline", () => {
 
     await waitFor(() => expect(mocks.checkpointList).toHaveBeenCalledTimes(2));
     expect(screen.queryByTestId("checkpoint-publishing")).toBeNull();
-    expect(screen.getByRole("button", { name: "Keep latest" })).toBeInTheDocument();
   });
 
   it("ignores publication markers that belong to another project", async () => {
-    render(<CheckpointsModal />);
-    expect(await screen.findByRole("button", { name: "Keep latest" })).toBeInTheDocument();
+    render(<CheckpointsPanel />);
+    expect(await screen.findByTestId("checkpoint-timeline")).toBeInTheDocument();
 
     act(() => useSettingsStore.getState().setCheckpointPublishingProjectId("elsewhere"));
 
@@ -269,7 +340,7 @@ describe("CheckpointsModal timeline", () => {
   it("reports a load failure and recovers on retry", async () => {
     mocks.checkpointList.mockRejectedValueOnce(new Error("offline"));
     const user = userEvent.setup();
-    render(<CheckpointsModal />);
+    render(<CheckpointsPanel />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Couldn't load checkpoints. Try again.",
@@ -282,10 +353,10 @@ describe("CheckpointsModal timeline", () => {
   });
 });
 
-describe("CheckpointsModal files", () => {
+describe("CheckpointsPanel files", () => {
   it("loads an entry's files on demand and labels how each one arrived", async () => {
     const user = userEvent.setup();
-    render(<CheckpointsModal />);
+    render(<CheckpointsPanel />);
 
     await user.click(await screen.findByRole("button", { name: "Show files for V2" }));
 
@@ -318,7 +389,7 @@ describe("CheckpointsModal files", () => {
       checkpoints: { ...projectMeta.checkpoints, ignored: ["scratch/notes.txt"] },
     });
     const user = userEvent.setup();
-    render(<CheckpointsModal />);
+    render(<CheckpointsPanel />);
 
     await user.click(await screen.findByRole("button", { name: "Show files for V2" }));
     const rows = await screen.findAllByTestId("checkpoint-file");
@@ -342,10 +413,10 @@ describe("CheckpointsModal files", () => {
   });
 });
 
-describe("CheckpointsModal actions", () => {
+describe("CheckpointsPanel actions", () => {
   it("warns about unstored files, then flushes edits and applies the restored state", async () => {
     const user = userEvent.setup();
-    render(<CheckpointsModal />);
+    render(<CheckpointsPanel />);
 
     await user.click(await screen.findByRole("button", { name: "Restore V2" }));
     expect(mocks.checkpointRestore).not.toHaveBeenCalled();
@@ -371,7 +442,7 @@ describe("CheckpointsModal actions", () => {
       mocks.applyProjectStateChanged.mock.invocationCallOrder[0],
     );
     expect(mocks.checkpointList).toHaveBeenCalledTimes(1);
-    expect(useSettingsStore.getState().checkpointsOpen).toBe(false);
+    expect(useSettingsStore.getState().versioningOpen).toBe(false);
   });
 
   it("requires inline confirmation for deletion and reset, then refreshes", async () => {
@@ -389,7 +460,7 @@ describe("CheckpointsModal actions", () => {
         reclaimable_bytes: 0,
       });
     const user = userEvent.setup();
-    render(<CheckpointsModal />);
+    render(<CheckpointsPanel />);
 
     await user.click(await screen.findByRole("button", { name: "Delete V2" }));
     expect(mocks.checkpointDelete).not.toHaveBeenCalled();
@@ -400,6 +471,7 @@ describe("CheckpointsModal actions", () => {
     );
     expect(await screen.findByText(/Typst · paper\.typ/)).toBeInTheDocument();
 
+    await openAdvanced(user);
     await user.click(screen.getByRole("button", { name: "Reset" }));
     expect(mocks.checkpointReset).not.toHaveBeenCalled();
     expect(screen.getByText(/Delete all checkpoints for this project\?/)).toBeInTheDocument();
@@ -413,8 +485,9 @@ describe("CheckpointsModal actions", () => {
 
   it("keeps only the latest checkpoint after confirmation", async () => {
     const user = userEvent.setup();
-    render(<CheckpointsModal />);
+    render(<CheckpointsPanel />);
 
+    await openAdvanced(user);
     await user.click(await screen.findByRole("button", { name: "Keep latest" }));
     expect(mocks.checkpointKeepLatest).not.toHaveBeenCalled();
     expect(
@@ -431,8 +504,9 @@ describe("CheckpointsModal actions", () => {
     mocks.pickSavePath.mockResolvedValue("/tmp/research.oleafly-checkpoints");
     mocks.pickOpenPath.mockResolvedValue("/tmp/incoming.oleafly-checkpoints");
     const user = userEvent.setup();
-    render(<CheckpointsModal />);
+    render(<CheckpointsPanel />);
 
+    await openAdvanced(user);
     const password = await screen.findByLabelText("Archive password");
     await user.type(password, "short");
     await user.click(screen.getByRole("button", { name: "Export" }));
@@ -468,8 +542,9 @@ describe("CheckpointsModal actions", () => {
   it("counts archive passwords by Unicode scalars", async () => {
     mocks.pickSavePath.mockResolvedValue("/tmp/research.oleafly-checkpoints");
     const user = userEvent.setup();
-    render(<CheckpointsModal />);
+    render(<CheckpointsPanel />);
 
+    await openAdvanced(user);
     const password = await screen.findByLabelText("Archive password");
     fireEvent.change(password, { target: { value: "😀😀😀😀😀😀😀" } });
     await user.click(screen.getByRole("button", { name: "Export" }));
@@ -497,14 +572,16 @@ describe("CheckpointsModal actions", () => {
       logical_bytes: 0,
       reclaimable_bytes: 0,
     });
-    render(<CheckpointsModal />);
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
 
+    await openAdvanced(user);
     expect(await screen.findByRole("button", { name: "Export" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Import" })).toBeEnabled();
   });
 });
 
-describe("CheckpointsModal project safety", () => {
+describe("CheckpointsPanel project safety", () => {
   it("cannot run an old row action during the first render of a new project", async () => {
     function ImmediateProjectSwitch({ switchProject }: { switchProject: boolean }) {
       const renderedProjectId = useFilesStore((state) => state.projectId);
@@ -521,7 +598,7 @@ describe("CheckpointsModal project safety", () => {
         }
       }, [renderedProjectId, switchProject]);
 
-      return <CheckpointsModal />;
+      return <CheckpointsPanel />;
     }
 
     mocks.checkpointList.mockImplementation(async () => checkpoints);
@@ -555,7 +632,7 @@ describe("CheckpointsModal project safety", () => {
     );
     useFilesStore.setState({ projectId: "project-a", projectName: "Project A" });
     const user = userEvent.setup();
-    render(<CheckpointsModal />);
+    render(<CheckpointsPanel />);
 
     await user.click(await screen.findByRole("button", { name: "Delete V2" }));
     await user.click(screen.getByRole("button", { name: "Delete checkpoint" }));

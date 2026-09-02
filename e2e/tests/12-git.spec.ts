@@ -103,7 +103,13 @@ test("a successful compile is committed only through an explicit local action", 
   expect(
     await tauriPage.evaluate<number>(`window.__gitCommitCount?.() ?? Promise.resolve(0)`),
   ).toBe(commitsBeforeCompile + 1);
-  await tauriPage.click('[aria-label="Git history"]');
+  await tauriPage.click('[aria-label="Versioning"]');
+  await tauriPage.click('[data-testid="versioning-tab-git"]');
+  await expect(tauriPage.getByTestId("versioning-tab-git")).toHaveAttribute(
+    "aria-selected",
+    "true",
+    { timeout: 10_000 },
+  );
   await expect(tauriPage.getByText(message, { exact: true })).toBeVisible({ timeout: 10_000 });
 });
 

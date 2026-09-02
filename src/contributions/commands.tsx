@@ -24,6 +24,7 @@ import {
   Trash2,
   Zap,
 } from "lucide-react";
+import { ClockCheck } from "@/components/icons/ClockCheck";
 import { registerCommand, type AppContext } from "@oleafly/registry";
 import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
@@ -293,7 +294,15 @@ export function registerPaletteCommands() {
     label: "Git history",
     icon: () => <List className="size-4" />,
     order: 310,
-    run: () => useSettingsStore.getState().setHistoryOpen(true),
+    run: () => useSettingsStore.getState().openVersioning("git"),
+  });
+  palette({
+    id: "palette.checkpoints",
+    group: "Tools",
+    label: "Checkpoints",
+    icon: () => <ClockCheck className="size-4" />,
+    order: 315,
+    run: () => useSettingsStore.getState().openVersioning("checkpoints"),
   });
   palette({
     id: "palette.add-citation",

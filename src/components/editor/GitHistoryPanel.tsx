@@ -1,14 +1,5 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-import {
-  Check,
-  Copy,
-  History,
-  Pencil,
-  RotateCcw,
-  Tag,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Check, Copy, Pencil, RotateCcw, Tag, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,7 +7,6 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { gitLog, gitReadVersionLabels, gitSetVersionLabel, type GitCommit } from "@/lib/tauri";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { notifyError } from "@/lib/toast";
 
 type HistoryActionToken = {
@@ -25,6 +15,11 @@ type HistoryActionToken = {
   domain: string;
   request: number;
 };
+
+function gitTabIsActive(): boolean {
+  const settings = useSettingsStore.getState();
+  return settings.versioningOpen && settings.versioningTab === "git";
+}
 
 function deriveDefaultLabels(commits: GitCommit[]): Map<string, string> {
   const chronological = [...commits].reverse();
@@ -43,9 +38,9 @@ function deriveDefaultLabels(commits: GitCommit[]): Map<string, string> {
   return result;
 }
 
-export function HistoryModal() {
-  const open = useSettingsStore((s) => s.historyOpen);
-  const setOpen = useSettingsStore((s) => s.setHistoryOpen);
+export function GitHistoryPanel() {
+  const open = useSettingsStore((s) => s.versioningOpen && s.versioningTab === "git");
+  const closeVersioning = useSettingsStore((s) => s.closeVersioning);
   const projectId = useFilesStore((s) => s.projectId);
   const restoreFromGit = useFilesStore((s) => s.restoreFromGit);
   const [commits, setCommits] = useState<GitCommit[]>([]);
@@ -66,13 +61,12 @@ export function HistoryModal() {
   const renderIdentityChanged =
     renderedIdentity.current.open !== open ||
     renderedIdentity.current.projectId !== projectId;
-  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, () => setOpen(false));
 
   const isCurrentSession = useCallback(
     (targetProjectId: string | null, session: number) =>
       session === sessionRequest.current &&
       useFilesStore.getState().projectId === targetProjectId &&
-      useSettingsStore.getState().historyOpen,
+      gitTabIsActive(),
     [],
   );
 
@@ -191,7 +185,7 @@ export function HistoryModal() {
     try {
       await restoreFromGit(action.projectId, oid);
       if (!isCurrentAction(action)) return;
-      setOpen(false);
+      closeVersioning();
     } catch (error) {
       if (!isCurrentAction(action)) return;
       notifyError(
@@ -464,44 +458,19 @@ export function HistoryModal() {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <button type="button" aria-label="Close history" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
-      <div
-        role="dialog"
-        ref={dialogRef}
-        tabIndex={-1}
-        aria-modal="true"
-        aria-labelledby="history-title"
-        className="relative flex h-[min(30rem,80vh)] w-full max-w-lg flex-col rounded-xl border bg-popover text-popover-foreground shadow-2xl"
-      >
-        <div className="flex items-center gap-2 p-4">
-          <History className="size-4" />
-          <h2 id="history-title" className="text-base font-semibold">Version History</h2>
-          <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">Git</span>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="Close version history"
-            className="ml-auto flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-        <Tabs defaultValue="all" className="flex min-h-0 flex-1 flex-col">
-          <div className="flex justify-center px-4 py-3">
-            <TabsList>
-              <TabsTrigger value="all">All History</TabsTrigger>
-              <TabsTrigger value="labels">Labels</TabsTrigger>
-            </TabsList>
-          </div>
-          <TabsContent value="all" className="min-h-0 flex-1 overflow-auto p-2">
-            <CommitList items={visibleCommits} />
-          </TabsContent>
-          <TabsContent value="labels" className="min-h-0 flex-1 overflow-auto p-2">
-            <CommitList items={labeledCommits} labelsOnly />
-          </TabsContent>
-        </Tabs>
+    <Tabs defaultValue="all" className="flex min-h-0 flex-1 flex-col">
+      <div className="flex justify-center px-4 pb-3">
+        <TabsList>
+          <TabsTrigger value="all">All History</TabsTrigger>
+          <TabsTrigger value="labels">Labels</TabsTrigger>
+        </TabsList>
       </div>
-    </div>
+      <TabsContent value="all" className="min-h-0 flex-1 overflow-auto p-2">
+        <CommitList items={visibleCommits} />
+      </TabsContent>
+      <TabsContent value="labels" className="min-h-0 flex-1 overflow-auto p-2">
+        <CommitList items={labeledCommits} labelsOnly />
+      </TabsContent>
+    </Tabs>
   );
 }

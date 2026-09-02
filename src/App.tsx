@@ -162,12 +162,9 @@ const CopilotOverlay = lazy(() =>
 const WordCountModal = lazy(() =>
   import("@/components/editor/WordCountModal").then((m) => ({ default: m.WordCountModal })),
 );
-const HistoryModal = lazy(() =>
-  import("@/components/editor/HistoryModal").then((m) => ({ default: m.HistoryModal })),
-);
-const CheckpointsModal = lazy(() =>
-  import("@/components/editor/CheckpointsModal").then((m) => ({
-    default: m.CheckpointsModal,
+const VersioningModal = lazy(() =>
+  import("@/components/editor/VersioningModal").then((m) => ({
+    default: m.VersioningModal,
   })),
 );
 const HotkeysModal = lazy(() =>
@@ -1001,8 +998,7 @@ function AppContent() {
         <LazyModals>
           <SettingsModal />
           <WordCountModal />
-          <HistoryModal />
-          <CheckpointsModal />
+          <VersioningModal />
           <HotkeysModal />
           <TourGuide />
         </LazyModals>
