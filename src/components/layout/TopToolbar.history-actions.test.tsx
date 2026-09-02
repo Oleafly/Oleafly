@@ -20,7 +20,10 @@ describe("ProjectHistoryActions", () => {
 
     expect(screen.getAllByRole("button")).toHaveLength(1);
 
-    await user.click(screen.getByRole("button", { name: "Versioning" }));
+    const versioning = screen.getByRole("button", { name: "Versioning" });
+    expect(versioning.querySelector("svg.lucide-history")).not.toBeNull();
+
+    await user.click(versioning);
 
     expect(useSettingsStore.getState().versioningOpen).toBe(true);
     expect(useSettingsStore.getState().versioningTab).toBe("checkpoints");

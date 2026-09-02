@@ -2,7 +2,7 @@
 
 import { act, render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { HighlightedCode } from "./code-highlighter";
+import { clearHighlightCache, HighlightedCode } from "./code-highlighter";
 
 const highlightCode = vi.hoisted(() => vi.fn());
 
@@ -24,6 +24,7 @@ vi.mock("@lezer/highlight", () => ({
 describe("HighlightedCode", () => {
   beforeEach(() => {
     highlightCode.mockClear();
+    clearHighlightCache();
   });
 
   it("leaves very large code blocks raw", async () => {
@@ -59,5 +60,28 @@ describe("HighlightedCode", () => {
 
     expect(container.querySelector("code")?.textContent).toBe("newSource");
     expect(container.querySelector(".tok-keyword")).toBeNull();
+  });
+
+  it("reuses highlighted tokens across remounts without running the highlighter again", async () => {
+    highlightCode.mockImplementation(
+      (source: string, _tree: unknown, _highlighter: unknown, emit: (text: string, classes: string) => void) => {
+        emit(source, "tok-keyword");
+      },
+    );
+    const first = render(
+      <HighlightedCode language="javascript" source="const answer = 42;" />,
+    );
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 20));
+    });
+    expect(first.container.querySelector(".tok-keyword")).toHaveTextContent("const answer = 42;");
+    first.unmount();
+
+    const second = render(
+      <HighlightedCode language="javascript" source="const answer = 42;" />,
+    );
+
+    expect(second.container.querySelector(".tok-keyword")).toHaveTextContent("const answer = 42;");
+    expect(highlightCode).toHaveBeenCalledTimes(1);
   });
 });

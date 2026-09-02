@@ -4,9 +4,19 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@/lib/theme";
 import { Markdown } from "./markdown";
+import {
+  clearMarkdownDocumentCache,
+  isMarkdownDocumentCached,
+  renderMarkdownDocument,
+} from "./markdown-renderer";
+import { clearDiagramCache } from "./mermaid-diagram";
+import {
+  installIntersectionObserverStub,
+  type IntersectionObserverStub,
+} from "./test-intersection-observer";
 
 const require = createRequire(join(process.cwd(), "package.json"));
 const chatStyles = readFileSync(join(process.cwd(), "src/styles/globals.css"), "utf8");
@@ -38,6 +48,13 @@ function renderWithTheme(markdown: string, theme: "light" | "dark" = "dark") {
 }
 
 describe("Markdown rich content", () => {
+  let intersection: IntersectionObserverStub | null = null;
+
+  afterEach(() => {
+    intersection?.restore();
+    intersection = null;
+  });
+
   beforeEach(() => {
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -45,6 +62,8 @@ describe("Markdown rich content", () => {
     });
     clipboardWrite.mockReset();
     clipboardWrite.mockResolvedValue(undefined);
+    clearMarkdownDocumentCache();
+    clearDiagramCache();
     mermaidInitialize.mockClear();
     mermaidRender.mockReset();
     mermaidRender.mockResolvedValue({
@@ -412,5 +431,63 @@ $$`}
 
     expect(container.querySelector("script")).toBeNull();
     expect(container).toHaveTextContent("<script>alert('no')</script>");
+  });
+
+  it("reuses a rendered markdown document instead of parsing it again", async () => {
+    const source = "Cached $x^2$ with **bold** text";
+    expect(isMarkdownDocumentCached(source)).toBe(false);
+    const first = renderMarkdownDocument(source, false);
+    expect(isMarkdownDocumentCached(source)).toBe(true);
+    expect(renderMarkdownDocument(source, false)).toBe(first);
+    expect(renderMarkdownDocument(source, true)).not.toBe(first);
+
+    const view = render(<Markdown>{source}</Markdown>);
+    await waitFor(() => expect(view.container.querySelector(".katex")).not.toBeNull());
+    expect(view.container.querySelector("strong")).toHaveTextContent("bold");
+    view.unmount();
+    const again = render(<Markdown>{source}</Markdown>);
+    await waitFor(() => expect(again.container.querySelector(".katex")).not.toBeNull());
+    expect(again.container.querySelector("strong")).toHaveTextContent("bold");
+  });
+
+  it("renders a Mermaid diagram only once it scrolls into view", async () => {
+    intersection = installIntersectionObserverStub(() => false);
+    renderWithTheme("```mermaid\nflowchart TD\n  A --> B\n```");
+
+    expect(await screen.findByRole("status", { name: "Rendering diagram" })).toBeInTheDocument();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(mermaidRender).not.toHaveBeenCalled();
+
+    act(() => intersection?.setVisible(() => true));
+
+    await screen.findByRole("img", { name: "Diagram" });
+    expect(mermaidRender).toHaveBeenCalledTimes(1);
+  });
+
+  it("reuses a cached diagram across remounts without calling Mermaid again", async () => {
+    const source = "```mermaid\nflowchart TD\n  A --> B\n```";
+    const first = renderWithTheme(source);
+    await screen.findByRole("img", { name: "Diagram" });
+    first.unmount();
+
+    const second = renderWithTheme(source);
+
+    expect(second.container.querySelector('[data-mermaid-diagram="true"]')).toHaveAttribute(
+      "data-state",
+      "ready",
+    );
+    expect(screen.queryByRole("status", { name: "Rendering diagram" })).toBeNull();
+    expect(screen.getByRole("img", { name: "Diagram" })).toHaveTextContent("Rendered diagram");
+    expect(mermaidRender).toHaveBeenCalledTimes(1);
+  });
+
+  it("shares one Mermaid render between identical diagrams", async () => {
+    const diagram = "```mermaid\nflowchart TD\n  A --> B\n```";
+    renderWithTheme(`${diagram}\n\nAgain:\n\n${diagram}`);
+
+    await waitFor(() => expect(screen.getAllByRole("img", { name: "Diagram" })).toHaveLength(2));
+    expect(mermaidRender).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,5 +1,6 @@
 import { Fragment, useEffect } from "react";
 import {
+  Globe,
   Moon,
   PanelLeft,
   PanelLeftClose,
@@ -8,7 +9,6 @@ import {
   Sun,
   SquareTerminal,
 } from "lucide-react";
-import { Browserless } from "@lobehub/icons";
 import { railSections, type AppContext, type RailTabContribution } from "@oleafly/registry";
 import { useSettingsStore, type RailTab } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
@@ -161,7 +161,7 @@ export function WorkspaceDockControls() {
               onClick={() => toggleBrowser()}
               className={ctrlBtn(browserOpen)}
             >
-              <Browserless size={16} className="size-4" aria-hidden />
+              <Globe className="size-4" aria-hidden />
             </button>
           </Tooltip>
         </>

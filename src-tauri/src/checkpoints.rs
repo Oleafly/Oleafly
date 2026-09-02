@@ -5,7 +5,7 @@ use std::fs::{self, File, OpenOptions};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex, OnceLock, Weak};
 
-use oleafly_history::{Checkpoint, SnapshotRoot, Store, StoreInspection, StoreStats};
+use oleafly_history::{Checkpoint, HistoryError, SnapshotRoot, Store, StoreInspection, StoreStats};
 use serde::{Deserialize, Serialize};
 
 use crate::worktree_lock::RESTORE_PENDING_FILE;
@@ -33,6 +33,7 @@ pub struct CheckpointSummary {
     pub output_hash: String,
     pub file_count: u64,
     pub logical_bytes: u64,
+    pub label: Option<String>,
 }
 
 impl From<Checkpoint> for CheckpointSummary {
@@ -46,6 +47,7 @@ impl From<Checkpoint> for CheckpointSummary {
             output_hash: checkpoint.output_hash.to_string(),
             file_count: checkpoint.file_count,
             logical_bytes: checkpoint.logical_bytes,
+            label: checkpoint.label,
         }
     }
 }
@@ -245,6 +247,29 @@ fn checkpoint_list_sync(project_id: &str) -> Result<Vec<CheckpointSummary>, Stri
         .map_err(|_| "Could not read this project's Checkpoints history.".to_string())
 }
 
+fn checkpoint_set_label_sync(
+    project_id: &str,
+    snapshot_root: &str,
+    label: &str,
+) -> Result<CheckpointSummary, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
+    require_active_project(project_id)?;
+    let root = parse_snapshot_root(snapshot_root)?;
+    let store = require_existing_store(project_id)?;
+    store
+        .set_checkpoint_label(&root, label)
+        .map(Into::into)
+        .map_err(|error| match error {
+            HistoryError::InvalidInput(_) => {
+                "A Checkpoint label can be up to 80 characters on one line.".to_string()
+            }
+            HistoryError::CheckpointNotFound(_) => {
+                "The selected Checkpoint no longer exists.".to_string()
+            }
+            _ => "Could not save the Checkpoint label.".to_string(),
+        })
+}
+
 fn checkpoint_stats_sync(project_id: &str) -> Result<CheckpointStats, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
     require_active_project(project_id)?;
@@ -380,6 +405,22 @@ pub async fn checkpoint_list(project_id: String) -> Result<Vec<CheckpointSummary
     tauri::async_runtime::spawn_blocking(move || checkpoint_list_sync(&project_id))
         .await
         .map_err(|error| format!("Checkpoints listing task failed: {error}"))?
+}
+
+#[tauri::command]
+pub async fn checkpoint_set_label(
+    project_id: String,
+    snapshot_root: String,
+    label: String,
+) -> Result<CheckpointSummary, String> {
+    require_active_project(&project_id)?;
+    let operation = checkpoint_operation_lock(&project_id)?;
+    let _operation = operation.lock().await;
+    tauri::async_runtime::spawn_blocking(move || {
+        checkpoint_set_label_sync(&project_id, &snapshot_root, &label)
+    })
+    .await
+    .map_err(|error| format!("Checkpoint label task failed: {error}"))?
 }
 
 #[tauri::command]
@@ -1749,8 +1790,8 @@ mod tests {
 
     use super::{
         checkpoint_keep_latest_sync, checkpoint_list_sync, checkpoint_reset_sync,
-        checkpoint_stats_sync, restore_checkpoint_sync, CheckpointStats, CheckpointStoreInspection,
-        RestoreFault,
+        checkpoint_set_label_sync, checkpoint_stats_sync, restore_checkpoint_sync, CheckpointStats,
+        CheckpointStoreInspection, RestoreFault,
     };
 
     fn isolated_project_dir(data_dir: &std::path::Path, project_id: &str) -> std::path::PathBuf {
@@ -1790,6 +1831,48 @@ mod tests {
             PublishOutcome::Created(_)
         ));
         root
+    }
+
+    #[test]
+    fn checkpoint_labels_are_saved_cleared_and_bounded() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let project = isolated_project_dir(directory.path(), "paper");
+        fs::write(
+            project.join("project.json"),
+            br#"{"name":"Paper","main_doc":"main.tex","engine":"xetex"}"#,
+        )
+        .unwrap();
+        let store = Store::open(crate::paths::checkpoint_store_dir("paper").unwrap()).unwrap();
+        let root = publish(&store, &project, b"checkpoint source", 10).to_string();
+        drop(store);
+
+        assert!(checkpoint_list_sync("paper").unwrap()[0].label.is_none());
+
+        let saved = checkpoint_set_label_sync("paper", &root, "  Submission draft  ").unwrap();
+        assert_eq!(saved.label.as_deref(), Some("Submission draft"));
+        assert_eq!(
+            checkpoint_list_sync("paper").unwrap()[0].label.as_deref(),
+            Some("Submission draft")
+        );
+
+        assert_eq!(
+            checkpoint_set_label_sync("paper", &root, &"e".repeat(81)).unwrap_err(),
+            "A Checkpoint label can be up to 80 characters on one line."
+        );
+        assert!(checkpoint_set_label_sync("paper", &root, "")
+            .unwrap()
+            .label
+            .is_none());
+
+        let absent = ContentHash::digest(b"absent").to_string();
+        assert_eq!(
+            checkpoint_set_label_sync("paper", &absent, "Anything").unwrap_err(),
+            "The selected Checkpoint no longer exists."
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
     #[test]

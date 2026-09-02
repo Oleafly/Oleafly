@@ -85,10 +85,10 @@ async function restoreCommit(page: import("../helpers").Page, message: string) {
   });
   const clicked = await page.evaluate<boolean>(
     `(() => {
-      const rows = Array.from(document.querySelectorAll('div.truncate'))
+      const titles = Array.from(document.querySelectorAll('[data-testid="history-commit-title"]'))
         .filter((d) => d.textContent.trim() === ${JSON.stringify(message)});
-      if (!rows.length) return false;
-      const row = rows[0].closest('div.flex');
+      if (!titles.length) return false;
+      const row = titles[0].closest('[data-testid="history-commit"]');
       const btn = row && Array.from(row.querySelectorAll('button'))
         .find((b) => (b.getAttribute('title') || '').startsWith('Restore'));
       if (!btn) return false;

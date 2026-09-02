@@ -1,8 +1,11 @@
 import { memo, useEffect, useState, type ReactNode } from "react";
 import type { Language, StreamParser } from "@codemirror/language";
 import { cn } from "@/lib/utils";
+import { RenderCache } from "./render-cache";
 
 const MAX_HIGHLIGHT_LENGTH = 50_000;
+const MAX_CACHED_BLOCKS = 300;
+const MAX_CACHED_BLOCK_CHARS = 2_000_000;
 
 type ParserLoader = () => Promise<StreamParser<unknown>>;
 
@@ -56,6 +59,7 @@ const aliases: Record<string, string> = {
 };
 
 const languageCache = new Map<string, Promise<Language | null>>();
+const highlightCache = new RenderCache<ReactNode[]>(MAX_CACHED_BLOCKS, MAX_CACHED_BLOCK_CHARS);
 
 function loadLanguage(language: string) {
   const normalized = language.toLowerCase();
@@ -124,6 +128,18 @@ async function highlight(source: string, languageName: string) {
   return nodes;
 }
 
+function highlightKeyFor(language: string | undefined, source: string) {
+  return `${language ?? ""} ${source}`;
+}
+
+export function clearHighlightCache(): void {
+  highlightCache.clear();
+}
+
+export function isHighlightCached(language: string | undefined, source: string): boolean {
+  return highlightCache.has(highlightKeyFor(language, source));
+}
+
 export const HighlightedCode = memo(function HighlightedCode({
   className,
   language,
@@ -133,19 +149,23 @@ export const HighlightedCode = memo(function HighlightedCode({
   language?: string;
   source: string;
 }) {
-  const highlightKey = `${language ?? ""}\u0000${source}`;
+  const highlightKey = highlightKeyFor(language, source);
   const [highlighted, setHighlighted] = useState<{
     key: string;
     nodes: ReactNode[];
   } | null>(null);
+  const cachedNodes = highlightCache.get(highlightKey);
 
   useEffect(() => {
     if (!language || source.length > MAX_HIGHLIGHT_LENGTH) return;
+    if (highlightCache.has(highlightKey)) return;
     let current = true;
     const timer = window.setTimeout(() => {
       void highlight(source, language).then(
         (nodes) => {
-          if (current && nodes) setHighlighted({ key: highlightKey, nodes });
+          if (!nodes) return;
+          highlightCache.set(highlightKey, nodes, source.length + 1);
+          if (current) setHighlighted({ key: highlightKey, nodes });
         },
         () => undefined,
       );
@@ -156,7 +176,8 @@ export const HighlightedCode = memo(function HighlightedCode({
     };
   }, [highlightKey, language, source]);
 
-  const nodes = highlighted?.key === highlightKey ? highlighted.nodes : null;
+  const nodes =
+    cachedNodes ?? (highlighted?.key === highlightKey ? highlighted.nodes : null);
 
   return (
     <code className={cn("font-mono", className)} data-language={language}>

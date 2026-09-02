@@ -51,7 +51,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { approvalsList, approvalsSet, getConfig, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, usageRecord, type AppConfig, type CustomProvider, type McpAgentServer, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
+import { approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, usageRecord, type AppConfig, type CustomProvider, type McpAgentServer, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
@@ -92,7 +92,7 @@ import {
 } from "@/components/ai/chat-run-registry";
 import { personaGradient } from "@/lib/persona-colors";
 import { toast } from "@/lib/toast";
-import { defaultModel, mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
+import { mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
 import { enabledModels } from "@/lib/ai-model-state";
 import { useSettingsStore } from "@/store/settings";
 import { useChatsStore, type ChatMessage, type StoredChat } from "@/store/chats";
@@ -158,12 +158,18 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import { ChatMinimap } from "@/components/ai/ChatMinimap";
+import { MessageList, type RenderedMessage } from "@/components/ai/MessageList";
+import {
+  deriveProviderState,
+  knownProviderConfig,
+  loadProviderConfig,
+  subscribeProviderConfig,
+} from "@/components/ai/provider-config";
 import {
   AgentPlan,
   AgentRunSummary,
   Shimmer,
   InfoHint,
-  MessageItem,
   formatError,
   formatToolOutput,
 } from "@/components/ai/chat-parts";
@@ -444,19 +450,29 @@ export function ChatCore() {
   const sendPreparingRef = useRef(false);
   const [streaming, setStreaming] = useState(false);
   const [approvalModeLocked, setApprovalModeLocked] = useState(false);
-  const [provider, setProvider] = useState("openai");
-  const [model, setModel] = useState("gpt-4o");
-  const [providerConfigReady, setProviderConfigReady] = useState(false);
+  const [initialProvider] = useState(() => {
+    const cfg = knownProviderConfig();
+    return cfg ? { cfg, state: deriveProviderState(cfg) } : null;
+  });
+  const [provider, setProvider] = useState(initialProvider?.state.provider ?? "openai");
+  const [model, setModel] = useState(initialProvider?.state.model ?? "gpt-4o");
+  const [providerConfigReady, setProviderConfigReady] = useState(initialProvider !== null);
   const [providerConfigError, setProviderConfigError] = useState(false);
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState(initialProvider?.state.apiKey ?? "");
   // So the switcher can offer every provider the user has set up, not just the default one.
-  const [keysMap, setKeysMap] = useState<Record<string, string>>({});
+  const [keysMap, setKeysMap] = useState<Record<string, string>>(
+    () => initialProvider?.state.keysMap ?? {},
+  );
   // Per-provider enable/disable/custom model state from Settings; falls back
   // to the static catalog for providers that haven't been touched there yet.
-  const [providerModelsMap, setProviderModelsMap] = useState<Record<string, StoredModel[]>>({});
+  const [providerModelsMap, setProviderModelsMap] = useState<Record<string, StoredModel[]>>(
+    () => initialProvider?.state.providerModelsMap ?? {},
+  );
   // User-defined providers from Settings, so they appear in the switcher and
   // so chat-time model construction can thread their base URL through.
-  const [customProviders, setCustomProviders] = useState<CustomProvider[]>([]);
+  const [customProviders, setCustomProviders] = useState<CustomProvider[]>(
+    () => initialProvider?.state.customProviders ?? [],
+  );
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -502,10 +518,12 @@ export function ChatCore() {
   const figureModeOpen = useSettingsStore((s) => s.figureModeOpen);
   const setFigureModeOpen = useSettingsStore((s) => s.setFigureModeOpen);
   // User's own system-prompt addition (sandboxed into our prompt at send time).
-  const [customPrompt, setCustomPrompt] = useState("");
+  const [customPrompt, setCustomPrompt] = useState(initialProvider?.state.customPrompt ?? "");
   // Named, colored saved prompts from AI settings; and the one active for
   // this session (null = use customPrompt instead).
-  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [personas, setPersonas] = useState<Persona[]>(
+    () => initialProvider?.state.personas ?? [],
+  );
   const [activePersonaId, setActivePersonaId] = useState<string | null>(null);
   const activePersona = activePersonaId
     ? personas.find((persona) => persona.id === activePersonaId) ?? null
@@ -514,15 +532,15 @@ export function ChatCore() {
   // without depending on it.
   const attachmentsRef = useRef<PendingAttachment[]>(attachments);
   attachmentsRef.current = attachments;
-  const customPromptRef = useRef("");
+  const customPromptRef = useRef(customPrompt);
   customPromptRef.current = customPrompt;
-  const personasRef = useRef<Persona[]>([]);
+  const personasRef = useRef<Persona[]>(personas);
   personasRef.current = personas;
   const activePersonaIdRef = useRef<string | null>(null);
   activePersonaIdRef.current = activePersonaId;
   // Last-loaded config, so newChat can reset the session model to the saved
   // default without an extra async round trip.
-  const cfgRef = useRef<AppConfig | null>(null);
+  const cfgRef = useRef<AppConfig | null>(initialProvider?.cfg ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const goalInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -757,60 +775,40 @@ export function ChatCore() {
   }, [setInput]);
 
   useEffect(() => {
+    let active = true;
     const apply = (cfg: AppConfig) => {
-        cfgRef.current = cfg;
-        const saved = cfg.ai_provider || "openai";
-        setCustomPrompt(cfg.ai_system_prompt || "");
-        customPromptRef.current = cfg.ai_system_prompt || "";
-        const nextPersonas = cfg.ai_personas ?? [];
-        setPersonas(nextPersonas);
-        setActivePersonaId((current) =>
-          current && nextPersonas.some((persona) => persona.id === current)
-            ? current
-            : null,
-        );
-        const keys = { ...(cfg.ai_keys ?? {}) };
-        // Fold the legacy single key into the map so it counts as configured.
-        if (cfg.ai_api_key && !keys[saved]) keys[saved] = cfg.ai_api_key;
-        setKeysMap(keys);
-        setProviderModelsMap(cfg.ai_provider_models ?? {});
-        const customs = cfg.ai_custom_providers ?? [];
-        setCustomProviders(customs);
-        // Use the saved provider if it has a key; otherwise fall back to the
-        // first configured one (e.g. the saved provider's key was removed).
-        // A custom provider with keyOptional counts as configured with no key.
-        const keyOptionalIds = customs.filter((c) => c.keyOptional).map((c) => c.id);
-        const configured = Object.keys(keys).filter((k) => (keys[k] ?? "").trim());
-        const provider =
-          (keys[saved] ?? "").trim() || keyOptionalIds.includes(saved)
-            ? saved
-            : configured[0] ?? saved;
-        setProvider(provider);
-        setApiKey(keys[provider] || "");
-        setModel(
-          provider === saved && cfg.ai_model ? cfg.ai_model : defaultModel(provider)
-        );
+      if (!active || cfgRef.current === cfg) return;
+      cfgRef.current = cfg;
+      const next = deriveProviderState(cfg);
+      setCustomPrompt(next.customPrompt);
+      customPromptRef.current = next.customPrompt;
+      setPersonas(next.personas);
+      setActivePersonaId((current) =>
+        current && next.personas.some((persona) => persona.id === current)
+          ? current
+          : null,
+      );
+      setKeysMap(next.keysMap);
+      setProviderModelsMap(next.providerModelsMap);
+      setCustomProviders(next.customProviders);
+      setProvider(next.provider);
+      setApiKey(next.apiKey);
+      setModel(next.model);
+      setProviderConfigReady(true);
+      setProviderConfigError(false);
+    };
+    const unsubscribe = subscribeProviderConfig(apply);
+    void loadProviderConfig()
+      .then(apply)
+      .catch(() => {
+        if (!active) return;
+        setProviderConfigError(true);
         setProviderConfigReady(true);
-        setProviderConfigError(false);
+      });
+    return () => {
+      active = false;
+      unsubscribe();
     };
-    const load = (event?: Event) => {
-      const cfg = (event as CustomEvent<AppConfig> | undefined)?.detail;
-      if (cfg) {
-        apply(cfg);
-        return;
-      }
-      void getConfig()
-        .then(apply)
-        .catch(() => {
-          setProviderConfigError(true);
-          setProviderConfigReady(true);
-        });
-    };
-    load();
-    // Re-read when AI settings change elsewhere (e.g. connected in Settings),
-    // so the panel updates live without a remount.
-    window.addEventListener("oleafly:ai-config-changed", load);
-    return () => window.removeEventListener("oleafly:ai-config-changed", load);
   }, []);
 
   useEffect(() => {
@@ -1031,13 +1029,17 @@ export function ChatCore() {
   const slashCommands = createSlashCommands(commandActions);
   const attachCommands = createAttachCommands(commandActions);
 
+  const scrollAnchorRef = useRef<ChatMessage | null | undefined>(undefined);
   useEffect(() => {
-    void messages;
     void thinkingText;
+    const first = messages[0] ?? null;
+    const previous = scrollAnchorRef.current;
+    scrollAnchorRef.current = first;
+    const replaced = previous === undefined || (previous !== null && first !== previous);
     if (!nearBottomRef.current) return;
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
-      behavior: streaming ? "auto" : "smooth",
+      behavior: streaming || replaced ? "auto" : "smooth",
     });
   }, [messages, thinkingText, streaming]);
 
@@ -2028,7 +2030,7 @@ ${sandboxedCustom}`;
       break;
     }
   }
-  const renderedMessages = messages.map((msg, index) => ({
+  const renderedMessages: RenderedMessage[] = messages.map((msg, index) => ({
     key: msg.id ?? objectKey(msg, activeChatId ?? "chat"),
     index,
     live: streaming && index === messages.length - 1,
@@ -2353,7 +2355,11 @@ ${sandboxedCustom}`;
       {/* Visible even keyless so e2e/hooks can assert it */}
       {agentTodos.length > 0 && <AgentPlan todos={agentTodos} />}
 
-      {!apiKey && (
+      {!providerConfigReady && !apiKey && (
+        <div data-testid="ai-provider-loading" className="min-h-0 flex-1" />
+      )}
+
+      {providerConfigReady && !apiKey && (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <OleaflyAssistantMascot />
           <div className="space-y-1">
@@ -2384,7 +2390,10 @@ ${sandboxedCustom}`;
           <div
             ref={scrollRef}
             onScroll={onMessagesScroll}
-            className={cn("h-full overflow-auto py-3", showMinimap ? "pl-10 pr-3" : "px-3")}
+            className={cn(
+              "h-full overflow-auto py-3",
+              showMinimap ? "pl-10 pr-3" : "px-3",
+            )}
           >
             {messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-2">
@@ -2460,48 +2469,51 @@ ${sandboxedCustom}`;
                 }
               >
                 <div className="flex flex-col gap-3">
-                  {/* Key is scoped to the active chat so instances aren't reused
-                      across conversations (which would leak expand/scroll state). */}
-                  {renderedMessages.map(({ key, index, live, isLatestAssistant, msg }) => (
-                    <div key={key} data-message-role={msg.role} data-mm-index={index} className="min-w-0">
-                      <MessageItem msg={msg} live={live} />
-                      {msg.role === "assistant" && isLatestAssistant && agentRunHasActivity && (
-                        <div className="mt-1.5 flex justify-end px-1">
-                          <AgentRunSummary todos={agentTodos} turn={agentFileChangeTurn} />
-                        </div>
-                      )}
-                      {msg.role === "assistant" &&
-                        msg.checkpointOid &&
-                        msg.toolCalls?.some(
-                          (tool) =>
-                            CODE_EDIT_TOOLS.has(tool.name) &&
-                            tool.approval !== "rejected" &&
-                            tool.status === "done",
-                        ) &&
-                        !live && (
-                          <div data-tour="ai-restore" className="mt-1.5 flex items-center justify-end px-1">
-                            {msg.checkpointRestored ? (
-                              <span className="text-[10px] text-muted-foreground">
-                                Project restored to this checkpoint
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                data-testid="ai-restore-checkpoint"
-                                disabled={restoringCheckpoint !== null}
-                                onClick={() => void restoreCheckpoint(msg, isLatestAssistant)}
-                                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                              >
-                                <RotateCcw className="size-3" />
-                                {restoringCheckpoint === msg.id
-                                  ? "Restoring…"
-                                  : "Restore code to before this response"}
-                              </button>
-                            )}
+                  <MessageList
+                    messages={renderedMessages}
+                    chatId={activeChatId}
+                    scrollRef={scrollRef}
+                    nearBottomRef={nearBottomRef}
+                    renderExtras={({ live, isLatestAssistant, msg }) => (
+                      <>
+                        {msg.role === "assistant" && isLatestAssistant && agentRunHasActivity && (
+                          <div className="mt-1.5 flex justify-end px-1">
+                            <AgentRunSummary todos={agentTodos} turn={agentFileChangeTurn} />
                           </div>
                         )}
-                    </div>
-                  ))}
+                        {msg.role === "assistant" &&
+                          msg.checkpointOid &&
+                          msg.toolCalls?.some(
+                            (tool) =>
+                              CODE_EDIT_TOOLS.has(tool.name) &&
+                              tool.approval !== "rejected" &&
+                              tool.status === "done",
+                          ) &&
+                          !live && (
+                            <div data-tour="ai-restore" className="mt-1.5 flex items-center justify-end px-1">
+                              {msg.checkpointRestored ? (
+                                <span className="text-[10px] text-muted-foreground">
+                                  Project restored to this checkpoint
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  data-testid="ai-restore-checkpoint"
+                                  disabled={restoringCheckpoint !== null}
+                                  onClick={() => void restoreCheckpoint(msg, isLatestAssistant)}
+                                  className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                                >
+                                  <RotateCcw className="size-3" />
+                                  {restoringCheckpoint === msg.id
+                                    ? "Restoring…"
+                                    : "Restore code to before this response"}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                      </>
+                    )}
+                  />
                   {/* Kept OUT of the memoized items so frequent thinkingText updates
                       don't reconcile the whole list. Suppressed while the tail
                       message's ReasoningBlock is already streaming live, so there's

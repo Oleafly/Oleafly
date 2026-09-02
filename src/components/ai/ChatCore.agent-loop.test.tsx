@@ -4,6 +4,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import type { AgentEvent } from "@oleafly/ai-core";
 import type { ApprovalMode } from "@oleafly/ai-tools";
 import type { ModelMessage, ToolSet } from "@/lib/chat-types";
+import type { AppConfig } from "@/lib/tauri";
 import type { ChatMessage, StoredChat } from "@/store/chats";
 
 interface HarnessOptions {
@@ -281,6 +282,10 @@ vi.mock("@/components/ui/input", async () => {
 });
 
 let ChatCore: typeof import("./ChatCore").ChatCore;
+let ChatPanel: typeof import("./ChatPanel").ChatPanel;
+let CopilotOverlay: typeof import("./CopilotOverlay").CopilotOverlay;
+let resetProviderConfigCache: typeof import("./provider-config").resetProviderConfigCache;
+let Fragment: typeof import("react").Fragment;
 let LATEX_ENGINE: typeof import("@/lib/document-engine").LATEX_ENGINE;
 let useFilesStore: typeof import("@/store/files").useFilesStore;
 let useChatsStore: typeof import("@/store/chats").useChatsStore;
@@ -354,11 +359,14 @@ beforeAll(async () => {
   });
 
   vi.resetModules();
-  ({ createElement } = await import("react"));
+  ({ createElement, Fragment } = await import("react"));
   ({ act, cleanup, fireEvent, render, waitFor } = await import("@testing-library/react"));
   ({ QueryClientProvider } = await import("@tanstack/react-query"));
   ({ createAppQueryClient } = await import("@/lib/query"));
   ({ ChatCore } = await import("./ChatCore"));
+  ({ ChatPanel } = await import("./ChatPanel"));
+  ({ CopilotOverlay } = await import("./CopilotOverlay"));
+  ({ resetProviderConfigCache } = await import("./provider-config"));
   ({ LATEX_ENGINE } = await import("@/lib/document-engine"));
   ({ useFilesStore } = await import("@/store/files"));
   ({ useChatsStore } = await import("@/store/chats"));
@@ -379,6 +387,7 @@ afterEach(() => cleanup());
 beforeEach(() => {
   const active = activeChatRun();
   if (active) endChatRun(active);
+  resetProviderConfigCache();
   mocks.runs.length = 0;
   mocks.runSummaryProps.length = 0;
   mocks.textareaProps = null;
@@ -2344,6 +2353,118 @@ describe("ChatCore agent turns", () => {
       settingsOpen: true,
       settingsInitialSection: "ai",
       settingsScrollTarget: "ai-approvals",
+    });
+  });
+});
+
+describe("ChatCore provider readiness", () => {
+  const keyedConfig = {
+    ai_provider: "openai",
+    ai_model: "gpt-4o",
+    ai_api_key: "test-key",
+    ai_keys: { openai: "test-key" },
+    ai_provider_models: {},
+    ai_custom_providers: [],
+    ai_system_prompt: "",
+    ai_personas: [],
+  } as unknown as AppConfig;
+  const connectPrompt = "Connect an AI provider to continue";
+  const composerPlaceholder = "Ask AI to help with your document…";
+
+  function mount(node: ReturnType<typeof createElement>) {
+    chatQueryClient = createAppQueryClient();
+    return render(
+      createElement(QueryClientProvider, { client: chatQueryClient }, node),
+    );
+  }
+
+  function assistantRoot(scope: ParentNode) {
+    return scope.querySelector('[data-tour="ai-assistant"]');
+  }
+
+  it("shows a neutral loading state, never the connect prompt, before the first config read resolves", async () => {
+    const pending = deferred<AppConfig>();
+    mocks.getConfig.mockReturnValue(pending.promise);
+
+    const rendered = mount(createElement(ChatCore));
+
+    expect(rendered.queryByText(connectPrompt)).toBeNull();
+    expect(rendered.getByTestId("ai-provider-loading")).toBeTruthy();
+    expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-ready", "false");
+
+    await act(async () => {
+      pending.resolve(keyedConfig);
+    });
+    await waitFor(() =>
+      expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-configured", "true"),
+    );
+    expect(rendered.queryByTestId("ai-provider-loading")).toBeNull();
+    expect(rendered.getByPlaceholderText(composerPlaceholder)).toBeTruthy();
+  });
+
+  it("shows the connect prompt once a keyless config has loaded", async () => {
+    mocks.getConfig.mockResolvedValue({ ...keyedConfig, ai_api_key: "", ai_keys: {} });
+
+    const rendered = mount(createElement(ChatCore));
+
+    expect(rendered.queryByText(connectPrompt)).toBeNull();
+    expect(await rendered.findByText(connectPrompt)).toBeTruthy();
+    expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-configured", "false");
+    expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-ready", "true");
+    expect(rendered.queryByTestId("ai-provider-loading")).toBeNull();
+  });
+
+  it("remounts straight into the thread once the config is known", async () => {
+    const first = await renderChat();
+    first.unmount();
+    const pending = deferred<AppConfig>();
+    mocks.getConfig.mockReturnValue(pending.promise);
+
+    const second = mount(createElement(ChatCore));
+
+    expect(assistantRoot(second.container)).toHaveAttribute("data-tour-configured", "true");
+    expect(assistantRoot(second.container)).toHaveAttribute("data-tour-ready", "true");
+    expect(second.queryByText(connectPrompt)).toBeNull();
+    expect(second.getByPlaceholderText(composerPlaceholder)).toBeTruthy();
+
+    await act(async () => {
+      pending.resolve(keyedConfig);
+    });
+  });
+
+  it("keeps the thread on screen while the assistant floats and docks", async () => {
+    const rendered = mount(
+      createElement(Fragment, null, createElement(ChatPanel), createElement(CopilotOverlay)),
+    );
+    await waitFor(() =>
+      expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-configured", "true"),
+    );
+    const pending = deferred<AppConfig>();
+    mocks.getConfig.mockReturnValue(pending.promise);
+
+    act(() => useSettingsStore.getState().setChatFloating(true));
+
+    const overlay = document.body.querySelector('[data-testid="copilot-overlay"]');
+    expect(overlay).not.toBeNull();
+    expect(assistantRoot(overlay as ParentNode)).toHaveAttribute("data-tour-configured", "true");
+    expect(assistantRoot(overlay as ParentNode)).toHaveAttribute("data-tour-ready", "true");
+    expect(document.body.textContent).not.toContain(connectPrompt);
+    expect(
+      overlay?.querySelector(`textarea[placeholder="${composerPlaceholder}"]`),
+    ).not.toBeNull();
+
+    act(() => useSettingsStore.getState().setChatFloating(false));
+
+    expect(document.body.querySelector('[data-testid="copilot-overlay"]')).toBeNull();
+    expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-configured", "true");
+    expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-ready", "true");
+    expect(document.body.textContent).not.toContain(connectPrompt);
+    expect(
+      rendered.container.querySelector(`textarea[placeholder="${composerPlaceholder}"]`),
+    ).not.toBeNull();
+
+    await act(async () => {
+      pending.resolve(keyedConfig);
     });
   });
 });

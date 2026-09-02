@@ -42,6 +42,9 @@ export function useModalAccessibility<T extends HTMLElement>(
     const onKeyDown = (event: KeyboardEvent) => {
       if (!modalCoordinator.isTop(modalId)) return;
       if (event.key === "Escape") {
+        if (event.target instanceof Element && event.target.closest("[data-modal-escape-inner]")) {
+          return;
+        }
         event.preventDefault();
         closeRef.current();
         return;

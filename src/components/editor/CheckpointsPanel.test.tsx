@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   checkpointReset: vi.fn(),
   checkpointRestore: vi.fn(),
   checkpointRevealStore: vi.fn(),
+  checkpointSetLabel: vi.fn(),
   checkpointStats: vi.fn(),
   checkpointUnignorePath: vi.fn(),
   getProject: vi.fn(),
@@ -44,6 +45,7 @@ vi.mock("@/lib/checkpoints", () => ({
   checkpointReset: mocks.checkpointReset,
   checkpointRestore: mocks.checkpointRestore,
   checkpointRevealStore: mocks.checkpointRevealStore,
+  checkpointSetLabel: mocks.checkpointSetLabel,
   checkpointStats: mocks.checkpointStats,
   checkpointUnignorePath: mocks.checkpointUnignorePath,
 }));
@@ -88,6 +90,7 @@ const checkpoints = [
     output_hash: "output-11111111111111111111111111111111",
     file_count: 4,
     logical_bytes: 4096,
+    label: null,
   },
   {
     snapshot_root: "root-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -98,6 +101,7 @@ const checkpoints = [
     output_hash: "output-22222222222222222222222222222222",
     file_count: 2,
     logical_bytes: 2048,
+    label: null,
   },
 ];
 
@@ -189,6 +193,7 @@ beforeEach(() => {
   mocks.checkpointReset.mockResolvedValue(undefined);
   mocks.checkpointRestore.mockResolvedValue(restoredEvent);
   mocks.checkpointRevealStore.mockResolvedValue(undefined);
+  mocks.checkpointSetLabel.mockResolvedValue(checkpoints[0]);
   mocks.checkpointUnignorePath.mockResolvedValue(projectMeta);
   mocks.getProject.mockResolvedValue(projectMeta);
   mocks.pickOpenPath.mockResolvedValue(null);
@@ -350,6 +355,125 @@ describe("CheckpointsPanel timeline", () => {
     await user.click(screen.getByRole("button", { name: "Try again" }));
 
     expect(await screen.findByTestId("checkpoint-timeline")).toBeInTheDocument();
+  });
+});
+
+describe("CheckpointsPanel labels", () => {
+  it("names a checkpoint inline and keeps the version as a tag", async () => {
+    mocks.checkpointSetLabel.mockResolvedValue({ ...checkpoints[0], label: "Stable draft" });
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Edit label for V2" }));
+    const input = screen.getByRole("textbox", { name: "Checkpoint label" });
+    expect(input).toHaveAttribute("maxlength", "80");
+
+    await user.type(input, "  Stable draft  {Enter}");
+
+    await waitFor(() =>
+      expect(mocks.checkpointSetLabel).toHaveBeenCalledWith(
+        "project",
+        checkpoints[0].snapshot_root,
+        "Stable draft",
+      ),
+    );
+    const entry = screen.getAllByTestId("checkpoint-entry")[0];
+    expect(entry).toHaveAttribute("data-label", "Stable draft");
+    expect(entry).toHaveAttribute("data-version", "V2");
+    expect(within(entry).getByText("Stable draft")).toBeInTheDocument();
+    expect(within(entry).getByText("V2")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Checkpoint label" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Restore V2" })).toBeInTheDocument();
+  });
+
+  it("saves a label from the Save button as well", async () => {
+    mocks.checkpointSetLabel.mockResolvedValue({ ...checkpoints[1], label: "Submitted" });
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Edit label for V1" }));
+    await user.type(screen.getByRole("textbox", { name: "Checkpoint label" }), "Submitted");
+    await user.click(screen.getByRole("button", { name: "Save label" }));
+
+    await waitFor(() =>
+      expect(mocks.checkpointSetLabel).toHaveBeenCalledWith(
+        "project",
+        checkpoints[1].snapshot_root,
+        "Submitted",
+      ),
+    );
+    expect(screen.getAllByTestId("checkpoint-entry")[1]).toHaveAttribute(
+      "data-label",
+      "Submitted",
+    );
+  });
+
+  it("cancels an edit with Escape and with the Cancel button", async () => {
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Edit label for V2" }));
+    await user.type(screen.getByRole("textbox", { name: "Checkpoint label" }), "Draft{Escape}");
+
+    expect(screen.queryByRole("textbox", { name: "Checkpoint label" })).toBeNull();
+    expect(mocks.checkpointSetLabel).not.toHaveBeenCalled();
+    expect(screen.getAllByTestId("checkpoint-entry")[0]).not.toHaveAttribute("data-label");
+
+    await user.click(screen.getByRole("button", { name: "Edit label for V2" }));
+    await user.type(screen.getByRole("textbox", { name: "Checkpoint label" }), "Draft");
+    await user.click(screen.getByRole("button", { name: "Cancel label editing" }));
+
+    expect(screen.queryByRole("textbox", { name: "Checkpoint label" })).toBeNull();
+    expect(mocks.checkpointSetLabel).not.toHaveBeenCalled();
+  });
+
+  it("clears a label and falls back to the version number", async () => {
+    mocks.checkpointList.mockResolvedValue([
+      { ...checkpoints[0], label: "Stable draft" },
+      checkpoints[1],
+    ]);
+    mocks.checkpointSetLabel.mockResolvedValue({ ...checkpoints[0], label: null });
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    const entry = (await screen.findAllByTestId("checkpoint-entry"))[0];
+    expect(entry).toHaveAttribute("data-label", "Stable draft");
+
+    await user.click(screen.getByRole("button", { name: "Remove label Stable draft" }));
+
+    await waitFor(() =>
+      expect(mocks.checkpointSetLabel).toHaveBeenCalledWith(
+        "project",
+        checkpoints[0].snapshot_root,
+        "",
+      ),
+    );
+    const cleared = screen.getAllByTestId("checkpoint-entry")[0];
+    expect(cleared).not.toHaveAttribute("data-label");
+    expect(within(cleared).getByText("V2")).toBeInTheDocument();
+    expect(screen.queryByText("Stable draft")).toBeNull();
+  });
+
+  it("reports a failed label save and keeps the draft on screen", async () => {
+    mocks.checkpointSetLabel.mockRejectedValue(new Error("catalog locked"));
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Edit label for V2" }));
+    await user.type(screen.getByRole("textbox", { name: "Checkpoint label" }), "Stable draft");
+    await user.click(screen.getByRole("button", { name: "Save label" }));
+
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "save checkpoint label",
+        expect.any(Error),
+        "Couldn't save the checkpoint label.",
+      ),
+    );
+    expect(screen.getByRole("textbox", { name: "Checkpoint label" })).toHaveValue(
+      "Stable draft",
+    );
+    expect(screen.getAllByTestId("checkpoint-entry")[0]).not.toHaveAttribute("data-label");
   });
 });
 

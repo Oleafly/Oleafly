@@ -63,8 +63,7 @@ can be edited by hand.
 ## The Versioning window
 
 The Versioning window has two tabs. Git History lists the project's commits and
-their labels, and restores the project to any of them. Saved Checkpoints lists
-the checkpoints.
+restores the project to any of them. Saved Checkpoints lists the checkpoints.
 
 The checkpoints tab opens on the timeline, newest on top, with the version
 number, time, engine, main document, file count, and stored size. Expand an
@@ -72,6 +71,12 @@ entry to see its files and which of them were compiler inputs, which were
 included by rule, and which were recorded but not stored. Restore replaces the
 files in the checkpoint transactionally and preserves `.git`, `.oleafly`, and
 every file the checkpoint does not contain. Delete removes one record.
+
+A checkpoint can also carry a label. The pencil on an entry opens a text field
+that takes up to 80 characters on one line. Saving puts the label in the entry
+title and keeps the version number next to it as a small tag. Clearing the text
+removes the label. Labels are part of the checkpoint record, so they survive
+export and import of an encrypted archive.
 
 An Advanced section sits below the timeline and starts collapsed. It reports
 how many checkpoints exist and how much room they take. It shows where the

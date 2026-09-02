@@ -16,9 +16,11 @@ import {
   FileUp,
   FolderOpen,
   Loader2,
+  Pencil,
   RotateCcw,
   ShieldCheck,
   Trash2,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,7 @@ import {
   checkpointReset,
   checkpointRestore,
   checkpointRevealStore,
+  checkpointSetLabel,
   checkpointStats,
   checkpointUnignorePath,
   type CheckpointFileSummary,
@@ -397,7 +400,7 @@ function FileList({
 
 interface TimelineEntryProps {
   checkpoint: CheckpointSummary;
-  label: string;
+  version: string;
   now: number;
   busy: boolean;
   expanded: boolean;
@@ -406,6 +409,9 @@ interface TimelineEntryProps {
   policy: ProjectPolicy | null;
   pendingPath: string | null;
   copied: boolean;
+  editingLabel: boolean;
+  labelDraft: string;
+  savingLabel: boolean;
   onToggleFiles: () => void;
   onConfirm: (confirmation: Confirmation) => void;
   onRestore: () => void;
@@ -414,11 +420,16 @@ interface TimelineEntryProps {
   onRetryFiles: () => void;
   onIgnore: (path: string) => void;
   onUnignore: (path: string) => void;
+  onStartLabelEdit: () => void;
+  onLabelDraftChange: (value: string) => void;
+  onSaveLabel: () => void;
+  onCancelLabel: () => void;
+  onRemoveLabel: () => void;
 }
 
 function TimelineEntry({
   checkpoint,
-  label,
+  version,
   now,
   busy,
   expanded,
@@ -427,6 +438,9 @@ function TimelineEntry({
   policy,
   pendingPath,
   copied,
+  editingLabel,
+  labelDraft,
+  savingLabel,
   onToggleFiles,
   onConfirm,
   onRestore,
@@ -435,8 +449,15 @@ function TimelineEntry({
   onRetryFiles,
   onIgnore,
   onUnignore,
+  onStartLabelEdit,
+  onLabelDraftChange,
+  onSaveLabel,
+  onCancelLabel,
+  onRemoveLabel,
 }: TimelineEntryProps) {
   const root = checkpoint.snapshot_root;
+  const label = checkpoint.label?.trim() ? checkpoint.label.trim() : null;
+  const title = label ?? version;
   const restoring = confirmation?.kind === "restore" && confirmation.snapshotRoot === root;
   const deleting = confirmation?.kind === "delete" && confirmation.snapshotRoot === root;
   const filesId = `checkpoint-files-${root}`;
@@ -446,8 +467,9 @@ function TimelineEntry({
   return (
     <li
       data-testid="checkpoint-entry"
-      data-version={label}
+      data-version={version}
       data-root={root}
+      data-label={label ?? undefined}
       className="group relative rounded-md py-3 pl-10 pr-2 hover:bg-accent/60"
     >
       <span
@@ -456,14 +478,93 @@ function TimelineEntry({
       />
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-sm font-medium tabular-nums">{label}</span>
-            <time
-              dateTime={isoTimestamp(checkpoint.completed_at_unix_ms)}
-              className="text-xs text-muted-foreground"
-            >
-              {formatRelativeTime(checkpoint.completed_at_unix_ms, now)}
-            </time>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            {editingLabel ? (
+              <>
+                <Input
+                  autoFocus
+                  aria-label="Checkpoint label"
+                  data-modal-escape-inner=""
+                  maxLength={80}
+                  value={labelDraft}
+                  disabled={savingLabel}
+                  placeholder="Name this checkpoint"
+                  className="h-7 w-48 text-sm"
+                  onChange={(event) => onLabelDraftChange(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      onSaveLabel();
+                    }
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      onCancelLabel();
+                    }
+                  }}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  aria-label="Save label"
+                  disabled={savingLabel}
+                  onClick={onSaveLabel}
+                >
+                  <Check className="size-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  aria-label="Cancel label editing"
+                  disabled={savingLabel}
+                  onClick={onCancelLabel}
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className="min-w-0 truncate text-sm font-medium tabular-nums">
+                  {title}
+                </span>
+                {label ? (
+                  <Badge variant="outline" className="px-1.5 py-0 text-[10px] tabular-nums">
+                    {version}
+                  </Badge>
+                ) : null}
+                <Tooltip label="Edit label" side="top">
+                  <button
+                    type="button"
+                    aria-label={`Edit label for ${version}`}
+                    disabled={busy}
+                    onClick={onStartLabelEdit}
+                    className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+                  >
+                    <Pencil className="size-3" />
+                  </button>
+                </Tooltip>
+                {label ? (
+                  <Tooltip label="Remove label" side="top">
+                    <button
+                      type="button"
+                      aria-label={`Remove label ${label}`}
+                      disabled={busy}
+                      onClick={onRemoveLabel}
+                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </Tooltip>
+                ) : null}
+                <time
+                  dateTime={isoTimestamp(checkpoint.completed_at_unix_ms)}
+                  className="text-xs text-muted-foreground"
+                >
+                  {formatRelativeTime(checkpoint.completed_at_unix_ms, now)}
+                </time>
+              </>
+            )}
           </div>
           <div className="mt-0.5 truncate text-xs text-muted-foreground">
             {checkpoint.engine ? checkpointEngineLabel(checkpoint.engine) : "Unknown engine"} ·{" "}
@@ -511,7 +612,7 @@ function TimelineEntry({
                 size="sm"
                 disabled={busy}
                 onClick={onRestore}
-                title={`Overwrite all files with ${label}`}
+                title={`Overwrite all files with ${version}`}
               >
                 Overwrite all
               </Button>
@@ -526,7 +627,7 @@ function TimelineEntry({
                 size="sm"
                 disabled={busy}
                 onClick={onDelete}
-                title={`Delete ${label} permanently`}
+                title={`Delete ${version} permanently`}
               >
                 Delete checkpoint
               </Button>
@@ -539,7 +640,7 @@ function TimelineEntry({
               <Button
                 variant="ghost"
                 size="sm"
-                aria-label={`Restore ${label}`}
+                aria-label={`Restore ${version}`}
                 disabled={busy}
                 onClick={() => onConfirm({ kind: "restore", snapshotRoot: root })}
               >
@@ -550,7 +651,7 @@ function TimelineEntry({
                 variant="ghost"
                 size="icon"
                 className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                aria-label={`Delete ${label}`}
+                aria-label={`Delete ${version}`}
                 disabled={busy}
                 onClick={() => onConfirm({ kind: "delete", snapshotRoot: root })}
               >
@@ -571,7 +672,7 @@ function TimelineEntry({
         type="button"
         aria-expanded={expanded}
         aria-controls={expanded ? filesId : undefined}
-        aria-label={`${expanded ? "Hide" : "Show"} files for ${label}`}
+        aria-label={`${expanded ? "Hide" : "Show"} files for ${version}`}
         onClick={onToggleFiles}
         className="mt-1.5 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-xs text-muted-foreground hover:text-foreground"
       >
@@ -585,7 +686,7 @@ function TimelineEntry({
       {expanded ? (
         <FileList
           id={filesId}
-          label={label}
+          label={version}
           state={fileState}
           policy={policy}
           mainDocument={checkpoint.main_document}
@@ -622,6 +723,8 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
   const [fileStates, setFileStates] = useState<Record<string, FileState>>({});
   const [pendingFile, setPendingFile] = useState<string | null>(null);
   const [copiedRoot, setCopiedRoot] = useState<string | null>(null);
+  const [editingLabelRoot, setEditingLabelRoot] = useState<string | null>(null);
+  const [labelDraft, setLabelDraft] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [inspection, setInspection] = useState<CheckpointStoreInspection | null>(null);
   const [inspectionLoading, setInspectionLoading] = useState(false);
@@ -795,6 +898,8 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
     setFileStates({});
     setPendingFile(null);
     setCopiedRoot(null);
+    setEditingLabelRoot(null);
+    setLabelDraft("");
     setAdvancedOpen(false);
     setCatalogOpen(false);
     setCatalogExpanded([]);
@@ -907,6 +1012,41 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
       }, 1500);
     } catch (error) {
       notifyError("copy checkpoint id", error, "Couldn't copy that checkpoint id.");
+    }
+  };
+
+  const startLabelEdit = (checkpoint: CheckpointSummary) => {
+    setEditingLabelRoot(checkpoint.snapshot_root);
+    setLabelDraft(checkpoint.label ?? "");
+  };
+
+  const cancelLabelEdit = () => {
+    setEditingLabelRoot(null);
+    setLabelDraft("");
+  };
+
+  const saveLabel = async (snapshotRoot: string, value: string) => {
+    if (!projectId) return;
+    const action = beginAction(projectId);
+    if (!action || !isCurrentAction(action)) return;
+    setBusyAction(`label:${snapshotRoot}`);
+    try {
+      const updated = await checkpointSetLabel(action.projectId, snapshotRoot, value.trim());
+      if (!isCurrentAction(action)) return;
+      setCheckpoints((current) =>
+        current.map((entry) =>
+          entry.snapshot_root === updated.snapshot_root ? updated : entry,
+        ),
+      );
+      if (editingLabelRoot === snapshotRoot) {
+        setEditingLabelRoot(null);
+        setLabelDraft("");
+      }
+    } catch (error) {
+      if (!isCurrentAction(action)) return;
+      notifyError("save checkpoint label", error, "Couldn't save the checkpoint label.");
+    } finally {
+      if (isCurrentAction(action)) setBusyAction(null);
     }
   };
 
@@ -1183,7 +1323,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
               <TimelineEntry
                 key={checkpoint.snapshot_root}
                 checkpoint={checkpoint}
-                label={labelFor(checkpoint.snapshot_root)}
+                version={labelFor(checkpoint.snapshot_root)}
                 now={now}
                 busy={busy}
                 expanded={expanded.includes(checkpoint.snapshot_root)}
@@ -1192,6 +1332,9 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                 policy={visiblePolicy}
                 pendingPath={pendingFile}
                 copied={copiedRoot === checkpoint.snapshot_root}
+                editingLabel={editingLabelRoot === checkpoint.snapshot_root}
+                labelDraft={labelDraft}
+                savingLabel={busyAction === `label:${checkpoint.snapshot_root}`}
                 onToggleFiles={() => toggleFiles(checkpoint.snapshot_root)}
                 onConfirm={confirm}
                 onRestore={() => void restore(checkpoint)}
@@ -1200,6 +1343,11 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                 onRetryFiles={() => ensureFiles(checkpoint.snapshot_root)}
                 onIgnore={(path) => void changeIgnore(path, true)}
                 onUnignore={(path) => void changeIgnore(path, false)}
+                onStartLabelEdit={() => startLabelEdit(checkpoint)}
+                onLabelDraftChange={setLabelDraft}
+                onSaveLabel={() => void saveLabel(checkpoint.snapshot_root, labelDraft)}
+                onCancelLabel={cancelLabelEdit}
+                onRemoveLabel={() => void saveLabel(checkpoint.snapshot_root, "")}
               />
             ))}
           </ol>
@@ -1349,14 +1497,14 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                         ) : (
                           <ul className="mt-1 list-none space-y-1 p-0">
                             {visibleCheckpoints.map((checkpoint) => {
-                              const label = labelFor(checkpoint.snapshot_root);
+                              const version = labelFor(checkpoint.snapshot_root);
                               const isOpen = catalogExpanded.includes(checkpoint.snapshot_root);
                               return (
                                 <li key={checkpoint.snapshot_root} className="border-t pt-1">
                                   <button
                                     type="button"
                                     aria-expanded={isOpen}
-                                    aria-label={`${isOpen ? "Hide" : "Show"} catalog files for ${label}`}
+                                    aria-label={`${isOpen ? "Hide" : "Show"} catalog files for ${version}`}
                                     onClick={() => toggleCatalogFiles(checkpoint.snapshot_root)}
                                     className="flex w-full items-center gap-1.5 rounded-md py-0.5 text-left text-[11px] hover:text-foreground"
                                   >
@@ -1367,7 +1515,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                                         isOpen && "rotate-90",
                                       )}
                                     />
-                                    <span className="font-medium tabular-nums">{label}</span>
+                                    <span className="font-medium tabular-nums">{version}</span>
                                     <span className="truncate text-muted-foreground">
                                       {formatCompletedAt(checkpoint.completed_at_unix_ms)}
                                     </span>

@@ -195,6 +195,7 @@ export interface CheckpointSummary {
     output_hash: string;
     file_count: number;
     logical_bytes: number;
+    label: string | null;
 }
 export interface CheckpointStoreStats {
     checkpoint_count: number;
@@ -601,6 +602,7 @@ export interface BackendPort {
   projectTexStatus: (projectId: string) => Promise<TexStatus | null>;
   compileProject: (projectId: string, mainDoc: string, offline?: boolean, fast?: boolean, haltOnError?: boolean) => Promise<CompileResult>;
   checkpointList: (projectId: string) => Promise<CheckpointSummary[]>;
+  checkpointSetLabel: (projectId: string, snapshotRoot: string, label: string) => Promise<CheckpointSummary>;
   checkpointFiles: (projectId: string, snapshotRoot: string) => Promise<CheckpointFileSummary[]>;
   checkpointInspect: (projectId: string) => Promise<CheckpointStoreInspection>;
   checkpointRevealStore: (projectId: string) => Promise<void>;
@@ -688,8 +690,6 @@ export interface BackendPort {
   gitInitialize: (projectId: string) => Promise<string>;
   gitPreparePublish: (projectId: string, message: string) => Promise<boolean>;
   gitLog: (projectId: string) => Promise<GitCommit[]>;
-  gitReadVersionLabels: (projectId: string) => Promise<Record<string, string>>;
-  gitSetVersionLabel: (projectId: string, oid: string, label: string) => Promise<void>;
   gitRestore: (projectId: string, oid: string, expectedGeneration: number) => Promise<ProjectStateChanged>;
   exportPdf: (projectId: string, dest: string) => Promise<void>;
   revealInDir: (path: string) => Promise<void>;

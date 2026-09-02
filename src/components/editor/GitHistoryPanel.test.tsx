@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useLayoutEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,15 +9,11 @@ import { useSettingsStore } from "@/store/settings";
 
 const mocks = vi.hoisted(() => ({
   gitLog: vi.fn(),
-  gitReadVersionLabels: vi.fn(),
-  gitSetVersionLabel: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   gitLog: mocks.gitLog,
-  gitReadVersionLabels: mocks.gitReadVersionLabels,
-  gitSetVersionLabel: mocks.gitSetVersionLabel,
 }));
 
 import { GitHistoryPanel } from "./GitHistoryPanel";
@@ -41,17 +37,13 @@ const commits = [
     oid: "5e37911222222222222222222222222222222222",
     short: "5e37911",
     time: 1_776_000_000,
-    message: "Update: .gitignore, main.tex, project.json",
+    message: "Add the results section\n\nThe body explains the new table.",
   },
 ];
 
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.gitLog.mockResolvedValue(commits);
-  mocks.gitReadVersionLabels.mockResolvedValue({
-    [commits[0].oid]: "Stable one",
-  });
-  mocks.gitSetVersionLabel.mockResolvedValue(undefined);
   useSettingsStore.setState({ versioningOpen: true, versioningTab: "git" });
   useFilesStore.setState({
     projectId: "project",
@@ -93,7 +85,6 @@ describe("GitHistoryPanel", () => {
 
   it("ignores Git history reads that finish after the project changes", async () => {
     const projectACommits = deferred<typeof commits>();
-    const projectALabels = deferred<Record<string, string>>();
     const projectBCommit = {
       ...commits[0],
       oid: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -105,11 +96,6 @@ describe("GitHistoryPanel", () => {
         ? projectACommits.promise
         : Promise.resolve([projectBCommit]),
     );
-    mocks.gitReadVersionLabels.mockImplementation((projectId: string) =>
-      projectId === "project-a"
-        ? projectALabels.promise
-        : Promise.resolve({ [projectBCommit.oid]: "Project B label" }),
-    );
     useFilesStore.setState({ projectId: "project-a" });
     render(<GitHistoryPanel />);
 
@@ -117,19 +103,14 @@ describe("GitHistoryPanel", () => {
       useFilesStore.setState({ projectId: "project-b" });
     });
     expect(await screen.findByText("Project B commit")).toBeInTheDocument();
-    expect(screen.getByText("Project B label")).toBeInTheDocument();
 
     await act(async () => {
       projectACommits.resolve(commits);
-      projectALabels.resolve({ [commits[0].oid]: "Stale project A label" });
       await projectACommits.promise;
-      await projectALabels.promise;
     });
 
     expect(screen.getByText("Project B commit")).toBeInTheDocument();
-    expect(screen.getByText("Project B label")).toBeInTheDocument();
     expect(screen.queryByText("Update: project.json")).not.toBeInTheDocument();
-    expect(screen.queryByText("Stale project A label")).not.toBeInTheDocument();
   });
 
   it("cannot run an old restore confirmation during the first render of a new project", async () => {
@@ -166,67 +147,46 @@ describe("GitHistoryPanel", () => {
     expect(restoreFromGit).not.toHaveBeenCalled();
   });
 
-  it("shows a primary history rail and filters Labels to manual labels", async () => {
-    const user = userEvent.setup();
+  it("titles every row with the first message line and keeps the id beside it", async () => {
     render(<GitHistoryPanel />);
 
-    expect(await screen.findByText("Stable one")).toBeInTheDocument();
-    expect(screen.getByTestId("history-graph-rail")).toHaveClass(
-      "bg-primary/40",
-    );
-    expect(screen.getByLabelText("Copy commit ID 6138cce")).toBeInTheDocument();
-    expect(screen.getByLabelText("Labeled Stable one")).toBeInTheDocument();
+    const rows = await screen.findAllByTestId("history-commit");
+    expect(rows).toHaveLength(2);
 
-    await user.click(screen.getByRole("tab", { name: "Labels" }));
-
-    expect(screen.getByText("Update: project.json")).toBeInTheDocument();
+    const title = within(rows[0]).getByTestId("history-commit-title");
+    expect(title).toHaveTextContent("Update: project.json");
+    const titleLine = title.parentElement as HTMLElement;
     expect(
-      screen.queryByText("Update: .gitignore, main.tex, project.json"),
-    ).toBeNull();
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Remove label Stable one" }),
-    );
-
-    await waitFor(() => {
-      expect(mocks.gitSetVersionLabel).toHaveBeenCalledWith(
-        "project",
-        commits[0].oid,
-        "",
-      );
-    });
-    expect(
-      await screen.findByText(
-        "No labeled versions yet. Add a label from All History.",
-      ),
+      within(titleLine).getByRole("button", { name: "Copy commit ID 6138cce" }),
     ).toBeInTheDocument();
+
+    const stamp = new Date(commits[0].time * 1000).toLocaleString();
+    expect(within(rows[0]).getByText(stamp)).toBeInTheDocument();
+    expect(within(titleLine).queryByText(stamp)).toBeNull();
+
+    expect(within(rows[1]).getByTestId("history-commit-title")).toHaveTextContent(
+      "Add the results section",
+    );
+    expect(screen.queryByText(/The body explains the new table/)).toBeNull();
+
+    expect(screen.getByTestId("history-graph-rail")).toHaveClass("bg-primary/40");
+    expect(screen.getAllByRole("button", { name: "Restore" })).toHaveLength(2);
   });
 
-  it("creates or edits a label from All History", async () => {
-    mocks.gitReadVersionLabels.mockResolvedValue({});
+  it("offers no label controls and no version tabs", async () => {
     render(<GitHistoryPanel />);
 
-    await screen.findByText("Compile V2");
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit label for 6138cce" }),
-    );
+    await screen.findAllByTestId("history-commit");
 
-    const input = screen.getByRole("textbox", { name: "Version label" });
-    fireEvent.change(input, { target: { value: "Ready to submit" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save label" }));
-
-    await waitFor(() => {
-      expect(mocks.gitSetVersionLabel).toHaveBeenCalledWith(
-        "project",
-        commits[0].oid,
-        "Ready to submit",
-      );
-    });
-    expect(await screen.findByText("Ready to submit")).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "All History" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Labels" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Edit label/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Remove label/ })).toBeNull();
+    expect(screen.queryByText("Compile V1")).toBeNull();
+    expect(screen.queryByText("Compile V2")).toBeNull();
   });
 
-  it("copies commit IDs and supports keyboard label editing", async () => {
-    mocks.gitReadVersionLabels.mockResolvedValue({});
+  it("copies the full commit ID from the short id button", async () => {
     const user = userEvent.setup();
     const writeText = vi
       .spyOn(navigator.clipboard, "writeText")
@@ -236,61 +196,7 @@ describe("GitHistoryPanel", () => {
     await user.click(
       await screen.findByRole("button", { name: "Copy commit ID 6138cce" }),
     );
+
     expect(writeText).toHaveBeenCalledWith(commits[0].oid);
-
-    await user.click(screen.getByRole("button", { name: "Edit label for 6138cce" }));
-    let input = screen.getByRole("textbox", { name: "Version label" });
-    await user.type(input, "Temporary");
-    await user.click(screen.getByRole("button", { name: "Cancel label editing" }));
-    expect(screen.queryByRole("textbox", { name: "Version label" })).toBeNull();
-
-    await user.click(screen.getByRole("button", { name: "Edit label for 6138cce" }));
-    input = screen.getByRole("textbox", { name: "Version label" });
-    await user.clear(input);
-    await user.type(input, "Camera ready");
-    await user.keyboard("{Enter}");
-
-    await waitFor(() =>
-      expect(mocks.gitSetVersionLabel).toHaveBeenCalledWith(
-        "project",
-        commits[0].oid,
-        "Camera ready",
-      ),
-    );
-  });
-
-  it("keeps a label save current when a commit ID is copied", async () => {
-    const labelSave = deferred<void>();
-    mocks.gitReadVersionLabels.mockResolvedValue({});
-    mocks.gitSetVersionLabel.mockReturnValueOnce(labelSave.promise);
-    const user = userEvent.setup();
-    const writeText = vi
-      .spyOn(navigator.clipboard, "writeText")
-      .mockResolvedValue(undefined);
-    render(<GitHistoryPanel />);
-
-    await user.click(
-      await screen.findByRole("button", { name: "Edit label for 6138cce" }),
-    );
-    await user.clear(screen.getByRole("textbox", { name: "Version label" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Version label" }),
-      "Ready after copy",
-    );
-    await user.click(screen.getByRole("button", { name: "Save label" }));
-    await waitFor(() => expect(mocks.gitSetVersionLabel).toHaveBeenCalledOnce());
-
-    await user.click(
-      screen.getByRole("button", { name: "Copy commit ID 6138cce" }),
-    );
-    expect(writeText).toHaveBeenCalledWith(commits[0].oid);
-
-    await act(async () => {
-      labelSave.resolve();
-      await labelSave.promise;
-    });
-
-    expect(await screen.findByText("Ready after copy")).toBeInTheDocument();
-    expect(screen.queryByRole("textbox", { name: "Version label" })).toBeNull();
   });
 });

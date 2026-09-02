@@ -44,6 +44,7 @@ describe("VersioningModal", () => {
 
     expect(screen.getByRole("dialog")).toHaveAttribute("aria-labelledby", "versioning-title");
     expect(screen.getByRole("heading", { name: "Versioning" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog").querySelector("svg.lucide-history")).not.toBeNull();
   });
 
   it("opens on the remembered tab and switches panels", async () => {

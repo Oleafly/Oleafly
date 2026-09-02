@@ -1,9 +1,8 @@
 import { useCallback, useState } from "react";
-import { X } from "lucide-react";
+import { History, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
-import { ClockCheck } from "@/components/icons/ClockCheck";
 import { CheckpointsPanel } from "@/components/editor/CheckpointsPanel";
 import { GitHistoryPanel } from "@/components/editor/GitHistoryPanel";
 import { useSettingsStore } from "@/store/settings";
@@ -42,7 +41,7 @@ export function VersioningModal() {
             aria-hidden
             className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
           >
-            <ClockCheck className="size-4" />
+            <History className="size-4" />
           </span>
           <h2 id="versioning-title" className="min-w-0 flex-1 text-base font-semibold">
             Versioning

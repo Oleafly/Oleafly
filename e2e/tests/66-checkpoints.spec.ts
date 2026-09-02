@@ -35,6 +35,18 @@ async function waitForVersion(page: Page, version: string) {
   ).toBeVisible({ timeout: 150_000 });
 }
 
+async function clickHoverRevealed(page: Page, selector: string) {
+  const clicked = await page.evaluate<boolean>(
+    `(() => {
+      const button = document.querySelector(${JSON.stringify(selector)});
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`,
+  );
+  if (!clicked) throw new Error(`no element matched ${selector}`);
+}
+
 async function waitUntilIdle(page: Page) {
   await expect(page.getByTestId("checkpoint-publishing")).toHaveCount(0, { timeout: 150_000 });
 }
@@ -55,6 +67,30 @@ test("a successful compile stores one checkpoint and unchanged sources add nothi
     `document.querySelector('[data-testid="checkpoint-entry"]')?.getAttribute('data-root') || ''`,
   );
   expect(firstRoot).toMatch(/^[0-9a-f]{64}$/);
+
+  await clickHoverRevealed(tauriPage, '[aria-label="Edit label for V1"]');
+  await tauriPage.fill('[aria-label="Checkpoint label"]', "Stable draft");
+  await tauriPage.press('[aria-label="Checkpoint label"]', "Enter");
+  await expect(
+    tauriPage.locator('[data-testid="checkpoint-entry"][data-label="Stable draft"]'),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(tauriPage.getByText("Stable draft", { exact: true })).toBeVisible({
+    timeout: 10_000,
+  });
+
+  await closeCheckpoints(tauriPage);
+  await openCheckpoints(tauriPage);
+  await expect(
+    tauriPage.locator('[data-testid="checkpoint-entry"][data-label="Stable draft"]'),
+  ).toBeVisible({ timeout: 15_000 });
+
+  await clickHoverRevealed(tauriPage, '[aria-label="Remove label Stable draft"]');
+  await expect(tauriPage.locator('[data-testid="checkpoint-entry"][data-label]')).toHaveCount(0, {
+    timeout: 15_000,
+  });
+  await expect(
+    tauriPage.locator('[data-testid="checkpoint-entry"][data-version="V1"]'),
+  ).toBeVisible({ timeout: 10_000 });
 
   const advanced = tauriPage.getByTestId("checkpoints-advanced");
   await expect(advanced).toHaveAttribute("aria-expanded", "false", { timeout: 10_000 });

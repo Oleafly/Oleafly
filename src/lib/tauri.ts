@@ -192,6 +192,9 @@ export const compileProject = (
 export const checkpointList = (projectId: string) =>
   invoke<CheckpointSummary[]>("checkpoint_list", { projectId });
 
+export const checkpointSetLabel = (projectId: string, snapshotRoot: string, label: string) =>
+  invoke<CheckpointSummary>("checkpoint_set_label", { projectId, snapshotRoot, label });
+
 export const checkpointFiles = (projectId: string, snapshotRoot: string) =>
   invoke<CheckpointFileSummary[]>("checkpoint_files", { projectId, snapshotRoot });
 
@@ -558,12 +561,6 @@ export const gitPreparePublish = (projectId: string, message: string) =>
 
 export const gitLog = (projectId: string) =>
   invoke<GitCommit[]>("git_log", { projectId });
-
-export const gitReadVersionLabels = (projectId: string) =>
-  invoke<Record<string, string>>("git_read_version_labels", { projectId });
-
-export const gitSetVersionLabel = (projectId: string, oid: string, label: string) =>
-  invoke<void>("git_set_version_label", { projectId, oid, label });
 
 export const gitRestore = (projectId: string, oid: string, expectedGeneration: number) =>
   invoke<ProjectStateChanged>("git_restore", { projectId, oid, expectedGeneration });

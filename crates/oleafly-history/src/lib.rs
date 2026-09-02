@@ -33,6 +33,7 @@ const EXPORT_MAGIC: &[u8] = b"OLEAFLY-CKPT\0\x01";
 const HISTORY_EXPORT_MAGIC: &[u8] = b"OLEAFLY-HISTORY\0\x02";
 const MAX_EXPORT_HEADER_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_HISTORY_CHECKPOINTS: u64 = 4_096;
+const MAX_CHECKPOINT_LABEL_CHARS: usize = 80;
 const MAX_HISTORY_METADATA_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_HISTORY_CHUNK_REFERENCES: u64 = 250_000;
 const MAX_HISTORY_LOGICAL_BYTES: u64 = 128 * 1024 * 1024 * 1024;
@@ -409,6 +410,7 @@ pub struct Checkpoint {
     pub output_hash: ContentHash,
     pub file_count: u64,
     pub logical_bytes: u64,
+    pub label: Option<String>,
     replayed_inputs: Vec<ReplayedInput>,
     portable_metadata_bytes: u64,
     chunk_references: u64,
@@ -1538,6 +1540,7 @@ impl Store {
             output_hash: evidence.output_hash,
             file_count: candidate.manifest.files.len() as u64,
             logical_bytes,
+            label: None,
             replayed_inputs: evidence.replayed_inputs,
             portable_metadata_bytes: 0,
             chunk_references: 0,
@@ -1691,7 +1694,7 @@ impl Store {
                           + length(CAST(output_hash AS BLOB))
                           + length(CAST(replayed_inputs_json AS BLOB)),
                  portable_metadata_bytes, chunk_references,
-                 unstored_file_count, unstored_logical_bytes
+                 unstored_file_count, unstored_logical_bytes, label
                  FROM checkpoints
                  ORDER BY sequence DESC
                  LIMIT 1",
@@ -1784,7 +1787,7 @@ impl Store {
                       + length(CAST(output_hash AS BLOB))
                       + length(CAST(replayed_inputs_json AS BLOB)),
              portable_metadata_bytes, chunk_references,
-             unstored_file_count, unstored_logical_bytes
+             unstored_file_count, unstored_logical_bytes, label
              FROM checkpoints
              ORDER BY sequence DESC",
         )?;
@@ -1862,6 +1865,32 @@ impl Store {
                 |row| row.get::<_, i64>(0),
             )? as u64,
         })
+    }
+
+    pub fn set_checkpoint_label(&self, root: &SnapshotRoot, label: &str) -> Result<Checkpoint> {
+        let label = validate_checkpoint_label(label)?;
+        let _store_locks = self.acquire_exclusive_locks()?;
+        let mut connection = self.connection()?;
+        let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let mut checkpoint = query_checkpoint(&transaction, &root.as_hex())?
+            .ok_or_else(|| HistoryError::CheckpointNotFound(root.as_hex()))?;
+        checkpoint.label = label;
+        let manifest = load_visible_manifest(&transaction, root)?;
+        let (_, budget) =
+            validate_portable_history_after_publication(&transaction, &checkpoint, &manifest)?;
+        checkpoint.portable_metadata_bytes = budget.metadata_bytes;
+        transaction.execute(
+            "UPDATE checkpoints
+             SET label = ?2, portable_metadata_bytes = ?3
+             WHERE snapshot_root = ?1",
+            params![
+                root.as_hex(),
+                checkpoint.label.as_deref(),
+                checkpoint.portable_metadata_bytes as i64,
+            ],
+        )?;
+        transaction.commit()?;
+        Ok(checkpoint)
     }
 
     /// Removes a selected visible root. Payload reclamation is deliberately a
@@ -2269,6 +2298,7 @@ impl Store {
                 unstored.path
             )));
         }
+        let label = validate_portable_label(metadata.label.as_deref())?;
         let output_hash = ContentHash::from_hex(&metadata.output_hash)?;
         let evidence = CompileEvidence::new(
             metadata.engine,
@@ -2345,7 +2375,13 @@ impl Store {
             )));
         }
         guard.cleanup()?;
-        self.publish(candidate, evidence)
+        let outcome = self.publish(candidate, evidence)?;
+        match (outcome, label) {
+            (PublishOutcome::Created(checkpoint), Some(label)) => Ok(PublishOutcome::Created(
+                self.set_checkpoint_label(&checkpoint.snapshot_root, &label)?,
+            )),
+            (outcome, _) => Ok(outcome),
+        }
     }
 
     /// Streams every visible checkpoint, oldest first, as a logical portable
@@ -2372,7 +2408,7 @@ impl Store {
                       + length(CAST(output_hash AS BLOB))
                       + length(CAST(replayed_inputs_json AS BLOB)),
              portable_metadata_bytes, chunk_references,
-             unstored_file_count, unstored_logical_bytes
+             unstored_file_count, unstored_logical_bytes, label
              FROM checkpoints ORDER BY sequence ASC",
         )?;
         let checkpoints = statement.query_map([], checkpoint_from_row)?;
@@ -2603,8 +2639,8 @@ impl Store {
                     snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
                     main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
                     portable_metadata_bytes, chunk_references,
-                    unstored_file_count, unstored_logical_bytes
-                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                    unstored_file_count, unstored_logical_bytes, label
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
                 params![
                     checkpoint.root.as_hex(),
                     checkpoint.evidence.completed_at_unix_ms,
@@ -2619,6 +2655,7 @@ impl Store {
                     checkpoint.portable_budget.chunk_references as i64,
                     unstored.file_count as i64,
                     unstored.logical_bytes as i64,
+                    checkpoint.label.as_deref(),
                 ],
             )?;
         }
@@ -2717,6 +2754,7 @@ impl Store {
         let root = SnapshotRoot::parse(&metadata.snapshot_root)?;
         verify_archive_manifest(&metadata.manifest)?;
         verify_manifest_root(&root, &metadata.manifest)?;
+        let label = validate_portable_label(metadata.label.as_deref())?;
         let output_hash = ContentHash::from_hex(&metadata.output_hash)?;
         let evidence = CompileEvidence::new(
             metadata.engine,
@@ -2819,6 +2857,7 @@ impl Store {
                 root,
                 evidence,
                 manifest: metadata.manifest,
+                label,
                 portable_budget: PortableCheckpointBudget {
                     metadata_bytes,
                     logical_bytes: declared_logical_bytes,
@@ -2874,6 +2913,7 @@ impl Store {
                 ,chunk_references INTEGER NOT NULL DEFAULT 0 CHECK(chunk_references >= 0)
                 ,unstored_file_count INTEGER NOT NULL DEFAULT 0 CHECK(unstored_file_count >= 0)
                 ,unstored_logical_bytes INTEGER NOT NULL DEFAULT 0 CHECK(unstored_logical_bytes >= 0)
+                ,label TEXT
              );
              CREATE TABLE IF NOT EXISTS store_identity(
                 singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
@@ -3038,6 +3078,8 @@ struct PortableCheckpoint {
     toolchain_identity: String,
     main_document: String,
     output_hash: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    label: Option<String>,
     replayed_inputs: Vec<PortableReplayedInput>,
     manifest: Manifest,
 }
@@ -3057,6 +3099,8 @@ struct PortableCheckpointView<'a> {
     toolchain_identity: &'a str,
     main_document: &'a str,
     output_hash: PortableContentHash<'a>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    label: Option<&'a str>,
     replayed_inputs: PortableReplayedInputs<'a>,
     manifest: &'a Manifest,
 }
@@ -3239,6 +3283,7 @@ fn portable_checkpoint_view<'a>(
         toolchain_identity: &checkpoint.toolchain_identity,
         main_document: &checkpoint.main_document,
         output_hash: PortableContentHash(&checkpoint.output_hash),
+        label: checkpoint.label.as_deref(),
         replayed_inputs: PortableReplayedInputs(&checkpoint.replayed_inputs),
         manifest,
     };
@@ -3316,6 +3361,7 @@ struct ImportedCheckpoint {
     root: SnapshotRoot,
     evidence: CompileEvidence,
     manifest: Manifest,
+    label: Option<String>,
     portable_budget: PortableCheckpointBudget,
 }
 
@@ -3667,6 +3713,31 @@ fn validate_archived_evidence(manifest: &Manifest, evidence: &CompileEvidence) -
     Ok(())
 }
 
+fn validate_checkpoint_label(label: &str) -> Result<Option<String>> {
+    let trimmed = label.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    if trimmed.chars().any(char::is_control) {
+        return Err(HistoryError::InvalidInput(
+            "checkpoint label must not contain control characters".into(),
+        ));
+    }
+    if trimmed.chars().count() > MAX_CHECKPOINT_LABEL_CHARS {
+        return Err(HistoryError::InvalidInput(format!(
+            "checkpoint label must be at most {MAX_CHECKPOINT_LABEL_CHARS} characters"
+        )));
+    }
+    Ok(Some(trimmed.to_string()))
+}
+
+fn validate_portable_label(label: Option<&str>) -> Result<Option<String>> {
+    match label {
+        Some(label) => validate_checkpoint_label(label),
+        None => Ok(None),
+    }
+}
+
 fn hash_length_prefixed(hasher: &mut blake3::Hasher, value: &[u8]) {
     hasher.update(&(value.len() as u64).to_le_bytes());
     hasher.update(value);
@@ -3684,7 +3755,7 @@ fn query_checkpoint(connection: &Connection, root: &str) -> Result<Option<Checkp
                       + length(CAST(output_hash AS BLOB))
                       + length(CAST(replayed_inputs_json AS BLOB)),
              portable_metadata_bytes, chunk_references,
-             unstored_file_count, unstored_logical_bytes
+             unstored_file_count, unstored_logical_bytes, label
              FROM checkpoints WHERE snapshot_root = ?1",
             [root],
             checkpoint_from_row,
@@ -3704,7 +3775,7 @@ fn query_checkpoints_oldest_first(connection: &Connection) -> Result<Vec<Checkpo
                   + length(CAST(output_hash AS BLOB))
                   + length(CAST(replayed_inputs_json AS BLOB)),
          portable_metadata_bytes, chunk_references,
-         unstored_file_count, unstored_logical_bytes
+         unstored_file_count, unstored_logical_bytes, label
          FROM checkpoints ORDER BY sequence ASC",
     )?;
     let rows = statement.query_map([], checkpoint_from_row)?;
@@ -3718,8 +3789,8 @@ fn insert_checkpoint(connection: &Connection, checkpoint: &Checkpoint) -> Result
             snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
             main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
             portable_metadata_bytes, chunk_references,
-            unstored_file_count, unstored_logical_bytes
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+            unstored_file_count, unstored_logical_bytes, label
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
         params![
             checkpoint.snapshot_root.as_hex(),
             checkpoint.completed_at_unix_ms,
@@ -3734,6 +3805,7 @@ fn insert_checkpoint(connection: &Connection, checkpoint: &Checkpoint) -> Result
             checkpoint.chunk_references as i64,
             checkpoint.unstored_file_count as i64,
             checkpoint.unstored_logical_bytes as i64,
+            checkpoint.label,
         ],
     )?;
     Ok(())
@@ -3763,35 +3835,48 @@ fn manifest_unstored_totals(manifest: &Manifest) -> Result<UnstoredTotals> {
     Ok(totals)
 }
 
-const CATALOG_VERSION_2_COLUMNS: &[(&str, &str)] = &[
-    (
-        "portable_metadata_bytes",
-        "INTEGER NOT NULL DEFAULT 0 CHECK(portable_metadata_bytes >= 0)",
-    ),
-    (
-        "chunk_references",
-        "INTEGER NOT NULL DEFAULT 0 CHECK(chunk_references >= 0)",
-    ),
-    (
-        "unstored_file_count",
-        "INTEGER NOT NULL DEFAULT 0 CHECK(unstored_file_count >= 0)",
-    ),
-    (
-        "unstored_logical_bytes",
-        "INTEGER NOT NULL DEFAULT 0 CHECK(unstored_logical_bytes >= 0)",
-    ),
+struct CatalogColumn {
+    name: &'static str,
+    declaration: &'static str,
+    backfilled: bool,
+}
+
+const CATALOG_ADDED_COLUMNS: &[CatalogColumn] = &[
+    CatalogColumn {
+        name: "portable_metadata_bytes",
+        declaration: "INTEGER NOT NULL DEFAULT 0 CHECK(portable_metadata_bytes >= 0)",
+        backfilled: true,
+    },
+    CatalogColumn {
+        name: "chunk_references",
+        declaration: "INTEGER NOT NULL DEFAULT 0 CHECK(chunk_references >= 0)",
+        backfilled: true,
+    },
+    CatalogColumn {
+        name: "unstored_file_count",
+        declaration: "INTEGER NOT NULL DEFAULT 0 CHECK(unstored_file_count >= 0)",
+        backfilled: true,
+    },
+    CatalogColumn {
+        name: "unstored_logical_bytes",
+        declaration: "INTEGER NOT NULL DEFAULT 0 CHECK(unstored_logical_bytes >= 0)",
+        backfilled: true,
+    },
+    CatalogColumn {
+        name: "label",
+        declaration: "TEXT",
+        backfilled: false,
+    },
 ];
 
-fn missing_catalog_columns(
-    connection: &Connection,
-) -> Result<Vec<&'static (&'static str, &'static str)>> {
+fn missing_catalog_columns(connection: &Connection) -> Result<Vec<&'static CatalogColumn>> {
     let mut statement = connection.prepare("PRAGMA table_info(checkpoints)")?;
     let columns = statement
         .query_map([], |row| row.get::<_, String>(1))?
         .collect::<std::result::Result<Vec<_>, _>>()?;
-    Ok(CATALOG_VERSION_2_COLUMNS
+    Ok(CATALOG_ADDED_COLUMNS
         .iter()
-        .filter(|(name, _)| !columns.iter().any(|column| column == name))
+        .filter(|column| !columns.iter().any(|existing| existing == column.name))
         .collect())
 }
 
@@ -3814,8 +3899,10 @@ fn migrate_catalog_to_current_version(connection: &Connection) -> Result<()> {
         return Err(HistoryError::UnsupportedFormat(version));
     }
     let missing = missing_catalog_columns(&transaction)?;
-    let requires_backfill = !missing.is_empty() || version < FORMAT_VERSION;
-    for (name, declaration) in missing {
+    let requires_backfill =
+        version < FORMAT_VERSION || missing.iter().any(|column| column.backfilled);
+    for column in missing {
+        let (name, declaration) = (column.name, column.declaration);
         transaction.execute_batch(&format!(
             "ALTER TABLE checkpoints ADD COLUMN {name} {declaration};"
         ))?;
@@ -3874,6 +3961,7 @@ fn checkpoint_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Checkpoint> 
         chunk_references: row.get::<_, i64>(11)? as u64,
         unstored_file_count: row.get::<_, i64>(12)? as u64,
         unstored_logical_bytes: row.get::<_, i64>(13)? as u64,
+        label: row.get(14)?,
     })
 }
 
@@ -5152,6 +5240,145 @@ mod tests {
     }
 
     #[test]
+    fn checkpoint_labels_are_trimmed_validated_and_clearable() {
+        let temp = tempdir().unwrap();
+        let (store, root) = published_test_store(temp.path());
+        let unlabeled_metadata_bytes = store
+            .checkpoint(&root)
+            .unwrap()
+            .unwrap()
+            .portable_metadata_bytes;
+        assert!(store.checkpoint(&root).unwrap().unwrap().label.is_none());
+
+        let labeled = store
+            .set_checkpoint_label(&root, "  Submission draft  ")
+            .unwrap();
+        assert_eq!(labeled.label.as_deref(), Some("Submission draft"));
+        assert!(labeled.portable_metadata_bytes > unlabeled_metadata_bytes);
+        assert_eq!(
+            store.list().unwrap()[0].label.as_deref(),
+            Some("Submission draft")
+        );
+
+        assert_eq!(
+            store
+                .set_checkpoint_label(&root, &"e".repeat(80))
+                .unwrap()
+                .label,
+            Some("e".repeat(80))
+        );
+        assert!(matches!(
+            store.set_checkpoint_label(&root, &"e".repeat(81)),
+            Err(HistoryError::InvalidInput(_))
+        ));
+        assert!(matches!(
+            store.set_checkpoint_label(&root, "draft\nv2"),
+            Err(HistoryError::InvalidInput(_))
+        ));
+        assert_eq!(
+            store.checkpoint(&root).unwrap().unwrap().label,
+            Some("e".repeat(80))
+        );
+
+        let cleared = store.set_checkpoint_label(&root, "   ").unwrap();
+        assert!(cleared.label.is_none());
+        assert_eq!(cleared.portable_metadata_bytes, unlabeled_metadata_bytes);
+        assert!(store.checkpoint(&root).unwrap().unwrap().label.is_none());
+
+        let absent = SnapshotRoot::parse(&ContentHash::digest(b"absent").to_hex()).unwrap();
+        assert!(matches!(
+            store.set_checkpoint_label(&absent, "Anything"),
+            Err(HistoryError::CheckpointNotFound(_))
+        ));
+    }
+
+    #[test]
+    fn checkpoint_labels_survive_export_and_import() {
+        let temp = tempdir().unwrap();
+        let (store, root) = published_test_store(temp.path());
+        let mut unlabeled_archive = Vec::new();
+        store
+            .export_checkpoint(&root, &mut unlabeled_archive)
+            .unwrap();
+        assert!(!String::from_utf8_lossy(&unlabeled_archive).contains("\"label\""));
+
+        store
+            .set_checkpoint_label(&root, "Submission draft")
+            .unwrap();
+
+        let mut history_archive = Vec::new();
+        store.export_history(&mut history_archive).unwrap();
+        let restored = Store::open(temp.path().join("restored-history")).unwrap();
+        assert_eq!(
+            restored
+                .import_history(history_archive.as_slice())
+                .unwrap()
+                .created_checkpoints,
+            1
+        );
+        assert_eq!(
+            restored
+                .checkpoint(&root)
+                .unwrap()
+                .unwrap()
+                .label
+                .as_deref(),
+            Some("Submission draft")
+        );
+
+        let mut single_archive = Vec::new();
+        store.export_checkpoint(&root, &mut single_archive).unwrap();
+        let single = Store::open(temp.path().join("single-history")).unwrap();
+        assert!(matches!(
+            single.import_checkpoint(single_archive.as_slice()).unwrap(),
+            PublishOutcome::Created(checkpoint)
+                if checkpoint.label.as_deref() == Some("Submission draft")
+        ));
+        assert_eq!(
+            single.checkpoint(&root).unwrap().unwrap().label.as_deref(),
+            Some("Submission draft")
+        );
+    }
+
+    #[test]
+    fn a_catalog_without_the_label_column_gains_it_without_a_budget_backfill() {
+        let temp = tempdir().unwrap();
+        let (store, root) = published_test_store(temp.path());
+        let history = store.root().to_path_buf();
+        drop(store);
+        let connection = Connection::open(history.join("catalog.sqlite3")).unwrap();
+        connection
+            .execute("UPDATE checkpoints SET portable_metadata_bytes = 7", [])
+            .unwrap();
+        connection
+            .execute_batch("ALTER TABLE checkpoints DROP COLUMN label;")
+            .unwrap();
+        drop(connection);
+
+        let migrated = Store::open_existing(&history).unwrap().unwrap();
+        assert_eq!(catalog_user_version_at(&history), FORMAT_VERSION);
+        let checkpoint = migrated.checkpoint(&root).unwrap().unwrap();
+        assert!(checkpoint.label.is_none());
+        assert_eq!(checkpoint.portable_metadata_bytes, 7);
+
+        let labeled = migrated.set_checkpoint_label(&root, "Kept").unwrap();
+        assert_eq!(labeled.label.as_deref(), Some("Kept"));
+        assert!(labeled.portable_metadata_bytes > 7);
+        drop(migrated);
+
+        let reopened = Store::open_existing(&history).unwrap().unwrap();
+        assert_eq!(
+            reopened
+                .checkpoint(&root)
+                .unwrap()
+                .unwrap()
+                .label
+                .as_deref(),
+            Some("Kept")
+        );
+    }
+
+    #[test]
     fn a_catalog_newer_than_this_build_is_never_opened() {
         let temp = tempdir().unwrap();
         let (store, _) = published_test_store(temp.path());
@@ -5363,6 +5590,7 @@ mod tests {
             output_hash,
             file_count: 2,
             logical_bytes: 0,
+            label: None,
             replayed_inputs: vec![ReplayedInput::new("main.tex", content_hash).unwrap()],
             portable_metadata_bytes: 0,
             chunk_references: 0,
@@ -5377,6 +5605,7 @@ mod tests {
             toolchain_identity: checkpoint.toolchain_identity.clone(),
             main_document: checkpoint.main_document.clone(),
             output_hash: output_hash.to_hex(),
+            label: None,
             replayed_inputs: vec![PortableReplayedInput {
                 relative_path: "main.tex".into(),
                 content_hash: content_hash.to_hex(),
@@ -5828,6 +6057,7 @@ mod tests {
             toolchain_identity: "tectonic-test@1".into(),
             main_document: "main.tex".into(),
             output_hash: ContentHash::digest(b"output").to_hex(),
+            label: None,
             replayed_inputs: vec![PortableReplayedInput {
                 relative_path: "main.tex".into(),
                 content_hash: main_hash.to_hex(),

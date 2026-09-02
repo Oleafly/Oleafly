@@ -79,15 +79,15 @@ async function openHistory(page: Page) {
 
 async function restoreCommit(page: Page, message: string) {
   await page.waitForFunction(
-    `Array.from(document.querySelectorAll('div.truncate'))
+    `Array.from(document.querySelectorAll('[data-testid="history-commit-title"]'))
       .some((d) => d.textContent.trim() === ${JSON.stringify(message)})`,
     15_000,
   );
   const clicked = await page.evaluate<boolean>(
     `(() => {
-      const rows = Array.from(document.querySelectorAll('div.truncate'))
-        .filter((d) => d.textContent.trim() === ${JSON.stringify(message)});
-      const row = rows[0]?.closest('div.flex');
+      const title = Array.from(document.querySelectorAll('[data-testid="history-commit-title"]'))
+        .find((d) => d.textContent.trim() === ${JSON.stringify(message)});
+      const row = title && title.closest('[data-testid="history-commit"]');
       const btn = row && Array.from(row.querySelectorAll('button'))
         .find((b) => (b.getAttribute('title') || '').startsWith('Restore'));
       if (!btn) return false;

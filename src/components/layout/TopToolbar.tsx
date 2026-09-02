@@ -9,6 +9,7 @@ import {
   FileArchive,
   FileType,
   GitFork,
+  History,
   Presentation,
   LayoutGrid,
   Loader2,
@@ -18,7 +19,6 @@ import {
   SquarePen,
   X,
 } from "lucide-react";
-import { ClockCheck } from "@/components/icons/ClockCheck";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -127,7 +127,7 @@ export function ProjectHistoryActions() {
         className="text-muted-foreground hover:text-foreground"
         onClick={() => openVersioning()}
       >
-        <ClockCheck className="size-4" />
+        <History className="size-4" />
       </Button>
     </Tooltip>
   );

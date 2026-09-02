@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { HighlightedCode } from "./code-highlighter";
 import { MarkdownBlock } from "./markdown-block";
 import { MermaidDiagram } from "./mermaid-diagram";
+import { RenderCache } from "./render-cache";
 import {
   type StreamingMarkdownState,
   updateStreamingMarkdown,
@@ -14,6 +15,9 @@ import {
 
 const codeBlockClassName =
   "overflow-x-auto rounded-md bg-background/70 p-2.5 text-[0.85em] [scrollbar-width:thin]";
+
+const MAX_CACHED_DOCUMENTS = 200;
+const MAX_CACHED_DOCUMENT_CHARS = 1_000_000;
 
 function codeText(children: ReactNode) {
   return Children.toArray(children)
@@ -66,7 +70,7 @@ function createMarkdownComponents(inverted: boolean): Components {
       const source = codeText(child.props.children).replace(/\n$/, "");
       return (
         <MarkdownBlock kind="diagram" source={source}>
-          <MermaidDiagram source={source} />
+          <MermaidDiagram key={source} source={source} />
         </MarkdownBlock>
       );
     }
@@ -112,32 +116,69 @@ function createMarkdownComponents(inverted: boolean): Components {
 export const markdownComponents = createMarkdownComponents(false);
 const invertedMarkdownComponents = createMarkdownComponents(true);
 
+const remarkPlugins = [remarkGfm, remarkMath];
+const rehypePlugins = [rehypeKatex];
+
+const documentCaches = {
+  plain: new RenderCache<ReactNode>(MAX_CACHED_DOCUMENTS, MAX_CACHED_DOCUMENT_CHARS),
+  inverted: new RenderCache<ReactNode>(MAX_CACHED_DOCUMENTS, MAX_CACHED_DOCUMENT_CHARS),
+};
+
+export function renderMarkdownDocument(
+  source: string,
+  inverted: boolean,
+  cache = true,
+): ReactNode {
+  const documents = inverted ? documentCaches.inverted : documentCaches.plain;
+  if (cache) {
+    const cached = documents.get(source);
+    if (cached !== undefined) return cached;
+  }
+  const rendered = ReactMarkdown({
+    remarkPlugins,
+    rehypePlugins,
+    components: inverted ? invertedMarkdownComponents : markdownComponents,
+    children: source,
+  });
+  if (cache) documents.set(source, rendered, source.length + 1);
+  return rendered;
+}
+
+export function isMarkdownDocumentCached(source: string, inverted = false): boolean {
+  return (inverted ? documentCaches.inverted : documentCaches.plain).has(source);
+}
+
+export function clearMarkdownDocumentCache(): void {
+  documentCaches.plain.clear();
+  documentCaches.inverted.clear();
+}
+
 function MarkdownDocument({
   children,
   inverted,
+  cache = true,
 }: {
   children: string;
   inverted: boolean;
+  cache?: boolean;
 }) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkMath]}
-      rehypePlugins={[rehypeKatex]}
-      components={inverted ? invertedMarkdownComponents : markdownComponents}
-    >
-      {children}
-    </ReactMarkdown>
-  );
+  return <>{renderMarkdownDocument(children, inverted, cache)}</>;
 }
 
 const SettledMarkdownBlock = memo(function SettledMarkdownBlock({
   source,
   inverted,
+  cache = true,
 }: {
   source: string;
   inverted: boolean;
+  cache?: boolean;
 }) {
-  return <MarkdownDocument inverted={inverted}>{source}</MarkdownDocument>;
+  return (
+    <MarkdownDocument inverted={inverted} cache={cache}>
+      {source}
+    </MarkdownDocument>
+  );
 });
 
 export default function MarkdownRenderer({
@@ -187,6 +228,7 @@ export default function MarkdownRenderer({
           key={tailKey}
           source={partition.tail.source}
           inverted={inverted}
+          cache={false}
         />
       ),
     );
