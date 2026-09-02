@@ -162,7 +162,12 @@ vi.mock("@/components/layout/SettingsModal", () => ({ SettingsModal: () => null 
 vi.mock("@/components/diagram/DiagramComposer", () => ({ DiagramComposer: () => null }));
 vi.mock("@/components/ai/CopilotOverlay", () => ({ CopilotOverlay: () => null }));
 vi.mock("@/components/editor/WordCountModal", () => ({ WordCountModal: () => null }));
-vi.mock("@/components/editor/HistoryModal", () => ({ HistoryModal: () => null }));
+vi.mock("@/components/editor/HistoryModal", () => ({
+  HistoryModal: () => <div data-testid="git-history-modal" />,
+}));
+vi.mock("@/components/editor/CheckpointsModal", () => ({
+  CheckpointsModal: () => <div data-testid="checkpoints-modal" />,
+}));
 vi.mock("@/components/editor/HotkeysModal", () => ({ HotkeysModal: () => null }));
 vi.mock("@/components/tour/TourGuide", () => ({ TourGuide: () => null }));
 vi.mock("@/components/tools/EquationToolView", () => ({ EquationToolView: () => null }));
@@ -307,6 +312,24 @@ describe("project dock layout", () => {
       browserOpen: false,
       terminalOpen: false,
     });
+  });
+
+  it("mounts Git history and Checkpoints as distinct modal surfaces", async () => {
+    const React = await import("react");
+    const { act } = React;
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<App />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(document.querySelector('[data-testid="git-history-modal"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="checkpoints-modal"]')).not.toBeNull();
   });
 
   it("passes the app font size into the sidebar width floor", async () => {

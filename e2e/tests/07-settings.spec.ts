@@ -182,7 +182,7 @@ test("palette lists every registered core command", async ({ tauriPage }) => {
     "Go to PDF (SyncTeX)",
     "Export PDF…",
     "Word count",
-    "History",
+    "Git history",
     "Add citation",
     "Bold",
     "Italic",

@@ -5,6 +5,7 @@ import type { E2ePdfProbe } from "../src/lib/e2e-probe";
 export interface Page {
   click(selector: string, opts?: { timeout?: number }): Promise<void>;
   fill(selector: string, text: string): Promise<void>;
+  focus(selector: string): Promise<void>;
   press(selector: string, key: string): Promise<void>;
   evaluate<T = unknown>(expression: string): Promise<T>;
   waitForFunction(expression: string, timeout?: number): Promise<unknown>;

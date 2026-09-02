@@ -12,6 +12,21 @@ fn project_root(project_id: &str) -> Result<PathBuf, String> {
 }
 
 fn run_git(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String> {
+    run_git_with_optional_locks(root, args, true)
+}
+
+/// Run an observational Git command without letting Git refresh the index or
+/// take optional repository locks. Background UI refreshes must not mutate a
+/// user's repository merely by looking at it.
+fn run_git_read_only(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String> {
+    run_git_with_optional_locks(root, args, false)
+}
+
+fn run_git_with_optional_locks(
+    root: &PathBuf,
+    args: &[&str],
+    optional_locks: bool,
+) -> Result<std::process::Output, String> {
     let mut command = Command::new("git");
     command
         .no_console()
@@ -25,7 +40,8 @@ fn run_git(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String
         // repo operations land on the real repository during `cargo test`.
         .env_remove("GIT_DIR")
         .env_remove("GIT_WORK_TREE")
-        .env_remove("GIT_INDEX_FILE");
+        .env_remove("GIT_INDEX_FILE")
+        .env("GIT_OPTIONAL_LOCKS", if optional_locks { "1" } else { "0" });
     output_contained(&mut command).map_err(|e| format!("failed to run git: {e}"))
 }
 
@@ -57,19 +73,60 @@ fn initialize_repo(root: &PathBuf, branch: &str) -> Result<(), String> {
     ok_or_err(run_git(
         root,
         &["init", "--quiet", "--initial-branch", branch],
-    )?)
+    )?)?;
+    ensure_git_identity(root)?;
+    ensure_private_exclude(root)
 }
 
-/// Initialize a git repo in the project (idempotent) with a sensible identity.
-fn ensure_repo(project_id: &str) -> Result<PathBuf, String> {
+fn ensure_private_exclude(root: &PathBuf) -> Result<(), String> {
+    let output = run_git_read_only(root, &["rev-parse", "--git-path", "info/exclude"])?;
+    let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    ok_or_err(output)?;
+    if value.is_empty() {
+        return Err("Git did not return its repository exclude path".into());
+    }
+    let path = PathBuf::from(value);
+    let exclude = if path.is_absolute() {
+        path
+    } else {
+        root.join(path)
+    };
+    if let Some(parent) = exclude.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|error| format!("could not prepare repository excludes: {error}"))?;
+    }
+    if let Ok(metadata) = std::fs::symlink_metadata(&exclude) {
+        if !metadata.is_file() || metadata.file_type().is_symlink() {
+            return Err("repository exclude path is not a regular file".into());
+        }
+    }
+    let current = std::fs::read_to_string(&exclude).unwrap_or_default();
+    if !current.lines().any(|line| line.trim() == ".oleafly/") {
+        use std::io::Write;
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&exclude)
+            .map_err(|error| format!("could not update repository excludes: {error}"))?;
+        if !current.is_empty() && !current.ends_with('\n') {
+            writeln!(file).map_err(|error| error.to_string())?;
+        }
+        writeln!(file, ".oleafly/").map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+fn existing_repo(project_id: &str) -> Result<PathBuf, String> {
     let root = project_root(project_id)?;
     if !root.join(".git").exists() {
-        let branch = default_branch(&root);
-        initialize_repo(&root, &branch)?;
-        std::fs::write(root.join(".gitignore"), ".oleafly/\n").map_err(|e| e.to_string())?;
-        ensure_git_identity(&root)?;
+        return Err("Git repository is not initialized. Initialize Source Control first.".into());
     }
     Ok(root)
+}
+
+fn initialized_repo(project_id: &str) -> Result<Option<PathBuf>, String> {
+    let root = project_root(project_id)?;
+    Ok(root.join(".git").exists().then_some(root))
 }
 
 #[derive(Serialize)]
@@ -81,62 +138,37 @@ pub struct GitCommit {
 }
 
 #[tauri::command]
-pub async fn git_auto_commit(project_id: String, message: String) -> Result<bool, String> {
-    tauri::async_runtime::spawn_blocking(move || -> Result<bool, String> {
-        let root = ensure_repo(&project_id)?;
-        run_git(&root, &["add", "-A"])?;
-        let out = run_git(&root, &["commit", "--quiet", "-m", &message])?;
-        Ok(out.status.success())
-    })
-    .await
-    .map_err(|e| e.to_string())?
+pub fn git_is_initialized(project_id: String) -> Result<bool, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+    Ok(initialized_repo(&project_id)?.is_some())
 }
 
-/// Build the auto-commit message from the changed paths: "Update: a.tex, b.bib",
-/// capped so a big import doesn't produce a novel of a subject line.
-fn update_message(paths: &[String]) -> String {
-    const MAX_LISTED: usize = 5;
-    let listed = paths
-        .iter()
-        .take(MAX_LISTED)
-        .map(String::as_str)
-        .collect::<Vec<_>>()
-        .join(", ");
-    if paths.len() > MAX_LISTED {
-        format!("Update: {listed} +{} more", paths.len() - MAX_LISTED)
-    } else {
-        format!("Update: {listed}")
-    }
-}
-
-/// Commit everything outstanding under a generated "Update: <files>" message.
-/// Returns false when the tree is clean.
-fn auto_commit_update_in(root: &PathBuf) -> Result<bool, String> {
-    let out = run_git(root, &["status", "--porcelain"])?;
-    let changed = parse_status_porcelain(&String::from_utf8_lossy(&out.stdout));
-    if changed.is_empty() {
-        return Ok(false);
-    }
-    let paths: Vec<String> = changed.into_iter().map(|c| c.path).collect();
-    let message = update_message(&paths);
-    run_git(root, &["add", "-A"])?;
-    let out = run_git(root, &["commit", "--quiet", "-m", &message])?;
-    Ok(out.status.success())
-}
-
+/// Initialize Source Control only in response to a direct user action.
 #[tauri::command]
-pub async fn git_auto_commit_update(project_id: String) -> Result<bool, String> {
+pub fn git_initialize(project_id: String) -> Result<String, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
+    let root = project_root(&project_id)?;
+    if !root.join(".git").exists() {
+        let branch = default_branch(&root);
+        initialize_repo(&root, &branch)?;
+    }
+    current_branch(&root)
+}
+
+/// Prepare the project for the explicit Publish to GitHub action. This is the
+/// sole convenience that initializes and commits all files in one operation;
+/// background save, compile, and assistant flows never call it.
+#[tauri::command]
+pub async fn git_prepare_publish(project_id: String, message: String) -> Result<bool, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<bool, String> {
-        // A background convenience must never resurrect a deleted project:
-        // project_dir() creates missing dirs, so check existence first and
-        // treat a gone project as a silent no-op (a debounced commit can
-        // legitimately fire after the user deleted the project).
-        paths::validate_project_id(&project_id)?;
-        if !paths::projects_root()?.join(&project_id).is_dir() {
-            return Ok(false);
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
+        let root = project_root(&project_id)?;
+        if !root.join(".git").exists() {
+            let branch = default_branch(&root);
+            initialize_repo(&root, &branch)?;
         }
-        let root = ensure_repo(&project_id)?;
-        auto_commit_update_in(&root)
+        stage_all(&root)?;
+        commit_index(&root, &message)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -161,6 +193,7 @@ pub async fn git_read_version_labels(
     project_id: String,
 ) -> Result<HashMap<String, String>, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<HashMap<String, String>, String> {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         read_version_labels_at(&version_labels_path(&project_id)?)
     })
     .await
@@ -174,6 +207,7 @@ pub async fn git_set_version_label(
     label: String,
 ) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
         let path = version_labels_path(&project_id)?;
         let mut labels = read_version_labels_at(&path)?;
         if label.trim().is_empty() {
@@ -194,8 +228,11 @@ pub async fn git_set_version_label(
 #[tauri::command]
 pub async fn git_log(project_id: String) -> Result<Vec<GitCommit>, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<Vec<GitCommit>, String> {
-        let root = ensure_repo(&project_id)?;
-        let out = run_git(&root, &["log", "--pretty=format:%H%x09%h%x09%ct%x09%s"])?;
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+        let Some(root) = initialized_repo(&project_id)? else {
+            return Ok(Vec::new());
+        };
+        let out = run_git_read_only(&root, &["log", "--pretty=format:%H%x09%h%x09%ct%x09%s"])?;
         let text = String::from_utf8_lossy(&out.stdout);
         let mut commits = Vec::new();
         for line in text.lines() {
@@ -231,7 +268,7 @@ pub async fn git_restore(
         project_id.clone(),
         expected_generation,
         move |_| {
-            let root = ensure_repo(&operation_id)?;
+            let root = existing_repo(&operation_id)?;
             restore_worktree(&root, &oid)?;
             Ok(((), true))
         },
@@ -265,8 +302,8 @@ fn restore_worktree(root: &PathBuf, oid: &str) -> Result<(), String> {
     // moving HEAD: restore modified files, bring back deleted ones, AND remove
     // files created after the checkpoint. `checkout <oid> -- .` only touched
     // paths present in <oid>, so files a later response added were left behind
-    // and "restore to before this response" did not actually undo them. The
-    // next auto-commit records the revert as a new commit, keeping history.
+    // and "restore to before this response" did not actually undo them. A later
+    // user-authored commit can record the restored state without moving HEAD.
     ok_or_err(run_git(root, &["read-tree", "--reset", "-u", oid])?)
 }
 
@@ -286,11 +323,62 @@ fn out_to_string(out: &std::process::Output) -> String {
 fn sanitize_url(u: &str) -> String {
     if let Some(idx) = u.find("://") {
         let (scheme, rest) = u.split_at(idx + 3);
-        if let Some(at) = rest.find('@') {
-            return format!("{scheme}{}", &rest[at + 1..]);
+        if !scheme.eq_ignore_ascii_case("http://") && !scheme.eq_ignore_ascii_case("https://") {
+            return u.to_string();
+        }
+        let authority_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+        let (authority, suffix) = rest.split_at(authority_end);
+        if let Some(at) = authority.rfind('@') {
+            return format!("{scheme}{}{suffix}", &authority[at + 1..]);
         }
     }
     u.to_string()
+}
+
+fn origin_url(root: &PathBuf) -> Result<Option<String>, String> {
+    let output = run_git_read_only(root, &["remote", "get-url", "origin"])?;
+    if !output.status.success() {
+        return Ok(None);
+    }
+    let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Ok((!url.is_empty()).then_some(url))
+}
+
+fn remote_credentials_need_cleanup(root: &PathBuf) -> Result<bool, String> {
+    Ok(origin_url(root)?.is_some_and(|url| sanitize_url(&url) != url))
+}
+
+fn clean_remote_credentials(root: &PathBuf) -> Result<bool, String> {
+    let Some(url) = origin_url(root)? else {
+        return Ok(false);
+    };
+    let clean = sanitize_url(&url);
+    if clean == url {
+        return Ok(false);
+    }
+    if clean.is_empty() || !is_allowed_remote_url(&clean) {
+        return Err("The saved Git remote could not be cleaned safely.".into());
+    }
+    ok_or_err(run_git(root, &["remote", "set-url", "origin", &clean])?)?;
+    Ok(true)
+}
+
+#[tauri::command]
+pub fn git_remote_credentials_need_cleanup(project_id: String) -> Result<bool, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+    let Some(root) = initialized_repo(&project_id)? else {
+        return Ok(false);
+    };
+    remote_credentials_need_cleanup(&root)
+}
+
+/// Removes cleartext credentials left in origin URLs by older Oleafly builds.
+/// This writes Git config only after the user chooses the repair action.
+#[tauri::command]
+pub fn git_clean_remote_credentials(project_id: String) -> Result<bool, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
+    let root = existing_repo(&project_id)?;
+    clean_remote_credentials(&root)
 }
 
 /// Whether a remote URL uses a transport we're willing to configure. Blocks
@@ -316,43 +404,6 @@ fn is_allowed_remote_url(url: &str) -> bool {
     }
     // scp-like shorthand: `user@host:path` (no scheme). Require an `@` and a `:`.
     u.contains('@') && u.contains(':')
-}
-
-/// One-time hardening: strip any embedded credentials from existing `origin`
-/// remotes across all projects. Earlier builds baked a token into the remote
-/// URL (`https://x-access-token:TOKEN@github.com/...`), which persisted to
-/// `.git/config` in cleartext. Auth now flows through the env-backed credential
-/// helper, so a clean URL is sufficient. Best-effort; never fails startup.
-pub fn scrub_remote_credentials() {
-    let root = match paths::projects_root() {
-        Ok(r) => r,
-        Err(_) => return,
-    };
-    let entries = match std::fs::read_dir(&root) {
-        Ok(e) => e,
-        Err(_) => return,
-    };
-    for entry in entries.flatten() {
-        let project_id = entry.file_name().to_string_lossy().into_owned();
-        if paths::validate_project_id(&project_id).is_err()
-            || !entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false)
-        {
-            continue;
-        }
-        let dir = entry.path();
-        if !dir.join(".git").exists() {
-            continue;
-        }
-        let out = match run_git(&dir, &["remote", "get-url", "origin"]) {
-            Ok(o) if o.status.success() => o,
-            _ => continue,
-        };
-        let url = String::from_utf8_lossy(&out.stdout).trim().to_string();
-        let clean = sanitize_url(&url);
-        if clean != url && !clean.is_empty() {
-            let _ = run_git(&dir, &["remote", "set-url", "origin", &clean]);
-        }
-    }
 }
 
 /// Run a git command that may need GitHub auth, supplying the token via an
@@ -401,8 +452,9 @@ fn run_git_authed(
 /// Attach the authenticated repository history to content imported through the
 /// guarded archive path. Resetting only the index keeps the archive import's
 /// path and symlink protections intact while placing the worktree on top of the
-/// real remote history.
-pub(crate) fn attach_imported_repository_history(
+/// real remote history. The caller must hold the imported project's exclusive
+/// worktree lock for the full archive-import transaction.
+pub(crate) fn attach_imported_repository_history_lock_held(
     project_id: &str,
     remote_url: &str,
     default_branch: &str,
@@ -454,20 +506,7 @@ where
         let upstream = format!("--set-upstream-to={remote_ref}");
         ok_or_err(run_git(root, &["branch", &upstream, "--", default_branch])?)?;
 
-        let exclude = root.join(".git").join("info").join("exclude");
-        let current = std::fs::read_to_string(&exclude).unwrap_or_default();
-        if !current.lines().any(|line| line.trim() == ".oleafly/") {
-            use std::io::Write;
-            let mut file = std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&exclude)
-                .map_err(|error| format!("could not update repository excludes: {error}"))?;
-            if !current.is_empty() && !current.ends_with('\n') {
-                writeln!(file).map_err(|error| error.to_string())?;
-            }
-            writeln!(file, ".oleafly/").map_err(|error| error.to_string())?;
-        }
+        ensure_private_exclude(root)?;
 
         // project.json and any archive-safety normalization become one local
         // commit above the imported branch, leaving future pulls mergeable.
@@ -493,7 +532,8 @@ pub fn git_set_remote(project_id: String, url: String) -> Result<(), String> {
     if !is_allowed_remote_url(&url) {
         return Err(format!("unsupported remote URL: {url}"));
     }
-    let root = ensure_repo(&project_id)?;
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
+    let root = existing_repo(&project_id)?;
     let check = run_git(&root, &["remote", "get-url", "origin"])?;
     if check.status.success() {
         run_git(&root, &["remote", "set-url", "origin", &url])?;
@@ -506,7 +546,8 @@ pub fn git_set_remote(project_id: String, url: String) -> Result<(), String> {
 /// Remove the `origin` remote (unlink a project from GitHub).
 #[tauri::command]
 pub fn git_remove_remote(project_id: String) -> Result<(), String> {
-    let root = ensure_repo(&project_id)?;
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
+    let root = existing_repo(&project_id)?;
     let check = run_git(&root, &["remote", "get-url", "origin"])?;
     if check.status.success() {
         run_git(&root, &["remote", "remove", "origin"])?;
@@ -516,11 +557,11 @@ pub fn git_remove_remote(project_id: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn git_get_remote(project_id: String) -> Result<Option<String>, String> {
-    let root = project_root(&project_id)?;
-    if !root.join(".git").exists() {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+    let Some(root) = initialized_repo(&project_id)? else {
         return Ok(None);
-    }
-    let out = run_git(&root, &["remote", "get-url", "origin"])?;
+    };
+    let out = run_git_read_only(&root, &["remote", "get-url", "origin"])?;
     if out.status.success() {
         let s = sanitize_url(String::from_utf8_lossy(&out.stdout).trim());
         Ok(if s.is_empty() { None } else { Some(s) })
@@ -530,7 +571,7 @@ pub fn git_get_remote(project_id: String) -> Result<Option<String>, String> {
 }
 
 fn current_branch(root: &PathBuf) -> Result<String, String> {
-    let out = run_git(root, &["symbolic-ref", "--quiet", "--short", "HEAD"])?;
+    let out = run_git_read_only(root, &["symbolic-ref", "--quiet", "--short", "HEAD"])?;
     let branch = String::from_utf8_lossy(&out.stdout).trim().to_string();
     ok_or_err(out)?;
     if branch.is_empty() {
@@ -542,7 +583,8 @@ fn current_branch(root: &PathBuf) -> Result<String, String> {
 
 #[tauri::command]
 pub fn git_current_branch(project_id: String) -> Result<String, String> {
-    let root = ensure_repo(&project_id)?;
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+    let root = existing_repo(&project_id)?;
     current_branch(&root)
 }
 
@@ -558,10 +600,17 @@ pub struct AheadBehind {
 #[tauri::command]
 pub async fn git_ahead_behind(project_id: String) -> Result<AheadBehind, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<AheadBehind, String> {
-        let root = ensure_repo(&project_id)?;
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+        let Some(root) = initialized_repo(&project_id)? else {
+            return Ok(AheadBehind {
+                ahead: 0,
+                behind: 0,
+                has_upstream: false,
+            });
+        };
         let branch = current_branch(&root)?;
         let upstream = format!("origin/{branch}");
-        let has_upstream = run_git(&root, &["rev-parse", "--verify", &upstream])?
+        let has_upstream = run_git_read_only(&root, &["rev-parse", "--verify", &upstream])?
             .status
             .success();
         if !has_upstream {
@@ -571,7 +620,7 @@ pub async fn git_ahead_behind(project_id: String) -> Result<AheadBehind, String>
                 has_upstream: false,
             });
         }
-        let out = run_git(
+        let out = run_git_read_only(
             &root,
             &[
                 "rev-list",
@@ -604,7 +653,8 @@ pub async fn git_ahead_behind(project_id: String) -> Result<AheadBehind, String>
 
 #[tauri::command]
 pub async fn git_push(project_id: String) -> Result<String, String> {
-    let root = ensure_repo(&project_id)?;
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
+    let root = existing_repo(&project_id)?;
     let cfg = config::read_config()?;
     if cfg.github_token.is_empty() {
         return Err("No GitHub token set. Add one in Settings → GitHub.".into());
@@ -641,7 +691,7 @@ pub async fn git_pull(
         project_id.clone(),
         expected_generation,
         move |_| {
-            let root = ensure_repo(&operation_id)?;
+            let root = existing_repo(&operation_id)?;
             Ok((pull_origin(&root, &token)?, true))
         },
     )
@@ -733,8 +783,11 @@ fn parse_status_porcelain(text: &str) -> Vec<GitFileChange> {
 #[tauri::command]
 pub async fn git_status(project_id: String) -> Result<Vec<GitFileChange>, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<Vec<GitFileChange>, String> {
-        let root = ensure_repo(&project_id)?;
-        let out = run_git(&root, &["status", "--porcelain"])?;
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+        let Some(root) = initialized_repo(&project_id)? else {
+            return Ok(Vec::new());
+        };
+        let out = run_git_read_only(&root, &["status", "--porcelain"])?;
         let text = String::from_utf8_lossy(&out.stdout);
         Ok(parse_status_porcelain(&text))
     })
@@ -749,31 +802,37 @@ pub async fn git_diff(
     staged: bool,
 ) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
-        let root = ensure_repo(&project_id)?;
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+        let Some(root) = initialized_repo(&project_id)? else {
+            return Ok(String::new());
+        };
 
         // Untracked files aren't shown by `git diff` (returns empty). Detect an
         // untracked path and synthesize a full-file addition diff via --no-index so
         // the viewer shows the whole file as additions (all green).
         if let Some(p) = &path {
             if !staged {
-                let is_tracked = match run_git(&root, &["ls-files", "--error-unmatch", p.as_str()])
-                {
-                    Ok(o) => o.status.success(),
-                    Err(_) => false,
-                };
+                let is_tracked =
+                    match run_git_read_only(&root, &["ls-files", "--error-unmatch", p.as_str()]) {
+                        Ok(o) => o.status.success(),
+                        Err(_) => false,
+                    };
                 if !is_tracked {
                     let devnull = if cfg!(windows) { "NUL" } else { "/dev/null" };
-                    let out = run_git(&root, &["diff", "--no-index", "--", devnull, p.as_str()])?;
+                    let out = run_git_read_only(
+                        &root,
+                        &["diff", "--no-index", "--", devnull, p.as_str()],
+                    )?;
                     return Ok(String::from_utf8_lossy(&out.stdout).to_string());
                 }
             }
         }
 
         let out = match (staged, &path) {
-            (false, None) => run_git(&root, &["diff"]),
-            (true, None) => run_git(&root, &["diff", "--cached"]),
-            (false, Some(p)) => run_git(&root, &["diff", "--", p.as_str()]),
-            (true, Some(p)) => run_git(&root, &["diff", "--cached", "--", p.as_str()]),
+            (false, None) => run_git_read_only(&root, &["diff"]),
+            (true, None) => run_git_read_only(&root, &["diff", "--cached"]),
+            (false, Some(p)) => run_git_read_only(&root, &["diff", "--", p.as_str()]),
+            (true, Some(p)) => run_git_read_only(&root, &["diff", "--cached", "--", p.as_str()]),
         }?;
         Ok(String::from_utf8_lossy(&out.stdout).to_string())
     })
@@ -795,7 +854,7 @@ pub async fn git_discard(
         project_id.clone(),
         expected_generation,
         move |_| {
-            let root = ensure_repo(&operation_id)?;
+            let root = existing_repo(&operation_id)?;
             ok_or_err(run_git(
                 &root,
                 &["--literal-pathspecs", "checkout", "--", &path],
@@ -820,11 +879,11 @@ pub async fn git_discard(
 
 #[tauri::command]
 pub fn git_head_oid(project_id: String) -> Result<Option<String>, String> {
-    let root = project_root(&project_id)?;
-    if !root.join(".git").exists() {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+    let Some(root) = initialized_repo(&project_id)? else {
         return Ok(None);
-    }
-    let out = run_git(&root, &["rev-parse", "HEAD"])?;
+    };
+    let out = run_git_read_only(&root, &["rev-parse", "HEAD"])?;
     if !out.status.success() {
         return Ok(None);
     }
@@ -863,6 +922,7 @@ fn ok_or_err(out: std::process::Output) -> Result<(), String> {
 }
 
 fn stage(root: &PathBuf, path: &str) -> Result<(), String> {
+    ensure_private_exclude(root)?;
     ok_or_err(run_git(root, &["add", "--", path])?)
 }
 
@@ -881,6 +941,7 @@ fn unstage(root: &PathBuf, path: &str) -> Result<(), String> {
 }
 
 fn stage_all(root: &PathBuf) -> Result<(), String> {
+    ensure_private_exclude(root)?;
     ok_or_err(run_git(root, &["add", "-A"])?)
 }
 
@@ -918,7 +979,7 @@ fn show(root: &PathBuf, rev: &str, path: &str) -> Result<String, String> {
     } else {
         format!("{rev}:{path}")
     };
-    let out = run_git(root, &["show", &object])?;
+    let out = run_git_read_only(root, &["show", &object])?;
     if out.status.success() {
         Ok(String::from_utf8_lossy(&out.stdout).to_string())
     } else {
@@ -929,7 +990,8 @@ fn show(root: &PathBuf, rev: &str, path: &str) -> Result<String, String> {
 #[tauri::command]
 pub async fn git_stage(project_id: String, path: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        let root = ensure_repo(&project_id)?;
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
+        let root = existing_repo(&project_id)?;
         stage(&root, &path)
     })
     .await
@@ -939,7 +1001,8 @@ pub async fn git_stage(project_id: String, path: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn git_unstage(project_id: String, path: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        let root = ensure_repo(&project_id)?;
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
+        let root = existing_repo(&project_id)?;
         unstage(&root, &path)
     })
     .await
@@ -949,7 +1012,8 @@ pub async fn git_unstage(project_id: String, path: String) -> Result<(), String>
 #[tauri::command]
 pub async fn git_stage_all(project_id: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        let root = ensure_repo(&project_id)?;
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
+        let root = existing_repo(&project_id)?;
         stage_all(&root)
     })
     .await
@@ -959,7 +1023,8 @@ pub async fn git_stage_all(project_id: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn git_unstage_all(project_id: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        let root = ensure_repo(&project_id)?;
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
+        let root = existing_repo(&project_id)?;
         unstage_all(&root)
     })
     .await
@@ -969,7 +1034,8 @@ pub async fn git_unstage_all(project_id: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn git_commit(project_id: String, message: String) -> Result<bool, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<bool, String> {
-        let root = ensure_repo(&project_id)?;
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
+        let root = existing_repo(&project_id)?;
         commit_index(&root, &message)
     })
     .await
@@ -979,7 +1045,10 @@ pub async fn git_commit(project_id: String, message: String) -> Result<bool, Str
 #[tauri::command]
 pub async fn git_show(project_id: String, rev: String, path: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
-        let root = ensure_repo(&project_id)?;
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+        let Some(root) = initialized_repo(&project_id)? else {
+            return Ok(String::new());
+        };
         show(&root, &rev, &path)
     })
     .await
@@ -989,10 +1058,11 @@ pub async fn git_show(project_id: String, rev: String, path: String) -> Result<S
 #[cfg(test)]
 mod tests {
     use super::{
-        attach_imported_repository_history_at, auto_commit_update_in, commit_index, current_branch,
-        initialize_repo, is_allowed_remote_url, ok_or_err, parse_status_porcelain,
-        read_version_labels_at, restore_worktree, run_git, sanitize_url, show, stage, stage_all,
-        unstage, unstage_all, update_message, validate_git_oid,
+        attach_imported_repository_history_at, clean_remote_credentials, commit_index,
+        current_branch, initialize_repo, is_allowed_remote_url, ok_or_err, parse_status_porcelain,
+        read_version_labels_at, remote_credentials_need_cleanup, restore_worktree, run_git,
+        run_git_read_only, sanitize_url, show, stage, stage_all, unstage, unstage_all,
+        validate_git_oid,
     };
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -1034,6 +1104,111 @@ mod tests {
         initialize_repo(&root, "trunk").unwrap();
 
         assert_eq!(current_branch(&root).unwrap(), "trunk");
+        assert!(
+            std::fs::read_to_string(root.join(".git/info/exclude"))
+                .unwrap()
+                .lines()
+                .any(|line| line == ".oleafly/"),
+            "Oleafly's private build directory belongs in the repository-local exclude file"
+        );
+        assert!(
+            !root.join(".gitignore").exists(),
+            "initializing Source Control must not add a project file"
+        );
+    }
+
+    #[test]
+    fn observing_an_uninitialized_project_does_not_create_a_repository() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let previous_data_dir = std::env::var_os("OLEAFLY_DATA_DIR");
+        let data = temp_dir("observe-uninitialized");
+        let project_id = "plain-project";
+        std::fs::create_dir_all(data.join("projects").join(project_id)).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+
+        let branch = super::git_current_branch(project_id.to_string());
+        let repository_was_created = data.join("projects").join(project_id).join(".git").exists();
+
+        if let Some(previous) = previous_data_dir {
+            std::env::set_var("OLEAFLY_DATA_DIR", previous);
+        } else {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+        }
+        assert!(
+            branch.is_err(),
+            "an uninitialized project has no Git branch"
+        );
+        assert!(
+            !repository_was_created,
+            "observing Source Control must not initialize Git"
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    #[allow(clippy::await_holding_lock)]
+    async fn every_background_git_observation_is_neutral_for_an_uninitialized_project() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let previous_data_dir = std::env::var_os("OLEAFLY_DATA_DIR");
+        let data = temp_dir("observe-all-uninitialized");
+        let project_id = "plain-project";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        write(&project, "main.tex", "unchanged\n");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+
+        let branch = super::git_current_branch(project_id.to_string());
+        let log = super::git_log(project_id.to_string()).await.unwrap();
+        let status = super::git_status(project_id.to_string()).await.unwrap();
+        let diff = super::git_diff(project_id.to_string(), None, false)
+            .await
+            .unwrap();
+        let ahead_behind = super::git_ahead_behind(project_id.to_string())
+            .await
+            .unwrap();
+        let shown = super::git_show(
+            project_id.to_string(),
+            "HEAD".to_string(),
+            "main.tex".to_string(),
+        )
+        .await
+        .unwrap();
+        let repository_was_created = project.join(".git").exists();
+        let source = std::fs::read_to_string(project.join("main.tex")).unwrap();
+
+        if let Some(previous) = previous_data_dir {
+            std::env::set_var("OLEAFLY_DATA_DIR", previous);
+        } else {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+        }
+
+        assert!(branch.is_err());
+        assert!(log.is_empty());
+        assert!(status.is_empty());
+        assert!(diff.is_empty());
+        assert!(!ahead_behind.has_upstream);
+        assert!(shown.is_empty());
+        assert!(!repository_was_created);
+        assert_eq!(source, "unchanged\n");
+    }
+
+    #[test]
+    fn background_status_does_not_refresh_the_git_index() {
+        let root = temp_repo();
+        write(&root, "main.tex", "unchanged\n");
+        stage_all(&root).unwrap();
+        assert!(commit_index(&root, "initial").unwrap());
+
+        // Rewriting identical bytes changes filesystem metadata. A regular
+        // `git status` may refresh that stat cache in the index; the background
+        // runner must keep the repository byte-for-byte untouched.
+        write(&root, "main.tex", "unchanged\n");
+        let index = root.join(".git").join("index");
+        let before = std::fs::read(&index).unwrap();
+
+        let output = run_git_read_only(&root, &["status", "--porcelain"]).unwrap();
+        assert!(output.status.success());
+
+        assert_eq!(std::fs::read(index).unwrap(), before);
     }
 
     #[test]
@@ -1083,8 +1258,7 @@ mod tests {
                 .trim()
                 .to_string();
 
-        // The response's edits, auto-committed like a real run: a new file, a
-        // deletion, and a modification.
+        // A later explicit commit adds a file, deletes one, and modifies one.
         write(&root, "added-later.tex", "created by the response\n");
         std::fs::remove_file(root.join("removed-later.tex")).unwrap();
         write(&root, "keep.tex", "changed by the response\n");
@@ -1169,37 +1343,6 @@ mod tests {
     }
 
     #[test]
-    fn update_message_lists_files_and_caps() {
-        let p = |s: &str| s.to_string();
-        assert_eq!(update_message(&[p("main.tex")]), "Update: main.tex");
-        assert_eq!(
-            update_message(&[p("a.tex"), p("b.bib")]),
-            "Update: a.tex, b.bib"
-        );
-        let many: Vec<String> = (0..7).map(|i| format!("f{i}.tex")).collect();
-        assert_eq!(
-            update_message(&many),
-            "Update: f0.tex, f1.tex, f2.tex, f3.tex, f4.tex +2 more"
-        );
-    }
-
-    #[test]
-    fn auto_commit_update_commits_everything_and_noops_when_clean() {
-        let r = temp_repo();
-        write(&r, "main.tex", "hello\n");
-        write(&r, "refs.bib", "@misc{x}\n");
-        assert!(auto_commit_update_in(&r).unwrap());
-        assert!(status(&r).is_empty());
-        let out = run_git(&r, &["log", "--format=%s", "-1"]).unwrap();
-        assert_eq!(
-            String::from_utf8_lossy(&out.stdout).trim(),
-            "Update: main.tex, refs.bib"
-        );
-        // Clean tree: a second call is a no-op returning false.
-        assert!(!auto_commit_update_in(&r).unwrap());
-    }
-
-    #[test]
     fn commit_index_commits_only_staged_files() {
         let r = temp_repo();
         write(&r, "a.txt", "one\n");
@@ -1236,6 +1379,23 @@ mod tests {
         assert!(status(&r).iter().all(|c| c.staged));
         unstage_all(&r).unwrap();
         assert!(status(&r).iter().all(|c| !c.staged));
+    }
+
+    #[test]
+    fn staging_an_existing_repository_adds_the_private_local_exclude() {
+        let r = temp_repo();
+        std::fs::create_dir(r.join(".oleafly")).unwrap();
+        write(&r, ".oleafly/state", "private\n");
+        write(&r, "main.tex", "source\n");
+
+        stage_all(&r).unwrap();
+
+        let tracked = run_git(&r, &["ls-files", ".oleafly"]).unwrap();
+        assert!(tracked.stdout.is_empty());
+        assert!(std::fs::read_to_string(r.join(".git/info/exclude"))
+            .unwrap()
+            .lines()
+            .any(|line| line.trim() == ".oleafly/"));
     }
 
     #[test]
@@ -1318,6 +1478,56 @@ mod tests {
         assert_eq!(
             sanitize_url("https://github.com/u/repo.git"),
             "https://github.com/u/repo.git"
+        );
+        assert_eq!(
+            sanitize_url("https://example.com/repos/user@domain/project.git?owner=a@b"),
+            "https://example.com/repos/user@domain/project.git?owner=a@b"
+        );
+        assert_eq!(
+            sanitize_url("ssh://git@github.com/u/repo.git"),
+            "ssh://git@github.com/u/repo.git"
+        );
+    }
+
+    #[test]
+    fn legacy_remote_credentials_are_only_removed_by_the_explicit_repair() {
+        let root = temp_repo();
+        run_git(
+            &root,
+            &[
+                "remote",
+                "add",
+                "origin",
+                "https://x-access-token:legacy-secret@github.com/u/repo.git",
+            ],
+        )
+        .unwrap();
+
+        assert!(remote_credentials_need_cleanup(&root).unwrap());
+        assert!(clean_remote_credentials(&root).unwrap());
+        assert!(!remote_credentials_need_cleanup(&root).unwrap());
+        let remote = run_git_read_only(&root, &["remote", "get-url", "origin"]).unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&remote.stdout).trim(),
+            "https://github.com/u/repo.git"
+        );
+    }
+
+    #[test]
+    fn ssh_remote_usernames_are_not_treated_as_embedded_credentials() {
+        let root = temp_repo();
+        run_git(
+            &root,
+            &["remote", "add", "origin", "ssh://git@github.com/u/repo.git"],
+        )
+        .unwrap();
+
+        assert!(!remote_credentials_need_cleanup(&root).unwrap());
+        assert!(!clean_remote_credentials(&root).unwrap());
+        let remote = run_git_read_only(&root, &["remote", "get-url", "origin"]).unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&remote.stdout).trim(),
+            "ssh://git@github.com/u/repo.git"
         );
     }
 }

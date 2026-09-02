@@ -53,7 +53,7 @@ hundred-page thesis:
 | Write | Source and visual editing, autocomplete, symbols, citations, figures, tables, and whole-project code intelligence |
 | Compile | Bundled LaTeX and Typst engines, Markdown through Pandoc, parsed errors, logs, and offline cached builds |
 | Inspect | A fast PDF preview, page and zoom controls, two-page layouts, color inversion, and bidirectional SyncTeX |
-| Revise | Autosave, real Git history, diffs, restore, and GitHub sync |
+| Revise | Autosave, optional Git history, diffs, restore, and GitHub sync |
 | Submit | Compile, publication, accessibility, reference, privacy, and ATS checks, plus reader-view extraction and several export formats |
 | Get help | An optional project-aware AI assistant, local Ollama models, hosted providers, and MCP clients |
 
@@ -171,12 +171,13 @@ fastest way to check that floats, figures, and tables landed where you meant.
 
 ### Keep a history you can inspect
 
-Every project is a real Git repository. Oleafly commits after successful
-compiles and after quiet editing periods, then exposes the useful parts of that
-history in the app.
+Projects stay plain folders unless you choose to initialize Source Control.
+Oleafly never creates Git commits in the background. Checkpoints are a separate
+local recovery system and do not change branches or repository history.
 
-- Review a commit timeline and side-by-side diffs.
-- Restore an earlier file without replacing the rest of the project.
+- Initialize Git and commit only when you choose.
+- Review the commit timeline and side-by-side diffs.
+- Restore an earlier committed project state when you choose.
 - Stage, discard, commit, push, and pull from the Source Control panel.
 - Publish a project to GitHub or connect an existing repository.
 - Keep working from the terminal or another editor. There is no private

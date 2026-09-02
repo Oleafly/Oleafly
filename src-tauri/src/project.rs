@@ -101,6 +101,12 @@ pub struct ProjectMeta {
     pub hidden: bool,
     #[serde(default)]
     pub forked_from: Option<String>,
+    #[serde(default)]
+    pub checkpoints: oleafly_core::CheckpointPolicy,
+    /// Preserve fields written by newer Oleafly releases when this version
+    /// updates metadata it understands.
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Serialize, Clone)]
@@ -513,6 +519,9 @@ pub struct ProjectInfo {
     pub has_preview: bool,
     pub exports: Vec<ProjectExportInfo>,
     pub forked_from: Option<String>,
+    /// True only for the ID-only placeholder returned while a crashed
+    /// Checkpoint restore must be recovered before project metadata is read.
+    pub recovery_pending: bool,
 }
 
 fn meta_path(project_id: &str) -> Result<PathBuf, String> {
@@ -534,11 +543,23 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
             tex: None,
             tex_flavor: None,
             allow_shell_escape: false,
+            checkpoints: oleafly_core::CheckpointPolicy::default(),
+            extra: HashMap::new(),
         });
     }
-    let s = std::fs::read_to_string(&p).map_err(|e| format!("failed to read project.json: {e}"))?;
+    let bytes = std::fs::read(&p).map_err(|e| format!("failed to read project.json: {e}"))?;
+    let mut meta = parse_project_meta(&bytes)?;
+    meta.allow_shell_escape =
+        meta.engine == "latexmk" && shell_escape_trusted(project_id).unwrap_or(false);
+    Ok(meta)
+}
+
+/// Decode and normalize portable project metadata exactly as `read_meta`
+/// does before applying device-local trust. Archive import and restore use the
+/// same parser so they cannot accept a snapshot that project open later rejects.
+pub(crate) fn parse_project_meta(bytes: &[u8]) -> Result<ProjectMeta, String> {
     let mut meta: ProjectMeta =
-        serde_json::from_str(&s).map_err(|e| format!("invalid project.json: {e}"))?;
+        serde_json::from_slice(bytes).map_err(|e| format!("invalid project.json: {e}"))?;
     if meta.main_doc.is_empty() {
         meta.main_doc = default_main_doc();
     }
@@ -546,8 +567,6 @@ pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
         meta.engine = default_engine();
     }
     normalize_loaded_tex_flavor(&mut meta)?;
-    meta.allow_shell_escape =
-        meta.engine == "latexmk" && shell_escape_trusted(project_id).unwrap_or(false);
     Ok(meta)
 }
 
@@ -560,6 +579,20 @@ fn normalize_loaded_tex_flavor(meta: &mut ProjectMeta) -> Result<(), String> {
     meta.tex_flavor = validate_tex_flavor(&meta.engine, meta.tex_flavor.as_deref())
         .map_err(|error| format!("invalid project.json: {error}"))?;
     Ok(())
+}
+
+/// Copies the validated global policy into newly synthesized project
+/// metadata. Old or malformed config falls back to the fail-closed default and
+/// never prevents project creation.
+fn configured_checkpoint_defaults() -> oleafly_core::CheckpointPolicy {
+    let policy = crate::config::read_config()
+        .map(|config| config.checkpoint_defaults)
+        .unwrap_or_default();
+    if policy.validate().is_ok() {
+        policy
+    } else {
+        oleafly_core::CheckpointPolicy::default()
+    }
 }
 
 pub fn write_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
@@ -652,6 +685,7 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<FileEntry>, depth: usize) -> Resu
 #[tauri::command]
 pub async fn list_files(project_id: String) -> Result<Vec<FileEntry>, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<Vec<FileEntry>, String> {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let root = paths::project_dir(&project_id)?;
         let mut out = Vec::new();
         walk(&root, &root, &mut out, 0)?;
@@ -783,6 +817,7 @@ pub(crate) async fn list_files_bounded(project_id: String) -> Result<BoundedFile
     };
     let result =
         tauri::async_runtime::spawn_blocking(move || -> Result<BoundedFileList, String> {
+            let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
             let root = paths::project_dir(&project_id)?;
             let mut out = BoundedFileList {
                 entries: Vec::new(),
@@ -800,6 +835,7 @@ pub(crate) async fn list_files_bounded(project_id: String) -> Result<BoundedFile
 
 #[tauri::command]
 pub fn read_file(project_id: String, path: String) -> Result<String, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let p = resolve(&project_id, &path)?;
     // Legacy encodings (Latin-1 .bib exports are common) must read, not
     // error: decode lossily so odd bytes surface as U+FFFD instead of a
@@ -815,6 +851,7 @@ pub(crate) fn read_file_limited(
     path: &str,
     max_bytes: usize,
 ) -> Result<String, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
     let resolved = resolve(project_id, path)?;
     read_utf8_limited(&resolved, max_bytes)
         .map_err(|error| format!("failed to read {path}: {error}"))
@@ -1061,17 +1098,30 @@ fn with_project_metadata<T>(
     project_id: &str,
     operation: impl FnOnce() -> Result<T, String>,
 ) -> Result<T, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(project_id)?;
+    with_project_metadata_lock_held(project_id, operation)
+}
+
+/// Metadata serialization for a caller whose `MutationAdmission` already owns
+/// the cross-process worktree lock. Keeping this separate prevents recursive
+/// acquisition of the same OS lock during restore, rename, and recycle.
+fn with_project_metadata_lock_held<T>(
+    project_id: &str,
+    operation: impl FnOnce() -> Result<T, String>,
+) -> Result<T, String> {
     let coordinator = project_mutation_coordinator(project_id)?;
     let _metadata = lock_unpoisoned(&coordinator.metadata);
     operation()
 }
 
 struct MutationAdmission {
+    project_id: String,
     coordinator: Arc<ProjectMutationCoordinator>,
     generation: u64,
     scopes: Vec<MutationScope>,
     commit_scopes: Vec<MutationScope>,
     expected_generation: Option<u64>,
+    allow_pending_restore_recovery: bool,
     finished: bool,
 }
 
@@ -1089,6 +1139,36 @@ fn admit_mutation_with_commit(
     commit_scopes: Vec<MutationScope>,
     expected_generation: Option<u64>,
 ) -> Result<MutationAdmission, String> {
+    admit_mutation_with_restore_policy(
+        project_id,
+        scopes,
+        commit_scopes,
+        expected_generation,
+        false,
+    )
+}
+
+fn admit_restore_recovery_mutation(
+    project_id: &str,
+    scopes: Vec<MutationScope>,
+    expected_generation: Option<u64>,
+) -> Result<MutationAdmission, String> {
+    admit_mutation_with_restore_policy(
+        project_id,
+        scopes.clone(),
+        scopes,
+        expected_generation,
+        true,
+    )
+}
+
+fn admit_mutation_with_restore_policy(
+    project_id: &str,
+    scopes: Vec<MutationScope>,
+    commit_scopes: Vec<MutationScope>,
+    expected_generation: Option<u64>,
+    allow_pending_restore_recovery: bool,
+) -> Result<MutationAdmission, String> {
     let coordinator = project_mutation_coordinator(project_id)?;
     let generation = NEXT_MUTATION_GENERATION
         .fetch_update(Ordering::AcqRel, Ordering::Acquire, |current| {
@@ -1105,11 +1185,13 @@ fn admit_mutation_with_commit(
         state.pending.insert(generation, scopes.clone());
     }
     Ok(MutationAdmission {
+        project_id: project_id.to_string(),
         coordinator,
         generation,
         scopes,
         commit_scopes,
         expected_generation,
+        allow_pending_restore_recovery,
         finished: false,
     })
 }
@@ -1236,6 +1318,13 @@ impl MutationAdmission {
     ) -> Result<(T, u64), String> {
         let coordinator = Arc::clone(&self.coordinator);
         let _operation = lock_unpoisoned(&coordinator.operation);
+        let _worktree = if self.allow_pending_restore_recovery {
+            crate::worktree_lock::ProjectWorktreeLock::exclusive_for_restore_recovery(
+                &self.project_id,
+            )?
+        } else {
+            crate::worktree_lock::ProjectWorktreeLock::exclusive(&self.project_id)?
+        };
         {
             let state = lock_unpoisoned(&coordinator.state);
             self.preflight(&state)?;
@@ -1289,21 +1378,102 @@ where
     T: Send + 'static,
     F: FnOnce(&Path) -> Result<(T, bool), String> + Send + 'static,
 {
-    paths::validate_project_id(&project_id)?;
-    let admission = admit_mutation(
-        &project_id,
-        vec![MutationScope::subtree(String::new())],
+    mutate_project_worktree_with_restore_policy(
+        state,
+        project_id,
         expected_generation,
-    )?;
+        false,
+        operation,
+    )
+    .await
+}
+
+/// The Checkpoint restore path is the only external worktree mutation allowed
+/// to enter while a prior durable restore marker exists. It must recover that
+/// journal before starting a new restore.
+pub(crate) async fn mutate_project_worktree_recovering<T, F>(
+    state: &crate::state::AppState,
+    project_id: String,
+    expected_generation: Option<u64>,
+    operation: F,
+) -> Result<ProjectWorktreeMutation<T>, String>
+where
+    T: Send + 'static,
+    F: FnOnce(&Path) -> Result<(T, bool), String> + Send + 'static,
+{
+    mutate_project_worktree_with_restore_policy(
+        state,
+        project_id,
+        expected_generation,
+        true,
+        operation,
+    )
+    .await
+}
+
+async fn mutate_project_worktree_with_restore_policy<T, F>(
+    state: &crate::state::AppState,
+    project_id: String,
+    expected_generation: Option<u64>,
+    allow_pending_restore_recovery: bool,
+    operation: F,
+) -> Result<ProjectWorktreeMutation<T>, String>
+where
+    T: Send + 'static,
+    F: FnOnce(&Path) -> Result<(T, bool), String> + Send + 'static,
+{
+    paths::validate_project_id(&project_id)?;
+    let scopes = vec![MutationScope::subtree(String::new())];
+    let admission = if allow_pending_restore_recovery {
+        admit_restore_recovery_mutation(&project_id, scopes, expected_generation)?
+    } else {
+        admit_mutation(&project_id, scopes, expected_generation)?
+    };
     let _compile = state.compile_lock.lock().await;
     let _figure_compile = state.figure_compile_lock.lock().await;
     tauri::async_runtime::spawn_blocking(move || {
         let ((value, project), generation) = admission.run_with_change_status(|| {
-            with_project_metadata(&project_id, || {
+            with_project_metadata_lock_held(&project_id, || {
                 let root = paths::project_dir(&project_id)?;
+                if allow_pending_restore_recovery {
+                    crate::checkpoints::recover_interrupted_restore_lock_held(&project_id)?;
+                    if crate::worktree_lock::pending_restore_marker_exists(&project_id)? {
+                        return Err(
+                            "Checkpoint recovery is still pending for this project.".into()
+                        );
+                    }
+                }
                 let pre_state = read_meta(&project_id)?;
                 revoke_shell_escape_trust(&project_id)?;
-                let (mut value, changed) = match operation(&root) {
+                let operation = operation(&root);
+                if allow_pending_restore_recovery {
+                    let pending = crate::worktree_lock::pending_restore_marker_exists(&project_id);
+                    match pending {
+                        Ok(false) => {}
+                        Ok(true) => {
+                            return Err(match operation.as_ref() {
+                                Ok(_) => {
+                                    "Checkpoint recovery is still pending after the worktree mutation."
+                                        .into()
+                                }
+                                Err(operation_error) => format!(
+                                    "{operation_error} Recovery is still pending for this project."
+                                ),
+                            });
+                        }
+                        Err(marker_error) => {
+                            return Err(match operation.as_ref() {
+                                Ok(_) => format!(
+                                    "Could not verify Checkpoint recovery state: {marker_error}"
+                                ),
+                                Err(operation_error) => format!(
+                                    "{operation_error} Could not verify Checkpoint recovery state: {marker_error}"
+                                ),
+                            });
+                        }
+                    }
+                }
+                let (mut value, changed) = match operation {
                     Ok((value, changed)) => (Ok(value), changed || pre_state.allow_shell_escape),
                     Err(error) => (Err(error), true),
                 };
@@ -1440,7 +1610,7 @@ pub fn delete_file(
         expected_generation,
     )?;
     let (_, generation) = admission.run(|| {
-        with_project_metadata(&project_id, || {
+        with_project_metadata_lock_held(&project_id, || {
             let p = resolve(&project_id, &path)?;
             let meta = read_meta(&project_id)?;
             if deletion_removes_main_document(&meta.main_doc, &deleted_rel) {
@@ -1535,7 +1705,7 @@ pub(crate) fn rename_file_blocking(
     )?;
     let strategy = conflict_strategy.unwrap_or_default();
     let (result, generation) = admission.run_with_change_status(|| {
-        with_project_metadata(&project_id, || {
+        with_project_metadata_lock_held(&project_id, || {
             let root = paths::project_dir(&project_id)?;
             let meta = read_meta(&project_id)?;
             let src = resolve(&project_id, &from)?;
@@ -2222,6 +2392,7 @@ pub async fn save_file_base64(
 pub async fn read_file_base64(project_id: String, path: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
         use base64::{engine::general_purpose::STANDARD, Engine};
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let p = resolve(&project_id, &path)?;
         let bytes = std::fs::read(&p).map_err(|e| format!("failed to read {path}: {e}"))?;
         Ok(STANDARD.encode(&bytes))
@@ -2497,6 +2668,7 @@ pub struct TexStatus {
 pub async fn project_tex_status(project_id: String) -> Result<Option<TexStatus>, String> {
     let prepared = tauri::async_runtime::spawn_blocking(
         move || -> Result<Option<(TexSpec, Option<crate::tex_distro::TexDistribution>)>, String> {
+            let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
             let meta = read_meta(&project_id)?;
             if meta.engine != "latexmk" {
                 return Ok(None);
@@ -2550,6 +2722,9 @@ pub(crate) fn write_build_metadata(
     compile_time_ms: u64,
 ) {
     use sha2::Digest;
+    let Ok(_worktree) = crate::worktree_lock::ProjectWorktreeLock::exclusive(project_id) else {
+        return;
+    };
     let Ok(dir) = paths::builds_metadata_dir(project_id) else {
         return;
     };
@@ -2728,13 +2903,17 @@ fn reconcile_external_worktree_meta(
 #[tauri::command]
 pub fn create_markdown_project(name: String) -> Result<String, String> {
     let root = paths::projects_root()?;
-    create_markdown_project_in(&root, name)
+    create_markdown_project_in(&root, name, true)
 }
 
-fn create_markdown_project_in(root: &Path, name: String) -> Result<String, String> {
-    let id = unique_random_slug(root)?;
-    let dir = root.join(&id);
-    create_project_transaction(&dir, || {
+fn create_markdown_project_in(
+    root: &Path,
+    name: String,
+    coordinate_worktree: bool,
+) -> Result<String, String> {
+    let reservation = reserve_unique_project_directory(root, coordinate_worktree)?;
+    let dir = reservation.path().to_path_buf();
+    create_project_transaction(reservation, || {
         std::fs::write(dir.join("main.md"), DEFAULT_MAIN_MARKDOWN).map_err(|e| e.to_string())?;
         write_meta_at(
             &dir.join("project.json"),
@@ -2750,10 +2929,11 @@ fn create_markdown_project_in(root: &Path, name: String) -> Result<String, Strin
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
+                checkpoints: configured_checkpoint_defaults(),
+                extra: HashMap::new(),
             },
         )
-    })?;
-    Ok(id)
+    })
 }
 
 #[tauri::command]
@@ -2771,8 +2951,98 @@ pub fn rename_project(project_id: String, name: String) -> Result<ProjectMeta, S
 }
 
 #[tauri::command]
-pub fn get_project(project_id: String) -> Result<ProjectMeta, String> {
-    read_meta(&project_id)
+pub async fn get_project(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+) -> Result<ProjectMeta, String> {
+    paths::validate_project_id(&project_id)?;
+    let admission = admit_restore_recovery_mutation(
+        &project_id,
+        vec![MutationScope::subtree(String::new())],
+        None,
+    )?;
+    let _compile = state.compile_lock.lock().await;
+    let _figure_compile = state.figure_compile_lock.lock().await;
+    let recovery_project_id = project_id.clone();
+    let ((project, recovered), generation) = tauri::async_runtime::spawn_blocking(move || {
+        recover_project_on_open_blocking(&recovery_project_id, admission)
+    })
+    .await
+    .map_err(|error| format!("project recovery task failed: {error}"))??;
+    if recovered {
+        let _ = publish_project_state_changed(
+            &app,
+            &state,
+            &project_id,
+            project.clone(),
+            "checkpoint-restore-recovered",
+            true,
+            Some(generation),
+        );
+    }
+    Ok(project)
+}
+
+fn recover_project_on_open_blocking(
+    project_id: &str,
+    admission: MutationAdmission,
+) -> Result<((ProjectMeta, bool), u64), String> {
+    admission.run_with_change_status(|| {
+        with_project_metadata_lock_held(project_id, || {
+            let recovered = crate::checkpoints::recover_interrupted_restore_lock_held(project_id)?;
+            let project = read_meta(project_id)?;
+            Ok(((project, recovered), recovered))
+        })
+    })
+}
+
+#[cfg(test)]
+pub(crate) fn recover_project_on_open_for_test(
+    project_id: &str,
+) -> Result<(ProjectMeta, bool), String> {
+    let admission = admit_restore_recovery_mutation(
+        project_id,
+        vec![MutationScope::subtree(String::new())],
+        None,
+    )?;
+    let ((project, recovered), _) = recover_project_on_open_blocking(project_id, admission)?;
+    Ok((project, recovered))
+}
+
+#[tauri::command]
+pub async fn set_checkpoint_policy(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    policy: oleafly_core::CheckpointPolicy,
+) -> Result<ProjectMeta, String> {
+    policy.validate().map_err(|error| error.to_string())?;
+    let _guard = state.compile_lock.lock().await;
+    let meta = set_checkpoint_policy_unlocked(&project_id, policy)?;
+    let _ = publish_project_state_changed(
+        &app,
+        &state,
+        &project_id,
+        meta.clone(),
+        "checkpoint-policy-changed",
+        false,
+        project_mutation_generation(project_id.clone()).ok(),
+    );
+    Ok(meta)
+}
+
+fn set_checkpoint_policy_unlocked(
+    project_id: &str,
+    policy: oleafly_core::CheckpointPolicy,
+) -> Result<ProjectMeta, String> {
+    policy.validate().map_err(|error| error.to_string())?;
+    with_project_metadata(project_id, || {
+        let mut meta = read_meta(project_id)?;
+        meta.checkpoints = policy;
+        write_meta(project_id, &meta)?;
+        Ok(meta)
+    })
 }
 
 /// Persist a project's book-cover color to its `project.json` so it survives
@@ -2797,7 +3067,10 @@ pub fn open_devtools(webview: tauri::Webview) {
     let _ = webview;
 }
 
-fn project_meta_for_enumeration(project_id: &str, directory: &Path) -> Result<ProjectMeta, String> {
+fn project_meta_for_enumeration_lock_held(
+    project_id: &str,
+    directory: &Path,
+) -> Result<ProjectMeta, String> {
     paths::validate_project_id(project_id)?;
     let metadata_path = directory.join("project.json");
     let metadata = std::fs::symlink_metadata(&metadata_path)
@@ -2813,6 +3086,23 @@ fn log_project_enumeration_skip(project_id: &str, error: &str) {
     #[cfg(debug_assertions)]
     eprintln!("{message}");
     let _ = append_app_log(message);
+}
+
+fn recovery_pending_project_info(project_id: String) -> ProjectInfo {
+    ProjectInfo {
+        name: project_id.clone(),
+        main_doc: String::new(),
+        engine: String::new(),
+        kind: String::new(),
+        created_at: 0.0,
+        updated_at: 0.0,
+        color: String::new(),
+        has_preview: false,
+        exports: Vec::new(),
+        forked_from: None,
+        recovery_pending: true,
+        id: project_id,
+    }
 }
 
 #[tauri::command]
@@ -2834,7 +3124,44 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
             }
             continue;
         }
-        let meta = match project_meta_for_enumeration(&id, &entry.path()) {
+        let _worktree = match crate::worktree_lock::ProjectWorktreeLock::shared(&id) {
+            Ok(lock) => lock,
+            Err(error) => {
+                // Do not read possibly half-restored metadata. Keep the
+                // project discoverable through an ID-only placeholder so
+                // opening it can enter the dedicated recovery admission.
+                match crate::worktree_lock::pending_restore_marker_exists(&id) {
+                    Ok(true) => {
+                        out.push(recovery_pending_project_info(id));
+                        continue;
+                    }
+                    Ok(false) => {
+                        // Recovery may have completed between the rejected
+                        // admission and the marker check. Retry once so a
+                        // freshly recovered project does not disappear for
+                        // the rest of this library refresh.
+                        match crate::worktree_lock::ProjectWorktreeLock::shared(&id) {
+                            Ok(lock) => lock,
+                            Err(retry_error) => {
+                                log_project_enumeration_skip(
+                                    &id,
+                                    &format!("{error}; retry failed: {retry_error}"),
+                                );
+                                continue;
+                            }
+                        }
+                    }
+                    Err(marker_error) => {
+                        log_project_enumeration_skip(
+                            &id,
+                            &format!("{error}; could not inspect recovery marker: {marker_error}"),
+                        );
+                        continue;
+                    }
+                }
+            }
+        };
+        let meta = match project_meta_for_enumeration_lock_held(&id, &entry.path()) {
             Ok(meta) => meta,
             Err(error) => {
                 log_project_enumeration_skip(&id, &error);
@@ -2897,6 +3224,7 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
             has_preview,
             exports,
             forked_from: meta.forked_from,
+            recovery_pending: false,
             id,
             updated_at,
         });
@@ -2912,9 +3240,9 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
 #[tauri::command]
 pub fn create_project(name: String) -> Result<String, String> {
     let root = paths::projects_root()?;
-    let id = unique_random_slug(&root)?;
-    let dir = root.join(&id);
-    create_project_transaction(&dir, || {
+    let reservation = reserve_unique_project_directory(&root, true)?;
+    let dir = reservation.path().to_path_buf();
+    create_project_transaction(reservation, || {
         std::fs::write(dir.join("main.tex"), DEFAULT_MAIN_TEX).map_err(|e| e.to_string())?;
         write_meta_at(
             &dir.join("project.json"),
@@ -2930,10 +3258,11 @@ pub fn create_project(name: String) -> Result<String, String> {
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
+                checkpoints: configured_checkpoint_defaults(),
+                extra: HashMap::new(),
             },
         )
-    })?;
-    Ok(id)
+    })
 }
 
 #[derive(Deserialize)]
@@ -2960,8 +3289,7 @@ pub fn create_project_from_pdf_conversion(
         .lock()
         .map_err(|_| "PDF import project lock is unavailable".to_string())?;
     let root = paths::projects_root()?;
-    let id = unique_random_slug(&root)?;
-    let destination = root.join(&id);
+    let reservation = reserve_unique_project_directory(&root, true)?;
     let staging = create_unique_temporary_directory(&root, ".oleafly-pdf-import")?;
 
     let initialize = || -> Result<(), String> {
@@ -3012,10 +3340,11 @@ pub fn create_project_from_pdf_conversion(
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
+                checkpoints: configured_checkpoint_defaults(),
+                extra: HashMap::new(),
             },
         )?;
-        rename_exclusive(&staging, &destination)
-            .map_err(|e| format!("could not publish the imported project: {e}"))
+        Ok(())
     };
 
     if let Err(error) = initialize() {
@@ -3024,19 +3353,23 @@ pub fn create_project_from_pdf_conversion(
         }
         return Err(error);
     }
-    Ok(id)
+    reservation.publish_staged(&staging)
 }
 
 #[tauri::command]
 pub fn create_typst_project(name: String) -> Result<String, String> {
     let root = paths::projects_root()?;
-    create_typst_project_in(&root, name)
+    create_typst_project_in(&root, name, true)
 }
 
-fn create_typst_project_in(root: &Path, name: String) -> Result<String, String> {
-    let id = unique_random_slug(root)?;
-    let dir = root.join(&id);
-    create_project_transaction(&dir, || {
+fn create_typst_project_in(
+    root: &Path,
+    name: String,
+    coordinate_worktree: bool,
+) -> Result<String, String> {
+    let reservation = reserve_unique_project_directory(root, coordinate_worktree)?;
+    let dir = reservation.path().to_path_buf();
+    create_project_transaction(reservation, || {
         std::fs::write(dir.join("main.typ"), DEFAULT_MAIN_TYPST).map_err(|e| e.to_string())?;
         write_meta_at(
             &dir.join("project.json"),
@@ -3052,10 +3385,11 @@ fn create_typst_project_in(root: &Path, name: String) -> Result<String, String> 
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
+                checkpoints: configured_checkpoint_defaults(),
+                extra: HashMap::new(),
             },
         )
-    })?;
-    Ok(id)
+    })
 }
 
 // --- Overleaf / external project import --------------------------------------
@@ -3067,10 +3401,9 @@ const IMPORT_MAX_DEPTH: usize = 16;
 /// Junk and app-internal entries that never belong in an imported project.
 fn import_skip(rel: &str) -> bool {
     rel.split('/').any(|segment| {
-        matches!(
-            segment,
-            "__MACOSX" | ".DS_Store" | ".git" | ".oleafly" | "Thumbs.db"
-        )
+        ["__MACOSX", ".DS_Store", ".git", ".oleafly", "Thumbs.db"]
+            .iter()
+            .any(|reserved| segment.eq_ignore_ascii_case(reserved))
     })
 }
 
@@ -3087,13 +3420,22 @@ pub async fn import_overleaf_project(name: Option<String>, path: String) -> Resu
 }
 
 fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<String, String> {
+    import_overleaf_project_blocking_with(name, path, |_| Ok(()))
+}
+
+fn import_overleaf_project_blocking_with(
+    name: Option<String>,
+    path: &str,
+    finalize: impl FnOnce(&str) -> Result<(), String>,
+) -> Result<String, String> {
     let source = PathBuf::from(path);
     if !source.exists() {
         return Err(format!("import source not found: {path}"));
     }
     let root = paths::projects_root()?;
-    let id = unique_random_slug(&root)?;
-    let dir = root.join(&id);
+    let reservation = reserve_unique_project_directory(&root, true)?;
+    let project_id = reservation.project_id().to_string();
+    let dir = reservation.path().to_path_buf();
     let fallback_name = source
         .file_stem()
         .map(|stem| stem.to_string_lossy().into_owned())
@@ -3102,7 +3444,7 @@ fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<
     let project_name = name
         .filter(|candidate| !candidate.trim().is_empty())
         .unwrap_or(fallback_name);
-    create_project_transaction(&dir, || {
+    create_project_transaction(reservation, || {
         if source.is_dir() {
             copy_tree_for_import(&source, &dir, 0, &mut 0, &mut 0)?;
         } else {
@@ -3123,6 +3465,7 @@ fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<
                     name: project_name.clone(),
                     main_doc,
                     engine,
+                    checkpoints: configured_checkpoint_defaults(),
                     ..Default::default()
                 }
             }
@@ -3131,29 +3474,29 @@ fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<
             engine_for_untrusted_project(&meta.main_doc).unwrap_or_else(|_| default_engine());
         meta.tex_flavor = None;
         meta.allow_shell_escape = false;
-        write_meta_at(&dir.join("project.json"), &meta)
-    })?;
-    Ok(id)
+        write_meta_at(&dir.join("project.json"), &meta)?;
+        finalize(&project_id)
+    })
 }
 
+#[cfg(test)]
 pub(crate) fn import_project_zip_bytes(name: String, bytes: &[u8]) -> Result<String, String> {
+    import_project_zip_bytes_with(name, bytes, |_| Ok(()))
+}
+
+pub(crate) fn import_project_zip_bytes_with(
+    name: String,
+    bytes: &[u8],
+    finalize: impl FnOnce(&str) -> Result<(), String>,
+) -> Result<String, String> {
     let root = paths::projects_root()?;
     let archive = unique_temporary_path(&root, ".oleafly-repository-import")?;
     atomic_write(&archive, bytes)
         .map_err(|error| format!("could not stage the repository archive: {error}"))?;
-    let result = import_overleaf_project_blocking(Some(name), &archive.to_string_lossy());
+    let result =
+        import_overleaf_project_blocking_with(Some(name), &archive.to_string_lossy(), finalize);
     let _ = std::fs::remove_file(archive);
     result
-}
-
-pub(crate) fn discard_project_after_failed_import(project_id: &str) -> Result<(), String> {
-    paths::validate_project_id(project_id)?;
-    let project = paths::projects_root()?.join(project_id);
-    if project.exists() {
-        std::fs::remove_dir_all(project)
-            .map_err(|error| format!("could not remove the incomplete project: {error}"))?;
-    }
-    Ok(())
 }
 
 fn read_import_meta(dir: &Path) -> Option<ProjectMeta> {
@@ -3407,17 +3750,15 @@ fn normalize_relative(path: &Path) -> Option<String> {
     Some(parts.join("/"))
 }
 
-fn create_project_transaction<F>(dir: &Path, initialize: F) -> Result<(), String>
+fn create_project_transaction<F>(
+    reservation: ProjectDirectoryReservation,
+    initialize: F,
+) -> Result<String, String>
 where
     F: FnOnce() -> Result<(), String>,
 {
-    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-    let result = initialize();
-    if let Err(error) = result {
-        let _ = std::fs::remove_dir_all(dir);
-        return Err(error);
-    }
-    Ok(())
+    initialize()?;
+    Ok(reservation.commit())
 }
 
 /// Create an image-kind project whose `main.tex` is a standalone document
@@ -3430,7 +3771,7 @@ pub fn create_image_project(
     color: Option<String>,
 ) -> Result<String, String> {
     let root = paths::projects_root()?;
-    create_image_project_in(&root, name, source, color)
+    create_image_project_in(&root, name, source, color, true)
 }
 
 fn create_image_project_in(
@@ -3438,10 +3779,11 @@ fn create_image_project_in(
     name: String,
     source: String,
     color: Option<String>,
+    coordinate_worktree: bool,
 ) -> Result<String, String> {
-    let id = unique_random_slug(root)?;
-    let dir = root.join(&id);
-    create_project_transaction(&dir, || {
+    let reservation = reserve_unique_project_directory(root, coordinate_worktree)?;
+    let dir = reservation.path().to_path_buf();
+    create_project_transaction(reservation, || {
         std::fs::write(dir.join("main.tex"), source).map_err(|e| e.to_string())?;
         write_meta_at(
             &dir.join("project.json"),
@@ -3457,10 +3799,11 @@ fn create_image_project_in(
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
+                checkpoints: configured_checkpoint_defaults(),
+                extra: HashMap::new(),
             },
         )
-    })?;
-    Ok(id)
+    })
 }
 
 /// Guarantees `source` is a compilable standalone document. The Diagram
@@ -3486,10 +3829,10 @@ fn ensure_diagram_document(source: String) -> String {
 #[tauri::command]
 pub fn create_diagram_project(name: String, source: String) -> Result<String, String> {
     let root = paths::projects_root()?;
-    let id = unique_random_slug(&root)?;
-    let dir = root.join(&id);
+    let reservation = reserve_unique_project_directory(&root, true)?;
+    let dir = reservation.path().to_path_buf();
     let source = ensure_diagram_document(source);
-    create_project_transaction(&dir, || {
+    create_project_transaction(reservation, || {
         std::fs::write(dir.join("main.tex"), &source).map_err(|e| e.to_string())?;
         write_meta_at(
             &dir.join("project.json"),
@@ -3505,16 +3848,18 @@ pub fn create_diagram_project(name: String, source: String) -> Result<String, St
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
+                checkpoints: configured_checkpoint_defaults(),
+                extra: HashMap::new(),
             },
         )
-    })?;
-    Ok(id)
+    })
 }
 
 #[tauri::command]
 pub fn get_or_create_scratch_project() -> Result<String, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(SCRATCH_PROJECT_ID)?;
     let dir = paths::create_project_dir(SCRATCH_PROJECT_ID)?;
-    with_project_metadata(SCRATCH_PROJECT_ID, || {
+    with_project_metadata_lock_held(SCRATCH_PROJECT_ID, || {
         let meta_file = dir.join("project.json");
         if !meta_file.exists() {
             atomic_write(&dir.join("main.tex"), DEFAULT_MAIN_DIAGRAM.as_bytes())
@@ -3533,6 +3878,8 @@ pub fn get_or_create_scratch_project() -> Result<String, String> {
                     tex: None,
                     tex_flavor: None,
                     allow_shell_escape: false,
+                    checkpoints: configured_checkpoint_defaults(),
+                    extra: HashMap::new(),
                 },
             )?;
         }
@@ -3585,29 +3932,6 @@ pub fn save_figure_to_cache(
     })
 }
 
-fn slugify(name: &str) -> String {
-    let slug: String = name
-        .to_lowercase()
-        .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() {
-                c
-            } else if c == ' ' || c == '-' || c == '_' {
-                '-'
-            } else {
-                '\0'
-            }
-        })
-        .filter(|c| *c != '\0')
-        .collect();
-    let slug = slug.trim_matches('-').to_string();
-    if slug.is_empty() {
-        "project".to_string()
-    } else {
-        slug
-    }
-}
-
 // Random, human-meaningful project ids like "flying-pink-pikachu".
 const ADJECTIVES: &[&str] = &[
     "flying", "swift", "cosmic", "velvet", "silent", "crimson", "lucky", "hidden", "mellow",
@@ -3630,13 +3954,142 @@ fn pick<'a>(list: &'a [&'a str], seed: &mut u64) -> &'a str {
     list[((*seed >> 33) as usize) % list.len()]
 }
 
-/// Generate a unique random slug under `root`, retrying until it doesn't exist.
-fn unique_random_slug(root: &Path) -> Result<String, String> {
+struct ProjectDirectoryReservation {
+    project_id: String,
+    path: PathBuf,
+    identity: Option<same_file::Handle>,
+    _worktree: Option<crate::worktree_lock::ProjectWorktreeLock>,
+    committed: bool,
+}
+
+impl ProjectDirectoryReservation {
+    fn project_id(&self) -> &str {
+        &self.project_id
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+
+    fn commit(mut self) -> String {
+        self.committed = true;
+        self.project_id.clone()
+    }
+
+    fn publish_staged(self, staged: &Path) -> Result<String, String> {
+        self.publish_staged_with(staged, rename_exclusive)
+    }
+
+    fn publish_staged_with(
+        mut self,
+        staged: &Path,
+        publish: impl FnOnce(&Path, &Path) -> std::io::Result<()>,
+    ) -> Result<String, String> {
+        let current = same_file::Handle::from_path(&self.path)
+            .map_err(|error| format!("failed to verify reserved project identity: {error}"))?;
+        if self.identity.as_ref() != Some(&current) {
+            return Err("reserved project identity changed before publication".into());
+        }
+        // Windows does not necessarily remove a directory from the namespace
+        // until its last open handle closes. Release both identity handles
+        // after verification, while the per-id worktree lock still excludes
+        // other Oleafly processes, so the staged rename can reuse this path.
+        drop(current);
+        drop(self.identity.take());
+        std::fs::remove_dir(&self.path)
+            .map_err(|error| format!("failed to release project reservation: {error}"))?;
+        // The reservation inode no longer exists. From this point onward Drop
+        // must not remove whatever another actor may place at the destination.
+        self.committed = true;
+        if let Err(error) = publish(staged, &self.path) {
+            let cleanup = std::fs::remove_dir_all(staged);
+            return Err(match cleanup {
+                Ok(()) => format!("could not publish the imported project: {error}"),
+                Err(cleanup_error) => format!(
+                    "could not publish the imported project: {error}. Failed to remove its staging directory: {cleanup_error}"
+                ),
+            });
+        }
+        Ok(self.project_id.clone())
+    }
+}
+
+impl Drop for ProjectDirectoryReservation {
+    fn drop(&mut self) {
+        if self.committed {
+            return;
+        }
+        let Ok(current) = same_file::Handle::from_path(&self.path) else {
+            return;
+        };
+        if self.identity.as_ref() != Some(&current) {
+            return;
+        }
+        // Close directory handles before recursive deletion on Windows. The
+        // worktree lock remains held until this Drop implementation returns.
+        drop(current);
+        drop(self.identity.take());
+        let _ = std::fs::remove_dir_all(&self.path);
+    }
+}
+
+fn try_reserve_project_directory(
+    root: &Path,
+    project_id: &str,
+    coordinate_worktree: bool,
+) -> Result<Option<ProjectDirectoryReservation>, String> {
+    paths::validate_project_id(project_id)?;
+    let worktree = coordinate_worktree
+        .then(|| {
+            crate::worktree_lock::ProjectWorktreeLock::exclusive_for_identity_allocation(project_id)
+        })
+        .transpose()?;
+    if coordinate_worktree
+        && (crate::storage::recycled_project_identity_reserved_lock_held(project_id)?
+            || paths::existing_checkpoint_store_dir(project_id)?.is_some())
+    {
+        return Ok(None);
+    }
+    let path = root.join(project_id);
+    match std::fs::create_dir(&path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => return Ok(None),
+        Err(error) => {
+            return Err(format!(
+                "failed to reserve project identity {project_id}: {error}"
+            ));
+        }
+    }
+    let identity = match same_file::Handle::from_path(&path) {
+        Ok(identity) => identity,
+        Err(error) => {
+            // The directory is still empty and the worktree lock is held. Do
+            // not strand an unbound reservation that every later allocator
+            // would treat as an existing project.
+            let _ = std::fs::remove_dir(&path);
+            return Err(format!(
+                "failed to bind project identity {project_id}: {error}"
+            ));
+        }
+    };
+    Ok(Some(ProjectDirectoryReservation {
+        project_id: project_id.to_string(),
+        path,
+        identity: Some(identity),
+        _worktree: worktree,
+        committed: false,
+    }))
+}
+
+/// Reserve a unique project identity while holding the stable cross-process
+/// lock for that id. The directory creation is the atomic ownership boundary;
+/// every initializer writes only into the directory it reserved itself.
+fn reserve_unique_project_directory(
+    root: &Path,
+    coordinate_worktree: bool,
+) -> Result<ProjectDirectoryReservation, String> {
     for _ in 0..32 {
-        let mut seed = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos() as u64)
-            .unwrap_or(0);
+        let mut seed = rand::random::<u64>();
         // burn a couple of rounds so the time-seed doesn't bias the first pick
         pick(ADJECTIVES, &mut seed);
         pick(COLORS, &mut seed);
@@ -3646,18 +4099,54 @@ fn unique_random_slug(root: &Path) -> Result<String, String> {
             pick(COLORS, &mut seed),
             pick(ANIMALS, &mut seed)
         );
-        if !root.join(&candidate).exists() {
-            return Ok(candidate);
+        if let Some(reservation) =
+            try_reserve_project_directory(root, &candidate, coordinate_worktree)?
+        {
+            return Ok(reservation);
         }
     }
-    // Extremely unlikely fallback.
-    Ok(slugify(&format!(
-        "project-{}",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.subsec_nanos())
-            .unwrap_or(0)
-    )))
+    for _ in 0..32 {
+        let candidate = format!("project-{:032x}", rand::random::<u128>());
+        if let Some(reservation) =
+            try_reserve_project_directory(root, &candidate, coordinate_worktree)?
+        {
+            return Ok(reservation);
+        }
+    }
+    Err("could not allocate a unique project identity".into())
+}
+
+#[cfg(test)]
+fn checkpoint_project_ids() -> Result<HashSet<String>, String> {
+    let root = paths::oleafly_root()?.join("checkpoints");
+    let metadata = match std::fs::symlink_metadata(&root) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(HashSet::new()),
+        Err(error) => return Err(format!("failed to inspect Checkpoints identities: {error}")),
+    };
+    if !metadata.is_dir() || metadata.file_type().is_symlink() {
+        return Err("Checkpoints identity path is not a real directory".into());
+    }
+    let data = paths::oleafly_root()?
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve Oleafly data directory: {error}"))?;
+    let root = root
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve Checkpoints identities: {error}"))?;
+    if root.parent() != Some(data.as_path()) {
+        return Err("Checkpoints identity path escapes the Oleafly data directory".into());
+    }
+    let mut ids = HashSet::new();
+    for entry in std::fs::read_dir(root)
+        .map_err(|error| format!("failed to read Checkpoints identities: {error}"))?
+        .flatten()
+    {
+        let id = entry.file_name().to_string_lossy().into_owned();
+        if paths::validate_project_id(&id).is_ok() {
+            ids.insert(id);
+        }
+    }
+    Ok(ids)
 }
 
 #[tauri::command]
@@ -3666,15 +4155,19 @@ pub fn export_pdf(
     dest: String,
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<(), String> {
-    let transaction = AtomicFile::for_export(&dest)?;
-    let meta = read_meta(&project_id)?;
-    let pdf = crate::document_engine::compiled_pdf_path(&project_id, &meta.engine, &meta.main_doc)?;
-    if !pdf.exists() {
-        return Err("No compiled PDF found - recompile first.".into());
+    {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+        let transaction = AtomicFile::for_export(&dest)?;
+        let meta = read_meta(&project_id)?;
+        let pdf =
+            crate::document_engine::compiled_pdf_path(&project_id, &meta.engine, &meta.main_doc)?;
+        if !pdf.exists() {
+            return Err("No compiled PDF found - recompile first.".into());
+        }
+        std::fs::copy(&pdf, transaction.staging_path())
+            .map_err(|e| format!("failed to stage PDF: {e}"))?;
+        transaction.commit()?;
     }
-    std::fs::copy(&pdf, transaction.staging_path())
-        .map_err(|e| format!("failed to stage PDF: {e}"))?;
-    transaction.commit()?;
     // Allow reveal_in_dir for this user-chosen export path.
     if let Ok(canon) = std::path::Path::new(&dest).canonicalize() {
         let mut allow = state.reveal_allowlist.blocking_lock();
@@ -3798,6 +4291,7 @@ pub async fn export_document(
 ) -> Result<(), String> {
     let reveal_dest = dest.clone();
     guard_export_dest(&dest)?;
+    let worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let meta = read_meta(&project_id)?;
     if meta.main_doc != main_doc {
         return Err("The main document changed. Reopen the export menu and try again.".into());
@@ -3838,6 +4332,7 @@ pub async fn export_document(
         return Err(format!("pandoc failed: {}", log.trim()));
     }
     transaction.commit()?;
+    drop(worktree);
     if let Ok(canon) = Path::new(&reveal_dest).canonicalize() {
         let mut allow = state.reveal_allowlist.lock().await;
         if allow.len() >= 1024 {
@@ -3958,8 +4453,7 @@ async fn create_project_from_pandoc_source(
             "pandoc is not installed. Install pandoc to import this document.".to_string()
         })?;
     let root = paths::projects_root()?;
-    let id = unique_random_slug(&root)?;
-    let destination = root.join(&id);
+    let reservation = reserve_unique_project_directory(&root, true)?;
     let staging = create_unique_temporary_directory(&root, ".oleafly-document-import")?;
     let result: Result<(), String> = async {
         atomic_write(&staging.join(source_name), &bytes)
@@ -3985,10 +4479,11 @@ async fn create_project_from_pandoc_source(
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
+                checkpoints: configured_checkpoint_defaults(),
+                extra: HashMap::new(),
             },
         )?;
-        rename_exclusive(&staging, &destination)
-            .map_err(|e| format!("could not publish the imported project: {e}"))
+        Ok(())
     }
     .await;
     if let Err(error) = result {
@@ -3997,7 +4492,7 @@ async fn create_project_from_pandoc_source(
         }
         return Err(error);
     }
-    Ok(id)
+    reservation.publish_staged(&staging)
 }
 
 /// Create a LaTeX project from an uploaded .docx. The bytes are written inside
@@ -4309,9 +4804,9 @@ pub fn create_project_from_template(
     color: Option<String>,
 ) -> Result<String, String> {
     let root = paths::projects_root()?;
-    let id = unique_random_slug(&root)?;
-    let dir = root.join(&id);
-    create_project_transaction(&dir, || {
+    let reservation = reserve_unique_project_directory(&root, true)?;
+    let dir = reservation.path().to_path_buf();
+    create_project_transaction(reservation, || {
         let manifest = crate::templates::instantiate(&app, &template_id, &dir)?;
         let engine = engine_for_untrusted_project(&manifest.main_doc)?;
         crate::document_engine::engine_for(&engine, &manifest.main_doc)?;
@@ -4334,10 +4829,11 @@ pub fn create_project_from_template(
                 tex: None,
                 tex_flavor: None,
                 allow_shell_escape: false,
+                checkpoints: configured_checkpoint_defaults(),
+                extra: HashMap::new(),
             },
         )
-    })?;
-    Ok(id)
+    })
 }
 
 #[derive(Serialize)]
@@ -4624,7 +5120,14 @@ pub async fn search_docs(query: String) -> Result<Vec<SearchHit>, String> {
             if paths::validate_project_id(&project_id).is_err() {
                 continue;
             }
-            let meta = match project_meta_for_enumeration(&project_id, &entry.path()) {
+            let _worktree = match crate::worktree_lock::ProjectWorktreeLock::shared(&project_id) {
+                Ok(lock) => lock,
+                Err(error) => {
+                    log_project_enumeration_skip(&project_id, &error);
+                    continue;
+                }
+            };
+            let meta = match project_meta_for_enumeration_lock_held(&project_id, &entry.path()) {
                 Ok(meta) if !meta.hidden => meta,
                 Ok(_) => continue,
                 Err(error) => {
@@ -4664,6 +5167,7 @@ pub async fn search_project(project_id: String, query: String) -> Result<Vec<Sea
             return Ok(Vec::new());
         }
         let q_lower = q.to_lowercase();
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let root = paths::project_dir(&project_id)?;
         let meta = read_meta(&project_id).unwrap_or_default();
         let project_name = if meta.name.is_empty() {
@@ -4711,6 +5215,7 @@ pub(crate) async fn search_project_bounded(
                 truncated: false,
             });
         }
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let root = paths::project_dir(&project_id)?;
         let meta = read_meta(&project_id).unwrap_or_default();
         let project_name = if meta.name.is_empty() {
@@ -4748,6 +5253,7 @@ pub(crate) async fn search_project_bounded(
 #[tauri::command]
 pub async fn download_project_zip(project_id: String, dest: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let transaction = AtomicFile::for_export(&dest)?;
         let root = paths::project_dir(&project_id)?;
         let file = std::fs::File::create(transaction.staging_path()).map_err(|e| e.to_string())?;
@@ -4815,9 +5321,14 @@ pub async fn download_project_zip(project_id: String, dest: String) -> Result<()
 pub async fn duplicate_project(project_id: String, new_name: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
         let root = paths::projects_root()?;
+        let reservation = reserve_unique_project_directory(&root, true)?;
+        // Reserve the new identity before pinning the source so two concurrent
+        // duplications can never hold source A/B while waiting for the other
+        // source's per-id lock after a random candidate collision.
+        let _source_worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let src = paths::project_dir(&project_id)?;
-        let new_id = unique_random_slug(&root)?;
-        let dst = root.join(&new_id);
+        let new_id = reservation.project_id().to_string();
+        let dst = reservation.path().to_path_buf();
         let duplicated = (|| -> Result<(), String> {
             copy_dir_recursive(&src, &dst, 0)?;
             let mut meta = read_meta(&new_id)?;
@@ -4831,16 +5342,8 @@ pub async fn duplicate_project(project_id: String, new_name: String) -> Result<S
             meta.allow_shell_escape = false;
             write_meta(&new_id, &meta)
         })();
-        if let Err(error) = duplicated {
-            let cleanup = std::fs::remove_dir_all(&dst);
-            return Err(match cleanup {
-                Ok(()) => error,
-                Err(cleanup_error) => {
-                    format!("{error}. Failed to remove incomplete duplicate: {cleanup_error}")
-                }
-            });
-        }
-        Ok(new_id)
+        duplicated?;
+        Ok(reservation.commit())
     })
     .await
     .map_err(|e| e.to_string())?
@@ -5103,6 +5606,7 @@ where
 
 #[tauri::command]
 pub fn clear_build_cache(project_id: String) -> Result<(), String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
     let build = paths::build_dir(&project_id)?;
     if let Ok(entries) = std::fs::read_dir(&build) {
         for entry in entries.flatten() {
@@ -5134,7 +5638,7 @@ async fn recycle_project_synchronized(
     let _figure_compile = state.figure_compile_lock.lock().await;
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let ((), _) = admission.run_with_change_status(|| {
-            with_project_metadata(&project_id, || {
+            with_project_metadata_lock_held(&project_id, || {
                 let root = paths::projects_root()?
                     .canonicalize()
                     .map_err(|error| format!("failed to resolve projects root: {error}"))?;
@@ -5177,17 +5681,18 @@ mod tests {
     use super::{
         copy_path_in_project, create_diagram_project, create_image_project_in,
         create_markdown_project_in, create_path_in_project, create_project_from_pdf_conversion,
-        create_project_transaction, create_typst_project_in, discard_project_after_failed_import,
-        download_project_zip, duplicate_project, engine_for_main_document, extract_pandoc,
-        flatten_single_root_folder, get_or_create_scratch_project, import_paths_transactional,
-        import_paths_transactional_with, import_project_zip_bytes, import_skip,
-        infer_main_document, list_projects, normalize_loaded_tex_flavor, normalize_relative,
-        pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash, rename_exclusive,
-        rename_path_in_project, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
-        tex_root_magic_target, validate_conversion_export, validate_tex_flavor, write_meta_at,
-        CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta,
-        RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID,
+        create_project_transaction, create_typst_project_in, download_project_zip,
+        duplicate_project, engine_for_main_document, extract_pandoc, flatten_single_root_folder,
+        get_or_create_scratch_project, import_paths_transactional, import_paths_transactional_with,
+        import_project_zip_bytes, import_project_zip_bytes_with, import_skip, infer_main_document,
+        list_projects, normalize_loaded_tex_flavor, normalize_relative, pandoc_asset_for,
+        pandoc_version_supported, read_meta, rel_slash, rename_exclusive, rename_path_in_project,
+        search_docs, set_main_doc_synchronized, set_main_doc_unlocked, tex_root_magic_target,
+        try_reserve_project_directory, validate_conversion_export, validate_tex_flavor,
+        write_meta_at, CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure,
+        ProjectMeta, RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID,
     };
+    use std::collections::HashMap;
     use std::io::Write;
     use std::path::Path;
     use std::sync::Arc;
@@ -5198,6 +5703,146 @@ mod tests {
             .tempdir()
             .unwrap()
             .keep()
+    }
+
+    #[test]
+    fn project_identity_is_rechecked_after_waiting_for_its_cross_process_lock() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let projects = crate::paths::projects_root().unwrap();
+        let project_id = "shared-project";
+        let held = crate::worktree_lock::ProjectWorktreeLock::exclusive(project_id).unwrap();
+        let worker_projects = projects.clone();
+        let worker = std::thread::spawn(move || {
+            try_reserve_project_directory(&worker_projects, project_id, true)
+        });
+
+        let winner = projects.join(project_id);
+        std::fs::create_dir(&winner).unwrap();
+        std::fs::write(winner.join("winner.txt"), b"first creator").unwrap();
+        let recovery = winner.join(".oleafly");
+        std::fs::create_dir(&recovery).unwrap();
+        std::fs::write(
+            recovery.join(crate::worktree_lock::RESTORE_PENDING_FILE),
+            b"pending",
+        )
+        .unwrap();
+        drop(held);
+
+        assert!(worker.join().unwrap().unwrap().is_none());
+        assert_eq!(
+            std::fs::read(winner.join("winner.txt")).unwrap(),
+            b"first creator"
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn external_history_owners_are_rechecked_after_waiting_for_the_identity_lock() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let projects = crate::paths::projects_root().unwrap();
+
+        let checkpoint_id = "checkpoint-owner";
+        let checkpoint_lock =
+            crate::worktree_lock::ProjectWorktreeLock::exclusive(checkpoint_id).unwrap();
+        let worker_projects = projects.clone();
+        let checkpoint_worker = std::thread::spawn(move || {
+            try_reserve_project_directory(&worker_projects, checkpoint_id, true)
+        });
+        let store_path = crate::paths::checkpoint_store_dir(checkpoint_id).unwrap();
+        oleafly_history::Store::open(&store_path).unwrap();
+        drop(checkpoint_lock);
+        assert!(checkpoint_worker.join().unwrap().unwrap().is_none());
+        assert!(!projects.join(checkpoint_id).exists());
+
+        let recycled_id = "recycled-owner";
+        let recycled_lock =
+            crate::worktree_lock::ProjectWorktreeLock::exclusive(recycled_id).unwrap();
+        let active = projects.join(recycled_id);
+        std::fs::create_dir(&active).unwrap();
+        std::fs::write(active.join("project.json"), br#"{"name":"Owner"}"#).unwrap();
+        let worker_projects = projects.clone();
+        let recycled_worker = std::thread::spawn(move || {
+            try_reserve_project_directory(&worker_projects, recycled_id, true)
+        });
+        crate::storage::recycle_project_directory(recycled_id, "Owner", &active).unwrap();
+        drop(recycled_lock);
+        assert!(recycled_worker.join().unwrap().unwrap().is_none());
+        assert!(!projects.join(recycled_id).exists());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn two_creators_cannot_both_claim_the_same_project_identity() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let projects = crate::paths::projects_root().unwrap();
+        let start = Arc::new(std::sync::Barrier::new(2));
+
+        let spawn_creator = |owner: &'static str| {
+            let projects = projects.clone();
+            let start = Arc::clone(&start);
+            std::thread::spawn(move || -> Result<bool, String> {
+                start.wait();
+                let Some(reservation) =
+                    try_reserve_project_directory(&projects, "shared-project", true)?
+                else {
+                    return Ok(false);
+                };
+                let path = reservation.path().to_path_buf();
+                create_project_transaction(reservation, || {
+                    std::fs::write(path.join("owner.txt"), owner).map_err(|error| error.to_string())
+                })?;
+                Ok(true)
+            })
+        };
+
+        let first = spawn_creator("first");
+        let second = spawn_creator("second");
+        let first_created = first.join().unwrap().unwrap();
+        let second_created = second.join().unwrap().unwrap();
+
+        assert_ne!(first_created, second_created);
+        let owner =
+            std::fs::read_to_string(projects.join("shared-project").join("owner.txt")).unwrap();
+        assert!(owner == "first" || owner == "second");
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn failed_staged_publication_preserves_race_winner_and_cleans_its_stage() {
+        let root = test_dir("project-publication-race");
+        let reservation = try_reserve_project_directory(&root, "shared-project", false)
+            .unwrap()
+            .unwrap();
+        let destination = reservation.path().to_path_buf();
+        let staging = root.join(".staged-project");
+        std::fs::create_dir(&staging).unwrap();
+        std::fs::write(staging.join("project.json"), b"staged").unwrap();
+
+        let error = reservation
+            .publish_staged_with(&staging, |_, destination| {
+                std::fs::create_dir(destination)?;
+                std::fs::write(destination.join("winner.txt"), b"race winner")?;
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::AlreadyExists,
+                    "injected destination race",
+                ))
+            })
+            .unwrap_err();
+
+        assert!(error.contains("injected destination race"));
+        assert_eq!(
+            std::fs::read(destination.join("winner.txt")).unwrap(),
+            b"race winner"
+        );
+        assert!(!staging.exists());
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     fn mutation_project_id(label: &str) -> String {
@@ -5220,7 +5865,7 @@ mod tests {
     }
 
     #[test]
-    fn repository_archive_bytes_use_the_guarded_import_and_can_be_discarded() {
+    fn repository_archive_bytes_use_the_guarded_import() {
         let _env_guard = crate::paths::data_dir_env_lock();
         let data = test_dir("repository-bytes-import");
         std::env::set_var("OLEAFLY_DATA_DIR", &data);
@@ -5240,11 +5885,35 @@ mod tests {
                 .to_string_lossy()
                 .starts_with(".oleafly-repository-import")));
 
-        discard_project_after_failed_import(&project_id).unwrap();
-        assert!(!project.exists());
-        discard_project_after_failed_import(&project_id).unwrap();
-        assert!(discard_project_after_failed_import("../escape").is_err());
+        std::fs::remove_dir_all(&project).unwrap();
 
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn repository_finalize_failure_rolls_back_the_owned_project_transaction() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("repository-finalize-failure");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let archive = data.join("repository.zip");
+        zip_with_member(&archive, "owner-repo/main.tex", b"\\documentclass{article}");
+        let bytes = std::fs::read(&archive).unwrap();
+
+        let error =
+            import_project_zip_bytes_with("Research repository".into(), &bytes, |project_id| {
+                let project = crate::paths::project_dir(project_id)?;
+                std::fs::write(project.join("attach-started"), b"owned")
+                    .map_err(|error| error.to_string())?;
+                Err("injected repository attach failure".into())
+            })
+            .unwrap_err();
+
+        assert!(error.contains("injected repository attach failure"));
+        assert!(!std::fs::read_dir(crate::paths::projects_root().unwrap())
+            .unwrap()
+            .flatten()
+            .any(|entry| !entry.file_name().to_string_lossy().starts_with('.')));
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(data).unwrap();
     }
@@ -5263,6 +5932,36 @@ mod tests {
                 .file_name()
                 .to_string_lossy()
                 .starts_with(".oleafly-repository-import")));
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn repository_import_drops_case_variant_internal_restore_markers() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("repository-uppercase-internal");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let archive = data.join("repository.zip");
+        let file = std::fs::File::create(&archive).unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default();
+        zip.start_file("owner-repo/main.tex", options).unwrap();
+        zip.write_all(b"\\documentclass{article}").unwrap();
+        zip.start_file("owner-repo/.OLEAFLY/checkpoint-restore-pending", options)
+            .unwrap();
+        zip.write_all(b"").unwrap();
+        zip.start_file("owner-repo/.GIT/config", options).unwrap();
+        zip.write_all(b"untrusted").unwrap();
+        zip.finish().unwrap();
+        let bytes = std::fs::read(&archive).unwrap();
+
+        let project_id = import_project_zip_bytes("Safe import".into(), &bytes).unwrap();
+        let project = crate::paths::project_dir(&project_id).unwrap();
+        assert!(project.join("main.tex").is_file());
+        assert!(!project.join(".OLEAFLY").exists());
+        assert!(!project.join(".GIT").exists());
+        crate::worktree_lock::ProjectWorktreeLock::shared(&project_id).unwrap();
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(data).unwrap();
@@ -5314,6 +6013,9 @@ mod tests {
 
     #[test]
     fn coordinator_eviction_retains_a_fail_closed_generation_floor() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("mutation-coordinator-eviction");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
         let project_id = mutation_project_id("eviction-target");
         let stale_generation = super::project_mutation_generation(project_id.clone()).unwrap();
         let admission = super::admit_mutation(
@@ -5346,6 +6048,9 @@ mod tests {
             .run(|| Ok::<(), String>(()))
             .unwrap_err()
             .contains("mutation conflict"));
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
     }
 
     #[test]
@@ -5529,7 +6234,9 @@ mod tests {
 
     #[test]
     fn paused_write_cannot_recreate_a_renamed_path_but_a_new_write_can() {
+        let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("mutation-rename-tombstone");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let old = root.join("draft.tex");
         let new = root.join("final.tex");
         std::fs::write(&old, "original").unwrap();
@@ -5574,12 +6281,15 @@ mod tests {
             .run(|| std::fs::write(&old, "restored").map_err(|error| error.to_string()))
             .unwrap();
         assert_eq!(std::fs::read_to_string(&old).unwrap(), "restored");
+        std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
     fn paused_write_cannot_recreate_a_deleted_subtree() {
+        let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("mutation-delete-tombstone");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let folder = root.join("chapters");
         let file = folder.join("one.tex");
         std::fs::create_dir(&folder).unwrap();
@@ -5610,6 +6320,7 @@ mod tests {
             .unwrap_err();
         assert!(error.contains("mutation conflict"));
         assert!(!folder.exists());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -5670,7 +6381,9 @@ mod tests {
 
     #[test]
     fn edit_admitted_during_external_write_runs_after_the_committed_external_write() {
+        let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("mutation-overlap");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let file = root.join("main.tex");
         std::fs::write(&file, "initial").unwrap();
         let project_id = mutation_project_id("overlap");
@@ -5705,12 +6418,15 @@ mod tests {
             .unwrap();
         assert!(external_generation > 0);
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "local");
+        std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
     fn expected_generation_rejects_stale_overlap_and_allows_corrective_write() {
+        let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("mutation-precondition");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let file = root.join("main.tex");
         let project_id = mutation_project_id("precondition");
         let baseline = super::project_mutation_generation(project_id.clone()).unwrap();
@@ -5746,7 +6462,46 @@ mod tests {
             .run(|| std::fs::write(&file, "local").map_err(|error| error.to_string()))
             .unwrap();
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "local");
+        std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn mutation_admission_waits_for_a_cross_process_reader() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("mutation-cross-process-reader");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project_id = mutation_project_id("cross-process-reader");
+        let reader = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id).unwrap();
+        let admission = super::admit_mutation(
+            &project_id,
+            vec![MutationScope::file("main.tex".into())],
+            None,
+        )
+        .unwrap();
+        let (started_tx, started_rx) = std::sync::mpsc::channel();
+        let (finished_tx, finished_rx) = std::sync::mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            started_tx.send(()).unwrap();
+            let result = admission.run(|| Ok::<(), String>(()));
+            finished_tx.send(result).unwrap();
+        });
+
+        started_rx
+            .recv_timeout(std::time::Duration::from_secs(1))
+            .unwrap();
+        assert!(finished_rx
+            .recv_timeout(std::time::Duration::from_millis(100))
+            .is_err());
+
+        drop(reader);
+        finished_rx
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .unwrap()
+            .unwrap();
+        worker.join().unwrap();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
     }
 
     #[test]
@@ -6820,6 +7575,8 @@ mod tests {
             tex: None,
             tex_flavor: None,
             allow_shell_escape: false,
+            checkpoints: oleafly_core::CheckpointPolicy::default(),
+            extra: HashMap::new(),
         };
         let json = serde_json::to_string(&meta).unwrap();
         assert!(json.contains("\"allow_shell_escape\":false"));
@@ -6829,9 +7586,122 @@ mod tests {
     }
 
     #[test]
+    fn desktop_metadata_write_preserves_checkpoint_policy_and_unknown_fields() {
+        let dir = test_dir("checkpoint-policy-roundtrip");
+        let path = dir.join("project.json");
+        let mut meta: ProjectMeta = serde_json::from_value(serde_json::json!({
+            "name": "Portable",
+            "main_doc": "main.tex",
+            "engine": "latexmk",
+            "allow_shell_escape": true,
+            "checkpoints": {
+                "mode": "engine_dependencies",
+                "always_include": ["figures/*.png"],
+                "ignored": ["scratch/*.tmp"]
+            },
+            "future_editor": {"layout": "wide"}
+        }))
+        .unwrap();
+        meta.allow_shell_escape = true;
+
+        write_meta_at(&path, &meta).unwrap();
+
+        let output: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(
+            output["checkpoints"]["always_include"],
+            serde_json::json!(["figures/*.png"])
+        );
+        assert_eq!(output["future_editor"]["layout"], "wide");
+        assert!(output.get("allow_shell_escape").is_none());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn checkpoint_policy_setter_validates_before_writing_project_metadata() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("checkpoint-policy-setter");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_project("Policy".into()).unwrap();
+        let policy: oleafly_core::CheckpointPolicy = serde_json::from_value(serde_json::json!({
+            "mode": "engine_dependencies",
+            "always_include": ["figures/*.png"],
+            "ignored": ["scratch/*.tmp"]
+        }))
+        .unwrap();
+
+        let updated = super::set_checkpoint_policy_unlocked(&project_id, policy).unwrap();
+        assert_eq!(updated.checkpoints.always_include, ["figures/*.png"]);
+        let metadata_path = crate::paths::project_dir(&project_id)
+            .unwrap()
+            .join("project.json");
+        let before_invalid = std::fs::read_to_string(&metadata_path).unwrap();
+
+        let invalid: oleafly_core::CheckpointPolicy = serde_json::from_value(serde_json::json!({
+            "mode": "engine_dependencies",
+            "always_include": [".git/**"]
+        }))
+        .unwrap();
+        assert!(super::set_checkpoint_policy_unlocked(&project_id, invalid).is_err());
+        assert_eq!(
+            std::fs::read_to_string(&metadata_path).unwrap(),
+            before_invalid
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn malformed_checkpoint_policy_does_not_block_desktop_project_reads() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("checkpoint-policy-malformed-read");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_project("Malformed policy".into()).unwrap();
+        let metadata_path = crate::paths::project_dir(&project_id)
+            .unwrap()
+            .join("project.json");
+        std::fs::write(
+            &metadata_path,
+            r#"{
+              "name":"Malformed policy",
+              "main_doc":"main.tex",
+              "engine":"xetex",
+              "checkpoints":{"always_include":"figures"}
+            }"#,
+        )
+        .unwrap();
+
+        let meta = read_meta(&project_id).unwrap();
+        assert!(meta.checkpoints.validate().is_err());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn checkpoint_project_ids_skip_malformed_entries_and_keep_valid_reservations() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("checkpoint-project-identities");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let checkpoints = root.join("checkpoints");
+        std::fs::create_dir_all(checkpoints.join("reserved-project")).unwrap();
+        std::fs::create_dir(checkpoints.join("not a project id")).unwrap();
+
+        let ids = super::checkpoint_project_ids().unwrap();
+        assert_eq!(
+            ids,
+            std::collections::HashSet::from(["reserved-project".to_string()])
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn create_markdown_project_writes_source_and_metadata() {
         let root = test_dir("markdown-create");
-        let id = create_markdown_project_in(&root, "Markdown paper".into()).unwrap();
+        let id = create_markdown_project_in(&root, "Markdown paper".into(), false).unwrap();
         let dir = root.join(id);
         let source = std::fs::read_to_string(dir.join("main.md")).unwrap();
         let meta: ProjectMeta =
@@ -6902,7 +7772,7 @@ mod tests {
     #[test]
     fn create_typst_project_writes_source_and_metadata() {
         let root = test_dir("typst-create");
-        let id = create_typst_project_in(&root, "Typst paper".into()).unwrap();
+        let id = create_typst_project_in(&root, "Typst paper".into(), false).unwrap();
         let dir = root.join(id);
         assert!(dir.join("main.typ").is_file());
         let meta: ProjectMeta =
@@ -6917,8 +7787,11 @@ mod tests {
     #[test]
     fn failed_project_initialization_removes_partial_directory() {
         let root = test_dir("typst-rollback");
-        let dir = root.join("partial-project");
-        let result = create_project_transaction(&dir, || {
+        let reservation = try_reserve_project_directory(&root, "partial-project", false)
+            .unwrap()
+            .unwrap();
+        let dir = reservation.path().to_path_buf();
+        let result = create_project_transaction(reservation, || {
             std::fs::write(dir.join("main.typ"), "partial").unwrap();
             Err("simulated metadata failure".into())
         });
@@ -6935,6 +7808,7 @@ mod tests {
             "Diagram".into(),
             "\\documentclass{standalone}".into(),
             Some("#123456".into()),
+            false,
         )
         .unwrap();
         let dir = root.join(id);
@@ -7052,6 +7926,8 @@ mod tests {
             tex: None,
             tex_flavor: None,
             allow_shell_escape: false,
+            checkpoints: oleafly_core::CheckpointPolicy::default(),
+            extra: HashMap::new(),
         };
 
         let valid = projects.join("valid-project");
@@ -7101,6 +7977,8 @@ mod tests {
                         tex: None,
                         tex_flavor: None,
                         allow_shell_escape: false,
+                        checkpoints: oleafly_core::CheckpointPolicy::default(),
+                        extra: HashMap::new(),
                     },
                 )
                 .unwrap();
@@ -7208,6 +8086,38 @@ mod tests {
         assert!(!pandoc_version_supported(b"not pandoc output"));
     }
 
+    #[test]
+    fn new_project_receives_validated_global_checkpoint_defaults() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("new-project-checkpoint-defaults");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        std::fs::create_dir_all(&root).unwrap();
+        let policy: oleafly_core::CheckpointPolicy = serde_json::from_value(serde_json::json!({
+            "mode": "engine_dependencies",
+            "always_include": ["figures/*.png"],
+            "ignored": ["scratch/*.tmp"]
+        }))
+        .unwrap();
+        let config = crate::config::AppConfig {
+            checkpoint_defaults: policy.clone(),
+            ..Default::default()
+        };
+        std::fs::write(
+            root.join("config.json"),
+            serde_json::to_vec_pretty(&config).unwrap(),
+        )
+        .unwrap();
+
+        let project_id = super::create_project("Configured".to_string()).unwrap();
+        assert_eq!(read_meta(&project_id).unwrap().checkpoints, policy);
+        assert!(crate::paths::existing_checkpoint_store_dir(&project_id)
+            .unwrap()
+            .is_none());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     // Held across the await deliberately: it serializes access to the shared
     // OLEAFLY_DATA_DIR env var against other tests, single-threaded runtime.
     #[allow(clippy::await_holding_lock)]
@@ -7219,13 +8129,24 @@ mod tests {
         let source_id = super::create_project("Original Paper".to_string()).unwrap();
         super::set_project_engine_unlocked(&source_id, "latexmk", None).unwrap();
         super::set_project_shell_escape_unlocked(&source_id, true).unwrap();
+        let source_policy: oleafly_core::CheckpointPolicy =
+            serde_json::from_value(serde_json::json!({
+                "mode": "engine_dependencies",
+                "always_include": ["source-assets/*.png"],
+                "ignored": ["drafts/*.tex"]
+            }))
+            .unwrap();
+        super::set_checkpoint_policy_unlocked(&source_id, source_policy.clone()).unwrap();
         assert!(read_meta(&source_id).unwrap().allow_shell_escape);
+        let source_checkpoint_store = crate::paths::checkpoint_store_dir(&source_id).unwrap();
+        oleafly_history::Store::open(&source_checkpoint_store).unwrap();
         let fork_id = duplicate_project(source_id, "Original Paper (copy)".to_string())
             .await
             .unwrap();
         let meta = read_meta(&fork_id).unwrap();
         assert_eq!(meta.name, "Original Paper (copy)");
         assert_eq!(meta.forked_from.as_deref(), Some("Original Paper"));
+        assert_eq!(meta.checkpoints, source_policy);
         assert!(!meta.allow_shell_escape);
         assert!(!std::fs::read_to_string(
             crate::paths::project_dir(&fork_id)
@@ -7234,6 +8155,11 @@ mod tests {
         )
         .unwrap()
         .contains("allow_shell_escape"));
+        assert!(source_checkpoint_store.exists());
+        assert!(crate::paths::existing_checkpoint_store_dir(&fork_id)
+            .unwrap()
+            .is_none());
+        assert!(!root.join("checkpoints").join(&fork_id).exists());
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -7464,6 +8390,143 @@ mod tests {
         std::fs::remove_dir_all(root).unwrap();
     }
 
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn recovering_worktree_mutation_fails_before_metadata_reconciliation() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("recover-before-metadata");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let state = crate::state::AppState::default();
+
+        for corrupt_journal in [false, true] {
+            let project_id = super::create_project(format!(
+                "Unreconciled {} journal",
+                if corrupt_journal {
+                    "corrupt"
+                } else {
+                    "missing"
+                }
+            ))
+            .unwrap();
+            super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
+            super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+            let project = crate::paths::project_dir(&project_id).unwrap();
+            let manifest = br#"{"name":"Unreconciled","main_doc":"main.tex","engine":"latexmk"}"#;
+            std::fs::write(project.join("project.json"), manifest).unwrap();
+
+            if corrupt_journal {
+                let store = oleafly_history::Store::open(
+                    crate::paths::checkpoint_store_dir(&project_id).unwrap(),
+                )
+                .unwrap();
+                std::fs::create_dir(store.root().join("restore-transaction")).unwrap();
+                std::fs::write(
+                    store.root().join("restore-transaction/restore-plan.json"),
+                    b"{corrupt",
+                )
+                .unwrap();
+            }
+            let internal = project.join(".oleafly");
+            std::fs::create_dir(&internal).unwrap();
+            std::fs::write(
+                internal.join(crate::worktree_lock::RESTORE_PENDING_FILE),
+                b"pending",
+            )
+            .unwrap();
+
+            let before_generation = super::project_mutation_generation(project_id.clone()).unwrap();
+            let operation_called = Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let operation_called_in_worker = Arc::clone(&operation_called);
+            let recovery_project_id = project_id.clone();
+            let result = super::mutate_project_worktree_recovering(
+                &state,
+                project_id.clone(),
+                None,
+                move |_project| {
+                    operation_called_in_worker.store(true, std::sync::atomic::Ordering::SeqCst);
+                    crate::checkpoints::recover_interrupted_restore_lock_held(
+                        &recovery_project_id,
+                    )?;
+                    Ok(((), true))
+                },
+            )
+            .await;
+
+            assert!(result.is_err());
+            assert!(!operation_called.load(std::sync::atomic::Ordering::SeqCst));
+            assert_eq!(
+                std::fs::read(project.join("project.json")).unwrap(),
+                manifest
+            );
+            assert!(super::shell_escape_trust_path(&project_id)
+                .unwrap()
+                .exists());
+            assert_eq!(
+                super::project_mutation_generation(project_id.clone()).unwrap(),
+                before_generation
+            );
+            assert_eq!(
+                state
+                    .project_state_revision
+                    .load(std::sync::atomic::Ordering::SeqCst),
+                0
+            );
+        }
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn recovering_worktree_mutation_fails_closed_when_a_marker_remains() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("recover-marker-remains");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let project_id = super::create_project("Pending restore".into()).unwrap();
+        let project = crate::paths::project_dir(&project_id).unwrap();
+        let manifest = br#"{"name":"Pending restore","main_doc":"main.tex","engine":"xetex"}"#;
+        std::fs::write(project.join("project.json"), manifest).unwrap();
+        let before_generation = super::project_mutation_generation(project_id.clone()).unwrap();
+        let state = crate::state::AppState::default();
+
+        let result = super::mutate_project_worktree_recovering(
+            &state,
+            project_id.clone(),
+            None,
+            move |project| -> Result<((), bool), String> {
+                let internal = project.join(".oleafly");
+                std::fs::create_dir(&internal).map_err(|error| error.to_string())?;
+                std::fs::write(
+                    internal.join(crate::worktree_lock::RESTORE_PENDING_FILE),
+                    b"pending",
+                )
+                .map_err(|error| error.to_string())?;
+                Err("simulated interrupted restore".into())
+            },
+        )
+        .await;
+
+        assert!(result.err().unwrap().contains("Recovery is still pending"));
+        assert_eq!(
+            std::fs::read(project.join("project.json")).unwrap(),
+            manifest
+        );
+        assert_eq!(
+            super::project_mutation_generation(project_id).unwrap(),
+            before_generation
+        );
+        assert_eq!(
+            state
+                .project_state_revision
+                .load(std::sync::atomic::Ordering::SeqCst),
+            0
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn main_document_rename_away_from_latexmk_revokes_shell_trust() {
         let _env_guard = crate::paths::data_dir_env_lock();
@@ -7581,6 +8644,9 @@ mod tests {
         assert!(import_skip("figures/.DS_Store"));
         assert!(import_skip(".git/config"));
         assert!(import_skip(".oleafly/build/x.pdf"));
+        assert!(import_skip(".GIT/config"));
+        assert!(import_skip(".OLEAFLY/checkpoint-restore-pending"));
+        assert!(import_skip("__macosx/metadata"));
         assert!(!import_skip("chapters/intro.tex"));
         assert!(!import_skip("main.tex"));
     }

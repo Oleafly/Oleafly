@@ -93,6 +93,7 @@ pub fn has_orx() -> bool {
 pub fn project_engine(
     project_id: String,
 ) -> Result<crate::document_engine::EngineDescriptor, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let meta = crate::project::read_meta(&project_id)?;
     let mut descriptor = crate::document_engine::descriptor_for(&meta.engine, &meta.main_doc)?;
     descriptor.tex_flavor = meta.tex_flavor;
@@ -215,6 +216,7 @@ pub async fn cancel_compile(state: State<'_, AppState>) -> Result<bool, String> 
 #[tauri::command]
 pub async fn clear_build_dir(project_id: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
         let project_dir = paths::project_dir(&project_id)?;
         oleafly_core::Workspace::clean_build_directory(&project_dir)
             .map_err(|error| format!("failed to clear build directory: {error}"))?;
@@ -257,6 +259,7 @@ pub async fn compile_project(
     let req_at = std::time::Instant::now();
 
     let _guard = state.compile_lock.lock().await;
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
 
     #[cfg(debug_assertions)]
     eprintln!(
@@ -280,6 +283,7 @@ pub async fn compile_project(
                 out_dir: None,
                 compile_time_ms: 0,
                 stopped: false,
+                checkpoint_publication: Default::default(),
             });
         }
     }
@@ -343,6 +347,11 @@ pub async fn compile_project(
         return Ok(result);
     }
     if result.ok {
+        result.checkpoint_publication = crate::checkpoint_publication::current_adapter_outcome(
+            &meta.engine,
+            meta.allow_shell_escape,
+            &meta.checkpoints,
+        );
         result.output_revision = Some(
             state
                 .compile_output_revision
@@ -382,6 +391,10 @@ pub async fn compile_project(
             let fp_engine = meta.engine.clone();
             let fp_log = result.log.clone();
             tauri::async_runtime::spawn_blocking(move || {
+                let Ok(_worktree) = crate::worktree_lock::ProjectWorktreeLock::shared(&fp_project)
+                else {
+                    return;
+                };
                 let Ok(root) = paths::project_dir(&fp_project) else {
                     return;
                 };
@@ -447,6 +460,7 @@ pub async fn validate_compile_fingerprint(
     project_id: String,
     main_doc: String,
 ) -> Result<Option<ValidatedCompileFingerprint>, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
     let root = paths::project_dir(&project_id)?;
     let validated = tauri::async_runtime::spawn_blocking(move || {
@@ -473,6 +487,7 @@ fn desktop_workspace(
             main_doc: meta.main_doc.clone(),
             engine: meta.engine.clone(),
             tex_flavor: meta.tex_flavor.clone(),
+            checkpoints: meta.checkpoints.clone(),
             ..oleafly_core::ProjectManifest::default()
         },
     )
@@ -545,6 +560,7 @@ pub async fn compile_isolated(
     // Figure builds use a separate dir and lock so they never block main-document
     // compiles (or get blocked by them).
     let _guard = state.figure_compile_lock.lock().await;
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     #[cfg(debug_assertions)]
     eprintln!(
         "figure: {project_id} lock after {}ms",
@@ -599,6 +615,7 @@ pub async fn compile_isolated(
 #[tauri::command]
 pub async fn read_isolated_pdf(project_id: String) -> Result<Response, String> {
     let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let dir = paths::figure_build_dir(&project_id)?;
         std::fs::read(dir.join("_figure.pdf")).map_err(|e| format!("no figure PDF: {e}"))
     })
@@ -686,8 +703,9 @@ fn read_regular_file_limited(
 
 #[tauri::command]
 pub async fn read_project_bytes(project_id: String, rel_path: String) -> Result<Response, String> {
-    let target = crate::project::resolve_in_project(&project_id, &rel_path)?;
-    let bytes = tauri::async_runtime::spawn_blocking(move || {
+    let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+        let target = crate::project::resolve_in_project(&project_id, &rel_path)?;
         read_regular_file_limited(&target, &rel_path, MAX_PROJECT_BINARY_READ_BYTES)
     })
     .await
@@ -720,6 +738,7 @@ pub async fn write_project_bytes(
 #[tauri::command]
 pub async fn read_compiled_pdf(project_id: String) -> Result<Response, String> {
     let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let meta = crate::project::read_meta(&project_id)?;
         let pdf =
             crate::document_engine::compiled_pdf_path(&project_id, &meta.engine, &meta.main_doc)?;
@@ -791,10 +810,16 @@ mod tests {
     fn desktop_build_adapter_uses_the_core_workspace_contract() {
         let directory = tempfile::tempdir().unwrap();
         std::fs::write(directory.path().join("paper.typ"), "= Paper").unwrap();
+        let checkpoints: oleafly_core::CheckpointPolicy =
+            serde_json::from_value(serde_json::json!({
+                "always_include": ["research/notes"]
+            }))
+            .unwrap();
         let meta = crate::project::ProjectMeta {
             name: "Paper".into(),
             main_doc: "paper.typ".into(),
             engine: "typst".into(),
+            checkpoints,
             ..crate::project::ProjectMeta::default()
         };
         let workspace = desktop_workspace(directory.path(), &meta).unwrap();
@@ -803,6 +828,10 @@ mod tests {
         assert_eq!(prepared.main_document(), "paper.typ");
         assert!(prepared.source_path().ends_with("paper.typ"));
         assert!(prepared.build_directory().ends_with(".oleafly/build"));
+        assert_eq!(
+            workspace.manifest().checkpoints.always_include,
+            ["research/notes"]
+        );
     }
 
     #[test]

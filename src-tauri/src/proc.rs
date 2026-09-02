@@ -3,7 +3,7 @@
 //! On Windows, launching a console program (git, lualatex, tlmgr, pandoc, ...)
 //! from a GUI app pops a `cmd`-style console window for the child, which flashes
 //! on screen and vanishes when the child exits. With commands that run often
-//! (git status polling, auto-commit on every compile) this looks like several
+//! (Git status polling and compiler/toolchain invocations) this looks like several
 //! shells flickering in front of the app the whole time it's open.
 //!
 //! The fix is the `CREATE_NO_WINDOW` process-creation flag. The Tauri shell

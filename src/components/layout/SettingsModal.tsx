@@ -78,13 +78,13 @@ import {
 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { notifyError, toast } from "@/lib/toast";
-import { cancelAutoCommit } from "@/lib/auto-commit";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { startTour } from "@/lib/tour";
 import { TOUR_IDS } from "@/lib/tours/registry";
 import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
+import { CheckpointDefaultsSection } from "@/components/settings/CheckpointDefaultsSection";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import {
   SettingsSwitchIndicator,
@@ -350,7 +350,6 @@ export function SettingsModal() {
     setDeletingAllProjects(true);
     let moved = 0;
     try {
-      for (const project of projects) cancelAutoCommit(project.id);
       if (useFilesStore.getState().projectId) {
         await closeProject();
         if (useFilesStore.getState().projectId) {
@@ -708,9 +707,10 @@ export function SettingsModal() {
                   ) : null}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Each project is a plain folder with a <code>.git</code> history. Nothing leaves
+                  Each project is a plain folder. Git history is optional, and nothing leaves
                   your machine unless you push to GitHub.
                 </p>
+                <CheckpointDefaultsSection />
                 <section
                   aria-labelledby="storage-usage-title"
                   className="overflow-hidden rounded-xl border bg-card/60"

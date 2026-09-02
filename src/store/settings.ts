@@ -507,6 +507,8 @@ interface SettingsState {
   setWordCountOpen: (v: boolean) => void;
   historyOpen: boolean;
   setHistoryOpen: (v: boolean) => void;
+  checkpointsOpen: boolean;
+  setCheckpointsOpen: (v: boolean) => void;
   searchOpen: boolean;
   setSearchOpen: (v: boolean) => void;
   settingsOpen: boolean;
@@ -763,6 +765,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setWordCountOpen: (v) => set({ wordCountOpen: v }),
   historyOpen: false,
   setHistoryOpen: (v) => set({ historyOpen: v }),
+  checkpointsOpen: false,
+  setCheckpointsOpen: (v) => set({ checkpointsOpen: v }),
   searchOpen: false,
   setSearchOpen: (v) => set({ searchOpen: v }),
   settingsOpen: false,

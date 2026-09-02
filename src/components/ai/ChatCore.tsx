@@ -51,7 +51,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { approvalsList, approvalsSet, getConfig, gitLog, gitAutoCommit, gitHeadOid, gitShow, gitStatus, readFileContent, usageRecord, type AppConfig, type CustomProvider, type McpAgentServer, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
+import { approvalsList, approvalsSet, getConfig, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, usageRecord, type AppConfig, type CustomProvider, type McpAgentServer, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
@@ -112,7 +112,6 @@ import {
   agentFileChangeTurnKey,
   useAgentFileChangesStore,
 } from "@/store/agent-file-changes";
-import { subscribeAutoCommit } from "@/lib/auto-commit";
 import {
   filterResolvedTools,
   resolveAvailableTools,
@@ -1226,7 +1225,6 @@ export function ChatCore() {
     const runPendingImages: string[] = [];
     let runChatId: string | null = null;
     let trackedTurnId: string | null = null;
-    let stopAutoCommitTracking = () => {};
     let commitTracking = Promise.resolve();
     let queueCommitReconciliation: (commitId?: string | null) => Promise<void> = () =>
       Promise.resolve();
@@ -1363,19 +1361,6 @@ export function ChatCore() {
     let usageOut = 0;
     let usageSteps = 0;
 
-    // Checkpoint the project before the agent edits anything, so a bad edit can
-    // always be reverted from git history (best-effort; never blocks the chat).
-    let runCheckpointOid: string | null = null;
-    if (projectId) {
-      try {
-        await gitAutoCommit(projectId, "Oleafly AI checkpoint");
-        const log = await gitLog(projectId);
-        runCheckpointOid = log[0]?.oid ?? null;
-      } catch {
-        /* not a git repo yet / nothing to commit - non-fatal */
-        runCheckpointOid = null;
-      }
-    }
     if (!reservationIsCurrent()) {
       releaseRunReservation();
       return;
@@ -1399,7 +1384,6 @@ export function ChatCore() {
       content: "",
       createdAt,
       toolCalls: [],
-      ...(runCheckpointOid ? { checkpointOid: runCheckpointOid } : {}),
     };
     const nextMessages: ChatMessage[] = [
       ...priorMessages,
@@ -1624,9 +1608,12 @@ ${sandboxedCustom}`;
         const trackingChatId = runChatId;
         const trackingTurnId = clientTurnId;
         trackedTurnId = trackingTurnId;
+        const initialHeadOid = runProjectId
+          ? await gitHeadOid(runProjectId).catch(() => null)
+          : null;
         useAgentFileChangesStore
           .getState()
-          .beginTurn(trackingChatId, trackingTurnId, runCheckpointOid, runProjectId);
+          .beginTurn(trackingChatId, trackingTurnId, initialHeadOid, runProjectId);
         queueCommitReconciliation = (commitId) => {
           commitTracking = commitTracking
             .then(async () => {
@@ -1667,11 +1654,6 @@ ${sandboxedCustom}`;
             .catch(() => {});
           return commitTracking;
         };
-        if (runProjectId) {
-          stopAutoCommitTracking = subscribeAutoCommit((event) => {
-            if (event.projectId === runProjectId) void queueCommitReconciliation(event.oid);
-          });
-        }
       }
       let reasoningStartedAt: number | null = null;
       let stepContent = "";
@@ -1969,7 +1951,6 @@ ${sandboxedCustom}`;
       }
     } finally {
       await queueCommitReconciliation();
-      stopAutoCommitTracking();
       await commitTracking;
       if (runChatId && trackedTurnId) {
         useAgentFileChangesStore.getState().finishTurn(runChatId, trackedTurnId);
@@ -2079,7 +2060,9 @@ ${sandboxedCustom}`;
       }
       setRestoringCheckpoint(message.id);
       try {
-        await useFilesStore.getState().restoreFromGit(message.checkpointOid);
+        await useFilesStore
+          .getState()
+          .restoreFromGit(projectId, message.checkpointOid);
         setMessages((current) => {
           const restored = current.map((item) =>
             item.id === message.id ? { ...item, checkpointRestored: true } : item,

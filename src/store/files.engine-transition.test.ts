@@ -26,8 +26,6 @@ const mocks = vi.hoisted(() => ({
   createFile: vi.fn(),
   importPathsIntoProject: vi.fn(),
   resetCompile: vi.fn(),
-  flushAutoCommit: vi.fn(),
-  scheduleAutoCommit: vi.fn(),
   mcpSetActiveProject: vi.fn(async () => {}),
   flushWysiwygPendingEdits: vi.fn(),
   invalidateWysiwygProjectSession: vi.fn(),
@@ -54,10 +52,6 @@ vi.mock("@/lib/tauri", () => ({
   importPathsIntoProject: mocks.importPathsIntoProject,
   listProjects: vi.fn(async () => []),
   mcpSetActiveProject: mocks.mcpSetActiveProject,
-}));
-vi.mock("@/lib/auto-commit", () => ({
-  flushAutoCommit: mocks.flushAutoCommit,
-  scheduleAutoCommit: mocks.scheduleAutoCommit,
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({
@@ -98,8 +92,6 @@ function deferred<T>() {
 
 beforeEach(async () => {
   mocks.writeFileContent.mockReset().mockResolvedValue(undefined);
-  mocks.flushAutoCommit.mockReset();
-  mocks.scheduleAutoCommit.mockReset();
   await useFilesStore.getState().closeProject();
   mocks.notifyError.mockReset();
   mocks.logError.mockReset().mockResolvedValue(undefined);
@@ -107,8 +99,6 @@ beforeEach(async () => {
   mocks.toastInfoUnique.mockReset();
   mocks.toastSuccess.mockReset();
   mocks.writeFileContent.mockReset().mockResolvedValue(undefined);
-  mocks.flushAutoCommit.mockReset();
-  mocks.scheduleAutoCommit.mockReset();
   mocks.getProject.mockReset().mockResolvedValue({ name: "Paper", kind: "", main_doc: "main.tex" });
   mocks.createProjectFromTemplate.mockReset().mockResolvedValue("templated-project");
   mocks.importOverleafProjectCmd.mockReset().mockResolvedValue("imported-project");
@@ -130,6 +120,7 @@ beforeEach(async () => {
       engine: "latex",
       kind: "",
       allow_shell_escape: false,
+      checkpoints: { mode: "engine_dependencies", always_include: [], ignored: [] },
     },
     engine: LATEX_ENGINE,
   }));
@@ -202,6 +193,7 @@ describe("transactional project transitions", () => {
         engine: "latexmk",
         kind: "document",
         allow_shell_escape: false,
+        checkpoints: { mode: "engine_dependencies", always_include: [], ignored: [] },
       },
       engine,
     });
@@ -225,6 +217,7 @@ describe("transactional project transitions", () => {
         engine: "latex",
         kind: "",
         allow_shell_escape: false,
+        checkpoints: { mode: "engine_dependencies", always_include: [], ignored: [] },
       },
       engine: LATEX_ENGINE,
     });
@@ -267,6 +260,7 @@ describe("transactional project transitions", () => {
         engine: "latex",
         kind: "",
         allow_shell_escape: false,
+        checkpoints: { mode: "engine_dependencies", always_include: [], ignored: [] },
       },
       engine: LATEX_ENGINE,
     });
@@ -308,6 +302,7 @@ describe("transactional project transitions", () => {
         engine: "latex",
         kind: "",
         allow_shell_escape: false,
+        checkpoints: { mode: "engine_dependencies", always_include: [], ignored: [] },
       },
       engine: LATEX_ENGINE,
     });
@@ -356,6 +351,7 @@ describe("transactional project transitions", () => {
         engine: "latex",
         kind: "",
         allow_shell_escape: false,
+        checkpoints: { mode: "engine_dependencies", always_include: [], ignored: [] },
       },
       engine: LATEX_ENGINE,
     });
@@ -453,7 +449,7 @@ describe("transactional project transitions", () => {
       ),
     );
     const restoring =
-      useFilesStore.getState().restoreFromGit("restored-oid");
+      useFilesStore.getState().restoreFromGit("project", "restored-oid");
     await Promise.resolve();
     expect(mocks.gitRestore).not.toHaveBeenCalled();
 
@@ -496,7 +492,7 @@ describe("transactional project transitions", () => {
     });
   });
 
-  it("flushes an unsaved buffer before restoring Git history", async () => {
+  it("flushes an unsaved buffer before restoring a Source Control version", async () => {
     const write = deferred<void>();
     mocks.writeFileContent.mockReturnValue(write.promise);
     useFilesStore.setState({
@@ -508,7 +504,9 @@ describe("transactional project transitions", () => {
       activePath: "main.tex",
     });
 
-    const restoring = useFilesStore.getState().restoreFromGit("restored-oid");
+    const restoring = useFilesStore
+      .getState()
+      .restoreFromGit("project", "restored-oid");
     await vi.waitFor(() =>
       expect(mocks.writeFileContent).toHaveBeenCalledWith(
         "project",
@@ -522,6 +520,77 @@ describe("transactional project transitions", () => {
     write.resolve();
     await restoring;
     expect(mocks.gitRestore).toHaveBeenCalledWith("project", "restored-oid", 0);
+  });
+
+  it("does not run a queued Git restore against a different open project", async () => {
+    const firstRestore = deferred<{
+      projectId: string;
+      revision: number;
+      reason: string;
+      filesChanged: boolean;
+      mutationGeneration: number;
+      project: {
+        name: string;
+        main_doc: string;
+        engine: string;
+        kind: string;
+        allow_shell_escape: boolean;
+        checkpoints: {
+          mode: string;
+          always_include: string[];
+          ignored: string[];
+        };
+      };
+      engine: typeof LATEX_ENGINE;
+    }>();
+    mocks.gitRestore.mockReturnValueOnce(firstRestore.promise);
+    useFilesStore.setState({ projectId: "project-a", loading: false });
+
+    const blocking = useFilesStore
+      .getState()
+      .restoreFromGit("project-a", "blocking-oid");
+    await vi.waitFor(() =>
+      expect(mocks.gitRestore).toHaveBeenCalledWith(
+        "project-a",
+        "blocking-oid",
+        0,
+      ),
+    );
+    const stale = useFilesStore
+      .getState()
+      .restoreFromGit("project-a", "stale-oid");
+    useFilesStore.setState({ projectId: "project-b", loading: false });
+
+    firstRestore.resolve({
+      projectId: "project-a",
+      revision: ++projectStateRevision,
+      reason: "git-restore",
+      filesChanged: true,
+      mutationGeneration: 1,
+      project: {
+        name: "Project A",
+        main_doc: "main.tex",
+        engine: "latex",
+        kind: "",
+        allow_shell_escape: false,
+        checkpoints: {
+          mode: "engine_dependencies",
+          always_include: [],
+          ignored: [],
+        },
+      },
+      engine: LATEX_ENGINE,
+    });
+    await blocking;
+
+    await expect(stale).rejects.toThrow(
+      "The open project changed before the Git restore started.",
+    );
+    expect(mocks.gitRestore).not.toHaveBeenCalledWith(
+      "project-b",
+      "stale-oid",
+      expect.any(Number),
+    );
   });
 
   it("writes every dirty buffer before closing and only then clears project state", async () => {
@@ -562,7 +631,6 @@ describe("transactional project transitions", () => {
       "notes changes",
       expect.any(Number),
     );
-    expect(mocks.flushAutoCommit).toHaveBeenCalledTimes(1);
     expect(useFilesStore.getState().projectId).toBeNull();
     expect(useFilesStore.getState().files).toEqual({});
   });
@@ -646,6 +714,53 @@ describe("transactional project transitions", () => {
     expect(useFilesStore.getState().files["main.tex"].content).toBe("replacement content");
   });
 
+  it("rejects queued Git mutations when their clicked project is no longer active", async () => {
+    const write = deferred<void>();
+    mocks.writeFileContent.mockReturnValue(write.promise);
+    mocks.getProject.mockResolvedValue({
+      name: "Replacement",
+      kind: "",
+      main_doc: "main.tex",
+    });
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+    mocks.readFileContent.mockResolvedValue("replacement content");
+    useFilesStore.setState({
+      projectId: "old-project",
+      files: { "main.tex": { content: "unsaved", dirty: true } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+
+    const opening = useFilesStore.getState().openProject("replacement");
+    await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(1));
+    const pulling = useFilesStore.getState().pullFromGit("old-project");
+    const discarding = useFilesStore
+      .getState()
+      .discardFromGit("old-project", "main.tex");
+
+    write.resolve();
+    await opening;
+    const results = await Promise.allSettled([pulling, discarding]);
+
+    expect(results).toEqual([
+      {
+        status: "rejected",
+        reason: expect.objectContaining({
+          message: expect.stringMatching(/project changed before the Git pull/u),
+        }),
+      },
+      {
+        status: "rejected",
+        reason: expect.objectContaining({
+          message: expect.stringMatching(/project changed before discarding Git changes/u),
+        }),
+      },
+    ]);
+    expect(useFilesStore.getState().projectId).toBe("replacement");
+    expect(mocks.gitPull).not.toHaveBeenCalled();
+    expect(mocks.gitDiscard).not.toHaveBeenCalled();
+  });
+
   it("rejects pending external approvals when opening a different project", async () => {
     mocks.getProject.mockResolvedValue({
       name: "Replacement",
@@ -692,7 +807,6 @@ describe("transactional project transitions", () => {
       dirty: true,
     });
     expect(useFilesStore.getState().loading).toBe(false);
-    expect(mocks.flushAutoCommit).not.toHaveBeenCalled();
     expect(mocks.notifyError).toHaveBeenCalledWith(
       "save before closing project",
       failure,
@@ -826,8 +940,8 @@ describe("clean-buffer saves", () => {
     await useFilesStore.getState().saveFile("main.tex");
     await useFilesStore.getState().saveActive();
 
-    // A no-op write bumps the project mtime, invalidates the library
-    // thumbnail cache, and schedules a phantom auto-commit.
+    // A no-op write bumps the project mtime and invalidates the library
+    // thumbnail cache.
     expect(mocks.writeFileContent).not.toHaveBeenCalled();
   });
 
@@ -895,7 +1009,6 @@ describe("transactional quit flush", () => {
       "notes changes",
       expect.any(Number),
     );
-    expect(mocks.flushAutoCommit).toHaveBeenCalledTimes(1);
     expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
     expect(useFilesStore.getState().files["notes.tex"].dirty).toBe(false);
     // Quitting must not tear down project state itself; the window closes next.
@@ -919,7 +1032,6 @@ describe("transactional quit flush", () => {
       content: "must survive",
       dirty: true,
     });
-    expect(mocks.flushAutoCommit).not.toHaveBeenCalled();
   });
 
   it("resolves without writing when no project is open", async () => {

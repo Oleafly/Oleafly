@@ -24,6 +24,10 @@ describe("backend-port protocol contract", () => {
     expect(new Set(BACKEND_CAPABILITIES).size).toBe(BACKEND_CAPABILITIES.length);
   });
 
+  it("requires a backend that implements Checkpoints", () => {
+    expect(BACKEND_CAPABILITIES).toContain("checkpoints");
+  });
+
   it("matches the Rust protocol version, so drift fails the suite", () => {
     const match = rustSource.match(/PROTOCOL_VERSION:\s*u32\s*=\s*(\d+)/);
     expect(match).not.toBeNull();

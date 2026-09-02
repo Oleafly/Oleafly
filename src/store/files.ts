@@ -38,7 +38,6 @@ import {
   mcpSetActiveProject,
 } from "@/lib/tauri";
 import { UNKNOWN_ENGINE } from "@/lib/document-engine";
-import { flushAutoCommit, scheduleAutoCommit } from "@/lib/auto-commit";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { scanImportCompatibility } from "@oleafly/latex";
@@ -213,9 +212,9 @@ interface FilesStore {
   createMarkdownProject: (name: string) => Promise<void>;
   renameProject: (name: string) => Promise<void>;
   createFromTemplate: (name: string, templateId: string, color?: string) => Promise<string>;
-  restoreFromGit: (oid: string) => Promise<void>;
-  pullFromGit: () => Promise<string>;
-  discardFromGit: (path: string) => Promise<void>;
+  restoreFromGit: (expectedProjectId: string, oid: string) => Promise<void>;
+  pullFromGit: (expectedProjectId: string) => Promise<string>;
+  discardFromGit: (expectedProjectId: string, path: string) => Promise<void>;
 
   refreshTree: () => Promise<void>;
   openFile: (path: string) => Promise<void>;
@@ -646,7 +645,6 @@ async function prepareProjectSwitch(
       );
       return null;
     }
-    flushAutoCommit();
   }
   if (!shouldContinue()) {
     set({ loading: false });
@@ -991,7 +989,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         );
         return;
       }
-      flushAutoCommit();
     }
 
     openSeq++;
@@ -1012,7 +1009,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (!projectId) return;
     flushWysiwygPendingEdits();
     await flushDirtyBuffers(projectId, get);
-    flushAutoCommit();
   }),
 
   createProject: async (name) => {
@@ -1159,8 +1155,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const state = files[path];
     if (!projectId || !state) return;
     // A clean buffer has nothing to persist. Writing it anyway bumps the
-    // project mtime, invalidates the library thumbnail cache, and schedules
-    // a phantom auto-commit for a no-op.
+    // project mtime and invalidates the library thumbnail cache for a no-op.
     if (!state.dirty) return;
     const written = state.content;
     const reloadRevision = fileReloadRevision;
@@ -1194,7 +1189,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     } else {
       pendingSaves.delete(path);
     }
-    scheduleAutoCommit(projectId);
   },
 
   createFile: async (path, isDir, conflictStrategy = "error") => {
@@ -1744,39 +1738,48 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   },
 
-  restoreFromGit: (oid) => enqueueProjectTransition(async () => {
-    const { projectId } = get();
-    if (!projectId) return;
+  restoreFromGit: (expectedProjectId, oid) => enqueueProjectTransition(async () => {
+    if (get().projectId !== expectedProjectId) {
+      throw new Error("The open project changed before the Git restore started.");
+    }
 
     set({ loading: true });
     try {
-      const expectedGeneration = await get().prepareExternalMutation(projectId);
-      if (get().projectId !== projectId) return;
+      const expectedGeneration = await get().prepareExternalMutation(expectedProjectId);
+      if (get().projectId !== expectedProjectId) return;
 
-      const event = await gitRestore(projectId, oid, expectedGeneration);
-      if (get().projectId !== projectId) return;
+      const event = await gitRestore(expectedProjectId, oid, expectedGeneration);
+      if (get().projectId !== expectedProjectId) return;
       await get().applyProjectStateChanged(event);
     } finally {
-      if (get().projectId === projectId && get().loading) {
+      if (get().projectId === expectedProjectId && get().loading) {
         set({ loading: false });
       }
     }
   }),
 
-  pullFromGit: () => enqueueProjectTransition(async () => {
-    const { projectId } = get();
-    if (!projectId) return "";
-    const expectedGeneration = await get().prepareExternalMutation(projectId);
-    const result = await gitPull(projectId, expectedGeneration);
+  pullFromGit: (expectedProjectId) => enqueueProjectTransition(async () => {
+    if (get().projectId !== expectedProjectId) {
+      throw new Error("The open project changed before the Git pull started.");
+    }
+    const expectedGeneration = await get().prepareExternalMutation(expectedProjectId);
+    if (get().projectId !== expectedProjectId) {
+      throw new Error("The open project changed before the Git pull started.");
+    }
+    const result = await gitPull(expectedProjectId, expectedGeneration);
     await get().applyProjectStateChanged(result.state);
     return result.message;
   }),
 
-  discardFromGit: (path) => enqueueProjectTransition(async () => {
-    const { projectId } = get();
-    if (!projectId) return;
-    const expectedGeneration = await get().prepareExternalMutation(projectId);
-    const event = await gitDiscard(projectId, path, expectedGeneration);
+  discardFromGit: (expectedProjectId, path) => enqueueProjectTransition(async () => {
+    if (get().projectId !== expectedProjectId) {
+      throw new Error("The open project changed before discarding Git changes.");
+    }
+    const expectedGeneration = await get().prepareExternalMutation(expectedProjectId);
+    if (get().projectId !== expectedProjectId) {
+      throw new Error("The open project changed before discarding Git changes.");
+    }
+    const event = await gitDiscard(expectedProjectId, path, expectedGeneration);
     await get().applyProjectStateChanged(event);
   }),
 }));
@@ -1809,8 +1812,8 @@ if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", flushPendingSaves);
 
   if (E2E_HOOKS) {
-    // E2E / devtools hook: read-only commit count, so a test can wait for a
-    // fire-and-forget auto-commit to land without opening the History modal.
+    // E2E / devtools hook for observing explicit Source Control commits without
+    // opening the Source Control panel.
     (window as unknown as { __gitCommitCount?: () => Promise<number> }).__gitCommitCount =
       async () => {
         const id = useFilesStore.getState().projectId;

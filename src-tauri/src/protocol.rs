@@ -3,11 +3,12 @@ use serde::Serialize;
 // Mirrors packages/backend-port/src/index.ts. The vitest conformance test
 // (src/lib/backend-port-protocol.test.ts) parses this file and fails on any
 // drift between the two, so bump both sides together.
-pub const PROTOCOL_VERSION: u32 = 2;
-pub const CAPABILITIES: [&str; 10] = [
+pub const PROTOCOL_VERSION: u32 = 3;
+pub const CAPABILITIES: [&str; 11] = [
     "agent-server",
     "agent-stream",
     "chats",
+    "checkpoints",
     "compile",
     "git",
     "initial-state",

@@ -78,6 +78,11 @@ const DEFAULT_CFG: AppConfig = {
   ai_custom_providers: [],
   ai_personas: [],
   ai_starter_personas_seeded: false,
+  checkpoint_defaults: {
+    mode: "engine_dependencies",
+    always_include: [],
+    ignored: [],
+  },
   mcp_enabled: false,
   mcp_port: 5323,
   mcp_read_only: false,

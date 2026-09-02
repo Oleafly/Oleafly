@@ -97,6 +97,7 @@ describe("Settings Data Storage recycle bin", () => {
           has_preview: false,
           exports: [],
           forked_from: null,
+          recovery_pending: false,
         },
       ],
       refreshProjects: mocks.refreshProjects,

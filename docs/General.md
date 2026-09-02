@@ -11,7 +11,7 @@ state without changing the source format.
 - Create LaTeX, Typst, and Markdown projects from editable templates.
 - Nested source tree with create, rename, duplicate, delete, and main-document
   selection operations.
-- Autosave with dirty-state tracking and compile checkpoints.
+- Autosave with dirty-state and compile-result freshness tracking.
 - Command palette and omnibar for project and document actions.
 - Light and dark themes using shared design tokens.
 - Settings for engines, language servers, AI providers, MCP, shortcuts, and
@@ -21,9 +21,9 @@ state without changing the source format.
 
 ## Local-first policy
 
-Project files, Git history, compiled artifacts, indexing, preview rendering,
-spellchecking, and preflight remain local unless the user selects a network
-operation. The app has no mandatory account or telemetry requirement.
+Project files, optional Git history, compiled artifacts, indexing, preview
+rendering, spellchecking, and preflight remain local unless the user selects a
+network operation. The app has no mandatory account or telemetry requirement.
 
 ## Engineering anchors
 

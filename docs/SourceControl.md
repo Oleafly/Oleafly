@@ -1,14 +1,14 @@
 # Source control
 
-Every Oleafly project is a normal Git repository. The application adds a
-desktop workflow around Git; it does not introduce a proprietary project
-format or hide the source from command-line tools.
+An Oleafly project can use a normal Git repository. Source Control starts only
+when you choose **Initialize Repository**, publish to GitHub, or open an
+imported project that already contains a repository. Oleafly does not hide the
+source from command-line tools.
 
 ## Product surface
 
-- Automatic commits after successful compiles and quiet editing periods.
-- Commit timeline with unified and side-by-side diffs.
-- Restore an individual file from a selected commit.
+- Explicit repository initialization and commits.
+- Unified and side-by-side diffs for changes in the working tree.
 - Stage, discard, commit, push, and pull from the source-control panel.
 - Ahead and behind indicators for the configured remote.
 - Publish a project to GitHub or connect an existing repository.
@@ -20,6 +20,10 @@ format or hide the source from command-line tools.
   operations.
 - Destructive operations are explicit and preserve the application's approval
   policy.
+- Opening, saving, compiling, and closing a project never initializes Git or
+  creates a commit.
+- `.oleafly/` is excluded through the repository's private Git metadata. Oleafly
+  does not edit the project's `.gitignore` when Source Control is initialized.
 - Git authentication tokens are not passed through shell command arguments.
 - The Git transport rejects helper syntax that could execute an unexpected
   command.

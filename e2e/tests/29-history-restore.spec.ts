@@ -1,24 +1,28 @@
 import { test, expect } from "../fixtures";
 import {
-  ensureGithubConnected,
+  createBlankProject,
   fillCommandPalette,
-  openProject,
   openRailTab,
   pressGlobal,
   typeInEditorAfter,
 } from "../helpers";
 
-// Commits need a connected GitHub account (the panel is gated), so this is
-// opt-in like spec 12.
+// Source Control initialization and commits are local operations. No GitHub
+// account or remote is needed for this restore flow.
 
-const TOKEN = process.env.E2E_GITHUB_TOKEN;
 // Unique per run so re-runs against a live app never collide.
 const RUN = Date.now().toString(36);
 const BASE = `histbase${RUN}`;
 const EDIT = `histedit${RUN}`;
 
-// Caller must already have the Git rail open so compile auto-commit is
-// suspended (see auto-commit.ts `sourceControlOpen`).
+async function initializeRepository(page: import("../helpers").Page) {
+  await openRailTab(page, "Source Control");
+  const initialize = page.getByText("Initialize Repository", { exact: true });
+  await expect(initialize).toBeVisible({ timeout: 10_000 });
+  await initialize.click();
+  await expect(page.getByTestId("source-control-actions")).toBeVisible({ timeout: 15_000 });
+}
+
 async function commitAll(page: import("../helpers").Page, message: string) {
   await openRailTab(page, "Source Control");
   // Stage all is hover-revealed (opacity-0): the plugin's own click waits for
@@ -95,15 +99,10 @@ async function restoreCommit(page: import("../helpers").Page, message: string) {
 }
 
 test("commit twice, restore the first commit, then roll forward again", async ({ tauriPage }) => {
-  test.skip(!TOKEN, "set E2E_GITHUB_TOKEN to run");
   test.setTimeout(300_000);
-  await openProject(tauriPage, "E2E Doc");
+  await createBlankProject(tauriPage, `Git restore ${RUN}`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-
-  // Open Git first so compile auto-commit is suspended (auto-commit.ts skips
-  // while the source-control rail is active). Otherwise a successful compile
-  // races ahead and leaves nothing for us to stage.
-  await ensureGithubConnected(tauriPage);
+  await initializeRepository(tauriPage);
 
   await typeInEditorAfter(tauriPage, "here.", ` ${BASE}`);
   await pressGlobal(tauriPage, "Enter", { meta: true });

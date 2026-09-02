@@ -1037,11 +1037,19 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         )
         .catch(() => {});
       if (checkpoint) notifyCompileSucceeded(checkpoint);
-      // A successful compile is the natural checkpoint: auto-commit the
-      // project (compiling already saved the active file first).
-      if (checkpoint && capturedProjectId) {
-        const pid = capturedProjectId;
-        await import("@/lib/auto-commit").then((m) => m.autoCommitNow(pid)).catch(() => {});
+      if (
+        checkpoint &&
+        result.checkpoint_publication?.status === "skipped"
+      ) {
+        const publication = result.checkpoint_publication;
+        toast.infoUnique(
+          `checkpoint-publication-${publication.reason}`,
+          `${publication.message} ${publication.suggestion}`,
+          {
+            label: "View Checkpoints",
+            onClick: () => useSettingsStore.getState().setCheckpointsOpen(true),
+          },
+        );
       }
       return result;
     } catch (e) {

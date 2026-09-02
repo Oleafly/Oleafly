@@ -290,7 +290,7 @@ export function registerPaletteCommands() {
   palette({
     id: "palette.history",
     group: "Tools",
-    label: "History",
+    label: "Git history",
     icon: () => <List className="size-4" />,
     order: 310,
     run: () => useSettingsStore.getState().setHistoryOpen(true),

@@ -88,7 +88,6 @@ import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { cn, isWindows } from "@/lib/utils";
-import { cancelAutoCommit } from "@/lib/auto-commit";
 import {
   recycleProject,
   duplicateProject,
@@ -315,6 +314,13 @@ export function Library() {
     },
   ) => {
     const { Item, Sub, SubTrigger, SubContent } = kit;
+    if (p.recovery_pending) {
+      return (
+        <Item onClick={() => void openProject(p.id)}>
+          <FileText className="mr-2 size-4" /> Open to recover
+        </Item>
+      );
+    }
     return (
       <>
         <Item onClick={() => void openProject(p.id)}>
@@ -379,7 +385,6 @@ export function Library() {
     // This also makes repeated Enter/click events harmless.
     setDeleteTarget(null);
     try {
-      cancelAutoCommit(target.id);
       await recycleProject(target.id);
       await refreshProjects();
       toast.success(`Moved "${target.name}" to the Recycle Bin.`);
@@ -445,6 +450,7 @@ export function Library() {
   const visibleProjects = useMemo(
     () =>
       projects.filter((project) => {
+        if (project.recovery_pending) return true;
         const bookmarked = favs.includes(project.id);
         if (
           filters.metadata.trim() &&
@@ -902,14 +908,29 @@ export function Library() {
                     <Book
                       title={p.name}
                       color={projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR)}
-                      date={projectModifiedLabel(p.updated_at)}
-                      engine={projectEngineLabel(p.engine, p.main_doc)}
+                      date={
+                        p.recovery_pending
+                          ? "Open to recover"
+                          : projectModifiedLabel(p.updated_at)
+                      }
+                      engine={
+                        p.recovery_pending
+                          ? "Recovery required"
+                          : projectEngineLabel(p.engine, p.main_doc)
+                      }
                       forkedFrom={p.forked_from}
-                      kind={p.kind || "document"}
+                      kind={p.recovery_pending ? "Open to recover" : p.kind || "document"}
+                      openLabel={
+                        p.recovery_pending
+                          ? `Open to recover ${p.name}`
+                          : undefined
+                      }
                       starred={favs.includes(p.id)}
-                      onStarToggle={() => toggleFav(p.id)}
+                      onStarToggle={
+                        p.recovery_pending ? undefined : () => toggleFav(p.id)
+                      }
                       menu={
-                        <DropdownMenu>
+                        p.recovery_pending ? null : <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
@@ -931,8 +952,16 @@ export function Library() {
                         </DropdownMenu>
                       }
                       onClick={() => void openProject(p.id)}
-                      onPreviewRequest={() => hoverPreview && loadThumb(p.id, p.updated_at)}
-                      preview={hoverPreview ? thumbs[p.id] : undefined}
+                      onPreviewRequest={
+                        p.recovery_pending
+                          ? undefined
+                          : () => hoverPreview && loadThumb(p.id, p.updated_at)
+                      }
+                      preview={
+                        !p.recovery_pending && hoverPreview
+                          ? thumbs[p.id]
+                          : undefined
+                      }
                       width={180}
                     />
                   </div>
@@ -961,6 +990,7 @@ export function Library() {
               <span />
             </div>
             {visibleProjects.map((p) => {
+              const recoveryPending = p.recovery_pending;
               const color = projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR);
               const starred = favs.includes(p.id);
               const forkSource = p.forked_from
@@ -973,10 +1003,14 @@ export function Library() {
                     <div className="group grid min-h-[5.25rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-3 transition-colors last:border-b-0 hover:bg-accent/35 sm:grid-cols-[minmax(0,1fr)_9rem_auto] lg:grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_6.5rem] lg:gap-4 lg:px-4">
                       <button
                         type="button"
-                        aria-label={`Open ${p.name}`}
+                        aria-label={
+                          recoveryPending
+                            ? `Open to recover ${p.name}`
+                            : `Open ${p.name}`
+                        }
                         onClick={() => void openProject(p.id)}
                         onMouseEnter={() => {
-                          if (!hoverPreview) return;
+                          if (recoveryPending || !hoverPreview) return;
                           setPreviewProjectId(p.id);
                           loadThumb(p.id, p.updated_at);
                         }}
@@ -986,7 +1020,7 @@ export function Library() {
                           )
                         }
                         onFocus={() => {
-                          if (!hoverPreview) return;
+                          if (recoveryPending || !hoverPreview) return;
                           setPreviewProjectId(p.id);
                           loadThumb(p.id, p.updated_at);
                         }}
@@ -1003,6 +1037,7 @@ export function Library() {
                           style={{ backgroundColor: color }}
                         >
                           {hoverPreview &&
+                          !recoveryPending &&
                           previewProjectId === p.id &&
                           thumbs[p.id] ? (
                             <img
@@ -1017,22 +1052,36 @@ export function Library() {
                           <span className="block truncate text-sm font-medium text-foreground">
                             {p.name}
                           </span>
-                          <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
-                            {projectEngineLabel(p.engine, p.main_doc)} · {p.kind || "document"}
-                          </span>
+                          {recoveryPending ? (
+                            <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">
+                              Open to recover
+                            </span>
+                          ) : (
+                            <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
+                              {projectEngineLabel(p.engine, p.main_doc)} · {p.kind || "document"}
+                            </span>
+                          )}
                         </span>
                       </button>
                       <span className="hidden text-xs capitalize text-muted-foreground lg:block">
-                        {p.kind || "document"}
+                        {recoveryPending ? "Recovery" : p.kind || "document"}
                       </span>
                       <span className="hidden text-xs text-muted-foreground lg:block">
-                        {projectEngineLabel(p.engine, p.main_doc)}
+                        {recoveryPending
+                          ? "Metadata unavailable"
+                          : projectEngineLabel(p.engine, p.main_doc)}
                       </span>
                       <span className="hidden text-xs text-muted-foreground sm:block">
-                        {projectModifiedLabel(p.updated_at)}
+                        {recoveryPending
+                          ? "Restore interrupted"
+                          : projectModifiedLabel(p.updated_at)}
                       </span>
                       <span className="flex items-center justify-end gap-0.5">
-                        {forkSource ? (
+                        {recoveryPending ? (
+                          <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                            Recovery required
+                          </span>
+                        ) : forkSource ? (
                           <Tooltip label={`Forked from ${forkSource}`}>
                             <span
                               role="img"
@@ -1043,7 +1092,7 @@ export function Library() {
                             </span>
                           </Tooltip>
                         ) : null}
-                        <Tooltip
+                        {!recoveryPending ? <Tooltip
                           label={
                             p.has_preview
                               ? "Preview PDF"
@@ -1059,8 +1108,8 @@ export function Library() {
                           >
                             <Eye aria-hidden className="size-4" />
                           </button>
-                        </Tooltip>
-                        <Tooltip label={starred ? "Remove from favorites" : "Add to favorites"}>
+                        </Tooltip> : null}
+                        {!recoveryPending ? <Tooltip label={starred ? "Remove from favorites" : "Add to favorites"}>
                           <button
                             type="button"
                             onClick={() => toggleFav(p.id)}
@@ -1080,8 +1129,8 @@ export function Library() {
                               <Bookmark aria-hidden className="size-4" />
                             )}
                           </button>
-                        </Tooltip>
-                        <DropdownMenu>
+                        </Tooltip> : null}
+                        {!recoveryPending ? <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
@@ -1099,7 +1148,7 @@ export function Library() {
                               SubContent: DropdownMenuSubContent,
                             })}
                           </DropdownMenuContent>
-                        </DropdownMenu>
+                        </DropdownMenu> : null}
                       </span>
                     </div>
                   </ContextMenuTrigger>
@@ -1316,7 +1365,7 @@ export function Library() {
               </Button>
             </div>
             <p className="mb-3 text-xs text-muted-foreground">
-              Copies <span className="font-medium text-foreground">{forkTarget.name}</span> and its full history into a new project.
+              Copies <span className="font-medium text-foreground">{forkTarget.name}</span> and its Git history into a new project. Checkpoints start empty.
             </p>
             <div className="flex items-center gap-2">
               <Input

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   Copy,
@@ -18,6 +18,13 @@ import { useFilesStore } from "@/store/files";
 import { gitLog, gitReadVersionLabels, gitSetVersionLabel, type GitCommit } from "@/lib/tauri";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { notifyError } from "@/lib/toast";
+
+type HistoryActionToken = {
+  projectId: string;
+  session: number;
+  domain: string;
+  request: number;
+};
 
 function deriveDefaultLabels(commits: GitCommit[]): Map<string, string> {
   const chronological = [...commits].reverse();
@@ -47,44 +54,174 @@ export function HistoryModal() {
   const [confirmOid, setConfirmOid] = useState<string | null>(null);
   const [editingOid, setEditingOid] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
-  const [labelBusyOid, setLabelBusyOid] = useState<string | null>(null);
+  const [labelBusyOids, setLabelBusyOids] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [copiedOid, setCopiedOid] = useState<string | null>(null);
+  const loadRequest = useRef(0);
+  const sessionRequest = useRef(0);
+  const actionRequests = useRef(new Map<string, number>());
+  const copyTimer = useRef<number | null>(null);
+  const renderedIdentity = useRef({ open, projectId });
+  const renderIdentityChanged =
+    renderedIdentity.current.open !== open ||
+    renderedIdentity.current.projectId !== projectId;
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, () => setOpen(false));
 
-  useEffect(() => {
-    if (!open || !projectId) return;
-    void gitLog(projectId).then(setCommits).catch(() => setCommits([]));
-    void gitReadVersionLabels(projectId).then(setLabels).catch(() => setLabels({}));
+  const isCurrentSession = useCallback(
+    (targetProjectId: string | null, session: number) =>
+      session === sessionRequest.current &&
+      useFilesStore.getState().projectId === targetProjectId &&
+      useSettingsStore.getState().historyOpen,
+    [],
+  );
+
+  const beginAction = useCallback(
+    (targetProjectId: string, domain: string): HistoryActionToken | null => {
+      if (renderIdentityChanged) return null;
+      const request = (actionRequests.current.get(domain) ?? 0) + 1;
+      actionRequests.current.set(domain, request);
+      return {
+        projectId: targetProjectId,
+        session: sessionRequest.current,
+        domain,
+        request,
+      };
+    },
+    [renderIdentityChanged],
+  );
+
+  const isCurrentAction = useCallback(
+    (token: HistoryActionToken) =>
+      token.request === actionRequests.current.get(token.domain) &&
+      isCurrentSession(token.projectId, token.session),
+    [isCurrentSession],
+  );
+
+  const loadHistory = useCallback(
+    (targetProjectId: string | null, session: number) => {
+      if (!isCurrentSession(targetProjectId, session)) return;
+      const request = ++loadRequest.current;
+      if (!targetProjectId) {
+        setCommits([]);
+        setLabels({});
+        return;
+      }
+      void gitLog(targetProjectId)
+        .then((nextCommits) => {
+          if (
+            request === loadRequest.current &&
+            isCurrentSession(targetProjectId, session)
+          ) {
+            setCommits(nextCommits);
+          }
+        })
+        .catch(() => {
+          if (
+            request === loadRequest.current &&
+            isCurrentSession(targetProjectId, session)
+          ) {
+            setCommits([]);
+          }
+        });
+      void gitReadVersionLabels(targetProjectId)
+        .then((nextLabels) => {
+          if (
+            request === loadRequest.current &&
+            isCurrentSession(targetProjectId, session)
+          ) {
+            setLabels(nextLabels);
+          }
+        })
+        .catch(() => {
+          if (
+            request === loadRequest.current &&
+            isCurrentSession(targetProjectId, session)
+          ) {
+            setLabels({});
+          }
+        });
+    },
+    [isCurrentSession],
+  );
+
+  useLayoutEffect(() => {
+    renderedIdentity.current = { open, projectId };
+    const session = ++sessionRequest.current;
+    actionRequests.current.clear();
+    loadRequest.current += 1;
+    if (copyTimer.current !== null) {
+      window.clearTimeout(copyTimer.current);
+      copyTimer.current = null;
+    }
+    setCommits([]);
+    setLabels({});
+    setBusy(false);
     setConfirmOid(null);
     setEditingOid(null);
-  }, [open, projectId]);
+    setEditValue("");
+    setLabelBusyOids(new Set());
+    setCopiedOid(null);
+    if (open) void loadHistory(projectId, session);
+    return () => {
+      sessionRequest.current += 1;
+      actionRequests.current.clear();
+      loadRequest.current += 1;
+      if (copyTimer.current !== null) {
+        window.clearTimeout(copyTimer.current);
+        copyTimer.current = null;
+      }
+    };
+  }, [open, projectId, loadHistory]);
 
-  const defaultLabels = useMemo(() => deriveDefaultLabels(commits), [commits]);
+  const visibleCommits = renderIdentityChanged ? [] : commits;
+  const visibleLabels = renderIdentityChanged ? {} : labels;
+  const defaultLabels = useMemo(
+    () => deriveDefaultLabels(visibleCommits),
+    [visibleCommits],
+  );
 
   if (!open) return null;
 
   const restore = async (oid: string) => {
+    if (!projectId) return;
+    const action = beginAction(projectId, "restore");
+    if (!action || !isCurrentAction(action)) return;
     setBusy(true);
     try {
-      await restoreFromGit(oid);
+      await restoreFromGit(action.projectId, oid);
+      if (!isCurrentAction(action)) return;
       setOpen(false);
+    } catch (error) {
+      if (!isCurrentAction(action)) return;
+      notifyError(
+        "restore Git version",
+        error,
+        "Could not restore that Git version.",
+      );
     } finally {
-      setBusy(false);
-      setConfirmOid(null);
+      if (isCurrentAction(action)) {
+        setBusy(false);
+        setConfirmOid(null);
+      }
     }
   };
 
   const startEdit = (c: GitCommit) => {
+    if (renderIdentityChanged) return;
     setEditingOid(c.oid);
-    setEditValue(labels[c.oid] ?? defaultLabels.get(c.oid) ?? "");
+    setEditValue(visibleLabels[c.oid] ?? defaultLabels.get(c.oid) ?? "");
   };
 
   const saveLabel = async (oid: string) => {
     if (!projectId) return;
+    const action = beginAction(projectId, `label:${oid}`);
+    if (!action || !isCurrentAction(action)) return;
     const value = editValue.trim();
-    setLabelBusyOid(oid);
+    setLabelBusyOids((current) => new Set(current).add(oid));
     try {
-      await gitSetVersionLabel(projectId, oid, value);
+      await gitSetVersionLabel(action.projectId, oid, value);
+      if (!isCurrentAction(action)) return;
       setLabels((prev) => {
         const next = { ...prev };
         if (value) next[oid] = value;
@@ -92,18 +229,28 @@ export function HistoryModal() {
         return next;
       });
     } catch (e) {
+      if (!isCurrentAction(action)) return;
       notifyError("save version label", e, "Could not save that label.");
     } finally {
-      setEditingOid(null);
-      setLabelBusyOid(null);
+      if (isCurrentAction(action)) {
+        setEditingOid((current) => (current === oid ? null : current));
+        setLabelBusyOids((current) => {
+          const next = new Set(current);
+          next.delete(oid);
+          return next;
+        });
+      }
     }
   };
 
   const removeLabel = async (oid: string) => {
     if (!projectId) return;
-    setLabelBusyOid(oid);
+    const action = beginAction(projectId, `label:${oid}`);
+    if (!action || !isCurrentAction(action)) return;
+    setLabelBusyOids((current) => new Set(current).add(oid));
     try {
-      await gitSetVersionLabel(projectId, oid, "");
+      await gitSetVersionLabel(action.projectId, oid, "");
+      if (!isCurrentAction(action)) return;
       setLabels((prev) => {
         const next = { ...prev };
         delete next[oid];
@@ -111,29 +258,44 @@ export function HistoryModal() {
       });
       if (editingOid === oid) setEditingOid(null);
     } catch (e) {
+      if (!isCurrentAction(action)) return;
       notifyError("remove version label", e, "Could not remove that label.");
     } finally {
-      setLabelBusyOid(null);
+      if (isCurrentAction(action)) {
+        setLabelBusyOids((current) => {
+          const next = new Set(current);
+          next.delete(oid);
+          return next;
+        });
+      }
     }
   };
 
   const copyCommitId = async (c: GitCommit) => {
+    if (!projectId) return;
+    const action = beginAction(projectId, "copy");
+    if (!action || !isCurrentAction(action)) return;
     try {
       await navigator.clipboard.writeText(c.oid);
+      if (!isCurrentAction(action)) return;
       setCopiedOid(c.oid);
-      window.setTimeout(() => {
+      if (copyTimer.current !== null) window.clearTimeout(copyTimer.current);
+      copyTimer.current = window.setTimeout(() => {
+        copyTimer.current = null;
+        if (!isCurrentAction(action)) return;
         setCopiedOid((current) => (current === c.oid ? null : current));
       }, 1500);
     } catch (e) {
+      if (!isCurrentAction(action)) return;
       notifyError("copy commit ID", e, "Could not copy that commit ID.");
     }
   };
 
   function CommitRow({ c, showRemoveLabel }: { c: GitCommit; showRemoveLabel: boolean }) {
-    const manualLabel = labels[c.oid];
+    const manualLabel = visibleLabels[c.oid];
     const label = manualLabel ?? defaultLabels.get(c.oid) ?? "Version";
     const editing = editingOid === c.oid;
-    const labelBusy = labelBusyOid === c.oid;
+    const labelBusy = labelBusyOids.has(c.oid);
     return (
       <div className="group relative flex items-start gap-3 rounded-md py-3 pl-10 pr-2 hover:bg-accent/60">
         <span
@@ -294,10 +456,12 @@ export function HistoryModal() {
 
   const emptyState = (
     <p className="py-8 text-center text-sm text-muted-foreground">
-      No history yet. Compile to snapshot your work.
+      No Git history yet. Initialize Source Control, then commit when you want a version here.
     </p>
   );
-  const labeledCommits = commits.filter((c) => Boolean(labels[c.oid]?.trim()));
+  const labeledCommits = visibleCommits.filter((c) =>
+    Boolean(visibleLabels[c.oid]?.trim()),
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
@@ -331,7 +495,7 @@ export function HistoryModal() {
             </TabsList>
           </div>
           <TabsContent value="all" className="min-h-0 flex-1 overflow-auto p-2">
-            <CommitList items={commits} />
+            <CommitList items={visibleCommits} />
           </TabsContent>
           <TabsContent value="labels" className="min-h-0 flex-1 overflow-auto p-2">
             <CommitList items={labeledCommits} labelsOnly />

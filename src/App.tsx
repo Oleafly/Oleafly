@@ -160,6 +160,11 @@ const WordCountModal = lazy(() =>
 const HistoryModal = lazy(() =>
   import("@/components/editor/HistoryModal").then((m) => ({ default: m.HistoryModal })),
 );
+const CheckpointsModal = lazy(() =>
+  import("@/components/editor/CheckpointsModal").then((m) => ({
+    default: m.CheckpointsModal,
+  })),
+);
 const HotkeysModal = lazy(() =>
   import("@/components/editor/HotkeysModal").then((m) => ({ default: m.HotkeysModal })),
 );
@@ -987,6 +992,7 @@ function AppContent() {
           <SettingsModal />
           <WordCountModal />
           <HistoryModal />
+          <CheckpointsModal />
           <HotkeysModal />
           <TourGuide />
         </LazyModals>

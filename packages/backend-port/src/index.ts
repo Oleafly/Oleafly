@@ -14,12 +14,13 @@
  * src-tauri/src/protocol.rs mirrors both constants; the vitest conformance
  * test (src/lib/backend-port-protocol.test.ts) fails on drift.
  */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 /** Feature areas the shell requires from its backend. Keep sorted. */
 export const BACKEND_CAPABILITIES = [
     "agent-server",
     "agent-stream",
     "chats",
+    "checkpoints",
     "compile",
     "git",
     "initial-state",
@@ -81,6 +82,22 @@ export interface CompileError {
     kind: string;
     explanation: string | null;
 }
+export type CheckpointSkipReason =
+    | "invalid_policy"
+    | "dependency_evidence_unavailable"
+    | "untracked_external_commands"
+    | "external_dependency"
+    | "ignored_required_dependency"
+    | "insufficient_space";
+export type CheckpointPublicationOutcome =
+    | { status: "not_attempted" }
+    | { status: "published"; snapshot_root: string; created: boolean }
+    | {
+        status: "skipped";
+        reason: CheckpointSkipReason;
+        message: string;
+        suggestion: string;
+    };
 export interface CompileResult {
     ok: boolean;
     has_pdf: boolean;
@@ -92,6 +109,8 @@ export interface CompileResult {
     out_dir: string | null;
     compile_time_ms: number;
     stopped?: boolean;
+    /** Optional for compatibility with older desktop backends. */
+    checkpoint_publication?: CheckpointPublicationOutcome;
 }
 export interface EngineCapabilities {
     produces_pdf: boolean;
@@ -133,6 +152,13 @@ export interface FileEntry {
     path: string;
     is_dir: boolean;
 }
+export type CheckpointCaptureMode = "engine_dependencies" | (string & {});
+export interface CheckpointPolicy {
+    mode: CheckpointCaptureMode;
+    always_include: string[];
+    ignored: string[];
+    [futureField: string]: unknown;
+}
 export interface ProjectMeta {
     name: string;
     main_doc: string;
@@ -141,6 +167,7 @@ export interface ProjectMeta {
     kind?: string;
     tex?: TexSpec | null;
     allow_shell_escape: boolean;
+    checkpoints: CheckpointPolicy;
 }
 export interface ProjectStateChanged {
     projectId: string;
@@ -150,6 +177,28 @@ export interface ProjectStateChanged {
     mutationGeneration: number | null;
     project: ProjectMeta;
     engine: DocumentEngineDescriptor;
+}
+export interface CheckpointSummary {
+    snapshot_root: string;
+    completed_at_unix_ms: number;
+    engine: string;
+    toolchain_identity: string;
+    main_document: string;
+    output_hash: string;
+    file_count: number;
+    logical_bytes: number;
+}
+export interface CheckpointStoreStats {
+    checkpoint_count: number;
+    stored_pack_bytes: number;
+    logical_bytes: number;
+    reclaimable_bytes: number;
+}
+export interface CheckpointIntegrity {
+    checked_checkpoints: number;
+    checked_files: number;
+    checked_chunk_references: number;
+    checked_packs: number;
 }
 export interface TexSpec {
     distribution: string;
@@ -181,6 +230,7 @@ export interface ProjectInfo {
         format: string;
     }[];
     forked_from: string | null;
+    recovery_pending: boolean;
 }
 export interface LibraryStorageSummary {
     total_bytes: number;
@@ -376,6 +426,7 @@ export interface AppConfig {
     ai_custom_providers: CustomProvider[];
     ai_personas: Persona[];
     ai_starter_personas_seeded: boolean;
+    checkpoint_defaults: CheckpointPolicy;
     mcp_enabled: boolean;
     mcp_port: number;
     mcp_read_only: boolean;
@@ -512,6 +563,15 @@ export interface BackendPort {
   importOverleafProjectCmd: (path: string, name?: string) => Promise<string>;
   projectTexStatus: (projectId: string) => Promise<TexStatus | null>;
   compileProject: (projectId: string, mainDoc: string, offline?: boolean, fast?: boolean, haltOnError?: boolean) => Promise<CompileResult>;
+  checkpointList: (projectId: string) => Promise<CheckpointSummary[]>;
+  checkpointStats: (projectId: string) => Promise<CheckpointStoreStats>;
+  checkpointRestore: (projectId: string, snapshotRoot: string, expectedGeneration: number) => Promise<ProjectStateChanged>;
+  checkpointDelete: (projectId: string, snapshotRoot: string) => Promise<void>;
+  checkpointKeepLatest: (projectId: string) => Promise<void>;
+  checkpointReset: (projectId: string) => Promise<void>;
+  checkpointVerify: (projectId: string) => Promise<CheckpointIntegrity>;
+  checkpointExport: (projectId: string, dest: string, password: string) => Promise<void>;
+  checkpointImport: (projectId: string, source: string, password: string) => Promise<void>;
   cancelCompile: () => Promise<boolean>;
   clearBuildDir: (projectId: string) => Promise<void>;
   compileIsolated: (projectId: string, source: string, offline?: boolean) => Promise<CompileResult>;
@@ -582,8 +642,9 @@ export interface BackendPort {
   removeTemplatePack: (id: string) => Promise<void>;
   readDeadlines: () => Promise<string>;
   refreshDeadlines: () => Promise<void>;
-  gitAutoCommit: (projectId: string, message: string) => Promise<boolean>;
-  gitAutoCommitUpdate: (projectId: string) => Promise<boolean>;
+  gitIsInitialized: (projectId: string) => Promise<boolean>;
+  gitInitialize: (projectId: string) => Promise<string>;
+  gitPreparePublish: (projectId: string, message: string) => Promise<boolean>;
   gitLog: (projectId: string) => Promise<GitCommit[]>;
   gitReadVersionLabels: (projectId: string) => Promise<Record<string, string>>;
   gitSetVersionLabel: (projectId: string, oid: string, label: string) => Promise<void>;
@@ -622,6 +683,8 @@ export interface BackendPort {
   searchProject: (projectId: string, query: string) => Promise<SearchHit[]>;
   getConfig: () => Promise<AppConfig>;
   setConfig: (config: AppConfig) => Promise<void>;
+  setCheckpointPolicy: (projectId: string, policy: CheckpointPolicy) => Promise<ProjectMeta>;
+  setCheckpointDefaults: (policy: CheckpointPolicy) => Promise<void>;
   seedStarterPersonas: (starters: Persona[]) => Promise<AppConfig>;
   mcpStatus: () => Promise<McpStatus>;
   mcpSetEnabled: (enabled: boolean) => Promise<McpStatus>;
@@ -689,6 +752,8 @@ export interface BackendPort {
   gitSetRemote: (projectId: string, url: string) => Promise<void>;
   gitRemoveRemote: (projectId: string) => Promise<void>;
   gitGetRemote: (projectId: string) => Promise<string | null>;
+  gitRemoteCredentialsNeedCleanup: (projectId: string) => Promise<boolean>;
+  gitCleanRemoteCredentials: (projectId: string) => Promise<boolean>;
   gitCurrentBranch: (projectId: string) => Promise<string>;
   gitAheadBehind: (projectId: string) => Promise<AheadBehind>;
   gitPush: (projectId: string) => Promise<string>;

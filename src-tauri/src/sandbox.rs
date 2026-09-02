@@ -4,6 +4,8 @@
 //! `resolve_within` so absolute paths, `..` traversal, drive prefixes, and
 //! symlink escapes cannot leave a project's root.
 
+use std::fs::File;
+use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -119,29 +121,39 @@ static ATOMIC_FILE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 /// transaction removes the staging file and leaves an existing destination
 /// untouched.
 pub struct AtomicFile {
+    parent: PathBuf,
+    parent_identity: same_file::Handle,
     destination: PathBuf,
     staging: PathBuf,
+    staging_file: Option<File>,
     committed: bool,
 }
 
 impl AtomicFile {
     pub fn new(destination: &Path) -> Result<Self, String> {
-        let parent = destination
+        let requested_parent = destination
             .parent()
             .filter(|path| !path.as_os_str().is_empty())
             .ok_or_else(|| "file destination has no parent folder".to_string())?;
-        if !parent.is_dir() {
+        if !requested_parent.is_dir() {
             return Err("file destination folder does not exist".into());
         }
+        let parent = requested_parent
+            .canonicalize()
+            .map_err(|error| format!("failed to resolve file destination folder: {error}"))?;
+        let parent_identity = same_file::Handle::from_path(&parent)
+            .map_err(|error| format!("failed to bind file destination folder: {error}"))?;
         let name = destination
             .file_name()
             .and_then(|value| value.to_str())
             .ok_or_else(|| "file destination name is not valid Unicode".to_string())?;
+        let destination = parent.join(name);
 
         for _ in 0..10_000 {
             let sequence = ATOMIC_FILE_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+            let random = rand::random::<u64>();
             let staging = parent.join(format!(
-                ".{name}.oleafly-{}-{sequence}.tmp",
+                ".{name}.oleafly-{}-{sequence}-{random:016x}.tmp",
                 std::process::id()
             ));
             match std::fs::OpenOptions::new()
@@ -153,8 +165,11 @@ impl AtomicFile {
                     file.sync_all()
                         .map_err(|error| format!("failed to initialize staging file: {error}"))?;
                     return Ok(Self {
-                        destination: destination.to_path_buf(),
+                        parent,
+                        parent_identity,
+                        destination,
                         staging,
+                        staging_file: Some(file),
                         committed: false,
                     });
                 }
@@ -176,30 +191,54 @@ impl AtomicFile {
         &self.staging
     }
 
+    pub fn staging_file_mut(&mut self) -> &mut File {
+        self.staging_file
+            .as_mut()
+            .expect("staging file is available before commit")
+    }
+
     pub fn commit(mut self) -> Result<(), String> {
+        let current_parent = same_file::Handle::from_path(&self.parent)
+            .map_err(|error| format!("file destination folder changed: {error}"))?;
+        if current_parent != self.parent_identity {
+            return Err("file destination folder changed before publish".into());
+        }
         let metadata = std::fs::symlink_metadata(&self.staging)
             .map_err(|error| format!("staged artifact is unavailable: {error}"))?;
         if !metadata.is_file() || metadata.file_type().is_symlink() {
             return Err("staged artifact is not a regular file".into());
         }
+        let staging_file = self
+            .staging_file
+            .as_ref()
+            .expect("staging file is available before commit");
+        let bound_staging = same_file::Handle::from_file(
+            staging_file
+                .try_clone()
+                .map_err(|error| format!("failed to verify staged artifact: {error}"))?,
+        )
+        .map_err(|error| format!("failed to verify staged artifact: {error}"))?;
+        let current_staging = same_file::Handle::from_path(&self.staging)
+            .map_err(|error| format!("staged artifact changed: {error}"))?;
+        if bound_staging != current_staging {
+            return Err("staged artifact changed before publish".into());
+        }
         if let Ok(existing) = std::fs::symlink_metadata(&self.destination) {
             if existing.is_file() && !existing.file_type().is_symlink() {
-                std::fs::set_permissions(&self.staging, existing.permissions()).map_err(
-                    |error| format!("failed to preserve destination permissions: {error}"),
-                )?;
+                staging_file
+                    .set_permissions(existing.permissions())
+                    .map_err(|error| {
+                        format!("failed to preserve destination permissions: {error}")
+                    })?;
             }
         }
         // Staging-file fsync is best-effort. Some volumes reject fsync while
         // still accepting rename; failing the whole export after a good write
         // would tell the user the PDF was not saved when it was.
-        let _ = std::fs::OpenOptions::new()
-            // Windows maps sync_all() to FlushFileBuffers, which rejects a
-            // handle opened without GENERIC_WRITE. A read-only reopen works
-            // on Unix but makes every atomic write fail with access denied on
-            // Windows, so reopen the completed staging file for writing.
-            .write(true)
-            .open(&self.staging)
-            .and_then(|file| file.sync_all());
+        let _ = staging_file.sync_all();
+        drop(bound_staging);
+        drop(current_staging);
+        drop(self.staging_file.take());
         replace_file(&self.staging, &self.destination)
             .map_err(|error| format!("failed to publish staged artifact: {error}"))?;
         // From here the destination file exists. Nothing after this point may
@@ -219,8 +258,10 @@ impl Drop for AtomicFile {
 }
 
 pub fn atomic_write(destination: &Path, bytes: &[u8]) -> Result<(), String> {
-    let transaction = AtomicFile::new(destination)?;
-    std::fs::write(transaction.staging_path(), bytes)
+    let mut transaction = AtomicFile::new(destination)?;
+    transaction
+        .staging_file_mut()
+        .write_all(bytes)
         .map_err(|error| format!("failed to write staged file: {error}"))?;
     transaction.commit()
 }
@@ -356,6 +397,40 @@ mod tests {
         atomic_write(&destination, b"complete artifact").unwrap();
         assert_eq!(std::fs::read(&destination).unwrap(), b"complete artifact");
         assert_eq!(std::fs::read_dir(&root).unwrap().count(), 1);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn atomic_file_rejects_staging_and_parent_path_substitution() {
+        use std::os::unix::fs::symlink;
+
+        let root = temp_root();
+        let destination = root.join("artifact.bin");
+        let victim = root.join("victim.bin");
+        std::fs::write(&victim, b"victim").unwrap();
+        let mut transaction = AtomicFile::new(&destination).unwrap();
+        transaction.staging_file_mut().write_all(b"safe").unwrap();
+        let staging = transaction.staging_path().to_path_buf();
+        let displaced = root.join("displaced-staging");
+        std::fs::rename(&staging, &displaced).unwrap();
+        symlink(&victim, &staging).unwrap();
+
+        assert!(transaction.commit().is_err());
+        assert_eq!(std::fs::read(&victim).unwrap(), b"victim");
+        assert!(!destination.exists());
+
+        let parent = root.join("parent");
+        std::fs::create_dir(&parent).unwrap();
+        let destination = parent.join("artifact.bin");
+        let mut transaction = AtomicFile::new(&destination).unwrap();
+        transaction.staging_file_mut().write_all(b"safe").unwrap();
+        let moved_parent = root.join("moved-parent");
+        std::fs::rename(&parent, &moved_parent).unwrap();
+        std::fs::create_dir(&parent).unwrap();
+
+        assert!(transaction.commit().is_err());
+        assert!(!destination.exists());
         std::fs::remove_dir_all(&root).ok();
     }
 

@@ -6,7 +6,9 @@ mod workspace;
 
 pub use build::PreparedBuild;
 pub use error::{Error, ErrorKind, Result};
-pub use manifest::{Engine, ExportRecord, ProjectManifest, TexSpec};
+pub use manifest::{
+    CheckpointCaptureMode, CheckpointPolicy, Engine, ExportRecord, ProjectManifest, TexSpec,
+};
 pub use tree::{
     is_generated_directory, slash_path, walk_source_tree, GENERATED_DIRECTORIES,
     MAX_DISCOVERY_DEPTH,

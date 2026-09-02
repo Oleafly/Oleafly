@@ -17,6 +17,7 @@ import {
   Maximize,
   Sparkles,
   SquarePen,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -109,10 +110,42 @@ function activeLayoutPreset(
   return null;
 }
 
-// Groups the right-side toolbar into: Recompile | Export | History + Fork
-// project | account | Shortcuts + Layout.
+// Groups the right-side toolbar into: Recompile | Export | Fork + Git history
+// + Checkpoints | Layout + workspace controls.
 function Divider() {
   return <span className="mx-1 h-5 w-px shrink-0 bg-border" />;
+}
+
+export function ProjectHistoryActions() {
+  const setHistoryOpen = useSettingsStore((state) => state.setHistoryOpen);
+  const setCheckpointsOpen = useSettingsStore((state) => state.setCheckpointsOpen);
+
+  return (
+    <>
+      <Tooltip label="Git history">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Git history"
+          className="text-muted-foreground hover:text-foreground"
+          onClick={() => setHistoryOpen(true)}
+        >
+          <History className="size-4" />
+        </Button>
+      </Tooltip>
+      <Tooltip label="Checkpoints">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Checkpoints"
+          className="text-muted-foreground hover:text-foreground"
+          onClick={() => setCheckpointsOpen(true)}
+        >
+          <ShieldCheck className="size-4" />
+        </Button>
+      </Tooltip>
+    </>
+  );
 }
 
 function ViewModeSwitch({
@@ -166,7 +199,6 @@ export function TopToolbar() {
   const openProject = useFilesStore((s) => s.openProject);
   const renameProject = useFilesStore((s) => s.renameProject);
   const pdfBytes = useCompileStore((s) => s.pdfBytes);
-  const setHistoryOpen = useSettingsStore((s) => s.setHistoryOpen);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
@@ -489,17 +521,7 @@ export function TopToolbar() {
           </Button>
         </Tooltip>
 
-        <Tooltip label="Version history">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="History"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => setHistoryOpen(true)}
-          >
-            <History className="size-4" />
-          </Button>
-        </Tooltip>
+        <ProjectHistoryActions />
 
         <Divider />
 
@@ -554,7 +576,7 @@ export function TopToolbar() {
             </Button>
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
-            Copies <span className="font-medium text-foreground">{projectName}</span> and its full history into a new project.
+            Copies <span className="font-medium text-foreground">{projectName}</span> and its Git history into a new project. Checkpoints start empty.
           </p>
           <div className="flex items-center gap-2">
             <Input

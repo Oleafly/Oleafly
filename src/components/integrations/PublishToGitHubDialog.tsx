@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Check,
   GitBranch,
@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGithubStore } from "@/store/github";
-import { gitAutoCommit, gitPush, gitSetRemote } from "@/lib/tauri";
+import { gitPreparePublish, gitPush, gitSetRemote } from "@/lib/tauri";
 import {
   githubCreateRepo,
   githubListRepos,
@@ -31,6 +31,12 @@ function slug(name: string): string {
     .replace(/[^\w.-]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
+
+type PublishActionToken = {
+  projectId: string;
+  session: number;
+  request: number;
+};
 
 export function PublishToGitHubDialog({
   open,
@@ -59,76 +65,182 @@ export function PublishToGitHubDialog({
   const [query, setQuery] = useState("");
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const sessionRequest = useRef(0);
+  const actionRequest = useRef(0);
+  const reposRequest = useRef(0);
+  const closeTimer = useRef<number | null>(null);
+  const renderedIdentity = useRef({ open, projectId });
+  const renderIdentityChanged =
+    renderedIdentity.current.open !== open ||
+    renderedIdentity.current.projectId !== projectId;
   const { dialogRef, onBackdropMouseDown } =
     useModalAccessibility<HTMLDivElement>(open, onClose);
 
-  useEffect(() => {
-    if (!open) return;
+  const isCurrentSession = useCallback(
+    (targetProjectId: string, session: number) =>
+      session === sessionRequest.current &&
+      renderedIdentity.current.open &&
+      renderedIdentity.current.projectId === targetProjectId,
+    [],
+  );
+
+  const beginAction = useCallback(
+    (targetProjectId: string): PublishActionToken | null => {
+      if (renderIdentityChanged) return null;
+      return {
+        projectId: targetProjectId,
+        session: sessionRequest.current,
+        request: ++actionRequest.current,
+      };
+    },
+    [renderIdentityChanged],
+  );
+
+  const isCurrentAction = useCallback(
+    (token: PublishActionToken) =>
+      token.request === actionRequest.current &&
+      isCurrentSession(token.projectId, token.session),
+    [isCurrentSession],
+  );
+
+  useLayoutEffect(() => {
+    renderedIdentity.current = { open, projectId };
+    sessionRequest.current += 1;
+    actionRequest.current += 1;
+    reposRequest.current += 1;
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setTab("new");
+    setBusy(false);
     setMsg(null);
     setSelected(null);
     setRepoName(slug(projectName || "oleafly-project"));
-  }, [open, projectName]);
+    setIsPrivate(true);
+    setRepos([]);
+    setQuery("");
+    setLoadingRepos(false);
+    return () => {
+      sessionRequest.current += 1;
+      actionRequest.current += 1;
+      reposRequest.current += 1;
+      if (closeTimer.current !== null) {
+        window.clearTimeout(closeTimer.current);
+        closeTimer.current = null;
+      }
+    };
+  }, [open, projectId, projectName]);
 
   useEffect(() => {
-    if (!open || status !== "connected") return;
+    if (!open || !projectId || status !== "connected") return;
+    const session = sessionRequest.current;
+    const request = ++reposRequest.current;
     setLoadingRepos(true);
     githubListRepos()
-      .then(setRepos)
-      .catch((e) => void logError("github list repos", e))
-      .finally(() => setLoadingRepos(false));
-  }, [open, status]);
+      .then((nextRepos) => {
+        if (
+          request === reposRequest.current &&
+          isCurrentSession(projectId, session)
+        ) {
+          setRepos(nextRepos);
+        }
+      })
+      .catch((e) => {
+        if (
+          request === reposRequest.current &&
+          isCurrentSession(projectId, session)
+        ) {
+          void logError("github list repos", e);
+        }
+      })
+      .finally(() => {
+        if (
+          request === reposRequest.current &&
+          isCurrentSession(projectId, session)
+        ) {
+          setLoadingRepos(false);
+        }
+      });
+  }, [isCurrentSession, open, projectId, status]);
 
   if (!open) return null;
 
-  const note = (ok: boolean, text: string) => setMsg({ ok, text });
+  const note = (token: PublishActionToken, ok: boolean, text: string) => {
+    if (isCurrentAction(token)) setMsg({ ok, text });
+  };
+
+  const scheduleClose = (token: PublishActionToken) => {
+    if (!isCurrentAction(token)) return;
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => {
+      closeTimer.current = null;
+      if (isCurrentAction(token)) onClose();
+    }, 900);
+  };
 
   const publishNew = async () => {
     if (!projectId) return;
+    const action = beginAction(projectId);
+    if (!action || !isCurrentAction(action)) return;
     const name = slug(repoName.trim() || projectName || "oleafly-project");
-    if (!name) return note(false, "Enter a repository name.");
+    if (!name) return note(action, false, "Enter a repository name.");
     setBusy(true);
     try {
       const repo = await githubCreateRepo(name, isPrivate);
       // A brand-new project may have no commits yet; the remote itself stays
       // clean since auth is handled by gitPush's credential helper, not a
       // token embedded in .git/config.
-      await gitAutoCommit(projectId, "Initial commit");
-      await gitSetRemote(projectId, repo.clone_url);
-      await gitPush(projectId);
-      note(true, `Published to ${repo.full_name}.`);
+      await gitPreparePublish(action.projectId, "Initial commit");
+      await gitSetRemote(action.projectId, repo.clone_url);
+      await gitPush(action.projectId);
+      if (!isCurrentAction(action)) return;
+      note(action, true, `Published to ${repo.full_name}.`);
       onPublished(repo.clone_url);
-      window.setTimeout(onClose, 900);
+      scheduleClose(action);
     } catch (e) {
-      note(false, String(e));
+      note(action, false, String(e));
     } finally {
-      setBusy(false);
+      if (isCurrentAction(action)) setBusy(false);
     }
   };
 
   const publishExisting = async () => {
     if (!projectId || !selected) return;
+    const action = beginAction(projectId);
+    if (!action || !isCurrentAction(action)) return;
+    const remoteUrl = selected;
     setBusy(true);
     try {
-      await gitAutoCommit(projectId, "Initial commit");
-      await gitSetRemote(projectId, selected);
-      // The remote may already contain commits (e.g. an auto-initialized repo);
-      // allow the push to surface a useful error if a merge is needed.
+      await gitPreparePublish(action.projectId, "Initial commit");
+      await gitSetRemote(action.projectId, remoteUrl);
+      // An existing remote may already contain commits. Let the push report
+      // when its history must be pulled and reconciled first.
       try {
-        await gitPush(projectId);
+        await gitPush(action.projectId);
       } catch (e) {
-        note(false, `Linked to ${selected}, but push needs a pull first: ${e}`);
-        onPublished(selected);
+        if (!isCurrentAction(action)) return;
+        note(
+          action,
+          false,
+          `Linked to ${remoteUrl}, but push needs a pull first: ${e}`,
+        );
+        onPublished(remoteUrl);
         return;
       }
-      note(true, `Linked and pushed to ${selected}.`);
-      onPublished(selected);
-      window.setTimeout(onClose, 900);
+      if (!isCurrentAction(action)) return;
+      note(action, true, `Linked and pushed to ${remoteUrl}.`);
+      onPublished(remoteUrl);
+      scheduleClose(action);
     } catch (e) {
-      note(false, String(e));
+      note(action, false, String(e));
     } finally {
-      setBusy(false);
+      if (isCurrentAction(action)) setBusy(false);
     }
   };
+
+  const visibleBusy = renderIdentityChanged ? false : busy;
+  const visibleMessage = renderIdentityChanged ? null : msg;
 
   const filtered = repos
     .filter((r) => r.full_name.toLowerCase().includes(query.toLowerCase()))
@@ -221,10 +333,10 @@ export function PublishToGitHubDialog({
                   </div>
                   <Button
                     className="mt-auto ml-auto px-5"
-                    disabled={busy || !repoName.trim()}
+                    disabled={visibleBusy || !repoName.trim()}
                     onClick={() => void publishNew()}
                   >
-                    {busy ? (
+                    {visibleBusy ? (
                       <Loader2 className="size-4 animate-spin" />
                     ) : (
                       <Github className="size-4" />
@@ -281,10 +393,10 @@ export function PublishToGitHubDialog({
                   <Tooltip label="Sets origin and pushes the current branch">
                     <Button
                       className="w-full"
-                      disabled={busy || !selected}
+                      disabled={visibleBusy || !selected}
                       onClick={() => void publishExisting()}
                     >
-                      {busy ? (
+                      {visibleBusy ? (
                         <Loader2 className="size-4 animate-spin" />
                       ) : (
                         <GitBranch className="size-4" />
@@ -296,16 +408,16 @@ export function PublishToGitHubDialog({
               )}
             </div>
 
-            {msg && (
+            {visibleMessage && (
               <div
                 className={cn(
                   "shrink-0 border-t p-3 text-xs",
-                  msg.ok
+                  visibleMessage.ok
                     ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                     : "border-destructive/30 bg-destructive/10 text-destructive"
                 )}
               >
-                {msg.text}
+                {visibleMessage.text}
               </div>
             )}
           </>

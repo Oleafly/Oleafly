@@ -18,7 +18,6 @@ vi.mock("@/lib/toast", () => ({
   notifyError: mocks.notifyError,
   toast: { info: vi.fn(), infoUnique: vi.fn(), success: vi.fn() },
 }));
-vi.mock("@/lib/auto-commit", () => ({ flushAutoCommit: vi.fn(), scheduleAutoCommit: vi.fn() }));
 vi.mock("@/components/editor/wysiwyg/controller", () => ({
   flushWysiwygPendingEdits: vi.fn(),
   invalidateWysiwygProjectSession: vi.fn(),
