@@ -223,7 +223,15 @@ test("a second terminal opens active, takes a name, and closes back to one tab",
     .poll(() => openedSessionCount(tauriPage), { timeout: 60_000 })
     .toBeGreaterThanOrEqual(2);
 
-  await tauriPage.click('[aria-label="Rename Terminal 2"]');
+  const renameClicked = await tauriPage.evaluate<boolean>(
+    `(() => {
+      const button = document.querySelector('[aria-label="Rename Terminal 2"]');
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`,
+  );
+  expect(renameClicked).toBe(true);
   await tauriPage.fill('[aria-label="Terminal title"]', "Build");
   await tauriPage.press('[aria-label="Terminal title"]', "Enter");
   await expect(tauriPage.locator('[aria-label="Terminal title"]')).toHaveCount(0);
