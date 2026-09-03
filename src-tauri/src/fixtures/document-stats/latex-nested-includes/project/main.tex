@@ -1,0 +1,21 @@
+\documentclass{report}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\title{Nested includes across directories}
+\author{Ada Example}
+\begin{document}
+\maketitle
+\chapter{Opening remarks}
+Prose in the root file, with a footnote\footnote{An aside of five words here} attached.
+See \url{https://example.org/root} and write to root@example.org for details.
+\input{chapters/one}
+% \input{chapters/never}
+\input{chapters/missing}
+\subfile{chapters/sub}
+\import{chapters/}{imported}
+\includegraphics[width=0.5\textwidth]{figures/plot.png}
+\begin{verbatim}
+\input{chapters/verbatim-target}
+\end{verbatim}
+\input{ chapters/spaced }
+\end{document}

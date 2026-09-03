@@ -1,0 +1,151 @@
+\section{Method}
+\label{sec:method}
+
+\subsection{Design}
+
+The study is a within-subjects design with one factor, notification modality,
+at four levels.
+
+\begin{description}[itemsep=1pt,topsep=2pt,font=\normalfont\itshape]
+  \item[Immediate.] A toast appears in the lower right corner the moment the
+    build completes, with a result summary and a close control. It persists
+    until dismissed. This is the behaviour of the editors our participants
+    reported using daily.
+  \item[Batched.] Notifications are held and delivered at the next pause in
+    typing longer than three seconds, as a single toast that may summarise more
+    than one build.
+  \item[Ambient.] A gutter marker beside the edited line changes colour on
+    completion, green or red. No motion, no sound, no dismissal control.
+  \item[Silent.] No notification. The build status is available in the status
+    bar if the participant looks at it.
+\end{description}
+
+Condition order was counterbalanced with a balanced Latin square, and task
+assignment to condition was rotated independently, so no participant saw the
+same task twice and no task appeared disproportionately in any condition.
+Figure~\ref{fig:design} shows one participant's session structure.
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[
+      node distance=3.5mm and 4mm,
+      blk/.style={draw,rounded corners=1.5pt,align=center,font=\scriptsize,
+                  minimum height=6.5mm,minimum width=13mm},
+      flow/.style={-{Stealth[length=1.6mm]},semithick},
+    ]
+    \node[blk] (intro) {Consent\\and intake};
+    \node[blk,right=of intro] (train) {Training\\task};
+    \node[blk,right=of train] (b1) {Block 1};
+    \node[blk,below=6mm of b1] (b2) {Block 2};
+    \node[blk,left=of b2] (b3) {Block 3};
+    \node[blk,left=of b3] (b4) {Block 4};
+    \node[blk,below=6mm of b4] (debrief) {Debrief\\interview};
+
+    \draw[flow] (intro) -- (train);
+    \draw[flow] (train) -- (b1);
+    \draw[flow] (b1) -- (b2);
+    \draw[flow] (b2) -- (b3);
+    \draw[flow] (b3) -- (b4);
+    \draw[flow] (b4) -- (debrief);
+
+    \node[font=\scriptsize,right=2mm of b1,align=left] {one condition,\\one task};
+    \node[font=\scriptsize,right=2mm of b2,align=left] {NASA-TLX\\after each block};
+
+    \begin{scope}[on background layer]
+      \node[draw,dashed,rounded corners=2pt,fit=(b1)(b2)(b3)(b4),
+            inner sep=2.5mm,
+            label={[font=\scriptsize]above:counterbalanced blocks}] {};
+    \end{scope}
+  \end{tikzpicture}
+  \caption{Session structure. Each participant completed four blocks, one per
+  notification condition, in an order drawn from a balanced Latin square.}
+  \label{fig:design}
+\end{figure}
+
+\subsection{Participants}
+
+We recruited 36 professional developers through two regional software meetups
+and a university alumni list, screening for at least two years of paid
+development experience and daily use of a compiled language. Sessions ran 95
+minutes and participants received a voucher worth roughly one hour of median
+local contracting rate. Four additional participants were recruited and
+excluded before analysis: two because of eye-tracker calibration failure and
+two because a task harness defect corrupted their keystroke logs.
+Table~\ref{tab:demographics} describes the analysed sample.
+
+\begin{table}[t]
+  \centering
+  \footnotesize
+  \caption{Participant demographics, $n = 36$. Experience is years of paid
+  professional development. Percentages may not sum to 100 because of
+  rounding.}
+  \label{tab:demographics}
+  \begin{tabular}{llrr}
+    \toprule
+    Attribute & Level & $n$ & \% \\
+    \midrule
+    \multirow{4}{*}{Age}
+      & 22 to 29 & 11 & 30.6 \\
+      & 30 to 39 & 15 & 41.7 \\
+      & 40 to 49 &  7 & 19.4 \\
+      & 50 and above & 3 & 8.3 \\
+    \midrule
+    \multirow{3}{*}{Gender}
+      & Woman & 14 & 38.9 \\
+      & Man & 20 & 55.6 \\
+      & Non-binary or undisclosed & 2 & 5.6 \\
+    \midrule
+    \multirow{3}{*}{Experience}
+      & 2 to 5 years & 13 & 36.1 \\
+      & 6 to 10 years & 14 & 38.9 \\
+      & More than 10 years & 9 & 25.0 \\
+    \midrule
+    \multirow{4}{*}{Primary language}
+      & Rust & 9 & 25.0 \\
+      & TypeScript & 12 & 33.3 \\
+      & Java or Kotlin & 10 & 27.8 \\
+      & C or C++ & 5 & 13.9 \\
+    \midrule
+    \multirow{2}{*}{Team size}
+      & Fewer than 6 & 21 & 58.3 \\
+      & 6 or more & 15 & 41.7 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Tasks and apparatus}
+
+Each task was a defect localisation and repair in a 4{,}200 line Rust service,
+seeded with a failure that required editing two files. Tasks were matched for
+size by a pilot with eight developers not included in the main sample, and
+their mean completion times in the pilot fell within 11 percent of each other.
+
+The environment was a purpose-built editor with the visual affordances of a
+mainstream tool, instrumented to log every keystroke, caret move, scroll,
+window focus change, and build event at millisecond resolution. A 120~Hz remote
+eye tracker recorded gaze, calibrated at the start of each block and validated
+between blocks. Builds were artificially held to 42~s, drawn from a truncated
+normal with a 4~s standard deviation, matched to the median clean build time
+reported by participants for their own projects.
+
+\subsection{Measures}
+
+\emph{Resumption lag} is the interval from the build notification event to the
+first keystroke that modifies the primary task file, excluding navigation.
+Where a participant never left the primary file, the lag is zero and the trial
+contributes to the denominator. \emph{Completion time} is from task start to
+the first passing test run. \emph{Error rate} is edits later reverted by the
+same participant within the same task, per hundred edits. \emph{Mental demand}
+is the corresponding NASA-TLX subscale, collected after each block on a
+100-point scale.
+
+\subsection{Analysis}
+
+We fitted linear mixed models with condition as a fixed effect and participant
+and task as crossed random intercepts, which handles the counterbalancing
+without discarding the repeated measurements. Degrees of freedom use the
+Satterthwaite approximation. Planned contrasts compare each condition against
+\emph{Immediate}, with Holm correction across the three comparisons per
+outcome. Confidence intervals are 95 percent profile intervals and effect sizes
+are Cohen's \cohensd{} computed from the model's residual standard deviation.
+The analysis plan was fixed before data collection.

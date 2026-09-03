@@ -1,0 +1,49 @@
+\section{Complexity}
+\label{sec:complexity}
+
+The channel update costs one multiplication by $\mat{X}^{\mathsf{H}}$, which is
+a fast Fourier transform at $O(N \log N)$, plus a solve against a fixed
+$L \times L$ precision matrix that is Cholesky factorised once at
+$O(L^3)$ and reused. The smoother is a scalar Kalman recursion at $O(N)$.
+Projecting the leakage onto the $R$-dimensional dominant subspace of
+Proposition~\ref{prop:rank} costs $O(N R^2)$ per iteration. The total is
+therefore
+\begin{equation}
+  \label{eq:complexity}
+  O\!\left( I \left[ N \log N + N R^{2} \right] + L^{3} \right)
+\end{equation}
+for $I$ iterations, against $O(N^3)$ for forming and inverting the whitened
+least squares system directly, and $O(N \log N)$ for the common-phase baseline.
+
+Table~\ref{tab:complexity} instantiates Eq.~\eqref{eq:complexity} at the
+parameters of Section~\ref{sec:results}. The measured figures come from a
+fixed-point implementation on a commercial baseband core at 800~MHz, counting
+only the estimation kernel. \est{} costs 3.4 times the common-phase baseline
+and roughly one two-hundredth of the direct whitened solve, which is the
+comparison that matters, because the direct solve is the estimator \est{}
+approximates.
+
+\begin{table}[t]
+  \centering
+  \footnotesize
+  \caption{Estimation cost per OFDM symbol at $N = 1024$, $L = 64$, $R = 9$,
+  and $I = 4$ iterations.}
+  \label{tab:complexity}
+  \setlength{\tabcolsep}{3.5pt}
+  \begin{tabular}{lrrr}
+    \toprule
+    Estimator & Order & Mult. ($10^3$) & Time ($\mu$s) \\
+    \midrule
+    Common phase only   & $N \log N$          & 10.2  & 4.1 \\
+    ICI-aware LS        & $N^3$               & 1{,}073{,}742 & 8{,}940 \\
+    Subspace LS         & $N R^2$             & 82.9  & 31.4 \\
+    \est{}              & $I[N\log N{+}NR^2]$ & 372.7 & 14.0 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Memory is dominated by the $N \times R$ subspace basis, 36~kB in single
+precision at these parameters, which is small enough to keep resident across
+symbols. The basis depends only on $\beta T_s N$, so it is recomputed only when
+the oscillator temperature drifts enough to move the linewidth estimate, in
+practice once every few hundred milliseconds.

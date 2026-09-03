@@ -1,0 +1,42 @@
+\documentclass{article}
+\usepackage{siunitx}
+\begin{document}
+\section[Short form]{The full section title}
+\section*{Starred heading}
+\begin{ figure }
+\captionof{figure}{A caption of five words}
+\end{ figure }
+\begin{figure*}
+\caption{Caption with a nested \footnote{footnote inside caption} aside}
+\end{figure*}
+Growth of 40\% overall and \$5 in cost.
+Inline \( a \) and $b$ then $$c$$ and \[ d \] plus \begin{equation*}e\end{equation*}.
+\begin{align*}
+f &= g \\[2pt]
+h &= \begin{split} i \\ j \end{split}
+\end{align*}
+% a commented \( opener and $ dollar
+Verbatim \verb|%not a comment| and \lstinline[language=C]{int x;} inline.
+\begin{lstlisting}[language=Python]
+print("$not math$")
+\end{lstlisting}
+\url{http://example.com/{a}} and \href{https://example.com/x}{shown prose} and www.example.org here.
+Mail josé@exämple.de or first.last+tag@sub.example.co.uk, or HTTPſ://Example.Com/Long-S.
+\textcolor{red}{coloured words} and \hyperref[sec:x]{linked words} and \fcolorbox{red}{blue}{boxed words}.
+\SI{10}{\metre} and \qty{3}{\kilogram} and \num{1e5} are units.
+Café naïve résumé 中文字 😀 emoji and Kelvin ſpecial letters.
+ 
+	
+Line with U+2028 separator inside.
+\thisisaverylongcommandnamethatexceedsthirtyoneletters{argument words here}
+\input{/etc/hosts}
+\input{https://example.com/remote}
+\begin{equation}
+unterminated environment
+\section{Never closed
+Still some prose after the unbalanced brace.
+$unterminated dollar
+\verb
+\begin{verbatim}
+never closed verbatim
+\end{document}\

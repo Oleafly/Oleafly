@@ -1,0 +1,37 @@
+\section{Related Work}
+\label{sec:related}
+
+\paragraph*{Supply-chain incident analysis.}
+Detailed post-mortems of individual registry compromises establish the attack
+patterns we set out to
+measure~\citep{ferrante2021incidents,mbeki2022typosquat}. They are necessarily
+retrospective and selected on having been detected, so they cannot speak to
+prevalence, which is the gap our longitudinal crawl addresses.
+
+\paragraph*{Static analysis of package code.}
+Several systems scan package archives for suspicious constructs before
+publication~\citep{ohara2020staticscan}. They are fast enough to run on every
+upload and they catch unobfuscated payloads. Every sample in our malicious set
+would evade the published feature sets, because each used at least runtime
+string assembly, and Listing~\ref{lst:hook} shows how little that takes.
+
+\paragraph*{Dynamic analysis and sandboxing.}
+Sandboxed execution of untrusted package code has been proposed for runtime
+imports~\citep{vanRhijn2019sandbox} and for build
+steps~\citep{szymanska2022buildsandbox}. Our contribution is to apply it at
+registry scale over a long window and to report what the population looks like,
+rather than to propose the sandbox as a novel mechanism.
+
+\paragraph*{Reproducible and hermetic builds.}
+Hermetic build systems eliminate install-time hooks by
+construction~\citep{adeyemi2021hermetic}, and where an organisation can adopt
+one, the problem described here does not arise. Adoption in the ecosystems we
+study is low and the transition cost is high, so we consider hermetic builds
+the right long-term answer and sandboxed hooks the deployable one.
+
+\paragraph*{Account security signals.}
+Work on detecting account takeover from behavioural
+telemetry~\citep{quintero2020takeover} supplies the mechanism behind our
+strongest result. We contribute the observation that the specific conjunction
+of a recovery-email change with a hook-bearing publication is both highly
+predictive and already available to every registry.

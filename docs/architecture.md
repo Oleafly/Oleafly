@@ -40,6 +40,22 @@ after one edit returns a list of paths rather than the whole project. The cache
 of those hashes lives in `src/lib/project-sources.ts`, which reverts to
 per-file reads when the batch command is missing.
 
+Document statistics go through the same reader. The `document_stats` command
+walks the include closure from the main document and reads every file in one
+batch call. Masking and counting happen in Rust, and unsaved buffers travel in
+the request so the numbers match what is on screen. The TypeScript counter in
+`src/lib/document-stats.ts` stays as the fallback for browser mode and for a
+backend without the command. The golden fixtures under
+`src-tauri/src/fixtures/document-stats/` fail the Rust tests as soon as the
+two counters disagree.
+
+`rag_retrieve` does the same for the assistant. It walks the project and
+scores every indexable chunk against the query in Rust, so one message costs
+one call rather than one read per file. `src/lib/ai-rag.ts` still reads file by
+file when the command is missing, and a golden fixture under
+`src-tauri/tests/fixtures/rag/` fails the Rust tests when the two scorers
+disagree.
+
 ## Extension model
 
 The contribution registry is the supported application extension point. Tabs,

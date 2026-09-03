@@ -1,0 +1,62 @@
+\section{Instrumentation}
+\label{sec:instruments}
+
+\subsection{High frequency suite}
+\label{sec:instr-highfreq}
+
+Each tower carries a three axis sonic anemometer and an open path infrared gas
+analyser mounted on a boom oriented into the prevailing sector, with a
+horizontal separation of 0.18 metres and no vertical separation. Both
+instruments are sampled at 20 hertz and timestamped by the datalogger against a
+satellite disciplined clock, giving a synchronisation error below 2
+milliseconds.
+
+The sensor separation matters for the high frequency loss correction of
+Section~\ref{sec:proc-spectral}. At the 4 metre saltmarsh towers the separation
+is 4.5 percent of the measurement height, which places the associated cospectral
+attenuation at 2 to 4 percent of the flux under unstable conditions and 6 to 9
+percent under stable conditions. The correction is applied and its magnitude is
+reported per record.
+
+\subsection{Slow response suite}
+\label{sec:instr-slow}
+
+The meteorological suite records air temperature and relative humidity in an
+aspirated shield, barometric pressure, four component net radiation, soil
+temperature at three depths, soil moisture at two depths, soil heat flux from
+two plates, and tipping bucket precipitation. Table~\ref{tab:instrument-specs}
+gives the specifications and the calibration record.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Instrument specifications and calibration status at the end of the
+2024 operating year. Drift is the change in the calibration coefficient between
+the two most recent calibrations, expressed as a percentage of reading. The
+radiometers were the only instruments to exceed their drift tolerance.}
+\label{tab:instrument-specs}
+\begin{tabular}{llllr}
+\toprule
+Quantity & Range & Resolution & Interval & Drift (\%) \\
+\midrule
+Wind vector        & $\pm 40$ m s$^{-1}$ & 0.01 m s$^{-1}$ & 24 months & 0.4 \\
+Sonic temperature  & $-40$ to $+60\,\degC$ & 0.01 K & 24 months & 0.2 \\
+CO$_2$ density     & 0 to 60 mmol m$^{-3}$ & 0.02 mmol m$^{-3}$ & 6 months & 1.7 \\
+H$_2$O density     & 0 to 2000 mmol m$^{-3}$ & 0.5 mmol m$^{-3}$ & 6 months & 2.1 \\
+Air temperature    & $-40$ to $+60\,\degC$ & 0.01 K & 12 months & 0.1 \\
+Relative humidity  & 0 to 100 \% & 0.1 \% & 12 months & 1.4 \\
+Pressure           & 500 to 1100 hPa & 0.1 hPa & 24 months & 0.1 \\
+Net radiation      & $-300$ to $+1500$ W m$^{-2}$ & 0.1 W m$^{-2}$ & 12 months & 3.8 \\
+Soil heat flux     & $-200$ to $+200$ W m$^{-2}$ & 0.1 W m$^{-2}$ & 24 months & 2.6 \\
+Soil moisture      & 0 to 0.55 m$^{3}$ m$^{-3}$ & 0.001 m$^{3}$ m$^{-3}$ & 24 months & 1.1 \\
+Precipitation      & 0 to 300 mm h$^{-1}$ & 0.2 mm & 12 months & 0.9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The net radiometer drift of 3.8 percent exceeds the 2 percent tolerance in the
+network protocol \citep{ibls2022protocol} and is the largest single contributor to the energy balance
+closure deficit reported in Section~\ref{sec:qc-closure}. All four radiometers
+were returned for factory calibration in January 2025 and the 2024 radiation
+record has been reprocessed against the returned coefficients with a linear
+drift model in time.

@@ -5,6 +5,7 @@ import {
   type DocumentStats,
 } from "@/lib/document-stats";
 import { readDocumentSources } from "@/lib/document-sources";
+import * as tauri from "@/lib/tauri";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { countWords } from "@/lib/wordcount";
 import { useFilesStore } from "@/store/files";
@@ -16,6 +17,66 @@ export interface ProjectInfoSnapshot {
   unreadable: string[];
   stats: DocumentStats;
   selectionWords: number | null;
+}
+
+export interface DocumentStatsRequest {
+  mainDocument: string;
+  overrides: Record<string, string>;
+}
+
+export interface DocumentStatsFile {
+  path: string;
+  stats: DocumentStats;
+}
+
+export interface DocumentStatsResult {
+  root: string;
+  fileCount: number;
+  unreadable: string[];
+  stats: DocumentStats;
+  files: DocumentStatsFile[];
+}
+
+type DocumentStatsBinding = (
+  projectId: string,
+  request: DocumentStatsRequest,
+) => Promise<DocumentStatsResult>;
+
+function documentStatsBinding(): DocumentStatsBinding | null {
+  const candidate = (tauri as unknown as { documentStats?: unknown }).documentStats;
+  return typeof candidate === "function"
+    ? (candidate as DocumentStatsBinding)
+    : null;
+}
+
+function dirtyBuffers(): Record<string, string> {
+  const overrides: Record<string, string> = {};
+  for (const [path, file] of Object.entries(useFilesStore.getState().files)) {
+    if (file.dirty) overrides[path] = file.content;
+  }
+  return overrides;
+}
+
+async function collectNatively(
+  projectId: string,
+  root: string,
+): Promise<Omit<ProjectInfoSnapshot, "selectionWords"> | null> {
+  const binding = documentStatsBinding();
+  if (!binding) return null;
+  try {
+    const result = await binding(projectId, {
+      mainDocument: root,
+      overrides: dirtyBuffers(),
+    });
+    return {
+      root,
+      fileCount: result.fileCount,
+      unreadable: result.unreadable,
+      stats: result.stats,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -44,6 +105,9 @@ export async function collectProjectInfo(): Promise<ProjectInfoSnapshot> {
       selectionWords,
     };
   }
+
+  const native = await collectNatively(files.projectId, root);
+  if (native) return { ...native, selectionWords };
 
   const sources = await readDocumentSources(
     files.projectId,

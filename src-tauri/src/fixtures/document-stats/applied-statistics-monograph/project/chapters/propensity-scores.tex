@@ -1,0 +1,173 @@
+\chapter{Propensity Scores and Weighting}
+\label{chap:propensity}
+
+\section{The balancing property}
+\label{sec:ps-balancing}
+
+\begin{definition}[Propensity score]
+\label{def:propensity}
+\index{propensity score}
+The propensity score is $e(x) = \Prob(A = 1 \mid X = x)$.
+\end{definition}
+
+The propensity score reduces a covariate vector of arbitrary dimension to a
+scalar, and it does so without discarding any information relevant to
+confounding. That claim is the content of the following result, which is due in this form
+to \citet{marchetti2004balancing}.
+
+\begin{theorem}[Balancing property]
+\label{thm:balancing}
+$X \indep A \mid e(X)$.
+\end{theorem}
+
+\begin{proof}
+It suffices to show $\Prob\left( A = 1 \mid X, e(X) \right) = \Prob\left( A = 1 \mid e(X) \right)$.
+The left side is $e(X)$ by Definition~\ref{def:propensity}, since $e(X)$ is a
+function of $X$. For the right side, condition on $e(X)$ and apply the tower
+property:
+\begin{equation*}
+  \Prob\left( A = 1 \mid e(X) \right)
+    = \E\left[ \Prob\left( A = 1 \mid X \right) \,\middle|\, e(X) \right]
+    = \E\left[ e(X) \mid e(X) \right]
+    = e(X).
+\end{equation*}
+The two conditional probabilities agree almost surely, which is the assertion.
+\end{proof}
+
+\begin{corollary}[Ignorability given the score]
+\label{cor:ps-ignorability}
+Under Assumption~\ref{ass:ignorability},
+$\left( Y(0), Y(1) \right) \indep A \mid e(X)$.
+\end{corollary}
+
+\begin{proof}
+For $a \in \{0,1\}$ write
+$\Prob\left( A = 1 \mid Y(a), e(X) \right) = \E\left[ \Prob\left( A = 1 \mid Y(a), X \right) \mid Y(a), e(X) \right]$.
+Assumption~\ref{ass:ignorability} makes the inner probability equal to $e(X)$,
+and the outer expectation of $e(X)$ given $e(X)$ is $e(X)$, which does not
+depend on $Y(a)$.
+\end{proof}
+
+Corollary~\ref{cor:ps-ignorability} is what makes the score useful. Adjustment
+for a scalar suffices where adjustment for a high dimensional covariate vector
+was required, provided the score is known. It is not known, and the practical
+difficulties in this chapter all descend from that.
+
+\begin{remark}
+\label{rem:estimated-score}
+Estimating $e$ and then treating $\hat{e}$ as if it were known produces a
+conservative standard error for the ATT under some conditions and an
+anticonservative one under others. The efficient influence function
+of Section~\ref{sec:dr-influence} accounts for the estimation of $e$ and should
+be used in preference to a plug in variance.
+\end{remark}
+
+\section{Weighting estimators}
+\label{sec:ps-weighting}
+
+The inverse probability weighted estimator\index{inverse probability weighting}
+of the ATE is
+\begin{equation}
+  \hat{\ATE}_{\mathrm{IPW}}
+    = \frac{1}{n} \sum_{i=1}^{n}
+      \left( \frac{A_i Y_i}{\hat{e}(X_i)}
+           - \frac{(1 - A_i) Y_i}{1 - \hat{e}(X_i)} \right).
+  \label{eq:ipw}
+\end{equation}
+Its unbiasedness under a correctly specified score follows from a one line
+calculation:
+\begin{equation}
+  \E\left[ \frac{A Y}{e(X)} \right]
+    = \E\left[ \frac{\E\left[ A \mid X \right] \E\left[ Y(1) \mid X \right]}{e(X)} \right]
+    = \E\left[ \E\left[ Y(1) \mid X \right] \right]
+    = \E\left[ Y(1) \right],
+  \label{eq:ipw-unbiased}
+\end{equation}
+where the first equality uses Assumption~\ref{ass:ignorability} to factor the
+conditional expectation and Assumption~\ref{ass:consistency} to
+replace $Y$ by $Y(1)$ on the event $\{A = 1\}$.
+
+The Hajek variant\index{Hajek estimator} normalises by the realised weights,
+\begin{equation}
+  \hat{\ATE}_{\mathrm{Hajek}}
+    = \frac{\sum_i A_i Y_i / \hat{e}(X_i)}{\sum_i A_i / \hat{e}(X_i)}
+    - \frac{\sum_i (1 - A_i) Y_i / (1 - \hat{e}(X_i))}{\sum_i (1 - A_i) / (1 - \hat{e}(X_i))},
+  \label{eq:hajek}
+\end{equation}
+which is biased in finite samples and almost always has smaller variance. The
+normalisation also makes the estimator invariant to a location shift in $Y$,
+which~\eqref{eq:ipw} is not, and an estimator whose value depends on whether the
+outcome is measured in earnings or in earnings minus a constant is not one to
+report.
+
+\section{Variance under weak overlap}
+\label{sec:ps-variance}
+
+Table~\ref{tab:overlap} showed 33 control units in the top propensity decile.
+Their weights under~\eqref{eq:ipw} are of order $1/(1 - 0.96) = 25$, against a
+mean control weight near 1.7. Table~\ref{tab:weighting-comparison} records what
+this does to the estimates.
+
+\begin{table}[t]
+\centering
+\caption[Weighting estimators on the retraining data]{Weighting estimators
+applied to the retraining data. Effects are in units of annual earnings.
+Standard errors are from 2000 bootstrap replications resampling units. The
+trimmed rows discard units with $\hat{e}$ outside the stated interval and
+therefore estimate a different, data defined estimand.}
+\label{tab:weighting-comparison}
+\begin{tabular}{lrrrr}
+\toprule
+Estimator & Estimate & Std. error & Max weight & Eff. $n$ \\
+\midrule
+Unadjusted difference        & 3184 & 141 & 1.0  & 8412 \\
+IPW, Equation~\eqref{eq:ipw} & 1508 & 612 & 91.4 & 1147 \\
+Hajek, Equation~\eqref{eq:hajek} & 1461 & 388 & 91.4 & 1147 \\
+Hajek, trimmed to $[0.05, 0.95]$ & 1424 & 251 & 19.8 & 3908 \\
+Hajek, trimmed to $[0.10, 0.90]$ & 1397 & 214 &  9.6 & 5216 \\
+Overlap weights              & 1412 & 198 &  0.25 & 6841 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three readings of Table~\ref{tab:weighting-comparison} are worth separating. The
+unadjusted contrast is more than twice the adjusted one, which is the expected
+direction: units with better prior earnings enrolled more often. The untrimmed
+IPW standard error is four times the trimmed one, and the effective sample size
+falls to 14 percent of the data, which is the cost of the 33 units in the top
+decile. And the point estimates across the adjusted rows agree to within 8
+percent, which is reassuring about the adjustment and says nothing about the
+unmeasured confounding of Figure~\ref{fig:confounding-dag}.
+
+The overlap weights\index{overlap weights} of \citet{okafor2011overlap} in the
+final row take the form
+$w_i = 1 - \hat{e}(X_i)$ for treated units and $\hat{e}(X_i)$ for controls.
+They target the effect in the subpopulation with the most equipoise, they are
+bounded by construction, and they minimise the asymptotic variance among all
+weighting schemes of the form $w(x) h(x)$. The price is that the estimand is
+defined by the covariate distribution of the sample rather than chosen in
+advance, which conflicts with Remark~\ref{rem:estimand-first} and should be
+declared rather than discovered.
+
+\section{Assessing balance}
+\label{sec:ps-balance}
+
+A fitted propensity model is checked by whether it balances covariates, not by
+whether it predicts treatment well. A model with excellent discrimination
+implies poor overlap and is bad news rather than good.
+
+\begin{definition}[Standardised mean difference]
+\label{def:smd}
+\index{standardised mean difference}
+For covariate $X_k$ with weighted arm means $\bar{x}_{k1}, \bar{x}_{k0}$ and
+pooled unweighted variance $s_k^{2}$, the standardised mean difference is
+$d_k = (\bar{x}_{k1} - \bar{x}_{k0}) / s_k$.
+\end{definition}
+
+Balance is conventionally declared at $|d_k| < 0.1$ for every covariate, a
+threshold with no theoretical basis that has nevertheless proved a serviceable
+default. What matters more than the threshold is that balance be assessed on
+the same weights used for the estimate, including any trimming, and that
+interactions and squared terms be checked rather than main effects alone. A
+score that balances every main effect and no interaction is a score fitted to
+the wrong model.

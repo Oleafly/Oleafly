@@ -1,0 +1,49 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{The recommendation}
+
+For a build long enough that a developer disengages, deliver the result
+ambiently and in place. A gutter marker, an underline, or a status change on
+the file tab all satisfy the requirement, which is that the information be
+available in the periphery of the region the developer is already looking at
+and require no action to clear. This is not a small optimisation. Halving
+resumption lag on a notification that fires several times an hour is worth more
+than most latency work on the build itself, and it costs nothing to implement.
+
+\subsection{When it stops holding}
+
+The recommendation has a floor. We ran a follow-up with 12 of our participants
+at a build duration of 6~s rather than 42~s, and the ordering inverts:
+\emph{Ambient} produces a mean lag of 4.1~s against 2.8~s for
+\emph{Immediate}. At six seconds developers do not disengage. They wait, gaze
+fixed on the edit region, and an ambient marker that changes colour outside
+foveal attention is simply missed for a second or two, whereas a toast is
+noticed at once. The crossover in our follow-up sits between 8 and 12~s,
+though with 12 participants we treat that interval as indicative rather than
+established.
+
+This gives a concrete design rule that a tool can implement without asking the
+user anything: measure the build, and choose the modality from its duration.
+Below roughly ten seconds, notify immediately. Above it, notify ambiently.
+
+\subsection{Why batching is not the answer}
+
+The batched condition is second best on every measure, and it is worse than
+ambient on all four. Batching addresses timing, deferring the interruption to a
+typing pause, but it preserves the modality: the toast still appears in the
+corner, still demands a gaze shift, and still requires dismissal. Our gaze data
+suggest the modality is the larger of the two costs, so a design that fixes
+only the timing captures only part of the available benefit. This also predicts
+that batched ambient markers, which we did not test, should be no better than
+ambient markers alone, since the ambient marker imposes no cost worth deferring.
+
+\subsection{Generalisation beyond compilation}
+
+Nothing in the mechanism is specific to builds. Test runs, deployments, long
+queries, and language server indexing all produce an asynchronous result that
+arrives after the developer has moved on. We would expect the same ordering
+wherever the wait exceeds the disengagement threshold and the result can be
+rendered in place. Where the result cannot be rendered in place, because it
+concerns a file the developer is not looking at, the ambient design loses its
+advantage and the question becomes open again.

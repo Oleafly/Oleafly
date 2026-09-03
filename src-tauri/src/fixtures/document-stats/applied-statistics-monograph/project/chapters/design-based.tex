@@ -1,0 +1,196 @@
+\chapter{Design Based Identification}
+\label{chap:design}
+
+\section{Instrumental variables}
+\label{sec:design-iv}
+
+When ignorability fails and the failure cannot be bounded tightly enough to be
+useful, identification must come from the design\index{design based identification} rather than from adjustment.
+The instrumental variable\index{instrumental variable} strategy exploits a
+source of variation in treatment that is unrelated to the outcome except through
+treatment.
+
+\begin{assumption}[Instrument conditions]
+\label{ass:iv}
+A variable $Z$ is an instrument for the effect of $A$ on $Y$ if
+$Z \indep \left( Y(a,z), A(z) \right)$ for all $a, z$, if
+$\Prob(A(1) = 1) \neq \Prob(A(0) = 1)$, and if $Y(a, z) = Y(a)$ for all $z$.
+\end{assumption}
+
+The three conditions are independence, relevance, and
+exclusion\index{exclusion restriction}. Only relevance
+is testable. Exclusion is the substantive assertion, and in
+Figure~\ref{fig:confounding-dag} it is the claim that the caseworker referral
+$Z$ has no edge into earnings.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  >={Stealth[length=2.2mm]},
+  obs/.style={draw,circle,minimum size=9mm,inner sep=0pt,font=\small},
+  unobs/.style={draw,circle,dashed,minimum size=9mm,inner sep=0pt,font=\small},
+  every edge/.style={draw,->,thick}
+]
+  \node[obs] (Z) {$Z$};
+  \node[obs,right=20mm of Z] (A) {$A$};
+  \node[obs,right=20mm of A] (Y) {$Y$};
+  \node[unobs] (U) at ($(A)!0.5!(Y)+(0,-15mm)$) {$U$};
+
+  \draw (Z) edge (A);
+  \draw (A) edge (Y);
+  \draw (U) edge (A);
+  \draw (U) edge (Y);
+  \draw[->,thick,dashed,red!60!black] (Z) to[bend left=38] node[above,font=\footnotesize] {excluded by assumption} (Y);
+
+  \node[font=\footnotesize,below=1mm of Z,align=center] {referral};
+  \node[font=\footnotesize,below=1mm of A,align=center] {enrolment};
+  \node[font=\footnotesize,below=1mm of Y,align=center] {earnings};
+  \node[font=\footnotesize,below=1mm of U,align=center] {motivation};
+\end{tikzpicture}
+\caption[Instrumental variable structure]{Instrumental variable structure for
+the retraining study. The dashed arc is the edge that
+Assumption~\ref{ass:iv} forbids. Identification rests entirely on its absence,
+and no feature of the observed data distinguishes a world in which it is present
+from one in which it is not.}
+\label{fig:iv-dag}
+\end{figure}
+
+\begin{theorem}[Local average treatment effect]
+\label{thm:late}
+\index{local average treatment effect}
+Under Assumption~\ref{ass:iv} and monotonicity, $A(1) \geq A(0)$ almost surely,
+\begin{equation}
+  \LATE \equiv \E\left[ Y(1) - Y(0) \,\middle|\, A(1) > A(0) \right]
+    = \frac{\E[Y \mid Z=1] - \E[Y \mid Z=0]}{\E[A \mid Z=1] - \E[A \mid Z=0]}.
+  \label{eq:late}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Monotonicity\index{monotonicity} partitions the population into compliers with $A(1) > A(0)$, always
+takers with $A(1) = A(0) = 1$, and never takers with $A(1) = A(0) = 0$, and
+excludes defiers. By exclusion, $Y(a,z) = Y(a)$, so for always takers and never
+takers the observed outcome does not depend on $Z$. By independence, the
+subgroup proportions are the same in both arms of $Z$. Hence
+$\E[Y \mid Z=1] - \E[Y \mid Z=0]$ equals the complier proportion times
+$\E[Y(1) - Y(0) \mid \text{complier}]$, since the contributions of the other two
+groups cancel. The denominator of~\eqref{eq:late} equals the complier proportion
+by the same partition. Dividing gives the claim, and the denominator is nonzero
+by relevance.
+\end{proof}
+
+\section{The estimand is not chosen}
+\label{sec:design-late}
+
+Theorem~\ref{thm:late} identifies an effect for compliers, a subgroup that
+cannot be identified at the unit level and whose composition depends on the
+instrument. Two valid instruments for the same treatment identify two different
+quantities, and a disagreement between them is not evidence that one is invalid.
+
+\begin{table}[t]
+\centering
+\caption[Instrument diagnostics and estimates]{Instrument diagnostics and
+estimates for three candidate instruments in the retraining study. The complier
+share is the first stage contrast of~\eqref{eq:late}. The final column reports
+the change in the point estimate when the instrument is interacted with region,
+which is a rough check on the exclusion restriction.}
+\label{tab:iv-comparison}
+\begin{tabular}{lrrrr}
+\toprule
+Instrument & First stage $F$ & Complier share & $\widehat{\LATE}$ & Interaction shift \\
+\midrule
+Caseworker referral        & 148.2 & 0.41 & 1604 & 84  \\
+Distance to training site  & 31.7  & 0.19 & 2210 & 391 \\
+Office opening month       & 8.4   & 0.06 & 4870 & 2914 \\
+Referral and distance      & 91.5  & 0.47 & 1712 & 156 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:iv-comparison} illustrates the weak instrument problem\index{weak instruments} in a form
+worth recognising. The office opening month has a first stage $F$ statistic of
+8.4, below the conventional threshold of 10, and its point estimate is more than
+three times the others. The naive reading is that opening month identifies a
+different complier population. The correct reading is that a first stage this
+weak amplifies any violation of exclusion by roughly the inverse of the complier
+share, so a small direct effect of opening month on earnings would produce
+exactly this pattern \citep{nakamura2015weakiv}. The interaction shift of 2914 in the final column is
+larger than most of the point estimates in the table and is a straightforward
+signal that the specification is not credible.
+
+\section{Difference in differences}
+\label{sec:design-did}
+
+Where treatment is adopted at different times by different units, and where the
+untreated trajectory of the treated units would have paralleled that of the
+untreated, the effect is identified by a double difference.
+
+\begin{assumption}[Parallel trends]
+\label{ass:parallel}
+\index{parallel trends}
+$\E\left[ Y_{t}(0) - Y_{t-1}(0) \mid A = 1 \right]
+ = \E\left[ Y_{t}(0) - Y_{t-1}(0) \mid A = 0 \right]$.
+\end{assumption}
+
+\begin{proposition}[Difference in differences]
+\label{prop:did}
+Under Assumptions~\ref{ass:consistency} and~\ref{ass:parallel},
+\begin{equation}
+  \ATT = \left( \E[Y_t \mid A=1] - \E[Y_{t-1} \mid A=1] \right)
+       - \left( \E[Y_t \mid A=0] - \E[Y_{t-1} \mid A=0] \right).
+  \label{eq:did}
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Add and subtract $\E[Y_t(0) \mid A=1]$ in the definition of the ATT. The
+untreated period value satisfies $Y_{t-1} = Y_{t-1}(0)$ for both groups by
+consistency, since treatment has not yet occurred. Assumption~\ref{ass:parallel}
+replaces the unobserved $\E[Y_t(0) \mid A=1]$ by
+$\E[Y_{t-1} \mid A=1] + \left( \E[Y_t \mid A=0] - \E[Y_{t-1} \mid A=0] \right)$.
+Substituting and cancelling gives~\eqref{eq:did}.
+\end{proof}
+
+Assumption~\ref{ass:parallel} is not invariant to transformation of the outcome.
+Trends that are parallel in levels are not parallel in logarithms unless the
+groups have equal baseline means, so the scale of the outcome is part of the
+assumption rather than a reporting choice. This is the single most common
+unstated decision in applied difference in differences work
+\citep{delacroix2021didscale}.
+
+\section{The graphical view of design}
+\label{sec:design-dag-view}
+
+The strategies of this chapter and of Chapter~\ref{chap:graphical} are the same
+mathematics under different labels. An instrument is a vertex with an edge into
+$A$, no edge into $Y$, and no unblocked backdoor path to $Y$. Parallel trends is
+the assertion that the confounder is additive and time invariant, which in a
+diagram over $(Y_{t-1}, Y_t, A, U)$ means that $U$ has edges of equal weight
+into both outcome vertices.
+
+Stating the design assumption graphically is worth the effort because it makes
+the failure modes visible. A time varying confounder breaks parallel trends by
+giving $U$ unequal edge weights. An instrument that affects the outcome through
+a second channel is an added edge. Neither failure is detectable in the data,
+and both are easy to state, argue about, and if necessary bound with the
+apparatus of Chapter~\ref{chap:sensitivity}.
+
+\section{Interference}
+\label{sec:design-interference}
+
+Assumption~\ref{ass:sutva} has been maintained throughout. When it fails, the
+potential outcome of unit $i$ is a function of the full assignment vector, and
+the number of potential outcomes per unit grows exponentially in the sample
+size. Progress requires restricting that dependence.
+
+The most useful restriction is partial interference\index{interference!partial}: units fall into groups, and
+spillover occurs within groups and not between them. Under partial interference
+the direct effect and the spillover effect are separately identified by a
+two stage randomisation, and in observational settings by a group level
+propensity score \citep{halloran2017interference}. In the retraining study the natural group is the local labour
+market office, and a displacement effect within an office would violate
+Assumption~\ref{ass:sutva} in the direction that biases the estimate upward: a
+trained worker who takes a job that an untrained worker would otherwise have
+held raises the treated outcome and lowers the control outcome at once. Nothing
+in Chapters~\ref{chap:propensity} through~\ref{chap:sensitivity} detects this,
+and it is the most serious unaddressed threat to the worked example.

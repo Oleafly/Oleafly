@@ -1,0 +1,58 @@
+\chapter{Solver Configuration for Case S07}
+\label{app:configuration}
+
+The configuration below reproduces case S07 of Table~\ref{tab:case-matrix}. It
+is given in full so that the run can be reconstructed without reference to the
+solver defaults, which have changed between versions.
+
+\begin{lstlisting}[caption={Production configuration for case S07.},label={lst:s07}]
+[domain]
+extent          = [6.2831853, 2.0, 3.1415927]
+coarse_cells    = [384, 192, 192]
+block_size      = 32
+periodic        = [true, false, true]
+
+[refinement]
+max_level       = 3
+indicator       = "ozmidov_resolved_fraction"
+chi_refine      = 2.0
+chi_coarsen     = 8.0
+n_min_ratio     = 1.0e-4
+regrid_interval = 200
+balance_ratio   = 2
+
+[physics]
+re_tau          = 950.0
+richardson_bulk = 0.190
+prandtl         = 0.71
+background_grad = 0.0421
+forcing         = "constant_pressure_gradient"
+
+[collision]
+momentum        = "mrt_d3q27"
+scalar          = "srt_d3q7"
+s_bulk          = 1.19
+s_heat_flux     = 1.40
+s_fourth        = 1.72
+s_ghost         = 1.00
+
+[interface]
+prolongation    = "tricubic"
+neq_rescaling   = true
+restriction     = "volume_average"
+
+[run]
+spinup_turnovers    = 20
+statistics_turnovers = 40
+checkpoint_interval = 5000
+ranks               = 2048
+threads_per_rank    = 8
+\end{lstlisting}
+
+The two entries most likely to be misread are \texttt{background\_grad}, which
+is the dimensionless background scalar gradient $\Gamma h / \theta_\tau$ rather
+than a dimensional gradient, and \texttt{balance\_ratio}, which is the maximum
+level jump permitted between face neighbours and must remain at 2 for the
+coupling of Section~\ref{sec:method-coupling} to apply. Setting
+\texttt{neq\_rescaling} to false reproduces the unrescaled column of
+Table~\ref{tab:interface-error} and is retained only for that comparison.

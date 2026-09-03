@@ -1,0 +1,83 @@
+\section{Evaluation}
+\label{sec:evaluation}
+
+\subsection{Setup}
+
+We evaluate on a single 24\,GB consumer accelerator paired with a 16-core host.
+Models are three open-weight decoders at 3B, 8B, and 13B parameters, served in
+bfloat16 with a paged key-value cache. Baselines are a dense tiled kernel in
+the style of FlashAttention~\cite{dao2022flashattention}, a 2048-token sliding
+window~\cite{beltagy2020longformer}, and the block-sparse pattern of
+BigBird~\cite{zaheer2020bigbird}. Unless stated otherwise $B = 128$ and
+$\varepsilon = 0.02$.
+
+\subsection{Throughput and latency}
+
+Table~\ref{tab:latency} reports median time to first token. \sysname{} is
+faster than every baseline beyond 32k tokens, and it is the only configuration
+that completes the 128k case on this device: both the dense kernel and BigBird
+exhaust device memory during prefill.
+
+\begin{table}[t]
+  \centering
+  \small
+  \caption{Median time to first token in seconds for the 8B model. OOM marks a
+  configuration that exhausted device memory during prefill.}
+  \label{tab:latency}
+  \begin{tabular}{lrrrr}
+    \toprule
+    Method & 8k & 32k & 64k & 128k \\
+    \midrule
+    Dense tiled       & 0.42 & 2.71 & 9.94 & OOM \\
+    Sliding window    & 0.39 & 1.60 & 3.28 & 6.91 \\
+    BigBird pattern   & 0.44 & 1.88 & 4.02 & OOM \\
+    \sysname{}        & \textbf{0.38} & \textbf{1.24} & \textbf{2.31} & \textbf{4.470} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Quality}
+
+Figure~\ref{fig:quality} plots perplexity against the retained-mass budget on a
+held-out long-document corpus. Quality is flat until $\varepsilon$ exceeds
+0.05, after which the sliding-window failure mode reappears: the model loses
+distant coreference and perplexity climbs sharply.
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+        width=\linewidth, height=4.6cm,
+        xlabel={discarded mass budget $\varepsilon$},
+        ylabel={perplexity},
+        xmin=0, xmax=0.12, ymin=6.2, ymax=7.6,
+        grid=both, grid style={gray!20},
+        legend style={font=\scriptsize,at={(0.02,0.98)},anchor=north west,draw=none,fill=none},
+        tick label style={font=\scriptsize},
+        label style={font=\scriptsize},
+      ]
+      \addplot[thick,mark=*,mark size=1.2pt] coordinates {
+        (0.00,6.41) (0.01,6.42) (0.02,6.44) (0.03,6.47)
+        (0.05,6.58) (0.08,6.96) (0.10,7.28) (0.12,7.51)
+      };
+      \addlegendentry{\sysname}
+      \addplot[thick,dashed,mark=square,mark size=1.2pt] coordinates {
+        (0.00,6.41) (0.02,6.72) (0.05,7.05) (0.08,7.33) (0.12,7.55)
+      };
+      \addlegendentry{sliding window}
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Perplexity against the discarded-mass budget for the 8B model at a
+  64k context. \sysname{} holds quality to $\varepsilon = 0.05$.}
+  \label{fig:quality}
+\end{figure}
+
+\subsection{Where the approximation fails}
+
+Two regimes degrade. Retrieval-style prompts, in which a single distant token
+carries the answer, concentrate mass in one block and are handled well. The
+harder case is a prompt with diffuse, nearly uniform attention: the probe's
+bound is loose, the guard fires, and \sysname{} falls back to dense
+computation for those heads with a 12 percent latency penalty relative to
+running dense from the start. We report this rather than tuning it away
+because it determines when the scheduler should not be enabled.

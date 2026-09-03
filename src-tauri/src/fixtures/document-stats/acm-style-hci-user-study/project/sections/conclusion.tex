@@ -1,0 +1,23 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+Compile notifications are a solved problem in every editor and, on this
+evidence, solved wrongly. Delivering a build result as an immediate dismissable
+toast doubles resumption lag against an ambient in-place marker, adds 18
+percent to task completion time, and raises self-reported mental demand by 21
+points, while carrying exactly the same information. It is also worse than
+saying nothing at all, which is the result that convinced us the mechanism is
+attention rather than information.
+
+The fix is cheap and the rule is simple: notify ambiently above roughly ten
+seconds of build time, immediately below it. We are releasing the
+instrumentation harness so that the measurement can be repeated in production
+editors, where the interesting open question lives: whether the effect survives
+a working day full of competing interruptions, or whether it is swamped by
+them.
+
+\section*{Acknowledgements}
+We thank the participants for their time and their patience with the eye
+tracker, the Ashgrove interaction laboratory for equipment access, and the
+reviewers whose scepticism about the silent condition produced the gaze
+analysis in Section~\ref{sec:results}.

@@ -1,0 +1,142 @@
+\section{Processing chain}
+\label{sec:processing}
+
+\subsection{Overview}
+\label{sec:proc-overview}
+
+Raw 20 hertz records pass through eleven stages before a flux is written to the
+archive. Figure~\ref{fig:pipeline} shows the chain. Every stage is versioned and
+every record carries the version identifier of the chain that produced it, so a
+reprocessing campaign can be distinguished from an instrument change in the
+archive without reference to an external log.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  >={Stealth[length=2.2mm]},
+  box/.style={draw,rounded corners=2pt,minimum width=24mm,minimum height=8.5mm,
+              align=center,font=\scriptsize},
+  store/.style={draw,cylinder,shape border rotate=90,aspect=0.22,
+                minimum width=17mm,minimum height=11mm,align=center,font=\scriptsize},
+  lab/.style={font=\scriptsize,midway,above,inner sep=1pt}
+]
+  \node[store] (raw) {raw\\ 20 Hz};
+  \node[box,right=9mm of raw] (despike) {despike\\ and range};
+  \node[box,right=7mm of despike] (rotate) {coordinate\\ rotation};
+  \node[box,right=7mm of rotate] (lag) {lag\\ maximisation};
+  \node[box,below=9mm of lag] (block) {block average\\ and detrend};
+  \node[box,left=7mm of block] (cov) {covariance\\ 30 min};
+  \node[box,left=7mm of cov] (wpl) {density\\ correction};
+  \node[box,below=9mm of wpl] (spec) {spectral\\ correction};
+  \node[box,right=7mm of spec] (foot) {footprint\\ model};
+  \node[box,right=7mm of foot] (qc) {quality\\ flags};
+  \node[store,right=9mm of qc] (arch) {archive\\ 30 min};
+
+  \draw[->,thick] (raw) -- (despike);
+  \draw[->,thick] (despike) -- (rotate);
+  \draw[->,thick] (rotate) -- (lag);
+  \draw[->,thick] (lag) -- (block);
+  \draw[->,thick] (block) -- (cov);
+  \draw[->,thick] (cov) -- (wpl);
+  \draw[->,thick] (wpl) -- (spec);
+  \draw[->,thick] (spec) -- (foot);
+  \draw[->,thick] (foot) -- (qc);
+  \draw[->,thick] (qc) -- (arch);
+
+  \node[box,above=9mm of foot,fill=white] (slow) {slow suite\\ 1 min};
+  \draw[->,thick,dashed] (slow) -- (wpl);
+  \draw[->,thick,dashed] (slow) -- (foot);
+
+  \begin{scope}[on background layer]
+    \node[draw,dashed,inner sep=2.5mm,fit=(despike)(rotate)(lag)(block)(cov)] (stage1) {};
+  \end{scope}
+  \node[font=\scriptsize,above=0.5mm of stage1.north west,anchor=south west]
+    {high frequency stages, Section~\ref{sec:proc-highfreq}};
+\end{tikzpicture}
+\caption{Processing chain from raw high frequency records to the archived half
+hourly flux. Dashed inputs come from the slow response suite. The footprint
+model consumes both the rotated wind statistics and the stability parameter
+derived from the slow suite.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{High frequency stages}
+\label{sec:proc-highfreq}
+
+Despiking removes points more than 5.5 median absolute deviations from a 5
+minute running median, with a maximum of four consecutive points removed before
+the whole averaging interval is rejected. Coordinate rotation uses the planar
+fit method applied per site and per wind sector of 30 degrees, with the fit
+coefficients recomputed monthly.
+
+The turbulent flux of a scalar $c$ over an averaging interval is the covariance
+\begin{equation}
+  F_c = \overline{w' \rho_c'},
+  \label{eq:covariance}
+\end{equation}
+where $w$ is the vertical velocity, $\rho_c$ the scalar density, primes denote
+deviations from the interval mean, and the overbar is the interval average. The
+sensible heat flux follows as $H = \rho c_p \overline{w'T'}$ and the latent heat
+flux as $\lambda E = \lambda \overline{w' \rho_v'}$.
+
+Because the open path analyser measures density rather than mixing ratio, the
+flux requires the correction for expansion and contraction of the air parcel
+\citep{duvall2015density},
+\begin{equation}
+  F_c^{\mathrm{corr}} = F_c
+    + \mu \frac{\overline{\rho_c}}{\overline{\rho_a}} \overline{w'\rho_v'}
+    + \left( 1 + \mu \frac{\overline{\rho_v}}{\overline{\rho_a}} \right)
+      \frac{\overline{\rho_c}}{\overline{T}} \overline{w'T'},
+  \label{eq:wpl}
+\end{equation}
+with $\mu$ the ratio of the molar masses of dry air and water vapour. The
+correction is a substantial fraction of the carbon flux at this network: its
+median magnitude over the year is 19 percent of the uncorrected flux, and at the
+saltmarsh sites in summer it exceeds 40 percent.
+
+\subsection{Spectral corrections}
+\label{sec:proc-spectral}
+
+High frequency attenuation from sensor separation, path averaging, and the
+finite response of the analyser is corrected by an empirical transfer function
+fitted to the site cospectra \citep{grothe2018spectral}. The correction factor is
+\begin{equation}
+  \Phi = \frac{\int_0^{\infty} C_{wc}^{\mathrm{ref}}(f) \, df}
+              {\int_0^{\infty} C_{wc}^{\mathrm{ref}}(f) \, T(f) \, df},
+  \label{eq:spectral-correction}
+\end{equation}
+where $C_{wc}^{\mathrm{ref}}$ is a reference cospectral shape and $T(f)$ the
+fitted transfer function. Low frequency loss from the 30 minute averaging window
+is assessed by the ogive test and found to be below 3 percent at all sites
+except MC08, whose 8 metre height and elevated position give it the largest
+transporting eddies in the network.
+
+\subsection{Footprint model}
+\label{sec:proc-footprint}
+
+Source area is estimated with a parameterised two dimensional model
+\citep{lindholm2017footprint} driven by
+the friction velocity, the Obukhov length, the standard deviation of the lateral
+wind, and the roughness length. The output per record is the distance containing
+80 percent of the flux source, and the fraction of the source area falling
+within the intended cover class.
+
+Records with less than 70 percent of the source area in the intended class are
+flagged. Across the network this flag affects 6.2 percent of records, rising to
+19.8 percent at MC06 for the reason given in Section~\ref{sec:network-siting}.
+
+\subsection{Gap filling}
+\label{sec:proc-gapfill}
+
+Gaps are filled by marginal distribution sampling \citep{kaale2022gapfill} on a window of plus or minus
+seven days, conditioned on incoming shortwave radiation, air temperature, and
+vapour pressure deficit, with a fallback to the mean diurnal course when no
+comparable meteorological conditions exist in the window. Gaps longer than 12
+days are not filled and the affected period is excluded from the annual sums with
+a corresponding widening of the reported uncertainty.
+
+The uncertainty contributed by gap filling is estimated by artificially removing
+observed records at the same rate and in the same diurnal and seasonal pattern
+as the real gaps, then comparing the filled value with the withheld observation.
+The resulting contribution to the annual budget is 17 grams of carbon per square
+metre at the saltmarsh sites and 11 at the dune sites.

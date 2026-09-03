@@ -1,0 +1,48 @@
+\section{Introduction}
+\label{sec:introduction}
+
+Millimeter-wave links buy their bandwidth from carrier frequencies at which
+oscillator phase noise is severe. A 60~GHz synthesizer built to a commercial
+power budget has a 3~dB corner linewidth in the hundreds of kilohertz, and the
+phase it contributes wanders by several degrees over a single orthogonal
+frequency division multiplexing (OFDM) symbol at the symbol durations these
+systems use~\citep{nakagome2019oscillator}.
+
+In a fully digital array this would be a manageable problem, because
+independent chains carry independent oscillators and the impairment partially
+averages across antennas. Hybrid arrays do not have that property. One local
+oscillator drives the entire analog combining network, so the phase-noise
+process multiplies the combined signal after beamforming and appears identically
+on every spatial stream~\citep{oyelaran2020hybrid}. Array gain does nothing to
+it.
+
+The conventional treatment splits phase noise into a common phase error, a
+single rotation shared by all subcarriers within a symbol, and intercarrier
+interference (ICI), which is discarded as
+noise~\citep{bertrand2018commonphase}. That split is sound when the linewidth
+times the symbol duration is small. At 400~MHz of bandwidth and a 200~kHz
+linewidth it is not: the ICI carries more energy than the residual thermal
+noise at operating signal-to-noise ratios, and, critically, it is not white.
+Treating structured interference as white noise is the specific failure this
+paper addresses.
+
+\paragraph*{Contributions}
+We make three.
+
+First, we derive the exact covariance of the ICI term for a free-running
+oscillator with a Lorentzian spectrum, without the small-phase approximation
+that the literature usually applies at this point
+(Section~\ref{sec:system-model}). The covariance is Toeplitz and effectively
+rank deficient, and we characterise its numerical rank as a function of
+linewidth and symbol duration.
+
+Second, we build \est, a variational estimator that treats the phase trajectory
+as a latent Gauss-Markov process and alternates between a channel update in
+closed form and a phase update by Kalman smoothing
+(Section~\ref{sec:estimator}). The complexity is $O(N \log N + N R^2)$ per
+iteration for $N$ subcarriers and numerical rank $R$, against $O(N^3)$ for a
+direct whitened least squares solution (Section~\ref{sec:complexity}).
+
+Third, we evaluate against three baselines over a linewidth sweep spanning two
+orders of magnitude, and report where the method stops helping
+(Section~\ref{sec:results}).
