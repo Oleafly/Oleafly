@@ -213,7 +213,7 @@ describe("plan mode tool classification", () => {
 
   it("exposes the gate error the execution layer returns", () => {
     expect(PLAN_MODE_TOOL_ERROR).toBe(
-      "Plan mode: this tool is unavailable until the plan is approved.",
+      "Plan mode: this tool runs only after the plan is approved. Add the step to the plan with update_todos instead of calling it now.",
     );
   });
 });

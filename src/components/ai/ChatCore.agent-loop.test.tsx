@@ -69,9 +69,11 @@ const mocks = vi.hoisted(() => ({
   runSummaryProps: [] as Array<{
     todos: unknown[];
     turn: { chatId: string; turnId: string } | null;
+    plan?: boolean;
   }>,
   planProps: [] as Array<{
     todos: unknown[];
+    turn: { chatId: string; turnId: string } | null;
     approval?: {
       status: "awaiting" | "approved";
       busy?: boolean;
@@ -261,12 +263,12 @@ vi.mock("@/components/branding/OleaflyAssistantMascot", () => ({
 vi.mock("@/components/ai/chat-parts", async () => {
   const React = await import("react");
   return {
-  AgentPlan: (props: (typeof mocks.planProps)[number]) => {
+  AgentStatusPill: (props: (typeof mocks.planProps)[number]) => {
     mocks.planProps.push(props);
     const approval = props.approval;
     return React.createElement(
       "div",
-      { "data-testid": "agent-todos", "data-plan-status": approval?.status ?? "none" },
+      { "data-testid": "agent-status-pill", "data-plan-status": approval?.status ?? "none" },
       approval?.status === "awaiting"
         ? [
             React.createElement(
@@ -295,12 +297,12 @@ vi.mock("@/components/ai/chat-parts", async () => {
         : null,
     );
   },
-  AgentRunSummary: (props: {
-    todos: unknown[];
-    turn: { chatId: string; turnId: string } | null;
-  }) => {
+  AgentRunSummary: (props: (typeof mocks.runSummaryProps)[number]) => {
     mocks.runSummaryProps.push(props);
-    return null;
+    return React.createElement("div", {
+      "data-testid": "agent-run-summary",
+      "data-plan": props.plan ? "true" : "false",
+    });
   },
   InfoHint: () => null,
   MessageItem: () => null,
@@ -350,6 +352,7 @@ let agentFileChangeTurnForChat: typeof import("@/store/agent-file-changes").agen
 let useAssistantOutputsStore: typeof import("@/store/assistant-outputs").useAssistantOutputsStore;
 let usePlanModeStore: typeof import("@/store/plan-mode").usePlanModeStore;
 let usePlanApprovalStore: typeof import("@/store/plan-approval").usePlanApprovalStore;
+let PLAN_MODE_HINT: typeof import("./ChatCore").PLAN_MODE_HINT;
 let PLAN_MODE_PLANNING_PROMPT: typeof import("./ChatCore").PLAN_MODE_PLANNING_PROMPT;
 let PLAN_MODE_REVISION_LINE: typeof import("./ChatCore").PLAN_MODE_REVISION_LINE;
 let useChatGoalStore: typeof import("@/store/chat-goal").useChatGoalStore;
@@ -418,7 +421,8 @@ beforeAll(async () => {
   ({ act, cleanup, fireEvent, render, waitFor } = await import("@testing-library/react"));
   ({ QueryClientProvider } = await import("@tanstack/react-query"));
   ({ createAppQueryClient } = await import("@/lib/query"));
-  ({ ChatCore, PLAN_MODE_PLANNING_PROMPT, PLAN_MODE_REVISION_LINE } = await import("./ChatCore"));
+  ({ ChatCore, PLAN_MODE_HINT, PLAN_MODE_PLANNING_PROMPT, PLAN_MODE_REVISION_LINE } =
+    await import("./ChatCore"));
   ({ ChatPanel } = await import("./ChatPanel"));
   ({ CopilotOverlay } = await import("./CopilotOverlay"));
   ({ resetProviderConfigCache } = await import("./provider-config"));
@@ -1714,11 +1718,20 @@ describe("ChatCore agent turns", () => {
     expect(activeChatRun()).toBeNull();
   });
 
-  it("adds the planning prompt and hint only after Plan mode is turned on", async () => {
+  it("tells the planning model to plan tool work instead of refusing it", () => {
+    expect(PLAN_MODE_PLANNING_PROMPT).toContain("do not say you lack access to tools");
+    expect(PLAN_MODE_PLANNING_PROMPT).toContain("the approved plan runs with the full toolset");
+    expect(PLAN_MODE_PLANNING_PROMPT).toContain("turn Plan off for direct tool access");
+    expect(PLAN_MODE_HINT).toBe(
+      "Plan mode: the assistant proposes a plan before editing. Turn Plan off to give the assistant direct access to all tools.",
+    );
+  });
+
+  it("adds the planning prompt and info icon only after Plan mode is turned on", async () => {
     const rendered = await renderChat();
     const toggle = rendered.getByRole("button", { name: "Plan mode" });
     expect(toggle).toHaveAttribute("aria-pressed", "false");
-    expect(rendered.queryByTestId("ai-plan-mode-hint")).toBeNull();
+    expect(rendered.queryByTestId("ai-plan-mode-info")).toBeNull();
 
     submit(rendered, "Run without planning posture");
     await waitFor(() => expect(mocks.runs).toHaveLength(1));
@@ -1732,9 +1745,13 @@ describe("ChatCore agent turns", () => {
     expect(toggle).toHaveAttribute("data-state", "on");
     expect(toggle).toHaveClass("bg-violet-500/15", "text-violet-600");
     expect(toggle.className).not.toContain("amber-");
-    expect(rendered.getByTestId("ai-plan-mode-hint")).toHaveTextContent(
-      "Plan mode: the assistant proposes a plan before editing.",
-    );
+    const info = rendered.getByTestId("ai-plan-mode-info");
+    expect(info).toHaveAccessibleName("About plan mode");
+    expect(info).toHaveAccessibleDescription(PLAN_MODE_HINT);
+    expect(info.querySelector("svg")).toHaveClass("size-3.5");
+    expect(toggle.parentElement?.nextElementSibling).toContainElement(info);
+    fireEvent.mouseEnter(info.parentElement as HTMLElement);
+    expect(await rendered.findByRole("tooltip")).toHaveTextContent(PLAN_MODE_HINT);
     submit(rendered, "Run with planning posture");
     await waitFor(() => expect(mocks.runs).toHaveLength(2));
     expect(mocks.runs[1].options.system).toContain(PLAN_MODE_PLANNING_PROMPT);
@@ -1776,10 +1793,10 @@ describe("ChatCore agent turns", () => {
     expect(inventoryLine).not.toContain("write_file");
     expect(planning.system).toContain(PLAN_MODE_PLANNING_PROMPT);
     expect(planning.guardToolCall?.({ id: "c1", name: "write_file", args: {} })).toBe(
-      "Plan mode: this tool is unavailable until the plan is approved.",
+      "Plan mode: this tool runs only after the plan is approved. Add the step to the plan with update_todos instead of calling it now.",
     );
     expect(planning.guardToolCall?.({ id: "c2", name: "run_command", args: {} })).toBe(
-      "Plan mode: this tool is unavailable until the plan is approved.",
+      "Plan mode: this tool runs only after the plan is approved. Add the step to the plan with update_todos instead of calling it now.",
     );
     expect(planning.guardToolCall?.({ id: "c3", name: "read_file", args: {} })).toBeNull();
     expect(planning.guardToolCall?.({ id: "c4", name: "update_todos", args: {} })).toBeNull();
@@ -1834,7 +1851,13 @@ describe("ChatCore agent turns", () => {
     );
     expect(rendered.getByRole("button", { name: "Plan mode" })).toHaveAttribute("data-state", "on");
     expect(rendered.getByPlaceholderText("Ask AI to help with your document…")).toBeTruthy();
-    expect(mocks.planProps.at(-1)?.approval).toBeUndefined();
+    expect(rendered.queryByTestId("agent-status-pill")).toBeNull();
+    await waitFor(() =>
+      expect(rendered.getByTestId("agent-run-summary")).toHaveAttribute("data-plan", "true"),
+    );
+    expect(mocks.runSummaryProps.at(-1)).toMatchObject({ plan: true, turn: { chatId: "chat-1" } });
+    expect(rendered.getByTestId("agent-run-summary").closest('[data-message-role="assistant"]'))
+      .not.toBeNull();
   });
 
   it("sends typed feedback as a revision turn that keeps tools gated and the plan awaiting", async () => {
@@ -1860,7 +1883,7 @@ describe("ChatCore agent turns", () => {
     expect(revision.system).toContain(PLAN_MODE_PLANNING_PROMPT);
     expect(revision.system).toContain(PLAN_MODE_REVISION_LINE);
     expect(revision.guardToolCall?.({ id: "c1", name: "write_file", args: {} })).toBe(
-      "Plan mode: this tool is unavailable until the plan is approved.",
+      "Plan mode: this tool runs only after the plan is approved. Add the step to the plan with update_todos instead of calling it now.",
     );
     expect(useAgentTodoStore.getState().todos).toEqual(PLAN_TODOS);
     expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
@@ -1906,7 +1929,7 @@ describe("ChatCore agent turns", () => {
     expect(toggle).toHaveAttribute("data-state", "off");
     expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
     expect(rendered.queryByRole("button", { name: "Approve plan" })).toBeNull();
-    expect(rendered.queryByTestId("ai-plan-mode-hint")).toBeNull();
+    expect(rendered.queryByTestId("ai-plan-mode-info")).toBeNull();
     expect(useAgentTodoStore.getState().todos).toEqual(PLAN_TODOS);
 
     submit(rendered, "Just do it");
@@ -2443,9 +2466,17 @@ describe("ChatCore agent turns", () => {
       reason: "write",
     });
     await waitFor(() =>
-      expect(mocks.runSummaryProps.at(-1)?.turn).toMatchObject({ chatId: "chat-1" }),
+      expect(mocks.planProps.at(-1)?.turn).toMatchObject({ chatId: "chat-1" }),
     );
+    expect(mocks.planProps.at(-1)?.approval).toBeUndefined();
+    expect(rendered.queryByTestId("agent-run-summary")).toBeNull();
     await act(async () => finishRun(0, "Edited"));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    await waitFor(() =>
+      expect(rendered.getByTestId("agent-run-summary")).toHaveAttribute("data-plan", "false"),
+    );
+    expect(mocks.runSummaryProps.at(-1)).toMatchObject({ plan: false, turn: { chatId: "chat-1" } });
+    expect(rendered.queryByTestId("agent-status-pill")).toBeNull();
   });
 
   it("preserves create-file and compile output mirroring", async () => {

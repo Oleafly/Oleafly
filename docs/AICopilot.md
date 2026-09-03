@@ -29,13 +29,31 @@ it is not a second document model.
 Plan mode (the Plan button, or the Enable Plan Mode slash command) makes the
 assistant plan first. While it is on, the assistant can read and search the
 project, but no tool that writes a file, compiles, or runs a command is
-offered to it, and a call to one of those is refused if the model tries
-anyway. The turn ends with a numbered checklist marked "Awaiting approval".
-Approve plan runs that checklist under whatever approval mode the project
-already uses, so Ask for approval, Approve for me, and Full access work exactly
-as they do outside plan mode. Revise, or anything you type while the plan is
-waiting, goes back as feedback and produces a fresh plan. Turn Plan off and the
-pending approval is dropped, so the next turn is a normal one.
+offered to it. If the model calls one anyway, the call is refused with a note
+telling it to put that step in the plan instead, so a request that needs an
+edit or a compile still ends up in the checklist rather than in an apology
+about missing tools. The small info icon next to the Plan button says as much,
+and reminds you that turning Plan off gives the assistant every tool directly.
+
+While a plan is waiting, or a run is working through one, a pill sits centred
+above the composer. It reads PLAN, then STEP x/N once there is a checklist,
+then REVIEW with the added and removed line counts once files have changed.
+Hover over the pill, or click it (Tab reaches it too), and a panel opens above
+it with the checklist, an Awaiting approval or Approved badge, and the changed
+files. Approve plan and Revise live in that panel while approval is pending,
+and the panel opens on its own the moment a plan or a revision lands so those
+buttons are in view without hovering. Escape, a click on the pill, or a click
+anywhere else closes it, and it stays closed until the next plan arrives.
+Approve plan runs the checklist under whatever approval mode
+the project already uses, so Ask for approval, Approve for me, and Full access
+behave exactly as they do outside plan mode. Revise, or anything you type while
+the plan is waiting, goes back as feedback and produces a fresh plan. Turn Plan
+off and the pending approval is dropped, so the next turn is a normal one.
+
+Once every item is done and the run has finished, the pill goes away. A short
+summary appears under the last assistant message instead, along the lines of
+"Plan · 2/2 done · 3 files changed +40 -12", with the file rows under it. A run
+that changed files without a plan gets the same summary minus the Plan label.
 
 ## Provider and data boundary
 

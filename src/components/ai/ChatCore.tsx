@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useId, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
 import { runAgentHarness, toAgentMessages } from "./agent-turn";
@@ -35,6 +35,7 @@ import {
   FilePlus2,
   Frame,
   History,
+  Info,
   Layers,
   Lightbulb,
   MessageSquareQuote,
@@ -174,8 +175,8 @@ import {
   subscribeProviderConfig,
 } from "@/components/ai/provider-config";
 import {
-  AgentPlan,
   AgentRunSummary,
+  AgentStatusPill,
   Shimmer,
   InfoHint,
   formatError,
@@ -231,11 +232,12 @@ export function approvalPostureLine(mode: ApprovalMode): string {
   return APPROVAL_POSTURE_LINES[mode];
 }
 
-export const PLAN_MODE_HINT = "Plan mode: the assistant proposes a plan before editing.";
+export const PLAN_MODE_HINT =
+  "Plan mode: the assistant proposes a plan before editing. Turn Plan off to give the assistant direct access to all tools.";
 export const PLAN_REVISION_PLACEHOLDER = "Describe what to change in the plan";
 export const PLAN_APPROVED_MESSAGE = "Carry out the approved plan.";
 export const PLAN_MODE_PLANNING_PROMPT =
-  "Plan mode: this is a planning turn. Read and inspect the project freely with the tools offered, but do not edit files, compile, or run commands; those tools are not offered in this turn. Finish by calling update_todos with a numbered plan, one pending item per file or section to touch, then reply with a short summary of the plan. Stop there and wait for the user to approve the plan. Do not start the work.";
+  "Plan mode: this is a planning turn. Read and inspect the project freely with the tools offered, but do not edit files, compile, or run commands; those tools are not offered in this turn. Finish by calling update_todos with a numbered plan, one pending item per file or section to touch, then reply with a short summary of the plan. Stop there and wait for the user to approve the plan. Do not start the work. When the request needs editing, deleting, compiling, or running commands, do not say you lack access to tools; put that work into the numbered plan as pending items, because the approved plan runs with the full toolset. Mention that the user can turn Plan off for direct tool access.";
 export const PLAN_MODE_REVISION_LINE =
   "The user asked for changes to the current plan. Apply the feedback by calling update_todos with the revised numbered plan as pending items, reply with a short summary of what changed, then stop and wait for approval again.";
 
@@ -585,6 +587,7 @@ export function ChatCore() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const slashCommandMenuRef = useRef<SlashCommandMenuHandle>(null);
   const inputShellRef = useRef<HTMLDivElement>(null);
+  const planModeInfoId = useId();
   const slashMenuOpen =
     isSlashCommandInput(input) && slashMenuDismissedInput !== input;
   useEffect(() => {
@@ -2149,10 +2152,27 @@ ${sandboxedCustom}`;
     0,
   );
   const showMinimap = workspaceHidden && userPromptCount >= 2;
-  const agentRunHasActivity =
-    agentTodos.some((todo) => todo.status !== "cancelled") ||
+  const agentTodosActive = agentTodos.filter((todo) => todo.status !== "cancelled");
+  const agentTodosOpen = agentTodosActive.some((todo) => todo.status !== "completed");
+  const agentFilesChanged =
     Object.keys(agentFileChangeTurn?.changedFiles ?? {}).length > 0 ||
     (agentFileChangeTurn?.committedFiles.length ?? 0) > 0;
+  const agentStatusActive =
+    streaming || planApprovalStatus !== "planning" || agentTodosOpen;
+  const agentStatusPillVisible =
+    agentStatusActive &&
+    (planApprovalStatus !== "planning" || agentTodosActive.length > 0 || agentFilesChanged);
+  const agentRunSummaryVisible =
+    !agentStatusActive && (agentTodosActive.length > 0 || agentFilesChanged);
+  let lastUserIndex = -1;
+  for (let index = messages.length - 1; index >= 0; index--) {
+    if (messages[index].role === "user") {
+      lastUserIndex = index;
+      break;
+    }
+  }
+  const lastTurnWasPlanExecution =
+    lastUserIndex >= 0 && messages[lastUserIndex].content === PLAN_APPROVED_MESSAGE;
 
   const restoreCheckpoint = useCallback(
     async (message: ChatMessage, isLatest: boolean) => {
@@ -2461,23 +2481,6 @@ ${sandboxedCustom}`;
         </div>
       )}
 
-      {/* Visible even keyless so e2e/hooks can assert it */}
-      {agentTodos.length > 0 && (
-        <AgentPlan
-          todos={agentTodos}
-          approval={
-            planApprovalStatus === "planning"
-              ? undefined
-              : {
-                  status: planApprovalStatus,
-                  busy: streaming || approvalModeLocked,
-                  onApprove: approvePlan,
-                  onRevise: revisePlan,
-                }
-          }
-        />
-      )}
-
       {!providerConfigReady && !apiKey && (
         <div data-testid="ai-provider-loading" className="min-h-0 flex-1" />
       )}
@@ -2514,7 +2517,8 @@ ${sandboxedCustom}`;
             ref={scrollRef}
             onScroll={onMessagesScroll}
             className={cn(
-              "h-full overflow-auto py-3",
+              "h-full overflow-auto pt-3",
+              agentStatusPillVisible ? "pb-12" : "pb-3",
               showMinimap ? "pl-10 pr-3" : "px-3",
             )}
           >
@@ -2599,11 +2603,18 @@ ${sandboxedCustom}`;
                     nearBottomRef={nearBottomRef}
                     renderExtras={({ live, isLatestAssistant, msg }) => (
                       <>
-                        {msg.role === "assistant" && isLatestAssistant && agentRunHasActivity && (
-                          <div className="mt-1.5 flex justify-end px-1">
-                            <AgentRunSummary todos={agentTodos} turn={agentFileChangeTurn} />
-                          </div>
-                        )}
+                        {msg.role === "assistant" &&
+                          isLatestAssistant &&
+                          !live &&
+                          agentRunSummaryVisible && (
+                            <div className="mt-1.5 px-1">
+                              <AgentRunSummary
+                                todos={agentTodos}
+                                turn={agentFileChangeTurn}
+                                plan={lastTurnWasPlanExecution}
+                              />
+                            </div>
+                          )}
                         {msg.role === "assistant" &&
                           msg.checkpointOid &&
                           msg.toolCalls?.some(
@@ -2671,6 +2682,24 @@ ${sandboxedCustom}`;
               />
             )}
           </div>
+            {agentStatusPillVisible && (
+              <div className="pointer-events-none absolute inset-x-3 bottom-2 z-20">
+                <AgentStatusPill
+                  todos={agentTodos}
+                  turn={agentFileChangeTurn}
+                  approval={
+                    planApprovalStatus === "planning"
+                      ? undefined
+                      : {
+                          status: planApprovalStatus,
+                          busy: streaming || approvalModeLocked,
+                          onApprove: approvePlan,
+                          onRevise: revisePlan,
+                        }
+                  }
+                />
+              </div>
+            )}
             {showScrollDown && (
               <button
                 type="button"
@@ -2854,14 +2883,6 @@ ${sandboxedCustom}`;
               items={attachments}
               onRemove={(id) => setAttachments((a) => a.filter((x) => x.id !== id))}
             />
-            {planMode && (
-              <p
-                data-testid="ai-plan-mode-hint"
-                className="mb-1.5 px-1 text-[11px] leading-snug text-muted-foreground"
-              >
-                {PLAN_MODE_HINT}
-              </p>
-            )}
             <div
               ref={inputShellRef}
               className="relative rounded-[1.375rem] border bg-card px-3 pb-2 pt-2.5 shadow-sm transition-colors focus-within:border-ring"
@@ -3114,6 +3135,22 @@ ${sandboxedCustom}`;
                       <span className="ai-composer-plan-value">Plan</span>
                     </button>
                   </Tooltip>
+                  {planMode && (
+                    <Tooltip label={PLAN_MODE_HINT} side="top" wide>
+                      <button
+                        type="button"
+                        aria-label="About plan mode"
+                        aria-describedby={planModeInfoId}
+                        data-testid="ai-plan-mode-info"
+                        className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <Info className="size-3.5" />
+                        <span id={planModeInfoId} className="sr-only">
+                          {PLAN_MODE_HINT}
+                        </span>
+                      </button>
+                    </Tooltip>
+                  )}
                   {figureModeAvailable && (
                     <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
                       <button type="button"

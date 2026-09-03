@@ -78,7 +78,7 @@ const READ_ONLY_TOOLS = new Set([
 ]);
 
 export const PLAN_MODE_TOOL_ERROR =
-  "Plan mode: this tool is unavailable until the plan is approved.";
+  "Plan mode: this tool runs only after the plan is approved. Add the step to the plan with update_todos instead of calling it now.";
 
 export function isReadOnlyTool(tool: string): boolean {
   return READ_ONLY_TOOLS.has(tool);
