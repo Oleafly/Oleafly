@@ -620,7 +620,7 @@ fn write_meta_at(path: &Path, meta: &ProjectMeta) -> Result<(), String> {
 /// On Windows `to_string_lossy` yields backslashes; the frontend builds the file
 /// tree and matches SyncTeX files by splitting on "/", so paths must be
 /// normalized here or subfolders won't nest and lookups mismatch on Windows.
-fn rel_slash(root: &Path, path: &Path) -> String {
+pub(crate) fn rel_slash(root: &Path, path: &Path) -> String {
     let relative = path.strip_prefix(root).unwrap_or(path);
     normalize_relative(relative)
         .unwrap_or_else(|| relative.to_string_lossy().into_owned())
@@ -629,7 +629,7 @@ fn rel_slash(root: &Path, path: &Path) -> String {
 
 /// Cap recursion depth on directory walks so a deep (or symlink-induced) tree
 /// can't blow the stack or hang the app.
-const MAX_WALK_DEPTH: usize = 64;
+pub(crate) const MAX_WALK_DEPTH: usize = 64;
 
 fn walk(root: &Path, dir: &Path, out: &mut Vec<FileEntry>, depth: usize) -> Result<(), String> {
     if depth >= MAX_WALK_DEPTH {
@@ -683,7 +683,7 @@ pub async fn list_files(project_id: String) -> Result<Vec<FileEntry>, String> {
 
 const MCP_LIST_RESULT_LIMIT: usize = 2_000;
 const MCP_LIST_ENTRY_SCAN_LIMIT: usize = 10_000;
-const MCP_SCAN_DEADLINE: std::time::Duration = std::time::Duration::from_secs(2);
+pub(crate) const MCP_SCAN_DEADLINE: std::time::Duration = std::time::Duration::from_secs(2);
 
 pub(crate) struct BoundedFileList {
     pub entries: Vec<FileEntry>,
@@ -698,13 +698,13 @@ struct FileListLimits {
     deadline: std::time::Instant,
 }
 
-struct ScanCancellation {
+pub(crate) struct ScanCancellation {
     cancelled: Arc<AtomicBool>,
     armed: bool,
 }
 
 impl ScanCancellation {
-    fn new() -> (Self, Arc<AtomicBool>) {
+    pub(crate) fn new() -> (Self, Arc<AtomicBool>) {
         let cancelled = Arc::new(AtomicBool::new(false));
         (
             Self {
@@ -715,7 +715,7 @@ impl ScanCancellation {
         )
     }
 
-    fn disarm(&mut self) {
+    pub(crate) fn disarm(&mut self) {
         self.armed = false;
     }
 }
@@ -728,7 +728,7 @@ impl Drop for ScanCancellation {
     }
 }
 
-fn scan_should_stop(cancelled: &AtomicBool, deadline: std::time::Instant) -> bool {
+pub(crate) fn scan_should_stop(cancelled: &AtomicBool, deadline: std::time::Instant) -> bool {
     cancelled.load(Ordering::Acquire) || std::time::Instant::now() >= deadline
 }
 
@@ -4951,8 +4951,8 @@ pub struct SearchHit {
 
 const SEARCH_LIMIT: usize = 200;
 const MCP_SEARCH_RESULT_LIMIT: usize = 20;
-const MCP_SEARCH_ENTRY_SCAN_LIMIT: usize = 5_000;
-const MCP_SEARCH_FILE_SCAN_LIMIT: usize = 2_000;
+pub(crate) const MCP_SEARCH_ENTRY_SCAN_LIMIT: usize = 5_000;
+pub(crate) const MCP_SEARCH_FILE_SCAN_LIMIT: usize = 2_000;
 const MCP_SEARCH_FILE_BYTE_LIMIT: usize = 2 * 1024 * 1024;
 const MCP_SEARCH_TOTAL_BYTE_LIMIT: usize = 32 * 1024 * 1024;
 

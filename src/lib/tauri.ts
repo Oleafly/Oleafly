@@ -23,6 +23,8 @@ import type {
   CopyFileResult,
   CreateFileResult,
   DocumentEngineDescriptor,
+  DocumentStatsRequest,
+  DocumentStatsResult,
   EngineInfo,
   FigureCacheResult,
   FileConflictStrategy,
@@ -52,6 +54,8 @@ import type {
   ProjectSourcesResult,
   ProjectStateChanged,
   ProviderModel,
+  RagChunk,
+  RagRetrieveRequest,
   RecycledProjectInfo,
   RenameFileResult,
   SearchHit,
@@ -300,6 +304,16 @@ export const readProjectSourcesBatch = (
   projectId: string,
   request: ProjectSourcesRequest,
 ) => invoke<ProjectSourcesResult>("read_project_sources", { projectId, request });
+
+export const documentStats = (
+  projectId: string,
+  request: DocumentStatsRequest,
+) => invoke<DocumentStatsResult>("document_stats", { projectId, request });
+
+export const ragRetrieve = (
+  projectId: string,
+  request: RagRetrieveRequest,
+) => invoke<RagChunk[]>("rag_retrieve", { projectId, request });
 
 export const writeFileContent = (
   projectId: string,

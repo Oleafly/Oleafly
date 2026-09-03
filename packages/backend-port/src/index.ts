@@ -200,6 +200,49 @@ export interface ProjectSourcesResult {
     oversized?: string[];
     truncated: boolean;
 }
+export interface DocumentStatsCounts {
+    words: number;
+    wordsInText: number;
+    wordsInHeaders: number;
+    wordsOutsideText: number;
+    headers: number;
+    figures: number;
+    mathInline: number;
+    mathDisplayed: number;
+    characters: number;
+    lines: number;
+}
+export interface DocumentStatsRequest {
+    mainDocument: string;
+    overrides: Record<string, string>;
+}
+export interface DocumentStatsFile {
+    path: string;
+    stats: DocumentStatsCounts;
+}
+export interface DocumentStatsResult {
+    root: string;
+    fileCount: number;
+    unreadable: string[];
+    stats: DocumentStatsCounts;
+    files: DocumentStatsFile[];
+}
+export interface RagRetrieveOverride {
+    path: string;
+    text: string;
+}
+export interface RagRetrieveRequest {
+    query: string;
+    topK?: number;
+    overrides: RagRetrieveOverride[];
+}
+export interface RagChunk {
+    path: string;
+    startLine: number;
+    endLine: number;
+    text: string;
+    score: number;
+}
 /** Null means the persisted record is missing or stale: compile normally. */
 export interface FileEntry {
     path: string;
@@ -674,6 +717,8 @@ export interface BackendPort {
   listFiles: (projectId: string) => Promise<FileEntry[]>;
   readFileContent: (projectId: string, path: string) => Promise<string>;
   readProjectSourcesBatch: (projectId: string, request: ProjectSourcesRequest) => Promise<ProjectSourcesResult>;
+  documentStats: (projectId: string, request: DocumentStatsRequest) => Promise<DocumentStatsResult>;
+  ragRetrieve: (projectId: string, request: RagRetrieveRequest) => Promise<RagChunk[]>;
   writeFileContent: (projectId: string, path: string, content: string, expectedGeneration?: number) => Promise<FileMutationResult>;
   createFile(projectId: string, path: string, isDir: boolean, conflictStrategy?: FileConflictStrategy, expectedGeneration?: number): Promise<{
     path: string;
