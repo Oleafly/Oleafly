@@ -79,14 +79,32 @@ fn ensure_repository_with(
         &configure,
     )?)?;
     ensure_private_exclude(&root)?;
+    ensure_git_identity_with(&root, &configure)?;
     Ok(true)
 }
 
 fn ensure_git_identity(root: &PathBuf) -> Result<(), String> {
-    let email = run_git(root, &["config", "user.email"])?;
+    ensure_git_identity_with(root, |_| {})
+}
+
+fn ensure_git_identity_with(
+    root: &PathBuf,
+    configure: impl Fn(&mut Command),
+) -> Result<(), String> {
+    let email = run_configured_git(root, &["config", "user.email"], true, &configure)?;
     if String::from_utf8_lossy(&email.stdout).trim().is_empty() {
-        ok_or_err(run_git(root, &["config", "user.email", "oleafly@local"])?)?;
-        ok_or_err(run_git(root, &["config", "user.name", "Oleafly"])?)?;
+        ok_or_err(run_configured_git(
+            root,
+            &["config", "user.email", "oleafly@local"],
+            true,
+            &configure,
+        )?)?;
+        ok_or_err(run_configured_git(
+            root,
+            &["config", "user.name", "Oleafly"],
+            true,
+            &configure,
+        )?)?;
     }
     Ok(())
 }
@@ -1109,8 +1127,8 @@ mod tests {
         attach_imported_repository_history_at, clean_remote_credentials, commit_index,
         current_branch, ensure_repository, ensure_repository_with, initialize_repo,
         is_allowed_remote_url, ok_or_err, parse_status_porcelain, remote_credentials_need_cleanup,
-        restore_worktree, run_git, run_git_read_only, sanitize_url, show, stage, stage_all,
-        unstage, unstage_all, validate_git_oid,
+        restore_worktree, run_configured_git, run_git, run_git_read_only, sanitize_url, show,
+        stage, stage_all, unstage, unstage_all, validate_git_oid, Command,
     };
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -1190,6 +1208,36 @@ mod tests {
 
         assert_eq!(run_git(&root, &["rev-parse", "HEAD"]).unwrap().stdout, head);
         assert_eq!(current_branch(&root).unwrap(), "main");
+    }
+
+    #[test]
+    fn ensure_repository_sets_an_identity_so_commits_work_without_a_global_config() {
+        let root = temp_dir("ensure-identity");
+        let no_global = temp_dir("ensure-identity-no-global");
+        write(&root, "main.tex", "identity\n");
+        let configure = |command: &mut Command| {
+            command
+                .env("HOME", &no_global)
+                .env("XDG_CONFIG_HOME", &no_global)
+                .env("GIT_CONFIG_GLOBAL", no_global.join("missing-global-config"))
+                .env("GIT_CONFIG_NOSYSTEM", "1");
+        };
+
+        assert!(ensure_repository_with(&root, configure).unwrap());
+
+        let email =
+            run_configured_git(&root, &["config", "--local", "user.email"], true, configure)
+                .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&email.stdout).trim(),
+            "oleafly@local"
+        );
+        ok_or_err(run_configured_git(&root, &["add", "-A"], true, configure).unwrap()).unwrap();
+        ok_or_err(run_configured_git(&root, &["commit", "-m", "first"], true, configure).unwrap())
+            .unwrap();
+        let head =
+            run_configured_git(&root, &["rev-parse", "--verify", "HEAD"], true, configure).unwrap();
+        assert!(head.status.success());
     }
 
     #[test]
