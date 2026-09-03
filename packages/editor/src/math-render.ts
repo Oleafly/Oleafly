@@ -12,11 +12,14 @@ export interface MountedMathPreview {
   destroy(): void;
 }
 
+export type MathPreviewErrorDisplay = "message" | "hidden";
+
 export interface MountMathPreviewOptions {
   expression: MathExpression;
   identity: string;
   isCurrent(): boolean;
   eager?: boolean;
+  errorDisplay?: MathPreviewErrorDisplay;
   onPaint?(result: MathRenderResult): void;
 }
 
@@ -309,12 +312,15 @@ function previewErrorMessage(expression: MathExpression): string {
 }
 
 function applyPreviewResult(
+  host: HTMLElement,
   container: HTMLElement,
   expression: MathExpression,
   result: MathRenderResult,
+  errorDisplay: MathPreviewErrorDisplay,
 ) {
   container.replaceChildren();
   if (result.status === "ready") {
+    host.hidden = false;
     container.classList.remove("is-error");
     container.removeAttribute("aria-label");
     // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized KaTeX is the only accepted producer.
@@ -323,6 +329,10 @@ function applyPreviewResult(
   }
 
   container.classList.add("is-error");
+  if (errorDisplay === "hidden") {
+    host.hidden = true;
+    return;
+  }
   const error = document.createElement("span");
   error.className = "math-preview-error";
   error.setAttribute("role", "status");
@@ -428,7 +438,13 @@ export function mountMathPreview(
     ) {
       return;
     }
-    applyPreviewResult(output, expression, result);
+    applyPreviewResult(
+      host,
+      output,
+      expression,
+      result,
+      options.errorDisplay ?? "message",
+    );
     options.onPaint?.(result);
   };
   let stopObserving = () => {};

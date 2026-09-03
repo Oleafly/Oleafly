@@ -213,6 +213,7 @@ class MathPreviewWidget extends WidgetType {
       // replacing it with wider KaTeX on the next frame, which otherwise
       // reflows wrapped source lines during a fast scroll.
       eager: true,
+      errorDisplay: "hidden",
     });
     this.mounted.set(dom, mounted);
     // KaTeX lays out against font metrics, so a preview that paints before its

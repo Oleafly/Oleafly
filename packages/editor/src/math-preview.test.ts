@@ -55,6 +55,26 @@ describe("live math preview", () => {
     expect(host!.querySelector(".katex")).not.toBeNull();
   });
 
+  it("hides the preview instead of showing a message when KaTeX rejects the expression", () => {
+    const editor = mount("\\newcommand{\\shape}[1]{\\textcolor{shapetext}{$#1$}}\n");
+    settle();
+    const host = preview(editor);
+    expect(host).not.toBeNull();
+    expect(host?.hidden).toBe(true);
+    expect(host?.querySelector(".math-preview-error")).toBeNull();
+    expect(host?.textContent).toBe("");
+    expect(editor.dom.querySelector(".cm-math-source")).not.toBeNull();
+  });
+
+  it("hides the preview of an expression that never closes", () => {
+    const editor = mount("Let $n be the count.\n");
+    settle();
+    const host = preview(editor);
+    expect(host?.hidden).toBe(true);
+    expect(host?.querySelector(".math-preview-error")).toBeNull();
+    expect(editor.dom.querySelector(".cm-math-source.is-incomplete")).not.toBeNull();
+  });
+
   it("renders the expression rather than staying on the loading label", () => {
     const editor = mount();
     settle();
