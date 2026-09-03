@@ -1,136 +1,171 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "providers": {
-    "openai": [
-      "gpt-4o",
-      "gpt-4o-2024-05-13",
-      "gpt-4o-2024-08-06",
-      "gpt-4o-2024-11-20",
-      "gpt-4o-mini",
-      "gpt-4o-mini-2024-07-18",
-      "gpt-4.1",
-      "gpt-4.1-2025-04-14",
-      "gpt-4.1-mini",
-      "gpt-4.1-mini-2025-04-14",
-      "gpt-4.1-nano",
-      "gpt-4.1-nano-2025-04-14",
-      "o3",
-      "o3-2025-04-16",
-      "o3-mini",
-      "o3-mini-2025-01-31",
-      "o4-mini",
-      "o4-mini-2025-04-16",
-      "gpt-5",
-      "gpt-5-2025-08-07",
-      "gpt-5-mini",
-      "gpt-5-mini-2025-08-07",
-      "gpt-5-nano",
-      "gpt-5-nano-2025-08-07",
-      "gpt-5-pro",
-      "gpt-5-pro-2025-10-06",
-      "gpt-5.1",
-      "gpt-5.1-2025-11-13",
-      "gpt-5.2",
-      "gpt-5.2-2025-12-11",
-      "gpt-5.2-pro",
-      "gpt-5.2-pro-2026-01-15",
-      "gpt-5.3-codex",
-      "gpt-5.4",
-      "gpt-5.4-pro",
-      "gpt-5.4-pro-2026-03-05",
-      "gpt-5.4-mini",
-      "gpt-5.4-mini-2026-03-17",
-      "gpt-5.4-nano",
-      "gpt-5.4-nano-2026-03-17",
-      "gpt-5.5",
-      "gpt-5.5-2026-04-23",
-      "gpt-5.5-pro",
-      "gpt-5.5-pro-2026-04-23",
-      "gpt-5.6-sol",
-      "gpt-5.6-terra",
-      "gpt-5.6-luna"
-    ],
-    "anthropic": [
-      "claude-fable-5",
-      "claude-opus-5",
-      "claude-sonnet-5",
-      "claude-haiku-4-5",
-      "claude-haiku-4-5-20251001",
-      "claude-opus-4-8",
-      "claude-opus-4-7",
-      "claude-opus-4-6",
-      "claude-sonnet-4-6"
-    ],
-    "google": [
-      "gemini-3.7-flash",
-      "gemini-3.6-flash",
-      "gemini-3.5-flash",
-      "gemini-3.5-flash-lite",
-      "gemini-3.1-pro-preview",
-      "gemini-3.1-flash-lite",
-      "gemini-3-flash-preview"
-    ],
-    "ollama": [
-      "llama3.2",
-      "llama3.2:3b",
-      "llama3.2:latest",
-      "qwen3.6:27b",
-      "qwen3.6:35b-a3b",
-      "qwen3-coder:30b",
-      "gemma4:12b",
-      "qwen2.5",
-      "qwen2.5:latest",
-      "mistral",
-      "mistral:latest",
-      "gemma2",
-      "gemma2:latest"
-    ],
-    "zai": [
-      "glm-5.3",
-      "glm-5.2",
-      "glm-4.6",
-      "glm-4.5-air",
-      "glm-4.5"
-    ],
-    "groq": [
-      "openai/gpt-oss-120b",
-      "openai/gpt-oss-20b",
-      "groq/compound",
-      "groq/compound-mini",
-      "llama-3.3-70b-versatile",
-      "llama-3.1-8b-instant"
-    ],
-    "openrouter": [
-      "openai/gpt-4o-mini",
-      "anthropic/claude-sonnet-5",
-      "anthropic/claude-opus-5",
-      "google/gemini-2.5-flash",
-      "meta-llama/llama-3.3-70b-instruct"
-    ],
-    "deepseek": [
-      "deepseek-v4-flash",
-      "deepseek-v4-pro",
-      "deepseek-v4-flash-vision-exp"
-    ],
-    "mistral": [
-      "mistral-large-latest",
-      "mistral-medium-latest",
-      "magistral-medium-latest",
-      "magistral-small-latest",
-      "codestral-latest",
-      "mistral-small-latest"
-    ],
-    "xai": [
-      "grok-4.6",
-      "grok-4.5",
-      "grok-4.3",
-      "grok-build-0.1"
-    ],
-    "perplexity": [
-      "sonar",
-      "sonar-pro",
-      "sonar-reasoning-pro",
-      "sonar-deep-research"
-    ]
+    "openai": {
+      "verified": [
+        "gpt-4o",
+        "gpt-4o-2024-05-13",
+        "gpt-4o-2024-08-06",
+        "gpt-4o-2024-11-20",
+        "gpt-4o-mini",
+        "gpt-4o-mini-2024-07-18",
+        "gpt-4.1",
+        "gpt-4.1-2025-04-14",
+        "gpt-4.1-mini",
+        "gpt-4.1-mini-2025-04-14",
+        "gpt-4.1-nano",
+        "gpt-4.1-nano-2025-04-14",
+        "o3",
+        "o3-2025-04-16",
+        "o3-mini",
+        "o3-mini-2025-01-31",
+        "o4-mini",
+        "o4-mini-2025-04-16",
+        "gpt-5",
+        "gpt-5-2025-08-07",
+        "gpt-5-mini",
+        "gpt-5-mini-2025-08-07",
+        "gpt-5-nano",
+        "gpt-5-nano-2025-08-07",
+        "gpt-5-pro",
+        "gpt-5-pro-2025-10-06",
+        "gpt-5.1",
+        "gpt-5.1-2025-11-13",
+        "gpt-5.2",
+        "gpt-5.2-2025-12-11",
+        "gpt-5.2-pro",
+        "gpt-5.2-pro-2026-01-15",
+        "gpt-5.3-codex",
+        "gpt-5.4",
+        "gpt-5.4-pro",
+        "gpt-5.4-pro-2026-03-05",
+        "gpt-5.4-mini",
+        "gpt-5.4-mini-2026-03-17",
+        "gpt-5.4-nano",
+        "gpt-5.4-nano-2026-03-17",
+        "gpt-5.5",
+        "gpt-5.5-2026-04-23",
+        "gpt-5.5-pro",
+        "gpt-5.5-pro-2026-04-23",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna"
+      ],
+      "blocked": {}
+    },
+    "anthropic": {
+      "verified": [
+        "claude-fable-5",
+        "claude-opus-5",
+        "claude-sonnet-5",
+        "claude-haiku-4-5",
+        "claude-haiku-4-5-20251001",
+        "claude-opus-4-8",
+        "claude-opus-4-7",
+        "claude-opus-4-6",
+        "claude-sonnet-4-6"
+      ],
+      "blocked": {}
+    },
+    "google": {
+      "verified": [
+        "gemini-3.7-flash",
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-pro-preview",
+        "gemini-3.1-flash-lite",
+        "gemini-3-flash-preview"
+      ],
+      "blocked": {
+        "gemini-3-flash-preview": "This preview model's thinking output breaks the assistant loop."
+      }
+    },
+    "ollama": {
+      "verified": [
+        "llama3.2",
+        "llama3.2:3b",
+        "llama3.2:latest",
+        "qwen3.6:27b",
+        "qwen3.6:35b-a3b",
+        "qwen3-coder:30b",
+        "gemma4:12b",
+        "qwen2.5",
+        "qwen2.5:latest",
+        "mistral",
+        "mistral:latest",
+        "gemma2",
+        "gemma2:latest"
+      ],
+      "blocked": {}
+    },
+    "zai": {
+      "verified": [
+        "glm-5.3",
+        "glm-5.2",
+        "glm-4.6",
+        "glm-4.5-air",
+        "glm-4.5"
+      ],
+      "blocked": {}
+    },
+    "groq": {
+      "verified": [
+        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b",
+        "groq/compound",
+        "groq/compound-mini",
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant"
+      ],
+      "blocked": {}
+    },
+    "openrouter": {
+      "verified": [
+        "openai/gpt-4o-mini",
+        "anthropic/claude-sonnet-5",
+        "anthropic/claude-opus-5",
+        "google/gemini-2.5-flash",
+        "meta-llama/llama-3.3-70b-instruct"
+      ],
+      "blocked": {}
+    },
+    "deepseek": {
+      "verified": [
+        "deepseek-v4-flash",
+        "deepseek-v4-pro",
+        "deepseek-v4-flash-vision-exp"
+      ],
+      "blocked": {}
+    },
+    "mistral": {
+      "verified": [
+        "mistral-large-latest",
+        "mistral-medium-latest",
+        "magistral-medium-latest",
+        "magistral-small-latest",
+        "codestral-latest",
+        "mistral-small-latest"
+      ],
+      "blocked": {}
+    },
+    "xai": {
+      "verified": [
+        "grok-4.6",
+        "grok-4.5",
+        "grok-4.3",
+        "grok-build-0.1"
+      ],
+      "blocked": {}
+    },
+    "perplexity": {
+      "verified": [
+        "sonar",
+        "sonar-pro",
+        "sonar-reasoning-pro",
+        "sonar-deep-research"
+      ],
+      "blocked": {}
+    }
   }
 }

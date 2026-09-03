@@ -21,6 +21,8 @@
     "proofreading:node-test": "node --test scripts/hunspell.node-tests.mjs",
     "seed:research:sync": "node scripts/sync-research-seeds.mjs",
     "seed:research:validate": "node scripts/validate-research-seeds.mjs",
+    "sync:model-metadata": "node scripts/sync-model-metadata.mjs",
+    "sync:model-metadata:test": "node --test scripts/sync-model-metadata.test.mjs",
     "preview": "vite preview",
     "tauri": "node scripts/tauri-sandbox.mjs",
     "lint": "biome lint src",
