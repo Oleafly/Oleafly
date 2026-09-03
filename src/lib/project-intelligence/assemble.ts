@@ -1,33 +1,41 @@
+import { summarizeBibliographyEntry } from "./bibliography-summary";
 import {
   engineForPath,
   normalizeProjectPath,
   stableId,
 } from "./source";
-import type {
-  BibliographyCatalog,
-  BibliographyDuplicate,
-  BibliographyEntry,
-  FileIntelligence,
-  OutlineNode,
-  ProjectDefinition,
-  ProjectDiagnostic,
-  ProjectEdge,
-  ProjectHierarchy,
-  ProjectHierarchyNode,
-  ProjectIntelligenceIdentity,
-  ProjectIntelligenceSnapshot,
-  ProjectIntelligenceStats,
-  ProjectRelatedLocation,
-  ProjectUse,
-  ResolutionStatus,
+import {
+  PROJECT_INTELLIGENCE_PROTOCOL_VERSION,
+  type BibliographyCatalog,
+  type BibliographyDuplicate,
+  type BibliographyEntryDetail,
+  type FileAnalysis,
+  type OutlineNode,
+  type ProjectDefinition,
+  type ProjectDiagnostic,
+  type ProjectEdge,
+  type ProjectFileState,
+  type ProjectHierarchy,
+  type ProjectHierarchyNode,
+  type ProjectIntelligenceIdentity,
+  type ProjectIntelligenceSnapshot,
+  type ProjectIntelligenceStats,
+  type ProjectRelatedLocation,
+  type ProjectUse,
+  type ResolutionStatus,
 } from "./types";
 
 export interface AssembleProjectIntelligenceInput {
   readonly identity: ProjectIntelligenceIdentity;
-  readonly files: Readonly<Record<string, FileIntelligence>>;
+  readonly files: Readonly<Record<string, FileAnalysis>>;
   readonly knownFiles: readonly string[];
   readonly mainDocument?: string;
   readonly stats: ProjectIntelligenceStats;
+}
+
+export interface AssembledProjectIntelligence {
+  readonly snapshot: ProjectIntelligenceSnapshot;
+  readonly bibliographyDetails: readonly BibliographyEntryDetail[];
 }
 
 const TARGET_DEFINITION_KINDS: ReadonlySet<string> = new Set([
@@ -342,18 +350,18 @@ function resolvedUse(
 }
 
 function withBibliographyDuplicateMetadata(
-  entries: readonly BibliographyEntry[],
+  entries: readonly BibliographyEntryDetail[],
 ): {
-  entries: BibliographyEntry[];
+  entries: BibliographyEntryDetail[];
   duplicates: BibliographyDuplicate[];
 } {
-  const byKey = new Map<string, BibliographyEntry[]>();
+  const byKey = new Map<string, BibliographyEntryDetail[]>();
   for (const entry of entries) {
     const values = byKey.get(entry.key) ?? [];
     values.push(entry);
     byKey.set(entry.key, values);
   }
-  const normalized: BibliographyEntry[] = [];
+  const normalized: BibliographyEntryDetail[] = [];
   const duplicates: BibliographyDuplicate[] = [];
   for (const [key, values] of [...byKey].sort(([left], [right]) =>
     left.localeCompare(right),
@@ -385,8 +393,22 @@ function withBibliographyDuplicateMetadata(
   return { entries: normalized, duplicates };
 }
 
+function fileStateOf(file: FileAnalysis): ProjectFileState {
+  return {
+    file: file.file,
+    engine: file.engine,
+    sourceRevision: file.sourceRevision,
+    contentHash: file.contentHash,
+    status: file.status,
+    ...(file.statusReason === undefined
+      ? {}
+      : { statusReason: file.statusReason }),
+    ...(file.packageRefs ? { packageRefs: file.packageRefs } : {}),
+  };
+}
+
 function hierarchyFor(
-  files: Readonly<Record<string, FileIntelligence>>,
+  files: Readonly<Record<string, FileAnalysis>>,
   edges: readonly ProjectEdge[],
   mainDocument?: string,
 ): ProjectHierarchy {
@@ -445,9 +467,9 @@ function hierarchyFor(
   return { roots, nodes, edges };
 }
 
-export function assembleProjectIntelligence(
+export function assembleProjectIntelligenceResult(
   input: AssembleProjectIntelligenceInput,
-): ProjectIntelligenceSnapshot {
+): AssembledProjectIntelligence {
   const orderedFiles = Object.fromEntries(
     Object.entries(input.files).sort(([left], [right]) =>
       left.localeCompare(right),
@@ -580,48 +602,16 @@ export function assembleProjectIntelligence(
   const bibliographyMetadata =
     withBibliographyDuplicateMetadata(rawEntries);
   const bibliography: BibliographyCatalog = {
-    entries: bibliographyMetadata.entries,
+    entries: bibliographyMetadata.entries.map(summarizeBibliographyEntry),
     duplicates: bibliographyMetadata.duplicates,
     declarationUseIds: uses
       .filter((use) => use.kind === "bibliography")
       .map((use) => use.id),
   };
-  const usesByFile = new Map<string, ProjectUse[]>();
-  for (const use of uses) {
-    const values = usesByFile.get(use.location.file);
-    if (values) values.push(use);
-    else usesByFile.set(use.location.file, [use]);
-  }
-  const edgesByFile = new Map<string, ProjectEdge[]>();
-  for (const edge of edges) {
-    const values = edgesByFile.get(edge.fromFile);
-    if (values) values.push(edge);
-    else edgesByFile.set(edge.fromFile, [edge]);
-  }
-  const diagnosticsByFile = new Map<string, ProjectDiagnostic[]>();
-  for (const diagnostic of diagnostics) {
-    const values = diagnosticsByFile.get(diagnostic.location.file);
-    if (values) values.push(diagnostic);
-    else diagnosticsByFile.set(diagnostic.location.file, [diagnostic]);
-  }
-  const bibliographyByFile = new Map<string, BibliographyEntry[]>();
-  for (const entry of bibliography.entries) {
-    const values = bibliographyByFile.get(entry.file);
-    if (values) values.push(entry);
-    else bibliographyByFile.set(entry.file, [entry]);
-  }
-  const resolvedFiles: Record<string, FileIntelligence> = {};
-  for (const [path, file] of Object.entries(orderedFiles)) {
-    resolvedFiles[path] = {
-      ...file,
-      uses: usesByFile.get(path) ?? [],
-      edges: edgesByFile.get(path) ?? [],
-      diagnostics: diagnosticsByFile.get(path) ?? [],
-      bibliographyEntries: bibliographyByFile.get(path) ?? [],
-    };
-  }
+  const fileStates: Record<string, ProjectFileState> = {};
   const outlines: Record<string, readonly OutlineNode[]> = {};
-  for (const file of Object.values(resolvedFiles)) {
+  for (const file of Object.values(orderedFiles)) {
+    fileStates[file.file] = fileStateOf(file);
     outlines[file.file] = [...file.outline].sort(
       (left, right) =>
         left.range.from - right.range.from ||
@@ -633,7 +623,7 @@ export function assembleProjectIntelligence(
   );
   const status = partialFiles.length > 0 ? "partial" : "success";
   const hierarchy = hierarchyFor(
-    resolvedFiles,
+    orderedFiles,
     edges,
     input.mainDocument,
   );
@@ -656,8 +646,8 @@ export function assembleProjectIntelligence(
     ),
   ].sort((a, b) => Number(a > b) - Number(a < b));
 
-  return {
-    protocolVersion: 1,
+  const snapshot: ProjectIntelligenceSnapshot = {
+    protocolVersion: PROJECT_INTELLIGENCE_PROTOCOL_VERSION,
     identity: { ...input.identity },
     status,
     ...(status === "partial"
@@ -665,7 +655,7 @@ export function assembleProjectIntelligence(
           reason: `${partialFiles.length} file${partialFiles.length === 1 ? "" : "s"} produced recoverable partial analysis.`,
         }
       : {}),
-    files: resolvedFiles,
+    fileStates,
     definitions,
     uses,
     diagnostics,
@@ -676,13 +666,23 @@ export function assembleProjectIntelligence(
     detectedPackages,
     documentClasses,
   };
+  return {
+    snapshot,
+    bibliographyDetails: bibliographyMetadata.entries,
+  };
+}
+
+export function assembleProjectIntelligence(
+  input: AssembleProjectIntelligenceInput,
+): ProjectIntelligenceSnapshot {
+  return assembleProjectIntelligenceResult(input).snapshot;
 }
 
 export function unreadableFileIntelligence(
   file: string,
   sourceRevision: number,
   message = "The file could not be read.",
-): FileIntelligence | null {
+): FileAnalysis | null {
   const engine = engineForPath(file);
   if (!engine) return null;
   const range = {

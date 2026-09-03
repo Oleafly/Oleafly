@@ -1,12 +1,10 @@
 import { Fragment, useEffect } from "react";
 import {
   Globe,
-  Moon,
   PanelLeft,
   PanelLeftClose,
   Settings as SettingsIcon,
   Sparkles,
-  Sun,
   SquareTerminal,
 } from "lucide-react";
 import { railSections, type AppContext, type RailTabContribution } from "@oleafly/registry";
@@ -16,7 +14,9 @@ import { useMcpActivityStore } from "@/store/mcp-activity";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useTheme } from "@/lib/theme";
 import { toggleBrowser } from "@/lib/browser-window";
+import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { ThemeMenu } from "@/components/layout/ThemeControls";
 import { cn } from "@/lib/utils";
 
 const ctrlBtn = (active: boolean) =>
@@ -26,6 +26,16 @@ const ctrlBtn = (active: boolean) =>
       ? "bg-primary/10 text-foreground"
       : "text-muted-foreground hover:bg-accent hover:text-foreground",
   );
+
+const dockBtn = (active: boolean) =>
+  cn(
+    "text-muted-foreground hover:text-foreground",
+    active && "bg-primary/10 text-foreground hover:bg-primary/10",
+  );
+
+function DockDivider() {
+  return <span className="mx-1 h-5 w-px shrink-0 bg-border" />;
+}
 
 function ViewButton({
   tab,
@@ -127,7 +137,6 @@ export function WorkspaceDockControls() {
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const setAssistantOpen = useSettingsStore((s) => s.setAssistantOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
-  const { theme, toggleTheme } = useTheme();
   const terminalShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleTerminal));
   const browserShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleBrowser));
   const terminalLabel = `${terminalOpen ? "Hide" : "Show"} terminal (${terminalShortcut})`;
@@ -136,69 +145,64 @@ export function WorkspaceDockControls() {
   const assistantLabel = `${assistantOpen ? "Hide" : "Show"} AI assistant`;
 
   return (
-    <div className="flex shrink-0 items-center gap-0.5">
+    <div className="flex shrink-0 items-center gap-1.5">
       <Tooltip label={terminalLabel} side="bottom">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           data-testid="rail-terminal-toggle"
           aria-label={terminalLabel}
           aria-pressed={terminalOpen}
           onClick={() => setTerminalOpen(!terminalOpen)}
-          className={ctrlBtn(terminalOpen)}
+          className={dockBtn(terminalOpen)}
         >
           <SquareTerminal className="size-4" aria-hidden />
-        </button>
+        </Button>
       </Tooltip>
       {webBrowser && (
-        <>
-          <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
-          <Tooltip label={browserLabel} side="bottom">
-            <button
-              type="button"
-              data-testid="rail-browser-toggle"
-              aria-label={browserLabel}
-              aria-pressed={browserOpen}
-              onClick={() => toggleBrowser()}
-              className={ctrlBtn(browserOpen)}
-            >
-              <Globe className="size-4" aria-hidden />
-            </button>
-          </Tooltip>
-        </>
+        <Tooltip label={browserLabel} side="bottom">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            data-testid="rail-browser-toggle"
+            aria-label={browserLabel}
+            aria-pressed={browserOpen}
+            onClick={() => toggleBrowser()}
+            className={dockBtn(browserOpen)}
+          >
+            <Globe className="size-4" aria-hidden />
+          </Button>
+        </Tooltip>
       )}
-      <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
       <Tooltip label={assistantLabel} side="bottom">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           data-testid="rail-assistant-toggle"
           aria-label={assistantLabel}
           aria-pressed={assistantOpen}
           onClick={() => setAssistantOpen(!assistantOpen)}
-          className={ctrlBtn(assistantOpen)}
+          className={dockBtn(assistantOpen)}
         >
           <Sparkles className="size-4" aria-hidden />
-        </button>
+        </Button>
       </Tooltip>
-      <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
-      <Tooltip label={theme === "dark" ? "Light theme" : "Dark theme"} side="bottom">
-        <button
-          type="button"
-          aria-label="Toggle theme"
-          onClick={toggleTheme}
-          className={ctrlBtn(false)}
-        >
-          {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-        </button>
-      </Tooltip>
+      <DockDivider />
+      <ThemeMenu triggerClassName={dockBtn(false)} />
       <Tooltip label="Settings" side="bottom">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           aria-label="Settings"
           onClick={() => setSettingsOpen(true)}
-          className={ctrlBtn(false)}
+          className={dockBtn(false)}
         >
           <SettingsIcon className="size-4" />
-        </button>
+        </Button>
       </Tooltip>
     </div>
   );

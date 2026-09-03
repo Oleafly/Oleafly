@@ -40,6 +40,22 @@ after one edit returns a list of paths rather than the whole project. The cache
 of those hashes lives in `src/lib/project-sources.ts`, which reverts to
 per-file reads when the batch command is missing.
 
+Document statistics go through the same reader. The `document_stats` command
+walks the include closure from the main document and reads every file in one
+batch call. Masking and counting happen in Rust, and unsaved buffers travel in
+the request so the numbers match what is on screen. The TypeScript counter in
+`src/lib/document-stats.ts` stays as the fallback for browser mode and for a
+backend without the command. The golden fixtures under
+`src-tauri/src/fixtures/document-stats/` fail the Rust tests as soon as the
+two counters disagree.
+
+`rag_retrieve` does the same for the assistant. It walks the project and
+scores every indexable chunk against the query in Rust, so one message costs
+one call rather than one read per file. `src/lib/ai-rag.ts` still reads file by
+file when the command is missing, and a golden fixture under
+`src-tauri/tests/fixtures/rag/` fails the Rust tests when the two scorers
+disagree.
+
 ## Extension model
 
 The contribution registry is the supported application extension point. Tabs,
@@ -84,6 +100,27 @@ returns the grouped result in `CompileResult.diagnostics`, so the log pane no
 longer reparses the whole log on every streamed chunk. The TypeScript parser in
 `@oleafly/latex` remains the fallback for a backend that does not send the
 field.
+
+## AI providers and model trust
+
+`crates/oleafly-agent` talks to every provider over one of four wire formats
+and has no idea which models the app trusts. That decision stays in the
+desktop adapter. `ai_model_registry.rs` reads the model catalog (bundled at
+`src-tauri/resources/ai-models.json`, refreshed from the CDN on each listing)
+and marks each model a provider returns as verified, blocked with a reason, or
+untested. Nothing is filtered out any more, so a model the catalog has not
+caught up with still shows in the picker. `ai_model_metadata.rs` attaches a
+trimmed models.dev snapshot: context window, output limit, modalities, tool
+support, cost. The snapshot comes from the bundled copy, a disk cache under
+`catalogs/` in the data directory, or a daily CDN refresh, and a listing never
+waits on that fetch. `agent_probe_model` runs one bounded tool call round trip
+against a model and stores the verdict in the config, where later listings and
+the run path pick it up. Before the assistant sends its first request,
+`agent_run` refuses a blocked model. It also refuses an untested model whose
+metadata says it cannot call tools, but only when the run declares tools: the
+composer's chat-only mode sends no tools and goes through. Each listed model
+also says where its trust came from (`trustSource` is `catalog` or `probe`),
+so the shell can tell a catalog verdict from one of the user's own probes.
 
 ## Security boundary
 

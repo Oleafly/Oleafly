@@ -22,6 +22,35 @@ pub struct StoredModel {
     /// "builtin" | "fetched" | "custom"
     #[serde(default)]
     pub source: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trust: Option<String>,
+    #[serde(
+        default,
+        rename = "blockedReason",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub blocked_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ProbeVerdict {
+    Verified,
+    Blocked,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelProbe {
+    pub verdict: ProbeVerdict,
+    pub reason: String,
+    pub probed_at: u64,
+}
+
+pub fn model_probe_key(provider_id: &str, model_id: &str) -> String {
+    format!("{provider_id}/{model_id}")
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -110,6 +139,10 @@ pub struct AppConfig {
     #[serde(default)]
     pub ai_custom_providers: Vec<CustomProvider>,
     #[serde(default)]
+    pub ai_model_probes: BTreeMap<String, ModelProbe>,
+    #[serde(default)]
+    pub ai_model_lists_refreshed_at: BTreeMap<String, u64>,
+    #[serde(default)]
     pub ai_personas: Vec<Persona>,
     #[serde(default)]
     pub ai_starter_personas_seeded: bool,
@@ -117,6 +150,8 @@ pub struct AppConfig {
     pub checkpoints_enabled: bool,
     #[serde(default = "default_true")]
     pub checkpoint_notifications: bool,
+    #[serde(default = "default_true")]
+    pub git_auto_init: bool,
     /// MCP server: expose the in-app agent tools to external MCP clients
     /// (Claude Desktop, Claude Code, Cursor, ...). Off by default.
     #[serde(default)]
@@ -165,10 +200,13 @@ impl Default for AppConfig {
             ai_pdf_capture: true,
             ai_provider_models: std::collections::HashMap::new(),
             ai_custom_providers: Vec::new(),
+            ai_model_probes: BTreeMap::new(),
+            ai_model_lists_refreshed_at: BTreeMap::new(),
             ai_personas: Vec::new(),
             ai_starter_personas_seeded: false,
             checkpoints_enabled: true,
             checkpoint_notifications: true,
+            git_auto_init: true,
             mcp_enabled: false,
             mcp_port: default_mcp_port(),
             mcp_read_only: false,
@@ -686,14 +724,16 @@ fn restore_mcp_values(
     Ok(())
 }
 
-fn restore_ai_secrets(config: &mut AppConfig, stored: &AppConfig) {
+fn restore_ai_secrets(config: &mut AppConfig, stored: &AppConfig) -> Vec<String> {
     let legacy_provider = if stored.ai_provider.is_empty() {
         "openai"
     } else {
         stored.ai_provider.as_str()
     };
+    let mut restored = Vec::new();
     for (provider, value) in config.ai_keys.iter_mut() {
         if value == REDACTED {
+            restored.push(provider.clone());
             if let Some(previous) = stored.ai_keys.get(provider) {
                 *value = previous.clone();
             } else if provider == legacy_provider && !stored.ai_api_key.is_empty() {
@@ -707,6 +747,7 @@ fn restore_ai_secrets(config: &mut AppConfig, stored: &AppConfig) {
     if config.ai_api_key == REDACTED {
         config.ai_api_key = stored.ai_api_key.clone();
     }
+    restored
 }
 
 #[tauri::command]
@@ -806,15 +847,45 @@ fn orphaned_provider_ids(config: &AppConfig, stored: &AppConfig) -> Vec<String> 
         .collect()
 }
 
-fn drop_keys_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig) {
+fn drop_keys_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig, restored: &[String]) {
     let doomed: Vec<String> = moved_endpoint_ids(config, stored)
         .into_iter()
+        .filter(|id| restored.iter().any(|restored_id| restored_id == id))
         .chain(recreated_provider_ids(config, stored))
         .chain(orphaned_provider_ids(config, stored))
         .collect();
     for id in doomed {
         config.ai_keys.remove(&id);
     }
+}
+
+fn changed_endpoint_ids(config: &AppConfig, stored: &AppConfig) -> Vec<String> {
+    stored
+        .ai_custom_providers
+        .iter()
+        .filter(|previous| {
+            config
+                .ai_custom_providers
+                .iter()
+                .find(|c| c.id == previous.id)
+                .is_some_and(|current| current.base_url.trim() != previous.base_url.trim())
+        })
+        .map(|previous| previous.id.clone())
+        .collect()
+}
+
+fn drop_probes_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig) {
+    let doomed: Vec<String> = changed_endpoint_ids(config, stored)
+        .into_iter()
+        .chain(orphaned_provider_ids(config, stored))
+        .map(|id| format!("{id}/"))
+        .collect();
+    if doomed.is_empty() {
+        return;
+    }
+    config
+        .ai_model_probes
+        .retain(|key, _| !doomed.iter().any(|prefix| key.starts_with(prefix)));
 }
 
 #[tauri::command]
@@ -827,11 +898,36 @@ pub fn set_config(mut config: AppConfig) -> Result<(), String> {
     if config.mcp_token.is_empty() {
         config.mcp_token = stored.mcp_token.clone();
     }
-    restore_ai_secrets(&mut config, &stored);
-    drop_keys_for_moved_endpoints(&mut config, &stored);
+    let restored = restore_ai_secrets(&mut config, &stored);
+    drop_keys_for_moved_endpoints(&mut config, &stored, &restored);
+    keep_newer_model_trust_records(&mut config, &stored);
+    drop_probes_for_moved_endpoints(&mut config, &stored);
     config.mcp_servers = stored.mcp_servers;
     config.github_connected = false;
     write_config_unlocked(&config)
+}
+
+fn keep_newer_model_trust_records(config: &mut AppConfig, stored: &AppConfig) {
+    for (key, probe) in &stored.ai_model_probes {
+        let incoming_is_newer = config
+            .ai_model_probes
+            .get(key)
+            .is_some_and(|incoming| incoming.probed_at >= probe.probed_at);
+        if !incoming_is_newer {
+            config.ai_model_probes.insert(key.clone(), probe.clone());
+        }
+    }
+    for (provider, refreshed_at) in &stored.ai_model_lists_refreshed_at {
+        let incoming_is_newer = config
+            .ai_model_lists_refreshed_at
+            .get(provider)
+            .is_some_and(|incoming| incoming >= refreshed_at);
+        if !incoming_is_newer {
+            config
+                .ai_model_lists_refreshed_at
+                .insert(provider.clone(), *refreshed_at);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -845,6 +941,193 @@ mod tests {
 
         assert!(config.checkpoints_enabled);
         assert!(config.checkpoint_notifications);
+    }
+
+    #[test]
+    fn old_configs_start_with_no_model_probes_or_list_stamps() {
+        let config: AppConfig = serde_json::from_str("{}").unwrap();
+
+        assert!(config.ai_model_probes.is_empty());
+        assert!(config.ai_model_lists_refreshed_at.is_empty());
+        assert!(AppConfig::default().ai_model_probes.is_empty());
+        assert!(AppConfig::default().ai_model_lists_refreshed_at.is_empty());
+    }
+
+    #[test]
+    fn model_probes_and_list_stamps_survive_a_config_round_trip() {
+        let stored = AppConfig {
+            ai_model_probes: BTreeMap::from([(
+                model_probe_key("openai", "gpt-4o"),
+                ModelProbe {
+                    verdict: ProbeVerdict::Blocked,
+                    reason: "The model answered without calling the tool.".into(),
+                    probed_at: 1_700_000_000_000,
+                },
+            )]),
+            ai_model_lists_refreshed_at: BTreeMap::from([(
+                "openai".to_string(),
+                1_700_000_000_500,
+            )]),
+            ..AppConfig::default()
+        };
+
+        let json = serde_json::to_string(&stored).unwrap();
+        assert!(json.contains("\"openai/gpt-4o\":{\"verdict\":\"blocked\""));
+        assert!(json.contains("\"probedAt\":1700000000000"));
+        let loaded: AppConfig = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(loaded.ai_model_probes, stored.ai_model_probes);
+        assert_eq!(
+            loaded.ai_model_lists_refreshed_at,
+            stored.ai_model_lists_refreshed_at
+        );
+    }
+
+    fn probe(verdict: ProbeVerdict, probed_at: u64) -> ModelProbe {
+        ModelProbe {
+            verdict,
+            reason: "probe".into(),
+            probed_at,
+        }
+    }
+
+    #[test]
+    fn a_stale_settings_snapshot_cannot_drop_a_newer_probe_verdict() {
+        let stored = AppConfig {
+            ai_model_probes: BTreeMap::from([
+                ("openai/new".to_string(), probe(ProbeVerdict::Verified, 20)),
+                ("openai/old".to_string(), probe(ProbeVerdict::Blocked, 5)),
+            ]),
+            ai_model_lists_refreshed_at: BTreeMap::from([
+                ("openai".to_string(), 20),
+                ("groq".to_string(), 5),
+            ]),
+            ..AppConfig::default()
+        };
+        let mut incoming = AppConfig {
+            ai_model_probes: BTreeMap::from([(
+                "openai/old".to_string(),
+                probe(ProbeVerdict::Verified, 10),
+            )]),
+            ai_model_lists_refreshed_at: BTreeMap::from([("groq".to_string(), 10)]),
+            ..AppConfig::default()
+        };
+
+        keep_newer_model_trust_records(&mut incoming, &stored);
+
+        assert_eq!(
+            incoming.ai_model_probes["openai/new"],
+            probe(ProbeVerdict::Verified, 20)
+        );
+        assert_eq!(
+            incoming.ai_model_probes["openai/old"],
+            probe(ProbeVerdict::Verified, 10)
+        );
+        assert_eq!(incoming.ai_model_lists_refreshed_at["openai"], 20);
+        assert_eq!(incoming.ai_model_lists_refreshed_at["groq"], 10);
+    }
+
+    fn probes_for(ids: &[&str]) -> BTreeMap<String, ModelProbe> {
+        ids.iter()
+            .map(|id| (id.to_string(), probe(ProbeVerdict::Blocked, 7)))
+            .collect()
+    }
+
+    #[test]
+    fn moving_a_custom_endpoint_drops_the_verdicts_probed_against_the_old_one() {
+        let stored = AppConfig {
+            ai_custom_providers: vec![custom("local-lab", "http://lab.test/v1")],
+            ai_model_probes: probes_for(&[
+                "local-lab/m",
+                "local-lab/vendor/m",
+                "local-labs/m",
+                "openai/gpt-4o",
+            ]),
+            ..AppConfig::default()
+        };
+        let mut incoming = AppConfig {
+            ai_custom_providers: vec![custom("local-lab", "http://other.test/v1")],
+            ai_model_probes: stored.ai_model_probes.clone(),
+            ..AppConfig::default()
+        };
+
+        keep_newer_model_trust_records(&mut incoming, &stored);
+        drop_probes_for_moved_endpoints(&mut incoming, &stored);
+
+        assert_eq!(
+            incoming.ai_model_probes.keys().collect::<Vec<_>>(),
+            vec!["local-labs/m", "openai/gpt-4o"]
+        );
+
+        let mut unchanged = AppConfig {
+            ai_custom_providers: vec![custom("local-lab", " http://lab.test/v1 ")],
+            ai_model_probes: BTreeMap::new(),
+            ..AppConfig::default()
+        };
+        keep_newer_model_trust_records(&mut unchanged, &stored);
+        drop_probes_for_moved_endpoints(&mut unchanged, &stored);
+        assert_eq!(unchanged.ai_model_probes.len(), 4);
+    }
+
+    #[test]
+    fn removing_a_custom_provider_drops_its_verdicts_too() {
+        let stored = AppConfig {
+            ai_custom_providers: vec![custom("local-lab", "http://lab.test/v1")],
+            ai_model_probes: probes_for(&["local-lab/m", "openai/gpt-4o"]),
+            ..AppConfig::default()
+        };
+        let mut incoming = AppConfig {
+            ai_model_probes: BTreeMap::new(),
+            ..AppConfig::default()
+        };
+
+        keep_newer_model_trust_records(&mut incoming, &stored);
+        drop_probes_for_moved_endpoints(&mut incoming, &stored);
+
+        assert_eq!(
+            incoming.ai_model_probes.keys().collect::<Vec<_>>(),
+            vec!["openai/gpt-4o"]
+        );
+    }
+
+    #[test]
+    fn a_custom_entry_shadowing_a_catalog_id_keeps_the_catalog_verdicts() {
+        let stored = AppConfig {
+            ai_model_probes: probes_for(&["openai/gpt-4o"]),
+            ..AppConfig::default()
+        };
+        let mut incoming = AppConfig {
+            ai_custom_providers: vec![custom("openai", "http://attacker.example")],
+            ai_model_probes: BTreeMap::new(),
+            ..AppConfig::default()
+        };
+
+        keep_newer_model_trust_records(&mut incoming, &stored);
+        drop_probes_for_moved_endpoints(&mut incoming, &stored);
+
+        assert_eq!(incoming.ai_model_probes.len(), 1);
+    }
+
+    #[test]
+    fn old_configs_initialise_git_for_every_project() {
+        let config: AppConfig = serde_json::from_str("{}").unwrap();
+
+        assert!(config.git_auto_init);
+        assert!(AppConfig::default().git_auto_init);
+    }
+
+    #[test]
+    fn git_auto_init_survives_a_config_round_trip() {
+        let stored = AppConfig {
+            git_auto_init: false,
+            ..AppConfig::default()
+        };
+
+        let json = serde_json::to_string(&stored).unwrap();
+        let loaded: AppConfig = serde_json::from_str(&json).unwrap();
+
+        assert!(json.contains("\"git_auto_init\":false"));
+        assert!(!loaded.git_auto_init);
     }
 
     fn custom(id: &str, base: &str) -> CustomProvider {
@@ -868,7 +1151,7 @@ mod tests {
     fn repointing_a_custom_endpoint_drops_the_stored_key() {
         let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
         let mut incoming = with_custom("http://attacker.example", "sk-real");
-        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        drop_keys_for_moved_endpoints(&mut incoming, &stored, &["mycorp".to_string()]);
         assert!(
             !incoming.ai_keys.contains_key("mycorp"),
             "a moved endpoint kept the credential it must not reach"
@@ -879,7 +1162,7 @@ mod tests {
     fn repointing_while_supplying_a_new_key_keeps_that_key() {
         let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
         let mut incoming = with_custom("https://api.mycorp.test/v2", "sk-freshly-typed");
-        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        drop_keys_for_moved_endpoints(&mut incoming, &stored, &[]);
         assert_eq!(
             incoming.ai_keys.get("mycorp").map(String::as_str),
             Some("sk-freshly-typed")
@@ -890,7 +1173,7 @@ mod tests {
     fn leaving_the_endpoint_alone_keeps_the_key() {
         let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
         let mut incoming = with_custom("https://api.mycorp.test/v1", "sk-real");
-        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        drop_keys_for_moved_endpoints(&mut incoming, &stored, &[]);
         assert_eq!(
             incoming.ai_keys.get("mycorp").map(String::as_str),
             Some("sk-real")
@@ -904,7 +1187,30 @@ mod tests {
             ai_keys: HashMap::from([("mycorp".to_string(), "sk-real".to_string())]),
             ..AppConfig::default()
         };
-        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        drop_keys_for_moved_endpoints(&mut incoming, &stored, &[]);
+        assert!(!incoming.ai_keys.contains_key("mycorp"));
+    }
+
+    #[test]
+    fn repointing_while_re_entering_the_same_key_keeps_it() {
+        let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut incoming = with_custom("https://api.mycorp.test/v2", "sk-real");
+        let restored = restore_ai_secrets(&mut incoming, &stored);
+        assert!(restored.is_empty());
+        drop_keys_for_moved_endpoints(&mut incoming, &stored, &restored);
+        assert_eq!(
+            incoming.ai_keys.get("mycorp").map(String::as_str),
+            Some("sk-real")
+        );
+    }
+
+    #[test]
+    fn repointing_with_a_redacted_key_drops_the_restored_secret() {
+        let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
+        let mut incoming = with_custom("https://api.mycorp.test/v2", REDACTED);
+        let restored = restore_ai_secrets(&mut incoming, &stored);
+        assert_eq!(restored, vec!["mycorp".to_string()]);
+        drop_keys_for_moved_endpoints(&mut incoming, &stored, &restored);
         assert!(!incoming.ai_keys.contains_key("mycorp"));
     }
 
@@ -915,8 +1221,8 @@ mod tests {
             ai_keys: HashMap::from([("mycorp".to_string(), REDACTED.to_string())]),
             ..AppConfig::default()
         };
-        restore_ai_secrets(&mut step_one, &stored);
-        drop_keys_for_moved_endpoints(&mut step_one, &stored);
+        let restored = restore_ai_secrets(&mut step_one, &stored);
+        drop_keys_for_moved_endpoints(&mut step_one, &stored, &restored);
         assert!(!step_one.ai_keys.contains_key("mycorp"));
 
         let stale_stored = with_custom("https://api.mycorp.test/v1", "sk-real");
@@ -927,7 +1233,7 @@ mod tests {
         };
         let mut no_provider_stored = stale_stored.clone();
         no_provider_stored.ai_custom_providers.clear();
-        drop_keys_for_moved_endpoints(&mut step_two, &no_provider_stored);
+        drop_keys_for_moved_endpoints(&mut step_two, &no_provider_stored, &[]);
         assert!(!step_two.ai_keys.contains_key("mycorp"));
     }
 
@@ -942,7 +1248,7 @@ mod tests {
             ai_keys: HashMap::from([("openai".to_string(), "sk-real".to_string())]),
             ..AppConfig::default()
         };
-        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        drop_keys_for_moved_endpoints(&mut incoming, &stored, &[]);
         assert_eq!(
             incoming.ai_keys.get("openai").map(String::as_str),
             Some("sk-real")
@@ -953,8 +1259,8 @@ mod tests {
     fn a_marker_round_trip_through_set_config_cannot_move_the_endpoint() {
         let stored = with_custom("https://api.mycorp.test/v1", "sk-real");
         let mut incoming = with_custom("http://attacker.example", REDACTED);
-        restore_ai_secrets(&mut incoming, &stored);
-        drop_keys_for_moved_endpoints(&mut incoming, &stored);
+        let restored = restore_ai_secrets(&mut incoming, &stored);
+        drop_keys_for_moved_endpoints(&mut incoming, &stored, &restored);
         assert!(!incoming.ai_keys.contains_key("mycorp"));
     }
 
@@ -1723,6 +2029,101 @@ mod tests {
         assert_eq!(persisted.github_user, "octocat");
         assert!(!persisted.checkpoints_enabled);
         assert!(!persisted.checkpoint_notifications);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn generic_settings_updates_carry_the_model_trust_records() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        write_config(&AppConfig::default()).unwrap();
+        update_config(|config| {
+            config.ai_model_probes.insert(
+                model_probe_key("groq", "llama-3.3-70b-versatile"),
+                probe(ProbeVerdict::Verified, 40),
+            );
+            Ok(())
+        })
+        .unwrap();
+        let mut incoming = get_config().unwrap();
+        assert_eq!(incoming.ai_model_probes.len(), 1);
+        incoming
+            .ai_model_lists_refreshed_at
+            .insert("groq".to_string(), 41);
+        incoming.ai_model_probes.clear();
+
+        set_config(incoming).unwrap();
+
+        let persisted = read_config().unwrap();
+        assert_eq!(
+            persisted.ai_model_probes[&model_probe_key("groq", "llama-3.3-70b-versatile")],
+            probe(ProbeVerdict::Verified, 40)
+        );
+        assert_eq!(persisted.ai_model_lists_refreshed_at["groq"], 41);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn repointing_a_custom_endpoint_through_set_config_forgets_its_probes() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        write_config(&AppConfig {
+            ai_custom_providers: vec![custom("local-lab", "http://lab.test/v1")],
+            ai_keys: HashMap::from([("local-lab".to_string(), "sk-lab".to_string())]),
+            ..AppConfig::default()
+        })
+        .unwrap();
+        update_config(|config| {
+            config.ai_model_probes.insert(
+                model_probe_key("local-lab", "m"),
+                probe(ProbeVerdict::Blocked, 40),
+            );
+            config.ai_model_probes.insert(
+                model_probe_key("openai", "gpt-4o"),
+                probe(ProbeVerdict::Verified, 40),
+            );
+            Ok(())
+        })
+        .unwrap();
+        let mut incoming = get_config().unwrap();
+        assert_eq!(incoming.ai_model_probes.len(), 2);
+        incoming.ai_custom_providers[0].base_url = "http://other.test/v1".into();
+
+        set_config(incoming).unwrap();
+
+        let persisted = read_config().unwrap();
+        assert!(!persisted
+            .ai_model_probes
+            .keys()
+            .any(|key| key.starts_with("local-lab/")));
+        assert_eq!(
+            persisted.ai_model_probes[&model_probe_key("openai", "gpt-4o")],
+            probe(ProbeVerdict::Verified, 40)
+        );
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn generic_settings_updates_carry_the_git_auto_init_switch() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        write_config(&AppConfig::default()).unwrap();
+        let mut incoming = get_config().unwrap();
+        assert!(incoming.git_auto_init);
+        incoming.github_user = "octocat".to_string();
+        incoming.git_auto_init = false;
+
+        set_config(incoming).unwrap();
+
+        let persisted = read_config().unwrap();
+        assert_eq!(persisted.github_user, "octocat");
+        assert!(!persisted.git_auto_init);
         std::fs::remove_dir_all(dir).ok();
     }
 

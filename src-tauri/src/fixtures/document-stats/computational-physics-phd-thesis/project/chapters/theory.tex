@@ -1,0 +1,178 @@
+\chapter{Continuum and Kinetic Formulation}
+\label{chap:theory}
+
+\section{The Boussinesq problem}
+\label{sec:theory-boussinesq}
+
+Let $\mathbf{u}(\mathbf{x},t)$ be the velocity field, $p$ the kinematic
+pressure, and $\theta$ the buoyancy scalar measured as a temperature deviation
+from a linear background profile $\bar{\theta}(z) = \theta_0 + \Gamma z$. Under
+the Boussinesq approximation, valid when the density contrast across the layer
+is small compared with the reference density \\citep{skaar2013boussinesq},
+the governing system is
+\begin{align}
+  \nabla \cdot \mathbf{u} &= 0, \label{eq:continuity} \\
+  \frac{\partial \mathbf{u}}{\partial t} + (\mathbf{u} \cdot \nabla)\mathbf{u}
+    &= -\nabla p + \nu \nabla^{2} \mathbf{u} + \beta g \theta \, \hat{\mathbf{z}},
+    \label{eq:momentum} \\
+  \frac{\partial \theta}{\partial t} + (\mathbf{u} \cdot \nabla)\theta
+    &= \kappa \nabla^{2} \theta - \Gamma w, \label{eq:scalar}
+\end{align}
+where $\nu$ is the kinematic viscosity, $\kappa$ the scalar diffusivity, $\beta$
+the expansion coefficient, $g$ the gravitational acceleration, and $w$ the
+vertical velocity component. The final term in~\eqref{eq:scalar} is the
+advection of the background gradient and is the only source of scalar variance
+in the configurations studied here.
+
+The buoyancy frequency follows from the background gradient as
+\begin{equation}
+  N^{2} = \beta g \Gamma,
+  \label{eq:buoyancy-frequency}
+\end{equation}
+and the two dimensionless groups that organise the problem are the friction
+Reynolds number $\Rey_\tau = u_\tau h / \nu$ and the bulk Richardson number
+\begin{equation}
+  \Ri_b = \frac{N^{2} h^{2}}{u_\tau^{2}},
+  \label{eq:bulk-richardson}
+\end{equation}
+with $h$ the channel half height and $u_\tau$ the friction velocity. A local
+counterpart, the gradient Richardson number
+\begin{equation}
+  \Ri_g(z) = \frac{N^{2}}{\left( \partial \langle u \rangle / \partial z \right)^{2}},
+  \label{eq:gradient-richardson}
+\end{equation}
+is the quantity that closures are normally written against, and
+Chapter~\ref{chap:results} argues that it is insufficient on its own.
+
+\begin{definition}[Active mixing fraction]
+\label{def:active-fraction}
+For a domain $\Omega$ and a grid with local spacing $\Delta(\mathbf{x})$, the
+active mixing fraction is
+\begin{equation*}
+  \phi_a = \frac{1}{|\Omega|} \int_{\Omega}
+    \mathbb{1}\!\left[ L_O(\mathbf{x}) > 2\Delta(\mathbf{x}) \right] \, d\mathbf{x},
+\end{equation*}
+the volume fraction over which the Ozmidov scale is resolved by at least two
+grid spacings.
+\end{definition}
+
+Definition~\ref{def:active-fraction} is the quantity that the refinement
+criterion of Section~\ref{sec:method-criterion} is designed to drive towards
+unity, and it is reported for every production case in
+Table~\ref{tab:case-matrix}.
+
+\section{Discrete kinetic equation}
+\label{sec:theory-kinetic}
+
+The momentum field is carried by a population $f_i(\mathbf{x},t)$ defined on a
+set of discrete velocities $\mathbf{c}_i$, $i = 0, \dots, 26$, forming the D3Q27
+lattice. The evolution equation over a time step $\Delta t$ is
+\begin{equation}
+  f_i(\mathbf{x} + \mathbf{c}_i \Delta t, t + \Delta t) - f_i(\mathbf{x}, t)
+    = \Omega_i^{f}(\mathbf{x},t) + \frac{\Delta t}{2}\left( F_i(t) + F_i(t + \Delta t) \right),
+  \label{eq:lbe-momentum}
+\end{equation}
+where $\Omega_i^{f}$ is the collision operator and $F_i$ the discrete forcing
+that carries buoyancy into the momentum equation. The equilibrium population is
+the second order Hermite truncation of the Maxwellian,
+\begin{equation}
+  f_i^{\mathrm{eq}} = w_i \rho \left[
+    1 + \frac{\mathbf{c}_i \cdot \mathbf{u}}{c_s^{2}}
+      + \frac{(\mathbf{c}_i \cdot \mathbf{u})^{2}}{2 c_s^{4}}
+      - \frac{\mathbf{u} \cdot \mathbf{u}}{2 c_s^{2}} \right],
+  \label{eq:equilibrium}
+\end{equation}
+with lattice sound speed $c_s^{2} = \tfrac{1}{3} (\Delta x / \Delta t)^{2}$ and
+weights $w_i$ tabulated in Appendix~\ref{app:coefficients}.
+
+The scalar field is carried by a second population $g_j(\mathbf{x},t)$ on the
+reduced D3Q7 set, $j = 0, \dots, 6$, which is sufficient because the scalar
+equation requires only the first order moment to be recovered correctly. Its
+evolution is
+\begin{equation}
+  g_j(\mathbf{x} + \mathbf{c}_j \Delta t, t + \Delta t) - g_j(\mathbf{x},t)
+    = -\frac{1}{\tau_g}\left( g_j - g_j^{\mathrm{eq}} \right)
+      - \Delta t \, \Gamma \, w \, \tilde{w}_j,
+  \label{eq:lbe-scalar}
+\end{equation}
+with $g_j^{\mathrm{eq}} = \tilde{w}_j \theta \left[ 1 + \mathbf{c}_j \cdot \mathbf{u} / c_{s,g}^{2} \right]$
+and $c_{s,g}^{2} = \tfrac{1}{4}(\Delta x/\Delta t)^2$ for the seven velocity set.
+
+The macroscopic fields are the low order moments
+\begin{equation}
+  \rho = \sum_i f_i, \qquad
+  \rho \mathbf{u} = \sum_i \mathbf{c}_i f_i + \frac{\Delta t}{2} \rho \beta g \theta \hat{\mathbf{z}}, \qquad
+  \theta = \sum_j g_j.
+  \label{eq:moments}
+\end{equation}
+
+\section{Collision in moment space}
+\label{sec:theory-mrt}
+
+A single relaxation time operator ties the bulk viscosity, the shear viscosity,
+and every higher moment to one rate, and at the Reynolds numbers of interest the
+resulting under damping of the ghost moments produces a well documented
+checkerboard instability \citep{manov2017mrt}. The momentum population therefore
+uses a multiple relaxation time operator. Let $\mathbf{M}$ be the orthogonal
+transform that maps the 27 populations to 27 moments $\mathbf{m} = \mathbf{M}\mathbf{f}$,
+given explicitly in Appendix~\ref{app:coefficients}. Collision is diagonal in
+moment space,
+\begin{equation}
+  \Omega^{f} = -\mathbf{M}^{-1} \mathbf{S} \left( \mathbf{m} - \mathbf{m}^{\mathrm{eq}} \right),
+  \label{eq:mrt-collision}
+\end{equation}
+where $\mathbf{S} = \mathrm{diag}(s_0, \dots, s_{26})$ collects the relaxation
+rates. The rates for the conserved moments are irrelevant and set to unity. The
+shear rate $s_\nu$ fixes the viscosity through
+\begin{equation}
+  \nu = c_s^{2} \left( \frac{1}{s_\nu} - \frac{1}{2} \right) \Delta t,
+  \label{eq:viscosity}
+\end{equation}
+and the scalar relaxation time fixes the diffusivity through the analogous
+relation $\kappa = c_{s,g}^{2}(\tau_g - \tfrac{1}{2})\Delta t$. Because the two
+populations relax independently, the molecular Prandtl number
+$\Pran = \nu / \kappa$ is a free parameter, which is not the case for a single
+population formulation with a passive tracer moment.
+
+\begin{proposition}[Second order consistency]
+\label{prop:consistency}
+Under the scaling $\Delta t \sim \Delta x^{2}$ and for relaxation rates bounded
+away from $2$, the Chapman Enskog expansion of~\eqref{eq:lbe-momentum}
+and~\eqref{eq:lbe-scalar} recovers~\eqref{eq:continuity} to~\eqref{eq:scalar}
+with truncation error $\mathcal{O}(\Delta x^{2})$ and with an error in the
+scalar flux that is independent of $s_\nu$.
+\end{proposition}
+
+The proof follows the standard multiscale expansion in the Knudsen number
+\\citep{iversen2014kinetic, bankole2015chapman}, with
+the one non standard step being the treatment of the coupling term. Writing
+$f_i = f_i^{\mathrm{eq}} + \epsilon f_i^{(1)} + \epsilon^{2} f_i^{(2)}$ and
+collecting orders, the first order momentum balance yields the deviatoric stress
+\begin{equation}
+  \Pi_{\alpha\beta}^{(1)} = \sum_i c_{i\alpha} c_{i\beta} f_i^{(1)}
+    = -\frac{\rho c_s^{2}}{s_\nu}
+      \left( \partial_\alpha u_\beta + \partial_\beta u_\alpha \right) \Delta t,
+  \label{eq:stress}
+\end{equation}
+which is the expression that the interface coupling of
+Section~\ref{sec:method-coupling} must preserve. The trace free part
+of~\eqref{eq:stress} is what carries the physical shear stress, and the
+correction to the scalar flux enters only at $\mathcal{O}(\epsilon^{2})$ because
+the D3Q7 equilibrium contains no second order velocity term.
+
+\section{Resolution requirement}
+\label{sec:theory-resolution}
+
+Combining the Ozmidov scale~\eqref{eq:ozmidov-intro} with the Kolmogorov scale
+$\eta = (\nu^{3}/\varepsilon)^{1/4}$ gives the buoyancy Reynolds number
+\begin{equation}
+  \Rey_b = \left( \frac{L_O}{\eta} \right)^{4/3} = \frac{\varepsilon}{\nu N^{2}},
+  \label{eq:buoyancy-reynolds}
+\end{equation}
+which is the standard measure of whether an inertial range exists between the
+two scales. When $\Rey_b$ falls below roughly $20$ the range closes and the flow
+becomes intermittent \\citep{ferreira2019intermittency}. The practical consequence for the solver is that the grid
+must resolve $L_O$, not $\eta$, in the quiescent regions, and must resolve $\eta$
+only in the active sheets. The refinement criterion of
+Section~\ref{sec:method-criterion} implements exactly this distinction, and
+Table~\ref{tab:case-matrix} reports how much it saves.

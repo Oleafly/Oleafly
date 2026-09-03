@@ -8,6 +8,7 @@ import {
   unreadableFileIntelligence,
 } from "./assemble";
 import { citationCompletions } from "./selectors";
+import { fileIntelligenceFor } from "./file-view";
 import {
   acceptedProjectSnapshot,
   currentProjectIntelligence,
@@ -18,7 +19,7 @@ import {
   tokensFromRawInline,
 } from "@/components/editor/wysiwyg/project-intelligence";
 import type {
-  FileIntelligence,
+  FileAnalysis,
   ProjectIntelligenceSnapshot,
 } from "./types";
 import { useFilesStore } from "@/store/files";
@@ -412,9 +413,10 @@ See @start, @alpha, #ref(<start>), and #cite((<alpha>, label("beta")), form: "fu
   crossref = {parent}
 }`;
     const value = snapshot({ "refs.bib": source });
-    const file = value.files["refs.bib"];
+    const file = fileIntelligenceFor(value, "refs.bib");
 
-    expect(file.status).toBe("partial");
+    expect(file?.status).toBe("partial");
+    expect(value.fileStates["refs.bib"]?.status).toBe("partial");
     expect(value.status).toBe("partial");
     expect(value.bibliography.entries.map((entry) => entry.key)).toEqual([
       "broken",
@@ -809,7 +811,7 @@ ta}`;
       "missing.tex",
       1,
       "Permission denied.",
-    ) as FileIntelligence;
+    ) as FileAnalysis;
     const value = assembleProjectIntelligence({
       identity: {
         projectId: "project",

@@ -1,0 +1,198 @@
+\chapter{Graphical Criteria for Identification}
+\label{chap:graphical}
+
+\section{Causal diagrams}
+\label{sec:graph-dags}
+
+A causal directed acyclic graph\index{directed acyclic graph} encodes a set of
+structural assumptions as a picture. Vertices are variables, a directed edge
+$U \to V$ asserts that $U$ may be a direct cause of $V$, and the absence of an
+edge is the substantive claim: it asserts that no direct effect exists. A graph
+with every possible edge present says nothing, which is a useful reminder that
+the content of a diagram lies in what it omits.
+
+\begin{definition}[Causal DAG]
+\label{def:dag}
+A causal DAG over variables $V = \{V_1, \dots, V_p\}$ is a directed acyclic
+graph $G$ together with the assertion that each $V_j$ is generated as
+$V_j = f_j\left( \mathrm{pa}_G(V_j), \epsilon_j \right)$ with mutually
+independent disturbances $\epsilon_j$, where $\mathrm{pa}_G(V_j)$ denotes the
+parents of $V_j$ in $G$.
+\end{definition}
+
+Figure~\ref{fig:confounding-dag} shows the structure assumed for the retraining
+study of Section~\ref{sec:po-cost}. Prior earnings and regional labour demand
+affect both enrolment and later earnings. Motivation is unmeasured and affects
+both. A caseworker referral affects enrolment but, by assumption, not earnings
+except through enrolment.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  >={Stealth[length=2.2mm]},
+  node distance=17mm,
+  obs/.style={draw,circle,minimum size=9mm,inner sep=0pt,font=\small},
+  unobs/.style={draw,circle,dashed,minimum size=9mm,inner sep=0pt,font=\small},
+  every edge/.style={draw,->,thick}
+]
+  \node[obs] (A) {$A$};
+  \node[obs,right=26mm of A] (Y) {$Y$};
+  \coordinate (mid) at ($(A)!0.5!(Y)$);
+  \node[obs] (X) at ($(mid)+(0,15mm)$) {$X$};
+  \node[unobs] (U) at ($(mid)-(0,15mm)$) {$U$};
+  \node[obs,left=20mm of A] (Z) {$Z$};
+
+  \draw (A) edge (Y);
+  \draw (X) edge (A);
+  \draw (X) edge (Y);
+  \draw (U) edge (A);
+  \draw (U) edge (Y);
+  \draw (Z) edge (A);
+
+  \node[font=\footnotesize,above=1mm of X] {prior earnings, regional demand};
+  \node[font=\footnotesize,below=1mm of U] {motivation, unmeasured};
+  \node[font=\footnotesize,below=1mm of Z,align=center] {caseworker\\ referral};
+  \node[font=\footnotesize,below=1mm of A] {enrolment};
+  \node[font=\footnotesize,below=1mm of Y] {earnings};
+\end{tikzpicture}
+\caption[Causal diagram for the retraining study]{Causal diagram for the
+retraining study. Solid vertices are measured, the dashed vertex is not. The
+covariate set $X$ blocks the backdoor path through prior earnings and regional
+demand. It does not block the path through motivation, which is why
+Chapter~\ref{chap:sensitivity} asks how strong $U$ would have to be to overturn
+the conclusion, and why $Z$ is available as an instrument in
+Section~\ref{sec:design-iv}.}
+\label{fig:confounding-dag}
+\end{figure}
+
+\section{d-separation and the backdoor criterion}
+\label{sec:graph-backdoor}
+
+\begin{definition}[Blocked path]
+\label{def:blocked}
+\index{d-separation}
+A path $\pi$ between $A$ and $Y$ is blocked by a set $S$ if it contains a chain
+$V_{j-1} \to V_j \to V_{j+1}$ or a fork $V_{j-1} \leftarrow V_j \to V_{j+1}$
+with $V_j \in S$, or a collider $V_{j-1} \to V_j \leftarrow V_{j+1}$ with
+neither $V_j$ nor any descendant of $V_j$ in $S$.
+\end{definition}
+
+\begin{definition}[Backdoor criterion]
+\label{def:backdoor}
+\index{backdoor criterion}
+A set $S$ satisfies the backdoor criterion relative to $(A, Y)$ in $G$ if no
+element of $S$ is a descendant of $A$, and $S$ blocks every path between $A$ and
+$Y$ that begins with an edge into $A$.
+\end{definition}
+
+\begin{theorem}[Backdoor adjustment]
+\label{thm:backdoor}
+If $S$ satisfies the backdoor criterion relative to $(A,Y)$ in a causal DAG $G$,
+and positivity holds for $S$, then
+\begin{equation}
+  \E\left[ Y(a) \right] = \int \E\left[ Y \mid A = a, S = s \right] \, dF_S(s).
+  \label{eq:backdoor-adjust}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+The structural model of Definition~\ref{def:dag} implies the local Markov
+property\index{Markov property}, so the joint density factorises as
+$f(v) = \prod_j f\left( v_j \mid \mathrm{pa}_G(v_j) \right)$. The intervention
+$do(A = a)$ replaces the factor $f(a \mid \mathrm{pa}_G(A))$ by a point mass,
+giving the truncated factorisation
+$f_a(v) = \prod_{j \neq A} f\left( v_j \mid \mathrm{pa}_G(v_j) \right)$.
+Marginalising $f_a$ over all variables other than $Y$ and $S$, and using that
+$S$ contains no descendant of $A$ so that its marginal law is unaffected by the
+truncation, yields $f_a(y) = \int f(y \mid a, s) \, dF_S(s)$. The backdoor
+condition ensures $Y(a) \indep A \mid S$, which is what licenses replacing
+$f(y \mid do(a), s)$ by $f(y \mid a, s)$. Taking expectations
+gives~\eqref{eq:backdoor-adjust}.
+\end{proof}
+
+Theorem~\ref{thm:backdoor} and Theorem~\ref{thm:ate-identification} are the same
+result in two languages. The graphical version has the practical advantage that
+the adjustment set is derived from the assumed structure rather than asserted,
+and the disadvantage that the structure must be asserted first.
+
+\begin{example}[A collider that should not be adjusted for]
+\label{ex:collider}
+\index{collider bias}
+Suppose the analyst adds an indicator of programme completion to the adjustment
+set for Figure~\ref{fig:confounding-dag}. Completion is a descendant of
+enrolment and is also affected by motivation, so it is a collider on the path
+$A \to C \leftarrow U \to Y$. Conditioning on it opens that path and induces an
+association between enrolment and unmeasured motivation within completion
+strata. The resulting bias has no sign that can be signed in advance, and adding
+more covariates does not reduce it.
+\end{example}
+
+Example~\ref{ex:collider} is the reason that ``adjust for everything measured''
+is not a defensible default \citep{sorensen2013collider}. In the retraining data, adding programme completion
+to the adjustment set moves the point estimate from 1420 to 2180 units of annual
+earnings, and the second number is further from the experimental benchmark of
+Section~\ref{sec:sens-benchmark}, not closer.
+
+\section{Front door adjustment}
+\label{sec:graph-frontdoor}
+
+When no admissible backdoor set exists, identification is occasionally still
+possible through a fully mediating variable.
+
+\begin{theorem}[Front door adjustment]
+\label{thm:frontdoor}
+\index{front door criterion}
+Let $M$ satisfy: every directed path from $A$ to $Y$ passes through $M$; no
+backdoor path from $A$ to $M$ is unblocked; and every backdoor path from $M$ to
+$Y$ is blocked by $A$. Then
+\begin{equation}
+  \E\left[ Y(a) \right] = \sum_m \Prob(M = m \mid A = a)
+    \sum_{a'} \E\left[ Y \mid M = m, A = a' \right] \Prob(A = a').
+  \label{eq:frontdoor}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Apply Theorem~\ref{thm:backdoor} twice. The second condition gives that the
+effect of $A$ on $M$ is identified with the empty adjustment set, so
+$\Prob(M(a) = m) = \Prob(M = m \mid A = a)$. The third condition gives that the
+effect of $M$ on $Y$ is identified adjusting for $A$, so
+$\E[Y(m)] = \sum_{a'} \E[Y \mid M = m, A = a'] \Prob(A = a')$. The first
+condition gives $Y(a) = Y(M(a))$, and composing the two identified pieces along
+the mediator yields~\eqref{eq:frontdoor}.
+\end{proof}
+
+The front door criterion is more often cited than used
+\citep{weiss2020frontdoor}. Its first condition,
+that the mediator captures the entire effect, is as strong as the ignorability
+it replaces and is equally untestable. Table~\ref{tab:criteria-summary}
+summarises when each strategy applies.
+
+\begin{table}[t]
+\centering
+\caption[Comparison of identification strategies]{Comparison of the
+identification strategies developed in Part~\ref{part:identification} and
+Part~\ref{part:design}. The final column records what a violation of the key
+assumption does to the estimate, which is the property that matters when the
+assumption is doubtful rather than false.}
+\label{tab:criteria-summary}
+\small
+\begin{tabular}{p{26mm}p{28mm}p{13mm}p{32mm}}
+\toprule
+Strategy & Key assumption & Testable & Failure mode \\
+\midrule
+Backdoor & no unmeasured confounder & no & bias of unknown sign \\[2pt]
+Front door & complete mediation & no & bias toward the null \\[2pt]
+Instrument & exclusion restriction & partly & bias amplified by a weak first stage \\[2pt]
+Difference in differences & parallel trends & partly & bias equal to the trend gap \\[2pt]
+Regression discontinuity & continuity at the cutoff & partly & bias local to the cutoff \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The column marked partly testable deserves emphasis. An overidentification test\index{overidentification test}
+for an instrument, or a pre trend test\index{pre trend test} for difference in differences, has power
+against some violations and none against others, and passing it is evidence
+rather than proof. Chapter~\ref{chap:sensitivity} takes the position that the
+right response to an untestable assumption is not a test but a calibrated
+statement of how wrong it would have to be.

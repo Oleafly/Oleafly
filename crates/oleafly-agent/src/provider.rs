@@ -341,6 +341,19 @@ pub fn resolve_specific(
     build_resolved(cfg, provider_id.to_string(), model, credential)
 }
 
+pub fn resolve_for_probe(
+    cfg: &ProviderConfig,
+    provider_id: &str,
+    model_id: &str,
+) -> Result<Resolved> {
+    build_resolved(
+        cfg,
+        provider_id.to_string(),
+        model_id.to_string(),
+        credential_for(cfg, provider_id),
+    )
+}
+
 pub fn resolve_for_model_listing(cfg: &ProviderConfig, provider_id: &str) -> Result<Resolved> {
     let placeholder = enabled_model(cfg, provider_id).unwrap_or_else(|| provider_id.to_string());
     build_resolved(
@@ -469,6 +482,25 @@ mod tests {
         };
 
         assert!(matches!(resolve(&cfg), Err(AgentError::NotConfigured(_))));
+    }
+
+    #[test]
+    fn a_probe_resolves_a_model_that_is_not_enabled_yet() {
+        let cfg = ProviderConfig {
+            keys: BTreeMap::from([("openai".to_string(), "sk-real".to_string())]),
+            enabled_models: BTreeMap::from([("openai".to_string(), vec!["gpt-4o".to_string()])]),
+            ..Default::default()
+        };
+        assert!(resolve_specific(&cfg, "openai", "gpt-5").is_err());
+
+        let resolved = resolve_for_probe(&cfg, "openai", "gpt-5").unwrap();
+        assert_eq!(resolved.provider_id, "openai");
+        assert_eq!(resolved.model_id, "gpt-5");
+        assert_eq!(resolved.auth.as_deref(), Some("sk-real"));
+
+        assert!(resolve_for_probe(&cfg, "openai", "").is_err());
+        assert!(resolve_for_probe(&cfg, "google", "gemini-3.7-flash").is_err());
+        assert!(resolve_for_probe(&cfg, "nowhere", "model").is_err());
     }
 
     #[test]

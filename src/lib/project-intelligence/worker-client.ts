@@ -2,10 +2,14 @@ import {
   isProjectIntelligenceWorkerResponse,
   sameProjectIntelligenceIdentity,
   type AnalyzeProjectIntelligenceRequest,
+  type BibliographyEntriesRequest,
   type ProjectIntelligenceWorkerRequest,
+  type ProjectIntelligenceWorkerResponse,
 } from "./worker-protocol";
 import {
   PROJECT_INTELLIGENCE_PROTOCOL_VERSION,
+  type BibliographyEntryDetail,
+  type ProjectIntelligenceIdentity,
   type ProjectIntelligenceSnapshot,
 } from "./types";
 
@@ -30,9 +34,16 @@ interface ProjectIntelligenceWorkerLike {
 export type ProjectIntelligenceWorkerFactory =
   () => ProjectIntelligenceWorkerLike;
 
+type ProjectIntelligenceQuery =
+  | AnalyzeProjectIntelligenceRequest
+  | BibliographyEntriesRequest;
+
+type ExpectedResponseType = "result" | "bibliography-entries";
+
 interface PendingRequest {
-  readonly request: AnalyzeProjectIntelligenceRequest;
-  readonly resolve: (snapshot: ProjectIntelligenceSnapshot) => void;
+  readonly request: ProjectIntelligenceQuery;
+  readonly expect: ExpectedResponseType;
+  readonly resolve: (response: ProjectIntelligenceWorkerResponse) => void;
   readonly reject: (error: Error) => void;
   readonly timeout: ReturnType<typeof setTimeout>;
 }
@@ -82,6 +93,69 @@ export class ProjectIntelligenceWorkerClient {
   analyze(
     input: ProjectIntelligenceAnalyzeInput,
   ): Promise<ProjectIntelligenceSnapshot> {
+    const request: AnalyzeProjectIntelligenceRequest = {
+      protocolVersion: PROJECT_INTELLIGENCE_PROTOCOL_VERSION,
+      type: "analyze",
+      requestId: ++this.requestId,
+      ...input,
+    };
+    return this.dispatch(request, "result").then((response) => {
+      if (response.type !== "result") {
+        throw new ProjectIntelligenceWorkerError(
+          "Project-intelligence worker returned an unexpected response.",
+          "protocol_error",
+          true,
+        );
+      }
+      return response.snapshot;
+    });
+  }
+
+  bibliographyEntries(
+    identity: ProjectIntelligenceIdentity,
+    entryIds: readonly string[],
+  ): Promise<readonly BibliographyEntryDetail[]> {
+    const request: BibliographyEntriesRequest = {
+      protocolVersion: PROJECT_INTELLIGENCE_PROTOCOL_VERSION,
+      type: "bibliography-entries",
+      requestId: ++this.requestId,
+      identity,
+      entryIds: [...entryIds],
+    };
+    return this.dispatch(request, "bibliography-entries").then(
+      (response) =>
+        response.type === "bibliography-entries" ? response.entries : [],
+    );
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    if (this.worker) {
+      try {
+        this.worker.postMessage({
+          protocolVersion: PROJECT_INTELLIGENCE_PROTOCOL_VERSION,
+          type: "dispose",
+        });
+      } catch {
+        // Termination below is authoritative.
+      }
+      this.worker.terminate();
+      this.worker = null;
+    }
+    this.rejectPending(
+      new ProjectIntelligenceWorkerError(
+        "Project-intelligence worker was disposed.",
+        "disposed",
+        false,
+      ),
+    );
+  }
+
+  private dispatch(
+    request: ProjectIntelligenceQuery,
+    expect: ExpectedResponseType,
+  ): Promise<ProjectIntelligenceWorkerResponse> {
     if (this.disposed) {
       return Promise.reject(
         new ProjectIntelligenceWorkerError(
@@ -91,12 +165,6 @@ export class ProjectIntelligenceWorkerClient {
         ),
       );
     }
-    const request: AnalyzeProjectIntelligenceRequest = {
-      protocolVersion: PROJECT_INTELLIGENCE_PROTOCOL_VERSION,
-      type: "analyze",
-      requestId: ++this.requestId,
-      ...input,
-    };
     let worker: ProjectIntelligenceWorkerLike;
     try {
       worker = this.ensureWorker();
@@ -129,6 +197,7 @@ export class ProjectIntelligenceWorkerClient {
       }, this.timeoutMs);
       this.pending.set(request.requestId, {
         request,
+        expect,
         resolve,
         reject,
         timeout,
@@ -147,30 +216,6 @@ export class ProjectIntelligenceWorkerClient {
         );
       }
     });
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    if (this.worker) {
-      try {
-        this.worker.postMessage({
-          protocolVersion: PROJECT_INTELLIGENCE_PROTOCOL_VERSION,
-          type: "dispose",
-        });
-      } catch {
-        // Termination below is authoritative.
-      }
-      this.worker.terminate();
-      this.worker = null;
-    }
-    this.rejectPending(
-      new ProjectIntelligenceWorkerError(
-        "Project-intelligence worker was disposed.",
-        "disposed",
-        false,
-      ),
-    );
   }
 
   private ensureWorker(): ProjectIntelligenceWorkerLike {
@@ -221,6 +266,16 @@ export class ProjectIntelligenceWorkerClient {
       );
       return;
     }
+    if (event.data.type !== "error" && event.data.type !== pending.expect) {
+      this.failWorker(
+        new ProjectIntelligenceWorkerError(
+          "Project-intelligence response type did not match its request.",
+          "protocol_error",
+          true,
+        ),
+      );
+      return;
+    }
     clearTimeout(pending.timeout);
     this.pending.delete(event.data.requestId);
     if (event.data.type === "error") {
@@ -234,6 +289,7 @@ export class ProjectIntelligenceWorkerClient {
       return;
     }
     if (
+      event.data.type === "result" &&
       !sameProjectIntelligenceIdentity(
         event.data.identity,
         event.data.snapshot.identity,
@@ -248,7 +304,7 @@ export class ProjectIntelligenceWorkerClient {
       );
       return;
     }
-    pending.resolve(event.data.snapshot);
+    pending.resolve(event.data);
   }
 
   private failWorker(error: Error): void {

@@ -3,7 +3,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AppConfig } from "@oleafly/backend-port";
+import type { AppConfig } from "@/lib/tauri";
 
 const mocks = vi.hoisted(() => ({
   getConfig: vi.fn(),
@@ -33,6 +33,7 @@ const config = {
   ai_starter_personas_seeded: false,
   checkpoints_enabled: true,
   checkpoint_notifications: true,
+  git_auto_init: true,
   mcp_enabled: false,
   mcp_port: 5323,
   mcp_read_only: false,

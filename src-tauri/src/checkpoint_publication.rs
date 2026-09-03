@@ -2210,31 +2210,60 @@ fn file_stamp(path: &Path, label: &str) -> Result<FileStamp, AdapterFailure> {
     })
 }
 
-fn binary_identities() -> &'static Mutex<HashMap<PathBuf, (FileStamp, ContentHash)>> {
-    static IDENTITIES: OnceLock<Mutex<HashMap<PathBuf, (FileStamp, ContentHash)>>> =
-        OnceLock::new();
+const TECTONIC_TOOLCHAIN: &str = "tectonic 0.16.9";
+const TYPST_TOOLCHAIN: &str = "typst 0.15.0";
+const MINIMUM_PANDOC_VERSION: &[u64] = &[2, 15];
+
+#[derive(Clone, Copy)]
+enum ToolVersionRule {
+    Exact(&'static str),
+    AtLeast {
+        product: &'static str,
+        minimum: &'static [u64],
+    },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct CompilerIdentity {
+    version: String,
+    hash: ContentHash,
+}
+
+#[derive(Clone)]
+struct KnownBinary {
+    stamp: FileStamp,
+    hash: ContentHash,
+    reported: String,
+}
+
+fn binary_identities() -> &'static Mutex<HashMap<PathBuf, KnownBinary>> {
+    static IDENTITIES: OnceLock<Mutex<HashMap<PathBuf, KnownBinary>>> = OnceLock::new();
     IDENTITIES.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
 async fn checked_binary_identity(
     path: &Path,
-    expected_version: &str,
+    rule: ToolVersionRule,
     cancel: Option<&crate::state::CompileCancel>,
-) -> Result<ContentHash, AdapterFailure> {
+) -> Result<CompilerIdentity, AdapterFailure> {
     let stamp = file_stamp(path, "compiler")?;
     let known = binary_identities()
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .get(path)
-        .copied();
-    if let Some((known_stamp, hash)) = known {
-        if known_stamp == stamp {
-            return Ok(hash);
+        .cloned();
+    if let Some(known) = known {
+        if known.stamp == stamp {
+            let version = accept_tool_version(path, &known.reported, rule)?;
+            return Ok(CompilerIdentity {
+                version,
+                hash: known.hash,
+            });
         }
     }
     let args = vec!["--version".to_string()];
     let working_dir = path.parent().unwrap_or_else(|| Path::new("."));
-    let (version, status) = if let Some(cancel) = cancel {
+    let (output, status) = if let Some(cancel) = cancel {
         crate::document_engine::run_supervised_external_cancellable(
             path,
             &args,
@@ -2246,17 +2275,12 @@ async fn checked_binary_identity(
         crate::document_engine::run_supervised_external(path, &args, working_dir).await
     }
     .map_err(AdapterFailure::unavailable)?;
-    if status != Some(0)
-        || !version
-            .lines()
-            .next()
-            .is_some_and(|line| exact_tool_version(line, expected_version))
-    {
-        return Err(AdapterFailure::unavailable(format!(
-            "compiler {} is not the supported {expected_version} toolchain",
-            path.display()
-        )));
-    }
+    let reported = if status == Some(0) {
+        output.lines().next().unwrap_or_default().to_owned()
+    } else {
+        String::new()
+    };
+    let version = accept_tool_version(path, &reported, rule)?;
     ensure_checkpoint_not_cancelled(cancel)?;
     let hash_path = path.to_path_buf();
     let display = path.display().to_string();
@@ -2281,8 +2305,91 @@ async fn checked_binary_identity(
     binary_identities()
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .insert(path.to_path_buf(), (stamp, hash));
-    Ok(hash)
+        .insert(
+            path.to_path_buf(),
+            KnownBinary {
+                stamp,
+                hash,
+                reported,
+            },
+        );
+    Ok(CompilerIdentity { version, hash })
+}
+
+fn accept_tool_version(
+    path: &Path,
+    reported: &str,
+    rule: ToolVersionRule,
+) -> Result<String, AdapterFailure> {
+    match rule {
+        ToolVersionRule::Exact(expected) => {
+            if exact_tool_version(reported, expected) {
+                return Ok(expected.to_owned());
+            }
+            Err(AdapterFailure::unavailable(format!(
+                "compiler {} is not the supported {expected} toolchain",
+                path.display()
+            )))
+        }
+        ToolVersionRule::AtLeast { product, minimum } => {
+            let floor = display_version(minimum);
+            let Some((version, components)) = reported_tool_version(reported, product) else {
+                return Err(AdapterFailure::unavailable(format!(
+                    "compiler {} did not report a readable {product} version and checkpoints need {product} {floor} or newer",
+                    path.display()
+                )));
+            };
+            if !version_at_least(&components, minimum) {
+                return Err(AdapterFailure::unavailable(format!(
+                    "compiler {} reports {product} {version} but checkpoints need {product} {floor} or newer",
+                    path.display()
+                )));
+            }
+            Ok(format!("{product} {version}"))
+        }
+    }
+}
+
+fn reported_tool_version<'a>(reported: &'a str, product: &str) -> Option<(&'a str, Vec<u64>)> {
+    let mut tokens = reported.split_whitespace();
+    if !program_name(tokens.next()?).eq_ignore_ascii_case(product) {
+        return None;
+    }
+    let version = tokens.next()?;
+    let components = version
+        .split('.')
+        .map(|component| component.parse::<u64>().ok())
+        .collect::<Option<Vec<_>>>()?;
+    Some((version, components))
+}
+
+fn program_name(token: &str) -> &str {
+    let split = token.len().saturating_sub(4);
+    match token.get(split..) {
+        Some(suffix) if suffix.eq_ignore_ascii_case(".exe") => &token[..split],
+        _ => token,
+    }
+}
+
+fn version_at_least(actual: &[u64], minimum: &[u64]) -> bool {
+    let width = actual.len().max(minimum.len());
+    let padded = |components: &[u64]| {
+        components
+            .iter()
+            .copied()
+            .chain(std::iter::repeat(0))
+            .take(width)
+            .collect::<Vec<_>>()
+    };
+    padded(actual) >= padded(minimum)
+}
+
+fn display_version(components: &[u64]) -> String {
+    components
+        .iter()
+        .map(u64::to_string)
+        .collect::<Vec<_>>()
+        .join(".")
 }
 
 fn exact_tool_version(actual: &str, expected: &str) -> bool {
@@ -2303,23 +2410,84 @@ fn exact_tool_version(actual: &str, expected: &str) -> bool {
         && actual.next() == Some(expected_version)
 }
 
-async fn executable_toolchain_identity(
+fn evidence_identity(
     engine: crate::document_engine::DocumentEngineId,
-    spec: &crate::document_engine::EngineCompileSpec,
+    compiler: &CompilerIdentity,
+    external_path: Option<&Path>,
+    source_date_epoch: u64,
+) -> String {
+    let mut identity = format!(
+        "checkpoint-evidence-v2;engine={};compiler={}",
+        engine.as_str(),
+        compiler.version
+    );
+    if let Some(path) = external_path {
+        identity.push_str(&format!(";compiler-path={}", path.display()));
+    }
+    identity.push_str(&format!(
+        ";compiler-blake3={};controlled-env=v2;source-date-epoch={source_date_epoch}",
+        compiler.hash
+    ));
+    identity
+}
+
+async fn toolchain_identity_for(
+    engine: crate::document_engine::DocumentEngineId,
+    executable: &crate::document_engine::EngineExecutable,
+    pdf_engine: Option<&Path>,
+    source_date_epoch: u64,
     cancel: Option<&crate::state::CompileCancel>,
 ) -> Result<String, AdapterFailure> {
-    let primary = resolved_executable_path(&spec.executable)?;
-    let expected = match engine {
-        crate::document_engine::DocumentEngineId::Latex => "tectonic 0.16.9",
-        crate::document_engine::DocumentEngineId::Typst => "typst 0.15.0",
-        crate::document_engine::DocumentEngineId::Markdown => "pandoc 3.9.0.2",
+    let rule = match engine {
+        crate::document_engine::DocumentEngineId::Latex => {
+            ToolVersionRule::Exact(TECTONIC_TOOLCHAIN)
+        }
+        crate::document_engine::DocumentEngineId::Typst => ToolVersionRule::Exact(TYPST_TOOLCHAIN),
+        crate::document_engine::DocumentEngineId::Markdown => ToolVersionRule::AtLeast {
+            product: "pandoc",
+            minimum: MINIMUM_PANDOC_VERSION,
+        },
         crate::document_engine::DocumentEngineId::Latexmk => {
             return Err(AdapterFailure::unavailable(
                 "latexmk has no checkpoint evidence adapter",
             ))
         }
     };
-    let primary_hash = checked_binary_identity(&primary, expected, cancel).await?;
+    let primary = resolved_executable_path(executable)?;
+    let compiler = checked_binary_identity(&primary, rule, cancel).await?;
+    let external_path = matches!(
+        executable,
+        crate::document_engine::EngineExecutable::ExternalPath(_)
+    )
+    .then_some(primary.as_path());
+    let mut identity = evidence_identity(engine, &compiler, external_path, source_date_epoch);
+    if engine == crate::document_engine::DocumentEngineId::Markdown {
+        let tectonic = pdf_engine
+            .ok_or_else(|| AdapterFailure::unavailable("Pandoc did not identify its PDF engine"))?;
+        let tectonic = tectonic.canonicalize().map_err(|error| {
+            AdapterFailure::unavailable(format!(
+                "Markdown PDF engine could not be resolved: {error}"
+            ))
+        })?;
+        let tectonic = checked_binary_identity(
+            &tectonic,
+            ToolVersionRule::Exact(TECTONIC_TOOLCHAIN),
+            cancel,
+        )
+        .await?;
+        identity.push_str(&format!(
+            ";tectonic={};tectonic-blake3={}",
+            tectonic.version, tectonic.hash
+        ));
+    }
+    Ok(identity)
+}
+
+async fn executable_toolchain_identity(
+    engine: crate::document_engine::DocumentEngineId,
+    spec: &crate::document_engine::EngineCompileSpec,
+    cancel: Option<&crate::state::CompileCancel>,
+) -> Result<String, AdapterFailure> {
     let source_date_epoch = spec
         .environment
         .variable("SOURCE_DATE_EPOCH")
@@ -2329,26 +2497,19 @@ async fn executable_toolchain_identity(
                 "the controlled compile did not record a valid source date epoch",
             )
         })?;
-    let mut identity = format!(
-        "checkpoint-evidence-v1;engine={};compiler-blake3={primary_hash};controlled-env=v2;source-date-epoch={source_date_epoch}",
-        engine.as_str(),
-    );
-    if engine == crate::document_engine::DocumentEngineId::Markdown {
-        let tectonic = spec
-            .args
-            .iter()
-            .find_map(|argument| argument.strip_prefix("--pdf-engine="))
-            .map(PathBuf::from)
-            .ok_or_else(|| AdapterFailure::unavailable("Pandoc did not identify its PDF engine"))?;
-        let tectonic = tectonic.canonicalize().map_err(|error| {
-            AdapterFailure::unavailable(format!(
-                "Markdown PDF engine could not be resolved: {error}"
-            ))
-        })?;
-        let tectonic_hash = checked_binary_identity(&tectonic, "tectonic 0.16.9", cancel).await?;
-        identity.push_str(&format!(";tectonic-blake3={tectonic_hash}"));
-    }
-    Ok(identity)
+    let pdf_engine = spec
+        .args
+        .iter()
+        .find_map(|argument| argument.strip_prefix("--pdf-engine="))
+        .map(Path::new);
+    toolchain_identity_for(
+        engine,
+        &spec.executable,
+        pdf_engine,
+        source_date_epoch,
+        cancel,
+    )
+    .await
 }
 
 struct ProbeRun {
@@ -3578,24 +3739,263 @@ mod tests {
         assert!(cancel.detach());
     }
 
+    fn pandoc_rule() -> super::ToolVersionRule {
+        super::ToolVersionRule::AtLeast {
+            product: "pandoc",
+            minimum: super::MINIMUM_PANDOC_VERSION,
+        }
+    }
+
     #[test]
-    fn compiler_versions_match_exact_product_and_version_tokens() {
-        assert!(super::exact_tool_version(
-            "pandoc 3.9.0.2\nFeatures: +server",
-            "pandoc 3.9.0.2"
+    fn pandoc_at_or_above_the_minimum_is_accepted_with_its_reported_version() {
+        let path = Path::new("/opt/pandoc");
+        for (reported, version) in [
+            ("pandoc 3.10.1", "pandoc 3.10.1"),
+            ("pandoc 3.9.0.2", "pandoc 3.9.0.2"),
+            ("Pandoc 2.19.2", "pandoc 2.19.2"),
+            ("pandoc 2.15", "pandoc 2.15"),
+            ("pandoc 2.15.0.1", "pandoc 2.15.0.1"),
+            ("pandoc.exe 3.10.1", "pandoc 3.10.1"),
+            ("PANDOC.EXE 2.19.2", "pandoc 2.19.2"),
+            ("Pandoc.Exe 2.19.2", "pandoc 2.19.2"),
+        ] {
+            assert_eq!(
+                super::accept_tool_version(path, reported, pandoc_rule()).unwrap(),
+                version,
+                "{reported:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn pandoc_older_than_the_minimum_is_refused_and_the_minimum_is_named() {
+        let path = Path::new("/opt/pandoc");
+        let error = super::accept_tool_version(path, "pandoc 2.14.2", pandoc_rule()).unwrap_err();
+        assert_eq!(
+            error.reason,
+            CheckpointSkipReason::DependencyEvidenceUnavailable
+        );
+        assert_eq!(
+            error.detail,
+            "compiler /opt/pandoc reports pandoc 2.14.2 but checkpoints need pandoc 2.15 or newer"
+        );
+        assert!(matches!(
+            skip_from_failure(error),
+            CheckpointPublicationOutcome::Skipped { message, .. }
+                if message == "Checkpoint not saved because compiler /opt/pandoc reports pandoc 2.14.2 but checkpoints need pandoc 2.15 or newer."
         ));
-        assert!(super::exact_tool_version(
-            "Typst 0.15.0 (release)",
+        for reported in ["pandoc 2.14.99.9", "pandoc 2.9", "pandoc 1.19.2.4"] {
+            assert!(
+                super::accept_tool_version(path, reported, pandoc_rule()).is_err(),
+                "{reported:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn unreadable_pandoc_versions_are_refused() {
+        for reported in [
+            "",
+            "pandoc",
+            "pandoc git-2026",
+            "pandoc 3.10.1-nightly",
+            "pandoc 3.",
+            "not-pandoc 3.10.1",
+            "pandoc.exe.bak 3.10.1",
+            ".exe 3.10.1",
+            "3.10.1",
+        ] {
+            let error =
+                super::accept_tool_version(Path::new("/opt/pandoc"), reported, pandoc_rule())
+                    .unwrap_err();
+            assert_eq!(
+                error.detail,
+                "compiler /opt/pandoc did not report a readable pandoc version and checkpoints need pandoc 2.15 or newer",
+                "{reported:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn bundled_sidecar_versions_must_match_exactly() {
+        let path = Path::new("/app/typst");
+        let typst = super::ToolVersionRule::Exact("typst 0.15.0");
+        assert_eq!(
+            super::accept_tool_version(path, "Typst 0.15.0 (release)", typst).unwrap(),
             "typst 0.15.0"
+        );
+        assert!(super::exact_tool_version(
+            "tectonic 0.16.9",
+            "tectonic 0.16.9"
         ));
         assert!(!super::exact_tool_version(
-            "pandoc 3.9.0.20",
-            "pandoc 3.9.0.2"
+            "tectonic 0.16.90",
+            "tectonic 0.16.9"
         ));
         assert!(!super::exact_tool_version(
-            "not-pandoc 3.9.0.2",
-            "pandoc 3.9.0.2"
+            "not-tectonic 0.16.9",
+            "tectonic 0.16.9"
         ));
+        let error = super::accept_tool_version(path, "typst 0.15.1", typst).unwrap_err();
+        assert_eq!(
+            error.detail,
+            "compiler /app/typst is not the supported typst 0.15.0 toolchain"
+        );
+    }
+
+    #[test]
+    fn evidence_identity_names_the_compiler_that_ran() {
+        let hash = ContentHash::digest(b"compiler");
+        let pandoc = super::CompilerIdentity {
+            version: "pandoc 3.10.1".into(),
+            hash,
+        };
+        assert_eq!(
+            super::evidence_identity(
+                crate::document_engine::DocumentEngineId::Markdown,
+                &pandoc,
+                Some(Path::new("/opt/homebrew/Cellar/pandoc/3.10.1/bin/pandoc")),
+                7,
+            ),
+            format!(
+                "checkpoint-evidence-v2;engine=markdown;compiler=pandoc 3.10.1;compiler-path=/opt/homebrew/Cellar/pandoc/3.10.1/bin/pandoc;compiler-blake3={hash};controlled-env=v2;source-date-epoch=7"
+            )
+        );
+        let tectonic = super::CompilerIdentity {
+            version: "tectonic 0.16.9".into(),
+            hash,
+        };
+        assert_eq!(
+            super::evidence_identity(
+                crate::document_engine::DocumentEngineId::Latex,
+                &tectonic,
+                None,
+                7
+            ),
+            format!(
+                "checkpoint-evidence-v2;engine=latex;compiler=tectonic 0.16.9;compiler-blake3={hash};controlled-env=v2;source-date-epoch=7"
+            )
+        );
+    }
+
+    #[cfg(unix)]
+    fn stub_tool(dir: &Path, name: &str, version_line: &str) -> std::path::PathBuf {
+        use std::os::unix::fs::PermissionsExt as _;
+        let path = dir.join(name);
+        fs::write(
+            &path,
+            format!("#!/bin/sh\necho '{version_line}'\necho 'Features: +server'\n"),
+        )
+        .unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+        path.canonicalize().unwrap()
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_markdown_toolchain_above_the_pandoc_minimum_reaches_evidence_under_its_own_name() {
+        use crate::document_engine::{DocumentEngineId, EngineExecutable};
+        let temp = tempdir().unwrap();
+        let pandoc = stub_tool(temp.path(), "pandoc", "pandoc 3.10.1");
+        let tectonic = stub_tool(temp.path(), "tectonic", "tectonic 0.16.9");
+        let identity = super::toolchain_identity_for(
+            DocumentEngineId::Markdown,
+            &EngineExecutable::ExternalPath(pandoc.clone()),
+            Some(&tectonic),
+            7,
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            identity,
+            format!(
+                "checkpoint-evidence-v2;engine=markdown;compiler=pandoc 3.10.1;compiler-path={};compiler-blake3={};controlled-env=v2;source-date-epoch=7;tectonic=tectonic 0.16.9;tectonic-blake3={}",
+                pandoc.display(),
+                ContentHash::digest_file(&pandoc).unwrap(),
+                ContentHash::digest_file(&tectonic).unwrap()
+            )
+        );
+        let repeated = super::toolchain_identity_for(
+            DocumentEngineId::Markdown,
+            &EngineExecutable::ExternalPath(pandoc.clone()),
+            Some(&tectonic),
+            7,
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(repeated, identity);
+
+        let windows_named = stub_tool(temp.path(), "pandoc-windows", "pandoc.exe 3.10.1");
+        let identity = super::toolchain_identity_for(
+            DocumentEngineId::Markdown,
+            &EngineExecutable::ExternalPath(windows_named.clone()),
+            Some(&tectonic),
+            7,
+            None,
+        )
+        .await
+        .unwrap();
+        assert!(identity.contains(";compiler=pandoc 3.10.1;"), "{identity}");
+        assert!(
+            identity.contains(&format!(";compiler-path={};", windows_named.display())),
+            "{identity}"
+        );
+
+        let older = stub_tool(temp.path(), "pandoc-2.14", "pandoc 2.14.2");
+        let error = super::toolchain_identity_for(
+            DocumentEngineId::Markdown,
+            &EngineExecutable::ExternalPath(older.clone()),
+            Some(&tectonic),
+            7,
+            None,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(
+            error.detail,
+            format!(
+                "compiler {} reports pandoc 2.14.2 but checkpoints need pandoc 2.15 or newer",
+                older.display()
+            )
+        );
+
+        let unreadable = stub_tool(temp.path(), "pandoc-unreadable", "pandoc git-2026");
+        let error = super::toolchain_identity_for(
+            DocumentEngineId::Markdown,
+            &EngineExecutable::ExternalPath(unreadable.clone()),
+            Some(&tectonic),
+            7,
+            None,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(
+            error.detail,
+            format!(
+                "compiler {} did not report a readable pandoc version and checkpoints need pandoc 2.15 or newer",
+                unreadable.display()
+            )
+        );
+
+        let mismatched = stub_tool(temp.path(), "tectonic-0.15", "tectonic 0.15.0");
+        let error = super::toolchain_identity_for(
+            DocumentEngineId::Markdown,
+            &EngineExecutable::ExternalPath(pandoc),
+            Some(&mismatched),
+            7,
+            None,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(
+            error.detail,
+            format!(
+                "compiler {} is not the supported tectonic 0.16.9 toolchain",
+                mismatched.display()
+            )
+        );
     }
 
     #[test]

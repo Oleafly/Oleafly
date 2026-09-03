@@ -1,0 +1,203 @@
+\chapter{The \solver{} Solver}
+\label{chap:method}
+
+\section{Design overview}
+\label{sec:method-overview}
+
+\solver{} is a block structured adaptive lattice kinetic solver written for
+distributed memory machines. The domain is partitioned into blocks of
+$32^{3}$ lattice sites, each block sits at a refinement level $\ell$ with
+spacing $\Delta x_\ell = \Delta x_0 2^{-\ell}$, and the hierarchy is limited to
+four levels in the production configuration. Figure~\ref{fig:pipeline} shows the
+arrangement of a time step.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=8mm,
+  stage/.style={draw,rounded corners=2pt,minimum width=27mm,minimum height=9mm,
+                align=center,font=\small},
+  arrow/.style={-{Stealth[length=2mm]},thick}
+]
+  \node[stage] (collide) {Collide\\ \footnotesize moment space};
+  \node[stage,right=of collide] (stream) {Stream\\ \footnotesize shift by $\mathbf{c}_i$};
+  \node[stage,right=of stream] (bc) {Boundaries\\ \footnotesize walls and periodic};
+  \node[stage,below=12mm of bc] (coarse) {Restrict\\ \footnotesize fine to coarse};
+  \node[stage,left=of coarse] (fine) {Prolong\\ \footnotesize coarse to fine};
+  \node[stage,left=of fine] (regrid) {Regrid\\ \footnotesize every $n_r$ steps};
+
+  \draw[arrow] (collide) -- (stream);
+  \draw[arrow] (stream) -- (bc);
+  \draw[arrow] (bc) -- (coarse);
+  \draw[arrow] (coarse) -- (fine);
+  \draw[arrow] (fine) -- (regrid);
+  \draw[arrow] (regrid) -- ++(0,12mm) -| (collide);
+
+  \begin{scope}[on background layer]
+    \node[draw,dashed,inner sep=3mm,fit=(coarse)(fine)] (couple) {};
+  \end{scope}
+  \node[font=\footnotesize,above=1mm of couple.north east,anchor=south east]
+    {interface coupling, Section~\ref{sec:method-coupling}};
+\end{tikzpicture}
+\caption[Structure of a \solver{} time step]{Structure of a \solver{} time step.
+Collision and streaming are level local. The interface coupling runs after
+boundary treatment and before the next collision, and the regridding pass runs
+once every $n_r$ steps.}
+\label{fig:pipeline}
+\end{figure}
+
+Levels are advanced with subcycling in time, so a block at level $\ell$ takes
+$2^{\ell}$ steps for every step taken at level zero. This keeps the lattice
+Mach number and the relaxation rates constant across the hierarchy, which is the
+condition under which the interface rescaling of
+Section~\ref{sec:method-coupling} is exact \\citep{ternes2021subcycling}.
+
+\section{Refinement criterion}
+\label{sec:method-criterion}
+
+A conventional criterion refines where the velocity gradient magnitude, or the
+vorticity, exceeds a threshold. In a stratified layer this is the wrong
+diagnostic. The strongest shear sits in the layers where stratification has
+already suppressed overturning, and refining those layers buys resolution in a
+region that carries almost no scalar flux while starving the intermittent sheets
+that carry nearly all of it \citep{vestergaard2022ozmidov}.
+
+\solver{} keys instead on the resolved fraction of the Ozmidov scale. For each
+block $B$ the solver forms the block dissipation and buoyancy frequency,
+\begin{equation}
+  \varepsilon_B = \frac{2\nu}{|B|} \sum_{\mathbf{x} \in B} S_{\alpha\beta} S_{\alpha\beta},
+  \qquad
+  N_B^{2} = \beta g \left\langle \partial_z \theta + \Gamma \right\rangle_B,
+  \label{eq:block-diagnostics}
+\end{equation}
+where $S_{\alpha\beta}$ is recovered directly from the non equilibrium stress
+of~\eqref{eq:stress} without a finite difference, and then the block refinement
+indicator
+\begin{equation}
+  \chi_B = \frac{1}{\Delta x_\ell}
+    \left( \frac{\varepsilon_B}{\max(N_B^{2}, N_{\min}^{2})^{3/2}} \right)^{1/2}.
+  \label{eq:indicator}
+\end{equation}
+A block refines when $\chi_B < \chi_{\mathrm{ref}}$ and coarsens when
+$\chi_B > \chi_{\mathrm{coar}}$, with the production thresholds
+$\chi_{\mathrm{ref}} = 2$ and $\chi_{\mathrm{coar}} = 8$ chosen from the
+sensitivity study of Section~\ref{sec:val-thresholds}. The floor
+$N_{\min}^{2} = 10^{-4} N_0^{2}$ prevents the indicator from diverging in
+neutral pockets, where the criterion falls back to a dissipation threshold.
+
+The two thresholds are separated by a factor of four to prevent a block from
+oscillating between levels, which in an early version of the solver consumed
+eleven percent of the total runtime in regridding alone.
+
+\begin{algorithm}[t]
+\SetAlgoLined
+\KwIn{Block hierarchy $\mathcal{H}$, thresholds $\chi_{\mathrm{ref}}, \chi_{\mathrm{coar}}$, maximum level $\ell_{\max}$}
+\KwOut{Updated hierarchy $\mathcal{H}'$}
+\ForEach{block $B \in \mathcal{H}$}{
+  compute $\varepsilon_B$ and $N_B^{2}$ from~\eqref{eq:block-diagnostics}\;
+  compute $\chi_B$ from~\eqref{eq:indicator}\;
+  \uIf{$\chi_B < \chi_{\mathrm{ref}}$ \textbf{and} $\ell(B) < \ell_{\max}$}{
+    mark $B$ for refinement\;
+  }
+  \uElseIf{$\chi_B > \chi_{\mathrm{coar}}$ \textbf{and} $\ell(B) > 0$}{
+    mark $B$ for coarsening\;
+  }
+}
+propagate refinement marks to face neighbours to enforce a two to one level
+ratio\;
+withdraw coarsening marks on any block with a refined neighbour\;
+\ForEach{marked block $B$}{
+  \uIf{$B$ refines}{
+    allocate eight children, prolong $f_i$ and $g_j$ by
+    Equation~\eqref{eq:prolong}\;
+  }
+  \Else{
+    restrict children by Equation~\eqref{eq:restrict}, release them\;
+  }
+}
+rebalance blocks across ranks by space filling curve order\;
+\caption{Regridding pass, executed every $n_r = 200$ coarse steps.}
+\label{alg:regrid}
+\end{algorithm}
+
+\section{Interface coupling}
+\label{sec:method-coupling}
+
+The coupling problem is that a population is not a field. Splitting
+$f_i = f_i^{\mathrm{eq}} + f_i^{\mathrm{neq}}$, the equilibrium part is a
+function of $\rho$ and $\mathbf{u}$ and so transfers between levels by ordinary
+interpolation. The non equilibrium part carries the stress
+of~\eqref{eq:stress}, which depends on the relaxation rate, and the relaxation
+rate must change with the grid spacing if the physical viscosity is to stay
+fixed.
+
+Requiring that the stress $\Pi_{\alpha\beta}^{(1)}$ be continuous across the
+interface, and using~\eqref{eq:viscosity} at both levels, gives the rescaling
+factor
+\begin{equation}
+  f_{i,\ell+1}^{\mathrm{neq}} = \frac{1}{2}
+    \frac{s_{\nu,\ell}}{s_{\nu,\ell+1}} \, f_{i,\ell}^{\mathrm{neq}},
+  \qquad
+  \frac{s_{\nu,\ell+1}}{s_{\nu,\ell}}
+    = \frac{2}{1 + \tfrac{1}{2} s_{\nu,\ell}}.
+  \label{eq:rescale}
+\end{equation}
+Prolongation to a child block is then
+\begin{equation}
+  f_{i,\ell+1}(\mathbf{x}) = f_{i,\ell+1}^{\mathrm{eq}}\!\left[ \mathcal{I}\rho, \mathcal{I}\mathbf{u} \right](\mathbf{x})
+    + \frac{1}{2}\frac{s_{\nu,\ell}}{s_{\nu,\ell+1}} \, \mathcal{I} f_{i,\ell}^{\mathrm{neq}}(\mathbf{x}),
+  \label{eq:prolong}
+\end{equation}
+with $\mathcal{I}$ a tricubic interpolation operator, and restriction is the
+volume average with the inverse factor,
+\begin{equation}
+  f_{i,\ell}(\mathbf{x}) = f_{i,\ell}^{\mathrm{eq}}\!\left[ \langle \rho \rangle, \langle \mathbf{u} \rangle \right](\mathbf{x})
+    + 2 \frac{s_{\nu,\ell+1}}{s_{\nu,\ell}} \left\langle f_{i,\ell+1}^{\mathrm{neq}} \right\rangle (\mathbf{x}).
+  \label{eq:restrict}
+\end{equation}
+
+Because $\mathcal{I}$ is linear and reproduces constants, and because the
+equilibrium is constructed from interpolated moments rather than interpolated
+populations, mass and momentum are conserved by construction and the second
+order moment is conserved by~\eqref{eq:rescale}. The scalar population uses the
+same construction with $s_\nu$ replaced by $1/\tau_g$. Section~\ref{sec:val-interface}
+measures the consequence of omitting the rescaling factor, which is the
+configuration used by most earlier refined lattice solvers.
+
+\section{Parallel decomposition and cost}
+\label{sec:method-parallel}
+
+Blocks are ordered along a Hilbert curve \\citep{kalliokoski2020hilbert} and
+distributed to ranks in contiguous runs weighted by $8^{\ell}$, which accounts for both the site count and the
+subcycling factor. Halo exchange is a single non blocking neighbour exchange per
+level per substep. Table~\ref{tab:cost-breakdown} gives the measured cost
+distribution for the reference production case on 512 nodes.
+
+\begin{table}[t]
+\centering
+\caption[Cost breakdown for a production case]{Measured cost breakdown per
+coarse time step for case S07 on 512 nodes of the Noorderlicht system. Times are
+medians over 2000 steps. The regridding column is amortised over the $n_r = 200$
+step interval.}
+\label{tab:cost-breakdown}
+\begin{tabular}{lrrr}
+\toprule
+Stage & Time (ms) & Share (\%) & Bytes moved (MB) \\
+\midrule
+Collision, momentum   & 41.7 & 46.2 & 0 \\
+Collision, scalar     &  8.3 &  9.2 & 0 \\
+Streaming             & 14.9 & 16.5 & 0 \\
+Halo exchange         & 12.1 & 13.4 & 184 \\
+Interface coupling    &  9.6 & 10.6 & 27 \\
+Boundary conditions   &  1.8 &  2.0 & 0 \\
+Regridding, amortised &  1.9 &  2.1 & 41 \\
+\midrule
+Total                 & 90.3 & 100.0 & 252 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The momentum collision dominates, as it should for a compute bound kinetic
+scheme, and the interface coupling costs about a tenth of the step. That is the
+price of adaptivity, and Section~\ref{sec:results-cost} shows it against the
+factor of twenty three reduction in site count that adaptivity buys.

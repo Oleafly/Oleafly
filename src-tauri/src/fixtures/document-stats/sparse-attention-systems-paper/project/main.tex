@@ -1,0 +1,59 @@
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[letterpaper,margin=0.75in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{balance}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage[ruled,vlined]{algorithm2e}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
+
+\newcommand{\sysname}{Larkspur}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+
+\title{\bfseries \sysname: Block-Sparse Attention Scheduling for\\
+Long-Context Inference on Commodity Accelerators}
+\author{
+  Priya Raghunathan \and Tomas Lindgren \and Adaeze Okonkwo\\
+  \normalsize Institute for Scalable Computing, Delft\\
+  \normalsize \texttt{\{raghunathan,lindgren,okonkwo\}@example.edu}
+}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Long-context transformer inference is bounded by attention memory traffic
+rather than arithmetic. We present \sysname, a scheduler that partitions the
+attention matrix into fixed blocks, predicts block importance from a cheap
+low-rank probe, and evicts provably negligible blocks before they reach the
+accumulator. On a single 24\,GB consumer accelerator, \sysname{} serves
+128k-token contexts that otherwise exhaust device memory, and reduces median
+time to first token by 2.7 times against a dense FlashAttention baseline while
+holding perplexity within 0.4 percent. We characterise where the approximation
+becomes unsafe and give a runtime guard that falls back to dense computation
+for the affected heads.
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/background}
+\input{sections/design}
+\input{sections/evaluation}
+\input{sections/related}
+\input{sections/conclusion}
+
+\balance
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

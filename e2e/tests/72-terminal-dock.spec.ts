@@ -5,6 +5,7 @@ const TERMINAL = '[data-testid="dock-terminal"]';
 const TERMINAL_HOST = '[data-testid="dock-terminal-host"]';
 const TERMINAL_TAB = '[data-testid="dock-terminal-tab"]';
 const NEW_TERMINAL = '[data-testid="dock-terminal-tabs"] [aria-label="New terminal"]';
+const TAB_MENU = '[data-testid="dock-terminal-tab-menu"]';
 const TERMINAL_TOGGLE = '[data-testid="rail-terminal-toggle"]';
 const BROWSER_TOGGLE = '[data-testid="rail-browser-toggle"]';
 const TERMINAL_LIMIT = 10;
@@ -243,6 +244,42 @@ test("a second terminal opens active, takes a name, and closes back to one tab",
   await tauriPage.click('[aria-label="Close Build"]');
   await expect(tauriPage.locator(TERMINAL_TAB)).toHaveCount(1);
   await expect(tauriPage.locator(terminalTab(1))).toHaveAttribute("data-active", "true");
+  await expect(tauriPage.locator(TERMINAL)).toBeVisible();
+  await expect(tauriPage.locator(TERMINAL_TOGGLE)).toHaveAttribute("aria-pressed", "true");
+});
+
+test("the tab menu closes every other terminal", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
+  await openTerminalDock(tauriPage);
+
+  await tauriPage.click(NEW_TERMINAL);
+  await expect(tauriPage.locator(TERMINAL_TAB)).toHaveCount(2);
+  await tauriPage.click(NEW_TERMINAL);
+  await expect(tauriPage.locator(TERMINAL_TAB)).toHaveCount(3);
+  await expect
+    .poll(() => openedSessionCount(tauriPage), { timeout: 60_000 })
+    .toBeGreaterThanOrEqual(2);
+
+  const opened = await tauriPage.evaluate<boolean>(
+    `(() => {
+      const tab = document.querySelector(${JSON.stringify(`${TERMINAL_TAB}[data-session-index="2"]`)});
+      if (!tab) return false;
+      const rect = tab.getBoundingClientRect();
+      tab.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: Math.round(rect.left + rect.width / 2),
+        clientY: Math.round(rect.bottom),
+      }));
+      return true;
+    })()`,
+  );
+  expect(opened).toBe(true);
+  await expect(tauriPage.locator(TAB_MENU)).toBeVisible();
+
+  await tauriPage.click(`${TAB_MENU} [data-testid="dock-terminal-menu-close-others"]`);
+  await expect(tauriPage.locator(TERMINAL_TAB)).toHaveCount(1);
+  await expect(tauriPage.locator(terminalTab(2))).toHaveAttribute("data-active", "true");
   await expect(tauriPage.locator(TERMINAL)).toBeVisible();
   await expect(tauriPage.locator(TERMINAL_TOGGLE)).toHaveAttribute("aria-pressed", "true");
 });

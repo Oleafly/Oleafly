@@ -55,6 +55,60 @@ summary appears under the last assistant message instead, along the lines of
 "Plan · 2/2 done · 3 files changed +40 -12", with the file rows under it. A run
 that changed files without a plan gets the same summary minus the Plan label.
 
+## Models: trust, capability data, and refresh
+
+Every model row in Settings, and every entry in the chat picker, has a trust
+badge. Verified means we have run the assistant on that model and a tool call
+came back. Untested means the provider lists it but nobody has tried it with
+the assistant yet. Blocked means someone did, it failed in a way we can put
+into a sentence, and that sentence is the badge's tooltip. Blocked models stay
+in the picker so you can read why, but you cannot pick them for the assistant.
+The labels come from a catalog the app also fetches from the CDN, which is how
+a model that breaks can be blocked for everyone the same day, with no release
+in between. No badge at all means the provider has not listed that model since
+this version of the app was installed. Refresh on the provider card fetches
+the list.
+
+Beside the badge are a few chips from the model data snapshot: the context
+window in short form (128k, 1M), Vision if the model takes images, Tools if it
+can call them, Reasoning for reasoning models, and Deprecated once the provider
+has retired it. The snapshot is a trimmed copy of models.dev, bundled with the
+app and mirrored on the CDN. The bottom of the providers tab says when it was
+generated and has its own Refresh. Chips attach to a model when its list is
+fetched, so after refreshing the snapshot, refresh the provider too.
+
+A model whose data says it cannot call tools is still fine for plain chat. The
+composer says "Chat only, this model cannot use tools" while it is selected,
+and the request goes out with no tools declared.
+
+Refresh on a provider card is limited to one request every thirty seconds per
+provider, and closing the card does not reset that clock. Afterwards the card
+says how many models were added and removed, or "No changes", and an "Updated"
+stamp shows when the list was last fetched. The list also refreshes by itself
+once a day when you open the card, and every time you save a key. A failed
+daily attempt still counts, so a provider that is down is left alone until
+tomorrow or the next launch. The Refresh button is not held back by any of that
+beyond the thirty seconds. If a provider answers with something the app cannot
+read, the old list stays and the card says so rather than going blank. An empty
+answer leaves the list alone as well. Models you typed in by hand survive every
+refresh.
+
+The first time you send a message to an untested model with tools on, the
+composer shows "Checking this model" and runs one short tool call round trip
+before the real request. If a tool call comes back, the model is marked
+verified on this machine and the run goes ahead. If not, the composer shows the
+reason and your message stays in the box. The verdict is saved in the app
+config, so the check runs once per model per machine. A model blocked this way
+gets a Check again link next to the notice, which is the way out if the failure
+was a bad moment for the provider rather than the model. Chat-only models and
+runs with every tool switched off skip the check.
+
+Custom providers have an Edit action next to Remove. It opens the same dialog
+used to add one, with the name and base URL filled in and the ID fixed. If a
+key is saved for the provider and you change the base URL, the dialog asks for
+the key again before it saves, because the backend will not point a stored key
+at a new endpoint. Saving refreshes the model list from the new address.
+
 ## Provider and data boundary
 
 Provider credentials are stored in encrypted app state and are never written

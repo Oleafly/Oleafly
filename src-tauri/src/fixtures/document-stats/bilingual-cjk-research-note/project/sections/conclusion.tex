@@ -1,0 +1,12 @@
+\section{结论 Conclusion}
+\label{sec:conclusion}
+
+本文提出的分词迁移方法说明，形态结构比词汇本身更容易跨语言迁移。在仅有
+十万句语料的条件下，共享形态先验可以显著缓解词元碎片化，并转化为下游任务
+上的实际收益。后续工作将检验该先验能否与词表扩展方法结合，以及在形态类型
+差异较大的语言对上如何自动调节 $\lambda$。
+
+The result generalises a simple idea. When target-language statistics are too
+thin to identify morpheme boundaries, a prior taken from a related language
+supplies the missing evidence, provided the two languages share a morphological
+type.

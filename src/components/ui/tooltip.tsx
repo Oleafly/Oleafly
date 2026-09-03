@@ -1,14 +1,74 @@
 import {
+  useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
+  type FocusEvent as ReactFocusEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 type Side = "top" | "bottom" | "left" | "right";
+
+const FOCUSABLE_TRIGGER = [
+  "a[href]",
+  "button",
+  "input",
+  "select",
+  "textarea",
+  "summary",
+  '[contenteditable="true"]',
+  '[tabindex]:not([tabindex="-1"])',
+].join(",");
+
+let keyboardModality = false;
+let inputTrackingBound = false;
+
+function trackInputModality() {
+  if (inputTrackingBound || typeof document === "undefined") return;
+  inputTrackingBound = true;
+  const pointer = () => {
+    keyboardModality = false;
+  };
+  const keyboard = () => {
+    keyboardModality = true;
+  };
+  document.addEventListener("pointerdown", pointer, true);
+  document.addEventListener("mousedown", pointer, true);
+  document.addEventListener("touchstart", pointer, true);
+  document.addEventListener("keydown", keyboard, true);
+}
+
+let focusVisibleSupported: boolean | null = null;
+
+function supportsFocusVisible() {
+  if (focusVisibleSupported === null) {
+    try {
+      focusVisibleSupported =
+        typeof CSS !== "undefined" &&
+        typeof CSS.supports === "function" &&
+        CSS.supports("selector(:focus-visible)");
+    } catch {
+      focusVisibleSupported = false;
+    }
+  }
+  return focusVisibleSupported;
+}
+
+function focusIsVisible(el: Element) {
+  if (supportsFocusVisible()) {
+    try {
+      return el.matches(":focus-visible");
+    } catch {
+      return keyboardModality;
+    }
+  }
+  return keyboardModality;
+}
 
 // Portal to <body> and clamped to the viewport, so it's never clipped by
 // ancestor `overflow` or the window edges. Replaces native `title`.
@@ -38,18 +98,97 @@ export function Tooltip({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<HTMLSpanElement>(null);
   const tipRef = useRef<HTMLSpanElement>(null);
+  const focusedTrigger = useRef<HTMLElement | null>(null);
+  const hovering = useRef(false);
+  const focused = useRef(false);
+  const reactId = useId();
+  const tipId = `oleafly-tooltip-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+
+  useEffect(() => {
+    trackInputModality();
+  }, []);
 
   useEffect(() => () => {
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
-  const enter = () => {
-    timer.current = setTimeout(() => setShow(true), delay);
-  };
-  const leave = () => {
+  const close = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
     setShow(false);
+  }, []);
+
+  const open = useCallback((wait: number) => {
+    if (timer.current) clearTimeout(timer.current);
+    if (wait <= 0) {
+      setShow(true);
+      return;
+    }
+    timer.current = setTimeout(() => setShow(true), wait);
+  }, []);
+
+  const enter = () => {
+    hovering.current = true;
+    open(delay);
   };
+
+  const leave = () => {
+    hovering.current = false;
+    if (timer.current) clearTimeout(timer.current);
+    if (!focused.current) close();
+  };
+
+  const press = () => {
+    hovering.current = false;
+    focused.current = false;
+    focusedTrigger.current = null;
+    close();
+  };
+
+  const activate = (event: ReactKeyboardEvent<HTMLSpanElement>) => {
+    if (event.key === "Enter" || event.key === " ") press();
+  };
+
+  const handleFocus = (event: ReactFocusEvent<HTMLSpanElement>) => {
+    if (!event.currentTarget.contains(event.target as Node)) return;
+    const target = event.target as HTMLElement;
+    if (!focusIsVisible(target)) return;
+    focused.current = true;
+    focusedTrigger.current = target;
+    open(0);
+  };
+
+  const handleBlur = (event: ReactFocusEvent<HTMLSpanElement>) => {
+    if (!event.currentTarget.contains(event.target as Node)) return;
+    focused.current = false;
+    focusedTrigger.current = null;
+    if (!hovering.current) close();
+  };
+
+  useEffect(() => {
+    if (!show) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [show, close]);
+
+  useEffect(() => {
+    if (!show) return;
+    const host = triggerRef.current;
+    if (!host) return;
+    const active = focusedTrigger.current;
+    const target =
+      active && host.contains(active)
+        ? active
+        : (host.querySelector<HTMLElement>(FOCUSABLE_TRIGGER) ?? host);
+    const prior = target.getAttribute("aria-describedby");
+    target.setAttribute("aria-describedby", prior ? `${prior} ${tipId}` : tipId);
+    return () => {
+      if (prior === null) target.removeAttribute("aria-describedby");
+      else target.setAttribute("aria-describedby", prior);
+    };
+  }, [show, tipId]);
 
   useLayoutEffect(() => {
     if (!show) return;
@@ -74,9 +213,12 @@ export function Tooltip({
       setPos({ top, left });
     };
     place();
+    const frame =
+      typeof requestAnimationFrame === "function" ? requestAnimationFrame(place) : null;
     window.addEventListener("scroll", place, true);
     window.addEventListener("resize", place);
     return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
       window.removeEventListener("scroll", place, true);
       window.removeEventListener("resize", place);
     };
@@ -90,13 +232,18 @@ export function Tooltip({
       className={cn("relative inline-flex", className)}
       onMouseEnter={enter}
       onMouseLeave={leave}
-      onMouseDown={leave}
+      onMouseDown={press}
+      onClick={press}
+      onKeyDown={activate}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
     >
       {children}
       {show &&
         createPortal(
           <span
             ref={tipRef}
+            id={tipId}
             role="tooltip"
             className={cn(
               "pointer-events-none fixed z-[200] rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md",

@@ -37,8 +37,9 @@ vi.mock("@/components/layout/UpdateChecker", () => ({
 }));
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({
+    preference: "dark",
     theme: "dark",
-    setTheme: vi.fn(),
+    setPreference: vi.fn(),
     toggleTheme: vi.fn(),
   }),
 }));

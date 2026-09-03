@@ -200,6 +200,49 @@ export interface ProjectSourcesResult {
     oversized?: string[];
     truncated: boolean;
 }
+export interface DocumentStatsCounts {
+    words: number;
+    wordsInText: number;
+    wordsInHeaders: number;
+    wordsOutsideText: number;
+    headers: number;
+    figures: number;
+    mathInline: number;
+    mathDisplayed: number;
+    characters: number;
+    lines: number;
+}
+export interface DocumentStatsRequest {
+    mainDocument: string;
+    overrides: Record<string, string>;
+}
+export interface DocumentStatsFile {
+    path: string;
+    stats: DocumentStatsCounts;
+}
+export interface DocumentStatsResult {
+    root: string;
+    fileCount: number;
+    unreadable: string[];
+    stats: DocumentStatsCounts;
+    files: DocumentStatsFile[];
+}
+export interface RagRetrieveOverride {
+    path: string;
+    text: string;
+}
+export interface RagRetrieveRequest {
+    query: string;
+    topK?: number;
+    overrides: RagRetrieveOverride[];
+}
+export interface RagChunk {
+    path: string;
+    startLine: number;
+    endLine: number;
+    text: string;
+    score: number;
+}
 /** Null means the persisted record is missing or stale: compile normally. */
 export interface FileEntry {
     path: string;
@@ -476,11 +519,46 @@ export interface SearchHit {
     line: number;
     preview: string;
 }
+export type ModelTrust = "verified" | "untested" | "blocked";
+export type ModelStatus = "active" | "deprecated" | "alpha" | "beta";
+export interface ModelCost {
+    input?: number;
+    output?: number;
+    cacheRead?: number;
+}
+export interface ModelMetadata {
+    name: string;
+    contextWindow?: number;
+    outputLimit?: number;
+    inputModalities: string[];
+    outputModalities: string[];
+    toolCall: boolean;
+    reasoning: boolean;
+    attachment: boolean;
+    structuredOutput: boolean;
+    status: ModelStatus;
+    releaseDate?: string;
+    lastUpdated?: string;
+    cost?: ModelCost;
+}
 export interface StoredModel {
     id: string;
     name: string;
     enabled: boolean;
     source: "builtin" | "fetched" | "custom";
+    trust?: ModelTrust;
+    blockedReason?: string;
+    metadata?: ModelMetadata;
+}
+export interface ModelProbe {
+    verdict: "verified" | "blocked";
+    reason: string;
+    probedAt: number;
+}
+export interface ModelMetadataStatus {
+    source: "cdn" | "bundled" | "cache";
+    generatedAt: string;
+    refreshedAt: number | null;
 }
 export interface CustomProvider {
     id: string;
@@ -508,8 +586,11 @@ export interface AppConfig {
     ai_custom_providers: CustomProvider[];
     ai_personas: Persona[];
     ai_starter_personas_seeded: boolean;
+    ai_model_probes?: Record<string, ModelProbe>;
+    ai_model_lists_refreshed_at?: Record<string, number>;
     checkpoints_enabled: boolean;
     checkpoint_notifications: boolean;
+    git_auto_init: boolean;
     mcp_enabled: boolean;
     mcp_port: number;
     mcp_read_only: boolean;
@@ -569,6 +650,9 @@ export interface McpConnectionInfo {
 export interface ProviderModel {
     id: string;
     name: string;
+    trust: ModelTrust;
+    blockedReason?: string;
+    metadata?: ModelMetadata;
 }
 export interface GitHubUser {
     login: string;
@@ -674,6 +758,8 @@ export interface BackendPort {
   listFiles: (projectId: string) => Promise<FileEntry[]>;
   readFileContent: (projectId: string, path: string) => Promise<string>;
   readProjectSourcesBatch: (projectId: string, request: ProjectSourcesRequest) => Promise<ProjectSourcesResult>;
+  documentStats: (projectId: string, request: DocumentStatsRequest) => Promise<DocumentStatsResult>;
+  ragRetrieve: (projectId: string, request: RagRetrieveRequest) => Promise<RagChunk[]>;
   writeFileContent: (projectId: string, path: string, content: string, expectedGeneration?: number) => Promise<FileMutationResult>;
   createFile(projectId: string, path: string, isDir: boolean, conflictStrategy?: FileConflictStrategy, expectedGeneration?: number): Promise<{
     path: string;

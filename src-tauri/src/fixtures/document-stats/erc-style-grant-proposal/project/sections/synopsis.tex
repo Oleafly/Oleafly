@@ -1,0 +1,36 @@
+\section{Extended synopsis}
+\label{sec:synopsis}
+
+National population registries hold the answers to questions that no cohort study can afford to
+ask: how a childhood exposure shows up in a fiftieth birthday, whether a policy change moved a
+mortality curve, how a rare disease travels through a family. Answering those questions requires
+linking registries that were never designed to be linked, held by custodians who cannot lawfully
+disclose identifiers to each other or to a researcher.
+
+Two problems block this, and the literature treats them separately.
+
+The first is protection. Privacy-preserving record linkage encodes identifiers so that similarity
+can be computed without disclosure, most commonly with Bloom filter encodings that have been
+deployed at national scale~\cite{schnell2009bloom}. Those encodings are broken. Frequency and
+graph alignment attacks recover a substantial fraction of the underlying identifiers from the
+encodings alone~\cite{christen2018attack,haugsdal2022graphattack}, and the response so far has been
+parameter tuning rather than a construction with a guarantee.
+
+The second is honesty about error. Linkage is probabilistic, so a linked dataset is a random object,
+and the classical framework says so plainly~\cite{fellegi1969theory}. Yet almost every registry
+study treats the linked file as if it were observed. The resulting bias is not the attenuation that
+researchers expect from measurement error. It is direction-dependent, it interacts with the
+covariates used in the linkage, and in our own recent work it reversed the sign of an estimated
+effect at a false match rate of 3 percent~\cite{okparalange2025linkageerror}.
+
+\proj{} attacks both problems as one problem, because the protection mechanism determines the error
+structure. Adding noise to protect an encoding changes the match probabilities, and a linkage
+protocol that cannot report its own error rate cannot be corrected downstream. The project delivers
+an encoding with a stated privacy guarantee, a federated protocol that computes matches without any
+party holding the joined data, an inference framework that carries the linkage uncertainty through
+to the final effect estimate, and a governance model that lets three national custodians run all of
+this without a central trusted party.
+
+The ambition is that at the end of \proj{} a registry study can report a confidence interval that
+includes the cost of the linkage, and a custodian can point to a proof rather than a parameter
+choice when asked why the encoding is safe.

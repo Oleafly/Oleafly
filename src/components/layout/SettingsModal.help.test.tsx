@@ -26,8 +26,9 @@ vi.mock("@/lib/github", () => ({
 }));
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({
+    preference: "dark",
     theme: "dark",
-    setTheme: vi.fn(),
+    setPreference: vi.fn(),
     toggleTheme: vi.fn(),
   }),
 }));

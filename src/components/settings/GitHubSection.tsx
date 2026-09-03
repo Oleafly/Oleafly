@@ -3,6 +3,9 @@ import { Check, ChevronDown, ChevronRight, Copy, Github, Loader2 } from "lucide-
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
+import { gitAutoInitEnabled } from "@/components/settings/gitAutoInit";
+import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
 import { useGithubStore } from "@/store/github";
 import {
   GITHUB_OAUTH_CLIENT_ID,
@@ -21,6 +24,38 @@ export function GitHubSection() {
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const [config, setConfigState] = useState<AppConfig | null>(null);
+  const [configError, setConfigError] = useState<string | null>(null);
+  const configRequest = useRef(0);
+  const configWrites = useRef<Promise<void>>(Promise.resolve());
+
+  useEffect(() => {
+    const request = ++configRequest.current;
+    void getConfig()
+      .then((next) => {
+        if (request !== configRequest.current) return;
+        setConfigState(next);
+        setConfigError(null);
+      })
+      .catch(() => {
+        if (request !== configRequest.current) return;
+        setConfigError("Couldn't load Git settings.");
+      });
+    return () => {
+      configRequest.current += 1;
+    };
+  }, []);
+
+  const writeGitAutoInit = (value: boolean) => {
+    if (!config) return;
+    setConfigState({ ...config, git_auto_init: value });
+    setConfigError(null);
+    configWrites.current = configWrites.current
+      .then(() => getConfig())
+      .then((latest) => setConfig({ ...latest, git_auto_init: value }))
+      .catch(() => setConfigError("Couldn't save Git settings."));
+  };
 
   const [flow, setFlow] = useState<DeviceCode | null>(null);
   const [flowError, setFlowError] = useState<string | null>(null);
@@ -146,6 +181,19 @@ export function GitHubSection() {
         <p className="text-xs text-muted-foreground">
           Back up projects, sync across devices, and push/pull from the Git panel.
         </p>
+      </div>
+      <div className="space-y-2" data-testid="git-auto-init">
+        <SettingsToggleRow
+          label="Initialise Git for every project"
+          description="New and opened projects get a Git repository so the Git panel can track changes. Oleafly never commits on its own."
+          checked={gitAutoInitEnabled(config)}
+          onChange={writeGitAutoInit}
+        />
+        {configError ? (
+          <p className="text-xs text-destructive" role="alert">
+            {configError}
+          </p>
+        ) : null}
       </div>
       {connected ? (
         <div className="flex items-center gap-3 rounded-lg border bg-background p-3">

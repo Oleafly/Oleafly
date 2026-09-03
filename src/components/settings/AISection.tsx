@@ -7,6 +7,7 @@ import {
   setConfig,
   type AppConfig,
   type CustomProvider,
+  type ProviderModel,
   type StoredModel,
 } from "@/lib/tauri";
 import { defaultModel, getProvider, supportsModelDiscovery } from "@/lib/ai-providers";
@@ -35,7 +36,12 @@ import { InstructionsTab } from "./ai/InstructionsTab";
 import { PersonasTab } from "./ai/PersonasTab";
 import { SkillsTab } from "./ai/SkillsTab";
 import { McpServersManager } from "./McpServersManager";
-import { AddCustomProviderDialog, type AddCustomProviderInput } from "./ai/AddCustomProviderDialog";
+import {
+  AddCustomProviderDialog,
+  normalizeBaseURL,
+  type AddCustomProviderInput,
+  type CustomProviderEditTarget,
+} from "./ai/AddCustomProviderDialog";
 import { editableKeys, withKey, withoutKey } from "./ai-keys";
 import { agentErrorKind } from "@/lib/agent-backend";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
@@ -45,7 +51,7 @@ import {
 } from "./ai-settings-navigation";
 
 type DiscoveryResult =
-  | { ok: true; models: { id: string; name: string }[] }
+  | { ok: true; models: ProviderModel[] }
   | { ok: false; reason: "invalid-key" | "unreachable" | "unsupported" };
 
 async function discoverModels(args: {
@@ -78,14 +84,31 @@ const DEFAULT_CFG: AppConfig = {
   ai_custom_providers: [],
   ai_personas: [],
   ai_starter_personas_seeded: false,
+  ai_model_probes: {},
+  ai_model_lists_refreshed_at: {},
   checkpoints_enabled: true,
   checkpoint_notifications: true,
+  git_auto_init: true,
   mcp_enabled: false,
   mcp_port: 5323,
   mcp_read_only: false,
   mcp_approval_policy: "ask",
   mcp_servers: [],
 };
+
+const KEY_NOT_KEPT = "The base URL was saved but the key was not. Enter the key again.";
+
+function withRefreshStamp(
+  config: AppConfig,
+  providerId: string,
+  refreshedAt: number,
+): AppConfig["ai_model_lists_refreshed_at"] {
+  return { ...(config.ai_model_lists_refreshed_at ?? {}), [providerId]: refreshedAt };
+}
+
+type CustomDialogState =
+  | { mode: "add" }
+  | { mode: "edit"; target: CustomProviderEditTarget };
 
 function resetProviderModelPreferences(
   config: AppConfig,
@@ -135,7 +158,7 @@ export function AISection() {
   const [sysPromptSaved, setSysPromptSaved] = useState(false);
   // Unset falls back to "open if active", so the in-use provider stays expanded.
   const [openProviders, setOpenProviders] = useState<Record<string, boolean>>({});
-  const [customDialogOpen, setCustomDialogOpen] = useState(false);
+  const [customDialog, setCustomDialog] = useState<CustomDialogState | null>(null);
   const [preferencesResetVersion, setPreferencesResetVersion] = useState(0);
   // A host the user probed explicitly from the provider card; null follows the
   // saved (or default) host.
@@ -282,6 +305,9 @@ export function AISection() {
         ...cfg,
         ai_keys: nextKeys,
         ai_provider_models: { ...cfg.ai_provider_models, [id]: mergedModels },
+        ai_model_lists_refreshed_at: res.ok
+          ? withRefreshStamp(cfg, id, Date.now())
+          : cfg.ai_model_lists_refreshed_at,
         ai_provider: nextProvider,
         ai_model: nextModel,
       };
@@ -315,15 +341,12 @@ export function AISection() {
     input: AddCustomProviderInput
   ): Promise<{ ok: boolean; message?: string }> => {
     const { id, name, apiKey } = input;
-    const baseURL = input.baseURL.replace(/\/+$/, "");
+    const baseURL = normalizeBaseURL(input.baseURL);
     if (getProvider(id) || cfg.ai_custom_providers.some((c) => c.id === id)) {
       return { ok: false, message: "That provider ID is already in use." };
     }
-    let models: StoredModel[] = [];
     const res = await discoverModels({ providerId: id, key: apiKey, baseURL, isCustom: true });
-    if (res.ok) {
-      models = res.models.map((m) => ({ id: m.id, name: m.name, enabled: true, source: "fetched" as const }));
-    }
+    const models: StoredModel[] = res.ok ? mergeFetchedModels([], res.models) : [];
     const customProvider: CustomProvider = { id, name, baseURL, keyOptional: !apiKey };
     const nextKeys = apiKey ? { ...cfg.ai_keys, [id]: apiKey } : cfg.ai_keys;
     const isFirst = !cfg.ai_provider;
@@ -331,6 +354,9 @@ export function AISection() {
       ...cfg,
       ai_custom_providers: [...cfg.ai_custom_providers, customProvider],
       ai_provider_models: { ...cfg.ai_provider_models, [id]: models },
+      ai_model_lists_refreshed_at: res.ok
+        ? withRefreshStamp(cfg, id, Date.now())
+        : cfg.ai_model_lists_refreshed_at,
       ai_keys: nextKeys,
       ai_provider: isFirst ? id : cfg.ai_provider,
       ai_model: isFirst ? pickActiveModel(models, defaultModel(id)) : cfg.ai_model,
@@ -347,6 +373,87 @@ export function AISection() {
     } catch (e) {
       return { ok: false, message: String(e) };
     }
+  };
+
+  const editCustomProvider = async (
+    input: AddCustomProviderInput
+  ): Promise<{ ok: boolean; message?: string }> => {
+    const { id, name, apiKey } = input;
+    const current = cfg.ai_custom_providers.find((c) => c.id === id);
+    if (!current) return { ok: false, message: "That provider no longer exists." };
+    const baseURL = normalizeBaseURL(input.baseURL);
+    const urlChanged = baseURL !== normalizeBaseURL(current.baseURL);
+    const hasStoredKey = (cfg.ai_keys[id] ?? "").trim().length > 0;
+    if (urlChanged && hasStoredKey && !apiKey) {
+      return { ok: false, message: "Enter the API key again to change the base URL." };
+    }
+    const res = await discoverModels({
+      providerId: id,
+      key: apiKey || undefined,
+      baseURL: urlChanged ? baseURL : undefined,
+      isCustom: true,
+    });
+    const existingModels = cfg.ai_provider_models[id] ?? [];
+    const mergedModels = mergeFetchedModels(existingModels, res.ok ? res.models : null);
+    const nextProvider: CustomProvider = {
+      ...current,
+      name,
+      baseURL,
+      keyOptional: apiKey ? false : current.keyOptional,
+    };
+    const nextKeys = apiKey ? { ...cfg.ai_keys, [id]: apiKey } : cfg.ai_keys;
+    const nextModel =
+      cfg.ai_provider === id
+        ? reconcileActiveModel(mergedModels, cfg.ai_model, defaultModel(id))
+        : cfg.ai_model;
+    const next: AppConfig = {
+      ...cfg,
+      ai_custom_providers: cfg.ai_custom_providers.map((c) => (c.id === id ? nextProvider : c)),
+      ai_provider_models: { ...cfg.ai_provider_models, [id]: mergedModels },
+      ai_model_lists_refreshed_at: res.ok
+        ? withRefreshStamp(cfg, id, Date.now())
+        : cfg.ai_model_lists_refreshed_at,
+      ai_keys: nextKeys,
+      ai_model: nextModel,
+    };
+    try {
+      await persist(next);
+      setOpenProviders((m) => ({ ...m, [id]: true }));
+      if (apiKey) {
+        const stored = await getConfig();
+        if (!(stored.ai_keys?.[id] ?? "").trim()) {
+          const corrected: AppConfig = { ...next, ai_keys: withoutKey(next.ai_keys, id) };
+          setCfg(corrected);
+          window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: corrected }));
+          setKeys((k) => ({ ...k, [id]: "" }));
+          setSavedKeys((k) => withoutKey(k, id));
+          return { ok: false, message: KEY_NOT_KEPT };
+        }
+        setKeys((k) => ({ ...k, [id]: "" }));
+        setSavedKeys((k) => ({ ...k, [id]: apiKey }));
+      }
+      setMsg({
+        ok: true,
+        text: res.ok ? `${name} updated.` : `${name} updated. Its model list could not be refreshed.`,
+      });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: String(e) };
+    }
+  };
+
+  const openEditCustomProvider = (id: string) => {
+    const target = cfg.ai_custom_providers.find((c) => c.id === id);
+    if (!target) return;
+    setCustomDialog({
+      mode: "edit",
+      target: {
+        id: target.id,
+        name: target.name,
+        baseURL: target.baseURL,
+        hasStoredKey: (cfg.ai_keys[id] ?? "").trim().length > 0,
+      },
+    });
   };
 
   const deleteCustomProvider = async (id: string) => {
@@ -378,11 +485,17 @@ export function AISection() {
   // Persists a model-manager edit (add, enable, disable, delete) for one
   // provider; if the change drops the currently active model, fall back to
   // the first remaining enabled model instead of leaving a dangling id.
-  const persistModels = async (id: string, next: StoredModel[]) => {
+  const persistModelList = async (id: string, next: StoredModel[], refreshedAt?: number) => {
     let nextConfig: AppConfig = {
       ...cfg,
       ai_provider_models: { ...cfg.ai_provider_models, [id]: next },
     };
+    if (refreshedAt !== undefined) {
+      nextConfig = {
+        ...nextConfig,
+        ai_model_lists_refreshed_at: withRefreshStamp(cfg, id, refreshedAt),
+      };
+    }
     if (cfg.ai_provider === id) {
       const stillEnabled = enabledModels(next).some((m) => m.id === cfg.ai_model);
       if (!stillEnabled) {
@@ -395,6 +508,11 @@ export function AISection() {
       setMsg({ ok: false, text: String(e) });
     }
   };
+
+  const persistModels = (id: string, next: StoredModel[]) => persistModelList(id, next);
+
+  const persistRefreshedModels = (id: string, next: StoredModel[], refreshedAt: number) =>
+    persistModelList(id, next, refreshedAt);
 
   const changeModel = async (modelId: string) => {
     try {
@@ -555,7 +673,9 @@ export function AISection() {
             changeModel={changeModel}
             deleteKey={deleteKey}
             persistModels={persistModels}
-            onAddCustomProvider={() => setCustomDialogOpen(true)}
+            persistRefreshedModels={persistRefreshedModels}
+            onAddCustomProvider={() => setCustomDialog({ mode: "add" })}
+            onEditCustomProvider={openEditCustomProvider}
             deleteCustomProvider={deleteCustomProvider}
           />
           <div className="mt-3 space-y-3">
@@ -599,9 +719,12 @@ export function AISection() {
       </Tabs>
 
       <AddCustomProviderDialog
-        open={customDialogOpen}
-        onOpenChange={setCustomDialogOpen}
-        onSubmit={addCustomProvider}
+        open={customDialog !== null}
+        onOpenChange={(open) => {
+          if (!open) setCustomDialog(null);
+        }}
+        onSubmit={customDialog?.mode === "edit" ? editCustomProvider : addCustomProvider}
+        editing={customDialog?.mode === "edit" ? customDialog.target : null}
       />
 
       {msg && (

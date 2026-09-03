@@ -1,5 +1,15 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
-import { Check, ChevronDown, ChevronRight, ExternalLink, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Loader2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -13,11 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { AppConfig, StoredModel } from "@/lib/tauri";
-import { defaultModel, mergeCustomProviders } from "@/lib/ai-providers";
+import { defaultModel, mergeCustomProviders, supportsModelDiscovery } from "@/lib/ai-providers";
 import { enabledModels, seedProviderModels } from "@/lib/ai-model-state";
 import { DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
-import { ModelManager } from "./ModelManager";
+import { ModelManager, ModelMetadataStatusLine } from "./ModelManager";
 
 export type ProviderStatus = "idle" | "validating" | "valid" | "error";
 
@@ -173,7 +183,9 @@ export interface ProvidersTabProps {
   changeModel: (modelId: string) => Promise<void>;
   deleteKey: (id: string) => Promise<void>;
   persistModels: (id: string, next: StoredModel[]) => Promise<void>;
+  persistRefreshedModels: (id: string, next: StoredModel[], refreshedAt: number) => Promise<void>;
   onAddCustomProvider: () => void;
+  onEditCustomProvider: (id: string) => void;
   deleteCustomProvider: (id: string) => Promise<void>;
 }
 
@@ -194,7 +206,9 @@ export function ProvidersTab({
   changeModel,
   deleteKey,
   persistModels,
+  persistRefreshedModels,
   onAddCustomProvider,
+  onEditCustomProvider,
   deleteCustomProvider,
 }: ProvidersTabProps) {
   const activeProvider = cfg.ai_provider;
@@ -361,17 +375,30 @@ export function ProvidersTab({
                       </Button>
                     ) : null}
                     {isCustom ? (
-                      <Tooltip label="Remove custom provider">
-                        <button type="button"
-                          data-testid={`ai-provider-delete-${p.id}`}
-                          aria-label={`Remove ${p.name}`}
-                          disabled={saving === p.id}
-                          onClick={() => setConfirmRemove({ id: p.id, name: p.name })}
-                          className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </Tooltip>
+                      <>
+                        <Tooltip label="Edit name or base URL">
+                          <button type="button"
+                            data-testid={`ai-provider-edit-${p.id}`}
+                            aria-label={`Edit ${p.name}`}
+                            disabled={saving === p.id}
+                            onClick={() => onEditCustomProvider(p.id)}
+                            className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                        </Tooltip>
+                        <Tooltip label="Remove custom provider">
+                          <button type="button"
+                            data-testid={`ai-provider-delete-${p.id}`}
+                            aria-label={`Remove ${p.name}`}
+                            disabled={saving === p.id}
+                            onClick={() => setConfirmRemove({ id: p.id, name: p.name })}
+                            className="flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </Tooltip>
+                      </>
                     ) : hasSaved ? (
                       <Tooltip label="Delete key">
                         <button type="button"
@@ -414,6 +441,10 @@ export function ProvidersTab({
                       models={cfg.ai_provider_models[p.id] ?? seedProviderModels(p.id)}
                       apiKey={value}
                       onChange={(next) => void persistModels(p.id, next)}
+                      onRefreshed={(next, at) => void persistRefreshedModels(p.id, next, at)}
+                      refreshedAt={cfg.ai_model_lists_refreshed_at?.[p.id]}
+                      probes={cfg.ai_model_probes}
+                      discoverable={supportsModelDiscovery(p.id, isCustom)}
                     />
                   )}
                 </div>
@@ -423,11 +454,14 @@ export function ProvidersTab({
         })}
       </div>
 
-      <div className="flex justify-end" data-tour="ai-settings-custom-provider">
-        <Button data-testid="ai-add-custom-provider" onClick={onAddCustomProvider}>
-          <Plus className="size-4" />
-          Add custom provider
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <ModelMetadataStatusLine />
+        <div className="ml-auto flex justify-end" data-tour="ai-settings-custom-provider">
+          <Button data-testid="ai-add-custom-provider" onClick={onAddCustomProvider}>
+            <Plus className="size-4" />
+            Add custom provider
+          </Button>
+        </div>
       </div>
 
       <ConfirmationDialog

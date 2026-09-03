@@ -16,11 +16,21 @@ const RUN = Date.now().toString(36);
 
 async function initializeRepository(page: Page) {
   await openRailTab(page, "Source Control");
-  const initialize = page.getByText("Initialize Repository", { exact: true });
-  await expect(initialize).toBeVisible({ timeout: 10_000 });
-  await initialize.click();
+  await page.waitForFunction(
+    `!!document.querySelector('[data-testid="source-control-actions"]') ||
+      Array.from(document.querySelectorAll("button")).some(
+        (b) => b.textContent.trim() === "Initialize Repository",
+      )`,
+    15_000,
+  );
+  const needsInitialize = await page.evaluate<boolean>(
+    `!document.querySelector('[data-testid="source-control-actions"]')`,
+  );
+  if (needsInitialize) {
+    await page.getByText("Initialize Repository", { exact: true }).click();
+    await expect(page.getByText("Initialized Git on")).toBeVisible({ timeout: 15_000 });
+  }
   await expect(page.getByTestId("source-control-actions")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Initialized Git on")).toBeVisible({ timeout: 15_000 });
 }
 
 async function stageAllAndCommit(page: Page, message: string) {
@@ -41,41 +51,60 @@ async function stageAllAndCommit(page: Page, message: string) {
     if (!stagedVisible) await page.click('[aria-label="Refresh"]');
   }
   if (!stagedVisible) throw new Error("stageAllAndCommit: staging never became visible");
-  await page.evaluate(
-    `(() => {
-      const t = document.querySelector('[placeholder="Commit message (required)…"]');
-      const set = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-      set.call(t, ${JSON.stringify(message)});
-      t.dispatchEvent(new Event('input', { bubbles: true }));
-      return 1;
-    })()`,
-  );
-  const commit = page.getByText("Commit", { exact: true });
+  await expect(page.locator('[data-testid="commit-title"]')).toBeVisible({ timeout: 10_000 });
+  await page.fill('[data-testid="commit-title"]', message);
+  const commit = page.locator('[data-testid="commit-button"]');
   await expect(commit).toBeEnabled({ timeout: 5_000 });
   await commit.click();
-  await page.waitForFunction(
-    `document.body.innerText.includes(${JSON.stringify(`Committed: "${message}"`)})`,
-    15_000,
-  );
+  try {
+    await page.waitForFunction(
+      `(document.querySelector('[data-testid="source-control-status"]')?.textContent ?? "").includes(${JSON.stringify(`Committed: "${message}"`)})`,
+      15_000,
+    );
+  } catch (error) {
+    const snapshot = await page.evaluate<string>(
+      `(() => {
+        const title = document.querySelector('[data-testid="commit-title"]');
+        const button = document.querySelector('[data-testid="commit-button"]');
+        const status = document.querySelector('[data-testid="source-control-status"]');
+        const actions = document.querySelector('[data-testid="source-control-actions"]');
+        return JSON.stringify({
+          titleValue: title ? title.value : null,
+          buttonDisabled: button ? button.disabled : null,
+          buttonText: button ? button.textContent : null,
+          status: status ? status.textContent : null,
+          actions: actions ? actions.innerText.slice(0, 600) : null,
+        });
+      })()`,
+    );
+    throw new Error(`commit notice never appeared: ${snapshot}`, { cause: error });
+  }
 }
 
-test("git panel shows local status directly, without a GitHub connection gate", async ({
+test("git panel opens on the remote section while GitHub is disconnected", async ({
   tauriPage,
 }) => {
+  test.skip(
+    !!process.env.E2E_GITHUB_TOKEN,
+    "asserts the disconnected panel; a saved token leaves the account connected",
+  );
   await createBlankProject(tauriPage, `Git local ${RUN}`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Source Control");
   await expect(tauriPage.getByText("Connect GitHub to continue")).toHaveCount(0);
-  await expect(tauriPage.getByText("Source Control is not initialized")).toBeVisible({
-    timeout: 10_000,
-  });
   await initializeRepository(tauriPage);
-  // The Remote section (and Push/Pull) only ever rendered behind the old
-  // GitHub-connection gate; their presence here proves the panel now shows
-  // local status/diff/commit unconditionally.
   await expect(tauriPage.getByText("Remote", { exact: true })).toBeVisible({ timeout: 10_000 });
-  await expect(tauriPage.locator('[aria-label="Commit and push to origin"]')).toBeVisible();
-  await expect(tauriPage.locator('[aria-label="Pull from origin"]')).toBeVisible();
+  await expect(tauriPage.getByText("Publish to GitHub", { exact: true })).toBeVisible();
+  await expect(tauriPage.locator('[data-testid="commit-title"]')).toBeVisible();
+  await expect(tauriPage.locator('[aria-label="Commit and push to origin"]')).toHaveCount(0);
+  await expect(tauriPage.locator('[aria-label="Pull from origin"]')).toHaveCount(0);
+  expect(
+    await tauriPage.evaluate<boolean>(
+      `!!document
+        .querySelector('[data-testid="source-control-actions"]')
+        ?.firstElementChild?.textContent?.includes("Remote")`,
+    ),
+  ).toBe(true);
 });
 
 test("a successful compile is committed only through an explicit local action", async ({

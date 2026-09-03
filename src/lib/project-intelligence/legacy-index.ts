@@ -1,10 +1,11 @@
 import { indexFromSymbols } from "@/lib/index/build";
 import type {
-  FileSymbols,
+  ProjectIndex,
   Sym,
   SymKind,
 } from "@/lib/index/types";
 import type {
+  OutlineNode,
   ProjectDefinition,
   ProjectIntelligenceSnapshot,
   ProjectUse,
@@ -45,16 +46,31 @@ function useKind(use: ProjectUse): SymKind | null {
   }
 }
 
+function outlineNodesByDefinition(
+  snapshot: ProjectIntelligenceSnapshot,
+): ReadonlyMap<string, OutlineNode> {
+  const nodes = new Map<string, OutlineNode>();
+  for (const outline of Object.values(snapshot.outlines)) {
+    for (const node of outline) {
+      if (node.definitionId !== undefined && !nodes.has(node.definitionId)) {
+        nodes.set(node.definitionId, node);
+      }
+    }
+  }
+  return nodes;
+}
+
 function definitionSymbol(
   definition: ProjectDefinition,
-  snapshot: ProjectIntelligenceSnapshot,
+  outlineNodes: ReadonlyMap<string, OutlineNode>,
 ): Sym | null {
   const kind = definitionKind(definition);
   if (!kind) return null;
-  const outline = snapshot.outlines[definition.location.file]?.find(
-    (node) => node.definitionId === definition.id,
-  );
-  const range = outline?.range ?? definition.location.range;
+  const outline = outlineNodes.get(definition.id);
+  const range =
+    outline?.file === definition.location.file
+      ? outline.range
+      : definition.location.range;
   return {
     kind,
     name: definition.name,
@@ -90,12 +106,10 @@ function useSymbol(use: ProjectUse): Sym | null {
 
 export function legacyIndexFromProjectIntelligence(
   snapshot: ProjectIntelligenceSnapshot,
-): {
-  readonly index: ReturnType<typeof indexFromSymbols>;
-  readonly parsed: Record<string, FileSymbols>;
-} {
+): ProjectIndex {
+  const outlineNodes = outlineNodesByDefinition(snapshot);
   const definitions = snapshot.definitions
-    .map((definition) => definitionSymbol(definition, snapshot))
+    .map((definition) => definitionSymbol(definition, outlineNodes))
     .filter((symbol): symbol is Sym => symbol !== null);
   for (const node of snapshot.hierarchy.nodes) {
     definitions.push({
@@ -112,29 +126,34 @@ export function legacyIndexFromProjectIntelligence(
   const uses = snapshot.uses
     .map(useSymbol)
     .filter((symbol): symbol is Sym => symbol !== null);
-  const definitionsByFile = new Map<string, Sym[]>();
-  for (const definition of definitions) {
-    if (definition.kind === "file") continue;
-    const values = definitionsByFile.get(definition.file) ?? [];
-    values.push(definition);
-    definitionsByFile.set(definition.file, values);
-  }
-  const usesByFile = new Map<string, Sym[]>();
-  for (const use of uses) {
-    const values = usesByFile.get(use.file) ?? [];
-    values.push(use);
-    usesByFile.set(use.file, values);
-  }
-  const parsed: Record<string, FileSymbols> = {};
-  for (const file of Object.keys(snapshot.files)) {
-    parsed[file] = {
-      file,
-      defs: definitionsByFile.get(file) ?? [],
-      uses: usesByFile.get(file) ?? [],
-    };
-  }
-  return {
-    index: indexFromSymbols(definitions, uses),
-    parsed,
+  return indexFromSymbols(definitions, uses);
+}
+
+const lazyIndexes = new WeakMap<ProjectIntelligenceSnapshot, ProjectIndex>();
+
+export function lazyLegacyIndex(
+  snapshot: ProjectIntelligenceSnapshot,
+): ProjectIndex {
+  const cached = lazyIndexes.get(snapshot);
+  if (cached) return cached;
+  let built: ProjectIndex | null = null;
+  const build = (): ProjectIndex => {
+    built ??= legacyIndexFromProjectIntelligence(snapshot);
+    return built;
   };
+  const index: ProjectIndex = {
+    get defs() {
+      return build().defs;
+    },
+    get uses() {
+      return build().uses;
+    },
+    symbolAt: (file, offset) => build().symbolAt(file, offset),
+    definitionFor: (symbol) => build().definitionFor(symbol),
+    references: (name, kind) => build().references(name, kind),
+    allReferences: (symbol) => build().allReferences(symbol),
+    renamePlan: (symbol, newName) => build().renamePlan(symbol, newName),
+  };
+  lazyIndexes.set(snapshot, index);
+  return index;
 }

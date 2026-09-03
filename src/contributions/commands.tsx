@@ -8,6 +8,7 @@ import {
   Italic,
   LibraryBig,
   List,
+  Monitor,
   Moon,
   PenTool,
   Play,
@@ -43,6 +44,7 @@ import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
 import { TERMINAL_LIMIT, TERMINAL_LIMIT_MESSAGE, useTerminalsStore } from "@/store/terminals";
 import { toast } from "@/lib/toast";
+import { requestThemePreference } from "@/lib/theme";
 import {
   formattingForEngine,
   pathUsesEngineSource,
@@ -498,6 +500,21 @@ export function registerPaletteCommands() {
     order: 500,
     run: toggleTheme,
   });
+  for (const [preference, Icon, order] of [
+    ["system", Monitor, 501],
+    ["light", Sun, 502],
+    ["dark", Moon, 503],
+  ] as const) {
+    palette({
+      id: `palette.theme-${preference}`,
+      group: "Settings",
+      label: `Use ${preference} appearance`,
+      keywords: `theme appearance mode ${preference}`,
+      icon: () => <Icon className="size-4" />,
+      order,
+      run: () => requestThemePreference(preference),
+    });
+  }
   palette({
     id: "palette.vim",
     group: "Settings",

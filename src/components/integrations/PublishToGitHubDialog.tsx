@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Check,
   GitBranch,
@@ -246,7 +247,7 @@ export function PublishToGitHubDialog({
     .filter((r) => r.full_name.toLowerCase().includes(query.toLowerCase()))
     .slice(0, 60);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <button type="button" aria-label="Close publish dialog" className="absolute inset-0" onMouseDown={onBackdropMouseDown} />
       <div
@@ -423,6 +424,7 @@ export function PublishToGitHubDialog({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

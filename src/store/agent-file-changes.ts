@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { MAX_DIFF_WORK, commonAffixBounds, myersEditDistance } from "@/lib/myers-diff";
 
 export interface LineChangeCounts {
   additions: number;
@@ -59,8 +60,6 @@ export interface AgentFileChangesState {
   clear: () => void;
 }
 
-const MAX_DIFF_WORK = 2_000_000;
-
 function normalizeContent(content: string): string {
   return content.replace(/\r\n?/g, "\n");
 }
@@ -76,65 +75,20 @@ function contentLines(content: string): string[] {
 export function diffLineCounts(beforeContent: string, afterContent: string): LineChangeCounts {
   const before = contentLines(beforeContent);
   const after = contentLines(afterContent);
-  let start = 0;
-  while (start < before.length && start < after.length && before[start] === after[start]) start += 1;
-  let beforeEnd = before.length;
-  let afterEnd = after.length;
-  while (
-    beforeEnd > start &&
-    afterEnd > start &&
-    before[beforeEnd - 1] === after[afterEnd - 1]
-  ) {
-    beforeEnd -= 1;
-    afterEnd -= 1;
-  }
-  const oldLines = before.slice(start, beforeEnd);
-  const newLines = after.slice(start, afterEnd);
-  const oldCount = oldLines.length;
-  const newCount = newLines.length;
-  if (oldCount === 0) return { additions: newCount, deletions: 0 };
-  if (newCount === 0) return { additions: 0, deletions: oldCount };
-
-  const max = oldCount + newCount;
-  const offset = max + 1;
-  const frontier = new Int32Array(max * 2 + 3);
-  frontier.fill(-1);
-  frontier[offset + 1] = 0;
-  let work = 0;
-
-  for (let distance = 0; distance <= max; distance += 1) {
-    for (let diagonal = -distance; diagonal <= distance; diagonal += 2) {
-      work += 1;
-      if (work > MAX_DIFF_WORK) {
-        return { additions: newCount, deletions: oldCount };
-      }
-      const index = offset + diagonal;
-      let oldIndex =
-        diagonal === -distance ||
-        (diagonal !== distance && frontier[index - 1] < frontier[index + 1])
-          ? frontier[index + 1]
-          : frontier[index - 1] + 1;
-      let newIndex = oldIndex - diagonal;
-      while (
-        oldIndex < oldCount &&
-        newIndex < newCount &&
-        oldLines[oldIndex] === newLines[newIndex]
-      ) {
-        oldIndex += 1;
-        newIndex += 1;
-      }
-      frontier[index] = oldIndex;
-      if (oldIndex >= oldCount && newIndex >= newCount) {
-        const delta = newCount - oldCount;
-        return {
-          additions: (distance + delta) / 2,
-          deletions: (distance - delta) / 2,
-        };
-      }
-    }
-  }
-
-  return { additions: newCount, deletions: oldCount };
+  const bounds = commonAffixBounds(before, after);
+  const oldCount = bounds.oldEnd - bounds.prefix;
+  const newCount = bounds.newEnd - bounds.prefix;
+  const distance = myersEditDistance(
+    before.slice(bounds.prefix, bounds.oldEnd),
+    after.slice(bounds.prefix, bounds.newEnd),
+    MAX_DIFF_WORK,
+  );
+  if (distance === null) return { additions: newCount, deletions: oldCount };
+  const delta = newCount - oldCount;
+  return {
+    additions: (distance + delta) / 2,
+    deletions: (distance - delta) / 2,
+  };
 }
 
 export function agentFileChangeTurnKey(chatId: string, turnId: string): string {

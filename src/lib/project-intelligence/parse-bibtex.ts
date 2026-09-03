@@ -6,10 +6,11 @@ import {
   stableId,
   trimRange,
 } from "./source";
+import { bibliographyEntrySummary } from "./bibliography-summary";
 import type {
-  BibliographyEntry,
+  BibliographyEntryDetail,
   BibliographyField,
-  FileIntelligence,
+  FileAnalysis,
   OutlineNode,
   ProjectDefinition,
   ProjectDiagnostic,
@@ -193,9 +194,9 @@ export function parseBibtexIntelligence(
   file: string,
   source: string,
   sourceRevision: number,
-): FileIntelligence {
+): FileAnalysis {
   const starts = lineStarts(source);
-  const entries: BibliographyEntry[] = [];
+  const entries: BibliographyEntryDetail[] = [];
   const definitions: ProjectDefinition[] = [];
   const uses: ProjectUse[] = [];
   const outline: OutlineNode[] = [];
@@ -426,7 +427,7 @@ export function parseBibtexIntelligence(
 
     if (key) {
       const entryId = stableId("bib", file, keyFrom, keyTo, key);
-      const entry: BibliographyEntry = {
+      const entry: BibliographyEntryDetail = {
         id: entryId,
         key,
         type,
@@ -443,6 +444,7 @@ export function parseBibtexIntelligence(
         duplicate: false,
         duplicateIndex: 0,
         duplicateCount: 1,
+        ...bibliographyEntrySummary(type, file, fields),
       };
       entries.push(entry);
       const required = BIBTEX_REQUIRED_FIELDS[type];

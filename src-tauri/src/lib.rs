@@ -5,6 +5,7 @@ mod agent_exec;
 // sites land with the session/tool restructure.
 #[allow(dead_code)]
 mod agent_server;
+mod ai_model_metadata;
 mod ai_model_registry;
 mod approvals;
 mod assets;
@@ -25,6 +26,7 @@ mod connectors;
 mod cua_policy;
 mod deadlines;
 mod document_engine;
+mod document_stats;
 mod fsperm;
 mod git;
 mod github;
@@ -45,6 +47,7 @@ mod project;
 mod project_sources;
 mod protocol;
 mod quit_gate;
+mod rag;
 // Thread persistence; the thread-store commands land on top of it next.
 #[allow(dead_code)]
 mod rollout;
@@ -244,6 +247,9 @@ pub fn run() {
             agent::agent_run,
             agent::agent_tool_result,
             agent::agent_list_models,
+            agent::agent_probe_model,
+            ai_model_metadata::agent_model_metadata_status,
+            ai_model_metadata::agent_refresh_model_metadata,
             agent_server::agent_server_initialize,
             agent_server::agent_server_resolve_request,
             agent_server::agent_server_abandon_request,
@@ -353,6 +359,8 @@ pub fn run() {
             project::list_files,
             project::read_file,
             project_sources::read_project_sources,
+            document_stats::document_stats,
+            rag::rag_retrieve,
             project::project_mutation_generation,
             project::write_file,
             project::create_file,

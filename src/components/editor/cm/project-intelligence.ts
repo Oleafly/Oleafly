@@ -1057,7 +1057,7 @@ export function currentFileReferenceDiagnostics(
     state.currentFileFallbackAllowed !== true ||
     state.identity?.projectId !== files.projectId ||
     snapshot.identity.projectId !== files.projectId ||
-    !snapshot.files[path] ||
+    !snapshot.fileStates[path] ||
     indexed.texts[path] === undefined
   ) {
     return [];
@@ -1068,7 +1068,7 @@ export function currentFileReferenceDiagnostics(
     currentFile = analyzeProjectFile(
       path,
       text,
-      snapshot.files[path].sourceRevision + 1,
+      snapshot.fileStates[path].sourceRevision + 1,
     );
   } catch {
     // The authoritative worker owns error presentation. A fallback parser

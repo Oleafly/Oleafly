@@ -1,0 +1,82 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{fancyhdr}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shapes.geometric}
+
+\definecolor{wpone}{RGB}{31,90,140}
+\definecolor{wptwo}{RGB}{198,106,42}
+\definecolor{wpthree}{RGB}{60,120,80}
+\definecolor{wpfour}{RGB}{132,72,132}
+\definecolor{wpfive}{RGB}{110,110,120}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+
+\newcommand{\proj}{Cohortlink}
+
+\newcounter{objective}
+\renewcommand{\theobjective}{O\arabic{objective}}
+\newcommand{\objective}[2]{%
+  \refstepcounter{objective}\label{#1}%
+  \vspace{9pt}\par\noindent
+  \textbf{\theobjective. #2}\par\nopagebreak\vspace{3pt}%
+}
+
+\newcounter{workpackage}
+\renewcommand{\theworkpackage}{WP\arabic{workpackage}}
+\newcommand{\workpackage}[3]{%
+  \refstepcounter{workpackage}\label{#1}%
+  \vspace{9pt}\par\noindent
+  \textbf{\theworkpackage{}. #2} \hfill \textit{#3}\par\nopagebreak\vspace{2pt}%
+  \hrule height 0.4pt\vspace{4pt}%
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancyhead[L]{\footnotesize \proj{} \quad Okpara-Lange}
+\fancyhead[R]{\footnotesize Part B2, Continental Research Council Consolidator Call 2027}
+\fancyfoot[C]{\footnotesize \thepage}
+
+\setlist[itemize]{leftmargin=1.3em,itemsep=3pt,topsep=3pt}
+\setlist[enumerate]{leftmargin=1.6em,itemsep=3pt,topsep=3pt}
+
+\title{\vspace{-1.5cm}\bfseries \proj: Linking Population Registries Without Trusting Anyone,\\
+and Knowing What the Linkage Costs}
+\author{Mireille Okpara-Lange\\
+  \normalsize Institute for Population Informatics, Torvald University\\
+  \normalsize Host institution: Torvald University \quad Duration: 60 months \quad
+  Requested: EUR 2{,}418{,}000}
+\date{Proposal identifier \texttt{CRC-CON-2027-114509}}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+\input{sections/synopsis}
+\input{sections/objectives}
+\input{sections/state-of-the-art}
+\input{sections/methodology}
+\input{sections/workplan}
+\input{sections/budget}
+\input{sections/risk}
+\input{sections/impact}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

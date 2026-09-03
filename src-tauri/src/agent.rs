@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
@@ -11,7 +11,7 @@ use oleafly_agent::{
 };
 use tauri::{Manager, State};
 
-use crate::config::AppConfig;
+use crate::config::{AppConfig, ModelProbe, ProbeVerdict};
 
 mod registry;
 mod subagents;
@@ -92,7 +92,7 @@ impl Default for AgentState {
 }
 
 impl AgentState {
-    fn client(&self) -> Result<reqwest::Client, String> {
+    pub(crate) fn client(&self) -> Result<reqwest::Client, String> {
         let mut slot = lock_or_recover(&self.client);
         if let Some(client) = slot.as_ref() {
             return Ok(client.clone());
@@ -597,7 +597,8 @@ pub async fn agent_run(
     let run_registration_id = request_id.clone();
     run_registered(agent_state, &request_id, |generation| async move {
         oleafly_agent::validate_completion_request(&request).map_err(tagged)?;
-        let resolved = resolve_off_thread(provider_override).await?;
+        let resolved =
+            resolve_for_run_off_thread(provider_override, !request.tools.is_empty()).await?;
         let client = agent_state.client()?;
         let sink = on_event.clone();
         let allowed_tools: std::collections::HashSet<_> =
@@ -1150,23 +1151,34 @@ pub async fn agent_list_models(
     provider_id: String,
     key: Option<String>,
     base_url: Option<String>,
-) -> Result<Vec<oleafly_agent::ModelInfo>, String> {
+) -> Result<Vec<crate::ai_model_registry::ProviderModel>, String> {
     let _request_slot = acquire_request_slot(state.inner())?;
-    let (client, resolved) =
-        model_listing_request(state.inner(), provider_id, key, base_url).await?;
+    let (projected, probes) = projected_provider_config(&provider_id, key, base_url).await?;
+    let resolved = oleafly_agent::provider::resolve_for_model_listing(&projected, &provider_id)
+        .map_err(|e| e.to_string())?;
+    let client = state.client()?;
     let available = oleafly_agent::list_models(&client, &resolved)
         .await
-        .map_err(|e| format!("[{}] {e}", e.kind()))?;
-    crate::ai_model_registry::filter_supported_models(&client, &resolved.provider_id, available)
+        .map_err(tagged)?;
+    let registry = crate::ai_model_registry::load_registry(&client).await;
+    let snapshot = tauri::async_runtime::spawn_blocking(crate::ai_model_metadata::snapshot)
         .await
+        .map_err(|e| e.to_string())?;
+    crate::ai_model_metadata::schedule_background_refresh(client);
+    Ok(crate::ai_model_registry::classify(
+        &registry,
+        &resolved.provider_id,
+        available,
+        &probes,
+        &snapshot,
+    ))
 }
 
-async fn model_listing_request(
-    state: &AgentState,
-    provider_id: String,
+async fn projected_provider_config(
+    provider_id: &str,
     key: Option<String>,
     base_url: Option<String>,
-) -> Result<(reqwest::Client, oleafly_agent::Resolved), String> {
+) -> Result<(ProviderConfig, BTreeMap<String, ModelProbe>), String> {
     let cfg = tauri::async_runtime::spawn_blocking(crate::config::read_config)
         .await
         .map_err(|e| e.to_string())??;
@@ -1174,37 +1186,193 @@ async fn model_listing_request(
     let supplied_key = key.filter(|k| !k.trim().is_empty());
     let base_url = base_url.filter(|b| !b.trim().is_empty());
 
-    if !endpoint_override_allowed(&projected, &provider_id, supplied_key.is_some(), &base_url) {
+    if !endpoint_override_allowed(&projected, provider_id, supplied_key.is_some(), &base_url) {
         return Err(format!(
             "Re-enter the API key to change the endpoint for {provider_id}."
         ));
     }
 
     if let Some(key) = supplied_key {
-        projected.keys.insert(provider_id.clone(), key);
+        projected.keys.insert(provider_id.to_string(), key);
     }
     if let Some(base_url) = base_url {
         match projected.custom.iter_mut().find(|c| c.id == provider_id) {
             Some(existing) => existing.base_url = base_url,
             None => projected.custom.push(oleafly_agent::CustomProvider {
-                id: provider_id.clone(),
+                id: provider_id.to_string(),
                 base_url,
                 key_optional: true,
             }),
         }
     }
-
-    let resolved = oleafly_agent::provider::resolve_for_model_listing(&projected, &provider_id)
-        .map_err(|e| e.to_string())?;
-    let client = state.client()?;
-    Ok((client, resolved))
+    Ok((projected, cfg.ai_model_probes))
 }
 
-fn resolve_for(
+const PROBE_TOOL: &str = "ping";
+const PROBE_MAX_OUTPUT_TOKENS: u32 = 512;
+const PROBE_TIMEOUT: Duration = Duration::from_secs(30);
+const PROBE_TIMEOUT_REASON: &str = "The model did not answer before the probe timed out.";
+const PROBE_VERIFIED_REASON: &str = "The model called the ping tool.";
+const PROBE_OUTPUT_LIMIT_REASON: &str = "The model ran out of output before calling the tool.";
+
+#[tauri::command]
+pub async fn agent_probe_model(
+    state: State<'_, AgentState>,
+    provider_id: String,
+    model_id: String,
+    key: Option<String>,
+    base_url: Option<String>,
+) -> Result<ModelProbe, String> {
+    let _request_slot = acquire_request_slot(state.inner())?;
+    let model_id = model_id.trim().to_string();
+    if model_id.is_empty() {
+        return Err("Choose a model to probe.".into());
+    }
+    let (projected, _) = projected_provider_config(&provider_id, key, base_url).await?;
+    let resolved = oleafly_agent::provider::resolve_for_probe(&projected, &provider_id, &model_id)
+        .map_err(|e| e.to_string())?;
+    let client = state.client()?;
+    let probe = probe_model(&client, &resolved, PROBE_TIMEOUT).await;
+    let stored = probe.clone();
+    let probe_key = crate::config::model_probe_key(&resolved.provider_id, &resolved.model_id);
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::config::update_config(|cfg| {
+            cfg.ai_model_probes.insert(probe_key, stored);
+            Ok(())
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    Ok(probe)
+}
+
+fn probe_request(timeout: Duration) -> CompletionRequest {
+    let timeout_ms = u64::try_from(timeout.as_millis()).unwrap_or(u64::MAX);
+    CompletionRequest {
+        system: Some(
+            "You are checking whether tool calls work. Call the ping tool once and write nothing else."
+                .into(),
+        ),
+        messages: vec![oleafly_agent::Message::user("Call the ping tool now.")],
+        max_tokens: Some(PROBE_MAX_OUTPUT_TOKENS),
+        timeout_ms: Some(timeout_ms),
+        idle_timeout_ms: Some(timeout_ms),
+        tools: vec![oleafly_agent::ToolSchema {
+            name: PROBE_TOOL.into(),
+            description: "Confirms that tool calls reach the assistant. Takes no arguments.".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+            }),
+        }],
+        ..CompletionRequest::default()
+    }
+}
+
+pub(crate) async fn probe_model(
+    client: &reqwest::Client,
+    resolved: &oleafly_agent::Resolved,
+    timeout: Duration,
+) -> ModelProbe {
+    let request = probe_request(timeout);
+    let outcome = tokio::time::timeout(
+        timeout,
+        oleafly_agent::stream_completion(client, resolved, &request, |_| {}),
+    )
+    .await;
+    let (verdict, reason) = match outcome {
+        Err(_) => (ProbeVerdict::Blocked, PROBE_TIMEOUT_REASON.to_string()),
+        Ok(Err(error)) => (ProbeVerdict::Blocked, probe_error_reason(&error)),
+        Ok(Ok(outcome)) => judge_probe_outcome(&outcome.tool_calls, outcome.stop_reason.as_deref()),
+    };
+    ModelProbe {
+        verdict,
+        reason,
+        probed_at: unix_time_ms(),
+    }
+}
+
+fn probe_error_reason(error: &oleafly_agent::AgentError) -> String {
+    use oleafly_agent::AgentError;
+    match error {
+        AgentError::Timeout => PROBE_TIMEOUT_REASON.into(),
+        AgentError::Provider { status, .. } if error.kind() == "auth" => {
+            format!("The provider rejected the credential with HTTP {status}.")
+        }
+        AgentError::Provider { status, .. } => {
+            format!("The provider answered the probe with HTTP {status}.")
+        }
+        AgentError::Transport(_) => "The provider could not be reached.".into(),
+        AgentError::Decode(_) => {
+            "The provider sent a response the assistant could not read.".into()
+        }
+        AgentError::NotConfigured(_) => "The provider is not configured for this model.".into(),
+        AgentError::Cancelled => "The probe was cancelled before the model answered.".into(),
+    }
+}
+
+fn probe_arguments_are_valid(arguments: &str) -> bool {
+    arguments.trim().is_empty()
+        || matches!(
+            serde_json::from_str::<serde_json::Value>(arguments),
+            Ok(serde_json::Value::Object(_))
+        )
+}
+
+fn stopped_on_output_limit(stop_reason: Option<&str>) -> bool {
+    stop_reason.is_some_and(|reason| {
+        matches!(
+            reason.trim().to_ascii_lowercase().as_str(),
+            "length" | "max_tokens" | "max_output_tokens"
+        )
+    })
+}
+
+fn judge_probe_outcome(
+    calls: &[oleafly_agent::ToolCall],
+    stop_reason: Option<&str>,
+) -> (ProbeVerdict, String) {
+    if calls.is_empty() && stopped_on_output_limit(stop_reason) {
+        return (ProbeVerdict::Blocked, PROBE_OUTPUT_LIMIT_REASON.into());
+    }
+    judge_probe_calls(calls)
+}
+
+fn judge_probe_calls(calls: &[oleafly_agent::ToolCall]) -> (ProbeVerdict, String) {
+    match calls {
+        [] => (
+            ProbeVerdict::Blocked,
+            "The model answered without calling the tool.".into(),
+        ),
+        [call] if call.name != PROBE_TOOL => (
+            ProbeVerdict::Blocked,
+            "The model called a tool that was not offered.".into(),
+        ),
+        [call] if !probe_arguments_are_valid(&call.arguments) => (
+            ProbeVerdict::Blocked,
+            "The model sent a malformed tool call.".into(),
+        ),
+        [_] => (ProbeVerdict::Verified, PROBE_VERIFIED_REASON.into()),
+        _ => (
+            ProbeVerdict::Blocked,
+            "The model made more than one tool call for a single request.".into(),
+        ),
+    }
+}
+
+fn unix_time_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX))
+        .unwrap_or(0)
+}
+
+fn resolve_with(
+    cfg: &AppConfig,
     provider_override: Option<ProviderOverride>,
 ) -> Result<oleafly_agent::Resolved, String> {
-    let cfg = crate::config::read_config()?;
-    let projected = provider_config(&cfg);
+    let projected = provider_config(cfg);
     match provider_override {
         Some(o) => {
             oleafly_agent::provider::resolve_specific(&projected, &o.provider_id, &o.model_id)
@@ -1212,6 +1380,43 @@ fn resolve_for(
         None => oleafly_agent::resolve(&projected),
     }
     .map_err(|e| e.to_string())
+}
+
+fn resolve_for(
+    provider_override: Option<ProviderOverride>,
+) -> Result<oleafly_agent::Resolved, String> {
+    let cfg = crate::config::read_config()?;
+    resolve_with(&cfg, provider_override)
+}
+
+fn resolve_for_run(
+    provider_override: Option<ProviderOverride>,
+    has_tools: bool,
+) -> Result<oleafly_agent::Resolved, String> {
+    let cfg = crate::config::read_config()?;
+    let resolved = resolve_with(&cfg, provider_override)?;
+    let registry = crate::ai_model_registry::current_registry();
+    let snapshot = crate::ai_model_metadata::snapshot();
+    match crate::ai_model_registry::run_refusal(
+        &registry,
+        &resolved.provider_id,
+        &resolved.model_id,
+        &cfg.ai_model_probes,
+        &snapshot,
+        has_tools,
+    ) {
+        Some(refusal) => Err(refusal),
+        None => Ok(resolved),
+    }
+}
+
+async fn resolve_for_run_off_thread(
+    provider_override: Option<ProviderOverride>,
+    has_tools: bool,
+) -> Result<oleafly_agent::Resolved, String> {
+    tauri::async_runtime::spawn_blocking(move || resolve_for_run(provider_override, has_tools))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[cfg(test)]
@@ -1262,3 +1467,399 @@ pub(crate) fn register_token_for_test(
 #[cfg(test)]
 #[path = "agent_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod probe_tests {
+    use super::*;
+    use axum::http::{header, StatusCode};
+    use axum::routing::post;
+    use axum::{Json, Router};
+    use std::sync::Arc;
+
+    const SECRET: &str = "sk-probe-secret-value";
+    const SSE: &str = "text/event-stream";
+    const JSON: &str = "application/json";
+
+    type SeenRequests = Arc<Mutex<Vec<serde_json::Value>>>;
+
+    async fn serve(
+        status: StatusCode,
+        content_type: &'static str,
+        body: &str,
+        delay: Duration,
+    ) -> (
+        oleafly_agent::Resolved,
+        SeenRequests,
+        tokio::task::JoinHandle<()>,
+    ) {
+        let seen: SeenRequests = Arc::new(Mutex::new(Vec::new()));
+        let recorder = seen.clone();
+        let body = body.to_string();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let app = Router::new().route(
+            "/v1/chat/completions",
+            post(move |Json(request): Json<serde_json::Value>| {
+                recorder.lock().unwrap().push(request);
+                let body = body.clone();
+                async move {
+                    tokio::time::sleep(delay).await;
+                    (status, [(header::CONTENT_TYPE, content_type)], body)
+                }
+            }),
+        );
+        let task = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let resolved = oleafly_agent::Resolved {
+            provider_id: "gateway".into(),
+            model_id: "probe-model".into(),
+            credential: SECRET.into(),
+            auth: Some(SECRET.into()),
+            wire: oleafly_agent::Wire::OpenAiChat {
+                base_url: format!("http://{address}/v1"),
+                reasoning_content: false,
+            },
+        };
+        (resolved, seen, task)
+    }
+
+    fn tool_call_stream(name: &str, arguments: &str) -> String {
+        let first = serde_json::json!({
+            "choices": [{ "delta": { "tool_calls": [{
+                "index": 0,
+                "id": "call_1",
+                "type": "function",
+                "function": { "name": name, "arguments": arguments }
+            }] } }]
+        });
+        format!(
+            "data: {first}\n\ndata: {{\"choices\":[{{\"delta\":{{}},\"finish_reason\":\"tool_calls\"}}]}}\n\ndata: [DONE]\n\n"
+        )
+    }
+
+    async fn probe_against(
+        status: StatusCode,
+        content_type: &'static str,
+        body: &str,
+        delay: Duration,
+        timeout: Duration,
+    ) -> (ModelProbe, Vec<serde_json::Value>) {
+        let (resolved, seen, server) = serve(status, content_type, body, delay).await;
+        let client = oleafly_agent::build_client().unwrap();
+        let probe = probe_model(&client, &resolved, timeout).await;
+        server.abort();
+        let requests = seen.lock().unwrap().clone();
+        (probe, requests)
+    }
+
+    #[test]
+    fn the_probe_request_declares_one_tiny_tool_within_the_limits() {
+        let request = probe_request(PROBE_TIMEOUT);
+        assert_eq!(request.tools.len(), 1);
+        assert_eq!(request.tools[0].name, "ping");
+        assert_eq!(
+            request.tools[0].input_schema["properties"],
+            serde_json::json!({})
+        );
+        assert_eq!(request.max_tokens, Some(PROBE_MAX_OUTPUT_TOKENS));
+        assert_eq!(request.timeout_ms, Some(30_000));
+        assert_eq!(request.idle_timeout_ms, Some(30_000));
+        assert_eq!(request.messages.len(), 1);
+        oleafly_agent::validate_completion_request(&request).unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_single_ping_call_verifies_the_model() {
+        let (probe, requests) = probe_against(
+            StatusCode::OK,
+            SSE,
+            &tool_call_stream("ping", "{}"),
+            Duration::ZERO,
+            Duration::from_secs(5),
+        )
+        .await;
+
+        assert_eq!(probe.verdict, ProbeVerdict::Verified);
+        assert_eq!(probe.reason, PROBE_VERIFIED_REASON);
+        assert!(probe.probed_at > 0);
+        assert_eq!(requests.len(), 1);
+        let sent = &requests[0];
+        assert_eq!(sent["model"], "probe-model");
+        assert_eq!(sent["max_tokens"], PROBE_MAX_OUTPUT_TOKENS);
+        assert_eq!(sent["stream"], true);
+        assert_eq!(sent["tools"].as_array().unwrap().len(), 1);
+        assert_eq!(sent["tools"][0]["function"]["name"], "ping");
+        assert!(sent["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|message| message["role"] == "user"
+                && message["content"].to_string().contains("ping")));
+    }
+
+    #[tokio::test]
+    async fn an_empty_argument_string_still_counts_as_a_valid_ping() {
+        let (probe, _) = probe_against(
+            StatusCode::OK,
+            SSE,
+            &tool_call_stream("ping", ""),
+            Duration::ZERO,
+            Duration::from_secs(5),
+        )
+        .await;
+
+        assert_eq!(probe.verdict, ProbeVerdict::Verified);
+    }
+
+    #[tokio::test]
+    async fn a_text_answer_without_a_tool_call_blocks_the_model() {
+        let body = "data: {\"choices\":[{\"delta\":{\"content\":\"pong\"}}]}\n\ndata: [DONE]\n\n";
+        let (probe, _) = probe_against(
+            StatusCode::OK,
+            SSE,
+            body,
+            Duration::ZERO,
+            Duration::from_secs(5),
+        )
+        .await;
+
+        assert_eq!(probe.verdict, ProbeVerdict::Blocked);
+        assert_eq!(probe.reason, "The model answered without calling the tool.");
+    }
+
+    #[tokio::test]
+    async fn running_out_of_output_before_the_call_is_reported_as_such() {
+        let body = "data: {\"choices\":[{\"delta\":{\"content\":\"Let me think about\"},\"finish_reason\":\"length\"}]}\n\ndata: [DONE]\n\n";
+        let (probe, _) = probe_against(
+            StatusCode::OK,
+            SSE,
+            body,
+            Duration::ZERO,
+            Duration::from_secs(5),
+        )
+        .await;
+
+        assert_eq!(probe.verdict, ProbeVerdict::Blocked);
+        assert_eq!(probe.reason, PROBE_OUTPUT_LIMIT_REASON);
+    }
+
+    #[test]
+    fn every_wire_output_limit_stop_is_recognised_and_a_completed_call_still_counts() {
+        for reason in ["length", "max_tokens", "max_output_tokens", "MAX_TOKENS"] {
+            assert!(stopped_on_output_limit(Some(reason)), "{reason}");
+        }
+        for reason in [
+            "stop",
+            "tool_calls",
+            "end_turn",
+            "tool_use",
+            "completed",
+            "STOP",
+        ] {
+            assert!(!stopped_on_output_limit(Some(reason)), "{reason}");
+        }
+        assert!(!stopped_on_output_limit(None));
+
+        let call = oleafly_agent::ToolCall {
+            id: "call_1".into(),
+            name: PROBE_TOOL.into(),
+            arguments: "{}".into(),
+            thought_signature: None,
+        };
+        assert_eq!(
+            judge_probe_outcome(&[call], Some("length")),
+            (ProbeVerdict::Verified, PROBE_VERIFIED_REASON.into())
+        );
+        assert_eq!(
+            judge_probe_outcome(&[], Some("stop")),
+            (
+                ProbeVerdict::Blocked,
+                "The model answered without calling the tool.".into()
+            )
+        );
+        assert_eq!(
+            judge_probe_outcome(&[], Some("MAX_TOKENS")),
+            (ProbeVerdict::Blocked, PROBE_OUTPUT_LIMIT_REASON.into())
+        );
+    }
+
+    #[tokio::test]
+    async fn a_malformed_or_undeclared_tool_call_blocks_the_model() {
+        let (malformed, _) = probe_against(
+            StatusCode::OK,
+            SSE,
+            &tool_call_stream("ping", "{oops"),
+            Duration::ZERO,
+            Duration::from_secs(5),
+        )
+        .await;
+        assert_eq!(malformed.verdict, ProbeVerdict::Blocked);
+        assert_eq!(malformed.reason, "The model sent a malformed tool call.");
+
+        let (undeclared, _) = probe_against(
+            StatusCode::OK,
+            SSE,
+            &tool_call_stream("read_file", "{}"),
+            Duration::ZERO,
+            Duration::from_secs(5),
+        )
+        .await;
+        assert_eq!(undeclared.verdict, ProbeVerdict::Blocked);
+        assert_eq!(
+            undeclared.reason,
+            "The model called a tool that was not offered."
+        );
+    }
+
+    #[test]
+    fn more_than_one_tool_call_is_not_a_verified_probe() {
+        let call = |id: &str| oleafly_agent::ToolCall {
+            id: id.into(),
+            name: PROBE_TOOL.into(),
+            arguments: "{}".into(),
+            thought_signature: None,
+        };
+        let (verdict, reason) = judge_probe_calls(&[call("a"), call("b")]);
+        assert_eq!(verdict, ProbeVerdict::Blocked);
+        assert!(reason.contains("more than one"));
+    }
+
+    #[tokio::test]
+    async fn a_provider_error_blocks_without_echoing_the_credential() {
+        let body =
+            format!("{{\"error\":{{\"message\":\"Incorrect API key provided: {SECRET}\"}}}}");
+        let (probe, _) = probe_against(
+            StatusCode::UNAUTHORIZED,
+            JSON,
+            &body,
+            Duration::ZERO,
+            Duration::from_secs(5),
+        )
+        .await;
+
+        assert_eq!(probe.verdict, ProbeVerdict::Blocked);
+        assert_eq!(
+            probe.reason,
+            "The provider rejected the credential with HTTP 401."
+        );
+        assert!(!probe.reason.contains(SECRET));
+
+        let (server_error, _) = probe_against(
+            StatusCode::BAD_GATEWAY,
+            JSON,
+            &body,
+            Duration::ZERO,
+            Duration::from_secs(5),
+        )
+        .await;
+        assert_eq!(
+            server_error.reason,
+            "The provider answered the probe with HTTP 502."
+        );
+        assert!(!server_error.reason.contains(SECRET));
+    }
+
+    #[tokio::test]
+    async fn a_silent_provider_blocks_on_timeout() {
+        let started = std::time::Instant::now();
+        let (probe, _) = probe_against(
+            StatusCode::OK,
+            SSE,
+            &tool_call_stream("ping", "{}"),
+            Duration::from_secs(3),
+            Duration::from_millis(300),
+        )
+        .await;
+
+        assert_eq!(probe.verdict, ProbeVerdict::Blocked);
+        assert_eq!(probe.reason, PROBE_TIMEOUT_REASON);
+        assert!(started.elapsed() < Duration::from_secs(3));
+    }
+
+    #[test]
+    fn an_unreachable_provider_blocks_with_a_plain_reason() {
+        let reason = probe_error_reason(&oleafly_agent::AgentError::Transport(format!(
+            "connection refused for {SECRET}"
+        )));
+        assert_eq!(reason, "The provider could not be reached.");
+        assert_eq!(
+            probe_error_reason(&oleafly_agent::AgentError::Decode("bad".into())),
+            "The provider sent a response the assistant could not read."
+        );
+    }
+
+    struct DataDirGuard;
+
+    impl Drop for DataDirGuard {
+        fn drop(&mut self) {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+        }
+    }
+
+    #[test]
+    fn the_run_path_refuses_a_catalog_blocked_model_before_any_request() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", dir.path());
+        let _guard = DataDirGuard;
+        crate::config::write_config(&AppConfig {
+            ai_provider: "google".into(),
+            ai_model: "gemini-3-flash-preview".into(),
+            ai_keys: HashMap::from([
+                ("google".to_string(), "AIza-test".to_string()),
+                ("openai".to_string(), "sk-test".to_string()),
+            ]),
+            ..AppConfig::default()
+        })
+        .unwrap();
+
+        let refusal = resolve_for_run(None, true).unwrap_err();
+        assert_eq!(
+            refusal,
+            "This model is blocked for the assistant: This preview model's thinking output breaks the assistant loop."
+        );
+        assert_eq!(resolve_for_run(None, false).unwrap_err(), refusal);
+        assert!(resolve_for(None).is_ok());
+
+        let allowed = resolve_for_run(
+            Some(ProviderOverride {
+                provider_id: "openai".into(),
+                model_id: "gpt-4o".into(),
+            }),
+            true,
+        )
+        .unwrap();
+        assert_eq!(allowed.model_id, "gpt-4o");
+    }
+
+    #[test]
+    fn a_chat_only_model_runs_without_tools_and_is_refused_with_them() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", dir.path());
+        let _guard = DataDirGuard;
+        crate::config::write_config(&AppConfig {
+            ai_provider: "openai".into(),
+            ai_model: "gpt-image-2".into(),
+            ai_keys: HashMap::from([("openai".to_string(), "sk-test".to_string())]),
+            ..AppConfig::default()
+        })
+        .unwrap();
+        let chat_only = || {
+            Some(ProviderOverride {
+                provider_id: "openai".into(),
+                model_id: "gpt-image-2".into(),
+            })
+        };
+
+        let resolved = resolve_for_run(chat_only(), false).unwrap();
+        assert_eq!(resolved.model_id, "gpt-image-2");
+        assert_eq!(
+            resolve_for_run(None, false).unwrap().model_id,
+            "gpt-image-2"
+        );
+        assert_eq!(
+            resolve_for_run(chat_only(), true).unwrap_err(),
+            crate::ai_model_registry::NO_TOOLS_RUN_REFUSAL
+        );
+    }
+}

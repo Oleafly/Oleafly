@@ -300,16 +300,28 @@ test("reset to defaults restores factory preferences", async ({ tauriPage }) => 
   await tauriPage.click('[aria-label="Close settings"]');
 });
 
-test("dark mode switch in settings flips the real theme", async ({ tauriPage }) => {
+test("appearance choice in settings sets the real theme", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  const theme = () =>
+  const isDark = () =>
     tauriPage.evaluate<boolean>(`document.documentElement.classList.contains('dark')`);
-  const before = await theme();
+  const option = (value: "system" | "light" | "dark") =>
+    `[data-testid="settings-appearance-${value}"]`;
+  const before = await isDark();
   await openAppearanceTab(tauriPage, "app");
-  await tauriPage.click('[role="switch"][aria-label="Dark mode"]');
-  expect(await theme()).toBe(!before);
-  await tauriPage.click('[role="switch"][aria-label="Dark mode"]');
-  expect(await theme()).toBe(before);
+  await tauriPage.click(option("light"));
+  await expect(tauriPage.locator(option("light"))).toHaveAttribute("aria-pressed", "true");
+  expect(await isDark()).toBe(false);
+  await tauriPage.click(option("dark"));
+  await expect(tauriPage.locator(option("dark"))).toHaveAttribute("aria-pressed", "true");
+  expect(await isDark()).toBe(true);
+  await tauriPage.click(option("system"));
+  await expect(tauriPage.locator(option("system"))).toHaveAttribute("aria-pressed", "true");
+  const systemDark = await tauriPage.evaluate<boolean>(
+    `!(window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches)`,
+  );
+  expect(await isDark()).toBe(systemDark);
+  await tauriPage.click(option(before ? "dark" : "light"));
+  expect(await isDark()).toBe(before);
   await tauriPage.click('[aria-label="Close settings"]');
 });

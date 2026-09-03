@@ -164,7 +164,7 @@ function fileNodeForProject(
   context.rendered += 1;
   const { snapshot } = context;
   const hierarchyNode = context.nodesByFile.get(file);
-  const fileData = snapshot.files[file];
+  const fileData = snapshot.fileStates[file];
   const nextAncestry = new Set(ancestry).add(file);
   const outlineChildren = nestOutline(snapshot.outlines[file] ?? []).map(
     (node) => presentOutlineNode(node, `${occurrenceId}:${file}`),
@@ -324,16 +324,10 @@ function bibliographyMetadata(entry: BibliographyEntry): {
   description: string;
   badge: string;
 } {
-  const fields = new Map(
-    entry.fields.map((field) => [field.name.toLocaleLowerCase(), field.value]),
-  );
-  const author = fields.get("author");
-  const title = fields.get("title");
-  const year = fields.get("year");
-  const description = [title, author].filter(Boolean).join(", ");
+  const description = [entry.title, entry.author].filter(Boolean).join(", ");
   return {
     description: description || `${entry.type} entry in ${entry.file}`,
-    badge: year || entry.type,
+    badge: entry.year || entry.type,
   };
 }
 
@@ -488,9 +482,7 @@ export function buildCitationNodes(
             : entry.complete
               ? ("default" as const)
               : ("warning" as const),
-          searchText: `${entry.file} ${entry.type} ${entry.fields
-            .map((field) => field.value)
-            .join(" ")}`,
+          searchText: `${entry.file} ${entry.type} ${entry.display}`,
           target: rangeTarget(entry.file, entry.keyRange),
           defaultExpanded: false,
           children: entryCitations.length

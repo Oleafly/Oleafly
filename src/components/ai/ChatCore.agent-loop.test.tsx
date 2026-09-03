@@ -4,7 +4,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import type { AgentEvent } from "@oleafly/ai-core";
 import type { ApprovalMode } from "@oleafly/ai-tools";
 import type { ModelMessage, ToolSet } from "@/lib/chat-types";
-import type { AppConfig } from "@/lib/tauri";
+import type { AppConfig, ModelProbe, StoredModel } from "@/lib/tauri";
 import type { ChatMessage, StoredChat } from "@/store/chats";
 
 interface HarnessOptions {
@@ -39,6 +39,7 @@ vi.mock("@/lib/browser-window", () => ({ launchBrowser }));
 const mocks = vi.hoisted(() => ({
   runs: [] as PendingRun[],
   runAgentHarness: vi.fn(),
+  agentProbeModel: vi.fn(),
   agentSteer: vi.fn(),
   agentThreadArchive: vi.fn(),
   agentThreadFork: vi.fn(),
@@ -114,6 +115,7 @@ vi.mock("@/lib/agent-backend", () => ({
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
+  agentProbeModel: (...args: unknown[]) => mocks.agentProbeModel(...args),
   approvalsList: (...args: unknown[]) => mocks.approvalsList(...args),
   approvalsSet: (...args: unknown[]) => mocks.approvalsSet(...args),
   approvalsModeGet: (...args: unknown[]) => mocks.approvalsModeGet(...args),
@@ -454,6 +456,9 @@ beforeEach(() => {
   mocks.textareaProps = null;
   mocks.goalInputProps = null;
   mocks.modelSelectorProps = null;
+  mocks.agentProbeModel
+    .mockReset()
+    .mockResolvedValue({ verdict: "verified", reason: "", probedAt: 1 });
   mocks.agentSteer.mockReset().mockResolvedValue(undefined);
   mocks.agentThreadArchive.mockReset().mockResolvedValue(true);
   mocks.agentThreadFork.mockReset().mockResolvedValue("thread-forked");
@@ -1747,11 +1752,12 @@ describe("ChatCore agent turns", () => {
     expect(toggle.className).not.toContain("amber-");
     const info = rendered.getByTestId("ai-plan-mode-info");
     expect(info).toHaveAccessibleName("About plan mode");
-    expect(info).toHaveAccessibleDescription(PLAN_MODE_HINT);
+    expect(info).not.toHaveAttribute("aria-describedby");
     expect(info.querySelector("svg")).toHaveClass("size-3.5");
     expect(toggle.parentElement?.nextElementSibling).toContainElement(info);
     fireEvent.mouseEnter(info.parentElement as HTMLElement);
     expect(await rendered.findByRole("tooltip")).toHaveTextContent(PLAN_MODE_HINT);
+    expect(info).toHaveAccessibleDescription(PLAN_MODE_HINT);
     submit(rendered, "Run with planning posture");
     await waitFor(() => expect(mocks.runs).toHaveLength(2));
     expect(mocks.runs[1].options.system).toContain(PLAN_MODE_PLANNING_PROMPT);
@@ -2856,5 +2862,280 @@ describe("ChatCore provider readiness", () => {
     await act(async () => {
       pending.resolve(keyedConfig);
     });
+  });
+});
+
+describe("ChatCore model trust", () => {
+  function configureStoredModel(extra: Partial<StoredModel> = {}, probes?: Record<string, ModelProbe>) {
+    mocks.getConfig.mockResolvedValue({
+      ai_provider: "openai",
+      ai_model: "gpt-4o",
+      ai_api_key: "test-key",
+      ai_keys: { openai: "test-key" },
+      ai_provider_models: {
+        openai: [
+          {
+            id: "gpt-4o",
+            name: "GPT-4o",
+            enabled: true,
+            source: "fetched",
+            trust: "untested",
+            ...extra,
+          },
+        ],
+      },
+      ai_model_probes: probes ?? {},
+      ai_custom_providers: [],
+      ai_system_prompt: "",
+      ai_personas: [],
+    });
+  }
+
+  const composerPlaceholder = "Ask AI to help with your document…";
+
+  it("checks an untested model once before its first assistant run", async () => {
+    configureStoredModel();
+    const rendered = await renderChat();
+
+    submit(rendered, "Hello");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.agentProbeModel).toHaveBeenCalledTimes(1);
+    expect(mocks.agentProbeModel).toHaveBeenCalledWith({ providerId: "openai", modelId: "gpt-4o" });
+    expect(rendered.queryByTestId("ai-model-notice")).toBeNull();
+    expect(mocks.runs[0].options.tools).toHaveProperty("write_file");
+    await act(async () => finishRun(0, "Ready"));
+
+    submit(rendered, "Again");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    expect(mocks.agentProbeModel).toHaveBeenCalledTimes(1);
+    await act(async () => finishRun(1, "Ready"));
+  });
+
+  it("shows that the model is being checked while the probe runs", async () => {
+    configureStoredModel();
+    const probe = deferred<ModelProbe>();
+    mocks.agentProbeModel.mockReturnValue(probe.promise);
+    const rendered = await renderChat();
+
+    submit(rendered, "Hello");
+    await waitFor(() =>
+      expect(rendered.getByTestId("ai-model-notice")).toHaveTextContent("Checking this model"),
+    );
+    expect(rendered.getByTestId("ai-model-notice")).toHaveAttribute("role", "status");
+    expect(mocks.runs).toHaveLength(0);
+
+    await act(async () => probe.resolve({ verdict: "verified", reason: "", probedAt: 1 }));
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(rendered.queryByTestId("ai-model-notice")).toBeNull();
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("stops before the run when the probe reports the model blocked", async () => {
+    configureStoredModel();
+    mocks.agentProbeModel.mockResolvedValue({
+      verdict: "blocked",
+      reason: "No tool call came back.",
+      probedAt: 1,
+    });
+    const rendered = await renderChat();
+
+    submit(rendered, "Hello");
+    await waitFor(() =>
+      expect(rendered.getByTestId("ai-model-notice")).toHaveTextContent(
+        "This model is blocked for the assistant: No tool call came back.",
+      ),
+    );
+    expect(rendered.getByTestId("ai-model-notice")).toHaveAttribute("role", "alert");
+    expect(mocks.runs).toHaveLength(0);
+    expect(activeChatRun()).toBeNull();
+    expect(rendered.getByPlaceholderText(composerPlaceholder)).toHaveValue("Hello");
+
+    submit(rendered, "Hello");
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mocks.agentProbeModel).toHaveBeenCalledTimes(1);
+    expect(mocks.runs).toHaveLength(0);
+  });
+
+  it("refuses a model the catalog blocks without probing it", async () => {
+    configureStoredModel({
+      trust: "blocked",
+      blockedReason: "Its thinking output breaks the assistant loop.",
+    });
+    const rendered = await renderChat();
+
+    submit(rendered, "Hello");
+    await waitFor(() =>
+      expect(rendered.getByTestId("ai-model-notice")).toHaveTextContent(
+        "This model is blocked for the assistant: Its thinking output breaks the assistant loop.",
+      ),
+    );
+    expect(mocks.agentProbeModel).not.toHaveBeenCalled();
+    expect(mocks.runs).toHaveLength(0);
+    expect(rendered.getByPlaceholderText(composerPlaceholder)).toHaveValue("Hello");
+  });
+
+  it("runs a chat-only model without tools and without a probe", async () => {
+    configureStoredModel({
+      metadata: {
+        name: "GPT-4o",
+        inputModalities: ["text"],
+        outputModalities: ["text"],
+        toolCall: false,
+        reasoning: false,
+        attachment: false,
+        structuredOutput: false,
+        status: "active",
+      },
+    });
+    const rendered = await renderChat();
+    expect(rendered.getByTestId("ai-model-notice")).toHaveTextContent(
+      "Chat only, this model cannot use tools",
+    );
+    expect(rendered.getByTestId("ai-model-notice")).toHaveAttribute("role", "status");
+
+    submit(rendered, "Hello");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.agentProbeModel).not.toHaveBeenCalled();
+    expect(mocks.runs[0].options.tools).toEqual({});
+    expect(mocks.runs[0].options.system).toContain("Available tools for this run: none.");
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("skips the probe when the run offers no tools", async () => {
+    configureStoredModel();
+    useAiToolSettingsStore.setState({
+      enabledByName: {
+        read_file: false,
+        update_todos: false,
+        write_file: false,
+        run_command: false,
+        literature_search: false,
+        mcp__papers__search_papers: false,
+      },
+    });
+    const rendered = await renderChat();
+
+    submit(rendered, "Hello");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.agentProbeModel).not.toHaveBeenCalled();
+    expect(mocks.runs[0].options.tools).toEqual({});
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("does not probe a verified model", async () => {
+    configureStoredModel({ trust: "verified" });
+    const rendered = await renderChat();
+
+    submit(rendered, "Hello");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.agentProbeModel).not.toHaveBeenCalled();
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("trusts a verdict already saved in the config", async () => {
+    configureStoredModel({}, {
+      "openai/gpt-4o": { verdict: "verified", reason: "", probedAt: 5 },
+    });
+    const rendered = await renderChat();
+
+    submit(rendered, "Hello");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.agentProbeModel).not.toHaveBeenCalled();
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("keeps the composer editable when the probe cannot run", async () => {
+    configureStoredModel();
+    mocks.agentProbeModel.mockRejectedValue(new Error("[network] The provider did not answer."));
+    const rendered = await renderChat();
+
+    submit(rendered, "Hello");
+    await waitFor(() =>
+      expect(rendered.getByTestId("ai-model-notice")).toHaveTextContent(
+        "Could not check this model. The provider did not answer.",
+      ),
+    );
+    expect(rendered.getByTestId("ai-model-notice")).toHaveAttribute("role", "alert");
+    expect(mocks.runs).toHaveLength(0);
+    expect(activeChatRun()).toBeNull();
+    expect(rendered.getByPlaceholderText(composerPlaceholder)).toHaveValue("Hello");
+  });
+});
+
+describe("ChatCore model re-check", () => {
+  it("offers a re-check for a model an earlier probe blocked and runs once it passes", async () => {
+    mocks.getConfig.mockResolvedValue({
+      ai_provider: "openai",
+      ai_model: "gpt-4o",
+      ai_api_key: "test-key",
+      ai_keys: { openai: "test-key" },
+      ai_provider_models: {
+        openai: [
+          { id: "gpt-4o", name: "GPT-4o", enabled: true, source: "fetched", trust: "untested" },
+        ],
+      },
+      ai_model_probes: {
+        "openai/gpt-4o": { verdict: "blocked", reason: "No tool call came back.", probedAt: 5 },
+      },
+      ai_custom_providers: [],
+      ai_system_prompt: "",
+      ai_personas: [],
+    });
+    const rendered = await renderChat();
+
+    submit(rendered, "Hello");
+    await waitFor(() =>
+      expect(rendered.getByTestId("ai-model-notice")).toHaveTextContent(
+        "This model is blocked for the assistant: No tool call came back.",
+      ),
+    );
+    expect(mocks.agentProbeModel).not.toHaveBeenCalled();
+    expect(mocks.runs).toHaveLength(0);
+
+    mocks.agentProbeModel.mockResolvedValue({ verdict: "verified", reason: "", probedAt: 9 });
+    fireEvent.click(rendered.getByTestId("ai-model-recheck"));
+    await waitFor(() => expect(rendered.queryByTestId("ai-model-notice")).toBeNull());
+    expect(mocks.agentProbeModel).toHaveBeenCalledTimes(1);
+
+    submit(rendered, "Hello");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(mocks.agentProbeModel).toHaveBeenCalledTimes(1);
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("does not offer a re-check for a model the catalog blocks", async () => {
+    mocks.getConfig.mockResolvedValue({
+      ai_provider: "openai",
+      ai_model: "gpt-4o",
+      ai_api_key: "test-key",
+      ai_keys: { openai: "test-key" },
+      ai_provider_models: {
+        openai: [
+          {
+            id: "gpt-4o",
+            name: "GPT-4o",
+            enabled: true,
+            source: "fetched",
+            trust: "blocked",
+            blockedReason: "Its thinking output breaks the assistant loop.",
+          },
+        ],
+      },
+      ai_custom_providers: [],
+      ai_system_prompt: "",
+      ai_personas: [],
+    });
+    const rendered = await renderChat();
+
+    submit(rendered, "Hello");
+    await waitFor(() => expect(rendered.getByTestId("ai-model-notice")).toHaveTextContent("blocked"));
+    expect(rendered.queryByTestId("ai-model-recheck")).toBeNull();
   });
 });

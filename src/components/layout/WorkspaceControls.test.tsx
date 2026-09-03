@@ -30,6 +30,7 @@ describe("WorkspaceControls", () => {
     });
     useFilesStore.setState({ projectId: "proj-1" });
     useShortcutStore.getState().resetAll();
+    localStorage.removeItem("oleafly.theme");
   });
   afterEach(() => {
     useFilesStore.setState({ projectId: null });
@@ -90,8 +91,88 @@ describe("WorkspaceControls", () => {
     expect(toggleBrowser).toHaveBeenCalled();
     fireEvent.click(screen.getByTestId("rail-assistant-toggle"));
     expect(useSettingsStore.getState().assistantOpen).toBe(true);
-    expect(screen.getByLabelText("Toggle theme")).toBeInTheDocument();
+    expect(screen.getByTestId("theme-menu")).toHaveAttribute("aria-label", "Appearance: System");
     fireEvent.click(screen.getByLabelText("Settings"));
     expect(useSettingsStore.getState().settingsOpen).toBe(true);
+  });
+
+  it("offers system, light, and dark from the toolbar theme menu", () => {
+    render(
+      <ThemeProvider>
+        <WorkspaceDockControls />
+      </ThemeProvider>,
+    );
+    const trigger = screen.getByTestId("theme-menu");
+    const settings = screen.getByLabelText("Settings");
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger.className).toContain("h-9");
+    expect(trigger.className).toContain("w-9");
+    expect(trigger.className).toContain("text-muted-foreground");
+    expect(trigger.parentElement?.parentElement).toBe(settings.parentElement?.parentElement);
+
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    const options = screen.getAllByRole("menuitemradio");
+    expect(options.map((option) => option.textContent)).toEqual(["System", "Light", "Dark"]);
+    expect(screen.getByTestId("theme-option-system")).toHaveAttribute("aria-checked", "true");
+
+    fireEvent.click(screen.getByTestId("theme-option-light"));
+    expect(localStorage.getItem("oleafly.theme")).toBe("light");
+    expect(document.documentElement.classList.contains("light")).toBe(true);
+    expect(screen.getByTestId("theme-menu")).toHaveAttribute("aria-label", "Appearance: Light");
+    expect(screen.getByTestId("theme-menu")).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(screen.getByTestId("theme-menu"));
+    expect(screen.getByTestId("theme-option-light")).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByTestId("theme-option-dark"));
+    expect(localStorage.getItem("oleafly.theme")).toBe("dark");
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(screen.getByTestId("theme-menu")).toHaveAttribute("aria-label", "Appearance: Dark");
+  });
+
+  it("renders the dock toggles as individual toolbar buttons", () => {
+    render(
+      <ThemeProvider>
+        <WorkspaceDockControls />
+      </ThemeProvider>,
+    );
+    const terminal = screen.getByTestId("rail-terminal-toggle");
+    const browser = screen.getByTestId("rail-browser-toggle");
+    const assistant = screen.getByTestId("rail-assistant-toggle");
+
+    for (const button of [terminal, browser, assistant]) {
+      expect(button.className).toContain("h-9");
+      expect(button.className).toContain("w-9");
+      expect(button.className).not.toContain("size-7");
+      expect(button).toHaveAttribute("aria-pressed", "false");
+    }
+
+    const dock = terminal.parentElement?.parentElement;
+    expect(dock?.className).toContain("gap-1.5");
+
+    const separators = Array.from(dock?.querySelectorAll("span.w-px") ?? []);
+    expect(separators).toHaveLength(1);
+    expect(separators[0]?.previousElementSibling).toBe(assistant.parentElement);
+  });
+
+  it("keeps the shortcut in the terminal and browser labels", () => {
+    render(
+      <ThemeProvider>
+        <WorkspaceDockControls />
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId("rail-terminal-toggle")).toHaveAttribute(
+      "aria-label",
+      expect.stringMatching(/^Show terminal \(.+\)$/u),
+    );
+    expect(screen.getByTestId("rail-browser-toggle")).toHaveAttribute(
+      "aria-label",
+      expect.stringMatching(/^Open browser \(.+\)$/u),
+    );
+    expect(screen.getByTestId("rail-assistant-toggle")).toHaveAttribute(
+      "aria-label",
+      "Show AI assistant",
+    );
   });
 });

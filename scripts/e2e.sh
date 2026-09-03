@@ -261,9 +261,34 @@ boot_seed_for() {
   esac
 }
 
+# Checkpoint publication runs two extra compiler passes behind every successful
+# compile. Only the specs that assert it need that cost; leaving it on for the
+# rest saturates the slower runners and starves the app of CPU.
+configure_checkpoints_for_spec() {
+  local specs="${CHECKPOINT_HINTS:-${1:-}}"
+  local enabled=false
+  case "$specs" in
+    *66-checkpoints*|*24-synctex-inverse*) enabled=true ;;
+  esac
+  CHECKPOINTS_ENABLED="$enabled" CONFIG_PATH="$DATA_DIR/config.json" node -e '
+    const fs = require("node:fs");
+    const path = process.env.CONFIG_PATH;
+    let config = {};
+    try {
+      config = JSON.parse(fs.readFileSync(path, "utf8"));
+    } catch {
+      config = {};
+    }
+    config.checkpoints_enabled = process.env.CHECKPOINTS_ENABLED === "true";
+    fs.mkdirSync(require("node:path").dirname(path), { recursive: true });
+    fs.writeFileSync(path, JSON.stringify(config, null, 2));
+  '
+}
+
 start_app() {
   rm -f "$SOCK"
   local spec_hint="${1:-}"
+  configure_checkpoints_for_spec "$spec_hint"
   if [ -n "$APP_BINARY" ]; then
     OLEAFLY_DATA_DIR="$DATA_DIR" \
       OLEAFLY_E2E_BOOT_LOCALSTORAGE="$(boot_seed_for "$spec_hint")" \
@@ -303,6 +328,7 @@ for arg in "$@"; do
 done
 
 if [ "$has_spec" -eq 1 ]; then
+  CHECKPOINT_HINTS="$*"
   start_app "$1"
   run_playwright "requested spec selection" "$@"
 else
@@ -389,6 +415,7 @@ else
   for spec in "${SUITE_SPECS[@]}"; do
     # A spec that never runs is indistinguishable from a passing one in the
     # exit code alone, so every spec is accounted for explicitly below.
+    CHECKPOINT_HINTS="$spec"
     if ! wait_for_port_free || ! start_app "$spec"; then
       stop_app
       echo "e2e: retrying ${spec} after a failed app launch" >&2

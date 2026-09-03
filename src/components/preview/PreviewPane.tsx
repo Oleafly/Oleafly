@@ -117,6 +117,7 @@ import {
   attachPreviewZoom,
   MAX_PREVIEW_SCALE,
   MIN_PREVIEW_SCALE,
+  sessionZoomByProject,
 } from "./preview-zoom";
 
 const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.5, 2, 4];
@@ -849,16 +850,6 @@ export function PreviewPane() {
     else void rootRef.current?.requestFullscreen?.().catch(() => {});
   };
 
-  // Two webview families report pinch-to-zoom differently; handle both and leave
-  // ordinary two-finger scroll (no ctrlKey, no gesture events) alone.
-  useEffect(() => {
-    void displayedBytes;
-    void tab;
-    const el = scrollBoxRef.current;
-    if (!el) return;
-    return attachPreviewZoom(el, () => scaleRef.current, setScale);
-  }, [displayedBytes, tab]);
-
   useEffect(() => {
     setPageInput(String(page));
   }, [page]);
@@ -889,32 +880,49 @@ export function PreviewPane() {
 
   const fitPreview = useCallback((mode: "width" | "height") => {
     const next = pdfRef.current?.getFitScale(mode);
-    if (next != null) {
-      setFitMode(mode);
-      setClampedScale(next);
-    }
+    if (next == null) return false;
+    setFitMode(mode);
+    setClampedScale(next);
+    return true;
   }, [setClampedScale]);
 
-  // Open a project's preview fit to page height rather than flat 100%. Fires
-  // once per project, the first time its PDF has pages to measure, so it
-  // never overrides a zoom level the user picked mid-session.
   const autoFitProjectRef = useRef<string | null | undefined>(undefined);
   const userAdjustedZoomRef = useRef(false);
+  const pendingZoomProjectRef = useRef<string | null>(null);
   useEffect(() => {
-    if (autoFitProjectRef.current !== projectId) {
+    if (autoFitProjectRef.current === projectId) return;
+    const remembered = projectId
+      ? sessionZoomByProject.get(projectId)
+      : undefined;
+    if (remembered === undefined || remembered.fitMode !== null) {
       autoFitProjectRef.current = undefined;
       userAdjustedZoomRef.current = false;
+      return;
     }
+    autoFitProjectRef.current = projectId;
+    userAdjustedZoomRef.current = true;
+    pendingZoomProjectRef.current = projectId;
+    setFitMode(null);
+    setScale(remembered.scale);
   }, [projectId]);
   useEffect(() => {
     if (numPages <= 0 || autoFitProjectRef.current === projectId || userAdjustedZoomRef.current) return;
-    autoFitProjectRef.current = projectId;
     // Re-check at fire time, not just when scheduling: the user can zoom
     // manually in the gap between this effect scheduling the frame and the
     // frame actually running, and cancelAnimationFrame on unmount doesn't
     // help there since the ref change alone doesn't retrigger this effect.
+    const remembered = projectId
+      ? sessionZoomByProject.get(projectId)
+      : undefined;
+    const mode = remembered?.fitMode ?? "width";
     const raf = requestAnimationFrame(() => {
-      if (!userAdjustedZoomRef.current) fitPreview("height");
+      if (userAdjustedZoomRef.current) return;
+      if (!fitPreview(mode)) return;
+      autoFitProjectRef.current = projectId;
+      if (remembered) {
+        userAdjustedZoomRef.current = true;
+        pendingZoomProjectRef.current = projectId;
+      }
     });
     return () => cancelAnimationFrame(raf);
   }, [fitPreview, numPages, projectId]);
@@ -925,9 +933,26 @@ export function PreviewPane() {
   // zoom level the user just picked.
   const userZoom = useCallback((mutate: () => void) => {
     userAdjustedZoomRef.current = true;
+    pendingZoomProjectRef.current = projectId;
     setFitMode(null);
     mutate();
-  }, []);
+  }, [projectId]);
+
+  useEffect(() => {
+    const target = pendingZoomProjectRef.current;
+    if (!target || target !== projectId) return;
+    sessionZoomByProject.set(target, { scale, fitMode });
+  }, [fitMode, projectId, scale]);
+
+  useEffect(() => {
+    void displayedBytes;
+    void tab;
+    const el = scrollBoxRef.current;
+    if (!el) return;
+    return attachPreviewZoom(el, () => scaleRef.current, (updater) =>
+      userZoom(() => setScale(updater)),
+    );
+  }, [displayedBytes, tab, userZoom]);
 
   useEffect(() => {
     const element = scrollBoxRef.current;

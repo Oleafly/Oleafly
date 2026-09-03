@@ -1,0 +1,108 @@
+\chapter{Introduction}
+\label{chap:introduction}
+
+\section{Stable stratification as a computational problem}
+\label{sec:intro-problem}
+
+A stably stratified boundary layer is one in which density increases downward
+fast enough that vertical displacement costs work. Nocturnal atmospheric layers
+over land, the seasonal thermocline, and the shelf water beneath a fresh surface
+plume are all in this state for most of their existence. Transport across such a
+layer is what sets the surface energy balance in a weather model and the
+nutrient supply in an ocean model, and it is the single largest source of
+disagreement between operational parameterisations \citep{halvorsen2019closure,
+brandt2021stableabl}.
+
+The difficulty is not that stratified turbulence is hard to write down. The
+Boussinesq equations are unambiguous. The difficulty is that stratification
+introduces a second length scale that shrinks as the flow becomes more stable,
+while the viscous scale shrinks only as the Reynolds number grows. The Ozmidov
+scale
+\begin{equation}
+  L_O = \left( \frac{\varepsilon}{N^{3}} \right)^{1/2},
+  \label{eq:ozmidov-intro}
+\end{equation}
+where $\varepsilon$ is the dissipation rate and $N$ the buoyancy frequency,
+marks the largest eddy that can still overturn against buoyancy. Above $L_O$ the
+motion is wave like and transports almost no scalar. Below it the motion is
+turbulent and transports almost all of it. As the bulk Richardson number rises
+towards its critical value, $L_O$ falls through the viscous scale and the active
+region of the flow becomes a set of thin, intermittent, and spatially sparse
+sheets embedded in a quiescent background.
+
+A uniform grid sized for those sheets is a grid sized for the smallest feature
+anywhere in the domain, applied everywhere. In the campaign reported in
+Chapter~\ref{chap:results}, a uniform grid meeting the resolution requirement of
+the most stable case would have required $3.1 \times 10^{10}$ sites, of which
+fewer than four percent would have carried any scalar flux at all. That ratio,
+and not any subtlety of the physics, is what makes the regime expensive.
+
+\section{Why a kinetic scheme}
+\label{sec:intro-kinetic}
+
+Lattice Boltzmann methods solve a discrete kinetic equation whose hydrodynamic
+limit is the Navier Stokes system. The collision step is local, the streaming
+step is a shift, and the pressure field never requires a global solve. On
+distributed memory hardware that locality is worth a great deal, because the
+communication volume per time step scales with the surface of a subdomain rather
+than with the iteration count of an elliptic solver \citep{feld2018latticeperf}.
+
+The property matters more than usual here. An adaptive grid changes the
+subdomain surface every time it is rebuilt, and an elliptic solver on a
+frequently rebuilt hierarchy spends most of its time reconstructing coarse grid
+operators. A kinetic scheme pays only for the interpolation of populations
+across a refinement boundary, which is a local and cheaply parallel operation.
+
+Against this, lattice methods have a reputation for accuracy problems at
+refinement interfaces. The usual failure is that the non equilibrium part of the
+population, which carries the stress, is not rescaled correctly when the
+relaxation time changes with the grid spacing. The result is a spurious source of
+entropy at every interface, small in a single interface test and fatal on a
+hierarchy that is rebuilt every few hundred steps \citep{lombardi2020refine}.
+Section~\ref{sec:method-coupling} shows that a rescaling exists which conserves
+the second order moments of both populations exactly, and Section~\ref{sec:val-interface}
+measures what happens without it.
+
+\section{Contributions}
+\label{sec:intro-contributions}
+
+This dissertation makes the following contributions.
+
+\begin{enumerate}
+  \item A two population lattice kinetic formulation for buoyancy coupled scalar
+    transport in which the momentum population uses a multiple relaxation time
+    operator on the D3Q27 velocity set and the scalar population uses a single
+    relaxation time operator on the reduced D3Q7 set. The construction is given
+    in Chapter~\ref{chap:theory} and its Chapman Enskog expansion recovers the
+    Boussinesq system to second order with a scalar diffusivity that is
+    independent of the momentum relaxation rate.
+  \item A refinement criterion keyed on the ratio of the local Ozmidov scale to
+    the local grid spacing, developed in Section~\ref{sec:method-criterion}. The
+    criterion refines where mixing is active rather than where shear is large,
+    which in a stratified layer are different places.
+  \item An interface coupling that conserves mass, momentum, and the second
+    order non equilibrium moments across a refinement jump, with the proof in
+    Section~\ref{sec:method-coupling} and the interface convergence study in
+    Section~\ref{sec:val-interface}.
+  \item A twelve case campaign across bulk Richardson numbers from 0 to 0.32,
+    reported in Chapter~\ref{chap:results}, which establishes that the turbulent
+    Prandtl number depends on the resolved fraction of the Ozmidov scale and not
+    only on the gradient Richardson number, and a revised closure that carries
+    this dependence.
+\end{enumerate}
+
+\section{Organisation}
+\label{sec:intro-organisation}
+
+Chapter~\ref{chap:theory} sets out the continuum problem, the kinetic
+discretisation, and the moment structure that the rest of the work depends on.
+Chapter~\ref{chap:method} describes the solver: the collision operators, the
+refinement machinery, the interface coupling, and the parallel decomposition.
+Chapter~\ref{chap:validation} establishes correctness against analytic solutions,
+against a spectral reference for unstratified channel flow, and against the known
+collapse of momentum flux at critical stratification. Chapter~\ref{chap:results}
+presents the stratified campaign and the closure that follows from it.
+Chapter~\ref{chap:conclusion} states what the work settles and what it does not.
+Appendix~\ref{app:coefficients} tabulates the lattice coefficients and moment
+transform used throughout, and Appendix~\ref{app:configuration} gives a complete
+solver configuration for one production case so the runs can be reconstructed.

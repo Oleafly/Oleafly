@@ -5,13 +5,105 @@ import { CheckCircle2, ChevronDown, Search } from "lucide-react";
 
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { Tooltip } from "@/components/ui/tooltip";
+import { modelCapabilityChips } from "@/lib/ai-model-state";
+import type { ModelMetadata, ModelTrust } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
+
+export type ModelSelectorModel = {
+  id: string;
+  name: string;
+  trust?: ModelTrust;
+  blockedReason?: string;
+  metadata?: ModelMetadata;
+};
 
 export type ModelSelectorGroup = {
   id: string;
   name: string;
-  models: { id: string; name: string }[];
+  models: ModelSelectorModel[];
 };
+
+const TRUST_LABEL: Record<ModelTrust, string> = {
+  verified: "Verified",
+  untested: "Untested",
+  blocked: "Blocked",
+};
+
+const TRUST_CLASS: Record<ModelTrust, string> = {
+  verified:
+    "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  untested: "border-border bg-muted text-muted-foreground",
+  blocked: "border-destructive/30 bg-destructive/10 text-destructive",
+};
+
+const TRUST_TITLE: Record<ModelTrust, string> = {
+  verified: "Oleafly has run the assistant on this model",
+  untested: "Not tried with the assistant yet. It is checked on first use",
+  blocked: "The assistant cannot run on this model",
+};
+
+export function ModelTrustBadge({
+  trust,
+  reason,
+  className,
+}: {
+  trust: ModelTrust | undefined;
+  reason?: string;
+  className?: string;
+}) {
+  if (!trust) return null;
+  const badge = (
+    <span
+      data-testid={`ai-model-trust-${trust}`}
+      data-trust={trust}
+      className={cn(
+        "inline-flex shrink-0 items-center rounded-full border px-1.5 py-px text-[10px] font-medium leading-none",
+        TRUST_CLASS[trust],
+        className,
+      )}
+    >
+      {TRUST_LABEL[trust]}
+      {trust === "blocked" && reason ? <span className="sr-only">. {reason}</span> : null}
+    </span>
+  );
+  const label = trust === "blocked" && reason ? reason : TRUST_TITLE[trust];
+  return (
+    <Tooltip label={label} side="top" className="inline-flex shrink-0">
+      {badge}
+    </Tooltip>
+  );
+}
+
+export function ModelCapabilityChips({
+  metadata,
+  className,
+}: {
+  metadata: ModelMetadata | undefined;
+  className?: string;
+}) {
+  const chips = modelCapabilityChips(metadata);
+  if (chips.length === 0) return null;
+  return (
+    <span className={cn("inline-flex min-w-0 flex-wrap items-center gap-1", className)}>
+      {chips.map((chip) => (
+        <span
+          key={chip.id}
+          data-testid={`ai-model-chip-${chip.id}`}
+          title={chip.title}
+          className={cn(
+            "inline-flex shrink-0 items-center rounded px-1 py-px text-[10px] leading-none",
+            chip.id === "deprecated"
+              ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+              : "bg-muted text-muted-foreground",
+          )}
+        >
+          <span aria-hidden="true">{chip.label}</span>
+          <span className="sr-only">{chip.title}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
 
 export function ModelSelector({
   providerId,
@@ -163,20 +255,38 @@ export function ModelSelector({
                   {group.models.map((model) => {
                     const selected =
                       group.id === providerId && model.id === modelId;
+                    const blocked = model.trust === "blocked";
+                    const details = Boolean(model.trust) || modelCapabilityChips(model.metadata).length > 0;
                     return (
                       <Command.Item
                         key={`${group.id}:${model.id}`}
                         value={JSON.stringify([group.id, model.id])}
+                        disabled={blocked}
+                        data-testid={`ai-model-option-${group.id}-${model.id}`}
                         onSelect={() => {
+                          if (blocked) return;
                           onChange(group.id, model.id);
                           close();
                         }}
-                        className="relative flex w-full items-center gap-2 rounded-sm px-2 py-2 pr-8 text-xs font-normal normal-case tracking-normal text-foreground outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+                        className={cn(
+                          "relative flex w-full items-start gap-2 rounded-sm px-2 py-2 pr-8 text-xs font-normal normal-case tracking-normal text-foreground outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground",
+                          blocked && "cursor-not-allowed opacity-60",
+                        )}
                       >
-                        <ProviderLogo providerId={group.id} size={14} />
-                        <span className="min-w-0 flex-1 truncate">{model.name}</span>
+                        <span className="mt-px shrink-0">
+                          <ProviderLogo providerId={group.id} size={14} />
+                        </span>
+                        <span className="flex min-w-0 flex-1 flex-col gap-1">
+                          <span className="min-w-0 truncate">{model.name}</span>
+                          {details && (
+                            <span className="flex min-w-0 flex-wrap items-center gap-1">
+                              <ModelTrustBadge trust={model.trust} reason={model.blockedReason} />
+                              <ModelCapabilityChips metadata={model.metadata} />
+                            </span>
+                          )}
+                        </span>
                         {selected && (
-                          <CheckCircle2 className="absolute right-2 size-4 text-emerald-500" />
+                          <CheckCircle2 className="absolute right-2 top-2 size-4 text-emerald-500" />
                         )}
                       </Command.Item>
                     );

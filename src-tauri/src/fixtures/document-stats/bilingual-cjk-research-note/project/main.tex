@@ -1,0 +1,53 @@
+\documentclass[11pt,fontset=fandol,UTF8]{ctexart}
+
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage[numbers]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta,positioning}
+
+\title{面向低资源语言的分词迁移研究\\
+\large Subword Transfer for Low-Resource Languages}
+\author{林思远 \quad 陈雅琳 \quad Adaeze Okonkwo\\
+\normalsize 北方计算语言学研究所}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+\textbf{摘要}\quad
+低资源语言的分词器往往直接沿用高资源语言的词表，导致词元碎片化严重。
+本文提出一种基于共享形态先验的分词迁移方法，在目标语言仅有十万句语料的
+条件下，将平均词元长度提高百分之三十一，并在下游命名实体识别任务上取得
+2.4 个 F1 点的提升。我们同时给出该方法失效的条件。
+
+\vspace{0.6em}
+\noindent
+\textbf{Abstract}\quad
+Tokenizers for low-resource languages usually inherit a vocabulary built for
+high-resource data, which fragments words into uninformative pieces. We present
+a subword transfer method driven by a shared morphological prior. With only
+100k target-language sentences it raises mean token length by 31 percent and
+improves downstream named entity recognition by 2.4 F1. We also state the
+conditions under which the method fails.
+
+\vspace{0.6em}
+\noindent\textbf{关键词}\quad 分词; 迁移学习; 低资源语言; 形态学
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/method}
+\input{sections/experiments}
+\input{sections/conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

@@ -6,6 +6,7 @@ import {
   validateXparseArgumentSpecification,
 } from "@oleafly/editor/latex-analysis";
 import { astAugmentLatexFile } from "./latex-ast";
+import { bibliographyEntrySummary } from "./bibliography-summary";
 import { parseBibtexIntelligence } from "./parse-bibtex";
 import {
   engineForPath,
@@ -18,7 +19,7 @@ import {
   stableId,
 } from "./source";
 import type {
-  FileIntelligence,
+  FileAnalysis,
   OutlineNode,
   ProjectDefinition,
   ProjectDefinitionKind,
@@ -2210,7 +2211,7 @@ export function analyzeProjectFile(
   file: string,
   source: string,
   sourceRevision: number,
-): FileIntelligence {
+): FileAnalysis {
   const engine = engineForPath(file);
   if (!engine) {
     throw new Error(`Unsupported project-intelligence file: ${file}`);
@@ -2427,6 +2428,11 @@ export function analyzeProjectFile(
             duplicate: false,
             duplicateIndex: 0,
             duplicateCount: 1,
+            ...bibliographyEntrySummary(
+              "bibitem",
+              definition.location.file,
+              [],
+            ),
           }))
       : [];
   return {

@@ -1,0 +1,100 @@
+\section{The \est{} Estimator}
+\label{sec:estimator}
+
+\subsection{Latent-variable formulation}
+
+Stack the received symbols as $\vect{y} \in \mathbb{C}^{N}$ and collect the
+phase samples as $\boldsymbol{\phi} \in \mathbb{R}^{N}$. Using
+Eq.~\eqref{eq:time-domain} the likelihood factorises as
+\begin{equation}
+  \label{eq:likelihood}
+  p(\vect{y} \mid \vect{h}, \boldsymbol{\phi})
+  = \prod_{n=0}^{N-1}
+    \mathcal{CN}\!\left( y_n ;\;
+      e^{j\phi_n} \bigl[\mat{X} \vect{h}\bigr]_n , \; \sigma^2 \right) ,
+\end{equation}
+where $\mat{X}$ is the circulant convolution matrix of the pilot block. The
+phase prior is the Wiener process of Section~\ref{sec:system-model},
+\begin{equation}
+  \label{eq:phase-prior}
+  p(\boldsymbol{\phi}) = p(\phi_0)
+    \prod_{n=1}^{N-1} \mathcal{N}\!\left( \phi_n ;\, \phi_{n-1},\,
+      2\pi \beta T_s \right) ,
+\end{equation}
+and the channel prior is $\vect{h} \sim \mathcal{CN}(\vect{0}, \mat{R}_h)$ with
+$\mat{R}_h$ the exponential power delay profile of the deployment. Exact
+inference in this model is intractable because $\phi_n$ enters through a
+complex exponential.
+
+\subsection{Variational updates}
+
+Variational treatments of joint synchronisation and detection have precedent~\citep{whitfield2017variational}, though not with an exact leakage covariance. We adopt a factorised posterior
+$q(\vect{h}, \boldsymbol{\phi}) = q(\vect{h}) \, q(\boldsymbol{\phi})$ and
+minimise the Kullback-Leibler divergence to the true posterior. The resulting
+coordinate updates are the content of the method, and both have closed forms.
+
+Holding $q(\boldsymbol{\phi})$ fixed, the channel update is a linear minimum
+mean square error solution against a phase-derotated observation. Writing
+$\alpha_n = \mathbb{E}_q[e^{-j\phi_n}]$ and
+$\mat{A} = \diag(\alpha_0, \dots, \alpha_{N-1})$, we have
+\begin{align}
+  \label{eq:h-update-1}
+  q^{\star}(\vect{h})
+    &\propto \exp\Bigl(
+      \mathbb{E}_{q(\boldsymbol{\phi})}\bigl[ \log p(\vect{y} \mid
+        \vect{h}, \boldsymbol{\phi}) \bigr]
+      + \log p(\vect{h}) \Bigr) \\
+  \label{eq:h-update-2}
+    &= \mathcal{CN}\!\left( \vect{h} ; \, \hat{\vect{h}}, \, \boldsymbol{\Sigma}_h
+       \right) , \\
+  \label{eq:h-update-3}
+  \boldsymbol{\Sigma}_h
+    &= \left( \sigma^{-2} \mat{X}^{\mathsf{H}} \mat{D} \mat{X}
+       + \mat{R}_h^{-1} \right)^{-1} , \\
+  \label{eq:h-update-4}
+  \hat{\vect{h}}
+    &= \sigma^{-2} \boldsymbol{\Sigma}_h \mat{X}^{\mathsf{H}} \mat{A} \vect{y} ,
+\end{align}
+where $\mat{D} = \diag(\mathbb{E}_q|e^{j\phi_n}|^2) = \mat{I}$ because the
+exponential has unit modulus. The cancellation in
+Eq.~\eqref{eq:h-update-3} is what keeps the channel update cheap: the
+precision matrix does not depend on the phase posterior at all, so it is
+factorised once and reused across iterations.
+
+Holding $q(\vect{h})$ fixed, the phase update is a smoothing problem. The
+per-sample log-likelihood contribution is
+\begin{equation}
+  \label{eq:phase-obs}
+  \log p(y_n \mid \phi_n)
+  = \frac{2}{\sigma^2} \Re\!\left\{ y_n^{*} e^{j\phi_n} \hat{z}_n \right\}
+    + \mathrm{const} ,
+  \qquad \hat{z}_n = [\mat{X}\hat{\vect{h}}]_n ,
+\end{equation}
+which is a von Mises likelihood in $\phi_n$. We approximate it by a Gaussian
+matched at its mode, with precision
+$\kappa_n = 2 |y_n \hat{z}_n| / \sigma^2$, and then run a Rauch-Tung-Striebel
+smoother~\citep{rauch2015smoothing} over the Wiener prior of Eq.~\eqref{eq:phase-prior}. The smoother
+returns $\mathbb{E}_q[\phi_n]$ and its variance, from which
+$\alpha_n = \exp(-j\mathbb{E}_q[\phi_n] - \tfrac{1}{2}\mathrm{Var}_q[\phi_n])$
+follows and closes the loop.
+
+\begin{lemma}[Monotone descent]
+\label{lem:descent}
+Each pair of updates in Eqs.~\eqref{eq:h-update-4} and~\eqref{eq:phase-obs}
+does not increase the variational free energy, and the Gaussian matching step
+introduces an error of order $\kappa_n^{-2}$ in the free energy.
+\end{lemma}
+
+We initialise $\alpha_n = 1$, which makes the first channel update exactly the
+linear minimum mean square error estimate under the common-phase model, so
+\est{} begins from the conventional solution and improves it. This also
+supplies the graceful degradation observed in Section~\ref{sec:results}: when
+the linewidth is negligible the phase posterior stays flat, $\alpha_n$ stays
+near unity, and the estimator returns the baseline answer.
+
+\subsection{Termination}
+
+We iterate until the relative change in the free energy falls below $10^{-4}$
+or ten iterations elapse. Across the whole sweep in
+Section~\ref{sec:results}, the median number of iterations is four and the
+ninety-fifth percentile is seven.

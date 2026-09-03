@@ -21,9 +21,19 @@ const EDIT_COMMIT = `e2e git history edit ${RUN}`;
 
 async function initializeRepository(page: Page) {
   await openRailTab(page, "Source Control");
-  const initialize = page.getByText("Initialize Repository", { exact: true });
-  await expect(initialize).toBeVisible({ timeout: 10_000 });
-  await initialize.click();
+  await page.waitForFunction(
+    `!!document.querySelector('[data-testid="source-control-actions"]') ||
+      Array.from(document.querySelectorAll("button")).some(
+        (b) => b.textContent.trim() === "Initialize Repository",
+      )`,
+    15_000,
+  );
+  const needsInitialize = await page.evaluate<boolean>(
+    `!document.querySelector('[data-testid="source-control-actions"]')`,
+  );
+  if (needsInitialize) {
+    await page.getByText("Initialize Repository", { exact: true }).click();
+  }
   await expect(page.getByTestId("source-control-actions")).toBeVisible({ timeout: 15_000 });
 }
 
@@ -45,22 +55,34 @@ async function commitAll(page: Page, message: string) {
     if (!stagedVisible) await page.click('[aria-label="Refresh"]');
   }
   if (!stagedVisible) throw new Error("commitAll: staging never became visible");
-  await page.evaluate(
-    `(() => {
-      const t = document.querySelector('[placeholder="Commit message (required)…"]');
-      const set = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-      set.call(t, ${JSON.stringify(message)});
-      t.dispatchEvent(new Event('input', { bubbles: true }));
-      return 1;
-    })()`,
-  );
-  const commit = page.getByText("Commit", { exact: true });
+  await expect(page.locator('[data-testid="commit-title"]')).toBeVisible({ timeout: 10_000 });
+  await page.fill('[data-testid="commit-title"]', message);
+  const commit = page.locator('[data-testid="commit-button"]');
   await expect(commit).toBeEnabled({ timeout: 5_000 });
   await commit.click();
-  await page.waitForFunction(
-    `document.body.innerText.includes(${JSON.stringify(`Committed: "${message}"`)})`,
-    15_000,
-  );
+  try {
+    await page.waitForFunction(
+      `(document.querySelector('[data-testid="source-control-status"]')?.textContent ?? "").includes(${JSON.stringify(`Committed: "${message}"`)})`,
+      15_000,
+    );
+  } catch (error) {
+    const snapshot = await page.evaluate<string>(
+      `(() => {
+        const title = document.querySelector('[data-testid="commit-title"]');
+        const button = document.querySelector('[data-testid="commit-button"]');
+        const status = document.querySelector('[data-testid="source-control-status"]');
+        const actions = document.querySelector('[data-testid="source-control-actions"]');
+        return JSON.stringify({
+          titleValue: title ? title.value : null,
+          buttonDisabled: button ? button.disabled : null,
+          buttonText: button ? button.textContent : null,
+          status: status ? status.textContent : null,
+          actions: actions ? actions.innerText.slice(0, 600) : null,
+        });
+      })()`,
+    );
+    throw new Error(`commit notice never appeared: ${snapshot}`, { cause: error });
+  }
 }
 
 async function openHistory(page: Page) {

@@ -1,36 +1,76 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Pencil, Plus, X } from "lucide-react";
+import { Check, Palette, Pencil, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { BOOK_COLOR_OPTIONS } from "@/components/library/Book";
 import { useSettingsStore } from "@/store/settings";
 import {
   TERMINAL_LIMIT,
   TERMINAL_LIMIT_MESSAGE,
   TERMINAL_TITLE_MAX_LENGTH,
+  isTerminalColorKey,
   useTerminalsStore,
+  type TerminalColorKey,
   type TerminalTab,
 } from "@/store/terminals";
 import { TerminalPane } from "./TerminalPane";
 
 let mountedDocks = 0;
 
+export const TERMINAL_SWATCHES: { key: TerminalColorKey; name: string; hex: string }[] =
+  BOOK_COLOR_OPTIONS.flatMap((option) => {
+    const key = option.name.toLowerCase();
+    return isTerminalColorKey(key) ? [{ key, name: option.name, hex: option.hex }] : [];
+  });
+
+export function terminalColorHex(color: TerminalColorKey | null): string | null {
+  if (!color) return null;
+  return TERMINAL_SWATCHES.find((swatch) => swatch.key === color)?.hex ?? null;
+}
+
 function TerminalTabItem({
   tab,
   active,
+  canCloseOthers,
+  canCloseRight,
+  canCloseLeft,
   onActivate,
   onClose,
+  onCloseOthers,
+  onCloseRight,
+  onCloseLeft,
   onRename,
+  onColor,
 }: {
   tab: TerminalTab;
   active: boolean;
+  canCloseOthers: boolean;
+  canCloseRight: boolean;
+  canCloseLeft: boolean;
   onActivate: () => void;
   onClose: () => void;
+  onCloseOthers: () => void;
+  onCloseRight: () => void;
+  onCloseLeft: () => void;
   onRename: (title: string) => void;
+  onColor: (color: TerminalColorKey | null) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(tab.title);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const tabRef = useRef<HTMLButtonElement | null>(null);
   const settledRef = useRef(false);
 
   useEffect(() => {
@@ -66,69 +106,172 @@ function TerminalTabItem({
       cancel();
     }
   };
+  const openMenu = () => {
+    const row = rowRef.current;
+    if (!row) return;
+    const rect = row.getBoundingClientRect();
+    row.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: Math.round(rect.left + rect.width / 2),
+        clientY: Math.round(rect.bottom),
+      }),
+    );
+  };
+  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+      event.preventDefault();
+      openMenu();
+    }
+  };
   const controlBase =
     "inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-opacity hover:bg-foreground/10 hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
   const hoverOnly = "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100";
   const renameClass = cn(controlBase, hoverOnly);
   const closeClass = cn(controlBase, active ? "opacity-100" : hoverOnly);
+  const hex = terminalColorHex(tab.color);
+  const swatchClass = "size-2 shrink-0 rounded-full ring-1 ring-foreground/50";
 
   return (
-    <div
-      role="presentation"
-      className={cn(
-        "group flex h-6 shrink-0 items-center gap-0.5 rounded-md pl-2 pr-0.5 text-xs transition-colors",
-        active
-          ? "bg-accent text-foreground"
-          : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-      )}
-    >
-      {editing ? (
-        <Input
-          ref={inputRef}
-          aria-label="Terminal title"
-          value={draft}
-          maxLength={TERMINAL_TITLE_MAX_LENGTH}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={onKeyDown}
-          onBlur={commit}
-          className="h-5 w-32 rounded px-1 py-0 text-xs"
-        />
-      ) : (
-        <button
-          type="button"
-          role="tab"
-          aria-selected={active}
-          data-testid="dock-terminal-tab"
-          data-active={active ? "true" : "false"}
-          data-session-index={tab.index}
-          onClick={onActivate}
-          onDoubleClick={startEditing}
-          className="max-w-40 truncate focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          ref={rowRef}
+          role="presentation"
+          className={cn(
+            "group flex h-6 shrink-0 items-center gap-0.5 rounded-md pl-2 pr-0.5 text-xs transition-colors",
+            active
+              ? "bg-accent text-foreground"
+              : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+          )}
+          style={active && hex ? { backgroundColor: `${hex}33` } : undefined}
         >
-          {tab.title}
-        </button>
-      )}
-      <Tooltip label="Rename" side="bottom">
-        <button
-          type="button"
-          aria-label={`Rename ${tab.title}`}
-          onClick={startEditing}
-          className={renameClass}
+          {hex && (
+            <span
+              aria-hidden
+              data-testid="dock-terminal-tab-color"
+              data-color={tab.color}
+              className={cn(swatchClass, "mr-0.5")}
+              style={{ backgroundColor: hex }}
+            />
+          )}
+          {editing ? (
+            <Input
+              ref={inputRef}
+              aria-label="Terminal title"
+              value={draft}
+              maxLength={TERMINAL_TITLE_MAX_LENGTH}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={onKeyDown}
+              onBlur={commit}
+              className="h-5 w-32 rounded px-1 py-0 text-xs"
+            />
+          ) : (
+            <button
+              ref={tabRef}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              data-testid="dock-terminal-tab"
+              data-active={active ? "true" : "false"}
+              data-session-index={tab.index}
+              data-color={tab.color ?? "none"}
+              onClick={onActivate}
+              onDoubleClick={startEditing}
+              onKeyDown={onTabKeyDown}
+              className="max-w-40 truncate focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+            >
+              {tab.title}
+            </button>
+          )}
+          <Tooltip label="Rename" side="bottom">
+            <button
+              type="button"
+              aria-label={`Rename ${tab.title}`}
+              onClick={startEditing}
+              className={renameClass}
+            >
+              <Pencil className="size-3" aria-hidden />
+            </button>
+          </Tooltip>
+          <Tooltip label="Close" side="bottom">
+            <button
+              type="button"
+              aria-label={`Close ${tab.title}`}
+              onClick={onClose}
+              className={closeClass}
+            >
+              <X className="size-3" aria-hidden />
+            </button>
+          </Tooltip>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent
+        className="w-52"
+        data-testid="dock-terminal-tab-menu"
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          tabRef.current?.focus();
+        }}
+      >
+        <ContextMenuItem
+          data-testid="dock-terminal-menu-rename"
+          onClick={() => window.setTimeout(startEditing, 0)}
         >
-          <Pencil className="size-3" aria-hidden />
-        </button>
-      </Tooltip>
-      <Tooltip label="Close" side="bottom">
-        <button
-          type="button"
-          aria-label={`Close ${tab.title}`}
-          onClick={onClose}
-          className={closeClass}
+          <Pencil className="mr-2 size-4" aria-hidden /> Rename
+        </ContextMenuItem>
+        <ContextMenuSub>
+          <ContextMenuSubTrigger data-testid="dock-terminal-menu-color">
+            <Palette className="mr-2 size-4" aria-hidden /> Color
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent className="w-44">
+            {TERMINAL_SWATCHES.map((swatch) => (
+              <ContextMenuItem key={swatch.key} onClick={() => onColor(swatch.key)}>
+                <span
+                  aria-hidden
+                  className={cn(swatchClass, "mr-2 size-3.5")}
+                  style={{ backgroundColor: swatch.hex }}
+                />
+                {swatch.name}
+                {tab.color === swatch.key && <Check className="ml-auto size-3.5" aria-hidden />}
+              </ContextMenuItem>
+            ))}
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onColor(null)}>
+              <span aria-hidden className={cn(swatchClass, "mr-2 size-3.5 bg-transparent")} />
+              None
+              {!tab.color && <Check className="ml-auto size-3.5" aria-hidden />}
+            </ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        <ContextMenuSeparator />
+        <ContextMenuItem data-testid="dock-terminal-menu-close" onClick={onClose}>
+          Close
+        </ContextMenuItem>
+        <ContextMenuItem
+          data-testid="dock-terminal-menu-close-others"
+          disabled={!canCloseOthers}
+          onClick={onCloseOthers}
         >
-          <X className="size-3" aria-hidden />
-        </button>
-      </Tooltip>
-    </div>
+          Close others
+        </ContextMenuItem>
+        <ContextMenuItem
+          data-testid="dock-terminal-menu-close-right"
+          disabled={!canCloseRight}
+          onClick={onCloseRight}
+        >
+          Close to the right
+        </ContextMenuItem>
+        <ContextMenuItem
+          data-testid="dock-terminal-menu-close-left"
+          disabled={!canCloseLeft}
+          onClick={onCloseLeft}
+        >
+          Close to the left
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
@@ -182,14 +325,21 @@ export function TerminalDock({
         className="flex h-8 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border bg-background px-1"
       >
         {ready &&
-          tabs.map((tab) => (
+          tabs.map((tab, position) => (
             <TerminalTabItem
               key={tab.id}
               tab={tab}
               active={tab.id === activeId}
+              canCloseOthers={tabs.length > 1}
+              canCloseRight={position < tabs.length - 1}
+              canCloseLeft={position > 0}
               onActivate={() => useTerminalsStore.getState().activateTerminal(tab.id)}
               onClose={() => closeTab(tab.id)}
+              onCloseOthers={() => useTerminalsStore.getState().closeOtherTerminals(tab.id)}
+              onCloseRight={() => useTerminalsStore.getState().closeTerminalsToTheRight(tab.id)}
+              onCloseLeft={() => useTerminalsStore.getState().closeTerminalsToTheLeft(tab.id)}
               onRename={(title) => useTerminalsStore.getState().renameTerminal(tab.id, title)}
+              onColor={(color) => useTerminalsStore.getState().setTerminalColor(tab.id, color)}
             />
           ))}
         <Tooltip label={atLimit ? TERMINAL_LIMIT_MESSAGE : "New terminal"} side="bottom">

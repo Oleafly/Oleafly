@@ -1,0 +1,71 @@
+\documentclass[11pt]{article}
+
+\usepackage[letterpaper,margin=1.2in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{microtype}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage[ruled,vlined]{algorithm2e}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
+
+\newcommand{\method}{Meridian}
+\newcommand{\anchor}{\mathcal{A}}
+\newcommand{\target}{\mathcal{T}}
+\newcommand{\pool}{\mathcal{P}}
+
+\newtheorem{assumption}{Assumption}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+
+\title{\bfseries \method: Anchored Curriculum Selection for\\
+Fine-Tuning Under Domain Shift}
+
+\author{
+  Ingrid Solberg \and Rafael Ximenes \and Nadia Bourjaili \and Tomas Rehak\\
+  \normalsize Northfield Institute for Machine Learning, Uppsala\\
+  \normalsize \texttt{\{solberg,ximenes,bourjaili,rehak\}@northfield-iml.example}
+}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Instruction fine-tuning corpora are assembled for breadth, but they are almost
+always deployed against a narrower target distribution than the one they were
+drawn from. We study data selection in that setting and show that the standard
+criteria, loss magnitude and gradient norm, select for examples that are hard
+rather than for examples that are useful, and that the two diverge sharply once
+the pool and the target disagree. \method{} scores a candidate by the cosine
+alignment between its sketched per-example gradient and the mean gradient of a
+small anchor set drawn from the target domain, then anneals a selection
+temperature so that early training concentrates on high-alignment examples and
+later training admits the rest. The alignment score costs one extra backward
+pass over a 512-dimensional sketch, roughly 3 percent of fine-tuning compute.
+Across four shifted benchmarks and two model scales, \method{} reaches the
+accuracy of full-pool fine-tuning using 31 percent of the tokens, and beats the
+strongest selection baseline by 2.4 points on average. We give an excess-risk
+bound that separates the contribution of retained alignment mass from the
+contribution of gradient noise, and we report the regime where the method
+fails: when the anchor set is smaller than roughly 128 examples the alignment
+estimate is dominated by its own variance and selection becomes worse than
+random.
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/method}
+\input{sections/experiments}
+\input{sections/analysis}
+\input{sections/related}
+\input{sections/conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

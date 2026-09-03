@@ -3,7 +3,8 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { TerminalDock } from "./TerminalDock";
+import { TerminalDock, TERMINAL_SWATCHES } from "./TerminalDock";
+import { BOOK_COLOR_OPTIONS } from "@/components/library/Book";
 import { TERMINAL_LIMIT, useTerminalsStore } from "@/store/terminals";
 
 const mocks = vi.hoisted(() => ({
@@ -53,6 +54,12 @@ function DockHarness({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(true);
   mocks.setOpen = setOpen;
   return <TerminalDock projectId={projectId} visible={open} />;
+}
+
+function pickColor(index: number, name: string) {
+  fireEvent.contextMenu(tabs()[index]);
+  fireEvent.click(screen.getByTestId("dock-terminal-menu-color"));
+  fireEvent.click(screen.getByRole("menuitem", { name }));
 }
 
 function exitActivePane() {
@@ -225,5 +232,179 @@ describe("TerminalDock", () => {
     });
 
     expect(useTerminalsStore.getState()).toMatchObject({ projectId: null, tabs: [] });
+  });
+
+  it("opens the tab menu on right click with every tab action", () => {
+    render(<TerminalDock projectId="project-1" visible />);
+
+    fireEvent.contextMenu(tabs()[0]);
+
+    const menu = screen.getByTestId("dock-terminal-tab-menu");
+    expect(menu).toBeInTheDocument();
+    const actions = [
+      "Rename",
+      "Color",
+      "Close",
+      "Close others",
+      "Close to the right",
+      "Close to the left",
+    ];
+    for (const name of actions) {
+      expect(screen.getByRole("menuitem", { name })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole("menuitem", { name: /Split/ })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: /Pin/ })).toBeNull();
+  });
+
+  it("starts the inline rename from the menu", async () => {
+    render(<TerminalDock projectId="project-1" visible />);
+
+    fireEvent.contextMenu(tabs()[0]);
+    fireEvent.click(screen.getByTestId("dock-terminal-menu-rename"));
+
+    const input = await screen.findByLabelText("Terminal title");
+    fireEvent.change(input, { target: { value: "Build" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(tabs()[0]).toHaveTextContent("Build");
+  });
+
+  it("closes a tab from the menu", () => {
+    render(<TerminalDock projectId="project-1" visible />);
+    fireEvent.click(screen.getByLabelText("New terminal"));
+
+    fireEvent.contextMenu(tabs()[1]);
+    fireEvent.click(screen.getByTestId("dock-terminal-menu-close"));
+
+    expect(tabs()).toHaveLength(1);
+    expect(tabs()[0]).toHaveTextContent("Terminal 1");
+  });
+
+  it("closes the other tabs from the menu and keeps the clicked one active", () => {
+    render(<TerminalDock projectId="project-1" visible />);
+    fireEvent.click(screen.getByLabelText("New terminal"));
+    fireEvent.click(screen.getByLabelText("New terminal"));
+
+    fireEvent.contextMenu(tabs()[1]);
+    fireEvent.click(screen.getByTestId("dock-terminal-menu-close-others"));
+
+    expect(tabs()).toHaveLength(1);
+    expect(tabs()[0]).toHaveTextContent("Terminal 2");
+    expect(tabs()[0]).toHaveAttribute("data-active", "true");
+    expect(mocks.settings.setTerminalOpen).not.toHaveBeenCalled();
+  });
+
+  it("closes the tabs to the right of the clicked one", () => {
+    render(<TerminalDock projectId="project-1" visible />);
+    fireEvent.click(screen.getByLabelText("New terminal"));
+    fireEvent.click(screen.getByLabelText("New terminal"));
+
+    fireEvent.contextMenu(tabs()[1]);
+    fireEvent.click(screen.getByTestId("dock-terminal-menu-close-right"));
+
+    expect(tabs().map((tab) => tab.textContent)).toEqual(["Terminal 1", "Terminal 2"]);
+    expect(tabs()[1]).toHaveAttribute("data-active", "true");
+  });
+
+  it("closes the tabs to the left of the clicked one", () => {
+    render(<TerminalDock projectId="project-1" visible />);
+    fireEvent.click(screen.getByLabelText("New terminal"));
+    fireEvent.click(screen.getByLabelText("New terminal"));
+
+    fireEvent.contextMenu(tabs()[1]);
+    fireEvent.click(screen.getByTestId("dock-terminal-menu-close-left"));
+
+    expect(tabs().map((tab) => tab.textContent)).toEqual(["Terminal 2", "Terminal 3"]);
+    expect(tabs()[1]).toHaveAttribute("data-active", "true");
+  });
+
+  it("disables the close variants that have nothing to close", () => {
+    render(<TerminalDock projectId="project-1" visible />);
+
+    fireEvent.contextMenu(tabs()[0]);
+    for (const testId of [
+      "dock-terminal-menu-close-others",
+      "dock-terminal-menu-close-right",
+      "dock-terminal-menu-close-left",
+    ]) {
+      expect(screen.getByTestId(testId)).toHaveAttribute("aria-disabled", "true");
+    }
+    expect(screen.getByTestId("dock-terminal-menu-close")).not.toHaveAttribute("aria-disabled");
+    fireEvent.keyDown(screen.getByTestId("dock-terminal-tab-menu"), { key: "Escape" });
+
+    fireEvent.click(screen.getByLabelText("New terminal"));
+    fireEvent.contextMenu(tabs()[0]);
+    expect(screen.getByTestId("dock-terminal-menu-close-left")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(screen.getByTestId("dock-terminal-menu-close-right")).not.toHaveAttribute(
+      "aria-disabled",
+    );
+    expect(screen.getByTestId("dock-terminal-menu-close-others")).not.toHaveAttribute(
+      "aria-disabled",
+    );
+    fireEvent.keyDown(screen.getByTestId("dock-terminal-tab-menu"), { key: "Escape" });
+
+    fireEvent.contextMenu(tabs()[1]);
+    expect(screen.getByTestId("dock-terminal-menu-close-right")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(screen.getByTestId("dock-terminal-menu-close-left")).not.toHaveAttribute(
+      "aria-disabled",
+    );
+  });
+
+  it("colors a tab from the palette and clears it again", () => {
+    render(<TerminalDock projectId="project-1" visible />);
+
+    pickColor(0, "Mint");
+
+    const dot = screen.getByTestId("dock-terminal-tab-color");
+    expect(dot).toHaveAttribute("data-color", "mint");
+    expect(dot).toHaveStyle({ backgroundColor: "#98f5e1" });
+    expect(tabs()[0]).toHaveAttribute("data-color", "mint");
+    expect(localStorage.getItem("oleafly.terminal.titles.project-1")).toContain("mint");
+
+    pickColor(0, "None");
+
+    expect(screen.queryByTestId("dock-terminal-tab-color")).toBeNull();
+    expect(tabs()[0]).toHaveAttribute("data-color", "none");
+    expect(localStorage.getItem("oleafly.terminal.titles.project-1")).toBeNull();
+  });
+
+  it("offers the project cover palette in the color submenu", () => {
+    expect(TERMINAL_SWATCHES.map((swatch) => swatch.name)).toEqual(
+      BOOK_COLOR_OPTIONS.map((option) => option.name),
+    );
+    render(<TerminalDock projectId="project-1" visible />);
+
+    fireEvent.contextMenu(tabs()[0]);
+    fireEvent.click(screen.getByTestId("dock-terminal-menu-color"));
+
+    for (const option of BOOK_COLOR_OPTIONS) {
+      expect(screen.getByRole("menuitem", { name: option.name })).toBeInTheDocument();
+    }
+    expect(screen.getByRole("menuitem", { name: "None" })).toBeInTheDocument();
+  });
+
+  it("opens the menu from the keyboard and hands focus back to the tab", async () => {
+    render(<TerminalDock projectId="project-1" visible />);
+    tabs()[0].focus();
+
+    fireEvent.keyDown(tabs()[0], { key: "F10", shiftKey: true });
+
+    const menu = await screen.findByTestId("dock-terminal-tab-menu");
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByTestId("dock-terminal-menu-rename")),
+    );
+
+    fireEvent.keyDown(menu, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByTestId("dock-terminal-tab-menu")).toBeNull());
+    expect(document.activeElement).toBe(tabs()[0]);
+
+    fireEvent.keyDown(tabs()[0], { key: "ContextMenu" });
+    expect(await screen.findByTestId("dock-terminal-tab-menu")).toBeInTheDocument();
   });
 });

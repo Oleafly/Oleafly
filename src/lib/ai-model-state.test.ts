@@ -1,16 +1,47 @@
-import { describe, it, expect } from "vitest";
-import type { StoredModel } from "@/lib/tauri";
+import { beforeEach, describe, it, expect } from "vitest";
+import type { ModelMetadata, StoredModel } from "@/lib/tauri";
 import {
+  MODEL_LIST_AUTO_REFRESH_MS,
+  MODEL_LIST_REFRESH_THROTTLE_MS,
   addCustomModel,
+  claimModelListAutoRefresh,
+  clearModelListThrottle,
   deleteModel,
+  describeModelListChange,
+  diffModelLists,
   enabledModels,
+  formatContextWindow,
+  formatRelativeTime,
   mergeFetchedModels,
+  mergeModelProbes,
+  modelCapabilityChips,
+  modelIsChatOnly,
+  modelListThrottledUntil,
   pickActiveModel,
+  probeKey,
   reconcileActiveModel,
+  resetModelListRefreshLedger,
+  resolveModelTrust,
   restoreSeedModels,
   seedProviderModels,
   setModelEnabled,
+  shouldAutoRefreshModels,
+  throttleModelListRefresh,
 } from "./ai-model-state";
+
+const metadata = (overrides: Partial<ModelMetadata> = {}): ModelMetadata => ({
+  name: "Model",
+  contextWindow: 128000,
+  outputLimit: 16384,
+  inputModalities: ["text", "image"],
+  outputModalities: ["text"],
+  toolCall: true,
+  reasoning: false,
+  attachment: true,
+  structuredOutput: true,
+  status: "active",
+  ...overrides,
+});
 
 const stored = (id: string, enabled = true, source: StoredModel["source"] = "builtin"): StoredModel => ({
   id,
@@ -52,6 +83,172 @@ describe("mergeFetchedModels", () => {
     const merged = mergeFetchedModels(existing, [{ id: "a", name: "A" }]);
     expect(merged[0].name).toBe("A");
   });
+
+  it("stores trust and metadata from the fetch on new and surviving entries", () => {
+    const meta = metadata();
+    const merged = mergeFetchedModels([stored("a", false)], [
+      { id: "a", name: "A", trust: "verified", metadata: meta },
+      { id: "b", name: "B", trust: "untested" },
+      { id: "c", name: "C", trust: "blocked", blockedReason: "Its thinking output breaks the loop." },
+    ]);
+    expect(merged).toEqual([
+      { id: "a", name: "a", enabled: false, source: "builtin", trust: "verified", metadata: meta },
+      { id: "b", name: "B", enabled: true, source: "fetched", trust: "untested" },
+      {
+        id: "c",
+        name: "C",
+        enabled: true,
+        source: "fetched",
+        trust: "blocked",
+        blockedReason: "Its thinking output breaks the loop.",
+      },
+    ]);
+  });
+
+  it("replaces stale trust with the latest fetch and drops an old blocked reason", () => {
+    const previous: StoredModel = {
+      ...stored("a", true, "fetched"),
+      trust: "blocked",
+      blockedReason: "Old reason",
+      metadata: metadata({ contextWindow: 8000 }),
+    };
+    const merged = mergeFetchedModels([previous], [{ id: "a", name: "A", trust: "verified" }]);
+    expect(merged[0].trust).toBe("verified");
+    expect(merged[0]).not.toHaveProperty("blockedReason");
+    expect(merged[0].metadata?.contextWindow).toBe(8000);
+  });
+
+  it("keeps the trust and metadata already stored when the fetch carries none", () => {
+    const meta = metadata();
+    const previous: StoredModel = { ...stored("a", true, "fetched"), trust: "verified", metadata: meta };
+    const merged = mergeFetchedModels([previous], [{ id: "a", name: "A" }]);
+    expect(merged[0].trust).toBe("verified");
+    expect(merged[0].metadata).toBe(meta);
+  });
+
+  it("keeps the previous list when the provider returns nothing readable", () => {
+    const existing = [stored("a", true, "fetched"), stored("b", false, "builtin")];
+    expect(mergeFetchedModels(existing, [])).toBe(existing);
+    expect(mergeFetchedModels(existing, [{ id: "  ", name: "blank" }])).toBe(existing);
+  });
+
+  it("ignores blank and duplicate ids in the fetched list", () => {
+    const merged = mergeFetchedModels([], [
+      { id: " a ", name: "A" },
+      { id: "", name: "" },
+      { id: "a", name: "A again" },
+    ]);
+    expect(merged.map((m) => m.id)).toEqual(["a"]);
+  });
+
+  it("keeps a hand-added model and updates its facts when the provider lists it", () => {
+    const custom: StoredModel = { ...stored("mine", true, "custom"), trust: "untested" };
+    const merged = mergeFetchedModels([custom], [
+      { id: "mine", name: "Mine", trust: "verified", metadata: metadata() },
+      { id: "other", name: "Other", trust: "untested" },
+    ]);
+    expect(merged[0]).toMatchObject({ id: "mine", source: "custom", trust: "verified" });
+    expect(merged[0].metadata?.contextWindow).toBe(128000);
+    expect(merged[1].id).toBe("other");
+  });
+});
+
+describe("model list refresh helpers", () => {
+  it("counts added and removed ids between two lists", () => {
+    const before = [stored("a"), stored("b")];
+    const after = [stored("b"), stored("c"), stored("d")];
+    expect(diffModelLists(before, after)).toEqual({ added: 2, removed: 1 });
+    expect(describeModelListChange({ added: 2, removed: 1 })).toBe("2 added, 1 removed");
+    expect(describeModelListChange({ added: 0, removed: 0 })).toBe("No changes");
+  });
+
+  it("asks for an automatic refresh only once a day", () => {
+    const now = 1_700_000_000_000;
+    expect(shouldAutoRefreshModels(undefined, now)).toBe(true);
+    expect(shouldAutoRefreshModels(now - 60 * 60 * 1000, now)).toBe(false);
+    expect(shouldAutoRefreshModels(now - 25 * 60 * 60 * 1000, now)).toBe(true);
+  });
+
+  it("describes when a list was last updated", () => {
+    const now = 1_700_000_000_000;
+    expect(formatRelativeTime(now - 5_000, now)).toBe("just now");
+    expect(formatRelativeTime(now - 60_000, now)).toBe("1 minute ago");
+    expect(formatRelativeTime(now - 5 * 60_000, now)).toBe("5 minutes ago");
+    expect(formatRelativeTime(now - 3 * 60 * 60_000, now)).toBe("3 hours ago");
+    expect(formatRelativeTime(now - 2 * 24 * 60 * 60_000, now)).toBe("2 days ago");
+    expect(formatRelativeTime(now - 40 * 24 * 60 * 60_000, now)).toBe(
+      new Date(now - 40 * 24 * 60 * 60_000).toLocaleDateString(),
+    );
+  });
+});
+
+describe("model trust resolution", () => {
+  it("lets a catalog block win over any probe", () => {
+    const resolved = resolveModelTrust(
+      { trust: "blocked", blockedReason: "Catalog says no." },
+      { verdict: "verified", reason: "", probedAt: 5 },
+    );
+    expect(resolved).toEqual({ trust: "blocked", reason: "Catalog says no.", source: "catalog" });
+  });
+
+  it("upgrades an untested model with a verified probe and blocks with a failed one", () => {
+    expect(
+      resolveModelTrust({ trust: "untested" }, { verdict: "verified", reason: "", probedAt: 1 }),
+    ).toEqual({ trust: "verified", source: "probe" });
+    expect(
+      resolveModelTrust({ trust: "untested" }, { verdict: "blocked", reason: "No tool call came back.", probedAt: 1 }),
+    ).toEqual({ trust: "blocked", reason: "No tool call came back.", source: "probe" });
+  });
+
+  it("reports nothing for a model that was never listed or probed", () => {
+    expect(resolveModelTrust(undefined, undefined)).toEqual({});
+    expect(resolveModelTrust({ trust: "verified" }, undefined)).toEqual({
+      trust: "verified",
+      source: "catalog",
+    });
+  });
+
+  it("keeps the newest probe per model when merging", () => {
+    const merged = mergeModelProbes(
+      { "openai/a": { verdict: "blocked", reason: "old", probedAt: 10 } },
+      {
+        "openai/a": { verdict: "verified", reason: "", probedAt: 20 },
+        "openai/b": { verdict: "verified", reason: "", probedAt: 1 },
+      },
+    );
+    expect(merged["openai/a"].verdict).toBe("verified");
+    expect(merged["openai/b"].probedAt).toBe(1);
+    expect(mergeModelProbes(merged, { "openai/a": { verdict: "blocked", reason: "older", probedAt: 5 } })["openai/a"].verdict).toBe("verified");
+    expect(probeKey("openai", "gpt-4o")).toBe("openai/gpt-4o");
+  });
+
+  it("treats only an explicit toolCall false as chat only", () => {
+    expect(modelIsChatOnly({ metadata: metadata({ toolCall: false }) })).toBe(true);
+    expect(modelIsChatOnly({ metadata: metadata() })).toBe(false);
+    expect(modelIsChatOnly({})).toBe(false);
+    expect(modelIsChatOnly(undefined)).toBe(false);
+  });
+});
+
+describe("capability chips", () => {
+  it("shortens context windows", () => {
+    expect(formatContextWindow(128000)).toBe("128k");
+    expect(formatContextWindow(200000)).toBe("200k");
+    expect(formatContextWindow(1_000_000)).toBe("1M");
+    expect(formatContextWindow(1_500_000)).toBe("1.5M");
+    expect(formatContextWindow(512)).toBe("512");
+    expect(formatContextWindow(0)).toBe("");
+  });
+
+  it("derives chips from metadata and nothing without it", () => {
+    expect(modelCapabilityChips(undefined)).toEqual([]);
+    const chips = modelCapabilityChips(metadata({ reasoning: true, status: "deprecated" }));
+    expect(chips.map((chip) => chip.label)).toEqual(["128k", "Vision", "Tools", "Reasoning", "Deprecated"]);
+    const textOnly = modelCapabilityChips(
+      metadata({ inputModalities: ["text"], toolCall: false, contextWindow: undefined }),
+    );
+    expect(textOnly).toEqual([]);
+  });
 });
 
 describe("model list edits", () => {
@@ -59,9 +256,12 @@ describe("model list edits", () => {
     expect(enabledModels([stored("a", false), stored("b")])).toEqual([stored("b")]);
   });
 
-  it("addCustomModel appends once and ignores duplicates", () => {
+  it("addCustomModel appends once as untested and ignores duplicates", () => {
     const withCustom = addCustomModel([stored("a")], { id: "x", name: "" });
-    expect(withCustom).toEqual([stored("a"), { id: "x", name: "x", enabled: true, source: "custom" }]);
+    expect(withCustom).toEqual([
+      stored("a"),
+      { id: "x", name: "x", enabled: true, source: "custom", trust: "untested" },
+    ]);
     expect(addCustomModel(withCustom, { id: "x", name: "X" })).toBe(withCustom);
   });
 
@@ -138,16 +338,13 @@ describe("reconciling a refreshed model list", () => {
     expect(next.map((m) => m.id)).toEqual(["glm-4.6"]);
   });
 
-  it("removes absent built-in and fetched models while retaining custom models", () => {
-    const next = mergeFetchedModels(
-      [
-        stored("old-builtin", "builtin"),
-        stored("old-fetched", "fetched"),
-        stored("private", "custom", false),
-      ],
-      [],
-    );
-    expect(next).toEqual([stored("private", "custom", false)]);
+  it("keeps every stored model when the provider list is temporarily empty", () => {
+    const existing = [
+      stored("old-builtin", "builtin"),
+      stored("old-fetched", "fetched"),
+      stored("private", "custom", false),
+    ];
+    expect(mergeFetchedModels(existing, [])).toBe(existing);
   });
 
   it("does not treat unsupported or failed discovery as an authoritative empty list", () => {
@@ -207,5 +404,41 @@ describe("choosing the active model after a key is saved", () => {
 
   it("clears the selection when discovery leaves no enabled model", () => {
     expect(reconcileActiveModel([stored("disabled", false)], "gone", "disabled")).toBe("");
+  });
+});
+
+describe("model list refresh ledger", () => {
+  beforeEach(() => {
+    resetModelListRefreshLedger();
+  });
+
+  it("throttles a provider for thirty seconds and forgets it afterwards", () => {
+    expect(modelListThrottledUntil("openai", 1_000)).toBe(0);
+    const until = throttleModelListRefresh("openai", 1_000);
+    expect(until).toBe(1_000 + MODEL_LIST_REFRESH_THROTTLE_MS);
+    expect(modelListThrottledUntil("openai", until - 1)).toBe(until);
+    expect(modelListThrottledUntil("openai", until)).toBe(0);
+    expect(modelListThrottledUntil("anthropic", 1_000)).toBe(0);
+  });
+
+  it("clears a throttle on request", () => {
+    throttleModelListRefresh("openai", 1_000);
+    clearModelListThrottle("openai");
+    expect(modelListThrottledUntil("openai", 1_001)).toBe(0);
+  });
+
+  it("claims the daily automatic refresh once per provider whatever the outcome", () => {
+    expect(claimModelListAutoRefresh("openai", 1_000)).toBe(true);
+    expect(claimModelListAutoRefresh("openai", 1_000 + MODEL_LIST_AUTO_REFRESH_MS - 1)).toBe(false);
+    expect(claimModelListAutoRefresh("anthropic", 1_000)).toBe(true);
+    expect(claimModelListAutoRefresh("openai", 1_000 + MODEL_LIST_AUTO_REFRESH_MS)).toBe(true);
+  });
+
+  it("starts over when the ledger is reset", () => {
+    throttleModelListRefresh("openai", 1_000);
+    claimModelListAutoRefresh("openai", 1_000);
+    resetModelListRefreshLedger();
+    expect(modelListThrottledUntil("openai", 1_001)).toBe(0);
+    expect(claimModelListAutoRefresh("openai", 1_001)).toBe(true);
   });
 });

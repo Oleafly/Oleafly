@@ -28,6 +28,7 @@ import {
   useSettingsStore,
 } from "@/store/settings";
 import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
+import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { BrowserCookieImport } from "@/components/settings/BrowserCookieImport";
 import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
@@ -45,7 +46,7 @@ const APPEARANCE_TABS = [
 type AppearanceTabId = (typeof APPEARANCE_TABS)[number]["id"];
 
 function AppAppearanceTab() {
-  const { theme, toggleTheme } = useTheme();
+  const { preference, setPreference } = useTheme();
   const dockPlacement = useSettingsStore((state) => state.dockPlacement);
   const setDockPlacement = useSettingsStore((state) => state.setDockPlacement);
   const bgPattern = useSettingsStore((state) => state.bgPattern);
@@ -176,12 +177,20 @@ function AppAppearanceTab() {
         </div>
       </div>
 
-      <SettingsToggleRow
-        label="Dark mode"
-        description="Switch the app between light and dark themes."
-        checked={theme === "dark"}
-        onChange={toggleTheme}
-      />
+      <div
+        data-testid="settings-row-appearance"
+        className="rounded-lg border bg-card p-3"
+      >
+        <div className="text-sm font-medium">Appearance</div>
+        <div className="mb-2 text-xs text-muted-foreground">
+          System follows the operating system and changes when it does.
+        </div>
+        <ThemeSegmentedControl
+          preference={preference}
+          onChange={setPreference}
+          testIdPrefix="settings-appearance"
+        />
+      </div>
 
       <div
         data-testid="settings-row-app-font-size"
@@ -946,7 +955,7 @@ export function AppearanceSection() {
   const resetAppearancePreferences = useSettingsStore(
     (state) => state.resetAppearancePreferences,
   );
-  const { setTheme } = useTheme();
+  const { setPreference } = useTheme();
   const tabRefs = useRef<
     Partial<Record<AppearanceTabId, HTMLButtonElement | null>>
   >({});
@@ -1018,7 +1027,7 @@ export function AppearanceSection() {
         sectionName="Appearance"
         onReset={() => {
           resetAppearancePreferences();
-          setTheme("dark");
+          setPreference("system");
         }}
       />
     </div>

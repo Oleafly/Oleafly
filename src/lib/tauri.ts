@@ -23,6 +23,8 @@ import type {
   CopyFileResult,
   CreateFileResult,
   DocumentEngineDescriptor,
+  DocumentStatsRequest,
+  DocumentStatsResult,
   EngineInfo,
   FigureCacheResult,
   FileConflictStrategy,
@@ -43,6 +45,8 @@ import type {
   McpServerConfig,
   McpServerValidation,
   McpStatus,
+  ModelMetadataStatus,
+  ModelProbe,
   PackInfo,
   Persona,
   Prerequisite,
@@ -52,6 +56,8 @@ import type {
   ProjectSourcesResult,
   ProjectStateChanged,
   ProviderModel,
+  RagChunk,
+  RagRetrieveRequest,
   RecycledProjectInfo,
   RenameFileResult,
   SearchHit,
@@ -300,6 +306,16 @@ export const readProjectSourcesBatch = (
   projectId: string,
   request: ProjectSourcesRequest,
 ) => invoke<ProjectSourcesResult>("read_project_sources", { projectId, request });
+
+export const documentStats = (
+  projectId: string,
+  request: DocumentStatsRequest,
+) => invoke<DocumentStatsResult>("document_stats", { projectId, request });
+
+export const ragRetrieve = (
+  projectId: string,
+  request: RagRetrieveRequest,
+) => invoke<RagChunk[]>("rag_retrieve", { projectId, request });
 
 export const writeFileContent = (
   projectId: string,
@@ -760,6 +776,25 @@ export const agentListModels = (args: {
 }) =>
   invoke<ProviderModel[]>("agent_list_models", {
     providerId: args.providerId,
+    key: args.key ?? null,
+    baseUrl: args.baseURL ?? null,
+  });
+
+export const agentModelMetadataStatus = () =>
+  invoke<ModelMetadataStatus>("agent_model_metadata_status");
+
+export const agentRefreshModelMetadata = (force = false) =>
+  invoke<ModelMetadataStatus>("agent_refresh_model_metadata", { force });
+
+export const agentProbeModel = (args: {
+  providerId: string;
+  modelId: string;
+  key?: string;
+  baseURL?: string;
+}) =>
+  invoke<ModelProbe>("agent_probe_model", {
+    providerId: args.providerId,
+    modelId: args.modelId,
     key: args.key ?? null,
     baseUrl: args.baseURL ?? null,
   });

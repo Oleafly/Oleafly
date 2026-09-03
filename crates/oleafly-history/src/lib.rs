@@ -6084,4 +6084,52 @@ mod tests {
         );
         assert!(store.list().unwrap().is_empty());
     }
+
+    #[test]
+    fn checkpoints_keep_the_toolchain_identity_they_were_published_with() {
+        let temp = tempdir().unwrap();
+        let project = temp.path().join("project");
+        fs::create_dir(&project).unwrap();
+        fs::write(project.join("project.json"), b"{}").unwrap();
+        let store = Store::open(temp.path().join("history")).unwrap();
+        let identities = [
+            "checkpoint-evidence-v2;engine=markdown;compiler=pandoc 3.9.0.2;compiler-blake3=aa",
+            "checkpoint-evidence-v2;engine=markdown;compiler=pandoc 3.10.1;compiler-blake3=bb",
+        ];
+        for (index, identity) in identities.iter().enumerate() {
+            let source = format!("source {index}");
+            fs::write(project.join("main.md"), &source).unwrap();
+            let main = project.join("main.md").canonicalize().unwrap();
+            let source_hash = ContentHash::digest(source.as_bytes());
+            let candidate = store
+                .stage_candidate(
+                    &project,
+                    &[
+                        CaptureInput::explicit("project.json").unwrap(),
+                        CaptureInput::proven("main.md", &main, source_hash).unwrap(),
+                    ],
+                )
+                .unwrap();
+            let evidence = CompileEvidence::new(
+                "markdown",
+                *identity,
+                "main.md",
+                ContentHash::digest(format!("pdf {index}").as_bytes()),
+                index as i64 + 1,
+                vec![ReplayedInput::new("main.md", source_hash).unwrap()],
+            )
+            .unwrap();
+            store.publish(candidate, evidence).unwrap();
+        }
+        let listed = store.list().unwrap();
+        assert_eq!(listed.len(), 2);
+        let mut recorded = listed
+            .iter()
+            .map(|checkpoint| checkpoint.toolchain_identity.as_str())
+            .collect::<Vec<_>>();
+        recorded.sort_unstable();
+        let mut expected = identities.to_vec();
+        expected.sort_unstable();
+        assert_eq!(recorded, expected);
+    }
 }

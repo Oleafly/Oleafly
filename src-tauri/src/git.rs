@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::config;
@@ -26,6 +26,15 @@ fn run_git_with_optional_locks(
     args: &[&str],
     optional_locks: bool,
 ) -> Result<std::process::Output, String> {
+    run_configured_git(root, args, optional_locks, |_| {})
+}
+
+fn run_configured_git(
+    root: &PathBuf,
+    args: &[&str],
+    optional_locks: bool,
+    configure: impl FnOnce(&mut Command),
+) -> Result<std::process::Output, String> {
     let mut command = Command::new("git");
     command
         .no_console()
@@ -41,14 +50,61 @@ fn run_git_with_optional_locks(
         .env_remove("GIT_WORK_TREE")
         .env_remove("GIT_INDEX_FILE")
         .env("GIT_OPTIONAL_LOCKS", if optional_locks { "1" } else { "0" });
+    configure(&mut command);
     output_contained(&mut command).map_err(|e| format!("failed to run git: {e}"))
 }
 
+pub(crate) fn ensure_repository(project_dir: &Path) -> Result<bool, String> {
+    ensure_repository_with(project_dir, |_| {})
+}
+
+fn ensure_repository_with(
+    project_dir: &Path,
+    configure: impl Fn(&mut Command),
+) -> Result<bool, String> {
+    if project_dir.join(".git").exists() {
+        return Ok(false);
+    }
+    let root = project_dir.to_path_buf();
+    let enclosing =
+        run_configured_git(&root, &["rev-parse", "--show-toplevel"], false, &configure)?;
+    if enclosing.status.success() {
+        return Ok(false);
+    }
+    let branch = default_branch(&root);
+    ok_or_err(run_configured_git(
+        &root,
+        &["init", "--quiet", "--initial-branch", &branch],
+        true,
+        &configure,
+    )?)?;
+    ensure_private_exclude(&root)?;
+    ensure_git_identity_with(&root, &configure)?;
+    Ok(true)
+}
+
 fn ensure_git_identity(root: &PathBuf) -> Result<(), String> {
-    let email = run_git(root, &["config", "user.email"])?;
+    ensure_git_identity_with(root, |_| {})
+}
+
+fn ensure_git_identity_with(
+    root: &PathBuf,
+    configure: impl Fn(&mut Command),
+) -> Result<(), String> {
+    let email = run_configured_git(root, &["config", "user.email"], true, &configure)?;
     if String::from_utf8_lossy(&email.stdout).trim().is_empty() {
-        ok_or_err(run_git(root, &["config", "user.email", "oleafly@local"])?)?;
-        ok_or_err(run_git(root, &["config", "user.name", "Oleafly"])?)?;
+        ok_or_err(run_configured_git(
+            root,
+            &["config", "user.email", "oleafly@local"],
+            true,
+            &configure,
+        )?)?;
+        ok_or_err(run_configured_git(
+            root,
+            &["config", "user.name", "Oleafly"],
+            true,
+            &configure,
+        )?)?;
     }
     Ok(())
 }
@@ -1069,9 +1125,10 @@ pub async fn git_show(project_id: String, rev: String, path: String) -> Result<S
 mod tests {
     use super::{
         attach_imported_repository_history_at, clean_remote_credentials, commit_index,
-        current_branch, initialize_repo, is_allowed_remote_url, ok_or_err, parse_status_porcelain,
-        remote_credentials_need_cleanup, restore_worktree, run_git, run_git_read_only,
-        sanitize_url, show, stage, stage_all, unstage, unstage_all, validate_git_oid,
+        current_branch, ensure_repository, ensure_repository_with, initialize_repo,
+        is_allowed_remote_url, ok_or_err, parse_status_porcelain, remote_credentials_need_cleanup,
+        restore_worktree, run_configured_git, run_git, run_git_read_only, sanitize_url, show,
+        stage, stage_all, unstage, unstage_all, validate_git_oid, Command,
     };
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -1107,6 +1164,114 @@ mod tests {
 
     fn write(root: &Path, name: &str, content: &str) {
         std::fs::write(root.join(name), content).unwrap();
+    }
+
+    #[test]
+    fn ensure_repository_creates_a_repository_in_an_empty_project() {
+        let root = temp_dir("ensure-empty");
+        write(&root, "main.tex", "\\documentclass{article}\n");
+
+        assert!(ensure_repository(&root).unwrap());
+
+        assert!(root.join(".git").is_dir());
+        assert!(current_branch(&root).is_ok());
+        assert!(
+            std::fs::read_to_string(root.join(".git/info/exclude"))
+                .unwrap()
+                .lines()
+                .any(|line| line == ".oleafly/"),
+            "the automatic repository excludes Oleafly's private build directory"
+        );
+        assert!(!root.join(".gitignore").exists());
+        let log = run_git(&root, &["log", "--oneline"]).unwrap();
+        assert!(
+            !log.status.success() || log.stdout.is_empty(),
+            "ensure_repository must never commit"
+        );
+        let status = run_git_read_only(&root, &["status", "--porcelain"]).unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&status.stdout).trim(),
+            "?? main.tex",
+            "ensure_repository must never stage"
+        );
+    }
+
+    #[test]
+    fn ensure_repository_leaves_an_existing_repository_alone() {
+        let root = temp_repo();
+        write(&root, "main.tex", "first\n");
+        stage_all(&root).unwrap();
+        assert!(commit_index(&root, "first").unwrap());
+        let head = run_git(&root, &["rev-parse", "HEAD"]).unwrap().stdout;
+
+        assert!(!ensure_repository(&root).unwrap());
+
+        assert_eq!(run_git(&root, &["rev-parse", "HEAD"]).unwrap().stdout, head);
+        assert_eq!(current_branch(&root).unwrap(), "main");
+    }
+
+    #[test]
+    fn ensure_repository_sets_an_identity_so_commits_work_without_a_global_config() {
+        let root = temp_dir("ensure-identity");
+        let no_global = temp_dir("ensure-identity-no-global");
+        write(&root, "main.tex", "identity\n");
+        let configure = |command: &mut Command| {
+            command
+                .env("HOME", &no_global)
+                .env("XDG_CONFIG_HOME", &no_global)
+                .env("GIT_CONFIG_GLOBAL", no_global.join("missing-global-config"))
+                .env("GIT_CONFIG_NOSYSTEM", "1");
+        };
+
+        assert!(ensure_repository_with(&root, configure).unwrap());
+
+        let email =
+            run_configured_git(&root, &["config", "--local", "user.email"], true, configure)
+                .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&email.stdout).trim(),
+            "oleafly@local"
+        );
+        ok_or_err(run_configured_git(&root, &["add", "-A"], true, configure).unwrap()).unwrap();
+        ok_or_err(run_configured_git(&root, &["commit", "-m", "first"], true, configure).unwrap())
+            .unwrap();
+        let head =
+            run_configured_git(&root, &["rev-parse", "--verify", "HEAD"], true, configure).unwrap();
+        assert!(head.status.success());
+    }
+
+    #[test]
+    fn ensure_repository_does_not_nest_a_repository_inside_another_one() {
+        let parent = temp_repo();
+        let project = parent.join("projects").join("nested-project");
+        std::fs::create_dir_all(&project).unwrap();
+        write(&project, "main.tex", "nested\n");
+
+        assert!(!ensure_repository(&project).unwrap());
+
+        assert!(!project.join(".git").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn ensure_repository_reports_a_missing_git_binary_without_touching_the_project() {
+        let root = temp_dir("ensure-no-git");
+        let empty_path = temp_dir("ensure-empty-path");
+        write(&root, "main.tex", "no git here\n");
+
+        let result = ensure_repository_with(&root, |command| {
+            command.env("PATH", &empty_path);
+        });
+
+        assert!(
+            result.is_err(),
+            "a missing git binary is reported, not hidden"
+        );
+        assert!(!root.join(".git").exists());
+        assert_eq!(
+            std::fs::read_to_string(root.join("main.tex")).unwrap(),
+            "no git here\n"
+        );
     }
 
     #[test]

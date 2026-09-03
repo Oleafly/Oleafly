@@ -624,10 +624,11 @@ describe("TerminalPane", () => {
     expect(mocks.invoke).not.toHaveBeenCalledWith("term_resize", expect.anything());
 
     mocks.channels[0].onmessage?.({ event: "output", data: "prompt$ " });
-    expect(terminal.write).toHaveBeenCalledWith("prompt$ ", expect.any(Function));
+    expect(terminal.write).not.toHaveBeenCalled();
 
     view.rerender(<TerminalPane projectId="project-1" visible />);
 
+    expect(terminal.write).toHaveBeenCalledWith("prompt$ ", expect.any(Function));
     expect(fit.fit).toHaveBeenCalledTimes(1);
     expect(terminal.focus).toHaveBeenCalledTimes(1);
     await waitFor(() => {
@@ -640,6 +641,28 @@ describe("TerminalPane", () => {
     });
     expect(mocks.invoke.mock.calls.filter(([command]) => command === "term_open")).toHaveLength(1);
     expect(screen.queryByTestId("dock-terminal-loading")).toBeNull();
+  });
+
+  it("keeps the newest output when a hidden pane produces more than the buffer holds", async () => {
+    const view = render(<TerminalPane projectId="project-1" visible={false} />);
+    const terminal = mocks.terminals[0];
+    await waitFor(() => {
+      expect(mocks.invoke).toHaveBeenCalledWith("term_open", expect.anything());
+    });
+
+    const chunk = "x".repeat(100_000);
+    for (let i = 0; i < 4; i += 1) {
+      mocks.channels[0].onmessage?.({ event: "output", data: chunk });
+    }
+    mocks.channels[0].onmessage?.({ event: "output", data: "newest" });
+    expect(terminal.write).not.toHaveBeenCalled();
+
+    view.rerender(<TerminalPane projectId="project-1" visible />);
+
+    expect(terminal.write).toHaveBeenCalledTimes(1);
+    const written = terminal.write.mock.calls[0][0] as string;
+    expect(written.endsWith("newest")).toBe(true);
+    expect(written.length).toBeLessThanOrEqual(400_000);
   });
 
   it("waits for the first show when starting with the project is turned off", async () => {
