@@ -841,6 +841,28 @@ export async function openRailTab(page: Page, ariaLabel: string) {
 
 // The test fixture reloads the app to the library before every test, so
 // specs that need the editor start here.
+export async function shellStateSnapshot(page: Page): Promise<string> {
+  return page.evaluate<string>(`(() => {
+    const library = document.querySelector('[data-testid="library"]');
+    const workspace = document.querySelector('[data-tour="project-editor"]');
+    const dialog = document.querySelector('[role="dialog"], [role="alertdialog"]');
+    const buttons = Array.from(document.querySelectorAll("button[aria-label]"))
+      .map((b) => b.getAttribute("aria-label"))
+      .slice(0, 12);
+    return JSON.stringify({
+      url: location.href,
+      readyState: document.readyState,
+      library: library
+        ? { projectsLoaded: library.getAttribute("data-projects-loaded"), text: library.innerText.slice(0, 300) }
+        : null,
+      workspacePresent: !!workspace,
+      dialog: dialog ? dialog.innerText.slice(0, 200) : null,
+      bodyText: document.body.innerText.slice(0, 400),
+      buttons,
+    });
+  })()`);
+}
+
 export async function openProject(page: Page & { getByText(t: string): { click(): Promise<void> } }, name: string) {
   const libraryVisible = await page.evaluate<boolean>(
     `!!document.querySelector('[data-testid="library"]')`,
@@ -854,7 +876,13 @@ export async function openProject(page: Page & { getByText(t: string): { click()
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',
   ) as unknown as LocatorLike;
-  await expect(library).toBeVisible({ timeout: SHELL_READY_TIMEOUT_MS });
+  try {
+    await expect(library).toBeVisible({ timeout: SHELL_READY_TIMEOUT_MS });
+  } catch (error) {
+    throw new Error(`library never became ready: ${await shellStateSnapshot(page)}`, {
+      cause: error,
+    });
+  }
   try {
     await page.click(`button[aria-label=${JSON.stringify(`Open ${name}`)}]`);
   } catch (error) {
