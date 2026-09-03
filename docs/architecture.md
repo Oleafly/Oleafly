@@ -101,6 +101,27 @@ longer reparses the whole log on every streamed chunk. The TypeScript parser in
 `@oleafly/latex` remains the fallback for a backend that does not send the
 field.
 
+## AI providers and model trust
+
+`crates/oleafly-agent` talks to every provider over one of four wire formats
+and has no idea which models the app trusts. That decision stays in the
+desktop adapter. `ai_model_registry.rs` reads the model catalog (bundled at
+`src-tauri/resources/ai-models.json`, refreshed from the CDN on each listing)
+and marks each model a provider returns as verified, blocked with a reason, or
+untested. Nothing is filtered out any more, so a model the catalog has not
+caught up with still shows in the picker. `ai_model_metadata.rs` attaches a
+trimmed models.dev snapshot: context window, output limit, modalities, tool
+support, cost. The snapshot comes from the bundled copy, a disk cache under
+`catalogs/` in the data directory, or a daily CDN refresh, and a listing never
+waits on that fetch. `agent_probe_model` runs one bounded tool call round trip
+against a model and stores the verdict in the config, where later listings and
+the run path pick it up. Before the assistant sends its first request,
+`agent_run` refuses a blocked model. It also refuses an untested model whose
+metadata says it cannot call tools, but only when the run declares tools: the
+composer's chat-only mode sends no tools and goes through. Each listed model
+also says where its trust came from (`trustSource` is `catalog` or `probe`),
+so the shell can tell a catalog verdict from one of the user's own probes.
+
 ## Security boundary
 
 - Rust resolves user paths through the sandbox before filesystem, process, Git,

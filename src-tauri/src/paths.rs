@@ -51,6 +51,10 @@ pub fn figures_cache_root() -> Result<PathBuf, String> {
     Ok(dir)
 }
 
+pub fn catalogs_root() -> Result<PathBuf, String> {
+    Ok(oleafly_root()?.join("catalogs"))
+}
+
 /// Shared content-addressed compiler cache. Checkpoint probes isolate compiler
 /// configuration and temporary files but reuse verified bundle bytes here.
 pub fn compiler_cache_root() -> Result<PathBuf, String> {

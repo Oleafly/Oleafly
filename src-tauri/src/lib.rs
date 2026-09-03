@@ -5,6 +5,7 @@ mod agent_exec;
 // sites land with the session/tool restructure.
 #[allow(dead_code)]
 mod agent_server;
+mod ai_model_metadata;
 mod ai_model_registry;
 mod approvals;
 mod assets;
@@ -246,6 +247,9 @@ pub fn run() {
             agent::agent_run,
             agent::agent_tool_result,
             agent::agent_list_models,
+            agent::agent_probe_model,
+            ai_model_metadata::agent_model_metadata_status,
+            ai_model_metadata::agent_refresh_model_metadata,
             agent_server::agent_server_initialize,
             agent_server::agent_server_resolve_request,
             agent_server::agent_server_abandon_request,
