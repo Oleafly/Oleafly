@@ -3,7 +3,11 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useSettingsStore } from "@/store/settings";
 import { SourceControl } from "./SourceControl";
+
+const REMOTE_HINT =
+  "Create a new repo or link an existing one as this project's remote, then push.";
 
 const mocks = vi.hoisted(() => ({
   gitAheadBehind: vi.fn(),
@@ -34,6 +38,14 @@ const fileState = {
   discardFromGit: vi.fn(),
 };
 
+const githubState: {
+  status: string;
+  user: { login: string; name: string | null; avatar_url: string } | null;
+} = {
+  status: "connected",
+  user: { login: "octocat", name: "Octo Cat", avatar_url: "" },
+};
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((resolvePromise) => {
@@ -59,8 +71,7 @@ vi.mock("@/store/git-status", () => ({
 }));
 
 vi.mock("@/store/github", () => ({
-  useGithubStore: (selector: (state: { status: string; user: null }) => unknown) =>
-    selector({ status: "disconnected", user: null }),
+  useGithubStore: (selector: (state: typeof githubState) => unknown) => selector(githubState),
 }));
 
 vi.mock("@/components/integrations/PublishToGitHubDialog", () => ({
@@ -89,6 +100,13 @@ vi.mock("@/lib/tauri", () => ({
 }));
 
 beforeEach(() => {
+  githubState.status = "connected";
+  githubState.user = { login: "octocat", name: "Octo Cat", avatar_url: "" };
+  useSettingsStore.setState({
+    settingsOpen: false,
+    settingsInitialSection: "general",
+    settingsScrollTarget: null,
+  });
   fileState.projectId = "project-1";
   fileState.projectName = "Research notes";
   fileState.refreshTree.mockReset().mockResolvedValue(undefined);
@@ -315,15 +333,16 @@ describe("SourceControl", () => {
     expect(await screen.findByText(/index\.lock exists/)).toBeInTheDocument();
   });
 
-  it("commits the staged set, clears the message, and retires the notice", async () => {
+  it("commits the staged set, clears both fields, and retires the notice", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       withRepository();
       render(<SourceControl />);
 
-      const message = await screen.findByPlaceholderText("Commit message (required)…");
-      await user.type(message, "Add the results table");
+      const title = await screen.findByTestId("commit-title");
+      const body = screen.getByTestId("commit-description");
+      await user.type(title, "Add the results table");
       await user.click(screen.getByRole("button", { name: /Commit$/ }));
 
       await waitFor(() =>
@@ -332,7 +351,8 @@ describe("SourceControl", () => {
       expect(
         await screen.findByText(/Committed: "Add the results table"/),
       ).toBeInTheDocument();
-      expect(message).toHaveValue("");
+      expect(title).toHaveValue("");
+      expect(body).toHaveValue("");
       expect(fileState.refreshTree).toHaveBeenCalled();
       expect(mocks.gitPush).not.toHaveBeenCalled();
 
@@ -345,6 +365,52 @@ describe("SourceControl", () => {
     }
   });
 
+  it("joins the title and the description with a blank line", async () => {
+    const user = userEvent.setup();
+    withRepository();
+    render(<SourceControl />);
+
+    const title = await screen.findByTestId("commit-title");
+    expect(title).toHaveAttribute("maxlength", "72");
+    await user.type(title, "Add the results table");
+    await user.type(
+      screen.getByTestId("commit-description"),
+      "Numbers come from the second run.",
+    );
+    await user.click(screen.getByRole("button", { name: /Commit$/ }));
+
+    await waitFor(() =>
+      expect(mocks.gitCommit).toHaveBeenCalledWith(
+        "project-1",
+        "Add the results table\n\nNumbers come from the second run.",
+      ),
+    );
+    expect(await screen.findByText(/Committed: "Add the results table"/)).toBeInTheDocument();
+  });
+
+  it("commits from the title field when Enter is pressed with a staged file", async () => {
+    const user = userEvent.setup();
+    withRepository();
+    render(<SourceControl />);
+
+    await user.type(await screen.findByTestId("commit-title"), "Enter commits{Enter}");
+
+    await waitFor(() =>
+      expect(mocks.gitCommit).toHaveBeenCalledWith("project-1", "Enter commits"),
+    );
+  });
+
+  it("ignores Enter in the title field while nothing is staged", async () => {
+    const user = userEvent.setup();
+    withRepository([{ path: "main.tex", status: "M", staged: false }]);
+    render(<SourceControl />);
+
+    await user.type(await screen.findByTestId("commit-title"), "Nothing staged{Enter}");
+
+    expect(mocks.gitCommit).not.toHaveBeenCalled();
+    expect(await screen.findByText("Stage a file to commit.")).toBeInTheDocument();
+  });
+
   it("commits and pushes when a token and a remote are both present", async () => {
     const user = userEvent.setup();
     withRepository();
@@ -352,26 +418,25 @@ describe("SourceControl", () => {
     mocks.gitGetRemote.mockResolvedValue("https://github.com/oleafly/project.git");
     render(<SourceControl />);
 
-    const message = await screen.findByPlaceholderText("Commit message (required)…");
-    await user.type(message, "Push me");
+    await user.type(await screen.findByTestId("commit-title"), "Push me");
     await user.click(screen.getByRole("button", { name: "Commit and push to origin" }));
 
     await waitFor(() => expect(mocks.gitPush).toHaveBeenCalledWith("project-1"));
     expect(await screen.findByText(/Pushed to origin\/main\./)).toBeInTheDocument();
   });
 
-  it("reports a commit failure instead of clearing the message", async () => {
+  it("reports a commit failure instead of clearing the title", async () => {
     const user = userEvent.setup();
     withRepository();
     mocks.gitCommit.mockRejectedValue(new Error("nothing to commit"));
     render(<SourceControl />);
 
-    const message = await screen.findByPlaceholderText("Commit message (required)…");
-    await user.type(message, "Broken commit");
+    const title = await screen.findByTestId("commit-title");
+    await user.type(title, "Broken commit");
     await user.click(screen.getByRole("button", { name: /Commit$/ }));
 
     expect(await screen.findByText(/nothing to commit/)).toBeInTheDocument();
-    expect(message).toHaveValue("Broken commit");
+    expect(title).toHaveValue("Broken commit");
   });
 
   it("unlinks the remote and drops the ahead and behind badge", async () => {
@@ -495,5 +560,98 @@ describe("SourceControl", () => {
 
     expect(mocks.gitInitialize).not.toHaveBeenCalled();
     expect(publish).toBeInTheDocument();
+  });
+
+  it("carries the remote hint on an info icon instead of a paragraph", async () => {
+    withRepository();
+    render(<SourceControl />);
+
+    const info = await screen.findByRole("img", { name: REMOTE_HINT });
+    expect(info).toHaveClass("size-3.5", "text-muted-foreground");
+    expect(screen.queryByText(REMOTE_HINT)).toBeNull();
+  });
+
+  it("keeps committing and hides pushing and pulling while GitHub is disconnected", async () => {
+    githubState.status = "disconnected";
+    githubState.user = null;
+    withRepository([{ path: "main.tex", status: "M", staged: false }]);
+    render(<SourceControl />);
+
+    const actions = await screen.findByTestId("source-control-actions");
+    expect(screen.getByTestId("commit-title")).toBeInTheDocument();
+    expect(screen.getByTestId("commit-description")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Commit$/ })).toBeInTheDocument();
+    expect(screen.getByText("Stage a file to commit.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Commit and push to origin" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Pull from origin" })).toBeNull();
+    expect(actions.firstElementChild).toHaveTextContent("Remote");
+    expect(screen.getByRole("button", { name: "Publish to GitHub" })).toBeInTheDocument();
+  });
+
+  it("commits the staged set while GitHub is disconnected", async () => {
+    const user = userEvent.setup();
+    githubState.status = "disconnected";
+    githubState.user = null;
+    withRepository();
+    render(<SourceControl />);
+
+    await user.type(await screen.findByTestId("commit-title"), "Local only commit");
+    await user.click(screen.getByRole("button", { name: /Commit$/ }));
+
+    await waitFor(() =>
+      expect(mocks.gitCommit).toHaveBeenCalledWith("project-1", "Local only commit"),
+    );
+    expect(await screen.findByText(/Committed: "Local only commit"/)).toBeInTheDocument();
+  });
+
+  it("adds pushing and pulling once GitHub is connected", async () => {
+    withRepository([{ path: "main.tex", status: "M", staged: false }]);
+    render(<SourceControl />);
+
+    const actions = await screen.findByTestId("source-control-actions");
+    expect(actions.firstElementChild).toContainElement(screen.getByTestId("commit-title"));
+    expect(screen.getByTestId("commit-description")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Commit$/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Commit and push to origin" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pull from origin" })).toBeInTheDocument();
+    expect(screen.getByText("Stage a file to commit.")).toBeInTheDocument();
+  });
+
+  it("holds the commit layout while the account status is still unknown", async () => {
+    githubState.status = "unknown";
+    githubState.user = null;
+    withRepository([{ path: "main.tex", status: "M", staged: false }]);
+    render(<SourceControl />);
+
+    const actions = await screen.findByTestId("source-control-actions");
+    expect(actions.firstElementChild).toContainElement(screen.getByTestId("commit-title"));
+    expect(screen.getByRole("button", { name: /Commit$/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Commit and push to origin" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Pull from origin" })).toBeNull();
+  });
+
+  it("sends Publish to the GitHub settings tab while the account is disconnected", async () => {
+    const user = userEvent.setup();
+    githubState.status = "disconnected";
+    githubState.user = null;
+    withRepository();
+    render(<SourceControl />);
+
+    await user.click(await screen.findByRole("button", { name: "Publish to GitHub" }));
+
+    const settings = useSettingsStore.getState();
+    expect(settings.settingsOpen).toBe(true);
+    expect(settings.settingsInitialSection).toBe("integrations");
+    expect(settings.settingsScrollTarget).toBe("github");
+  });
+
+  it("leaves Settings closed when a connected account publishes", async () => {
+    const user = userEvent.setup();
+    withRepository();
+    render(<SourceControl />);
+
+    await user.click(await screen.findByRole("button", { name: "Publish to GitHub" }));
+
+    expect(useSettingsStore.getState().settingsOpen).toBe(false);
   });
 });

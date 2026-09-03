@@ -21,9 +21,19 @@ const EDIT_COMMIT = `e2e git history edit ${RUN}`;
 
 async function initializeRepository(page: Page) {
   await openRailTab(page, "Source Control");
-  const initialize = page.getByText("Initialize Repository", { exact: true });
-  await expect(initialize).toBeVisible({ timeout: 10_000 });
-  await initialize.click();
+  await page.waitForFunction(
+    `!!document.querySelector('[data-testid="source-control-actions"]') ||
+      Array.from(document.querySelectorAll("button")).some(
+        (b) => b.textContent.trim() === "Initialize Repository",
+      )`,
+    15_000,
+  );
+  const needsInitialize = await page.evaluate<boolean>(
+    `!document.querySelector('[data-testid="source-control-actions"]')`,
+  );
+  if (needsInitialize) {
+    await page.getByText("Initialize Repository", { exact: true }).click();
+  }
   await expect(page.getByTestId("source-control-actions")).toBeVisible({ timeout: 15_000 });
 }
 
@@ -47,8 +57,9 @@ async function commitAll(page: Page, message: string) {
   if (!stagedVisible) throw new Error("commitAll: staging never became visible");
   await page.evaluate(
     `(() => {
-      const t = document.querySelector('[placeholder="Commit message (required)…"]');
-      const set = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+      const t = document.querySelector('[data-testid="commit-title"]');
+      if (!t) throw new Error('commit title field is not on screen');
+      const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
       set.call(t, ${JSON.stringify(message)});
       t.dispatchEvent(new Event('input', { bubbles: true }));
       return 1;

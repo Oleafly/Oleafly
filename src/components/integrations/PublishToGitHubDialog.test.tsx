@@ -339,6 +339,38 @@ describe("PublishToGitHubDialog", () => {
     expect(screen.getByRole("button", { name: "Link and push" })).toBeDisabled();
   });
 
+  it("mounts the overlay on the document body so it covers the whole window", () => {
+    const view = render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    const overlay = screen.getByRole("dialog").parentElement as HTMLElement;
+    expect(overlay).toHaveClass("fixed", "inset-0", "z-[85]");
+    expect(overlay.parentElement).toBe(document.body);
+    expect(view.container.contains(overlay)).toBe(false);
+  });
+
+  it("leaves the document body untouched while it is closed", () => {
+    const view = render(
+      <PublishToGitHubDialog
+        open={false}
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(view.container).toBeEmptyDOMElement();
+  });
+
   it("reads no repositories while GitHub is disconnected", async () => {
     useGithubStore.setState({ status: "disconnected" });
     render(

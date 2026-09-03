@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import {
   Check,
   FileText,
   GitBranch,
   Github,
+  Info,
   Loader2,
   Minus,
   Plus,
@@ -13,6 +21,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useFilesStore } from "@/store/files";
 import { useDiffStore } from "@/store/diff";
@@ -38,6 +47,7 @@ import {
 } from "@/lib/tauri";
 import { useGitStatusStore } from "@/store/git-status";
 import { useGithubStore } from "@/store/github";
+import { useSettingsStore } from "@/store/settings";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PublishToGitHubDialog } from "@/components/integrations/PublishToGitHubDialog";
 import { GithubMenu } from "@/components/layout/GithubMenu";
@@ -58,6 +68,17 @@ function meta(code: string) {
   return STATUS_META[code] ?? { label: code.slice(0, 1), cls: "bg-muted text-muted-foreground" };
 }
 
+const COMMIT_TITLE_LIMIT = 72;
+
+const REMOTE_HINT =
+  "Create a new repo or link an existing one as this project's remote, then push.";
+
+function composeCommitMessage(title: string, description: string): string {
+  const subject = title.trim();
+  const body = description.trim();
+  return body ? `${subject}\n\n${body}` : subject;
+}
+
 type ProjectActionToken = {
   projectId: string;
   session: number;
@@ -67,8 +88,10 @@ export function SourceControl() {
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
   const refreshTree = useFilesStore((s) => s.refreshTree);
-  const githubConnected = useGithubStore((s) => s.status === "connected");
+  const githubStatus = useGithubStore((s) => s.status);
   const githubUser = useGithubStore((s) => s.user);
+  const githubConnected = githubStatus === "connected";
+  const remoteFirst = githubStatus === "disconnected";
 
   const [changes, setChanges] = useState<GitFileChange[]>([]);
   const [initialized, setInitialized] = useState<boolean | null>(null);
@@ -90,7 +113,8 @@ export function SourceControl() {
   };
   const [hasToken, setHasToken] = useState(false);
   const [aheadBehind, setAheadBehind] = useState<AheadBehind | null>(null);
-  const [message, setMessage] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -113,7 +137,8 @@ export function SourceControl() {
     setRemote(null);
     setCredentialCleanupRequired(false);
     setAheadBehind(null);
-    setMessage("");
+    setTitle("");
+    setDescription("");
     setBusy(false);
     setStatus(null);
     setPublishOpen(false);
@@ -318,11 +343,12 @@ export function SourceControl() {
   const submit = async (andPush: boolean) => {
     const action = beginProjectAction();
     if (!action) return;
-    const msg = message.trim();
+    const subject = title.trim();
+    const msg = composeCommitMessage(title, description);
     const hasStaged = changes.some((c) => c.staged);
     // A commit requires staged files + a message; pushing existing commits does not.
-    if (hasStaged && !msg) {
-      setStatus({ ok: false, text: "Enter a commit message before committing." });
+    if (hasStaged && !subject) {
+      setStatus({ ok: false, text: "Enter a commit title before committing." });
       return;
     }
     setBusy(true);
@@ -331,7 +357,9 @@ export function SourceControl() {
       // Commit the staged set only. Nothing staged -> no commit (push still runs).
       const committed = hasStaged ? await gitCommit(action.projectId, msg) : false;
       if (!isCurrentProjectAction(action)) return;
-      const parts: string[] = [committed ? `Committed: "${msg}"` : "Nothing staged to commit."];
+      const parts: string[] = [
+        committed ? `Committed: "${subject}"` : "Nothing staged to commit.",
+      ];
       if (andPush) {
         if (!hasToken) {
           parts.push("⚠ Skipped push - no GitHub token (Settings → GitHub).");
@@ -343,7 +371,8 @@ export function SourceControl() {
         }
       }
       setStatus({ ok: true, text: parts.join("\n") });
-      setMessage("");
+      setTitle("");
+      setDescription("");
       await refresh();
       if (!isCurrentProjectAction(action)) return;
       await refreshTree();
@@ -364,6 +393,25 @@ export function SourceControl() {
 
   const staged = changes.filter((c) => c.staged);
   const unstaged = changes.filter((c) => !c.staged);
+  const canCommit = !busy && staged.length > 0 && title.trim().length > 0;
+
+  const onTitleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    if (!canCommit) return;
+    void submit(false);
+  };
+
+  const openPublish = () => {
+    if (!githubConnected) {
+      const settings = useSettingsStore.getState();
+      settings.setSettingsInitialSection("integrations");
+      settings.setSettingsScrollTarget("github");
+      settings.setSettingsOpen(true);
+      return;
+    }
+    setPublishOpen(true);
+  };
 
   const renderRow = (c: GitFileChange) => {
     const m = meta(c.status);
@@ -435,6 +483,144 @@ export function SourceControl() {
       </div>
     );
   };
+
+  const commitPanel = (
+    <div className="flex flex-col gap-2">
+      <Input
+        data-testid="commit-title"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={onTitleKeyDown}
+        maxLength={COMMIT_TITLE_LIMIT}
+        placeholder="Commit title"
+        aria-label="Commit title"
+        className="h-8 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs outline-none"
+      />
+      <Textarea
+        data-testid="commit-description"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        rows={2}
+        placeholder="Description (optional)"
+        aria-label="Commit description"
+        className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-xs outline-none"
+      />
+      {staged.length === 0 && changes.length > 0 ? (
+        <p className="-mt-1 text-[10px] text-muted-foreground">Stage a file to commit.</p>
+      ) : (
+        staged.length > 0 &&
+        !title.trim() && (
+          <p className="-mt-1 text-[10px] text-muted-foreground">A commit title is required.</p>
+        )
+      )}
+      <div className="flex gap-1.5">
+        <button type="button"
+          onClick={() => void submit(false)}
+          disabled={busy || staged.length === 0 || !title.trim()}
+          title={
+            staged.length === 0
+              ? "Stage a file first"
+              : !title.trim()
+                ? "Enter a commit title"
+                : undefined
+          }
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+          Commit
+        </button>
+        {githubConnected && (
+          <>
+            <Tooltip label="Commit and push to origin" className="flex-1">
+              <button type="button"
+                onClick={() => void submit(true)}
+                disabled={busy || !remote || (staged.length > 0 && !title.trim())}
+                aria-label="Commit and push to origin"
+                className="flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-40"
+              >
+                <Upload className="size-3.5" />
+                Push
+              </button>
+            </Tooltip>
+            <Tooltip label="Pull from origin" className="flex-1">
+              <button type="button"
+                onClick={() => void pull()}
+                disabled={busy || !remote}
+                aria-label="Pull from origin"
+                className="flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-40"
+              >
+                <RefreshCw className="size-3.5" />
+                Pull
+              </button>
+            </Tooltip>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  const statusNotice = status && (
+    <div
+      className={cn(
+        "mt-2 whitespace-pre-wrap break-words rounded-md border p-2 text-[11px]",
+        status.ok
+          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          : "border-destructive/30 bg-destructive/10 text-destructive"
+      )}
+    >
+      {status.text}
+    </div>
+  );
+
+  const remoteSection = (
+    <div>
+      <div className="flex items-center justify-between gap-2 px-1 pb-1">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+            Remote
+          </span>
+          <Tooltip wide side="top" label={REMOTE_HINT}>
+            <Info
+              role="img"
+              aria-label={REMOTE_HINT}
+              className="size-3.5 cursor-help text-muted-foreground hover:text-foreground"
+            />
+          </Tooltip>
+        </span>
+        {remote && (
+          <span className="truncate font-mono text-[10px] text-muted-foreground">{remote}</span>
+        )}
+      </div>
+      {remote ? (
+        <div className="flex gap-1.5 px-1">
+          <button type="button"
+            onClick={openPublish}
+            disabled={busy}
+            className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium hover:bg-accent disabled:opacity-40"
+          >
+            <Github className="size-3" /> Change repo
+          </button>
+          <button type="button"
+            onClick={() => void unlink()}
+            disabled={busy}
+            className="rounded-md border px-2 py-1 text-[11px] hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+          >
+            Unlink
+          </button>
+        </div>
+      ) : (
+        <div className="px-1">
+          <button type="button"
+            onClick={openPublish}
+            disabled={busy}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-[11px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
+          >
+            <Github className="size-3.5" /> Publish to GitHub
+          </button>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="flex h-full flex-col bg-sidebar">
@@ -549,7 +735,7 @@ export function SourceControl() {
             <div>
               <p className="text-xs font-medium">Source Control is not initialized</p>
               <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                Oleafly will not create or commit to a Git repository automatically.
+                Oleafly will not commit to a Git repository automatically.
               </p>
             </div>
             <button
@@ -562,7 +748,7 @@ export function SourceControl() {
             </button>
             <button
               type="button"
-              onClick={() => setPublishOpen(true)}
+              onClick={openPublish}
               disabled={busy}
               className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-40"
             >
@@ -630,120 +816,19 @@ export function SourceControl() {
           data-testid="source-control-actions"
           className="shrink-0 border-t border-sidebar-border bg-sidebar p-2"
         >
-        <div className="flex flex-col gap-2">
-          <Textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            rows={2}
-            placeholder="Commit message (required)…"
-            className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-xs outline-none"
-          />
-          {staged.length === 0 && changes.length > 0 ? (
-            <p className="-mt-1 text-[10px] text-muted-foreground">
-              Stage a file to commit.
-            </p>
+          {remoteFirst ? (
+            <>
+              {remoteSection}
+              <div className="mt-3 border-t border-sidebar-border pt-2">{commitPanel}</div>
+              {statusNotice}
+            </>
           ) : (
-            staged.length > 0 && !message.trim() && (
-              <p className="-mt-1 text-[10px] text-muted-foreground">
-                A commit message is required.
-              </p>
-            )
+            <>
+              {commitPanel}
+              {statusNotice}
+              <div className="mt-3 border-t border-sidebar-border pt-2">{remoteSection}</div>
+            </>
           )}
-          <div className="flex gap-1.5">
-            <button type="button"
-              onClick={() => void submit(false)}
-              disabled={busy || staged.length === 0 || !message.trim()}
-              title={
-                staged.length === 0
-                  ? "Stage a file first"
-                  : !message.trim()
-                    ? "Enter a commit message"
-                    : undefined
-              }
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
-            >
-              {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
-              Commit
-            </button>
-            <Tooltip label="Commit and push to origin" className="flex-1">
-              <button type="button"
-                onClick={() => void submit(true)}
-                disabled={busy || !remote || (staged.length > 0 && !message.trim())}
-                aria-label="Commit and push to origin"
-                className="flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-40"
-              >
-                <Upload className="size-3.5" />
-                Push
-              </button>
-            </Tooltip>
-            <Tooltip label="Pull from origin" className="flex-1">
-              <button type="button"
-                onClick={() => void pull()}
-                disabled={busy || !remote}
-                aria-label="Pull from origin"
-                className="flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-40"
-              >
-                <RefreshCw className="size-3.5" />
-                Pull
-              </button>
-            </Tooltip>
-          </div>
-        </div>
-
-        {status && (
-          <div
-            className={cn(
-              "mt-2 whitespace-pre-wrap break-words rounded-md border p-2 text-[11px]",
-              status.ok
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                : "border-destructive/30 bg-destructive/10 text-destructive"
-            )}
-          >
-            {status.text}
-          </div>
-        )}
-
-        <div className="mt-3 border-t border-sidebar-border pt-2">
-          <div className="flex items-center justify-between gap-2 px-1 pb-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-              Remote
-            </span>
-            {remote && (
-              <span className="truncate font-mono text-[10px] text-muted-foreground">{remote}</span>
-            )}
-          </div>
-          {remote ? (
-            <div className="flex gap-1.5 px-1">
-              <button type="button"
-                onClick={() => setPublishOpen(true)}
-                disabled={busy}
-                className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium hover:bg-accent disabled:opacity-40"
-              >
-                <Github className="size-3" /> Change repo
-              </button>
-              <button type="button"
-                onClick={() => void unlink()}
-                disabled={busy}
-                className="rounded-md border px-2 py-1 text-[11px] hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
-              >
-                Unlink
-              </button>
-            </div>
-          ) : (
-            <div className="px-1">
-              <button type="button"
-                onClick={() => setPublishOpen(true)}
-                disabled={busy}
-                className="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-1.5 text-[11px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
-              >
-                <Github className="size-3.5" /> Publish to GitHub
-              </button>
-              <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground/70">
-                Create a new repo or link an existing one as this project's remote, then push.
-              </p>
-            </div>
-          )}
-        </div>
         </div>
       )}
 
