@@ -12,6 +12,12 @@ import type {
   AppConfig,
   BackendProtocolInfo,
   ChatSearchHit,
+  CheckpointFileSummary,
+  CheckpointIntegrity,
+  CheckpointPolicy,
+  CheckpointStoreInspection,
+  CheckpointStoreStats,
+  CheckpointSummary,
   CompileResult,
   ComponentInfo,
   CopyFileResult,
@@ -42,6 +48,8 @@ import type {
   Prerequisite,
   ProjectInfo,
   ProjectMeta,
+  ProjectSourcesRequest,
+  ProjectSourcesResult,
   ProjectStateChanged,
   ProviderModel,
   RecycledProjectInfo,
@@ -183,6 +191,59 @@ export const compileProject = (
     haltOnError,
   });
 
+export const checkpointList = (projectId: string) =>
+  invoke<CheckpointSummary[]>("checkpoint_list", { projectId });
+
+export const checkpointSetLabel = (projectId: string, snapshotRoot: string, label: string) =>
+  invoke<CheckpointSummary>("checkpoint_set_label", { projectId, snapshotRoot, label });
+
+export const checkpointFiles = (projectId: string, snapshotRoot: string) =>
+  invoke<CheckpointFileSummary[]>("checkpoint_files", { projectId, snapshotRoot });
+
+export const checkpointInspect = (projectId: string) =>
+  invoke<CheckpointStoreInspection>("checkpoint_inspect", { projectId });
+
+export const checkpointRevealStore = (projectId: string) =>
+  invoke<void>("checkpoint_reveal_store", { projectId });
+
+export const checkpointIgnorePath = (projectId: string, path: string) =>
+  invoke<ProjectMeta>("checkpoint_ignore_path", { projectId, path });
+
+export const checkpointUnignorePath = (projectId: string, path: string) =>
+  invoke<ProjectMeta>("checkpoint_unignore_path", { projectId, path });
+
+export const checkpointStats = (projectId: string) =>
+  invoke<CheckpointStoreStats>("checkpoint_stats", { projectId });
+
+export const checkpointRestore = (
+  projectId: string,
+  snapshotRoot: string,
+  expectedGeneration: number,
+) =>
+  invoke<ProjectStateChanged>("checkpoint_restore", {
+    projectId,
+    snapshotRoot,
+    expectedGeneration,
+  });
+
+export const checkpointDelete = (projectId: string, snapshotRoot: string) =>
+  invoke<void>("checkpoint_delete", { projectId, snapshotRoot });
+
+export const checkpointKeepLatest = (projectId: string) =>
+  invoke<void>("checkpoint_keep_latest", { projectId });
+
+export const checkpointReset = (projectId: string) =>
+  invoke<void>("checkpoint_reset", { projectId });
+
+export const checkpointVerify = (projectId: string) =>
+  invoke<CheckpointIntegrity>("checkpoint_verify", { projectId });
+
+export const checkpointExport = (projectId: string, dest: string, password: string) =>
+  invoke<void>("checkpoint_export", { projectId, dest, password });
+
+export const checkpointImport = (projectId: string, source: string, password: string) =>
+  invoke<void>("checkpoint_import", { projectId, source, password });
+
 /// Ends the running main-document compile. Resolves to whether a compiler
 /// process was actually terminated.
 export const cancelCompile = () => invoke<boolean>("cancel_compile", {});
@@ -234,6 +295,11 @@ export const listFiles = (projectId: string) =>
 
 export const readFileContent = (projectId: string, path: string) =>
   invoke<string>("read_file", { projectId, path });
+
+export const readProjectSourcesBatch = (
+  projectId: string,
+  request: ProjectSourcesRequest,
+) => invoke<ProjectSourcesResult>("read_project_sources", { projectId, request });
 
 export const writeFileContent = (
   projectId: string,
@@ -491,20 +557,17 @@ export const readDeadlines = () => invoke<string>("read_deadlines");
 export const refreshDeadlines = () => invoke<void>("refresh_deadlines");
 
 
-export const gitAutoCommit = (projectId: string, message: string) =>
-  invoke<boolean>("git_auto_commit", { projectId, message });
+export const gitIsInitialized = (projectId: string) =>
+  invoke<boolean>("git_is_initialized", { projectId });
 
-export const gitAutoCommitUpdate = (projectId: string) =>
-  invoke<boolean>("git_auto_commit_update", { projectId });
+export const gitInitialize = (projectId: string) =>
+  invoke<string>("git_initialize", { projectId });
+
+export const gitPreparePublish = (projectId: string, message: string) =>
+  invoke<boolean>("git_prepare_publish", { projectId, message });
 
 export const gitLog = (projectId: string) =>
   invoke<GitCommit[]>("git_log", { projectId });
-
-export const gitReadVersionLabels = (projectId: string) =>
-  invoke<Record<string, string>>("git_read_version_labels", { projectId });
-
-export const gitSetVersionLabel = (projectId: string, oid: string, label: string) =>
-  invoke<void>("git_set_version_label", { projectId, oid, label });
 
 export const gitRestore = (projectId: string, oid: string, expectedGeneration: number) =>
   invoke<ProjectStateChanged>("git_restore", { projectId, oid, expectedGeneration });
@@ -597,6 +660,10 @@ export const searchProject = (projectId: string, query: string) =>
 export const getConfig = () => invoke<AppConfig>("get_config");
 export const setConfig = (config: AppConfig) =>
   invoke<void>("set_config", { config });
+export const setCheckpointPolicy = (
+  projectId: string,
+  policy: CheckpointPolicy,
+) => invoke<ProjectMeta>("set_checkpoint_policy", { projectId, policy });
 export const seedStarterPersonas = (starters: Persona[]) =>
   invoke<AppConfig>("seed_starter_personas", { starters });
 
@@ -757,6 +824,10 @@ export const gitRemoveRemote = (projectId: string) =>
   invoke<void>("git_remove_remote", { projectId });
 export const gitGetRemote = (projectId: string) =>
   invoke<string | null>("git_get_remote", { projectId });
+export const gitRemoteCredentialsNeedCleanup = (projectId: string) =>
+  invoke<boolean>("git_remote_credentials_need_cleanup", { projectId });
+export const gitCleanRemoteCredentials = (projectId: string) =>
+  invoke<boolean>("git_clean_remote_credentials", { projectId });
 export const gitCurrentBranch = (projectId: string) =>
   invoke<string>("git_current_branch", { projectId });
 

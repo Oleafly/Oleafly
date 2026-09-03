@@ -1,22 +1,65 @@
 import { memo, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { useTheme } from "@/lib/theme";
+import { currentTheme, subscribeTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { RenderCache } from "./render-cache";
 
 const MERMAID_MAX_TEXT_SIZE = 50_000;
+const MAX_CACHED_DIAGRAMS = 64;
+const MAX_CACHED_DIAGRAM_CHARS = 6_000_000;
+const VISIBILITY_MARGIN = "240px 0px";
+const IDLE_FALLBACK_MS = 48;
 
 type DiagramState =
-  | { key: string; status: "loading" }
-  | { key: string; status: "ready"; svg: Element }
-  | { key: string; status: "error" };
+  | { status: "loading" }
+  | { status: "ready"; svg: Element; theme: Theme }
+  | { status: "error" };
 
 let renderQueue = Promise.resolve();
+let renderSequence = 0;
 const pendingRenders = new Map<string, Promise<Element>>();
+const diagramCache = new RenderCache<Element>(MAX_CACHED_DIAGRAMS, MAX_CACHED_DIAGRAM_CHARS);
 
-function renderDiagram(source: string, id: string, theme: "light" | "dark") {
-  const key = `${id}\u0000${theme}\u0000${source}`;
+const failedDiagrams = new Set<string>();
+
+function cacheKey(source: string, theme: Theme) {
+  return `${theme} ${source}`;
+}
+
+function hashSource(source: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < source.length; index++) {
+    hash ^= source.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function scheduleIdle(callback: () => void): () => void {
+  if (typeof window.requestIdleCallback === "function") {
+    const handle = window.requestIdleCallback(callback, { timeout: 500 });
+    return () => window.cancelIdleCallback(handle);
+  }
+  const handle = window.setTimeout(callback, IDLE_FALLBACK_MS);
+  return () => window.clearTimeout(handle);
+}
+
+export function cachedDiagram(source: string, theme: Theme): Element | undefined {
+  return diagramCache.get(cacheKey(source, theme));
+}
+
+export function clearDiagramCache(): void {
+  failedDiagrams.clear();
+  diagramCache.clear();
+}
+
+export function renderDiagram(source: string, theme: Theme): Promise<Element> {
+  const key = cacheKey(source, theme);
+  const cached = diagramCache.get(key);
+  if (cached) return Promise.resolve(cached);
   const pending = pendingRenders.get(key);
   if (pending) return pending;
 
+  const id = `mermaid-${hashSource(source)}-${(++renderSequence).toString(36)}`;
   const result = renderQueue.then(async () => {
     const { default: mermaid } = await import("mermaid");
     mermaid.initialize({
@@ -36,6 +79,7 @@ function renderDiagram(source: string, id: string, theme: "light" | "dark") {
     ) {
       throw new Error("Invalid Mermaid SVG");
     }
+    diagramCache.set(key, svg, rendered.svg.length);
     return svg;
   });
 
@@ -44,92 +88,42 @@ function renderDiagram(source: string, id: string, theme: "light" | "dark") {
     () => undefined,
   );
   pendingRenders.set(key, result);
-  void result.then(
-    () => {
-      if (pendingRenders.get(key) === result) pendingRenders.delete(key);
-    },
-    () => {
-      if (pendingRenders.get(key) === result) pendingRenders.delete(key);
-    },
-  );
+  const settle = () => {
+    if (pendingRenders.get(key) === result) pendingRenders.delete(key);
+  };
+  void result.then(settle, settle);
   return result;
 }
 
+function initialDiagramState(source: string): DiagramState {
+  const theme = currentTheme();
+  const svg = cachedDiagram(source, theme);
+  return svg ? { status: "ready", svg, theme } : { status: "loading" };
+}
+
 export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source: string }) {
-  const { theme } = useTheme();
   const reactId = useId();
+  const descriptionId = `mermaid-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}-source`;
   const shellRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const loadingHeight = useRef(0);
   const heightFrame = useRef<number | null>(null);
-  const renderId = `mermaid-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
-  const descriptionId = `${renderId}-source`;
-  const renderKey = `${renderId}\u0000${theme}\u0000${source}`;
-  const [state, setState] = useState<DiagramState>({
-    key: renderKey,
-    status: "loading",
-  });
-  // The last diagram that finished rendering. A theme toggle keeps it on
-  // screen (recoloring mermaid means a full re-render) instead of flashing the
-  // skeleton, so switching theme with many diagrams open stays instant.
-  const hasRendered = useRef(false);
-  const activeState: DiagramState =
-    state.status === "ready"
-      ? state
-      : state.key === renderKey
-        ? state
-        : { key: renderKey, status: "loading" };
-
-  useEffect(() => {
-    let current = true;
-    // Only show the skeleton before the first successful render; a re-render
-    // for a new theme (or edited source) keeps the previous diagram visible.
-    if (!hasRendered.current) {
-      setState({ key: renderKey, status: "loading" });
-    }
-    const run = () =>
-      renderDiagram(source, renderId, theme).then(
-        (svg) => {
-          if (!current) return;
-          hasRendered.current = true;
-          setState({ key: renderKey, status: "ready", svg });
-        },
-        () => {
-          // Keep the last good diagram on a re-render failure; only surface the
-          // error state when nothing has ever rendered.
-          if (current && !hasRendered.current) {
-            setState({ key: renderKey, status: "error" });
-          }
-        },
-      );
-    // Defer a re-render (theme/source change with a diagram already up) to idle
-    // time so the theme flip paints immediately; the first render runs now.
-    let idle: number | undefined;
-    if (hasRendered.current && typeof requestIdleCallback === "function") {
-      idle = requestIdleCallback(() => {
-        void run();
-      });
-    } else {
-      void run();
-    }
-    return () => {
-      current = false;
-      if (idle !== undefined && typeof cancelIdleCallback === "function") {
-        cancelIdleCallback(idle);
-      }
-    };
-  }, [renderId, renderKey, source, theme]);
+  const [state, setState] = useState<DiagramState>(() => initialDiagramState(source));
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const mountedTheme = useRef<Theme | null>(state.status === "ready" ? state.theme : null);
+  const visible = useRef(false);
 
   useLayoutEffect(() => {
     const shell = shellRef.current;
     const host = hostRef.current;
     if (!shell) return;
-    if (activeState.status === "loading") {
+    if (state.status === "loading") {
       loadingHeight.current = shell.getBoundingClientRect().height;
       return;
     }
-    if (activeState.status !== "ready" || !host) return;
-    host.replaceChildren(document.importNode(activeState.svg, true));
+    if (state.status !== "ready" || !host) return;
+    host.replaceChildren(document.importNode(state.svg, true));
     const from = loadingHeight.current;
     const to = host.scrollHeight;
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -143,30 +137,115 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
       if (heightFrame.current !== null) window.cancelAnimationFrame(heightFrame.current);
       heightFrame.current = null;
     };
-  }, [activeState]);
+  }, [state]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let cancelIdle: (() => void) | null = null;
+    let inFlight: string | null = null;
+
+    const adopt = (svg: Element, theme: Theme) => {
+      mountedTheme.current = theme;
+      if (stateRef.current.status === "ready") {
+        hostRef.current?.replaceChildren(document.importNode(svg, true));
+        return;
+      }
+      setState({ status: "ready", svg, theme });
+    };
+
+    const ensureCurrent = (deferred: boolean) => {
+      if (cancelled || !visible.current) return;
+      const theme = currentTheme();
+      if (mountedTheme.current === theme) return;
+      const cached = cachedDiagram(source, theme);
+      if (cached) {
+        adopt(cached, theme);
+        return;
+      }
+      const key = cacheKey(source, theme);
+      if (failedDiagrams.has(key)) {
+        if (mountedTheme.current === null) setState({ status: "error" });
+        return;
+      }
+      if (inFlight === key) return;
+      const run = () => {
+        cancelIdle = null;
+        if (cancelled || !visible.current || currentTheme() !== theme) return;
+        inFlight = key;
+        renderDiagram(source, theme).then(
+          (svg) => {
+            if (cancelled) return;
+            inFlight = null;
+            if (currentTheme() !== theme) {
+              ensureCurrent(true);
+              return;
+            }
+            adopt(svg, theme);
+          },
+          () => {
+            failedDiagrams.add(key);
+            if (cancelled) return;
+            inFlight = null;
+            if (mountedTheme.current === null) setState({ status: "error" });
+          },
+        );
+      };
+      cancelIdle?.();
+      if (deferred) cancelIdle = scheduleIdle(run);
+      else run();
+    };
+
+    const shell = shellRef.current;
+    let observer: IntersectionObserver | null = null;
+    if (shell && typeof IntersectionObserver === "function") {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[entries.length - 1];
+          if (!entry) return;
+          visible.current = entry.isIntersecting;
+          if (entry.isIntersecting) ensureCurrent(mountedTheme.current !== null);
+        },
+        { rootMargin: VISIBILITY_MARGIN },
+      );
+      observer.observe(shell);
+    } else {
+      visible.current = true;
+      ensureCurrent(false);
+    }
+    const unsubscribe = subscribeTheme(() => {
+      if (visible.current) ensureCurrent(true);
+    });
+
+    return () => {
+      cancelled = true;
+      cancelIdle?.();
+      observer?.disconnect();
+      unsubscribe();
+    };
+  }, [source]);
 
   return (
     <div
       ref={shellRef}
-      aria-busy={activeState.status === "loading"}
+      aria-busy={state.status === "loading"}
       data-mermaid-diagram="true"
-      data-state={activeState.status}
+      data-state={state.status}
       onTransitionEnd={(event) => {
         if (
           event.target === event.currentTarget
           && event.propertyName === "height"
-          && activeState.status === "ready"
+          && state.status === "ready"
         ) {
           event.currentTarget.style.height = "";
         }
       }}
       className={cn(
         "relative grid min-w-0 overflow-hidden rounded-md bg-background/70 transition-[height] duration-200 motion-reduce:transition-none",
-        activeState.status === "loading" && "min-h-28",
-        activeState.status === "error" && "border border-destructive/30",
+        state.status === "loading" && "min-h-28",
+        state.status === "error" && "border border-destructive/30",
       )}
     >
-      {activeState.status === "error" ? (
+      {state.status === "error" ? (
         <div>
           <p
             role="status"
@@ -182,7 +261,7 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
         </div>
       ) : (
         <>
-          {activeState.status === "loading" ? (
+          {state.status === "loading" ? (
             <div
               role="status"
               aria-label="Rendering diagram"
@@ -202,7 +281,7 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source }: { source:
               <span className="mx-auto h-2 w-1/3 rounded-full bg-muted-foreground/20" />
             </div>
           )}
-          {activeState.status === "ready" ? (
+          {state.status === "ready" ? (
             <div
               ref={hostRef}
               role="img"

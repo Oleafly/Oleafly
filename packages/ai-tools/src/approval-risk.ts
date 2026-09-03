@@ -56,6 +56,40 @@ const NETWORK_TOOLS = new Set([
   "verify_citation",
 ]);
 
+const READ_ONLY_TOOLS = new Set([
+  "read_file",
+  "list_files",
+  "project_map",
+  "search_project",
+  "project_library_search",
+  "get_pdf_text",
+  "get_log",
+  "get_todos",
+  "update_todos",
+  "list_notes",
+  "load_image",
+  "verify_pdf_pages",
+  "load_skill",
+  "list_agents",
+  "literature_search",
+  "alphaxiv_search",
+  "alphaxiv_paper_content",
+  "verify_citation",
+]);
+
+export const PLAN_MODE_TOOL_ERROR =
+  "Plan mode: this tool runs only after the plan is approved. Add the step to the plan with update_todos instead of calling it now.";
+
+export function isReadOnlyTool(tool: string): boolean {
+  return READ_ONLY_TOOLS.has(tool);
+}
+
+export function planModeTools<T>(tools: Readonly<Record<string, T>>): Record<string, T> {
+  return Object.fromEntries(
+    Object.entries(tools).filter(([name]) => isReadOnlyTool(name)),
+  );
+}
+
 export function toolRisk(tool: string): ToolRisk {
   if (tool === "run_command") return "shell";
   if (READ_TOOLS.has(tool)) return "read";

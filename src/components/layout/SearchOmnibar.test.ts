@@ -18,6 +18,7 @@ const project: ProjectInfo = {
   has_preview: true,
   exports: [],
   forked_from: null,
+  recovery_pending: false,
 };
 
 describe("project omnibar metadata matching", () => {

@@ -122,7 +122,7 @@ export function CompileControls() {
   return (
   <>
   <TexRootIndicator />
-  <ButtonGroup data-tour="project-compile">
+  <ButtonGroup data-tour="project-compile" className="shrink-0">
     <Tooltip label={`${compileLabel} ${engine.label} (${shortcut("⌘↵")})`}>
       <Button
         data-testid="compile-button"

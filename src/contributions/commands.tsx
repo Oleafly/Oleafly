@@ -17,6 +17,7 @@ import {
   Sigma,
   Sparkles,
   Square,
+  SquareTerminal,
   Sun,
   Table,
   Tag,
@@ -24,6 +25,7 @@ import {
   Trash2,
   Zap,
 } from "lucide-react";
+import { ClockCheck } from "@/components/icons/ClockCheck";
 import { registerCommand, type AppContext } from "@oleafly/registry";
 import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
@@ -39,6 +41,8 @@ import { exportCurrentPdf } from "@/features/export";
 import { useFilesStore } from "@/store/files";
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
+import { TERMINAL_LIMIT, TERMINAL_LIMIT_MESSAGE, useTerminalsStore } from "@/store/terminals";
+import { toast } from "@/lib/toast";
 import {
   formattingForEngine,
   pathUsesEngineSource,
@@ -290,10 +294,36 @@ export function registerPaletteCommands() {
   palette({
     id: "palette.history",
     group: "Tools",
-    label: "History",
+    label: "Git history",
     icon: () => <List className="size-4" />,
     order: 310,
-    run: () => useSettingsStore.getState().setHistoryOpen(true),
+    run: () => useSettingsStore.getState().openVersioning("git"),
+  });
+  palette({
+    id: "palette.checkpoints",
+    group: "Tools",
+    label: "Checkpoints",
+    icon: () => <ClockCheck className="size-4" />,
+    order: 315,
+    run: () => useSettingsStore.getState().openVersioning("checkpoints"),
+  });
+  palette({
+    id: "palette.new-terminal",
+    group: "Tools",
+    label: "New terminal",
+    keywords: "terminal shell console new",
+    icon: () => <SquareTerminal className="size-4" />,
+    order: 318,
+    when: (ctx) => !!ctx.projectId,
+    run: () => {
+      const terminals = useTerminalsStore.getState();
+      if (terminals.projectId && terminals.tabs.length >= TERMINAL_LIMIT) {
+        toast.info(TERMINAL_LIMIT_MESSAGE);
+        return;
+      }
+      useSettingsStore.getState().setTerminalOpen(true);
+      terminals.addTerminal();
+    },
   });
   palette({
     id: "palette.add-citation",

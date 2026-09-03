@@ -4,6 +4,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import type { AgentEvent } from "@oleafly/ai-core";
 import type { ApprovalMode } from "@oleafly/ai-tools";
 import type { ModelMessage, ToolSet } from "@/lib/chat-types";
+import type { AppConfig } from "@/lib/tauri";
 import type { ChatMessage, StoredChat } from "@/store/chats";
 
 interface HarnessOptions {
@@ -12,6 +13,7 @@ interface HarnessOptions {
   tools: ToolSet;
   onRequestId?: (requestId: string) => void;
   onRawEvent?: (event: AgentEvent) => void;
+  guardToolCall?: (call: { id: string; name: string; args: unknown }) => string | null;
   takePendingImages: () => string[];
   handlers: {
     onText: (text: string) => void;
@@ -46,8 +48,7 @@ const mocks = vi.hoisted(() => ({
   approvalsModeGet: vi.fn(),
   approvalsModeSet: vi.fn(),
   getConfig: vi.fn(),
-  gitAutoCommit: vi.fn(),
-  gitAutoCommitUpdate: vi.fn(),
+  gitPreparePublish: vi.fn(),
   gitHeadOid: vi.fn(),
   gitLog: vi.fn(),
   gitShow: vi.fn(),
@@ -68,6 +69,17 @@ const mocks = vi.hoisted(() => ({
   runSummaryProps: [] as Array<{
     todos: unknown[];
     turn: { chatId: string; turnId: string } | null;
+    plan?: boolean;
+  }>,
+  planProps: [] as Array<{
+    todos: unknown[];
+    turn: { chatId: string; turnId: string } | null;
+    approval?: {
+      status: "awaiting" | "approved";
+      busy?: boolean;
+      onApprove: () => void;
+      onRevise: () => void;
+    };
   }>,
   textareaProps: null as null | {
     onChange: (event: { target: { value: string } }) => void;
@@ -107,8 +119,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   approvalsModeGet: (...args: unknown[]) => mocks.approvalsModeGet(...args),
   approvalsModeSet: (...args: unknown[]) => mocks.approvalsModeSet(...args),
   getConfig: (...args: unknown[]) => mocks.getConfig(...args),
-  gitAutoCommit: (...args: unknown[]) => mocks.gitAutoCommit(...args),
-  gitAutoCommitUpdate: (...args: unknown[]) => mocks.gitAutoCommitUpdate(...args),
+  gitPreparePublish: (...args: unknown[]) => mocks.gitPreparePublish(...args),
   gitHeadOid: (...args: unknown[]) => mocks.gitHeadOid(...args),
   gitLog: (...args: unknown[]) => mocks.gitLog(...args),
   gitShow: (...args: unknown[]) => mocks.gitShow(...args),
@@ -160,6 +171,12 @@ vi.mock("@oleafly/registry", () => ({
         id: "test-tools",
         mode: "chat",
         create: ({ confirm }: { confirm: (request: unknown) => Promise<boolean> }) => ({
+          read_file: {
+            execute: async () => ({ content: "" }),
+          },
+          update_todos: {
+            execute: async () => ({ ok: true }),
+          },
           write_file: {
             execute: async () => ({
               approved: await confirm({
@@ -243,14 +260,49 @@ vi.mock("@/components/branding/OleaflyAssistantMascot", () => ({
   OleaflyAssistantMascot: () => null,
 }));
 
-vi.mock("@/components/ai/chat-parts", () => ({
-  AgentPlan: () => null,
-  AgentRunSummary: (props: {
-    todos: unknown[];
-    turn: { chatId: string; turnId: string } | null;
-  }) => {
+vi.mock("@/components/ai/chat-parts", async () => {
+  const React = await import("react");
+  return {
+  AgentStatusPill: (props: (typeof mocks.planProps)[number]) => {
+    mocks.planProps.push(props);
+    const approval = props.approval;
+    return React.createElement(
+      "div",
+      { "data-testid": "agent-status-pill", "data-plan-status": approval?.status ?? "none" },
+      approval?.status === "awaiting"
+        ? [
+            React.createElement(
+              "button",
+              {
+                key: "approve",
+                type: "button",
+                "aria-label": "Approve plan",
+                disabled: approval.busy,
+                onClick: approval.onApprove,
+              },
+              "Approve plan",
+            ),
+            React.createElement(
+              "button",
+              {
+                key: "revise",
+                type: "button",
+                "aria-label": "Revise",
+                disabled: approval.busy,
+                onClick: approval.onRevise,
+              },
+              "Revise",
+            ),
+          ]
+        : null,
+    );
+  },
+  AgentRunSummary: (props: (typeof mocks.runSummaryProps)[number]) => {
     mocks.runSummaryProps.push(props);
-    return null;
+    return React.createElement("div", {
+      "data-testid": "agent-run-summary",
+      "data-plan": props.plan ? "true" : "false",
+    });
   },
   InfoHint: () => null,
   MessageItem: () => null,
@@ -258,7 +310,8 @@ vi.mock("@/components/ai/chat-parts", () => ({
   formatError: (error: unknown) => String(error),
   formatToolOutput: (output: unknown) =>
     typeof output === "string" ? output : JSON.stringify(output),
-}));
+  };
+});
 
 vi.mock("@/components/ui/textarea", async () => {
   const React = await import("react");
@@ -283,6 +336,10 @@ vi.mock("@/components/ui/input", async () => {
 });
 
 let ChatCore: typeof import("./ChatCore").ChatCore;
+let ChatPanel: typeof import("./ChatPanel").ChatPanel;
+let CopilotOverlay: typeof import("./CopilotOverlay").CopilotOverlay;
+let resetProviderConfigCache: typeof import("./provider-config").resetProviderConfigCache;
+let Fragment: typeof import("react").Fragment;
 let LATEX_ENGINE: typeof import("@/lib/document-engine").LATEX_ENGINE;
 let useFilesStore: typeof import("@/store/files").useFilesStore;
 let useChatsStore: typeof import("@/store/chats").useChatsStore;
@@ -294,9 +351,12 @@ let useAgentFileChangesStore: typeof import("@/store/agent-file-changes").useAge
 let agentFileChangeTurnForChat: typeof import("@/store/agent-file-changes").agentFileChangeTurnForChat;
 let useAssistantOutputsStore: typeof import("@/store/assistant-outputs").useAssistantOutputsStore;
 let usePlanModeStore: typeof import("@/store/plan-mode").usePlanModeStore;
+let usePlanApprovalStore: typeof import("@/store/plan-approval").usePlanApprovalStore;
+let PLAN_MODE_HINT: typeof import("./ChatCore").PLAN_MODE_HINT;
+let PLAN_MODE_PLANNING_PROMPT: typeof import("./ChatCore").PLAN_MODE_PLANNING_PROMPT;
+let PLAN_MODE_REVISION_LINE: typeof import("./ChatCore").PLAN_MODE_REVISION_LINE;
 let useChatGoalStore: typeof import("@/store/chat-goal").useChatGoalStore;
 let useAiToolSettingsStore: typeof import("@/store/ai-tool-settings").useAiToolSettingsStore;
-let autoCommitNow: typeof import("@/lib/auto-commit").autoCommitNow;
 let activeChatRun: typeof import("./chat-run-registry").activeChatRun;
 let endChatRun: typeof import("./chat-run-registry").endChatRun;
 let act: typeof import("@testing-library/react").act;
@@ -357,11 +417,15 @@ beforeAll(async () => {
   });
 
   vi.resetModules();
-  ({ createElement } = await import("react"));
+  ({ createElement, Fragment } = await import("react"));
   ({ act, cleanup, fireEvent, render, waitFor } = await import("@testing-library/react"));
   ({ QueryClientProvider } = await import("@tanstack/react-query"));
   ({ createAppQueryClient } = await import("@/lib/query"));
-  ({ ChatCore } = await import("./ChatCore"));
+  ({ ChatCore, PLAN_MODE_HINT, PLAN_MODE_PLANNING_PROMPT, PLAN_MODE_REVISION_LINE } =
+    await import("./ChatCore"));
+  ({ ChatPanel } = await import("./ChatPanel"));
+  ({ CopilotOverlay } = await import("./CopilotOverlay"));
+  ({ resetProviderConfigCache } = await import("./provider-config"));
   ({ LATEX_ENGINE } = await import("@/lib/document-engine"));
   ({ useFilesStore } = await import("@/store/files"));
   ({ useChatsStore } = await import("@/store/chats"));
@@ -372,9 +436,9 @@ beforeAll(async () => {
   ({ useAgentFileChangesStore, agentFileChangeTurnForChat } = await import("@/store/agent-file-changes"));
   ({ useAssistantOutputsStore } = await import("@/store/assistant-outputs"));
   ({ usePlanModeStore } = await import("@/store/plan-mode"));
+  ({ usePlanApprovalStore } = await import("@/store/plan-approval"));
   ({ useChatGoalStore } = await import("@/store/chat-goal"));
   ({ useAiToolSettingsStore } = await import("@/store/ai-tool-settings"));
-  ({ autoCommitNow } = await import("@/lib/auto-commit"));
   ({ activeChatRun, endChatRun } = await import("./chat-run-registry"));
 });
 
@@ -383,8 +447,10 @@ afterEach(() => cleanup());
 beforeEach(() => {
   const active = activeChatRun();
   if (active) endChatRun(active);
+  resetProviderConfigCache();
   mocks.runs.length = 0;
   mocks.runSummaryProps.length = 0;
+  mocks.planProps.length = 0;
   mocks.textareaProps = null;
   mocks.goalInputProps = null;
   mocks.modelSelectorProps = null;
@@ -406,8 +472,7 @@ beforeEach(() => {
     ai_system_prompt: "",
     ai_personas: [],
   });
-  mocks.gitAutoCommit.mockReset().mockResolvedValue(undefined);
-  mocks.gitAutoCommitUpdate.mockReset().mockResolvedValue(false);
+  mocks.gitPreparePublish.mockReset().mockResolvedValue(undefined);
   mocks.gitHeadOid.mockReset().mockResolvedValue(null);
   mocks.gitLog.mockReset().mockResolvedValue([]);
   mocks.gitShow.mockReset().mockResolvedValue("");
@@ -502,6 +567,12 @@ beforeEach(() => {
   });
   useAssistantOutputsStore.setState({ fileOpen: null, pdfEpoch: 0 });
   usePlanModeStore.setState({ enabledByProject: {}, loaded: {} });
+  try {
+    localStorage.clear();
+  } catch {
+    void 0;
+  }
+  usePlanApprovalStore.setState({ byChat: {}, loaded: {} });
   useChatGoalStore.setState({ goalsByProject: {}, loaded: {} });
   useAiToolSettingsStore.setState({ enabledByName: {} });
 });
@@ -1448,7 +1519,7 @@ describe("ChatCore agent turns", () => {
     mocks.mcpAgentToolsList.mockResolvedValue([
       {
         name: "Large catalog",
-        tools: Array.from({ length: 126 }, (_, index) => ({
+        tools: Array.from({ length: 124 }, (_, index) => ({
           name: `mcp__large__tool_${index}`,
           tool_handle: `tool_${index}`,
           description: `Tool ${index}`,
@@ -1474,6 +1545,8 @@ describe("ChatCore agent turns", () => {
   it("uses an explicit empty inventory when every available tool is disabled", async () => {
     useAiToolSettingsStore.setState({
       enabledByName: {
+        read_file: false,
+        update_todos: false,
         write_file: false,
         run_command: false,
         literature_search: false,
@@ -1645,29 +1718,342 @@ describe("ChatCore agent turns", () => {
     expect(activeChatRun()).toBeNull();
   });
 
-  it("adds the plan posture only after Plan mode is turned on", async () => {
+  it("tells the planning model to plan tool work instead of refusing it", () => {
+    expect(PLAN_MODE_PLANNING_PROMPT).toContain("do not say you lack access to tools");
+    expect(PLAN_MODE_PLANNING_PROMPT).toContain("the approved plan runs with the full toolset");
+    expect(PLAN_MODE_PLANNING_PROMPT).toContain("turn Plan off for direct tool access");
+    expect(PLAN_MODE_HINT).toBe(
+      "Plan mode: the assistant proposes a plan before editing. Turn Plan off to give the assistant direct access to all tools.",
+    );
+  });
+
+  it("adds the planning prompt and info icon only after Plan mode is turned on", async () => {
     const rendered = await renderChat();
     const toggle = rendered.getByRole("button", { name: "Plan mode" });
     expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(rendered.queryByTestId("ai-plan-mode-info")).toBeNull();
 
     submit(rendered, "Run without planning posture");
     await waitFor(() => expect(mocks.runs).toHaveLength(1));
-    expect(mocks.runs[0].options.system).not.toContain(
-      "Plan mode: Produce and maintain a step plan with update_todos. Work through the plan step by step before finishing.",
-    );
+    expect(mocks.runs[0].options.system).not.toContain("Plan mode:");
+    expect(mocks.runs[0].options.tools).toHaveProperty("write_file");
     await act(async () => finishRun(0, "Done"));
     await waitFor(() => expect(activeChatRun()).toBeNull());
 
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(toggle).toHaveAttribute("data-state", "on");
     expect(toggle).toHaveClass("bg-violet-500/15", "text-violet-600");
     expect(toggle.className).not.toContain("amber-");
+    const info = rendered.getByTestId("ai-plan-mode-info");
+    expect(info).toHaveAccessibleName("About plan mode");
+    expect(info).toHaveAccessibleDescription(PLAN_MODE_HINT);
+    expect(info.querySelector("svg")).toHaveClass("size-3.5");
+    expect(toggle.parentElement?.nextElementSibling).toContainElement(info);
+    fireEvent.mouseEnter(info.parentElement as HTMLElement);
+    expect(await rendered.findByRole("tooltip")).toHaveTextContent(PLAN_MODE_HINT);
     submit(rendered, "Run with planning posture");
     await waitFor(() => expect(mocks.runs).toHaveLength(2));
-    expect(mocks.runs[1].options.system).toContain(
-      "Plan mode: Produce and maintain a step plan with update_todos. Work through the plan step by step before finishing.",
-    );
+    expect(mocks.runs[1].options.system).toContain(PLAN_MODE_PLANNING_PROMPT);
+    expect(mocks.runs[1].options.system).not.toContain(PLAN_MODE_REVISION_LINE);
     await act(async () => finishRun(1, "Planned"));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
+    expect(rendered.queryByRole("button", { name: "Approve plan" })).toBeNull();
+  });
+
+  const PLAN_TODOS = [
+    { id: "intro", content: "Rename the intro section in main.tex", status: "pending" as const },
+    { id: "abstract", content: "Tighten the abstract in main.tex", status: "pending" as const },
+  ];
+
+  async function planFirstTurn(rendered: RenderResult, text: string) {
+    fireEvent.click(rendered.getByRole("button", { name: "Plan mode" }));
+    submit(rendered, text);
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    return mocks.runs[0].options;
+  }
+
+  it("plans with read-only tools, waits for approval, then executes with write tools and the approved plan", async () => {
+    const rendered = await renderChat();
+    const planning = await planFirstTurn(rendered, "Rename the intro and tighten the abstract");
+
+    expect(Object.keys(planning.tools).sort()).toEqual([
+      "literature_search",
+      "read_file",
+      "update_todos",
+    ]);
+    for (const name of ["write_file", "run_command", "mcp__papers__search_papers"]) {
+      expect(planning.tools).not.toHaveProperty(name);
+    }
+    const inventoryLine = planning.system
+      .split("\n")
+      .find((line) => line.startsWith("Available tools for this run"));
+    expect(inventoryLine).toContain("read_file");
+    expect(inventoryLine).not.toContain("write_file");
+    expect(planning.system).toContain(PLAN_MODE_PLANNING_PROMPT);
+    expect(planning.guardToolCall?.({ id: "c1", name: "write_file", args: {} })).toBe(
+      "Plan mode: this tool runs only after the plan is approved. Add the step to the plan with update_todos instead of calling it now.",
+    );
+    expect(planning.guardToolCall?.({ id: "c2", name: "run_command", args: {} })).toBe(
+      "Plan mode: this tool runs only after the plan is approved. Add the step to the plan with update_todos instead of calling it now.",
+    );
+    expect(planning.guardToolCall?.({ id: "c3", name: "read_file", args: {} })).toBeNull();
+    expect(planning.guardToolCall?.({ id: "c4", name: "update_todos", args: {} })).toBeNull();
+
+    act(() => useAgentTodoStore.getState().setTodos(PLAN_TODOS));
+    await act(async () => finishRun(0, "Here is the plan."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    await waitFor(() =>
+      expect(mocks.planProps.at(-1)?.approval).toMatchObject({ status: "awaiting", busy: false }),
+    );
+    expect(rendered.getByPlaceholderText("Describe what to change in the plan")).toBeTruthy();
+    expect(rendered.getByRole("button", { name: "Revise" })).not.toBeDisabled();
+
+    fireEvent.click(rendered.getByRole("button", { name: "Approve plan" }));
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    const execution = mocks.runs[1].options;
+    for (const name of [
+      "read_file",
+      "update_todos",
+      "write_file",
+      "run_command",
+      "literature_search",
+      "mcp__papers__search_papers",
+    ]) {
+      expect(execution.tools).toHaveProperty(name);
+    }
+    expect(execution.system).toContain(
+      "Plan mode: the user approved this plan:\n1. Rename the intro section in main.tex\n2. Tighten the abstract in main.tex",
+    );
+    expect(execution.system).not.toContain(PLAN_MODE_PLANNING_PROMPT);
+    expect(execution.guardToolCall?.({ id: "c5", name: "write_file", args: {} })).toBeNull();
+    expect(JSON.stringify(execution.messages.at(-1))).toContain("Carry out the approved plan.");
+    expect(useAgentTodoStore.getState().todos).toEqual(PLAN_TODOS);
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("approved");
+    await waitFor(() =>
+      expect(mocks.planProps.at(-1)?.approval).toMatchObject({ status: "approved" }),
+    );
+    expect(rendered.queryByRole("button", { name: "Approve plan" })).toBeNull();
+
+    act(() =>
+      useAgentTodoStore
+        .getState()
+        .setTodos(PLAN_TODOS.map((todo) => ({ ...todo, status: "completed" as const }))),
+    );
+    await act(async () => finishRun(1, "All done."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
+    expect(useAgentTodoStore.getState().todos.every((todo) => todo.status === "completed")).toBe(
+      true,
+    );
+    expect(rendered.getByRole("button", { name: "Plan mode" })).toHaveAttribute("data-state", "on");
+    expect(rendered.getByPlaceholderText("Ask AI to help with your document…")).toBeTruthy();
+    expect(rendered.queryByTestId("agent-status-pill")).toBeNull();
+    await waitFor(() =>
+      expect(rendered.getByTestId("agent-run-summary")).toHaveAttribute("data-plan", "true"),
+    );
+    expect(mocks.runSummaryProps.at(-1)).toMatchObject({ plan: true, turn: { chatId: "chat-1" } });
+    expect(rendered.getByTestId("agent-run-summary").closest('[data-message-role="assistant"]'))
+      .not.toBeNull();
+  });
+
+  it("sends typed feedback as a revision turn that keeps tools gated and the plan awaiting", async () => {
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Plan a two-step edit");
+    act(() => useAgentTodoStore.getState().setTodos(PLAN_TODOS));
+    await act(async () => finishRun(0, "Here is the plan."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    await waitFor(() => expect(rendered.getByRole("button", { name: "Revise" })).toBeTruthy());
+
+    fireEvent.click(rendered.getByRole("button", { name: "Revise" }));
+    await waitFor(() => expect(document.activeElement).toBe(rendered.getByPlaceholderText("Describe what to change in the plan")));
+
+    changeComposer("Skip the abstract");
+    pressComposerKey("Enter");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    const revision = mocks.runs[1].options;
+    expect(Object.keys(revision.tools).sort()).toEqual([
+      "literature_search",
+      "read_file",
+      "update_todos",
+    ]);
+    expect(revision.system).toContain(PLAN_MODE_PLANNING_PROMPT);
+    expect(revision.system).toContain(PLAN_MODE_REVISION_LINE);
+    expect(revision.guardToolCall?.({ id: "c1", name: "write_file", args: {} })).toBe(
+      "Plan mode: this tool runs only after the plan is approved. Add the step to the plan with update_todos instead of calling it now.",
+    );
+    expect(useAgentTodoStore.getState().todos).toEqual(PLAN_TODOS);
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    expect(rendered.getByRole("button", { name: "Approve plan" })).toBeDisabled();
+
+    act(() => useAgentTodoStore.getState().setTodos([PLAN_TODOS[0]]));
+    await act(async () => finishRun(1, "Updated the plan."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    expect(useAgentTodoStore.getState().todos).toEqual([PLAN_TODOS[0]]);
+    await waitFor(() => expect(rendered.getByRole("button", { name: "Approve plan" })).not.toBeDisabled());
+  });
+
+  it("leaves a stopped planning turn awaiting approval only when it produced a plan", async () => {
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Plan something");
+    fireEvent.click(rendered.getByRole("button", { name: "Stop" }));
+    await act(async () => finishRun(0, ""));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
+    expect(rendered.queryByRole("button", { name: "Approve plan" })).toBeNull();
+
+    submit(rendered, "Plan again");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    act(() => useAgentTodoStore.getState().setTodos(PLAN_TODOS));
+    fireEvent.click(rendered.getByRole("button", { name: "Stop" }));
+    await act(async () => finishRun(1, ""));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    await waitFor(() => expect(rendered.getByRole("button", { name: "Approve plan" })).toBeTruthy());
+  });
+
+  it("discards the pending approval when Plan mode is turned off and runs a normal turn", async () => {
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Plan a change");
+    act(() => useAgentTodoStore.getState().setTodos(PLAN_TODOS));
+    await act(async () => finishRun(0, "Here is the plan."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    await waitFor(() => expect(rendered.getByRole("button", { name: "Approve plan" })).toBeTruthy());
+
+    const toggle = rendered.getByRole("button", { name: "Plan mode" });
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("data-state", "off");
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
+    expect(rendered.queryByRole("button", { name: "Approve plan" })).toBeNull();
+    expect(rendered.queryByTestId("ai-plan-mode-info")).toBeNull();
+    expect(useAgentTodoStore.getState().todos).toEqual(PLAN_TODOS);
+
+    submit(rendered, "Just do it");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    expect(mocks.runs[1].options.tools).toHaveProperty("write_file");
+    expect(mocks.runs[1].options.system).not.toContain("Plan mode:");
+    expect(mocks.runs[1].options.guardToolCall?.({ id: "c1", name: "write_file", args: {} })).toBeNull();
+    await act(async () => finishRun(1, "Done"));
+  });
+
+  it("returns a chat to planning when a checkpoint restore wipes the awaiting checklist", async () => {
+    const projectId = useFilesStore.getState().projectId;
+    const originalRestoreFromGit = useFilesStore.getState().restoreFromGit;
+    const restoreFromGit = vi.fn().mockResolvedValue(undefined);
+    useFilesStore.setState({ restoreFromGit });
+    usePlanModeStore.getState().setEnabled(projectId, true);
+    usePlanApprovalStore.getState().setStatus("chat-1", "awaiting");
+    localStorage.setItem("oleafly.agent-todos.chat-1", JSON.stringify(PLAN_TODOS));
+    useChatsStore.setState((state) => ({
+      chats: state.chats.map((chat) =>
+        chat.id === "chat-1"
+          ? {
+              ...chat,
+              messages: [
+                { id: "plan-user", role: "user", content: "Rename the intro" },
+                {
+                  id: "plan-assistant",
+                  role: "assistant",
+                  content: "Renamed it.",
+                  checkpointOid: "checkpoint-oid",
+                  toolCalls: [{ id: "t1", name: "write_file", status: "done" }],
+                },
+              ],
+            }
+          : chat,
+      ),
+    }));
+
+    try {
+      const rendered = await renderChat();
+      await waitFor(() =>
+        expect(rendered.getByPlaceholderText("Describe what to change in the plan")).toBeTruthy(),
+      );
+
+      fireEvent.click(rendered.getByTestId("ai-restore-checkpoint"));
+      await waitFor(() =>
+        expect(restoreFromGit).toHaveBeenCalledWith(projectId, "checkpoint-oid"),
+      );
+      await waitFor(() =>
+        expect(rendered.getByPlaceholderText("Ask AI to help with your document…")).toBeTruthy(),
+      );
+      expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
+      expect(useAgentTodoStore.getState().todos).toEqual([]);
+      expect(rendered.queryByRole("button", { name: "Approve plan" })).toBeNull();
+
+      submit(rendered, "Plan the next change");
+      await waitFor(() => expect(mocks.runs).toHaveLength(1));
+      expect(mocks.runs[0].options.system).toContain(PLAN_MODE_PLANNING_PROMPT);
+      expect(mocks.runs[0].options.system).not.toContain(PLAN_MODE_REVISION_LINE);
+      await act(async () => finishRun(0, "Fresh plan."));
+    } finally {
+      useFilesStore.setState({ restoreFromGit: originalRestoreFromGit });
+    }
+  });
+
+  it("keeps the plan awaiting approval when the approved run cannot start", async () => {
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Plan a change");
+    act(() => useAgentTodoStore.getState().setTodos(PLAN_TODOS));
+    await act(async () => finishRun(0, "Here is the plan."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+
+    const originalThreadFor = useAgentTurnsStore.getState().threadFor;
+    const threadFor = vi.fn(() => Promise.reject(new Error("thread unavailable")));
+    useAgentTurnsStore.setState({ threadFor });
+    try {
+      fireEvent.click(rendered.getByRole("button", { name: "Approve plan" }));
+      await waitFor(() => expect(threadFor).toHaveBeenCalled());
+      await waitFor(() => expect(activeChatRun()).toBeNull());
+
+      expect(mocks.runs).toHaveLength(1);
+      expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+      expect(localStorage.getItem("oleafly.plan-approval.chat-1")).toBe("awaiting");
+      expect(useAgentTodoStore.getState().todos).toEqual(PLAN_TODOS);
+      await waitFor(() =>
+        expect(rendered.getByRole("button", { name: "Approve plan" })).not.toBeDisabled(),
+      );
+    } finally {
+      useAgentTurnsStore.setState({ threadFor: originalThreadFor });
+    }
+  });
+
+  it("restores an awaiting plan with its checklist after a reload", async () => {
+    const projectId = useFilesStore.getState().projectId;
+    usePlanModeStore.getState().setEnabled(projectId, true);
+    localStorage.setItem("oleafly.plan-approval.chat-1", "awaiting");
+    localStorage.setItem("oleafly.agent-todos.chat-1", JSON.stringify(PLAN_TODOS));
+
+    const rendered = await renderChat();
+
+    await waitFor(() =>
+      expect(rendered.getByRole("button", { name: "Approve plan" })).toBeTruthy(),
+    );
+    expect(rendered.getByRole("button", { name: "Revise" })).not.toBeDisabled();
+    expect(rendered.getByPlaceholderText("Describe what to change in the plan")).toBeTruthy();
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    expect(useAgentTodoStore.getState().todos).toEqual(PLAN_TODOS);
+  });
+
+  it("downgrades a persisted approved plan to planning when no run is live", async () => {
+    const projectId = useFilesStore.getState().projectId;
+    usePlanModeStore.getState().setEnabled(projectId, true);
+    localStorage.setItem("oleafly.plan-approval.chat-1", "approved");
+    localStorage.setItem("oleafly.agent-todos.chat-1", JSON.stringify(PLAN_TODOS));
+
+    const rendered = await renderChat();
+
+    await waitFor(() =>
+      expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning"),
+    );
+    expect(localStorage.getItem("oleafly.plan-approval.chat-1")).toBeNull();
+    expect(rendered.queryByRole("button", { name: "Approve plan" })).toBeNull();
+    expect(rendered.getByPlaceholderText("Ask AI to help with your document…")).toBeTruthy();
   });
 
   it("adds the active project goal to the assembled system prompt", async () => {
@@ -2080,9 +2466,17 @@ describe("ChatCore agent turns", () => {
       reason: "write",
     });
     await waitFor(() =>
-      expect(mocks.runSummaryProps.at(-1)?.turn).toMatchObject({ chatId: "chat-1" }),
+      expect(mocks.planProps.at(-1)?.turn).toMatchObject({ chatId: "chat-1" }),
     );
+    expect(mocks.planProps.at(-1)?.approval).toBeUndefined();
+    expect(rendered.queryByTestId("agent-run-summary")).toBeNull();
     await act(async () => finishRun(0, "Edited"));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    await waitFor(() =>
+      expect(rendered.getByTestId("agent-run-summary")).toHaveAttribute("data-plan", "false"),
+    );
+    expect(mocks.runSummaryProps.at(-1)).toMatchObject({ plan: false, turn: { chatId: "chat-1" } });
+    expect(rendered.queryByTestId("agent-status-pill")).toBeNull();
   });
 
   it("preserves create-file and compile output mirroring", async () => {
@@ -2195,59 +2589,17 @@ describe("ChatCore agent turns", () => {
     await act(async () => finishRun(0, "Created"));
   });
 
-  it("marks tracked files committed when an in-turn auto commit succeeds", async () => {
-    mocks.gitLog.mockResolvedValue([
-      { oid: "head-0", short: "head-0", time: 1, message: "Before" },
-    ]);
-    mocks.gitAutoCommitUpdate.mockResolvedValue(true);
-    mocks.gitHeadOid.mockResolvedValue("head-1");
-    mocks.gitShow.mockResolvedValue("alpha\ngamma\n");
+  it("does not create an automatic Git checkpoint when an assistant run starts", async () => {
     const rendered = await renderChat();
-    act(() => {
-      useFilesStore.setState((state) => ({
-        files: {
-          ...state.files,
-          "main.tex": { content: "alpha\nbeta\n", dirty: false },
-        },
-      }));
-    });
-    submit(rendered, "Edit and compile");
+    submit(rendered, "Explain this document");
     await waitFor(() => expect(mocks.runs).toHaveLength(1));
 
-    await act(async () => {
-      await mocks.runs[0].options.handlers.onToolCall({
-        id: "write-1",
-        name: "write_file",
-        args: { path: "main.tex", content: "alpha\ngamma\n" },
-      });
-      useFilesStore.setState((state) => ({
-        files: {
-          ...state.files,
-          "main.tex": { content: "alpha\ngamma\n", dirty: false },
-        },
-      }));
-      mocks.runs[0].options.handlers.onToolResult({
-        id: "write-1",
-        output: { success: true, path: "main.tex" },
-      });
-      await autoCommitNow(useFilesStore.getState().projectId ?? "");
-    });
-
-    await waitFor(() => {
-      const turn = agentFileChangeTurnForChat(useAgentFileChangesStore.getState(), "chat-1");
-      expect(turn?.committedFiles).toEqual([
-        expect.objectContaining({ path: "main.tex", commitId: "head-1" }),
-      ]);
-      expect(turn?.changedFiles).toEqual({});
-    });
-    await act(async () => finishRun(0, "Committed"));
+    expect(mocks.gitPreparePublish).not.toHaveBeenCalled();
+    await act(async () => finishRun(0, "Done"));
   });
 
-  it("reconciles a commit made through run_command", async () => {
-    mocks.gitLog.mockResolvedValue([
-      { oid: "head-0", short: "head-0", time: 1, message: "Before" },
-    ]);
-    mocks.gitHeadOid.mockResolvedValue("head-2");
+  it("reconciles a commit made explicitly during the agent turn", async () => {
+    mocks.gitHeadOid.mockResolvedValueOnce("head-0").mockResolvedValue("head-2");
     mocks.gitShow.mockResolvedValue("new\n");
     const rendered = await renderChat();
     act(() => {
@@ -2298,94 +2650,6 @@ describe("ChatCore agent turns", () => {
       "notes.md",
     );
     await act(async () => finishRun(0, "Committed"));
-  });
-
-  it("keeps an empty untracked file changed after an unrelated commit", async () => {
-    mocks.gitLog.mockResolvedValue([
-      { oid: "head-0", short: "head-0", time: 1, message: "Before" },
-    ]);
-    mocks.gitHeadOid.mockResolvedValue("head-other");
-    mocks.gitStatus.mockResolvedValue([{ path: "empty.md", status: "?", staged: false }]);
-    mocks.gitShow.mockResolvedValue("");
-    const rendered = await renderChat();
-    submit(rendered, "Create an empty file, then commit something else");
-    await waitFor(() => expect(mocks.runs).toHaveLength(1));
-
-    await act(async () => {
-      await mocks.runs[0].options.handlers.onToolCall({
-        id: "create-1",
-        name: "create_file",
-        args: { path: "empty.md", is_dir: false },
-      });
-      useFilesStore.setState((state) => ({
-        files: { ...state.files, "empty.md": { content: "", dirty: false } },
-      }));
-      mocks.runs[0].options.handlers.onToolResult({
-        id: "create-1",
-        output: { success: true, path: "empty.md", is_dir: false },
-      });
-      await mocks.runs[0].options.handlers.onToolCall({
-        id: "commit-other",
-        name: "run_command",
-        args: { command: "git commit -m unrelated" },
-      });
-      mocks.runs[0].options.handlers.onToolResult({
-        id: "commit-other",
-        output: {
-          exec: true,
-          command: "git commit -m unrelated",
-          output: "",
-          exit_code: 0,
-          status: "Success",
-        },
-      });
-    });
-
-    await waitFor(() => {
-      const turn = agentFileChangeTurnForChat(useAgentFileChangesStore.getState(), "chat-1");
-      expect(turn?.changedFiles["empty.md"]).toMatchObject({ created: true });
-      expect(turn?.committedFiles).toEqual([]);
-    });
-    await act(async () => finishRun(0, "Still changed"));
-  });
-
-  it("reconciles an unannounced HEAD advance before finalizing the turn", async () => {
-    mocks.gitLog.mockResolvedValue([
-      { oid: "head-0", short: "head-0", time: 1, message: "Before" },
-    ]);
-    mocks.gitHeadOid.mockResolvedValue("head-final");
-    mocks.gitShow.mockResolvedValue("new\n");
-    const rendered = await renderChat();
-    act(() => {
-      useFilesStore.setState((state) => ({
-        files: { ...state.files, "notes.md": { content: "old\n", dirty: false } },
-      }));
-    });
-    submit(rendered, "Edit and finish after an external commit");
-    await waitFor(() => expect(mocks.runs).toHaveLength(1));
-
-    await act(async () => {
-      await mocks.runs[0].options.handlers.onToolCall({
-        id: "write-1",
-        name: "write_file",
-        args: { path: "notes.md", content: "new\n" },
-      });
-      useFilesStore.setState((state) => ({
-        files: { ...state.files, "notes.md": { content: "new\n", dirty: false } },
-      }));
-      mocks.runs[0].options.handlers.onToolResult({
-        id: "write-1",
-        output: { success: true, path: "notes.md" },
-      });
-      finishRun(0, "Done");
-    });
-    await waitFor(() => expect(activeChatRun()).toBeNull());
-
-    const turn = agentFileChangeTurnForChat(useAgentFileChangesStore.getState(), "chat-1");
-    expect(turn?.committedFiles).toEqual([
-      expect.objectContaining({ path: "notes.md", commitId: "head-final" }),
-    ]);
-    expect(turn?.changedFiles).toEqual({});
   });
 
   it("persists a mode selected from the composer footer", async () => {
@@ -2479,6 +2743,118 @@ describe("ChatCore agent turns", () => {
       settingsOpen: true,
       settingsInitialSection: "ai",
       settingsScrollTarget: "ai-approvals",
+    });
+  });
+});
+
+describe("ChatCore provider readiness", () => {
+  const keyedConfig = {
+    ai_provider: "openai",
+    ai_model: "gpt-4o",
+    ai_api_key: "test-key",
+    ai_keys: { openai: "test-key" },
+    ai_provider_models: {},
+    ai_custom_providers: [],
+    ai_system_prompt: "",
+    ai_personas: [],
+  } as unknown as AppConfig;
+  const connectPrompt = "Connect an AI provider to continue";
+  const composerPlaceholder = "Ask AI to help with your document…";
+
+  function mount(node: ReturnType<typeof createElement>) {
+    chatQueryClient = createAppQueryClient();
+    return render(
+      createElement(QueryClientProvider, { client: chatQueryClient }, node),
+    );
+  }
+
+  function assistantRoot(scope: ParentNode) {
+    return scope.querySelector('[data-tour="ai-assistant"]');
+  }
+
+  it("shows a neutral loading state, never the connect prompt, before the first config read resolves", async () => {
+    const pending = deferred<AppConfig>();
+    mocks.getConfig.mockReturnValue(pending.promise);
+
+    const rendered = mount(createElement(ChatCore));
+
+    expect(rendered.queryByText(connectPrompt)).toBeNull();
+    expect(rendered.getByTestId("ai-provider-loading")).toBeTruthy();
+    expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-ready", "false");
+
+    await act(async () => {
+      pending.resolve(keyedConfig);
+    });
+    await waitFor(() =>
+      expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-configured", "true"),
+    );
+    expect(rendered.queryByTestId("ai-provider-loading")).toBeNull();
+    expect(rendered.getByPlaceholderText(composerPlaceholder)).toBeTruthy();
+  });
+
+  it("shows the connect prompt once a keyless config has loaded", async () => {
+    mocks.getConfig.mockResolvedValue({ ...keyedConfig, ai_api_key: "", ai_keys: {} });
+
+    const rendered = mount(createElement(ChatCore));
+
+    expect(rendered.queryByText(connectPrompt)).toBeNull();
+    expect(await rendered.findByText(connectPrompt)).toBeTruthy();
+    expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-configured", "false");
+    expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-ready", "true");
+    expect(rendered.queryByTestId("ai-provider-loading")).toBeNull();
+  });
+
+  it("remounts straight into the thread once the config is known", async () => {
+    const first = await renderChat();
+    first.unmount();
+    const pending = deferred<AppConfig>();
+    mocks.getConfig.mockReturnValue(pending.promise);
+
+    const second = mount(createElement(ChatCore));
+
+    expect(assistantRoot(second.container)).toHaveAttribute("data-tour-configured", "true");
+    expect(assistantRoot(second.container)).toHaveAttribute("data-tour-ready", "true");
+    expect(second.queryByText(connectPrompt)).toBeNull();
+    expect(second.getByPlaceholderText(composerPlaceholder)).toBeTruthy();
+
+    await act(async () => {
+      pending.resolve(keyedConfig);
+    });
+  });
+
+  it("keeps the thread on screen while the assistant floats and docks", async () => {
+    const rendered = mount(
+      createElement(Fragment, null, createElement(ChatPanel), createElement(CopilotOverlay)),
+    );
+    await waitFor(() =>
+      expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-configured", "true"),
+    );
+    const pending = deferred<AppConfig>();
+    mocks.getConfig.mockReturnValue(pending.promise);
+
+    act(() => useSettingsStore.getState().setChatFloating(true));
+
+    const overlay = document.body.querySelector('[data-testid="copilot-overlay"]');
+    expect(overlay).not.toBeNull();
+    expect(assistantRoot(overlay as ParentNode)).toHaveAttribute("data-tour-configured", "true");
+    expect(assistantRoot(overlay as ParentNode)).toHaveAttribute("data-tour-ready", "true");
+    expect(document.body.textContent).not.toContain(connectPrompt);
+    expect(
+      overlay?.querySelector(`textarea[placeholder="${composerPlaceholder}"]`),
+    ).not.toBeNull();
+
+    act(() => useSettingsStore.getState().setChatFloating(false));
+
+    expect(document.body.querySelector('[data-testid="copilot-overlay"]')).toBeNull();
+    expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-configured", "true");
+    expect(assistantRoot(rendered.container)).toHaveAttribute("data-tour-ready", "true");
+    expect(document.body.textContent).not.toContain(connectPrompt);
+    expect(
+      rendered.container.querySelector(`textarea[placeholder="${composerPlaceholder}"]`),
+    ).not.toBeNull();
+
+    await act(async () => {
+      pending.resolve(keyedConfig);
     });
   });
 });

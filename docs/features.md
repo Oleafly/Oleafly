@@ -8,7 +8,8 @@ surface is designed to provide without duplicating task walkthroughs.
 | Editor and language services | [Editor](Editor.md) |
 | PDF and compiled-artifact preview | [PDF preview](PDFPreview.md) |
 | Project lifecycle and library | [General](General.md), [Project library](ProjectLibrary.md) |
-| Git history and remote collaboration | [Source control](SourceControl.md) |
+| Optional Git history and remote collaboration | [Source control](SourceControl.md) |
+| Checkpoints recovery infrastructure, with automatic publication currently gated | [Checkpoints](Checkpoints.md) |
 | AI assistance and external clients | [AI Copilot](AICopilot.md), [Integrations](Integrations.md), [MCP](mcp.md) |
 | Citations and literature metadata | [Citations](Citations.md) |
 | Templates and diagrams | [Templates](Templates.md), [Diagram composer](DiagramComposer.md) |
@@ -19,7 +20,7 @@ surface is designed to provide without duplicating task walkthroughs.
 ## Product boundary
 
 The local workflow includes project files, indexing, compilation with available
-engines, preview, Git history, and deterministic preflight. Network-backed
+engines, preview, optional Git history, and deterministic preflight. Network-backed
 providers, literature lookup, GitHub operations, optional downloads, and update
 feeds are explicit integrations. See [Integrations](Integrations.md) for the
 boundary and data-handling rules.

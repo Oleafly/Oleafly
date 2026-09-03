@@ -1,5 +1,6 @@
 import { Fragment, useEffect } from "react";
 import {
+  Globe,
   Moon,
   PanelLeft,
   PanelLeftClose,
@@ -8,7 +9,6 @@ import {
   Sun,
   SquareTerminal,
 } from "lucide-react";
-import { Browserless } from "@lobehub/icons";
 import { railSections, type AppContext, type RailTabContribution } from "@oleafly/registry";
 import { useSettingsStore, type RailTab } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
@@ -136,7 +136,7 @@ export function WorkspaceDockControls() {
   const assistantLabel = `${assistantOpen ? "Hide" : "Show"} AI assistant`;
 
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex shrink-0 items-center gap-0.5">
       <Tooltip label={terminalLabel} side="bottom">
         <button
           type="button"
@@ -161,7 +161,7 @@ export function WorkspaceDockControls() {
               onClick={() => toggleBrowser()}
               className={ctrlBtn(browserOpen)}
             >
-              <Browserless size={16} className="size-4" aria-hidden />
+              <Globe className="size-4" aria-hidden />
             </button>
           </Tooltip>
         </>

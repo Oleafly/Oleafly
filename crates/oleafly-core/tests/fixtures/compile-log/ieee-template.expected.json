@@ -1,0 +1,341 @@
+{
+ "rootFile": "main.tex",
+ "diagnostics": [
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./IEEEtran.cls",
+   "line": 50,
+   "message": "LaTeX Font: Trying to load font information for TU+ptm\n3.\nLaTeX Font Info:    No file TUptm.fd. on input line 503."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./IEEEtran.cls",
+   "line": 503,
+   "message": "LaTeX Font: Font shape `TU/ptm/m/n' undefined\n(Font)\tusing `TU/lmr/m/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./IEEEtran.cls",
+   "line": 1090,
+   "message": "LaTeX Font: Font shape `TU/ptm/bx/n' undefined\n(Font)\tusing `TU/ptm/m/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./IEEEtran.cls",
+   "line": 1090,
+   "message": "LaTeX Font: Font shape `TU/ptm/m/it' undefined\n(Font)\tusing `TU/ptm/m/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./IEEEtran.cls",
+   "line": 1090,
+   "message": "LaTeX Font: Font shape `TU/ptm/bx/it' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./cite.sty",
+   "line": 302,
+   "message": "LaTeX: Redefining \\cite.\nLaTeX Info: Redefining \\nocite on input line 332.\nPackage: cite 2015/02/27  v 5.5\n) (amsmath.sty\nPackage: amsmath 2021/10/15 v2.17l AMS math features\n\\@mathmargin=\\skip50"
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./cite.sty",
+   "line": 234,
+   "message": "LaTeX: Redefining \\frac.\n\\uproot@=\\count197\n\\leftroot@=\\count198\nLaTeX Info: Redefining \\overline on input line 399.\n\\classnum@=\\count199\n\\DOTSCASE@=\\count266\nLaTeX Info: Redefining \\ldots on input line 496.\nLaTeX Info: Redefining \\dots on input line 499.\nLaTeX Info: Redefining \\cdots on input line 620.\n\\Mathstrutbox@=\\box52\n\\strutbox@=\\box53\n\\big@size=\\dimen164\nLaTeX Font Info:    Redeclaring font encoding OML on input line 743.\nLaTeX Font Info:    Redeclaring font encoding OMS on input line 744.\n\\macc@depth=\\count267\n\\c@MaxMatrixCols=\\count268\n\\dotsspace@=\\muskip16\n\\c@parentequation=\\count269\n\\dspbrk@lvl=\\count270\n\\tag@help=\\toks18\n\\row@=\\count271\n\\column@=\\count272\n\\maxfields@=\\count273\n\\andhelp@=\\toks19\n\\eqnshift@=\\dimen165\n\\alignsep@=\\dimen166\n\\tagshift@=\\dimen167\n\\tagwidth@=\\dimen168\n\\totwidth@=\\dimen169\n\\lineht@=\\dimen170\n\\@envbody=\\toks20\n\\multlinegap=\\skip51\n\\multlinetaggap=\\skip52\n\\mathdisplay@stack=\\toks21\nLaTeX Info: Redefining \\[ on input line 2938.\nLaTeX Info: Redefining \\] on input line 2939.\n) (amssymb.sty\nPackage: amssymb 2013/01/14 v3.01 AMS font symbols"
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./amsfonts.sty",
+   "line": 106,
+   "message": "LaTeX Font: Redeclaring math symbol \\hbar.\nLaTeX Font Info:    Overwriting math alphabet `\\mathfrak' in version `bold'\n(Font)\tU/euf/m/n --> U/euf/b/n.\n)) (graphicx.sty\nPackage: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)\n (keyval.sty\nPackage: keyval 2014/10/28 v1.15 key=value parser (DPC)\n\\KV@toks@=\\toks22\n) (graphics.sty\nPackage: graphics 2021/03/04 v1.4d Standard LaTeX Graphics (DPC,SPQR)\n (trig.sty\nPackage: trig 2021/08/11 v1.11 sin cos tan (DPC)\n)\n(graphics.cfg\nFile: graphics.cfg 2016/06/04 v1.11 sample graphics configuration\n)\nPackage graphics Info: Driver file: xetex.def on input line 107.\n (xetex.def\nFile: xetex.def 2021/03/18 v5.0k Graphics/color driver for xetex\n))\n\\Gin@req@height=\\dimen171\n\\Gin@req@width=\\dimen172\n) (booktabs.sty\nPackage: booktabs 2020/01/12 v1.61803398 Publication quality tables\n\\heavyrulewidth=\\dimen173\n\\lightrulewidth=\\dimen174\n\\cmidrulewidth=\\dimen175\n\\belowrulesep=\\dimen176\n\\belowbottomsep=\\dimen177\n\\aboverulesep=\\dimen178\n\\abovetopsep=\\dimen179\n\\cmidrulesep=\\dimen180\n\\cmidrulekern=\\dimen181\n\\defaultaddspace=\\dimen182\n\\@cmidla=\\count274\n\\@cmidlb=\\count275\n\\@aboverulesep=\\dimen183\n\\@belowrulesep=\\dimen184\n\\@thisruleclass=\\count276\n\\@lastruleclass=\\count277\n\\@thisrulewidth=\\dimen185\n) (multirow.sty\nPackage: multirow 2021/03/15 v2.8 Span multiple rows of a table\n\\multirow@colwidth=\\skip53\n\\multirow@cntb=\\count278\n\\multirow@dima=\\skip54\n\\bigstrutjot=\\dimen186\n) (textcomp.sty\nPackage: textcomp 2020/02/02 v2.0n Standard LaTeX package\n)\n(xcolor.sty\nPackage: xcolor 2021/10/31 v2.13 LaTeX color extensions (UK)\n (color.cfg\nFile: color.cfg 2016/01/02 v1.6 sample color configuration\n)\nPackage xcolor Info: Driver file: xetex.def on input line 227.\nPackage xcolor Info: Model `cmy' substituted by `cmy0' on input line 1352.\nPackage xcolor Info: Model `RGB' extended on input line 1368.\nPackage xcolor Info: Model `HTML' substituted by `rgb' on input line 1370.\nPackage xcolor Info: Model `Hsb' substituted by `hsb' on input line 1371.\nPackage xcolor Info: Model `tHsb' substituted by `hsb' on input line 1372.\nPackage xcolor Info: Model `HSB' substituted by `hsb' on input line 1373.\nPackage xcolor Info: Model `Gray' substituted by `gray' on input line 1374.\nPackage xcolor Info: Model `wave' substituted by `hsb' on input line 1375.\n) (tikz.sty (pgf.sty (pgfrcs.sty (pgfutil-common.tex\n\\pgfutil@everybye=\\toks23\n\\pgfutil@tempdima=\\dimen187\n\\pgfutil@tempdimb=\\dimen188"
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./pdftexcmds.sty",
+   "line": null,
+   "message": "Package pdftexcmds: \\pdf@primitive is available.\nPackage pdftexcmds Info: \\pdf@ifprimitive is available.\nPackage pdftexcmds Info: \\pdfdraftmode not found.\n) (kvsetkeys.sty\nPackage: kvsetkeys 2019/12/15 v1.18 Key value parser (HO)\n) (kvdefinekeys.sty\nPackage: kvdefinekeys 2019-12-19 v1.6 Define keys (HO)\n)\n(pdfescape.sty\nPackage: pdfescape 2019/12/09 v1.15 Implements pdfTeX's escape features (HO)\n) (hycolor.sty\nPackage: hycolor 2020-01-27 v1.10 Color options for hyperref/bookmark (HO)\n) (letltxmacro.sty\nPackage: letltxmacro 2019/12/03 v1.6 Let assignment for LaTeX macros (HO)\n) (auxhook.sty\nPackage: auxhook 2019-12-17 v1.6 Hooks for auxiliary files (HO)\n) (kvoptions.sty\nPackage: kvoptions 2020-10-07 v3.14 Key value format for package options (HO)\n)\n\\@linkdim=\\dimen297\n\\Hy@linkcounter=\\count301\n\\Hy@pagecounter=\\count302"
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./pdftexcmds.sty",
+   "line": 4137,
+   "message": "Package hyperref: Hyper figures OFF.\nPackage hyperref Info: Link nesting OFF on input line 4142.\nPackage hyperref Info: Hyper index ON on input line 4145.\nPackage hyperref Info: Plain pages OFF on input line 4152.\nPackage hyperref Info: Backreferencing OFF on input line 4157.\nPackage hyperref Info: Implicit mode ON; LaTeX internals redefined.\nPackage hyperref Info: Bookmarks ON on input line 4390.\n\\c@Hy@tempcnt=\\count304\n (url.sty\n\\Urlmuskip=\\muskip17\nPackage: url 2013/09/16  ver 3.4  Verb mode for urls, etc.\n)\nLaTeX Info: Redefining \\url on input line 4749.\n\\XeTeXLinkMargin=\\dimen298\n (bitset.sty\nPackage: bitset 2019/12/09 v1.3 Handle bit-vector datatype (HO)"
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./hyperref.sty",
+   "line": 6027,
+   "message": "Package hyperref: Hyper figures OFF.\nPackage hyperref Info: Link nesting OFF on input line 6032.\nPackage hyperref Info: Hyper index ON on input line 6035.\nPackage hyperref Info: backreferencing OFF on input line 6042.\nPackage hyperref Info: Link coloring OFF on input line 6047.\nPackage hyperref Info: Link coloring with OCG OFF on input line 6052.\nPackage hyperref Info: PDF/A mode OFF on input line 6057.\nLaTeX Info: Redefining \\ref on input line 6097.\nLaTeX Info: Redefining \\pageref on input line 6101.\n (atbegshi-ltx.sty\nPackage: atbegshi-ltx 2021/01/10 v1.0c Emulation of the original atbegshi\npackage with kernel methods\n)\n\\Hy@abspage=\\count306\n\\c@Item=\\count307\n\\c@Hfootnote=\\count308\n)\nPackage hyperref Info: Driver (autodetected): hxetex.\n (hxetex.def\nFile: hxetex.def 2022-02-21 v7.00n Hyperref driver for XeTeX\n (stringenc.sty\nPackage: stringenc 2019/11/29 v1.12 Convert strings between diff. encodings (HO\n)\n)\n\\pdfm@box=\\box67\n\\c@Hy@AnnotLevel=\\count309\n\\HyField@AnnotCount=\\count310\n\\Fld@listcount=\\count311\n\\c@bookmark@seq@number=\\count312"
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./rerunfilecheck.sty",
+   "line": 2,
+   "message": "Package uniquecounter: New unique counter `rerunfilecheck'\n86.\n)\n\\Hy@SectionHShift=\\skip55\n)\n(l3backend-xetex.def\nFile: l3backend-xetex.def 2022-02-07 L3 backend support: XeTeX\n\\c__kernel_sys_dvipdfmx_version_int=\\count313\n\\l__color_backend_stack_int=\\count314\n\\g__color_backend_stack_int=\\count315\n\\g__graphics_track_int=\\count316\n\\l__pdf_internal_box=\\box68\n\\g__pdf_backend_object_int=\\count317\n\\g__pdf_backend_annotation_int=\\count318\n\\g__pdf_backend_link_int=\\count319\n) (main.aux)\n\\openout1 = `main.aux'."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Checking defaults for OML/cmm/m/it.\nLaTeX Font Info:    ... okay on input line 14.\nLaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 14.\nLaTeX Font Info:    ... okay on input line 14.\nLaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 14.\nLaTeX Font Info:    ... okay on input line 14.\nLaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 14.\nLaTeX Font Info:    ... okay on input line 14.\nLaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 14.\nLaTeX Font Info:    Trying to load font information for TS1+cmr on input line 1\n4.\n (ts1cmr.fd\nFile: ts1cmr.fd 2019/12/16 v2.5j Standard LaTeX font definitions\n)\nLaTeX Font Info:    ... okay on input line 14.\nLaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 14.\nLaTeX Font Info:    ... okay on input line 14.\nLaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 14.\nLaTeX Font Info:    ... okay on input line 14.\nLaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 14.\nLaTeX Font Info:    ... okay on input line 14.\nLaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 14.\nLaTeX Font Info:    ... okay on input line 14.\nLaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 14.\nLaTeX Font Info:    ... okay on input line 14."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/it' undefined\n(Font)\tusing `TU/ptm/bx/it' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/it' undefined\n(Font)\tusing `TU/ptm/bx/it' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/it' undefined\n(Font)\tusing `TU/ptm/bx/it' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/it' undefined\n(Font)\tusing `TU/ptm/bx/it' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/it' undefined\n(Font)\tusing `TU/ptm/bx/it' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/it' undefined\n(Font)\tusing `TU/ptm/bx/it' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/it' undefined\n(Font)\tusing `TU/ptm/bx/it' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/it' undefined\n(Font)\tusing `TU/ptm/bx/it' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/it' undefined\n(Font)\tusing `TU/ptm/bx/it' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/it' undefined\n(Font)\tusing `TU/ptm/bx/it' instead."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./rerunfilecheck.sty",
+   "line": 14,
+   "message": "Package hyperref: Link coloring OFF.\n(nameref.sty\nPackage: nameref 2021-04-02 v2.47 Cross-referencing by name of section\n (refcount.sty\nPackage: refcount 2019/12/15 v3.6 Data extraction from label references (HO)\n) (gettitlestring.sty\nPackage: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)\n)\n\\c@section@level=\\count320\n)\nLaTeX Info: Redefining \\ref on input line 14.\nLaTeX Info: Redefining \\pageref on input line 14.\nLaTeX Info: Redefining \\nameref on input line 14.\n (main.out) (main.out)\n\\@outlinefile=\\write4\n\\openout4 = `main.out'."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 30,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 46,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 50,
+   "message": "LaTeX Font: Font shape `TU/ptm/m/sc' undefined\n(Font)\tusing `TU/ptm/m/n' instead."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./rerunfilecheck.sty",
+   "line": 57,
+   "message": "LaTeX Font: Trying to load font information for U+msa."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./rerunfilecheck.sty",
+   "line": 57,
+   "message": "LaTeX Font: Trying to load font information for U+msb."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 147,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 155,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 171,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 187,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 296,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 296,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": 296,
+   "message": "LaTeX Font: Font shape `TU/ptm/b/n' undefined\n(Font)\tusing `TU/ptm/bx/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./rerunfilecheck.sty",
+   "line": null,
+   "message": "LaTeX Font: Some font shapes were not available, defaults substituted."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./rerunfilecheck.sty",
+   "line": null,
+   "message": "Package rerunfilecheck: File `main.out' has not changed.\n(rerunfilecheck)\tChecksum: 2625679951416086E0403502B2759589;1807.\n )\nOutput written on main.xdv (4 pages, 164100 bytes)."
+  }
+ ]
+}

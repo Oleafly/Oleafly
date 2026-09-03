@@ -3,8 +3,34 @@ import { openProject, openRailTab, pressGlobal, type Page } from "../helpers";
 
 const TERMINAL = '[data-testid="dock-terminal"]';
 const TERMINAL_HOST = '[data-testid="dock-terminal-host"]';
+const TERMINAL_TAB = '[data-testid="dock-terminal-tab"]';
+const NEW_TERMINAL = '[data-testid="dock-terminal-tabs"] [aria-label="New terminal"]';
 const TERMINAL_TOGGLE = '[data-testid="rail-terminal-toggle"]';
 const BROWSER_TOGGLE = '[data-testid="rail-browser-toggle"]';
+const TERMINAL_LIMIT = 10;
+
+function terminalTab(index: number): string {
+  return `${TERMINAL_TAB}[data-session-index="${index}"]`;
+}
+
+async function openedSessionCount(page: Page): Promise<number> {
+  return page.evaluate<number>(
+    `(window.__e2eTerminalEvents ?? []).filter((entry) => entry.startsWith("open:ok:")).length`,
+  );
+}
+
+async function openTerminalDock(page: Page): Promise<void> {
+  await page.evaluate(`(() => {
+    window.__e2eTerminalEvents = [];
+    return true;
+  })()`);
+  await openProject(page, "E2E Doc");
+  await expect(page.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await page.click(TERMINAL_TOGGLE);
+  await expect(page.locator(TERMINAL)).toBeVisible();
+  await expect(page.locator(TERMINAL_TAB)).toHaveCount(1);
+  await expect(page.locator(terminalTab(1))).toHaveAttribute("data-active", "true");
+}
 
 async function terminalOutput(page: Page): Promise<string> {
   return page.evaluate<string>(
@@ -98,36 +124,24 @@ test("the real terminal opens, echoes, and exits cleanly", async ({
   // The prompt nudge alone may take 150s on a cold Windows runner, and the
   // echo and exit phases follow it.
   test.setTimeout(300_000);
+  await tauriPage.evaluate(`(() => {
+    window.__e2eTerminalEvents = [];
+    return true;
+  })()`);
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  await tauriPage.evaluate(`(() => {
-    window.__e2eTerminalLoadingSeen = false;
-    const update = () => {
-      const loading = document.querySelector('[data-testid="dock-terminal-loading"]');
-      if (loading instanceof HTMLElement && loading.getClientRects().length > 0) {
-        window.__e2eTerminalLoadingSeen = true;
-      }
-    };
-    const observer = new MutationObserver(update);
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
-    window.__e2eTerminalLoadingObserver = observer;
-    update();
-    return true;
-  })()`);
+  const sessionOpenState = () =>
+    tauriPage.evaluate<string>(`(window.__e2eTerminalEvents ?? [])
+      .filter((entry) => entry.startsWith("open:"))
+      .join(",") || "none"`);
+  await expect(tauriPage.locator(TERMINAL)).not.toBeVisible();
+  await expect.poll(sessionOpenState, { timeout: 60_000 }).toMatch(/^open:ok:/u);
+  await expect(tauriPage.locator(`${TERMINAL_HOST} .xterm-helper-textarea`)).toHaveCount(0);
   await tauriPage.click(TERMINAL_TOGGLE);
   await expect(tauriPage.locator(TERMINAL)).toBeVisible();
-  await expect
-    .poll(
-      () => tauriPage.evaluate<boolean>(`window.__e2eTerminalLoadingSeen === true`),
-      { timeout: 10_000 },
-    )
-    .toBe(true);
-  await tauriPage.evaluate(`window.__e2eTerminalLoadingObserver?.disconnect()`);
-  await expect(tauriPage.getByTestId("dock-terminal-loading")).toHaveCount(0, {
-    timeout: 30_000,
-  });
   await expect(tauriPage.locator(`${TERMINAL_HOST} .xterm-helper-textarea`)).toHaveCount(1);
+  await expect(tauriPage.getByTestId("dock-terminal-loading")).toHaveCount(0);
   // Return the channel breadcrumbs plus the buffer tail so a failure names
   // the stage that broke: open error, no output at all, or a promptless
   // shell. The tail stays last so the end anchor still matches the prompt.
@@ -167,6 +181,7 @@ test("the real terminal opens, echoes, and exits cleanly", async ({
     .toBeGreaterThanOrEqual(2);
   expect(await terminalOutput(tauriPage)).toContain("e2e-terminal-ok");
 
+  const output = await terminalOutput(tauriPage);
   await enterTerminalCommand(tauriPage, "exit");
   // Asserting the exit event separately splits IPC-delivery failures from
   // dock-close failures.
@@ -186,10 +201,74 @@ test("the real terminal opens, echoes, and exits cleanly", async ({
     timeout: 15_000,
   });
   await expect(tauriPage.locator(TERMINAL_TOGGLE)).toHaveAttribute("aria-pressed", "false");
-  const output = await terminalOutput(tauriPage);
+  await expect(tauriPage.locator(TERMINAL_TAB)).toHaveCount(0);
   expect(output).not.toContain("The shell could not start");
   expect(output).not.toContain("The shell could not accept input");
   expect(output).not.toContain("The terminal could not resize");
+});
+
+test("a second terminal opens active, takes a name, and closes back to one tab", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(120_000);
+  await openTerminalDock(tauriPage);
+
+  await tauriPage.click(NEW_TERMINAL);
+  await expect(tauriPage.locator(TERMINAL_TAB)).toHaveCount(2);
+  await expect(tauriPage.locator(terminalTab(2))).toHaveText("Terminal 2");
+  await expect(tauriPage.locator(terminalTab(2))).toHaveAttribute("data-active", "true");
+  await expect(tauriPage.locator(terminalTab(1))).toHaveAttribute("data-active", "false");
+  await expect(tauriPage.locator(TERMINAL)).toBeVisible();
+  await expect(tauriPage.locator(`${TERMINAL_HOST} .xterm-helper-textarea`)).toHaveCount(1);
+  await expect
+    .poll(() => openedSessionCount(tauriPage), { timeout: 60_000 })
+    .toBeGreaterThanOrEqual(2);
+
+  const renameClicked = await tauriPage.evaluate<boolean>(
+    `(() => {
+      const button = document.querySelector('[aria-label="Rename Terminal 2"]');
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`,
+  );
+  expect(renameClicked).toBe(true);
+  await tauriPage.fill('[aria-label="Terminal title"]', "Build");
+  await tauriPage.press('[aria-label="Terminal title"]', "Enter");
+  await expect(tauriPage.locator('[aria-label="Terminal title"]')).toHaveCount(0);
+  await expect(tauriPage.locator(terminalTab(2))).toHaveText("Build");
+  await expect(tauriPage.locator(terminalTab(2))).toHaveAttribute("data-active", "true");
+  await expect(tauriPage.locator(TERMINAL_TAB)).toHaveCount(2);
+
+  await tauriPage.click('[aria-label="Close Build"]');
+  await expect(tauriPage.locator(TERMINAL_TAB)).toHaveCount(1);
+  await expect(tauriPage.locator(terminalTab(1))).toHaveAttribute("data-active", "true");
+  await expect(tauriPage.locator(TERMINAL)).toBeVisible();
+  await expect(tauriPage.locator(TERMINAL_TOGGLE)).toHaveAttribute("aria-pressed", "true");
+});
+
+test("the new terminal button stops at ten terminals", async ({ tauriPage }) => {
+  test.setTimeout(180_000);
+  await openTerminalDock(tauriPage);
+
+  for (let count = 1; count < TERMINAL_LIMIT; count += 1) {
+    await tauriPage.click(NEW_TERMINAL);
+    await expect(tauriPage.locator(TERMINAL_TAB)).toHaveCount(count + 1);
+  }
+  await expect(tauriPage.locator(terminalTab(TERMINAL_LIMIT))).toHaveAttribute(
+    "data-active",
+    "true",
+  );
+  await expect(tauriPage.locator(NEW_TERMINAL)).toBeDisabled();
+  await expect(tauriPage.locator(`${TERMINAL_HOST} .xterm-helper-textarea`)).toHaveCount(1);
+  await expect
+    .poll(() => openedSessionCount(tauriPage), { timeout: 60_000 })
+    .toBeGreaterThanOrEqual(2);
+  await expect(tauriPage.locator(TERMINAL_TAB)).toHaveCount(TERMINAL_LIMIT);
+
+  await tauriPage.click(`[aria-label="Close Terminal ${TERMINAL_LIMIT}"]`);
+  await expect(tauriPage.locator(TERMINAL_TAB)).toHaveCount(TERMINAL_LIMIT - 1);
+  await expect(tauriPage.locator(NEW_TERMINAL)).toBeEnabled();
 });
 
 test("configured terminal and browser shortcut routes toggle their docks", async ({ tauriPage }) => {

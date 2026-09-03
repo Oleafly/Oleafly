@@ -1,0 +1,25 @@
+[package]
+name = "oleafly-history"
+version = "0.1.0"
+description = "Content-addressed compile checkpoints for Oleafly projects"
+license = "AGPL-3.0-or-later"
+publish = false
+edition = "2021"
+rust-version = "1.77"
+
+[dependencies]
+blake3 = "=1.5.5"
+fastcdc = "3"
+fs4 = "1.1"
+libc = "0.2"
+rand = "0.8"
+rusqlite = { version = "0.32", features = ["bundled"] }
+same-file = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+unicode-normalization = "0.1"
+zstd = "0.13"
+
+[dev-dependencies]
+tempfile = { workspace = true }

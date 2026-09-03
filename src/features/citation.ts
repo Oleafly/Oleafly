@@ -65,6 +65,109 @@ export function ensureTypstBibliography(source: string, path: string): string {
   return `${source.trimEnd()}\n\n#bibliography("${safePath}")\n`;
 }
 
+export function ensureMarkdownBibliography(source: string, path: string): string {
+  const normalizedPath = path.replaceAll("\\", "/");
+  const declaration = `bibliography: ${JSON.stringify(normalizedPath)}`;
+  const frontMatter = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(source);
+  if (!frontMatter) return `---\n${declaration}\n---\n\n${source}`;
+  if (/^bibliography\s*:/m.test(frontMatter[1])) return source;
+  const closingOffset = frontMatter[0].lastIndexOf("---");
+  return `${source.slice(0, closingOffset)}${declaration}\n${source.slice(closingOffset)}`;
+}
+
+function unquoteYamlScalar(value: string): string | null {
+  const withoutComment = value.replace(/\s+#.*$/, "").trim();
+  if (!withoutComment) return null;
+  if (withoutComment.startsWith('"') && withoutComment.endsWith('"')) {
+    try {
+      const parsed = JSON.parse(withoutComment);
+      return typeof parsed === "string" ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  if (withoutComment.startsWith("'") && withoutComment.endsWith("'")) {
+    return withoutComment.slice(1, -1).replaceAll("''", "'");
+  }
+  return withoutComment;
+}
+
+export function markdownBibliographyPaths(source: string): string[] {
+  const frontMatter = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(source);
+  if (!frontMatter) return [];
+  const lines = frontMatter[1].split(/\r?\n/);
+  const declaration = lines.findIndex((line) => /^bibliography\s*:/.test(line));
+  if (declaration < 0) return [];
+  const value = lines[declaration].replace(/^bibliography\s*:\s*/, "").trim();
+  if (value.startsWith("[") && value.endsWith("]")) {
+    return value
+      .slice(1, -1)
+      .split(",")
+      .map(unquoteYamlScalar)
+      .filter((path): path is string => Boolean(path));
+  }
+  const scalar = unquoteYamlScalar(value);
+  if (scalar) return [scalar];
+
+  const paths: string[] = [];
+  for (const line of lines.slice(declaration + 1)) {
+    const item = /^\s*-\s+(.*?)\s*$/.exec(line);
+    if (item) {
+      const path = unquoteYamlScalar(item[1]);
+      if (path) paths.push(path);
+      continue;
+    }
+    if (!/^\s/.test(line)) break;
+  }
+  return paths;
+}
+
+function resolveDeclaredBib(reference: string, bibPaths: string[], addExtension: boolean): string | null {
+  const normalized = reference.replaceAll("\\", "/").replace(/^\.\//, "");
+  const wanted = addExtension && !normalized.toLowerCase().endsWith(".bib")
+    ? `${normalized}.bib`
+    : normalized;
+  const exact = bibPaths.find((path) => path === wanted);
+  if (exact) return exact;
+  const suffix = bibPaths.filter((path) => path.endsWith(`/${wanted}`));
+  if (suffix.length === 1) return suffix[0];
+  const sameBasename = bibPaths.filter((path) => basename(path) === basename(wanted));
+  if (sameBasename.length === 1) return sameBasename[0];
+  if (
+    wanted.toLowerCase().endsWith(".bib")
+    && !wanted.startsWith("/")
+    && !wanted.includes(":")
+    && !wanted.split("/").some((part) => part === ".." || part === "")
+  ) {
+    return wanted;
+  }
+  return null;
+}
+
+export function selectCitationBibliography(
+  profile: string,
+  mainContent: string,
+  bibPaths: string[],
+): string {
+  let references: string[] = [];
+  let addExtension = false;
+  if (profile === "latex") {
+    const match = /\\(?:bibliography|addbibresource)\s*\{([^}]*)\}/.exec(mainContent);
+    references = match ? [match[1].split(",")[0].trim()] : [];
+    addExtension = true;
+  } else if (profile === "typst") {
+    const match = /#bibliography\s*\(\s*["']([^"']+)["']/.exec(mainContent);
+    references = match ? [match[1]] : [];
+  } else if (profile === "markdown") {
+    references = markdownBibliographyPaths(mainContent);
+  }
+  for (const reference of references) {
+    const resolved = resolveDeclaredBib(reference, bibPaths, addExtension);
+    if (resolved) return resolved;
+  }
+  return bibPaths[0] ?? "references.bib";
+}
+
 function pickTargetBib(): { path: string; content: string } {
   const files = useFilesStore.getState();
   // Look for \bibliography in the document that actually compiles, which a
@@ -73,16 +176,11 @@ function pickTargetBib(): { path: string; content: string } {
     files.files[resolveEffectiveMainDoc().mainDoc]?.content ?? "";
   const bibPaths = files.tree.filter((f) => !f.is_dir && f.path.endsWith(".bib")).map((f) => f.path);
 
-  let path: string | null = null;
-  const m = files.engine.capabilities.formatting_profile === "latex"
-    ? /\\(?:bibliography|addbibresource)\s*\{([^}]*)\}/.exec(mainContent)
-    : null;
-  if (m) {
-    const ref = m[1].split(",")[0].trim();
-    const want = ref.endsWith(".bib") ? ref : `${ref}.bib`;
-    path = bibPaths.find((p) => p === want || p.endsWith(`/${want}`) || basename(p) === basename(want)) ?? null;
-  }
-  if (!path) path = bibPaths[0] ?? "references.bib";
+  const path = selectCitationBibliography(
+    files.engine.capabilities.formatting_profile,
+    mainContent,
+    bibPaths,
+  );
   return { path, content: files.files[path]?.content ?? "" };
 }
 
@@ -132,11 +230,14 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
     }
   }
 
-  if (files.engine.capabilities.formatting_profile === "typst" && id) {
+  const profile = files.engine.capabilities.formatting_profile;
+  if ((profile === "typst" || profile === "markdown") && id) {
     const mainPath = files.mainDoc;
     const main = files.files[mainPath]?.content ?? await readFileContent(id, mainPath).catch(() => "");
-    if (!/#bibliography\s*\(/.test(main)) {
-      const next = ensureTypstBibliography(main, target.path);
+    const next = profile === "typst"
+      ? ensureTypstBibliography(main, target.path)
+      : ensureMarkdownBibliography(main, target.path);
+    if (next !== main) {
       if (files.files[mainPath] !== undefined) {
         files.setContent(mainPath, next);
         await useFilesStore.getState().saveFile(mainPath);
@@ -213,11 +314,14 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
     }
   }
 
-  if (!errors.length && files.engine.capabilities.formatting_profile === "typst" && id) {
+  const profile = files.engine.capabilities.formatting_profile;
+  if (!errors.length && (profile === "typst" || profile === "markdown") && id) {
     const mainPath = files.mainDoc;
     const main = files.files[mainPath]?.content ?? (await readFileContent(id, mainPath).catch(() => ""));
-    if (!/#bibliography\s*\(/.test(main)) {
-      const next = ensureTypstBibliography(main, target.path);
+    const next = profile === "typst"
+      ? ensureTypstBibliography(main, target.path)
+      : ensureMarkdownBibliography(main, target.path);
+    if (next !== main) {
       if (files.files[mainPath] !== undefined) {
         files.setContent(mainPath, next);
         await useFilesStore.getState().saveFile(mainPath);

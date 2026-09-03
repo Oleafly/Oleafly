@@ -1,10 +1,9 @@
-import { memo, useEffect, useId, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useRef, useState, type FocusEvent } from "react";
 import {
   Bot,
   Brain,
   Check,
   CheckCircle2,
-  ChevronDown,
   ChevronRight,
   Circle,
   Copy,
@@ -24,7 +23,6 @@ import {
 } from "@/store/agent-file-changes";
 import { Markdown } from "@/components/ui/markdown";
 import { Popover } from "@/components/ui/popover";
-import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 export function Shimmer({ text }: { text?: string }) {
@@ -40,83 +38,290 @@ export function InfoHint({ message }: { message: string }) {
   );
 }
 
-export function AgentPlan({ todos }: { todos: AgentTodo[] }) {
+export interface AgentPlanApproval {
+  status: "awaiting" | "approved";
+  busy?: boolean;
+  onApprove: () => void;
+  onRevise: () => void;
+}
+
+function AgentTodoList({ todos }: { todos: readonly AgentTodo[] }) {
+  return (
+    <ul className="space-y-1">
+      {todos.map((todo) => (
+        <li
+          key={todo.id}
+          data-todo-status={todo.status}
+          aria-label={`${todo.status.replace("_", " ")}: ${todo.content}`}
+          className="flex items-start gap-1.5 text-[11px] leading-snug"
+        >
+          {todo.status === "completed" && (
+            <Check
+              aria-hidden="true"
+              data-todo-icon="completed"
+              className="mt-px size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+            />
+          )}
+          {todo.status === "in_progress" && (
+            <Loader2
+              aria-hidden="true"
+              data-todo-icon="in_progress"
+              className="mt-px size-3.5 shrink-0 animate-spin text-primary motion-reduce:animate-none"
+            />
+          )}
+          {todo.status === "pending" && (
+            <Circle
+              aria-hidden="true"
+              data-todo-icon="pending"
+              className="mt-px size-3.5 shrink-0 text-muted-foreground/50"
+            />
+          )}
+          {todo.status === "cancelled" && (
+            <XCircle
+              aria-hidden="true"
+              data-todo-icon="cancelled"
+              className="mt-px size-3.5 shrink-0 text-muted-foreground/40"
+            />
+          )}
+          <span
+            className={cn(
+              todo.status === "completed" && "text-muted-foreground",
+              todo.status === "cancelled" && "text-muted-foreground/60 line-through",
+              todo.status === "in_progress" && "font-medium text-foreground",
+            )}
+          >
+            {todo.content}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function AgentPlanStatusBadge({ status }: { status: AgentPlanApproval["status"] }) {
+  return (
+    <span
+      data-testid="agent-plan-status"
+      className={cn(
+        "rounded-full px-1.5 py-px text-[10px] font-medium",
+        status === "awaiting"
+          ? "bg-violet-500/15 text-violet-600 dark:text-violet-300"
+          : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+      )}
+    >
+      {status === "awaiting" ? "Awaiting approval" : "Approved"}
+    </span>
+  );
+}
+
+const STATUS_PILL_CLOSE_DELAY_MS = 150;
+
+export function AgentStatusPill({
+  todos,
+  turn,
+  approval,
+}: {
+  todos: readonly AgentTodo[];
+  turn: AgentFileChangeTurn | null;
+  approval?: AgentPlanApproval;
+}) {
   const [open, setOpen] = useState(false);
-  const listId = useId();
+  const [pinned, setPinned] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLButtonElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipFocusOpenRef = useRef(false);
+  const panelId = useId();
+
+  const cancelClose = useCallback(() => {
+    if (closeTimerRef.current === null) return;
+    clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  }, []);
+  const show = useCallback(() => {
+    cancelClose();
+    setOpen(true);
+  }, [cancelClose]);
+  const close = useCallback(() => {
+    cancelClose();
+    setOpen(false);
+    setPinned(false);
+  }, [cancelClose]);
+  const scheduleClose = () => {
+    if (pinned) return;
+    cancelClose();
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null;
+      setOpen(false);
+    }, STATUS_PILL_CLOSE_DELAY_MS);
+  };
+
+  useEffect(() => cancelClose, [cancelClose]);
+
+  const awaitingReady = approval?.status === "awaiting" && !approval.busy;
+  const awaitingReadyRef = useRef(false);
+  useEffect(() => {
+    const wasReady = awaitingReadyRef.current;
+    awaitingReadyRef.current = awaitingReady;
+    if (!awaitingReady || wasReady) return;
+    cancelClose();
+    setOpen(true);
+    setPinned(true);
+  }, [awaitingReady, cancelClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      const active = document.activeElement;
+      const focusInside = rootRef.current?.contains(active) ?? false;
+      close();
+      if (focusInside && active !== pillRef.current) {
+        skipFocusOpenRef.current = true;
+        pillRef.current?.focus({ preventScroll: true });
+      }
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && rootRef.current?.contains(event.target)) return;
+      close();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [open, close]);
+
+  const progress = agentTodoProgress(todos);
+  const totals = agentFileChangeTotals(turn);
+  const awaiting = approval?.status === "awaiting";
+  const hasSteps = progress.total > 0;
+  const hasFiles = totals.files > 0;
+  if (!approval && !hasSteps && !hasFiles) return null;
+  const planStatus = approval?.status ?? "none";
+  const closeWhenFocusLeaves = (event: FocusEvent<HTMLElement>) => {
+    const next = event.relatedTarget;
+    if (next instanceof Node && rootRef.current?.contains(next)) return;
+    close();
+  };
 
   return (
-    <div
-      className="shrink-0 border-b bg-black/[0.03] dark:bg-black/20"
-      data-testid="agent-todos"
-    >
+    <div ref={rootRef} className="pointer-events-none relative flex w-full justify-center">
       <button
+        ref={pillRef}
         type="button"
-        aria-controls={listId}
+        data-testid="agent-status-pill"
+        data-plan-status={planStatus}
+        aria-haspopup="dialog"
         aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center px-3 py-2 text-left transition-colors hover:bg-black/[0.035] dark:hover:bg-white/[0.035]"
+        aria-controls={open ? panelId : undefined}
+        onMouseEnter={show}
+        onMouseLeave={scheduleClose}
+        onBlur={closeWhenFocusLeaves}
+        onFocus={() => {
+          if (skipFocusOpenRef.current) {
+            skipFocusOpenRef.current = false;
+            return;
+          }
+          show();
+        }}
+        onClick={() => {
+          if (pinned) {
+            close();
+            return;
+          }
+          show();
+          setPinned(true);
+        }}
+        className="pointer-events-auto inline-flex max-w-full items-center gap-1.5 rounded-full border bg-background/95 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground shadow-md backdrop-blur transition-colors hover:bg-accent hover:text-foreground"
       >
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Plan
-        </span>
-        <ChevronDown
-          aria-hidden="true"
-          className={cn(
-            "ml-auto size-3.5 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none",
-            open && "rotate-180",
-          )}
-        />
+        {approval && (
+          <span
+            data-pill-segment="plan"
+            className={
+              awaiting
+                ? "text-violet-600 dark:text-violet-300"
+                : "text-emerald-600 dark:text-emerald-400"
+            }
+          >
+            PLAN
+          </span>
+        )}
+        {approval && (hasSteps || hasFiles) && <span aria-hidden="true"> · </span>}
+        {hasSteps && (
+          <span data-pill-segment="steps" className="tabular-nums">
+            STEP {progress.current}/{progress.total}
+          </span>
+        )}
+        {hasSteps && hasFiles && <span aria-hidden="true"> · </span>}
+        {hasFiles && (
+          <span data-pill-segment="review">
+            REVIEW{" "}
+            <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
+              +{totals.additions}
+            </span>{" "}
+            <span className="tabular-nums text-destructive">-{totals.deletions}</span>
+          </span>
+        )}
       </button>
 
       {open && (
-        <ul id={listId} className="space-y-1 px-3 pb-2">
-          {todos.map((todo) => (
-            <li
-              key={todo.id}
-              data-todo-status={todo.status}
-              aria-label={`${todo.status.replace("_", " ")}: ${todo.content}`}
-              className="flex items-start gap-1.5 text-[11px] leading-snug"
-            >
-              {todo.status === "completed" && (
-                <Check
-                  aria-hidden="true"
-                  data-todo-icon="completed"
-                  className="mt-px size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
-                />
-              )}
-              {todo.status === "in_progress" && (
-                <Loader2
-                  aria-hidden="true"
-                  data-todo-icon="in_progress"
-                  className="mt-px size-3.5 shrink-0 animate-spin text-primary motion-reduce:animate-none"
-                />
-              )}
-              {todo.status === "pending" && (
-                <Circle
-                  aria-hidden="true"
-                  data-todo-icon="pending"
-                  className="mt-px size-3.5 shrink-0 text-muted-foreground/50"
-                />
-              )}
-              {todo.status === "cancelled" && (
-                <XCircle
-                  aria-hidden="true"
-                  data-todo-icon="cancelled"
-                  className="mt-px size-3.5 shrink-0 text-muted-foreground/40"
-                />
-              )}
-              <span
-                className={cn(
-                  todo.status === "completed" && "text-muted-foreground",
-                  todo.status === "cancelled" && "text-muted-foreground/60 line-through",
-                  todo.status === "in_progress" && "font-medium text-foreground",
-                )}
-              >
-                {todo.content}
+        <div className="pointer-events-auto absolute inset-x-0 bottom-full mx-auto w-full max-w-[22rem] pb-1.5">
+          <div
+            id={panelId}
+            role="dialog"
+            aria-label="Plan details"
+            data-testid="agent-todos"
+            data-plan-status={planStatus}
+            onMouseEnter={cancelClose}
+            onMouseLeave={scheduleClose}
+            onBlur={closeWhenFocusLeaves}
+            className="max-h-72 overflow-y-auto rounded-lg border bg-popover p-2.5 text-left text-popover-foreground shadow-lg"
+          >
+            <div className="mb-1.5 flex items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {approval || hasSteps ? "Plan" : "Changes"}
               </span>
-            </li>
-          ))}
-        </ul>
+              {approval && <AgentPlanStatusBadge status={approval.status} />}
+            </div>
+            {todos.length > 0 && <AgentTodoList todos={todos} />}
+            {awaiting && approval && (
+              <div className="mt-2 flex items-center gap-1.5">
+                <button
+                  type="button"
+                  aria-label="Approve plan"
+                  onClick={() => {
+                    close();
+                    approval.onApprove();
+                  }}
+                  disabled={approval.busy}
+                  className="flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-primary px-2.5 text-xs font-medium text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Check aria-hidden="true" className="size-3.5 shrink-0" />
+                  Approve plan
+                </button>
+                <button
+                  type="button"
+                  aria-label="Revise"
+                  onClick={() => {
+                    close();
+                    approval.onRevise();
+                  }}
+                  disabled={approval.busy}
+                  className="flex h-7 shrink-0 items-center rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Revise
+                </button>
+              </div>
+            )}
+            {turn && hasFiles && (
+              <div className={cn(todos.length > 0 && "mt-2 border-t pt-2")}>
+                <FileChangeDetails turn={turn} />
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -187,51 +392,50 @@ function FileChangeDetails({ turn }: { turn: AgentFileChangeTurn }) {
 export function AgentRunSummary({
   todos,
   turn,
+  plan = false,
 }: {
-  todos: AgentTodo[];
+  todos: readonly AgentTodo[];
   turn: AgentFileChangeTurn | null;
+  plan?: boolean;
 }) {
   const progress = agentTodoProgress(todos);
   const totals = agentFileChangeTotals(turn);
   if (progress.total === 0 && totals.files === 0) return null;
-  const stepLabel = progress.total > 0 ? `Step ${progress.current} / ${progress.total}` : null;
-  const fileLabel =
-    totals.files > 0
-      ? `${totals.files} files changed +${totals.additions} -${totals.deletions}`
-      : null;
-  const label = [stepLabel, fileLabel].filter(Boolean).join(" · ");
-  const pill = (
-    <span
-      role="status"
-      data-testid="agent-run-pill"
-      aria-label={label}
-      className="inline-flex items-center gap-1.5 rounded-full border bg-muted/60 px-2 py-1 text-[10px] font-medium text-muted-foreground"
-    >
-      {stepLabel && <span>{stepLabel}</span>}
-      {stepLabel && fileLabel && (
-        <>
-          {" "}
-          <span aria-hidden="true">·</span>
-          {" "}
-        </>
-      )}
-      {fileLabel && (
-        <span>
-          {totals.files} files changed{" "}
-          <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
-            +{totals.additions}
-          </span>{" "}
-          <span className="tabular-nums text-destructive">-{totals.deletions}</span>
-        </span>
-      )}
-    </span>
-  );
+  const done = todos.filter((todo) => todo.status === "completed").length;
+  const hasSteps = progress.total > 0;
+  const hasFiles = totals.files > 0;
 
-  if (!turn || totals.files === 0) return pill;
   return (
-    <Tooltip label={<FileChangeDetails turn={turn} />} side="top" delay={0} wide>
-      {pill}
-    </Tooltip>
+    <div
+      data-testid="agent-run-summary"
+      data-plan={plan ? "true" : "false"}
+      className="rounded-md border bg-muted/40 px-2.5 py-1.5 text-[11px] text-muted-foreground"
+    >
+      <div className="font-medium">
+        {plan && <span>Plan</span>}
+        {plan && hasSteps && <span aria-hidden="true"> · </span>}
+        {hasSteps && (
+          <span className="tabular-nums">
+            {done}/{progress.total} done
+          </span>
+        )}
+        {(plan || hasSteps) && hasFiles && <span aria-hidden="true"> · </span>}
+        {hasFiles && (
+          <span>
+            {totals.files} {totals.files === 1 ? "file" : "files"} changed{" "}
+            <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
+              +{totals.additions}
+            </span>{" "}
+            <span className="tabular-nums text-destructive">-{totals.deletions}</span>
+          </span>
+        )}
+      </div>
+      {turn && hasFiles && (
+        <div className="mt-1.5">
+          <FileChangeDetails turn={turn} />
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -15,6 +15,10 @@ const mocks = vi.hoisted(() => ({
     callback: ResizeObserverCallback;
     disconnect: ReturnType<typeof vi.fn>;
   }>,
+  fitAddons: [] as Array<{
+    fit: ReturnType<typeof vi.fn>;
+    proposeDimensions: ReturnType<typeof vi.fn>;
+  }>,
   terminals: [] as Array<{
     cols: number;
     rows: number;
@@ -89,6 +93,7 @@ const mocks = vi.hoisted(() => ({
     terminalFontWeightBold: 700,
     terminalCursorStyle: "block",
     terminalCursorBlink: true,
+    terminalStartWithProject: true,
     terminalColorTheme: "dark",
     terminalBackground: "#1e1e1e",
     terminalForeground: "#f2f2f2",
@@ -136,6 +141,11 @@ vi.mock("@xterm/xterm", () => ({
 vi.mock("@xterm/addon-fit", () => ({
   FitAddon: class {
     fit = vi.fn();
+    proposeDimensions = vi.fn(() => undefined);
+
+    constructor() {
+      mocks.fitAddons.push(this);
+    }
   },
 }));
 
@@ -164,6 +174,7 @@ describe("TerminalPane", () => {
     mocks.channels.length = 0;
     mocks.terminals.length = 0;
     mocks.resizeObservers.length = 0;
+    mocks.fitAddons.length = 0;
     mocks.settings.setTerminalOpen.mockReset();
     Object.assign(mocks.settings, {
       terminalOpen: true,
@@ -174,6 +185,7 @@ describe("TerminalPane", () => {
       terminalFontWeightBold: 700,
       terminalCursorStyle: "block",
       terminalCursorBlink: true,
+      terminalStartWithProject: true,
       terminalColorTheme: "dark",
       terminalBackground: "#1e1e1e",
       terminalForeground: "#f2f2f2",
@@ -250,6 +262,28 @@ describe("TerminalPane", () => {
     terminal.focus.mockClear();
     fireEvent.mouseDown(screen.getByTestId("dock-terminal"));
     expect(terminal.focus).toHaveBeenCalledTimes(1);
+  });
+
+  it("resizes the pty to the fitted size when the dock is shown before term_open resolves", async () => {
+    const open = deferred<string>();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "term_open" ? open.promise : Promise.resolve(undefined),
+    );
+    const view = render(<TerminalPane projectId="project-1" visible={false} />);
+    await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("term_open", expect.anything()));
+    expect(mocks.invoke.mock.calls.filter(([command]) => command === "term_resize")).toHaveLength(0);
+
+    view.rerender(<TerminalPane projectId="project-1" visible />);
+    open.resolve("term-1");
+
+    await waitFor(() => {
+      expect(mocks.invoke).toHaveBeenCalledWith("term_resize", {
+        id: "term-1",
+        projectId: "project-1",
+        cols: mocks.terminals[0].cols,
+        rows: mocks.terminals[0].rows,
+      });
+    });
   });
 
   it("forwards typed xterm data to the owning project terminal", async () => {
@@ -329,7 +363,8 @@ describe("TerminalPane", () => {
   });
 
   it("closes and disposes an exited session without accepting later input or resize", async () => {
-    render(<TerminalPane projectId="project-1" visible />);
+    const onExit = vi.fn();
+    render(<TerminalPane projectId="project-1" visible onExit={onExit} />);
     const terminal = mocks.terminals[0];
     await waitFor(() => {
       expect(mocks.invoke.mock.calls.filter(([command]) => command === "term_open")).toHaveLength(1);
@@ -341,9 +376,10 @@ describe("TerminalPane", () => {
     mocks.channels[0].onmessage?.({ event: "exit" });
 
     await waitFor(() => {
-      expect(mocks.settings.setTerminalOpen).toHaveBeenCalledWith(false);
+      expect(onExit).toHaveBeenCalledTimes(1);
       expect(terminal.dispose).toHaveBeenCalledTimes(1);
     });
+    expect(mocks.settings.setTerminalOpen).not.toHaveBeenCalled();
     mocks.invoke.mockClear();
 
     terminal.dataHandler?.("after exit");
@@ -354,7 +390,7 @@ describe("TerminalPane", () => {
     expect(mocks.invoke).not.toHaveBeenCalledWith("term_resize", expect.anything());
   });
 
-  it("starts a fresh session when the terminal is reopened after exit", async () => {
+  it("stays stopped after exit instead of restarting when shown again", async () => {
     let opens = 0;
     mocks.invoke.mockImplementation((command: string) => {
       if (command === "term_open") {
@@ -363,24 +399,20 @@ describe("TerminalPane", () => {
       }
       return Promise.resolve(undefined);
     });
-    const view = render(<TerminalPane projectId="project-1" visible />);
+    const onExit = vi.fn();
+    const view = render(<TerminalPane projectId="project-1" visible onExit={onExit} />);
     await waitFor(() => expect(opens).toBe(1));
 
     mocks.channels[0].onmessage?.({ event: "exit" });
     await waitFor(() => expect(mocks.terminals[0].dispose).toHaveBeenCalledTimes(1));
-    view.rerender(<TerminalPane projectId="project-1" visible={false} />);
-    view.rerender(<TerminalPane projectId="project-1" visible />);
+    expect(onExit).toHaveBeenCalledTimes(1);
+    view.rerender(<TerminalPane projectId="project-1" visible={false} onExit={onExit} />);
+    view.rerender(<TerminalPane projectId="project-1" visible onExit={onExit} />);
+    await Promise.resolve();
 
-    await waitFor(() => expect(opens).toBe(2));
-    expect(mocks.terminals).toHaveLength(2);
-    mocks.terminals[1].dataHandler?.("fresh input");
-    await waitFor(() => {
-      expect(mocks.invoke).toHaveBeenCalledWith("term_write", {
-        id: "term-2",
-        projectId: "project-1",
-        data: "fresh input",
-      });
-    });
+    expect(opens).toBe(1);
+    expect(mocks.terminals).toHaveLength(1);
+    expect(mocks.invoke).not.toHaveBeenCalledWith("term_kill", expect.anything());
   });
 
   it("shows a Loader2 spinner until the terminal session is ready", async () => {
@@ -574,5 +606,159 @@ describe("TerminalPane", () => {
       },
     });
     expect(mocks.invoke.mock.calls.filter(([command]) => command === "term_open")).toHaveLength(1);
+  });
+
+  it("starts the project shell while the dock is hidden without focusing or fitting it", async () => {
+    const view = render(<TerminalPane projectId="project-1" visible={false} />);
+    const terminal = mocks.terminals[0];
+    const fit = mocks.fitAddons[0];
+    await waitFor(() => {
+      expect(mocks.invoke).toHaveBeenCalledWith(
+        "term_open",
+        expect.objectContaining({ projectId: "project-1", cols: 80, rows: 24 }),
+      );
+    });
+    await waitFor(() => expect(screen.queryByTestId("dock-terminal-loading")).toBeNull());
+    expect(terminal.focus).not.toHaveBeenCalled();
+    expect(fit.fit).not.toHaveBeenCalled();
+    expect(mocks.invoke).not.toHaveBeenCalledWith("term_resize", expect.anything());
+
+    mocks.channels[0].onmessage?.({ event: "output", data: "prompt$ " });
+    expect(terminal.write).toHaveBeenCalledWith("prompt$ ", expect.any(Function));
+
+    view.rerender(<TerminalPane projectId="project-1" visible />);
+
+    expect(fit.fit).toHaveBeenCalledTimes(1);
+    expect(terminal.focus).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(mocks.invoke).toHaveBeenCalledWith("term_resize", {
+        id: "term-1",
+        projectId: "project-1",
+        cols: 80,
+        rows: 24,
+      });
+    });
+    expect(mocks.invoke.mock.calls.filter(([command]) => command === "term_open")).toHaveLength(1);
+    expect(screen.queryByTestId("dock-terminal-loading")).toBeNull();
+  });
+
+  it("waits for the first show when starting with the project is turned off", async () => {
+    mocks.settings.terminalStartWithProject = false;
+    const view = render(<TerminalPane projectId="project-1" visible={false} />);
+    await Promise.resolve();
+
+    expect(mocks.terminals).toHaveLength(0);
+    expect(mocks.invoke).not.toHaveBeenCalledWith("term_open", expect.anything());
+
+    view.rerender(<TerminalPane projectId="project-1" visible />);
+
+    await waitFor(() => {
+      expect(mocks.invoke).toHaveBeenCalledWith(
+        "term_open",
+        expect.objectContaining({ projectId: "project-1" }),
+      );
+    });
+    expect(mocks.terminals).toHaveLength(1);
+    expect(mocks.terminals[0].focus).toHaveBeenCalled();
+  });
+
+  it("reports a hidden shell that exited without reopening the dock", async () => {
+    let opens = 0;
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "term_open") {
+        opens += 1;
+        return Promise.resolve(`term-${opens}`);
+      }
+      return Promise.resolve(undefined);
+    });
+    const onExit = vi.fn();
+    const view = render(<TerminalPane projectId="project-1" visible={false} onExit={onExit} />);
+    await waitFor(() => expect(opens).toBe(1));
+
+    mocks.channels[0].onmessage?.({ event: "exit" });
+    await waitFor(() => expect(mocks.terminals[0].dispose).toHaveBeenCalledTimes(1));
+    expect(onExit).toHaveBeenCalledTimes(1);
+    expect(mocks.settings.setTerminalOpen).not.toHaveBeenCalled();
+    view.rerender(<TerminalPane projectId="project-1" visible={false} onExit={onExit} />);
+    await Promise.resolve();
+    expect(opens).toBe(1);
+  });
+
+  it("starts a hidden terminal right away when autoStart is set", async () => {
+    mocks.settings.terminalStartWithProject = false;
+    render(<TerminalPane projectId="project-1" visible={false} autoStart />);
+
+    await waitFor(() => {
+      expect(mocks.invoke).toHaveBeenCalledWith(
+        "term_open",
+        expect.objectContaining({ projectId: "project-1" }),
+      );
+    });
+    expect(mocks.terminals).toHaveLength(1);
+    expect(mocks.terminals[0].focus).not.toHaveBeenCalled();
+  });
+
+  it("keeps the dock test ids for the active pane only", async () => {
+    const open = deferred<string>();
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "term_open" ? open.promise : Promise.resolve(undefined),
+    );
+    const view = render(<TerminalPane projectId="project-1" visible={false} active={false} />);
+
+    expect(screen.queryByTestId("dock-terminal")).toBeNull();
+    expect(screen.queryByTestId("dock-terminal-host")).toBeNull();
+    expect(screen.queryByTestId("dock-terminal-loading")).toBeNull();
+    expect(screen.getByTestId("dock-terminal-inactive")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByTestId("dock-terminal-inactive").className).toContain("h-0");
+
+    view.rerender(<TerminalPane projectId="project-1" visible active />);
+
+    expect(screen.getByTestId("dock-terminal")).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByTestId("dock-terminal-host")).toBeInTheDocument();
+    expect(screen.getByTestId("dock-terminal-loading")).toBeInTheDocument();
+    expect(screen.queryByTestId("dock-terminal-inactive")).toBeNull();
+  });
+
+  it("replaces the hidden shell when the project changes", async () => {
+    let opens = 0;
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "term_open") {
+        opens += 1;
+        return Promise.resolve(`term-${opens}`);
+      }
+      return Promise.resolve(undefined);
+    });
+    const view = render(<TerminalPane projectId="project-1" visible={false} />);
+    await waitFor(() => expect(opens).toBe(1));
+    await waitFor(() => expect(screen.queryByTestId("dock-terminal-loading")).toBeNull());
+
+    view.rerender(<TerminalPane projectId="project-2" visible={false} />);
+
+    await waitFor(() => {
+      expect(mocks.invoke).toHaveBeenCalledWith("term_kill", {
+        id: "term-1",
+        projectId: "project-1",
+      });
+      expect(mocks.invoke).toHaveBeenCalledWith(
+        "term_open",
+        expect.objectContaining({ projectId: "project-2" }),
+      );
+    });
+    expect(mocks.terminals[0].dispose).toHaveBeenCalledTimes(1);
+    expect(mocks.terminals[1].focus).not.toHaveBeenCalled();
+  });
+
+  it("does not fit or resize a hidden terminal when its appearance changes", async () => {
+    const view = render(<TerminalPane projectId="project-1" visible={false} />);
+    await waitFor(() => expect(screen.queryByTestId("dock-terminal-loading")).toBeNull());
+    const terminal = mocks.terminals[0];
+    const fit = mocks.fitAddons[0];
+
+    mocks.settings.terminalFontSize = 18;
+    view.rerender(<TerminalPane projectId="project-1" visible={false} />);
+
+    expect(terminal.options.fontSize).toBe(18);
+    expect(fit.fit).not.toHaveBeenCalled();
+    expect(mocks.invoke).not.toHaveBeenCalledWith("term_resize", expect.anything());
   });
 });

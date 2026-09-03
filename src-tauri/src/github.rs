@@ -454,19 +454,14 @@ pub async fn gh_import_repo(full_name: String) -> Result<String, String> {
 
     let remote_url = format!("https://github.com/{owner}/{repository}.git");
     tauri::async_runtime::spawn_blocking(move || {
-        let project_id = crate::project::import_project_zip_bytes(repository, &archive)?;
-        if let Err(error) = crate::git::attach_imported_repository_history(
-            &project_id,
-            &remote_url,
-            &metadata.default_branch,
-            &token,
-        ) {
-            return match crate::project::discard_project_after_failed_import(&project_id) {
-                Ok(()) => Err(error),
-                Err(cleanup_error) => Err(format!("{error} {cleanup_error}")),
-            };
-        }
-        Ok(project_id)
+        crate::project::import_project_zip_bytes_with(repository, &archive, |project_id| {
+            crate::git::attach_imported_repository_history_lock_held(
+                project_id,
+                &remote_url,
+                &metadata.default_branch,
+                &token,
+            )
+        })
     })
     .await
     .map_err(|error| error.to_string())?

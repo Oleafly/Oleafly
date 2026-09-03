@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Check,
   FileText,
@@ -8,6 +8,7 @@ import {
   Minus,
   Plus,
   RefreshCw,
+  ShieldAlert,
   Undo2,
   Upload,
   X,
@@ -20,8 +21,12 @@ import {
   gitCommit,
   gitCurrentBranch,
   gitGetRemote,
+  gitCleanRemoteCredentials,
+  gitInitialize,
+  gitIsInitialized,
   gitPush,
   gitRemoveRemote,
+  gitRemoteCredentialsNeedCleanup,
   gitStage,
   gitStageAll,
   gitStatus,
@@ -53,6 +58,10 @@ function meta(code: string) {
   return STATUS_META[code] ?? { label: code.slice(0, 1), cls: "bg-muted text-muted-foreground" };
 }
 
+type ProjectActionToken = {
+  projectId: string;
+  session: number;
+};
 
 export function SourceControl() {
   const projectId = useFilesStore((s) => s.projectId);
@@ -62,8 +71,10 @@ export function SourceControl() {
   const githubUser = useGithubStore((s) => s.user);
 
   const [changes, setChanges] = useState<GitFileChange[]>([]);
+  const [initialized, setInitialized] = useState<boolean | null>(null);
   const [branch, setBranch] = useState("");
   const [remote, setRemote] = useState<string | null>(null);
+  const [credentialCleanupRequired, setCredentialCleanupRequired] = useState(false);
   const githubUrl = remote ? toGithubWebUrl(remote) : null;
   const openInGithub = () => {
     if (githubUrl) void open(githubUrl);
@@ -84,9 +95,39 @@ export function SourceControl() {
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState<string | null>(null);
+  const previousProjectId = useRef(projectId);
+  const refreshRequestId = useRef(0);
+  const projectSession = useRef(0);
   const openDiff = useDiffStore((s) => s.openDiff);
   const clearActiveDiff = useDiffStore((s) => s.clearActiveDiff);
   const openFile = useFilesStore((s) => s.openFile);
+
+  useLayoutEffect(() => {
+    if (previousProjectId.current === projectId) return;
+    previousProjectId.current = projectId;
+    projectSession.current += 1;
+    refreshRequestId.current += 1;
+    setChanges([]);
+    setInitialized(null);
+    setBranch("");
+    setRemote(null);
+    setCredentialCleanupRequired(false);
+    setAheadBehind(null);
+    setMessage("");
+    setBusy(false);
+    setStatus(null);
+    setPublishOpen(false);
+    setConfirmDiscard(null);
+  }, [projectId]);
+
+  const beginProjectAction = (): ProjectActionToken | null => {
+    if (!projectId || useFilesStore.getState().projectId !== projectId) return null;
+    return { projectId, session: projectSession.current };
+  };
+
+  const isCurrentProjectAction = (action: ProjectActionToken) =>
+    action.session === projectSession.current &&
+    useFilesStore.getState().projectId === action.projectId;
 
   const openSourceFile = (path: string) => {
     void openFile(path);
@@ -94,25 +135,71 @@ export function SourceControl() {
   };
 
   const refresh = useCallback(async () => {
-    if (!projectId) return;
+    if (!projectId || useFilesStore.getState().projectId !== projectId) return;
+    const targetProjectId = projectId;
+    const requestId = ++refreshRequestId.current;
     try {
-      const [chg, br, rem, cfg, ab] = await Promise.all([
-        gitStatus(projectId),
-        gitCurrentBranch(projectId).catch(() => ""),
-        gitGetRemote(projectId).catch(() => null),
+      const [repositoryInitialized, cfg] = await Promise.all([
+        gitIsInitialized(targetProjectId),
         getConfig(),
-        gitAheadBehind(projectId).catch(() => null),
       ]);
+      if (
+        requestId !== refreshRequestId.current ||
+        useFilesStore.getState().projectId !== targetProjectId
+      ) {
+        return;
+      }
+      setInitialized(repositoryInitialized);
+      setHasToken(!!cfg.github_connected);
+      if (!repositoryInitialized) {
+        setChanges([]);
+        setBranch("");
+        setRemote(null);
+        setCredentialCleanupRequired(false);
+        setAheadBehind(null);
+        return;
+      }
+      const [chg, br, rem, ab, cleanupRequired] = await Promise.all([
+        gitStatus(targetProjectId),
+        gitCurrentBranch(targetProjectId).catch(() => ""),
+        gitGetRemote(targetProjectId).catch(() => null),
+        gitAheadBehind(targetProjectId).catch(() => null),
+        gitRemoteCredentialsNeedCleanup(targetProjectId).catch(() => false),
+      ]);
+      if (
+        requestId !== refreshRequestId.current ||
+        useFilesStore.getState().projectId !== targetProjectId
+      ) {
+        return;
+      }
       setChanges(chg);
       setBranch(br);
       setRemote(rem);
-      setHasToken(!!cfg.github_connected);
       setAheadBehind(ab);
-      void useGitStatusStore.getState().refresh(projectId);
+      setCredentialCleanupRequired(cleanupRequired);
+      void useGitStatusStore.getState().refresh(targetProjectId);
     } catch {
       /* ignore */
     }
   }, [projectId]);
+
+  const initialize = async () => {
+    const action = beginProjectAction();
+    if (!action) return;
+    setBusy(true);
+    setStatus(null);
+    try {
+      const initializedBranch = await gitInitialize(action.projectId);
+      if (!isCurrentProjectAction(action)) return;
+      setStatus({ ok: true, text: `Initialized Git on ${initializedBranch}.` });
+      await refresh();
+    } catch (error) {
+      if (!isCurrentProjectAction(action)) return;
+      setStatus({ ok: false, text: String(error) });
+    } finally {
+      if (isCurrentProjectAction(action)) setBusy(false);
+    }
+  };
 
   useEffect(() => {
     void refresh();
@@ -123,33 +210,59 @@ export function SourceControl() {
   }, [refresh]);
 
   const pull = async () => {
-    if (!projectId) return;
+    const action = beginProjectAction();
+    if (!action) return;
     setBusy(true);
     setStatus(null);
     try {
-      const message = await useFilesStore.getState().pullFromGit();
+      const message = await useFilesStore.getState().pullFromGit(action.projectId);
+      if (!isCurrentProjectAction(action)) return;
       setStatus({ ok: true, text: message });
       await refresh();
     } catch (e) {
+      if (!isCurrentProjectAction(action)) return;
       setStatus({ ok: false, text: String(e) });
     } finally {
-      setBusy(false);
+      if (isCurrentProjectAction(action)) setBusy(false);
     }
   };
 
   const unlink = async () => {
-    if (!projectId) return;
+    const action = beginProjectAction();
+    if (!action) return;
     setBusy(true);
     try {
-      await gitRemoveRemote(projectId);
+      await gitRemoveRemote(action.projectId);
+      if (!isCurrentProjectAction(action)) return;
       setRemote(null);
       setAheadBehind(null);
       await refresh();
+      if (!isCurrentProjectAction(action)) return;
       setStatus({ ok: true, text: "Unlinked from GitHub." });
     } catch (e) {
+      if (!isCurrentProjectAction(action)) return;
       setStatus({ ok: false, text: String(e) });
     } finally {
-      setBusy(false);
+      if (isCurrentProjectAction(action)) setBusy(false);
+    }
+  };
+
+  const cleanSavedCredential = async () => {
+    const action = beginProjectAction();
+    if (!action) return;
+    setBusy(true);
+    setStatus(null);
+    try {
+      await gitCleanRemoteCredentials(action.projectId);
+      if (!isCurrentProjectAction(action)) return;
+      setCredentialCleanupRequired(false);
+      setStatus({ ok: true, text: "Removed the saved credential from this Git remote." });
+      await refresh();
+    } catch (error) {
+      if (!isCurrentProjectAction(action)) return;
+      setStatus({ ok: false, text: String(error) });
+    } finally {
+      if (isCurrentProjectAction(action)) setBusy(false);
     }
   };
 
@@ -158,12 +271,16 @@ export function SourceControl() {
   };
 
   const discard = async (path: string) => {
-    if (!projectId) return;
+    const action = beginProjectAction();
+    if (!action) return;
     try {
-      await useFilesStore.getState().discardFromGit(path);
+      await useFilesStore.getState().discardFromGit(action.projectId, path);
+      if (!isCurrentProjectAction(action)) return;
       await refresh();
+      if (!isCurrentProjectAction(action)) return;
       notifyGitChanged();
     } catch (e) {
+      if (!isCurrentProjectAction(action)) return;
       setStatus({ ok: false, text: String(e) });
     }
   };
@@ -171,30 +288,36 @@ export function SourceControl() {
   const notifyGitChanged = () =>
     window.dispatchEvent(new CustomEvent("oleafly:git-changed"));
 
-  const runGit = async (op: () => Promise<unknown>) => {
-    if (!projectId) return;
+  const runGit = async (action: ProjectActionToken, op: () => Promise<unknown>) => {
     try {
       await op();
+      if (!isCurrentProjectAction(action)) return;
       notifyGitChanged(); // the listener refreshes this panel; an open diff reloads too
     } catch (e) {
+      if (!isCurrentProjectAction(action)) return;
       setStatus({ ok: false, text: String(e) });
     }
   };
   const stageFile = (path: string) => {
-    if (projectId) void runGit(() => gitStage(projectId, path));
+    const action = beginProjectAction();
+    if (action) void runGit(action, () => gitStage(action.projectId, path));
   };
   const unstageFile = (path: string) => {
-    if (projectId) void runGit(() => gitUnstage(projectId, path));
+    const action = beginProjectAction();
+    if (action) void runGit(action, () => gitUnstage(action.projectId, path));
   };
   const stageAll = () => {
-    if (projectId) void runGit(() => gitStageAll(projectId));
+    const action = beginProjectAction();
+    if (action) void runGit(action, () => gitStageAll(action.projectId));
   };
   const unstageAll = () => {
-    if (projectId) void runGit(() => gitUnstageAll(projectId));
+    const action = beginProjectAction();
+    if (action) void runGit(action, () => gitUnstageAll(action.projectId));
   };
 
   const submit = async (andPush: boolean) => {
-    if (!projectId) return;
+    const action = beginProjectAction();
+    if (!action) return;
     const msg = message.trim();
     const hasStaged = changes.some((c) => c.staged);
     // A commit requires staged files + a message; pushing existing commits does not.
@@ -206,8 +329,8 @@ export function SourceControl() {
     setStatus(null);
     try {
       // Commit the staged set only. Nothing staged -> no commit (push still runs).
-      // Nothing staged -> no commit (push still runs).
-      const committed = hasStaged ? await gitCommit(projectId, msg) : false;
+      const committed = hasStaged ? await gitCommit(action.projectId, msg) : false;
+      if (!isCurrentProjectAction(action)) return;
       const parts: string[] = [committed ? `Committed: "${msg}"` : "Nothing staged to commit."];
       if (andPush) {
         if (!hasToken) {
@@ -215,19 +338,27 @@ export function SourceControl() {
         } else if (!remote) {
           parts.push("⚠ Skipped push - no remote origin set below.");
         } else {
-          parts.push(await gitPush(projectId));
+          parts.push(await gitPush(action.projectId));
+          if (!isCurrentProjectAction(action)) return;
         }
       }
       setStatus({ ok: true, text: parts.join("\n") });
       setMessage("");
       await refresh();
+      if (!isCurrentProjectAction(action)) return;
       await refreshTree();
+      if (!isCurrentProjectAction(action)) return;
       notifyGitChanged();
-      if (!andPush) window.setTimeout(() => setStatus(null), 1500);
+      if (!andPush) {
+        window.setTimeout(() => {
+          if (isCurrentProjectAction(action)) setStatus(null);
+        }, 1500);
+      }
     } catch (e) {
+      if (!isCurrentProjectAction(action)) return;
       setStatus({ ok: false, text: String(e) });
     } finally {
-      setBusy(false);
+      if (isCurrentProjectAction(action)) setBusy(false);
     }
   };
 
@@ -394,7 +525,55 @@ export function SourceControl() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-2">
-        {changes.length === 0 ? (
+        {credentialCleanupRequired && initialized === true && (
+          <div className="mb-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-700 dark:text-amber-300">
+            <div className="flex items-start gap-2">
+              <ShieldAlert className="mt-0.5 size-3.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p>Older Oleafly versions saved a credential in this Git remote.</p>
+                <button
+                  type="button"
+                  onClick={() => void cleanSavedCredential()}
+                  disabled={busy}
+                  className="mt-1.5 rounded border border-current/30 px-2 py-1 font-medium hover:bg-amber-500/10 disabled:opacity-40"
+                >
+                  Remove saved credential
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {initialized === false ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 px-5 text-center">
+            <GitBranch className="size-8 text-muted-foreground/60" />
+            <div>
+              <p className="text-xs font-medium">Source Control is not initialized</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                Oleafly will not create or commit to a Git repository automatically.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void initialize()}
+              disabled={busy}
+              className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
+            >
+              Initialize Repository
+            </button>
+            <button
+              type="button"
+              onClick={() => setPublishOpen(true)}
+              disabled={busy}
+              className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-40"
+            >
+              <Github className="size-3.5" /> Publish to GitHub
+            </button>
+          </div>
+        ) : initialized === null ? (
+          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+            Checking Source Control…
+          </div>
+        ) : changes.length === 0 ? (
           <p className="px-2 py-8 text-center text-xs text-muted-foreground">
             No changes. Working tree is clean.
           </p>
@@ -446,10 +625,11 @@ export function SourceControl() {
         )}
       </div>
 
-      <div
-        data-testid="source-control-actions"
-        className="shrink-0 border-t border-sidebar-border bg-sidebar p-2"
-      >
+      {initialized === true && (
+        <div
+          data-testid="source-control-actions"
+          className="shrink-0 border-t border-sidebar-border bg-sidebar p-2"
+        >
         <div className="flex flex-col gap-2">
           <Textarea
             value={message}
@@ -564,7 +744,8 @@ export function SourceControl() {
             </div>
           )}
         </div>
-      </div>
+        </div>
+      )}
 
       <PublishToGitHubDialog
         open={publishOpen}

@@ -99,6 +99,7 @@ pub async fn mcp_set_active_project(
     }
     if let Some(project_id) = project_id.as_deref() {
         crate::paths::validate_project_id(project_id)?;
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
         crate::project::read_meta(project_id)?;
     }
     *state.active_project.lock().await = project_id;

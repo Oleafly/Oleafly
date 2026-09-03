@@ -206,6 +206,7 @@ function previewWidget(
         identity,
         isCurrent,
         eager,
+        errorDisplay: "hidden",
         onPaint: (result) => {
           if (result.status === "ready") {
             rawSourceNode?.setAttribute(

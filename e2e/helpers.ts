@@ -5,6 +5,7 @@ import type { E2ePdfProbe } from "../src/lib/e2e-probe";
 export interface Page {
   click(selector: string, opts?: { timeout?: number }): Promise<void>;
   fill(selector: string, text: string): Promise<void>;
+  focus(selector: string): Promise<void>;
   press(selector: string, key: string): Promise<void>;
   evaluate<T = unknown>(expression: string): Promise<T>;
   waitForFunction(expression: string, timeout?: number): Promise<unknown>;
@@ -852,7 +853,28 @@ export async function openProject(page: Page & { getByText(t: string): { click()
     '[data-testid="library"][data-projects-loaded="true"]',
   ) as unknown as LocatorLike;
   await expect(library).toBeVisible({ timeout: 30_000 });
-  await page.click(`button[aria-label=${JSON.stringify(`Open ${name}`)}]`);
+  try {
+    await page.click(`button[aria-label=${JSON.stringify(`Open ${name}`)}]`);
+  } catch (error) {
+    const snapshot = await page.evaluate<string>(`(async () => {
+      const labels = Array.from(document.querySelectorAll('[data-testid="library"] button[aria-label]'))
+        .map((el) => el.getAttribute("aria-label"))
+        .filter((label) => label && /^Open /.test(label));
+      let stored = "unavailable";
+      try {
+        const files = await import("/src/store/files.ts");
+        const state = files.useFilesStore.getState();
+        stored = JSON.stringify({
+          loaded: state.projectsLoaded,
+          loading: state.loading,
+          projectId: state.projectId,
+          names: state.projects.map((project) => [project.name, project.recovery_pending ?? false]),
+        });
+      } catch {}
+      return JSON.stringify({ labels, stored });
+    })()`).catch(() => "snapshot unavailable");
+    throw new Error(`${String(error)}; library snapshot ${snapshot}`);
+  }
   const workspace = page.locator(
     "[data-e2e-project-id]",
   ) as unknown as LocatorLike;

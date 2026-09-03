@@ -51,6 +51,38 @@ pub fn figures_cache_root() -> Result<PathBuf, String> {
     Ok(dir)
 }
 
+/// Shared content-addressed compiler cache. Checkpoint probes isolate compiler
+/// configuration and temporary files but reuse verified bundle bytes here.
+pub fn compiler_cache_root() -> Result<PathBuf, String> {
+    let data = oleafly_root()?;
+    ensure_data_directory(&data)?;
+    let data = data
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve Oleafly data directory: {error}"))?;
+    let cache = data.join("compiler-cache");
+    ensure_real_directory(&cache, "compiler cache")?;
+    let cache = cache
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve compiler cache: {error}"))?;
+    if cache.parent() != Some(data.as_path()) {
+        return Err("compiler cache escapes the Oleafly data root".into());
+    }
+    Ok(cache)
+}
+
+pub fn tectonic_cache_root() -> Result<PathBuf, String> {
+    let compiler_cache = compiler_cache_root()?;
+    let tectonic = compiler_cache.join("tectonic");
+    ensure_real_directory(&tectonic, "Tectonic cache")?;
+    let tectonic = tectonic
+        .canonicalize()
+        .map_err(|error| format!("failed to resolve Tectonic cache: {error}"))?;
+    if tectonic.parent() != Some(compiler_cache.as_path()) {
+        return Err("Tectonic cache escapes the compiler cache root".into());
+    }
+    Ok(tectonic)
+}
+
 /// The projects directory: `~/.oleafly/projects/` (created if missing).
 pub fn projects_root() -> Result<PathBuf, String> {
     let root = oleafly_root()?.join("projects");
@@ -78,6 +110,135 @@ pub fn recycle_bin_root() -> Result<PathBuf, String> {
         return Err("recycle bin directory escapes the Oleafly data root".into());
     }
     Ok(recycle_bin)
+}
+
+/// A stable lock file for one project worktree. The lock lives outside the
+/// project so a transactional restore can replace every portable project file
+/// without replacing the inode that coordinates readers and writers.
+pub fn project_worktree_lock_file(project_id: &str) -> Result<PathBuf, String> {
+    validate_project_id(project_id)?;
+    let data = oleafly_root()?;
+    ensure_data_directory(&data)?;
+    let data = data
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve Oleafly data directory: {e}"))?;
+    let locks = data.join("project-worktree-locks");
+    ensure_real_directory(&locks, "project worktree locks")?;
+    let locks = locks
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve project worktree locks directory: {e}"))?;
+    if locks.parent() != Some(data.as_path()) {
+        return Err("project worktree locks directory escapes the Oleafly data root".into());
+    }
+    Ok(locks.join(format!("{project_id}.lock")))
+}
+
+/// Resolves the external Checkpoints store path for one project without
+/// creating the final directory. Store::open owns creation under its
+/// cross-process namespace lock.
+pub fn checkpoint_store_dir(project_id: &str) -> Result<PathBuf, String> {
+    validate_project_id(project_id)?;
+    let data = oleafly_root()?;
+    ensure_data_directory(&data)?;
+    let data = data
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve Oleafly data directory: {e}"))?;
+    let checkpoints = data.join("checkpoints");
+    ensure_real_directory(&checkpoints, "Checkpoints")?;
+    let checkpoints = checkpoints
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve Checkpoints directory: {e}"))?;
+    if checkpoints.parent() != Some(data.as_path()) {
+        return Err("Checkpoints directory escapes the Oleafly data root".into());
+    }
+
+    let store = checkpoints.join(project_id);
+    match std::fs::symlink_metadata(&store) {
+        Ok(metadata)
+            if metadata.is_dir()
+                && !metadata.file_type().is_symlink()
+                && !is_reparse_point(&metadata) =>
+        {
+            let resolved = store
+                .canonicalize()
+                .map_err(|e| format!("failed to resolve project Checkpoints directory: {e}"))?;
+            if resolved.parent() != Some(checkpoints.as_path()) {
+                return Err("project Checkpoints directory escapes the Checkpoints root".into());
+            }
+            Ok(resolved)
+        }
+        Ok(_) => Err("project Checkpoints path is not a real directory".into()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(store),
+        Err(error) => Err(format!(
+            "failed to inspect project Checkpoints directory: {error}"
+        )),
+    }
+}
+
+/// Resolves an existing external Checkpoints store without creating any app
+/// data path. Listing a project with no history must remain side-effect free.
+pub fn existing_checkpoint_store_dir(project_id: &str) -> Result<Option<PathBuf>, String> {
+    validate_project_id(project_id)?;
+    let data = oleafly_root()?;
+    let data_metadata = match std::fs::symlink_metadata(&data) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(format!("failed to inspect Oleafly data directory: {error}"));
+        }
+    };
+    if !data_metadata.is_dir()
+        || data_metadata.file_type().is_symlink()
+        || is_reparse_point(&data_metadata)
+    {
+        return Err("Oleafly data path is not a real directory".into());
+    }
+    let data = data
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve Oleafly data directory: {e}"))?;
+
+    let checkpoints = data.join("checkpoints");
+    let checkpoints_metadata = match std::fs::symlink_metadata(&checkpoints) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(format!("failed to inspect Checkpoints directory: {error}")),
+    };
+    if !checkpoints_metadata.is_dir()
+        || checkpoints_metadata.file_type().is_symlink()
+        || is_reparse_point(&checkpoints_metadata)
+    {
+        return Err("Checkpoints path is not a real directory".into());
+    }
+    let checkpoints = checkpoints
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve Checkpoints directory: {e}"))?;
+    if checkpoints.parent() != Some(data.as_path()) {
+        return Err("Checkpoints directory escapes the Oleafly data root".into());
+    }
+
+    let store = checkpoints.join(project_id);
+    let store_metadata = match std::fs::symlink_metadata(&store) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(format!(
+                "failed to inspect project Checkpoints directory: {error}"
+            ));
+        }
+    };
+    if !store_metadata.is_dir()
+        || store_metadata.file_type().is_symlink()
+        || is_reparse_point(&store_metadata)
+    {
+        return Err("project Checkpoints path is not a real directory".into());
+    }
+    let store = store
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve project Checkpoints directory: {e}"))?;
+    if store.parent() != Some(checkpoints.as_path()) {
+        return Err("project Checkpoints directory escapes the Checkpoints root".into());
+    }
+    Ok(Some(store))
 }
 
 pub fn device_trust_root() -> Result<PathBuf, String> {
@@ -230,27 +391,37 @@ fn secure_build_subdirectory_in(project: &std::path::Path, name: &str) -> Result
 
 fn ensure_real_directory(path: &std::path::Path, label: &str) -> Result<(), String> {
     match std::fs::symlink_metadata(path) {
-        Ok(metadata) => {
-            if !metadata.is_dir()
-                || metadata.file_type().is_symlink()
-                || is_reparse_point(&metadata)
-            {
-                return Err(format!("{label} path is not a real directory: {path:?}"));
-            }
-        }
+        Ok(metadata) => validate_real_directory_metadata(path, label, &metadata)?,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            std::fs::create_dir(path)
-                .map_err(|e| format!("failed to create {label} directory {path:?}: {e}"))?;
-            let metadata = std::fs::symlink_metadata(path)
-                .map_err(|e| format!("failed to inspect {label} directory {path:?}: {e}"))?;
-            if !metadata.is_dir()
-                || metadata.file_type().is_symlink()
-                || is_reparse_point(&metadata)
-            {
-                return Err(format!("{label} path is not a real directory: {path:?}"));
-            }
+            create_or_join_real_directory(path, label)?;
         }
         Err(error) => return Err(format!("failed to inspect {label} path {path:?}: {error}")),
+    }
+    Ok(())
+}
+
+fn create_or_join_real_directory(path: &std::path::Path, label: &str) -> Result<(), String> {
+    match std::fs::create_dir(path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+        Err(error) => {
+            return Err(format!(
+                "failed to create {label} directory {path:?}: {error}"
+            ));
+        }
+    }
+    let metadata = std::fs::symlink_metadata(path)
+        .map_err(|error| format!("failed to inspect {label} directory {path:?}: {error}"))?;
+    validate_real_directory_metadata(path, label, &metadata)
+}
+
+fn validate_real_directory_metadata(
+    path: &std::path::Path,
+    label: &str,
+    metadata: &std::fs::Metadata,
+) -> Result<(), String> {
+    if !metadata.is_dir() || metadata.file_type().is_symlink() || is_reparse_point(metadata) {
+        return Err(format!("{label} path is not a real directory: {path:?}"));
     }
     Ok(())
 }
@@ -266,10 +437,8 @@ fn is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
     false
 }
 
-/// Tests across modules (`secrets`, `template_packs`) mutate the process-global
-/// `OLEAFLY_DATA_DIR` env var for isolation; `cargo test` runs them in parallel
-/// by default, so unsynchronized mutation of that shared var is racy. Every
-/// such test must acquire this lock for the duration of its env-var mutation.
+/// Serializes every process environment mutation a test performs, because a
+/// change to any variable can make a concurrent read of another one miss.
 #[cfg(test)]
 pub(crate) fn data_dir_env_lock() -> std::sync::MutexGuard<'static, ()> {
     static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
@@ -299,6 +468,19 @@ mod tests {
         assert!(validate_project_id("default").is_ok());
         assert!(validate_project_id("flying-pink-pikachu").is_ok());
         assert!(validate_project_id("proj_01").is_ok());
+    }
+
+    #[test]
+    fn missing_directory_creation_accepts_a_concurrent_real_directory_winner() {
+        let directory = tempfile::tempdir().unwrap();
+        let raced = directory.path().join("raced");
+        std::fs::create_dir(&raced).unwrap();
+
+        create_or_join_real_directory(&raced, "test").unwrap();
+
+        let substituted = directory.path().join("substituted");
+        std::fs::write(&substituted, b"not a directory").unwrap();
+        assert!(create_or_join_real_directory(&substituted, "test").is_err());
     }
 
     #[test]
@@ -335,5 +517,49 @@ mod tests {
         std::fs::create_dir(project.join(".oleafly")).unwrap();
         symlink(&outside, project.join(".oleafly/build")).unwrap();
         assert!(secure_build_subdirectory_in(&project, "build").is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn checkpoint_paths_reject_symlink_substitution() {
+        use std::os::unix::fs::symlink;
+
+        let _env_guard = data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        let outside = directory.path().join("outside");
+        std::fs::create_dir(&data).unwrap();
+        std::fs::create_dir(&outside).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        symlink(&outside, data.join("checkpoints")).unwrap();
+
+        assert!(checkpoint_store_dir("paper").is_err());
+        assert!(existing_checkpoint_store_dir("paper").is_err());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn compiler_cache_paths_reject_symlink_substitution() {
+        use std::os::unix::fs::symlink;
+
+        let _env_guard = data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let data = directory.path().join("data");
+        let outside = directory.path().join("outside");
+        std::fs::create_dir(&data).unwrap();
+        std::fs::create_dir(&outside).unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        symlink(&outside, data.join("compiler-cache")).unwrap();
+
+        assert!(compiler_cache_root().is_err());
+
+        std::fs::remove_file(data.join("compiler-cache")).unwrap();
+        std::fs::create_dir(data.join("compiler-cache")).unwrap();
+        symlink(&outside, data.join("compiler-cache/tectonic")).unwrap();
+        assert!(tectonic_cache_root().is_err());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 }

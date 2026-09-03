@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "browser-chrome",
+  "description": "The chrome webview inside the in-app browser window (tab strip, address bar, page controls). Content webviews are remote pages and get no permissions at all.",
+  "webviews": ["oleafly-browser-chrome-*"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:event:allow-emit",
+    "shell:allow-open"
+  ]
+}

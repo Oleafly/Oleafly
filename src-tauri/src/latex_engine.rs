@@ -1717,9 +1717,12 @@ pub async fn compile_tagged(
     main_doc: String,
 ) -> Result<TaggedCompileResult, String> {
     let _guard = state.compile_lock.lock().await;
+    let worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let cancel_guard = TaggedCancelGuard::new(&state.compile_cancel);
     let plan = prepare_tagged_compile(project_id, main_doc).await?;
+    drop(worktree);
     let _runtime = acquire_tex_runtime_read()?;
+
     let execution = run_tagged_compile(&plan, &state.compile_cancel, cancel_guard).await?;
     Ok(publish_tagged_compile(&state, &plan, execution))
 }

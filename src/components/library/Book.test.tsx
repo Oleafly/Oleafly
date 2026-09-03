@@ -5,6 +5,24 @@ import { describe, expect, it } from "vitest";
 import { Book } from "./Book";
 
 describe("Book project metadata", () => {
+  it("can expose a recovery-specific open action", () => {
+    render(
+      <Book
+        title="recovery-project"
+        engine="Recovery required"
+        kind="Open to recover"
+        openLabel="Open to recover recovery-project"
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", {
+        name: "Open to recover recovery-project",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Open to recover")).toBeInTheDocument();
+  });
+
   it("shows the engine without an icon for a regular project", () => {
     const { container } = render(
       <Book title="Paper" engine="Tectonic" kind="document" />,

@@ -1,0 +1,116 @@
+This is XeTeX, Version 3.141592653-2.6-0.999993 (Tectonic 0.15.0)
+**
+(_oleafly_entry.tex
+LaTeX2e <2021-11-15> patch level 1
+ (main.tex (article.cls
+Document Class: article 2021/10/04 v1.4n Standard LaTeX document class
+(size10.clo
+File: size10.clo 2021/10/04 v1.4n Standard LaTeX file (size option)
+)
+) (hyperref.sty
+Package: hyperref 2022/02/21 v7.00n Hypertext links for LaTeX
+Package hyperref Info: Hyper figures OFF on input line 4137.
+Package hyperref Info: Link nesting OFF on input line 4142.
+\c@Hy@tempcnt=\count291
+) ("C:\texlive\2022\texmf-dist\tex\latex\base\ifthen.sty"
+Package: ifthen 2020/11/24 v1.1c Standard LaTeX ifthen package (DPC)
+) (/usr/share/texmf/tex/latex/graphics/graphicx.sty
+Package: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)
+) (chapters/intro.tex
+LaTeX Warning: Reference `fig:teaser' on page 1 undefined on input line 7.
+
+LaTeX Warning: Citation `vaswani2017' on page 1 undefined on input line 9.
+
+Overfull \hbox (23.44pt too wide) in paragraph at lines 12--15
+[]\TU/lmroman10-regular/m/n/10 This is a very long unbreakable URL http://example.com/a/b/c
+ []
+
+Underfull \hbox (badness 10000) in paragraph at lines 18--19
+
+ []
+
+Overfull \vbox (12.0pt too high) has occurred while \output is active [3]
+Underfull \vbox (badness 10000) has occurred while \output is active
+Missing character: There is no ő in font [lmroman10-regular]!
+Missing character: There is no → in font [lmroman10-regular]!
+) (chapters/methods.tex
+! Undefined control sequence.
+l.4 \badmacro
+              {arg}
+The control sequence at the end of the top line
+of your error message was never \def'ed.
+
+! Package amsmath Error: \begin{split} won't work here.
+
+See the amsmath package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...
+
+l.22 \begin{split}
+
+! LaTeX Error: Environment itemize undefined.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...
+
+l.30 \begin{itemize}
+
+./chapters/methods.tex:41: Missing $ inserted.
+<inserted text>
+                $
+l.41 x^
+       2
+./chapters/methods.tex:44: Package foo Error: This one is ignored error text.
+! Emergency stop.
+<*> main.tex
+
+*** (job aborted, no legal \end found)
+Runaway argument?
+! Paragraph ended before \caption was complete.
+<to be read again>
+                   \par
+l.50
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 55.
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\label' on input line 56.
+
+Class IEEEtran Warning: Some warning from the class on input line 60.
+
+LaTeX Font Warning: Font shape `TU/lmroman10-regular/m/it' undefined
+(Font)              using `TU/lmroman10-regular/m/n' instead on input line 62.
+
+LaTeX3 Warning: Something from expl3 on line 63.
+
+Package biblatex Warning: Please (re)run Biber on the file:
+(biblatex)                _oleafly_entry
+(biblatex)                and rerun LaTeX afterwards.
+
+Biber warning: [123] Utils.pm:123> WARN - I didn't find a database entry for 'knuth1984' (section 0)
+Biber warning: [124] Utils.pm:124> WARN - I didn't find a database entry for 'lamport1994' (section 0)Underfull \vbox (badness 10000) has occurred while \output is active [7]
+[Oleafly] Bibliography needs Biber (biblatex), but a usable .bbl was not produced.
+[Oleafly] Biber was not found (mode A): GUI launches often have a minimal PATH
+[Oleafly] Biber/biblatex version mismatch (mode B): the pinned biber is older than biblatex
+Package natbib Warning: Citation `knuth' on page 3 undefined on input line 70.
+
+LaTeX Warning: There were undefined references.
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+Module foo Info: Some module info without a period
+Package caption Info: Begin \AtBeginDocument code.
+Package caption Info: End \AtBeginDocument code.
+LaTeX Info: Redefining \ref on input line 80.
+LaTeX Info: Redefining \pageref on input line 81?
+) [1
+
+] (./figures/plot.tikz (./figures/data.dat) [2]) (figures/table 1.tex
+Overfull \hbox (1.0pt too wide) detected at line 3
+[]
+) (build/main.aux)
+Empty `thebibliography' environment on input line 90.
+Output written on build/main.pdf (2 pages).
+Empty `thebibliography' environment

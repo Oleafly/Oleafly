@@ -331,6 +331,8 @@ jobs:
         with:
           toolchain: 1.77.0
 
+      - name: Test history on Rust 1.77
+        run: cargo +1.77.0 test -p oleafly-history --all-targets
 
   cargo-deny:
     # RustSec advisories plus a permissive-only license gate for the Rust workspace.

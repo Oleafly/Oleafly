@@ -1,10 +1,14 @@
 import { test, expect } from "../fixtures";
 import {
+  fillTextarea,
   openOleaflyMcpSettings,
   openProject,
   openRailTab,
   openSettings,
+  waitLong,
+  type Page,
 } from "../helpers";
+import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
 // Agentic AI surface that does NOT require a live model call.
 
@@ -26,11 +30,34 @@ test("AI settings shows the agent tool catalog and PDF capture toggle", async ({
   await tauriPage.click('[aria-label="Close settings"]');
 });
 
-test("agent plan checklist renders from the todos store", async ({ tauriPage }) => {
-  await openProject(tauriPage, "E2E Doc");
-  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await openRailTab(tauriPage, "Research Assistant");
-  await expect(tauriPage.getByTestId("ai-chat-float")).toBeVisible({ timeout: 10_000 });
+let planServer: MockAiServer | undefined;
+
+test.afterAll(async () => {
+  await planServer?.close();
+});
+
+async function connectMockAndOpenChat(page: Page, server: MockAiServer) {
+  await openProject(page, "E2E Doc");
+  await expect(page.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  const connected = await page.evaluate<boolean>(
+    `window.__aiConnect?.("ollama", ${JSON.stringify(server.url)}, "llama3.2") ?? false`,
+  );
+  expect(connected, "__aiConnect devtools hook must be present").toBe(true);
+  await openRailTab(page, "Research Assistant");
+  await expect(page.locator('textarea[placeholder*="Ask AI"]')).toBeVisible({ timeout: 10_000 });
+}
+
+async function ensurePlanPanelOpen(page: Page) {
+  const open = await page.evaluate<boolean>(
+    `!!document.querySelector('[data-testid="agent-todos"]')`,
+  );
+  if (!open) await page.click('[data-testid="agent-status-pill"]');
+  await expect(page.getByTestId("agent-todos")).toBeVisible();
+}
+
+test("agent status pill renders the checklist from the todos store", async ({ tauriPage }) => {
+  planServer = await startMockAiServer();
+  await connectMockAndOpenChat(tauriPage, planServer);
 
   await tauriPage.evaluate(`window.__agentTodosSet?.([
     { id: "1", content: "E2E plan step A", status: "completed" },
@@ -38,21 +65,20 @@ test("agent plan checklist renders from the todos store", async ({ tauriPage }) 
     { id: "3", content: "E2E plan step C", status: "pending" },
   ])`);
 
-  const plan = tauriPage.getByTestId("agent-todos");
-  await expect(plan).toBeVisible({ timeout: 5_000 });
+  const pill = tauriPage.getByTestId("agent-status-pill");
+  await expect(pill).toBeVisible({ timeout: 5_000 });
+  await expect(pill).toContainText("STEP 2/3");
   await expect(tauriPage.getByText("E2E plan step A")).toHaveCount(0);
 
-  // Use a direct selector here: the Tauri bridge's role locator does not
-  // preserve aria-expanded when it serializes this button.
-  await tauriPage.click('[data-testid="agent-todos"] > button');
+  await tauriPage.click('[data-testid="agent-status-pill"]');
+  await expect(tauriPage.getByTestId("agent-todos")).toBeVisible();
   await expect(tauriPage.getByText("E2E plan step A")).toBeVisible();
   await expect(tauriPage.getByText("E2E plan step B")).toBeVisible();
   await expect(tauriPage.getByText("E2E plan step C")).toBeVisible();
-  await expect(tauriPage.getByText("Plan", { exact: true })).toBeVisible();
 
   await tauriPage.evaluate(`window.__agentTodosClear?.()`);
   await tauriPage.waitForFunction(
-    `!document.querySelector('[data-testid="agent-todos"]')`,
+    `!document.querySelector('[data-testid="agent-status-pill"]')`,
     5_000,
   );
 });
@@ -187,4 +213,73 @@ test("MCP activity rail tab appears only when the server is running", async ({
     `!document.querySelector('[aria-label="MCP activity"]')`,
     10_000,
   );
+});
+
+test("plan mode proposes a plan, waits for approval, then works through it", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
+  planServer ??= await startMockAiServer();
+  await connectMockAndOpenChat(tauriPage, planServer);
+
+  const planButton = tauriPage.locator('button[aria-label="Plan mode"]');
+  await expect(planButton).toHaveAttribute("data-state", "off");
+  await expect(tauriPage.getByTestId("ai-plan-mode-info")).toHaveCount(0);
+  await planButton.click();
+  await expect(planButton).toHaveAttribute("data-state", "on");
+  await expect(tauriPage.getByTestId("ai-plan-mode-info")).toBeVisible();
+
+  const steps = [
+    { id: "title", content: "E2E plan: retitle main.tex", status: "pending" },
+    { id: "abstract", content: "E2E plan: shorten the abstract", status: "pending" },
+  ];
+  planServer.setReply("PLANFALLBACK");
+  planServer.setToolCall({ name: "update_todos", args: { todos: steps }, then: "PLANREADY51" });
+  const composer = 'textarea[placeholder*="Ask AI"]';
+  await fillTextarea(tauriPage, composer, "Retitle the document and shorten the abstract.");
+  await tauriPage.press(composer, "Enter");
+
+  await waitLong(
+    tauriPage,
+    `document.body.innerText.includes('PLANREADY51') && !document.querySelector('[aria-label="Stop"]')`,
+    45_000,
+  );
+  const pill = tauriPage.getByTestId("agent-status-pill");
+  await expect(pill).toHaveAttribute("data-plan-status", "awaiting", { timeout: 10_000 });
+  await expect(pill).toContainText("PLAN");
+  await expect(pill).toContainText("STEP 0/2");
+  await expect(
+    tauriPage.locator('textarea[placeholder="Describe what to change in the plan"]'),
+  ).toBeVisible();
+
+  const checklist = tauriPage.getByTestId("agent-todos");
+  await expect(checklist).toBeVisible({ timeout: 5_000 });
+  await ensurePlanPanelOpen(tauriPage);
+  await expect(checklist).toHaveAttribute("data-plan-status", "awaiting");
+  await expect(tauriPage.getByText("Awaiting approval")).toBeVisible();
+  await expect(tauriPage.locator('[data-todo-status="pending"]')).toHaveCount(2);
+  await expect(tauriPage.locator('button[aria-label="Approve plan"]')).toBeVisible();
+  await expect(tauriPage.locator('button[aria-label="Revise"]')).toBeVisible();
+
+  planServer.setToolCall({
+    name: "update_todos",
+    args: { todos: steps.map((step) => ({ ...step, status: "completed" })) },
+    then: "PLANDONE52",
+  });
+  await tauriPage.click('button[aria-label="Approve plan"]');
+
+  await waitLong(
+    tauriPage,
+    `document.body.innerText.includes('PLANDONE52') && !document.querySelector('[aria-label="Stop"]')`,
+    45_000,
+  );
+  const summary = tauriPage.getByTestId("agent-run-summary");
+  await expect(summary).toBeVisible({ timeout: 10_000 });
+  await expect(summary).toContainText("Plan · 2/2 done");
+  await expect(tauriPage.getByTestId("agent-status-pill")).toHaveCount(0);
+  await expect(tauriPage.locator('button[aria-label="Approve plan"]')).toHaveCount(0);
+  await expect(planButton).toHaveAttribute("data-state", "on");
+  await expect(tauriPage.locator(composer)).toBeVisible();
+
+  planServer.setToolCall(null);
+  await planButton.click();
+  await expect(planButton).toHaveAttribute("data-state", "off");
 });

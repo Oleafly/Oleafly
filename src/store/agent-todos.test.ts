@@ -1,7 +1,10 @@
+// @vitest-environment jsdom
+
 import { beforeEach, describe, expect, it } from "vitest";
-import { agentTodoProgress, useAgentTodoStore } from "./agent-todos";
+import { agentTodoProgress, readStoredTodos, useAgentTodoStore } from "./agent-todos";
 
 beforeEach(() => {
+  localStorage.clear();
   useAgentTodoStore.setState({
     projectId: null,
     activeChatId: null,
@@ -65,5 +68,85 @@ describe("todo project binding", () => {
     expect(useAgentTodoStore.getState().todos).toEqual([
       { id: "a", content: "Chat A step", status: "completed" },
     ]);
+  });
+});
+
+describe("plan carry-over and persistence", () => {
+  it("keeps the chat checklist when a turn begins with keep", () => {
+    const store = useAgentTodoStore.getState();
+    store.bindProject("project-1");
+    store.beginTurn("chat-a");
+    store.setTodos([{ id: "a", content: "Edit the intro", status: "pending" }]);
+    store.finishTurn("chat-a");
+
+    useAgentTodoStore.getState().beginTurn("chat-a", { keep: true });
+    expect(useAgentTodoStore.getState().todos).toEqual([
+      { id: "a", content: "Edit the intro", status: "pending" },
+    ]);
+
+    useAgentTodoStore.getState().beginTurn("chat-a");
+    expect(useAgentTodoStore.getState().todos).toEqual([]);
+  });
+
+  it("persists the checklist per chat and restores it after a reload", () => {
+    const store = useAgentTodoStore.getState();
+    store.bindProject("project-1");
+    store.beginTurn("chat-a");
+    store.setTodos([{ id: "a", content: "Edit the intro", status: "pending" }]);
+    store.finishTurn("chat-a");
+    expect(readStoredTodos("chat-a")).toEqual([
+      { id: "a", content: "Edit the intro", status: "pending" },
+    ]);
+
+    useAgentTodoStore.setState({
+      projectId: null,
+      activeChatId: null,
+      todos: [],
+      todosByChat: {},
+    });
+    useAgentTodoStore.getState().selectChat("chat-a");
+    expect(useAgentTodoStore.getState().todos).toEqual([
+      { id: "a", content: "Edit the intro", status: "pending" },
+    ]);
+  });
+
+  it("wipes the stored checklist when a turn begins without keep", () => {
+    const store = useAgentTodoStore.getState();
+    store.bindProject("project-1");
+    store.beginTurn("chat-a");
+    store.setTodos([{ id: "a", content: "Edit the intro", status: "pending" }]);
+    store.finishTurn("chat-a");
+
+    useAgentTodoStore.getState().beginTurn("chat-a");
+
+    expect(readStoredTodos("chat-a")).toEqual([]);
+    expect(useAgentTodoStore.getState().todos).toEqual([]);
+
+    useAgentTodoStore.setState({
+      projectId: null,
+      activeChatId: null,
+      todos: [],
+      todosByChat: {},
+    });
+    useAgentTodoStore.getState().selectChat("chat-a");
+    expect(useAgentTodoStore.getState().todos).toEqual([]);
+  });
+
+  it("drops malformed stored entries and clears storage with the checklist", () => {
+    localStorage.setItem(
+      "oleafly.agent-todos.chat-a",
+      JSON.stringify([{ id: "a", content: "Ok", status: "pending" }, { id: 1 }, "x"]),
+    );
+    expect(readStoredTodos("chat-a")).toEqual([{ id: "a", content: "Ok", status: "pending" }]);
+    localStorage.setItem("oleafly.agent-todos.chat-b", "{not json");
+    expect(readStoredTodos("chat-b")).toEqual([]);
+
+    const store = useAgentTodoStore.getState();
+    store.bindProject("project-1");
+    store.beginTurn("chat-a", { keep: true });
+    store.finishTurn("chat-a");
+    useAgentTodoStore.getState().clear();
+    expect(localStorage.getItem("oleafly.agent-todos.chat-a")).toBeNull();
+    expect(useAgentTodoStore.getState().todos).toEqual([]);
   });
 });

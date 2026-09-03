@@ -2,12 +2,14 @@ use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use base64::Engine;
 use portable_pty::{CommandBuilder, MasterPty, PtySize};
 use rand::RngCore;
 use serde::Serialize;
-use tauri::{ipc::Channel, Runtime, Webview};
+use tauri::webview::{PageLoadEvent, PageLoadPayload};
+use tauri::{ipc::Channel, RunEvent, Runtime, Webview};
 
 #[derive(Serialize)]
 #[serde(tag = "event", rename_all = "snake_case")]
@@ -90,6 +92,79 @@ impl<T> SessionRegistry<T> {
     fn remove_unchecked(&mut self, id: &str) -> Option<T> {
         self.sessions.remove(id).map(|record| record.session)
     }
+
+    fn drain_window(&mut self, window_label: &str) -> Vec<T> {
+        let ids: Vec<String> = self
+            .sessions
+            .iter()
+            .filter(|(_, record)| record.owner.window_label == window_label)
+            .map(|(id, _)| id.clone())
+            .collect();
+        ids.iter()
+            .filter_map(|id| self.remove_unchecked(id))
+            .collect()
+    }
+
+    fn drain_all(&mut self) -> Vec<T> {
+        self.sessions
+            .drain()
+            .map(|(_, record)| record.session)
+            .collect()
+    }
+}
+
+fn stop_sessions_in_background(sessions: Vec<TermSession>) {
+    if sessions.is_empty() {
+        return;
+    }
+    let _ = std::thread::Builder::new()
+        .name("oleafly-terminal-cleanup".into())
+        .spawn(move || {
+            for session in sessions {
+                stop_session(session);
+            }
+        });
+}
+
+pub(crate) fn kill_window_sessions(window_label: &str) {
+    let drained = {
+        let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
+        sessions
+            .as_mut()
+            .map(|registry| registry.drain_window(window_label))
+            .unwrap_or_default()
+    };
+    stop_sessions_in_background(drained);
+}
+
+fn kill_all_sessions() {
+    let drained = {
+        let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
+        sessions
+            .as_mut()
+            .map(|registry| registry.drain_all())
+            .unwrap_or_default()
+    };
+    for session in drained {
+        stop_session(session);
+    }
+}
+
+pub fn on_page_load<R: Runtime>(webview: &Webview<R>, payload: &PageLoadPayload<'_>) {
+    if webview.window().label() != "main" || !matches!(payload.event(), PageLoadEvent::Started) {
+        return;
+    }
+    kill_window_sessions("main");
+}
+
+pub fn lifecycle_plugin<R: Runtime>() -> tauri::plugin::TauriPlugin<R> {
+    tauri::plugin::Builder::<R>::new("terminal-lifecycle")
+        .on_event(|_app, event| {
+            if let RunEvent::Exit = event {
+                kill_all_sessions();
+            }
+        })
+        .build()
 }
 
 static SESSIONS: Mutex<Option<SessionRegistry<TermSession>>> = Mutex::new(None);
@@ -168,7 +243,7 @@ fn default_shell() -> CommandBuilder {
 }
 
 #[tauri::command]
-pub fn term_open<R: Runtime>(
+pub async fn term_open<R: Runtime>(
     webview: Webview<R>,
     project_id: String,
     cols: u16,
@@ -177,7 +252,11 @@ pub fn term_open<R: Runtime>(
 ) -> Result<String, String> {
     let owner = webview_command_owner(&webview, &project_id)?;
     let cwd = crate::paths::project_dir(&project_id)?;
-    open_terminal(&cwd, owner, cols, rows, channel, default_shell())
+    tauri::async_runtime::spawn_blocking(move || {
+        open_terminal(&cwd, owner, cols, rows, channel, default_shell())
+    })
+    .await
+    .map_err(|e| format!("failed to start shell: {e}"))?
 }
 
 fn open_terminal(
@@ -188,6 +267,7 @@ fn open_terminal(
     channel: Channel<TerminalEvent>,
     mut cmd: CommandBuilder,
 ) -> Result<String, String> {
+    let started = Instant::now();
     let pty = portable_pty::native_pty_system()
         .openpty(PtySize {
             rows,
@@ -196,6 +276,7 @@ fn open_terminal(
             pixel_height: 0,
         })
         .map_err(|e| format!("failed to open pty: {e}"))?;
+    let pty_ready = started.elapsed();
 
     cmd.cwd(cwd);
     cmd.env("TERM", "xterm-256color");
@@ -206,6 +287,7 @@ fn open_terminal(
     let pid = child
         .process_id()
         .ok_or_else(|| "failed to identify shell process".to_string())?;
+    let spawned = started.elapsed();
     let containment = match crate::proc::contain_process_tree(pid) {
         Ok(containment) => containment,
         Err(error) => {
@@ -214,6 +296,7 @@ fn open_terminal(
             return Err(format!("failed to contain shell process: {error}"));
         }
     };
+    let contained = started.elapsed();
     drop(pty.slave);
 
     let mut reader = pty
@@ -240,6 +323,12 @@ fn open_terminal(
                 },
             )
     };
+    println!(
+        "term: session {id} opened pty={:.1}ms spawn={:.1}ms contain={:.1}ms",
+        pty_ready.as_secs_f64() * 1000.0,
+        (spawned - pty_ready).as_secs_f64() * 1000.0,
+        (contained - spawned).as_secs_f64() * 1000.0
+    );
 
     // ConPTY keeps the reader blocked until the pseudo console closes, so a
     // shell that exits on its own never EOFs the reader on Windows. Poll for
@@ -416,6 +505,23 @@ fn kill_terminal(owner: &SessionOwner, id: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn drain_window_removes_only_that_windows_sessions() {
+        let mut registry = SessionRegistry::<u32>::default();
+        let main_id = registry.insert(SessionOwner::new("main", "alpha"), 1);
+        let other_main = registry.insert(SessionOwner::new("main", "beta"), 2);
+        let preview_id = registry.insert(SessionOwner::new("preview", "alpha"), 3);
+        let mut drained = registry.drain_window("main");
+        drained.sort_unstable();
+        assert_eq!(drained, vec![1, 2]);
+        assert!(registry.remove_unchecked(&main_id).is_none());
+        assert!(registry.remove_unchecked(&other_main).is_none());
+        assert_eq!(registry.remove_unchecked(&preview_id), Some(3));
+        assert!(registry.drain_all().is_empty());
+    }
+    #[cfg(unix)]
+    use crate::proc::NoConsole as _;
     #[test]
     fn drain_utf8_keeps_a_split_multibyte_tail() {
         let emoji = "café🦀".as_bytes();
@@ -754,6 +860,7 @@ mod tests {
         let mut stopped = false;
         while std::time::Instant::now() < deadline {
             if !std::process::Command::new("kill")
+                .no_console()
                 .args(["-0", &pid])
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
@@ -767,6 +874,7 @@ mod tests {
         }
         if !stopped {
             let _ = std::process::Command::new("kill")
+                .no_console()
                 .args(["-KILL", &pid])
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
@@ -820,6 +928,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(500));
         let marker_exists = project.join("descendant-marker").exists();
         let _ = std::process::Command::new("kill")
+            .no_console()
             .args(["-KILL", descendant_pid.trim()])
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
@@ -827,5 +936,64 @@ mod tests {
 
         std::fs::remove_dir_all(&root).ok();
         assert!(!marker_exists);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn closing_a_window_stops_only_that_windows_shells() {
+        let root = std::env::temp_dir().join(format!(
+            "oleafly-terminal-window-drain-{}",
+            std::process::id()
+        ));
+        std::fs::remove_dir_all(&root).ok();
+        let project = root.join("projects/proj");
+        std::fs::create_dir_all(&project).unwrap();
+        let idle = || {
+            let mut shell = CommandBuilder::new("/bin/sh");
+            shell.arg("-c");
+            shell.arg("sleep 30");
+            shell
+        };
+        let closing = SessionOwner::new("terminal-drain-window", "proj");
+        let staying = SessionOwner::new("terminal-keep-window", "proj");
+        let closing_id = open_terminal(
+            &project,
+            closing.clone(),
+            80,
+            24,
+            Channel::new(|_| Ok(())),
+            idle(),
+        )
+        .unwrap();
+        let staying_id = open_terminal(
+            &project,
+            staying.clone(),
+            80,
+            24,
+            Channel::new(|_| Ok(())),
+            idle(),
+        )
+        .unwrap();
+
+        kill_window_sessions("terminal-window-with-no-shells");
+        assert!(write_terminal(&closing, &closing_id, "\n").is_ok());
+
+        kill_window_sessions("terminal-drain-window");
+        assert_eq!(
+            write_terminal(&closing, &closing_id, "\n").err().as_deref(),
+            Some("terminal session is not open")
+        );
+        assert!(write_terminal(&staying, &staying_id, "\n").is_ok());
+
+        kill_terminal(&staying, &staying_id).unwrap();
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn the_lifecycle_plugin_carries_a_stable_name() {
+        use tauri::plugin::Plugin as _;
+
+        let plugin = lifecycle_plugin::<tauri::test::MockRuntime>();
+        assert_eq!(plugin.name(), "terminal-lifecycle");
     }
 }

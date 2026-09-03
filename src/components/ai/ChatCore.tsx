@@ -1,11 +1,14 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useId, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
 import { runAgentHarness, toAgentMessages } from "./agent-turn";
 import { DeltaQueues, MAX_BATCH } from "@oleafly/ai-core";
 import {
   DEFAULT_APPROVAL_MODE,
+  PLAN_MODE_TOOL_ERROR,
   decideToolApproval,
+  isReadOnlyTool,
+  planModeTools,
   toolRisk,
   type ApprovalMode,
 } from "@oleafly/ai-tools";
@@ -32,6 +35,7 @@ import {
   FilePlus2,
   Frame,
   History,
+  Info,
   Layers,
   Lightbulb,
   MessageSquareQuote,
@@ -51,7 +55,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { approvalsList, approvalsSet, getConfig, gitLog, gitAutoCommit, gitHeadOid, gitShow, gitStatus, readFileContent, usageRecord, type AppConfig, type CustomProvider, type McpAgentServer, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
+import { approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, usageRecord, type AppConfig, type CustomProvider, type McpAgentServer, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
@@ -92,7 +96,7 @@ import {
 } from "@/components/ai/chat-run-registry";
 import { personaGradient } from "@/lib/persona-colors";
 import { toast } from "@/lib/toast";
-import { defaultModel, mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
+import { mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
 import { enabledModels } from "@/lib/ai-model-state";
 import { useSettingsStore } from "@/store/settings";
 import { useChatsStore, type ChatMessage, type StoredChat } from "@/store/chats";
@@ -105,6 +109,11 @@ import {
   useApprovalModeStore,
 } from "@/store/approval-mode";
 import { planModeForProject, usePlanModeStore } from "@/store/plan-mode";
+import {
+  planApprovalForChat,
+  usePlanApprovalStore,
+  type PlanApprovalStatus,
+} from "@/store/plan-approval";
 import { goalForProject, useChatGoalStore } from "@/store/chat-goal";
 import { goalPromptLine } from "@/lib/ai-goal";
 import {
@@ -112,7 +121,6 @@ import {
   agentFileChangeTurnKey,
   useAgentFileChangesStore,
 } from "@/store/agent-file-changes";
-import { subscribeAutoCommit } from "@/lib/auto-commit";
 import {
   filterResolvedTools,
   resolveAvailableTools,
@@ -124,7 +132,7 @@ import {
 } from "@/lib/mcp-agent-tools";
 
 registerAiToolsets();
-import { useAgentTodoStore } from "@/store/agent-todos";
+import { useAgentTodoStore, type AgentTodo } from "@/store/agent-todos";
 import { useAgentMemoryStore } from "@/store/agent-memory";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
 import { isToolEnabled, useAiToolSettingsStore } from "@/store/ai-tool-settings";
@@ -159,12 +167,18 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import { ChatMinimap } from "@/components/ai/ChatMinimap";
+import { MessageList, type RenderedMessage } from "@/components/ai/MessageList";
 import {
-  AgentPlan,
+  deriveProviderState,
+  knownProviderConfig,
+  loadProviderConfig,
+  subscribeProviderConfig,
+} from "@/components/ai/provider-config";
+import {
   AgentRunSummary,
+  AgentStatusPill,
   Shimmer,
   InfoHint,
-  MessageItem,
   formatError,
   formatToolOutput,
 } from "@/components/ai/chat-parts";
@@ -218,8 +232,29 @@ export function approvalPostureLine(mode: ApprovalMode): string {
   return APPROVAL_POSTURE_LINES[mode];
 }
 
-export const PLAN_MODE_POSTURE_LINE =
-  "Plan mode: Produce and maintain a step plan with update_todos. Work through the plan step by step before finishing.";
+export const PLAN_MODE_HINT =
+  "Plan mode: the assistant proposes a plan before editing. Turn Plan off to give the assistant direct access to all tools.";
+export const PLAN_REVISION_PLACEHOLDER = "Describe what to change in the plan";
+export const PLAN_APPROVED_MESSAGE = "Carry out the approved plan.";
+export const PLAN_MODE_PLANNING_PROMPT =
+  "Plan mode: this is a planning turn. Read and inspect the project freely with the tools offered, but do not edit files, compile, or run commands; those tools are not offered in this turn. Finish by calling update_todos with a numbered plan, one pending item per file or section to touch, then reply with a short summary of the plan. Stop there and wait for the user to approve the plan. Do not start the work. When the request needs editing, deleting, compiling, or running commands, do not say you lack access to tools; put that work into the numbered plan as pending items, because the approved plan runs with the full toolset. Mention that the user can turn Plan off for direct tool access.";
+export const PLAN_MODE_REVISION_LINE =
+  "The user asked for changes to the current plan. Apply the feedback by calling update_todos with the revised numbered plan as pending items, reply with a short summary of what changed, then stop and wait for approval again.";
+
+export type PlanTurn = "planning" | "revision" | "execution";
+
+export function planModeExecutionPrompt(todos: readonly AgentTodo[]): string {
+  const items = todos
+    .filter((todo) => todo.status !== "cancelled")
+    .map((todo, index) => `${index + 1}. ${todo.content}`);
+  return `Plan mode: the user approved this plan:\n${items.join("\n")}\nCarry out the approved items in order. Keep the checklist current with update_todos: mark each item in_progress when you start it and completed when it is done. Stay within the approved plan and tell the user if something needs to change.`;
+}
+
+export function planTurnPrompt(turn: PlanTurn, todos: readonly AgentTodo[]): string {
+  if (turn === "execution") return planModeExecutionPrompt(todos);
+  if (turn === "revision") return `${PLAN_MODE_PLANNING_PROMPT}\n${PLAN_MODE_REVISION_LINE}`;
+  return PLAN_MODE_PLANNING_PROMPT;
+}
 
 export function resolveResponseInstructions(
   personas: Persona[],
@@ -352,6 +387,10 @@ export function ChatCore() {
   const chats = useChatsStore((s) => s.chats);
   const chatsProjectId = useChatsStore((s) => s.projectId);
   const activeChatId = useChatsStore((s) => s.activeId);
+  const planApprovalByChat = usePlanApprovalStore((s) => s.byChat);
+  const planApprovalStatus: PlanApprovalStatus = planMode
+    ? planApprovalForChat(planApprovalByChat, activeChatId)
+    : "planning";
   // The sentinel keeps the selector's snapshot referentially stable for
   // chats without queued follow-ups (a fresh [] loops useSyncExternalStore).
   const queuedFollowUps = useAgentTurnsStore((s) =>
@@ -418,6 +457,13 @@ export function ChatCore() {
   );
 
   const changePlanMode = useCallback(() => {
+    if (usePlanModeStore.getState().isEnabled(projectId)) {
+      const projectChatIds = useChatsStore
+        .getState()
+        .chats.filter((chat) => chat.projectId === projectId)
+        .map((chat) => chat.id);
+      usePlanApprovalStore.getState().discardForChats(projectChatIds);
+    }
     togglePlanMode(projectId);
   }, [projectId, togglePlanMode]);
 
@@ -445,19 +491,29 @@ export function ChatCore() {
   const sendPreparingRef = useRef(false);
   const [streaming, setStreaming] = useState(false);
   const [approvalModeLocked, setApprovalModeLocked] = useState(false);
-  const [provider, setProvider] = useState("openai");
-  const [model, setModel] = useState("gpt-4o");
-  const [providerConfigReady, setProviderConfigReady] = useState(false);
+  const [initialProvider] = useState(() => {
+    const cfg = knownProviderConfig();
+    return cfg ? { cfg, state: deriveProviderState(cfg) } : null;
+  });
+  const [provider, setProvider] = useState(initialProvider?.state.provider ?? "openai");
+  const [model, setModel] = useState(initialProvider?.state.model ?? "gpt-4o");
+  const [providerConfigReady, setProviderConfigReady] = useState(initialProvider !== null);
   const [providerConfigError, setProviderConfigError] = useState(false);
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState(initialProvider?.state.apiKey ?? "");
   // So the switcher can offer every provider the user has set up, not just the default one.
-  const [keysMap, setKeysMap] = useState<Record<string, string>>({});
+  const [keysMap, setKeysMap] = useState<Record<string, string>>(
+    () => initialProvider?.state.keysMap ?? {},
+  );
   // Per-provider enable/disable/custom model state from Settings; falls back
   // to the static catalog for providers that haven't been touched there yet.
-  const [providerModelsMap, setProviderModelsMap] = useState<Record<string, StoredModel[]>>({});
+  const [providerModelsMap, setProviderModelsMap] = useState<Record<string, StoredModel[]>>(
+    () => initialProvider?.state.providerModelsMap ?? {},
+  );
   // User-defined providers from Settings, so they appear in the switcher and
   // so chat-time model construction can thread their base URL through.
-  const [customProviders, setCustomProviders] = useState<CustomProvider[]>([]);
+  const [customProviders, setCustomProviders] = useState<CustomProvider[]>(
+    () => initialProvider?.state.customProviders ?? [],
+  );
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -503,10 +559,12 @@ export function ChatCore() {
   const figureModeOpen = useSettingsStore((s) => s.figureModeOpen);
   const setFigureModeOpen = useSettingsStore((s) => s.setFigureModeOpen);
   // User's own system-prompt addition (sandboxed into our prompt at send time).
-  const [customPrompt, setCustomPrompt] = useState("");
+  const [customPrompt, setCustomPrompt] = useState(initialProvider?.state.customPrompt ?? "");
   // Named, colored saved prompts from AI settings; and the one active for
   // this session (null = use customPrompt instead).
-  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [personas, setPersonas] = useState<Persona[]>(
+    () => initialProvider?.state.personas ?? [],
+  );
   const [activePersonaId, setActivePersonaId] = useState<string | null>(null);
   const activePersona = activePersonaId
     ? personas.find((persona) => persona.id === activePersonaId) ?? null
@@ -515,20 +573,21 @@ export function ChatCore() {
   // without depending on it.
   const attachmentsRef = useRef<PendingAttachment[]>(attachments);
   attachmentsRef.current = attachments;
-  const customPromptRef = useRef("");
+  const customPromptRef = useRef(customPrompt);
   customPromptRef.current = customPrompt;
-  const personasRef = useRef<Persona[]>([]);
+  const personasRef = useRef<Persona[]>(personas);
   personasRef.current = personas;
   const activePersonaIdRef = useRef<string | null>(null);
   activePersonaIdRef.current = activePersonaId;
   // Last-loaded config, so newChat can reset the session model to the saved
   // default without an extra async round trip.
-  const cfgRef = useRef<AppConfig | null>(null);
+  const cfgRef = useRef<AppConfig | null>(initialProvider?.cfg ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const goalInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const slashCommandMenuRef = useRef<SlashCommandMenuHandle>(null);
   const inputShellRef = useRef<HTMLDivElement>(null);
+  const planModeInfoId = useId();
   const slashMenuOpen =
     isSlashCommandInput(input) && slashMenuDismissedInput !== input;
   useEffect(() => {
@@ -540,7 +599,9 @@ export function ChatCore() {
     ? "Document engine unavailable. AI editing disabled"
     : figureMode
       ? "Describe a figure to draw…"
-      : "Ask AI to help with your document…";
+      : planApprovalStatus === "awaiting"
+        ? PLAN_REVISION_PLACEHOLDER
+        : "Ask AI to help with your document…";
   useAutoSizeTextarea(
     textareaRef,
     inputShellRef,
@@ -758,60 +819,40 @@ export function ChatCore() {
   }, [setInput]);
 
   useEffect(() => {
+    let active = true;
     const apply = (cfg: AppConfig) => {
-        cfgRef.current = cfg;
-        const saved = cfg.ai_provider || "openai";
-        setCustomPrompt(cfg.ai_system_prompt || "");
-        customPromptRef.current = cfg.ai_system_prompt || "";
-        const nextPersonas = cfg.ai_personas ?? [];
-        setPersonas(nextPersonas);
-        setActivePersonaId((current) =>
-          current && nextPersonas.some((persona) => persona.id === current)
-            ? current
-            : null,
-        );
-        const keys = { ...(cfg.ai_keys ?? {}) };
-        // Fold the legacy single key into the map so it counts as configured.
-        if (cfg.ai_api_key && !keys[saved]) keys[saved] = cfg.ai_api_key;
-        setKeysMap(keys);
-        setProviderModelsMap(cfg.ai_provider_models ?? {});
-        const customs = cfg.ai_custom_providers ?? [];
-        setCustomProviders(customs);
-        // Use the saved provider if it has a key; otherwise fall back to the
-        // first configured one (e.g. the saved provider's key was removed).
-        // A custom provider with keyOptional counts as configured with no key.
-        const keyOptionalIds = customs.filter((c) => c.keyOptional).map((c) => c.id);
-        const configured = Object.keys(keys).filter((k) => (keys[k] ?? "").trim());
-        const provider =
-          (keys[saved] ?? "").trim() || keyOptionalIds.includes(saved)
-            ? saved
-            : configured[0] ?? saved;
-        setProvider(provider);
-        setApiKey(keys[provider] || "");
-        setModel(
-          provider === saved && cfg.ai_model ? cfg.ai_model : defaultModel(provider)
-        );
+      if (!active || cfgRef.current === cfg) return;
+      cfgRef.current = cfg;
+      const next = deriveProviderState(cfg);
+      setCustomPrompt(next.customPrompt);
+      customPromptRef.current = next.customPrompt;
+      setPersonas(next.personas);
+      setActivePersonaId((current) =>
+        current && next.personas.some((persona) => persona.id === current)
+          ? current
+          : null,
+      );
+      setKeysMap(next.keysMap);
+      setProviderModelsMap(next.providerModelsMap);
+      setCustomProviders(next.customProviders);
+      setProvider(next.provider);
+      setApiKey(next.apiKey);
+      setModel(next.model);
+      setProviderConfigReady(true);
+      setProviderConfigError(false);
+    };
+    const unsubscribe = subscribeProviderConfig(apply);
+    void loadProviderConfig()
+      .then(apply)
+      .catch(() => {
+        if (!active) return;
+        setProviderConfigError(true);
         setProviderConfigReady(true);
-        setProviderConfigError(false);
+      });
+    return () => {
+      active = false;
+      unsubscribe();
     };
-    const load = (event?: Event) => {
-      const cfg = (event as CustomEvent<AppConfig> | undefined)?.detail;
-      if (cfg) {
-        apply(cfg);
-        return;
-      }
-      void getConfig()
-        .then(apply)
-        .catch(() => {
-          setProviderConfigError(true);
-          setProviderConfigReady(true);
-        });
-    };
-    load();
-    // Re-read when AI settings change elsewhere (e.g. connected in Settings),
-    // so the panel updates live without a remount.
-    window.addEventListener("oleafly:ai-config-changed", load);
-    return () => window.removeEventListener("oleafly:ai-config-changed", load);
   }, []);
 
   useEffect(() => {
@@ -873,6 +914,18 @@ export function ChatCore() {
     if (projectId) useAgentMemoryStore.getState().load(projectId);
     useAgentTodoStore.getState().bindProject(projectId);
   }, [projectId]);
+
+  useEffect(() => {
+    if (!activeChatId) return;
+    const approval = usePlanApprovalStore.getState();
+    if (approval.load(activeChatId) === "approved" && !activeChatRun()) {
+      approval.setStatus(activeChatId, "planning");
+    }
+    const todoState = useAgentTodoStore.getState();
+    if (todoState.activeChatId === null && todoState.todosByChat[activeChatId] === undefined) {
+      todoState.selectChat(activeChatId);
+    }
+  }, [activeChatId]);
 
   // The panel unmounts whenever the sidebar collapses or another rail tab is
   // shown, so this effect also runs on every REMOUNT - in that case (same
@@ -1032,13 +1085,17 @@ export function ChatCore() {
   const slashCommands = createSlashCommands(commandActions);
   const attachCommands = createAttachCommands(commandActions);
 
+  const scrollAnchorRef = useRef<ChatMessage | null | undefined>(undefined);
   useEffect(() => {
-    void messages;
     void thinkingText;
+    const first = messages[0] ?? null;
+    const previous = scrollAnchorRef.current;
+    scrollAnchorRef.current = first;
+    const replaced = previous === undefined || (previous !== null && first !== previous);
     if (!nearBottomRef.current) return;
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
-      behavior: streaming ? "auto" : "smooth",
+      behavior: streaming || replaced ? "auto" : "smooth",
     });
   }, [messages, thinkingText, streaming]);
 
@@ -1121,7 +1178,11 @@ export function ChatCore() {
     [queueStreamDrain],
   );
 
-  const send = useCallback(async (text: string, queued?: QueuedFollowUp) => {
+  const send = useCallback(async (
+    text: string,
+    queued?: QueuedFollowUp,
+    options?: { approvedPlan?: boolean },
+  ) => {
     const outgoing = (queued?.attachments ?? attachmentsRef.current).map((attachment) => ({
       ...attachment,
     }));
@@ -1226,7 +1287,6 @@ export function ChatCore() {
     const runPendingImages: string[] = [];
     let runChatId: string | null = null;
     let trackedTurnId: string | null = null;
-    let stopAutoCommitTracking = () => {};
     let commitTracking = Promise.resolve();
     let queueCommitReconciliation: (commitId?: string | null) => Promise<void> = () =>
       Promise.resolve();
@@ -1363,19 +1423,6 @@ export function ChatCore() {
     let usageOut = 0;
     let usageSteps = 0;
 
-    // Checkpoint the project before the agent edits anything, so a bad edit can
-    // always be reverted from git history (best-effort; never blocks the chat).
-    let runCheckpointOid: string | null = null;
-    if (projectId) {
-      try {
-        await gitAutoCommit(projectId, "Oleafly AI checkpoint");
-        const log = await gitLog(projectId);
-        runCheckpointOid = log[0]?.oid ?? null;
-      } catch {
-        /* not a git repo yet / nothing to commit - non-fatal */
-        runCheckpointOid = null;
-      }
-    }
     if (!reservationIsCurrent()) {
       releaseRunReservation();
       return;
@@ -1399,7 +1446,6 @@ export function ChatCore() {
       content: "",
       createdAt,
       toolCalls: [],
-      ...(runCheckpointOid ? { checkpointOid: runCheckpointOid } : {}),
     };
     const nextMessages: ChatMessage[] = [
       ...priorMessages,
@@ -1439,27 +1485,42 @@ export function ChatCore() {
       updateChatRun(runHandle, { chatId });
       if (chatId) cs.saveMessages(chatId, nextMessages);
     }
+    const planTurn: PlanTurn | null = !runPlanMode
+      ? null
+      : options?.approvedPlan
+        ? "execution"
+        : usePlanApprovalStore.getState().status(runChatId) === "awaiting"
+          ? "revision"
+          : "planning";
+    const planGated = planTurn === "planning" || planTurn === "revision";
 
     // Optimistic turn + thread scoping: the record exists before any
     // request, and the chat keeps one rollout thread across sends.
     const clientTurnId = crypto.randomUUID();
     let turnThreadId: string | null = null;
+    let turnSetupError: unknown = null;
     if (runChatId) {
-      turnThreadId = await useAgentTurnsStore
-        .getState()
-        .threadFor(
-          runChatId,
-          projectId,
-          () =>
-            projectId ? agentThreadClaimPrewarmed(projectId) : Promise.resolve(null),
-          {
-            persistedThreadId: useChatsStore.getState().byId(runChatId)?.threadId,
-            persist: (threadId) =>
-              useChatsStore.getState().setThreadId(runChatId, threadId),
-          },
-        );
-      useAgentTurnsStore.getState().beginTurn(runChatId, turnThreadId, clientTurnId, text);
-      useAgentTodoStore.getState().beginTurn(runChatId);
+      try {
+        turnThreadId = await useAgentTurnsStore
+          .getState()
+          .threadFor(
+            runChatId,
+            projectId,
+            () =>
+              projectId ? agentThreadClaimPrewarmed(projectId) : Promise.resolve(null),
+            {
+              persistedThreadId: useChatsStore.getState().byId(runChatId)?.threadId,
+              persist: (threadId) =>
+                useChatsStore.getState().setThreadId(runChatId, threadId),
+            },
+          );
+        useAgentTurnsStore.getState().beginTurn(runChatId, turnThreadId, clientTurnId, text);
+        useAgentTodoStore.getState().beginTurn(runChatId, {
+          keep: planTurn === "revision" || planTurn === "execution",
+        });
+      } catch (error) {
+        turnSetupError = error;
+      }
     }
 
     // An active persona replaces the user's default custom instructions for
@@ -1522,7 +1583,8 @@ USER_CUSTOM_INSTRUCTIONS`
         ? []
         : ["project_map"],
     });
-    const tools = filterResolvedTools(resolvedToolsForRun, enabledToolsForRun).tools;
+    const enabledTools = filterResolvedTools(resolvedToolsForRun, enabledToolsForRun).tools;
+    const tools = planGated ? planModeTools(enabledTools) : enabledTools;
     const runSkillCatalog = isToolEnabled(enabledToolsForRun, "load_skill")
       ? skillCatalogPrompt(runSkills)
       : "";
@@ -1587,7 +1649,12 @@ ${sandboxedCustom}`;
     const effectiveSystem = `${effectiveSystemBase}${
       runSkillCatalog ? `\n\n${runSkillCatalog}` : ""
     }\n\n${approvalPostureLine(runApprovalMode)}${
-      runPlanMode ? `\n\n${PLAN_MODE_POSTURE_LINE}` : ""
+      planTurn
+        ? `\n\n${planTurnPrompt(
+            planTurn,
+            runChatId ? useAgentTodoStore.getState().todosForChat(runChatId) : [],
+          )}`
+        : ""
     }`;
 
     // Conversation history: packed (recent + truncated) so long chats fit context.
@@ -1619,14 +1686,19 @@ ${sandboxedCustom}`;
       useAgentTurnsStore.getState().rollbackTurn(runChatId, clientTurnId);
     };
 
+    let planApproved = false;
     try {
+      if (turnSetupError) throw turnSetupError;
       if (runChatId) {
         const trackingChatId = runChatId;
         const trackingTurnId = clientTurnId;
         trackedTurnId = trackingTurnId;
+        const initialHeadOid = runProjectId
+          ? await gitHeadOid(runProjectId).catch(() => null)
+          : null;
         useAgentFileChangesStore
           .getState()
-          .beginTurn(trackingChatId, trackingTurnId, runCheckpointOid, runProjectId);
+          .beginTurn(trackingChatId, trackingTurnId, initialHeadOid, runProjectId);
         queueCommitReconciliation = (commitId) => {
           commitTracking = commitTracking
             .then(async () => {
@@ -1667,11 +1739,6 @@ ${sandboxedCustom}`;
             .catch(() => {});
           return commitTracking;
         };
-        if (runProjectId) {
-          stopAutoCommitTracking = subscribeAutoCommit((event) => {
-            if (event.projectId === runProjectId) void queueCommitReconciliation(event.oid);
-          });
-        }
       }
       let reasoningStartedAt: number | null = null;
       let stepContent = "";
@@ -1773,6 +1840,11 @@ ${sandboxedCustom}`;
         }
       };
 
+      if (planTurn === "execution") {
+        usePlanApprovalStore.getState().setStatus(runChatId, "approved");
+        planApproved = true;
+      }
+
       const outcomePromise = runAgentHarness({
         system: effectiveSystem,
         messages: apiMessages,
@@ -1790,7 +1862,8 @@ ${sandboxedCustom}`;
           if (!runChatId) return;
           useAgentTurnsStore.getState().applyEvent(runChatId, event);
         },
-        guardToolCall: () => {
+        guardToolCall: (call) => {
+          if (planGated && !isReadOnlyTool(call.name)) return PLAN_MODE_TOOL_ERROR;
           const current = useFilesStore.getState().projectId;
           if (current === runProjectId) return null;
           return `The open project changed while this run was active. The tool was not executed to protect the newly opened project. Ask the user to re-run the request in the project it applies to.`;
@@ -1969,12 +2042,21 @@ ${sandboxedCustom}`;
       }
     } finally {
       await queueCommitReconciliation();
-      stopAutoCommitTracking();
       await commitTracking;
       if (runChatId && trackedTurnId) {
         useAgentFileChangesStore.getState().finishTurn(runChatId, trackedTurnId);
       }
       if (runChatId) useAgentTodoStore.getState().finishTurn(runChatId);
+      if (runChatId && planTurn) {
+        const approval = usePlanApprovalStore.getState();
+        if (planTurn === "execution") {
+          approval.setStatus(runChatId, planApproved ? "planning" : "awaiting");
+        } else if (useAgentTodoStore.getState().todosForChat(runChatId).length > 0) {
+          approval.setStatus(runChatId, "awaiting");
+        } else {
+          approval.setStatus(runChatId, "planning");
+        }
+      }
       if (abortRef.current === ac) abortRef.current = null;
       if (projectId && runChatId && (usageIn > 0 || usageOut > 0 || usageSteps > 0)) {
         const { usd } = estimateUsd(model, usageIn, usageOut);
@@ -2040,6 +2122,15 @@ ${sandboxedCustom}`;
     abortRef.current?.abort();
   }, []);
 
+  const approvePlan = useCallback(() => {
+    if (!activeChatId || streaming || activeChatRun()) return;
+    void send(PLAN_APPROVED_MESSAGE, undefined, { approvedPlan: true });
+  }, [activeChatId, send, streaming]);
+
+  const revisePlan = useCallback(() => {
+    requestAnimationFrame(() => textareaRef.current?.focus({ preventScroll: true }));
+  }, []);
+
   let lastAssistantIndex = -1;
   for (let index = messages.length - 1; index >= 0; index--) {
     if (messages[index].role === "assistant") {
@@ -2047,7 +2138,7 @@ ${sandboxedCustom}`;
       break;
     }
   }
-  const renderedMessages = messages.map((msg, index) => ({
+  const renderedMessages: RenderedMessage[] = messages.map((msg, index) => ({
     key: msg.id ?? objectKey(msg, activeChatId ?? "chat"),
     index,
     live: streaming && index === messages.length - 1,
@@ -2061,10 +2152,27 @@ ${sandboxedCustom}`;
     0,
   );
   const showMinimap = workspaceHidden && userPromptCount >= 2;
-  const agentRunHasActivity =
-    agentTodos.some((todo) => todo.status !== "cancelled") ||
+  const agentTodosActive = agentTodos.filter((todo) => todo.status !== "cancelled");
+  const agentTodosOpen = agentTodosActive.some((todo) => todo.status !== "completed");
+  const agentFilesChanged =
     Object.keys(agentFileChangeTurn?.changedFiles ?? {}).length > 0 ||
     (agentFileChangeTurn?.committedFiles.length ?? 0) > 0;
+  const agentStatusActive =
+    streaming || planApprovalStatus !== "planning" || agentTodosOpen;
+  const agentStatusPillVisible =
+    agentStatusActive &&
+    (planApprovalStatus !== "planning" || agentTodosActive.length > 0 || agentFilesChanged);
+  const agentRunSummaryVisible =
+    !agentStatusActive && (agentTodosActive.length > 0 || agentFilesChanged);
+  let lastUserIndex = -1;
+  for (let index = messages.length - 1; index >= 0; index--) {
+    if (messages[index].role === "user") {
+      lastUserIndex = index;
+      break;
+    }
+  }
+  const lastTurnWasPlanExecution =
+    lastUserIndex >= 0 && messages[lastUserIndex].content === PLAN_APPROVED_MESSAGE;
 
   const restoreCheckpoint = useCallback(
     async (message: ChatMessage, isLatest: boolean) => {
@@ -2079,7 +2187,9 @@ ${sandboxedCustom}`;
       }
       setRestoringCheckpoint(message.id);
       try {
-        await useFilesStore.getState().restoreFromGit(message.checkpointOid);
+        await useFilesStore
+          .getState()
+          .restoreFromGit(projectId, message.checkpointOid);
         setMessages((current) => {
           const restored = current.map((item) =>
             item.id === message.id ? { ...item, checkpointRestored: true } : item,
@@ -2088,6 +2198,10 @@ ${sandboxedCustom}`;
           return restored;
         });
         useAgentTodoStore.getState().clear();
+        const approval = usePlanApprovalStore.getState();
+        if (activeChatId && approval.status(activeChatId) === "awaiting") {
+          approval.setStatus(activeChatId, "planning");
+        }
         toast.success("Restored project files. The conversation was kept.");
       } catch (error) {
         toast.error(`Could not restore: ${error}`);
@@ -2367,10 +2481,11 @@ ${sandboxedCustom}`;
         </div>
       )}
 
-      {/* Visible even keyless so e2e/hooks can assert it */}
-      {agentTodos.length > 0 && <AgentPlan todos={agentTodos} />}
+      {!providerConfigReady && !apiKey && (
+        <div data-testid="ai-provider-loading" className="min-h-0 flex-1" />
+      )}
 
-      {!apiKey && (
+      {providerConfigReady && !apiKey && (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <OleaflyAssistantMascot />
           <div className="space-y-1">
@@ -2401,7 +2516,11 @@ ${sandboxedCustom}`;
           <div
             ref={scrollRef}
             onScroll={onMessagesScroll}
-            className={cn("h-full overflow-auto py-3", showMinimap ? "pl-10 pr-3" : "px-3")}
+            className={cn(
+              "h-full overflow-auto pt-3",
+              agentStatusPillVisible ? "pb-12" : "pb-3",
+              showMinimap ? "pl-10 pr-3" : "px-3",
+            )}
           >
             {messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-2">
@@ -2477,48 +2596,58 @@ ${sandboxedCustom}`;
                 }
               >
                 <div className="flex flex-col gap-3">
-                  {/* Key is scoped to the active chat so instances aren't reused
-                      across conversations (which would leak expand/scroll state). */}
-                  {renderedMessages.map(({ key, index, live, isLatestAssistant, msg }) => (
-                    <div key={key} data-message-role={msg.role} data-mm-index={index} className="min-w-0">
-                      <MessageItem msg={msg} live={live} />
-                      {msg.role === "assistant" && isLatestAssistant && agentRunHasActivity && (
-                        <div className="mt-1.5 flex justify-end px-1">
-                          <AgentRunSummary todos={agentTodos} turn={agentFileChangeTurn} />
-                        </div>
-                      )}
-                      {msg.role === "assistant" &&
-                        msg.checkpointOid &&
-                        msg.toolCalls?.some(
-                          (tool) =>
-                            CODE_EDIT_TOOLS.has(tool.name) &&
-                            tool.approval !== "rejected" &&
-                            tool.status === "done",
-                        ) &&
-                        !live && (
-                          <div data-tour="ai-restore" className="mt-1.5 flex items-center justify-end px-1">
-                            {msg.checkpointRestored ? (
-                              <span className="text-[10px] text-muted-foreground">
-                                Project restored to this checkpoint
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                data-testid="ai-restore-checkpoint"
-                                disabled={restoringCheckpoint !== null}
-                                onClick={() => void restoreCheckpoint(msg, isLatestAssistant)}
-                                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                              >
-                                <RotateCcw className="size-3" />
-                                {restoringCheckpoint === msg.id
-                                  ? "Restoring…"
-                                  : "Restore code to before this response"}
-                              </button>
-                            )}
-                          </div>
-                        )}
-                    </div>
-                  ))}
+                  <MessageList
+                    messages={renderedMessages}
+                    chatId={activeChatId}
+                    scrollRef={scrollRef}
+                    nearBottomRef={nearBottomRef}
+                    renderExtras={({ live, isLatestAssistant, msg }) => (
+                      <>
+                        {msg.role === "assistant" &&
+                          isLatestAssistant &&
+                          !live &&
+                          agentRunSummaryVisible && (
+                            <div className="mt-1.5 px-1">
+                              <AgentRunSummary
+                                todos={agentTodos}
+                                turn={agentFileChangeTurn}
+                                plan={lastTurnWasPlanExecution}
+                              />
+                            </div>
+                          )}
+                        {msg.role === "assistant" &&
+                          msg.checkpointOid &&
+                          msg.toolCalls?.some(
+                            (tool) =>
+                              CODE_EDIT_TOOLS.has(tool.name) &&
+                              tool.approval !== "rejected" &&
+                              tool.status === "done",
+                          ) &&
+                          !live && (
+                            <div data-tour="ai-restore" className="mt-1.5 flex items-center justify-end px-1">
+                              {msg.checkpointRestored ? (
+                                <span className="text-[10px] text-muted-foreground">
+                                  Project restored to this checkpoint
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  data-testid="ai-restore-checkpoint"
+                                  disabled={restoringCheckpoint !== null}
+                                  onClick={() => void restoreCheckpoint(msg, isLatestAssistant)}
+                                  className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                                >
+                                  <RotateCcw className="size-3" />
+                                  {restoringCheckpoint === msg.id
+                                    ? "Restoring…"
+                                    : "Restore code to before this response"}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                      </>
+                    )}
+                  />
                   {/* Kept OUT of the memoized items so frequent thinkingText updates
                       don't reconcile the whole list. Suppressed while the tail
                       message's ReasoningBlock is already streaming live, so there's
@@ -2553,6 +2682,24 @@ ${sandboxedCustom}`;
               />
             )}
           </div>
+            {agentStatusPillVisible && (
+              <div className="pointer-events-none absolute inset-x-3 bottom-2 z-20">
+                <AgentStatusPill
+                  todos={agentTodos}
+                  turn={agentFileChangeTurn}
+                  approval={
+                    planApprovalStatus === "planning"
+                      ? undefined
+                      : {
+                          status: planApprovalStatus,
+                          busy: streaming || approvalModeLocked,
+                          onApprove: approvePlan,
+                          onRevise: revisePlan,
+                        }
+                  }
+                />
+              </div>
+            )}
             {showScrollDown && (
               <button
                 type="button"
@@ -2988,6 +3135,22 @@ ${sandboxedCustom}`;
                       <span className="ai-composer-plan-value">Plan</span>
                     </button>
                   </Tooltip>
+                  {planMode && (
+                    <Tooltip label={PLAN_MODE_HINT} side="top" wide>
+                      <button
+                        type="button"
+                        aria-label="About plan mode"
+                        aria-describedby={planModeInfoId}
+                        data-testid="ai-plan-mode-info"
+                        className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <Info className="size-3.5" />
+                        <span id={planModeInfoId} className="sr-only">
+                          {PLAN_MODE_HINT}
+                        </span>
+                      </button>
+                    </Tooltip>
+                  )}
                   {figureModeAvailable && (
                     <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
                       <button type="button"

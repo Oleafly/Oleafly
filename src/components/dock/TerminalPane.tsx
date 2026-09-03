@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -30,6 +31,13 @@ function terminalOutputCallback(
   };
 }
 
+function recordTerminalEvent(entry: string) {
+  if (!E2E_HOOKS) return;
+  const w = window as typeof window & { __e2eTerminalEvents?: string[] };
+  w.__e2eTerminalEvents = w.__e2eTerminalEvents ?? [];
+  w.__e2eTerminalEvents.push(entry);
+}
+
 function writeTerminalError(
   terminal: Terminal,
   message: string,
@@ -52,31 +60,40 @@ function writeTerminalErrorOnce(
   writeTerminalError(terminal, message, error, onWritten);
 }
 
+export interface TerminalPaneProps {
+  projectId: string;
+  projectName?: string;
+  visible?: boolean;
+  active?: boolean;
+  autoStart?: boolean;
+  onExit?: () => void;
+}
+
 export function TerminalPane({
   projectId,
   projectName,
   visible = true,
-}: {
-  projectId: string;
-  projectName?: string;
-  visible?: boolean;
-}) {
+  active = true,
+  autoStart = false,
+  onExit,
+}: TerminalPaneProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
+  const openedRef = useRef(false);
   const sessionIdRef = useRef<string | null>(null);
   const sessionLiveRef = useRef(false);
   const surfacedErrorsRef = useRef(new Set<string>());
   const outputWrittenRef = useRef<(() => void) | undefined>(undefined);
   const visibleRef = useRef(visible);
-  const previousVisibleRef = useRef(visible);
+  const onExitRef = useRef(onExit);
   visibleRef.current = visible;
+  onExitRef.current = onExit;
+  const startWithProject = useSettingsStore((state) => state.terminalStartWithProject);
+  const shouldStart = visible || autoStart || startWithProject;
   const [booted, setBooted] = useState(false);
-  const [sessionEnded, setSessionEnded] = useState(false);
-  const [activatedProjectId, setActivatedProjectId] = useState<string | null>(
-    visible ? projectId : null,
-  );
-  const setTerminalOpen = useSettingsStore((state) => state.setTerminalOpen);
+  const [ended, setEnded] = useState(false);
+  const [activated, setActivated] = useState(shouldStart);
   const terminalFontSize = useSettingsStore((state) => state.terminalFontSize);
   const terminalFontFamily = useSettingsStore((state) => state.terminalFontFamily);
   const terminalFontWeight = useSettingsStore((state) => state.terminalFontWeight);
@@ -113,20 +130,11 @@ export function TerminalPane({
   };
 
   useEffect(() => {
-    const becameVisible = visible && !previousVisibleRef.current;
-    previousVisibleRef.current = visible;
-    if (
-      visible &&
-      activatedProjectId !== projectId &&
-      (!sessionEnded || becameVisible)
-    ) {
-      setActivatedProjectId(projectId);
-    }
-    if (becameVisible && sessionEnded) setSessionEnded(false);
-  }, [activatedProjectId, projectId, sessionEnded, visible]);
+    if (shouldStart && !activated) setActivated(true);
+  }, [activated, shouldStart]);
 
   useEffect(() => {
-    if (activatedProjectId !== projectId || sessionEnded) return;
+    if (!activated || ended) return;
     const host = hostRef.current;
     if (!host) return;
     setBooted(false);
@@ -151,13 +159,17 @@ export function TerminalPane({
     });
     const fit = new FitAddon();
     terminal.loadAddon(fit);
-    terminal.open(host);
     const outputTarget = host.parentElement;
     const outputWritten = terminalOutputCallback(terminal, outputTarget);
     outputWrittenRef.current = outputWritten;
     if (outputWritten && outputTarget) outputTarget.dataset.terminalOutput = "";
-    fit.fit();
-    terminal.focus();
+    openedRef.current = false;
+    if (visibleRef.current) {
+      terminal.open(host);
+      openedRef.current = true;
+      fit.fit();
+      terminal.focus();
+    }
     terminalRef.current = terminal;
     fitRef.current = fit;
 
@@ -181,15 +193,11 @@ export function TerminalPane({
     };
     const channel = new Channel<TerminalChannelMessage>();
     channel.onmessage = (message) => {
-      if (E2E_HOOKS) {
-        const w = window as typeof window & { __e2eTerminalEvents?: string[] };
-        w.__e2eTerminalEvents = w.__e2eTerminalEvents ?? [];
-        w.__e2eTerminalEvents.push(
-          message.event === "output"
-            ? "output"
-            : `exit(disposed=${disposed},exited=${sessionExited})`,
-        );
-      }
+      recordTerminalEvent(
+        message.event === "output"
+          ? "output"
+          : `exit(disposed=${disposed},exited=${sessionExited})`,
+      );
       if (disposed || sessionExited) return;
       if (message.event === "output") {
         setBooted(true);
@@ -205,21 +213,21 @@ export function TerminalPane({
       sessionLiveRef.current = false;
       sessionId = null;
       sessionIdRef.current = null;
-      setSessionEnded(true);
-      setTerminalOpen(false);
+      setEnded(true);
+      onExitRef.current?.();
     };
-    void invoke<string>("term_open", {
-      projectId,
-      cols: terminal.cols,
-      rows: terminal.rows,
-      channel,
-    })
+    const openedCols = terminal.cols;
+    const openedRows = terminal.rows;
+    let openTimer: number | null = window.setTimeout(() => {
+      openTimer = null;
+      void invoke<string>("term_open", {
+        projectId,
+        cols: openedCols,
+        rows: openedRows,
+        channel,
+      })
       .then((id) => {
-        if (E2E_HOOKS) {
-          const w = window as typeof window & { __e2eTerminalEvents?: string[] };
-          w.__e2eTerminalEvents = w.__e2eTerminalEvents ?? [];
-          w.__e2eTerminalEvents.push(`open:ok:${id}`);
-        }
+        recordTerminalEvent(`open:ok:${id}`);
         if (disposed || sessionExited) {
           void invoke("term_kill", { id, projectId }).catch(() => {});
           return;
@@ -230,19 +238,34 @@ export function TerminalPane({
         sessionLiveRef.current = true;
         for (const data of pendingInput.splice(0)) writeInput(id, data);
         setBooted(true);
+        if (visibleRef.current || terminal.cols !== openedCols || terminal.rows !== openedRows) {
+          void invoke("term_resize", {
+            id,
+            projectId,
+            cols: terminal.cols,
+            rows: terminal.rows,
+          }).catch((error) => {
+            if (!disposed && sessionLive) {
+              writeTerminalErrorOnce(
+                terminal,
+                surfacedErrorsRef.current,
+                "The terminal could not resize",
+                error,
+                outputWritten,
+              );
+            }
+          });
+        }
         if (visibleRef.current) terminal.focus();
       })
       .catch((error) => {
-        if (E2E_HOOKS) {
-          const w = window as typeof window & { __e2eTerminalEvents?: string[] };
-          w.__e2eTerminalEvents = w.__e2eTerminalEvents ?? [];
-          w.__e2eTerminalEvents.push(`open:error:${String(error)}`);
-        }
+        recordTerminalEvent(`open:error:${String(error)}`);
         pendingInput.length = 0;
         if (disposed || sessionExited) return;
         setBooted(true);
         writeTerminalError(terminal, "The shell could not start", error, outputWritten);
       });
+    }, 0);
 
     const dataSub = terminal.onData((data) => {
       if (sessionLive && sessionId) {
@@ -252,7 +275,7 @@ export function TerminalPane({
       if (!sessionId && !sessionExited && !disposed) pendingInput.push(data);
     });
     const observer = new ResizeObserver(() => {
-      if (!visibleRef.current) return;
+      if (!visibleRef.current || !openedRef.current) return;
       fit.fit();
       if (sessionLive && sessionId) {
         void invoke("term_resize", {
@@ -277,6 +300,10 @@ export function TerminalPane({
 
     return () => {
       disposed = true;
+      if (openTimer !== null) {
+        window.clearTimeout(openTimer);
+        openTimer = null;
+      }
       sessionLive = false;
       sessionLiveRef.current = false;
       pendingInput.length = 0;
@@ -286,10 +313,11 @@ export function TerminalPane({
       sessionIdRef.current = null;
       terminalRef.current = null;
       fitRef.current = null;
+      openedRef.current = false;
       if (outputWrittenRef.current === outputWritten) outputWrittenRef.current = undefined;
       terminal.dispose();
     };
-  }, [activatedProjectId, projectId, sessionEnded, setTerminalOpen]);
+  }, [activated, ended, projectId]);
 
   useEffect(() => {
     const terminal = terminalRef.current;
@@ -307,9 +335,10 @@ export function TerminalPane({
       foreground: terminalForeground,
       cursor: terminalCursorColor,
     };
+    if (!visibleRef.current || !openedRef.current) return;
     fitRef.current?.fit();
     const id = sessionIdRef.current;
-    if (id && sessionLiveRef.current && visibleRef.current) {
+    if (id && sessionLiveRef.current) {
       void invoke("term_resize", {
         id,
         projectId,
@@ -346,14 +375,20 @@ export function TerminalPane({
   ]);
 
   useEffect(() => {
-    if (!projectName || activatedProjectId !== projectId) return;
+    if (!projectName || !activated) return;
     terminalRef.current?.write(`\x1b]2;${projectName} - project shell\x07`);
-  }, [activatedProjectId, projectId, projectName]);
+  }, [activated, projectName]);
 
   useEffect(() => {
     if (!visible) return;
     const frame = window.requestAnimationFrame(() => {
       const terminal = terminalRef.current;
+      const host = hostRef.current;
+      if (terminal && host && !openedRef.current) {
+        terminal.open(host);
+        openedRef.current = true;
+      }
+      if (!openedRef.current) return;
       fitRef.current?.fit();
       terminal?.focus();
       const id = sessionIdRef.current;
@@ -385,19 +420,26 @@ export function TerminalPane({
 
   return (
     <div
-      className="relative h-full w-full p-2"
-      data-testid="dock-terminal"
+      className={cn(
+        "relative w-full",
+        visible ? "h-full min-h-0 flex-1 p-2" : "h-0 shrink-0 overflow-hidden p-0",
+      )}
+      data-testid={active ? "dock-terminal" : "dock-terminal-inactive"}
       data-terminal-font-size={terminalFontSize}
       data-terminal-color-theme={terminalColorTheme}
       aria-hidden={!visible}
       onMouseDown={() => terminalRef.current?.focus()}
       style={{ backgroundColor: terminalBackground }}
     >
-      <div ref={hostRef} className="h-full w-full" data-testid="dock-terminal-host" />
+      <div
+        ref={hostRef}
+        className="h-full w-full"
+        data-testid={active ? "dock-terminal-host" : "dock-terminal-host-inactive"}
+      />
       {!booted && (
         <div
           className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-muted-foreground"
-          data-testid="dock-terminal-loading"
+          data-testid={active ? "dock-terminal-loading" : "dock-terminal-loading-inactive"}
           style={{ backgroundColor: terminalBackground }}
         >
           <Loader2 className="size-6 animate-spin motion-reduce:animate-none" />

@@ -122,6 +122,173 @@ pub struct EngineCompileSpec {
     pub input: EngineInput,
     pub artifacts: EngineArtifacts,
     pub working_dir: PathBuf,
+    pub environment: EngineEnvironment,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct EngineEnvironment {
+    clear_ambient: bool,
+    variables: Vec<(String, String)>,
+}
+
+fn controlled_path_value(path: &Path) -> String {
+    let value = path.to_string_lossy().into_owned();
+    #[cfg(windows)]
+    {
+        if let Some(rest) = value.strip_prefix(r"\\?\UNC\") {
+            return format!(r"\\{rest}");
+        }
+        if let Some(rest) = value.strip_prefix(r"\\?\") {
+            return rest.to_owned();
+        }
+    }
+    value
+}
+
+#[cfg(windows)]
+fn push_platform_variables(variables: &mut Vec<(String, String)>, bin: &Path) {
+    const PASSTHROUGH: [&str; 10] = [
+        "SystemRoot",
+        "SystemDrive",
+        "windir",
+        "ComSpec",
+        "PATHEXT",
+        "ProgramData",
+        "ALLUSERSPROFILE",
+        "NUMBER_OF_PROCESSORS",
+        "PROCESSOR_ARCHITECTURE",
+        "OS",
+    ];
+    for name in PASSTHROUGH {
+        if let Some(value) = std::env::var_os(name) {
+            variables.push((name.into(), value.to_string_lossy().into_owned()));
+        }
+    }
+    let Some(system_root) = std::env::var_os("SystemRoot") else {
+        return;
+    };
+    let system_root = PathBuf::from(system_root);
+    let entries = [
+        PathBuf::from(controlled_path_value(bin)),
+        system_root.join("System32"),
+        system_root,
+    ];
+    if let Ok(joined) = std::env::join_paths(entries) {
+        if let Some(entry) = variables.iter_mut().find(|(name, _)| name == "PATH") {
+            entry.1 = joined.to_string_lossy().into_owned();
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn push_platform_variables(_variables: &mut [(String, String)], _bin: &Path) {}
+
+impl EngineEnvironment {
+    fn inherited(source_date_epoch: Option<u64>) -> Self {
+        let variables = source_date_epoch
+            .map(|value| vec![("SOURCE_DATE_EPOCH".into(), value.to_string())])
+            .unwrap_or_default();
+        Self {
+            clear_ambient: false,
+            variables,
+        }
+    }
+
+    fn checkpoint(
+        out_dir: &Path,
+        source_date_epoch: Option<u64>,
+        persistent_cache: bool,
+    ) -> Result<Self, String> {
+        let epoch = source_date_epoch.ok_or_else(|| {
+            "checkpoint compiler probes require a fixed source date epoch".to_string()
+        })?;
+        let probe_root = out_dir.parent().unwrap_or(out_dir);
+        let home = probe_root.join("checkpoint-home");
+        let config = home.join("config");
+        let data = home.join("data");
+        let cache = home.join("cache");
+        let temp = home.join("tmp");
+        let bin = home.join("bin");
+        let roaming = home.join("AppData").join("Roaming");
+        let local = home.join("AppData").join("Local");
+        let tectonic_cache = if persistent_cache {
+            crate::paths::tectonic_cache_root()?
+        } else {
+            cache.join("tectonic")
+        };
+        let display = controlled_path_value;
+        let mut variables = vec![
+            ("SOURCE_DATE_EPOCH".into(), epoch.to_string()),
+            ("HOME".into(), display(&home)),
+            ("USERPROFILE".into(), display(&home)),
+            ("XDG_CONFIG_HOME".into(), display(&config)),
+            ("XDG_DATA_HOME".into(), display(&data)),
+            ("XDG_CACHE_HOME".into(), display(&cache)),
+            ("APPDATA".into(), display(&roaming)),
+            ("LOCALAPPDATA".into(), display(&local)),
+            ("TMPDIR".into(), display(&temp)),
+            ("TMP".into(), display(&temp)),
+            ("TEMP".into(), display(&temp)),
+            ("PATH".into(), display(&bin)),
+            ("TECTONIC_CACHE_DIR".into(), display(&tectonic_cache)),
+            (
+                "TYPST_PACKAGE_PATH".into(),
+                display(&data.join("typst-packages")),
+            ),
+            (
+                "TYPST_PACKAGE_CACHE_PATH".into(),
+                display(&cache.join("typst-packages")),
+            ),
+        ];
+        push_platform_variables(&mut variables, &bin);
+        Ok(Self {
+            clear_ambient: true,
+            variables,
+        })
+    }
+
+    fn prepare(&self) -> Result<(), String> {
+        if !self.clear_ambient {
+            return Ok(());
+        }
+        for key in [
+            "HOME",
+            "APPDATA",
+            "LOCALAPPDATA",
+            "XDG_CONFIG_HOME",
+            "XDG_DATA_HOME",
+            "XDG_CACHE_HOME",
+            "TMPDIR",
+            "PATH",
+            "TECTONIC_CACHE_DIR",
+            "TYPST_PACKAGE_PATH",
+            "TYPST_PACKAGE_CACHE_PATH",
+        ] {
+            if let Some((_, value)) = self.variables.iter().find(|(name, _)| name == key) {
+                let directory = if key == "PATH" {
+                    std::env::split_paths(value).next()
+                } else {
+                    Some(PathBuf::from(value))
+                };
+                let Some(directory) = directory else {
+                    continue;
+                };
+                std::fs::create_dir_all(&directory).map_err(|error| {
+                    format!(
+                        "failed to prepare checkpoint compiler environment {}: {error}",
+                        directory.display()
+                    )
+                })?;
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn variable(&self, name: &str) -> Option<&str> {
+        self.variables
+            .iter()
+            .find_map(|(candidate, value)| (candidate == name).then_some(value.as_str()))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -284,6 +451,7 @@ impl DocumentEngine for LatexEngine {
             input,
             artifacts,
             working_dir: project_dir.to_owned(),
+            environment: compile_environment(out_dir, options)?,
         })
     }
 
@@ -638,6 +806,7 @@ impl DocumentEngine for LatexmkEngine {
             input: EngineInput::Direct(input_path),
             artifacts,
             working_dir: project_dir.to_owned(),
+            environment: EngineEnvironment::inherited(options.source_date_epoch),
         })
     }
 
@@ -742,7 +911,7 @@ impl DocumentEngine for TypstEngine {
         out_dir: &Path,
         project_dir: &Path,
         target: CompileTarget<'_>,
-        _options: CompileOptions,
+        options: CompileOptions,
     ) -> Result<EngineCompileSpec, String> {
         let CompileTarget::Main { main_document } = target else {
             return Err("Typst does not support isolated compilation".into());
@@ -755,10 +924,11 @@ impl DocumentEngine for TypstEngine {
             .ok_or_else(|| "Typst PDF artifact was not declared".to_string())?;
         Ok(EngineCompileSpec {
             executable: EngineExecutable::BundledSidecar("typst"),
-            args: typst_args(&input, output, project_dir),
+            args: typst_args(&input, output, project_dir, out_dir, options),
             input: EngineInput::Direct(input),
             artifacts,
             working_dir: project_dir.to_owned(),
+            environment: compile_environment(out_dir, options)?,
         })
     }
 
@@ -832,7 +1002,7 @@ impl DocumentEngine for MarkdownEngine {
         out_dir: &Path,
         project_dir: &Path,
         target: CompileTarget<'_>,
-        _options: CompileOptions,
+        options: CompileOptions,
     ) -> Result<EngineCompileSpec, String> {
         let CompileTarget::Main { main_document } = target else {
             return Err("Markdown does not support isolated compilation".into());
@@ -850,6 +1020,7 @@ impl DocumentEngine for MarkdownEngine {
             main_document,
             PathBuf::from(pandoc),
             tectonic,
+            options,
         )
     }
 
@@ -921,6 +1092,7 @@ fn markdown_compile_spec(
     main_document: &str,
     pandoc: PathBuf,
     tectonic: PathBuf,
+    options: CompileOptions,
 ) -> Result<EngineCompileSpec, String> {
     let target = CompileTarget::Main { main_document };
     let input = project_dir.join(main_document);
@@ -934,16 +1106,47 @@ fn markdown_compile_spec(
         "--standalone".into(),
         format!("--resource-path={}", project_dir.to_string_lossy()),
         format!("--pdf-engine={}", tectonic.to_string_lossy()),
+        "--pdf-engine-opt=--bundle".into(),
+        format!("--pdf-engine-opt={}", tex_bundle_url()),
         format!("--output={}", output.to_string_lossy()),
+        "--sandbox".into(),
+        "--citeproc".into(),
     ];
-    let bibliographies = discover_bibliographies(project_dir)?;
-    if !bibliographies.is_empty() {
-        args.push("--citeproc".into());
-        args.extend(
-            bibliographies
-                .into_iter()
-                .map(|path| format!("--bibliography={path}")),
-        );
+    let bibliographies = if options.checkpoint_mode.enabled() {
+        if project_dir.join("references.bib").is_file() {
+            vec!["references.bib".to_string()]
+        } else {
+            Vec::new()
+        }
+    } else {
+        discover_bibliographies(project_dir)?
+    };
+    args.extend(
+        bibliographies
+            .into_iter()
+            .map(|path| format!("--bibliography={path}")),
+    );
+    if options.checkpoint_mode.enabled() {
+        let data_dir = out_dir.join("checkpoint-pandoc-data");
+        args.extend([
+            "--verbose".into(),
+            format!("--data-dir={}", data_dir.to_string_lossy()),
+            format!(
+                "--log={}",
+                out_dir.join("checkpoint-pandoc-log.json").to_string_lossy()
+            ),
+            "--pdf-engine-opt=--makefile-rules".into(),
+            format!(
+                "--pdf-engine-opt={}",
+                out_dir
+                    .join("checkpoint-tectonic-deps.mk")
+                    .to_string_lossy()
+            ),
+            "--pdf-engine-opt=--untrusted".into(),
+        ]);
+        if options.checkpoint_mode == CheckpointCompileMode::Replay {
+            args.push("--pdf-engine-opt=--only-cached".into());
+        }
     }
     args.extend(["--".into(), input.to_string_lossy().into_owned()]);
     Ok(EngineCompileSpec {
@@ -952,6 +1155,7 @@ fn markdown_compile_spec(
         input: EngineInput::Direct(input),
         artifacts,
         working_dir: project_dir.to_owned(),
+        environment: compile_environment(out_dir, options)?,
     })
 }
 
@@ -1077,12 +1281,16 @@ pub struct CompileResult {
     pub output_revision: Option<u64>,
     pub log: String,
     pub errors: Vec<CompileError>,
+    pub diagnostics: Vec<oleafly_core::LogDiagnostic>,
     pub synctex_path: Option<String>,
     pub out_dir: Option<String>,
     pub compile_time_ms: u64,
     /// The user stopped this compile. Distinguishes an intentional stop from a
     /// document that genuinely failed to build.
     pub stopped: bool,
+    /// Durable Checkpoint publication is supplementary to compilation. A
+    /// skipped outcome never changes an otherwise successful compile result.
+    pub checkpoint_publication: crate::checkpoint_publication::CheckpointPublicationOutcome,
 }
 
 /// Must stay byte-for-byte compatible with
@@ -1111,6 +1319,23 @@ pub struct CompileOptions {
     /// source. Ignored by every other engine.
     pub latex_flavor: Option<LatexmkFlavor>,
     pub allow_shell_escape: bool,
+    pub checkpoint_mode: CheckpointCompileMode,
+    pub checkpoint_persistent_cache: bool,
+    pub source_date_epoch: Option<u64>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CheckpointCompileMode {
+    #[default]
+    Disabled,
+    Discovery,
+    Replay,
+}
+
+impl CheckpointCompileMode {
+    fn enabled(self) -> bool {
+        !matches!(self, Self::Disabled)
+    }
 }
 
 pub struct CompileRequest<'a> {
@@ -1177,13 +1402,13 @@ pub async fn prepare_compile_spec(
     .map_err(|error| format!("failed to prepare compiler command: {error}"))?
 }
 
-struct CompileCancelScope<'a> {
+pub(crate) struct CompileCancelScope<'a> {
     cancel: Option<&'a crate::state::CompileCancel>,
     active: bool,
 }
 
 impl<'a> CompileCancelScope<'a> {
-    fn new(cancel: Option<&'a crate::state::CompileCancel>) -> Self {
+    pub(crate) fn new(cancel: Option<&'a crate::state::CompileCancel>) -> Self {
         if let Some(cancel) = cancel {
             cancel.begin();
         }
@@ -1193,7 +1418,7 @@ impl<'a> CompileCancelScope<'a> {
         }
     }
 
-    fn finish(mut self) -> bool {
+    pub(crate) fn finish(mut self) -> bool {
         self.active = false;
         self.cancel.is_some_and(crate::state::CompileCancel::detach)
     }
@@ -1362,6 +1587,12 @@ async fn recover_bibliography(
     if !bibliography_recovery_needed(&compile_log, out_dir, stem) {
         return Ok((String::new(), None));
     }
+    if request.options.checkpoint_mode.enabled() {
+        return Ok((
+            "\n[Oleafly] Checkpoint evidence stopped before an untracked Biber pass.\n".into(),
+            None,
+        ));
+    }
     let Some(biber) = crate::biber_toolchain::find_tectonic_biber() else {
         return Ok((
             crate::biber_toolchain::diagnose_biber_gap(&compile_log, None),
@@ -1510,6 +1741,11 @@ async fn finish_compile(
     let ok = compile_succeeded(
         request, &spec, stopped, has_pdf, exit_code, &errors, &mut log,
     );
+    let root_file = match request.target {
+        CompileTarget::Main { main_document } => Some(main_document.to_string()),
+        CompileTarget::Isolated { .. } => None,
+    };
+    let (log, diagnostics) = parse_log_diagnostics(request.engine.id(), log, root_file).await?;
     Ok(build_compile_result(
         capabilities,
         spec,
@@ -1520,9 +1756,27 @@ async fn finish_compile(
             has_pdf,
             output_id,
             errors,
+            diagnostics,
             log,
         },
     ))
+}
+
+async fn parse_log_diagnostics(
+    engine: DocumentEngineId,
+    log: String,
+    root_file: Option<String>,
+) -> Result<(String, Vec<oleafly_core::LogDiagnostic>), String> {
+    let is_tex = matches!(engine, DocumentEngineId::Latex | DocumentEngineId::Latexmk);
+    if !is_tex || root_file.is_none() {
+        return Ok((log, Vec::new()));
+    }
+    tokio::task::spawn_blocking(move || {
+        let diagnostics = oleafly_core::parse_latex_log(&log, root_file.as_deref());
+        (log, diagnostics)
+    })
+    .await
+    .map_err(|error| format!("failed to parse the compile log: {error}"))
 }
 
 fn compile_succeeded(
@@ -1663,6 +1917,7 @@ struct CompileResultParts {
     has_pdf: bool,
     output_id: Option<String>,
     errors: Vec<CompileError>,
+    diagnostics: Vec<oleafly_core::LogDiagnostic>,
     log: String,
 }
 
@@ -1685,10 +1940,12 @@ fn build_compile_result(
         output_id: parts.output_id,
         output_revision: None,
         errors: parts.errors,
+        diagnostics: parts.diagnostics,
         log: parts.log,
         synctex_path,
         out_dir: Some(spec.artifacts.output_dir.to_string_lossy().into_owned()),
         compile_time_ms: compile_start.elapsed().as_millis() as u64,
+        checkpoint_publication: Default::default(),
     }
 }
 
@@ -1731,10 +1988,24 @@ async fn prepare_compile_artifacts(
     request: &CompileRequest<'_>,
     spec: &EngineCompileSpec,
 ) -> Result<Vec<RetainedArtifact>, String> {
+    spec.environment.prepare()?;
+    if spec.environment.clear_ambient {
+        std::fs::create_dir_all(spec.artifacts.output_dir.join("checkpoint-pandoc-data"))
+            .map_err(|error| format!("failed to prepare checkpoint compiler data: {error}"))?;
+    }
     let cleanup_artifacts = spec.artifacts.clone();
-    let retained = tokio::task::spawn_blocking(move || clear_stale_artifacts(&cleanup_artifacts))
-        .await
-        .map_err(|error| format!("failed to clear compiler artifacts: {error}"))?;
+    let biber_control = (request.engine.id() == DocumentEngineId::Latex
+        && matches!(request.target, CompileTarget::Main { .. }))
+    .then(|| {
+        spec.artifacts
+            .output_dir
+            .join(format!("{}.bcf", crate::paths::ENTRY_STEM))
+    });
+    let retained = tokio::task::spawn_blocking(move || {
+        clear_stale_compile_artifacts(&cleanup_artifacts, biber_control.as_deref())
+    })
+    .await
+    .map_err(|error| format!("failed to clear compiler artifacts: {error}"))?;
     if request.engine.id() == DocumentEngineId::Latexmk
         && matches!(request.target, CompileTarget::Main { .. })
         && request.options.allow_shell_escape
@@ -1754,31 +2025,34 @@ async fn execute_compile_spec(
 ) -> Result<(String, Option<i32>), String> {
     match &spec.executable {
         EngineExecutable::BundledSidecar(name) => {
-            let (output, exit_code) = run_bundled(
+            let (output, exit_code) = run_bundled_with_environment(
                 request.app,
                 name,
                 &spec.args,
                 &spec.working_dir,
                 request.log_event,
                 request.cancel,
+                &spec.environment,
             )
             .await?;
             // Mirror outage (or a pre-mirror cache in offline mode): one retry
             // against Tectonic's default upstream bundle. Gated on the log so
             // ordinary TeX errors never trigger a second run.
             if name == &"tectonic"
+                && !request.options.checkpoint_mode.enabled()
                 && exit_code != Some(0)
                 && spec.args.iter().any(|arg| arg == "--bundle")
                 && is_bundle_fetch_failure(&output)
             {
                 let fallback_args = args_without_bundle(&spec.args);
-                let (retry_output, retry_code) = run_bundled(
+                let (retry_output, retry_code) = run_bundled_with_environment(
                     request.app,
                     name,
                     &fallback_args,
                     &spec.working_dir,
                     request.log_event,
                     request.cancel,
+                    &spec.environment,
                 )
                 .await?;
                 let mut combined = String::new();
@@ -1792,15 +2066,46 @@ async fn execute_compile_spec(
             Ok((output, exit_code))
         }
         EngineExecutable::ExternalPath(path) => {
-            run_external(
+            let (output, exit_code) = run_external_with_environment(
                 request.app,
                 path,
                 &spec.args,
                 &spec.working_dir,
                 request.log_event,
                 request.cancel,
+                &spec.environment,
             )
-            .await
+            .await?;
+            if request.engine.id() == DocumentEngineId::Markdown
+                && !request.options.checkpoint_mode.enabled()
+                && exit_code != Some(0)
+                && spec
+                    .args
+                    .iter()
+                    .any(|arg| arg == "--pdf-engine-opt=--bundle")
+                && is_bundle_fetch_failure(&output)
+            {
+                let fallback_args = args_without_bundle(&spec.args);
+                let (retry_output, retry_code) = run_external_with_environment(
+                    request.app,
+                    path,
+                    &fallback_args,
+                    &spec.working_dir,
+                    request.log_event,
+                    request.cancel,
+                    &spec.environment,
+                )
+                .await?;
+                let mut combined = String::new();
+                append_bounded(&mut combined, output.as_bytes());
+                append_bounded(
+                    &mut combined,
+                    b"[Oleafly] The TeX package mirror was unreachable; retried with the upstream bundle.\n",
+                );
+                append_bounded(&mut combined, retry_output.as_bytes());
+                return Ok((combined, retry_code));
+            }
+            Ok((output, exit_code))
         }
     }
 }
@@ -1910,19 +2215,41 @@ async fn run_bundled(
     log_event: &str,
     cancel: Option<&crate::state::CompileCancel>,
 ) -> Result<(String, Option<i32>), String> {
+    run_bundled_with_environment(
+        app,
+        name,
+        args,
+        working_dir,
+        log_event,
+        cancel,
+        &EngineEnvironment::default(),
+    )
+    .await
+}
+
+async fn run_bundled_with_environment(
+    app: &tauri::AppHandle,
+    name: &str,
+    args: &[String],
+    working_dir: &Path,
+    log_event: &str,
+    cancel: Option<&crate::state::CompileCancel>,
+    environment: &EngineEnvironment,
+) -> Result<(String, Option<i32>), String> {
     let path = resolve_bundled_sidecar(name)?;
-    run_supervised_process(
+    run_supervised_process_with_environment(
         &path,
         args,
         working_dir,
         Some((app.clone(), log_event.to_owned())),
         COMPILE_TIMEOUT,
         cancel,
+        environment,
     )
     .await
 }
 
-fn resolve_bundled_sidecar(name: &str) -> Result<PathBuf, String> {
+pub(crate) fn resolve_bundled_sidecar(name: &str) -> Result<PathBuf, String> {
     if name.is_empty() || Path::new(name).components().count() != 1 {
         return Err("invalid bundled sidecar name".into());
     }
@@ -2060,13 +2387,35 @@ async fn run_external(
     log_event: &str,
     cancel: Option<&crate::state::CompileCancel>,
 ) -> Result<(String, Option<i32>), String> {
-    run_supervised_process(
+    run_external_with_environment(
+        app,
+        path,
+        args,
+        working_dir,
+        log_event,
+        cancel,
+        &EngineEnvironment::default(),
+    )
+    .await
+}
+
+async fn run_external_with_environment(
+    app: &tauri::AppHandle,
+    path: &Path,
+    args: &[String],
+    working_dir: &Path,
+    log_event: &str,
+    cancel: Option<&crate::state::CompileCancel>,
+    environment: &EngineEnvironment,
+) -> Result<(String, Option<i32>), String> {
+    run_supervised_process_with_environment(
         path,
         args,
         working_dir,
         Some((app.clone(), log_event.to_owned())),
         COMPILE_TIMEOUT,
         cancel,
+        environment,
     )
     .await
 }
@@ -2166,11 +2515,35 @@ async fn run_supervised_process(
     timeout: std::time::Duration,
     cancel: Option<&crate::state::CompileCancel>,
 ) -> Result<(String, Option<i32>), String> {
+    run_supervised_process_with_environment(
+        path,
+        args,
+        working_dir,
+        emitter,
+        timeout,
+        cancel,
+        &EngineEnvironment::default(),
+    )
+    .await
+}
+
+async fn run_supervised_process_with_environment(
+    path: &Path,
+    args: &[String],
+    working_dir: &Path,
+    emitter: Option<(tauri::AppHandle, String)>,
+    timeout: std::time::Duration,
+    cancel: Option<&crate::state::CompileCancel>,
+    environment: &EngineEnvironment,
+) -> Result<(String, Option<i32>), String> {
     use std::process::Stdio;
     let is_luatex = is_luatex_invocation(path, args);
     let mut command = tokio::process::Command::new(path);
+    command.no_console();
+    if environment.clear_ambient {
+        command.env_clear();
+    }
     command
-        .no_console()
         .args(args)
         .current_dir(working_dir)
         // TeX bin dirs + tectonic-biber for all supervised children (LaTeX primary;
@@ -2181,6 +2554,9 @@ async fn run_supervised_process(
         )
         .env("NoDefaultCurrentDirectoryInExePath", "1")
         .env("openout_any", "p");
+    for (name, value) in &environment.variables {
+        command.env(name, value);
+    }
     if !is_luatex {
         command.env("openin_any", "p");
     }
@@ -2191,7 +2567,12 @@ async fn run_supervised_process(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
-    isolate_process_tree(&mut command);
+    if environment.clear_ambient {
+        crate::proc::isolate_process_tree_low_priority(&mut command);
+    } else {
+        isolate_process_tree(&mut command);
+    }
+
     let mut child = command
         .spawn()
         .map_err(|e| format!("failed to spawn {}: {e}", path.display()))?;
@@ -2359,6 +2740,27 @@ fn clear_stale_artifacts(artifacts: &EngineArtifacts) -> Vec<RetainedArtifact> {
     retained
 }
 
+fn clear_stale_compile_artifacts(
+    artifacts: &EngineArtifacts,
+    biber_control: Option<&Path>,
+) -> Vec<RetainedArtifact> {
+    let mut retained = clear_stale_artifacts(artifacts);
+    if let Some(path) = biber_control {
+        match std::fs::remove_file(path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(_) => retained.push(RetainedArtifact {
+                path: path.to_path_buf(),
+                identity: artifact_identity(path).map_or(
+                    RetainedArtifactIdentity::Unreadable,
+                    RetainedArtifactIdentity::Known,
+                ),
+            }),
+        }
+    }
+    retained
+}
+
 fn artifact_is_fresh_with(
     path: &Path,
     retained: &[RetainedArtifact],
@@ -2386,7 +2788,7 @@ fn artifact_is_fresh(path: &Path, retained: &[RetainedArtifact]) -> bool {
 /// Cloudflare, so Tectonic's content-addressed cache is shared across origins.
 const TEX_BUNDLE_MIRROR_URL: &str = "https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar";
 
-fn tex_bundle_url() -> String {
+pub(crate) fn tex_bundle_url() -> String {
     std::env::var("OLEAFLY_TEX_BUNDLE_URL")
         .ok()
         .filter(|value| !value.trim().is_empty())
@@ -2416,7 +2818,7 @@ fn args_without_bundle(args: &[String]) -> Vec<String> {
             skip_next = false;
             continue;
         }
-        if arg == "--bundle" {
+        if arg == "--bundle" || arg == "--pdf-engine-opt=--bundle" {
             skip_next = true;
             continue;
         }
@@ -2436,7 +2838,7 @@ fn tectonic_args(
     // satisfies --only-cached, and the upstream fallback below covers a cache
     // whose URL mapping predates the mirror.
     args.extend(["--bundle".into(), tex_bundle_url()]);
-    if options.offline {
+    if options.offline || options.checkpoint_mode == CheckpointCompileMode::Replay {
         args.push("--only-cached".into());
     }
     args.extend([
@@ -2458,12 +2860,27 @@ fn tectonic_args(
     if !options.halt_on_error {
         args.extend(["-Z".into(), "continue-on-errors".into()]);
     }
+    if options.checkpoint_mode.enabled() {
+        args.extend([
+            "--makefile-rules".into(),
+            Path::new(out_dir)
+                .join("checkpoint-tectonic-deps.mk")
+                .to_string_lossy()
+                .into_owned(),
+        ]);
+    }
     args.extend(["-Z".into(), search_path.into(), entry.into()]);
     args
 }
 
-fn typst_args(input: &Path, output: &Path, project_dir: &Path) -> Vec<String> {
-    vec![
+fn typst_args(
+    input: &Path,
+    output: &Path,
+    project_dir: &Path,
+    out_dir: &Path,
+    options: CompileOptions,
+) -> Vec<String> {
+    let mut args = vec![
         "--color".into(),
         "never".into(),
         "compile".into(),
@@ -2473,7 +2890,35 @@ fn typst_args(input: &Path, output: &Path, project_dir: &Path) -> Vec<String> {
         project_dir.to_string_lossy().into_owned(),
         "--diagnostic-format".into(),
         "short".into(),
-    ]
+    ];
+    if options.checkpoint_mode.enabled() {
+        args.extend([
+            "--deps".into(),
+            out_dir
+                .join("checkpoint-typst-deps.zero")
+                .to_string_lossy()
+                .into_owned(),
+            "--deps-format".into(),
+            "zero".into(),
+            "--ignore-system-fonts".into(),
+        ]);
+    }
+    args
+}
+
+fn compile_environment(
+    out_dir: &Path,
+    options: CompileOptions,
+) -> Result<EngineEnvironment, String> {
+    if options.checkpoint_mode.enabled() {
+        EngineEnvironment::checkpoint(
+            out_dir,
+            options.source_date_epoch,
+            options.checkpoint_persistent_cache,
+        )
+    } else {
+        Ok(EngineEnvironment::inherited(options.source_date_epoch))
+    }
 }
 
 fn parse_typst_short_diagnostics(log: &str) -> Vec<CompileError> {
@@ -2894,6 +3339,20 @@ mod tests {
         let stripped = args_without_bundle(&args);
         assert_eq!(stripped, vec!["-X", "compile", "main.tex"]);
         assert_eq!(args_without_bundle(&stripped), stripped);
+
+        let pandoc: Vec<String> = [
+            "--standalone",
+            "--pdf-engine-opt=--bundle",
+            "--pdf-engine-opt=https://example.test/b.tar",
+            "main.md",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
+        assert_eq!(
+            args_without_bundle(&pandoc),
+            vec!["--standalone", "main.md"]
+        );
     }
 
     #[test]
@@ -3207,6 +3666,35 @@ mod tests {
         assert_eq!(&spec.args[..2], ["-X", "compile"]);
     }
 
+    #[test]
+    fn tectonic_checkpoint_probe_emits_a_machine_dependency_report() {
+        let spec = engine_for("tectonic", "main.tex")
+            .unwrap()
+            .compile_spec(
+                Path::new("/evidence"),
+                Path::new("/project"),
+                CompileTarget::Main {
+                    main_document: "main.tex",
+                },
+                CompileOptions {
+                    checkpoint_mode: CheckpointCompileMode::Replay,
+                    source_date_epoch: Some(1_788_288_000),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+
+        assert_eq!(
+            arg_pair(&spec.args, "--makefile-rules").as_deref(),
+            Some(joined("/evidence", "checkpoint-tectonic-deps.mk").as_str())
+        );
+        assert!(spec.environment.clear_ambient);
+        assert!(spec
+            .environment
+            .variables
+            .contains(&("SOURCE_DATE_EPOCH".into(), "1788288000".into())));
+    }
+
     fn latex_args(options: CompileOptions) -> Vec<String> {
         engine_for("latex", "main.tex")
             .unwrap()
@@ -3270,6 +3758,7 @@ mod tests {
             halt_on_error: true,
             latex_flavor: None,
             allow_shell_escape: false,
+            ..Default::default()
         });
         assert!(args.last().unwrap().ends_with(crate::paths::ENTRY_TEX));
         assert_eq!(&args[..2], ["-X", "compile"]);
@@ -3343,6 +3832,25 @@ mod tests {
     }
 
     #[test]
+    fn a_nested_cancel_scope_preserves_stops_between_compile_passes() {
+        let cancel = crate::state::CompileCancel::default();
+        cancel.begin();
+        cancel.begin();
+        assert!(!cancel.detach(), "the inner pass completed normally");
+
+        assert_eq!(cancel.request(), None, "no child is running in the gap");
+        cancel.begin();
+        assert!(
+            !cancel.attach(303),
+            "the next pass must observe a stop requested in the gap"
+        );
+        cancel.unregister(303);
+        assert!(cancel.detach());
+        assert!(cancel.detach());
+        assert!(!cancel.detach(), "the completed pipeline clears the stop");
+    }
+
+    #[test]
     fn external_executable_provenance_retains_discovered_path() {
         let executable = EngineExecutable::ExternalPath(PathBuf::from("/cache/pandoc"));
         assert_eq!(
@@ -3378,6 +3886,26 @@ mod tests {
         assert!(!artifacts.log.unwrap().exists());
         assert!(!artifacts.synctex.unwrap().exists());
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn stale_biber_control_is_removed_before_a_direct_tectonic_compile() {
+        let directory = tempfile::tempdir().unwrap();
+        let artifacts = EngineArtifacts {
+            output_dir: directory.path().to_path_buf(),
+            pdf: Some(directory.path().join("output.pdf")),
+            log: Some(directory.path().join("output.log")),
+            synctex: None,
+        };
+        let biber_control = directory
+            .path()
+            .join(format!("{}.bcf", crate::paths::ENTRY_STEM));
+        std::fs::write(&biber_control, b"stale biblatex control").unwrap();
+
+        let retained = clear_stale_compile_artifacts(&artifacts, Some(&biber_control));
+
+        assert!(retained.is_empty());
+        assert!(!biber_control.exists());
     }
 
     #[test]
@@ -3528,6 +4056,189 @@ mod tests {
     }
 
     #[test]
+    fn typst_checkpoint_probe_is_hermetic_and_reports_all_non_font_files() {
+        let engine = engine_for("typst", "chapters/main.typ").unwrap();
+        let spec = engine
+            .compile_spec(
+                Path::new("/evidence"),
+                Path::new("/project"),
+                CompileTarget::Main {
+                    main_document: "chapters/main.typ",
+                },
+                CompileOptions {
+                    checkpoint_mode: CheckpointCompileMode::Discovery,
+                    source_date_epoch: Some(1_788_288_000),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+
+        assert_eq!(
+            arg_pair(&spec.args, "--deps").as_deref(),
+            Some(joined("/evidence", "checkpoint-typst-deps.zero").as_str())
+        );
+        assert_eq!(
+            arg_pair(&spec.args, "--deps-format").as_deref(),
+            Some("zero")
+        );
+        assert!(spec.args.iter().any(|arg| arg == "--ignore-system-fonts"));
+        assert!(spec.environment.clear_ambient);
+        assert!(
+            std::env::split_paths(spec.environment.variable("PATH").unwrap())
+                .next()
+                .is_some_and(|entry| entry.ends_with(Path::new("checkpoint-home").join("bin")))
+        );
+    }
+
+    #[tokio::test]
+    async fn bundled_typst_checkpoint_probe_replays_with_identical_pdf_and_dependencies() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().join("project");
+        let primary_out = temp.path().join("primary");
+        let discovery_out = temp.path().join("discovery");
+        let replay_out = temp.path().join("replay");
+        std::fs::create_dir(&project).unwrap();
+        std::fs::create_dir(&primary_out).unwrap();
+        std::fs::create_dir(&discovery_out).unwrap();
+        std::fs::create_dir(&replay_out).unwrap();
+        std::fs::write(
+            project.join("project.json"),
+            br#"{"main_doc":"main.typ","engine":"typst"}"#,
+        )
+        .unwrap();
+        std::fs::write(project.join("main.typ"), b"#include \"chapter.typ\"\n").unwrap();
+        std::fs::write(project.join("chapter.typ"), b"= Replayed\n").unwrap();
+        let engine = engine_for("typst", "main.typ").unwrap();
+        let options = CompileOptions {
+            checkpoint_mode: CheckpointCompileMode::Discovery,
+            source_date_epoch: Some(1_788_288_000),
+            ..Default::default()
+        };
+        let spec = |root: &Path, out_dir: &Path, mode: CheckpointCompileMode| {
+            let mut options = options;
+            options.checkpoint_mode = mode;
+            engine
+                .compile_spec(
+                    out_dir,
+                    root,
+                    CompileTarget::Main {
+                        main_document: "main.typ",
+                    },
+                    options,
+                )
+                .unwrap()
+        };
+        let primary = spec(&project, &primary_out, CheckpointCompileMode::Disabled);
+        let discovery = spec(&project, &discovery_out, CheckpointCompileMode::Discovery);
+        let typst = resolve_bundled_sidecar("typst").unwrap();
+
+        for spec in [&primary, &discovery] {
+            spec.environment.prepare().unwrap();
+            let (log, code) = run_supervised_process_with_environment(
+                &typst,
+                &spec.args,
+                &spec.working_dir,
+                None,
+                COMPILE_TIMEOUT,
+                None,
+                &spec.environment,
+            )
+            .await
+            .unwrap();
+            assert_eq!(code, Some(0), "{log}");
+        }
+
+        let discovery_deps =
+            std::fs::read(discovery_out.join("checkpoint-typst-deps.zero")).unwrap();
+        let canonical_project = project.canonicalize().unwrap();
+        let mut relative_dependencies = Vec::new();
+        let mut inputs = vec![oleafly_history::CaptureInput::explicit("project.json").unwrap()];
+        for dependency in discovery_deps
+            .split(|byte| *byte == 0)
+            .filter(|path| !path.is_empty())
+        {
+            let dependency = PathBuf::from(String::from_utf8(dependency.to_vec()).unwrap());
+            let resolved = if dependency.is_absolute() {
+                dependency
+            } else {
+                project.join(dependency)
+            }
+            .canonicalize()
+            .unwrap();
+            let relative = resolved
+                .strip_prefix(&canonical_project)
+                .unwrap()
+                .to_string_lossy()
+                .replace(std::path::MAIN_SEPARATOR, "/");
+            relative_dependencies.push(relative.clone());
+            inputs.push(
+                oleafly_history::CaptureInput::replay_required(
+                    &relative,
+                    &resolved,
+                    oleafly_history::ContentHash::digest_file(&resolved).unwrap(),
+                )
+                .unwrap(),
+            );
+        }
+        relative_dependencies.sort();
+        let store = oleafly_history::Store::open(temp.path().join("history")).unwrap();
+        let candidate = store.stage_candidate(&project, &inputs).unwrap();
+        std::fs::write(project.join("chapter.typ"), b"= Mutated after sealing\n").unwrap();
+        let replay = spec(
+            candidate.sealed_root(),
+            &replay_out,
+            CheckpointCompileMode::Replay,
+        );
+        replay.environment.prepare().unwrap();
+        let (log, code) = run_supervised_process_with_environment(
+            &typst,
+            &replay.args,
+            &replay.working_dir,
+            None,
+            COMPILE_TIMEOUT,
+            None,
+            &replay.environment,
+        )
+        .await
+        .unwrap();
+        assert_eq!(code, Some(0), "{log}");
+
+        let primary_pdf = std::fs::read(primary_out.join("_oleafly_entry.pdf")).unwrap();
+        let discovery_pdf = std::fs::read(discovery_out.join("_oleafly_entry.pdf")).unwrap();
+        let replay_pdf = std::fs::read(replay_out.join("_oleafly_entry.pdf")).unwrap();
+        assert_eq!(primary_pdf, discovery_pdf);
+        assert_eq!(discovery_pdf, replay_pdf);
+
+        let canonical_sealed = candidate.sealed_root().canonicalize().unwrap();
+        let mut replay_dependencies = std::fs::read(replay_out.join("checkpoint-typst-deps.zero"))
+            .unwrap()
+            .split(|byte| *byte == 0)
+            .filter(|path| !path.is_empty())
+            .map(|path| {
+                let dependency = PathBuf::from(String::from_utf8(path.to_vec()).unwrap());
+                let dependency = if dependency.is_absolute() {
+                    dependency
+                } else {
+                    candidate.sealed_root().join(dependency)
+                };
+                dependency
+                    .canonicalize()
+                    .unwrap()
+                    .strip_prefix(&canonical_sealed)
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace(std::path::MAIN_SEPARATOR, "/")
+            })
+            .collect::<Vec<_>>();
+        replay_dependencies.sort();
+        assert_eq!(relative_dependencies, replay_dependencies);
+        assert_eq!(
+            relative_dependencies,
+            ["chapter.typ".to_string(), "main.typ".to_string()]
+        );
+    }
+
+    #[test]
     fn typst_short_diagnostics_are_normalized_including_windows_paths() {
         let engine = engine_for("typst", "main.typ").unwrap();
         let errors = engine.parse_errors(
@@ -3586,6 +4297,7 @@ mod tests {
             "chapters/main.md",
             PathBuf::from("/cache/pandoc"),
             PathBuf::from("/app/tectonic"),
+            CompileOptions::default(),
         )
         .unwrap();
         assert_eq!(
@@ -3608,7 +4320,11 @@ mod tests {
                 "--standalone",
                 "--resource-path=/project",
                 "--pdf-engine=/app/tectonic",
+                "--pdf-engine-opt=--bundle",
+                format!("--pdf-engine-opt={}", tex_bundle_url()).as_str(),
                 format!("--output={}", joined("/build", "_oleafly_entry.pdf")).as_str(),
+                "--sandbox",
+                "--citeproc",
                 "--",
                 joined("/project", "chapters/main.md").as_str(),
             ]
@@ -3616,7 +4332,7 @@ mod tests {
     }
 
     #[test]
-    fn markdown_compile_enables_citeproc_for_safe_project_bibliography() {
+    fn ordinary_markdown_preserves_legacy_bibliographies_while_checkpoint_probe_is_explicit() {
         let dir = std::env::temp_dir().join(format!("oleafly-md-cites-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -3638,6 +4354,7 @@ mod tests {
             "main.md",
             PathBuf::from("/pandoc"),
             PathBuf::from("/tectonic"),
+            CompileOptions::default(),
         )
         .unwrap();
         assert!(spec.args.iter().any(|arg| arg == "--citeproc"));
@@ -3657,7 +4374,69 @@ mod tests {
                 "--bibliography=sources/refs.bib"
             ]
         );
+
+        let checkpoint = markdown_compile_spec(
+            &engine,
+            &dir.join("checkpoint"),
+            &dir,
+            "main.md",
+            PathBuf::from("/pandoc"),
+            PathBuf::from("/tectonic"),
+            CompileOptions {
+                checkpoint_mode: CheckpointCompileMode::Discovery,
+                source_date_epoch: Some(1_788_288_000),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let checkpoint_bibliographies = checkpoint
+            .args
+            .iter()
+            .filter(|arg| arg.starts_with("--bibliography="))
+            .collect::<Vec<_>>();
+        assert_eq!(checkpoint_bibliographies, ["--bibliography=references.bib"]);
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn markdown_checkpoint_probe_controls_pandoc_and_downstream_tectonic() {
+        let spec = markdown_compile_spec(
+            &MARKDOWN_ENGINE,
+            Path::new("/evidence"),
+            Path::new("/project"),
+            "main.md",
+            PathBuf::from("/cache/pandoc"),
+            PathBuf::from("/app/tectonic"),
+            CompileOptions {
+                checkpoint_mode: CheckpointCompileMode::Replay,
+                source_date_epoch: Some(1_788_288_000),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        for expected in [
+            "--sandbox",
+            "--citeproc",
+            "--verbose",
+            "--pdf-engine-opt=--makefile-rules",
+            "--pdf-engine-opt=--untrusted",
+        ] {
+            assert!(spec.args.iter().any(|arg| arg == expected), "{expected}");
+        }
+        assert!(spec.args.iter().any(|arg| {
+            arg == &format!(
+                "--log={}",
+                joined("/evidence", "checkpoint-pandoc-log.json")
+            )
+        }));
+        assert!(spec.args.iter().any(|arg| {
+            arg == &format!(
+                "--pdf-engine-opt={}",
+                joined("/evidence", "checkpoint-tectonic-deps.mk")
+            )
+        }));
+        assert!(spec.environment.clear_ambient);
     }
 
     #[test]
@@ -4025,5 +4804,119 @@ mod tests {
             "/reviewed/bin/latexmk"
         );
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    const DIAGNOSTIC_LOG: &str = concat!(
+        "! Undefined control sequence.\n",
+        "l.33 \\badmacro\n",
+        "               \n",
+        "\n",
+        "LaTeX Warning: Reference `fig:x' on page 1 undefined on input line 10.\n",
+    );
+
+    #[tokio::test]
+    async fn only_tex_engines_parse_structured_log_diagnostics() {
+        for engine in [DocumentEngineId::Typst, DocumentEngineId::Markdown] {
+            let (log, diagnostics) = parse_log_diagnostics(
+                engine,
+                DIAGNOSTIC_LOG.to_string(),
+                Some("main.tex".to_string()),
+            )
+            .await
+            .unwrap();
+            assert_eq!(log, DIAGNOSTIC_LOG, "{}", engine.as_str());
+            assert!(diagnostics.is_empty(), "{}", engine.as_str());
+        }
+    }
+
+    #[tokio::test]
+    async fn an_isolated_compile_has_no_root_file_to_attribute_diagnostics_to() {
+        let (log, diagnostics) =
+            parse_log_diagnostics(DocumentEngineId::Latex, DIAGNOSTIC_LOG.to_string(), None)
+                .await
+                .unwrap();
+        assert_eq!(log, DIAGNOSTIC_LOG);
+        assert!(diagnostics.is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_tex_compile_returns_errors_and_warnings_against_the_root_file() {
+        for engine in [DocumentEngineId::Latex, DocumentEngineId::Latexmk] {
+            let (log, diagnostics) = parse_log_diagnostics(
+                engine,
+                DIAGNOSTIC_LOG.to_string(),
+                Some("main.tex".to_string()),
+            )
+            .await
+            .unwrap();
+
+            assert_eq!(log, DIAGNOSTIC_LOG, "{}", engine.as_str());
+            assert_eq!(diagnostics.len(), 2, "{}", engine.as_str());
+            assert_eq!(
+                diagnostics[0].severity,
+                oleafly_core::LogSeverity::Error,
+                "{}",
+                engine.as_str()
+            );
+            assert_eq!(diagnostics[0].message, "Undefined control sequence.");
+            assert_eq!(diagnostics[0].line, Some(33));
+            assert_eq!(diagnostics[0].file.as_deref(), Some("main.tex"));
+            assert_eq!(diagnostics[1].severity, oleafly_core::LogSeverity::Warning);
+            assert_eq!(diagnostics[1].line, Some(10));
+            assert_eq!(diagnostics[1].file.as_deref(), Some("main.tex"));
+        }
+    }
+
+    #[tokio::test]
+    async fn an_empty_log_parses_to_no_diagnostics() {
+        let (log, diagnostics) = parse_log_diagnostics(
+            DocumentEngineId::Latex,
+            String::new(),
+            Some("main.tex".to_string()),
+        )
+        .await
+        .unwrap();
+        assert!(log.is_empty());
+        assert!(diagnostics.is_empty());
+    }
+
+    #[test]
+    fn a_missing_biber_control_file_is_not_a_retained_artifact() {
+        let directory = tempfile::tempdir().unwrap();
+        let artifacts = EngineArtifacts {
+            output_dir: directory.path().to_path_buf(),
+            pdf: None,
+            log: None,
+            synctex: None,
+        };
+        let biber_control = directory.path().join("never-written.bcf");
+
+        let retained = clear_stale_compile_artifacts(&artifacts, Some(&biber_control));
+
+        assert!(retained.is_empty());
+        assert!(!biber_control.exists());
+    }
+
+    #[test]
+    fn a_biber_control_path_that_cannot_be_removed_is_retained() {
+        let directory = tempfile::tempdir().unwrap();
+        let artifacts = EngineArtifacts {
+            output_dir: directory.path().to_path_buf(),
+            pdf: None,
+            log: None,
+            synctex: None,
+        };
+        let biber_control = directory.path().join("stubborn.bcf");
+        std::fs::create_dir(&biber_control).unwrap();
+
+        let retained = clear_stale_compile_artifacts(&artifacts, Some(&biber_control));
+
+        assert_eq!(retained.len(), 1);
+        assert_eq!(retained[0].path, biber_control);
+        assert!(matches!(
+            retained[0].identity,
+            RetainedArtifactIdentity::Unreadable
+        ));
+        assert!(biber_control.exists());
     }
 }

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
+import type { CompileResult, LogDiagnostic } from "@oleafly/backend-port";
 
 const mocks = vi.hoisted(() => ({
   events: new Map<string, (event: { payload: string }) => void>(),
@@ -15,13 +16,26 @@ const mocks = vi.hoisted(() => ({
   readFileContent: vi.fn(),
   cancelCompile: vi.fn(),
   clearBuildDir: vi.fn(),
+  getConfig: vi.fn(async () => ({ checkpoint_notifications: true })),
   notifyCompileSucceeded: vi.fn(),
+  toastInfoUnique: vi.fn(),
   refreshPreviewWindow: vi.fn(),
-  autoCommitNow: vi.fn(),
+  gitPreparePublish: vi.fn(),
   ensurePandoc: vi.fn(),
   saveActive: vi.fn(),
   readProjectSources: vi.fn(),
-  settings: { offline: false },
+  settings: {
+    offline: false,
+    versioningOpen: false,
+    versioningTab: "git" as "git" | "checkpoints",
+    openVersioning: (tab?: "git" | "checkpoints") => {
+      mocks.settings.versioningOpen = true;
+      if (tab) mocks.settings.versioningTab = tab;
+    },
+    closeVersioning: () => {
+      mocks.settings.versioningOpen = false;
+    },
+  },
   index: {
     texts: {
       "main.tex": "\\documentclass{article}\n",
@@ -53,6 +67,8 @@ vi.mock("@/lib/tauri", () => ({
   readFileContent: mocks.readFileContent,
   cancelCompile: mocks.cancelCompile,
   clearBuildDir: mocks.clearBuildDir,
+  getConfig: mocks.getConfig,
+  gitPreparePublish: mocks.gitPreparePublish,
 }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
@@ -72,7 +88,10 @@ vi.mock("@/store/project-index", () => ({
   useIndexStore: { getState: () => mocks.index },
 }));
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => mocks.settings } }));
-vi.mock("@/lib/toast", () => ({ notifyError: vi.fn() }));
+vi.mock("@/lib/toast", () => ({
+  notifyError: vi.fn(),
+  toast: { infoUnique: mocks.toastInfoUnique },
+}));
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/preview-window", () => ({
   refreshPreviewWindow: mocks.refreshPreviewWindow,
@@ -81,7 +100,6 @@ vi.mock("@/lib/cross-window", () => ({
   currentCompileProducerId: () => "test-window",
   notifyCompileSucceeded: mocks.notifyCompileSucceeded,
 }));
-vi.mock("@/lib/auto-commit", () => ({ autoCommitNow: mocks.autoCommitNow }));
 
 import {
   isCompileCheckpointCurrent,
@@ -123,10 +141,14 @@ beforeEach(() => {
   mocks.readFileContent.mockReset().mockResolvedValue("\\documentclass{article}\n");
   mocks.cancelCompile.mockReset().mockResolvedValue(true);
   mocks.clearBuildDir.mockReset().mockResolvedValue(undefined);
+  mocks.getConfig.mockReset().mockResolvedValue({ checkpoint_notifications: true });
   mocks.notifyCompileSucceeded.mockReset();
+  mocks.toastInfoUnique.mockReset();
   mocks.refreshPreviewWindow.mockReset();
-  mocks.autoCommitNow.mockReset().mockResolvedValue(undefined);
+  mocks.gitPreparePublish.mockReset().mockResolvedValue(undefined);
   mocks.ensurePandoc.mockReset().mockResolvedValue(true);
+  mocks.settings.versioningOpen = false;
+  mocks.settings.versioningTab = "git";
   mocks.saveActive.mockReset().mockResolvedValue(undefined);
   mocks.readProjectSources.mockReset().mockImplementation(
     async (_projectId: string, paths: readonly string[]) => ({
@@ -264,10 +286,8 @@ describe("compile output lifecycle", () => {
     );
   });
 
-  it("waits for the successful compile checkpoint commit before finishing", async () => {
+  it("does not create a Git commit after a successful compile", async () => {
     const bytes = new Uint8Array([1, 2, 3]);
-    const commit = deferred<void>();
-    mocks.autoCommitNow.mockReturnValue(commit.promise);
     mocks.compileProject.mockResolvedValue({
       ok: true,
       has_pdf: true,
@@ -281,19 +301,48 @@ describe("compile output lifecycle", () => {
     });
     mocks.readCompiledPdf.mockResolvedValue(bytes.buffer);
 
-    let finished = false;
-    const compiling = useCompileStore
-      .getState()
-      .recompile()
-      .then(() => {
-        finished = true;
-      });
-    await vi.waitFor(() => expect(mocks.autoCommitNow).toHaveBeenCalledWith("project"));
-    expect(finished).toBe(false);
+    await useCompileStore.getState().recompile();
 
-    commit.resolve();
-    await compiling;
-    expect(finished).toBe(true);
+    expect(mocks.gitPreparePublish).not.toHaveBeenCalled();
+  });
+
+  it("keeps a successful compile and shows a non-blocking skipped Checkpoint notice", async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    mocks.compileProject.mockResolvedValue({
+      ok: true,
+      has_pdf: true,
+      output_id: fingerprintCompileOutput(bytes),
+      output_revision: 7,
+      log: "ok",
+      errors: [],
+      synctex_path: null,
+      out_dir: "/build",
+      compile_time_ms: 12,
+      checkpoint_publication: {
+        status: "skipped",
+        reason: "dependency_evidence_unavailable",
+        message: "Checkpoint not saved.",
+        suggestion: "The document still compiled successfully.",
+      },
+    });
+    mocks.readCompiledPdf.mockResolvedValue(bytes.buffer);
+
+    await useCompileStore.getState().recompile();
+
+    expect(useCompileStore.getState().status).toBe("success");
+    await vi.waitFor(() =>
+      expect(mocks.toastInfoUnique).toHaveBeenCalledWith(
+        "checkpoint-publication-dependency_evidence_unavailable",
+        "Checkpoint not saved. The document still compiled successfully.",
+        expect.objectContaining({ label: "View Checkpoints" }),
+      ),
+    );
+    const action = mocks.toastInfoUnique.mock.calls[0]?.[2] as
+      | { onClick?: () => void }
+      | undefined;
+    action?.onClick?.();
+    expect(mocks.settings.versioningOpen).toBe(true);
+    expect(mocks.settings.versioningTab).toBe("checkpoints");
   });
 
   it("restores preview and SyncTeX freshness after source text is exactly reverted", async () => {
@@ -869,5 +918,52 @@ describe("compile options", () => {
   it("asks the backend to end the running compile", async () => {
     await useCompileStore.getState().stopCompile();
     expect(mocks.cancelCompile).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("compile log diagnostics", () => {
+  const diagnostic: LogDiagnostic = {
+    severity: "warning",
+    category: "undefined-reference",
+    file: "./main.tex",
+    line: 10,
+    message: "Cannot find reference `fig:x`.",
+  };
+  const failedResult: CompileResult = {
+    ok: false,
+    has_pdf: false,
+    output_id: null,
+    output_revision: null,
+    log: "failed",
+    errors: [],
+    synctex_path: null,
+    out_dir: null,
+    compile_time_ms: 1,
+  };
+
+  it("resets diagnostics when a compile starts and stores the backend diagnostics from the result", async () => {
+    useCompileStore.setState({ diagnostics: [diagnostic] });
+    const compile = deferred<CompileResult>();
+    mocks.compileProject.mockReturnValue(compile.promise);
+    const compiling = useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalled());
+    expect(useCompileStore.getState().diagnostics).toBeNull();
+    compile.resolve({ ...failedResult, diagnostics: [diagnostic] });
+    await compiling;
+    expect(useCompileStore.getState().status).toBe("error");
+    expect(useCompileStore.getState().diagnostics).toEqual([diagnostic]);
+  });
+
+  it("leaves diagnostics unset when the backend result carries none", async () => {
+    mocks.compileProject.mockResolvedValue(failedResult);
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().status).toBe("error");
+    expect(useCompileStore.getState().diagnostics).toBeNull();
+  });
+
+  it("clears diagnostics on reset", () => {
+    useCompileStore.setState({ diagnostics: [diagnostic] });
+    useCompileStore.getState().reset();
+    expect(useCompileStore.getState().diagnostics).toBeNull();
   });
 });

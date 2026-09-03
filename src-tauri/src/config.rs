@@ -113,6 +113,10 @@ pub struct AppConfig {
     pub ai_personas: Vec<Persona>,
     #[serde(default)]
     pub ai_starter_personas_seeded: bool,
+    #[serde(default = "default_true")]
+    pub checkpoints_enabled: bool,
+    #[serde(default = "default_true")]
+    pub checkpoint_notifications: bool,
     /// MCP server: expose the in-app agent tools to external MCP clients
     /// (Claude Desktop, Claude Code, Cursor, ...). Off by default.
     #[serde(default)]
@@ -163,6 +167,8 @@ impl Default for AppConfig {
             ai_custom_providers: Vec::new(),
             ai_personas: Vec::new(),
             ai_starter_personas_seeded: false,
+            checkpoints_enabled: true,
+            checkpoint_notifications: true,
             mcp_enabled: false,
             mcp_port: default_mcp_port(),
             mcp_read_only: false,
@@ -831,6 +837,15 @@ pub fn set_config(mut config: AppConfig) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::proc::NoConsole as _;
+
+    #[test]
+    fn old_configs_keep_checkpoints_and_their_notifications_on() {
+        let config: AppConfig = serde_json::from_str("{}").unwrap();
+
+        assert!(config.checkpoints_enabled);
+        assert!(config.checkpoint_notifications);
+    }
 
     fn custom(id: &str, base: &str) -> CustomProvider {
         CustomProvider {
@@ -1187,6 +1202,7 @@ mod tests {
         write_config(&AppConfig::default()).unwrap();
         let executable = std::env::current_exe().unwrap();
         let mut first = std::process::Command::new(&executable)
+            .no_console()
             .arg("--exact")
             .arg("config::tests::config_transaction_process_worker")
             .env("OLEAFLY_CONFIG_TRANSACTION_ROLE", "first")
@@ -1209,6 +1225,7 @@ mod tests {
         ));
 
         let mut second = std::process::Command::new(&executable)
+            .no_console()
             .arg("--exact")
             .arg("config::tests::config_transaction_process_worker")
             .env("OLEAFLY_CONFIG_TRANSACTION_ROLE", "second")
@@ -1683,6 +1700,29 @@ mod tests {
         let persisted = read_config().unwrap();
         assert_eq!(persisted.github_user, "octocat");
         assert_eq!(persisted.mcp_servers, stored.mcp_servers);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn generic_settings_updates_carry_the_checkpoint_switches() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        write_config(&AppConfig::default()).unwrap();
+        let mut incoming = get_config().unwrap();
+        assert!(incoming.checkpoints_enabled);
+        assert!(incoming.checkpoint_notifications);
+        incoming.github_user = "octocat".to_string();
+        incoming.checkpoints_enabled = false;
+        incoming.checkpoint_notifications = false;
+
+        set_config(incoming).unwrap();
+
+        let persisted = read_config().unwrap();
+        assert_eq!(persisted.github_user, "octocat");
+        assert!(!persisted.checkpoints_enabled);
+        assert!(!persisted.checkpoint_notifications);
         std::fs::remove_dir_all(dir).ok();
     }
 

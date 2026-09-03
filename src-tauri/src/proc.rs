@@ -3,7 +3,7 @@
 //! On Windows, launching a console program (git, lualatex, tlmgr, pandoc, ...)
 //! from a GUI app pops a `cmd`-style console window for the child, which flashes
 //! on screen and vanishes when the child exits. With commands that run often
-//! (git status polling, auto-commit on every compile) this looks like several
+//! (Git status polling and compiler/toolchain invocations) this looks like several
 //! shells flickering in front of the app the whole time it's open.
 //!
 //! The fix is the `CREATE_NO_WINDOW` process-creation flag. The Tauri shell
@@ -120,23 +120,41 @@ pub fn spawn_contained(command: &mut Command) -> std::io::Result<()> {
 }
 
 pub fn isolate_process_tree(command: &mut tokio::process::Command) {
+    isolate_process_tree_with_priority(command, false);
+}
+
+/// Isolates like [`isolate_process_tree`] and starts the child at a lower CPU
+/// priority, for supplementary work that must never slow the user's own
+/// compile or the interface.
+pub fn isolate_process_tree_low_priority(command: &mut tokio::process::Command) {
+    isolate_process_tree_with_priority(command, true);
+}
+
+#[cfg(windows)]
+const BELOW_NORMAL_PRIORITY_CLASS: u32 = 0x0000_4000;
+
+fn isolate_process_tree_with_priority(command: &mut tokio::process::Command, low_priority: bool) {
     #[cfg(unix)]
     unsafe {
         use std::os::unix::process::CommandExt;
-        command.as_std_mut().pre_exec(|| {
-            if libc::setpgid(0, 0) == 0 {
-                Ok(())
-            } else {
-                Err(std::io::Error::last_os_error())
+        command.as_std_mut().pre_exec(move || {
+            if libc::setpgid(0, 0) != 0 {
+                return Err(std::io::Error::last_os_error());
             }
+            if low_priority {
+                libc::setpriority(libc::PRIO_PROCESS, 0, 10);
+            }
+            Ok(())
         });
     }
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        command
-            .as_std_mut()
-            .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED);
+        let mut flags = CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED;
+        if low_priority {
+            flags |= BELOW_NORMAL_PRIORITY_CLASS;
+        }
+        command.as_std_mut().creation_flags(flags);
     }
 }
 

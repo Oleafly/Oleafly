@@ -57,10 +57,16 @@ test("history modal opens from the palette", async ({ tauriPage }) => {
   await tauriPage.press("[cmdk-input]", "Enter");
   // The modal heading renders (history may be empty for a fresh repo).
   await tauriPage.waitForFunction(
-    `Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Version History')`,
+    `Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Versioning')`,
     10_000,
   );
-  await tauriPage.click('[aria-label="Close version history"]');
+  await expect(tauriPage.locator("#versioning-title")).toBeVisible({ timeout: 10_000 });
+  await expect(tauriPage.getByTestId("versioning-tab-git")).toHaveAttribute(
+    "aria-selected",
+    "true",
+    { timeout: 10_000 },
+  );
+  await tauriPage.click('[aria-label="Close versioning"]');
 });
 
 test("Help and About is available from Settings", async ({ tauriPage }) => {

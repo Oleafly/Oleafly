@@ -8,9 +8,26 @@ vi.mock("@tauri-apps/api/window", () => ({
 
 import {
   cancelQuitFlush,
+  checkpointDelete,
+  checkpointExport,
+  checkpointFiles,
+  checkpointIgnorePath,
+  checkpointImport,
+  checkpointInspect,
+  checkpointKeepLatest,
+  checkpointList,
+  checkpointReset,
+  checkpointRestore,
+  checkpointRevealStore,
+  checkpointUnignorePath,
+  checkpointStats,
+  checkpointVerify,
   confirmQuitFlush,
   createFile,
   detectBrowserCookieSources,
+  gitInitialize,
+  gitIsInitialized,
+  gitPreparePublish,
   importDocument,
   importBrowserCookies,
   isFileConflictError,
@@ -26,6 +43,7 @@ import {
   mcpServerUpdateValidated,
   mcpServerValidate,
   renameFile,
+  setCheckpointPolicy,
   validateCompileFingerprint,
 } from "./tauri";
 
@@ -140,6 +158,137 @@ describe("browser cookie import bridge", () => {
         domain: "example.com",
         confirmed: true,
       },
+    });
+  });
+});
+
+describe("Checkpoints bridge", () => {
+  it("routes reads, verification, and restore through the shared desktop port", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+
+    await checkpointList("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_list", {
+      projectId: "project",
+    });
+
+    await checkpointStats("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_stats", {
+      projectId: "project",
+    });
+
+    await checkpointVerify("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_verify", {
+      projectId: "project",
+    });
+
+    await checkpointRestore("project", "root-1", 42);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_restore", {
+      projectId: "project",
+      snapshotRoot: "root-1",
+      expectedGeneration: 42,
+    });
+  });
+
+  it("routes retention and encrypted archives through their native handlers", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+
+    await checkpointDelete("project", "root-1");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_delete", {
+      projectId: "project",
+      snapshotRoot: "root-1",
+    });
+
+    await checkpointKeepLatest("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_keep_latest", {
+      projectId: "project",
+    });
+
+    await checkpointReset("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_reset", {
+      projectId: "project",
+    });
+
+    await checkpointExport("project", "/tmp/history.checkpoints", "password");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_export", {
+      projectId: "project",
+      dest: "/tmp/history.checkpoints",
+      password: "password",
+    });
+
+    await checkpointImport("project", "/tmp/history.checkpoints", "password");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_import", {
+      projectId: "project",
+      source: "/tmp/history.checkpoints",
+      password: "password",
+    });
+  });
+
+  it("routes the portable project policy through its native handler", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+    const policy = {
+      mode: "engine_dependencies" as const,
+      always_include: ["figures/*.png"],
+      ignored: ["scratch/**"],
+    };
+
+    await setCheckpointPolicy("project", policy);
+    expect(mocks.invoke).toHaveBeenLastCalledWith("set_checkpoint_policy", {
+      projectId: "project",
+      policy,
+    });
+  });
+
+  it("routes inspection, file listing, reveal, and per-file ignore changes", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+
+    await checkpointFiles("project", "root-1");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_files", {
+      projectId: "project",
+      snapshotRoot: "root-1",
+    });
+
+    await checkpointInspect("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_inspect", {
+      projectId: "project",
+    });
+
+    await checkpointRevealStore("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_reveal_store", {
+      projectId: "project",
+    });
+
+    await checkpointIgnorePath("project", "scratch/notes.txt");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_ignore_path", {
+      projectId: "project",
+      path: "scratch/notes.txt",
+    });
+
+    await checkpointUnignorePath("project", "scratch/notes.txt");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_unignore_path", {
+      projectId: "project",
+      path: "scratch/notes.txt",
+    });
+  });
+});
+
+describe("explicit Git setup bridge", () => {
+  it("routes observation, initialization, and publish preparation separately", async () => {
+    mocks.invoke.mockResolvedValue(undefined);
+
+    await gitIsInitialized("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_is_initialized", {
+      projectId: "project",
+    });
+
+    await gitInitialize("project");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_initialize", {
+      projectId: "project",
+    });
+
+    await gitPreparePublish("project", "Initial commit");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_prepare_publish", {
+      projectId: "project",
+      message: "Initial commit",
     });
   });
 });

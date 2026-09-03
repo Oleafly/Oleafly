@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { decideToolApproval, riskRequiresConfirm, toolRisk } from "./approval-risk";
+import {
+  PLAN_MODE_TOOL_ERROR,
+  decideToolApproval,
+  isReadOnlyTool,
+  planModeTools,
+  riskRequiresConfirm,
+  toolRisk,
+} from "./approval-risk";
 
 describe("toolRisk", () => {
   it("classifies read-only project tools as read", () => {
@@ -133,5 +140,80 @@ describe("decideToolApproval", () => {
         projectRules: { read_file: "deny" },
       }),
     ).toBe("deny-per-rules");
+  });
+});
+
+describe("plan mode tool classification", () => {
+  it("keeps only inspection tools", () => {
+    for (const tool of [
+      "read_file",
+      "list_files",
+      "project_map",
+      "search_project",
+      "project_library_search",
+      "get_pdf_text",
+      "get_log",
+      "get_todos",
+      "update_todos",
+      "list_notes",
+      "load_image",
+      "verify_pdf_pages",
+      "load_skill",
+      "list_agents",
+      "literature_search",
+      "alphaxiv_search",
+      "alphaxiv_paper_content",
+      "verify_citation",
+    ]) {
+      expect(isReadOnlyTool(tool), tool).toBe(true);
+    }
+  });
+
+  it("treats every mutating, compiling, executing, delegating, or unknown tool as unavailable", () => {
+    for (const tool of [
+      "write_file",
+      "replace_in_file",
+      "create_file",
+      "rename_file",
+      "delete_file",
+      "set_main_doc",
+      "insert_figure",
+      "preview_figure",
+      "compile",
+      "run_command",
+      "computer_use",
+      "toggle_theme",
+      "remember_note",
+      "forget_note",
+      "spawn_agent",
+      "send_message",
+      "followup_task",
+      "wait_agent",
+      "interrupt_agent",
+      "close_agent",
+      "git_commit",
+      "mcp__papers__search_papers",
+      "brand_new_tool",
+    ]) {
+      expect(isReadOnlyTool(tool), tool).toBe(false);
+    }
+  });
+
+  it("filters a tool set down to the read-only tools", () => {
+    const filtered = planModeTools({
+      read_file: { description: "read" },
+      write_file: { description: "write" },
+      compile: { description: "compile" },
+      run_command: { description: "shell" },
+      update_todos: { description: "plan" },
+      mcp__papers__search_papers: { description: "mcp" },
+    });
+    expect(Object.keys(filtered)).toEqual(["read_file", "update_todos"]);
+  });
+
+  it("exposes the gate error the execution layer returns", () => {
+    expect(PLAN_MODE_TOOL_ERROR).toBe(
+      "Plan mode: this tool runs only after the plan is approved. Add the step to the plan with update_todos instead of calling it now.",
+    );
   });
 });

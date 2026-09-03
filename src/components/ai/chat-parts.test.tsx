@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 
-import { fireEvent, getByRole, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, fireEvent, getByRole, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  AgentPlan,
   AgentRunSummary,
+  AgentStatusPill,
   ExecCard,
   MessageItem,
   ReasoningBlock,
@@ -38,40 +38,206 @@ describe("SubagentCard", () => {
   });
 });
 
-describe("AgentPlan", () => {
-  const todos = [
-    { id: "compile", content: "Compile the document", status: "completed" as const },
-    { id: "verify", content: "Verify the PDF", status: "in_progress" as const },
-    { id: "publish", content: "Publish the result", status: "pending" as const },
-    { id: "discard", content: "Discard old draft", status: "cancelled" as const },
-  ];
+const PILL_TODOS = [
+  { id: "compile", content: "Compile the document", status: "completed" as const },
+  { id: "verify", content: "Verify the PDF", status: "in_progress" as const },
+  { id: "publish", content: "Publish the result", status: "pending" as const },
+  { id: "discard", content: "Discard old draft", status: "cancelled" as const },
+];
 
-  it("starts collapsed and toggles its checklist like an accordion", () => {
-    const { container, queryByText } = render(<AgentPlan todos={todos} />);
-    const trigger = getByRole(container, "button", { name: "Plan" });
+const PILL_TURN = {
+  chatId: "chat-1",
+  turnId: "turn-1",
+  headOid: "abcdef123456",
+  changedFiles: {
+    "src/current.ts": {
+      path: "src/current.ts",
+      additions: 2,
+      deletions: 1,
+      beforeContent: "old",
+      afterContent: "new",
+    },
+  },
+  committedFiles: [
+    {
+      path: "src/committed.ts",
+      additions: 5,
+      deletions: 2,
+      beforeContent: "before",
+      afterContent: "after",
+      commitId: "abcdef123456",
+    },
+  ],
+  commits: [{ id: "abcdef123456", files: ["src/committed.ts"] }],
+};
 
-    expect(trigger).toHaveAttribute("aria-expanded", "false");
-    expect(queryByText("Compile the document")).not.toBeInTheDocument();
+const AWAITING = { status: "awaiting" as const, onApprove: () => {}, onRevise: () => {} };
 
-    fireEvent.click(trigger);
+function pillText() {
+  return screen.getByTestId("agent-status-pill").textContent?.replace(/\s+/g, " ").trim();
+}
 
-    expect(trigger).toHaveAttribute("aria-expanded", "true");
-    expect(queryByText("Compile the document")).toBeInTheDocument();
+describe("AgentStatusPill", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
-    fireEvent.click(trigger);
+  it("renders nothing without a plan, steps, or file changes", () => {
+    const { container } = render(<AgentStatusPill todos={[]} turn={null} />);
+    expect(container).toBeEmptyDOMElement();
+  });
 
-    expect(trigger).toHaveAttribute("aria-expanded", "false");
-    expect(queryByText("Compile the document")).not.toBeInTheDocument();
+  it.each([
+    ["plan only", { todos: [], turn: null, approval: AWAITING }, "PLAN"],
+    ["steps only", { todos: PILL_TODOS, turn: null }, "STEP 2/3"],
+    ["review only", { todos: [], turn: PILL_TURN }, "REVIEW +7 -3"],
+    [
+      "plan, steps, and review",
+      { todos: PILL_TODOS, turn: PILL_TURN, approval: AWAITING },
+      "PLAN · STEP 2/3 · REVIEW +7 -3",
+    ],
+  ])("shows the %s segments in order", (_label, props, text) => {
+    render(<AgentStatusPill {...props} />);
+    expect(pillText()).toBe(text);
+  });
+
+  it("keeps the added and removed counts coloured", () => {
+    render(<AgentStatusPill todos={[]} turn={PILL_TURN} />);
+    const review = screen
+      .getByTestId("agent-status-pill")
+      .querySelector('[data-pill-segment="review"]');
+    expect(review?.querySelector(".text-emerald-600")).toHaveTextContent("+7");
+    expect(review?.querySelector(".text-destructive")).toHaveTextContent("-3");
+  });
+
+  it("opens the checklist on hover without taking focus and closes when the pointer leaves", async () => {
+    render(
+      <>
+        <textarea aria-label="Composer" />
+        <AgentStatusPill todos={PILL_TODOS} turn={null} />
+      </>,
+    );
+    const composer = screen.getByLabelText("Composer");
+    act(() => composer.focus());
+    const pill = screen.getByTestId("agent-status-pill");
+    expect(pill).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Compile the document")).not.toBeInTheDocument();
+
+    fireEvent.mouseEnter(pill);
+
+    expect(pill).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("agent-todos")).toHaveAttribute("data-plan-status", "none");
+    expect(screen.getByText("Compile the document")).toBeInTheDocument();
+    expect(document.activeElement).toBe(composer);
+
+    fireEvent.mouseLeave(pill);
+
+    await waitFor(() => expect(screen.queryByTestId("agent-todos")).toBeNull());
+    expect(pill).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("stays open while the pointer moves from the pill into the panel", () => {
+    vi.useFakeTimers();
+    render(<AgentStatusPill todos={PILL_TODOS} turn={null} />);
+    const pill = screen.getByTestId("agent-status-pill");
+    fireEvent.mouseEnter(pill);
+    fireEvent.mouseLeave(pill);
+    const panel = screen.getByTestId("agent-todos");
+    fireEvent.mouseEnter(panel);
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.getByTestId("agent-todos")).toBeInTheDocument();
+
+    fireEvent.mouseLeave(panel);
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+  });
+
+  it("opens on focus and closes with Escape", () => {
+    render(<AgentStatusPill todos={PILL_TODOS} turn={null} />);
+    const pill = screen.getByTestId("agent-status-pill");
+
+    fireEvent.focus(pill);
+    expect(screen.getByTestId("agent-todos")).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+    expect(pill).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("returns focus to the pill when Escape is pressed inside the panel", () => {
+    render(<AgentStatusPill todos={PILL_TODOS} turn={null} approval={AWAITING} />);
+    const pill = screen.getByTestId("agent-status-pill");
+    const approve = screen.getByRole("button", { name: "Approve plan" });
+    act(() => approve.focus());
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+    expect(document.activeElement).toBe(pill);
+  });
+
+  it("pins the panel open on click and closes it on the next click", () => {
+    vi.useFakeTimers();
+    render(<AgentStatusPill todos={PILL_TODOS} turn={null} />);
+    const pill = screen.getByTestId("agent-status-pill");
+
+    fireEvent.click(pill);
+    expect(screen.getByTestId("agent-todos")).toBeInTheDocument();
+
+    fireEvent.mouseLeave(pill);
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.getByTestId("agent-todos")).toBeInTheDocument();
+
+    fireEvent.click(pill);
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+  });
+
+  it("closes a pinned panel when the pointer goes down elsewhere", () => {
+    render(
+      <>
+        <button type="button">Elsewhere</button>
+        <AgentStatusPill todos={PILL_TODOS} turn={null} />
+      </>,
+    );
+    fireEvent.click(screen.getByTestId("agent-status-pill"));
+    expect(screen.getByTestId("agent-todos")).toBeInTheDocument();
+
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Elsewhere" }));
+
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+  });
+
+  it("closes when focus leaves the pill and its panel", () => {
+    render(
+      <>
+        <button type="button">Elsewhere</button>
+        <AgentStatusPill todos={PILL_TODOS} turn={null} />
+      </>,
+    );
+    const pill = screen.getByTestId("agent-status-pill");
+    fireEvent.focus(pill);
+    expect(screen.getByTestId("agent-todos")).toBeInTheDocument();
+
+    fireEvent.blur(pill, { relatedTarget: screen.getByRole("button", { name: "Elsewhere" }) });
+
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
   });
 
   it("renders a distinct icon and text treatment for every status", () => {
-    const { container } = render(<AgentPlan todos={todos} />);
-    fireEvent.click(getByRole(container, "button", { name: "Plan" }));
+    render(<AgentStatusPill todos={PILL_TODOS} turn={null} />);
+    fireEvent.click(screen.getByTestId("agent-status-pill"));
+    const panel = screen.getByTestId("agent-todos");
 
-    const completed = container.querySelector('[data-todo-status="completed"]');
-    const active = container.querySelector('[data-todo-status="in_progress"]');
-    const pending = container.querySelector('[data-todo-status="pending"]');
-    const cancelled = container.querySelector('[data-todo-status="cancelled"]');
+    const completed = panel.querySelector('[data-todo-status="completed"]');
+    const active = panel.querySelector('[data-todo-status="in_progress"]');
+    const pending = panel.querySelector('[data-todo-status="pending"]');
+    const cancelled = panel.querySelector('[data-todo-status="cancelled"]');
 
     expect(completed?.querySelector('[data-todo-icon="completed"]')).not.toBeNull();
     expect(completed?.querySelector("span:last-child")).not.toHaveClass("line-through");
@@ -83,66 +249,236 @@ describe("AgentPlan", () => {
       "text-muted-foreground/60",
     );
   });
+
+  it("shows no approval controls without an approval state", () => {
+    render(<AgentStatusPill todos={PILL_TODOS} turn={null} />);
+    const pill = screen.getByTestId("agent-status-pill");
+    expect(pill).toHaveAttribute("data-plan-status", "none");
+    fireEvent.click(pill);
+    expect(screen.queryByTestId("agent-plan-status")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Approve plan" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Revise" })).toBeNull();
+  });
+
+  it("offers Approve plan and Revise while awaiting and lists the changed files", () => {
+    const onApprove = vi.fn();
+    const onRevise = vi.fn();
+    render(
+      <AgentStatusPill
+        todos={PILL_TODOS}
+        turn={PILL_TURN}
+        approval={{ status: "awaiting", onApprove, onRevise }}
+      />,
+    );
+    const pill = screen.getByTestId("agent-status-pill");
+    expect(pill).toHaveAttribute("data-plan-status", "awaiting");
+    expect(pill.querySelector('[data-pill-segment="plan"]')).toHaveClass("text-violet-600");
+
+    const panel = screen.getByTestId("agent-todos");
+    expect(panel).toHaveAttribute("data-plan-status", "awaiting");
+    expect(screen.getByTestId("agent-plan-status")).toHaveTextContent("Awaiting approval");
+    expect(screen.getByText("Compile the document")).toBeInTheDocument();
+    expect(panel.querySelector('[data-file-change-state="changed"]')).toHaveTextContent(
+      "src/current.ts+2-1",
+    );
+    expect(panel.querySelector('[data-file-change-state="committed"]')).toHaveTextContent(
+      "src/committed.ts+5-2",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve plan" }));
+    expect(onApprove).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+
+    fireEvent.click(pill);
+    fireEvent.click(screen.getByRole("button", { name: "Revise" }));
+    expect(onRevise).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+  });
+
+  it("opens once when the status becomes awaiting, without taking focus, and stays open unhovered", () => {
+    vi.useFakeTimers();
+    const { rerender } = render(
+      <>
+        <textarea aria-label="Composer" />
+        <AgentStatusPill todos={PILL_TODOS} turn={null} />
+      </>,
+    );
+    const composer = screen.getByLabelText("Composer");
+    act(() => composer.focus());
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+
+    rerender(
+      <>
+        <textarea aria-label="Composer" />
+        <AgentStatusPill todos={PILL_TODOS} turn={null} approval={AWAITING} />
+      </>,
+    );
+
+    expect(screen.getByTestId("agent-todos")).toHaveAttribute("data-plan-status", "awaiting");
+    expect(screen.getByRole("button", { name: "Approve plan" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revise" })).toBeInTheDocument();
+    expect(document.activeElement).toBe(composer);
+
+    const pill = screen.getByTestId("agent-status-pill");
+    fireEvent.mouseEnter(pill);
+    fireEvent.mouseLeave(pill);
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.getByTestId("agent-todos")).toBeInTheDocument();
+  });
+
+  it("does not reopen after the user closes it while the plan stays awaiting", () => {
+    const { rerender } = render(
+      <AgentStatusPill todos={PILL_TODOS} turn={null} approval={AWAITING} />,
+    );
+    const pill = screen.getByTestId("agent-status-pill");
+    expect(screen.getByTestId("agent-todos")).toBeInTheDocument();
+
+    fireEvent.click(pill);
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+
+    rerender(<AgentStatusPill todos={PILL_TODOS} turn={null} approval={{ ...AWAITING }} />);
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+
+    fireEvent.click(pill);
+    expect(screen.getByTestId("agent-todos")).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+
+    fireEvent.mouseEnter(pill);
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+    rerender(<AgentStatusPill todos={PILL_TODOS} turn={PILL_TURN} approval={{ ...AWAITING }} />);
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+  });
+
+  it("opens once on mount with a persisted awaiting status", () => {
+    const { rerender } = render(
+      <AgentStatusPill todos={PILL_TODOS} turn={null} approval={AWAITING} />,
+    );
+    expect(screen.getByTestId("agent-todos")).toBeInTheDocument();
+
+    rerender(<AgentStatusPill todos={PILL_TODOS} turn={null} approval={{ ...AWAITING }} />);
+    expect(screen.getByTestId("agent-todos")).toBeInTheDocument();
+
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+    rerender(<AgentStatusPill todos={PILL_TODOS} turn={null} approval={{ ...AWAITING }} />);
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+  });
+
+  it("does not open by itself for an approved plan", () => {
+    const { rerender } = render(
+      <AgentStatusPill
+        todos={PILL_TODOS}
+        turn={null}
+        approval={{ status: "approved", onApprove: () => {}, onRevise: () => {} }}
+      />,
+    );
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+
+    rerender(<AgentStatusPill todos={PILL_TODOS} turn={null} approval={AWAITING} />);
+    expect(screen.getByTestId("agent-todos")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Approve plan" }));
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+
+    rerender(
+      <AgentStatusPill
+        todos={PILL_TODOS}
+        turn={null}
+        approval={{ status: "approved", onApprove: () => {}, onRevise: () => {} }}
+      />,
+    );
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+  });
+
+  it("opens again when a revision lands while the plan is still awaiting", () => {
+    const { rerender } = render(
+      <AgentStatusPill todos={PILL_TODOS} turn={null} approval={AWAITING} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Revise" }));
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+
+    rerender(<AgentStatusPill todos={PILL_TODOS} turn={null} approval={{ ...AWAITING, busy: true }} />);
+    expect(screen.queryByTestId("agent-todos")).toBeNull();
+
+    rerender(<AgentStatusPill todos={[PILL_TODOS[0]]} turn={null} approval={{ ...AWAITING }} />);
+    expect(screen.getByTestId("agent-todos")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Approve plan" })).not.toBeDisabled();
+  });
+
+  it("disables the approval buttons while a turn is busy", () => {
+    render(
+      <AgentStatusPill
+        todos={PILL_TODOS}
+        turn={null}
+        approval={{ status: "awaiting", busy: true, onApprove: () => {}, onRevise: () => {} }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("agent-status-pill"));
+    expect(screen.getByRole("button", { name: "Approve plan" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Revise" })).toBeDisabled();
+  });
+
+  it("shows Approved without buttons during execution", () => {
+    render(
+      <AgentStatusPill
+        todos={PILL_TODOS}
+        turn={null}
+        approval={{ status: "approved", onApprove: () => {}, onRevise: () => {} }}
+      />,
+    );
+    const pill = screen.getByTestId("agent-status-pill");
+    expect(pill).toHaveAttribute("data-plan-status", "approved");
+    expect(pill.querySelector('[data-pill-segment="plan"]')).toHaveClass("text-emerald-600");
+    fireEvent.click(pill);
+    expect(screen.getByTestId("agent-plan-status")).toHaveTextContent("Approved");
+    expect(screen.queryByRole("button", { name: "Approve plan" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Revise" })).toBeNull();
+  });
 });
 
 describe("AgentRunSummary", () => {
-  const todos = [
+  const finished = [
     { id: "inspect", content: "Inspect", status: "completed" as const },
-    { id: "edit", content: "Edit", status: "in_progress" as const },
-    { id: "verify", content: "Verify", status: "pending" as const },
+    { id: "edit", content: "Edit", status: "completed" as const },
+    { id: "skip", content: "Skip", status: "cancelled" as const },
   ];
-  const turn = {
-    chatId: "chat-1",
-    turnId: "turn-1",
-    headOid: "abcdef123456",
-    changedFiles: {
-      "src/current.ts": {
-        path: "src/current.ts",
-        additions: 2,
-        deletions: 1,
-        beforeContent: "old",
-        afterContent: "new",
-      },
-    },
-    committedFiles: [
-      {
-        path: "src/committed.ts",
-        additions: 5,
-        deletions: 2,
-        beforeContent: "before",
-        afterContent: "after",
-        commitId: "abcdef123456",
-      },
-    ],
-    commits: [{ id: "abcdef123456", files: ["src/committed.ts"] }],
-  };
 
-  it("shows todo progress and aggregate file totals", () => {
-    render(<AgentRunSummary todos={todos} turn={turn} />);
+  it("summarises a finished plan with its file rows and no undo control", () => {
+    render(<AgentRunSummary todos={finished} turn={PILL_TURN} plan />);
+    const summary = screen.getByTestId("agent-run-summary");
 
-    expect(screen.getByTestId("agent-run-pill")).toHaveTextContent(
-      "Step 2 / 3 · 2 files changed +7 -3",
+    expect(summary).toHaveAttribute("data-plan", "true");
+    expect(summary.firstElementChild).toHaveTextContent(
+      "Plan · 2/2 done · 2 files changed +7 -3",
     );
-  });
-
-  it("shows changed and committed files on hover", async () => {
-    render(<AgentRunSummary todos={todos} turn={turn} />);
-    const pill = screen.getByTestId("agent-run-pill");
-
-    fireEvent.mouseEnter(pill.parentElement ?? pill);
-
-    await waitFor(() => expect(screen.getByRole("tooltip")).toBeInTheDocument());
-    const tooltip = screen.getByRole("tooltip");
-    expect(tooltip).toHaveTextContent("Changed");
-    expect(tooltip).toHaveTextContent("src/current.ts");
-    expect(tooltip).toHaveTextContent("Committed abcdef1");
-    expect(tooltip).toHaveTextContent("src/committed.ts");
-    expect(tooltip.querySelector('[data-file-change-state="changed"]')).toHaveTextContent(
+    expect(summary.querySelector('[data-file-change-state="changed"]')).toHaveTextContent(
       "src/current.ts+2-1",
     );
-    expect(tooltip.querySelector('[data-file-change-state="committed"]')).toHaveTextContent(
+    expect(summary.querySelector('[data-file-change-state="committed"]')).toHaveTextContent(
       "src/committed.ts+5-2",
     );
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("drops the Plan segment for a normal run and counts a single file", () => {
+    render(
+      <AgentRunSummary todos={[]} turn={{ ...PILL_TURN, committedFiles: [], commits: [] }} />,
+    );
+    const summary = screen.getByTestId("agent-run-summary");
+
+    expect(summary).toHaveAttribute("data-plan", "false");
+    expect(summary.firstElementChild).toHaveTextContent("1 file changed +2 -1");
+    expect(summary).not.toHaveTextContent("Plan");
+    expect(summary).not.toHaveTextContent("done");
+  });
+
+  it("shows only the step count when no files changed", () => {
+    render(<AgentRunSummary todos={finished} turn={null} />);
+    expect(screen.getByTestId("agent-run-summary")).toHaveTextContent("2/2 done");
+    expect(screen.getByTestId("agent-run-summary")).not.toHaveTextContent("changed");
   });
 
   it("renders nothing without todos or file changes", () => {

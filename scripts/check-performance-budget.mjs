@@ -68,7 +68,9 @@ const limits = {
   // every emitted asset, eager or lazy, so it is deliberately accepted at
   // 12.9 MB for the on-demand rendering graph; reducing it further means
   // trimming the mermaid diagram set, not the startup path.
-  totalJavaScript: 12_900_000,
+  // +100 KB for the browser window chrome, terminal tabs, plan-first mode
+  // and the split diff resizer: combined graph measures 12.92 MB.
+  totalJavaScript: 13_000_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each

@@ -14,7 +14,6 @@ import {
   listProjects,
   recycleProject,
 } from "@/lib/tauri";
-import { cancelAutoCommit } from "@/lib/auto-commit";
 import { notifyError, toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -97,7 +96,6 @@ export function DeveloperSettings() {
   const closeOpenProject = async () => {
     const store = useFilesStore.getState();
     if (!store.projectId) return;
-    cancelAutoCommit(store.projectId);
     await store.closeProject();
     if (useFilesStore.getState().projectId) {
       throw new Error("The open project could not be closed safely.");
@@ -108,7 +106,6 @@ export function DeveloperSettings() {
     await closeOpenProject();
     const projects = await listProjects();
     for (const project of projects) {
-      cancelAutoCommit(project.id);
       await recycleProject(project.id);
     }
     await useFilesStore.getState().refreshProjects();

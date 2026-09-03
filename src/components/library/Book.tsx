@@ -59,6 +59,7 @@ export function Book({
   variant = "book",
   width = 150,
   onClick,
+  openLabel,
   starred,
   onStarToggle,
   menu,
@@ -76,6 +77,7 @@ export function Book({
   variant?: Variant;
   width?: number;
   onClick?: () => void;
+  openLabel?: string;
   starred?: boolean;
   onStarToggle?: () => void;
   menu?: ReactNode;
@@ -110,7 +112,7 @@ export function Book({
       <button
         type="button"
         tabIndex={0}
-        aria-label={`Open ${title}`}
+        aria-label={openLabel ?? `Open ${title}`}
         onClick={onClick}
         onMouseOver={onPreviewRequest}
         onFocus={onPreviewRequest}

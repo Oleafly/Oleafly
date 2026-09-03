@@ -1,24 +1,28 @@
 import { test, expect } from "../fixtures";
 import {
-  ensureGithubConnected,
+  createBlankProject,
   fillCommandPalette,
-  openProject,
   openRailTab,
   pressGlobal,
   typeInEditorAfter,
 } from "../helpers";
 
-// Commits need a connected GitHub account (the panel is gated), so this is
-// opt-in like spec 12.
+// Source Control initialization and commits are local operations. No GitHub
+// account or remote is needed for this restore flow.
 
-const TOKEN = process.env.E2E_GITHUB_TOKEN;
 // Unique per run so re-runs against a live app never collide.
 const RUN = Date.now().toString(36);
 const BASE = `histbase${RUN}`;
 const EDIT = `histedit${RUN}`;
 
-// Caller must already have the Git rail open so compile auto-commit is
-// suspended (see auto-commit.ts `sourceControlOpen`).
+async function initializeRepository(page: import("../helpers").Page) {
+  await openRailTab(page, "Source Control");
+  const initialize = page.getByText("Initialize Repository", { exact: true });
+  await expect(initialize).toBeVisible({ timeout: 10_000 });
+  await initialize.click();
+  await expect(page.getByTestId("source-control-actions")).toBeVisible({ timeout: 15_000 });
+}
+
 async function commitAll(page: import("../helpers").Page, message: string) {
   await openRailTab(page, "Source Control");
   // Stage all is hover-revealed (opacity-0): the plugin's own click waits for
@@ -66,18 +70,25 @@ async function openHistory(page: import("../helpers").Page) {
   await fillCommandPalette(page, "history");
   await page.press("[cmdk-input]", "Enter");
   await page.waitForFunction(
-    `Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Version History')`,
+    `Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Versioning')`,
+    10_000,
+  );
+  await page.waitForFunction(
+    `document.querySelector('[data-testid="versioning-tab-git"]')?.getAttribute('aria-selected') === 'true'`,
     10_000,
   );
 }
 
 async function restoreCommit(page: import("../helpers").Page, message: string) {
+  await expect(page.getByText(message, { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
   const clicked = await page.evaluate<boolean>(
     `(() => {
-      const rows = Array.from(document.querySelectorAll('div.truncate'))
+      const titles = Array.from(document.querySelectorAll('[data-testid="history-commit-title"]'))
         .filter((d) => d.textContent.trim() === ${JSON.stringify(message)});
-      if (!rows.length) return false;
-      const row = rows[0].closest('div.flex');
+      if (!titles.length) return false;
+      const row = titles[0].closest('[data-testid="history-commit"]');
       const btn = row && Array.from(row.querySelectorAll('button'))
         .find((b) => (b.getAttribute('title') || '').startsWith('Restore'));
       if (!btn) return false;
@@ -89,21 +100,16 @@ async function restoreCommit(page: import("../helpers").Page, message: string) {
   await page.getByText("Overwrite all").click();
   // The modal closes itself once the restore lands.
   await page.waitForFunction(
-    `!Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Version History')`,
+    `!Array.from(document.querySelectorAll('h2')).some(h => h.textContent.trim() === 'Versioning')`,
     15_000,
   );
 }
 
 test("commit twice, restore the first commit, then roll forward again", async ({ tauriPage }) => {
-  test.skip(!TOKEN, "set E2E_GITHUB_TOKEN to run");
   test.setTimeout(300_000);
-  await openProject(tauriPage, "E2E Doc");
+  await createBlankProject(tauriPage, `Git restore ${RUN}`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-
-  // Open Git first so compile auto-commit is suspended (auto-commit.ts skips
-  // while the source-control rail is active). Otherwise a successful compile
-  // races ahead and leaves nothing for us to stage.
-  await ensureGithubConnected(tauriPage);
+  await initializeRepository(tauriPage);
 
   await typeInEditorAfter(tauriPage, "here.", ` ${BASE}`);
   await pressGlobal(tauriPage, "Enter", { meta: true });

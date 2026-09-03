@@ -1,0 +1,214 @@
+{
+ "rootFile": "main.tex",
+ "diagnostics": [
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./hyperref.sty",
+   "line": 4137,
+   "message": "Package hyperref: Hyper figures OFF.\nPackage hyperref Info: Link nesting OFF on input line 4142.\n\\c@Hy@tempcnt=\\count291\n) (\"C:\\texlive\\2022\\texmf-dist\\tex\\latex\\base\\ifthen.sty\"\nPackage: ifthen 2020/11/24 v1.1c Standard LaTeX ifthen package (DPC)\n) (/usr/share/texmf/tex/latex/graphics/graphicx.sty\nPackage: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)\n) (chapters/intro.tex\nLaTeX Warning: Reference `fig:teaser' on page 1 undefined on input line 7."
+  },
+  {
+   "severity": "warning",
+   "category": "undefined-citation",
+   "file": "./hyperref.sty",
+   "line": 9,
+   "message": "Cannot find citation `vaswani2017`."
+  },
+  {
+   "severity": "typesetting",
+   "category": "overfull-box",
+   "file": "./hyperref.sty",
+   "line": 12,
+   "message": "Overfull \\hbox (23.44pt too wide)"
+  },
+  {
+   "severity": "typesetting",
+   "category": "underfull-box",
+   "file": "./hyperref.sty",
+   "line": 18,
+   "message": "Underfull \\hbox (badness 10000)"
+  },
+  {
+   "severity": "typesetting",
+   "category": "overfull-box",
+   "file": "./hyperref.sty",
+   "line": null,
+   "message": "Overfull \\vbox (12.0pt too high) in page 3"
+  },
+  {
+   "severity": "typesetting",
+   "category": "underfull-box",
+   "file": "./hyperref.sty",
+   "line": null,
+   "message": "Underfull \\vbox (badness 10000)"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./hyperref.sty",
+   "line": null,
+   "message": "Missing character: There is no ő in font [lmroman10-regular]!"
+  },
+  {
+   "severity": "warning",
+   "category": "missing-character",
+   "file": "./hyperref.sty",
+   "line": null,
+   "message": "Missing character: There is no → in font [lmroman10-regular]!"
+  },
+  {
+   "severity": "error",
+   "category": "error",
+   "file": "./chapters/methods.tex",
+   "line": 4,
+   "message": "Undefined control sequence.",
+   "errorContext": "! Undefined control sequence.\nl.4 \\badmacro"
+  },
+  {
+   "severity": "error",
+   "category": "error",
+   "file": "./chapters/methods.tex",
+   "line": null,
+   "message": "Package amsmath: \\begin{split} won't work here.",
+   "errorContext": "! Package amsmath Error: \\begin{split} won't work here."
+  },
+  {
+   "severity": "error",
+   "category": "error",
+   "file": "./chapters/methods.tex",
+   "line": null,
+   "message": "Environment itemize undefined.",
+   "errorContext": "! LaTeX Error: Environment itemize undefined."
+  },
+  {
+   "severity": "error",
+   "category": "error",
+   "file": "./chapters/methods.tex",
+   "line": 41,
+   "message": "Missing $ inserted.\n<inserted text>",
+   "errorContext": "./chapters/methods.tex:41: Missing $ inserted.\n<inserted text>"
+  },
+  {
+   "severity": "error",
+   "category": "error",
+   "file": "./chapters/methods.tex",
+   "line": null,
+   "message": "Emergency stop.\n<*> main.tex",
+   "errorContext": "! Emergency stop.\n<*> main.tex"
+  },
+  {
+   "severity": "error",
+   "category": "error",
+   "file": "./chapters/methods.tex",
+   "line": null,
+   "message": "Paragraph ended before \\caption was complete.\n<to be read again>",
+   "errorContext": "! Paragraph ended before \\caption was complete.\n<to be read again>"
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./chapters/methods.tex",
+   "line": 55,
+   "message": "Package hyperref: Token not allowed in a PDF string (Unicode):\n(hyperref)\tremoving `math shift'."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./chapters/methods.tex",
+   "line": 56,
+   "message": "Package hyperref: Token not allowed in a PDF string (Unicode):\n(hyperref)\tremoving `\\label'."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./chapters/methods.tex",
+   "line": 60,
+   "message": "Class IEEEtran: Some warning from the class."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./chapters/methods.tex",
+   "line": 62,
+   "message": "LaTeX Font: Font shape `TU/lmroman10-regular/m/it' undefined\n(Font)\tusing `TU/lmroman10-regular/m/n' instead."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./chapters/methods.tex",
+   "line": 63,
+   "message": "LaTeX3: Something from expl3."
+  },
+  {
+   "severity": "warning",
+   "category": "biber",
+   "file": null,
+   "line": null,
+   "message": "Bibliography needs Biber (biblatex). Oleafly should run pinned tectonic-biber automatically. If citations stay undefined, see [Oleafly] notes in this log."
+  },
+  {
+   "severity": "warning",
+   "category": "biber",
+   "file": null,
+   "line": null,
+   "message": "No bib entry found for 'knuth1984'"
+  },
+  {
+   "severity": "warning",
+   "category": "biber",
+   "file": null,
+   "line": null,
+   "message": "No bib entry found for 'lamport1994'"
+  },
+  {
+   "severity": "error",
+   "category": "biber",
+   "file": null,
+   "line": null,
+   "message": "Bibliography needs Biber (biblatex), but a usable .bbl was not produced."
+  },
+  {
+   "severity": "error",
+   "category": "biber",
+   "file": null,
+   "line": null,
+   "message": "Biber was not found (mode A): GUI launches often have a minimal PATH"
+  },
+  {
+   "severity": "error",
+   "category": "biber",
+   "file": null,
+   "line": null,
+   "message": "Biber/biblatex version mismatch (mode B): the pinned biber is older than biblatex"
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./chapters/methods.tex",
+   "line": 70,
+   "message": "Package natbib: Citation `knuth' on page 3 undefined."
+  },
+  {
+   "severity": "warning",
+   "category": "package-warning",
+   "file": "./chapters/methods.tex",
+   "line": null,
+   "message": "LaTeX: Label(s) may have changed. Rerun to get cross-references right."
+  },
+  {
+   "severity": "info",
+   "category": "info",
+   "file": "./chapters/methods.tex",
+   "line": null,
+   "message": "Module foo: Some module info without a period\nPackage caption Info: Begin \\AtBeginDocument code.\nPackage caption Info: End \\AtBeginDocument code.\nLaTeX Info: Redefining \\ref on input line 80.\nLaTeX Info: Redefining \\pageref on input line 81?\n) [1"
+  },
+  {
+   "severity": "typesetting",
+   "category": "overfull-box",
+   "file": "./figures/table 1.tex",
+   "line": 3,
+   "message": "Overfull \\hbox (1.0pt too wide)"
+  }
+ ]
+}

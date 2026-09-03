@@ -12,6 +12,10 @@ mod biber_toolchain;
 mod browser;
 mod browser_cookie_import;
 mod chats;
+mod checkpoint_archive;
+mod checkpoint_backup;
+mod checkpoint_publication;
+mod checkpoints;
 mod chunked;
 mod citation;
 mod commands;
@@ -38,6 +42,7 @@ mod ollama;
 mod paths;
 mod proc;
 mod project;
+mod project_sources;
 mod protocol;
 mod quit_gate;
 // Thread persistence; the thread-store commands land on top of it next.
@@ -54,19 +59,20 @@ mod templates;
 mod terminal;
 mod tex_distro;
 mod tinytex_archive;
+mod worktree_lock;
 
 use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // One-time hardening: strip any token baked into a project's `origin` remote
-    // by earlier builds (auth now flows through the env credential helper).
-    git::scrub_remote_credentials();
-
     let mut builder = tauri::Builder::default()
-        .on_page_load(browser::on_page_load)
+        .on_page_load(|webview, payload| {
+            browser::on_page_load(webview, payload);
+            terminal::on_page_load(webview, payload);
+        })
         .manage(language_service::LanguageServiceState::default())
         .plugin(language_service::lifecycle_plugin())
+        .plugin(terminal::lifecycle_plugin())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_dialog::init());
@@ -197,6 +203,18 @@ pub fn run() {
                 }
             }
 
+            // Permanent deletion publishes a durable Checkpoints cleanup job
+            // before the recycled worktree disappears. Retry abandoned jobs
+            // off the UI thread, and never make a cleanup fault block startup.
+            tauri::async_runtime::spawn_blocking(|| {
+                if let Err(error) = crate::storage::retry_pending_checkpoint_cleanup() {
+                    eprintln!("Checkpoints cleanup retry failed: {error}");
+                    let _ = crate::project::append_app_log(format!(
+                        "Checkpoints cleanup retry failed: {error}"
+                    ));
+                }
+            });
+
             // Start the MCP server on boot when the user has enabled it. Failure to
             // bind must not prevent the app from starting; Settings shows the state.
             let handle = app.handle().clone();
@@ -241,8 +259,33 @@ pub fn run() {
             storage::list_recycled_projects,
             storage::restore_recycled_project,
             storage::permanently_delete_recycled_project,
+            checkpoints::checkpoint_list,
+            checkpoints::checkpoint_set_label,
+            checkpoints::checkpoint_stats,
+            checkpoints::checkpoint_restore,
+            checkpoints::checkpoint_delete,
+            checkpoints::checkpoint_keep_latest,
+            checkpoints::checkpoint_reset,
+            checkpoints::checkpoint_verify,
+            checkpoints::checkpoint_reveal_store,
+            checkpoints::checkpoint_files,
+            checkpoints::checkpoint_inspect,
+            checkpoint_backup::checkpoint_export,
+            checkpoint_backup::checkpoint_import,
             commands::app_version,
             commands::has_orx,
+            browser::browser_window_open,
+            browser::browser_window_focus,
+            browser::browser_window_close,
+            browser::browser_state,
+            browser::browser_tab_open,
+            browser::browser_tab_activate,
+            browser::browser_tab_close,
+            browser::browser_navigate,
+            browser::browser_back,
+            browser::browser_forward,
+            browser::browser_reload,
+            browser::browser_content_visible,
             browser_cookie_import::detect_browser_cookie_sources,
             browser_cookie_import::import_browser_cookies,
             protocol::backend_protocol_info,
@@ -309,6 +352,7 @@ pub fn run() {
             synctex::synctex_map_line,
             project::list_files,
             project::read_file,
+            project_sources::read_project_sources,
             project::project_mutation_generation,
             project::write_file,
             project::create_file,
@@ -345,6 +389,9 @@ pub fn run() {
             project::set_main_doc,
             project::set_project_engine,
             project::set_project_shell_escape,
+            project::set_checkpoint_policy,
+            project::checkpoint_ignore_path,
+            project::checkpoint_unignore_path,
             project::record_project_tex_spec,
             project::project_tex_status,
             project::import_overleaf_project,
@@ -417,15 +464,16 @@ pub fn run() {
             mcp::client::mcp_agent_tool_call,
             chats::load_project_chats,
             chats::save_project_chats,
-            git::git_auto_commit,
-            git::git_auto_commit_update,
+            git::git_is_initialized,
+            git::git_initialize,
+            git::git_prepare_publish,
             git::git_log,
-            git::git_read_version_labels,
-            git::git_set_version_label,
             git::git_restore,
             git::git_set_remote,
             git::git_remove_remote,
             git::git_get_remote,
+            git::git_remote_credentials_need_cleanup,
+            git::git_clean_remote_credentials,
             git::git_current_branch,
             git::git_ahead_behind,
             git::git_push,

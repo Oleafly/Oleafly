@@ -19,7 +19,6 @@ import { ThemeProvider } from "@/lib/theme";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
-import { TerminalPane } from "@/components/dock/TerminalPane";
 import { Editor } from "@/components/editor/Editor";
 import { editorUndo, editorRedo } from "@/components/editor/cm/controller";
 import { PreviewPane } from "@/components/preview/PreviewPane";
@@ -67,6 +66,11 @@ import { EnginePickerModal } from "@/components/layout/EnginePickerModal";
 import { TinytexGuards } from "@/components/layout/TinytexGuards";
 import { QuitGuard } from "@/components/layout/QuitGuard";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
+import {
+  CHECKPOINT_PUBLICATION_EVENT,
+  applyCheckpointPublicationEvent,
+} from "@/lib/checkpoint-publication";
+
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 import { handleDockShortcut } from "@/lib/dock-shortcuts";
 import {
@@ -157,8 +161,10 @@ const CopilotOverlay = lazy(() =>
 const WordCountModal = lazy(() =>
   import("@/components/editor/WordCountModal").then((m) => ({ default: m.WordCountModal })),
 );
-const HistoryModal = lazy(() =>
-  import("@/components/editor/HistoryModal").then((m) => ({ default: m.HistoryModal })),
+const VersioningModal = lazy(() =>
+  import("@/components/editor/VersioningModal").then((m) => ({
+    default: m.VersioningModal,
+  })),
 );
 const HotkeysModal = lazy(() =>
   import("@/components/editor/HotkeysModal").then((m) => ({ default: m.HotkeysModal })),
@@ -173,6 +179,9 @@ const LiteratureSearchToolView = lazy(() =>
   import("@/components/tools/LiteratureSearchToolView").then((m) => ({
     default: m.LiteratureSearchToolView,
   })),
+);
+const TerminalDock = lazy(() =>
+  import("@/components/dock/TerminalDock").then((m) => ({ default: m.TerminalDock })),
 );
 
 // fallback must stay null - a visible one blocks the whole screen (these mount unconditionally, closed by default).
@@ -515,6 +524,9 @@ function AppContent() {
     const unCompile = listen<unknown>(COMPILE_SUCCEEDED_EVENT, (event) => {
       void applyRemoteCompileSuccess(event.payload, selfLabel);
     });
+    const unCheckpointPublication = listen<unknown>(CHECKPOINT_PUBLICATION_EVENT, (event) => {
+      applyCheckpointPublicationEvent(event.payload);
+    });
     const unProjectState = listen<ProjectStateChanged>("project-state-changed", (event) => {
       const files = useFilesStore.getState();
       if (!event.payload || event.payload.projectId !== files.projectId) return;
@@ -530,7 +542,9 @@ function AppContent() {
     return () => {
       void unFiles.then((f) => f());
       void unCompile.then((f) => f());
+      void unCheckpointPublication.then((f) => f());
       void unProjectState.then((f) => f());
+
       void unSettings.then((f) => f());
     };
   }, []);
@@ -958,11 +972,13 @@ function AppContent() {
                   )}
                 >
                   <ErrorBoundary surface="terminal dock" resetKey={projectId}>
-                    <TerminalPane
-                      projectId={projectId}
-                      projectName={projectName}
-                      visible={terminalOpen}
-                    />
+                    <Suspense fallback={<SurfaceLoading label="Loading terminal" />}>
+                      <TerminalDock
+                        projectId={projectId}
+                        projectName={projectName}
+                        visible={terminalOpen}
+                      />
+                    </Suspense>
                   </ErrorBoundary>
                 </div>
               </Panel>
@@ -986,7 +1002,7 @@ function AppContent() {
         <LazyModals>
           <SettingsModal />
           <WordCountModal />
-          <HistoryModal />
+          <VersioningModal />
           <HotkeysModal />
           <TourGuide />
         </LazyModals>

@@ -9,8 +9,8 @@ import {
   FileArchive,
   FileType,
   GitFork,
-  Presentation,
   History,
+  Presentation,
   LayoutGrid,
   Loader2,
   ImagePlay,
@@ -109,10 +109,28 @@ function activeLayoutPreset(
   return null;
 }
 
-// Groups the right-side toolbar into: Recompile | Export | History + Fork
-// project | account | Shortcuts + Layout.
+// Groups the right-side toolbar into: Recompile | Export | Fork + Versioning |
+// Layout + workspace controls.
 function Divider() {
   return <span className="mx-1 h-5 w-px shrink-0 bg-border" />;
+}
+
+export function ProjectHistoryActions() {
+  const openVersioning = useSettingsStore((state) => state.openVersioning);
+
+  return (
+    <Tooltip label="Versioning">
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Versioning"
+        className="text-muted-foreground hover:text-foreground"
+        onClick={() => openVersioning()}
+      >
+        <History className="size-4" />
+      </Button>
+    </Tooltip>
+  );
 }
 
 function ViewModeSwitch({
@@ -166,7 +184,6 @@ export function TopToolbar() {
   const openProject = useFilesStore((s) => s.openProject);
   const renameProject = useFilesStore((s) => s.renameProject);
   const pdfBytes = useCompileStore((s) => s.pdfBytes);
-  const setHistoryOpen = useSettingsStore((s) => s.setHistoryOpen);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
@@ -318,11 +335,14 @@ export function TopToolbar() {
         isMac && fullscreen && "pl-2"
       )}
     >
-      <div data-tauri-drag-region className="flex min-w-0 items-center gap-2">
-        <HomeBrandButton onClick={() => void closeProject()} />
-        <ChevronRight className="size-4 text-muted-foreground/50" />
+      <HomeBrandButton className="shrink-0" onClick={() => void closeProject()} />
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+      <div
+        data-tauri-drag-region
+        className="flex min-w-0 flex-1 items-center overflow-hidden"
+      >
         {editingTitle ? (
-          <span ref={titleEditRef} className="flex items-center gap-1">
+          <span ref={titleEditRef} className="flex min-w-0 items-center gap-1">
             <Input
               ref={titleInputRef}
               aria-label="Project name"
@@ -361,7 +381,7 @@ export function TopToolbar() {
             </Tooltip>
           </span>
         ) : (
-          <Tooltip label={projectName || "project"} side="bottom">
+          <Tooltip label={projectName || "project"} side="bottom" className="min-w-0">
             <button
                 data-testid="project-title"
               type="button"
@@ -377,17 +397,19 @@ export function TopToolbar() {
             </button>
           </Tooltip>
         )}
+        {projectId && (
+          <div className="ml-2 shrink-0 min-[1200px]:pointer-events-none min-[1200px]:absolute min-[1200px]:left-1/2 min-[1200px]:top-1/2 min-[1200px]:-translate-x-1/2 min-[1200px]:-translate-y-1/2">
+            <div className="pointer-events-auto">
+              <ViewModeSwitch viewMode={viewMode} setViewMode={setViewMode} />
+            </div>
+          </div>
+        )}
       </div>
 
-      {projectId && (
-        <div className="shrink-0 min-[1200px]:pointer-events-none min-[1200px]:absolute min-[1200px]:left-1/2 min-[1200px]:top-1/2 min-[1200px]:-translate-x-1/2 min-[1200px]:-translate-y-1/2">
-          <div className="pointer-events-auto">
-            <ViewModeSwitch viewMode={viewMode} setViewMode={setViewMode} />
-          </div>
-        </div>
-      )}
-
-      <div data-tauri-drag-region className="ml-auto flex items-center justify-end gap-1.5">
+      <div
+        data-tauri-drag-region
+        className="ml-auto flex min-w-0 items-center justify-end gap-1.5 overflow-x-clip"
+      >
 
         <CompileControls />
 
@@ -489,17 +511,7 @@ export function TopToolbar() {
           </Button>
         </Tooltip>
 
-        <Tooltip label="Version history">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="History"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => setHistoryOpen(true)}
-          >
-            <History className="size-4" />
-          </Button>
-        </Tooltip>
+        <ProjectHistoryActions />
 
         <Divider />
 
@@ -554,7 +566,7 @@ export function TopToolbar() {
             </Button>
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
-            Copies <span className="font-medium text-foreground">{projectName}</span> and its full history into a new project.
+            Copies <span className="font-medium text-foreground">{projectName}</span> and its Git history into a new project. Checkpoints start empty.
           </p>
           <div className="flex items-center gap-2">
             <Input

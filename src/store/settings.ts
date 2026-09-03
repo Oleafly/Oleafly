@@ -15,6 +15,7 @@ const SETTINGS_SECTIONS = new Set([
 ]);
 
 export type ViewMode = "split" | "editor" | "pdf";
+export type VersioningTab = "git" | "checkpoints";
 export type LayoutPreset =
   | "editor-preview-ai"
   | "editor-preview"
@@ -505,8 +506,15 @@ interface SettingsState {
   setFigureModeOpen: (v: boolean) => void;
   wordCountOpen: boolean;
   setWordCountOpen: (v: boolean) => void;
-  historyOpen: boolean;
-  setHistoryOpen: (v: boolean) => void;
+  versioningOpen: boolean;
+  versioningTab: VersioningTab;
+  openVersioning: (tab?: VersioningTab) => void;
+  closeVersioning: () => void;
+  setVersioningTab: (tab: VersioningTab) => void;
+  checkpointsRevision: number;
+  bumpCheckpointsRevision: () => void;
+  checkpointPublishingProjectId: string | null;
+  setCheckpointPublishingProjectId: (projectId: string | null) => void;
   searchOpen: boolean;
   setSearchOpen: (v: boolean) => void;
   settingsOpen: boolean;
@@ -554,6 +562,8 @@ interface SettingsState {
   setTerminalCursorStyle: (v: TerminalCursorStyle) => void;
   terminalCursorBlink: boolean;
   setTerminalCursorBlink: (v: boolean) => void;
+  terminalStartWithProject: boolean;
+  setTerminalStartWithProject: (v: boolean) => void;
   terminalColorTheme: TerminalColorThemeId;
   setTerminalColorTheme: (v: TerminalColorThemeId) => void;
   terminalBackground: string;
@@ -659,6 +669,7 @@ const PREF_DEFAULTS = {
   terminalFontWeightBold: 700,
   terminalCursorStyle: "block" as TerminalCursorStyle,
   terminalCursorBlink: true,
+  terminalStartWithProject: true,
   terminalColorTheme: "dark" as TerminalColorThemeId,
   terminalBackground: TERMINAL_COLOR_THEMES.dark.colors.background,
   terminalForeground: TERMINAL_COLOR_THEMES.dark.colors.foreground,
@@ -761,9 +772,20 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setFigureModeOpen: (v) => set({ figureModeOpen: v }),
   wordCountOpen: false,
   setWordCountOpen: (v) => set({ wordCountOpen: v }),
-  historyOpen: false,
-  setHistoryOpen: (v) => set({ historyOpen: v }),
+  versioningOpen: false,
+  versioningTab: "checkpoints",
+  openVersioning: (tab) =>
+    set(tab ? { versioningOpen: true, versioningTab: tab } : { versioningOpen: true }),
+  closeVersioning: () => set({ versioningOpen: false }),
+  setVersioningTab: (tab) => set({ versioningTab: tab }),
+  checkpointsRevision: 0,
+  bumpCheckpointsRevision: () =>
+    set((state) => ({ checkpointsRevision: state.checkpointsRevision + 1 })),
+  checkpointPublishingProjectId: null,
+  setCheckpointPublishingProjectId: (projectId) =>
+    set({ checkpointPublishingProjectId: projectId }),
   searchOpen: false,
+
   setSearchOpen: (v) => set({ searchOpen: v }),
   settingsOpen: false,
   setSettingsOpen: (v) => set({ settingsOpen: v }),
@@ -872,6 +894,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setTerminalCursorBlink: (v) => {
     saveLs("oleafly.terminal.cursorBlink", v ? "1" : "0");
     set({ terminalCursorBlink: v });
+  },
+  terminalStartWithProject: ls("oleafly.terminal.startWithProject", "1") !== "0",
+  setTerminalStartWithProject: (v) => {
+    saveLs("oleafly.terminal.startWithProject", v ? "1" : "0");
+    set({ terminalStartWithProject: v });
   },
   terminalColorTheme: readTerminalColorTheme(
     ls("oleafly.terminal.colorTheme", "dark"),
@@ -1144,6 +1171,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       "oleafly.terminal.cursorBlink",
       PREF_DEFAULTS.terminalCursorBlink ? "1" : "0",
     );
+    saveLs(
+      "oleafly.terminal.startWithProject",
+      PREF_DEFAULTS.terminalStartWithProject ? "1" : "0",
+    );
     saveLs("oleafly.terminal.colorTheme", PREF_DEFAULTS.terminalColorTheme);
     saveLs("oleafly.terminal.background", PREF_DEFAULTS.terminalBackground);
     saveLs("oleafly.terminal.foreground", PREF_DEFAULTS.terminalForeground);
@@ -1184,6 +1215,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       terminalFontWeightBold: PREF_DEFAULTS.terminalFontWeightBold,
       terminalCursorStyle: PREF_DEFAULTS.terminalCursorStyle,
       terminalCursorBlink: PREF_DEFAULTS.terminalCursorBlink,
+      terminalStartWithProject: PREF_DEFAULTS.terminalStartWithProject,
       terminalColorTheme: PREF_DEFAULTS.terminalColorTheme,
       terminalBackground: PREF_DEFAULTS.terminalBackground,
       terminalForeground: PREF_DEFAULTS.terminalForeground,

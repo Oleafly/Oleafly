@@ -379,6 +379,7 @@ pub fn resolve_secret(account: &str, config_value: &str) -> Result<String, Strin
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::proc::NoConsole as _;
 
     #[test]
     fn mcp_token_shape() {
@@ -638,6 +639,7 @@ mod tests {
         let mut children: Vec<_> = (0..8)
             .map(|index| {
                 std::process::Command::new(&executable)
+                    .no_console()
                     .arg("--exact")
                     .arg("secrets::tests::secret_update_process_worker")
                     .env("OLEAFLY_SECRET_PROCESS_WORKER", &dir)

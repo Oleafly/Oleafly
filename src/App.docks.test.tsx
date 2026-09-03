@@ -162,7 +162,9 @@ vi.mock("@/components/layout/SettingsModal", () => ({ SettingsModal: () => null 
 vi.mock("@/components/diagram/DiagramComposer", () => ({ DiagramComposer: () => null }));
 vi.mock("@/components/ai/CopilotOverlay", () => ({ CopilotOverlay: () => null }));
 vi.mock("@/components/editor/WordCountModal", () => ({ WordCountModal: () => null }));
-vi.mock("@/components/editor/HistoryModal", () => ({ HistoryModal: () => null }));
+vi.mock("@/components/editor/VersioningModal", () => ({
+  VersioningModal: () => <div data-testid="versioning-modal" />,
+}));
 vi.mock("@/components/editor/HotkeysModal", () => ({ HotkeysModal: () => null }));
 vi.mock("@/components/tour/TourGuide", () => ({ TourGuide: () => null }));
 vi.mock("@/components/tools/EquationToolView", () => ({ EquationToolView: () => null }));
@@ -307,6 +309,23 @@ describe("project dock layout", () => {
       browserOpen: false,
       terminalOpen: false,
     });
+  });
+
+  it("mounts the versioning window as one modal surface", async () => {
+    const React = await import("react");
+    const { act } = React;
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<App />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(document.querySelector('[data-testid="versioning-modal"]')).not.toBeNull();
   });
 
   it("passes the app font size into the sidebar width floor", async () => {

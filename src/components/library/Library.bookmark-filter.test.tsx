@@ -74,6 +74,7 @@ beforeEach(() => {
         has_preview: true,
         exports: [],
         forked_from: null,
+        recovery_pending: false,
       },
     ],
     refreshProjects: vi.fn(async () => {}),
@@ -234,6 +235,86 @@ describe("Library bookmark filters", () => {
     expect(
       screen.getByRole("img", { name: "Forked from Original research" }),
     ).toBeInTheDocument();
+  });
+
+  it("explains that forks copy Git history but start with no checkpoints", async () => {
+    render(<Library />);
+    fireEvent.click(screen.getByRole("button", { name: "List view" }));
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: "Actions for Research paper" }),
+      { button: 0, ctrlKey: false, pointerType: "mouse" },
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Fork project" }),
+    );
+
+    expect(await screen.findByRole("heading", { name: "Fork project" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "Copies Research paper and its Git history into a new project. Checkpoints start empty.",
+    );
+  });
+
+  it("keeps recovery-pending projects visible and exposes only opening them", () => {
+    const openProject = vi.fn(async () => {});
+    useFilesStore.setState((state) => ({
+      projects: [
+        ...state.projects,
+        {
+          ...state.projects[0],
+          id: "recovery-project",
+          name: "Recovery project",
+          main_doc: "",
+          engine: "",
+          kind: "",
+          created_at: 0,
+          updated_at: 0,
+          has_preview: false,
+          exports: [],
+          forked_from: null,
+          recovery_pending: true,
+        },
+      ],
+      openProject,
+    }));
+    render(<Library />);
+    fireEvent.click(screen.getByRole("button", { name: "List view" }));
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search projects" }), {
+      target: { value: "does not match any project" },
+    });
+
+    expect(screen.queryByRole("button", { name: "Open Research paper" })).toBeNull();
+    const recover = screen.getByRole("button", {
+      name: "Open to recover Recovery project",
+    });
+    expect(recover).toBeInTheDocument();
+    expect(screen.getByText("Open to recover")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Preview Recovery project" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Actions for Recovery project" }),
+    ).toBeNull();
+
+    fireEvent.click(recover);
+    expect(openProject).toHaveBeenCalledWith("recovery-project");
+
+    fireEvent.contextMenu(recover);
+    expect(
+      screen.getByRole("menuitem", { name: "Open to recover" }),
+    ).toBeInTheDocument();
+    for (const unsafeAction of [
+      "Project details",
+      "Export history",
+      "Fork project",
+      "Delete project",
+    ]) {
+      expect(
+        screen.queryByRole("menuitem", { name: unsafeAction }),
+      ).toBeNull();
+    }
   });
 
   it("opens the compiled PDF from the list preview action", async () => {

@@ -9,6 +9,7 @@ import {
   validateCompileFingerprint,
   type CompileError,
   type CompileResult,
+  type LogDiagnostic,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { engineHintDismissed, useEnginePickerStore } from "@/store/engine-picker";
@@ -20,6 +21,8 @@ import {
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
 import { notifyError, toast } from "@/lib/toast";
+import { notifyCheckpointPublicationSkipped } from "@/lib/checkpoint-publication";
+
 import { compileOfflineForEngine } from "@/lib/document-engine";
 import { ensurePandoc } from "@/features/pandoc";
 import {
@@ -262,6 +265,7 @@ export interface CompileState {
   phase: CompilePhase;
   log: string;
   errors: CompileError[];
+  diagnostics: LogDiagnostic[] | null;
   pdfBytes: Uint8Array | null;
   lastAttemptIdentity: CompileRequestIdentity | null;
   failureReason: string | null;
@@ -468,6 +472,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
   phase: "idle",
   log: "",
   errors: [],
+  diagnostics: null,
   pdfBytes: null,
   lastAttemptIdentity: null,
   failureReason: null,
@@ -519,6 +524,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       phase: "idle",
       log: "",
       errors: [],
+      diagnostics: null,
       pdfBytes: null,
       lastAttemptIdentity: null,
       failureReason: null,
@@ -562,6 +568,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       pdfBytes: bytes,
       failureReason: null,
       errors: [],
+      diagnostics: null,
       log: validated.log,
       lastCompiledAt: checkpoint.completedAt,
       lastCompileCheckpoint: checkpoint,
@@ -716,6 +723,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       status: "compiling",
       phase: "saving",
       errors: [],
+      diagnostics: null,
       failureReason: null,
       lastAttemptIdentity: savingIdentity,
     });
@@ -839,6 +847,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         phase: "building",
         log: offlinePolicy.notice ? `${offlinePolicy.notice}\n` : "",
         errors: [],
+        diagnostics: null,
         lastAttemptIdentity: requestIdentity,
         failureReason: null,
       };
@@ -1002,6 +1011,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
             : outputIdentityError.trim() ||
               "Compilation did not produce a valid current PDF.",
           errors: result.errors,
+          diagnostics: result.diagnostics ?? null,
           log: `${offlinePolicy.notice ? `${offlinePolicy.notice}\n` : ""}${result.log}${outputIdentityError}`,
           lastCompiledAt: checkpoint?.completedAt ?? state.lastCompiledAt,
           lastCompileCheckpoint:
@@ -1036,14 +1046,12 @@ export const useCompileStore = create<CompileState>((set, get) => ({
           }),
         )
         .catch(() => {});
-      if (checkpoint) notifyCompileSucceeded(checkpoint);
-      // A successful compile is the natural checkpoint: auto-commit the
-      // project (compiling already saved the active file first).
-      if (checkpoint && capturedProjectId) {
-        const pid = capturedProjectId;
-        await import("@/lib/auto-commit").then((m) => m.autoCommitNow(pid)).catch(() => {});
+      if (checkpoint) {
+        notifyCompileSucceeded(checkpoint);
+        void notifyCheckpointPublicationSkipped(result.checkpoint_publication);
       }
       return result;
+
     } catch (e) {
       set((state) => {
         if (

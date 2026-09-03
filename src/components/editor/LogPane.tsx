@@ -338,15 +338,23 @@ function RawLogSection({ log, defaultOpen }: { log: string; defaultOpen: boolean
   );
 }
 
+const NO_DIAGNOSTICS: readonly LogDiagnostic[] = [];
+
 export function LogPane() {
   const log = useCompileStore((s) => s.log);
   const errors = useCompileStore((s) => s.errors);
+  const status = useCompileStore((s) => s.status);
+  const diagnostics = useCompileStore((s) => s.diagnostics);
   const mainDoc = useFilesStore((s) => s.mainDoc);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
   const followTailRef = useRef(true);
   const tailFrameRef = useRef<number | null>(null);
 
-  const structured = useMemo(() => (log ? parseLatexLog(log, mainDoc) : []), [log, mainDoc]);
+  const structured = useMemo<readonly LogDiagnostic[]>(() => {
+    if (diagnostics) return diagnostics;
+    if (!log || status === "compiling") return NO_DIAGNOSTICS;
+    return parseLatexLog(log, mainDoc);
+  }, [diagnostics, log, mainDoc, status]);
   const groups = useMemo(() => {
     const existing = new Set(errors.map((e) => e.message));
     const errs: LogDiagnostic[] = [];

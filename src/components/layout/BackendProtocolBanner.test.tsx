@@ -43,6 +43,18 @@ describe("BackendProtocolBanner", () => {
     expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 
+  it("rejects the previous backend contract even when it reports a capability superset", async () => {
+    mockInfo.mockResolvedValue({
+      protocol_version: 2,
+      capabilities: [...BACKEND_CAPABILITIES, "future-capability"],
+    });
+
+    render(<BackendProtocolBanner />);
+    await flush();
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
+
   it("shows the banner when the backend lacks a required capability", async () => {
     mockInfo.mockResolvedValue({
       protocol_version: PROTOCOL_VERSION,

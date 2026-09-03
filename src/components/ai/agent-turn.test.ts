@@ -283,6 +283,30 @@ describe("harness", () => {
     );
   });
 
+  it("refuses a hallucinated write with the plan mode error before reporting an unknown tool", async () => {
+    const h = harness(
+      [{ kind: "toolRequest", id: "c1", name: "write_file", arguments: '{"path":"main.tex"}' }],
+      {},
+      {
+        guardToolCall: (call) =>
+          call.name === "write_file"
+            ? "Plan mode: this tool is unavailable until the plan is approved."
+            : null,
+      },
+    );
+    await h.run();
+
+    const output = String((h.posted[0].output as { output: string }).output);
+    expect(output).toContain("Plan mode: this tool is unavailable until the plan is approved.");
+    expect(output).not.toContain("Unknown tool");
+    expect(h.handlers.onToolResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "c1",
+        output: { error: "Plan mode: this tool is unavailable until the plan is approved." },
+      }),
+    );
+  });
+
   it("executes normally when the run guard passes", async () => {
     const execute = vi.fn(async () => ({ ok: true }));
     const h = harness(

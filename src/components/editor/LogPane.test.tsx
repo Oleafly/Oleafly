@@ -1,13 +1,27 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, expectTypeOf, it, vi, beforeEach } from "vitest";
 import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
+import type { LogDiagnostic as LatexLogDiagnostic } from "@oleafly/latex";
+import type { LogDiagnostic as PortLogDiagnostic } from "@oleafly/backend-port";
 
 const openFileAndGotoLine = vi.fn();
 vi.mock("@/features/synctex", () => ({
   openFileAndGotoLine: (...args: unknown[]) => openFileAndGotoLine(...args),
 }));
+
+const parseLatexLogSpy = vi.hoisted(() => vi.fn());
+vi.mock("@oleafly/latex", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@oleafly/latex")>();
+  return {
+    ...actual,
+    parseLatexLog: (...args: Parameters<typeof actual.parseLatexLog>) => {
+      parseLatexLogSpy(...args);
+      return actual.parseLatexLog(...args);
+    },
+  };
+});
 
 import { LogPane } from "./LogPane";
 
@@ -36,6 +50,7 @@ function setCompileState(overrides: Partial<ReturnType<typeof useCompileStore.ge
     phase: "idle",
     log: "",
     errors: [],
+    diagnostics: null,
     pdfBytes: null,
     lastCompiledAt: null,
     compileTimeMs: null,
@@ -44,12 +59,79 @@ function setCompileState(overrides: Partial<ReturnType<typeof useCompileStore.ge
   } as unknown as ReturnType<typeof useCompileStore.getState>);
 }
 
+const REFERENCE_WARNING: PortLogDiagnostic = {
+  severity: "warning",
+  category: "undefined-reference",
+  file: "./main.tex",
+  line: 10,
+  message: "Cannot find reference `fig:x`.",
+};
+
+const OVERFULL_BOX: PortLogDiagnostic = {
+  severity: "typesetting",
+  category: "overfull-box",
+  file: "./main.tex",
+  line: 21,
+  message: "Overfull \\hbox (15.36pt too wide)",
+};
+
+const WARNING_LOG = [
+  "(./main.tex",
+  "LaTeX Warning: Reference `fig:x' on page 1 undefined on input line 10.",
+  ")",
+].join("\n");
+
 describe("LogPane", () => {
   beforeEach(() => {
     openFileAndGotoLine.mockClear();
-    useFilesStore.setState({ activePath: "main.tex", tree: [] } as unknown as ReturnType<
+    parseLatexLogSpy.mockClear();
+    useFilesStore.setState({ activePath: "main.tex", mainDoc: "main.tex", tree: [] } as unknown as ReturnType<
       typeof useFilesStore.getState
     >);
+  });
+
+  it("keeps the backend and package diagnostic contracts identical", () => {
+    expectTypeOf<PortLogDiagnostic>().toEqualTypeOf<LatexLogDiagnostic>();
+  });
+
+  it("renders grouped diagnostics from the store without parsing the log", () => {
+    setCompileState({
+      status: "error",
+      log: WARNING_LOG,
+      errors: [],
+      diagnostics: [REFERENCE_WARNING, OVERFULL_BOX],
+    });
+    render(<LogPane />);
+    expect(screen.getByText("Cannot find reference `fig:x`.")).toBeInTheDocument();
+    expect(screen.getByText("Typesetting")).toBeInTheDocument();
+    expect(parseLatexLogSpy).not.toHaveBeenCalled();
+  });
+
+  it("parses the finished log once when the backend sent no diagnostics", () => {
+    setCompileState({ status: "error", log: WARNING_LOG, errors: [], diagnostics: null });
+    render(<LogPane />);
+    expect(screen.getByText("Cannot find reference `fig:x`.")).toBeInTheDocument();
+    expect(parseLatexLogSpy).toHaveBeenCalledTimes(1);
+    expect(parseLatexLogSpy).toHaveBeenCalledWith(WARNING_LOG, "main.tex");
+    act(() => {
+      useCompileStore.setState({ lastCompiledAt: 5 });
+    });
+    expect(parseLatexLogSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not parse the streaming log while a compile is running", () => {
+    setCompileState({ status: "compiling", log: "(./main.tex", errors: [], diagnostics: null });
+    render(<LogPane />);
+    act(() => {
+      useCompileStore.setState({ log: WARNING_LOG });
+    });
+    expect(parseLatexLogSpy).not.toHaveBeenCalled();
+    expect(screen.queryByText("Cannot find reference `fig:x`.")).not.toBeInTheDocument();
+    act(() => {
+      useCompileStore.setState({ status: "error", diagnostics: [REFERENCE_WARNING] });
+    });
+    expect(screen.getByText("Cannot find reference `fig:x`.")).toBeInTheDocument();
+    expect(parseLatexLogSpy).not.toHaveBeenCalled();
   });
 
   it("shows the raw log immediately for a successful compile with no errors", () => {

@@ -108,6 +108,7 @@ describe("Appearance settings tabs", () => {
       terminalFontWeightBold: 700,
       terminalCursorStyle: "block",
       terminalCursorBlink: true,
+      terminalStartWithProject: true,
       terminalColorTheme: "dark",
       terminalBackground: "#1e1e1e",
       terminalForeground: "#f2f2f2",
@@ -340,6 +341,9 @@ describe("Appearance settings tabs", () => {
     expect(screen.getByLabelText("Bold font weight")).toBeInTheDocument();
     expect(screen.getByLabelText("Terminal cursor style")).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Blink cursor" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: "Start shell with project" }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Terminal color theme")).toBeInTheDocument();
     expect(screen.getByLabelText("Terminal background color")).toBeInTheDocument();
     expect(screen.getByLabelText("Terminal foreground color")).toBeInTheDocument();
@@ -350,6 +354,9 @@ describe("Appearance settings tabs", () => {
     await user.click(screen.getByLabelText("Terminal cursor style"));
     await user.click(await screen.findByRole("option", { name: "Underline" }));
     await user.click(screen.getByRole("switch", { name: "Blink cursor" }));
+    await user.click(
+      screen.getByRole("switch", { name: "Start shell with project" }),
+    );
     await user.click(screen.getByLabelText("Terminal color theme"));
     await user.click(await screen.findByRole("option", { name: "Light" }));
     fireEvent.change(screen.getByLabelText("Terminal background color"), {
@@ -360,6 +367,7 @@ describe("Appearance settings tabs", () => {
       terminalFontSize: 16,
       terminalCursorStyle: "underline",
       terminalCursorBlink: false,
+      terminalStartWithProject: false,
       terminalColorTheme: "light",
       terminalBackground: "#f8f8f8",
     });
