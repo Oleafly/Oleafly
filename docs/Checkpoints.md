@@ -28,7 +28,9 @@ the engine cannot prove every input, the document still compiles and Oleafly
 shows a short reason for skipping the checkpoint.
 
 Automatic publication supports the controlled Tectonic, Typst, and Markdown
-with Pandoc compile paths. The proof of a checkpoint is a sealed replay:
+with Pandoc compile paths. Markdown checkpoints work with any Pandoc the app
+accepts (2.19 or newer), and each checkpoint records which Pandoc build proved
+it. The proof of a checkpoint is a sealed replay:
 Oleafly compiles the sealed inputs a second time in the same controlled
 environment and keeps the checkpoint only if that replay reproduces the
 controlled compile byte for byte. It is skipped when the replay does not
