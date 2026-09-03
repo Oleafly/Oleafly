@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,22 +19,38 @@ export interface AddCustomProviderInput {
   apiKey: string;
 }
 
+export interface CustomProviderEditTarget {
+  id: string;
+  name: string;
+  baseURL: string;
+  hasStoredKey: boolean;
+}
+
 export interface AddCustomProviderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: AddCustomProviderInput) => Promise<{ ok: boolean; message?: string }>;
+  editing?: CustomProviderEditTarget | null;
 }
 
 const EMPTY: AddCustomProviderInput = { id: "", name: "", baseURL: "", apiKey: "" };
 
-type FieldErrors = Partial<Record<"id" | "name" | "baseURL", string>>;
+export const KEY_REQUIRED_FOR_URL_CHANGE = "Enter the API key again to change the base URL.";
 
-function validate(form: AddCustomProviderInput): FieldErrors {
+type FieldErrors = Partial<Record<"id" | "name" | "baseURL" | "apiKey", string>>;
+
+export function normalizeBaseURL(url: string): string {
+  return url.trim().replace(/\/+$/, "");
+}
+
+function validate(form: AddCustomProviderInput, editing: CustomProviderEditTarget | null): FieldErrors {
   const errors: FieldErrors = {};
   const id = form.id.trim();
-  if (!id) errors.id = "ID is required.";
-  else if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) {
-    errors.id = "Use lowercase letters, digits, and dashes only, e.g. acme.";
+  if (!editing) {
+    if (!id) errors.id = "ID is required.";
+    else if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) {
+      errors.id = "Use lowercase letters, digits, and dashes only, e.g. acme.";
+    }
   }
   if (!form.name.trim()) errors.name = "Name is required.";
   const baseURL = form.baseURL.trim();
@@ -52,14 +68,41 @@ function validate(form: AddCustomProviderInput): FieldErrors {
       errors.baseURL = "Enter a full URL, e.g. https://api.example.com/v1 or http://localhost:1234/v1.";
     }
   }
+  if (
+    editing?.hasStoredKey &&
+    !errors.baseURL &&
+    normalizeBaseURL(baseURL) !== normalizeBaseURL(editing.baseURL) &&
+    !form.apiKey.trim()
+  ) {
+    errors.apiKey = KEY_REQUIRED_FOR_URL_CHANGE;
+  }
   return errors;
 }
 
-export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCustomProviderDialogProps) {
+export function AddCustomProviderDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  editing = null,
+}: AddCustomProviderDialogProps) {
   const [form, setForm] = useState<AddCustomProviderInput>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const editingId = editing?.id ?? "";
+  const editingName = editing?.name ?? "";
+  const editingBaseURL = editing?.baseURL ?? "";
+
+  useEffect(() => {
+    if (!open) return;
+    setForm(
+      editingId
+        ? { id: editingId, name: editingName, baseURL: editingBaseURL, apiKey: "" }
+        : EMPTY,
+    );
+    setError("");
+    setFieldErrors({});
+  }, [open, editingId, editingName, editingBaseURL]);
 
   const reset = () => {
     setForm(EMPTY);
@@ -75,11 +118,11 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
 
   const setField = (key: keyof AddCustomProviderInput) => (value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
-    if (key !== "apiKey") setFieldErrors((e) => ({ ...e, [key]: undefined }));
+    setFieldErrors((e) => ({ ...e, [key]: undefined }));
   };
 
   const submit = async () => {
-    const errors = validate(form);
+    const errors = validate(form, editing);
     setFieldErrors(errors);
     if (Object.values(errors).some(Boolean)) return;
     setBusy(true);
@@ -92,7 +135,7 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
         apiKey: form.apiKey.trim(),
       });
       if (!res.ok) {
-        setError(res.message ?? "Could not add that provider.");
+        setError(res.message ?? (editing ? "Could not save that provider." : "Could not add that provider."));
         return;
       }
       handleOpenChange(false);
@@ -100,6 +143,12 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
       setBusy(false);
     }
   };
+
+  const keyLabel = editing
+    ? editing.hasStoredKey
+      ? "API key (leave blank to keep the saved key)"
+      : "API key (optional)"
+    : "API key (optional)";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -114,9 +163,11 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
         }}
       >
         <DialogHeader>
-          <DialogTitle>Add custom provider</DialogTitle>
+          <DialogTitle>{editing ? "Edit custom provider" : "Add custom provider"}</DialogTitle>
           <DialogDescription>
-            Connect any OpenAI-compatible endpoint by its base URL.
+            {editing
+              ? "Change the name or base URL. A new base URL needs the API key entered again."
+              : "Connect any OpenAI-compatible endpoint by its base URL."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -128,6 +179,7 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
               id="custom-provider-id"
               data-testid="custom-provider-id"
               value={form.id}
+              disabled={Boolean(editing)}
               onChange={(e) => setField("id")(e.target.value)}
               placeholder="acme"
               aria-invalid={Boolean(fieldErrors.id)}
@@ -179,7 +231,7 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
           </div>
           <div className="space-y-1">
             <label htmlFor="custom-provider-key" className="text-xs font-medium text-muted-foreground">
-              API key (optional)
+              {keyLabel}
             </label>
             <Input
               id="custom-provider-key"
@@ -187,9 +239,15 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
               type="password"
               value={form.apiKey}
               onChange={(e) => setField("apiKey")(e.target.value)}
-              placeholder="Leave blank if none is required"
-              className="h-10 font-mono text-sm"
+              placeholder={editing?.hasStoredKey ? "Saved key stays unless you enter a new one" : "Leave blank if none is required"}
+              aria-invalid={Boolean(fieldErrors.apiKey)}
+              className="h-10 font-mono text-sm aria-[invalid=true]:border-destructive"
             />
+            {fieldErrors.apiKey && (
+              <p data-testid="custom-provider-key-error" className="text-xs text-destructive">
+                {fieldErrors.apiKey}
+              </p>
+            )}
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
@@ -200,7 +258,7 @@ export function AddCustomProviderDialog({ open, onOpenChange, onSubmit }: AddCus
             onClick={() => void submit()}
           >
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            Add provider
+            {editing ? "Save" : "Add provider"}
             <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">↵</Kbd>
           </Button>
         </DialogFooter>

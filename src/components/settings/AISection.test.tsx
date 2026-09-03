@@ -2,14 +2,21 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AppConfig } from "@/lib/tauri";
+import type { AppConfig, ProviderModel } from "@/lib/tauri";
 import type { SkillEntry } from "@/lib/skills";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import type { AddCustomProviderDialogProps } from "./ai/AddCustomProviderDialog";
+import type { ProvidersTabProps } from "./ai/ProvidersTab";
 import { AISection } from "./AISection";
+
+const captured = vi.hoisted(() => ({
+  providersTab: null as ProvidersTabProps | null,
+  dialog: null as AddCustomProviderDialogProps | null,
+}));
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@/lib/ollama", () => ({
@@ -17,7 +24,10 @@ vi.mock("@/lib/ollama", () => ({
   listOllamaModels: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("./ai/ProvidersTab", () => ({
-  ProvidersTab: () => <div>Provider settings</div>,
+  ProvidersTab: (props: ProvidersTabProps) => {
+    captured.providersTab = props;
+    return <div>Provider settings</div>;
+  },
 }));
 vi.mock("./ai/ProjectApprovals", () => ({
   ProjectApprovals: () => null,
@@ -34,14 +44,26 @@ vi.mock("./ai/PersonasTab", () => ({
 vi.mock("./ai/SkillsTab", () => ({
   SkillsTab: () => <div>Skill settings</div>,
 }));
-vi.mock("./ai/AddCustomProviderDialog", () => ({
-  AddCustomProviderDialog: () => null,
+vi.mock("./ai/AddCustomProviderDialog", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./ai/AddCustomProviderDialog")>()),
+  AddCustomProviderDialog: (props: AddCustomProviderDialogProps) => {
+    captured.dialog = props;
+    return null;
+  },
 }));
 
 const mockInvoke = vi.mocked(invoke);
 let skillsFixture: SkillEntry[] = [];
 let configFixture: AppConfig;
 let failSkillReset = false;
+let listedModels: ProviderModel[] = [];
+
+function lastConfigWrite(): AppConfig {
+  const writes = mockInvoke.mock.calls.filter(([command]) => command === "set_config");
+  const write = writes[writes.length - 1];
+  if (!write) throw new Error("Expected AI settings to be persisted");
+  return (write[1] as { config: AppConfig }).config;
+}
 
 function configuredAiConfig(): AppConfig {
   return {
@@ -146,35 +168,43 @@ function renderSection() {
   );
 }
 
+function resetHarness() {
+  useSettingsStore.setState({ settingsScrollTarget: null });
+  useFilesStore.setState({ projectId: null });
+  skillsFixture = [];
+  configFixture = configuredAiConfig();
+  failSkillReset = false;
+  listedModels = [];
+  captured.providersTab = null;
+  captured.dialog = null;
+  mockInvoke.mockReset().mockImplementation(async (command, args) => {
+    if (command === "get_config") {
+      return configFixture;
+    }
+    if (command === "set_config") return undefined;
+    if (command === "agent_list_models") return listedModels;
+    if (command === "mcp_servers_list") return [];
+    if (command === "skills_list") return skillsFixture;
+    if (command === "skills_set_enabled") {
+      if (failSkillReset) throw new Error("Skill reset failed");
+      const skill = skillsFixture.find(
+        (entry) => entry.id === (args as { id?: string } | undefined)?.id,
+      );
+      return skill
+        ? {
+            ...skill,
+            enabled: (args as { enabled?: boolean } | undefined)?.enabled,
+          }
+        : undefined;
+    }
+    if (command === "budget_set_cmd") return undefined;
+    throw new Error(`Unexpected command: ${command}`);
+  });
+}
+
 describe("AISection", () => {
   beforeEach(() => {
-    useSettingsStore.setState({ settingsScrollTarget: null });
-    useFilesStore.setState({ projectId: null });
-    skillsFixture = [];
-    configFixture = configuredAiConfig();
-    failSkillReset = false;
-    mockInvoke.mockReset().mockImplementation(async (command, args) => {
-      if (command === "get_config") {
-        return configFixture;
-      }
-      if (command === "set_config") return undefined;
-      if (command === "mcp_servers_list") return [];
-      if (command === "skills_list") return skillsFixture;
-      if (command === "skills_set_enabled") {
-        if (failSkillReset) throw new Error("Skill reset failed");
-        const skill = skillsFixture.find(
-          (entry) => entry.id === (args as { id?: string } | undefined)?.id,
-        );
-        return skill
-          ? {
-              ...skill,
-              enabled: (args as { enabled?: boolean } | undefined)?.enabled,
-            }
-          : undefined;
-      }
-      if (command === "budget_set_cmd") return undefined;
-      throw new Error(`Unexpected command: ${command}`);
-    });
+    resetHarness();
   });
 
   it("shows assistant servers on a fit-content MCP tab and retains manager state", async () => {
@@ -477,5 +507,197 @@ describe("AISection", () => {
         "claude-3-5-haiku-20241022",
       );
     });
+  });
+});
+
+describe("AISection custom provider editing", () => {
+  beforeEach(() => {
+    resetHarness();
+  });
+
+  async function openEditor(id: string) {
+    renderSection();
+    await waitFor(() => expect(captured.providersTab).not.toBeNull());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Reset to defaults" })).toBeEnabled(),
+    );
+    act(() => captured.providersTab?.onEditCustomProvider(id));
+    await waitFor(() => expect(captured.dialog?.editing?.id).toBe(id));
+  }
+
+  it("prefills the editor and refreshes the model list after a base URL change", async () => {
+    listedModels = [
+      { id: "research-model-2", name: "Research Model 2", trust: "untested" },
+    ];
+    await openEditor("local-lab");
+
+    expect(captured.dialog?.editing).toEqual({
+      id: "local-lab",
+      name: "Local Lab",
+      baseURL: "http://127.0.0.1:9000/v1",
+      hasStoredKey: false,
+    });
+
+    let result: { ok: boolean; message?: string } | undefined;
+    await act(async () => {
+      result = await captured.dialog?.onSubmit({
+        id: "local-lab",
+        name: "Lab",
+        baseURL: "http://127.0.0.1:9100/v1/",
+        apiKey: "",
+      });
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(mockInvoke).toHaveBeenCalledWith("agent_list_models", {
+      providerId: "local-lab",
+      key: null,
+      baseUrl: "http://127.0.0.1:9100/v1",
+    });
+    const written = lastConfigWrite();
+    expect(written.ai_custom_providers).toEqual([
+      { id: "local-lab", name: "Lab", baseURL: "http://127.0.0.1:9100/v1", keyOptional: true },
+    ]);
+    expect(written.ai_provider_models["local-lab"].map((m) => m.id)).toEqual([
+      "research-model",
+      "research-model-2",
+    ]);
+    expect(written.ai_provider_models["local-lab"][1].trust).toBe("untested");
+    expect(typeof written.ai_model_lists_refreshed_at?.["local-lab"]).toBe("number");
+    expect(screen.getByText("Lab updated.")).toBeInTheDocument();
+  });
+
+  it("refuses a base URL change without the key when one is stored", async () => {
+    configFixture = {
+      ...configuredAiConfig(),
+      ai_keys: { ...configuredAiConfig().ai_keys, "local-lab": "__stored__" },
+    };
+    await openEditor("local-lab");
+    expect(captured.dialog?.editing?.hasStoredKey).toBe(true);
+
+    let result: { ok: boolean; message?: string } | undefined;
+    await act(async () => {
+      result = await captured.dialog?.onSubmit({
+        id: "local-lab",
+        name: "Local Lab",
+        baseURL: "http://127.0.0.1:9100/v1",
+        apiKey: "",
+      });
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Enter the API key again to change the base URL.",
+    });
+    expect(mockInvoke).not.toHaveBeenCalledWith("agent_list_models", expect.anything());
+  });
+
+  it("keeps the saved base URL out of the listing call when only the name changes", async () => {
+    configFixture = {
+      ...configuredAiConfig(),
+      ai_keys: { ...configuredAiConfig().ai_keys, "local-lab": "__stored__" },
+    };
+    await openEditor("local-lab");
+
+    await act(async () => {
+      await captured.dialog?.onSubmit({
+        id: "local-lab",
+        name: "Renamed Lab",
+        baseURL: "http://127.0.0.1:9000/v1",
+        apiKey: "",
+      });
+    });
+
+    expect(mockInvoke).toHaveBeenCalledWith("agent_list_models", {
+      providerId: "local-lab",
+      key: null,
+      baseUrl: null,
+    });
+    expect(lastConfigWrite().ai_custom_providers[0].name).toBe("Renamed Lab");
+  });
+
+  it("reports a re-entered key the backend did not keep after a base URL change", async () => {
+    configFixture = {
+      ...configuredAiConfig(),
+      ai_keys: { ...configuredAiConfig().ai_keys, "local-lab": "__stored__" },
+    };
+    await openEditor("local-lab");
+    const harness = mockInvoke.getMockImplementation();
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === "get_config") {
+        const kept = { ...configFixture.ai_keys };
+        delete kept["local-lab"];
+        return { ...configFixture, ai_keys: kept };
+      }
+      return harness?.(command, args);
+    });
+
+    let result: { ok: boolean; message?: string } | undefined;
+    await act(async () => {
+      result = await captured.dialog?.onSubmit({
+        id: "local-lab",
+        name: "Local Lab",
+        baseURL: "http://127.0.0.1:9100/v1",
+        apiKey: "sk-again",
+      });
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      message: "The base URL was saved but the key was not. Enter the key again.",
+    });
+    expect(lastConfigWrite().ai_keys["local-lab"]).toBe("sk-again");
+    await waitFor(() => expect(captured.providersTab?.savedKeys["local-lab"]).toBeUndefined());
+    expect(captured.providersTab?.cfg.ai_keys["local-lab"]).toBeUndefined();
+    expect(captured.providersTab?.cfg.ai_custom_providers[0].baseURL).toBe(
+      "http://127.0.0.1:9100/v1",
+    );
+    expect(screen.queryByText("Local Lab updated.")).not.toBeInTheDocument();
+  });
+
+  it("keeps a re-entered key the backend kept", async () => {
+    configFixture = {
+      ...configuredAiConfig(),
+      ai_keys: { ...configuredAiConfig().ai_keys, "local-lab": "__stored__" },
+    };
+    await openEditor("local-lab");
+
+    let result: { ok: boolean; message?: string } | undefined;
+    await act(async () => {
+      result = await captured.dialog?.onSubmit({
+        id: "local-lab",
+        name: "Local Lab",
+        baseURL: "http://127.0.0.1:9100/v1",
+        apiKey: "sk-again",
+      });
+    });
+
+    expect(result).toEqual({ ok: true });
+    await waitFor(() => expect(captured.providersTab?.savedKeys["local-lab"]).toBe("sk-again"));
+    expect(screen.getByText("Local Lab updated.")).toBeInTheDocument();
+  });
+
+  it("stamps the refresh time and keeps trust when a key is saved", async () => {
+    listedModels = [
+      { id: "gpt-4o-mini", name: "GPT-4o mini", trust: "verified" },
+      { id: "gpt-next", name: "GPT Next", trust: "untested" },
+    ];
+    renderSection();
+    await waitFor(() => expect(captured.providersTab).not.toBeNull());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Reset to defaults" })).toBeEnabled(),
+    );
+
+    act(() => captured.providersTab?.setKeys((keys) => ({ ...keys, openai: "sk-new" })));
+    await waitFor(() => expect(captured.providersTab?.keys.openai).toBe("sk-new"));
+    await act(async () => {
+      await captured.providersTab?.validateAndSave("openai");
+    });
+
+    const written = lastConfigWrite();
+    expect(typeof written.ai_model_lists_refreshed_at?.openai).toBe("number");
+    const openai = written.ai_provider_models.openai;
+    expect(openai.find((m) => m.id === "gpt-next")?.trust).toBe("untested");
+    expect(openai.find((m) => m.id === "gpt-4o-mini")?.trust).toBe("verified");
   });
 });

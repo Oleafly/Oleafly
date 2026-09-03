@@ -519,11 +519,46 @@ export interface SearchHit {
     line: number;
     preview: string;
 }
+export type ModelTrust = "verified" | "untested" | "blocked";
+export type ModelStatus = "active" | "deprecated" | "alpha" | "beta";
+export interface ModelCost {
+    input?: number;
+    output?: number;
+    cacheRead?: number;
+}
+export interface ModelMetadata {
+    name: string;
+    contextWindow?: number;
+    outputLimit?: number;
+    inputModalities: string[];
+    outputModalities: string[];
+    toolCall: boolean;
+    reasoning: boolean;
+    attachment: boolean;
+    structuredOutput: boolean;
+    status: ModelStatus;
+    releaseDate?: string;
+    lastUpdated?: string;
+    cost?: ModelCost;
+}
 export interface StoredModel {
     id: string;
     name: string;
     enabled: boolean;
     source: "builtin" | "fetched" | "custom";
+    trust?: ModelTrust;
+    blockedReason?: string;
+    metadata?: ModelMetadata;
+}
+export interface ModelProbe {
+    verdict: "verified" | "blocked";
+    reason: string;
+    probedAt: number;
+}
+export interface ModelMetadataStatus {
+    source: "cdn" | "bundled" | "cache";
+    generatedAt: string;
+    refreshedAt: number | null;
 }
 export interface CustomProvider {
     id: string;
@@ -551,6 +586,8 @@ export interface AppConfig {
     ai_custom_providers: CustomProvider[];
     ai_personas: Persona[];
     ai_starter_personas_seeded: boolean;
+    ai_model_probes?: Record<string, ModelProbe>;
+    ai_model_lists_refreshed_at?: Record<string, number>;
     checkpoints_enabled: boolean;
     checkpoint_notifications: boolean;
     git_auto_init: boolean;
@@ -613,6 +650,9 @@ export interface McpConnectionInfo {
 export interface ProviderModel {
     id: string;
     name: string;
+    trust: ModelTrust;
+    blockedReason?: string;
+    metadata?: ModelMetadata;
 }
 export interface GitHubUser {
     login: string;

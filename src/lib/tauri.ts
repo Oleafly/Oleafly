@@ -45,6 +45,8 @@ import type {
   McpServerConfig,
   McpServerValidation,
   McpStatus,
+  ModelMetadataStatus,
+  ModelProbe,
   PackInfo,
   Persona,
   Prerequisite,
@@ -774,6 +776,25 @@ export const agentListModels = (args: {
 }) =>
   invoke<ProviderModel[]>("agent_list_models", {
     providerId: args.providerId,
+    key: args.key ?? null,
+    baseUrl: args.baseURL ?? null,
+  });
+
+export const agentModelMetadataStatus = () =>
+  invoke<ModelMetadataStatus>("agent_model_metadata_status");
+
+export const agentRefreshModelMetadata = (force = false) =>
+  invoke<ModelMetadataStatus>("agent_refresh_model_metadata", { force });
+
+export const agentProbeModel = (args: {
+  providerId: string;
+  modelId: string;
+  key?: string;
+  baseURL?: string;
+}) =>
+  invoke<ModelProbe>("agent_probe_model", {
+    providerId: args.providerId,
+    modelId: args.modelId,
     key: args.key ?? null,
     baseUrl: args.baseURL ?? null,
   });

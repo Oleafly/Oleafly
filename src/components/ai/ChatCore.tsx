@@ -38,6 +38,7 @@ import {
   Info,
   Layers,
   Lightbulb,
+  Loader2,
   MessageSquareQuote,
   Plus,
   Quote,
@@ -55,7 +56,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, usageRecord, type AppConfig, type CustomProvider, type McpAgentServer, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
+import { agentProbeModel, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, usageRecord, type AppConfig, type CustomProvider, type McpAgentServer, type ModelProbe, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
@@ -72,7 +73,11 @@ import { ApprovalModeSelector } from "@/components/ai/ApprovalModeSelector";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
 import { AiToolManager } from "@/components/ai/AiToolManager";
 import { McpBrandIcon } from "@/components/ai/McpBrandIcon";
-import { ModelSelector } from "@/components/ai/ModelSelector";
+import {
+  ModelSelector,
+  type ModelSelectorGroup,
+  type ModelSelectorModel,
+} from "@/components/ai/ModelSelector";
 import { ComposerAttachMenu } from "@/components/ai/ComposerAttachMenu";
 import {
   isSlashCommandInput,
@@ -97,7 +102,13 @@ import {
 import { personaGradient } from "@/lib/persona-colors";
 import { toast } from "@/lib/toast";
 import { mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
-import { enabledModels } from "@/lib/ai-model-state";
+import {
+  enabledModels,
+  mergeModelProbes,
+  modelIsChatOnly,
+  probeKey,
+  resolveModelTrust,
+} from "@/lib/ai-model-state";
 import { useSettingsStore } from "@/store/settings";
 import { useChatsStore, type ChatMessage, type StoredChat } from "@/store/chats";
 import { objectKey } from "@/lib/react-key";
@@ -358,6 +369,42 @@ function inputModelMessage(
 
 const EMPTY_FOLLOW_UPS: QueuedFollowUp[] = [];
 
+type ModelNotice = { providerId: string; modelId: string } & (
+  | { kind: "checking" }
+  | { kind: "blocked"; reason: string }
+  | { kind: "error"; message: string }
+);
+
+export const CHAT_ONLY_MODEL_HINT = "Chat only, this model cannot use tools";
+export const CHECKING_MODEL_HINT = "Checking this model";
+
+export function blockedModelMessage(reason: string): string {
+  const trimmed = reason.trim();
+  return trimmed
+    ? `This model is blocked for the assistant: ${trimmed}`
+    : "This model is blocked for the assistant.";
+}
+
+function describeProbeFailure(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  const detail = raw.replace(/^\[[a-z_]+\]\s*/, "").trim().slice(0, 160);
+  return detail ? `Could not check this model. ${detail}` : "Could not check this model.";
+}
+
+export function modelNoticeRole(notice: ModelNotice | null): "alert" | "status" {
+  return notice?.kind === "blocked" || notice?.kind === "error" ? "alert" : "status";
+}
+
+export function modelNoticeText(
+  notice: ModelNotice | null,
+  chatOnly: boolean,
+): string {
+  if (notice?.kind === "checking") return CHECKING_MODEL_HINT;
+  if (notice?.kind === "blocked") return blockedModelMessage(notice.reason);
+  if (notice?.kind === "error") return notice.message;
+  return chatOnly ? CHAT_ONLY_MODEL_HINT : "";
+}
+
 export function ChatCore() {
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
@@ -515,6 +562,12 @@ export function ChatCore() {
     () => initialProvider?.state.customProviders ?? [],
   );
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+  const [modelProbes, setModelProbes] = useState<Record<string, ModelProbe>>(() =>
+    mergeModelProbes({}, initialProvider?.cfg.ai_model_probes),
+  );
+  const modelProbesRef = useRef(modelProbes);
+  modelProbesRef.current = modelProbes;
+  const [modelNotice, setModelNotice] = useState<ModelNotice | null>(null);
   const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
@@ -833,6 +886,11 @@ export function ChatCore() {
       );
       setKeysMap(next.keysMap);
       setProviderModelsMap(next.providerModelsMap);
+      setModelProbes((current) => {
+        const merged = mergeModelProbes(current, cfg.ai_model_probes);
+        modelProbesRef.current = merged;
+        return merged;
+      });
       setCustomProviders(next.customProviders);
       setProvider(next.provider);
       setApiKey(next.apiKey);
@@ -884,12 +942,61 @@ export function ChatCore() {
     if ((keysMap[p.id] ?? "").trim().length > 0) return true;
     return Boolean(customProviders.find((c) => c.id === p.id)?.keyOptional);
   });
-  const modelGroups = configuredProviders.map((configuredProvider) => {
+  const activeStoredModel = providerModelsMap[provider]?.find((m) => m.id === model);
+  const activeModelChatOnly = modelIsChatOnly(activeStoredModel);
+  const activeModelTrust = resolveModelTrust(
+    activeStoredModel,
+    modelProbes[probeKey(provider, model)],
+  );
+  const visibleModelNotice =
+    modelNotice && modelNotice.providerId === provider && modelNotice.modelId === model
+      ? modelNotice
+      : null;
+  const modelNoticeLine = modelNoticeText(visibleModelNotice, activeModelChatOnly);
+  const canRecheckModel =
+    visibleModelNotice?.kind === "blocked" &&
+    activeModelTrust.trust === "blocked" &&
+    activeModelTrust.source === "probe";
+  const recheckModel = useCallback(async () => {
+    const providerId = provider;
+    const modelId = model;
+    setModelNotice({ providerId, modelId, kind: "checking" });
+    let verdict: ModelProbe;
+    try {
+      verdict = await agentProbeModel({ providerId, modelId });
+    } catch (error) {
+      setModelNotice({ providerId, modelId, kind: "error", message: describeProbeFailure(error) });
+      return;
+    }
+    const recorded = mergeModelProbes(modelProbesRef.current, {
+      [probeKey(providerId, modelId)]: verdict,
+    });
+    modelProbesRef.current = recorded;
+    setModelProbes(recorded);
+    setModelNotice(
+      verdict.verdict === "blocked"
+        ? { providerId, modelId, kind: "blocked", reason: verdict.reason }
+        : null,
+    );
+  }, [provider, model]);
+  const modelGroups: ModelSelectorGroup[] = configuredProviders.map((configuredProvider) => {
     const storedModels = providerModelsMap[configuredProvider.id];
-    const catalogModels = storedModels
-      ? enabledModels(storedModels).map((m) => ({ id: m.id, name: m.name }))
+    const catalogModels: ModelSelectorModel[] = storedModels
+      ? enabledModels(storedModels).map((m) => {
+          const resolved = resolveModelTrust(
+            m,
+            modelProbes[probeKey(configuredProvider.id, m.id)],
+          );
+          return {
+            id: m.id,
+            name: m.name,
+            trust: resolved.trust,
+            blockedReason: resolved.reason,
+            metadata: m.metadata,
+          };
+        })
       : [...configuredProvider.models];
-    const available =
+    const available: ModelSelectorModel[] =
       configuredProvider.id === "ollama" && ollamaModels.length > 0
         ? ollamaModels.map((id) => ({ id, name: id }))
         : catalogModels;
@@ -1211,6 +1318,22 @@ export function ChatCore() {
       sendPreparingRef.current = false;
       setApprovalModeLocked(false);
     };
+    const runStoredModel = providerModelsMap[provider]?.find((m) => m.id === model);
+    const runTrust = resolveModelTrust(
+      runStoredModel,
+      modelProbesRef.current[probeKey(provider, model)],
+    );
+    if (runTrust.trust === "blocked") {
+      cancelSendPreparation();
+      setModelNotice({
+        providerId: provider,
+        modelId: model,
+        kind: "blocked",
+        reason: runTrust.reason ?? "",
+      });
+      return;
+    }
+    const chatOnly = modelIsChatOnly(runStoredModel);
     let runSkills = enabledSkills(skillsRef.current);
     if (skillsQueryRef.current.data === undefined) {
       try {
@@ -1273,13 +1396,49 @@ export function ChatCore() {
         enabledToolsForRun,
       ).tools,
     ).length;
-    if (enabledToolCount > MAX_AGENT_TOOL_DEFINITIONS) {
+    if (!chatOnly && enabledToolCount > MAX_AGENT_TOOL_DEFINITIONS) {
       cancelSendPreparation();
       const excess = enabledToolCount - MAX_AGENT_TOOL_DEFINITIONS;
       toast.error(
         `${enabledToolCount} tools are enabled, but a run supports up to ${MAX_AGENT_TOOL_DEFINITIONS}. Disable at least ${excess} in Tools and try again.`,
       );
       return;
+    }
+    if (!chatOnly && enabledToolCount > 0 && runTrust.trust === "untested") {
+      setModelNotice({ providerId: provider, modelId: model, kind: "checking" });
+      let verdict: ModelProbe;
+      try {
+        verdict = await agentProbeModel({ providerId: provider, modelId: model });
+      } catch (error) {
+        cancelSendPreparation();
+        setModelNotice({
+          providerId: provider,
+          modelId: model,
+          kind: "error",
+          message: describeProbeFailure(error),
+        });
+        return;
+      }
+      const recorded = mergeModelProbes(modelProbesRef.current, {
+        [probeKey(provider, model)]: verdict,
+      });
+      modelProbesRef.current = recorded;
+      setModelProbes(recorded);
+      if (verdict.verdict === "blocked") {
+        cancelSendPreparation();
+        setModelNotice({
+          providerId: provider,
+          modelId: model,
+          kind: "blocked",
+          reason: verdict.reason,
+        });
+        return;
+      }
+      setModelNotice(null);
+      if (streaming || activeChatRun() || useFilesStore.getState().projectId !== projectId) {
+        cancelSendPreparation();
+        return;
+      }
     }
     const runIdentity = runIsolationRef.current.begin(projectId);
     const runProjectId = projectId;
@@ -1583,10 +1742,15 @@ USER_CUSTOM_INSTRUCTIONS`
         : ["project_map"],
     });
     const enabledTools = filterResolvedTools(resolvedToolsForRun, enabledToolsForRun).tools;
-    const tools = planGated ? planModeTools(enabledTools) : enabledTools;
-    const runSkillCatalog = isToolEnabled(enabledToolsForRun, "load_skill")
-      ? skillCatalogPrompt(runSkills)
-      : "";
+    const tools: ToolSet = chatOnly
+      ? {}
+      : planGated
+        ? planModeTools(enabledTools)
+        : enabledTools;
+    const runSkillCatalog =
+      !chatOnly && isToolEnabled(enabledToolsForRun, "load_skill")
+        ? skillCatalogPrompt(runSkills)
+        : "";
     const sourceVocabulary = documentEngine.capabilities.formatting_profile === "typst"
       ? "Typst markup and scripting"
       : documentEngine.capabilities.formatting_profile === "markdown"
@@ -2114,7 +2278,7 @@ ${sandboxedCustom}`;
         }
       }
     }
-  }, [streaming, apiKey, provider, model, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId]);
+  }, [streaming, apiKey, provider, model, providerModelsMap, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId]);
 
   const stop = useCallback(() => {
     pendingImagesRef.current = [];
@@ -2943,6 +3107,34 @@ ${sandboxedCustom}`;
                 rows={1}
                 className="max-h-56 min-h-[32px] w-full resize-none overflow-y-auto rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none outline-none placeholder:text-muted-foreground/70"
               />
+              {modelNoticeLine && (
+                <p
+                  data-testid="ai-model-notice"
+                  data-kind={visibleModelNotice?.kind ?? "chat-only"}
+                  role={modelNoticeRole(visibleModelNotice)}
+                  className={cn(
+                    "mt-1.5 flex items-center gap-1.5 px-0.5 text-[11px]",
+                    visibleModelNotice?.kind === "blocked" || visibleModelNotice?.kind === "error"
+                      ? "text-destructive"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {visibleModelNotice?.kind === "checking" && (
+                    <Loader2 className="size-3 shrink-0 animate-spin" />
+                  )}
+                  <span className="min-w-0">{modelNoticeLine}</span>
+                  {canRecheckModel && (
+                    <button
+                      type="button"
+                      data-testid="ai-model-recheck"
+                      onClick={() => void recheckModel()}
+                      className="shrink-0 rounded px-1 font-medium text-foreground underline-offset-2 hover:underline"
+                    >
+                      Check again
+                    </button>
+                  )}
+                </p>
+              )}
               <div
                 data-testid="ai-composer-controls"
                 className="ai-composer-controls mt-2 flex min-h-7 min-w-0 flex-nowrap items-center justify-between gap-0.5 [container-name:ai-composer] [container-type:inline-size]"
