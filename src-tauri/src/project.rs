@@ -121,8 +121,8 @@ pub struct ProjectStateChanged {
     pub engine: crate::document_engine::EngineDescriptor,
 }
 
-pub(crate) fn publish_project_state_changed(
-    app: &tauri::AppHandle,
+pub(crate) fn publish_project_state_changed<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
     state: &crate::state::AppState,
     project_id: &str,
     project: ProjectMeta,
@@ -2887,7 +2887,7 @@ fn reconcile_external_worktree_meta(
     read_meta(project_id)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn create_markdown_project(name: String) -> Result<String, String> {
     let root = paths::projects_root()?;
     create_markdown_project_in(&root, name, true)
@@ -2900,7 +2900,7 @@ fn create_markdown_project_in(
 ) -> Result<String, String> {
     let reservation = reserve_unique_project_directory(root, coordinate_worktree)?;
     let dir = reservation.path().to_path_buf();
-    create_project_transaction(reservation, || {
+    let project_id = create_project_transaction(reservation, || {
         std::fs::write(dir.join("main.md"), DEFAULT_MAIN_MARKDOWN).map_err(|e| e.to_string())?;
         write_meta_at(
             &dir.join("project.json"),
@@ -2920,7 +2920,11 @@ fn create_markdown_project_in(
                 extra: HashMap::new(),
             },
         )
-    })
+    })?;
+    if coordinate_worktree {
+        initialize_git_for_project_quietly(&project_id);
+    }
+    Ok(project_id)
 }
 
 #[tauri::command]
@@ -2938,11 +2942,20 @@ pub fn rename_project(project_id: String, name: String) -> Result<ProjectMeta, S
 }
 
 #[tauri::command]
-pub async fn get_project(
-    app: tauri::AppHandle,
+pub async fn get_project<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     state: tauri::State<'_, crate::state::AppState>,
     project_id: String,
 ) -> Result<ProjectMeta, String> {
+    let (project, _git_initialization) = open_project(&app, &state, project_id).await?;
+    Ok(project)
+}
+
+async fn open_project<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    state: &crate::state::AppState,
+    project_id: String,
+) -> Result<(ProjectMeta, tauri::async_runtime::JoinHandle<()>), String> {
     paths::validate_project_id(&project_id)?;
     let marker_project_id = project_id.clone();
     let recovery_pending = tauri::async_runtime::spawn_blocking(move || {
@@ -2952,9 +2965,10 @@ pub async fn get_project(
     .map_err(|error| format!("project open task failed: {error}"))??;
     if !recovery_pending {
         let read_project_id = project_id.clone();
-        return tauri::async_runtime::spawn_blocking(move || read_meta(&read_project_id))
+        let project = tauri::async_runtime::spawn_blocking(move || read_meta(&read_project_id))
             .await
-            .map_err(|error| format!("project open task failed: {error}"))?;
+            .map_err(|error| format!("project open task failed: {error}"))??;
+        return Ok((project, schedule_git_initialization(project_id)));
     }
     let admission = admit_restore_recovery_mutation(
         &project_id,
@@ -2971,8 +2985,8 @@ pub async fn get_project(
     .map_err(|error| format!("project recovery task failed: {error}"))??;
     if recovered {
         let _ = publish_project_state_changed(
-            &app,
-            &state,
+            app,
+            state,
             &project_id,
             project.clone(),
             "checkpoint-restore-recovered",
@@ -2980,7 +2994,7 @@ pub async fn get_project(
             Some(generation),
         );
     }
-    Ok(project)
+    Ok((project, schedule_git_initialization(project_id)))
 }
 
 fn recover_project_on_open_blocking(
@@ -3324,12 +3338,12 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
     Ok(out)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn create_project(name: String) -> Result<String, String> {
     let root = paths::projects_root()?;
     let reservation = reserve_unique_project_directory(&root, true)?;
     let dir = reservation.path().to_path_buf();
-    create_project_transaction(reservation, || {
+    let project_id = create_project_transaction(reservation, || {
         std::fs::write(dir.join("main.tex"), DEFAULT_MAIN_TEX).map_err(|e| e.to_string())?;
         write_meta_at(
             &dir.join("project.json"),
@@ -3349,7 +3363,9 @@ pub fn create_project(name: String) -> Result<String, String> {
                 extra: HashMap::new(),
             },
         )
-    })
+    })?;
+    initialize_git_for_project_quietly(&project_id);
+    Ok(project_id)
 }
 
 #[derive(Deserialize)]
@@ -3362,7 +3378,7 @@ pub struct PdfConversionFigure {
 /// Publish a converted PDF as one complete project. The library never observes
 /// a project containing only `main.tex` (or only some figures): every payload
 /// is validated and staged in a sibling directory before the final rename.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn create_project_from_pdf_conversion(
     name: String,
     tex: String,
@@ -3440,10 +3456,12 @@ pub fn create_project_from_pdf_conversion(
         }
         return Err(error);
     }
-    reservation.publish_staged(&staging)
+    let project_id = reservation.publish_staged(&staging)?;
+    initialize_git_for_project_quietly(&project_id);
+    Ok(project_id)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn create_typst_project(name: String) -> Result<String, String> {
     let root = paths::projects_root()?;
     create_typst_project_in(&root, name, true)
@@ -3456,7 +3474,7 @@ fn create_typst_project_in(
 ) -> Result<String, String> {
     let reservation = reserve_unique_project_directory(root, coordinate_worktree)?;
     let dir = reservation.path().to_path_buf();
-    create_project_transaction(reservation, || {
+    let project_id = create_project_transaction(reservation, || {
         std::fs::write(dir.join("main.typ"), DEFAULT_MAIN_TYPST).map_err(|e| e.to_string())?;
         write_meta_at(
             &dir.join("project.json"),
@@ -3476,7 +3494,11 @@ fn create_typst_project_in(
                 extra: HashMap::new(),
             },
         )
-    })
+    })?;
+    if coordinate_worktree {
+        initialize_git_for_project_quietly(&project_id);
+    }
+    Ok(project_id)
 }
 
 // --- Overleaf / external project import --------------------------------------
@@ -3563,7 +3585,9 @@ fn import_overleaf_project_blocking_with(
         meta.allow_shell_escape = false;
         write_meta_at(&dir.join("project.json"), &meta)?;
         finalize(&project_id)
-    })
+    })?;
+    initialize_git_for_project_quietly(&project_id);
+    Ok(project_id)
 }
 
 #[cfg(test)]
@@ -3848,10 +3872,38 @@ where
     Ok(reservation.commit())
 }
 
+fn git_auto_init_enabled() -> bool {
+    crate::config::read_config()
+        .map(|config| config.git_auto_init)
+        .unwrap_or(true)
+}
+
+fn initialize_git_for_project(project_id: &str) -> Result<bool, String> {
+    if !git_auto_init_enabled() {
+        return Ok(false);
+    }
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(project_id)?;
+    let dir = paths::project_dir(project_id)?;
+    crate::git::ensure_repository(&dir)
+}
+
+pub(crate) fn initialize_git_for_project_quietly(project_id: &str) {
+    if let Err(error) = initialize_git_for_project(project_id) {
+        let message = format!("Skipping Git initialization for project {project_id:?}: {error}");
+        #[cfg(debug_assertions)]
+        eprintln!("{message}");
+        let _ = append_app_log(message);
+    }
+}
+
+fn schedule_git_initialization(project_id: String) -> tauri::async_runtime::JoinHandle<()> {
+    tauri::async_runtime::spawn_blocking(move || initialize_git_for_project_quietly(&project_id))
+}
+
 /// Create an image-kind project whose `main.tex` is a standalone document
 /// (`source`). Used by "Save as project" in the diagram composer so a figure,
 /// its TikZ, and its embedded editor model all persist as a reusable project.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn create_image_project(
     name: String,
     source: String,
@@ -3870,7 +3922,7 @@ fn create_image_project_in(
 ) -> Result<String, String> {
     let reservation = reserve_unique_project_directory(root, coordinate_worktree)?;
     let dir = reservation.path().to_path_buf();
-    create_project_transaction(reservation, || {
+    let project_id = create_project_transaction(reservation, || {
         std::fs::write(dir.join("main.tex"), source).map_err(|e| e.to_string())?;
         write_meta_at(
             &dir.join("project.json"),
@@ -3890,7 +3942,11 @@ fn create_image_project_in(
                 extra: HashMap::new(),
             },
         )
-    })
+    })?;
+    if coordinate_worktree {
+        initialize_git_for_project_quietly(&project_id);
+    }
+    Ok(project_id)
 }
 
 /// Guarantees `source` is a compilable standalone document. The Diagram
@@ -3913,13 +3969,13 @@ fn ensure_diagram_document(source: String) -> String {
     )
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn create_diagram_project(name: String, source: String) -> Result<String, String> {
     let root = paths::projects_root()?;
     let reservation = reserve_unique_project_directory(&root, true)?;
     let dir = reservation.path().to_path_buf();
     let source = ensure_diagram_document(source);
-    create_project_transaction(reservation, || {
+    let project_id = create_project_transaction(reservation, || {
         std::fs::write(dir.join("main.tex"), &source).map_err(|e| e.to_string())?;
         write_meta_at(
             &dir.join("project.json"),
@@ -3939,7 +3995,9 @@ pub fn create_diagram_project(name: String, source: String) -> Result<String, St
                 extra: HashMap::new(),
             },
         )
-    })
+    })?;
+    initialize_git_for_project_quietly(&project_id);
+    Ok(project_id)
 }
 
 #[tauri::command]
@@ -4596,7 +4654,14 @@ async fn create_project_from_pandoc_source(
         }
         return Err(error);
     }
-    reservation.publish_staged(&staging)
+    let project_id = reservation.publish_staged(&staging)?;
+    let git_project_id = project_id.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        initialize_git_for_project_quietly(&git_project_id)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(project_id)
 }
 
 /// Create a LaTeX project from an uploaded .docx. The bytes are written inside
@@ -4900,7 +4965,7 @@ async fn download_pandoc_impl(
     Ok(dest.to_string_lossy().to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn create_project_from_template(
     app: tauri::AppHandle,
     name: String,
@@ -4910,7 +4975,7 @@ pub fn create_project_from_template(
     let root = paths::projects_root()?;
     let reservation = reserve_unique_project_directory(&root, true)?;
     let dir = reservation.path().to_path_buf();
-    create_project_transaction(reservation, || {
+    let project_id = create_project_transaction(reservation, || {
         let manifest = crate::templates::instantiate(&app, &template_id, &dir)?;
         let engine = engine_for_untrusted_project(&manifest.main_doc)?;
         crate::document_engine::engine_for(&engine, &manifest.main_doc)?;
@@ -4937,7 +5002,9 @@ pub fn create_project_from_template(
                 extra: HashMap::new(),
             },
         )
-    })
+    })?;
+    initialize_git_for_project_quietly(&project_id);
+    Ok(project_id)
 }
 
 #[derive(Serialize)]
@@ -5447,7 +5514,9 @@ pub async fn duplicate_project(project_id: String, new_name: String) -> Result<S
             write_meta(&new_id, &meta)
         })();
         duplicated?;
-        Ok(reservation.commit())
+        let created = reservation.commit();
+        initialize_git_for_project_quietly(&created);
+        Ok(created)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -5997,6 +6066,130 @@ mod tests {
         std::fs::remove_dir_all(data).unwrap();
     }
 
+    fn write_git_auto_init(enabled: bool) {
+        crate::config::write_config(&crate::config::AppConfig {
+            git_auto_init: enabled,
+            ..Default::default()
+        })
+        .unwrap();
+    }
+
+    fn git_dir_of(project_id: &str) -> std::path::PathBuf {
+        crate::paths::project_dir(project_id).unwrap().join(".git")
+    }
+
+    #[test]
+    fn created_projects_start_as_git_repositories_unless_the_setting_is_off() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("git-auto-init-create");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let archive = data.join("repository.zip");
+        zip_with_member(&archive, "owner-repo/main.tex", b"\\documentclass{article}");
+        let bytes = std::fs::read(&archive).unwrap();
+        let tex = "\\documentclass{article}\\begin{document}Ready\\end{document}".to_string();
+
+        let latex = super::create_project("Paper".into()).unwrap();
+        let converted =
+            create_project_from_pdf_conversion("Converted".into(), tex.clone(), vec![]).unwrap();
+        let imported = import_project_zip_bytes("Imported".into(), &bytes).unwrap();
+        let markdown = super::create_markdown_project("Notes".into()).unwrap();
+        let typst = super::create_typst_project("Typst".into()).unwrap();
+        let diagram = create_diagram_project("Figure".into(), "\\draw (0,0);".into()).unwrap();
+
+        for project_id in [&latex, &converted, &imported, &markdown, &typst, &diagram] {
+            let git = git_dir_of(project_id);
+            assert!(git.is_dir(), "{project_id} should start as a repository");
+            assert!(
+                !git.join("refs")
+                    .join("heads")
+                    .read_dir()
+                    .unwrap()
+                    .any(|_| true),
+                "{project_id} must not receive an automatic commit"
+            );
+            assert!(!crate::paths::project_dir(project_id)
+                .unwrap()
+                .join(".gitignore")
+                .exists());
+        }
+
+        write_git_auto_init(false);
+        let plain = super::create_project("Plain".into()).unwrap();
+        let plain_converted =
+            create_project_from_pdf_conversion("Plain converted".into(), tex, vec![]).unwrap();
+        let plain_imported = import_project_zip_bytes("Plain imported".into(), &bytes).unwrap();
+        for project_id in [&plain, &plain_converted, &plain_imported] {
+            assert!(
+                !git_dir_of(project_id).exists(),
+                "{project_id} must stay plain while the setting is off"
+            );
+        }
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn opening_a_project_initialises_git_only_while_the_setting_is_on() {
+        use tauri::Manager as _;
+
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("git-auto-init-open");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let app = tauri::test::mock_builder()
+            .manage(crate::state::AppState::default())
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let handle = app.handle().clone();
+        let state = app.state::<crate::state::AppState>();
+        let open = |project_id: &str| {
+            let project_id = project_id.to_string();
+            tauri::async_runtime::block_on(async {
+                let (project, git_initialization) =
+                    super::open_project(&handle, &state, project_id).await?;
+                git_initialization
+                    .await
+                    .map_err(|error| error.to_string())?;
+                Ok::<ProjectMeta, String>(project)
+            })
+        };
+
+        write_git_auto_init(false);
+        let project_id = super::create_project("Existing".into()).unwrap();
+        assert!(!git_dir_of(&project_id).exists());
+        assert_eq!(open(&project_id).unwrap().name, "Existing");
+        assert!(!git_dir_of(&project_id).exists());
+
+        write_git_auto_init(true);
+        assert_eq!(open(&project_id).unwrap().name, "Existing");
+        let git = git_dir_of(&project_id);
+        assert!(git.is_dir());
+        assert!(
+            !git.join("refs")
+                .join("heads")
+                .read_dir()
+                .unwrap()
+                .any(|_| true),
+            "opening a project must not commit"
+        );
+        open(&project_id).unwrap();
+        assert!(git.is_dir());
+
+        assert!(open("never-created-project").is_err());
+        assert!(!crate::paths::projects_root()
+            .unwrap()
+            .join("never-created-project")
+            .exists());
+        super::initialize_git_for_project_quietly("never-created-project");
+        assert!(!crate::paths::projects_root()
+            .unwrap()
+            .join("never-created-project")
+            .exists());
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
     #[test]
     fn repository_finalize_failure_rolls_back_the_owned_project_transaction() {
         let _env_guard = crate::paths::data_dir_env_lock();
@@ -6065,8 +6258,20 @@ mod tests {
         let project_id = import_project_zip_bytes("Safe import".into(), &bytes).unwrap();
         let project = crate::paths::project_dir(&project_id).unwrap();
         assert!(project.join("main.tex").is_file());
-        assert!(!project.join(".OLEAFLY").exists());
-        assert!(!project.join(".GIT").exists());
+        let entries: Vec<String> = std::fs::read_dir(&project)
+            .unwrap()
+            .flatten()
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .collect();
+        assert!(!entries
+            .iter()
+            .any(|name| name == ".OLEAFLY" || name == ".GIT"));
+        let git_config =
+            std::fs::read_to_string(project.join(".git").join("config")).unwrap_or_default();
+        assert!(
+            !git_config.contains("untrusted"),
+            "the archive's own Git metadata must never reach the project repository"
+        );
         crate::worktree_lock::ProjectWorktreeLock::shared(&project_id).unwrap();
 
         std::env::remove_var("OLEAFLY_DATA_DIR");

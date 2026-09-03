@@ -80,6 +80,7 @@ const DEFAULT_CFG: AppConfig = {
   ai_starter_personas_seeded: false,
   checkpoints_enabled: true,
   checkpoint_notifications: true,
+  git_auto_init: true,
   mcp_enabled: false,
   mcp_port: 5323,
   mcp_read_only: false,

@@ -118,6 +118,7 @@ function configuredAiConfig(): AppConfig {
     ai_starter_personas_seeded: true,
     checkpoints_enabled: true,
     checkpoint_notifications: true,
+    git_auto_init: true,
     mcp_enabled: true,
     mcp_port: 6123,
     mcp_read_only: true,

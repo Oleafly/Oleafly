@@ -117,6 +117,8 @@ pub struct AppConfig {
     pub checkpoints_enabled: bool,
     #[serde(default = "default_true")]
     pub checkpoint_notifications: bool,
+    #[serde(default = "default_true")]
+    pub git_auto_init: bool,
     /// MCP server: expose the in-app agent tools to external MCP clients
     /// (Claude Desktop, Claude Code, Cursor, ...). Off by default.
     #[serde(default)]
@@ -169,6 +171,7 @@ impl Default for AppConfig {
             ai_starter_personas_seeded: false,
             checkpoints_enabled: true,
             checkpoint_notifications: true,
+            git_auto_init: true,
             mcp_enabled: false,
             mcp_port: default_mcp_port(),
             mcp_read_only: false,
@@ -845,6 +848,28 @@ mod tests {
 
         assert!(config.checkpoints_enabled);
         assert!(config.checkpoint_notifications);
+    }
+
+    #[test]
+    fn old_configs_initialise_git_for_every_project() {
+        let config: AppConfig = serde_json::from_str("{}").unwrap();
+
+        assert!(config.git_auto_init);
+        assert!(AppConfig::default().git_auto_init);
+    }
+
+    #[test]
+    fn git_auto_init_survives_a_config_round_trip() {
+        let stored = AppConfig {
+            git_auto_init: false,
+            ..AppConfig::default()
+        };
+
+        let json = serde_json::to_string(&stored).unwrap();
+        let loaded: AppConfig = serde_json::from_str(&json).unwrap();
+
+        assert!(json.contains("\"git_auto_init\":false"));
+        assert!(!loaded.git_auto_init);
     }
 
     fn custom(id: &str, base: &str) -> CustomProvider {
@@ -1723,6 +1748,26 @@ mod tests {
         assert_eq!(persisted.github_user, "octocat");
         assert!(!persisted.checkpoints_enabled);
         assert!(!persisted.checkpoint_notifications);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn generic_settings_updates_carry_the_git_auto_init_switch() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        write_config(&AppConfig::default()).unwrap();
+        let mut incoming = get_config().unwrap();
+        assert!(incoming.git_auto_init);
+        incoming.github_user = "octocat".to_string();
+        incoming.git_auto_init = false;
+
+        set_config(incoming).unwrap();
+
+        let persisted = read_config().unwrap();
+        assert_eq!(persisted.github_user, "octocat");
+        assert!(!persisted.git_auto_init);
         std::fs::remove_dir_all(dir).ok();
     }
 

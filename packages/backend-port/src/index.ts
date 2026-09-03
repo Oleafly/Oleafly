@@ -553,6 +553,7 @@ export interface AppConfig {
     ai_starter_personas_seeded: boolean;
     checkpoints_enabled: boolean;
     checkpoint_notifications: boolean;
+    git_auto_init: boolean;
     mcp_enabled: boolean;
     mcp_port: number;
     mcp_read_only: boolean;
