@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useId, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
 import { runAgentHarness, toAgentMessages } from "./agent-turn";
@@ -587,7 +587,6 @@ export function ChatCore() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const slashCommandMenuRef = useRef<SlashCommandMenuHandle>(null);
   const inputShellRef = useRef<HTMLDivElement>(null);
-  const planModeInfoId = useId();
   const slashMenuOpen =
     isSlashCommandInput(input) && slashMenuDismissedInput !== input;
   useEffect(() => {
@@ -3140,14 +3139,10 @@ ${sandboxedCustom}`;
                       <button
                         type="button"
                         aria-label="About plan mode"
-                        aria-describedby={planModeInfoId}
                         data-testid="ai-plan-mode-info"
                         className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
                       >
                         <Info className="size-3.5" />
-                        <span id={planModeInfoId} className="sr-only">
-                          {PLAN_MODE_HINT}
-                        </span>
                       </button>
                     </Tooltip>
                   )}

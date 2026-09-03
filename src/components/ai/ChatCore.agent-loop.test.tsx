@@ -1747,11 +1747,12 @@ describe("ChatCore agent turns", () => {
     expect(toggle.className).not.toContain("amber-");
     const info = rendered.getByTestId("ai-plan-mode-info");
     expect(info).toHaveAccessibleName("About plan mode");
-    expect(info).toHaveAccessibleDescription(PLAN_MODE_HINT);
+    expect(info).not.toHaveAttribute("aria-describedby");
     expect(info.querySelector("svg")).toHaveClass("size-3.5");
     expect(toggle.parentElement?.nextElementSibling).toContainElement(info);
     fireEvent.mouseEnter(info.parentElement as HTMLElement);
     expect(await rendered.findByRole("tooltip")).toHaveTextContent(PLAN_MODE_HINT);
+    expect(info).toHaveAccessibleDescription(PLAN_MODE_HINT);
     submit(rendered, "Run with planning posture");
     await waitFor(() => expect(mocks.runs).toHaveLength(2));
     expect(mocks.runs[1].options.system).toContain(PLAN_MODE_PLANNING_PROMPT);
