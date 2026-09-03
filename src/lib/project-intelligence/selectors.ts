@@ -113,13 +113,6 @@ export function projectChildren(
   };
 }
 
-function field(
-  entry: ProjectIntelligenceSnapshot["bibliography"]["entries"][number],
-  name: string,
-): string | undefined {
-  return entry.fields.find((candidate) => candidate.name === name)?.value;
-}
-
 function completionScore(
   completion: CitationCompletion,
   normalizedQuery: string,
@@ -150,26 +143,23 @@ export function citationCompletions(
     .replace(/^@/, "")
     .toLocaleLowerCase("en-US");
   return snapshot.bibliography.entries
-    .map((entry) => {
-      const author = field(entry, "author") ?? field(entry, "editor");
-      const title = field(entry, "title");
-      const year = field(entry, "year") ?? field(entry, "date");
-      const metadata = [author, year, title].filter(Boolean).join(" · ");
-      return {
-        id: entry.id,
-        key: entry.key,
-        label: entry.key,
-        detail: metadata || `@${entry.type} in ${entry.file}`,
-        type: entry.type,
-        ...(author ? { author } : {}),
-        ...(title ? { title } : {}),
-        ...(year ? { year } : {}),
-        location: { file: entry.file, range: entry.keyRange },
-        duplicate: entry.duplicate,
-        duplicateIndex: entry.duplicateIndex,
-        duplicateCount: entry.duplicateCount,
-      } satisfies CitationCompletion;
-    })
+    .map(
+      (entry) =>
+        ({
+          id: entry.id,
+          key: entry.key,
+          label: entry.key,
+          detail: entry.display,
+          type: entry.type,
+          ...(entry.author ? { author: entry.author } : {}),
+          ...(entry.title ? { title: entry.title } : {}),
+          ...(entry.year ? { year: entry.year } : {}),
+          location: { file: entry.file, range: entry.keyRange },
+          duplicate: entry.duplicate,
+          duplicateIndex: entry.duplicateIndex,
+          duplicateCount: entry.duplicateCount,
+        }) satisfies CitationCompletion,
+    )
     .map((completion) => ({
       completion,
       score: completionScore(completion, normalizedQuery),

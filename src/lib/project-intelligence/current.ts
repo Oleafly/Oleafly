@@ -70,7 +70,7 @@ export function currentProjectIntelligence(
   if (
     text === undefined ||
     indexed.texts[path] !== text ||
-    snapshot.files[path] === undefined
+    snapshot.fileStates[path] === undefined
   ) {
     return null;
   }

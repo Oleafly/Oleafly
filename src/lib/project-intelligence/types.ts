@@ -1,4 +1,4 @@
-export const PROJECT_INTELLIGENCE_PROTOCOL_VERSION = 1 as const;
+export const PROJECT_INTELLIGENCE_PROTOCOL_VERSION = 2 as const;
 
 export type ProjectIntelligenceEngine =
   | "latex"
@@ -182,19 +182,29 @@ export interface BibliographyField {
   readonly complete: boolean;
 }
 
-export interface BibliographyEntry {
+export interface BibliographyEntrySummary {
+  readonly author?: string;
+  readonly title?: string;
+  readonly year?: string;
+  readonly display: string;
+}
+
+export interface BibliographyEntry extends BibliographyEntrySummary {
   readonly id: string;
   readonly key: string;
   readonly type: string;
   readonly file: string;
   readonly range: SourceRange;
   readonly keyRange: SourceRange;
-  readonly typeRange: SourceRange;
-  readonly fields: readonly BibliographyField[];
   readonly complete: boolean;
   readonly duplicate: boolean;
   readonly duplicateIndex: number;
   readonly duplicateCount: number;
+}
+
+export interface BibliographyEntryDetail extends BibliographyEntry {
+  readonly typeRange: SourceRange;
+  readonly fields: readonly BibliographyField[];
 }
 
 export interface BibliographyDuplicate {
@@ -215,20 +225,27 @@ export interface PackageReference {
   readonly location: SourceLocation;
 }
 
-export interface FileIntelligence {
+export interface ProjectFileState {
   readonly file: string;
   readonly engine: ProjectIntelligenceEngine;
   readonly sourceRevision: number;
   readonly contentHash: string;
   readonly status: "success" | "partial" | "error";
   readonly statusReason?: string;
+  readonly packageRefs?: readonly PackageReference[];
+}
+
+export interface FileIntelligence extends ProjectFileState {
   readonly outline: readonly OutlineNode[];
   readonly definitions: readonly ProjectDefinition[];
   readonly uses: readonly ProjectUse[];
   readonly edges: readonly ProjectEdge[];
   readonly diagnostics: readonly ProjectDiagnostic[];
   readonly bibliographyEntries: readonly BibliographyEntry[];
-  readonly packageRefs?: readonly PackageReference[];
+}
+
+export interface FileAnalysis extends FileIntelligence {
+  readonly bibliographyEntries: readonly BibliographyEntryDetail[];
 }
 
 export interface ProjectIntelligenceStats {
@@ -244,7 +261,7 @@ export interface ProjectIntelligenceSnapshot {
   readonly identity: ProjectIntelligenceIdentity;
   readonly status: "partial" | "success";
   readonly reason?: string;
-  readonly files: Readonly<Record<string, FileIntelligence>>;
+  readonly fileStates: Readonly<Record<string, ProjectFileState>>;
   readonly definitions: readonly ProjectDefinition[];
   readonly uses: readonly ProjectUse[];
   readonly diagnostics: readonly ProjectDiagnostic[];

@@ -1,5 +1,6 @@
 import {
   PROJECT_INTELLIGENCE_PROTOCOL_VERSION,
+  type BibliographyEntryDetail,
   type ProjectIntelligenceIdentity,
   type ProjectIntelligenceSnapshot,
 } from "./types";
@@ -11,6 +12,7 @@ export const PROJECT_INTELLIGENCE_LIMITS = {
   maxProjectCharacters: 10_000_000,
   maxResultItems: 200_000,
   maxPathCharacters: 1_024,
+  maxBibliographyQueryIds: 2_000,
 } as const;
 
 export interface ProjectFileUpsert {
@@ -43,9 +45,18 @@ export interface DisposeProjectIntelligenceRequest {
   readonly type: "dispose";
 }
 
+export interface BibliographyEntriesRequest {
+  readonly protocolVersion: typeof PROJECT_INTELLIGENCE_PROTOCOL_VERSION;
+  readonly type: "bibliography-entries";
+  readonly requestId: number;
+  readonly identity: ProjectIntelligenceIdentity;
+  readonly entryIds: readonly string[];
+}
+
 export type ProjectIntelligenceWorkerRequest =
   | AnalyzeProjectIntelligenceRequest
-  | DisposeProjectIntelligenceRequest;
+  | DisposeProjectIntelligenceRequest
+  | BibliographyEntriesRequest;
 
 export interface ProjectIntelligenceResultResponse {
   readonly protocolVersion: typeof PROJECT_INTELLIGENCE_PROTOCOL_VERSION;
@@ -55,17 +66,28 @@ export interface ProjectIntelligenceResultResponse {
   readonly snapshot: ProjectIntelligenceSnapshot;
 }
 
+export interface BibliographyEntriesResponse {
+  readonly protocolVersion: typeof PROJECT_INTELLIGENCE_PROTOCOL_VERSION;
+  readonly type: "bibliography-entries";
+  readonly requestId: number;
+  readonly identity: ProjectIntelligenceIdentity;
+  readonly entries: readonly BibliographyEntryDetail[];
+}
+
+export type ProjectIntelligenceWorkerErrorCode =
+  | "invalid_request"
+  | "input_limit"
+  | "result_limit"
+  | "analysis_failed"
+  | "stale_snapshot";
+
 export interface ProjectIntelligenceErrorResponse {
   readonly protocolVersion: typeof PROJECT_INTELLIGENCE_PROTOCOL_VERSION;
   readonly type: "error";
   readonly requestId: number;
   readonly identity: ProjectIntelligenceIdentity;
   readonly error: {
-    readonly code:
-      | "invalid_request"
-      | "input_limit"
-      | "result_limit"
-      | "analysis_failed";
+    readonly code: ProjectIntelligenceWorkerErrorCode;
     readonly message: string;
     readonly retryable: boolean;
   };
@@ -73,7 +95,8 @@ export interface ProjectIntelligenceErrorResponse {
 
 export type ProjectIntelligenceWorkerResponse =
   | ProjectIntelligenceResultResponse
-  | ProjectIntelligenceErrorResponse;
+  | ProjectIntelligenceErrorResponse
+  | BibliographyEntriesResponse;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -140,18 +163,42 @@ function isUnreadable(value: unknown): value is ProjectUnreadableFile {
   );
 }
 
+function validEntryId(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
 export function isProjectIntelligenceWorkerRequest(
   value: unknown,
 ): value is ProjectIntelligenceWorkerRequest {
   if (!isRecord(value)) return false;
   if (
     value.protocolVersion !== PROJECT_INTELLIGENCE_PROTOCOL_VERSION ||
-    (value.type !== "analyze" && value.type !== "dispose")
+    (value.type !== "analyze" &&
+      value.type !== "dispose" &&
+      value.type !== "bibliography-entries")
   ) {
     return false;
   }
   if (value.type === "dispose") {
     return exactKeys(value, ["protocolVersion", "type"]);
+  }
+  if (value.type === "bibliography-entries") {
+    return (
+      exactKeys(value, [
+        "protocolVersion",
+        "type",
+        "requestId",
+        "identity",
+        "entryIds",
+      ]) &&
+      Number.isSafeInteger(value.requestId) &&
+      (value.requestId as number) > 0 &&
+      isProjectIntelligenceIdentity(value.identity) &&
+      Array.isArray(value.entryIds) &&
+      value.entryIds.length <=
+        PROJECT_INTELLIGENCE_LIMITS.maxBibliographyQueryIds &&
+      value.entryIds.every(validEntryId)
+    );
   }
   return (
     exactKeys(
@@ -194,6 +241,7 @@ function isWorkerError(value: unknown): value is ProjectIntelligenceErrorRespons
       "input_limit",
       "result_limit",
       "analysis_failed",
+      "stale_snapshot",
     ].includes(String(value.code)) &&
     typeof value.message === "string" &&
     typeof value.retryable === "boolean"
@@ -211,7 +259,7 @@ function isSnapshotShell(
         "protocolVersion",
         "identity",
         "status",
-        "files",
+        "fileStates",
         "definitions",
         "uses",
         "diagnostics",
@@ -227,7 +275,7 @@ function isSnapshotShell(
     value.protocolVersion === PROJECT_INTELLIGENCE_PROTOCOL_VERSION &&
     isProjectIntelligenceIdentity(value.identity) &&
     (value.status === "success" || value.status === "partial") &&
-    isRecord(value.files) &&
+    isRecord(value.fileStates) &&
     Array.isArray(value.definitions) &&
     Array.isArray(value.uses) &&
     Array.isArray(value.diagnostics) &&
@@ -261,6 +309,19 @@ export function isProjectIntelligenceWorkerResponse(
         "identity",
         "snapshot",
       ]) && isSnapshotShell(value.snapshot)
+    );
+  }
+  if (value.type === "bibliography-entries") {
+    return (
+      exactKeys(value, [
+        "protocolVersion",
+        "type",
+        "requestId",
+        "identity",
+        "entries",
+      ]) &&
+      Array.isArray(value.entries) &&
+      value.entries.every(isRecord)
     );
   }
   return (

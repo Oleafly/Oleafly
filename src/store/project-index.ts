@@ -1,12 +1,13 @@
 import { create } from "zustand";
-import type { FileSymbols, ProjectIndex } from "@/lib/index/types";
-import { legacyIndexFromProjectIntelligence } from "@/lib/project-intelligence/legacy-index";
+import type { ProjectIndex } from "@/lib/index/types";
+import { lazyLegacyIndex } from "@/lib/project-intelligence/legacy-index";
 import { mergeLanguageServiceIntelligence } from "@/lib/project-intelligence/merge-language-service";
 import {
   isProjectIntelligencePath,
   normalizeProjectPath,
 } from "@/lib/project-intelligence/source";
 import type {
+  BibliographyEntryDetail,
   ExternalProjectIntelligence,
   ProjectIntelligenceIdentity,
   ProjectIntelligenceSnapshot,
@@ -34,8 +35,6 @@ export interface IndexStore {
   index: ProjectIndex | null;
   // Path -> exact text represented by the pending/current analysis request.
   texts: Record<string, string>;
-  // Compatibility cache consumed by rename/hover/AI features.
-  parsed: Record<string, FileSymbols>;
   building: boolean;
   projectRevision: number;
   requestGeneration: number;
@@ -174,6 +173,23 @@ export function currentProjectSourcePaths(
 
 export function projectFilesystemEpoch(): number {
   return filesystemEpoch;
+}
+
+export function bibliographyEntryDetails(
+  snapshot: ProjectIntelligenceSnapshot,
+  entryIds: readonly string[],
+): Promise<readonly BibliographyEntryDetail[]> {
+  if (entryIds.length === 0) return Promise.resolve([]);
+  if (!workerClient) {
+    return Promise.reject(
+      new ProjectIntelligenceWorkerError(
+        "The project-intelligence worker holds no analysis for this snapshot.",
+        "stale_snapshot",
+        false,
+      ),
+    );
+  }
+  return workerClient.bibliographyEntries(snapshot.identity, entryIds);
 }
 
 function sameIdentity(
@@ -317,10 +333,8 @@ export const useIndexStore = create<IndexStore>((set, get) => {
             externalContribution,
           )
         : snapshot;
-    const legacy = legacyIndexFromProjectIntelligence(merged);
     set({
-      index: legacy.index,
-      parsed: legacy.parsed,
+      index: lazyLegacyIndex(merged),
       building: false,
       intelligenceState: {
         status: merged.status,
@@ -510,7 +524,6 @@ export const useIndexStore = create<IndexStore>((set, get) => {
   return {
     index: null,
     texts: {},
-    parsed: {},
     building: false,
     projectRevision: 0,
     requestGeneration: 0,
@@ -798,10 +811,8 @@ export const useIndexStore = create<IndexStore>((set, get) => {
         snapshot,
         contribution,
       );
-      const legacy = legacyIndexFromProjectIntelligence(merged);
       set({
-        index: legacy.index,
-        parsed: legacy.parsed,
+        index: lazyLegacyIndex(merged),
         intelligenceState: {
           ...current.intelligenceState,
           data: merged,
@@ -821,7 +832,6 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       set({
         index: null,
         texts: {},
-        parsed: {},
         building: false,
         projectRevision: 0,
         requestGeneration: 0,
@@ -837,7 +847,6 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       set({
         index: null,
         texts: {},
-        parsed: {},
         building: false,
         projectRevision: 0,
         requestGeneration: 0,
