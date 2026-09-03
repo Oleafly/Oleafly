@@ -1204,6 +1204,7 @@ mod tests {
         assert!(!project.join(".git").exists());
     }
 
+    #[cfg(unix)]
     #[test]
     fn ensure_repository_reports_a_missing_git_binary_without_touching_the_project() {
         let root = temp_dir("ensure-no-git");
