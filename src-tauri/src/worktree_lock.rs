@@ -31,6 +31,22 @@ impl ProjectWorktreeLock {
         Ok(Self { _file: file })
     }
 
+    /// Take the write lock only when it is free. Background maintenance that
+    /// can safely run later must never queue readers behind itself: the file
+    /// lock has no timeout, so one slow holder stalls every project listing.
+    pub(crate) fn try_exclusive(project_id: &str) -> Result<Option<Self>, String> {
+        let file = open_lock_file(project_id)?;
+        match fs4::FileExt::try_lock(&file) {
+            Ok(()) => {}
+            Err(fs4::TryLockError::WouldBlock) => return Ok(None),
+            Err(fs4::TryLockError::Error(error)) => {
+                return Err(format!("could not acquire project write lock: {error}"))
+            }
+        }
+        reject_pending_restore(project_id)?;
+        Ok(Some(Self { _file: file }))
+    }
+
     /// Identity allocation must serialize on the same stable lock, but an
     /// already-owned candidate with a pending restore is a collision to skip,
     /// not a reason to abort allocation of an unrelated new project id.
@@ -253,5 +269,29 @@ mod tests {
         ProjectWorktreeLock::shared("paper").unwrap();
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_busy_project_does_not_block_the_try_lock() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+
+        let held = ProjectWorktreeLock::exclusive("busy-project").unwrap();
+
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            tx.send(ProjectWorktreeLock::try_exclusive("busy-project").map(|lock| lock.is_some()))
+                .unwrap();
+        });
+
+        let answer = rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("try_exclusive must answer while the lock is held");
+        assert!(!answer.unwrap());
+        drop(held);
+        assert!(ProjectWorktreeLock::try_exclusive("busy-project")
+            .unwrap()
+            .is_some());
     }
 }

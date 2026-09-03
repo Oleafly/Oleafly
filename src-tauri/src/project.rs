@@ -3882,8 +3882,14 @@ fn initialize_git_for_project(project_id: &str) -> Result<bool, String> {
     if !git_auto_init_enabled() {
         return Ok(false);
     }
-    let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(project_id)?;
     let dir = paths::project_dir(project_id)?;
+    if dir.join(".git").exists() {
+        return Ok(false);
+    }
+    let Some(_worktree) = crate::worktree_lock::ProjectWorktreeLock::try_exclusive(project_id)?
+    else {
+        return Ok(false);
+    };
     crate::git::ensure_repository(&dir)
 }
 
