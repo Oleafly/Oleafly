@@ -69,6 +69,8 @@ export interface TerminalPaneProps {
   onExit?: () => void;
 }
 
+const MAX_HIDDEN_OUTPUT_CHARS = 256_000;
+
 export function TerminalPane({
   projectId,
   projectName,
@@ -81,6 +83,8 @@ export function TerminalPane({
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const openedRef = useRef(false);
+  const hiddenOutputRef = useRef<string[]>([]);
+  const hiddenOutputLengthRef = useRef(0);
   const sessionIdRef = useRef<string | null>(null);
   const sessionLiveRef = useRef(false);
   const surfacedErrorsRef = useRef(new Set<string>());
@@ -191,6 +195,25 @@ export function TerminalPane({
         }
       });
     };
+    const writeOutput = (data: string) => {
+      if (!visibleRef.current || !openedRef.current) {
+        hiddenOutputRef.current.push(data);
+        hiddenOutputLengthRef.current += data.length;
+        while (
+          hiddenOutputLengthRef.current > MAX_HIDDEN_OUTPUT_CHARS &&
+          hiddenOutputRef.current.length > 1
+        ) {
+          const dropped = hiddenOutputRef.current.shift();
+          hiddenOutputLengthRef.current -= dropped ? dropped.length : 0;
+        }
+        return;
+      }
+      if (E2E_HOOKS) {
+        terminal.write(data, outputWritten);
+      } else {
+        terminal.write(data);
+      }
+    };
     const channel = new Channel<TerminalChannelMessage>();
     channel.onmessage = (message) => {
       recordTerminalEvent(
@@ -201,11 +224,7 @@ export function TerminalPane({
       if (disposed || sessionExited) return;
       if (message.event === "output") {
         setBooted(true);
-        if (E2E_HOOKS) {
-          terminal.write(message.data, outputWritten);
-        } else {
-          terminal.write(message.data);
-        }
+        writeOutput(message.data);
         return;
       }
       sessionExited = true;
@@ -307,6 +326,8 @@ export function TerminalPane({
       sessionLive = false;
       sessionLiveRef.current = false;
       pendingInput.length = 0;
+      hiddenOutputRef.current = [];
+      hiddenOutputLengthRef.current = 0;
       observer.disconnect();
       dataSub.dispose();
       if (sessionId) void invoke("term_kill", { id: sessionId, projectId }).catch(() => {});
@@ -389,6 +410,16 @@ export function TerminalPane({
         openedRef.current = true;
       }
       if (!openedRef.current) return;
+      if (terminal && hiddenOutputRef.current.length > 0) {
+        const buffered = hiddenOutputRef.current.join("");
+        hiddenOutputRef.current = [];
+        hiddenOutputLengthRef.current = 0;
+        if (E2E_HOOKS) {
+          terminal.write(buffered, outputWrittenRef.current);
+        } else {
+          terminal.write(buffered);
+        }
+      }
       fitRef.current?.fit();
       terminal?.focus();
       const id = sessionIdRef.current;
