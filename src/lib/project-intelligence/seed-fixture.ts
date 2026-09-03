@@ -19,12 +19,16 @@ function walk(directory: string, out: string[]): void {
   }
 }
 
+function byCodePoint(a: string, b: string): number {
+  return Number(a > b) - Number(a < b);
+}
+
 export function loadSeedSources(slug: string): Record<string, string> {
   const root = path.join(SEEDS, slug);
   const paths: string[] = [];
   walk(root, paths);
   const sources: Record<string, string> = {};
-  for (const full of paths.sort()) {
+  for (const full of paths.sort(byCodePoint)) {
     const relative = path.relative(root, full).split(path.sep).join("/");
     if (!isProjectIntelligencePath(relative)) continue;
     sources[relative] = fs.readFileSync(full, "utf8");
@@ -41,7 +45,7 @@ export function analyzeSeedProject(slug: string) {
   const assembled = assembleProjectIntelligenceResult({
     identity: { projectId: "golden", projectRevision: 1, requestGeneration: 1 },
     files,
-    knownFiles: Object.keys(sources).sort(),
+    knownFiles: Object.keys(sources).sort(byCodePoint),
     mainDocument: "main.tex",
     stats: {
       fileCount: Object.keys(files).length,
@@ -63,7 +67,7 @@ export function canonicalJson(value: unknown): string {
   }
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;
-    const keys = Object.keys(record).sort();
+    const keys = Object.keys(record).sort(byCodePoint);
     return `{${keys
       .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
       .join(",")}}`;
