@@ -94,4 +94,49 @@ describe("WorkspaceControls", () => {
     fireEvent.click(screen.getByLabelText("Settings"));
     expect(useSettingsStore.getState().settingsOpen).toBe(true);
   });
+
+  it("renders the dock toggles as individual toolbar buttons", () => {
+    render(
+      <ThemeProvider>
+        <WorkspaceDockControls />
+      </ThemeProvider>,
+    );
+    const terminal = screen.getByTestId("rail-terminal-toggle");
+    const browser = screen.getByTestId("rail-browser-toggle");
+    const assistant = screen.getByTestId("rail-assistant-toggle");
+
+    for (const button of [terminal, browser, assistant]) {
+      expect(button.className).toContain("h-9");
+      expect(button.className).toContain("w-9");
+      expect(button.className).not.toContain("size-7");
+      expect(button).toHaveAttribute("aria-pressed", "false");
+    }
+
+    const dock = terminal.parentElement?.parentElement;
+    expect(dock?.className).toContain("gap-1.5");
+
+    const separators = Array.from(dock?.querySelectorAll("span.w-px") ?? []);
+    expect(separators).toHaveLength(1);
+    expect(separators[0]?.previousElementSibling).toBe(assistant.parentElement);
+  });
+
+  it("keeps the shortcut in the terminal and browser labels", () => {
+    render(
+      <ThemeProvider>
+        <WorkspaceDockControls />
+      </ThemeProvider>,
+    );
+    expect(screen.getByTestId("rail-terminal-toggle")).toHaveAttribute(
+      "aria-label",
+      expect.stringMatching(/^Show terminal \(.+\)$/u),
+    );
+    expect(screen.getByTestId("rail-browser-toggle")).toHaveAttribute(
+      "aria-label",
+      expect.stringMatching(/^Open browser \(.+\)$/u),
+    );
+    expect(screen.getByTestId("rail-assistant-toggle")).toHaveAttribute(
+      "aria-label",
+      "Show AI assistant",
+    );
+  });
 });

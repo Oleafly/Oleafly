@@ -3,6 +3,7 @@ import {
   BookOpenText,
   Braces,
   ListRestart,
+  Search,
   SearchCode,
   Upload,
   X,
@@ -15,7 +16,6 @@ import {
   useState,
 } from "react";
 import {
-  IntelligenceFilter,
   IntelligenceTree,
   PanelBreadcrumb,
   PanelState,
@@ -23,6 +23,8 @@ import {
 } from "@/components/layout/IntelligenceTree";
 import { ImportReferenceLibraryDialog } from "@/components/layout/ImportReferenceLibraryDialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   buildCitationNodes,
@@ -42,7 +44,6 @@ import type {
   ProjectIntelligenceState,
   ProjectUse,
 } from "@/lib/project-intelligence/types";
-import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import {
@@ -372,52 +373,52 @@ export function ReferencesPanel() {
       </header>
 
       <div className="shrink-0 border-b border-sidebar-border/65 px-2 py-1.5">
-        <div
-          role="tablist"
-          aria-label="Reference panel view"
-          className="grid h-7 grid-cols-3 rounded-md bg-muted/70 p-0.5"
+        <Tabs
+          value={view}
+          onValueChange={(next) => {
+            setView(next as ReferencePanelView);
+            setFilter("");
+          }}
         >
-          {tabs.map(({ id, label, icon: Icon, count }) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={view === id}
-              aria-label={
-                count !== undefined && count > 0
-                  ? `${label}, ${count}`
-                  : label
-              }
-              onClick={() => {
-                setView(id);
-                setFilter("");
-              }}
-              className={cn(
-                "flex min-h-6 min-w-0 items-center justify-center gap-1 rounded-[4px] px-1.5 text-[10px] font-medium text-muted-foreground transition-colors",
-                "focus-visible:ring-1 focus-visible:ring-ring",
-                view === id &&
-                  "bg-background text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.08)]",
-              )}
-            >
-              <Icon aria-hidden className="size-3" />
-              <span className="truncate">{label}</span>
-              {count !== undefined && count > 0 ? (
-                <span
-                  aria-hidden
-                  className="font-mono text-[8px] text-muted-foreground"
-                >
-                  {count}
-                </span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-        <div className="mt-1.5">
-          <IntelligenceFilter
-            inputRef={filterRef}
+          <TabsList
+            size="sm"
+            aria-label="Reference panel view"
+            className="grid w-full grid-cols-3"
+          >
+            {tabs.map(({ id, label, icon: Icon, count }) => (
+              <TabsTrigger
+                key={id}
+                value={id}
+                aria-label={
+                  count !== undefined && count > 0 ? `${label}, ${count}` : label
+                }
+                className="min-w-0"
+              >
+                <Icon aria-hidden />
+                <span className="truncate">{label}</span>
+                {count !== undefined && count > 0 ? (
+                  <span
+                    aria-hidden
+                    className="font-mono text-[9px] text-muted-foreground"
+                  >
+                    {count}
+                  </span>
+                ) : null}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <div className="relative mt-1.5">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            ref={filterRef}
+            type="search"
             value={filter}
-            onChange={setFilter}
-            label={`Filter ${view}`}
+            onChange={(event) => setFilter(event.target.value)}
+            aria-label={`Filter ${view}`}
             placeholder={
               view === "results"
                 ? "Filter locations…"
@@ -425,7 +426,18 @@ export function ReferencesPanel() {
                   ? "Filter keys, titles, authors…"
                   : "Filter labels and commands…"
             }
+            className="h-8 pl-7 pr-8 text-xs"
           />
+          {filter ? (
+            <button
+              type="button"
+              aria-label="Clear filter"
+              onClick={() => setFilter("")}
+              className="absolute right-0 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <X aria-hidden className="size-3" />
+            </button>
+          ) : null}
         </div>
         <div className="mt-1.5 flex min-w-0 items-center gap-2 px-0.5">
           <PanelBreadcrumb
