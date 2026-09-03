@@ -937,4 +937,63 @@ mod tests {
         std::fs::remove_dir_all(&root).ok();
         assert!(!marker_exists);
     }
+
+    #[cfg(unix)]
+    #[test]
+    fn closing_a_window_stops_only_that_windows_shells() {
+        let root = std::env::temp_dir().join(format!(
+            "oleafly-terminal-window-drain-{}",
+            std::process::id()
+        ));
+        std::fs::remove_dir_all(&root).ok();
+        let project = root.join("projects/proj");
+        std::fs::create_dir_all(&project).unwrap();
+        let idle = || {
+            let mut shell = CommandBuilder::new("/bin/sh");
+            shell.arg("-c");
+            shell.arg("sleep 30");
+            shell
+        };
+        let closing = SessionOwner::new("terminal-drain-window", "proj");
+        let staying = SessionOwner::new("terminal-keep-window", "proj");
+        let closing_id = open_terminal(
+            &project,
+            closing.clone(),
+            80,
+            24,
+            Channel::new(|_| Ok(())),
+            idle(),
+        )
+        .unwrap();
+        let staying_id = open_terminal(
+            &project,
+            staying.clone(),
+            80,
+            24,
+            Channel::new(|_| Ok(())),
+            idle(),
+        )
+        .unwrap();
+
+        kill_window_sessions("terminal-window-with-no-shells");
+        assert!(write_terminal(&closing, &closing_id, "\n").is_ok());
+
+        kill_window_sessions("terminal-drain-window");
+        assert_eq!(
+            write_terminal(&closing, &closing_id, "\n").err().as_deref(),
+            Some("terminal session is not open")
+        );
+        assert!(write_terminal(&staying, &staying_id, "\n").is_ok());
+
+        kill_terminal(&staying, &staying_id).unwrap();
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn the_lifecycle_plugin_carries_a_stable_name() {
+        use tauri::plugin::Plugin as _;
+
+        let plugin = lifecycle_plugin::<tauri::test::MockRuntime>();
+        assert_eq!(plugin.name(), "terminal-lifecycle");
+    }
 }

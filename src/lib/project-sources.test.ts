@@ -504,3 +504,65 @@ describe("timing on the audit corpus", () => {
     expect(warmMs).toBeLessThan(legacyMs);
   });
 });
+
+describe("cache eviction under memory pressure", () => {
+  const BIG = 4_000_000;
+
+  function bigBinding(calls: ProjectSourcesRequest[]): BatchBinding {
+    return async (_projectId, request) => {
+      calls.push({ paths: [...request.paths], known: [...request.known] });
+      const known = new Map(request.known.map((entry) => [entry.path, entry.hash]));
+      const result: ProjectSourcesResult = {
+        files: [],
+        unchanged: [],
+        unreadable: [],
+        truncated: false,
+      };
+      for (const filePath of request.paths) {
+        const hash = `hash-of-${filePath}`;
+        if (known.get(filePath) === hash) result.unchanged.push(filePath);
+        else result.files.push({ path: filePath, hash, text: "x".repeat(BIG) });
+      }
+      return result;
+    };
+  }
+
+  it("drops the oldest entries once the requested set alone exceeds the budget", async () => {
+    const calls: ProjectSourcesRequest[] = [];
+    bridge.batch = bigBinding(calls);
+
+    const result = await readProjectSourcesBatch("p", ["a.tex", "b.tex", "c.tex"]);
+
+    expect(Object.keys(result.texts).sort()).toEqual(["a.tex", "b.tex", "c.tex"]);
+    expect(result.texts["a.tex"]).toHaveLength(BIG);
+    expect(projectSourcesCacheSize()).toBe(2);
+
+    await readProjectSourcesBatch("p", ["a.tex", "b.tex", "c.tex"]);
+
+    expect(calls[1].known.map((entry) => entry.path)).toEqual(["b.tex", "c.tex"]);
+  });
+
+  it("drops everything outside the requested set before trimming further", async () => {
+    const calls: ProjectSourcesRequest[] = [];
+    bridge.batch = bigBinding(calls);
+    await readProjectSourcesBatch("p", ["a.tex", "b.tex", "c.tex"]);
+    expect(projectSourcesCacheSize()).toBe(2);
+
+    const result = await readProjectSourcesBatch("p", ["d.tex"]);
+
+    expect(Object.keys(result.texts)).toEqual(["d.tex"]);
+    expect(projectSourcesCacheSize()).toBe(1);
+
+    await readProjectSourcesBatch("p", ["d.tex"]);
+    expect(calls[2].known).toEqual([{ path: "d.tex", hash: "hash-of-d.tex" }]);
+  });
+
+  it("keeps everything when the cache stays inside the budget", async () => {
+    const calls: ProjectSourcesRequest[] = [];
+    bridge.batch = bigBinding(calls);
+
+    await readProjectSourcesBatch("p", ["a.tex", "b.tex"]);
+
+    expect(projectSourcesCacheSize()).toBe(2);
+  });
+});

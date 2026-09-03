@@ -782,3 +782,432 @@ describe("CheckpointsPanel project safety", () => {
     expect(mocks.toastSuccess).not.toHaveBeenCalledWith("Checkpoint deleted.");
   });
 });
+
+describe("CheckpointsPanel confirmations", () => {
+  it("cancels a restore without touching the project", async () => {
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Restore V2" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("button", { name: "Overwrite all" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Restore V2" })).toBeInTheDocument();
+    expect(mocks.checkpointRestore).not.toHaveBeenCalled();
+  });
+
+  it("cancels a deletion without touching the store", async () => {
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Delete V2" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("button", { name: "Delete checkpoint" })).toBeNull();
+    expect(mocks.checkpointDelete).not.toHaveBeenCalled();
+  });
+
+  it("keeps every checkpoint when the keep-latest prompt is declined", async () => {
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await openAdvanced(user);
+    await user.click(await screen.findByRole("button", { name: "Keep latest" }));
+    await user.click(screen.getByRole("button", { name: "Keep all checkpoints" }));
+
+    expect(screen.queryByRole("button", { name: "Delete older checkpoints" })).toBeNull();
+    expect(mocks.checkpointKeepLatest).not.toHaveBeenCalled();
+  });
+
+  it("keeps every checkpoint when the reset prompt is declined", async () => {
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await openAdvanced(user);
+    await user.click(await screen.findByRole("button", { name: "Reset" }));
+    await user.click(screen.getByRole("button", { name: "Keep checkpoints" }));
+
+    expect(screen.queryByRole("button", { name: "Delete all checkpoints" })).toBeNull();
+    expect(mocks.checkpointReset).not.toHaveBeenCalled();
+  });
+
+  it("drops a store-wide prompt when Advanced collapses and keeps a row prompt", async () => {
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    const advanced = await screen.findByTestId("checkpoints-advanced");
+    await user.click(advanced);
+    await user.click(await screen.findByRole("button", { name: "Reset" }));
+    expect(screen.getByRole("button", { name: "Delete all checkpoints" })).toBeInTheDocument();
+
+    await user.click(advanced);
+    await user.click(advanced);
+
+    expect(screen.queryByRole("button", { name: "Delete all checkpoints" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Delete V2" }));
+    await user.click(advanced);
+    await user.click(advanced);
+
+    expect(screen.getByRole("button", { name: "Delete checkpoint" })).toBeInTheDocument();
+  });
+});
+
+describe("CheckpointsPanel file lists", () => {
+  it("collapses an expanded file list without reloading it", async () => {
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Show files for V2" }));
+    expect(await screen.findAllByTestId("checkpoint-file")).toHaveLength(4);
+
+    await user.click(screen.getByRole("button", { name: "Hide files for V2" }));
+
+    expect(screen.queryAllByTestId("checkpoint-file")).toHaveLength(0);
+    expect(mocks.checkpointFiles).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("button", { name: "Show files for V2" }));
+    expect(await screen.findAllByTestId("checkpoint-file")).toHaveLength(4);
+    expect(mocks.checkpointFiles).toHaveBeenCalledTimes(1);
+  });
+
+  it("collapses a catalog file list again", async () => {
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await openAdvanced(user);
+    const inspect = await screen.findByRole("button", { name: "Inspect catalog" });
+    await waitFor(() => expect(inspect).toBeEnabled());
+    await user.click(inspect);
+
+    await user.click(screen.getByRole("button", { name: "Show catalog files for V2" }));
+    expect(await screen.findByText("figures/plot.png")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Hide catalog files for V2" }));
+
+    expect(screen.queryByText("figures/plot.png")).toBeNull();
+  });
+
+  it("reports files it could not read and reloads them on retry", async () => {
+    mocks.checkpointFiles
+      .mockRejectedValueOnce(new Error("pack missing"))
+      .mockResolvedValue(newestFiles);
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Show files for V2" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Couldn't load the files in this checkpoint.",
+    );
+    expect(mocks.logError).toHaveBeenCalledWith("load checkpoint files", expect.any(Error));
+
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findAllByTestId("checkpoint-file")).toHaveLength(4);
+  });
+
+  it("reports a catalog file read that failed", async () => {
+    mocks.checkpointFiles.mockRejectedValue(new Error("pack missing"));
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await openAdvanced(user);
+    const inspect = await screen.findByRole("button", { name: "Inspect catalog" });
+    await waitFor(() => expect(inspect).toBeEnabled());
+    await user.click(inspect);
+    await user.click(screen.getByRole("button", { name: "Show catalog files for V2" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Couldn't load the files in this checkpoint.",
+    );
+  });
+
+  it("says so when a checkpoint recorded no files at all", async () => {
+    mocks.checkpointFiles.mockResolvedValue([]);
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Show files for V2" }));
+    expect(
+      await screen.findByText("This checkpoint recorded no files."),
+    ).toBeInTheDocument();
+
+    await openAdvanced(user);
+    const inspect = await screen.findByRole("button", { name: "Inspect catalog" });
+    await waitFor(() => expect(inspect).toBeEnabled());
+    await user.click(inspect);
+    await user.click(screen.getByRole("button", { name: "Show catalog files for V1" }));
+
+    expect(await screen.findByText("No files recorded.")).toBeInTheDocument();
+  });
+
+  it("says so when the store has written no packs", async () => {
+    mocks.checkpointInspect.mockResolvedValue({ ...inspection, packs: [] });
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await openAdvanced(user);
+    const inspect = await screen.findByRole("button", { name: "Inspect catalog" });
+    await waitFor(() => expect(inspect).toBeEnabled());
+    await user.click(inspect);
+
+    expect(screen.getByText("No packs written yet.")).toBeInTheDocument();
+    expect(screen.queryByText("pack-0001.pack")).toBeNull();
+  });
+});
+
+describe("CheckpointsPanel store inspection", () => {
+  it("empties the panel when the project closes", async () => {
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await openAdvanced(user);
+    expect(await screen.findByTestId("checkpoint-timeline")).toBeInTheDocument();
+    const listCalls = mocks.checkpointList.mock.calls.length;
+    const inspectCalls = mocks.checkpointInspect.mock.calls.length;
+
+    act(() => useFilesStore.setState({ projectId: null, projectName: "" }));
+
+    expect(screen.queryByTestId("checkpoint-timeline")).toBeNull();
+    expect(mocks.checkpointList).toHaveBeenCalledTimes(listCalls);
+    expect(mocks.getProject).toHaveBeenCalledTimes(1);
+
+    await openAdvanced(user);
+
+    expect(
+      screen.getByText("Open a project to see where its checkpoints are stored."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Open a project to see its checkpoint totals.")).toBeInTheDocument();
+    expect(mocks.checkpointInspect).toHaveBeenCalledTimes(inspectCalls);
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("keeps working when the project policy cannot be read", async () => {
+    mocks.getProject.mockRejectedValue(new Error("project.json is missing"));
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Show files for V2" }));
+    const rows = await screen.findAllByTestId("checkpoint-file");
+
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "load checkpoint policy",
+      expect.any(Error),
+    );
+    expect(within(rows[3]).queryByRole("button")).toBeNull();
+  });
+
+  it("reports a checkpoint store it could not read and retries", async () => {
+    mocks.checkpointInspect
+      .mockRejectedValueOnce(new Error("catalog is locked"))
+      .mockResolvedValue(inspection);
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await openAdvanced(user);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Couldn't read this project's checkpoint store.",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByText("/data/checkpoints/project")).toBeInTheDocument();
+  });
+
+  it("opens the store folder from the storage card", async () => {
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+
+    await openAdvanced(user);
+    await screen.findByText("/data/checkpoints/project");
+    await user.click(screen.getByRole("button", { name: /^Show in / }));
+
+    expect(mocks.checkpointRevealStore).toHaveBeenCalledWith("project");
+  });
+});
+
+describe("CheckpointsPanel failure reporting", () => {
+  async function renderPanel() {
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+    await screen.findByTestId("checkpoint-timeline");
+    return user;
+  }
+
+  it("reports an ignore-list change that failed", async () => {
+    mocks.checkpointIgnorePath.mockRejectedValue(new Error("read only"));
+    const user = await renderPanel();
+
+    await user.click(screen.getByRole("button", { name: "Show files for V2" }));
+    const rows = await screen.findAllByTestId("checkpoint-file");
+    await user.click(
+      within(rows[3]).getByRole("button", { name: "Ignore in future checkpoints" }),
+    );
+
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "change checkpoint ignore list",
+        expect.any(Error),
+        "Couldn't change this project's ignore list.",
+      ),
+    );
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it("reports a restore that failed and leaves the panel open", async () => {
+    mocks.checkpointRestore.mockRejectedValue(new Error("pack is corrupt"));
+    const user = await renderPanel();
+
+    await user.click(screen.getByRole("button", { name: "Restore V2" }));
+    await user.click(screen.getByRole("button", { name: "Overwrite all" }));
+
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "restore checkpoint",
+        expect.any(Error),
+        "Couldn't restore this checkpoint. See the app log for details.",
+      ),
+    );
+    expect(useSettingsStore.getState().versioningOpen).toBe(true);
+    expect(mocks.applyProjectStateChanged).not.toHaveBeenCalled();
+  });
+
+  it("reports a deletion that failed", async () => {
+    mocks.checkpointDelete.mockRejectedValue(new Error("catalog is locked"));
+    const user = await renderPanel();
+
+    await user.click(screen.getByRole("button", { name: "Delete V2" }));
+    await user.click(screen.getByRole("button", { name: "Delete checkpoint" }));
+
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "delete checkpoint",
+        expect.any(Error),
+        "Couldn't delete this checkpoint.",
+      ),
+    );
+    expect(mocks.checkpointList).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a keep-latest sweep that failed", async () => {
+    mocks.checkpointKeepLatest.mockRejectedValue(new Error("catalog is locked"));
+    const user = await renderPanel();
+
+    await openAdvanced(user);
+    await user.click(screen.getByRole("button", { name: "Keep latest" }));
+    await user.click(screen.getByRole("button", { name: "Delete older checkpoints" }));
+
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "keep latest checkpoint",
+        expect.any(Error),
+        "Couldn't delete older checkpoints.",
+      ),
+    );
+  });
+
+  it("reports a reset that failed", async () => {
+    mocks.checkpointReset.mockRejectedValue(new Error("catalog is locked"));
+    const user = await renderPanel();
+
+    await openAdvanced(user);
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+    await user.click(screen.getByRole("button", { name: "Delete all checkpoints" }));
+
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "reset checkpoints",
+        expect.any(Error),
+        "Couldn't reset checkpoints.",
+      ),
+    );
+  });
+
+  it("reports an export that failed and keeps the password", async () => {
+    mocks.pickSavePath.mockResolvedValue("/tmp/research.oleafly-checkpoints");
+    mocks.checkpointExport.mockRejectedValue(new Error("no space left"));
+    const user = await renderPanel();
+
+    await openAdvanced(user);
+    const password = await screen.findByLabelText("Archive password");
+    await user.type(password, "correct horse");
+    await user.click(screen.getByRole("button", { name: "Export" }));
+
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "export checkpoints",
+        expect.any(Error),
+        "Couldn't export the checkpoint archive.",
+      ),
+    );
+    expect(password).toHaveValue("correct horse");
+  });
+
+  it("reports an import that failed and keeps the password", async () => {
+    mocks.pickOpenPath.mockResolvedValue("/tmp/incoming.oleafly-checkpoints");
+    mocks.checkpointImport.mockRejectedValue(new Error("wrong password"));
+    const user = await renderPanel();
+
+    await openAdvanced(user);
+    const password = await screen.findByLabelText("Archive password");
+    await user.type(password, "battery staple");
+    await user.click(screen.getByRole("button", { name: "Import" }));
+
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "import checkpoints",
+        expect.any(Error),
+        "Couldn't import the checkpoint archive.",
+      ),
+    );
+    expect(password).toHaveValue("battery staple");
+    expect(mocks.checkpointList).toHaveBeenCalledTimes(1);
+  });
+
+  it("retires the copied marker on its own", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(<CheckpointsPanel />);
+      await screen.findByTestId("checkpoint-timeline");
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      });
+
+      const copy = screen.getByRole("button", { name: /Copy checkpoint id root-aaa/ });
+      await user.click(copy);
+      await waitFor(() =>
+        expect(copy.querySelector(".text-emerald-500")).not.toBeNull(),
+      );
+
+      await act(async () => {
+        vi.advanceTimersByTime(1600);
+      });
+
+      expect(copy.querySelector(".text-emerald-500")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reports a checkpoint id it could not copy", async () => {
+    const user = await renderPanel();
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+    });
+
+    await user.click(screen.getByRole("button", { name: /Copy checkpoint id root-aaa/ }));
+
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "copy checkpoint id",
+        expect.any(Error),
+        "Couldn't copy that checkpoint id.",
+      ),
+    );
+  });
+});

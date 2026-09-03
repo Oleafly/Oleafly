@@ -31,7 +31,10 @@ const mocks = vi.hoisted(() => ({
   gitSetRemote: vi.fn(),
   githubCreateRepo: vi.fn(),
   githubListRepos: vi.fn(),
+  logError: vi.fn(),
 }));
+
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 vi.mock("@/lib/tauri", () => ({
   gitPreparePublish: mocks.gitPreparePublish,
@@ -50,7 +53,8 @@ beforeEach(() => {
   mocks.gitPush.mockReset().mockResolvedValue("Pushed");
   mocks.gitSetRemote.mockReset().mockResolvedValue(undefined);
   mocks.githubCreateRepo.mockReset().mockResolvedValue(createdRepo);
-  mocks.githubListRepos.mockResolvedValue([]);
+  mocks.githubListRepos.mockReset().mockResolvedValue([]);
+  mocks.logError.mockReset().mockResolvedValue(undefined);
   useGithubStore.setState({ status: "connected" });
 });
 
@@ -211,5 +215,143 @@ describe("PublishToGitHubDialog", () => {
     await user.click(screen.getByRole("button", { name: "Create and push" }));
 
     expect(mocks.gitPreparePublish).toHaveBeenCalledWith("project-1", "Initial commit");
+  });
+
+  it("links the selected repository, pushes, and dismisses itself", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    mocks.githubListRepos.mockResolvedValue([createdRepo]);
+    const onClose = vi.fn();
+    const onPublished = vi.fn();
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={onClose}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={onPublished}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Link existing" }));
+    await user.click(await screen.findByText("prajwal/research-notes"));
+    await user.click(screen.getByRole("button", { name: "Link and push" }));
+
+    expect(await screen.findByText(/Linked and pushed to/)).toBeInTheDocument();
+    expect(mocks.gitPreparePublish).toHaveBeenCalledWith("project-1", "Initial commit");
+    expect(mocks.gitSetRemote).toHaveBeenCalledWith("project-1", createdRepo.clone_url);
+    expect(mocks.gitPush).toHaveBeenCalledWith("project-1");
+    expect(onPublished).toHaveBeenCalledWith(createdRepo.clone_url);
+    expect(onClose).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("records the remote but asks for a pull when the first push is rejected", async () => {
+    const user = userEvent.setup();
+    mocks.githubListRepos.mockResolvedValue([createdRepo]);
+    mocks.gitPush.mockRejectedValue(new Error("fetch first"));
+    const onClose = vi.fn();
+    const onPublished = vi.fn();
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={onClose}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={onPublished}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Link existing" }));
+    await user.click(await screen.findByText("prajwal/research-notes"));
+    await user.click(screen.getByRole("button", { name: "Link and push" }));
+
+    expect(await screen.findByText(/push needs a pull first/)).toBeInTheDocument();
+    expect(onPublished).toHaveBeenCalledWith(createdRepo.clone_url);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Link and push" })).toBeEnabled();
+  });
+
+  it("reports a remote that could not be set at all", async () => {
+    const user = userEvent.setup();
+    mocks.githubListRepos.mockResolvedValue([createdRepo]);
+    mocks.gitSetRemote.mockRejectedValue(new Error("not a git repository"));
+    const onPublished = vi.fn();
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={onPublished}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Link existing" }));
+    await user.click(await screen.findByText("prajwal/research-notes"));
+    await user.click(screen.getByRole("button", { name: "Link and push" }));
+
+    expect(await screen.findByText(/not a git repository/)).toBeInTheDocument();
+    expect(mocks.gitPush).not.toHaveBeenCalled();
+    expect(onPublished).not.toHaveBeenCalled();
+  });
+
+  it("reports a repository that GitHub refused to create", async () => {
+    const user = userEvent.setup();
+    mocks.githubCreateRepo.mockRejectedValue(new Error("name already exists"));
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Create and push" }));
+
+    expect(await screen.findByText(/name already exists/)).toBeInTheDocument();
+    expect(mocks.gitPreparePublish).not.toHaveBeenCalled();
+  });
+
+  it("keeps the empty list and logs when the repository read fails", async () => {
+    const user = userEvent.setup();
+    mocks.githubListRepos.mockRejectedValue(new Error("bad credentials"));
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Link existing" }));
+
+    expect(await screen.findByText("No repositories found.")).toBeInTheDocument();
+    expect(mocks.logError).toHaveBeenCalledWith("github list repos", expect.any(Error));
+    expect(screen.getByRole("button", { name: "Link and push" })).toBeDisabled();
+  });
+
+  it("reads no repositories while GitHub is disconnected", async () => {
+    useGithubStore.setState({ status: "disconnected" });
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Connect to GitHub" })).toBeInTheDocument();
+    expect(mocks.githubListRepos).not.toHaveBeenCalled();
   });
 });

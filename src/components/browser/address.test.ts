@@ -48,6 +48,15 @@ describe("resolveAddressInput", () => {
     }
   });
 
+  it("searches for a scheme that cannot be parsed as a URL", () => {
+    expect(resolveAddressInput("http://", GOOGLE)).toBe(
+      `${GOOGLE}${encodeURIComponent("http://")}`,
+    );
+    expect(resolveAddressInput("https://", GOOGLE)).toBe(
+      `${GOOGLE}${encodeURIComponent("https://")}`,
+    );
+  });
+
   it("treats text with spaces as a search even if it looks like a domain", () => {
     expect(resolveAddressInput("example.com is down", GOOGLE)).toBe(
       `${GOOGLE}example.com%20is%20down`,

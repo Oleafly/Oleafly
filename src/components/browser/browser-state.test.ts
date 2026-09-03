@@ -97,4 +97,55 @@ describe("reduceBrowser", () => {
     });
     expect(merged.active).toBe("only");
   });
+
+  it("keeps the locally active tab when the snapshot names none", () => {
+    const state = opened(EMPTY_BROWSER_STATE, "late");
+    const merged = reduceBrowser(state, {
+      type: "snapshot",
+      tabs: [{ label: "first", url: "https://first.test/", title: "First", loading: false }],
+      active: null,
+    });
+    expect(merged.tabs.map((t) => t.label)).toEqual(["first", "late"]);
+    expect(merged.active).toBe("late");
+  });
+
+  it("keeps the locally active tab when the snapshot names one it did not send", () => {
+    const state = opened(EMPTY_BROWSER_STATE, "late");
+    const merged = reduceBrowser(state, {
+      type: "snapshot",
+      tabs: [{ label: "first", url: "https://first.test/", title: "First", loading: false }],
+      active: "gone",
+    });
+    expect(merged.active).toBe("late");
+  });
+
+  it("keeps the active tab when a background tab closes", () => {
+    let state = opened(opened(opened(EMPTY_BROWSER_STATE, "a"), "b"), "c");
+    state = reduceBrowser(state, { type: "tab-activated", label: "a" });
+    state = reduceBrowser(state, { type: "tab-closed", label: "b", active: null });
+    expect(state.tabs.map((t) => t.label)).toEqual(["a", "c"]);
+    expect(state.active).toBe("a");
+  });
+
+  it("keeps the active tab when the close payload names the tab that just went away", () => {
+    let state = opened(opened(EMPTY_BROWSER_STATE, "a"), "b");
+    state = reduceBrowser(state, { type: "tab-activated", label: "a" });
+    state = reduceBrowser(state, { type: "tab-closed", label: "b", active: "b" });
+    expect(state.active).toBe("a");
+  });
+
+  it("returns the state unchanged for an action it does not handle", () => {
+    const state = opened(EMPTY_BROWSER_STATE, "a");
+    const unknown = { type: "not-a-browser-action" } as unknown as Parameters<
+      typeof reduceBrowser
+    >[1];
+    expect(reduceBrowser(state, unknown)).toBe(state);
+  });
+
+  it("resolves the active tab only while one is selected", () => {
+    const state = opened(EMPTY_BROWSER_STATE, "a");
+    expect(activeTab(state)?.label).toBe("a");
+    expect(activeTab({ tabs: state.tabs, active: null })).toBeNull();
+    expect(activeTab({ tabs: state.tabs, active: "missing" })).toBeNull();
+  });
 });

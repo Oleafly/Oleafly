@@ -717,4 +717,127 @@ mod tests {
             median(&mut warm)
         );
     }
+
+    #[test]
+    fn the_command_reads_a_batch_off_the_blocking_pool() {
+        let project = project("sources-command");
+        write(&project, "main.tex", b"\\documentclass{article}\n");
+
+        let result = tauri::async_runtime::block_on(read_project_sources(
+            project.id.clone(),
+            request(&["main.tex"], &[]),
+        ))
+        .unwrap();
+        assert_eq!(result.files.len(), 1);
+        assert_eq!(result.files[0].path, "main.tex");
+        assert_eq!(result.files[0].text, "\\documentclass{article}\n");
+
+        let error = tauri::async_runtime::block_on(read_project_sources(
+            "sources-command-absent".to_string(),
+            request(&["main.tex"], &[]),
+        ))
+        .unwrap_err();
+        assert!(error.contains("sources-command-absent"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_file_the_process_cannot_open_is_unreadable_not_an_error() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let project = project("sources-permission");
+        write(&project, "open.tex", b"open");
+        write(&project, "sealed.tex", b"sealed");
+        let sealed = project.root.join("sealed.tex");
+        std::fs::set_permissions(&sealed, std::fs::Permissions::from_mode(0o000)).unwrap();
+
+        let result = read(&project, request(&["open.tex", "sealed.tex"], &[]));
+        std::fs::set_permissions(&sealed, std::fs::Permissions::from_mode(0o600)).unwrap();
+
+        assert_eq!(result.files.len(), 1);
+        assert_eq!(result.files[0].path, "open.tex");
+        assert_eq!(result.unreadable.len(), 1);
+        assert_eq!(result.unreadable[0].path, "sealed.tex");
+        assert!(result.unreadable[0]
+            .message
+            .starts_with("sealed.tex could not be read: "));
+        assert!(result.unreadable[0].message.ends_with('.'));
+        assert!(!result.truncated);
+    }
+
+    #[test]
+    fn windows_line_endings_and_invalid_bytes_survive_the_round_trip() {
+        let project = project("sources-line-endings");
+        let crlf = b"\\documentclass{article}\r\n\r\n\\begin{document}\r\n";
+        write(&project, "crlf.tex", crlf);
+        let mixed = b"caf\xc3\xa9 \xff\r\ndone\n";
+        write(&project, "mixed.tex", mixed);
+
+        let result = read(&project, request(&["crlf.tex", "mixed.tex"], &[]));
+        assert_eq!(result.files[0].path, "crlf.tex");
+        assert_eq!(result.files[0].text, String::from_utf8_lossy(crlf));
+        assert!(result.files[0].text.contains("\r\n"));
+        assert_eq!(result.files[0].hash, source_hash(crlf));
+        assert_eq!(result.files[1].text, String::from_utf8_lossy(mixed));
+        assert!(result.files[1].text.contains("café \u{FFFD}\r\n"));
+        assert_eq!(result.files[1].hash, source_hash(mixed));
+    }
+
+    #[test]
+    fn known_hashes_are_matched_by_path_and_ignored_when_they_name_another_file() {
+        let project = project("sources-known-paths");
+        write(&project, "a.tex", b"same");
+        write(&project, "b.tex", b"same");
+        let hash = source_hash(b"same");
+
+        let result = read(
+            &project,
+            request(
+                &["a.tex"],
+                &[
+                    ("a.tex", hash.as_str()),
+                    ("b.tex", hash.as_str()),
+                    ("never-requested.tex", hash.as_str()),
+                ],
+            ),
+        );
+        assert_eq!(result.unchanged, vec!["a.tex".to_string()]);
+        assert!(result.files.is_empty());
+
+        let result = read(&project, request(&["a.tex"], &[("b.tex", hash.as_str())]));
+        assert!(result.unchanged.is_empty());
+        assert_eq!(result.files.len(), 1);
+        assert_eq!(result.files[0].path, "a.tex");
+        assert_eq!(result.files[0].hash, hash);
+    }
+
+    #[test]
+    fn the_benchmark_fixture_copies_only_chapters_and_appendices() {
+        let project = project("sources-scaled");
+        let paths = scaled_thesis(&project, 3);
+
+        let chapters: Vec<&String> = paths
+            .iter()
+            .filter(|path| path.starts_with("chapters/"))
+            .collect();
+        let roots: Vec<&String> = paths.iter().filter(|path| !path.contains('/')).collect();
+        assert!(!chapters.is_empty());
+        assert!(chapters.iter().any(|path| path.ends_with("-1.tex")));
+        assert!(chapters.iter().any(|path| path.ends_with("-2.tex")));
+        assert!(!chapters.iter().any(|path| path.ends_with("-3.tex")));
+        assert_eq!(
+            roots.len(),
+            roots.iter().collect::<std::collections::HashSet<_>>().len()
+        );
+        for path in &paths {
+            assert!(project.root.join(path).exists(), "{path}");
+        }
+    }
+
+    #[test]
+    fn the_benchmark_reports_the_middle_sample() {
+        assert_eq!(median(&mut [3.0, 1.0, 2.0]), 2.0);
+        assert_eq!(median(&mut [5.0]), 5.0);
+        assert_eq!(median(&mut [4.0, 1.0, 3.0, 2.0]), 3.0);
+    }
 }

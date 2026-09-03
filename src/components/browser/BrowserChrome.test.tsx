@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => {
           loading: false,
         },
       ],
-      active: "oleafly-browser-pane-1",
+      active: "oleafly-browser-pane-1" as string | null,
     })),
     browserTabOpen: vi.fn(async () => "oleafly-browser-pane-2"),
     browserTabActivate: vi.fn(async () => {}),
@@ -221,5 +221,143 @@ describe("BrowserChrome", () => {
     expect(mocks.emit).toHaveBeenCalledWith("browser-home-page", {
       url: "https://www.example.com/",
     });
+  });
+
+  it("copies the address of the active tab from the overflow menu", async () => {
+    await renderChrome();
+    fireEvent.pointerDown(screen.getByRole("button", { name: "More options" }));
+    fireEvent.click(screen.getByRole("button", { name: "More options" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Copy URL" }));
+    await waitFor(() =>
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith("https://www.example.com/"),
+    );
+  });
+
+  it("opens a tab from the overflow menu", async () => {
+    await renderChrome();
+    fireEvent.pointerDown(screen.getByRole("button", { name: "More options" }));
+    fireEvent.click(screen.getByRole("button", { name: "More options" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "New tab" }));
+    await waitFor(() => expect(mocks.browserTabOpen).toHaveBeenCalledWith("https://home.test/"));
+  });
+
+  it("focuses the address field on the location shortcut", async () => {
+    await renderChrome();
+    const field = screen.getByRole("textbox", { name: "Search or enter a URL" });
+    expect(field).not.toHaveFocus();
+    fireEvent.keyDown(window, { key: "l", metaKey: true });
+    expect(field).toHaveFocus();
+  });
+
+  it("opens, closes, and reloads tabs from the keyboard shortcuts", async () => {
+    await renderChrome();
+    fireEvent.keyDown(window, { key: "t", ctrlKey: true });
+    await waitFor(() => expect(mocks.browserTabOpen).toHaveBeenCalledWith("https://home.test/"));
+
+    fireEvent.keyDown(window, { key: "W", metaKey: true });
+    await waitFor(() =>
+      expect(mocks.browserTabClose).toHaveBeenCalledWith("oleafly-browser-pane-1"),
+    );
+
+    fireEvent.keyDown(window, { key: "r", metaKey: true });
+    await waitFor(() => expect(mocks.browserReload).toHaveBeenCalledWith("oleafly-browser-pane-1"));
+  });
+
+  it("leaves plain and modified-with-alt keys to the page", async () => {
+    await renderChrome();
+    fireEvent.keyDown(window, { key: "t" });
+    fireEvent.keyDown(window, { key: "t", metaKey: true, altKey: true });
+    fireEvent.keyDown(window, { key: "t", metaKey: true, shiftKey: true });
+    fireEvent.keyDown(window, { key: "j", metaKey: true });
+    expect(mocks.browserTabOpen).not.toHaveBeenCalled();
+    expect(mocks.browserReload).not.toHaveBeenCalled();
+  });
+
+  it("stops listening for shortcuts once the chrome unmounts", async () => {
+    render(<BrowserChrome />);
+    await waitFor(() => expect(mocks.browserState).toHaveBeenCalled());
+    await screen.findByText("Example");
+    cleanup();
+    fireEvent.keyDown(window, { key: "t", metaKey: true });
+    expect(mocks.browserTabOpen).not.toHaveBeenCalled();
+  });
+
+  it("restores the committed address when the field is escaped or blurred", async () => {
+    await renderChrome();
+    const field = screen.getByRole("textbox", { name: "Search or enter a URL" });
+    fireEvent.focus(field);
+    fireEvent.change(field, { target: { value: "half typed" } });
+    expect(field).toHaveValue("half typed");
+
+    fireEvent.keyDown(field, { key: "Escape" });
+    expect(field).toHaveValue("https://www.example.com/");
+    expect(mocks.browserNavigate).not.toHaveBeenCalled();
+
+    fireEvent.focus(field);
+    fireEvent.change(field, { target: { value: "abandoned" } });
+    fireEvent.blur(field);
+    expect(field).toHaveValue("https://www.example.com/");
+    expect(mocks.browserNavigate).not.toHaveBeenCalled();
+  });
+
+  it("activates a tab from the keyboard", async () => {
+    await renderChrome();
+    payload("browser-tab-opened", {
+      label: "oleafly-browser-pane-2",
+      url: "https://second.test/",
+      active: true,
+    });
+    const [first] = screen.getAllByRole("tab");
+    fireEvent.keyDown(first, { key: "Enter" });
+    await waitFor(() =>
+      expect(mocks.browserTabActivate).toHaveBeenCalledWith("oleafly-browser-pane-1"),
+    );
+
+    mocks.browserTabActivate.mockClear();
+    fireEvent.keyDown(first, { key: " " });
+    await waitFor(() =>
+      expect(mocks.browserTabActivate).toHaveBeenCalledWith("oleafly-browser-pane-1"),
+    );
+
+    mocks.browserTabActivate.mockClear();
+    fireEvent.keyDown(first, { key: "ArrowDown" });
+    expect(mocks.browserTabActivate).not.toHaveBeenCalled();
+  });
+
+  it("ignores key presses that bubble out of a control inside the tab", async () => {
+    await renderChrome();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Close tab" }), { key: "Enter" });
+    expect(mocks.browserTabActivate).not.toHaveBeenCalled();
+  });
+
+  it("opens a tab when an address is submitted with no tab open", async () => {
+    mocks.browserState.mockResolvedValueOnce({
+      window: "oleafly-browser-window-1",
+      tabs: [],
+      active: null,
+    });
+    render(<BrowserChrome />);
+    await waitFor(() => expect(mocks.browserState).toHaveBeenCalled());
+    const field = await screen.findByRole("textbox", { name: "Search or enter a URL" });
+    fireEvent.focus(field);
+    fireEvent.change(field, { target: { value: "example.com" } });
+    fireEvent.submit(field.closest("form") as HTMLFormElement);
+    await waitFor(() =>
+      expect(mocks.browserTabOpen).toHaveBeenCalledWith("https://example.com/"),
+    );
+    expect(mocks.browserNavigate).not.toHaveBeenCalled();
+  });
+
+  it("follows a tab activation pushed by the backend", async () => {
+    await renderChrome();
+    payload("browser-tab-opened", {
+      label: "oleafly-browser-pane-2",
+      url: "https://second.test/",
+      active: true,
+    });
+    expect(screen.getByRole("tab", { selected: true })).toHaveTextContent("second.test");
+
+    payload("browser-tab-activated", { label: "oleafly-browser-pane-1" });
+    expect(screen.getByRole("tab", { selected: true })).toHaveTextContent("Example");
   });
 });

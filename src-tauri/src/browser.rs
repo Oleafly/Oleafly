@@ -176,6 +176,17 @@ fn next_active_after_close(tabs: &[String], closed: &str, active: Option<&str>) 
         .cloned()
 }
 
+fn plan_tab_close(
+    labels: &[String],
+    closed: &str,
+    active: Option<&str>,
+) -> Result<Option<String>, String> {
+    if !labels.iter().any(|label| label == closed) {
+        return Err("that browser tab is no longer open".to_string());
+    }
+    Ok(next_active_after_close(labels, closed, active))
+}
+
 fn browser_page_load_payload(
     label: &str,
     url: &str,
@@ -204,39 +215,54 @@ fn with_windows<T>(f: impl FnOnce(&mut Vec<BrowserWindowState>) -> T) -> T {
     f(&mut guard)
 }
 
+fn window_state_in<'a>(
+    windows: &'a mut [BrowserWindowState],
+    window_label: &str,
+) -> Result<&'a mut BrowserWindowState, String> {
+    windows
+        .iter_mut()
+        .find(|state| state.window == window_label)
+        .ok_or_else(|| "the browser window is not open".to_string())
+}
+
 fn with_window_state<T>(
     window_label: &str,
     f: impl FnOnce(&mut BrowserWindowState) -> T,
 ) -> Result<T, String> {
-    with_windows(|windows| {
-        windows
-            .iter_mut()
-            .find(|state| state.window == window_label)
-            .map(f)
-            .ok_or_else(|| "the browser window is not open".to_string())
-    })
+    with_windows(|windows| window_state_in(windows, window_label).map(f))
+}
+
+fn window_label_for_pane_in(windows: &[BrowserWindowState], pane: &str) -> Option<String> {
+    windows
+        .iter()
+        .find(|state| state.tabs.iter().any(|tab| tab.label == pane))
+        .map(|state| state.window.clone())
 }
 
 fn window_label_for_pane(pane: &str) -> Option<String> {
-    with_windows(|windows| {
-        windows
-            .iter()
-            .find(|state| state.tabs.iter().any(|tab| tab.label == pane))
-            .map(|state| state.window.clone())
-    })
+    with_windows(|windows| window_label_for_pane_in(windows, pane))
+}
+
+fn latest_window_label_in(windows: &[BrowserWindowState]) -> Option<String> {
+    windows.last().map(|state| state.window.clone())
 }
 
 fn latest_window_label() -> Option<String> {
-    with_windows(|windows| windows.last().map(|state| state.window.clone()))
+    with_windows(|windows| latest_window_label_in(windows))
+}
+
+fn forget_window_in(
+    windows: &mut Vec<BrowserWindowState>,
+    window_label: &str,
+) -> Option<BrowserWindowState> {
+    let index = windows
+        .iter()
+        .position(|state| state.window == window_label)?;
+    Some(windows.remove(index))
 }
 
 fn forget_window(window_label: &str) -> Option<BrowserWindowState> {
-    with_windows(|windows| {
-        let index = windows
-            .iter()
-            .position(|state| state.window == window_label)?;
-        Some(windows.remove(index))
-    })
+    with_windows(|windows| forget_window_in(windows, window_label))
 }
 
 fn find_window<R: Runtime>(app: &AppHandle<R>, label: &str) -> Result<Window<R>, String> {
@@ -363,14 +389,17 @@ fn set_pane_visible<R: Runtime>(window: &Window<R>, pane: &str, visible: bool) {
     }
 }
 
-fn set_window_title<R: Runtime>(window: &Window<R>, title: &str) {
+fn browser_window_title(title: &str) -> String {
     let title = title.trim();
-    let full = if title.is_empty() {
+    if title.is_empty() {
         WINDOW_TITLE.to_owned()
     } else {
         format!("{title} - {WINDOW_TITLE}")
-    };
-    let _ = window.set_title(&full);
+    }
+}
+
+fn set_window_title<R: Runtime>(window: &Window<R>, title: &str) {
+    let _ = window.set_title(&browser_window_title(title));
 }
 
 fn activate_pane<R: Runtime>(
@@ -646,15 +675,12 @@ pub async fn browser_tab_close<R: Runtime>(
     let window = find_window(&app, &window_label)?;
     let (next, remaining) = with_window_state(&window_label, |state| {
         let labels: Vec<String> = state.tabs.iter().map(|t| t.label.clone()).collect();
-        if !labels.iter().any(|label| label == &tab) {
-            return Err("that browser tab is no longer open".to_string());
-        }
-        let next = next_active_after_close(&labels, &tab, state.active.as_deref());
+        let next = plan_tab_close(&labels, &tab, state.active.as_deref())?;
         state.tabs.retain(|t| t.label != tab);
         if state.active.as_deref() == Some(tab.as_str()) {
             state.active = None;
         }
-        Ok((next, state.tabs.len()))
+        Ok::<_, String>((next, state.tabs.len()))
     })??;
     if let Ok(pane) = find_webview(&window, &tab) {
         let _ = pane.close();
@@ -965,5 +991,855 @@ mod tests {
         assert_eq!(caller_kind("oleafly-browser-chrome-4"), Caller::Chrome);
         assert_eq!(caller_kind("oleafly-browser-pane-4"), Caller::Other);
         assert_eq!(caller_kind("preview"), Caller::Other);
+    }
+
+    use tauri::async_runtime::block_on;
+    use tauri::test::{mock_builder, mock_context, noop_assets, MockRuntime};
+    use tauri::{App, AppHandle, LogicalPosition, LogicalSize, Webview, WebviewWindowBuilder};
+
+    use super::{
+        apply_layout, browser_back, browser_content_visible, browser_forward, browser_navigate,
+        browser_reload, browser_state, browser_tab_activate, browser_tab_close, browser_tab_open,
+        browser_window_close, browser_window_focus, browser_window_open, browser_window_title,
+        chrome_height_physical, chrome_window, create_window, eval_in_pane, find_webview,
+        find_window, forget_window, forget_window_in, is_app_origin, latest_window_label,
+        latest_window_label_in, next_sequence, on_title_changed, on_window_destroyed,
+        plan_tab_close, request_tab, resolve_pane, window_label_for_pane, window_label_for_pane_in,
+        window_state_in, with_window_state, with_windows, BrowserTabInfo, BrowserWindowState,
+        WebviewBuilder, WebviewUrl,
+    };
+
+    static REGISTRY_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    struct GlobalRegistry {
+        _lock: std::sync::MutexGuard<'static, ()>,
+    }
+
+    impl GlobalRegistry {
+        fn acquire() -> Self {
+            let lock = REGISTRY_LOCK
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            with_windows(|windows| windows.clear());
+            Self { _lock: lock }
+        }
+    }
+
+    impl Drop for GlobalRegistry {
+        fn drop(&mut self) {
+            with_windows(|windows| windows.clear());
+        }
+    }
+
+    fn tab(label: &str, url: &str) -> BrowserTabInfo {
+        BrowserTabInfo {
+            label: label.to_string(),
+            url: url.to_string(),
+            title: String::new(),
+            loading: false,
+        }
+    }
+
+    fn state(window: &str, tabs: &[&str], active: Option<&str>) -> BrowserWindowState {
+        BrowserWindowState {
+            window: window.to_string(),
+            chrome: format!("oleafly-browser-chrome-{window}"),
+            tabs: tabs
+                .iter()
+                .map(|label| tab(label, "https://example.com/"))
+                .collect(),
+            active: active.map(str::to_owned),
+            overlay_open: false,
+        }
+    }
+
+    struct MockApp {
+        app: App<MockRuntime>,
+        main: Webview<MockRuntime>,
+    }
+
+    impl MockApp {
+        fn new() -> Self {
+            let app = mock_builder()
+                .build(mock_context(noop_assets()))
+                .expect("mock app");
+            let main = WebviewWindowBuilder::new(app.handle(), "main", Default::default())
+                .build()
+                .expect("main window");
+            let main = main.as_ref().clone();
+            Self { app, main }
+        }
+
+        fn handle(&self) -> AppHandle<MockRuntime> {
+            self.app.handle().clone()
+        }
+
+        fn open(&self, url: &str) -> String {
+            create_window(self.app.handle(), url.parse().expect("url")).expect("browser window")
+        }
+
+        fn chrome(&self, window_label: &str) -> Webview<MockRuntime> {
+            let window = find_window(self.app.handle(), window_label).expect("window");
+            let chrome =
+                with_window_state(window_label, |state| state.chrome.clone()).expect("state");
+            find_webview(&window, &chrome).expect("chrome webview")
+        }
+
+        fn pane(&self, window_label: &str, index: usize) -> Webview<MockRuntime> {
+            let window = find_window(self.app.handle(), window_label).expect("window");
+            let label = with_window_state(window_label, |state| state.tabs[index].label.clone())
+                .expect("state");
+            find_webview(&window, &label).expect("pane webview")
+        }
+
+        fn tabs(&self, window_label: &str) -> Vec<String> {
+            with_window_state(window_label, |state| {
+                state.tabs.iter().map(|tab| tab.label.clone()).collect()
+            })
+            .expect("state")
+        }
+
+        fn active(&self, window_label: &str) -> Option<String> {
+            with_window_state(window_label, |state| state.active.clone()).expect("state")
+        }
+    }
+
+    #[test]
+    fn scales_the_chrome_strip_with_the_display() {
+        assert_eq!(chrome_height_physical(1.0), 88);
+        assert_eq!(chrome_height_physical(1.5), 132);
+        assert_eq!(chrome_height_physical(2.0), 176);
+        assert_eq!(chrome_height_physical(0.0), 9);
+        assert_eq!(chrome_height_physical(-4.0), 9);
+
+        let (pos, size) = content_bounds(PhysicalSize::new(1000, 700), 1.5);
+        assert_eq!(pos.y, 132);
+        assert_eq!((size.width, size.height), (1000, 568));
+        let (pos, size) = content_bounds(PhysicalSize::new(300, 50), 2.0);
+        assert_eq!(pos.y, 50);
+        assert_eq!((size.width, size.height), (300, 1));
+        let (pos, size) = chrome_bounds(PhysicalSize::new(0, 0));
+        assert_eq!((pos.x, pos.y), (0, 0));
+        assert_eq!((size.width, size.height), (1, 1));
+    }
+
+    #[test]
+    fn a_url_without_a_host_is_never_the_app_origin() {
+        assert!(!is_app_origin(
+            &super::Url::parse("mailto:someone@example.com").unwrap()
+        ));
+        assert!(!is_app_origin(
+            &super::Url::parse("data:text/plain,x").unwrap()
+        ));
+        assert!(is_app_origin(
+            &super::Url::parse("https://TAURI.localhost/x").unwrap()
+        ));
+    }
+
+    #[test]
+    fn window_sequence_numbers_never_repeat() {
+        let first = next_sequence();
+        let second = next_sequence();
+        assert!(second > first);
+    }
+
+    #[test]
+    fn window_titles_fall_back_to_the_product_name() {
+        assert_eq!(browser_window_title(""), "Oleafly Browser");
+        assert_eq!(browser_window_title("   \n"), "Oleafly Browser");
+        assert_eq!(
+            browser_window_title("  Example Domain  "),
+            "Example Domain - Oleafly Browser"
+        );
+    }
+
+    #[test]
+    fn closing_an_unknown_tab_is_refused_before_the_window_changes() {
+        let labels: Vec<String> = ["a", "b"].iter().map(|s| s.to_string()).collect();
+        assert_eq!(
+            plan_tab_close(&labels, "zzz", Some("a")).unwrap_err(),
+            "that browser tab is no longer open"
+        );
+        assert_eq!(
+            plan_tab_close(&labels, "a", Some("a")).unwrap().as_deref(),
+            Some("b")
+        );
+        assert_eq!(
+            plan_tab_close(&labels, "a", Some("b")).unwrap().as_deref(),
+            Some("b")
+        );
+    }
+
+    #[test]
+    fn the_registry_finds_windows_panes_and_the_newest_window() {
+        let mut windows = vec![
+            state("w1", &["p1", "p2"], Some("p1")),
+            state("w2", &["p3"], None),
+        ];
+
+        assert_eq!(
+            window_state_in(&mut windows, "w2").unwrap().window,
+            "w2".to_string()
+        );
+        assert_eq!(
+            window_state_in(&mut windows, "missing").unwrap_err(),
+            "the browser window is not open"
+        );
+        assert_eq!(
+            window_label_for_pane_in(&windows, "p3").as_deref(),
+            Some("w2")
+        );
+        assert_eq!(window_label_for_pane_in(&windows, "nope"), None);
+        assert_eq!(latest_window_label_in(&windows).as_deref(), Some("w2"));
+
+        assert!(forget_window_in(&mut windows, "missing").is_none());
+        let removed = forget_window_in(&mut windows, "w1").expect("removed");
+        assert_eq!(removed.tabs.len(), 2);
+        assert_eq!(latest_window_label_in(&windows).as_deref(), Some("w2"));
+        assert!(forget_window_in(&mut windows, "w2").is_some());
+        assert_eq!(latest_window_label_in(&windows), None);
+        assert_eq!(window_label_for_pane_in(&windows, "p1"), None);
+    }
+
+    #[test]
+    fn the_process_registry_delegates_to_the_slice_helpers() {
+        let _registry = GlobalRegistry::acquire();
+        assert_eq!(latest_window_label(), None);
+        assert_eq!(window_label_for_pane("p1"), None);
+        assert_eq!(
+            with_window_state("w1", |state| state.window.clone()).unwrap_err(),
+            "the browser window is not open"
+        );
+
+        with_windows(|windows| {
+            windows.push(state("w1", &["p1"], Some("p1")));
+            windows.push(state("w2", &["p2"], None));
+        });
+        assert_eq!(latest_window_label().as_deref(), Some("w2"));
+        assert_eq!(window_label_for_pane("p1").as_deref(), Some("w1"));
+        with_window_state("w2", |state| state.active = Some("p2".to_string())).unwrap();
+        assert_eq!(
+            with_window_state("w2", |state| state.active.clone()).unwrap(),
+            Some("p2".to_string())
+        );
+        assert!(forget_window("w2").is_some());
+        assert!(forget_window("w2").is_none());
+        assert_eq!(latest_window_label().as_deref(), Some("w1"));
+    }
+
+    #[test]
+    fn opening_a_browser_window_adds_chrome_and_a_first_tab() {
+        let _registry = GlobalRegistry::acquire();
+        let mock = MockApp::new();
+        let window_label = mock.open("https://example.com/first");
+
+        assert!(window_label.starts_with("oleafly-browser-window-"));
+        let window = find_window(mock.app.handle(), &window_label).expect("window");
+        let labels: Vec<String> = window
+            .webviews()
+            .iter()
+            .map(|webview| webview.label().to_string())
+            .collect();
+        let chrome = with_window_state(&window_label, |state| state.chrome.clone()).unwrap();
+        assert!(labels.contains(&chrome));
+
+        let tabs = mock.tabs(&window_label);
+        assert_eq!(tabs.len(), 1);
+        assert!(tabs[0].starts_with("oleafly-browser-pane-"));
+        assert_eq!(
+            mock.active(&window_label).as_deref(),
+            Some(tabs[0].as_str())
+        );
+
+        let snapshot = block_on(browser_state(mock.chrome(&window_label))).expect("snapshot");
+        assert_eq!(snapshot.window, window_label);
+        assert_eq!(snapshot.tabs.len(), 1);
+        assert_eq!(snapshot.tabs[0].url, "https://example.com/first");
+        assert!(snapshot.tabs[0].loading);
+        assert_eq!(snapshot.active, Some(tabs[0].clone()));
+
+        assert_eq!(
+            block_on(browser_state(mock.main.clone())).unwrap_err(),
+            "browser tabs can only be driven from the browser window"
+        );
+    }
+
+    #[test]
+    fn only_the_windows_own_chrome_webview_may_drive_its_tabs() {
+        let _registry = GlobalRegistry::acquire();
+        let mock = MockApp::new();
+        let window_label = mock.open("https://example.com/");
+        let window = find_window(mock.app.handle(), &window_label).expect("window");
+
+        let rogue = window
+            .add_child(
+                WebviewBuilder::new("oleafly-browser-chrome-rogue", WebviewUrl::default()),
+                LogicalPosition::new(0, 0),
+                LogicalSize::new(100, 100),
+            )
+            .expect("rogue chrome webview");
+        assert_eq!(
+            chrome_window(&rogue).unwrap_err(),
+            "browser tabs can only be driven from the browser window"
+        );
+        assert_eq!(
+            chrome_window(&mock.pane(&window_label, 0)).unwrap_err(),
+            "browser tabs can only be driven from the browser window"
+        );
+        let chrome = mock.chrome(&window_label);
+        assert_eq!(chrome_window(&chrome).unwrap(), window_label);
+
+        forget_window(&window_label);
+        assert_eq!(
+            chrome_window(&chrome).unwrap_err(),
+            "the browser window is not open"
+        );
+    }
+
+    #[test]
+    fn tabs_open_activate_and_close_in_order() {
+        let _registry = GlobalRegistry::acquire();
+        let mock = MockApp::new();
+        let window_label = mock.open("https://example.com/one");
+        let chrome = mock.chrome(&window_label);
+
+        let second = block_on(browser_tab_open(
+            mock.handle(),
+            chrome.clone(),
+            "https://example.com/two".to_string(),
+        ))
+        .expect("second tab");
+        let third = block_on(browser_tab_open(
+            mock.handle(),
+            chrome.clone(),
+            "https://example.com/three".to_string(),
+        ))
+        .expect("third tab");
+        let tabs = mock.tabs(&window_label);
+        assert_eq!(tabs.len(), 3);
+        assert_eq!(mock.active(&window_label).as_deref(), Some(third.as_str()));
+
+        assert_eq!(
+            block_on(browser_tab_open(
+                mock.handle(),
+                chrome.clone(),
+                "ftp://example.com".to_string()
+            ))
+            .unwrap_err(),
+            "only http and https pages can open in the browser"
+        );
+
+        block_on(browser_tab_activate(
+            mock.handle(),
+            chrome.clone(),
+            tabs[0].clone(),
+        ))
+        .expect("activate the first tab");
+        assert_eq!(
+            mock.active(&window_label).as_deref(),
+            Some(tabs[0].as_str())
+        );
+        assert_eq!(
+            block_on(browser_tab_activate(
+                mock.handle(),
+                chrome.clone(),
+                "oleafly-browser-pane-gone".to_string()
+            ))
+            .unwrap_err(),
+            "that browser tab is no longer open"
+        );
+
+        block_on(browser_tab_close(
+            mock.handle(),
+            chrome.clone(),
+            second.clone(),
+        ))
+        .expect("close an inactive tab");
+        assert_eq!(
+            mock.tabs(&window_label),
+            vec![tabs[0].clone(), third.clone()]
+        );
+        assert_eq!(
+            mock.active(&window_label).as_deref(),
+            Some(tabs[0].as_str())
+        );
+
+        block_on(browser_tab_close(
+            mock.handle(),
+            chrome.clone(),
+            tabs[0].clone(),
+        ))
+        .expect("close the active tab");
+        assert_eq!(mock.tabs(&window_label), vec![third.clone()]);
+        assert_eq!(mock.active(&window_label).as_deref(), Some(third.as_str()));
+
+        assert_eq!(
+            block_on(browser_tab_close(
+                mock.handle(),
+                chrome.clone(),
+                second.clone()
+            ))
+            .unwrap_err(),
+            "that browser tab is no longer open"
+        );
+
+        block_on(browser_tab_close(mock.handle(), chrome, third)).expect("close the last tab");
+        assert!(with_window_state(&window_label, |state| state.tabs.len())
+            .map(|len| len == 0)
+            .unwrap_or(true));
+    }
+
+    #[test]
+    fn a_second_open_reuses_the_window_and_a_stale_entry_is_dropped() {
+        let _registry = GlobalRegistry::acquire();
+        let mock = MockApp::new();
+
+        let first = block_on(browser_window_open(
+            mock.handle(),
+            mock.main.clone(),
+            "https://example.com/one".to_string(),
+        ))
+        .expect("first window");
+        let second = block_on(browser_window_open(
+            mock.handle(),
+            mock.main.clone(),
+            "https://example.com/two".to_string(),
+        ))
+        .expect("reused window");
+        assert_eq!(first, second);
+        assert_eq!(mock.tabs(&first).len(), 2);
+
+        assert_eq!(
+            block_on(browser_window_open(
+                mock.handle(),
+                mock.pane(&first, 0),
+                "https://example.com/".to_string()
+            ))
+            .unwrap_err(),
+            "the browser window can only be opened from the main window"
+        );
+        assert_eq!(
+            block_on(browser_window_open(
+                mock.handle(),
+                mock.main.clone(),
+                "file:///etc/passwd".to_string()
+            ))
+            .unwrap_err(),
+            "only http and https pages can open in the browser"
+        );
+
+        with_windows(|windows| windows.push(state("oleafly-browser-window-ghost", &[], None)));
+        let third = block_on(browser_window_open(
+            mock.handle(),
+            mock.main.clone(),
+            "https://example.com/three".to_string(),
+        ))
+        .expect("a fresh window replaces the stale entry");
+        assert_ne!(third, first);
+        assert_eq!(window_label_for_pane("oleafly-browser-window-ghost"), None);
+        assert!(with_window_state("oleafly-browser-window-ghost", |_| ()).is_err());
+    }
+
+    #[test]
+    fn focus_and_close_commands_check_the_caller_and_the_window() {
+        let _registry = GlobalRegistry::acquire();
+        let mock = MockApp::new();
+        let window_label = mock.open("https://example.com/");
+
+        assert!(block_on(browser_window_focus(
+            mock.handle(),
+            mock.main.clone(),
+            window_label.clone()
+        ))
+        .is_ok());
+        assert_eq!(
+            block_on(browser_window_focus(
+                mock.handle(),
+                mock.main.clone(),
+                "oleafly-browser-window-ghost".to_string()
+            ))
+            .unwrap_err(),
+            "the browser window is not open"
+        );
+        assert_eq!(
+            block_on(browser_window_focus(
+                mock.handle(),
+                mock.chrome(&window_label),
+                window_label.clone()
+            ))
+            .unwrap_err(),
+            "the browser window can only be opened from the main window"
+        );
+        assert_eq!(
+            block_on(browser_window_close(
+                mock.handle(),
+                mock.pane(&window_label, 0),
+                window_label.clone()
+            ))
+            .unwrap_err(),
+            "the browser window can only be opened from the main window"
+        );
+        assert!(block_on(browser_window_close(
+            mock.handle(),
+            mock.main.clone(),
+            window_label.clone()
+        ))
+        .is_ok());
+    }
+
+    #[test]
+    fn navigation_and_history_commands_resolve_the_target_pane() {
+        let _registry = GlobalRegistry::acquire();
+        let mock = MockApp::new();
+        let window_label = mock.open("https://example.com/");
+        let chrome = mock.chrome(&window_label);
+        let pane = mock.tabs(&window_label)[0].clone();
+
+        block_on(browser_navigate(
+            mock.handle(),
+            chrome.clone(),
+            Some(pane.clone()),
+            "https://example.com/next".to_string(),
+        ))
+        .expect("navigate a named tab");
+        let entry = with_window_state(&window_label, |state| state.tabs[0].clone()).unwrap();
+        assert_eq!(entry.url, "https://example.com/next");
+        assert!(entry.loading);
+
+        block_on(browser_navigate(
+            mock.handle(),
+            mock.main.clone(),
+            None,
+            "https://example.com/from-main".to_string(),
+        ))
+        .expect("the main window navigates the active tab");
+        assert_eq!(
+            with_window_state(&window_label, |state| state.tabs[0].url.clone()).unwrap(),
+            "https://example.com/from-main"
+        );
+
+        assert_eq!(
+            block_on(browser_navigate(
+                mock.handle(),
+                chrome.clone(),
+                None,
+                "not a url".to_string()
+            ))
+            .unwrap_err(),
+            "that is not a valid web address"
+        );
+        assert_eq!(
+            block_on(browser_navigate(
+                mock.handle(),
+                mock.pane(&window_label, 0),
+                None,
+                "https://example.com/".to_string()
+            ))
+            .unwrap_err(),
+            "browser tabs can only be driven from the browser window"
+        );
+        assert_eq!(
+            block_on(browser_navigate(
+                mock.handle(),
+                chrome.clone(),
+                Some("oleafly-browser-pane-gone".to_string()),
+                "https://example.com/".to_string()
+            ))
+            .unwrap_err(),
+            "that browser tab is no longer open"
+        );
+
+        block_on(browser_back(mock.handle(), chrome.clone(), pane.clone())).expect("back");
+        block_on(browser_forward(mock.handle(), chrome.clone(), pane.clone())).expect("forward");
+        block_on(browser_reload(mock.handle(), chrome.clone(), pane.clone())).expect("reload");
+        assert_eq!(
+            block_on(browser_back(mock.handle(), mock.main.clone(), pane.clone())).unwrap_err(),
+            "browser tabs can only be driven from the browser window"
+        );
+        assert_eq!(
+            eval_in_pane(
+                &mock.handle(),
+                &chrome,
+                "oleafly-browser-pane-gone".to_string(),
+                "history.back()"
+            )
+            .unwrap_err(),
+            "that browser tab is no longer open"
+        );
+
+        with_window_state(&window_label, |state| state.active = None).unwrap();
+        assert_eq!(
+            resolve_pane(&mock.handle(), &chrome, None).err(),
+            Some("the browser window has no open tab".to_string())
+        );
+        forget_window(&window_label);
+        assert_eq!(
+            resolve_pane(&mock.handle(), &mock.main, None).err(),
+            Some("the browser window is not open".to_string())
+        );
+    }
+
+    #[test]
+    fn hiding_the_content_keeps_the_active_pane_off_screen() {
+        let _registry = GlobalRegistry::acquire();
+        let mock = MockApp::new();
+        let window_label = mock.open("https://example.com/");
+        let chrome = mock.chrome(&window_label);
+
+        block_on(browser_content_visible(
+            mock.handle(),
+            chrome.clone(),
+            false,
+        ))
+        .expect("hide the content");
+        assert!(with_window_state(&window_label, |state| state.overlay_open).unwrap());
+
+        let hidden = mock.tabs(&window_label)[0].clone();
+        block_on(browser_tab_activate(
+            mock.handle(),
+            chrome.clone(),
+            hidden.clone(),
+        ))
+        .expect("activating while the overlay is open leaves the pane hidden");
+
+        block_on(browser_content_visible(mock.handle(), chrome.clone(), true))
+            .expect("show the content");
+        assert!(!with_window_state(&window_label, |state| state.overlay_open).unwrap());
+        assert_eq!(
+            block_on(browser_content_visible(
+                mock.handle(),
+                mock.main.clone(),
+                true
+            ))
+            .unwrap_err(),
+            "browser tabs can only be driven from the browser window"
+        );
+    }
+
+    #[test]
+    fn a_page_title_reaches_the_tab_and_the_window() {
+        let _registry = GlobalRegistry::acquire();
+        let mock = MockApp::new();
+        let window_label = mock.open("https://example.com/");
+        let pane = mock.pane(&window_label, 0);
+
+        on_title_changed(pane.clone(), "Example Domain".to_string());
+        assert_eq!(
+            with_window_state(&window_label, |state| state.tabs[0].title.clone()).unwrap(),
+            "Example Domain"
+        );
+
+        with_window_state(&window_label, |state| state.active = None).unwrap();
+        on_title_changed(pane, "Background".to_string());
+        assert_eq!(
+            with_window_state(&window_label, |state| state.tabs[0].title.clone()).unwrap(),
+            "Background"
+        );
+
+        on_title_changed(mock.main.clone(), "Not A Tab".to_string());
+    }
+
+    #[test]
+    fn resizing_moves_the_chrome_and_every_pane() {
+        let _registry = GlobalRegistry::acquire();
+        let mock = MockApp::new();
+        let window_label = mock.open("https://example.com/");
+        let window = find_window(mock.app.handle(), &window_label).expect("window");
+
+        apply_layout(&window, PhysicalSize::new(1200, 800), 2.0);
+        apply_layout(&window, PhysicalSize::new(0, 0), 1.0);
+
+        forget_window(&window_label);
+        apply_layout(&window, PhysicalSize::new(1200, 800), 1.0);
+        assert_eq!(
+            find_webview(&window, "oleafly-browser-pane-gone").unwrap_err(),
+            "that browser tab is no longer open"
+        );
+        assert_eq!(
+            find_window(mock.app.handle(), "oleafly-browser-window-ghost").unwrap_err(),
+            "the browser window is not open"
+        );
+    }
+
+    #[test]
+    fn a_destroyed_window_is_forgotten_exactly_once() {
+        let _registry = GlobalRegistry::acquire();
+        let mock = MockApp::new();
+        let window_label = mock.open("https://example.com/");
+
+        on_window_destroyed(&mock.handle(), &window_label);
+        assert!(with_window_state(&window_label, |_| ()).is_err());
+        on_window_destroyed(&mock.handle(), &window_label);
+        assert_eq!(latest_window_label(), None);
+    }
+
+    #[test]
+    fn a_popup_request_opens_another_tab_in_the_same_window() {
+        let _registry = GlobalRegistry::acquire();
+        let mock = MockApp::new();
+        let window_label = mock.open("https://example.com/");
+
+        request_tab(
+            mock.handle(),
+            window_label.clone(),
+            "https://example.com/popup".parse().expect("url"),
+        );
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while mock.tabs(&window_label).len() < 2 && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert_eq!(mock.tabs(&window_label).len(), 2);
+        assert_eq!(
+            with_window_state(&window_label, |state| state.tabs[1].url.clone()).unwrap(),
+            "https://example.com/popup"
+        );
+
+        request_tab(
+            mock.handle(),
+            "oleafly-browser-window-ghost".to_string(),
+            "https://example.com/popup".parse().expect("url"),
+        );
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        assert_eq!(mock.tabs(&window_label).len(), 2);
+    }
+
+    struct Invokable(Webview<MockRuntime>);
+
+    impl AsRef<Webview<MockRuntime>> for Invokable {
+        fn as_ref(&self) -> &Webview<MockRuntime> {
+            &self.0
+        }
+    }
+
+    fn invoke(
+        webview: &Webview<MockRuntime>,
+        cmd: &str,
+        body: serde_json::Value,
+    ) -> Result<serde_json::Value, serde_json::Value> {
+        tauri::test::get_ipc_response(
+            &Invokable(webview.clone()),
+            tauri::webview::InvokeRequest {
+                cmd: cmd.to_string(),
+                callback: tauri::ipc::CallbackFn(0),
+                error: tauri::ipc::CallbackFn(1),
+                url: if cfg!(windows) {
+                    "http://tauri.localhost"
+                } else {
+                    "tauri://localhost"
+                }
+                .parse()
+                .expect("origin"),
+                body: body.into(),
+                headers: Default::default(),
+                invoke_key: tauri::test::INVOKE_KEY.to_string(),
+            },
+        )
+        .map(|body| body.deserialize::<serde_json::Value>().expect("response"))
+    }
+
+    #[test]
+    fn every_browser_command_is_reachable_over_the_ipc_bridge() {
+        let _registry = GlobalRegistry::acquire();
+        let app = mock_builder()
+            .invoke_handler(tauri::generate_handler![
+                browser_window_open,
+                browser_window_focus,
+                browser_window_close,
+                browser_state,
+                browser_tab_open,
+                browser_tab_activate,
+                browser_tab_close,
+                browser_navigate,
+                browser_back,
+                browser_forward,
+                browser_reload,
+                browser_content_visible
+            ])
+            .build(mock_context(noop_assets()))
+            .expect("mock app");
+        let main = WebviewWindowBuilder::new(app.handle(), "main", Default::default())
+            .build()
+            .expect("main window");
+        let main = main.as_ref().clone();
+
+        let window_label = invoke(
+            &main,
+            "browser_window_open",
+            serde_json::json!({ "url": "https://example.com/one" }),
+        )
+        .expect("browser_window_open")
+        .as_str()
+        .expect("window label")
+        .to_string();
+        let window = find_window(app.handle(), &window_label).expect("window");
+        let chrome_label = with_window_state(&window_label, |state| state.chrome.clone()).unwrap();
+        let chrome = find_webview(&window, &chrome_label).expect("chrome webview");
+
+        let snapshot = invoke(&chrome, "browser_state", serde_json::json!({})).expect("state");
+        assert_eq!(snapshot["window"], window_label.as_str());
+        let first = snapshot["tabs"][0]["label"]
+            .as_str()
+            .expect("first tab")
+            .to_string();
+
+        let second = invoke(
+            &chrome,
+            "browser_tab_open",
+            serde_json::json!({ "url": "https://example.com/two" }),
+        )
+        .expect("browser_tab_open")
+        .as_str()
+        .expect("tab label")
+        .to_string();
+
+        invoke(
+            &chrome,
+            "browser_navigate",
+            serde_json::json!({ "tab": null, "url": "https://example.com/three" }),
+        )
+        .expect("browser_navigate");
+        for command in ["browser_back", "browser_forward", "browser_reload"] {
+            invoke(&chrome, command, serde_json::json!({ "tab": second }))
+                .unwrap_or_else(|error| panic!("{command}: {error}"));
+        }
+        invoke(
+            &chrome,
+            "browser_content_visible",
+            serde_json::json!({ "visible": false }),
+        )
+        .expect("browser_content_visible");
+        invoke(
+            &chrome,
+            "browser_tab_activate",
+            serde_json::json!({ "tab": first }),
+        )
+        .expect("browser_tab_activate");
+        invoke(
+            &chrome,
+            "browser_tab_close",
+            serde_json::json!({ "tab": second }),
+        )
+        .expect("browser_tab_close");
+        assert_eq!(
+            with_window_state(&window_label, |state| state.tabs.len()).unwrap(),
+            1
+        );
+
+        invoke(
+            &main,
+            "browser_window_focus",
+            serde_json::json!({ "label": window_label }),
+        )
+        .expect("browser_window_focus");
+        invoke(
+            &main,
+            "browser_window_close",
+            serde_json::json!({ "label": window_label }),
+        )
+        .expect("browser_window_close");
+        assert_eq!(
+            invoke(&main, "browser_state", serde_json::json!({})).unwrap_err(),
+            serde_json::json!("browser tabs can only be driven from the browser window")
+        );
     }
 }

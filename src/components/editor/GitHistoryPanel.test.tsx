@@ -199,4 +199,111 @@ describe("GitHistoryPanel", () => {
 
     expect(writeText).toHaveBeenCalledWith(commits[0].oid);
   });
+
+  it("empties the list when no project is open", async () => {
+    render(<GitHistoryPanel />);
+    await screen.findAllByTestId("history-commit");
+
+    act(() => useFilesStore.setState({ projectId: null }));
+
+    expect(screen.queryAllByTestId("history-commit")).toHaveLength(0);
+    expect(screen.getByText(/No Git history yet/)).toBeInTheDocument();
+    expect(mocks.gitLog).not.toHaveBeenCalledWith(null);
+  });
+
+  it("empties the list when the Git log cannot be read", async () => {
+    mocks.gitLog.mockRejectedValue(new Error("not a repository"));
+    render(<GitHistoryPanel />);
+
+    await waitFor(() => expect(mocks.gitLog).toHaveBeenCalled());
+    expect(await screen.findByText(/No Git history yet/)).toBeInTheDocument();
+  });
+
+  it("restores the confirmed commit and closes the versioning panel", async () => {
+    const user = userEvent.setup();
+    const restoreFromGit = vi.fn().mockResolvedValue(undefined);
+    useFilesStore.setState({ restoreFromGit });
+    render(<GitHistoryPanel />);
+
+    await user.click((await screen.findAllByRole("button", { name: "Restore" }))[0]);
+    await user.click(screen.getByRole("button", { name: "Overwrite all" }));
+
+    await waitFor(() =>
+      expect(restoreFromGit).toHaveBeenCalledWith("project", commits[0].oid),
+    );
+    await waitFor(() => expect(useSettingsStore.getState().versioningOpen).toBe(false));
+  });
+
+  it("keeps the panel open and reports a restore that fails", async () => {
+    const user = userEvent.setup();
+    const restoreFromGit = vi.fn().mockRejectedValue(new Error("checkout failed"));
+    useFilesStore.setState({ restoreFromGit });
+    render(<GitHistoryPanel />);
+
+    await user.click((await screen.findAllByRole("button", { name: "Restore" }))[0]);
+    await user.click(screen.getByRole("button", { name: "Overwrite all" }));
+
+    await waitFor(() => expect(restoreFromGit).toHaveBeenCalled());
+    expect(useSettingsStore.getState().versioningOpen).toBe(true);
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: "Restore" })).toHaveLength(2),
+    );
+  });
+
+  it("drops the confirmation when the restore is cancelled", async () => {
+    const user = userEvent.setup();
+    const restoreFromGit = vi.fn().mockResolvedValue(undefined);
+    useFilesStore.setState({ restoreFromGit });
+    render(<GitHistoryPanel />);
+
+    await user.click((await screen.findAllByRole("button", { name: "Restore" }))[0]);
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("button", { name: "Overwrite all" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Restore" })).toHaveLength(2);
+    expect(restoreFromGit).not.toHaveBeenCalled();
+  });
+
+  it("retires the copied badge on its own", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+      render(<GitHistoryPanel />);
+
+      const button = await screen.findByRole("button", { name: "Copy commit ID 6138cce" });
+      await user.click(button);
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "Copy commit ID 5e37911" })).toBeInTheDocument(),
+      );
+
+      await act(async () => {
+        vi.advanceTimersByTime(1600);
+      });
+      expect(button).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reports a clipboard write it could not complete", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(new Error("denied"));
+    render(<GitHistoryPanel />);
+
+    await user.click(await screen.findByRole("button", { name: "Copy commit ID 6138cce" }));
+
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalled());
+    expect(screen.getByRole("button", { name: "Copy commit ID 6138cce" })).toBeInTheDocument();
+  });
+
+  it("shows a placeholder for a commit whose message is blank", async () => {
+    mocks.gitLog.mockResolvedValue([{ ...commits[0], message: "   \n" }]);
+    render(<GitHistoryPanel />);
+
+    expect(await screen.findByTestId("history-commit-title")).toHaveTextContent(
+      "Untitled commit",
+    );
+    expect(screen.queryByTestId("history-graph-rail")).toBeNull();
+  });
 });

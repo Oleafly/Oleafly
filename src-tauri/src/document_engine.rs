@@ -4805,4 +4805,118 @@ mod tests {
         );
         let _ = std::fs::remove_dir_all(dir);
     }
+
+    const DIAGNOSTIC_LOG: &str = concat!(
+        "! Undefined control sequence.\n",
+        "l.33 \\badmacro\n",
+        "               \n",
+        "\n",
+        "LaTeX Warning: Reference `fig:x' on page 1 undefined on input line 10.\n",
+    );
+
+    #[tokio::test]
+    async fn only_tex_engines_parse_structured_log_diagnostics() {
+        for engine in [DocumentEngineId::Typst, DocumentEngineId::Markdown] {
+            let (log, diagnostics) = parse_log_diagnostics(
+                engine,
+                DIAGNOSTIC_LOG.to_string(),
+                Some("main.tex".to_string()),
+            )
+            .await
+            .unwrap();
+            assert_eq!(log, DIAGNOSTIC_LOG, "{}", engine.as_str());
+            assert!(diagnostics.is_empty(), "{}", engine.as_str());
+        }
+    }
+
+    #[tokio::test]
+    async fn an_isolated_compile_has_no_root_file_to_attribute_diagnostics_to() {
+        let (log, diagnostics) =
+            parse_log_diagnostics(DocumentEngineId::Latex, DIAGNOSTIC_LOG.to_string(), None)
+                .await
+                .unwrap();
+        assert_eq!(log, DIAGNOSTIC_LOG);
+        assert!(diagnostics.is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_tex_compile_returns_errors_and_warnings_against_the_root_file() {
+        for engine in [DocumentEngineId::Latex, DocumentEngineId::Latexmk] {
+            let (log, diagnostics) = parse_log_diagnostics(
+                engine,
+                DIAGNOSTIC_LOG.to_string(),
+                Some("main.tex".to_string()),
+            )
+            .await
+            .unwrap();
+
+            assert_eq!(log, DIAGNOSTIC_LOG, "{}", engine.as_str());
+            assert_eq!(diagnostics.len(), 2, "{}", engine.as_str());
+            assert_eq!(
+                diagnostics[0].severity,
+                oleafly_core::LogSeverity::Error,
+                "{}",
+                engine.as_str()
+            );
+            assert_eq!(diagnostics[0].message, "Undefined control sequence.");
+            assert_eq!(diagnostics[0].line, Some(33));
+            assert_eq!(diagnostics[0].file.as_deref(), Some("main.tex"));
+            assert_eq!(diagnostics[1].severity, oleafly_core::LogSeverity::Warning);
+            assert_eq!(diagnostics[1].line, Some(10));
+            assert_eq!(diagnostics[1].file.as_deref(), Some("main.tex"));
+        }
+    }
+
+    #[tokio::test]
+    async fn an_empty_log_parses_to_no_diagnostics() {
+        let (log, diagnostics) = parse_log_diagnostics(
+            DocumentEngineId::Latex,
+            String::new(),
+            Some("main.tex".to_string()),
+        )
+        .await
+        .unwrap();
+        assert!(log.is_empty());
+        assert!(diagnostics.is_empty());
+    }
+
+    #[test]
+    fn a_missing_biber_control_file_is_not_a_retained_artifact() {
+        let directory = tempfile::tempdir().unwrap();
+        let artifacts = EngineArtifacts {
+            output_dir: directory.path().to_path_buf(),
+            pdf: None,
+            log: None,
+            synctex: None,
+        };
+        let biber_control = directory.path().join("never-written.bcf");
+
+        let retained = clear_stale_compile_artifacts(&artifacts, Some(&biber_control));
+
+        assert!(retained.is_empty());
+        assert!(!biber_control.exists());
+    }
+
+    #[test]
+    fn a_biber_control_path_that_cannot_be_removed_is_retained() {
+        let directory = tempfile::tempdir().unwrap();
+        let artifacts = EngineArtifacts {
+            output_dir: directory.path().to_path_buf(),
+            pdf: None,
+            log: None,
+            synctex: None,
+        };
+        let biber_control = directory.path().join("stubborn.bcf");
+        std::fs::create_dir(&biber_control).unwrap();
+
+        let retained = clear_stale_compile_artifacts(&artifacts, Some(&biber_control));
+
+        assert_eq!(retained.len(), 1);
+        assert_eq!(retained[0].path, biber_control);
+        assert!(matches!(
+            retained[0].identity,
+            RetainedArtifactIdentity::Unreadable
+        ));
+        assert!(biber_control.exists());
+    }
 }
