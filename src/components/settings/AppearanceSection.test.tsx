@@ -10,11 +10,9 @@ import {
 } from "@/store/settings";
 
 const themeMocks = vi.hoisted(() => ({
-  theme: "dark" as "light" | "dark",
-  setTheme: vi.fn(),
-  toggleTheme: vi.fn(),
+  preference: "dark" as "system" | "light" | "dark",
+  setPreference: vi.fn(),
 }));
-const toggleTheme = themeMocks.toggleTheme;
 const browserCookieMocks = vi.hoisted(() => ({
   detectBrowserCookieSources: vi.fn(),
   importBrowserCookies: vi.fn(),
@@ -30,9 +28,10 @@ function deferred<T>() {
 
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({
-    theme: themeMocks.theme,
-    setTheme: themeMocks.setTheme,
-    toggleTheme: themeMocks.toggleTheme,
+    preference: themeMocks.preference,
+    theme: themeMocks.preference === "light" ? "light" : "dark",
+    setPreference: themeMocks.setPreference,
+    toggleTheme: vi.fn(),
   }),
 }));
 
@@ -46,9 +45,8 @@ import { ShortcutsSection } from "./ShortcutsSection";
 
 describe("Appearance settings tabs", () => {
   beforeEach(() => {
-    themeMocks.theme = "dark";
-    themeMocks.setTheme.mockClear();
-    themeMocks.toggleTheme.mockClear();
+    themeMocks.preference = "dark";
+    themeMocks.setPreference.mockClear();
     browserCookieMocks.detectBrowserCookieSources.mockReset().mockResolvedValue([
       {
         browser: "chrome",
@@ -198,14 +196,14 @@ describe("Appearance settings tabs", () => {
     await user.click(
       screen.getByRole("button", { name: `${ACCENTS[1].name} accent` }),
     );
-    await user.click(screen.getByRole("switch", { name: "Dark mode" }));
+    await user.click(screen.getByTestId("settings-appearance-light"));
 
     expect(useSettingsStore.getState()).toMatchObject({
       dockPlacement: "right",
       bgPattern: "grid",
       accentColor: ACCENTS[1].color,
     });
-    expect(toggleTheme).toHaveBeenCalledOnce();
+    expect(themeMocks.setPreference).toHaveBeenCalledWith("light");
 
     await user.click(screen.getByRole("tab", { name: "Editor" }));
     for (const label of [
@@ -228,12 +226,37 @@ describe("Appearance settings tabs", () => {
     });
   });
 
+  it("offers system, light, and dark appearance with the active choice pressed", () => {
+    themeMocks.preference = "system";
+    render(<AppearanceSection />);
+
+    const row = screen.getByTestId("settings-row-appearance");
+    expect(row).toHaveTextContent("Appearance");
+    expect(row).toHaveTextContent("System follows the operating system and changes when it does.");
+    expect(within(row).getByRole("button", { name: "Use system theme" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(within(row).getByRole("button", { name: "Use light theme" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(within(row).getByRole("button", { name: "Use dark theme" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.queryByRole("switch", { name: "Dark mode" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("settings-appearance-dark"));
+    expect(themeMocks.setPreference).toHaveBeenCalledWith("dark");
+  });
+
   it("resets only Appearance preferences after confirmation", async () => {
     const user = userEvent.setup();
     const settings = useSettingsStore.getState();
     settings.setDockPlacement("right");
     settings.setVisualEditor(true);
-    themeMocks.theme = "light";
+    themeMocks.preference = "light";
 
     render(<AppearanceSection />);
 
@@ -254,7 +277,7 @@ describe("Appearance settings tabs", () => {
     });
     expect(localStorage.getItem("oleafly.dockPlacement")).toBe("left");
     expect(localStorage.getItem("oleafly.visualEditor")).toBe("1");
-    expect(themeMocks.setTheme).toHaveBeenCalledWith("dark");
+    expect(themeMocks.setPreference).toHaveBeenCalledWith("system");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 

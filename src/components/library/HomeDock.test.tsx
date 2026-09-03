@@ -4,8 +4,18 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 
+const themeMocks = vi.hoisted(() => ({
+  preference: "system" as "system" | "light" | "dark",
+  setPreference: vi.fn(),
+}));
+
 vi.mock("@/lib/theme", () => ({
-  useTheme: vi.fn(() => ({ theme: "light", toggleTheme: vi.fn() })),
+  useTheme: () => ({
+    preference: themeMocks.preference,
+    theme: "light",
+    setPreference: themeMocks.setPreference,
+    toggleTheme: vi.fn(),
+  }),
 }));
 
 vi.mock("@/lib/use-fullscreen", () => ({
@@ -15,6 +25,8 @@ vi.mock("@/lib/use-fullscreen", () => ({
 import { HomeDock } from "./HomeDock";
 
 beforeEach(() => {
+  themeMocks.preference = "system";
+  themeMocks.setPreference.mockClear();
   useHomeViewStore.setState({ page: "library", toolsOpen: false });
   useSettingsStore.setState({ dockPlacement: "left", latexTools: true });
 });
@@ -24,7 +36,7 @@ describe("HomeDock", () => {
     render(<HomeDock />);
     expect(screen.getByTestId("new-project")).toBeInTheDocument();
     expect(screen.getByTestId("open-latex-tools")).toBeInTheDocument();
-    expect(screen.getByTestId("toggle-theme")).toBeInTheDocument();
+    expect(screen.getByTestId("home-theme-menu")).toBeInTheDocument();
     expect(screen.getByTestId("open-settings")).toBeInTheDocument();
   });
 
@@ -51,5 +63,32 @@ describe("HomeDock", () => {
     const dock = screen.getByTestId("home-dock");
     const first = dock.querySelector("button[data-testid]");
     expect(first).toHaveAttribute("data-testid", "new-project");
+  });
+
+  it("names the current appearance on the theme menu and styles it like its neighbours", () => {
+    themeMocks.preference = "dark";
+    render(<HomeDock />);
+    const trigger = screen.getByTestId("home-theme-menu");
+    const settings = screen.getByTestId("open-settings");
+    expect(trigger).toHaveAttribute("aria-label", "Appearance: Dark");
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    expect(trigger.className).toContain("rounded-full");
+    expect(trigger.className).toContain("hover:scale-[1.2]");
+    expect(trigger.className).toContain("h-9");
+    expect(settings.className).toContain("rounded-full");
+  });
+
+  it("offers system, light, and dark from the dock menu and applies the choice", () => {
+    render(<HomeDock />);
+    fireEvent.click(screen.getByTestId("home-theme-menu"));
+
+    const options = screen.getAllByRole("menuitemradio");
+    expect(options.map((option) => option.textContent)).toEqual(["System", "Light", "Dark"]);
+    expect(screen.getByTestId("theme-option-system")).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByTestId("theme-option-dark")).toHaveAttribute("aria-checked", "false");
+
+    fireEvent.click(screen.getByTestId("theme-option-dark"));
+    expect(themeMocks.setPreference).toHaveBeenCalledWith("dark");
+    expect(screen.getByTestId("home-theme-menu")).toHaveAttribute("aria-expanded", "false");
   });
 });

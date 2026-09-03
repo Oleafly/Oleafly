@@ -13,12 +13,19 @@ state without changing the source format.
   selection operations.
 - Autosave with dirty-state and compile-result freshness tracking.
 - Command palette and omnibar for project and document actions.
-- Light and dark themes using shared design tokens.
+- System, light, and dark appearance using shared design tokens.
 - Settings for engines, language servers, AI providers, MCP, shortcuts, and
   downloads.
 - Terminal dock with shell tabs that can be renamed and colored per project.
 - Local word count, project search, logs, and diagnostic surfaces.
 - Update checks through the signed application updater.
+
+## Appearance
+
+Appearance has three choices: System, Light, and Dark. System follows the
+operating system and changes when it does, with no restart needed. You can set
+it from the theme menu in the toolbar or the home dock, the App tab under
+Appearance in settings, the welcome screen, or the command palette.
 
 ## Terminal dock
 

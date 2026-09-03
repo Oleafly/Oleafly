@@ -1,13 +1,23 @@
 import type { ReactNode } from "react";
-import { Moon, PenTool, Plus, Search, Settings as SettingsIcon, Sun, ToolCase } from "lucide-react";
+import { PenTool, Plus, Search, Settings as SettingsIcon, ToolCase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { ThemeMenu } from "@/components/layout/ThemeControls";
 import { cn, isMac, shortcut } from "@/lib/utils";
 import { useFullscreen } from "@/lib/use-fullscreen";
-import { useTheme } from "@/lib/theme";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
+
+const DOCK_BUTTON_SHAPE = "rounded-full hover:scale-[1.2]";
+
+const dockButtonClass = (active: boolean) =>
+  cn(
+    DOCK_BUTTON_SHAPE,
+    active
+      ? "bg-white/20 text-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:bg-white/25 dark:bg-white/10 dark:hover:bg-white/15"
+      : "text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/10",
+  );
 
 function DockButton({
   label,
@@ -37,13 +47,7 @@ function DockButton({
         variant={primary ? "default" : "ghost"}
         size="icon"
         aria-label={label}
-        className={cn(
-          "rounded-full hover:scale-[1.2]",
-          !primary &&
-            (active
-              ? "bg-white/20 text-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:bg-white/25 dark:bg-white/10 dark:hover:bg-white/15"
-              : "text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/10"),
-        )}
+        className={primary ? DOCK_BUTTON_SHAPE : dockButtonClass(active)}
         onClick={onClick}
       >
         {icon}
@@ -62,7 +66,6 @@ export function HomeDock() {
   const dockPlacement = useSettingsStore((s) => s.dockPlacement);
   const latexTools = useSettingsStore((s) => s.latexTools);
   const hasProjects = useFilesStore((s) => s.projects.length > 0);
-  const { theme, toggleTheme } = useTheme();
   const fullscreen = useFullscreen();
   const toolsOpen = useHomeViewStore((s) => s.toolsOpen);
   const openTools = useHomeViewStore((s) => s.openTools);
@@ -109,12 +112,11 @@ export function HomeDock() {
           tooltipSide={tooltipSide}
         />
       )}
-      <DockButton
-        label={theme === "dark" ? "Light theme" : "Dark theme"}
-        icon={theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-        onClick={toggleTheme}
-        testId="toggle-theme"
-        tooltipSide={tooltipSide}
+      <ThemeMenu
+        side={tooltipSide}
+        align="center"
+        triggerClassName={dockButtonClass(false)}
+        testId="home-theme-menu"
       />
       <DockButton
         label="Settings"

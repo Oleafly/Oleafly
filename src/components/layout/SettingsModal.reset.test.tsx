@@ -7,7 +7,7 @@ import { useSettingsStore } from "@/store/settings";
 
 const mocks = vi.hoisted(() => ({
   libraryRoot: vi.fn(),
-  setTheme: vi.fn(),
+  setPreference: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => false }));
@@ -21,8 +21,9 @@ vi.mock("@/components/layout/UpdateChecker", () => ({
 }));
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({
+    preference: "dark",
     theme: "dark",
-    setTheme: mocks.setTheme,
+    setPreference: mocks.setPreference,
     toggleTheme: vi.fn(),
   }),
 }));
@@ -133,7 +134,7 @@ describe("Settings section resets", () => {
     expect(useTourStore.getState().enabled).toBe(tourEnabled);
     expect(useTourStore.getState().tours).toEqual(tourProgress);
     expect(localStorage.getItem(TOUR_STORAGE_KEY)).toBe(persistedTourProgress);
-    expect(mocks.setTheme).not.toHaveBeenCalled();
+    expect(mocks.setPreference).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(
         screen.queryByRole("alertdialog", { name: /Reset General settings/u }),
@@ -186,7 +187,7 @@ describe("Settings section resets", () => {
     expect(localStorage.getItem("oleafly.accent")).toBe("#db2777");
     expect(localStorage.getItem("oleafly.editorTheme")).toBe("dracula");
     expect(localStorage.getItem("oleafly.defaultLatexEngine")).toBe("latexmk");
-    expect(mocks.setTheme).not.toHaveBeenCalled();
+    expect(mocks.setPreference).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(
         screen.queryByRole("alertdialog", {

@@ -7,9 +7,7 @@ import {
   Download,
   FileCode2,
   Image as ImageIcon,
-  Moon,
   Sigma,
-  Sun,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverItem } from "@/components/ui/popover";
@@ -20,7 +18,7 @@ import {
 } from "@/components/tools/EquationPreviewPanel";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
-import { useTheme } from "@/lib/theme";
+import { ThemeMenu } from "@/components/layout/ThemeControls";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { cn, isMac } from "@/lib/utils";
 import { WindowControls } from "@/components/layout/WindowControls";
@@ -29,7 +27,6 @@ import { toast } from "@/lib/toast";
 export function EquationToolView() {
   const activePage = useHomeViewStore((s) => s.page);
   const goTo = useHomeViewStore((s) => s.goTo);
-  const { theme, toggleTheme } = useTheme();
   const editorTheme = useSettingsStore((s) => s.editorTheme);
   const fullscreen = useFullscreen();
   const [input, setInput] = useState(EQUATION_EXAMPLES[0].latex);
@@ -138,9 +135,7 @@ export function EquationToolView() {
           />
           {rendered.error ? "Error" : "Rendered"}
         </div>
-        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
-          {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-        </Button>
+        <ThemeMenu testId="equation-theme-menu" />
         <Button
           variant="outline"
           size="sm"

@@ -1,15 +1,27 @@
 import { test, expect } from "../fixtures";
 import { openProject, openRailTab, waitLong } from "../helpers";
 
-test("the rail theme button flips the real theme", async ({ tauriPage }) => {
+test("the rail theme menu sets the real theme", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   const isDark = () =>
     tauriPage.evaluate<boolean>(`document.documentElement.classList.contains('dark')`);
+  const menu = tauriPage.locator('[data-testid="theme-menu"]');
+  const choose = async (value: "system" | "light" | "dark") => {
+    await tauriPage.click('[data-testid="theme-menu"]');
+    const item = `[data-testid="theme-option-${value}"]`;
+    await expect(tauriPage.locator(item)).toBeVisible();
+    await tauriPage.click(item);
+    await expect(menu).toHaveAttribute("aria-expanded", "false");
+  };
   const before = await isDark();
-  await tauriPage.click('[aria-label="Toggle theme"]');
-  expect(await isDark()).toBe(!before);
-  await tauriPage.click('[aria-label="Toggle theme"]');
+  await choose("light");
+  expect(await isDark()).toBe(false);
+  await expect(menu).toHaveAttribute("aria-label", "Appearance: Light");
+  await choose("dark");
+  expect(await isDark()).toBe(true);
+  await expect(menu).toHaveAttribute("aria-label", "Appearance: Dark");
+  await choose(before ? "dark" : "light");
   expect(await isDark()).toBe(before);
 });
 

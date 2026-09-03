@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const themeMocks = vi.hoisted(() => ({
+  preference: "system" as "system" | "light" | "dark",
+  setPreference: vi.fn(),
+}));
 
 vi.mock("react-joyride", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-joyride")>()),
@@ -9,6 +14,15 @@ vi.mock("react-joyride", async (importOriginal) => ({
 }));
 
 vi.mock("@/lib/confetti", () => ({ celebrate: vi.fn() }));
+
+vi.mock("@/lib/theme", () => ({
+  useTheme: () => ({
+    preference: themeMocks.preference,
+    theme: "dark",
+    setPreference: themeMocks.setPreference,
+    toggleTheme: vi.fn(),
+  }),
+}));
 
 import { TourGuide } from "./TourGuide";
 import { useFilesStore } from "@/store/files";
@@ -38,6 +52,44 @@ beforeEach(() => {
   useSettingsStore.setState({ newProjectOpen: false, settingsOpen: false });
   useFilesStore.setState({ projectId: null, loading: false });
   useTourStore.setState({ enabled: true, activeTourId: "home", activeStepIndex: 0 });
+  themeMocks.preference = "system";
+  themeMocks.setPreference.mockClear();
+});
+
+describe("Welcome appearance choice", () => {
+  it("offers system, light, and dark with the active preference pressed", () => {
+    const home = document.createElement("div");
+    home.setAttribute("data-tour", "home");
+    home.setAttribute("data-projects-loaded", "true");
+    document.body.appendChild(home);
+    useTourStore.setState((state) => ({
+      activeTourId: null,
+      tours: { ...state.tours, home: { ...state.tours.home, status: "pending" } },
+    }));
+
+    render(<TourGuide />);
+
+    const dialog = screen.getByTestId("tour-welcome");
+    const choices = within(dialog).getAllByRole("button", {
+      name: /^Use (system|light|dark) theme$/,
+    });
+    expect(choices.map((choice) => choice.textContent)).toEqual(["System", "Light", "Dark"]);
+    expect(within(dialog).getByRole("button", { name: "Use system theme" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(within(dialog).getByRole("button", { name: "Use light theme" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(within(dialog).getByRole("button", { name: "Use dark theme" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Use dark theme" }));
+    expect(themeMocks.setPreference).toHaveBeenCalledWith("dark");
+  });
 });
 
 afterEach(() => {

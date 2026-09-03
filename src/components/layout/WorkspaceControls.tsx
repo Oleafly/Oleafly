@@ -1,12 +1,10 @@
 import { Fragment, useEffect } from "react";
 import {
   Globe,
-  Moon,
   PanelLeft,
   PanelLeftClose,
   Settings as SettingsIcon,
   Sparkles,
-  Sun,
   SquareTerminal,
 } from "lucide-react";
 import { railSections, type AppContext, type RailTabContribution } from "@oleafly/registry";
@@ -18,6 +16,7 @@ import { useTheme } from "@/lib/theme";
 import { toggleBrowser } from "@/lib/browser-window";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { ThemeMenu } from "@/components/layout/ThemeControls";
 import { cn } from "@/lib/utils";
 
 const ctrlBtn = (active: boolean) =>
@@ -138,7 +137,6 @@ export function WorkspaceDockControls() {
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const setAssistantOpen = useSettingsStore((s) => s.setAssistantOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
-  const { theme, toggleTheme } = useTheme();
   const terminalShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleTerminal));
   const browserShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleBrowser));
   const terminalLabel = `${terminalOpen ? "Hide" : "Show"} terminal (${terminalShortcut})`;
@@ -193,18 +191,7 @@ export function WorkspaceDockControls() {
         </Button>
       </Tooltip>
       <DockDivider />
-      <Tooltip label={theme === "dark" ? "Light theme" : "Dark theme"} side="bottom">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Toggle theme"
-          onClick={toggleTheme}
-          className={dockBtn(false)}
-        >
-          {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-        </Button>
-      </Tooltip>
+      <ThemeMenu triggerClassName={dockBtn(false)} />
       <Tooltip label="Settings" side="bottom">
         <Button
           type="button"

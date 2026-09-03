@@ -30,6 +30,7 @@ describe("WorkspaceControls", () => {
     });
     useFilesStore.setState({ projectId: "proj-1" });
     useShortcutStore.getState().resetAll();
+    localStorage.removeItem("oleafly.theme");
   });
   afterEach(() => {
     useFilesStore.setState({ projectId: null });
@@ -90,9 +91,44 @@ describe("WorkspaceControls", () => {
     expect(toggleBrowser).toHaveBeenCalled();
     fireEvent.click(screen.getByTestId("rail-assistant-toggle"));
     expect(useSettingsStore.getState().assistantOpen).toBe(true);
-    expect(screen.getByLabelText("Toggle theme")).toBeInTheDocument();
+    expect(screen.getByTestId("theme-menu")).toHaveAttribute("aria-label", "Appearance: System");
     fireEvent.click(screen.getByLabelText("Settings"));
     expect(useSettingsStore.getState().settingsOpen).toBe(true);
+  });
+
+  it("offers system, light, and dark from the toolbar theme menu", () => {
+    render(
+      <ThemeProvider>
+        <WorkspaceDockControls />
+      </ThemeProvider>,
+    );
+    const trigger = screen.getByTestId("theme-menu");
+    const settings = screen.getByLabelText("Settings");
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger.className).toContain("h-9");
+    expect(trigger.className).toContain("w-9");
+    expect(trigger.className).toContain("text-muted-foreground");
+    expect(trigger.parentElement?.parentElement).toBe(settings.parentElement?.parentElement);
+
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    const options = screen.getAllByRole("menuitemradio");
+    expect(options.map((option) => option.textContent)).toEqual(["System", "Light", "Dark"]);
+    expect(screen.getByTestId("theme-option-system")).toHaveAttribute("aria-checked", "true");
+
+    fireEvent.click(screen.getByTestId("theme-option-light"));
+    expect(localStorage.getItem("oleafly.theme")).toBe("light");
+    expect(document.documentElement.classList.contains("light")).toBe(true);
+    expect(screen.getByTestId("theme-menu")).toHaveAttribute("aria-label", "Appearance: Light");
+    expect(screen.getByTestId("theme-menu")).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(screen.getByTestId("theme-menu"));
+    expect(screen.getByTestId("theme-option-light")).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByTestId("theme-option-dark"));
+    expect(localStorage.getItem("oleafly.theme")).toBe("dark");
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(screen.getByTestId("theme-menu")).toHaveAttribute("aria-label", "Appearance: Dark");
   });
 
   it("renders the dock toggles as individual toolbar buttons", () => {

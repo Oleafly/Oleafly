@@ -9,9 +9,10 @@ import {
   type Step,
   type TooltipRenderProps,
 } from "react-joyride";
-import { ArrowLeft, Check, Moon, Sun } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import { modalCoordinator } from "@oleafly/templates/modal-coordinator";
 import { LeafLogo } from "@/components/layout/LeafLogo";
+import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Kbd } from "@/components/ui/kbd";
@@ -477,7 +478,7 @@ function Welcome({ onStart }: { onStart: () => void }) {
   onStartRef.current = onStart;
   const accentColor = useSettingsStore((s) => s.accentColor);
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
-  const { theme, setTheme } = useTheme();
+  const { preference, setPreference } = useTheme();
   const sparkles = useMemo(
     () =>
       Array.from({ length: 10 }, (_, i) => ({
@@ -622,29 +623,12 @@ function Welcome({ onStart }: { onStart: () => void }) {
         </div>
         <div className="mt-5">
           <p className="text-sm font-semibold text-muted-foreground">Set the mood</p>
-          <div className="mx-auto mt-2.5 grid max-w-[14rem] grid-cols-2 gap-1 rounded-xl bg-muted/35 p-1">
-            {([
-              { value: "light", label: "Light", icon: Sun },
-              { value: "dark", label: "Dark", icon: Moon },
-            ] as const).map(({ value, label, icon: Icon }) => (
-              <button
-                type="button"
-                key={value}
-                aria-label={`Use ${label.toLowerCase()} theme`}
-                aria-pressed={theme === value}
-                onClick={() => setTheme(value)}
-                className={cn(
-                  "flex h-9 items-center justify-center gap-2 rounded-lg text-xs font-medium transition-colors",
-                  theme === value
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <Icon className="size-3.5" aria-hidden />
-                {label}
-              </button>
-            ))}
-          </div>
+          <ThemeSegmentedControl
+            preference={preference}
+            onChange={setPreference}
+            variant="pill"
+            className="mx-auto mt-2.5 max-w-[19rem]"
+          />
         </div>
         <Button className="mt-5" onClick={onStart}>
           Show me around
