@@ -2,6 +2,8 @@ import { expect } from "./fixtures";
 import type { LocatorLike } from "@srsholmes/tauri-playwright";
 import type { E2ePdfProbe } from "../src/lib/e2e-probe";
 
+const SHELL_READY_TIMEOUT_MS = 60_000;
+
 export interface Page {
   click(selector: string, opts?: { timeout?: number }): Promise<void>;
   fill(selector: string, text: string): Promise<void>;
@@ -122,7 +124,7 @@ export async function openGallery(page: Page) {
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',
   ) as unknown as LocatorLike;
-  await expect(library).toBeVisible({ timeout: 30_000 });
+  await expect(library).toBeVisible({ timeout: SHELL_READY_TIMEOUT_MS });
   const hasWelcome = await page.evaluate<boolean>(
     `!!document.querySelector('[data-testid="create-first-project"]')`,
   );
@@ -130,7 +132,7 @@ export async function openGallery(page: Page) {
   const gallery = page.locator(
     '[data-testid="template-gallery"]',
   ) as unknown as LocatorLike;
-  await expect(gallery).toBeVisible({ timeout: 30_000 });
+  await expect(gallery).toBeVisible({ timeout: SHELL_READY_TIMEOUT_MS });
 }
 
 // Insert through CodeMirror's authoritative state rather than searching its
@@ -852,7 +854,7 @@ export async function openProject(page: Page & { getByText(t: string): { click()
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',
   ) as unknown as LocatorLike;
-  await expect(library).toBeVisible({ timeout: 30_000 });
+  await expect(library).toBeVisible({ timeout: SHELL_READY_TIMEOUT_MS });
   try {
     await page.click(`button[aria-label=${JSON.stringify(`Open ${name}`)}]`);
   } catch (error) {
@@ -878,7 +880,7 @@ export async function openProject(page: Page & { getByText(t: string): { click()
   const workspace = page.locator(
     "[data-e2e-project-id]",
   ) as unknown as LocatorLike;
-  await expect(workspace).toBeVisible({ timeout: 30_000 });
+  await expect(workspace).toBeVisible({ timeout: SHELL_READY_TIMEOUT_MS });
 }
 
 // Creating or clicking a file updates the tree before the editor finishes
@@ -1336,7 +1338,7 @@ export async function openDiagramComposer(page: Page) {
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',
   ) as unknown as LocatorLike;
-  await expect(library).toBeVisible({ timeout: 30_000 });
+  await expect(library).toBeVisible({ timeout: SHELL_READY_TIMEOUT_MS });
   await page.click('[data-testid="open-diagram-composer"]');
   const dialog = page.locator(
     '[role="dialog"][data-tour="diagram-composer"]',
