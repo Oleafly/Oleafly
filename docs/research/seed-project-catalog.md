@@ -123,7 +123,7 @@ The corpus is 28 projects: 17 LaTeX and 11 Typst. Every one is verified to compi
 
 ```bash
 pnpm seed:research:validate           # compile every fixture, or a named slug
-pnpm seed:research:sync               # pack fixtures into ~/Codespace/Oleafly/oleafly-seed
+pnpm seed:research:sync               # pack fixtures into ../oleafly-seed, or OLEAFLY_SEED_ROOT
 ```
 
 `sync` writes one archive per fixture, adds `project.json` and `FIXTURE.md`,
