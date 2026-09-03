@@ -80,6 +80,7 @@ export function TerminalPane({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
+  const openedRef = useRef(false);
   const sessionIdRef = useRef<string | null>(null);
   const sessionLiveRef = useRef(false);
   const surfacedErrorsRef = useRef(new Set<string>());
@@ -158,17 +159,16 @@ export function TerminalPane({
     });
     const fit = new FitAddon();
     terminal.loadAddon(fit);
-    terminal.open(host);
     const outputTarget = host.parentElement;
     const outputWritten = terminalOutputCallback(terminal, outputTarget);
     outputWrittenRef.current = outputWritten;
     if (outputWritten && outputTarget) outputTarget.dataset.terminalOutput = "";
+    openedRef.current = false;
     if (visibleRef.current) {
+      terminal.open(host);
+      openedRef.current = true;
       fit.fit();
       terminal.focus();
-    } else if (host.clientWidth > 0) {
-      const proposed = fit.proposeDimensions();
-      if (proposed) terminal.resize(proposed.cols, terminal.rows);
     }
     terminalRef.current = terminal;
     fitRef.current = fit;
@@ -275,7 +275,7 @@ export function TerminalPane({
       if (!sessionId && !sessionExited && !disposed) pendingInput.push(data);
     });
     const observer = new ResizeObserver(() => {
-      if (!visibleRef.current) return;
+      if (!visibleRef.current || !openedRef.current) return;
       fit.fit();
       if (sessionLive && sessionId) {
         void invoke("term_resize", {
@@ -313,6 +313,7 @@ export function TerminalPane({
       sessionIdRef.current = null;
       terminalRef.current = null;
       fitRef.current = null;
+      openedRef.current = false;
       if (outputWrittenRef.current === outputWritten) outputWrittenRef.current = undefined;
       terminal.dispose();
     };
@@ -334,7 +335,7 @@ export function TerminalPane({
       foreground: terminalForeground,
       cursor: terminalCursorColor,
     };
-    if (!visibleRef.current) return;
+    if (!visibleRef.current || !openedRef.current) return;
     fitRef.current?.fit();
     const id = sessionIdRef.current;
     if (id && sessionLiveRef.current) {
@@ -382,6 +383,12 @@ export function TerminalPane({
     if (!visible) return;
     const frame = window.requestAnimationFrame(() => {
       const terminal = terminalRef.current;
+      const host = hostRef.current;
+      if (terminal && host && !openedRef.current) {
+        terminal.open(host);
+        openedRef.current = true;
+      }
+      if (!openedRef.current) return;
       fitRef.current?.fit();
       terminal?.focus();
       const id = sessionIdRef.current;

@@ -137,9 +137,10 @@ test("the real terminal opens, echoes, and exits cleanly", async ({
       .join(",") || "none"`);
   await expect(tauriPage.locator(TERMINAL)).not.toBeVisible();
   await expect.poll(sessionOpenState, { timeout: 60_000 }).toMatch(/^open:ok:/u);
-  await expect(tauriPage.locator(`${TERMINAL_HOST} .xterm-helper-textarea`)).toHaveCount(1);
+  await expect(tauriPage.locator(`${TERMINAL_HOST} .xterm-helper-textarea`)).toHaveCount(0);
   await tauriPage.click(TERMINAL_TOGGLE);
   await expect(tauriPage.locator(TERMINAL)).toBeVisible();
+  await expect(tauriPage.locator(`${TERMINAL_HOST} .xterm-helper-textarea`)).toHaveCount(1);
   await expect(tauriPage.getByTestId("dock-terminal-loading")).toHaveCount(0);
   // Return the channel breadcrumbs plus the buffer tail so a failure names
   // the stage that broke: open error, no output at all, or a promptless
