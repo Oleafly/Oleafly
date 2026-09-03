@@ -45,12 +45,6 @@ coverage/
 # e2e secrets (copy from e2e/.env.example)
 e2e/.env
 
-# Grok CLI session state
-.grok/
-
-# Claude Code local session state
-.claude/
-.superpowers/
 e2e-debug/
 src-tauri/tauri.windows-signing.conf.json
 

@@ -1,5 +1,4 @@
 import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { zipSync } from "fflate";
@@ -12,7 +11,7 @@ import {
 const MAX_PROJECT_BYTES = 25 * 1024 * 1024;
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDir, "..");
-const defaultSeedRoot = join(homedir(), "Codespace", "Oleafly", "oleafly-seed");
+const defaultSeedRoot = resolve(repositoryRoot, "..", "oleafly-seed");
 const seedRoot = resolve(process.env.OLEAFLY_SEED_ROOT || defaultSeedRoot);
 const archiveRoot = join(seedRoot, "archives");
 const encoder = new TextEncoder();
