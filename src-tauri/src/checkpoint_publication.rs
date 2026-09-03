@@ -2712,11 +2712,7 @@ async fn stage_and_replay(
     let replayed_inputs = replayed_inputs_for(&candidate, &replay_dependencies)?;
     let replay_hash = output_hash(&workspace.replay(), cancel).await?;
     ensure_checkpoint_not_cancelled(cancel)?;
-    if replay_hash != discovery_hash {
-        return Err(AdapterFailure::unavailable(
-            "the sealed replay PDF differs from the validated compile",
-        ));
-    }
+    prove_replay(discovery_hash, replay_hash)?;
     let completed_at_unix_ms = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|duration| duration.as_millis().min(i64::MAX as u128) as i64)
@@ -2739,6 +2735,18 @@ async fn stage_and_replay(
             evidence,
         },
     )))
+}
+
+fn prove_replay(
+    discovery_hash: ContentHash,
+    replay_hash: ContentHash,
+) -> Result<(), AdapterFailure> {
+    if replay_hash != discovery_hash {
+        return Err(AdapterFailure::unavailable(
+            "the controlled compile could not be reproduced exactly, so the checkpoint could not be proven",
+        ));
+    }
+    Ok(())
 }
 
 struct PreparedCheckpointPublication {
@@ -2768,7 +2776,6 @@ pub(crate) struct PublicationRequest {
     pub main_document: String,
     pub policy: CheckpointPolicy,
     pub options: crate::document_engine::CompileOptions,
-    pub primary_hash: ContentHash,
     pub primary_requires_untracked_helper: bool,
 }
 
@@ -3062,22 +3069,39 @@ fn biber_publication_skip() -> CheckpointPublicationOutcome {
     })
 }
 
-pub(crate) fn capture_primary_evidence(
+#[allow(clippy::too_many_arguments)]
+fn publication_request(
+    project_id: &str,
+    project_root: &Path,
     primary_output_dir: &Path,
-) -> Result<(ContentHash, bool), String> {
-    let pdf = primary_output_dir.join(format!("{}.pdf", crate::paths::ENTRY_STEM));
-    let hash = ContentHash::digest_file(&pdf)
-        .map_err(|error| format!("compiled PDF could not be fingerprinted: {error}"))?;
-    Ok((
-        hash,
-        latex_output_requires_untracked_helper(primary_output_dir),
-    ))
+    engine_name: &str,
+    main_document: &str,
+    policy: &CheckpointPolicy,
+    options: crate::document_engine::CompileOptions,
+) -> Result<PublicationRequest, CheckpointPublicationOutcome> {
+    let engine = preflight_publication(engine_name, main_document, policy, options)?;
+    let primary_requires_untracked_helper =
+        latex_output_requires_untracked_helper(primary_output_dir);
+    if engine.id() == crate::document_engine::DocumentEngineId::Latex
+        && primary_requires_untracked_helper
+    {
+        return Err(biber_publication_skip());
+    }
+    Ok(PublicationRequest {
+        project_id: project_id.to_owned(),
+        project_root: project_root.to_path_buf(),
+        engine_name: engine_name.to_owned(),
+        main_document: main_document.to_owned(),
+        policy: policy.clone(),
+        options,
+        primary_requires_untracked_helper,
+    })
 }
 
-/// Binds the visible PDF and hands controlled discovery, sealing, replay, and
-/// publication to the background lane behind the compile result. At most one
-/// publication runs per project. A newer request cancels the running one and
-/// becomes its single successor, so there is never a queue.
+/// Hands controlled discovery, sealing, replay, and publication to the
+/// background lane behind the compile result. At most one publication runs
+/// per project. A newer request cancels the running one and becomes its
+/// single successor, so there is never a queue.
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn schedule_after_successful_compile(
     app: &tauri::AppHandle,
@@ -3092,35 +3116,17 @@ pub(crate) async fn schedule_after_successful_compile(
     if !checkpoints_are_enabled() {
         return CheckpointPublicationOutcome::NotAttempted;
     }
-    let engine = match preflight_publication(engine_name, main_document, policy, options) {
-        Ok(engine) => engine,
-        Err(outcome) => return outcome,
-    };
-    let evidence_dir = primary_output_dir.to_path_buf();
-    let (primary_hash, primary_requires_untracked_helper) =
-        match tokio::task::spawn_blocking(move || capture_primary_evidence(&evidence_dir)).await {
-            Ok(Ok(evidence)) => evidence,
-            Ok(Err(error)) => return skip_from_failure(AdapterFailure::unavailable(error)),
-            Err(error) => {
-                return skip_from_failure(AdapterFailure::unavailable(format!(
-                    "compiled PDF identity task failed: {error}"
-                )))
-            }
-        };
-    if engine.id() == crate::document_engine::DocumentEngineId::Latex
-        && primary_requires_untracked_helper
-    {
-        return biber_publication_skip();
-    }
-    let request = PublicationRequest {
-        project_id: project_id.to_owned(),
-        project_root: project_root.to_path_buf(),
-        engine_name: engine_name.to_owned(),
-        main_document: main_document.to_owned(),
-        policy: policy.clone(),
+    let request = match publication_request(
+        project_id,
+        project_root,
+        primary_output_dir,
+        engine_name,
+        main_document,
+        policy,
         options,
-        primary_hash,
-        primary_requires_untracked_helper,
+    ) {
+        Ok(request) => request,
+        Err(outcome) => return outcome,
     };
     if let Some((request, cancel)) = admit_publication(request) {
         tauri::async_runtime::spawn(run_publication_lane(app.clone(), request, cancel));
@@ -3203,7 +3209,6 @@ pub async fn publish_after_successful_compile(
         Ok(workspace) => workspace,
         Err(error) => return skip_from_failure(error),
     };
-    let primary_hash = request.primary_hash;
     let discovery = match run_probe(
         app,
         engine,
@@ -3224,11 +3229,6 @@ pub async fn publish_after_successful_compile(
         Ok(hash) => hash,
         Err(error) => return skip_from_failure(error),
     };
-    if discovery_hash != primary_hash {
-        return skip_from_failure(AdapterFailure::unavailable(
-            "the controlled discovery compile did not reproduce the visible PDF",
-        ));
-    }
     let discovery_dependencies = match dependencies_from_probe(
         engine.id(),
         &workspace.discovery(),
@@ -3387,10 +3387,11 @@ mod tests {
         checkpoints_are_enabled, finish_publication, is_device_input, is_reserved_device_name,
         lane_successor_epoch, latex_output_requires_untracked_helper, manifest_matches_worktree,
         parse_pandoc_resources, parse_tectonic_dependencies, parse_typst_dependencies,
-        read_tectonic_bundle_identity, record_directory_entry, replayed_inputs_for,
-        seed_probe_tectonic_cache_from, tectonic_cache_fingerprint, unavailable_adapter_outcome,
-        wait_for_tectonic_cache_lock, CheckpointPublicationOutcome, CheckpointSkipReason,
-        PublicationRequest, TectonicDependencyLayout,
+        prove_replay, publication_request, read_tectonic_bundle_identity, record_directory_entry,
+        replayed_inputs_for, seed_probe_tectonic_cache_from, skip_from_failure,
+        tectonic_cache_fingerprint, unavailable_adapter_outcome, wait_for_tectonic_cache_lock,
+        CheckpointPublicationOutcome, CheckpointSkipReason, PublicationRequest,
+        TectonicDependencyLayout,
     };
     use std::path::Path;
 
@@ -3975,9 +3976,87 @@ mod tests {
                 source_date_epoch: Some(epoch),
                 ..Default::default()
             },
-            primary_hash: ContentHash::digest(b"pdf"),
             primary_requires_untracked_helper: false,
         }
+    }
+
+    #[test]
+    fn a_publication_request_carries_no_visible_pdf_evidence() {
+        let temp = tempdir().unwrap();
+        let project = temp.path().join("project");
+        fs::create_dir(&project).unwrap();
+        let build = temp.path().join("build");
+        fs::create_dir(&build).unwrap();
+        let options = crate::document_engine::CompileOptions {
+            source_date_epoch: Some(7),
+            ..Default::default()
+        };
+        let Ok(request) = publication_request(
+            "lane-request",
+            &project,
+            &build,
+            "latex",
+            "main.tex",
+            &CheckpointPolicy::default(),
+            options,
+        ) else {
+            panic!("a build directory without a PDF must still produce a request");
+        };
+        assert!(fs::read_dir(&build).unwrap().next().is_none());
+        assert_eq!(request.project_id, "lane-request");
+        assert_eq!(request.project_root, project);
+        assert_eq!(request.engine_name, "latex");
+        assert_eq!(request.main_document, "main.tex");
+        assert_eq!(request.options, options);
+        assert!(!request.primary_requires_untracked_helper);
+    }
+
+    #[test]
+    fn a_publication_request_still_refuses_a_biber_compile() {
+        let temp = tempdir().unwrap();
+        fs::write(
+            temp.path()
+                .join(format!("{}.bcf", crate::paths::ENTRY_STEM)),
+            b"<bcf/>",
+        )
+        .unwrap();
+        let Err(outcome) = publication_request(
+            "lane-biber",
+            temp.path(),
+            temp.path(),
+            "latex",
+            "main.tex",
+            &CheckpointPolicy::default(),
+            crate::document_engine::CompileOptions::default(),
+        ) else {
+            panic!("a Biber control file must skip publication");
+        };
+        assert!(matches!(
+            outcome,
+            CheckpointPublicationOutcome::Skipped {
+                reason: CheckpointSkipReason::UntrackedExternalCommands,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn a_checkpoint_is_proven_only_by_a_replay_that_matches_discovery() {
+        let discovery = ContentHash::digest(b"discovery-pdf");
+        assert!(prove_replay(discovery, discovery).is_ok());
+        let failure = prove_replay(discovery, ContentHash::digest(b"replay-pdf")).unwrap_err();
+        assert_eq!(
+            failure.reason,
+            CheckpointSkipReason::DependencyEvidenceUnavailable
+        );
+        assert_eq!(
+            skip_from_failure(failure),
+            CheckpointPublicationOutcome::Skipped {
+                reason: CheckpointSkipReason::DependencyEvidenceUnavailable,
+                message: "Checkpoint not saved because the controlled compile could not be reproduced exactly, so the checkpoint could not be proven.".into(),
+                suggestion: "Your document still compiled successfully. Use Source Control or export a project backup for recovery.".into(),
+            }
+        );
     }
 
     #[test]

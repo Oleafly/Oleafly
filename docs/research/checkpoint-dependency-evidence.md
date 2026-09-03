@@ -87,8 +87,9 @@ bounded by file count, per-file size, total size, and traversal depth.
 
 
 Publication is scheduled after the ordinary compile has returned. The compile
-command records the visible PDF hash and the Biber marker while it still holds
-the compile lock. Everything else runs later in a per-project lane: the
+command records the Biber marker while it still holds the compile lock; the
+PDF on screen is not part of the evidence, because Tectonic's in-process reruns
+make its bytes depend on what the build directory already held. Everything else runs later in a per-project lane: the
 unchanged check, discovery, sealing, replay, and the store write. The lane
 reports each outcome to the window through an event. It takes the shared
 worktree lock only while it hashes or seals inputs, so a running probe does not

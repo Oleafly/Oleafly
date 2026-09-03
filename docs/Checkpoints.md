@@ -28,10 +28,16 @@ the engine cannot prove every input, the document still compiles and Oleafly
 shows a short reason for skipping the checkpoint.
 
 Automatic publication supports the controlled Tectonic, Typst, and Markdown
-with Pandoc compile paths. It is skipped when controlled discovery cannot
-reproduce the visible PDF or when the evidence includes an external, protected,
-or otherwise untracked input. latexmk, Biber, shell escape, and draft mode
-remain unavailable for checkpoints.
+with Pandoc compile paths. The proof of a checkpoint is a sealed replay:
+Oleafly compiles the sealed inputs a second time in the same controlled
+environment and keeps the checkpoint only if that replay reproduces the
+controlled compile byte for byte. It is skipped when the replay does not
+reproduce the controlled compile or when the evidence includes an external,
+protected, or unreadable input. The PDF you see after a compile and the
+checkpoint's proof compile can differ by a fraction of a point in word spacing,
+because Tectonic reruns TeX inside one process and the output depends on what
+the build directory already held from the last compile. latexmk, Biber, shell
+escape, and draft mode remain unavailable for checkpoints.
 
 ## Include and ignore rules
 
