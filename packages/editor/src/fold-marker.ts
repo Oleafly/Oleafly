@@ -78,11 +78,14 @@ export function foldMarkerDOM(open: boolean): HTMLElement {
 }
 
 export const foldMarkerTheme = EditorView.baseTheme({
+  ".cm-foldGutter .cm-fold-marker": {
+    padding: "0",
+  },
   ".cm-fold-marker": {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "14px",
+    width: "12px",
     // Intrinsic height: the gutter element is a bare block that collapses to
     // zero if its only child sizes itself from the parent.
     height: "1.2em",

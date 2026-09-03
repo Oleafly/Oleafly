@@ -1,6 +1,15 @@
 export const MIN_PREVIEW_SCALE = 0.25;
 export const MAX_PREVIEW_SCALE = 4;
 
+export type PreviewFitMode = "width" | "height" | null;
+
+export interface PreviewZoomMemory {
+  scale: number;
+  fitMode: PreviewFitMode;
+}
+
+export const sessionZoomByProject = new Map<string, PreviewZoomMemory>();
+
 export function attachPreviewZoom(
   element: HTMLElement,
   readScale: () => number,

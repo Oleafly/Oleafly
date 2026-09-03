@@ -1,7 +1,26 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { attachSplitResizer, clampSplitRatio, readSplitRatio } from "./split-resizer";
+
+const globalsCss = readFileSync(
+  resolve(__dirname, "../../../styles/globals.css"),
+  "utf8",
+);
+
+function ruleFor(selector: string): string {
+  const start = globalsCss.indexOf(`${selector} {`);
+  if (start < 0) {
+    throw new Error(`globals.css has no rule for ${selector}`);
+  }
+  const end = globalsCss.indexOf("}", start);
+  if (end < 0) {
+    throw new Error(`globals.css rule for ${selector} is never closed`);
+  }
+  return globalsCss.slice(start, end);
+}
 
 function mergeHost() {
   const host = document.createElement("div");
@@ -65,5 +84,32 @@ describe("diff split resizer", () => {
     const detach = attachSplitResizer(host);
     expect(host.querySelector('[role="separator"]')).toBeNull();
     detach();
+  });
+});
+
+describe("diff split resizer styling", () => {
+  it("draws a resting hairline in the border colour", () => {
+    const rule = ruleFor(".oleafly-diff-resizer::after");
+    expect(rule).toContain("background: var(--border)");
+    expect(rule).toContain("width: 1px");
+    expect(rule).not.toContain("background: transparent");
+  });
+
+  it("switches the same hairline to the primary colour when active", () => {
+    const rule = ruleFor('.oleafly-diff-resizer[data-dragging="true"]::after');
+    expect(rule).toContain("background: var(--primary)");
+    expect(globalsCss).toContain(".oleafly-diff-resizer:hover::after");
+  });
+
+  it("widens the hairline into a focus indicator for keyboard use", () => {
+    const rule = ruleFor(".oleafly-diff-resizer:focus-visible::after");
+    expect(rule).toContain("background: var(--primary)");
+    expect(rule).toContain("width: 2px");
+  });
+
+  it("keeps the ten pixel hit area around the hairline", () => {
+    const rule = ruleFor(".oleafly-diff-resizer");
+    expect(rule).toContain("width: 10px");
+    expect(rule).toContain("margin-left: -5px");
   });
 });

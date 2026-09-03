@@ -161,11 +161,11 @@ const chromeTheme = EditorView.theme({
     padding: "0 4px",
   },
   ".cm-lineNumbers .cm-gutterElement": {
-    // The 8px on the right separates the numbers from the code and is doing
-    // real work. The left inset and the minimum width are dead margin when the
+    // The left inset and the minimum width are dead margin when the
     // sidebar is eating horizontal space, so both are overridable. minWidth is
     // a floor, not a cap: a five-digit line still gets the room it needs.
-    padding: "0 8px 0 var(--cm-gutter-number-inset, 4px)",
+    paddingRight: "2px",
+    paddingLeft: "var(--cm-gutter-number-inset, 4px)",
     minWidth: "var(--cm-gutter-min-width, 2.5em)",
   },
   // Inline AI edit diff preview.

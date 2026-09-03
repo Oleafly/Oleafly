@@ -1610,15 +1610,19 @@ body[data-tour-active] [data-tour-hide] {
 .oleafly-diff-resizer::after {
   content: "";
   position: absolute;
-  left: 4px;
+  left: 50%;
   top: 0;
   bottom: 0;
-  width: 2px;
-  background: transparent;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--border);
   transition: background-color 120ms ease;
 }
 .oleafly-diff-resizer:hover::after,
-.oleafly-diff-resizer:focus-visible::after,
 .oleafly-diff-resizer[data-dragging="true"]::after {
   background: var(--primary);
+}
+.oleafly-diff-resizer:focus-visible::after {
+  background: var(--primary);
+  width: 2px;
 }
