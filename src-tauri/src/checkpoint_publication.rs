@@ -247,6 +247,46 @@ fn path_is_inside_any(path: &Path, roots: &[PathBuf]) -> bool {
     roots.iter().any(|root| path.starts_with(root))
 }
 
+fn is_reserved_device_name(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    let stem = name.split('.').next().unwrap_or(name).to_ascii_lowercase();
+    matches!(stem.as_str(), "nul" | "con" | "prn" | "aux")
+        || (stem.len() == 4
+            && (stem.starts_with("com") || stem.starts_with("lpt"))
+            && stem.as_bytes()[3].is_ascii_digit())
+}
+
+fn is_known_unix_device(path: &Path) -> bool {
+    matches!(
+        path.to_str(),
+        Some("/dev/null" | "/dev/zero" | "/dev/full" | "/dev/random" | "/dev/urandom" | "/dev/tty")
+    )
+}
+
+fn is_device_input(path: &Path) -> bool {
+    if is_known_unix_device(path) {
+        return true;
+    }
+    if cfg!(windows) {
+        if path.to_string_lossy().eq_ignore_ascii_case(r"\\.\nul") {
+            return true;
+        }
+        if is_reserved_device_name(path) {
+            return true;
+        }
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::FileTypeExt;
+        if let Ok(metadata) = std::fs::metadata(path) {
+            return metadata.file_type().is_char_device();
+        }
+    }
+    false
+}
+
 fn path_is_lexically_inside_any(path: &Path, roots: &[PathBuf]) -> bool {
     roots.iter().any(|root| {
         path.strip_prefix(root).is_ok_and(|relative| {
@@ -306,6 +346,9 @@ fn parse_tectonic_dependencies(
             && (path_is_lexically_inside_any(&absolute, generated_roots)
                 || path_is_lexically_inside_any(&absolute, &canonical_generated))
         {
+            continue;
+        }
+        if is_device_input(&absolute) {
             continue;
         }
         let exists = absolute.exists();
@@ -3341,14 +3384,15 @@ mod tests {
 
     use super::{
         admit_publication, build_capture_inputs, cancel_project_publications_and_wait,
-        checkpoints_are_enabled, finish_publication, lane_successor_epoch,
-        latex_output_requires_untracked_helper, manifest_matches_worktree, parse_pandoc_resources,
-        parse_tectonic_dependencies, parse_typst_dependencies, read_tectonic_bundle_identity,
-        record_directory_entry, replayed_inputs_for, seed_probe_tectonic_cache_from,
-        tectonic_cache_fingerprint, unavailable_adapter_outcome, wait_for_tectonic_cache_lock,
-        CheckpointPublicationOutcome, CheckpointSkipReason, PublicationRequest,
-        TectonicDependencyLayout,
+        checkpoints_are_enabled, finish_publication, is_device_input, is_reserved_device_name,
+        lane_successor_epoch, latex_output_requires_untracked_helper, manifest_matches_worktree,
+        parse_pandoc_resources, parse_tectonic_dependencies, parse_typst_dependencies,
+        read_tectonic_bundle_identity, record_directory_entry, replayed_inputs_for,
+        seed_probe_tectonic_cache_from, tectonic_cache_fingerprint, unavailable_adapter_outcome,
+        wait_for_tectonic_cache_lock, CheckpointPublicationOutcome, CheckpointSkipReason,
+        PublicationRequest, TectonicDependencyLayout,
     };
+    use std::path::Path;
 
     fn publication_candidate(
         store: &Store,
@@ -3713,6 +3757,81 @@ mod tests {
         .unwrap_err();
 
         assert_eq!(error.reason, CheckpointSkipReason::ExternalDependency);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn tectonic_rules_do_not_hide_a_regular_file_behind_a_dev_fd_alias() {
+        use std::os::unix::io::AsRawFd;
+        let temp = tempdir().unwrap();
+        let project = temp.path().join("project");
+        let output = temp.path().join("probe");
+        fs::create_dir(&project).unwrap();
+        fs::create_dir(&output).unwrap();
+        fs::write(project.join("main.tex"), b"main").unwrap();
+        let secret = temp.path().join("secret.tex");
+        fs::write(&secret, b"\\def\\leaked{1}").unwrap();
+        let held = fs::File::open(&secret).unwrap();
+        let alias = format!("/dev/fd/{}", held.as_raw_fd());
+        assert_eq!(fs::read(&alias).unwrap(), b"\\def\\leaked{1}");
+        let report = format!(
+            "{out}/entry.pdf : {out}/entry.tex \\\n  {alias} \\\n  {out}/main.tex\n",
+            out = output.display()
+        );
+
+        let error = parse_tectonic_dependencies(
+            report.as_bytes(),
+            &project,
+            TectonicDependencyLayout::ProjectNamesRebasedFrom(&output),
+            std::slice::from_ref(&output),
+        )
+        .unwrap_err();
+
+        assert_eq!(error.reason, CheckpointSkipReason::ExternalDependency);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn tectonic_rules_ignore_device_probes_such_as_dev_null() {
+        let temp = tempdir().unwrap();
+        let project = temp.path().join("project");
+        let output = temp.path().join("probe");
+        fs::create_dir(&project).unwrap();
+        fs::create_dir(&output).unwrap();
+        fs::write(project.join("main.tex"), b"main").unwrap();
+        fs::write(project.join("chapter.tex"), b"chapter").unwrap();
+        let report = format!(
+            "{out}/entry.pdf : {out}/entry.tex \\\n  /dev/null \\\n  {out}/chapter.tex\n",
+            out = output.display()
+        );
+
+        let dependencies = parse_tectonic_dependencies(
+            report.as_bytes(),
+            &project,
+            TectonicDependencyLayout::ProjectNamesRebasedFrom(&output),
+            std::slice::from_ref(&output),
+        )
+        .unwrap();
+
+        assert_eq!(dependencies, ["chapter.tex"]);
+    }
+
+    #[test]
+    fn device_inputs_are_recognised_by_name_and_by_kind() {
+        assert!(is_device_input(Path::new("/dev/null")));
+        assert!(is_device_input(Path::new("/dev/urandom")));
+        assert!(is_reserved_device_name(Path::new("NUL")));
+        assert!(is_reserved_device_name(Path::new("nul.txt")));
+        assert!(is_reserved_device_name(Path::new("COM3")));
+        assert!(!is_reserved_device_name(Path::new("commons.tex")));
+        assert!(!is_reserved_device_name(Path::new("auxiliary.tex")));
+        assert!(!is_device_input(Path::new("/tmp")));
+        assert!(!is_device_input(Path::new("/dev/shm/secret.tex")));
+        let temp = tempdir().unwrap();
+        let regular = temp.path().join("regular.tex");
+        fs::write(&regular, b"x").unwrap();
+        assert!(!is_device_input(&regular));
+        assert!(!is_device_input(&temp.path().join("dev/null")));
     }
 
     #[test]
