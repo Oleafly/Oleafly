@@ -148,4 +148,120 @@ describe("terminals store", () => {
     store.setProject("project-1");
     expect(useTerminalsStore.getState().tabs[0].title).toBe("Terminal 3");
   });
+
+  it("persists a tab color beside the title and restores both for the same slot", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const [first] = useTerminalsStore.getState().tabs;
+
+    store.setTerminalColor(first.id, "mint");
+    expect(useTerminalsStore.getState().tabs[0].color).toBe("mint");
+    expect(JSON.parse(localStorage.getItem(terminalTitlesKey("project-1")) ?? "{}")).toEqual({
+      "1": { color: "mint" },
+    });
+
+    store.renameTerminal(first.id, "Build");
+    expect(JSON.parse(localStorage.getItem(terminalTitlesKey("project-1")) ?? "{}")).toEqual({
+      "1": { title: "Build", color: "mint" },
+    });
+
+    useTerminalsStore.setState({ projectId: null, tabs: [], activeId: null, counters: {} });
+    store.setProject("project-1");
+    expect(useTerminalsStore.getState().tabs[0]).toMatchObject({
+      title: "Build",
+      color: "mint",
+    });
+  });
+
+  it("drops the color from storage when it is cleared and keeps the plain title shape", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const [first] = useTerminalsStore.getState().tabs;
+    store.renameTerminal(first.id, "Build");
+    store.setTerminalColor(first.id, "rose");
+
+    store.setTerminalColor(first.id, null);
+    expect(useTerminalsStore.getState().tabs[0].color).toBeNull();
+    expect(JSON.parse(localStorage.getItem(terminalTitlesKey("project-1")) ?? "{}")).toEqual({
+      "1": "Build",
+    });
+
+    store.renameTerminal(first.id, "   ");
+    expect(localStorage.getItem(terminalTitlesKey("project-1"))).toBeNull();
+  });
+
+  it("reads titles stored before colors existed and ignores unknown color names", () => {
+    localStorage.setItem(
+      terminalTitlesKey("project-1"),
+      JSON.stringify({ "1": "Build", "2": { title: "Watch", color: "neon" }, "3": { color: 4 } }),
+    );
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    expect(useTerminalsStore.getState().tabs[0]).toMatchObject({ title: "Build", color: null });
+    expect(store.addTerminal()).toMatchObject({ title: "Watch", color: null });
+    expect(store.addTerminal()).toMatchObject({ title: "Terminal 3", color: null });
+  });
+
+  it("ignores a color for an unknown terminal and leaves storage alone", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    store.setTerminalColor("missing", "sky");
+    expect(localStorage.getItem(terminalTitlesKey("project-1"))).toBeNull();
+    expect(useTerminalsStore.getState().tabs[0].color).toBeNull();
+  });
+
+  it("closes every other terminal and activates the one kept", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const [first] = useTerminalsStore.getState().tabs;
+    const second = store.addTerminal();
+    const third = store.addTerminal();
+    if (!second || !third) throw new Error("expected three terminals");
+    expect(useTerminalsStore.getState().activeId).toBe(third.id);
+
+    const kept = store.closeOtherTerminals(second.id);
+    expect(kept.map((tab) => tab.id)).toEqual([second.id]);
+    expect(useTerminalsStore.getState().tabs.map((tab) => tab.id)).toEqual([second.id]);
+    expect(useTerminalsStore.getState().activeId).toBe(second.id);
+
+    expect(store.closeOtherTerminals(second.id)).toHaveLength(1);
+    expect(store.closeOtherTerminals(first.id)).toHaveLength(1);
+    expect(useTerminalsStore.getState().activeId).toBe(second.id);
+  });
+
+  it("closes the terminals to the right and keeps a valid active tab", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const [first] = useTerminalsStore.getState().tabs;
+    const second = store.addTerminal();
+    const third = store.addTerminal();
+    if (!second || !third) throw new Error("expected three terminals");
+
+    const kept = store.closeTerminalsToTheRight(second.id);
+    expect(kept.map((tab) => tab.id)).toEqual([first.id, second.id]);
+    expect(useTerminalsStore.getState().activeId).toBe(second.id);
+
+    store.activateTerminal(first.id);
+    expect(store.closeTerminalsToTheRight(second.id)).toHaveLength(2);
+    expect(useTerminalsStore.getState().activeId).toBe(first.id);
+    expect(store.closeTerminalsToTheRight("missing")).toHaveLength(2);
+  });
+
+  it("closes the terminals to the left and keeps a valid active tab", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const [first] = useTerminalsStore.getState().tabs;
+    const second = store.addTerminal();
+    const third = store.addTerminal();
+    if (!second || !third) throw new Error("expected three terminals");
+    store.activateTerminal(first.id);
+
+    const kept = store.closeTerminalsToTheLeft(second.id);
+    expect(kept.map((tab) => tab.id)).toEqual([second.id, third.id]);
+    expect(useTerminalsStore.getState().activeId).toBe(second.id);
+
+    store.activateTerminal(third.id);
+    expect(store.closeTerminalsToTheLeft(second.id)).toHaveLength(2);
+    expect(useTerminalsStore.getState().activeId).toBe(third.id);
+  });
 });
