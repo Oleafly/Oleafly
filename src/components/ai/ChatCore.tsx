@@ -2854,6 +2854,14 @@ ${sandboxedCustom}`;
               items={attachments}
               onRemove={(id) => setAttachments((a) => a.filter((x) => x.id !== id))}
             />
+            {planMode && (
+              <p
+                data-testid="ai-plan-mode-hint"
+                className="mb-1.5 px-1 text-[11px] leading-snug text-muted-foreground"
+              >
+                {PLAN_MODE_HINT}
+              </p>
+            )}
             <div
               ref={inputShellRef}
               className="relative rounded-[1.375rem] border bg-card px-3 pb-2 pt-2.5 shadow-sm transition-colors focus-within:border-ring"
@@ -3168,14 +3176,6 @@ ${sandboxedCustom}`;
                 </div>
               </div>
             </div>
-            {planMode && (
-              <p
-                data-testid="ai-plan-mode-hint"
-                className="mt-1.5 px-1 text-[11px] leading-snug text-muted-foreground"
-              >
-                {PLAN_MODE_HINT}
-              </p>
-            )}
           </div>
           </div>
         </>
