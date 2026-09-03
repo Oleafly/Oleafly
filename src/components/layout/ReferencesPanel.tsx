@@ -392,6 +392,7 @@ export function ReferencesPanel() {
                 aria-label={
                   count !== undefined && count > 0 ? `${label}, ${count}` : label
                 }
+                onClick={() => setView(id)}
                 className="min-w-0"
               >
                 <Icon aria-hidden />

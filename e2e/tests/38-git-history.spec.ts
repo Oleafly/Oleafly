@@ -55,16 +55,8 @@ async function commitAll(page: Page, message: string) {
     if (!stagedVisible) await page.click('[aria-label="Refresh"]');
   }
   if (!stagedVisible) throw new Error("commitAll: staging never became visible");
-  await page.evaluate(
-    `(() => {
-      const t = document.querySelector('[data-testid="commit-title"]');
-      if (!t) throw new Error('commit title field is not on screen');
-      const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-      set.call(t, ${JSON.stringify(message)});
-      t.dispatchEvent(new Event('input', { bubbles: true }));
-      return 1;
-    })()`,
-  );
+  await expect(page.locator('[data-testid="commit-title"]')).toBeVisible({ timeout: 10_000 });
+  await page.fill('[data-testid="commit-title"]', message);
   const commit = page.getByText("Commit", { exact: true });
   await expect(commit).toBeEnabled({ timeout: 5_000 });
   await commit.click();
