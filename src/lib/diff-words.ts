@@ -1,7 +1,9 @@
+import { commonAffixBounds, myersEditScript } from "./myers-diff";
+
 export type WordDiffToken = { kind: "same" | "del" | "add"; text: string };
 
-// Whitespace stays glued to the preceding word so concatenating tokens
-// reproduces the source exactly.
+export const WORD_DIFF_WORK_LIMIT = 500_000;
+
 function tokenize(s: string): string[] {
   return s.match(/\S+\s*|\s+/g) ?? [];
 }
@@ -9,39 +11,39 @@ function tokenize(s: string): string[] {
 export function diffWords(oldText: string, newText: string): WordDiffToken[] {
   const a = tokenize(oldText);
   const b = tokenize(newText);
-  const n = a.length;
-  const m = b.length;
-  // dp[i][j] = LCS length of a[i:] and b[j:].
-  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
-  for (let i = n - 1; i >= 0; i--) {
-    for (let j = m - 1; j >= 0; j--) {
-      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
-    }
-  }
 
   const out: WordDiffToken[] = [];
   const push = (kind: WordDiffToken["kind"], text: string) => {
+    if (!text) return;
     const last = out[out.length - 1];
     if (last && last.kind === kind) last.text += text;
     else out.push({ kind, text });
   };
 
-  let i = 0;
-  let j = 0;
-  while (i < n && j < m) {
-    if (a[i] === b[j]) {
-      push("same", a[i]);
-      i++;
-      j++;
-    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
-      push("del", a[i]);
-      i++;
+  const bounds = commonAffixBounds(a, b);
+  const script = myersEditScript(
+    a.slice(bounds.prefix, bounds.oldEnd),
+    b.slice(bounds.prefix, bounds.newEnd),
+    WORD_DIFF_WORK_LIMIT,
+  );
+
+  if (!script) {
+    push("del", oldText);
+    push("add", newText);
+    return out;
+  }
+
+  push("same", a.slice(0, bounds.prefix).join(""));
+  for (const edit of script) {
+    if (edit.kind === "add") {
+      const start = bounds.prefix + edit.newStart;
+      push("add", b.slice(start, start + edit.length).join(""));
     } else {
-      push("add", b[j]);
-      j++;
+      const start = bounds.prefix + edit.oldStart;
+      push(edit.kind, a.slice(start, start + edit.length).join(""));
     }
   }
-  while (i < n) push("del", a[i++]);
-  while (j < m) push("add", b[j++]);
+  push("same", a.slice(bounds.oldEnd).join(""));
+
   return out;
 }
