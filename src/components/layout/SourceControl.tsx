@@ -515,6 +515,7 @@ export function SourceControl() {
       )}
       <div className="flex gap-1.5">
         <button type="button"
+          data-testid="commit-button"
           onClick={() => void submit(false)}
           disabled={busy || staged.length === 0 || !title.trim()}
           title={
@@ -561,6 +562,7 @@ export function SourceControl() {
 
   const statusNotice = status && (
     <div
+      data-testid="source-control-status"
       className={cn(
         "mt-2 whitespace-pre-wrap break-words rounded-md border p-2 text-[11px]",
         status.ok

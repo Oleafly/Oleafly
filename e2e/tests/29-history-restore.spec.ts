@@ -56,15 +56,32 @@ async function commitAll(page: import("../helpers").Page, message: string) {
   if (!stagedVisible) throw new Error("commitAll: staging never became visible");
   await expect(page.locator('[data-testid="commit-title"]')).toBeVisible({ timeout: 10_000 });
   await page.fill('[data-testid="commit-title"]', message);
-  const commit = page.getByText("Commit", { exact: true });
+  const commit = page.locator('[data-testid="commit-button"]');
   await expect(commit).toBeEnabled({ timeout: 5_000 });
   await commit.click();
-  // Assert the completed git operation itself. A later autosave may
-  // legitimately dirty the working tree again after this commit succeeds.
-  await page.waitForFunction(
-    `document.body.innerText.includes(${JSON.stringify(`Committed: "${message}"`)})`,
-    15_000,
-  );
+  try {
+    await page.waitForFunction(
+      `(document.querySelector('[data-testid="source-control-status"]')?.textContent ?? "").includes(${JSON.stringify(`Committed: "${message}"`)})`,
+      15_000,
+    );
+  } catch (error) {
+    const snapshot = await page.evaluate<string>(
+      `(() => {
+        const title = document.querySelector('[data-testid="commit-title"]');
+        const button = document.querySelector('[data-testid="commit-button"]');
+        const status = document.querySelector('[data-testid="source-control-status"]');
+        const actions = document.querySelector('[data-testid="source-control-actions"]');
+        return JSON.stringify({
+          titleValue: title ? title.value : null,
+          buttonDisabled: button ? button.disabled : null,
+          buttonText: button ? button.textContent : null,
+          status: status ? status.textContent : null,
+          actions: actions ? actions.innerText.slice(0, 600) : null,
+        });
+      })()`,
+    );
+    throw new Error(`commit notice never appeared: ${snapshot}`, { cause: error });
+  }
 }
 
 async function openHistory(page: import("../helpers").Page) {
