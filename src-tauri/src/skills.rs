@@ -98,6 +98,8 @@ struct SkillsState {
     version: u8,
     #[serde(default)]
     enabled: BTreeSet<String>,
+    #[serde(default)]
+    seen: BTreeSet<String>,
 }
 
 impl Default for SkillsState {
@@ -105,6 +107,7 @@ impl Default for SkillsState {
         Self {
             version: 1,
             enabled: BTreeSet::new(),
+            seen: BTreeSet::new(),
         }
     }
 }
@@ -755,17 +758,25 @@ fn list_unlocked(root: &Path) -> Result<Vec<SkillRecord>, String> {
         }
     }
     records.sort_by(|left, right| left.id.cmp(&right.id));
-    let normalized_enabled: BTreeSet<String> = records
-        .iter()
-        .filter(|record| {
-            matches!(&record.validation, SkillValidation::Valid)
-                && state.enabled.contains(&record.id)
-        })
-        .take(MAX_ENABLED_SKILLS)
-        .map(|record| record.id.clone())
-        .collect();
-    if normalized_enabled != state.enabled {
+    let mut normalized_enabled: BTreeSet<String> = BTreeSet::new();
+    let mut normalized_seen: BTreeSet<String> = BTreeSet::new();
+    for record in records.iter() {
+        if !matches!(&record.validation, SkillValidation::Valid) {
+            continue;
+        }
+        normalized_seen.insert(record.id.clone());
+        let wanted = if state.seen.contains(&record.id) {
+            state.enabled.contains(&record.id)
+        } else {
+            true
+        };
+        if wanted && normalized_enabled.len() < MAX_ENABLED_SKILLS {
+            normalized_enabled.insert(record.id.clone());
+        }
+    }
+    if normalized_enabled != state.enabled || normalized_seen != state.seen {
         state.enabled = normalized_enabled;
+        state.seen = normalized_seen;
         write_state(root, &state)?;
     }
     for record in &mut records {
@@ -1113,6 +1124,7 @@ pub fn set_enabled(root: &Path, id: &str, enabled: bool) -> Result<SkillRecord, 
     } else {
         state.enabled.remove(id);
     }
+    state.seen.insert(id.to_string());
     write_state(root, &state)?;
     Ok(inspect_real_skill(&directory, id, &state))
 }
@@ -1215,7 +1227,7 @@ mod tests {
     }
 
     #[test]
-    fn bundled_openresearch_skill_is_valid_first_party_and_disabled() {
+    fn bundled_openresearch_skill_is_valid_first_party_and_on_by_default() {
         let root = tempfile::tempdir().unwrap();
 
         let skill = list(root.path())
@@ -1231,9 +1243,18 @@ mod tests {
         );
         assert!(!skill.instructions.trim().is_empty());
         assert_eq!(skill.source, SkillSource::FirstParty);
-        assert!(!skill.enabled);
+        assert!(skill.enabled);
         assert!(!skill.removable);
         assert_eq!(skill.validation, SkillValidation::Valid);
+
+        let disabled = set_enabled(root.path(), "openresearch", false).unwrap();
+        assert!(!disabled.enabled);
+        let after_relist = list(root.path())
+            .unwrap()
+            .into_iter()
+            .find(|skill| skill.id == "openresearch")
+            .expect("the bundled OpenResearch skill should still be discovered");
+        assert!(!after_relist.enabled);
 
         let enabled = set_enabled(root.path(), "openresearch", true).unwrap();
         assert!(enabled.enabled);
@@ -1507,14 +1528,25 @@ mod tests {
                 ),
             );
         }
-        for index in 1..=32 {
-            set_enabled(root.path(), &format!("skill-{index}"), true).unwrap();
-        }
+        let discovered = list(root.path()).unwrap();
+        let enabled_ids: Vec<_> = discovered
+            .iter()
+            .filter(|skill| skill.enabled)
+            .map(|skill| skill.id.clone())
+            .collect();
+        assert_eq!(enabled_ids.len(), MAX_ENABLED_SKILLS);
 
-        let error = set_enabled(root.path(), "skill-33", true).unwrap_err();
+        let leftover = discovered
+            .iter()
+            .find(|skill| !skill.enabled)
+            .expect("the cap should leave one skill off")
+            .id
+            .clone();
+
+        let error = set_enabled(root.path(), &leftover, true).unwrap_err();
 
         assert_eq!(error, "You can enable up to 32 skills.");
-        assert!(!validate(root.path(), "skill-33").unwrap().enabled);
+        assert!(!validate(root.path(), &leftover).unwrap().enabled);
     }
 
     #[test]
