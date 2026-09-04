@@ -41,6 +41,9 @@ function OllamaSetup({
   selectedModel,
   onUse,
   onDisconnect,
+  installed,
+  starting,
+  onStart,
 }: {
   active: boolean;
   host: string;
@@ -48,6 +51,9 @@ function OllamaSetup({
   status: "idle" | "loading" | "ok" | "down";
   models: string[];
   onDetect: () => void;
+  installed: boolean;
+  starting: boolean;
+  onStart: () => void;
   selectedModel: string;
   onUse: (model: string) => void;
   onDisconnect?: () => void;
@@ -86,10 +92,25 @@ function OllamaSetup({
       </div>
 
       {status === "down" && (
-        <div className="space-y-1 rounded-md border border-dashed bg-background p-3 text-[11px] text-muted-foreground">
+        <div className="space-y-2 rounded-md border border-dashed bg-background p-3 text-[11px] text-muted-foreground">
           <p>
             No Ollama responding at <code>{shown}</code>.
           </p>
+          {installed ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                data-testid="ollama-start"
+                disabled={starting}
+                onClick={onStart}
+              >
+                {starting ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                Start Ollama
+              </Button>
+              <span>Ollama is installed here. Starting it takes a moment.</span>
+            </div>
+          ) : null}
           <p>
             1. Install from{" "}
             <button type="button"
@@ -174,7 +195,13 @@ export interface ProvidersTabProps {
   openProviders: Record<string, boolean>;
   setOpenProviders: Dispatch<SetStateAction<Record<string, boolean>>>;
   setKeys: Dispatch<SetStateAction<Record<string, string>>>;
-  ollama: { status: "idle" | "loading" | "ok" | "down"; models: string[] };
+  ollama: {
+    status: "idle" | "loading" | "ok" | "down";
+    models: string[];
+    installed: boolean;
+    starting: boolean;
+  };
+  onStartOllama: () => void;
   refreshOllama: (host: string) => Promise<void>;
   applyOllamaModel: (model: string) => Promise<void>;
   validateAndSave: (id: string) => Promise<void>;
@@ -198,6 +225,7 @@ export function ProvidersTab({
   setOpenProviders,
   setKeys,
   ollama,
+  onStartOllama,
   refreshOllama,
   applyOllamaModel,
   validateAndSave,
@@ -277,11 +305,21 @@ export function ProvidersTab({
                   </div>
                 </button>
                 <div className="mt-0.5 flex shrink-0 items-center gap-2">
-                  {isConfigured && (
+                  {p.isHost ? (
+                    ollama.status === "ok" ? (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-medium leading-none text-emerald-600 dark:text-emerald-400">
+                        <Check className="size-3 shrink-0" /> Running
+                      </span>
+                    ) : ollama.status === "down" ? (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-medium leading-none text-amber-600 dark:text-amber-500">
+                        Not running
+                      </span>
+                    ) : null
+                  ) : isConfigured ? (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-medium leading-none text-emerald-600 dark:text-emerald-400">
                       <Check className="size-3 shrink-0" /> Connected
                     </span>
-                  )}
+                  ) : null}
                   {p.signupUrl && isOpen && (
                     <button type="button"
                       onClick={() => {
@@ -307,6 +345,9 @@ export function ProvidersTab({
                     selectedModel={cfg.ai_model || ""}
                     onUse={(m) => void applyOllamaModel(m)}
                     onDisconnect={hasSaved ? () => void deleteKey("ollama") : undefined}
+                    installed={ollama.installed}
+                    starting={ollama.starting}
+                    onStart={onStartOllama}
                   />
                 </div>
               ) : (

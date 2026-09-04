@@ -22,6 +22,8 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@/lib/ollama", () => ({
   DEFAULT_OLLAMA_HOST: "http://127.0.0.1:11434",
   listOllamaModels: vi.fn().mockResolvedValue([]),
+  ollamaInstalled: vi.fn().mockResolvedValue(false),
+  startOllama: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("./ai/ProvidersTab", () => ({
   ProvidersTab: (props: ProvidersTabProps) => {

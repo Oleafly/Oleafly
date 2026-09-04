@@ -354,6 +354,8 @@ pub fn run() {
             github::gh_public_repo_stats,
             github::gh_import_repo,
             ollama::ollama_list_models,
+            ollama::ollama_installed,
+            ollama::ollama_start,
             synctex::synctex_forward,
             synctex::synctex_inverse,
             synctex::synctex_map_line,

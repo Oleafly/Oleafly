@@ -6,6 +6,61 @@
 
 use serde::Deserialize;
 
+use crate::proc::NoConsole;
+
+#[cfg(target_os = "windows")]
+const OLLAMA_BINARY: &str = "ollama.exe";
+#[cfg(not(target_os = "windows"))]
+const OLLAMA_BINARY: &str = "ollama";
+
+#[cfg(target_os = "macos")]
+const EXTRA_BIN_DIRS: [&str; 3] = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"];
+#[cfg(target_os = "linux")]
+const EXTRA_BIN_DIRS: [&str; 4] = ["/usr/local/bin", "/usr/bin", "/bin", "/snap/bin"];
+#[cfg(target_os = "windows")]
+const EXTRA_BIN_DIRS: [&str; 0] = [];
+
+fn installed_ollama() -> Option<std::path::PathBuf> {
+    if let Some(paths) = std::env::var_os("PATH") {
+        for directory in std::env::split_paths(&paths) {
+            let candidate = directory.join(OLLAMA_BINARY);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
+    EXTRA_BIN_DIRS
+        .iter()
+        .map(|directory| std::path::Path::new(directory).join(OLLAMA_BINARY))
+        .find(|candidate| candidate.is_file())
+}
+
+/// Whether an `ollama` executable exists on this machine, so the UI can offer
+/// to start it instead of only telling the user it is not running.
+#[tauri::command]
+pub async fn ollama_installed() -> bool {
+    installed_ollama().is_some()
+}
+
+/// Start a local Ollama server. Succeeds once the process is spawned; the
+/// caller re-checks reachability, since the server needs a moment to bind.
+#[tauri::command]
+pub async fn ollama_start() -> Result<(), String> {
+    let binary =
+        installed_ollama().ok_or_else(|| "Ollama is not installed on this machine.".to_string())?;
+    let mut command = std::process::Command::new(binary);
+    command.arg("serve");
+    command.no_console();
+    command
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    command
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("Could not start Ollama: {error}"))
+}
+
 #[derive(Deserialize)]
 struct TagsResponse {
     #[serde(default)]

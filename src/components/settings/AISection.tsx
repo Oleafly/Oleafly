@@ -19,7 +19,13 @@ import {
   restoreSeedModels,
   seedProviderModels,
 } from "@/lib/ai-model-state";
-import { listOllamaModels, DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
+import { logError } from "@/lib/log";
+import {
+  listOllamaModels,
+  ollamaInstalled,
+  startOllama,
+  DEFAULT_OLLAMA_HOST,
+} from "@/lib/ollama";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
@@ -216,6 +222,14 @@ export function AISection() {
     staleTime: 30_000,
     meta: { silent: true },
   });
+  const ollamaInstalledQuery = useQuery({
+    queryKey: ["ollama-installed"],
+    queryFn: ollamaInstalled,
+    retry: false,
+    staleTime: 300_000,
+    meta: { silent: true },
+  });
+  const [startingOllama, setStartingOllama] = useState(false);
   const ollama = {
     status: ollamaQuery.isPending
       ? ("loading" as const)
@@ -223,6 +237,8 @@ export function AISection() {
         ? ("down" as const)
         : ("ok" as const),
     models: ollamaQuery.data ?? [],
+    installed: ollamaInstalledQuery.data === true,
+    starting: startingOllama,
   };
   const refreshOllama = useCallback(
     async (host: string) => {
@@ -232,6 +248,21 @@ export function AISection() {
       });
     },
     [queryClient],
+  );
+  const launchOllama = useCallback(
+    async (host: string) => {
+      setStartingOllama(true);
+      try {
+        await startOllama();
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        await refreshOllama(host);
+      } catch (error) {
+        void logError("start ollama", error);
+      } finally {
+        setStartingOllama(false);
+      }
+    },
+    [refreshOllama],
   );
   // Saving a new host takes over from any manual probe.
   // biome-ignore lint/correctness/useExhaustiveDependencies: savedOllamaHost is the trigger, not a read dependency; the reset must run exactly when the saved host changes
@@ -665,6 +696,7 @@ export function AISection() {
             setOpenProviders={setOpenProviders}
             setKeys={setKeys}
             ollama={ollama}
+            onStartOllama={() => void launchOllama(ollamaHost)}
             refreshOllama={refreshOllama}
             applyOllamaModel={applyOllamaModel}
             validateAndSave={validateAndSave}

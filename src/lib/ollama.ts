@@ -11,3 +11,15 @@ export function listOllamaModels(host: string): Promise<string[]> {
     host: host.trim() || DEFAULT_OLLAMA_HOST,
   });
 }
+
+// Whether an `ollama` executable exists on this machine, so the settings panel
+// can offer to start it rather than only reporting that nothing is listening.
+export function ollamaInstalled(): Promise<boolean> {
+  return invoke<boolean>("ollama_installed");
+}
+
+// Spawns `ollama serve`. Resolves once the process starts; the caller re-checks
+// reachability, since the server needs a moment to bind its port.
+export function startOllama(): Promise<void> {
+  return invoke<void>("ollama_start");
+}
