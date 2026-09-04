@@ -260,8 +260,6 @@ pub async fn compile_project(
         halt_on_error: halt_on_error.unwrap_or(false),
         latex_flavor: None,
         allow_shell_escape: false,
-        checkpoint_mode: crate::document_engine::CheckpointCompileMode::Disabled,
-        checkpoint_persistent_cache: false,
         source_date_epoch: Some(source_date_epoch),
     };
     let ticket = state
@@ -303,7 +301,6 @@ pub async fn compile_project(
                 out_dir: None,
                 compile_time_ms: 0,
                 stopped: false,
-                checkpoint_publication: Default::default(),
             });
         }
     }
@@ -444,18 +441,13 @@ pub async fn compile_project(
                 );
             });
         }
-        result.checkpoint_publication =
-            crate::checkpoint_publication::schedule_after_successful_compile(
-                &app,
-                &project_id,
-                &project_dir,
-                &build_dir,
-                &meta.engine,
-                &main_doc,
-                &meta.checkpoints,
-                options,
-            )
-            .await;
+        crate::checkpoint_publication::schedule_after_successful_compile(
+            &app,
+            &project_id,
+            &project_dir,
+            &meta.engine,
+            &main_doc,
+        );
     }
     #[cfg(debug_assertions)]
     eprintln!(
@@ -855,7 +847,7 @@ mod tests {
         std::fs::write(directory.path().join("paper.typ"), "= Paper").unwrap();
         let checkpoints: oleafly_core::CheckpointPolicy =
             serde_json::from_value(serde_json::json!({
-                "always_include": ["research/notes"]
+                "legacy_always_include": ["research/notes"]
             }))
             .unwrap();
         let meta = crate::project::ProjectMeta {
@@ -872,8 +864,8 @@ mod tests {
         assert!(prepared.source_path().ends_with("paper.typ"));
         assert!(prepared.build_directory().ends_with(".oleafly/build"));
         assert_eq!(
-            workspace.manifest().checkpoints.always_include,
-            ["research/notes"]
+            workspace.manifest().checkpoints.extra["legacy_always_include"],
+            serde_json::json!(["research/notes"])
         );
     }
 

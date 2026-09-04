@@ -2897,7 +2897,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "unicode-normalization",
 ]
 
 [[package]]

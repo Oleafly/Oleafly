@@ -23,7 +23,6 @@ export {
   checkpointDelete,
   checkpointExport,
   checkpointFiles,
-  checkpointIgnorePath,
   checkpointImport,
   checkpointInspect,
   checkpointKeepLatest,
@@ -33,6 +32,5 @@ export {
   checkpointRevealStore,
   checkpointSetLabel,
   checkpointStats,
-  checkpointUnignorePath,
   checkpointVerify,
 } from "./tauri";

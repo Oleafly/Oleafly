@@ -105,8 +105,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # `pnpm audit` exits 1 both when it finds an advisory and when it cannot
+      # reach registry.npmjs.org, so a registry outage used to read as a
+      # vulnerability and fail every branch. Real findings still fail the job.
       - name: Audit production dependencies
-        run: pnpm audit --prod --audit-level high
+        run: |
+          set +e
+          output="$(pnpm audit --prod --audit-level high 2>&1)"
+          status=$?
+          printf '%s\n' "$output"
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+          if printf '%s' "$output" | grep -qE 'TimeoutError|operation was aborted|ECONNRESET|ECONNREFUSED|EAI_AGAIN|ENOTFOUND|ETIMEDOUT|socket hang up|registry\.npmjs\.org.*error'; then
+            echo "::warning title=Audit skipped::The npm advisory endpoint was unreachable, so production dependencies were not audited in this run."
+            exit 0
+          fi
+          exit "$status"
 
       - name: Validate language-server manifest and fetch confinement
         run: pnpm language-servers:test

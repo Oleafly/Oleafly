@@ -120,20 +120,6 @@ pub fn spawn_contained(command: &mut Command) -> std::io::Result<()> {
 }
 
 pub fn isolate_process_tree(command: &mut tokio::process::Command) {
-    isolate_process_tree_with_priority(command, false);
-}
-
-/// Isolates like [`isolate_process_tree`] and starts the child at a lower CPU
-/// priority, for supplementary work that must never slow the user's own
-/// compile or the interface.
-pub fn isolate_process_tree_low_priority(command: &mut tokio::process::Command) {
-    isolate_process_tree_with_priority(command, true);
-}
-
-#[cfg(windows)]
-const BELOW_NORMAL_PRIORITY_CLASS: u32 = 0x0000_4000;
-
-fn isolate_process_tree_with_priority(command: &mut tokio::process::Command, low_priority: bool) {
     #[cfg(unix)]
     unsafe {
         use std::os::unix::process::CommandExt;
@@ -141,20 +127,15 @@ fn isolate_process_tree_with_priority(command: &mut tokio::process::Command, low
             if libc::setpgid(0, 0) != 0 {
                 return Err(std::io::Error::last_os_error());
             }
-            if low_priority {
-                libc::setpriority(libc::PRIO_PROCESS, 0, 10);
-            }
             Ok(())
         });
     }
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        let mut flags = CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED;
-        if low_priority {
-            flags |= BELOW_NORMAL_PRIORITY_CLASS;
-        }
-        command.as_std_mut().creation_flags(flags);
+        command
+            .as_std_mut()
+            .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED);
     }
 }
 

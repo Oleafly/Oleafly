@@ -64,8 +64,8 @@ export function CheckpointToggles() {
           }}
         />
         <SettingsToggleRow
-          label="Show a notice when a checkpoint is skipped"
-          description="Oleafly explains why a compile produced no checkpoint."
+          label="Show a notice when a checkpoint cannot be saved"
+          description="Oleafly tells you when checkpoint storage is full or not writable."
           checked={notificationsEnabled}
           onChange={(value) => {
             if (!config) return;

@@ -21,7 +21,6 @@ import {
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
 import { notifyError, toast } from "@/lib/toast";
-import { notifyCheckpointPublicationSkipped } from "@/lib/checkpoint-publication";
 
 import { compileOfflineForEngine } from "@/lib/document-engine";
 import { ensurePandoc } from "@/features/pandoc";
@@ -1048,7 +1047,6 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         .catch(() => {});
       if (checkpoint) {
         notifyCompileSucceeded(checkpoint);
-        void notifyCheckpointPublicationSkipped(result.checkpoint_publication);
       }
       return result;
 

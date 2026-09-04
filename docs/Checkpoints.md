@@ -1,72 +1,50 @@
 # Checkpoints
 
-A checkpoint is an immutable local record of the sources that produced one
-successful compile. Checkpoints are separate from Git. They never initialize a
+A checkpoint is a snapshot of your project folder, saved automatically after a
+compile succeeds. Checkpoints are separate from Git. They never initialize a
 repository, create a commit, or change a branch.
 
-## When a checkpoint is saved
+## When Oleafly saves one
 
-Oleafly saves a checkpoint after a successful compile, in the background. The
-compile result, the editor, saves, and the preview never wait for it. A new
-project gets its first checkpoint from its first successful compile.
+Two conditions, and nothing else. The compile succeeded, and the project folder
+differs from the newest checkpoint on record.
 
-A checkpoint is saved only when the sources changed. If the files the compile
-used are byte for byte the same as the newest checkpoint, nothing is written
-and history keeps its order. Each checkpoint is therefore a distinct version.
+The save runs on its own background task. Starting it costs the compile nothing,
+because no file is read and no store is opened until after the compile has
+returned its result. A new project gets its first checkpoint from its first
+successful compile.
 
-There is no queue. If a newer compile succeeds while a checkpoint is still
-being saved, the older save is cancelled and the newer state is saved instead.
+There is no queue. Compile again while a save is still running and that save
+stops, so the newer state is the one recorded. Compile five times in quick
+succession and you end up with one checkpoint, holding the last state.
 
-## What a checkpoint contains
+## What a checkpoint holds
 
-A checkpoint holds `project.json`, the main document, and every project-local
-file the document engine proved it read while producing the PDF: included
-sources, images, bibliographies, fonts, and data files. Generated PDFs, build
-output, logs, `.git`, `.oleafly`, and files the compile did not use are left
-out. Oleafly never widens an uncertain dependency set to the whole project. If
-the engine cannot prove every input, the document still compiles and Oleafly
-shows a short reason for skipping the checkpoint.
+The project folder as it stands after the compile. Everything under the project
+root, whatever its type, whether or not the document refers to it. Oleafly does
+not work out which files the compiler read and keep only those.
 
-Automatic publication supports the controlled Tectonic, Typst, and Markdown
-with Pandoc compile paths. Markdown checkpoints work with any Pandoc the app
-accepts (2.19 or newer), and each checkpoint records which Pandoc build proved
-it. The proof of a checkpoint is a sealed replay:
-Oleafly compiles the sealed inputs a second time in the same controlled
-environment and keeps the checkpoint only if that replay reproduces the
-controlled compile byte for byte. It is skipped when the replay does not
-reproduce the controlled compile or when the evidence includes an external,
-protected, or unreadable input. The PDF you see after a compile and the
-checkpoint's proof compile can differ by a fraction of a point in word spacing,
-because Tectonic reruns TeX inside one process and the output depends on what
-the build directory already held from the last compile. latexmk, Biber, shell
-escape, and draft mode remain unavailable for checkpoints.
+Left out: `.git`, `.oleafly`, `node_modules`, and any directory named
+`_minted-*` or `pythontex-files-*`. Build output lives inside `.oleafly`, so the
+compiled PDF and the log go out with it.
 
-## Include and ignore rules
+There is nothing to configure. Checkpoints have no include list and no ignore
+list. No setting in `project.json` can keep a file out of one or push a file
+into one.
 
-The rules live in `project.json` under `checkpoints` and travel with the
-project:
+Every engine is covered, since a checkpoint does not depend on how the document
+was built.
 
-```json
-{
-  "checkpoints": {
-    "mode": "engine_dependencies",
-    "always_include": ["figures/*.png"],
-    "ignored": ["data/raw.csv"]
-  }
-}
-```
+## When it fails
 
-`always_include` adds project files the compile did not read, such as notes or
-source data you want versioned with the paper. `ignored` keeps a file's bytes
-out of the store. If an ignored file is still needed by the compile, the
-checkpoint records its path and content hash but does not store its contents,
-and restoring that checkpoint leaves the file as it is on disk. `project.json`
-and the main document cannot be ignored.
+Oleafly does not refuse to save a checkpoint. There is no toolchain check and no
+second compile to prove the first one. Nothing is judged too uncertain to
+record. Compile succeeded, folder changed, snapshot taken.
 
-Patterns are project-relative, use forward slashes, and support `*` and `?`.
-They cannot target `.git` or `.oleafly` or escape the project. The Versioning
-window offers an ignore action on any file of a checkpoint, and the same list
-can be edited by hand.
+One message can reach you, and only one: checkpoint storage is full or not
+writable. It says what went wrong and what to do about it, and Settings can turn
+it off. Everything else that goes wrong goes to the app log and stays there,
+because there is nothing for you to act on.
 
 ## The Versioning window
 
@@ -75,10 +53,18 @@ restores the project to any of them. Saved Checkpoints lists the checkpoints.
 
 The checkpoints tab opens on the timeline, newest on top, with the version
 number, time, engine, main document, file count, and stored size. Expand an
-entry to see its files and which of them were compiler inputs, which were
-included by rule, and which were recorded but not stored. Restore replaces the
-files in the checkpoint transactionally and preserves `.git`, `.oleafly`, and
-every file the checkpoint does not contain. Delete removes one record.
+entry to see the files it holds and their sizes.
+
+Restore writes the checkpoint's files back over your current copies. A file the
+checkpoint holds that you deleted afterwards comes back. A file you added after
+the checkpoint was taken stays where it is, since the checkpoint says nothing
+about it. `.git` and `.oleafly` are left alone. The write runs as one
+transaction, so an interrupted restore rolls back instead of leaving you with
+half a project.
+
+Delete removes one checkpoint, and it is always safe to do. Every checkpoint
+stands on its own, and Oleafly reclaims only the stored data that no remaining
+checkpoint refers to.
 
 A checkpoint can also carry a label. The pencil on an entry opens a text field
 that takes up to 80 characters on one line. Saving puts the label in the entry
@@ -101,18 +87,19 @@ tab and "Checkpoints" opens the Saved Checkpoints tab.
 
 Settings has two checkpoint switches, under Data Storage in the Local store
 tab. One turns automatic checkpoints off. The other hides the notice shown when
-a checkpoint is skipped. The storage location and the catalog inspector are no
-longer in Settings. They are in the Advanced section of the Versioning window.
+checkpoint storage is full or not writable. The storage location and the
+catalog inspector are no longer in Settings. They are in the Advanced section
+of the Versioning window.
 
 ## Storage
 
-History is stored outside the project in a per-project content-addressed
-store under the Oleafly data directory. Duplicate content is stored once for
-the same project. Capture is streamed with bounded memory and explicit file,
-checkpoint, and chunk-reference limits, and an oversized capture is skipped
-without publishing. Deleting a project permanently removes its checkpoint
-data. Moving a project to the Recycle Bin keeps the history recoverable. A
-duplicated project receives a new identity and starts with empty history.
+History is stored outside the project in a per-project content-addressed store
+under the Oleafly data directory. Duplicate content is stored once for the same
+project. Capture is streamed with bounded memory and explicit file, checkpoint,
+and chunk-reference limits, and a capture that exceeds them is not published.
+Deleting a project permanently removes its checkpoint data. Moving a project to
+the Recycle Bin keeps the history recoverable. A duplicated project receives a
+new identity and starts with empty history.
 
 ## Portable encrypted archives
 
@@ -130,8 +117,9 @@ the test suite to protect this promise.
 
 ## Compatibility
 
-A missing `checkpoints` object in `project.json` means engine-dependencies
-mode with empty rules. Newer Oleafly versions preserve unknown fields when they
+A `checkpoints` object in `project.json` no longer decides what is captured.
+Oleafly keeps the field so a project written by another version survives a
+round trip unchanged. Newer Oleafly versions preserve unknown fields when they
 rewrite project metadata. Releases that predate the field cannot preserve what
 they do not understand, so an older release that rewrites `project.json` may
-reset the rules.
+drop it.

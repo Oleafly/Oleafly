@@ -58,8 +58,6 @@ pub struct CheckpointStats {
     pub stored_pack_bytes: u64,
     pub logical_bytes: u64,
     pub reclaimable_bytes: u64,
-    pub unstored_file_count: u64,
-    pub unstored_logical_bytes: u64,
 }
 
 impl From<StoreStats> for CheckpointStats {
@@ -69,8 +67,6 @@ impl From<StoreStats> for CheckpointStats {
             stored_pack_bytes: stats.stored_pack_bytes,
             logical_bytes: stats.visible_logical_bytes,
             reclaimable_bytes: stats.reclaimable_pack_bytes,
-            unstored_file_count: stats.unstored_file_count,
-            unstored_logical_bytes: stats.unstored_logical_bytes,
         }
     }
 }
@@ -81,7 +77,6 @@ pub struct CheckpointFileSummary {
     pub bytes: u64,
     pub content_hash: String,
     pub stored: bool,
-    pub replayed: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
@@ -290,15 +285,6 @@ fn checkpoint_files_sync(
     require_active_project(project_id)?;
     let root = parse_snapshot_root(snapshot_root)?;
     let store = require_existing_store(project_id)?;
-    let checkpoint = store
-        .checkpoint(&root)
-        .map_err(|_| "Could not read the selected Checkpoint.".to_string())?
-        .ok_or_else(|| "The selected Checkpoint no longer exists.".to_string())?;
-    let replayed = checkpoint
-        .replayed_inputs()
-        .iter()
-        .map(|input| input.relative_path.as_str())
-        .collect::<HashSet<_>>();
     let files = store
         .checkpoint_files(&root)
         .map_err(|_| "Could not read the selected Checkpoint's files.".to_string())?
@@ -306,7 +292,6 @@ fn checkpoint_files_sync(
     Ok(files
         .into_iter()
         .map(|file| CheckpointFileSummary {
-            replayed: replayed.contains(file.relative_path.as_str()),
             path: file.relative_path,
             bytes: file.logical_bytes,
             content_hash: file.content_hash.to_string(),
@@ -1783,8 +1768,7 @@ fn is_reparse_point(_metadata: &fs::Metadata) -> bool {
 #[cfg(test)]
 mod tests {
     use oleafly_history::{
-        CaptureInput, CompileEvidence, ContentHash, PublishOutcome, ReplayedInput, SnapshotRoot,
-        Store,
+        CaptureInput, CompileEvidence, ContentHash, PublishOutcome, SnapshotRoot, Store,
     };
     use std::fs;
 
@@ -1808,12 +1792,7 @@ mod tests {
         fs::write(project.join("main.tex"), source).unwrap();
         let inputs = [
             CaptureInput::explicit("project.json").unwrap(),
-            CaptureInput::proven(
-                "main.tex",
-                project.join("main.tex").canonicalize().unwrap(),
-                ContentHash::digest(source),
-            )
-            .unwrap(),
+            CaptureInput::explicit("main.tex").unwrap(),
         ];
         let candidate = store.stage_candidate(project, &inputs).unwrap();
         let root = *candidate.snapshot_root();
@@ -1823,7 +1802,6 @@ mod tests {
             "main.tex",
             ContentHash::digest(b"validated output"),
             time,
-            vec![ReplayedInput::new("main.tex", ContentHash::digest(source)).unwrap()],
         )
         .unwrap();
         assert!(matches!(
@@ -1951,78 +1929,6 @@ mod tests {
         );
         assert_eq!(store.list().unwrap(), before);
         assert!(!store.root().join(super::RESTORE_TRANSACTION).exists());
-
-        std::env::remove_var("OLEAFLY_DATA_DIR");
-    }
-
-    #[test]
-    fn restore_never_touches_a_file_the_checkpoint_recorded_without_bytes() {
-        let _env_guard = crate::paths::data_dir_env_lock();
-        let directory = tempfile::tempdir().unwrap();
-        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
-        let project = isolated_project_dir(directory.path(), "paper");
-        let metadata = br#"{"name":"Paper","main_doc":"main.tex","engine":"xetex","checkpoints":{"ignored":["notes.txt"]}}"#;
-        fs::write(project.join("project.json"), metadata).unwrap();
-        fs::write(project.join("main.tex"), b"checkpoint source").unwrap();
-        fs::write(project.join("notes.txt"), b"sealed notes").unwrap();
-        let store = Store::open(crate::paths::checkpoint_store_dir("paper").unwrap()).unwrap();
-        let inputs = [
-            CaptureInput::explicit("project.json").unwrap(),
-            CaptureInput::proven(
-                "main.tex",
-                project.join("main.tex").canonicalize().unwrap(),
-                ContentHash::digest(b"checkpoint source"),
-            )
-            .unwrap(),
-            CaptureInput::replay_required_unstored(
-                "notes.txt",
-                project.join("notes.txt").canonicalize().unwrap(),
-                ContentHash::digest(b"sealed notes"),
-            )
-            .unwrap(),
-        ];
-        let candidate = store.stage_candidate(&project, &inputs).unwrap();
-        let root = *candidate.snapshot_root();
-        let evidence = CompileEvidence::new(
-            "xetex",
-            "tectonic-test@1",
-            "main.tex",
-            ContentHash::digest(b"validated output"),
-            10,
-            vec![
-                ReplayedInput::new("main.tex", ContentHash::digest(b"checkpoint source")).unwrap(),
-                ReplayedInput::new("notes.txt", ContentHash::digest(b"sealed notes")).unwrap(),
-            ],
-        )
-        .unwrap();
-        assert!(matches!(
-            store.publish(candidate, evidence).unwrap(),
-            PublishOutcome::Created(_)
-        ));
-        let recorded = store.checkpoint_files(&root).unwrap().unwrap();
-        let notes = recorded
-            .iter()
-            .find(|file| file.relative_path == "notes.txt")
-            .expect("the ignored input is recorded by identity");
-        assert!(!notes.stored);
-        assert_eq!(notes.content_hash, ContentHash::digest(b"sealed notes"));
-        assert_eq!(store.stats().unwrap().unstored_file_count, 1);
-
-        fs::write(project.join("main.tex"), b"current source").unwrap();
-        fs::write(project.join("notes.txt"), b"current notes").unwrap();
-
-        restore_checkpoint_sync(&store, &root, &project, RestoreFault::None).unwrap();
-
-        assert_eq!(
-            fs::read(project.join("main.tex")).unwrap(),
-            b"checkpoint source"
-        );
-        assert_eq!(
-            fs::read(project.join("notes.txt")).unwrap(),
-            b"current notes",
-            "a file the Checkpoint stored by identity only must survive a restore untouched"
-        );
-        assert_eq!(fs::read(project.join("project.json")).unwrap(), metadata);
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
@@ -2180,18 +2086,8 @@ mod tests {
         let store = Store::open(crate::paths::checkpoint_store_dir("paper").unwrap()).unwrap();
         let inputs = [
             CaptureInput::explicit("project.json").unwrap(),
-            CaptureInput::proven(
-                "main.tex",
-                project.join("main.tex").canonicalize().unwrap(),
-                ContentHash::digest(b"checkpoint main"),
-            )
-            .unwrap(),
-            CaptureInput::proven(
-                "chapters/one.tex",
-                project.join("chapters/one.tex").canonicalize().unwrap(),
-                ContentHash::digest(b"checkpoint chapter"),
-            )
-            .unwrap(),
+            CaptureInput::explicit("main.tex").unwrap(),
+            CaptureInput::explicit("chapters/one.tex").unwrap(),
         ];
         let candidate = store.stage_candidate(&project, &inputs).unwrap();
         let root = *candidate.snapshot_root();
@@ -2201,14 +2097,6 @@ mod tests {
             "main.tex",
             ContentHash::digest(b"validated output"),
             10,
-            vec![
-                ReplayedInput::new("main.tex", ContentHash::digest(b"checkpoint main")).unwrap(),
-                ReplayedInput::new(
-                    "chapters/one.tex",
-                    ContentHash::digest(b"checkpoint chapter"),
-                )
-                .unwrap(),
-            ],
         )
         .unwrap();
         assert!(matches!(
@@ -2529,9 +2417,7 @@ mod tests {
                 "checkpoint_count": 0,
                 "stored_pack_bytes": 0,
                 "logical_bytes": 0,
-                "reclaimable_bytes": 0,
-                "unstored_file_count": 0,
-                "unstored_logical_bytes": 0
+                "reclaimable_bytes": 0
             })
         );
         assert_eq!(
@@ -2557,16 +2443,14 @@ mod tests {
                 path: "main.tex".into(),
                 bytes: 7,
                 content_hash: "abc".into(),
-                stored: false,
-                replayed: true,
+                stored: true,
             })
             .unwrap(),
             serde_json::json!({
                 "path": "main.tex",
                 "bytes": 7,
                 "content_hash": "abc",
-                "stored": false,
-                "replayed": true
+                "stored": true
             })
         );
     }
@@ -2604,9 +2488,9 @@ mod tests {
         assert_eq!(
             files
                 .iter()
-                .map(|file| (file.path.as_str(), file.stored, file.replayed))
+                .map(|file| (file.path.as_str(), file.stored))
                 .collect::<Vec<_>>(),
-            [("main.tex", true, true), ("project.json", true, false)]
+            [("main.tex", true), ("project.json", true)]
         );
         assert_eq!(
             files[0].content_hash,

@@ -6,6 +6,10 @@ import { useSettingsStore } from "@/store/settings";
 
 export const CHECKPOINT_PUBLICATION_EVENT = "checkpoint:publication";
 
+const SKIPPED_TOAST_KEY = "checkpoint-publication-skipped";
+
+const notifiedSkipReasons = new Map<string, string>();
+
 export type CheckpointPublicationEvent =
   | { project_id: string; main_document: string; phase: "started" }
   | {
@@ -15,24 +19,21 @@ export type CheckpointPublicationEvent =
       outcome: CheckpointPublicationOutcome;
     };
 
-export async function notifyCheckpointPublicationSkipped(
-  outcome: CheckpointPublicationOutcome | undefined,
+type CheckpointPublicationSkipped = Extract<CheckpointPublicationOutcome, { status: "skipped" }>;
+
+async function notifySkipped(
+  projectId: string,
+  outcome: CheckpointPublicationSkipped,
 ): Promise<void> {
-  if (outcome?.status !== "skipped") return;
+  if (notifiedSkipReasons.get(projectId) === outcome.reason) return;
   try {
     const config = await getConfig();
     if (config.checkpoint_notifications === false) return;
   } catch {
     return;
   }
-  toast.infoUnique(
-    `checkpoint-publication-${outcome.reason}`,
-    `${outcome.message} ${outcome.suggestion}`,
-    {
-      label: "View Checkpoints",
-      onClick: () => useSettingsStore.getState().openVersioning("checkpoints"),
-    },
-  );
+  notifiedSkipReasons.set(projectId, outcome.reason);
+  toast.errorUnique(SKIPPED_TOAST_KEY, `${outcome.message} ${outcome.suggestion}`, undefined, true);
 }
 
 function isPublicationEvent(payload: unknown): payload is CheckpointPublicationEvent {
@@ -54,12 +55,17 @@ export function applyCheckpointPublicationEvent(payload: unknown): void {
   if (settings.checkpointPublishingProjectId === payload.project_id) {
     settings.setCheckpointPublishingProjectId(null);
   }
-  if (!isActiveProject) return;
-  const status = payload.outcome.status;
-  if (status === "unchanged") return;
-  if (status === "published" || status === "published_durability_uncertain") {
-    settings.bumpCheckpointsRevision();
+  if (payload.outcome.status !== "skipped") {
+    notifiedSkipReasons.delete(payload.project_id);
+    if (
+      isActiveProject &&
+      (payload.outcome.status === "published" ||
+        payload.outcome.status === "published_durability_uncertain")
+    ) {
+      settings.bumpCheckpointsRevision();
+    }
     return;
   }
-  void notifyCheckpointPublicationSkipped(payload.outcome);
+  if (!isActiveProject) return;
+  void notifySkipped(payload.project_id, payload.outcome);
 }

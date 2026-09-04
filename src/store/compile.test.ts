@@ -16,9 +16,7 @@ const mocks = vi.hoisted(() => ({
   readFileContent: vi.fn(),
   cancelCompile: vi.fn(),
   clearBuildDir: vi.fn(),
-  getConfig: vi.fn(async () => ({ checkpoint_notifications: true })),
   notifyCompileSucceeded: vi.fn(),
-  toastInfoUnique: vi.fn(),
   refreshPreviewWindow: vi.fn(),
   gitPreparePublish: vi.fn(),
   ensurePandoc: vi.fn(),
@@ -67,7 +65,6 @@ vi.mock("@/lib/tauri", () => ({
   readFileContent: mocks.readFileContent,
   cancelCompile: mocks.cancelCompile,
   clearBuildDir: mocks.clearBuildDir,
-  getConfig: mocks.getConfig,
   gitPreparePublish: mocks.gitPreparePublish,
 }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
@@ -90,7 +87,7 @@ vi.mock("@/store/project-index", () => ({
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => mocks.settings } }));
 vi.mock("@/lib/toast", () => ({
   notifyError: vi.fn(),
-  toast: { infoUnique: mocks.toastInfoUnique },
+  toast: { errorUnique: vi.fn() },
 }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/preview-window", () => ({
@@ -141,9 +138,7 @@ beforeEach(() => {
   mocks.readFileContent.mockReset().mockResolvedValue("\\documentclass{article}\n");
   mocks.cancelCompile.mockReset().mockResolvedValue(true);
   mocks.clearBuildDir.mockReset().mockResolvedValue(undefined);
-  mocks.getConfig.mockReset().mockResolvedValue({ checkpoint_notifications: true });
   mocks.notifyCompileSucceeded.mockReset();
-  mocks.toastInfoUnique.mockReset();
   mocks.refreshPreviewWindow.mockReset();
   mocks.gitPreparePublish.mockReset().mockResolvedValue(undefined);
   mocks.ensurePandoc.mockReset().mockResolvedValue(true);
@@ -304,45 +299,6 @@ describe("compile output lifecycle", () => {
     await useCompileStore.getState().recompile();
 
     expect(mocks.gitPreparePublish).not.toHaveBeenCalled();
-  });
-
-  it("keeps a successful compile and shows a non-blocking skipped Checkpoint notice", async () => {
-    const bytes = new Uint8Array([1, 2, 3]);
-    mocks.compileProject.mockResolvedValue({
-      ok: true,
-      has_pdf: true,
-      output_id: fingerprintCompileOutput(bytes),
-      output_revision: 7,
-      log: "ok",
-      errors: [],
-      synctex_path: null,
-      out_dir: "/build",
-      compile_time_ms: 12,
-      checkpoint_publication: {
-        status: "skipped",
-        reason: "dependency_evidence_unavailable",
-        message: "Checkpoint not saved.",
-        suggestion: "The document still compiled successfully.",
-      },
-    });
-    mocks.readCompiledPdf.mockResolvedValue(bytes.buffer);
-
-    await useCompileStore.getState().recompile();
-
-    expect(useCompileStore.getState().status).toBe("success");
-    await vi.waitFor(() =>
-      expect(mocks.toastInfoUnique).toHaveBeenCalledWith(
-        "checkpoint-publication-dependency_evidence_unavailable",
-        "Checkpoint not saved. The document still compiled successfully.",
-        expect.objectContaining({ label: "View Checkpoints" }),
-      ),
-    );
-    const action = mocks.toastInfoUnique.mock.calls[0]?.[2] as
-      | { onClick?: () => void }
-      | undefined;
-    action?.onClick?.();
-    expect(mocks.settings.versioningOpen).toBe(true);
-    expect(mocks.settings.versioningTab).toBe("checkpoints");
   });
 
   it("restores preview and SyncTeX freshness after source text is exactly reverted", async () => {

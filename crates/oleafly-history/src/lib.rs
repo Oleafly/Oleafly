@@ -17,7 +17,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use fastcdc::v2020::StreamCDC;
 use rand::RngCore;
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension, TransactionBehavior};
-use serde::ser::SerializeSeq;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use unicode_normalization::UnicodeNormalization;
@@ -188,10 +187,6 @@ impl fmt::Display for ContentHash {
 pub struct SnapshotRoot(ContentHash);
 
 impl SnapshotRoot {
-    pub fn as_hash(&self) -> ContentHash {
-        self.0
-    }
-
     pub fn as_hex(&self) -> String {
         self.0.to_hex()
     }
@@ -211,135 +206,21 @@ impl fmt::Display for SnapshotRoot {
     }
 }
 
-/// Why a project-local regular file is eligible for a sealed candidate.
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum CaptureBasis {
-    Explicit,
-    CompilerRead {
-        resolved_path: PathBuf,
-        first_read_hash: ContentHash,
-    },
-    ReplayRequired {
-        resolved_path: PathBuf,
-        preseal_hash: ContentHash,
-    },
-}
-
-/// One project-local regular file from explicit policy, direct compiler
-/// evidence, or a dependency that must be proven by sealed replay.
+/// One project-local regular file eligible for a sealed candidate.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CaptureInput {
     relative_path: String,
-    basis: CaptureBasis,
-    stored: bool,
 }
 
 impl CaptureInput {
     pub fn explicit(relative_path: impl Into<String>) -> Result<Self> {
         let relative_path = relative_path.into();
         validate_portable_relative_path(&relative_path)?;
-        Ok(Self {
-            relative_path,
-            basis: CaptureBasis::Explicit,
-            stored: true,
-        })
-    }
-
-    pub fn proven(
-        relative_path: impl Into<String>,
-        resolved_path: impl Into<PathBuf>,
-        first_read_hash: ContentHash,
-    ) -> Result<Self> {
-        let relative_path = relative_path.into();
-        validate_portable_relative_path(&relative_path)?;
-        let resolved_path = resolved_path.into();
-        if !resolved_path.is_absolute() {
-            return Err(HistoryError::InvalidInput(format!(
-                "resolved compiler input for {relative_path} must be absolute"
-            )));
-        }
-        Ok(Self {
-            relative_path,
-            basis: CaptureBasis::CompilerRead {
-                resolved_path,
-                first_read_hash,
-            },
-            stored: true,
-        })
-    }
-
-    /// Marks a compiler-discovered path whose exact sealed bytes must appear
-    /// in the authoritative replay evidence. Unlike `proven`, `preseal_hash`
-    /// is not represented as a first-read hash from the live compile.
-    pub fn replay_required(
-        relative_path: impl Into<String>,
-        resolved_path: impl Into<PathBuf>,
-        preseal_hash: ContentHash,
-    ) -> Result<Self> {
-        Self::replay_required_with_storage(relative_path, resolved_path, preseal_hash, true)
-    }
-
-    pub fn replay_required_unstored(
-        relative_path: impl Into<String>,
-        resolved_path: impl Into<PathBuf>,
-        preseal_hash: ContentHash,
-    ) -> Result<Self> {
-        Self::replay_required_with_storage(relative_path, resolved_path, preseal_hash, false)
-    }
-
-    fn replay_required_with_storage(
-        relative_path: impl Into<String>,
-        resolved_path: impl Into<PathBuf>,
-        preseal_hash: ContentHash,
-        stored: bool,
-    ) -> Result<Self> {
-        let relative_path = relative_path.into();
-        validate_portable_relative_path(&relative_path)?;
-        if !stored && relative_path == "project.json" {
-            return Err(HistoryError::InvalidInput(
-                "project.json must always retain its checkpoint bytes".into(),
-            ));
-        }
-        let resolved_path = resolved_path.into();
-        if !resolved_path.is_absolute() {
-            return Err(HistoryError::InvalidInput(format!(
-                "resolved replay input for {relative_path} must be absolute"
-            )));
-        }
-        Ok(Self {
-            relative_path,
-            basis: CaptureBasis::ReplayRequired {
-                resolved_path,
-                preseal_hash,
-            },
-            stored,
-        })
+        Ok(Self { relative_path })
     }
 
     pub fn relative_path(&self) -> &str {
         &self.relative_path
-    }
-
-    pub fn is_stored(&self) -> bool {
-        self.stored
-    }
-}
-
-/// One project-local input observed by the sealed replay compile.
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct ReplayedInput {
-    pub relative_path: String,
-    pub content_hash: ContentHash,
-}
-
-impl ReplayedInput {
-    pub fn new(relative_path: impl Into<String>, content_hash: ContentHash) -> Result<Self> {
-        let relative_path = relative_path.into();
-        validate_portable_relative_path(&relative_path)?;
-        Ok(Self {
-            relative_path,
-            content_hash,
-        })
     }
 }
 
@@ -351,7 +232,6 @@ pub struct CompileEvidence {
     pub main_document: String,
     pub output_hash: ContentHash,
     pub completed_at_unix_ms: i64,
-    replayed_inputs: Vec<ReplayedInput>,
 }
 
 impl CompileEvidence {
@@ -361,7 +241,6 @@ impl CompileEvidence {
         main_document: impl Into<String>,
         output_hash: ContentHash,
         completed_at_unix_ms: i64,
-        mut replayed_inputs: Vec<ReplayedInput>,
     ) -> Result<Self> {
         let engine = engine.into();
         if engine.trim().is_empty() {
@@ -382,19 +261,12 @@ impl CompileEvidence {
                 "compile completion time must not be negative".into(),
             ));
         }
-        replayed_inputs.sort();
-        validate_portable_path_set(
-            replayed_inputs
-                .iter()
-                .map(|input| input.relative_path.as_str()),
-        )?;
         Ok(Self {
             engine,
             toolchain_identity,
             main_document,
             output_hash,
             completed_at_unix_ms,
-            replayed_inputs,
         })
     }
 }
@@ -411,25 +283,8 @@ pub struct Checkpoint {
     pub file_count: u64,
     pub logical_bytes: u64,
     pub label: Option<String>,
-    replayed_inputs: Vec<ReplayedInput>,
     portable_metadata_bytes: u64,
     chunk_references: u64,
-    unstored_file_count: u64,
-    unstored_logical_bytes: u64,
-}
-
-impl Checkpoint {
-    pub fn replayed_inputs(&self) -> &[ReplayedInput] {
-        &self.replayed_inputs
-    }
-
-    pub fn unstored_file_count(&self) -> u64 {
-        self.unstored_file_count
-    }
-
-    pub fn unstored_logical_bytes(&self) -> u64 {
-        self.unstored_logical_bytes
-    }
 }
 
 /// Digest evidence for one file in a sealed candidate.
@@ -494,8 +349,6 @@ pub struct StoreStats {
     pub stored_chunk_bytes: u64,
     pub visible_logical_bytes: u64,
     pub reclaimable_pack_bytes: u64,
-    pub unstored_file_count: u64,
-    pub unstored_logical_bytes: u64,
 }
 
 /// Results of conservative reachability garbage collection.
@@ -557,7 +410,6 @@ pub struct Candidate {
     snapshot_root: SnapshotRoot,
     manifest: Manifest,
     manifest_json: Vec<u8>,
-    proven_files: Vec<SealedFile>,
     new_chunks: Vec<StagedChunk>,
     _store_locks: StoreLocks,
     cleaned: bool,
@@ -584,24 +436,6 @@ impl Candidate {
             root: self.store_root.clone(),
         };
         Ok(store.checkpoint_inner(&self.snapshot_root)?.is_some())
-    }
-
-    pub fn sealed_files(&self) -> Vec<SealedFile> {
-        self.manifest
-            .files
-            .iter()
-            .map(|file| SealedFile {
-                relative_path: file.path.clone(),
-                logical_bytes: file.logical_size,
-                content_hash: ContentHash::from_hex(&file.content_hash)
-                    .expect("candidate manifests contain generated BLAKE3 hashes"),
-                chunk_count: file.chunks.len() as u64,
-            })
-            .collect()
-    }
-
-    pub fn proven_files(&self) -> &[SealedFile] {
-        &self.proven_files
     }
 
     fn cleanup(&mut self) -> Result<()> {
@@ -664,30 +498,6 @@ fn advance_capture_budget(
         ));
     }
     Ok((file_bytes, checkpoint_bytes, chunk_references))
-}
-
-fn advance_unstored_capture_budget(
-    file_bytes: u64,
-    checkpoint_bytes: u64,
-    read_bytes: u64,
-) -> Result<(u64, u64)> {
-    let file_bytes = file_bytes
-        .checked_add(read_bytes)
-        .ok_or_else(|| HistoryError::InvalidInput("checkpoint file size overflow".into()))?;
-    if file_bytes > MAX_CHECKPOINT_FILE_BYTES {
-        return Err(HistoryError::InvalidInput(
-            "checkpoint file exceeds the 16 GiB capture limit".into(),
-        ));
-    }
-    let checkpoint_bytes = checkpoint_bytes
-        .checked_add(read_bytes)
-        .ok_or_else(|| HistoryError::InvalidInput("checkpoint size overflow".into()))?;
-    if checkpoint_bytes > MAX_HISTORY_LOGICAL_BYTES {
-        return Err(HistoryError::InvalidInput(
-            "checkpoint exceeds the portable history logical-size limit".into(),
-        ));
-    }
-    Ok((file_bytes, checkpoint_bytes))
 }
 
 /// A single project's independent checkpoint store.
@@ -1247,7 +1057,6 @@ impl Store {
         pack.write_all(PACK_MAGIC)?;
 
         let mut manifest_files = Vec::with_capacity(inputs.len());
-        let mut proven_files = Vec::new();
         let mut staged_hashes = HashSet::new();
         let mut new_chunks = Vec::new();
         let mut candidate_logical_size = 0_u64;
@@ -1294,22 +1103,6 @@ impl Store {
                     input.relative_path
                 )));
             }
-            let expected_resolved_path = match &input.basis {
-                CaptureBasis::CompilerRead { resolved_path, .. }
-                | CaptureBasis::ReplayRequired { resolved_path, .. } => Some(resolved_path),
-                CaptureBasis::Explicit => None,
-            };
-            if let Some(resolved_path) = expected_resolved_path {
-                if &canonical_source != resolved_path {
-                    return Err(HistoryError::InvalidInput(format!(
-                        "replay input {} resolved as {}, expected {}",
-                        input.relative_path,
-                        canonical_source.display(),
-                        resolved_path.display()
-                    )));
-                }
-            }
-
             let destination = sealed_root.join(path_from_portable(&input.relative_path));
             if let Some(parent) = destination.parent() {
                 fs::create_dir_all(parent)?;
@@ -1324,66 +1117,46 @@ impl Store {
             let mut logical_size = 0_u64;
             let mut chunks = Vec::new();
             let mut source_reader = BufReader::new(source_handle.as_file_mut());
-            if input.stored {
-                for chunk in StreamCDC::new(
-                    &mut source_reader,
-                    MIN_CHUNK_SIZE,
-                    AVG_CHUNK_SIZE,
-                    MAX_CHUNK_SIZE,
-                ) {
-                    let chunk = chunk.map_err(io::Error::from)?;
-                    ensure_publication_active(gate)?;
-                    let (next_file_size, next_candidate_size, next_chunk_references) =
-                        advance_capture_budget(
-                            logical_size,
-                            candidate_logical_size,
-                            candidate_chunk_references,
-                            chunk.length as u64,
-                        )?;
-                    destination_file.write_all(&chunk.data)?;
-                    content_hasher.update(&chunk.data);
-                    logical_size = next_file_size;
-                    candidate_logical_size = next_candidate_size;
-                    candidate_chunk_references = next_chunk_references;
-
-                    let chunk_hash = ContentHash::digest(&chunk.data);
-                    let chunk_hash_hex = chunk_hash.to_hex();
-                    chunks.push(ManifestChunk {
-                        hash: chunk_hash_hex.clone(),
-                        raw_len: chunk.length as u64,
-                    });
-
-                    let already_published = connection
-                        .query_row(
-                            "SELECT 1 FROM chunks WHERE chunk_hash = ?1",
-                            [&chunk_hash_hex],
-                            |_| Ok(()),
-                        )
-                        .optional()?
-                        .is_some();
-                    if !already_published && staged_hashes.insert(chunk_hash_hex.clone()) {
-                        new_chunks.push(write_pack_chunk(&mut pack, chunk_hash, &chunk.data)?);
-                    }
-                    ensure_publication_active(gate)?;
-                }
-            } else {
-                let mut buffer = vec![0_u8; 64 * 1024];
-                loop {
-                    ensure_publication_active(gate)?;
-                    let count = source_reader.read(&mut buffer)?;
-                    if count == 0 {
-                        break;
-                    }
-                    let (next_file_size, next_candidate_size) = advance_unstored_capture_budget(
+            for chunk in StreamCDC::new(
+                &mut source_reader,
+                MIN_CHUNK_SIZE,
+                AVG_CHUNK_SIZE,
+                MAX_CHUNK_SIZE,
+            ) {
+                let chunk = chunk.map_err(io::Error::from)?;
+                ensure_publication_active(gate)?;
+                let (next_file_size, next_candidate_size, next_chunk_references) =
+                    advance_capture_budget(
                         logical_size,
                         candidate_logical_size,
-                        count as u64,
+                        candidate_chunk_references,
+                        chunk.length as u64,
                     )?;
-                    destination_file.write_all(&buffer[..count])?;
-                    content_hasher.update(&buffer[..count]);
-                    logical_size = next_file_size;
-                    candidate_logical_size = next_candidate_size;
+                destination_file.write_all(&chunk.data)?;
+                content_hasher.update(&chunk.data);
+                logical_size = next_file_size;
+                candidate_logical_size = next_candidate_size;
+                candidate_chunk_references = next_chunk_references;
+
+                let chunk_hash = ContentHash::digest(&chunk.data);
+                let chunk_hash_hex = chunk_hash.to_hex();
+                chunks.push(ManifestChunk {
+                    hash: chunk_hash_hex.clone(),
+                    raw_len: chunk.length as u64,
+                });
+
+                let already_published = connection
+                    .query_row(
+                        "SELECT 1 FROM chunks WHERE chunk_hash = ?1",
+                        [&chunk_hash_hex],
+                        |_| Ok(()),
+                    )
+                    .optional()?
+                    .is_some();
+                if !already_published && staged_hashes.insert(chunk_hash_hex.clone()) {
+                    new_chunks.push(write_pack_chunk(&mut pack, chunk_hash, &chunk.data)?);
                 }
+                ensure_publication_active(gate)?;
             }
             drop(source_reader);
             ensure_publication_active(gate)?;
@@ -1404,35 +1177,11 @@ impl Store {
             }
 
             let content_hash = ContentHash::from_bytes(*content_hasher.finalize().as_bytes());
-            let expected_hash = match &input.basis {
-                CaptureBasis::CompilerRead {
-                    first_read_hash, ..
-                } => Some((*first_read_hash, "changed after the compiler first read it")),
-                CaptureBasis::ReplayRequired { preseal_hash, .. } => {
-                    Some((*preseal_hash, "changed before it was sealed for replay"))
-                }
-                CaptureBasis::Explicit => None,
-            };
-            if let Some((expected_hash, changed_message)) = expected_hash {
-                if content_hash != expected_hash {
-                    return Err(HistoryError::InvalidInput(format!(
-                        "replay input {} {changed_message}",
-                        input.relative_path
-                    )));
-                }
-                proven_files.push(SealedFile {
-                    relative_path: input.relative_path.clone(),
-                    logical_bytes: logical_size,
-                    content_hash,
-                    chunk_count: chunks.len() as u64,
-                });
-            }
-
             manifest_files.push(ManifestFile {
                 path: input.relative_path.clone(),
                 logical_size,
                 content_hash: content_hash.to_hex(),
-                stored: input.stored,
+                stored: true,
                 chunks,
             });
         }
@@ -1461,7 +1210,6 @@ impl Store {
             snapshot_root,
             manifest,
             manifest_json,
-            proven_files,
             new_chunks,
             _store_locks: store_locks,
             cleaned: false,
@@ -1512,7 +1260,7 @@ impl Store {
         ensure_publication_active(gate)?;
         verify_candidate_sealed_tree_controlled(&candidate, gate)?;
         ensure_publication_active(gate)?;
-        validate_compile_evidence(&candidate, &evidence)?;
+        validate_archived_evidence(&candidate.manifest, &evidence)?;
 
         let root_hex = candidate.snapshot_root.as_hex();
         let mut connection = self.connection()?;
@@ -1530,7 +1278,6 @@ impl Store {
                     .checked_add(file.logical_size)
                     .ok_or_else(|| HistoryError::InvalidInput("snapshot length overflow".into()))
             })?;
-        let unstored = manifest_unstored_totals(&candidate.manifest)?;
         let mut checkpoint = Checkpoint {
             snapshot_root: candidate.snapshot_root,
             completed_at_unix_ms: evidence.completed_at_unix_ms,
@@ -1541,11 +1288,8 @@ impl Store {
             file_count: candidate.manifest.files.len() as u64,
             logical_bytes,
             label: None,
-            replayed_inputs: evidence.replayed_inputs,
             portable_metadata_bytes: 0,
             chunk_references: 0,
-            unstored_file_count: unstored.file_count,
-            unstored_logical_bytes: unstored.logical_bytes,
         };
 
         let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -1686,15 +1430,12 @@ impl Store {
             .query_row(
                 "SELECT snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
                         main_document, output_hash, file_count, logical_bytes,
-                        replayed_inputs_json,
                         length(CAST(snapshot_root AS BLOB))
                           + length(CAST(engine AS BLOB))
                           + length(CAST(toolchain_identity AS BLOB))
                           + length(CAST(main_document AS BLOB))
-                          + length(CAST(output_hash AS BLOB))
-                          + length(CAST(replayed_inputs_json AS BLOB)),
-                 portable_metadata_bytes, chunk_references,
-                 unstored_file_count, unstored_logical_bytes, label
+                          + length(CAST(output_hash AS BLOB)),
+                 portable_metadata_bytes, chunk_references, label
                  FROM checkpoints
                  ORDER BY sequence DESC
                  LIMIT 1",
@@ -1779,15 +1520,13 @@ impl Store {
         let connection = self.connection()?;
         let mut statement = connection.prepare(
             "SELECT snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
-                    main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
+                    main_document, output_hash, file_count, logical_bytes,
                     length(CAST(snapshot_root AS BLOB))
                       + length(CAST(engine AS BLOB))
                       + length(CAST(toolchain_identity AS BLOB))
                       + length(CAST(main_document AS BLOB))
-                      + length(CAST(output_hash AS BLOB))
-                      + length(CAST(replayed_inputs_json AS BLOB)),
-             portable_metadata_bytes, chunk_references,
-             unstored_file_count, unstored_logical_bytes, label
+                      + length(CAST(output_hash AS BLOB)),
+             portable_metadata_bytes, chunk_references, label
              FROM checkpoints
              ORDER BY sequence DESC",
         )?;
@@ -1818,21 +1557,11 @@ impl Store {
                 ))
             },
         )?;
-        let checkpoint_totals = connection.query_row(
-            "SELECT
-                COALESCE(SUM(logical_bytes), 0),
-                COALESCE(SUM(unstored_file_count), 0),
-                COALESCE(SUM(unstored_logical_bytes), 0)
-             FROM checkpoints",
+        let visible_logical_bytes = connection.query_row(
+            "SELECT COALESCE(SUM(logical_bytes), 0) FROM checkpoints",
             [],
-            |row| {
-                Ok((
-                    row.get::<_, i64>(0)? as u64,
-                    row.get::<_, i64>(1)? as u64,
-                    row.get::<_, i64>(2)? as u64,
-                ))
-            },
-        )?;
+            |row| row.get::<_, i64>(0),
+        )? as u64;
         Ok(StoreStats {
             checkpoint_count: query_count(&connection, "checkpoints")?,
             manifest_count: query_count(&connection, "manifests")?,
@@ -1848,9 +1577,7 @@ impl Store {
             max_raw_chunk_bytes: chunk_stats.2,
             logical_chunk_bytes: chunk_stats.3,
             stored_chunk_bytes: chunk_stats.4,
-            visible_logical_bytes: checkpoint_totals.0,
-            unstored_file_count: checkpoint_totals.1,
-            unstored_logical_bytes: checkpoint_totals.2,
+            visible_logical_bytes,
             reclaimable_pack_bytes: connection.query_row(
                 "SELECT COALESCE(SUM(p.encoded_size), 0)
                  FROM packs p
@@ -2108,7 +1835,6 @@ impl Store {
                 main_document: checkpoint.main_document.clone(),
                 output_hash: checkpoint.output_hash,
                 completed_at_unix_ms: checkpoint.completed_at_unix_ms,
-                replayed_inputs: checkpoint.replayed_inputs.clone(),
             };
             validate_archived_evidence(&manifest, &evidence)?;
             let mut logical_bytes = 0_u64;
@@ -2134,11 +1860,8 @@ impl Store {
                     .ok_or_else(|| HistoryError::Corrupt("snapshot length overflow".into()))?;
                 verification.checked_files += 1;
             }
-            let unstored = manifest_unstored_totals(&manifest)?;
             if checkpoint.file_count != manifest.files.len() as u64
                 || checkpoint.logical_bytes != logical_bytes
-                || checkpoint.unstored_file_count != unstored.file_count
-                || checkpoint.unstored_logical_bytes != unstored.logical_bytes
             {
                 return Err(HistoryError::Corrupt(format!(
                     "checkpoint {} summary does not match its manifest",
@@ -2306,7 +2029,6 @@ impl Store {
             metadata.main_document,
             output_hash,
             metadata.completed_at_unix_ms,
-            decode_portable_replayed_inputs(metadata.replayed_inputs.clone())?,
         )?;
 
         let import_dir = create_candidate_directory(&self.root.join("staging"))?;
@@ -2343,21 +2065,7 @@ impl Store {
                 remaining -= count as u64;
             }
             verify_file_digest(manifest_file, manifest_file.logical_size, &hasher)?;
-
-            let input = if evidence
-                .replayed_inputs
-                .iter()
-                .any(|replayed| replayed.relative_path == manifest_file.path)
-            {
-                CaptureInput::proven(
-                    manifest_file.path.clone(),
-                    path.canonicalize()?,
-                    ContentHash::from_hex(&manifest_file.content_hash)?,
-                )?
-            } else {
-                CaptureInput::explicit(manifest_file.path.clone())?
-            };
-            inputs.push(input);
+            inputs.push(CaptureInput::explicit(manifest_file.path.clone())?);
         }
         let mut trailing = [0_u8; 1];
         if reader.read(&mut trailing)? != 0 {
@@ -2400,15 +2108,13 @@ impl Store {
         let mut budget = PortableHistoryBudget::default();
         let mut statement = transaction.prepare(
             "SELECT snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
-                    main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
+                    main_document, output_hash, file_count, logical_bytes,
                     length(CAST(snapshot_root AS BLOB))
                       + length(CAST(engine AS BLOB))
                       + length(CAST(toolchain_identity AS BLOB))
                       + length(CAST(main_document AS BLOB))
-                      + length(CAST(output_hash AS BLOB))
-                      + length(CAST(replayed_inputs_json AS BLOB)),
-             portable_metadata_bytes, chunk_references,
-             unstored_file_count, unstored_logical_bytes, label
+                      + length(CAST(output_hash AS BLOB)),
+             portable_metadata_bytes, chunk_references, label
              FROM checkpoints ORDER BY sequence ASC",
         )?;
         let checkpoints = statement.query_map([], checkpoint_from_row)?;
@@ -2633,14 +2339,12 @@ impl Store {
                             .checked_add(file.logical_size)
                             .ok_or_else(|| HistoryError::Corrupt("snapshot length overflow".into()))
                     })?;
-            let unstored = manifest_unstored_totals(&checkpoint.manifest)?;
             transaction.execute(
                 "INSERT INTO checkpoints(
                     snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
-                    main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
-                    portable_metadata_bytes, chunk_references,
-                    unstored_file_count, unstored_logical_bytes, label
-                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+                    main_document, output_hash, file_count, logical_bytes,
+                    portable_metadata_bytes, chunk_references, label
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
                 params![
                     checkpoint.root.as_hex(),
                     checkpoint.evidence.completed_at_unix_ms,
@@ -2650,11 +2354,8 @@ impl Store {
                     checkpoint.evidence.output_hash.to_hex(),
                     checkpoint.manifest.files.len() as i64,
                     logical_bytes as i64,
-                    encode_replayed_inputs(&checkpoint.evidence.replayed_inputs)?,
                     checkpoint.portable_budget.metadata_bytes as i64,
                     checkpoint.portable_budget.chunk_references as i64,
-                    unstored.file_count as i64,
-                    unstored.logical_bytes as i64,
                     checkpoint.label.as_deref(),
                 ],
             )?;
@@ -2762,7 +2463,6 @@ impl Store {
             metadata.main_document,
             output_hash,
             metadata.completed_at_unix_ms,
-            decode_portable_replayed_inputs(metadata.replayed_inputs)?,
         )?;
         validate_archived_evidence(&metadata.manifest, &evidence)?;
         let declared_logical_bytes =
@@ -2906,13 +2606,10 @@ impl Store {
                 toolchain_identity TEXT NOT NULL,
                 main_document TEXT NOT NULL,
                 output_hash TEXT NOT NULL,
-                replayed_inputs_json TEXT NOT NULL
-                ,file_count INTEGER NOT NULL CHECK(file_count >= 0)
+                file_count INTEGER NOT NULL CHECK(file_count >= 0)
                 ,logical_bytes INTEGER NOT NULL CHECK(logical_bytes >= 0)
                 ,portable_metadata_bytes INTEGER NOT NULL DEFAULT 0 CHECK(portable_metadata_bytes >= 0)
                 ,chunk_references INTEGER NOT NULL DEFAULT 0 CHECK(chunk_references >= 0)
-                ,unstored_file_count INTEGER NOT NULL DEFAULT 0 CHECK(unstored_file_count >= 0)
-                ,unstored_logical_bytes INTEGER NOT NULL DEFAULT 0 CHECK(unstored_logical_bytes >= 0)
                 ,label TEXT
              );
              CREATE TABLE IF NOT EXISTS store_identity(
@@ -3080,14 +2777,7 @@ struct PortableCheckpoint {
     output_hash: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     label: Option<String>,
-    replayed_inputs: Vec<PortableReplayedInput>,
     manifest: Manifest,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-struct PortableReplayedInput {
-    relative_path: String,
-    content_hash: String,
 }
 
 #[derive(Serialize)]
@@ -3101,7 +2791,6 @@ struct PortableCheckpointView<'a> {
     output_hash: PortableContentHash<'a>,
     #[serde(skip_serializing_if = "Option::is_none")]
     label: Option<&'a str>,
-    replayed_inputs: PortableReplayedInputs<'a>,
     manifest: &'a Manifest,
 }
 
@@ -3125,30 +2814,6 @@ impl Serialize for PortableContentHash<'_> {
     {
         serializer.collect_str(self.0)
     }
-}
-
-struct PortableReplayedInputs<'a>(&'a [ReplayedInput]);
-
-impl Serialize for PortableReplayedInputs<'_> {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut sequence = serializer.serialize_seq(Some(self.0.len()))?;
-        for input in self.0 {
-            sequence.serialize_element(&PortableReplayedInputView {
-                relative_path: &input.relative_path,
-                content_hash: PortableContentHash(&input.content_hash),
-            })?;
-        }
-        sequence.end()
-    }
-}
-
-#[derive(Serialize)]
-struct PortableReplayedInputView<'a> {
-    relative_path: &'a str,
-    content_hash: PortableContentHash<'a>,
 }
 
 struct BoundedPortableWriter<W> {
@@ -3206,41 +2871,6 @@ fn write_bounded_portable_json<T: Serialize, W: Write>(
     }
 }
 
-fn encode_portable_replayed_inputs(inputs: &[ReplayedInput]) -> Vec<PortableReplayedInput> {
-    inputs
-        .iter()
-        .map(|input| PortableReplayedInput {
-            relative_path: input.relative_path.clone(),
-            content_hash: input.content_hash.to_hex(),
-        })
-        .collect()
-}
-
-fn decode_portable_replayed_inputs(
-    inputs: Vec<PortableReplayedInput>,
-) -> Result<Vec<ReplayedInput>> {
-    inputs
-        .into_iter()
-        .map(|input| {
-            ReplayedInput::new(
-                input.relative_path,
-                ContentHash::from_hex(&input.content_hash)?,
-            )
-        })
-        .collect()
-}
-
-fn encode_replayed_inputs(inputs: &[ReplayedInput]) -> Result<String> {
-    Ok(serde_json::to_string(&encode_portable_replayed_inputs(
-        inputs,
-    ))?)
-}
-
-fn decode_replayed_inputs(json: &str) -> Result<Vec<ReplayedInput>> {
-    let inputs = serde_json::from_str::<Vec<PortableReplayedInput>>(json)?;
-    decode_portable_replayed_inputs(inputs)
-}
-
 fn portable_checkpoint_view<'a>(
     checkpoint: &'a Checkpoint,
     manifest: &'a Manifest,
@@ -3284,7 +2914,6 @@ fn portable_checkpoint_view<'a>(
         main_document: &checkpoint.main_document,
         output_hash: PortableContentHash(&checkpoint.output_hash),
         label: checkpoint.label.as_deref(),
-        replayed_inputs: PortableReplayedInputs(&checkpoint.replayed_inputs),
         manifest,
     };
     Ok((
@@ -3611,26 +3240,6 @@ fn compute_snapshot_root(manifest: &Manifest) -> Result<SnapshotRoot> {
     )))
 }
 
-fn validate_compile_evidence(candidate: &Candidate, evidence: &CompileEvidence) -> Result<()> {
-    validate_archived_evidence(&candidate.manifest, evidence)?;
-    let replayed = evidence
-        .replayed_inputs
-        .iter()
-        .map(|input| (input.relative_path.as_str(), input.content_hash))
-        .collect::<Vec<_>>();
-    let proven = candidate
-        .proven_files
-        .iter()
-        .map(|file| (file.relative_path.as_str(), file.content_hash))
-        .collect::<Vec<_>>();
-    if replayed != proven {
-        return Err(HistoryError::InvalidInput(
-            "sealed replay inputs do not exactly match the discovery evidence".into(),
-        ));
-    }
-    Ok(())
-}
-
 fn verify_candidate_sealed_tree_controlled(
     candidate: &Candidate,
     gate: &dyn PublicationGate,
@@ -3676,40 +3285,6 @@ fn validate_archived_evidence(manifest: &Manifest, evidence: &CompileEvidence) -
             evidence.main_document
         )));
     }
-    let main_replay = evidence
-        .replayed_inputs
-        .iter()
-        .find(|input| input.relative_path == evidence.main_document)
-        .ok_or_else(|| {
-            HistoryError::InvalidInput(format!(
-                "compiled main document {} lacks sealed replay evidence",
-                evidence.main_document
-            ))
-        })?;
-    if main_replay.content_hash != ContentHash::from_hex(&main_file.content_hash)? {
-        return Err(HistoryError::InvalidInput(format!(
-            "replayed main document {} does not match the sealed bytes",
-            evidence.main_document
-        )));
-    }
-    for replayed in &evidence.replayed_inputs {
-        let Some(file) = manifest
-            .files
-            .iter()
-            .find(|file| file.path == replayed.relative_path)
-        else {
-            return Err(HistoryError::InvalidInput(format!(
-                "replayed input {} is not present in the sealed candidate",
-                replayed.relative_path
-            )));
-        };
-        if replayed.content_hash != ContentHash::from_hex(&file.content_hash)? {
-            return Err(HistoryError::InvalidInput(format!(
-                "replayed input {} does not match the sealed bytes",
-                replayed.relative_path
-            )));
-        }
-    }
     Ok(())
 }
 
@@ -3747,15 +3322,13 @@ fn query_checkpoint(connection: &Connection, root: &str) -> Result<Option<Checkp
     connection
         .query_row(
             "SELECT snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
-                    main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
+                    main_document, output_hash, file_count, logical_bytes,
                     length(CAST(snapshot_root AS BLOB))
                       + length(CAST(engine AS BLOB))
                       + length(CAST(toolchain_identity AS BLOB))
                       + length(CAST(main_document AS BLOB))
-                      + length(CAST(output_hash AS BLOB))
-                      + length(CAST(replayed_inputs_json AS BLOB)),
-             portable_metadata_bytes, chunk_references,
-             unstored_file_count, unstored_logical_bytes, label
+                      + length(CAST(output_hash AS BLOB)),
+             portable_metadata_bytes, chunk_references, label
              FROM checkpoints WHERE snapshot_root = ?1",
             [root],
             checkpoint_from_row,
@@ -3767,15 +3340,13 @@ fn query_checkpoint(connection: &Connection, root: &str) -> Result<Option<Checkp
 fn query_checkpoints_oldest_first(connection: &Connection) -> Result<Vec<Checkpoint>> {
     let mut statement = connection.prepare(
         "SELECT snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
-                main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
+                main_document, output_hash, file_count, logical_bytes,
                 length(CAST(snapshot_root AS BLOB))
                   + length(CAST(engine AS BLOB))
                   + length(CAST(toolchain_identity AS BLOB))
                   + length(CAST(main_document AS BLOB))
-                  + length(CAST(output_hash AS BLOB))
-                  + length(CAST(replayed_inputs_json AS BLOB)),
-         portable_metadata_bytes, chunk_references,
-         unstored_file_count, unstored_logical_bytes, label
+                  + length(CAST(output_hash AS BLOB)),
+         portable_metadata_bytes, chunk_references, label
          FROM checkpoints ORDER BY sequence ASC",
     )?;
     let rows = statement.query_map([], checkpoint_from_row)?;
@@ -3787,10 +3358,9 @@ fn insert_checkpoint(connection: &Connection, checkpoint: &Checkpoint) -> Result
     connection.execute(
         "INSERT INTO checkpoints(
             snapshot_root, completed_at_unix_ms, engine, toolchain_identity,
-            main_document, output_hash, file_count, logical_bytes, replayed_inputs_json,
-            portable_metadata_bytes, chunk_references,
-            unstored_file_count, unstored_logical_bytes, label
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+            main_document, output_hash, file_count, logical_bytes,
+            portable_metadata_bytes, chunk_references, label
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         params![
             checkpoint.snapshot_root.as_hex(),
             checkpoint.completed_at_unix_ms,
@@ -3800,39 +3370,12 @@ fn insert_checkpoint(connection: &Connection, checkpoint: &Checkpoint) -> Result
             checkpoint.output_hash.to_hex(),
             checkpoint.file_count as i64,
             checkpoint.logical_bytes as i64,
-            encode_replayed_inputs(&checkpoint.replayed_inputs)?,
             checkpoint.portable_metadata_bytes as i64,
             checkpoint.chunk_references as i64,
-            checkpoint.unstored_file_count as i64,
-            checkpoint.unstored_logical_bytes as i64,
             checkpoint.label,
         ],
     )?;
     Ok(())
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-struct UnstoredTotals {
-    file_count: u64,
-    logical_bytes: u64,
-}
-
-fn manifest_unstored_totals(manifest: &Manifest) -> Result<UnstoredTotals> {
-    let mut totals = UnstoredTotals::default();
-    for file in &manifest.files {
-        if file.stored {
-            continue;
-        }
-        totals.file_count = totals
-            .file_count
-            .checked_add(1)
-            .ok_or_else(|| HistoryError::Corrupt("unstored file count overflow".into()))?;
-        totals.logical_bytes = totals
-            .logical_bytes
-            .checked_add(file.logical_size)
-            .ok_or_else(|| HistoryError::Corrupt("unstored length overflow".into()))?;
-    }
-    Ok(totals)
 }
 
 struct CatalogColumn {
@@ -3853,30 +3396,40 @@ const CATALOG_ADDED_COLUMNS: &[CatalogColumn] = &[
         backfilled: true,
     },
     CatalogColumn {
-        name: "unstored_file_count",
-        declaration: "INTEGER NOT NULL DEFAULT 0 CHECK(unstored_file_count >= 0)",
-        backfilled: true,
-    },
-    CatalogColumn {
-        name: "unstored_logical_bytes",
-        declaration: "INTEGER NOT NULL DEFAULT 0 CHECK(unstored_logical_bytes >= 0)",
-        backfilled: true,
-    },
-    CatalogColumn {
         name: "label",
         declaration: "TEXT",
         backfilled: false,
     },
 ];
 
-fn missing_catalog_columns(connection: &Connection) -> Result<Vec<&'static CatalogColumn>> {
+const CATALOG_REMOVED_COLUMNS: &[&str] = &[
+    "replayed_inputs_json",
+    "unstored_file_count",
+    "unstored_logical_bytes",
+];
+
+fn catalog_column_names(connection: &Connection) -> Result<Vec<String>> {
     let mut statement = connection.prepare("PRAGMA table_info(checkpoints)")?;
     let columns = statement
         .query_map([], |row| row.get::<_, String>(1))?
         .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok(columns)
+}
+
+fn missing_catalog_columns(connection: &Connection) -> Result<Vec<&'static CatalogColumn>> {
+    let columns = catalog_column_names(connection)?;
     Ok(CATALOG_ADDED_COLUMNS
         .iter()
         .filter(|column| !columns.iter().any(|existing| existing == column.name))
+        .collect())
+}
+
+fn retired_catalog_columns(connection: &Connection) -> Result<Vec<&'static str>> {
+    let columns = catalog_column_names(connection)?;
+    Ok(CATALOG_REMOVED_COLUMNS
+        .iter()
+        .copied()
+        .filter(|name| columns.iter().any(|existing| existing == name))
         .collect())
 }
 
@@ -3889,7 +3442,10 @@ fn migrate_catalog_to_current_version(connection: &Connection) -> Result<()> {
     if version > FORMAT_VERSION {
         return Err(HistoryError::UnsupportedFormat(version));
     }
-    if version == FORMAT_VERSION && missing_catalog_columns(connection)?.is_empty() {
+    if version == FORMAT_VERSION
+        && missing_catalog_columns(connection)?.is_empty()
+        && retired_catalog_columns(connection)?.is_empty()
+    {
         return Ok(());
     }
     let transaction =
@@ -3907,22 +3463,21 @@ fn migrate_catalog_to_current_version(connection: &Connection) -> Result<()> {
             "ALTER TABLE checkpoints ADD COLUMN {name} {declaration};"
         ))?;
     }
+    for name in retired_catalog_columns(&transaction)? {
+        transaction.execute_batch(&format!("ALTER TABLE checkpoints DROP COLUMN {name};"))?;
+    }
     if requires_backfill {
         for checkpoint in query_checkpoints_oldest_first(&transaction)? {
             let manifest = load_visible_manifest(&transaction, &checkpoint.snapshot_root)?;
             let budget = portable_checkpoint_budget(&checkpoint, &manifest)?;
-            let unstored = manifest_unstored_totals(&manifest)?;
             transaction.execute(
                 "UPDATE checkpoints
-                 SET portable_metadata_bytes = ?2, chunk_references = ?3,
-                     unstored_file_count = ?4, unstored_logical_bytes = ?5
+                 SET portable_metadata_bytes = ?2, chunk_references = ?3
                  WHERE snapshot_root = ?1",
                 params![
                     checkpoint.snapshot_root.as_hex(),
                     budget.metadata_bytes as i64,
                     budget.chunk_references as i64,
-                    unstored.file_count as i64,
-                    unstored.logical_bytes as i64,
                 ],
             )?;
         }
@@ -3935,7 +3490,7 @@ fn migrate_catalog_to_current_version(connection: &Connection) -> Result<()> {
 }
 
 fn checkpoint_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Checkpoint> {
-    let summary_bytes = row.get::<_, i64>(9)?;
+    let summary_bytes = row.get::<_, i64>(8)?;
     if summary_bytes < 0 || summary_bytes as u64 > MAX_EXPORT_HEADER_BYTES {
         return Err(to_sql_conversion_error(HistoryError::Corrupt(
             "checkpoint summary exceeds the portable header limit".into(),
@@ -3943,7 +3498,6 @@ fn checkpoint_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Checkpoint> 
     }
     let root: String = row.get(0)?;
     let output_hash: String = row.get(5)?;
-    let replayed_inputs_json: String = row.get(8)?;
     let snapshot_root = SnapshotRoot::from_hex(&root).map_err(to_sql_conversion_error)?;
     let output_hash = ContentHash::from_hex(&output_hash).map_err(to_sql_conversion_error)?;
     Ok(Checkpoint {
@@ -3955,13 +3509,9 @@ fn checkpoint_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Checkpoint> 
         output_hash,
         file_count: row.get::<_, i64>(6)? as u64,
         logical_bytes: row.get::<_, i64>(7)? as u64,
-        replayed_inputs: decode_replayed_inputs(&replayed_inputs_json)
-            .map_err(to_sql_conversion_error)?,
-        portable_metadata_bytes: row.get::<_, i64>(10)? as u64,
-        chunk_references: row.get::<_, i64>(11)? as u64,
-        unstored_file_count: row.get::<_, i64>(12)? as u64,
-        unstored_logical_bytes: row.get::<_, i64>(13)? as u64,
-        label: row.get(14)?,
+        portable_metadata_bytes: row.get::<_, i64>(9)? as u64,
+        chunk_references: row.get::<_, i64>(10)? as u64,
+        label: row.get(11)?,
     })
 }
 
@@ -5058,15 +4608,13 @@ mod tests {
         fs::create_dir(&project).unwrap();
         fs::write(project.join("project.json"), b"{}").unwrap();
         fs::write(project.join("main.tex"), b"source").unwrap();
-        let main = project.join("main.tex").canonicalize().unwrap();
         let store = Store::open(root.join("history")).unwrap();
         let candidate = store
             .stage_candidate(
                 &project,
                 &[
                     CaptureInput::explicit("project.json").unwrap(),
-                    CaptureInput::proven("main.tex", &main, ContentHash::digest(b"source"))
-                        .unwrap(),
+                    CaptureInput::explicit("main.tex").unwrap(),
                 ],
             )
             .unwrap();
@@ -5077,7 +4625,6 @@ mod tests {
             "main.tex",
             ContentHash::digest(b"output"),
             1,
-            vec![ReplayedInput::new("main.tex", ContentHash::digest(b"source")).unwrap()],
         )
         .unwrap();
         store.publish(candidate, evidence).unwrap();
@@ -5168,7 +4715,7 @@ mod tests {
                     checkpoint.output_hash.to_hex(),
                     checkpoint.file_count as i64,
                     checkpoint.logical_bytes as i64,
-                    encode_replayed_inputs(&checkpoint.replayed_inputs).unwrap(),
+                    "[]",
                 ],
             )
             .unwrap();
@@ -5209,8 +4756,6 @@ mod tests {
             assert_eq!(checkpoint.file_count, 2);
             assert!(checkpoint.portable_metadata_bytes > 0);
             assert_eq!(checkpoint.chunk_references, 2);
-            assert_eq!(checkpoint.unstored_file_count, 0);
-            assert_eq!(checkpoint.unstored_logical_bytes, 0);
 
             let verified = migrated.verify().unwrap();
             assert_eq!(verified.checked_checkpoints, 1);
@@ -5236,6 +4781,28 @@ mod tests {
                 1
             );
             assert!(elsewhere.checkpoint(&legacy_root).unwrap().is_some());
+
+            let project = temp.path().join("project");
+            fs::write(project.join("main.tex"), b"revised").unwrap();
+            let candidate = migrated
+                .stage_candidate(
+                    &project,
+                    &[
+                        CaptureInput::explicit("project.json").unwrap(),
+                        CaptureInput::explicit("main.tex").unwrap(),
+                    ],
+                )
+                .unwrap();
+            let evidence = CompileEvidence::new(
+                "tectonic",
+                "tectonic-test@1",
+                "main.tex",
+                ContentHash::digest(b"output"),
+                2,
+            )
+            .unwrap();
+            migrated.publish(candidate, evidence).unwrap();
+            assert_eq!(migrated.list().unwrap().len(), 2);
         }
     }
 
@@ -5480,31 +5047,7 @@ mod tests {
     }
 
     #[test]
-    fn project_json_can_never_be_recorded_without_its_bytes() {
-        let temp = tempdir().unwrap();
-        let resolved = temp.path().canonicalize().unwrap().join("project.json");
-
-        assert!(matches!(
-            CaptureInput::replay_required_unstored(
-                "project.json",
-                &resolved,
-                ContentHash::digest(b"{}")
-            ),
-            Err(HistoryError::InvalidInput(_))
-        ));
-        assert!(CaptureInput::replay_required(
-            "project.json",
-            &resolved,
-            ContentHash::digest(b"{}")
-        )
-        .is_ok());
-    }
-
-    #[test]
     fn capture_budget_is_enforced_before_oversized_chunk_bytes_are_written() {
-        assert!(advance_unstored_capture_budget(MAX_CHECKPOINT_FILE_BYTES, 0, 1).is_err());
-        assert!(advance_unstored_capture_budget(0, MAX_HISTORY_LOGICAL_BYTES, 1).is_err());
-        assert_eq!(advance_unstored_capture_budget(1, 2, 4).unwrap(), (5, 6));
         assert!(advance_capture_budget(MAX_CHECKPOINT_FILE_BYTES, 0, 0, 1).is_err());
         assert!(advance_capture_budget(0, MAX_HISTORY_LOGICAL_BYTES, 0, 1).is_err());
         assert!(advance_capture_budget(0, 0, MAX_HISTORY_CHUNK_REFERENCES, 1).is_err());
@@ -5591,11 +5134,8 @@ mod tests {
             file_count: 2,
             logical_bytes: 0,
             label: None,
-            replayed_inputs: vec![ReplayedInput::new("main.tex", content_hash).unwrap()],
             portable_metadata_bytes: 0,
             chunk_references: 0,
-            unstored_file_count: 0,
-            unstored_logical_bytes: 0,
         };
         let metadata = PortableCheckpoint {
             export_version: 1,
@@ -5606,10 +5146,6 @@ mod tests {
             main_document: checkpoint.main_document.clone(),
             output_hash: output_hash.to_hex(),
             label: None,
-            replayed_inputs: vec![PortableReplayedInput {
-                relative_path: "main.tex".into(),
-                content_hash: content_hash.to_hex(),
-            }],
             manifest: manifest.clone(),
         };
         let canonical = serde_json::to_vec(&metadata).unwrap();
@@ -5644,7 +5180,7 @@ mod tests {
         connection
             .execute(
                 "UPDATE checkpoints
-                 SET replayed_inputs_json = CAST(zeroblob(?1) AS TEXT)
+                 SET toolchain_identity = CAST(zeroblob(?1) AS TEXT)
                  WHERE snapshot_root = ?2",
                 params![MAX_EXPORT_HEADER_BYTES as i64 + 1, root.as_hex()],
             )
@@ -5693,15 +5229,13 @@ mod tests {
         fs::create_dir(&project).unwrap();
         fs::write(project.join("project.json"), b"{}").unwrap();
         fs::write(project.join("main.tex"), b"source").unwrap();
-        let main = project.join("main.tex").canonicalize().unwrap();
         let store = Store::open(temp.path().join("history")).unwrap();
         let candidate = store
             .stage_candidate(
                 &project,
                 &[
                     CaptureInput::explicit("project.json").unwrap(),
-                    CaptureInput::proven("main.tex", &main, ContentHash::digest(b"source"))
-                        .unwrap(),
+                    CaptureInput::explicit("main.tex").unwrap(),
                 ],
             )
             .unwrap();
@@ -5711,7 +5245,6 @@ mod tests {
             "main.tex",
             ContentHash::digest(b"output"),
             1,
-            vec![ReplayedInput::new("main.tex", ContentHash::digest(b"source")).unwrap()],
         )
         .unwrap();
         store.publish(candidate, evidence).unwrap();
@@ -5775,59 +5308,6 @@ mod tests {
             "chapters/one.tex"
         );
         assert!(CaptureInput::explicit("caf\u{e9}.tex").is_ok());
-    }
-
-    #[test]
-    fn replay_required_inputs_are_bound_to_preseal_bytes_and_replay_closure() {
-        let temp = tempdir().unwrap();
-        let project = temp.path().join("project");
-        fs::create_dir(&project).unwrap();
-        fs::write(project.join("project.json"), b"{}").unwrap();
-        fs::write(project.join("main.typ"), b"= Replayed").unwrap();
-        let main = project.join("main.typ").canonicalize().unwrap();
-        let hash = ContentHash::digest_file(&main).unwrap();
-        let store = Store::open(temp.path().join("history")).unwrap();
-
-        let candidate = store
-            .stage_candidate(
-                &project,
-                &[
-                    CaptureInput::explicit("project.json").unwrap(),
-                    CaptureInput::replay_required("main.typ", &main, hash).unwrap(),
-                ],
-            )
-            .unwrap();
-
-        assert_eq!(candidate.proven_files().len(), 1);
-        assert_eq!(candidate.proven_files()[0].relative_path, "main.typ");
-        assert_eq!(candidate.proven_files()[0].content_hash, hash);
-    }
-
-    #[test]
-    fn replay_required_input_rejects_bytes_changed_before_sealing() {
-        let temp = tempdir().unwrap();
-        let project = temp.path().join("project");
-        fs::create_dir(&project).unwrap();
-        fs::write(project.join("project.json"), b"{}").unwrap();
-        fs::write(project.join("main.typ"), b"= Before").unwrap();
-        let main = project.join("main.typ").canonicalize().unwrap();
-        let hash = ContentHash::digest_file(&main).unwrap();
-        fs::write(&main, b"= After").unwrap();
-        let store = Store::open(temp.path().join("history")).unwrap();
-
-        let error = store
-            .stage_candidate(
-                &project,
-                &[
-                    CaptureInput::explicit("project.json").unwrap(),
-                    CaptureInput::replay_required("main.typ", &main, hash).unwrap(),
-                ],
-            )
-            .unwrap_err();
-
-        assert!(error
-            .to_string()
-            .contains("changed before it was sealed for replay"));
     }
 
     #[test]
@@ -5913,12 +5393,7 @@ mod tests {
                     &project,
                     &[
                         CaptureInput::explicit("project.json").unwrap(),
-                        CaptureInput::proven(
-                            "main.tex",
-                            project.join("main.tex").canonicalize().unwrap(),
-                            ContentHash::digest(format!("source-{index}").as_bytes()),
-                        )
-                        .unwrap(),
+                        CaptureInput::explicit("main.tex").unwrap(),
                     ],
                 )
                 .unwrap();
@@ -5928,11 +5403,6 @@ mod tests {
                 "main.tex",
                 ContentHash::digest(b"output"),
                 index as i64,
-                candidate
-                    .proven_files()
-                    .iter()
-                    .map(|file| ReplayedInput::new(&file.relative_path, file.content_hash).unwrap())
-                    .collect(),
             )
             .unwrap();
 
@@ -5967,12 +5437,7 @@ mod tests {
                 &project,
                 &[
                     CaptureInput::explicit("project.json").unwrap(),
-                    CaptureInput::proven(
-                        "main.tex",
-                        project.join("main.tex").canonicalize().unwrap(),
-                        ContentHash::digest(b"source"),
-                    )
-                    .unwrap(),
+                    CaptureInput::explicit("main.tex").unwrap(),
                 ],
             )
             .unwrap();
@@ -5982,11 +5447,6 @@ mod tests {
             "main.tex",
             ContentHash::digest(b"output"),
             1,
-            candidate
-                .proven_files()
-                .iter()
-                .map(|file| ReplayedInput::new(&file.relative_path, file.content_hash).unwrap())
-                .collect(),
         )
         .unwrap();
         publication.store().publish(candidate, evidence).unwrap();
@@ -6058,10 +5518,6 @@ mod tests {
             main_document: "main.tex".into(),
             output_hash: ContentHash::digest(b"output").to_hex(),
             label: None,
-            replayed_inputs: vec![PortableReplayedInput {
-                relative_path: "main.tex".into(),
-                content_hash: main_hash.to_hex(),
-            }],
             manifest,
         };
         let header = serde_json::to_vec(&metadata).unwrap();
@@ -6099,14 +5555,12 @@ mod tests {
         for (index, identity) in identities.iter().enumerate() {
             let source = format!("source {index}");
             fs::write(project.join("main.md"), &source).unwrap();
-            let main = project.join("main.md").canonicalize().unwrap();
-            let source_hash = ContentHash::digest(source.as_bytes());
             let candidate = store
                 .stage_candidate(
                     &project,
                     &[
                         CaptureInput::explicit("project.json").unwrap(),
-                        CaptureInput::proven("main.md", &main, source_hash).unwrap(),
+                        CaptureInput::explicit("main.md").unwrap(),
                     ],
                 )
                 .unwrap();
@@ -6116,7 +5570,6 @@ mod tests {
                 "main.md",
                 ContentHash::digest(format!("pdf {index}").as_bytes()),
                 index as i64 + 1,
-                vec![ReplayedInput::new("main.md", source_hash).unwrap()],
             )
             .unwrap();
             store.publish(candidate, evidence).unwrap();

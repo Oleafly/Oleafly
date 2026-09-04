@@ -272,9 +272,7 @@ mod tests {
     use std::fs::{self, File};
     use std::path::Path;
 
-    use oleafly_history::{
-        CaptureInput, CompileEvidence, ContentHash, PublishOutcome, ReplayedInput, Store,
-    };
+    use oleafly_history::{CaptureInput, CompileEvidence, ContentHash, PublishOutcome, Store};
     use tempfile::tempdir;
 
     use super::{export_store_to_path, import_archive_into_store, import_checkpoint_archive_sync};
@@ -316,12 +314,7 @@ mod tests {
                 project,
                 &[
                     CaptureInput::explicit("project.json").unwrap(),
-                    CaptureInput::proven(
-                        "main.tex",
-                        project.join("main.tex").canonicalize().unwrap(),
-                        ContentHash::digest(b"Hello Checkpoints"),
-                    )
-                    .unwrap(),
+                    CaptureInput::explicit("main.tex").unwrap(),
                 ],
             )
             .unwrap();
@@ -331,9 +324,6 @@ mod tests {
             "main.tex",
             ContentHash::digest(b"compiled pdf"),
             1,
-            vec![
-                ReplayedInput::new("main.tex", ContentHash::digest(b"Hello Checkpoints")).unwrap(),
-            ],
         )
         .unwrap();
         assert!(matches!(

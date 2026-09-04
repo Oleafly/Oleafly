@@ -10,6 +10,8 @@ export const toast = {
     useToastStore.getState().push("info", message, action, sticky),
   infoUnique: (key: string, message: string, action?: ToastAction, sticky?: boolean) =>
     useToastStore.getState().pushUnique(key, "info", message, action, sticky),
+  errorUnique: (key: string, message: string, action?: ToastAction, sticky?: boolean) =>
+    useToastStore.getState().pushUnique(key, "error", message, action, sticky),
   update: (id: number, message: string) => useToastStore.getState().update(id, message),
   dismiss: (id: number) => useToastStore.getState().dismiss(id),
 };

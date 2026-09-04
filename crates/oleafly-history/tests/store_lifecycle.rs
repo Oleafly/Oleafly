@@ -7,58 +7,35 @@ use std::time::Duration;
 
 use oleafly_history::{
     Candidate, CaptureInput, CompileEvidence, ContentHash, HistoryError, PublicationGate,
-    PublishOutcome, ReplayedInput, Store,
+    PublishOutcome, Store,
 };
 use rusqlite::Connection;
 use tempfile::tempdir;
 
-fn capture_inputs(project: &std::path::Path, paths: &[&str]) -> Vec<CaptureInput> {
+fn capture_inputs(_project: &std::path::Path, paths: &[&str]) -> Vec<CaptureInput> {
     paths
         .iter()
-        .map(|path| {
-            if *path == "project.json" {
-                CaptureInput::explicit(*path).unwrap()
-            } else {
-                CaptureInput::proven(
-                    *path,
-                    project.join(path).canonicalize().unwrap(),
-                    ContentHash::digest(&fs::read(project.join(path)).unwrap()),
-                )
-                .unwrap()
-            }
-        })
+        .map(|path| CaptureInput::explicit(*path).unwrap())
         .collect()
 }
 
 fn evidence_with_output(
-    candidate: &Candidate,
+    main_document: &str,
     completed_at_unix_ms: i64,
     output: &[u8],
 ) -> CompileEvidence {
-    let main_document = candidate
-        .proven_files()
-        .iter()
-        .find(|file| file.relative_path.rsplit('/').next() == Some("main.tex"))
-        .expect("test candidate has a proven main document")
-        .relative_path
-        .clone();
     CompileEvidence::new(
         "tectonic",
         "tectonic-test@1",
         main_document,
         ContentHash::digest(output),
         completed_at_unix_ms,
-        candidate
-            .proven_files()
-            .iter()
-            .map(|file| ReplayedInput::new(&file.relative_path, file.content_hash).unwrap())
-            .collect(),
     )
     .expect("valid compile evidence")
 }
 
-fn evidence(candidate: &Candidate, completed_at_unix_ms: i64) -> CompileEvidence {
-    evidence_with_output(candidate, completed_at_unix_ms, b"validated-pdf")
+fn evidence(completed_at_unix_ms: i64) -> CompileEvidence {
+    evidence_with_output("main.tex", completed_at_unix_ms, b"validated-pdf")
 }
 
 fn publish(
@@ -66,7 +43,7 @@ fn publish(
     candidate: Candidate,
     completed_at_unix_ms: i64,
 ) -> oleafly_history::Result<PublishOutcome> {
-    let evidence = evidence(&candidate, completed_at_unix_ms);
+    let evidence = evidence(completed_at_unix_ms);
     store.publish(candidate, evidence)
 }
 
@@ -163,7 +140,7 @@ fn candidate_verification_observes_cancellation_before_root_publication() {
             &capture_inputs(&project, &["project.json", "main.tex"]),
         )
         .unwrap();
-    let evidence = evidence(&candidate, 1);
+    let evidence = evidence(1);
 
     let error = store
         .publish_controlled(candidate, evidence, &CancelAfterChecks::new(2))
@@ -201,7 +178,7 @@ fn explicit_inputs_publish_once_without_capturing_unlisted_files() {
 
     let repeated = store.stage_candidate(&project, &inputs).unwrap();
     assert_eq!(repeated.snapshot_root(), &first_root);
-    let repeated_evidence = evidence_with_output(&repeated, 20, b"revalidated-pdf");
+    let repeated_evidence = evidence_with_output("main.tex", 20, b"revalidated-pdf");
     assert!(matches!(
         store.publish(repeated, repeated_evidence).unwrap(),
         PublishOutcome::Existing(checkpoint)
@@ -354,21 +331,23 @@ fn read_only_open_and_candidate_evidence_preserve_lazy_store_creation() {
 
     let store = Store::open(&history).unwrap();
     let candidate = store.stage_candidate(&project, &inputs).unwrap();
-    let files = candidate.sealed_files();
+    let root = *candidate.snapshot_root();
+    let root_text = candidate.snapshot_root().to_string();
+    assert_eq!(
+        oleafly_history::SnapshotRoot::parse(&root_text).unwrap(),
+        root
+    );
+    assert!(oleafly_history::SnapshotRoot::parse("not-a-root").is_err());
+    let evidence = evidence_with_output("chapters/main.tex", 30, b"validated-pdf");
+    store.publish(candidate, evidence).unwrap();
+
+    let reopened = Store::open_existing(&history).unwrap().unwrap();
+    let files = reopened.checkpoint_files(&root).unwrap().unwrap();
     assert_eq!(files.len(), 2);
     assert_eq!(files[0].relative_path, "chapters/main.tex");
     assert_eq!(files[0].content_hash, ContentHash::digest(source));
     assert_eq!(files[1].relative_path, "project.json");
     assert_eq!(files[1].content_hash, ContentHash::digest(project_json));
-    let root_text = candidate.snapshot_root().to_string();
-    assert_eq!(
-        oleafly_history::SnapshotRoot::parse(&root_text).unwrap(),
-        *candidate.snapshot_root()
-    );
-    assert!(oleafly_history::SnapshotRoot::parse("not-a-root").is_err());
-    publish(&store, candidate, 30).unwrap();
-
-    let reopened = Store::open_existing(&history).unwrap().unwrap();
     let checkpoint = reopened.list().unwrap().pop().unwrap();
     assert_eq!(checkpoint.file_count, 2);
     assert_eq!(
@@ -567,13 +546,16 @@ fn fastcdc_streaming_reuses_unchanged_chunks_and_compresses_only_when_smaller() 
     let store = Store::open(temp.path().join("history")).unwrap();
     let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
     let first = store.stage_candidate(&project, &inputs).unwrap();
-    let main_file = first
-        .sealed_files()
+    let first_root = *first.snapshot_root();
+    publish(&store, first, 50).unwrap();
+    let main_file = store
+        .checkpoint_files(&first_root)
+        .unwrap()
+        .unwrap()
         .into_iter()
         .find(|file| file.relative_path == "main.tex")
         .unwrap();
     assert!(main_file.chunk_count >= 3);
-    publish(&store, first, 50).unwrap();
     let first_stats = store.stats().unwrap();
     assert!(first_stats.chunk_count >= 2);
     assert!(first_stats.compressed_chunk_count >= 1);
@@ -626,12 +608,6 @@ fn portable_checkpoint_stream_imports_atomically_and_deduplicates() {
     assert_eq!(imported_store.stats().unwrap(), stats_after_first);
     let imported = imported_store.list().unwrap().pop().unwrap();
     assert_eq!(imported.toolchain_identity, "tectonic-test@1");
-    assert_eq!(imported.replayed_inputs().len(), 1);
-    assert_eq!(imported.replayed_inputs()[0].relative_path, "main.tex");
-    assert_eq!(
-        imported.replayed_inputs()[0].content_hash,
-        ContentHash::digest(b"portable source")
-    );
 
     let truncated_store = Store::open(temp.path().join("truncated-history")).unwrap();
     assert!(truncated_store
@@ -848,50 +824,7 @@ fn a_deleted_root_can_be_published_again_before_garbage_collection() {
 }
 
 #[test]
-fn staging_rejects_same_size_changes_after_the_compiler_first_read() {
-    let temp = tempdir().unwrap();
-    let project = temp.path().join("project");
-    fs::create_dir_all(&project).unwrap();
-    fs::write(project.join("project.json"), b"{}").unwrap();
-    fs::write(project.join("main.tex"), b"first").unwrap();
-    let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
-
-    fs::write(project.join("main.tex"), b"other").unwrap();
-    let store = Store::open(temp.path().join("history")).unwrap();
-    let error = store.stage_candidate(&project, &inputs).unwrap_err();
-    assert!(
-        error.to_string().contains("after the compiler first read"),
-        "unexpected error: {error}"
-    );
-}
-
-#[test]
-fn staging_rejects_a_resolved_identity_mismatch() {
-    let temp = tempdir().unwrap();
-    let project = temp.path().join("project");
-    fs::create_dir_all(&project).unwrap();
-    fs::write(project.join("project.json"), b"{}").unwrap();
-    fs::write(project.join("main.tex"), b"source").unwrap();
-    let inputs = [
-        CaptureInput::explicit("project.json").unwrap(),
-        CaptureInput::proven(
-            "main.tex",
-            project.join("project.json").canonicalize().unwrap(),
-            ContentHash::digest(b"source"),
-        )
-        .unwrap(),
-    ];
-
-    let store = Store::open(temp.path().join("history")).unwrap();
-    let error = store.stage_candidate(&project, &inputs).unwrap_err();
-    assert!(
-        error.to_string().contains("resolved as"),
-        "unexpected error: {error}"
-    );
-}
-
-#[test]
-fn publication_requires_exact_replay_evidence_and_a_proven_main_document() {
+fn a_plain_snapshot_publishes_without_replay_evidence() {
     let temp = tempdir().unwrap();
     let project = temp.path().join("project");
     fs::create_dir_all(&project).unwrap();
@@ -899,7 +832,7 @@ fn publication_requires_exact_replay_evidence_and_a_proven_main_document() {
     fs::write(project.join("main.tex"), b"source").unwrap();
     let store = Store::open(temp.path().join("history")).unwrap();
 
-    let explicit_candidate = store
+    let candidate = store
         .stage_candidate(
             &project,
             &[
@@ -908,53 +841,18 @@ fn publication_requires_exact_replay_evidence_and_a_proven_main_document() {
             ],
         )
         .unwrap();
-    let missing_main_evidence = CompileEvidence::new(
+    let evidence = CompileEvidence::new(
         "tectonic",
         "tectonic-test@1",
         "main.tex",
         ContentHash::digest(b"validated-pdf"),
         1,
-        Vec::new(),
     )
     .unwrap();
-    let error = store
-        .publish(explicit_candidate, missing_main_evidence)
-        .unwrap_err();
-    assert!(error.to_string().contains("lacks sealed replay evidence"));
 
-    let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
-    let candidate = store.stage_candidate(&project, &inputs).unwrap();
-    let unexpected_replay = CompileEvidence::new(
-        "tectonic",
-        "tectonic-test@1",
-        "main.tex",
-        ContentHash::digest(b"validated-pdf"),
-        2,
-        vec![
-            ReplayedInput::new("main.tex", ContentHash::digest(b"source")).unwrap(),
-            ReplayedInput::new("unexpected.tex", ContentHash::digest(b"unexpected")).unwrap(),
-        ],
-    )
-    .unwrap();
-    let error = store.publish(candidate, unexpected_replay).unwrap_err();
-    assert!(error
-        .to_string()
-        .contains("not present in the sealed candidate"));
-
-    fs::write(project.join("chapter.tex"), b"chapter").unwrap();
-    let inputs = capture_inputs(&project, &["project.json", "main.tex", "chapter.tex"]);
-    let candidate = store.stage_candidate(&project, &inputs).unwrap();
-    let missing_replay = CompileEvidence::new(
-        "tectonic",
-        "tectonic-test@1",
-        "main.tex",
-        ContentHash::digest(b"validated-pdf"),
-        3,
-        vec![ReplayedInput::new("main.tex", ContentHash::digest(b"source")).unwrap()],
-    )
-    .unwrap();
-    let error = store.publish(candidate, missing_replay).unwrap_err();
-    assert!(error.to_string().contains("do not exactly match"));
+    let outcome = store.publish(candidate, evidence).unwrap();
+    assert!(matches!(outcome, PublishOutcome::Created(_)));
+    assert_eq!(store.list().unwrap().len(), 1);
 }
 
 #[test]
@@ -965,7 +863,6 @@ fn compile_evidence_requires_a_toolchain_identity() {
         "main.tex",
         ContentHash::digest(b"validated-pdf"),
         1,
-        vec![ReplayedInput::new("main.tex", ContentHash::digest(b"source")).unwrap()],
     )
     .is_err());
 }
@@ -980,7 +877,7 @@ fn publication_rejects_a_mutated_sealed_replay_tree() {
     let store = Store::open(temp.path().join("history")).unwrap();
     let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
     let candidate = store.stage_candidate(&project, &inputs).unwrap();
-    let evidence = evidence(&candidate, 1);
+    let evidence = evidence(1);
 
     fs::write(candidate.sealed_root().join("main.tex"), b"tamper").unwrap();
     let error = store.publish(candidate, evidence).unwrap_err();
@@ -1014,11 +911,6 @@ fn publication_rejects_an_unportable_header_without_replacing_the_root() {
         "main.tex",
         ContentHash::digest(b"validated-pdf"),
         2,
-        candidate
-            .proven_files()
-            .iter()
-            .map(|file| ReplayedInput::new(&file.relative_path, file.content_hash).unwrap())
-            .collect(),
     )
     .unwrap();
 
@@ -1247,7 +1139,7 @@ fn first_publication_cancelled_at_install_cutoff_never_becomes_visible() {
             &capture_inputs(&project, &["project.json", "main.tex"]),
         )
         .unwrap();
-    let evidence = evidence(&candidate, 1);
+    let evidence = evidence(1);
     let calls = Arc::new(AtomicUsize::new(0));
 
     let error = publication
@@ -1284,7 +1176,7 @@ fn first_publication_crosses_its_only_visibility_cutoff_at_install() {
             &capture_inputs(&project, &["project.json", "main.tex"]),
         )
         .unwrap();
-    let evidence = evidence(&candidate, 1);
+    let evidence = evidence(1);
     let calls = Arc::new(AtomicUsize::new(0));
 
     let (published, committed) = publication
@@ -1580,166 +1472,6 @@ fn store_open_rejects_symlinked_roots_locks_and_internal_nodes() {
     fs::write(&outside_lock, b"not a store lock").unwrap();
     symlink(&outside_lock, history.join("operation.lock")).unwrap();
     assert!(Store::open_existing(&history).is_err());
-}
-
-#[test]
-fn unstored_required_inputs_are_proven_without_retaining_their_bytes() {
-    let temp = tempdir().unwrap();
-    let project = temp.path().join("project");
-    fs::create_dir_all(project.join("figures")).unwrap();
-    let project_json = br#"{"main":"main.tex"}"#;
-    let source = b"source that reads the ignored data set";
-    let data = vec![b'x'; 4096];
-    fs::write(project.join("project.json"), project_json).unwrap();
-    fs::write(project.join("main.tex"), source).unwrap();
-    fs::write(project.join("figures/data.csv"), &data).unwrap();
-    let store = Store::open(temp.path().join("history")).unwrap();
-    let inputs = vec![
-        CaptureInput::explicit("project.json").unwrap(),
-        CaptureInput::proven(
-            "main.tex",
-            project.join("main.tex").canonicalize().unwrap(),
-            ContentHash::digest(source),
-        )
-        .unwrap(),
-        CaptureInput::replay_required_unstored(
-            "figures/data.csv",
-            project.join("figures/data.csv").canonicalize().unwrap(),
-            ContentHash::digest(&data),
-        )
-        .unwrap(),
-    ];
-
-    let candidate = store.stage_candidate(&project, &inputs).unwrap();
-    let root = *candidate.snapshot_root();
-    assert_eq!(
-        fs::read(candidate.sealed_root().join("figures/data.csv")).unwrap(),
-        data,
-        "an unstored input is still sealed for the replay compile"
-    );
-    assert_eq!(
-        candidate
-            .proven_files()
-            .iter()
-            .map(|file| file.relative_path.as_str())
-            .collect::<Vec<_>>(),
-        vec!["figures/data.csv", "main.tex"]
-    );
-    assert!(matches!(
-        publish(&store, candidate, 10).unwrap(),
-        PublishOutcome::Created(checkpoint) if checkpoint.snapshot_root == root
-    ));
-
-    let files = store.checkpoint_files(&root).unwrap().unwrap();
-    assert_eq!(
-        files
-            .iter()
-            .map(|file| (file.relative_path.as_str(), file.stored, file.chunk_count))
-            .collect::<Vec<_>>(),
-        vec![
-            ("figures/data.csv", false, 0),
-            ("main.tex", true, 1),
-            ("project.json", true, 1),
-        ]
-    );
-    assert_eq!(files[0].logical_bytes, data.len() as u64);
-    assert_eq!(files[0].content_hash, ContentHash::digest(&data));
-
-    let stats = store.stats().unwrap();
-    assert_eq!(stats.unstored_file_count, 1);
-    assert_eq!(stats.unstored_logical_bytes, data.len() as u64);
-    assert_eq!(
-        stats.visible_logical_bytes,
-        (project_json.len() + source.len() + data.len()) as u64
-    );
-    assert_eq!(
-        stats.logical_chunk_bytes,
-        (project_json.len() + source.len()) as u64
-    );
-
-    let verified = store.verify().unwrap();
-    assert_eq!(verified.checked_checkpoints, 1);
-    assert_eq!(verified.checked_files, 3);
-    assert_eq!(verified.checked_chunk_references, 2);
-
-    let restored = temp.path().join("restored");
-    let materialized = store.materialize(&root, &restored).unwrap();
-    assert_eq!(materialized.file_count, 2);
-    assert_eq!(materialized.omitted, vec!["figures/data.csv".to_string()]);
-    assert_eq!(
-        materialized.logical_bytes,
-        (project_json.len() + source.len()) as u64
-    );
-    assert!(!restored.join("figures/data.csv").exists());
-    assert_eq!(fs::read(restored.join("main.tex")).unwrap(), source);
-
-    let mut archive = Vec::new();
-    let exported = store.export_history(&mut archive).unwrap();
-    assert_eq!(exported.checkpoint_count, 1);
-    assert_eq!(
-        exported.logical_bytes,
-        (project_json.len() + source.len() + data.len()) as u64
-    );
-    let imported_store = Store::open(temp.path().join("imported-history")).unwrap();
-    let imported = imported_store.import_history(archive.as_slice()).unwrap();
-    assert_eq!(imported.created_checkpoints, 1);
-    assert_eq!(
-        imported_store.checkpoint_files(&root).unwrap().unwrap(),
-        files
-    );
-    assert_eq!(imported_store.stats().unwrap().unstored_file_count, 1);
-    assert_eq!(
-        imported_store.stats().unwrap().unstored_logical_bytes,
-        data.len() as u64
-    );
-    imported_store.verify().unwrap();
-
-    let mut single = Vec::new();
-    store.export_checkpoint(&root, &mut single).unwrap();
-    let single_store = Store::open(temp.path().join("single-history")).unwrap();
-    let error = single_store
-        .import_checkpoint(single.as_slice())
-        .unwrap_err();
-    assert!(
-        error
-            .to_string()
-            .contains("records figures/data.csv without its bytes"),
-        "unexpected error: {error}"
-    );
-}
-
-#[test]
-fn an_unstored_main_document_is_never_publishable() {
-    let temp = tempdir().unwrap();
-    let project = temp.path().join("project");
-    fs::create_dir_all(&project).unwrap();
-    fs::write(project.join("project.json"), b"{}").unwrap();
-    fs::write(project.join("main.tex"), b"source").unwrap();
-    let store = Store::open(temp.path().join("history")).unwrap();
-    let candidate = store
-        .stage_candidate(
-            &project,
-            &[
-                CaptureInput::explicit("project.json").unwrap(),
-                CaptureInput::replay_required_unstored(
-                    "main.tex",
-                    project.join("main.tex").canonicalize().unwrap(),
-                    ContentHash::digest(b"source"),
-                )
-                .unwrap(),
-            ],
-        )
-        .unwrap();
-
-    let error = publish(&store, candidate, 1).unwrap_err();
-
-    assert!(
-        error
-            .to_string()
-            .contains("must always retain its checkpoint bytes"),
-        "unexpected error: {error}"
-    );
-    assert!(store.list().unwrap().is_empty());
 }
 
 #[test]

@@ -9,7 +9,7 @@ surface is designed to provide without duplicating task walkthroughs.
 | PDF and compiled-artifact preview | [PDF preview](PDFPreview.md) |
 | Project lifecycle and library | [General](General.md), [Project library](ProjectLibrary.md) |
 | Optional Git history and remote collaboration | [Source control](SourceControl.md) |
-| Checkpoints recovery infrastructure, with automatic publication currently gated | [Checkpoints](Checkpoints.md) |
+| Automatic project snapshots after a successful compile | [Checkpoints](Checkpoints.md) |
 | AI assistance and external clients | [AI Copilot](AICopilot.md), [Integrations](Integrations.md), [MCP](mcp.md) |
 | Citations and literature metadata | [Citations](Citations.md) |
 | Templates and diagrams | [Templates](Templates.md), [Diagram composer](DiagramComposer.md) |

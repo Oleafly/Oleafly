@@ -15,6 +15,7 @@ mod browser_cookie_import;
 mod chats;
 mod checkpoint_archive;
 mod checkpoint_backup;
+mod checkpoint_capture;
 mod checkpoint_publication;
 mod checkpoints;
 mod chunked;
@@ -397,9 +398,6 @@ pub fn run() {
             project::set_main_doc,
             project::set_project_engine,
             project::set_project_shell_escape,
-            project::set_checkpoint_policy,
-            project::checkpoint_ignore_path,
-            project::checkpoint_unignore_path,
             project::record_project_tex_spec,
             project::project_tex_status,
             project::import_overleaf_project,
