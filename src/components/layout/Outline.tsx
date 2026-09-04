@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, ListTree } from "lucide-react";
+import { ChevronDown, ChevronRight, Info, ListTree } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import {
   IntelligenceFilter,
@@ -109,28 +109,12 @@ function StructureUnavailable({
   }
 }
 
-function StatusStrip({ state }: { state: ProjectIntelligenceState }) {
+function statusNotice(state: ProjectIntelligenceState): string | null {
   if (state.stale) {
-    return (
-      <div
-        role="status"
-        className="border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] leading-relaxed text-amber-800 dark:text-amber-200"
-      >
-        Updating. Previous-revision structure is hidden until current source
-        ranges are ready.
-      </div>
-    );
+    return "Updating. Previous-revision structure is hidden until current source ranges are ready.";
   }
   if (state.status === "partial" || state.data?.status === "partial") {
-    return (
-      <div
-        role="status"
-        className="border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] leading-relaxed text-amber-800 dark:text-amber-200"
-      >
-        Partial map. Unreadable or malformed files remain visible where
-        possible.
-      </div>
-    );
+    return "Partial map. Unreadable or malformed files remain visible where possible.";
   }
   return null;
 }
@@ -140,13 +124,23 @@ export function Outline({
   // because Outline sits above it and answers the more common question. Left
   // expanded by default so rendering it on its own shows its content.
   defaultCollapsed = false,
+  collapsed: controlledCollapsed,
+  onCollapsedChange,
 }: {
   readonly defaultCollapsed?: boolean;
+  readonly collapsed?: boolean;
+  readonly onCollapsedChange?: (next: boolean) => void;
 } = {}) {
   const intelligenceState = useIndexStore((state) => state.intelligenceState);
   const activePath = useFilesStore((state) => state.activePath);
   const projectId = useFilesStore((state) => state.projectId);
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [uncontrolledCollapsed, setUncontrolledCollapsed] =
+    useState(defaultCollapsed);
+  const collapsed = controlledCollapsed ?? uncontrolledCollapsed;
+  const toggleCollapsed = () => {
+    setUncontrolledCollapsed(!collapsed);
+    onCollapsedChange?.(!collapsed);
+  };
   const [filter, setFilter] = useState("");
 
   const snapshot = acceptedProjectSnapshot(
@@ -159,6 +153,7 @@ export function Outline({
     [snapshot],
   );
   const nodeCount = useMemo(() => countNodes(nodes), [nodes]);
+  const notice = statusNotice(intelligenceState);
 
   const navigate = useCallback((node: IntelligenceTreeNode) => {
     if (!node.target) return;
@@ -183,7 +178,7 @@ export function Outline({
           type="button"
           aria-expanded={!collapsed}
           aria-controls="project-structure-content"
-          onClick={() => setCollapsed((value) => !value)}
+          onClick={toggleCollapsed}
           className="flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75 hover:bg-sidebar-accent"
         >
           {collapsed ? (
@@ -193,6 +188,14 @@ export function Outline({
           )}
           <ListTree aria-hidden className="size-3.5" />
           <span className="truncate">Structure</span>
+          {notice ? (
+            <span
+              title={notice}
+              className="flex shrink-0 items-center text-amber-600 dark:text-amber-400"
+            >
+              <Info aria-hidden className="size-3.5" />
+            </span>
+          ) : null}
           {snapshot ? (
             <span
               role="status"
@@ -219,7 +222,11 @@ export function Outline({
             />
           </div>
 
-          <StatusStrip state={intelligenceState} />
+          {notice ? (
+            <div role="status" className="sr-only">
+              {notice}
+            </div>
+          ) : null}
 
           <div className="min-h-0 flex-1 overflow-auto px-1 [scrollbar-width:thin]">
             {snapshot ? (

@@ -136,11 +136,61 @@ export function FilesPanel() {
             which is the question you have while writing. Structure sits under
             it, collapsed, for when you want the whole project map. */}
         <Suspense fallback={<SidebarPanelFallback />}>
-          <div className="flex h-full min-h-0 flex-col">
-            <DocumentOutline />
-            <ProjectStructure defaultCollapsed />
-          </div>
+          <OutlineAndStructure />
         </Suspense>
+      </Panel>
+    </PanelGroup>
+  );
+}
+
+function SidebarSectionHandle() {
+  return (
+    <PanelResizeHandle
+      style={{ cursor: "row-resize" }}
+      className={cn(
+        "resize-handle-row group flex h-2.5 items-center justify-center",
+        "transition-colors hover:bg-accent/40",
+      )}
+    >
+      <span className="h-0.5 w-8 rounded-full bg-border transition-colors group-hover:bg-ring" />
+    </PanelResizeHandle>
+  );
+}
+
+function OutlineAndStructure() {
+  const [outlineCollapsed, setOutlineCollapsed] = useState(false);
+  const [structureCollapsed, setStructureCollapsed] = useState(true);
+  const bothOpen = !outlineCollapsed && !structureCollapsed;
+
+  if (!bothOpen) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <DocumentOutline
+          collapsed={outlineCollapsed}
+          onCollapsedChange={setOutlineCollapsed}
+        />
+        <ProjectStructure
+          collapsed={structureCollapsed}
+          onCollapsedChange={setStructureCollapsed}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <PanelGroup direction="vertical" autoSaveId="sidebar-outline-structure">
+      <Panel id="doc-outline-v" order={1} defaultSize={50} minSize={12}>
+        <DocumentOutline
+          collapsed={outlineCollapsed}
+          onCollapsedChange={setOutlineCollapsed}
+        />
+      </Panel>
+      <SidebarSectionHandle />
+      <Panel id="project-structure-v" order={2} defaultSize={50} minSize={12}>
+        <ProjectStructure
+          collapsed={structureCollapsed}
+          onCollapsedChange={setStructureCollapsed}
+        />
       </Panel>
     </PanelGroup>
   );

@@ -8,10 +8,17 @@ const themeMocks = vi.hoisted(() => ({
   setPreference: vi.fn(),
 }));
 
-vi.mock("react-joyride", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("react-joyride")>()),
-  Joyride: () => null,
-}));
+const joyrideMocks = vi.hoisted(() => ({ render: false }));
+
+vi.mock("react-joyride", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-joyride")>();
+  const { createElement } = await import("react");
+  return {
+    ...actual,
+    Joyride: (props: Record<string, unknown>) =>
+      joyrideMocks.render ? createElement(actual.Joyride, props) : null,
+  };
+});
 
 vi.mock("@/lib/confetti", () => ({ celebrate: vi.fn() }));
 
@@ -25,6 +32,7 @@ vi.mock("@/lib/theme", () => ({
 }));
 
 import { TourGuide } from "./TourGuide";
+import { tourRegistry } from "@/lib/tours/registry";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
@@ -54,6 +62,7 @@ beforeEach(() => {
   useTourStore.setState({ enabled: true, activeTourId: "home", activeStepIndex: 0 });
   themeMocks.preference = "system";
   themeMocks.setPreference.mockClear();
+  joyrideMocks.render = false;
 });
 
 describe("Welcome appearance choice", () => {
@@ -204,5 +213,111 @@ describe("TourGuide missing-target grace period", () => {
     });
 
     expect(tourStep()).toEqual({ activeTourId: null, activeStepIndex: 0 });
+  });
+});
+
+type Box = { top: number; left: number; width: number; height: number };
+
+const TEMPLATE_LIST_BOX: Box = { top: 160, left: 200, width: 640, height: 360 };
+const VIEWPORT_CORNER: Box = { top: 0, left: 0, width: 8, height: 8 };
+
+function mountTourTarget(name: string, box: Box) {
+  const element = document.createElement("div");
+  element.setAttribute("data-tour", name);
+  element.getBoundingClientRect = () =>
+    ({
+      ...box,
+      right: box.left + box.width,
+      bottom: box.top + box.height,
+      x: box.left,
+      y: box.top,
+      toJSON: () => "",
+    }) as DOMRect;
+  document.body.appendChild(element);
+  return element;
+}
+
+function styleBox(element: HTMLElement): Box {
+  return {
+    top: Number.parseFloat(element.style.top),
+    left: Number.parseFloat(element.style.left),
+    width: Number.parseFloat(element.style.width),
+    height: Number.parseFloat(element.style.height),
+  };
+}
+
+function intersects(a: Box, b: Box) {
+  return (
+    a.width > 0 &&
+    a.height > 0 &&
+    a.left < b.left + b.width &&
+    b.left < a.left + a.width &&
+    a.top < b.top + b.height &&
+    b.top < a.top + a.height
+  );
+}
+
+function tourLayersCovering(area: Box) {
+  const covering: string[] = [];
+  for (const path of document.querySelectorAll<SVGPathElement>(
+    ".react-joyride__spotlight path",
+  )) {
+    if (path.style.pointerEvents !== "auto") continue;
+    const subpaths = (path.getAttribute("d") ?? "").split("Z").filter((part) => part.trim());
+    if (subpaths.length < 2) covering.push("joyride-overlay");
+  }
+  for (const strip of document.querySelectorAll<HTMLElement>("[data-tour-backdrop]")) {
+    if (intersects(styleBox(strip), area)) covering.push(`backdrop-${strip.dataset.tourBackdrop}`);
+  }
+  return covering;
+}
+
+function renderHomeStep(stepId: string) {
+  joyrideMocks.render = true;
+  useSettingsStore.setState({ newProjectOpen: true });
+  useTourStore.setState({
+    activeTourId: "home",
+    activeStepIndex: tourRegistry.home.steps.findIndex((step) => step.id === stepId),
+  });
+  render(<TourGuide />);
+  act(() => {
+    vi.advanceTimersByTime(500);
+  });
+}
+
+describe("TourGuide overlay reachability", () => {
+  afterEach(() => {
+    for (const node of document.querySelectorAll("[data-tour]")) node.remove();
+  });
+
+  it("leaves the template grid uncovered on the step that asks for a click", () => {
+    mountTourTarget("project-template-list", TEMPLATE_LIST_BOX);
+
+    renderHomeStep("home-template");
+
+    expect(tourLayersCovering(TEMPLATE_LIST_BOX)).toEqual([]);
+    const strips = Array.from(document.querySelectorAll<HTMLElement>("[data-tour-backdrop]"));
+    expect(strips.map((strip) => strip.dataset.tourBackdrop)).toEqual([
+      "top",
+      "bottom",
+      "left",
+      "right",
+    ]);
+    for (const strip of strips) {
+      expect(strip.style.pointerEvents).toBe("auto");
+      expect(strip.style.backgroundColor).toBe("rgba(0, 0, 0, 0.72)");
+    }
+    expect(tourLayersCovering(VIEWPORT_CORNER)).toEqual(["backdrop-top"]);
+  });
+
+  it("keeps dimming the whole grid on the step that only describes it", () => {
+    mountTourTarget("project-template-list", TEMPLATE_LIST_BOX);
+
+    renderHomeStep("home-gallery");
+
+    expect(tourLayersCovering(TEMPLATE_LIST_BOX)).toEqual(["joyride-overlay"]);
+    for (const strip of document.querySelectorAll<HTMLElement>("[data-tour-backdrop]")) {
+      expect(strip.style.pointerEvents).toBe("none");
+    }
   });
 });

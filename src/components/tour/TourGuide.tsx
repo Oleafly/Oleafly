@@ -21,6 +21,7 @@ import { celebrate } from "@/lib/confetti";
 import { START_TOUR_EVENT } from "@/lib/tour";
 import { evaluateTour, missingTargetFallback } from "@/lib/tours/coordinator";
 import {
+  stepNeedsReachableTarget,
   tourRegistry,
   type TourContext,
   type TourStepDefinition,
@@ -42,6 +43,15 @@ function omitTitle<T extends { title: string }>({ title: _title, ...rest }: T) {
 const REQUEST_TOUR_QUIT_EVENT = "oleafly:request-tour-quit";
 
 const KBD_CHIP = "h-4 min-w-4 px-1 text-[10px]";
+
+const TOUR_OVERLAY_COLOR = "rgba(0, 0, 0, 0.72)";
+
+const BACKDROP_TRANSITION = [
+  "top 320ms cubic-bezier(0.4, 0, 0.2, 1)",
+  "left 320ms cubic-bezier(0.4, 0, 0.2, 1)",
+  "width 320ms cubic-bezier(0.4, 0, 0.2, 1)",
+  "height 320ms cubic-bezier(0.4, 0, 0.2, 1)",
+].join(", ");
 
 // Golden-ratio low-discrepancy sequence: spreads the decorative sparkles more
 // evenly than sampling would, and keeps their layout stable between renders.
@@ -377,6 +387,14 @@ export function stepNeedsScroll(element: Element | null): boolean {
   return rect.top < 0 || rect.top + leadIn > window.innerHeight;
 }
 
+export function joyrideDrawsSpotlight(placement: TourStepDefinition["placement"]) {
+  return (placement ?? "bottom") !== "center";
+}
+
+export function hidesJoyrideOverlay(step: TourStepDefinition) {
+  return stepNeedsReachableTarget(step) && !joyrideDrawsSpotlight(step.placement);
+}
+
 export function toJoyrideStep(
   step: TourStepDefinition,
   tourLabel?: string,
@@ -391,6 +409,7 @@ export function toJoyrideStep(
     placement: step.placement ?? "bottom",
     spotlightTarget: step.spotlightTarget,
     data: { ...step, tourLabel },
+    hideOverlay: hidesJoyrideOverlay(step),
     blockTargetInteraction:
       !step.interactionArea && step.kind !== "required-click" && step.kind !== "required-input",
   };
@@ -639,7 +658,7 @@ function Welcome({ onStart }: { onStart: () => void }) {
   );
 }
 
-function TourBackdropBlur({ target }: { target: string }) {
+function TourBackdropBlur({ target, dim }: { target: string; dim: boolean }) {
   const [rect, setRect] = useState<{
     top: number;
     right: number;
@@ -694,38 +713,44 @@ function TourBackdropBlur({ target }: { target: string }) {
   const blurStyle = {
     backdropFilter: "blur(4px)",
     WebkitBackdropFilter: "blur(4px)",
-    backgroundColor: "rgba(0, 0, 0, 0.01)",
-    pointerEvents: "none" as const,
+    backgroundColor: dim ? TOUR_OVERLAY_COLOR : "rgba(0, 0, 0, 0.01)",
+    pointerEvents: dim ? ("auto" as const) : ("none" as const),
     position: "fixed" as const,
     zIndex: 109,
-    transition: reducedMotion ? undefined : "all 320ms cubic-bezier(0.4, 0, 0.2, 1)",
+    transition: reducedMotion ? undefined : BACKDROP_TRANSITION,
   };
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const bandHeight = Math.max(0, rect.bottom - rect.top);
 
   return (
     <>
-      <div style={{ ...blurStyle, inset: `0 0 auto 0`, height: rect.top }} />
       <div
-        style={{
-          ...blurStyle,
-          inset: `${rect.bottom}px 0 0 0`,
-        }}
+        data-tour-backdrop="top"
+        style={{ ...blurStyle, top: 0, left: 0, width: viewportWidth, height: rect.top }}
       />
       <div
+        data-tour-backdrop="bottom"
         style={{
           ...blurStyle,
+          top: rect.bottom,
           left: 0,
-          top: rect.top,
-          width: rect.left,
-          height: Math.max(0, rect.bottom - rect.top),
+          width: viewportWidth,
+          height: Math.max(0, viewportHeight - rect.bottom),
         }}
       />
       <div
+        data-tour-backdrop="left"
+        style={{ ...blurStyle, top: rect.top, left: 0, width: rect.left, height: bandHeight }}
+      />
+      <div
+        data-tour-backdrop="right"
         style={{
           ...blurStyle,
-          left: rect.right,
-          right: 0,
           top: rect.top,
-          height: Math.max(0, rect.bottom - rect.top),
+          left: rect.right,
+          width: Math.max(0, viewportWidth - rect.right),
+          height: bandHeight,
         }}
       />
     </>
@@ -1410,6 +1435,7 @@ export function TourGuide() {
             ? activeStep.spotlightTarget
             : activeStep.target
         }
+        dim={hidesJoyrideOverlay(activeStep)}
       />
       <Joyride
         key={`${activeTourId}-${joyrideInstance}`}
@@ -1442,7 +1468,7 @@ export function TourGuide() {
           buttons: ["back", "primary", "skip"],
           dismissKeyAction: false,
           overlayClickAction: false,
-          overlayColor: "rgba(0, 0, 0, 0.72)",
+          overlayColor: TOUR_OVERLAY_COLOR,
           primaryColor: "var(--primary)",
           showProgress: true,
           skipBeacon: true,

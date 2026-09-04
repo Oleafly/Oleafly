@@ -2,6 +2,7 @@ import {
   BookPlus,
   BookOpenText,
   Braces,
+  Info,
   ListRestart,
   Search,
   SearchCode,
@@ -165,27 +166,12 @@ function ReferencesUnavailable({
   }
 }
 
-function AnalysisNotice({ state }: { state: ProjectIntelligenceState }) {
+function analysisNotice(state: ProjectIntelligenceState): string | null {
   if (state.stale) {
-    return (
-      <div
-        role="status"
-        className="border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] leading-relaxed text-amber-800 dark:text-amber-200"
-      >
-        Updating. Previous-revision citations, symbols, and ranges are hidden.
-      </div>
-    );
+    return "Updating. Previous-revision citations, symbols, and ranges are hidden.";
   }
   if (state.status === "partial" || state.data?.status === "partial") {
-    return (
-      <div
-        role="status"
-        className="border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] leading-relaxed text-amber-800 dark:text-amber-200"
-      >
-        Partial results. Malformed or unreadable files may omit some
-        occurrences.
-      </div>
-    );
+    return "Partial results. Malformed or unreadable files may omit some occurrences.";
   }
   return null;
 }
@@ -274,6 +260,7 @@ export function ReferencesPanel() {
     intelligenceState,
     projectId,
   );
+  const notice = analysisNotice(intelligenceState);
   const citationNodes = useMemo(
     () => (snapshot ? buildCitationNodes(snapshot) : []),
     [snapshot],
@@ -452,10 +439,25 @@ export function ReferencesPanel() {
               </span>
             </Tooltip>
           ) : null}
+          {notice ? (
+            <Tooltip label={notice} side="bottom">
+              <span
+                className={`flex shrink-0 items-center text-amber-600 dark:text-amber-400 ${
+                  view === "results" && query ? "" : "ml-auto"
+                }`}
+              >
+                <Info aria-hidden className="size-3.5" />
+              </span>
+            </Tooltip>
+          ) : null}
         </div>
       </div>
 
-      <AnalysisNotice state={intelligenceState} />
+      {notice ? (
+        <div role="status" className="sr-only">
+          {notice}
+        </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-auto px-1 [scrollbar-width:thin]">
         {snapshot ? (

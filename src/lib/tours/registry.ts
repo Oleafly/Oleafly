@@ -29,6 +29,14 @@ export interface TourDefinition {
   steps: readonly TourStepDefinition[];
 }
 
+export function stepNeedsReachableTarget(step: TourStepDefinition): boolean {
+  return (
+    step.kind === "required-click" ||
+    step.kind === "required-input" ||
+    Boolean(step.interactionArea)
+  );
+}
+
 export const tourRegistry = {
   home: {
     id: "home",

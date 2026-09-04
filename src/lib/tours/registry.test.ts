@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tourRegistry } from "./registry";
+import { stepNeedsReachableTarget, tourRegistry, type TourStepDefinition } from "./registry";
 
 describe("tour registry", () => {
   it("models the real Home creation flow with stable targets and interaction gates", () => {
@@ -21,6 +21,14 @@ describe("tour registry", () => {
     expect(tourRegistry.home.steps[5].interactionArea).toBe(
       '[data-tour="project-cover-color"]',
     );
+  });
+
+  it("lists every step whose target the user has to reach behind a centered tooltip", () => {
+    const centered = Object.values(tourRegistry)
+      .flatMap((tour) => tour.steps as readonly TourStepDefinition[])
+      .filter((step) => stepNeedsReachableTarget(step) && step.placement === "center")
+      .map((step) => step.id);
+    expect(centered).toEqual(["home-template"]);
   });
 
   it("uses only stable data-tour targets", () => {

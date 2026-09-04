@@ -28,11 +28,22 @@ function basename(path: string): string {
 //
 // Derived entirely from the shared project index, so it stays in step with
 // everything else that reads the index and does no parsing or file IO here.
-export function DocumentOutline() {
+export function DocumentOutline({
+  collapsed: controlledCollapsed,
+  onCollapsedChange,
+}: {
+  readonly collapsed?: boolean;
+  readonly onCollapsedChange?: (next: boolean) => void;
+} = {}) {
   const index = useIndexStore((state) => state.index);
   const texts = useIndexStore((state) => state.texts);
   const activePath = useFilesStore((state) => state.activePath);
-  const [collapsed, setCollapsed] = useState(false);
+  const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
+  const collapsed = controlledCollapsed ?? uncontrolledCollapsed;
+  const toggleCollapsed = () => {
+    setUncontrolledCollapsed(!collapsed);
+    onCollapsedChange?.(!collapsed);
+  };
 
   const items = useMemo(
     () =>
@@ -92,7 +103,7 @@ export function DocumentOutline() {
           type="button"
           aria-expanded={!collapsed}
           aria-controls="document-outline-content"
-          onClick={() => setCollapsed((value) => !value)}
+          onClick={toggleCollapsed}
           className="flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75 hover:bg-sidebar-accent"
         >
           {collapsed ? (
