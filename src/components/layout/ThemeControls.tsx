@@ -28,6 +28,23 @@ const THEME_ICONS: Record<ThemePreference, LucideIcon> = {
 
 type Side = "top" | "bottom" | "left" | "right";
 
+function themeOptionClass(pill: boolean, active: boolean) {
+  if (pill) {
+    return cn(
+      "rounded-lg",
+      active
+        ? "bg-background text-foreground shadow-sm"
+        : "text-muted-foreground hover:text-foreground",
+    );
+  }
+  return cn(
+    "rounded-md border",
+    active
+      ? "border-primary bg-primary/5 text-foreground"
+      : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
+  );
+}
+
 export function themePreferenceLabel(preference: ThemePreference): string {
   return THEME_LABELS[preference];
 }
@@ -41,12 +58,12 @@ export function ThemeMenu({
   align = "end",
   triggerClassName,
   testId = "theme-menu",
-}: {
+}: Readonly<{
   side?: Side;
   align?: "start" | "center" | "end";
   triggerClassName?: string;
   testId?: string;
-}) {
+}>) {
   const { preference, theme, setPreference } = useTheme();
   const [open, setOpen] = useState(false);
   const pointerToggled = useRef(false);
@@ -108,13 +125,13 @@ export function ThemeSegmentedControl({
   variant = "cards",
   testIdPrefix,
   className,
-}: {
+}: Readonly<{
   preference: ThemePreference;
   onChange: (preference: ThemePreference) => void;
   variant?: "cards" | "pill";
   testIdPrefix?: string;
   className?: string;
-}) {
+}>) {
   const pill = variant === "pill";
   return (
     <div
@@ -137,19 +154,7 @@ export function ThemeSegmentedControl({
             onClick={() => onChange(value)}
             className={cn(
               "flex h-9 items-center justify-center gap-2 text-xs font-medium transition-colors",
-              pill
-                ? cn(
-                    "rounded-lg",
-                    active
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )
-                : cn(
-                    "rounded-md border",
-                    active
-                      ? "border-primary bg-primary/5 text-foreground"
-                      : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
-                  ),
+              themeOptionClass(pill, active),
             )}
           >
             <Icon className="size-3.5" aria-hidden />

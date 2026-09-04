@@ -145,7 +145,7 @@ function measureTourTooltip(node: HTMLElement): TourTooltipMetrics {
   };
 }
 
-function TourTooltip(props: TourTooltipProps) {
+function TourTooltip(props: Readonly<TourTooltipProps>) {
   const {
     backProps,
     continuous,
@@ -170,16 +170,22 @@ function TourTooltip(props: TourTooltipProps) {
   const isWelcome = definition.id === "home-overview";
   const cardRef = useRef<HTMLDivElement | null>(null);
 
+  const measure = useCallback(() => {
+    const card = cardRef.current;
+    if (card) onMeasure(measureTourTooltip(card));
+  }, [onMeasure]);
+
   useEffect(() => {
-    void definition.id;
+    measure();
+  });
+
+  useEffect(() => {
     const card = cardRef.current;
     if (!card) return;
-    const measure = () => onMeasure(measureTourTooltip(card));
-    measure();
     const observer = new ResizeObserver(measure);
     observer.observe(card);
     return () => observer.disconnect();
-  }, [definition.id, onMeasure]);
+  }, [measure]);
 
   return (
     <div
@@ -340,6 +346,12 @@ function TourTooltip(props: TourTooltipProps) {
   );
 }
 
+function measuredTourTooltip(onMeasure: TourTooltipProps["onMeasure"]) {
+  return function MeasuredTourTooltip(props: Readonly<TooltipRenderProps>) {
+    return <TourTooltip {...props} onMeasure={onMeasure} />;
+  };
+}
+
 export function tourArrowSide(placement?: string) {
   return (placement ?? "top").split("-")[0];
 }
@@ -447,17 +459,23 @@ export function hidesJoyrideOverlay(step: TourStepDefinition, placement?: string
   return stepNeedsReachableTarget(step) && !joyrideDrawsSpotlight(placement);
 }
 
+interface TourViewportSize {
+  width: number;
+  height: number;
+}
+
 export function measureTourPlacement(
   step: TourStepDefinition,
   element: Element | null,
   tooltip: TourTooltipMetrics | null,
+  viewport: TourViewportSize = { width: window.innerWidth, height: window.innerHeight },
 ): TourPlacementFit | null {
   if (!stepNeedsReachableTarget(step) || !element || !tooltip) return null;
   const target = element.getBoundingClientRect();
   if (target.width === 0 && target.height === 0) return null;
   return fitTourTooltip({
     target,
-    viewport: { width: window.innerWidth, height: window.innerHeight },
+    viewport,
     tooltip,
     standoff: TOUR_TOOLTIP_STANDOFF,
     shiftPadding: TOUR_SHIFT_PADDING,
@@ -481,7 +499,7 @@ export function toJoyrideStep(
   fit?: TourPlacementFit | null,
 ): Step {
   const placement = resolveTourPlacement(step, fit);
-  const maxTooltipHeight = fit && fit.placement === placement ? fit.maxHeight : null;
+  const maxTooltipHeight = fit?.placement === placement ? fit.maxHeight : null;
   return {
     id: step.id,
     target: step.target,
@@ -740,7 +758,7 @@ function Welcome({ onStart }: { onStart: () => void }) {
   );
 }
 
-function TourBackdropBlur({ target, dim }: { target: string; dim: boolean }) {
+function TourBackdropBlur({ target, dim }: Readonly<{ target: string; dim: boolean }>) {
   const [rect, setRect] = useState<{
     top: number;
     right: number;
@@ -868,7 +886,10 @@ export function TourGuide() {
   const [libraryReady, setLibraryReady] = useState(false);
   const [joyrideInstance, setJoyrideInstance] = useState(0);
   const [tooltipMetrics, setTooltipMetrics] = useState<TourTooltipMetrics | null>(null);
-  const [viewportRevision, setViewportRevision] = useState(0);
+  const [viewport, setViewport] = useState<TourViewportSize>(() => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }));
   const [aiReadinessRevision, setAiReadinessRevision] = useState(0);
   const reducedMotion = useMemo(
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -909,7 +930,6 @@ export function TourGuide() {
       // Joyride may scroll for it, and a target's position is only meaningful
       // once the tour has actually reached it.
       void activeStepIndex;
-      void viewportRevision;
       return (
         definition?.steps.map((step) => {
           const element = document.querySelector(step.target);
@@ -917,18 +937,17 @@ export function TourGuide() {
             step,
             definition.label,
             stepNeedsScroll(element),
-            measureTourPlacement(step, element, tooltipMetrics),
+            measureTourPlacement(step, element, tooltipMetrics, viewport),
           );
         }) ?? []
       );
     },
-    [activeStepIndex, definition, inputRevision, tooltipMetrics, viewportRevision],
+    [activeStepIndex, definition, inputRevision, tooltipMetrics, viewport],
   );
 
   const handleTooltipMeasure = useCallback((metrics: TourTooltipMetrics) => {
     setTooltipMetrics((current) =>
-      current &&
-      current.width === metrics.width &&
+      current?.width === metrics.width &&
       current.height === metrics.height &&
       current.minHeight === metrics.minHeight
         ? current
@@ -937,15 +956,13 @@ export function TourGuide() {
   }, []);
 
   const tooltipComponent = useMemo(
-    () =>
-      function MeasuredTourTooltip(props: TooltipRenderProps) {
-        return <TourTooltip {...props} onMeasure={handleTooltipMeasure} />;
-      },
+    () => measuredTourTooltip(handleTooltipMeasure),
     [handleTooltipMeasure],
   );
 
   useEffect(() => {
-    const onResize = () => setViewportRevision((value) => value + 1);
+    const onResize = () =>
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);

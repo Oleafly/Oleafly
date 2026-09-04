@@ -31,6 +31,142 @@ import { ModelManager, ModelMetadataStatusLine } from "./ModelManager";
 
 export type ProviderStatus = "idle" | "validating" | "valid" | "error";
 
+type OllamaStatus = "idle" | "loading" | "ok" | "down";
+
+const STATUS_BADGE =
+  "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium leading-none";
+
+const RUNNING_BADGE = `${STATUS_BADGE} bg-emerald-500/15 text-emerald-600 dark:text-emerald-400`;
+
+const STOPPED_BADGE = `${STATUS_BADGE} bg-amber-500/15 text-amber-600 dark:text-amber-500`;
+
+function ProviderStatusBadge({
+  isHost,
+  ollamaStatus,
+  isConfigured,
+}: Readonly<{
+  isHost?: boolean;
+  ollamaStatus: OllamaStatus;
+  isConfigured: boolean;
+}>) {
+  if (isHost) {
+    if (ollamaStatus === "ok") {
+      return (
+        <span className={RUNNING_BADGE}>
+          <Check className="size-3 shrink-0" /> Running
+        </span>
+      );
+    }
+    if (ollamaStatus === "down") return <span className={STOPPED_BADGE}>Not running</span>;
+    return null;
+  }
+  if (!isConfigured) return null;
+  return (
+    <span className={RUNNING_BADGE}>
+      <Check className="size-3 shrink-0" /> Connected
+    </span>
+  );
+}
+
+function OllamaStatusLine({
+  status,
+  models,
+}: Readonly<{ status: OllamaStatus; models: string[] }>) {
+  if (status === "loading") {
+    return <span className="text-[11px] text-muted-foreground">Checking…</span>;
+  }
+  if (status === "ok") {
+    return (
+      <span className="text-[11px] text-emerald-600 dark:text-emerald-500">
+        Running · {models.length} model{models.length === 1 ? "" : "s"}
+      </span>
+    );
+  }
+  if (status === "down") {
+    return <span className="text-[11px] text-amber-600 dark:text-amber-500">Not detected</span>;
+  }
+  return <span className="text-[11px] text-muted-foreground">Not checked yet</span>;
+}
+
+function OllamaModelChoice({
+  active,
+  models,
+  selectedModel,
+  onUse,
+}: Readonly<{
+  active: boolean;
+  models: string[];
+  selectedModel: string;
+  onUse: (model: string) => void;
+}>) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[11px] text-muted-foreground">Model</span>
+      <Select
+        value={active && models.includes(selectedModel) ? selectedModel : ""}
+        onValueChange={onUse}
+      >
+        <SelectTrigger className="h-8 flex-1">
+          <SelectValue placeholder="Choose a model to use" />
+        </SelectTrigger>
+        <SelectContent className="z-[100]">
+          {models.map((id) => (
+            <SelectItem key={id} value={id}>
+              {id}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {active && (
+        <span className="inline-flex items-center gap-1 text-[10px] font-medium leading-none text-primary">
+          <Check className="size-3 shrink-0" /> Active
+        </span>
+      )}
+    </div>
+  );
+}
+
+function OllamaHostControls({
+  host,
+  onHostChange,
+  onDisconnect,
+}: Readonly<{
+  host: string;
+  onHostChange: (v: string) => void;
+  onDisconnect?: () => void;
+}>) {
+  const [showHost, setShowHost] = useState(false);
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <button type="button"
+          onClick={() => setShowHost((s) => !s)}
+          className="text-[11px] text-muted-foreground hover:text-foreground"
+        >
+          {showHost ? "Hide host" : "Change host (advanced)"}
+        </button>
+        {onDisconnect && (
+          <button type="button"
+            onClick={onDisconnect}
+            className="text-[11px] text-muted-foreground hover:text-destructive"
+          >
+            Disconnect
+          </button>
+        )}
+      </div>
+      {showHost && (
+        <Input
+          type="text"
+          value={host}
+          onChange={(e) => onHostChange(e.target.value)}
+          placeholder={DEFAULT_OLLAMA_HOST}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
+        />
+      )}
+    </>
+  );
+}
+
 function OllamaSetup({
   active,
   host,
@@ -44,11 +180,11 @@ function OllamaSetup({
   installed,
   starting,
   onStart,
-}: {
+}: Readonly<{
   active: boolean;
   host: string;
   onHostChange: (v: string) => void;
-  status: "idle" | "loading" | "ok" | "down";
+  status: OllamaStatus;
   models: string[];
   onDetect: () => void;
   installed: boolean;
@@ -57,8 +193,7 @@ function OllamaSetup({
   selectedModel: string;
   onUse: (model: string) => void;
   onDisconnect?: () => void;
-}) {
-  const [showHost, setShowHost] = useState(false);
+}>) {
   const shown = host.trim() || DEFAULT_OLLAMA_HOST;
   return (
     <div className="mt-2 space-y-2">
@@ -76,19 +211,7 @@ function OllamaSetup({
           )}
           {status === "idle" ? "Check for Ollama" : "Re-check"}
         </Button>
-        {status === "loading" ? (
-          <span className="text-[11px] text-muted-foreground">Checking…</span>
-        ) : status === "ok" ? (
-          <span className="text-[11px] text-emerald-600 dark:text-emerald-500">
-            Running · {models.length} model{models.length === 1 ? "" : "s"}
-          </span>
-        ) : status === "down" ? (
-          <span className="text-[11px] text-amber-600 dark:text-amber-500">
-            Not detected
-          </span>
-        ) : (
-          <span className="text-[11px] text-muted-foreground">Not checked yet</span>
-        )}
+        <OllamaStatusLine status={status} models={models} />
       </div>
 
       {status === "down" && (
@@ -133,56 +256,15 @@ function OllamaSetup({
       )}
 
       {status === "ok" && models.length > 0 && (
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-muted-foreground">Model</span>
-          <Select
-            value={active && models.includes(selectedModel) ? selectedModel : ""}
-            onValueChange={onUse}
-          >
-            <SelectTrigger className="h-8 flex-1">
-              <SelectValue placeholder="Choose a model to use" />
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              {models.map((id) => (
-                <SelectItem key={id} value={id}>
-                  {id}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {active && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium leading-none text-primary">
-              <Check className="size-3 shrink-0" /> Active
-            </span>
-          )}
-        </div>
-      )}
-
-      <div className="flex items-center gap-3">
-        <button type="button"
-          onClick={() => setShowHost((s) => !s)}
-          className="text-[11px] text-muted-foreground hover:text-foreground"
-        >
-          {showHost ? "Hide host" : "Change host (advanced)"}
-        </button>
-        {onDisconnect && (
-          <button type="button"
-            onClick={onDisconnect}
-            className="text-[11px] text-muted-foreground hover:text-destructive"
-          >
-            Disconnect
-          </button>
-        )}
-      </div>
-      {showHost && (
-        <Input
-          type="text"
-          value={host}
-          onChange={(e) => onHostChange(e.target.value)}
-          placeholder={DEFAULT_OLLAMA_HOST}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
+        <OllamaModelChoice
+          active={active}
+          models={models}
+          selectedModel={selectedModel}
+          onUse={onUse}
         />
       )}
+
+      <OllamaHostControls host={host} onHostChange={onHostChange} onDisconnect={onDisconnect} />
     </div>
   );
 }
@@ -305,21 +387,11 @@ export function ProvidersTab({
                   </div>
                 </button>
                 <div className="mt-0.5 flex shrink-0 items-center gap-2">
-                  {p.isHost ? (
-                    ollama.status === "ok" ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-medium leading-none text-emerald-600 dark:text-emerald-400">
-                        <Check className="size-3 shrink-0" /> Running
-                      </span>
-                    ) : ollama.status === "down" ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-medium leading-none text-amber-600 dark:text-amber-500">
-                        Not running
-                      </span>
-                    ) : null
-                  ) : isConfigured ? (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-medium leading-none text-emerald-600 dark:text-emerald-400">
-                      <Check className="size-3 shrink-0" /> Connected
-                    </span>
-                  ) : null}
+                  <ProviderStatusBadge
+                    isHost={p.isHost}
+                    ollamaStatus={ollama.status}
+                    isConfigured={isConfigured}
+                  />
                   {p.signupUrl && isOpen && (
                     <button type="button"
                       onClick={() => {

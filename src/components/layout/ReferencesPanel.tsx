@@ -454,9 +454,7 @@ export function ReferencesPanel() {
       </div>
 
       {notice ? (
-        <div role="status" className="sr-only">
-          {notice}
-        </div>
+        <output className="sr-only">{notice}</output>
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-auto px-1 [scrollbar-width:thin]">

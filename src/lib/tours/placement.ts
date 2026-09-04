@@ -40,27 +40,34 @@ function freeSpace(side: TourPlacementSide, { target, viewport }: TourPlacementI
   return viewport.width - target.right;
 }
 
+function measureSide(side: TourPlacementSide, input: TourPlacementInput) {
+  const { standoff, tooltip } = input;
+  const vertical = side === "top" || side === "bottom";
+  const free = Math.max(0, freeSpace(side, input));
+  return {
+    side,
+    free,
+    vertical,
+    slack: free - ((vertical ? tooltip.height : tooltip.width) + standoff),
+  };
+}
+
 export function fitTourTooltip(input: TourPlacementInput): TourPlacementFit {
   const { shiftPadding, standoff, tooltip, viewport } = input;
   const shiftBand = viewport.height - shiftPadding * 2;
-  const sides = SIDES.map((side) => {
-    const vertical = side === "top" || side === "bottom";
-    const free = Math.max(0, freeSpace(side, input));
-    return {
-      side,
-      free,
-      vertical,
-      slack: free - ((vertical ? tooltip.height : tooltip.width) + standoff),
-    };
-  });
-  const roomiest = sides.reduce((best, side) => (side.slack > best.slack ? side : best));
+  const firstSide = measureSide(SIDES[0], input);
+  const sides = SIDES.map((side) => measureSide(side, input));
+  const roomiest = sides.reduce(
+    (best, side) => (side.slack > best.slack ? side : best),
+    firstSide,
+  );
   if (roomiest.slack >= 0) {
     const overflows = !roomiest.vertical && tooltip.height > shiftBand;
     return { placement: roomiest.side, maxHeight: overflows ? shiftBand : null };
   }
   const band = sides
     .filter((side) => side.vertical)
-    .reduce((best, side) => (side.free > best.free ? side : best));
+    .reduce((best, side) => (side.free > best.free ? side : best), firstSide);
   const available = band.free - standoff;
   if (available <= tooltip.minHeight) return { placement: "center", maxHeight: null };
   return { placement: band.side, maxHeight: available };

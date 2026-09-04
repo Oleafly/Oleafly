@@ -158,6 +158,29 @@ describe("tour tooltip placement", () => {
     expect(insideViewport(tooltipRect(input), viewport)).toBe(true);
   });
 
+  it("settles a tie between sides on the one that comes first", () => {
+    const viewport = { width: 1000, height: 600 };
+    const target = { top: 200, right: 900, bottom: 400, left: 100 };
+    const input = geometry(viewport, target);
+
+    expect(600 - target.bottom).toBe(target.top);
+    expect(fitTourTooltip(input)).toEqual({ placement: "top", maxHeight: null });
+    expect(overlaps(tooltipRect(input), target)).toBe(false);
+    expect(insideViewport(tooltipRect(input), viewport)).toBe(true);
+  });
+
+  it("settles a tie between bands on the one that comes first", () => {
+    const viewport = { width: 900, height: 600 };
+    const target = { top: 180, right: 880, bottom: 420, left: 20 };
+    const input = geometry(viewport, target);
+
+    expect(600 - target.bottom).toBe(target.top);
+    expect(target.top).toBeLessThan(TOOLTIP.height + STANDOFF);
+    expect(fitTourTooltip(input)).toEqual({ placement: "top", maxHeight: 148 });
+    expect(overlaps(tooltipRect(input), target)).toBe(false);
+    expect(insideViewport(tooltipRect(input), viewport)).toBe(true);
+  });
+
   it("overlaps when the target covers the whole viewport", () => {
     const viewport = { width: 900, height: 600 };
     const input = geometry(viewport, { top: 0, right: 900, bottom: 600, left: 0 });
