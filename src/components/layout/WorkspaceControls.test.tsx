@@ -152,8 +152,10 @@ describe("WorkspaceControls", () => {
     expect(dock?.className).toContain("gap-1.5");
 
     const separators = Array.from(dock?.querySelectorAll("span.w-px") ?? []);
-    expect(separators).toHaveLength(1);
-    expect(separators[0]?.previousElementSibling).toBe(assistant.parentElement);
+    expect(separators).toHaveLength(3);
+    expect(separators[0]?.previousElementSibling).toBe(terminal.parentElement);
+    expect(separators[1]?.previousElementSibling).toBe(browser.parentElement);
+    expect(separators[2]?.previousElementSibling).toBe(assistant.parentElement);
   });
 
   it("keeps the shortcut in the terminal and browser labels", () => {

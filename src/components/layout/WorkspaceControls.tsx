@@ -160,6 +160,7 @@ export function WorkspaceDockControls() {
           <SquareTerminal className="size-4" aria-hidden />
         </Button>
       </Tooltip>
+      <DockDivider />
       {webBrowser && (
         <Tooltip label={browserLabel} side="bottom">
           <Button
@@ -176,6 +177,7 @@ export function WorkspaceDockControls() {
           </Button>
         </Tooltip>
       )}
+      {webBrowser && <DockDivider />}
       <Tooltip label={assistantLabel} side="bottom">
         <Button
           type="button"

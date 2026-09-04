@@ -47,10 +47,10 @@ export function ThemeMenu({
   triggerClassName?: string;
   testId?: string;
 }) {
-  const { preference, setPreference } = useTheme();
+  const { preference, theme, setPreference } = useTheme();
   const [open, setOpen] = useState(false);
   const label = themeMenuLabel(preference);
-  const Icon = THEME_ICONS[preference];
+  const TriggerIcon = theme === "dark" ? Moon : Sun;
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -65,7 +65,7 @@ export function ThemeMenu({
             className={triggerClassName}
             onClick={() => setOpen((value) => !value)}
           >
-            <Icon className="size-4" aria-hidden />
+            <TriggerIcon className="size-4" aria-hidden />
           </Button>
         </DropdownMenuTrigger>
       </Tooltip>
