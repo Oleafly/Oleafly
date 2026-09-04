@@ -6,6 +6,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Server,
   Terminal,
   Trash2,
   X,
@@ -800,6 +801,7 @@ export function McpServersManager() {
           type="button"
           variant="outline"
           size="sm"
+          className="px-4"
           disabled={loading || loadError !== null}
           onClick={() => {
             setImportSummary(null);
@@ -858,9 +860,18 @@ export function McpServersManager() {
       ) : null}
 
       {!loading && !loadError && sortedRecords.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
-          No servers added.
-        </p>
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed px-6 py-10 text-center">
+          <span className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+            <Server className="size-6" aria-hidden />
+          </span>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">No servers added</p>
+            <p className="mx-auto max-w-sm text-xs leading-relaxed text-muted-foreground">
+              Add a server to give the assistant new tools, or import the ones you already use in
+              another editor.
+            </p>
+          </div>
+        </div>
       ) : null}
 
       <div className="space-y-2">

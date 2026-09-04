@@ -235,7 +235,7 @@ describe("AISection", () => {
 
     await user.click(providersTab);
     await user.click(mcpTab);
-    await screen.findByText("No servers added.");
+    await screen.findByText("No servers added");
     expect(
       mockInvoke.mock.calls.filter(([command]) => command === "mcp_servers_list"),
     ).toHaveLength(1);

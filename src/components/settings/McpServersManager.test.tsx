@@ -217,7 +217,7 @@ describe("McpServersManager", () => {
   it("portals the server editor above the Settings modal", async () => {
     records = [];
     const { container } = renderManager();
-    await screen.findByText("No servers added.");
+    await screen.findByText("No servers added");
 
     fireEvent.click(screen.getByRole("button", { name: "Add server" }));
 
@@ -232,7 +232,7 @@ describe("McpServersManager", () => {
     records = [];
     const user = userEvent.setup();
     render(<ParentModal onClose={vi.fn()} />);
-    await screen.findByText("No servers added.");
+    await screen.findByText("No servers added");
 
     await user.click(screen.getByRole("button", { name: "Add server" }));
 
@@ -250,7 +250,7 @@ describe("McpServersManager", () => {
     const user = userEvent.setup();
     const closeParent = vi.fn();
     render(<ParentModal onClose={closeParent} />);
-    await screen.findByText("No servers added.");
+    await screen.findByText("No servers added");
 
     await user.click(screen.getByRole("button", { name: "Add server" }));
     await screen.findByRole("dialog", { name: "Add MCP server" });
@@ -341,7 +341,7 @@ describe("McpServersManager", () => {
   it("adds and validates a stdio server with exact arguments and environment values", async () => {
     records = [];
     renderManager();
-    await screen.findByText("No servers added.");
+    await screen.findByText("No servers added");
 
     fireEvent.click(screen.getByRole("button", { name: "Add server" }));
     fireEvent.change(screen.getByLabelText("Server name"), { target: { value: "papers" } });
@@ -364,7 +364,7 @@ describe("McpServersManager", () => {
   it("adds a wrapped JSON configuration through the existing validation path", async () => {
     records = [];
     renderManager();
-    await screen.findByText("No servers added.");
+    await screen.findByText("No servers added");
 
     fireEvent.click(screen.getByRole("button", { name: "Add server" }));
     fireEvent.click(screen.getByRole("button", { name: "JSON" }));
@@ -390,7 +390,7 @@ describe("McpServersManager", () => {
   it("keeps the editor open and explains malformed JSON without adding a server", async () => {
     records = [];
     renderManager();
-    await screen.findByText("No servers added.");
+    await screen.findByText("No servers added");
 
     fireEvent.click(screen.getByRole("button", { name: "Add server" }));
     fireEvent.click(screen.getByRole("button", { name: "JSON" }));
@@ -409,7 +409,7 @@ describe("McpServersManager", () => {
   it("preserves an in-progress form configuration through the JSON view", async () => {
     records = [];
     renderManager();
-    await screen.findByText("No servers added.");
+    await screen.findByText("No servers added");
 
     fireEvent.click(screen.getByRole("button", { name: "Add server" }));
     fireEvent.change(screen.getByLabelText("Server name"), { target: { value: "papers" } });
@@ -444,7 +444,7 @@ describe("McpServersManager", () => {
   it("keeps in-progress JSON when the active JSON segment is clicked again", async () => {
     records = [];
     renderManager();
-    await screen.findByText("No servers added.");
+    await screen.findByText("No servers added");
 
     fireEvent.click(screen.getByRole("button", { name: "Add server" }));
     fireEvent.click(screen.getByRole("button", { name: "JSON" }));
@@ -466,7 +466,7 @@ describe("McpServersManager", () => {
   it("maps edited remote JSON back into the form", async () => {
     records = [];
     renderManager();
-    await screen.findByText("No servers added.");
+    await screen.findByText("No servers added");
 
     fireEvent.click(screen.getByRole("button", { name: "Add server" }));
     fireEvent.click(screen.getByRole("button", { name: "JSON" }));
@@ -872,7 +872,7 @@ describe("McpServersManager", () => {
       throw new Error(`Unexpected command: ${command}`);
     });
     renderManager();
-    await screen.findByText("No servers added.");
+    await screen.findByText("No servers added");
 
     fireEvent.click(screen.getByRole("button", { name: "Add server" }));
     fireEvent.change(screen.getByLabelText("Server name"), { target: { value: "broken" } });
@@ -883,7 +883,7 @@ describe("McpServersManager", () => {
       await screen.findByText("Could not start 'missing-mcp': command not found."),
     ).toBeInTheDocument();
     expect(screen.getByRole("dialog", { name: "Add MCP server" })).toBeInTheDocument();
-    expect(screen.getByText("No servers added.")).toBeInTheDocument();
+    expect(screen.getByText("No servers added")).toBeInTheDocument();
     expect(screen.queryByRole("switch", { name: "Enable broken" })).not.toBeInTheDocument();
   });
 
@@ -898,7 +898,7 @@ describe("McpServersManager", () => {
     fireEvent.click(within(confirmation).getByRole("button", { name: "Remove server" }));
 
     await waitFor(() => expect(screen.queryByText("docs-api")).not.toBeInTheDocument());
-    expect(screen.getByText("No servers added.")).toBeInTheDocument();
+    expect(screen.getByText("No servers added")).toBeInTheDocument();
   });
 
   it("does not apply an old validation after a server name is removed and reused", async () => {
@@ -943,7 +943,7 @@ describe("McpServersManager", () => {
         name: "Remove server",
       }),
     );
-    await screen.findByText("No servers added.");
+    await screen.findByText("No servers added");
 
     fireEvent.click(screen.getByRole("button", { name: "Add server" }));
     fireEvent.change(screen.getByLabelText("Server name"), { target: { value: "files" } });
