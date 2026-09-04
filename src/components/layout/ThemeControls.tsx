@@ -54,7 +54,7 @@ export function ThemeMenu({
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <Tooltip label={label} side={side}>
+      <Tooltip label={label} side={side} suppressed={open}>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
@@ -63,7 +63,6 @@ export function ThemeMenu({
             data-testid={testId}
             aria-label={label}
             className={triggerClassName}
-            onClick={() => setOpen((value) => !value)}
           >
             <TriggerIcon className="size-4" aria-hidden />
           </Button>

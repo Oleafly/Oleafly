@@ -31,6 +31,11 @@ beforeEach(() => {
   useSettingsStore.setState({ dockPlacement: "left", latexTools: true });
 });
 
+function openThemeMenu(trigger: HTMLElement) {
+  fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+  fireEvent.click(trigger);
+}
+
 describe("HomeDock", () => {
   it("renders the dock actions including LaTeX tools when enabled", () => {
     render(<HomeDock />);
@@ -80,7 +85,7 @@ describe("HomeDock", () => {
 
   it("offers system, light, and dark from the dock menu and applies the choice", () => {
     render(<HomeDock />);
-    fireEvent.click(screen.getByTestId("home-theme-menu"));
+    openThemeMenu(screen.getByTestId("home-theme-menu"));
 
     const options = screen.getAllByRole("menuitemradio");
     expect(options.map((option) => option.textContent)).toEqual(["System", "Light", "Dark"]);

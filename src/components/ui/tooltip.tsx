@@ -80,6 +80,7 @@ export function Tooltip({
   className,
   wide = false,
   role,
+  suppressed = false,
 }: {
   label: ReactNode;
   children: ReactNode;
@@ -87,6 +88,11 @@ export function Tooltip({
   delay?: number;
   className?: string;
   wide?: boolean;
+  /**
+   * Holds the tooltip closed while an overlay owned by the same trigger is
+   * open, so it cannot sit on top of that overlay.
+   */
+  suppressed?: boolean;
   /**
    * Role for the wrapper. Pass "none" where the extra element would otherwise
    * break a required parent/child relationship, such as tree → treeitem.
@@ -127,6 +133,7 @@ export function Tooltip({
   }, []);
 
   const enter = () => {
+    if (suppressed) return;
     hovering.current = true;
     open(delay);
   };
@@ -143,6 +150,10 @@ export function Tooltip({
     focusedTrigger.current = null;
     close();
   };
+
+  useEffect(() => {
+    if (suppressed) close();
+  }, [suppressed, close]);
 
   const activate = (event: ReactKeyboardEvent<HTMLSpanElement>) => {
     if (event.key === "Enter" || event.key === " ") press();

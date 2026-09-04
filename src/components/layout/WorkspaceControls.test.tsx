@@ -18,6 +18,11 @@ import { registerRailTabs } from "@/contributions/tabs";
 
 registerRailTabs();
 
+function openThemeMenu(trigger: HTMLElement) {
+  fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+  fireEvent.click(trigger);
+}
+
 describe("WorkspaceControls", () => {
   beforeEach(() => {
     useSettingsStore.setState({
@@ -111,6 +116,7 @@ describe("WorkspaceControls", () => {
     expect(trigger.className).toContain("text-muted-foreground");
     expect(trigger.parentElement?.parentElement).toBe(settings.parentElement?.parentElement);
 
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     const options = screen.getAllByRole("menuitemradio");
@@ -123,7 +129,7 @@ describe("WorkspaceControls", () => {
     expect(screen.getByTestId("theme-menu")).toHaveAttribute("aria-label", "Appearance: Light");
     expect(screen.getByTestId("theme-menu")).toHaveAttribute("aria-expanded", "false");
 
-    fireEvent.click(screen.getByTestId("theme-menu"));
+    openThemeMenu(screen.getByTestId("theme-menu"));
     expect(screen.getByTestId("theme-option-light")).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByTestId("theme-option-dark"));
     expect(localStorage.getItem("oleafly.theme")).toBe("dark");
