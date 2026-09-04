@@ -552,7 +552,7 @@ describe("McpServersManager", () => {
     renderManager();
     await screen.findByText("read_file");
 
-    fireEvent.click(screen.getByRole("button", { name: "Import from..." }));
+    fireEvent.click(screen.getByRole("button", { name: "Import from other tools" }));
 
     expect(await screen.findByRole("checkbox", { name: /Import papers from Cursor/ })).toBeChecked();
     expect(screen.getByText("Environment: PAPERS_TOKEN")).toBeInTheDocument();
@@ -601,14 +601,14 @@ describe("McpServersManager", () => {
     });
     renderManager();
 
-    expect(screen.getByRole("button", { name: "Import from..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Import from other tools" })).toBeDisabled();
 
     await act(async () => {
       listed.resolve([CONNECTED]);
     });
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Import from..." })).toBeEnabled(),
+      expect(screen.getByRole("button", { name: "Import from other tools" })).toBeEnabled(),
     );
   });
 
@@ -622,7 +622,7 @@ describe("McpServersManager", () => {
     renderManager();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not load MCP servers.");
-    expect(screen.getByRole("button", { name: "Import from..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Import from other tools" })).toBeDisabled();
   });
 
   it("validates a disabled matching import before overwriting it", async () => {
@@ -671,7 +671,7 @@ describe("McpServersManager", () => {
     renderManager();
     await screen.findByText("read_file");
 
-    fireEvent.click(screen.getByRole("button", { name: "Import from..." }));
+    fireEvent.click(screen.getByRole("button", { name: "Import from other tools" }));
     await screen.findByRole("checkbox", { name: /Import files from Claude Code/ });
     fireEvent.click(screen.getByRole("radio", { name: "Overwrite existing" }));
     fireEvent.click(screen.getByRole("button", { name: "Import selected" }));

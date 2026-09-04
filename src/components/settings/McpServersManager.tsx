@@ -809,7 +809,7 @@ export function McpServersManager() {
           }}
         >
           <Download aria-hidden />
-          Import from...
+          Import from other tools
         </Button>
         <Button
           type="button"
