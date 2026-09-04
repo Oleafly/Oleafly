@@ -1,6 +1,6 @@
 //! Durable Checkpoint publication outcome shared by compile IPC and the UI.
 
-use oleafly_history::{Candidate, ContentHash, ReplayedInput};
+use oleafly_history::{Candidate, ContentHash};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -21,12 +21,9 @@ pub enum CheckpointSkipReason {
 
 /// Publication is supplementary to compilation. A skipped outcome never
 /// changes an otherwise successful compile into a failure.
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum CheckpointPublicationOutcome {
-    #[default]
-    NotAttempted,
-    Scheduled,
     Unchanged,
     Published {
         snapshot_root: String,
@@ -161,7 +158,6 @@ fn storage_reason(error: &oleafly_history::HistoryError) -> Option<CheckpointSki
 pub(crate) struct PublicationRequest {
     pub project_id: String,
     pub project_root: PathBuf,
-    pub primary_output_dir: PathBuf,
     pub engine_name: String,
     pub main_document: String,
 }
@@ -312,8 +308,8 @@ pub(crate) fn cancel_project_publications_and_wait(project_id: &str) {
     }
 }
 
-fn emit_publication_phase(
-    app: &tauri::AppHandle,
+fn emit_publication_phase<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
     request: &PublicationRequest,
     phase: PublicationPhase<'_>,
 ) {
@@ -335,50 +331,15 @@ fn trace_lane(project_id: &str, phase: &str) {
 #[cfg(not(debug_assertions))]
 fn trace_lane(_project_id: &str, _phase: &str) {}
 
-async fn run_publication_lane(
-    app: tauri::AppHandle,
+async fn run_publication_lane<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     mut request: PublicationRequest,
     mut cancel: crate::state::CompileCancel,
 ) {
     loop {
-        emit_publication_phase(&app, &request, PublicationPhase::Started);
-        trace_lane(&request.project_id, "lane started");
-        let started = std::time::Instant::now();
-        let result = if wait_for_lane_start(&cancel, PUBLICATION_START_DELAY).await {
-            attempt_publication(&request, Some(&cancel)).await
-        } else {
-            Err(AdapterFailure::silent(
-                "checkpoint publication was cancelled",
-            ))
-        };
-        let elapsed_ms = started.elapsed().as_millis();
-        let summary = match &result {
-            Err(failure) => format!("failed after {elapsed_ms} ms: {}", failure.detail),
-            Ok(CheckpointPublicationOutcome::Published { snapshot_root, .. }) => {
-                format!("published {snapshot_root} after {elapsed_ms} ms")
-            }
-            Ok(CheckpointPublicationOutcome::PublishedDurabilityUncertain {
-                snapshot_root,
-                ..
-            }) => {
-                format!("published {snapshot_root} after {elapsed_ms} ms with uncertain durability")
-            }
-            Ok(CheckpointPublicationOutcome::Unchanged) => {
-                format!("unchanged after {elapsed_ms} ms")
-            }
-            Ok(_) => format!("not attempted after {elapsed_ms} ms"),
-        };
-        let outcome = result.unwrap_or_else(outcome_from_failure);
-        let _ = crate::project::append_app_log(format!(
-            "Checkpoint publication for project {} {summary}",
-            request.project_id
-        ));
-
-        emit_publication_phase(
-            &app,
-            &request,
-            PublicationPhase::Finished { outcome: &outcome },
-        );
+        if checkpoints_are_enabled().await {
+            publish_once(&app, &request, &cancel).await;
+        }
         match finish_publication(&request.project_id, &cancel) {
             Some((next_request, next_cancel)) => {
                 request = next_request;
@@ -387,6 +348,47 @@ async fn run_publication_lane(
             None => return,
         }
     }
+}
+
+async fn publish_once<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    request: &PublicationRequest,
+    cancel: &crate::state::CompileCancel,
+) {
+    emit_publication_phase(app, request, PublicationPhase::Started);
+    trace_lane(&request.project_id, "lane started");
+    let started = std::time::Instant::now();
+    let result = if wait_for_lane_start(cancel, PUBLICATION_START_DELAY).await {
+        attempt_publication(request, Some(cancel)).await
+    } else {
+        Err(AdapterFailure::silent(
+            "checkpoint publication was cancelled",
+        ))
+    };
+    let elapsed_ms = started.elapsed().as_millis();
+    let summary = match &result {
+        Err(failure) => format!("failed after {elapsed_ms} ms: {}", failure.detail),
+        Ok(CheckpointPublicationOutcome::Published { snapshot_root, .. }) => {
+            format!("published {snapshot_root} after {elapsed_ms} ms")
+        }
+        Ok(CheckpointPublicationOutcome::PublishedDurabilityUncertain {
+            snapshot_root, ..
+        }) => {
+            format!("published {snapshot_root} after {elapsed_ms} ms with uncertain durability")
+        }
+        Ok(_) => format!("unchanged after {elapsed_ms} ms"),
+    };
+    let outcome = result.unwrap_or_else(outcome_from_failure);
+    let _ = crate::project::append_app_log(format!(
+        "Checkpoint publication for project {} {summary}",
+        request.project_id
+    ));
+
+    emit_publication_phase(
+        app,
+        request,
+        PublicationPhase::Finished { outcome: &outcome },
+    );
 }
 
 async fn wait_for_lane_start(
@@ -403,23 +405,27 @@ async fn wait_for_lane_start(
     !cancel.is_requested()
 }
 
-fn checkpoints_are_enabled() -> bool {
+fn read_checkpoints_enabled() -> bool {
     crate::config::read_config()
         .map(|config| config.checkpoints_enabled)
+        .unwrap_or(true)
+}
+
+async fn checkpoints_are_enabled() -> bool {
+    tokio::task::spawn_blocking(read_checkpoints_enabled)
+        .await
         .unwrap_or(true)
 }
 
 fn publication_request(
     project_id: &str,
     project_root: &Path,
-    primary_output_dir: &Path,
     engine_name: &str,
     main_document: &str,
 ) -> PublicationRequest {
     PublicationRequest {
         project_id: project_id.to_owned(),
         project_root: project_root.to_path_buf(),
-        primary_output_dir: primary_output_dir.to_path_buf(),
         engine_name: engine_name.to_owned(),
         main_document: main_document.to_owned(),
     }
@@ -428,29 +434,19 @@ fn publication_request(
 /// Hands the project snapshot to the background lane behind the compile
 /// result. At most one publication runs per project. A newer request cancels
 /// the running one and becomes its single successor, so there is never a
-/// queue.
-pub(crate) async fn schedule_after_successful_compile(
-    app: &tauri::AppHandle,
+/// queue. Nothing here reads a file, opens a store, or takes a lock: every
+/// decision, the checkpoints switch included, is made inside the lane.
+pub(crate) fn schedule_after_successful_compile<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
     project_id: &str,
     project_root: &Path,
-    primary_output_dir: &Path,
     engine_name: &str,
     main_document: &str,
-) -> CheckpointPublicationOutcome {
-    if !checkpoints_are_enabled() {
-        return CheckpointPublicationOutcome::NotAttempted;
-    }
-    let request = publication_request(
-        project_id,
-        project_root,
-        primary_output_dir,
-        engine_name,
-        main_document,
-    );
+) {
+    let request = publication_request(project_id, project_root, engine_name, main_document);
     if let Some((request, cancel)) = admit_publication(request) {
         tauri::async_runtime::spawn(run_publication_lane(app.clone(), request, cancel));
     }
-    CheckpointPublicationOutcome::Scheduled
 }
 
 async fn acquire_operation_lock_cancellable(
@@ -466,33 +462,131 @@ async fn acquire_operation_lock_cancellable(
     }
 }
 
+fn stage_inputs(
+    store: &oleafly_history::Store,
+    project_root: &Path,
+    inputs: &[oleafly_history::CaptureInput],
+    cancel: Option<&crate::state::CompileCancel>,
+) -> Result<Candidate, oleafly_history::HistoryError> {
+    match cancel {
+        Some(cancel) => store.stage_candidate_controlled(project_root, inputs, cancel),
+        None => store.stage_candidate(project_root, inputs),
+    }
+}
+
+fn is_missing_file(error: &oleafly_history::HistoryError) -> bool {
+    matches!(error, oleafly_history::HistoryError::Io(io) if io.kind() == std::io::ErrorKind::NotFound)
+}
+
+/// A writer can delete a file between the walk and the seal. That must cost
+/// the vanished file, never the whole checkpoint, so walk once more and seal
+/// what is still on disk. Every other sealing failure stands: a file that is
+/// present still has to pass the store's validation.
+fn stage_with_one_rewalk(
+    store: &oleafly_history::Store,
+    project_root: &Path,
+    inputs: &[oleafly_history::CaptureInput],
+    cancel: Option<&crate::state::CompileCancel>,
+) -> Result<Candidate, AdapterFailure> {
+    match stage_inputs(store, project_root, inputs, cancel) {
+        Ok(candidate) => Ok(candidate),
+        Err(error) if is_missing_file(&error) => {
+            ensure_checkpoint_not_cancelled(cancel)?;
+            let remaining = crate::checkpoint_capture::walk_project(project_root).capture_inputs();
+            stage_inputs(store, project_root, &remaining, cancel)
+                .map_err(|error| history_failure("inputs could not be sealed", error))
+        }
+        Err(error) => Err(history_failure("inputs could not be sealed", error)),
+    }
+}
+
 fn snapshot_evidence(
     request: &PublicationRequest,
-    candidate: &Candidate,
-    output_hash: ContentHash,
     completed_at_unix_ms: i64,
 ) -> Result<oleafly_history::CompileEvidence, AdapterFailure> {
-    let captured = candidate
-        .proven_files()
-        .iter()
-        .map(|file| ReplayedInput::new(&file.relative_path, file.content_hash))
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|error| {
-            AdapterFailure::silent(format!("a captured file could not be recorded: {error}"))
-        })?;
     oleafly_history::CompileEvidence::new(
         request.engine_name.as_str(),
         request.engine_name.as_str(),
         request.main_document.as_str(),
-        output_hash,
+        ContentHash::digest(&[]),
         completed_at_unix_ms,
-        captured,
     )
     .map_err(|error| AdapterFailure::silent(format!("compile evidence is invalid: {error}")))
 }
 
 /// Snapshots the project tree behind one successful compile. Every failure
 /// remains supplementary: a compile that succeeded stays successful.
+async fn walk_if_changed(
+    project_id: &str,
+    project_root: &Path,
+) -> Result<Option<crate::checkpoint_capture::ProjectWalk>, AdapterFailure> {
+    let walk_project_id = project_id.to_owned();
+    let walk_project_root = project_root.to_path_buf();
+    tokio::task::spawn_blocking(move || {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&walk_project_id)
+            .map_err(AdapterFailure::silent)?;
+        let walk = crate::checkpoint_capture::walk_project(&walk_project_root);
+        if newest_checkpoint_matches(&walk_project_id, &walk) {
+            return Ok(None);
+        }
+        Ok(Some(walk))
+    })
+    .await
+    .unwrap_or_else(|error| {
+        Err(AdapterFailure::silent(format!(
+            "the project files could not be inspected: {error}"
+        )))
+    })
+}
+
+async fn open_publication_store(
+    project_id: &str,
+) -> Result<oleafly_history::PublicationStore, AdapterFailure> {
+    let store_path =
+        crate::paths::checkpoint_store_dir(project_id).map_err(AdapterFailure::silent)?;
+    match tokio::task::spawn_blocking(move || {
+        oleafly_history::Store::try_open_for_publication(store_path)
+    })
+    .await
+    {
+        Ok(Ok(Some(publication))) => Ok(publication),
+        Ok(Ok(None)) => Err(AdapterFailure::silent(
+            "another process is already publishing this project's checkpoint",
+        )),
+        Ok(Err(error)) => Err(history_failure(
+            "checkpoint storage could not be opened",
+            error,
+        )),
+        Err(error) => Err(AdapterFailure::silent(format!(
+            "checkpoint storage task failed: {error}"
+        ))),
+    }
+}
+
+fn publish_outcome(
+    published: oleafly_history::PublishOutcome,
+    committed: oleafly_history::PublicationCommitOutcome,
+    snapshot_root: String,
+) -> CheckpointPublicationOutcome {
+    if matches!(published, oleafly_history::PublishOutcome::Existing(_)) {
+        return CheckpointPublicationOutcome::Unchanged;
+    }
+    match committed {
+        oleafly_history::PublicationCommitOutcome::Durable(_store) => {
+            CheckpointPublicationOutcome::Published {
+                snapshot_root,
+                created: true,
+            }
+        }
+        oleafly_history::PublicationCommitOutcome::InstalledDurabilityUncertain(_store) => {
+            CheckpointPublicationOutcome::PublishedDurabilityUncertain {
+                snapshot_root,
+                created: true,
+            }
+        }
+    }
+}
+
 async fn attempt_publication(
     request: &PublicationRequest,
     cancel: Option<&crate::state::CompileCancel>,
@@ -504,70 +598,17 @@ async fn attempt_publication(
         .map_err(AdapterFailure::silent)?;
     let _operation = acquire_operation_lock_cancellable(operation, cancel).await?;
     trace_lane(project_id, "operation lock acquired");
-    let walk_project_id = project_id.to_owned();
-    let walk_project_root = project_root.to_path_buf();
-    let walk = match tokio::task::spawn_blocking(move || {
-        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&walk_project_id)
-            .map_err(AdapterFailure::silent)?;
-        let walk = crate::checkpoint_capture::walk_project(&walk_project_root);
-        if newest_checkpoint_matches(&walk_project_id, &walk) {
-            return Ok(None);
-        }
-        Ok(Some(walk))
-    })
-    .await
-    {
-        Ok(Ok(Some(walk))) => walk,
-        Ok(Ok(None)) => return Ok(CheckpointPublicationOutcome::Unchanged),
-        Ok(Err(error)) => return Err(error),
-        Err(error) => {
-            return Err(AdapterFailure::silent(format!(
-                "the project files could not be inspected: {error}"
-            )))
-        }
+    let Some(walk) = walk_if_changed(project_id, project_root).await? else {
+        return Ok(CheckpointPublicationOutcome::Unchanged);
     };
     trace_lane(project_id, "sources differ from the newest checkpoint");
-    let inputs = walk.capture_inputs().map_err(|error| {
-        AdapterFailure::silent(format!("a project file cannot be captured: {error}"))
-    })?;
-    let output_path = request
-        .primary_output_dir
-        .join(format!("{}.pdf", crate::paths::ENTRY_STEM));
-    let output_hash = tokio::task::spawn_blocking(move || {
-        ContentHash::digest_file(output_path).unwrap_or_else(|_| ContentHash::digest(&[]))
-    })
-    .await
-    .unwrap_or_else(|_| ContentHash::digest(&[]));
+    let inputs = walk.capture_inputs();
     let completed_at_unix_ms = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|duration| duration.as_millis().min(i64::MAX as u128) as i64)
         .unwrap_or(0);
-    let store_path =
-        crate::paths::checkpoint_store_dir(project_id).map_err(AdapterFailure::silent)?;
     ensure_checkpoint_not_cancelled(cancel)?;
-    let publication = match tokio::task::spawn_blocking(move || {
-        oleafly_history::Store::try_open_for_publication(store_path)
-    })
-    .await
-    {
-        Ok(Ok(Some(publication))) => publication,
-        Ok(Ok(None)) => {
-            return Err(AdapterFailure::silent(
-                "another process is already publishing this project's checkpoint",
-            ))
-        }
-        Ok(Err(error)) => {
-            return Err(history_failure(
-                "checkpoint storage could not be opened",
-                error,
-            ))
-        }
-        Err(error) => {
-            return Err(AdapterFailure::silent(format!(
-                "checkpoint storage task failed: {error}"
-            )))
-        }
-    };
+    let publication = open_publication_store(project_id).await?;
     trace_lane(project_id, "store opened");
     let seal_store = publication.store().clone();
     let seal_project_id = project_id.to_owned();
@@ -577,12 +618,12 @@ async fn attempt_publication(
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&seal_project_id)
             .map_err(AdapterFailure::silent)?;
         ensure_checkpoint_not_cancelled(seal_cancel.as_ref())?;
-        let candidate = if let Some(cancel) = seal_cancel.as_ref() {
-            seal_store.stage_candidate_controlled(&seal_project_root, &inputs, cancel)
-        } else {
-            seal_store.stage_candidate(&seal_project_root, &inputs)
-        }
-        .map_err(|error| history_failure("inputs could not be sealed", error))?;
+        let candidate = stage_with_one_rewalk(
+            &seal_store,
+            &seal_project_root,
+            &inputs,
+            seal_cancel.as_ref(),
+        )?;
         if let Err(error) = ensure_checkpoint_not_cancelled(seal_cancel.as_ref()) {
             drop(candidate);
             return Err(error);
@@ -605,7 +646,7 @@ async fn attempt_publication(
     };
     trace_lane(project_id, "publishing");
     let snapshot_root = candidate.snapshot_root().to_string();
-    let evidence = match snapshot_evidence(request, &candidate, output_hash, completed_at_unix_ms) {
+    let evidence = match snapshot_evidence(request, completed_at_unix_ms) {
         Ok(evidence) => evidence,
         Err(error) => {
             let _ = tokio::task::spawn_blocking(move || {
@@ -628,23 +669,7 @@ async fn attempt_publication(
     })
     .await
     {
-        Ok(Ok((oleafly_history::PublishOutcome::Existing(_), _committed))) => {
-            Ok(CheckpointPublicationOutcome::Unchanged)
-        }
-        Ok(Ok((oleafly_history::PublishOutcome::Created(_), committed))) => Ok(match committed {
-            oleafly_history::PublicationCommitOutcome::Durable(_store) => {
-                CheckpointPublicationOutcome::Published {
-                    snapshot_root,
-                    created: true,
-                }
-            }
-            oleafly_history::PublicationCommitOutcome::InstalledDurabilityUncertain(_store) => {
-                CheckpointPublicationOutcome::PublishedDurabilityUncertain {
-                    snapshot_root,
-                    created: true,
-                }
-            }
-        }),
+        Ok(Ok((published, committed))) => Ok(publish_outcome(published, committed, snapshot_root)),
         Ok(Err(error)) => Err(error),
         Err(error) => Err(AdapterFailure::silent(format!(
             "checkpoint storage task failed: {error}"
@@ -658,15 +683,15 @@ mod tests {
     use std::sync::{Arc, Barrier};
 
     use oleafly_history::{
-        Candidate, CaptureInput, CompileEvidence, ContentHash, HistoryError, ReplayedInput, Store,
+        Candidate, CaptureInput, CompileEvidence, ContentHash, HistoryError, Store,
     };
     use tempfile::tempdir;
 
     use super::{
-        admit_publication, cancel_project_publications_and_wait, checkpoints_are_enabled,
-        finish_publication, lane_successor_document, newest_checkpoint_matches,
-        outcome_from_failure, publication_request, AdapterFailure, CheckpointPublicationOutcome,
-        CheckpointSkipReason, PublicationRequest,
+        admit_publication, cancel_project_publications_and_wait, finish_publication,
+        lane_successor_document, newest_checkpoint_matches, outcome_from_failure,
+        publication_request, read_checkpoints_enabled, schedule_after_successful_compile,
+        AdapterFailure, CheckpointPublicationOutcome, CheckpointSkipReason, PublicationRequest,
     };
 
     fn publication_candidate(
@@ -675,11 +700,9 @@ mod tests {
         source: &[u8],
     ) -> (Candidate, CompileEvidence) {
         fs::write(project.join("main.typ"), source).unwrap();
-        let source_path = project.join("main.typ").canonicalize().unwrap();
         let inputs = vec![
             CaptureInput::explicit("project.json").unwrap(),
-            CaptureInput::replay_required("main.typ", source_path, ContentHash::digest(source))
-                .unwrap(),
+            CaptureInput::explicit("main.typ").unwrap(),
         ];
         let candidate = store.stage_candidate(project, &inputs).unwrap();
         let evidence = CompileEvidence::new(
@@ -688,11 +711,6 @@ mod tests {
             "main.typ",
             ContentHash::digest(b"validated-pdf"),
             1,
-            candidate
-                .proven_files()
-                .iter()
-                .map(|file| ReplayedInput::new(&file.relative_path, file.content_hash).unwrap())
-                .collect(),
         )
         .unwrap();
         (candidate, evidence)
@@ -808,18 +826,18 @@ mod tests {
         let directory = tempdir().unwrap();
         std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
 
-        assert!(checkpoints_are_enabled());
+        assert!(read_checkpoints_enabled());
 
         let mut config = crate::config::AppConfig {
             checkpoints_enabled: false,
             ..Default::default()
         };
         crate::config::write_config(&config).unwrap();
-        assert!(!checkpoints_are_enabled());
+        assert!(!read_checkpoints_enabled());
 
         config.checkpoints_enabled = true;
         crate::config::write_config(&config).unwrap();
-        assert!(checkpoints_are_enabled());
+        assert!(read_checkpoints_enabled());
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
@@ -829,14 +847,6 @@ mod tests {
         assert_eq!(
             serde_json::to_value(CheckpointPublicationOutcome::Unchanged).unwrap(),
             serde_json::json!({"status": "unchanged"})
-        );
-        assert_eq!(
-            serde_json::to_value(CheckpointPublicationOutcome::NotAttempted).unwrap(),
-            serde_json::json!({"status": "not_attempted"})
-        );
-        assert_eq!(
-            serde_json::to_value(CheckpointPublicationOutcome::Scheduled).unwrap(),
-            serde_json::json!({"status": "scheduled"})
         );
         assert_eq!(
             serde_json::to_value(CheckpointPublicationOutcome::Failed).unwrap(),
@@ -938,7 +948,6 @@ mod tests {
         PublicationRequest {
             project_id: project_id.to_owned(),
             project_root: std::path::PathBuf::from("/project"),
-            primary_output_dir: std::path::PathBuf::from("/project/.oleafly/build"),
             engine_name: "typst".into(),
             main_document: format!("main-{generation}.typ"),
         }
@@ -952,15 +961,58 @@ mod tests {
         let build = temp.path().join("build");
         fs::create_dir(&build).unwrap();
 
-        let request = publication_request("lane-request", &project, &build, "latex", "main.tex");
+        let request = publication_request("lane-request", &project, "latex", "main.tex");
 
         assert!(fs::read_dir(&build).unwrap().next().is_none());
         assert!(fs::read_dir(&project).unwrap().next().is_none());
         assert_eq!(request.project_id, "lane-request");
         assert_eq!(request.project_root, project);
-        assert_eq!(request.primary_output_dir, build);
         assert_eq!(request.engine_name, "latex");
         assert_eq!(request.main_document, "main.tex");
+    }
+
+    #[test]
+    fn scheduling_a_publication_reaches_no_file_before_the_lane_is_spawned() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let temp = tempdir().unwrap();
+        let data = temp.path().join("data");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let project = temp.path().join("project");
+        let build = project.join(".oleafly").join("build");
+        fs::create_dir_all(&build).unwrap();
+        let app = tauri::test::mock_builder()
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let handle = app.handle().clone();
+        let project_id = "lane-compile-path";
+        let (_running, holder) = admit_publication(lane_request(project_id, 1)).unwrap();
+
+        schedule_after_successful_compile(&handle, project_id, &project, "latex", "main.tex");
+
+        assert_eq!(
+            lane_successor_document(project_id).as_deref(),
+            Some("main.tex"),
+            "the request must reach the lane"
+        );
+        assert!(
+            !data.exists(),
+            "reading the checkpoints switch on the compile path creates the data directory"
+        );
+        assert!(
+            fs::read_dir(&build).unwrap().next().is_none(),
+            "the compile path must not read or write the build directory"
+        );
+        assert!(
+            fs::read_dir(&project)
+                .unwrap()
+                .filter_map(Result::ok)
+                .all(|entry| entry.file_name() == ".oleafly"),
+            "the compile path must not touch the project tree"
+        );
+
+        super::cancel_project_publications(project_id);
+        assert!(finish_publication(project_id, &holder).is_none());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
     #[test]
@@ -1044,17 +1096,10 @@ mod tests {
 
         let store = Store::open(crate::paths::checkpoint_store_dir("snapshot").unwrap()).unwrap();
         let candidate = store
-            .stage_candidate(&project, &walk_now().capture_inputs().unwrap())
+            .stage_candidate(&project, &walk_now().capture_inputs())
             .unwrap();
-        let request = publication_request(
-            "snapshot",
-            &project,
-            &directory.path().join("build"),
-            "typst",
-            "main.typ",
-        );
-        let evidence =
-            super::snapshot_evidence(&request, &candidate, ContentHash::digest(b"pdf"), 1).unwrap();
+        let request = publication_request("snapshot", &project, "typst", "main.typ");
+        let evidence = super::snapshot_evidence(&request, 1).unwrap();
         store.publish(candidate, evidence).unwrap();
         drop(store);
 
@@ -1110,10 +1155,9 @@ mod tests {
         engine_name: &str,
         main_document: &str,
     ) -> CheckpointPublicationOutcome {
-        let build = project.join(".oleafly").join("build");
         runtime
             .block_on(super::attempt_publication(
-                &publication_request(project_id, project, &build, engine_name, main_document),
+                &publication_request(project_id, project, engine_name, main_document),
                 None,
             ))
             .unwrap_or_else(|failure| panic!("publication failed: {}", failure.detail))
@@ -1294,6 +1338,78 @@ mod tests {
             );
         }
 
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_file_deleted_between_the_walk_and_the_seal_still_publishes_a_checkpoint() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+
+        let project = seed_project(directory.path(), "vanishing-input");
+        fs::write(project.join("main.tex"), b"\\documentclass{article}").unwrap();
+        fs::write(
+            project.join("notes.md"),
+            b"deleted while the checkpoint is sealed",
+        )
+        .unwrap();
+        let inputs = crate::checkpoint_capture::walk_project(&project).capture_inputs();
+        assert_eq!(inputs.len(), 3, "the walk must see the file it will lose");
+
+        fs::remove_file(project.join("notes.md")).unwrap();
+        let store =
+            Store::open(crate::paths::checkpoint_store_dir("vanishing-input").unwrap()).unwrap();
+        let candidate = super::stage_with_one_rewalk(&store, &project, &inputs, None)
+            .unwrap_or_else(|failure| {
+                panic!(
+                    "a vanished file must not cost the checkpoint: {}",
+                    failure.detail
+                )
+            });
+        let request = publication_request("vanishing-input", &project, "latex", "main.tex");
+        let evidence = super::snapshot_evidence(&request, 1).unwrap();
+        store.publish(candidate, evidence).unwrap();
+        drop(store);
+
+        assert_eq!(
+            newest_checkpoint_paths("vanishing-input"),
+            vec!["main.tex", "project.json"]
+        );
+        assert_eq!(checkpoint_count("vanishing-input"), 1);
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_file_that_is_present_still_has_to_pass_the_stores_validation() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+
+        let project = seed_project(directory.path(), "symlinked-input");
+        fs::write(project.join("main.tex"), b"\\documentclass{article}").unwrap();
+        let inputs = vec![
+            CaptureInput::explicit("project.json").unwrap(),
+            CaptureInput::explicit("linked.tex").unwrap(),
+        ];
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(project.join("main.tex"), project.join("linked.tex")).unwrap();
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_file(project.join("main.tex"), project.join("linked.tex"))
+            .unwrap();
+        let store =
+            Store::open(crate::paths::checkpoint_store_dir("symlinked-input").unwrap()).unwrap();
+
+        let failure = super::stage_with_one_rewalk(&store, &project, &inputs, None).unwrap_err();
+
+        assert!(
+            failure.detail.contains("symbolic link"),
+            "a present file must not be excused by the re-walk: {}",
+            failure.detail
+        );
+
+        drop(store);
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 

@@ -97,28 +97,10 @@ const checkpoints = [
 ];
 
 const newestFiles = [
-  { path: "main.tex", bytes: 2048, content_hash: "hash-main", stored: true, replayed: true },
-  {
-    path: "project.json",
-    bytes: 256,
-    content_hash: "hash-project",
-    stored: true,
-    replayed: false,
-  },
-  {
-    path: "figures/plot.png",
-    bytes: 1024,
-    content_hash: "hash-plot",
-    stored: true,
-    replayed: true,
-  },
-  {
-    path: "scratch/notes.txt",
-    bytes: 128,
-    content_hash: "hash-notes",
-    stored: false,
-    replayed: true,
-  },
+  { path: "main.tex", bytes: 2048, content_hash: "hash-main", stored: true },
+  { path: "project.json", bytes: 256, content_hash: "hash-project", stored: true },
+  { path: "figures/plot.png", bytes: 1024, content_hash: "hash-plot", stored: true },
+  { path: "scratch/notes.txt", bytes: 128, content_hash: "hash-notes", stored: false },
 ];
 
 const stats = {
@@ -471,8 +453,8 @@ describe("CheckpointsPanel files", () => {
     ]);
 
     expect(within(rows[3]).getByText("Not stored")).toBeInTheDocument();
-    expect(within(rows[3]).getByText("128 B · Compiler input")).toBeInTheDocument();
-    expect(within(rows[1]).getByText("256 B · Included by policy")).toBeInTheDocument();
+    expect(within(rows[3]).getByText("128 B")).toBeInTheDocument();
+    expect(within(rows[1]).getByText("256 B")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Hide files for V2" })).toBeInTheDocument();
 
     for (const row of rows) {

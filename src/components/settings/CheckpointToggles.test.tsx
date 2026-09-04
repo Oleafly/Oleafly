@@ -56,7 +56,7 @@ describe("CheckpointToggles", () => {
       name: "Save a checkpoint after each successful compile",
     });
     const noticeSwitch = screen.getByRole("switch", {
-      name: "Show a notice when a checkpoint is skipped",
+      name: "Show a notice when a checkpoint cannot be saved",
     });
     expect(compileSwitch).toHaveAttribute("aria-checked", "true");
     expect(noticeSwitch).toHaveAttribute("aria-checked", "true");

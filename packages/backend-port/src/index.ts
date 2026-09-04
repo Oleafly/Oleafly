@@ -104,8 +104,6 @@ export interface LogDiagnostic {
 }
 export type CheckpointSkipReason = "storage_unavailable";
 export type CheckpointPublicationOutcome =
-    | { status: "not_attempted" }
-    | { status: "scheduled" }
     | { status: "unchanged" }
     | { status: "failed" }
     | { status: "published"; snapshot_root: string; created: boolean }
@@ -133,8 +131,6 @@ export interface CompileResult {
     out_dir: string | null;
     compile_time_ms: number;
     stopped?: boolean;
-    /** Optional for compatibility with older desktop backends. */
-    checkpoint_publication?: CheckpointPublicationOutcome;
 }
 export interface EngineCapabilities {
     produces_pdf: boolean;
@@ -295,7 +291,6 @@ export interface CheckpointFileSummary {
     bytes: number;
     content_hash: string;
     stored: boolean;
-    replayed: boolean;
 }
 export interface CheckpointStoreTableCounts {
     checkpoints: number;

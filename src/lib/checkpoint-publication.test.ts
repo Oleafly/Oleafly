@@ -16,10 +16,7 @@ vi.mock("@/lib/tauri", () => ({ getConfig: mocks.getConfig }));
 
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import {
-  applyCheckpointPublicationEvent,
-  notifyCheckpointPublicationSkipped,
-} from "./checkpoint-publication";
+import { applyCheckpointPublicationEvent } from "./checkpoint-publication";
 
 const skipped = {
   status: "skipped" as const,
@@ -33,6 +30,13 @@ const published = {
   main_document: "main.tex",
   phase: "finished" as const,
   outcome: { status: "published" as const, snapshot_root: "root", created: true },
+};
+
+const failed = {
+  project_id: "active",
+  main_document: "main.tex",
+  phase: "finished" as const,
+  outcome: skipped,
 };
 
 function clearTheNoticeWithASavedCheckpoint() {
@@ -124,13 +128,6 @@ describe("checkpoint publication events", () => {
   });
 
   it("reports the same storage failure once until a checkpoint saves again", async () => {
-    const failed = {
-      project_id: "active",
-      main_document: "main.tex",
-      phase: "finished" as const,
-      outcome: skipped,
-    };
-
     applyCheckpointPublicationEvent(failed);
     await flush();
     applyCheckpointPublicationEvent(failed);
@@ -158,10 +155,23 @@ describe("checkpoint publication events", () => {
     expect(mocks.getConfig).not.toHaveBeenCalled();
   });
 
+  it("reports the same storage failure again in a different project", async () => {
+    applyCheckpointPublicationEvent(failed);
+    await flush();
+    expect(mocks.errorUnique).toHaveBeenCalledTimes(1);
+
+    useFilesStore.setState({ projectId: "second" });
+    applyCheckpointPublicationEvent({ ...failed, project_id: "second" });
+    await flush();
+
+    expect(mocks.errorUnique).toHaveBeenCalledTimes(2);
+  });
+
   it("stays silent when skipped notices are turned off", async () => {
     mocks.getConfig.mockResolvedValue({ checkpoint_notifications: false });
 
-    await notifyCheckpointPublicationSkipped(skipped);
+    applyCheckpointPublicationEvent(failed);
+    await flush();
 
     expect(mocks.getConfig).toHaveBeenCalledTimes(1);
     expect(mocks.errorUnique).not.toHaveBeenCalled();
@@ -170,7 +180,8 @@ describe("checkpoint publication events", () => {
   it("stays silent when the config cannot be read", async () => {
     mocks.getConfig.mockRejectedValue(new Error("offline"));
 
-    await notifyCheckpointPublicationSkipped(skipped);
+    applyCheckpointPublicationEvent(failed);
+    await flush();
 
     expect(mocks.errorUnique).not.toHaveBeenCalled();
   });
@@ -214,14 +225,11 @@ describe("checkpoint publication events", () => {
     expect(useSettingsStore.getState().checkpointsRevision).toBe(0);
   });
 
-  it("ignores malformed payloads and non-skipped results", async () => {
+  it("ignores malformed payloads", async () => {
     applyCheckpointPublicationEvent(null);
     applyCheckpointPublicationEvent({ phase: "finished" });
     applyCheckpointPublicationEvent({ project_id: "active", phase: "finished" });
-    await notifyCheckpointPublicationSkipped(undefined);
-    await notifyCheckpointPublicationSkipped({ status: "scheduled" });
-    await notifyCheckpointPublicationSkipped({ status: "not_attempted" });
-    await notifyCheckpointPublicationSkipped({ status: "unchanged" });
+    await flush();
 
     expect(mocks.errorUnique).not.toHaveBeenCalled();
     expect(mocks.getConfig).not.toHaveBeenCalled();

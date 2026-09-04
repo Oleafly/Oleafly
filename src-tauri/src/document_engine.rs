@@ -1106,9 +1106,6 @@ pub struct CompileResult {
     /// The user stopped this compile. Distinguishes an intentional stop from a
     /// document that genuinely failed to build.
     pub stopped: bool,
-    /// Durable Checkpoint publication is supplementary to compilation. A
-    /// skipped outcome never changes an otherwise successful compile result.
-    pub checkpoint_publication: crate::checkpoint_publication::CheckpointPublicationOutcome,
 }
 
 /// Must stay byte-for-byte compatible with
@@ -1741,7 +1738,6 @@ fn build_compile_result(
         synctex_path,
         out_dir: Some(spec.artifacts.output_dir.to_string_lossy().into_owned()),
         compile_time_ms: compile_start.elapsed().as_millis() as u64,
-        checkpoint_publication: Default::default(),
     }
 }
 

@@ -1,24 +1,9 @@
 use oleafly_history::{CaptureInput, CheckpointFile, ContentHash};
-use serde::Serialize;
 use std::collections::BTreeMap;
 use std::path::{Component, Path};
 
 const EXCLUDED_EXACT: [&str; 3] = [".git", ".oleafly", "node_modules"];
 const EXCLUDED_PREFIX: [&str; 2] = ["_minted-", "pythontex-files-"];
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum UncapturedReason {
-    Unreadable,
-    NotARegularFile,
-    NonPortablePath,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct UncapturedFile {
-    pub relative_path: String,
-    pub reason: UncapturedReason,
-}
 
 #[derive(Clone, Debug)]
 pub struct CapturedFile {
@@ -29,17 +14,13 @@ pub struct CapturedFile {
 #[derive(Clone, Debug, Default)]
 pub struct ProjectWalk {
     pub captured: Vec<CapturedFile>,
-    pub uncaptured: Vec<UncapturedFile>,
 }
 
 impl ProjectWalk {
-    pub fn capture_inputs(&self) -> Result<Vec<CaptureInput>, String> {
+    pub fn capture_inputs(&self) -> Vec<CaptureInput> {
         self.captured
             .iter()
-            .map(|file| {
-                CaptureInput::explicit(file.relative_path.clone())
-                    .map_err(|error| format!("{}: {error}", file.relative_path))
-            })
+            .filter_map(|file| CaptureInput::explicit(file.relative_path.clone()).ok())
             .collect()
     }
 
@@ -65,6 +46,8 @@ pub fn is_excluded_component(component: &str) -> bool {
         return true;
     }
     EXCLUDED_PREFIX.iter().any(|prefix| {
+        let component = component.as_bytes();
+        let prefix = prefix.as_bytes();
         component.len() > prefix.len() && component[..prefix.len()].eq_ignore_ascii_case(prefix)
     })
 }
@@ -99,21 +82,13 @@ pub fn walk_project(project_root: &Path) -> ProjectWalk {
             let Some(portable) = portable_relative(relative) else {
                 continue;
             };
-            let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
-                walk.uncaptured.push(UncapturedFile {
-                    relative_path: portable,
-                    reason: UncapturedReason::NonPortablePath,
-                });
+            let Some(name) = path.file_name().and_then(std::ffi::OsStr::to_str) else {
                 continue;
             };
             if is_excluded_component(name) {
                 continue;
             }
             let Ok(metadata) = entry.metadata() else {
-                walk.uncaptured.push(UncapturedFile {
-                    relative_path: portable,
-                    reason: UncapturedReason::Unreadable,
-                });
                 continue;
             };
             if metadata.is_dir() {
@@ -121,17 +96,12 @@ pub fn walk_project(project_root: &Path) -> ProjectWalk {
                 continue;
             }
             if !metadata.is_file() {
-                walk.uncaptured.push(UncapturedFile {
-                    relative_path: portable,
-                    reason: UncapturedReason::NotARegularFile,
-                });
+                continue;
+            }
+            if CaptureInput::explicit(portable.clone()).is_err() {
                 continue;
             }
             let Ok(content_hash) = ContentHash::digest_file(&path) else {
-                walk.uncaptured.push(UncapturedFile {
-                    relative_path: portable,
-                    reason: UncapturedReason::Unreadable,
-                });
                 continue;
             };
             walk.captured.push(CapturedFile {
@@ -141,8 +111,6 @@ pub fn walk_project(project_root: &Path) -> ProjectWalk {
         }
     }
     walk.captured
-        .sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
-    walk.uncaptured
         .sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     walk
 }
@@ -181,7 +149,6 @@ mod tests {
             captured_paths(&walk),
             vec!["README.md", "figures/plot.pdf", "main.tex", "refs.bib"]
         );
-        assert!(walk.uncaptured.is_empty());
     }
 
     #[test]
@@ -258,9 +225,66 @@ mod tests {
         write(root, "main.tex", b"source");
         write(root, "chapters/one.tex", b"chapter");
 
-        let inputs = walk_project(root).capture_inputs().unwrap();
+        let inputs = walk_project(root).capture_inputs();
 
-        assert_eq!(inputs.len(), 2);
-        assert!(inputs.iter().all(CaptureInput::is_stored));
+        assert_eq!(
+            inputs
+                .iter()
+                .map(CaptureInput::relative_path)
+                .collect::<Vec<_>>(),
+            vec!["chapters/one.tex", "main.tex"]
+        );
+    }
+
+    #[test]
+    fn a_helper_cache_prefix_is_matched_without_splitting_a_character() {
+        assert!(is_excluded_component("_minted-main"));
+        assert!(is_excluded_component("_MINTED-Main"));
+        assert!(is_excluded_component("pythontex-files-main"));
+        assert!(!is_excluded_component("_minted-"));
+        assert!(!is_excluded_component("_minted"));
+        assert!(!is_excluded_component("_minted\u{e9}"));
+        assert!(!is_excluded_component("pythontex-files\u{e9}"));
+        assert!(!is_excluded_component("_mint\u{e9}"));
+        assert!(!is_excluded_component("_mint\u{e9}d-main"));
+        assert!(!is_excluded_component("\u{e9}"));
+        assert!(!is_excluded_component("figures"));
+    }
+
+    #[test]
+    fn a_non_ascii_directory_name_is_walked_like_any_other() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        write(root, "main.tex", b"source");
+        write(root, "_minted\u{e9}/one.tex", b"not a helper cache");
+        write(root, "pythontex-files\u{e9}/two.tex", b"nor is this one");
+        write(root, "fig\u{fc}res/plot.pdf", b"%PDF-1.4");
+        write(root, "_minted-main/abc.pygtex", b"highlight");
+
+        let walk = walk_project(root);
+
+        assert_eq!(
+            captured_paths(&walk),
+            vec![
+                "_minted\u{e9}/one.tex",
+                "fig\u{fc}res/plot.pdf",
+                "main.tex",
+                "pythontex-files\u{e9}/two.tex"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_path_the_store_cannot_represent_is_skipped_instead_of_ending_the_capture() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        write(root, "main.tex", b"source");
+        write(root, "cafe\u{301}.tex", b"a name that is not Unicode NFC");
+        write(root, "chapters/one.tex", b"chapter");
+
+        let walk = walk_project(root);
+
+        assert_eq!(captured_paths(&walk), vec!["chapters/one.tex", "main.tex"]);
+        assert_eq!(walk.capture_inputs().len(), 2);
     }
 }

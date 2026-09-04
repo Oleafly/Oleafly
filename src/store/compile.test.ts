@@ -16,9 +16,7 @@ const mocks = vi.hoisted(() => ({
   readFileContent: vi.fn(),
   cancelCompile: vi.fn(),
   clearBuildDir: vi.fn(),
-  getConfig: vi.fn(async () => ({ checkpoint_notifications: true })),
   notifyCompileSucceeded: vi.fn(),
-  toastErrorUnique: vi.fn(),
   refreshPreviewWindow: vi.fn(),
   gitPreparePublish: vi.fn(),
   ensurePandoc: vi.fn(),
@@ -67,7 +65,6 @@ vi.mock("@/lib/tauri", () => ({
   readFileContent: mocks.readFileContent,
   cancelCompile: mocks.cancelCompile,
   clearBuildDir: mocks.clearBuildDir,
-  getConfig: mocks.getConfig,
   gitPreparePublish: mocks.gitPreparePublish,
 }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
@@ -90,7 +87,7 @@ vi.mock("@/store/project-index", () => ({
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => mocks.settings } }));
 vi.mock("@/lib/toast", () => ({
   notifyError: vi.fn(),
-  toast: { errorUnique: mocks.toastErrorUnique },
+  toast: { errorUnique: vi.fn() },
 }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/preview-window", () => ({
@@ -141,9 +138,7 @@ beforeEach(() => {
   mocks.readFileContent.mockReset().mockResolvedValue("\\documentclass{article}\n");
   mocks.cancelCompile.mockReset().mockResolvedValue(true);
   mocks.clearBuildDir.mockReset().mockResolvedValue(undefined);
-  mocks.getConfig.mockReset().mockResolvedValue({ checkpoint_notifications: true });
   mocks.notifyCompileSucceeded.mockReset();
-  mocks.toastErrorUnique.mockReset();
   mocks.refreshPreviewWindow.mockReset();
   mocks.gitPreparePublish.mockReset().mockResolvedValue(undefined);
   mocks.ensurePandoc.mockReset().mockResolvedValue(true);
@@ -304,41 +299,6 @@ describe("compile output lifecycle", () => {
     await useCompileStore.getState().recompile();
 
     expect(mocks.gitPreparePublish).not.toHaveBeenCalled();
-  });
-
-  it("keeps a successful compile and reports the storage failure behind it", async () => {
-    const bytes = new Uint8Array([1, 2, 3]);
-    mocks.compileProject.mockResolvedValue({
-      ok: true,
-      has_pdf: true,
-      output_id: fingerprintCompileOutput(bytes),
-      output_revision: 7,
-      log: "ok",
-      errors: [],
-      synctex_path: null,
-      out_dir: "/build",
-      compile_time_ms: 12,
-      checkpoint_publication: {
-        status: "skipped",
-        reason: "storage_unavailable",
-        message: "Checkpoint not saved. Checkpoint storage is full or not writable.",
-        suggestion: "Free some disk space or check folder permissions, then compile again.",
-      },
-    });
-    mocks.readCompiledPdf.mockResolvedValue(bytes.buffer);
-
-    await useCompileStore.getState().recompile();
-
-    expect(useCompileStore.getState().status).toBe("success");
-    await vi.waitFor(() =>
-      expect(mocks.toastErrorUnique).toHaveBeenCalledWith(
-        "checkpoint-publication-skipped",
-        "Checkpoint not saved. Checkpoint storage is full or not writable. Free some disk space or check folder permissions, then compile again.",
-        undefined,
-        true,
-      ),
-    );
-    expect(mocks.settings.versioningOpen).toBe(false);
   });
 
   it("restores preview and SyncTeX freshness after source text is exactly reverted", async () => {

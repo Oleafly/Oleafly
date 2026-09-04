@@ -8,7 +8,7 @@ export const CHECKPOINT_PUBLICATION_EVENT = "checkpoint:publication";
 
 const SKIPPED_TOAST_KEY = "checkpoint-publication-skipped";
 
-let notifiedSkipReason: string | null = null;
+const notifiedSkipReasons = new Map<string, string>();
 
 export type CheckpointPublicationEvent =
   | { project_id: string; main_document: string; phase: "started" }
@@ -19,18 +19,20 @@ export type CheckpointPublicationEvent =
       outcome: CheckpointPublicationOutcome;
     };
 
-export async function notifyCheckpointPublicationSkipped(
-  outcome: CheckpointPublicationOutcome | undefined,
+type CheckpointPublicationSkipped = Extract<CheckpointPublicationOutcome, { status: "skipped" }>;
+
+async function notifySkipped(
+  projectId: string,
+  outcome: CheckpointPublicationSkipped,
 ): Promise<void> {
-  if (outcome?.status !== "skipped") return;
-  if (notifiedSkipReason === outcome.reason) return;
+  if (notifiedSkipReasons.get(projectId) === outcome.reason) return;
   try {
     const config = await getConfig();
     if (config.checkpoint_notifications === false) return;
   } catch {
     return;
   }
-  notifiedSkipReason = outcome.reason;
+  notifiedSkipReasons.set(projectId, outcome.reason);
   toast.errorUnique(SKIPPED_TOAST_KEY, `${outcome.message} ${outcome.suggestion}`, undefined, true);
 }
 
@@ -53,16 +55,17 @@ export function applyCheckpointPublicationEvent(payload: unknown): void {
   if (settings.checkpointPublishingProjectId === payload.project_id) {
     settings.setCheckpointPublishingProjectId(null);
   }
+  if (payload.outcome.status !== "skipped") {
+    notifiedSkipReasons.delete(payload.project_id);
+    if (
+      isActiveProject &&
+      (payload.outcome.status === "published" ||
+        payload.outcome.status === "published_durability_uncertain")
+    ) {
+      settings.bumpCheckpointsRevision();
+    }
+    return;
+  }
   if (!isActiveProject) return;
-  const status = payload.outcome.status;
-  if (status === "unchanged") {
-    notifiedSkipReason = null;
-    return;
-  }
-  if (status === "published" || status === "published_durability_uncertain") {
-    notifiedSkipReason = null;
-    settings.bumpCheckpointsRevision();
-    return;
-  }
-  void notifyCheckpointPublicationSkipped(payload.outcome);
+  void notifySkipped(payload.project_id, payload.outcome);
 }

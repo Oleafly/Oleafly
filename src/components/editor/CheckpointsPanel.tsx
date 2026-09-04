@@ -277,7 +277,7 @@ interface FileListProps {
   onRetry: () => void;
 }
 
-function FileList({ id, label, state, onRetry }: FileListProps) {
+function FileList({ id, label, state, onRetry }: Readonly<FileListProps>) {
   if (!state || state.status === "loading") {
     return (
       <div
@@ -314,32 +314,28 @@ function FileList({ id, label, state, onRetry }: FileListProps) {
 
   return (
     <ul id={id} aria-label={`Files in ${label}`} className="mt-2 list-none rounded-md border bg-muted/20 p-0">
-      {state.files.map((file) => {
-        return (
-          <li
-            key={file.path}
-            data-testid="checkpoint-file"
-            data-path={file.path}
-            className="flex items-start gap-3 border-b px-3 py-2 last:border-b-0"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="truncate font-mono text-xs" title={file.path}>
-                  {file.path}
-                </span>
-                {file.stored ? null : (
-                  <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
-                    Not stored
-                  </Badge>
-                )}
-              </div>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {formatBytes(file.bytes)} · {file.replayed ? "Compiler input" : "Included by policy"}
-              </p>
+      {state.files.map((file) => (
+        <li
+          key={file.path}
+          data-testid="checkpoint-file"
+          data-path={file.path}
+          className="flex items-start gap-3 border-b px-3 py-2 last:border-b-0"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="truncate font-mono text-xs" title={file.path}>
+                {file.path}
+              </span>
+              {file.stored ? null : (
+                <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                  Not stored
+                </Badge>
+              )}
             </div>
-          </li>
-        );
-      })}
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{formatBytes(file.bytes)}</p>
+          </div>
+        </li>
+      ))}
     </ul>
   );
 }
@@ -1151,8 +1147,8 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
             <ShieldCheck className="size-7 text-muted-foreground" />
             <p className="mt-3 text-sm font-medium">No checkpoints yet</p>
             <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-              A checkpoint appears after a successful compile when Oleafly can verify every source
-              dependency.
+              A checkpoint appears after a successful compile, when the project has changed
+              since the last one.
             </p>
           </div>
         ) : (
