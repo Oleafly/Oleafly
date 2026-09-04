@@ -8,15 +8,20 @@ const themeMocks = vi.hoisted(() => ({
   setPreference: vi.fn(),
 }));
 
-const joyrideMocks = vi.hoisted(() => ({ render: false }));
+const joyrideMocks = vi.hoisted(() => ({
+  render: false,
+  steps: [] as Array<{ id?: string; placement?: string }>,
+}));
 
 vi.mock("react-joyride", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-joyride")>();
   const { createElement } = await import("react");
   return {
     ...actual,
-    Joyride: (props: Record<string, unknown>) =>
-      joyrideMocks.render ? createElement(actual.Joyride, props) : null,
+    Joyride: (props: Record<string, unknown>) => {
+      joyrideMocks.steps = props.steps as Array<{ id?: string; placement?: string }>;
+      return joyrideMocks.render ? createElement(actual.Joyride, props) : null;
+    },
   };
 });
 
@@ -31,8 +36,8 @@ vi.mock("@/lib/theme", () => ({
   }),
 }));
 
-import { TourGuide } from "./TourGuide";
-import { tourRegistry } from "@/lib/tours/registry";
+import { measureTourPlacement, TourGuide } from "./TourGuide";
+import { tourRegistry, type TourStepDefinition } from "@/lib/tours/registry";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
@@ -63,6 +68,7 @@ beforeEach(() => {
   themeMocks.preference = "system";
   themeMocks.setPreference.mockClear();
   joyrideMocks.render = false;
+  joyrideMocks.steps = [];
 });
 
 describe("Welcome appearance choice", () => {
@@ -272,12 +278,20 @@ function tourLayersCovering(area: Box) {
   return covering;
 }
 
+function homeStepIndex(stepId: string) {
+  return tourRegistry.home.steps.findIndex((step) => step.id === stepId);
+}
+
+function joyridePlacement(stepId: string) {
+  return joyrideMocks.steps.find((step) => step.id === stepId)?.placement;
+}
+
 function renderHomeStep(stepId: string) {
   joyrideMocks.render = true;
   useSettingsStore.setState({ newProjectOpen: true });
   useTourStore.setState({
     activeTourId: "home",
-    activeStepIndex: tourRegistry.home.steps.findIndex((step) => step.id === stepId),
+    activeStepIndex: homeStepIndex(stepId),
   });
   render(<TourGuide />);
   act(() => {
@@ -296,6 +310,9 @@ describe("TourGuide overlay reachability", () => {
     renderHomeStep("home-template");
 
     expect(tourLayersCovering(TEMPLATE_LIST_BOX)).toEqual([]);
+    expect(
+      document.querySelectorAll(".react-joyride__spotlight path").length,
+    ).toBeGreaterThan(1);
     const strips = Array.from(document.querySelectorAll<HTMLElement>("[data-tour-backdrop]"));
     expect(strips.map((strip) => strip.dataset.tourBackdrop)).toEqual([
       "top",
@@ -304,10 +321,45 @@ describe("TourGuide overlay reachability", () => {
       "right",
     ]);
     for (const strip of strips) {
-      expect(strip.style.pointerEvents).toBe("auto");
-      expect(strip.style.backgroundColor).toBe("rgba(0, 0, 0, 0.72)");
+      expect(strip.style.pointerEvents).toBe("none");
     }
     expect(tourLayersCovering(VIEWPORT_CORNER)).toEqual(["backdrop-top"]);
+  });
+
+  it("anchors the tooltip in the widest dimmed band around the grid", () => {
+    const element = mountTourTarget("project-template-list", TEMPLATE_LIST_BOX);
+    const step = tourRegistry.home.steps.find((entry) => entry.id === "home-template");
+
+    expect(
+      measureTourPlacement(step as TourStepDefinition, element, {
+        width: 384,
+        height: 163,
+        minHeight: 125,
+      }),
+    ).toEqual({ placement: "bottom", maxHeight: null });
+  });
+
+  it("never leaves a step on auto once its late target has mounted", async () => {
+    joyrideMocks.render = true;
+    useSettingsStore.setState({ newProjectOpen: true });
+    mountTourTarget("new-project", { top: 40, left: 40, width: 120, height: 32 });
+    useTourStore.setState({ activeTourId: "home", activeStepIndex: homeStepIndex("home-create") });
+
+    render(<TourGuide />);
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(document.querySelector("[data-tour-tooltip]")).not.toBeNull();
+
+    act(() => {
+      useTourStore.setState({ activeStepIndex: homeStepIndex("home-template") });
+    });
+    expect(joyridePlacement("home-template")).toBe("auto");
+
+    await act(async () => {
+      mountTourTarget("project-template-list", TEMPLATE_LIST_BOX);
+    });
+    expect(joyridePlacement("home-template")).toBe("bottom");
   });
 
   it("keeps dimming the whole grid on the step that only describes it", () => {

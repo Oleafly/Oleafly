@@ -23,12 +23,12 @@ describe("tour registry", () => {
     );
   });
 
-  it("lists every step whose target the user has to reach behind a centered tooltip", () => {
+  it("never parks a tooltip on a target the user has to reach", () => {
     const centered = Object.values(tourRegistry)
       .flatMap((tour) => tour.steps as readonly TourStepDefinition[])
       .filter((step) => stepNeedsReachableTarget(step) && step.placement === "center")
       .map((step) => step.id);
-    expect(centered).toEqual(["home-template"]);
+    expect(centered).toEqual([]);
   });
 
   it("uses only stable data-tour targets", () => {

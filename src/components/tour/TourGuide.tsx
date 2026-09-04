@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ACTIONS,
   EVENTS,
@@ -20,6 +20,11 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { celebrate } from "@/lib/confetti";
 import { START_TOUR_EVENT } from "@/lib/tour";
 import { evaluateTour, missingTargetFallback } from "@/lib/tours/coordinator";
+import {
+  fitTourTooltip,
+  type TourPlacementFit,
+  type TourTooltipMetrics,
+} from "@/lib/tours/placement";
 import {
   stepNeedsReachableTarget,
   tourRegistry,
@@ -45,6 +50,18 @@ const REQUEST_TOUR_QUIT_EVENT = "oleafly:request-tour-quit";
 const KBD_CHIP = "h-4 min-w-4 px-1 text-[10px]";
 
 const TOUR_OVERLAY_COLOR = "rgba(0, 0, 0, 0.72)";
+
+const TOUR_SPOTLIGHT_PADDING = 6;
+
+const TOUR_FLOATER_OFFSET = 10;
+
+const TOUR_ARROW_SIZE = 16;
+
+const TOUR_SHIFT_PADDING = 10;
+
+const TOUR_TOOLTIP_STANDOFF = TOUR_FLOATER_OFFSET + TOUR_SPOTLIGHT_PADDING + TOUR_ARROW_SIZE;
+
+const TOUR_FLOATING_OPTIONS = { shiftOptions: { padding: TOUR_SHIFT_PADDING } };
 
 const BACKDROP_TRANSITION = [
   "top 320ms cubic-bezier(0.4, 0, 0.2, 1)",
@@ -114,39 +131,71 @@ function TourProgress({ index, size }: { index: number; size: number }) {
   );
 }
 
-function TourTooltip(props: TooltipRenderProps) {
+interface TourTooltipProps extends TooltipRenderProps {
+  onMeasure: (metrics: TourTooltipMetrics) => void;
+}
+
+function measureTourTooltip(node: HTMLElement): TourTooltipMetrics {
+  const body = node.querySelector<HTMLElement>("[data-tour-tooltip-body]");
+  const clipped = body ? body.scrollHeight - body.clientHeight : 0;
+  return {
+    width: node.offsetWidth,
+    height: node.offsetHeight + clipped,
+    minHeight: node.offsetHeight - (body?.offsetHeight ?? 0),
+  };
+}
+
+function TourTooltip(props: TourTooltipProps) {
   const {
     backProps,
     continuous,
     index,
     isLastStep,
+    onMeasure,
     primaryProps,
     size,
     skipProps,
     step,
     tooltipProps,
   } = props;
-  const definition = step.data as TourStepDefinition & { tourLabel?: string };
+  const definition = step.data as TourStepDefinition & {
+    tourLabel?: string;
+    maxTooltipHeight?: number | null;
+  };
   const tourLabel = definition.tourLabel;
   const requiredClick = definition.kind === "required-click";
   const inputReady =
     definition.kind !== "required-input" ||
     Boolean(document.querySelector<HTMLInputElement>(`${definition.target}`)?.value.trim());
   const isWelcome = definition.id === "home-overview";
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    void definition.id;
+    const card = cardRef.current;
+    if (!card) return;
+    const measure = () => onMeasure(measureTourTooltip(card));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, [definition.id, onMeasure]);
 
   return (
     <div
       {...tooltipProps}
-      ref={(node) => {
+      ref={(element) => {
         // The runtime floater props carry a ref the public typings omit.
         const forwarded = (tooltipProps as { ref?: React.Ref<HTMLDivElement> }).ref;
-        if (typeof forwarded === "function") forwarded(node);
+        if (typeof forwarded === "function") forwarded(element);
         else if (forwarded && typeof forwarded === "object") {
-          (forwarded as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          (forwarded as React.MutableRefObject<HTMLDivElement | null>).current = element;
         }
+        cardRef.current = element;
       }}
       data-tour-tooltip={definition.id}
-      className="w-[min(24rem,calc(100vw-2rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none"
+      style={{ maxHeight: definition.maxTooltipHeight ?? undefined }}
+      className="flex w-[min(24rem,calc(100vw-2rem))] flex-col rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none"
     >
       {isWelcome ? (
         <svg
@@ -228,17 +277,20 @@ function TourTooltip(props: TooltipRenderProps) {
           />
         </svg>
       ) : null}
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <span className="block text-[10px] font-semibold uppercase tracking-widest text-primary">
-            Step {index + 1}
-            {tourLabel ? ` · ${tourLabel}` : ""}
-          </span>
-          {step.title ? <h2 className="mt-1 text-sm font-semibold">{step.title}</h2> : null}
-          <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{step.content}</div>
-        </div>
+      <div className="min-w-0 shrink-0">
+        <span className="block text-[10px] font-semibold uppercase tracking-widest text-primary">
+          Step {index + 1}
+          {tourLabel ? ` · ${tourLabel}` : ""}
+        </span>
+        {step.title ? <h2 className="mt-1 text-sm font-semibold">{step.title}</h2> : null}
       </div>
-      <div className="mt-4 flex items-center gap-2">
+      <div
+        data-tour-tooltip-body
+        className="mt-1 min-h-0 grow overflow-y-auto text-xs leading-relaxed text-muted-foreground"
+      >
+        {step.content}
+      </div>
+      <div className="mt-4 flex shrink-0 items-center gap-2">
         <TourProgress index={index} size={size} />
         <div className="ml-auto flex items-center gap-1.5">
           <Tooltip label={skipProps.title}>
@@ -387,29 +439,59 @@ export function stepNeedsScroll(element: Element | null): boolean {
   return rect.top < 0 || rect.top + leadIn > window.innerHeight;
 }
 
-export function joyrideDrawsSpotlight(placement: TourStepDefinition["placement"]) {
+export function joyrideDrawsSpotlight(placement?: string) {
   return (placement ?? "bottom") !== "center";
 }
 
-export function hidesJoyrideOverlay(step: TourStepDefinition) {
-  return stepNeedsReachableTarget(step) && !joyrideDrawsSpotlight(step.placement);
+export function hidesJoyrideOverlay(step: TourStepDefinition, placement?: string) {
+  return stepNeedsReachableTarget(step) && !joyrideDrawsSpotlight(placement);
+}
+
+export function measureTourPlacement(
+  step: TourStepDefinition,
+  element: Element | null,
+  tooltip: TourTooltipMetrics | null,
+): TourPlacementFit | null {
+  if (!stepNeedsReachableTarget(step) || !element || !tooltip) return null;
+  const target = element.getBoundingClientRect();
+  if (target.width === 0 && target.height === 0) return null;
+  return fitTourTooltip({
+    target,
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    tooltip,
+    standoff: TOUR_TOOLTIP_STANDOFF,
+    shiftPadding: TOUR_SHIFT_PADDING,
+  });
+}
+
+export function resolveTourPlacement(
+  step: TourStepDefinition,
+  fit?: TourPlacementFit | null,
+): NonNullable<TourStepDefinition["placement"]> {
+  const authored = step.placement;
+  const anchored = authored !== undefined && authored !== "auto" && authored !== "center";
+  if (anchored || !stepNeedsReachableTarget(step)) return authored ?? "bottom";
+  return fit?.placement ?? "auto";
 }
 
 export function toJoyrideStep(
   step: TourStepDefinition,
   tourLabel?: string,
   needsScroll = false,
+  fit?: TourPlacementFit | null,
 ): Step {
+  const placement = resolveTourPlacement(step, fit);
+  const maxTooltipHeight = fit && fit.placement === placement ? fit.maxHeight : null;
   return {
     id: step.id,
     target: step.target,
     skipScroll: !needsScroll,
     title: step.title,
     content: step.content,
-    placement: step.placement ?? "bottom",
+    placement,
     spotlightTarget: step.spotlightTarget,
-    data: { ...step, tourLabel },
-    hideOverlay: hidesJoyrideOverlay(step),
+    data: { ...step, tourLabel, maxTooltipHeight },
+    hideOverlay: hidesJoyrideOverlay(step, placement),
     blockTargetInteraction:
       !step.interactionArea && step.kind !== "required-click" && step.kind !== "required-input",
   };
@@ -672,7 +754,7 @@ function TourBackdropBlur({ target, dim }: { target: string; dim: boolean }) {
     const update = () => {
       if (!element) return;
       const bounds = element.getBoundingClientRect();
-      const padding = 6;
+      const padding = TOUR_SPOTLIGHT_PADDING;
       setRect({
         top: Math.max(0, bounds.top - padding),
         right: Math.min(window.innerWidth, bounds.right + padding),
@@ -785,6 +867,8 @@ export function TourGuide() {
   const [inputRevision, setInputRevision] = useState(0);
   const [libraryReady, setLibraryReady] = useState(false);
   const [joyrideInstance, setJoyrideInstance] = useState(0);
+  const [tooltipMetrics, setTooltipMetrics] = useState<TourTooltipMetrics | null>(null);
+  const [viewportRevision, setViewportRevision] = useState(0);
   const [aiReadinessRevision, setAiReadinessRevision] = useState(0);
   const reducedMotion = useMemo(
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -825,18 +909,46 @@ export function TourGuide() {
       // Joyride may scroll for it, and a target's position is only meaningful
       // once the tour has actually reached it.
       void activeStepIndex;
+      void viewportRevision;
       return (
-        definition?.steps.map((step) =>
-          toJoyrideStep(
+        definition?.steps.map((step) => {
+          const element = document.querySelector(step.target);
+          return toJoyrideStep(
             step,
             definition.label,
-            stepNeedsScroll(document.querySelector(step.target)),
-          ),
-        ) ?? []
+            stepNeedsScroll(element),
+            measureTourPlacement(step, element, tooltipMetrics),
+          );
+        }) ?? []
       );
     },
-    [activeStepIndex, definition, inputRevision],
+    [activeStepIndex, definition, inputRevision, tooltipMetrics, viewportRevision],
   );
+
+  const handleTooltipMeasure = useCallback((metrics: TourTooltipMetrics) => {
+    setTooltipMetrics((current) =>
+      current &&
+      current.width === metrics.width &&
+      current.height === metrics.height &&
+      current.minHeight === metrics.minHeight
+        ? current
+        : metrics,
+    );
+  }, []);
+
+  const tooltipComponent = useMemo(
+    () =>
+      function MeasuredTourTooltip(props: TooltipRenderProps) {
+        return <TourTooltip {...props} onMeasure={handleTooltipMeasure} />;
+      },
+    [handleTooltipMeasure],
+  );
+
+  useEffect(() => {
+    const onResize = () => setViewportRevision((value) => value + 1);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const showWelcome =
     enabled &&
@@ -1435,7 +1547,7 @@ export function TourGuide() {
             ? activeStep.spotlightTarget
             : activeStep.target
         }
-        dim={hidesJoyrideOverlay(activeStep)}
+        dim={hidesJoyrideOverlay(activeStep, steps[activeStepIndex]?.placement)}
       />
       <Joyride
         key={`${activeTourId}-${joyrideInstance}`}
@@ -1458,21 +1570,24 @@ export function TourGuide() {
           },
           tooltip: { transition: reducedMotion ? "none" : "opacity 180ms ease" },
         }}
-        tooltipComponent={TourTooltip}
+        tooltipComponent={tooltipComponent}
         arrowComponent={SeamlessArrow}
+        floatingOptions={TOUR_FLOATING_OPTIONS}
         onEvent={onEvent}
         options={{
           arrowColor: "var(--popover)",
+          arrowSize: TOUR_ARROW_SIZE,
           backgroundColor: "var(--popover)",
           blockTargetInteraction: true,
           buttons: ["back", "primary", "skip"],
           dismissKeyAction: false,
+          offset: TOUR_FLOATER_OFFSET,
           overlayClickAction: false,
           overlayColor: TOUR_OVERLAY_COLOR,
           primaryColor: "var(--primary)",
           showProgress: true,
           skipBeacon: true,
-          spotlightPadding: 6,
+          spotlightPadding: TOUR_SPOTLIGHT_PADDING,
           spotlightRadius: 8,
           scrollDuration: reducedMotion ? 0 : 300,
           targetWaitTimeout: 10_000,

@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { tourRegistry, type TourStepDefinition } from "@/lib/tours/registry";
+import {
+  stepNeedsReachableTarget,
+  tourRegistry,
+  type TourStepDefinition,
+} from "@/lib/tours/registry";
 import {
   isAiStepApplicable,
   isTourTargetReady,
   missingTargetAction,
+  resolveTourPlacement,
   shouldCompleteTourAfterStep,
   shouldCloseProjectDialogOnBack,
   shouldSuppressTourKey,
@@ -115,6 +120,66 @@ describe("tour step conversion", () => {
         spotlightTarget: '[data-tour="settings-navigation-panel"]',
       }).spotlightTarget,
     ).toBe('[data-tour="settings-navigation-panel"]');
+  });
+});
+
+const homeStep = (id: string) =>
+  tourRegistry.home.steps.find((step) => step.id === id) as TourStepDefinition;
+
+describe("tour placement resolution", () => {
+  it("measures a placement for every step that leaves no side for the author to name", () => {
+    const template = homeStep("home-template");
+
+    expect(stepNeedsReachableTarget(template)).toBe(true);
+    expect(template.placement).toBeUndefined();
+    expect(resolveTourPlacement(template, { placement: "top", maxHeight: null })).toBe("top");
+    expect(resolveTourPlacement(template, { placement: "left", maxHeight: null })).toBe("left");
+  });
+
+  it("anchors on a side rather than the target while the geometry is unknown", () => {
+    expect(resolveTourPlacement(homeStep("home-template"))).toBe("auto");
+    expect(resolveTourPlacement(homeStep("home-template"), null)).toBe("auto");
+  });
+
+  it("keeps the side the author already chose, and its natural height", () => {
+    const color = homeStep("home-color");
+    const joyrideStep = toJoyrideStep(color, "Getting started", false, {
+      placement: "left",
+      maxHeight: 120,
+    });
+
+    expect(stepNeedsReachableTarget(color)).toBe(true);
+    expect(joyrideStep.placement).toBe("top");
+    expect((joyrideStep.data as { maxTooltipHeight: number | null }).maxTooltipHeight).toBeNull();
+  });
+
+  it("leaves a centered step centered when nothing has to be clicked through it", () => {
+    const gallery = homeStep("home-gallery");
+
+    expect(stepNeedsReachableTarget(gallery)).toBe(false);
+    expect(resolveTourPlacement(gallery, { placement: "top", maxHeight: null })).toBe("center");
+  });
+
+  it("lets Joyride spotlight the target and passes the measured cap to the tooltip", () => {
+    const joyrideStep = toJoyrideStep(homeStep("home-template"), "Getting started", false, {
+      placement: "top",
+      maxHeight: 146.5,
+    });
+
+    expect(joyrideStep.placement).toBe("top");
+    expect(joyrideStep.hideOverlay).toBe(false);
+    expect(joyrideStep.blockTargetInteraction).toBe(false);
+    expect((joyrideStep.data as { maxTooltipHeight: number | null }).maxTooltipHeight).toBe(146.5);
+  });
+
+  it("hides the Joyride overlay only where the tooltip has to sit on the target", () => {
+    const joyrideStep = toJoyrideStep(homeStep("home-template"), "Getting started", false, {
+      placement: "center",
+      maxHeight: null,
+    });
+
+    expect(joyrideStep.placement).toBe("center");
+    expect(joyrideStep.hideOverlay).toBe(true);
   });
 });
 
