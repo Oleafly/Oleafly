@@ -61,6 +61,7 @@ const assistantLayoutMocks = vi.hoisted(() => ({
 
 const panelHandleMocks = vi.hoisted(() => ({
   resize: vi.fn(),
+  callbacks: new Map<string, { collapse?: () => void; expand?: () => void }>(),
 }));
 
 function selectorStore<T extends object>(state: T) {
@@ -109,6 +110,10 @@ vi.mock("react-resizable-panels", async () => {
           panelHandleMocks.resize(props.id, nextSize);
         },
       }));
+      panelHandleMocks.callbacks.set(props.id, {
+        collapse: props.onCollapse,
+        expand: props.onExpand,
+      });
       React.useEffect(() => {
         if (!initiallyExpanded) return;
         setTimeout(() => props.onExpand?.(), 0);
@@ -262,6 +267,7 @@ describe("project dock layout", () => {
     assistantLayoutMocks.sidebarMinimumPercent.mockClear();
     assistantLayoutMocks.sidebarPanelGroupWidth.mockClear();
     panelHandleMocks.resize.mockClear();
+    panelHandleMocks.callbacks.clear();
     const { useSettingsStore } = await import("@/store/settings");
     useSettingsStore.setState({
       webBrowser: true,
@@ -378,6 +384,38 @@ describe("project dock layout", () => {
 
     expect(useSettingsStore.getState()).toMatchObject({ showTree: true });
     expect(panelHandleMocks.resize).toHaveBeenLastCalledWith("sidebar", expect.any(Number));
+  });
+
+  it("reopens the terminal when its panel is dragged back up after collapsing", async () => {
+    const { act } = await import("react");
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const { useSettingsStore } = await import("@/store/settings");
+    useSettingsStore.setState({ terminalOpen: true });
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<App />);
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const terminal = panelHandleMocks.callbacks.get("terminal");
+    expect(terminal?.collapse).toBeTypeOf("function");
+    expect(terminal?.expand).toBeTypeOf("function");
+
+    await act(async () => {
+      terminal?.collapse?.();
+    });
+    expect(useSettingsStore.getState().terminalOpen).toBe(false);
+
+    await act(async () => {
+      terminal?.expand?.();
+    });
+    expect(useSettingsStore.getState().terminalOpen).toBe(true);
   });
 
   it("toggles project docks from their registered keyboard shortcuts", async () => {

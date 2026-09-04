@@ -56,6 +56,11 @@ function DockHarness({ projectId }: { projectId: string }) {
   return <TerminalDock projectId={projectId} visible={open} />;
 }
 
+function openCloseMenu(index: number) {
+  fireEvent.contextMenu(tabs()[index]);
+  fireEvent.click(screen.getByTestId("dock-terminal-menu-close-menu"));
+}
+
 function pickColor(index: number, name: string) {
   fireEvent.contextMenu(tabs()[index]);
   fireEvent.click(screen.getByTestId("dock-terminal-menu-color"));
@@ -109,10 +114,10 @@ describe("TerminalDock", () => {
     expect(screen.getByTestId("dock-terminal")).toHaveAttribute("data-auto-start", "false");
   });
 
-  it("renames a terminal from the rename control and persists the title", () => {
+  it("renames a terminal by double clicking its title and persists it", () => {
     render(<TerminalDock projectId="project-1" visible />);
 
-    fireEvent.click(screen.getByLabelText("Rename Terminal 1"));
+    fireEvent.doubleClick(screen.getByText("Terminal 1"));
     const input = screen.getByLabelText("Terminal title");
     expect(input).toHaveAttribute("maxlength", "40");
     fireEvent.change(input, { target: { value: "Build" } });
@@ -241,15 +246,16 @@ describe("TerminalDock", () => {
 
     const menu = screen.getByTestId("dock-terminal-tab-menu");
     expect(menu).toBeInTheDocument();
-    const actions = [
-      "Rename",
-      "Color",
-      "Close",
+    for (const name of ["Rename", "Color", "Close"]) {
+      expect(screen.getByRole("menuitem", { name })).toBeInTheDocument();
+    }
+    fireEvent.click(screen.getByTestId("dock-terminal-menu-close-menu"));
+    for (const name of [
+      "Close current",
       "Close others",
-      "Close to the right",
-      "Close to the left",
-    ];
-    for (const name of actions) {
+      "Close all to the left",
+      "Close all to the right",
+    ]) {
       expect(screen.getByRole("menuitem", { name })).toBeInTheDocument();
     }
     expect(screen.queryByRole("menuitem", { name: /Split/ })).toBeNull();
@@ -272,7 +278,7 @@ describe("TerminalDock", () => {
     render(<TerminalDock projectId="project-1" visible />);
     fireEvent.click(screen.getByLabelText("New terminal"));
 
-    fireEvent.contextMenu(tabs()[1]);
+    openCloseMenu(1);
     fireEvent.click(screen.getByTestId("dock-terminal-menu-close"));
 
     expect(tabs()).toHaveLength(1);
@@ -284,7 +290,7 @@ describe("TerminalDock", () => {
     fireEvent.click(screen.getByLabelText("New terminal"));
     fireEvent.click(screen.getByLabelText("New terminal"));
 
-    fireEvent.contextMenu(tabs()[1]);
+    openCloseMenu(1);
     fireEvent.click(screen.getByTestId("dock-terminal-menu-close-others"));
 
     expect(tabs()).toHaveLength(1);
@@ -298,7 +304,7 @@ describe("TerminalDock", () => {
     fireEvent.click(screen.getByLabelText("New terminal"));
     fireEvent.click(screen.getByLabelText("New terminal"));
 
-    fireEvent.contextMenu(tabs()[1]);
+    openCloseMenu(1);
     fireEvent.click(screen.getByTestId("dock-terminal-menu-close-right"));
 
     expect(tabs().map((tab) => tab.textContent)).toEqual(["Terminal 1", "Terminal 2"]);
@@ -310,7 +316,7 @@ describe("TerminalDock", () => {
     fireEvent.click(screen.getByLabelText("New terminal"));
     fireEvent.click(screen.getByLabelText("New terminal"));
 
-    fireEvent.contextMenu(tabs()[1]);
+    openCloseMenu(1);
     fireEvent.click(screen.getByTestId("dock-terminal-menu-close-left"));
 
     expect(tabs().map((tab) => tab.textContent)).toEqual(["Terminal 2", "Terminal 3"]);
@@ -320,7 +326,7 @@ describe("TerminalDock", () => {
   it("disables the close variants that have nothing to close", () => {
     render(<TerminalDock projectId="project-1" visible />);
 
-    fireEvent.contextMenu(tabs()[0]);
+    openCloseMenu(0);
     for (const testId of [
       "dock-terminal-menu-close-others",
       "dock-terminal-menu-close-right",
@@ -332,7 +338,7 @@ describe("TerminalDock", () => {
     fireEvent.keyDown(screen.getByTestId("dock-terminal-tab-menu"), { key: "Escape" });
 
     fireEvent.click(screen.getByLabelText("New terminal"));
-    fireEvent.contextMenu(tabs()[0]);
+    openCloseMenu(0);
     expect(screen.getByTestId("dock-terminal-menu-close-left")).toHaveAttribute(
       "aria-disabled",
       "true",
@@ -345,7 +351,7 @@ describe("TerminalDock", () => {
     );
     fireEvent.keyDown(screen.getByTestId("dock-terminal-tab-menu"), { key: "Escape" });
 
-    fireEvent.contextMenu(tabs()[1]);
+    openCloseMenu(1);
     expect(screen.getByTestId("dock-terminal-menu-close-right")).toHaveAttribute(
       "aria-disabled",
       "true",

@@ -943,7 +943,7 @@ function AppContent() {
                 id="v-terminal"
                 style={{ cursor: "row-resize" }}
                 className={cn(
-                  "resize-handle-row group flex h-2.5 items-center justify-center bg-background",
+                  "resize-handle-row group flex h-1.5 items-center justify-center bg-background",
                   "transition-colors hover:bg-accent/40",
                   !terminalOpen && "hidden",
                 )}
@@ -961,6 +961,11 @@ function AppContent() {
                 onCollapse={() => {
                   if (useSettingsStore.getState().terminalOpen) {
                     useSettingsStore.getState().setTerminalOpen(false);
+                  }
+                }}
+                onExpand={() => {
+                  if (!useSettingsStore.getState().terminalOpen) {
+                    useSettingsStore.getState().setTerminalOpen(true);
                   }
                 }}
                 className="min-h-0 min-w-0"

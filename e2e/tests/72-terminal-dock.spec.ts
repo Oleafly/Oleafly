@@ -225,15 +225,7 @@ test("a second terminal opens active, takes a name, and closes back to one tab",
     .poll(() => openedSessionCount(tauriPage), { timeout: 60_000 })
     .toBeGreaterThanOrEqual(2);
 
-  const renameClicked = await tauriPage.evaluate<boolean>(
-    `(() => {
-      const button = document.querySelector('[aria-label="Rename Terminal 2"]');
-      if (!button) return false;
-      button.click();
-      return true;
-    })()`,
-  );
-  expect(renameClicked).toBe(true);
+  await tauriPage.dblclick(terminalTab(2));
   await tauriPage.fill('[aria-label="Terminal title"]', "Build");
   await tauriPage.press('[aria-label="Terminal title"]', "Enter");
   await expect(tauriPage.locator('[aria-label="Terminal title"]')).toHaveCount(0);
@@ -277,7 +269,8 @@ test("the tab menu closes every other terminal", async ({ tauriPage }) => {
   expect(opened).toBe(true);
   await expect(tauriPage.locator(TAB_MENU)).toBeVisible();
 
-  await tauriPage.click(`${TAB_MENU} [data-testid="dock-terminal-menu-close-others"]`);
+  await tauriPage.click(`${TAB_MENU} [data-testid="dock-terminal-menu-close-menu"]`);
+  await tauriPage.click('[data-testid="dock-terminal-menu-close-others"]');
   await expect(tauriPage.locator(TERMINAL_TAB)).toHaveCount(1);
   await expect(tauriPage.locator(terminalTab(2))).toHaveAttribute("data-active", "true");
   await expect(tauriPage.locator(TERMINAL)).toBeVisible();

@@ -128,7 +128,6 @@ function TerminalTabItem({
   const controlBase =
     "inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-opacity hover:bg-foreground/10 hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
   const hoverOnly = "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100";
-  const renameClass = cn(controlBase, hoverOnly);
   const closeClass = cn(controlBase, active ? "opacity-100" : hoverOnly);
   const hex = terminalColorHex(tab.color);
   const swatchClass = "size-2 shrink-0 rounded-full ring-1 ring-foreground/50";
@@ -140,7 +139,7 @@ function TerminalTabItem({
           ref={rowRef}
           role="presentation"
           className={cn(
-            "group flex h-6 shrink-0 items-center gap-0.5 rounded-md pl-2 pr-0.5 text-xs transition-colors",
+            "group flex h-7 shrink-0 items-center gap-0.5 rounded-t-md pl-2 pr-0.5 text-xs transition-colors",
             active
               ? "bg-accent text-foreground"
               : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
@@ -185,16 +184,6 @@ function TerminalTabItem({
               {tab.title}
             </button>
           )}
-          <Tooltip label="Rename" side="bottom">
-            <button
-              type="button"
-              aria-label={`Rename ${tab.title}`}
-              onClick={startEditing}
-              className={renameClass}
-            >
-              <Pencil className="size-3" aria-hidden />
-            </button>
-          </Tooltip>
           <Tooltip label="Close" side="bottom">
             <button
               type="button"
@@ -246,30 +235,37 @@ function TerminalTabItem({
           </ContextMenuSubContent>
         </ContextMenuSub>
         <ContextMenuSeparator />
-        <ContextMenuItem data-testid="dock-terminal-menu-close" onClick={onClose}>
-          Close
-        </ContextMenuItem>
-        <ContextMenuItem
-          data-testid="dock-terminal-menu-close-others"
-          disabled={!canCloseOthers}
-          onClick={onCloseOthers}
-        >
-          Close others
-        </ContextMenuItem>
-        <ContextMenuItem
-          data-testid="dock-terminal-menu-close-right"
-          disabled={!canCloseRight}
-          onClick={onCloseRight}
-        >
-          Close to the right
-        </ContextMenuItem>
-        <ContextMenuItem
-          data-testid="dock-terminal-menu-close-left"
-          disabled={!canCloseLeft}
-          onClick={onCloseLeft}
-        >
-          Close to the left
-        </ContextMenuItem>
+        <ContextMenuSub>
+          <ContextMenuSubTrigger data-testid="dock-terminal-menu-close-menu">
+            <X className="mr-2 size-4" aria-hidden /> Close
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent className="w-52">
+            <ContextMenuItem data-testid="dock-terminal-menu-close" onClick={onClose}>
+              Close current
+            </ContextMenuItem>
+            <ContextMenuItem
+              data-testid="dock-terminal-menu-close-others"
+              disabled={!canCloseOthers}
+              onClick={onCloseOthers}
+            >
+              Close others
+            </ContextMenuItem>
+            <ContextMenuItem
+              data-testid="dock-terminal-menu-close-left"
+              disabled={!canCloseLeft}
+              onClick={onCloseLeft}
+            >
+              Close all to the left
+            </ContextMenuItem>
+            <ContextMenuItem
+              data-testid="dock-terminal-menu-close-right"
+              disabled={!canCloseRight}
+              onClick={onCloseRight}
+            >
+              Close all to the right
+            </ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
       </ContextMenuContent>
     </ContextMenu>
   );
@@ -322,7 +318,8 @@ export function TerminalDock({
         role="tablist"
         aria-label="Terminals"
         data-testid="dock-terminal-tabs"
-        className="flex h-8 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border bg-background px-1"
+        className="flex h-8 shrink-0 items-end gap-0.5 overflow-x-auto px-1"
+        style={{ backgroundColor: terminalBackground }}
       >
         {ready &&
           tabs.map((tab, position) => (
