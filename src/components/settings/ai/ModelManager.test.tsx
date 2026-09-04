@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { StrictMode } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -33,9 +34,12 @@ const MODELS: StoredModel[] = [
   { id: "gpt-alpha", name: "Alpha", enabled: true, source: "builtin" },
 ];
 
-function mountManager(overrides: Partial<Omit<ModelManagerProps, "onChange">> = {}) {
+function mountManager(
+  overrides: Partial<Omit<ModelManagerProps, "onChange">> = {},
+  options: { strict?: boolean } = {},
+) {
   const onChange = vi.fn();
-  const view = render(
+  const tree = (
     <QueryClientProvider client={createAppQueryClient()}>
       <ModelManager
         providerId="openai"
@@ -45,8 +49,9 @@ function mountManager(overrides: Partial<Omit<ModelManagerProps, "onChange">> = 
         {...overrides}
         onChange={onChange}
       />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
+  const view = render(options.strict ? <StrictMode>{tree}</StrictMode> : tree);
   return { onChange, unmount: view.unmount };
 }
 
@@ -109,6 +114,9 @@ describe("ModelManager refresh", () => {
     expect(stamp).toBe(Date.parse("2026-09-03T10:00:00Z"));
     expect(screen.getByTestId("ai-refresh-notice-openai")).toHaveTextContent("1 added, 1 removed");
 
+    await act(async () => {
+      await Promise.resolve();
+    });
     act(() => {
       vi.advanceTimersByTime(4_500);
     });
@@ -203,6 +211,30 @@ describe("ModelManager refresh", () => {
 
     fireEvent.click(button);
     await waitFor(() => expect(mockList).toHaveBeenCalledTimes(2));
+  });
+
+  it("finishes the daily refresh when StrictMode mounts the card twice", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-09-03T10:00:00Z"));
+    mockList.mockResolvedValue([{ id: "gpt-alpha", name: "Alpha", trust: "verified" }]);
+    const onRefreshed = vi.fn();
+    mountManager({ refreshedAt: Date.now() - 25 * HOUR, onRefreshed }, { strict: true });
+
+    await waitFor(() => expect(onRefreshed).toHaveBeenCalledOnce());
+    expect(mockList).toHaveBeenCalledTimes(1);
+
+    const button = screen.getByTestId("ai-refresh-models-openai");
+    await waitFor(() => expect(button.querySelector(".animate-spin")).toBeNull());
+
+    act(() => {
+      vi.advanceTimersByTime(30_000);
+    });
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(mockList).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(button);
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(button.querySelector(".animate-spin")).toBeNull());
   });
 
   it("shows when the list was last updated", () => {
@@ -325,6 +357,60 @@ describe("ModelManager badges", () => {
       .querySelector('[data-testid="ai-model-trust-blocked"]') as HTMLElement;
     fireEvent.mouseEnter(gammaBadge.parentElement as HTMLElement);
     expect(await screen.findByRole("tooltip")).toHaveTextContent("No tool call came back.");
+  });
+
+  it("explains a blocked badge to a keyboard user", async () => {
+    renderManager({
+      models: [
+        {
+          id: "gpt-beta",
+          name: "Beta",
+          enabled: true,
+          source: "fetched",
+          trust: "blocked",
+          blockedReason: "Its thinking output breaks the assistant loop.",
+        },
+      ],
+    });
+
+    const badge = screen
+      .getByTestId("ai-model-row-gpt-beta")
+      .querySelector('[data-testid="ai-model-trust-blocked"]') as HTMLElement;
+    fireEvent.keyDown(document, { key: "Tab" });
+    act(() => badge.focus());
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Its thinking output breaks the assistant loop.",
+    );
+  });
+
+  it("explains a blocked badge that carries no reason", async () => {
+    renderManager({
+      models: [
+        { id: "gpt-beta", name: "Beta", enabled: true, source: "fetched", trust: "blocked" },
+      ],
+    });
+
+    const badge = screen
+      .getByTestId("ai-model-row-gpt-beta")
+      .querySelector('[data-testid="ai-model-trust-blocked"]') as HTMLElement;
+    fireEvent.mouseEnter(badge.parentElement as HTMLElement);
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "The assistant cannot run on this model",
+    );
+  });
+
+  it("leaves badges that need no explanation out of the tab order", () => {
+    renderManager({
+      models: [
+        { id: "gpt-alpha", name: "Alpha", enabled: true, source: "fetched", trust: "verified" },
+        { id: "gpt-gamma", name: "Gamma", enabled: true, source: "fetched", trust: "untested" },
+      ],
+    });
+
+    expect(screen.getByTestId("ai-model-trust-verified")).not.toHaveAttribute("tabindex");
+    expect(screen.getByTestId("ai-model-trust-untested")).not.toHaveAttribute("tabindex");
   });
 });
 

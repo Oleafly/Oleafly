@@ -33,6 +33,7 @@ import {
   agentRefreshModelMetadata,
 } from "@/lib/tauri";
 import { agentErrorKind } from "@/lib/agent-backend";
+import { logError } from "@/lib/log";
 import { staleTimes } from "@/lib/query";
 
 export interface ModelManagerProps {
@@ -70,55 +71,54 @@ export function ModelManager({
     modelListThrottledUntil(providerId, Date.now()),
   );
   const [now, setNow] = useState(() => Date.now());
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState("");
   const modelsRef = useRef(models);
   modelsRef.current = models;
-  const triggerRef = useRef<"manual" | "auto">("manual");
+  const applyRef = useRef({ onChange, onRefreshed });
+  applyRef.current = { onChange, onRefreshed };
   const autoRefreshChecked = useRef(false);
 
   const missingSeeds = seedProviderModels(providerId).filter(
     (s) => !models.some((m) => m.id === s.id)
   );
 
-  const refresh = useMutation({
-    mutationFn: () => agentListModels({ providerId, key: apiKey || undefined }),
-    onSuccess: (fetched) => {
-      const current = modelsRef.current;
-      const usable = readableFetchedModels(fetched ?? []);
-      if ((fetched?.length ?? 0) > 0 && usable.length === 0) {
-        setNotice({ text: UNREADABLE_LIST, tone: "error" });
-        return;
-      }
-      const merged = mergeFetchedModels(current, fetched ?? []);
-      setNotice({ text: describeModelListChange(diffModelLists(current, merged)), tone: "info" });
-      if (onRefreshed) onRefreshed(merged, Date.now());
-      else onChange(merged);
-    },
-    onError: () => {
-      if (triggerRef.current !== "auto") return;
-      clearModelListThrottle(providerId);
-      setThrottledUntil(0);
-    },
-    meta: { silent: true },
-  });
-  const { mutate: startRefresh } = refresh;
-  const refreshing = refresh.isPending;
-  const refreshError =
-    refresh.isError && triggerRef.current === "manual"
-      ? agentErrorKind(refresh.error) === "auth"
-        ? "Invalid API key."
-        : "Could not reach the provider."
-      : "";
-
   const runRefresh = useCallback(
-    (trigger: "manual" | "auto") => {
+    async (trigger: "manual" | "auto") => {
       const now = Date.now();
       if (modelListThrottledUntil(providerId, now) > 0) return;
-      triggerRef.current = trigger;
       setThrottledUntil(throttleModelListRefresh(providerId, now));
       setNotice(null);
-      startRefresh();
+      setRefreshError("");
+      setRefreshing(true);
+      try {
+        const fetched = await agentListModels({ providerId, key: apiKey || undefined });
+        const current = modelsRef.current;
+        const usable = readableFetchedModels(fetched ?? []);
+        if ((fetched?.length ?? 0) > 0 && usable.length === 0) {
+          setNotice({ text: UNREADABLE_LIST, tone: "error" });
+          return;
+        }
+        const merged = mergeFetchedModels(current, fetched ?? []);
+        setNotice({ text: describeModelListChange(diffModelLists(current, merged)), tone: "info" });
+        const apply = applyRef.current;
+        if (apply.onRefreshed) apply.onRefreshed(merged, Date.now());
+        else apply.onChange(merged);
+      } catch (e) {
+        void logError("refresh provider models", e);
+        if (trigger === "auto") {
+          clearModelListThrottle(providerId);
+          setThrottledUntil(0);
+          return;
+        }
+        setRefreshError(
+          agentErrorKind(e) === "auth" ? "Invalid API key." : "Could not reach the provider.",
+        );
+      } finally {
+        setRefreshing(false);
+      }
     },
-    [providerId, startRefresh],
+    [apiKey, providerId],
   );
 
   useEffect(() => {
@@ -128,7 +128,7 @@ export function ModelManager({
     const now = Date.now();
     if (!shouldAutoRefreshModels(refreshedAt, now)) return;
     if (!claimModelListAutoRefresh(providerId, now)) return;
-    runRefresh("auto");
+    void runRefresh("auto");
   }, [discoverable, providerId, refreshedAt, runRefresh]);
 
   useEffect(() => {
@@ -209,7 +209,7 @@ export function ModelManager({
               className="h-6 px-1.5 text-[11px]"
               data-testid={`ai-refresh-models-${providerId}`}
               disabled={refreshing || throttled}
-              onClick={() => runRefresh("manual")}
+              onClick={() => void runRefresh("manual")}
             >
               {refreshing ? (
                 <Loader2 className="size-3 animate-spin" />
@@ -252,7 +252,7 @@ export function ModelManager({
                 <span className="min-w-0 truncate text-xs">{m.name}</span>
                 {(resolved.trust || m.metadata) && (
                   <span className="flex min-w-0 flex-wrap items-center gap-1">
-                    <ModelTrustBadge trust={resolved.trust} reason={resolved.reason} />
+                    <ModelTrustBadge trust={resolved.trust} reason={resolved.reason} focusable />
                     <ModelCapabilityChips metadata={m.metadata} />
                   </span>
                 )}

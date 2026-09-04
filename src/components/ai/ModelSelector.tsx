@@ -46,18 +46,24 @@ export function ModelTrustBadge({
   trust,
   reason,
   className,
+  focusable = false,
 }: {
   trust: ModelTrust | undefined;
   reason?: string;
   className?: string;
+  focusable?: boolean;
 }) {
   if (!trust) return null;
+  const reachable = focusable && trust === "blocked";
   const badge = (
     <span
       data-testid={`ai-model-trust-${trust}`}
       data-trust={trust}
+      tabIndex={reachable ? 0 : undefined}
       className={cn(
         "inline-flex shrink-0 items-center rounded-full border px-1.5 py-px text-[10px] font-medium leading-none",
+        reachable &&
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         TRUST_CLASS[trust],
         className,
       )}
