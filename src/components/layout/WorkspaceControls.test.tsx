@@ -101,6 +101,20 @@ describe("WorkspaceControls", () => {
     expect(useSettingsStore.getState().settingsOpen).toBe(true);
   });
 
+  it("opens the toolbar theme menu from a click that sends no pointer events", () => {
+    render(
+      <ThemeProvider>
+        <WorkspaceDockControls />
+      </ThemeProvider>,
+    );
+    const trigger = screen.getByTestId("theme-menu");
+
+    fireEvent.click(trigger);
+
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getAllByRole("menuitemradio")).toHaveLength(3);
+  });
+
   it("offers system, light, and dark from the toolbar theme menu", () => {
     render(
       <ThemeProvider>

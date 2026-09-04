@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +49,7 @@ export function ThemeMenu({
 }) {
   const { preference, theme, setPreference } = useTheme();
   const [open, setOpen] = useState(false);
+  const pointerToggled = useRef(false);
   const label = themeMenuLabel(preference);
   const TriggerIcon = theme === "dark" ? Moon : Sun;
 
@@ -63,6 +64,16 @@ export function ThemeMenu({
             data-testid={testId}
             aria-label={label}
             className={triggerClassName}
+            onPointerDown={() => {
+              pointerToggled.current = true;
+            }}
+            onClick={() => {
+              if (pointerToggled.current) {
+                pointerToggled.current = false;
+                return;
+              }
+              setOpen((value) => !value);
+            }}
           >
             <TriggerIcon className="size-4" aria-hidden />
           </Button>

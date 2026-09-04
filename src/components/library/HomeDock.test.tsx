@@ -83,6 +83,16 @@ describe("HomeDock", () => {
     expect(settings.className).toContain("rounded-full");
   });
 
+  it("opens the dock theme menu from a click that sends no pointer events", () => {
+    render(<HomeDock />);
+    const trigger = screen.getByTestId("home-theme-menu");
+
+    fireEvent.click(trigger);
+
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getAllByRole("menuitemradio")).toHaveLength(3);
+  });
+
   it("offers system, light, and dark from the dock menu and applies the choice", () => {
     render(<HomeDock />);
     openThemeMenu(screen.getByTestId("home-theme-menu"));
