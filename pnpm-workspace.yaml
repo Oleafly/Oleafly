@@ -20,6 +20,9 @@ overrides:
   mermaid@<11.16.1: "11.16.1"
   # GHSA-55q2-fjhq-7xh7: detached DOM subtree XSS in DOMPurify <= 3.4.12.
   dompurify@<3.4.13: "3.4.13"
+  # GHSA-73wf-gq98-2v4g and GHSA-c83g-rgw3-j3cx: prototype write via untrusted
+  # browserslist-stats.json and unbounded cache growth in browserslist <= 4.28.6.
+  browserslist@<4.28.7: "4.28.7"
   # Held at 6.7.0: 6.7.1 correlated with large-editor scroll-probe failures
   # in the e2e chaos test (CI twice, locally not fully reproducible). The
   # override also guarantees a single copy — duplicate @codemirror/state
