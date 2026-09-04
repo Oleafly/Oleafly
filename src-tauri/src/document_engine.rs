@@ -127,167 +127,15 @@ pub struct EngineCompileSpec {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EngineEnvironment {
-    clear_ambient: bool,
     variables: Vec<(String, String)>,
 }
-
-fn controlled_path_value(path: &Path) -> String {
-    let value = path.to_string_lossy().into_owned();
-    #[cfg(windows)]
-    {
-        if let Some(rest) = value.strip_prefix(r"\\?\UNC\") {
-            return format!(r"\\{rest}");
-        }
-        if let Some(rest) = value.strip_prefix(r"\\?\") {
-            return rest.to_owned();
-        }
-    }
-    value
-}
-
-#[cfg(windows)]
-fn push_platform_variables(variables: &mut Vec<(String, String)>, bin: &Path) {
-    const PASSTHROUGH: [&str; 10] = [
-        "SystemRoot",
-        "SystemDrive",
-        "windir",
-        "ComSpec",
-        "PATHEXT",
-        "ProgramData",
-        "ALLUSERSPROFILE",
-        "NUMBER_OF_PROCESSORS",
-        "PROCESSOR_ARCHITECTURE",
-        "OS",
-    ];
-    for name in PASSTHROUGH {
-        if let Some(value) = std::env::var_os(name) {
-            variables.push((name.into(), value.to_string_lossy().into_owned()));
-        }
-    }
-    let Some(system_root) = std::env::var_os("SystemRoot") else {
-        return;
-    };
-    let system_root = PathBuf::from(system_root);
-    let entries = [
-        PathBuf::from(controlled_path_value(bin)),
-        system_root.join("System32"),
-        system_root,
-    ];
-    if let Ok(joined) = std::env::join_paths(entries) {
-        if let Some(entry) = variables.iter_mut().find(|(name, _)| name == "PATH") {
-            entry.1 = joined.to_string_lossy().into_owned();
-        }
-    }
-}
-
-#[cfg(not(windows))]
-fn push_platform_variables(_variables: &mut [(String, String)], _bin: &Path) {}
 
 impl EngineEnvironment {
     fn inherited(source_date_epoch: Option<u64>) -> Self {
         let variables = source_date_epoch
             .map(|value| vec![("SOURCE_DATE_EPOCH".into(), value.to_string())])
             .unwrap_or_default();
-        Self {
-            clear_ambient: false,
-            variables,
-        }
-    }
-
-    fn checkpoint(
-        out_dir: &Path,
-        source_date_epoch: Option<u64>,
-        persistent_cache: bool,
-    ) -> Result<Self, String> {
-        let epoch = source_date_epoch.ok_or_else(|| {
-            "checkpoint compiler probes require a fixed source date epoch".to_string()
-        })?;
-        let probe_root = out_dir.parent().unwrap_or(out_dir);
-        let home = probe_root.join("checkpoint-home");
-        let config = home.join("config");
-        let data = home.join("data");
-        let cache = home.join("cache");
-        let temp = home.join("tmp");
-        let bin = home.join("bin");
-        let roaming = home.join("AppData").join("Roaming");
-        let local = home.join("AppData").join("Local");
-        let tectonic_cache = if persistent_cache {
-            crate::paths::tectonic_cache_root()?
-        } else {
-            cache.join("tectonic")
-        };
-        let display = controlled_path_value;
-        let mut variables = vec![
-            ("SOURCE_DATE_EPOCH".into(), epoch.to_string()),
-            ("HOME".into(), display(&home)),
-            ("USERPROFILE".into(), display(&home)),
-            ("XDG_CONFIG_HOME".into(), display(&config)),
-            ("XDG_DATA_HOME".into(), display(&data)),
-            ("XDG_CACHE_HOME".into(), display(&cache)),
-            ("APPDATA".into(), display(&roaming)),
-            ("LOCALAPPDATA".into(), display(&local)),
-            ("TMPDIR".into(), display(&temp)),
-            ("TMP".into(), display(&temp)),
-            ("TEMP".into(), display(&temp)),
-            ("PATH".into(), display(&bin)),
-            ("TECTONIC_CACHE_DIR".into(), display(&tectonic_cache)),
-            (
-                "TYPST_PACKAGE_PATH".into(),
-                display(&data.join("typst-packages")),
-            ),
-            (
-                "TYPST_PACKAGE_CACHE_PATH".into(),
-                display(&cache.join("typst-packages")),
-            ),
-        ];
-        push_platform_variables(&mut variables, &bin);
-        Ok(Self {
-            clear_ambient: true,
-            variables,
-        })
-    }
-
-    fn prepare(&self) -> Result<(), String> {
-        if !self.clear_ambient {
-            return Ok(());
-        }
-        for key in [
-            "HOME",
-            "APPDATA",
-            "LOCALAPPDATA",
-            "XDG_CONFIG_HOME",
-            "XDG_DATA_HOME",
-            "XDG_CACHE_HOME",
-            "TMPDIR",
-            "PATH",
-            "TECTONIC_CACHE_DIR",
-            "TYPST_PACKAGE_PATH",
-            "TYPST_PACKAGE_CACHE_PATH",
-        ] {
-            if let Some((_, value)) = self.variables.iter().find(|(name, _)| name == key) {
-                let directory = if key == "PATH" {
-                    std::env::split_paths(value).next()
-                } else {
-                    Some(PathBuf::from(value))
-                };
-                let Some(directory) = directory else {
-                    continue;
-                };
-                std::fs::create_dir_all(&directory).map_err(|error| {
-                    format!(
-                        "failed to prepare checkpoint compiler environment {}: {error}",
-                        directory.display()
-                    )
-                })?;
-            }
-        }
-        Ok(())
-    }
-
-    pub(crate) fn variable(&self, name: &str) -> Option<&str> {
-        self.variables
-            .iter()
-            .find_map(|(candidate, value)| (candidate == name).then_some(value.as_str()))
+        Self { variables }
     }
 }
 
@@ -451,7 +299,7 @@ impl DocumentEngine for LatexEngine {
             input,
             artifacts,
             working_dir: project_dir.to_owned(),
-            environment: compile_environment(out_dir, options)?,
+            environment: EngineEnvironment::inherited(options.source_date_epoch),
         })
     }
 
@@ -924,11 +772,11 @@ impl DocumentEngine for TypstEngine {
             .ok_or_else(|| "Typst PDF artifact was not declared".to_string())?;
         Ok(EngineCompileSpec {
             executable: EngineExecutable::BundledSidecar("typst"),
-            args: typst_args(&input, output, project_dir, out_dir, options),
+            args: typst_args(&input, output, project_dir),
             input: EngineInput::Direct(input),
             artifacts,
             working_dir: project_dir.to_owned(),
-            environment: compile_environment(out_dir, options)?,
+            environment: EngineEnvironment::inherited(options.source_date_epoch),
         })
     }
 
@@ -1112,42 +960,12 @@ fn markdown_compile_spec(
         "--sandbox".into(),
         "--citeproc".into(),
     ];
-    let bibliographies = if options.checkpoint_mode.enabled() {
-        if project_dir.join("references.bib").is_file() {
-            vec!["references.bib".to_string()]
-        } else {
-            Vec::new()
-        }
-    } else {
-        discover_bibliographies(project_dir)?
-    };
+    let bibliographies = discover_bibliographies(project_dir)?;
     args.extend(
         bibliographies
             .into_iter()
             .map(|path| format!("--bibliography={path}")),
     );
-    if options.checkpoint_mode.enabled() {
-        let data_dir = out_dir.join("checkpoint-pandoc-data");
-        args.extend([
-            "--verbose".into(),
-            format!("--data-dir={}", data_dir.to_string_lossy()),
-            format!(
-                "--log={}",
-                out_dir.join("checkpoint-pandoc-log.json").to_string_lossy()
-            ),
-            "--pdf-engine-opt=--makefile-rules".into(),
-            format!(
-                "--pdf-engine-opt={}",
-                out_dir
-                    .join("checkpoint-tectonic-deps.mk")
-                    .to_string_lossy()
-            ),
-            "--pdf-engine-opt=--untrusted".into(),
-        ]);
-        if options.checkpoint_mode == CheckpointCompileMode::Replay {
-            args.push("--pdf-engine-opt=--only-cached".into());
-        }
-    }
     args.extend(["--".into(), input.to_string_lossy().into_owned()]);
     Ok(EngineCompileSpec {
         executable: EngineExecutable::ExternalPath(pandoc),
@@ -1155,7 +973,7 @@ fn markdown_compile_spec(
         input: EngineInput::Direct(input),
         artifacts,
         working_dir: project_dir.to_owned(),
-        environment: compile_environment(out_dir, options)?,
+        environment: EngineEnvironment::inherited(options.source_date_epoch),
     })
 }
 
@@ -1319,23 +1137,7 @@ pub struct CompileOptions {
     /// source. Ignored by every other engine.
     pub latex_flavor: Option<LatexmkFlavor>,
     pub allow_shell_escape: bool,
-    pub checkpoint_mode: CheckpointCompileMode,
-    pub checkpoint_persistent_cache: bool,
     pub source_date_epoch: Option<u64>,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum CheckpointCompileMode {
-    #[default]
-    Disabled,
-    Discovery,
-    Replay,
-}
-
-impl CheckpointCompileMode {
-    fn enabled(self) -> bool {
-        !matches!(self, Self::Disabled)
-    }
 }
 
 pub struct CompileRequest<'a> {
@@ -1586,12 +1388,6 @@ async fn recover_bibliography(
         .unwrap_or_else(|| stdout_buf.clone());
     if !bibliography_recovery_needed(&compile_log, out_dir, stem) {
         return Ok((String::new(), None));
-    }
-    if request.options.checkpoint_mode.enabled() {
-        return Ok((
-            "\n[Oleafly] Checkpoint evidence stopped before an untracked Biber pass.\n".into(),
-            None,
-        ));
     }
     let Some(biber) = crate::biber_toolchain::find_tectonic_biber() else {
         return Ok((
@@ -1988,11 +1784,6 @@ async fn prepare_compile_artifacts(
     request: &CompileRequest<'_>,
     spec: &EngineCompileSpec,
 ) -> Result<Vec<RetainedArtifact>, String> {
-    spec.environment.prepare()?;
-    if spec.environment.clear_ambient {
-        std::fs::create_dir_all(spec.artifacts.output_dir.join("checkpoint-pandoc-data"))
-            .map_err(|error| format!("failed to prepare checkpoint compiler data: {error}"))?;
-    }
     let cleanup_artifacts = spec.artifacts.clone();
     let biber_control = (request.engine.id() == DocumentEngineId::Latex
         && matches!(request.target, CompileTarget::Main { .. }))
@@ -2039,7 +1830,6 @@ async fn execute_compile_spec(
             // against Tectonic's default upstream bundle. Gated on the log so
             // ordinary TeX errors never trigger a second run.
             if name == &"tectonic"
-                && !request.options.checkpoint_mode.enabled()
                 && exit_code != Some(0)
                 && spec.args.iter().any(|arg| arg == "--bundle")
                 && is_bundle_fetch_failure(&output)
@@ -2077,7 +1867,6 @@ async fn execute_compile_spec(
             )
             .await?;
             if request.engine.id() == DocumentEngineId::Markdown
-                && !request.options.checkpoint_mode.enabled()
                 && exit_code != Some(0)
                 && spec
                     .args
@@ -2540,9 +2329,6 @@ async fn run_supervised_process_with_environment(
     let is_luatex = is_luatex_invocation(path, args);
     let mut command = tokio::process::Command::new(path);
     command.no_console();
-    if environment.clear_ambient {
-        command.env_clear();
-    }
     command
         .args(args)
         .current_dir(working_dir)
@@ -2567,11 +2353,7 @@ async fn run_supervised_process_with_environment(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
-    if environment.clear_ambient {
-        crate::proc::isolate_process_tree_low_priority(&mut command);
-    } else {
-        isolate_process_tree(&mut command);
-    }
+    isolate_process_tree(&mut command);
 
     let mut child = command
         .spawn()
@@ -2838,7 +2620,7 @@ fn tectonic_args(
     // satisfies --only-cached, and the upstream fallback below covers a cache
     // whose URL mapping predates the mirror.
     args.extend(["--bundle".into(), tex_bundle_url()]);
-    if options.offline || options.checkpoint_mode == CheckpointCompileMode::Replay {
+    if options.offline {
         args.push("--only-cached".into());
     }
     args.extend([
@@ -2860,27 +2642,12 @@ fn tectonic_args(
     if !options.halt_on_error {
         args.extend(["-Z".into(), "continue-on-errors".into()]);
     }
-    if options.checkpoint_mode.enabled() {
-        args.extend([
-            "--makefile-rules".into(),
-            Path::new(out_dir)
-                .join("checkpoint-tectonic-deps.mk")
-                .to_string_lossy()
-                .into_owned(),
-        ]);
-    }
     args.extend(["-Z".into(), search_path.into(), entry.into()]);
     args
 }
 
-fn typst_args(
-    input: &Path,
-    output: &Path,
-    project_dir: &Path,
-    out_dir: &Path,
-    options: CompileOptions,
-) -> Vec<String> {
-    let mut args = vec![
+fn typst_args(input: &Path, output: &Path, project_dir: &Path) -> Vec<String> {
+    vec![
         "--color".into(),
         "never".into(),
         "compile".into(),
@@ -2890,35 +2657,7 @@ fn typst_args(
         project_dir.to_string_lossy().into_owned(),
         "--diagnostic-format".into(),
         "short".into(),
-    ];
-    if options.checkpoint_mode.enabled() {
-        args.extend([
-            "--deps".into(),
-            out_dir
-                .join("checkpoint-typst-deps.zero")
-                .to_string_lossy()
-                .into_owned(),
-            "--deps-format".into(),
-            "zero".into(),
-            "--ignore-system-fonts".into(),
-        ]);
-    }
-    args
-}
-
-fn compile_environment(
-    out_dir: &Path,
-    options: CompileOptions,
-) -> Result<EngineEnvironment, String> {
-    if options.checkpoint_mode.enabled() {
-        EngineEnvironment::checkpoint(
-            out_dir,
-            options.source_date_epoch,
-            options.checkpoint_persistent_cache,
-        )
-    } else {
-        Ok(EngineEnvironment::inherited(options.source_date_epoch))
-    }
+    ]
 }
 
 fn parse_typst_short_diagnostics(log: &str) -> Vec<CompileError> {
@@ -3666,35 +3405,6 @@ mod tests {
         assert_eq!(&spec.args[..2], ["-X", "compile"]);
     }
 
-    #[test]
-    fn tectonic_checkpoint_probe_emits_a_machine_dependency_report() {
-        let spec = engine_for("tectonic", "main.tex")
-            .unwrap()
-            .compile_spec(
-                Path::new("/evidence"),
-                Path::new("/project"),
-                CompileTarget::Main {
-                    main_document: "main.tex",
-                },
-                CompileOptions {
-                    checkpoint_mode: CheckpointCompileMode::Replay,
-                    source_date_epoch: Some(1_788_288_000),
-                    ..Default::default()
-                },
-            )
-            .unwrap();
-
-        assert_eq!(
-            arg_pair(&spec.args, "--makefile-rules").as_deref(),
-            Some(joined("/evidence", "checkpoint-tectonic-deps.mk").as_str())
-        );
-        assert!(spec.environment.clear_ambient);
-        assert!(spec
-            .environment
-            .variables
-            .contains(&("SOURCE_DATE_EPOCH".into(), "1788288000".into())));
-    }
-
     fn latex_args(options: CompileOptions) -> Vec<String> {
         engine_for("latex", "main.tex")
             .unwrap()
@@ -4056,189 +3766,6 @@ mod tests {
     }
 
     #[test]
-    fn typst_checkpoint_probe_is_hermetic_and_reports_all_non_font_files() {
-        let engine = engine_for("typst", "chapters/main.typ").unwrap();
-        let spec = engine
-            .compile_spec(
-                Path::new("/evidence"),
-                Path::new("/project"),
-                CompileTarget::Main {
-                    main_document: "chapters/main.typ",
-                },
-                CompileOptions {
-                    checkpoint_mode: CheckpointCompileMode::Discovery,
-                    source_date_epoch: Some(1_788_288_000),
-                    ..Default::default()
-                },
-            )
-            .unwrap();
-
-        assert_eq!(
-            arg_pair(&spec.args, "--deps").as_deref(),
-            Some(joined("/evidence", "checkpoint-typst-deps.zero").as_str())
-        );
-        assert_eq!(
-            arg_pair(&spec.args, "--deps-format").as_deref(),
-            Some("zero")
-        );
-        assert!(spec.args.iter().any(|arg| arg == "--ignore-system-fonts"));
-        assert!(spec.environment.clear_ambient);
-        assert!(
-            std::env::split_paths(spec.environment.variable("PATH").unwrap())
-                .next()
-                .is_some_and(|entry| entry.ends_with(Path::new("checkpoint-home").join("bin")))
-        );
-    }
-
-    #[tokio::test]
-    async fn bundled_typst_checkpoint_probe_replays_with_identical_pdf_and_dependencies() {
-        let temp = tempfile::tempdir().unwrap();
-        let project = temp.path().join("project");
-        let primary_out = temp.path().join("primary");
-        let discovery_out = temp.path().join("discovery");
-        let replay_out = temp.path().join("replay");
-        std::fs::create_dir(&project).unwrap();
-        std::fs::create_dir(&primary_out).unwrap();
-        std::fs::create_dir(&discovery_out).unwrap();
-        std::fs::create_dir(&replay_out).unwrap();
-        std::fs::write(
-            project.join("project.json"),
-            br#"{"main_doc":"main.typ","engine":"typst"}"#,
-        )
-        .unwrap();
-        std::fs::write(project.join("main.typ"), b"#include \"chapter.typ\"\n").unwrap();
-        std::fs::write(project.join("chapter.typ"), b"= Replayed\n").unwrap();
-        let engine = engine_for("typst", "main.typ").unwrap();
-        let options = CompileOptions {
-            checkpoint_mode: CheckpointCompileMode::Discovery,
-            source_date_epoch: Some(1_788_288_000),
-            ..Default::default()
-        };
-        let spec = |root: &Path, out_dir: &Path, mode: CheckpointCompileMode| {
-            let mut options = options;
-            options.checkpoint_mode = mode;
-            engine
-                .compile_spec(
-                    out_dir,
-                    root,
-                    CompileTarget::Main {
-                        main_document: "main.typ",
-                    },
-                    options,
-                )
-                .unwrap()
-        };
-        let primary = spec(&project, &primary_out, CheckpointCompileMode::Disabled);
-        let discovery = spec(&project, &discovery_out, CheckpointCompileMode::Discovery);
-        let typst = resolve_bundled_sidecar("typst").unwrap();
-
-        for spec in [&primary, &discovery] {
-            spec.environment.prepare().unwrap();
-            let (log, code) = run_supervised_process_with_environment(
-                &typst,
-                &spec.args,
-                &spec.working_dir,
-                None,
-                COMPILE_TIMEOUT,
-                None,
-                &spec.environment,
-            )
-            .await
-            .unwrap();
-            assert_eq!(code, Some(0), "{log}");
-        }
-
-        let discovery_deps =
-            std::fs::read(discovery_out.join("checkpoint-typst-deps.zero")).unwrap();
-        let canonical_project = project.canonicalize().unwrap();
-        let mut relative_dependencies = Vec::new();
-        let mut inputs = vec![oleafly_history::CaptureInput::explicit("project.json").unwrap()];
-        for dependency in discovery_deps
-            .split(|byte| *byte == 0)
-            .filter(|path| !path.is_empty())
-        {
-            let dependency = PathBuf::from(String::from_utf8(dependency.to_vec()).unwrap());
-            let resolved = if dependency.is_absolute() {
-                dependency
-            } else {
-                project.join(dependency)
-            }
-            .canonicalize()
-            .unwrap();
-            let relative = resolved
-                .strip_prefix(&canonical_project)
-                .unwrap()
-                .to_string_lossy()
-                .replace(std::path::MAIN_SEPARATOR, "/");
-            relative_dependencies.push(relative.clone());
-            inputs.push(
-                oleafly_history::CaptureInput::replay_required(
-                    &relative,
-                    &resolved,
-                    oleafly_history::ContentHash::digest_file(&resolved).unwrap(),
-                )
-                .unwrap(),
-            );
-        }
-        relative_dependencies.sort();
-        let store = oleafly_history::Store::open(temp.path().join("history")).unwrap();
-        let candidate = store.stage_candidate(&project, &inputs).unwrap();
-        std::fs::write(project.join("chapter.typ"), b"= Mutated after sealing\n").unwrap();
-        let replay = spec(
-            candidate.sealed_root(),
-            &replay_out,
-            CheckpointCompileMode::Replay,
-        );
-        replay.environment.prepare().unwrap();
-        let (log, code) = run_supervised_process_with_environment(
-            &typst,
-            &replay.args,
-            &replay.working_dir,
-            None,
-            COMPILE_TIMEOUT,
-            None,
-            &replay.environment,
-        )
-        .await
-        .unwrap();
-        assert_eq!(code, Some(0), "{log}");
-
-        let primary_pdf = std::fs::read(primary_out.join("_oleafly_entry.pdf")).unwrap();
-        let discovery_pdf = std::fs::read(discovery_out.join("_oleafly_entry.pdf")).unwrap();
-        let replay_pdf = std::fs::read(replay_out.join("_oleafly_entry.pdf")).unwrap();
-        assert_eq!(primary_pdf, discovery_pdf);
-        assert_eq!(discovery_pdf, replay_pdf);
-
-        let canonical_sealed = candidate.sealed_root().canonicalize().unwrap();
-        let mut replay_dependencies = std::fs::read(replay_out.join("checkpoint-typst-deps.zero"))
-            .unwrap()
-            .split(|byte| *byte == 0)
-            .filter(|path| !path.is_empty())
-            .map(|path| {
-                let dependency = PathBuf::from(String::from_utf8(path.to_vec()).unwrap());
-                let dependency = if dependency.is_absolute() {
-                    dependency
-                } else {
-                    candidate.sealed_root().join(dependency)
-                };
-                dependency
-                    .canonicalize()
-                    .unwrap()
-                    .strip_prefix(&canonical_sealed)
-                    .unwrap()
-                    .to_string_lossy()
-                    .replace(std::path::MAIN_SEPARATOR, "/")
-            })
-            .collect::<Vec<_>>();
-        replay_dependencies.sort();
-        assert_eq!(relative_dependencies, replay_dependencies);
-        assert_eq!(
-            relative_dependencies,
-            ["chapter.typ".to_string(), "main.typ".to_string()]
-        );
-    }
-
-    #[test]
     fn typst_short_diagnostics_are_normalized_including_windows_paths() {
         let engine = engine_for("typst", "main.typ").unwrap();
         let errors = engine.parse_errors(
@@ -4332,7 +3859,7 @@ mod tests {
     }
 
     #[test]
-    fn ordinary_markdown_preserves_legacy_bibliographies_while_checkpoint_probe_is_explicit() {
+    fn markdown_bibliographies_cover_every_project_bib_file_exactly_once() {
         let dir = std::env::temp_dir().join(format!("oleafly-md-cites-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -4374,69 +3901,7 @@ mod tests {
                 "--bibliography=sources/refs.bib"
             ]
         );
-
-        let checkpoint = markdown_compile_spec(
-            &engine,
-            &dir.join("checkpoint"),
-            &dir,
-            "main.md",
-            PathBuf::from("/pandoc"),
-            PathBuf::from("/tectonic"),
-            CompileOptions {
-                checkpoint_mode: CheckpointCompileMode::Discovery,
-                source_date_epoch: Some(1_788_288_000),
-                ..Default::default()
-            },
-        )
-        .unwrap();
-        let checkpoint_bibliographies = checkpoint
-            .args
-            .iter()
-            .filter(|arg| arg.starts_with("--bibliography="))
-            .collect::<Vec<_>>();
-        assert_eq!(checkpoint_bibliographies, ["--bibliography=references.bib"]);
         let _ = std::fs::remove_dir_all(dir);
-    }
-
-    #[test]
-    fn markdown_checkpoint_probe_controls_pandoc_and_downstream_tectonic() {
-        let spec = markdown_compile_spec(
-            &MARKDOWN_ENGINE,
-            Path::new("/evidence"),
-            Path::new("/project"),
-            "main.md",
-            PathBuf::from("/cache/pandoc"),
-            PathBuf::from("/app/tectonic"),
-            CompileOptions {
-                checkpoint_mode: CheckpointCompileMode::Replay,
-                source_date_epoch: Some(1_788_288_000),
-                ..Default::default()
-            },
-        )
-        .unwrap();
-
-        for expected in [
-            "--sandbox",
-            "--citeproc",
-            "--verbose",
-            "--pdf-engine-opt=--makefile-rules",
-            "--pdf-engine-opt=--untrusted",
-        ] {
-            assert!(spec.args.iter().any(|arg| arg == expected), "{expected}");
-        }
-        assert!(spec.args.iter().any(|arg| {
-            arg == &format!(
-                "--log={}",
-                joined("/evidence", "checkpoint-pandoc-log.json")
-            )
-        }));
-        assert!(spec.args.iter().any(|arg| {
-            arg == &format!(
-                "--pdf-engine-opt={}",
-                joined("/evidence", "checkpoint-tectonic-deps.mk")
-            )
-        }));
-        assert!(spec.environment.clear_ambient);
     }
 
     #[test]

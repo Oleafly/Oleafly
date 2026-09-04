@@ -891,7 +891,7 @@ fn staging_rejects_a_resolved_identity_mismatch() {
 }
 
 #[test]
-fn publication_requires_exact_replay_evidence_and_a_proven_main_document() {
+fn a_plain_snapshot_publishes_without_replay_evidence() {
     let temp = tempdir().unwrap();
     let project = temp.path().join("project");
     fs::create_dir_all(&project).unwrap();
@@ -899,7 +899,7 @@ fn publication_requires_exact_replay_evidence_and_a_proven_main_document() {
     fs::write(project.join("main.tex"), b"source").unwrap();
     let store = Store::open(temp.path().join("history")).unwrap();
 
-    let explicit_candidate = store
+    let candidate = store
         .stage_candidate(
             &project,
             &[
@@ -908,7 +908,7 @@ fn publication_requires_exact_replay_evidence_and_a_proven_main_document() {
             ],
         )
         .unwrap();
-    let missing_main_evidence = CompileEvidence::new(
+    let evidence = CompileEvidence::new(
         "tectonic",
         "tectonic-test@1",
         "main.tex",
@@ -917,10 +917,20 @@ fn publication_requires_exact_replay_evidence_and_a_proven_main_document() {
         Vec::new(),
     )
     .unwrap();
-    let error = store
-        .publish(explicit_candidate, missing_main_evidence)
-        .unwrap_err();
-    assert!(error.to_string().contains("lacks sealed replay evidence"));
+
+    let outcome = store.publish(candidate, evidence).unwrap();
+    assert!(matches!(outcome, PublishOutcome::Created(_)));
+    assert_eq!(store.list().unwrap().len(), 1);
+}
+
+#[test]
+fn replay_evidence_that_is_present_must_match_the_sealed_candidate_exactly() {
+    let temp = tempdir().unwrap();
+    let project = temp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("project.json"), b"{}").unwrap();
+    fs::write(project.join("main.tex"), b"source").unwrap();
+    let store = Store::open(temp.path().join("history")).unwrap();
 
     let inputs = capture_inputs(&project, &["project.json", "main.tex"]);
     let candidate = store.stage_candidate(&project, &inputs).unwrap();

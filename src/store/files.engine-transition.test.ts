@@ -120,7 +120,7 @@ beforeEach(async () => {
       engine: "latex",
       kind: "",
       allow_shell_escape: false,
-      checkpoints: { mode: "engine_dependencies", always_include: [], ignored: [] },
+      checkpoints: { mode: "engine_dependencies" },
     },
     engine: LATEX_ENGINE,
   }));
@@ -193,7 +193,7 @@ describe("transactional project transitions", () => {
         engine: "latexmk",
         kind: "document",
         allow_shell_escape: false,
-        checkpoints: { mode: "engine_dependencies", always_include: [], ignored: [] },
+        checkpoints: { mode: "engine_dependencies" },
       },
       engine,
     });
@@ -217,7 +217,7 @@ describe("transactional project transitions", () => {
         engine: "latex",
         kind: "",
         allow_shell_escape: false,
-        checkpoints: { mode: "engine_dependencies", always_include: [], ignored: [] },
+        checkpoints: { mode: "engine_dependencies" },
       },
       engine: LATEX_ENGINE,
     });
@@ -260,7 +260,7 @@ describe("transactional project transitions", () => {
         engine: "latex",
         kind: "",
         allow_shell_escape: false,
-        checkpoints: { mode: "engine_dependencies", always_include: [], ignored: [] },
+        checkpoints: { mode: "engine_dependencies" },
       },
       engine: LATEX_ENGINE,
     });
@@ -302,7 +302,7 @@ describe("transactional project transitions", () => {
         engine: "latex",
         kind: "",
         allow_shell_escape: false,
-        checkpoints: { mode: "engine_dependencies", always_include: [], ignored: [] },
+        checkpoints: { mode: "engine_dependencies" },
       },
       engine: LATEX_ENGINE,
     });
@@ -351,7 +351,7 @@ describe("transactional project transitions", () => {
         engine: "latex",
         kind: "",
         allow_shell_escape: false,
-        checkpoints: { mode: "engine_dependencies", always_include: [], ignored: [] },
+        checkpoints: { mode: "engine_dependencies" },
       },
       engine: LATEX_ENGINE,
     });
@@ -537,8 +537,6 @@ describe("transactional project transitions", () => {
         allow_shell_escape: boolean;
         checkpoints: {
           mode: string;
-          always_include: string[];
-          ignored: string[];
         };
       };
       engine: typeof LATEX_ENGINE;
@@ -575,8 +573,6 @@ describe("transactional project transitions", () => {
         allow_shell_escape: false,
         checkpoints: {
           mode: "engine_dependencies",
-          always_include: [],
-          ignored: [],
         },
       },
       engine: LATEX_ENGINE,

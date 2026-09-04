@@ -138,7 +138,7 @@ test("a successful compile stores one checkpoint and unchanged sources add nothi
   expect(filePaths.some((path) => /\.(log|pdf|aux)$/.test(path))).toBe(false);
 
   await tauriPage.click('[aria-label="Restore V1"]');
-  await tauriPage.getByText("Overwrite all", { exact: true }).click();
+  await tauriPage.getByText("Restore files", { exact: true }).click();
   await tauriPage.waitForFunction(
     `(() => {
       const text = document.querySelector('.cm-content')?.textContent || '';

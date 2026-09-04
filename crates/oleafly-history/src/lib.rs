@@ -3676,22 +3676,6 @@ fn validate_archived_evidence(manifest: &Manifest, evidence: &CompileEvidence) -
             evidence.main_document
         )));
     }
-    let main_replay = evidence
-        .replayed_inputs
-        .iter()
-        .find(|input| input.relative_path == evidence.main_document)
-        .ok_or_else(|| {
-            HistoryError::InvalidInput(format!(
-                "compiled main document {} lacks sealed replay evidence",
-                evidence.main_document
-            ))
-        })?;
-    if main_replay.content_hash != ContentHash::from_hex(&main_file.content_hash)? {
-        return Err(HistoryError::InvalidInput(format!(
-            "replayed main document {} does not match the sealed bytes",
-            evidence.main_document
-        )));
-    }
     for replayed in &evidence.replayed_inputs {
         let Some(file) = manifest
             .files

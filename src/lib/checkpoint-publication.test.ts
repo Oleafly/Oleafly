@@ -3,12 +3,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  infoUnique: vi.fn(),
+  errorUnique: vi.fn(),
   getConfig: vi.fn(),
 }));
 
 vi.mock("@/lib/toast", () => ({
-  toast: { infoUnique: mocks.infoUnique },
+  toast: { errorUnique: mocks.errorUnique },
   notifyError: vi.fn(),
 }));
 
@@ -23,10 +23,21 @@ import {
 
 const skipped = {
   status: "skipped" as const,
-  reason: "external_dependency" as const,
-  message: "Checkpoint not saved because a required file is outside the project.",
-  suggestion: "Move the required file into this project, then compile again.",
+  reason: "storage_unavailable" as const,
+  message: "Checkpoint not saved. Checkpoint storage is full or not writable.",
+  suggestion: "Free some disk space or check folder permissions, then compile again.",
 };
+
+const published = {
+  project_id: "active",
+  main_document: "main.tex",
+  phase: "finished" as const,
+  outcome: { status: "published" as const, snapshot_root: "root", created: true },
+};
+
+function clearTheNoticeWithASavedCheckpoint() {
+  applyCheckpointPublicationEvent(published);
+}
 
 async function flush() {
   await Promise.resolve();
@@ -36,10 +47,11 @@ async function flush() {
 
 describe("checkpoint publication events", () => {
   beforeEach(() => {
-    mocks.infoUnique.mockReset();
+    mocks.errorUnique.mockReset();
     mocks.getConfig.mockReset();
     mocks.getConfig.mockResolvedValue({ checkpoint_notifications: true });
     useFilesStore.setState({ projectId: "active" });
+    clearTheNoticeWithASavedCheckpoint();
     useSettingsStore.setState({
       versioningOpen: false,
       versioningTab: "git",
@@ -66,7 +78,7 @@ describe("checkpoint publication events", () => {
     const settings = useSettingsStore.getState();
     expect(settings.checkpointPublishingProjectId).toBeNull();
     expect(settings.checkpointsRevision).toBe(1);
-    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
   });
 
   it("treats an unchanged source as a silent outcome", async () => {
@@ -87,11 +99,11 @@ describe("checkpoint publication events", () => {
     const settings = useSettingsStore.getState();
     expect(settings.checkpointPublishingProjectId).toBeNull();
     expect(settings.checkpointsRevision).toBe(0);
-    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
     expect(mocks.getConfig).not.toHaveBeenCalled();
   });
 
-  it("shows one skipped notice whose action opens the checkpoints tab", async () => {
+  it("reports a storage failure as a sticky error with no action", async () => {
     applyCheckpointPublicationEvent({
       project_id: "active",
       main_document: "main.tex",
@@ -101,16 +113,49 @@ describe("checkpoint publication events", () => {
     await flush();
 
     expect(useSettingsStore.getState().checkpointsRevision).toBe(0);
-    expect(mocks.infoUnique).toHaveBeenCalledTimes(1);
-    expect(mocks.infoUnique).toHaveBeenCalledWith(
-      "checkpoint-publication-external_dependency",
+    expect(mocks.errorUnique).toHaveBeenCalledTimes(1);
+    expect(mocks.errorUnique).toHaveBeenCalledWith(
+      "checkpoint-publication-skipped",
       `${skipped.message} ${skipped.suggestion}`,
-      expect.objectContaining({ label: "View Checkpoints" }),
+      undefined,
+      true,
     );
-    const action = mocks.infoUnique.mock.calls[0]?.[2] as { onClick?: () => void } | undefined;
-    action?.onClick?.();
-    expect(useSettingsStore.getState().versioningOpen).toBe(true);
-    expect(useSettingsStore.getState().versioningTab).toBe("checkpoints");
+    expect(useSettingsStore.getState().versioningOpen).toBe(false);
+  });
+
+  it("reports the same storage failure once until a checkpoint saves again", async () => {
+    const failed = {
+      project_id: "active",
+      main_document: "main.tex",
+      phase: "finished" as const,
+      outcome: skipped,
+    };
+
+    applyCheckpointPublicationEvent(failed);
+    await flush();
+    applyCheckpointPublicationEvent(failed);
+    await flush();
+
+    expect(mocks.errorUnique).toHaveBeenCalledTimes(1);
+
+    applyCheckpointPublicationEvent(published);
+    applyCheckpointPublicationEvent(failed);
+    await flush();
+
+    expect(mocks.errorUnique).toHaveBeenCalledTimes(2);
+  });
+
+  it("stays silent when the lane could not finish", async () => {
+    applyCheckpointPublicationEvent({
+      project_id: "active",
+      main_document: "main.tex",
+      phase: "finished",
+      outcome: { status: "failed" },
+    });
+    await flush();
+
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.getConfig).not.toHaveBeenCalled();
   });
 
   it("stays silent when skipped notices are turned off", async () => {
@@ -119,7 +164,7 @@ describe("checkpoint publication events", () => {
     await notifyCheckpointPublicationSkipped(skipped);
 
     expect(mocks.getConfig).toHaveBeenCalledTimes(1);
-    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
   });
 
   it("stays silent when the config cannot be read", async () => {
@@ -127,7 +172,7 @@ describe("checkpoint publication events", () => {
 
     await notifyCheckpointPublicationSkipped(skipped);
 
-    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
   });
 
   it("ignores lanes for projects that are not open", async () => {
@@ -146,7 +191,7 @@ describe("checkpoint publication events", () => {
     });
     await flush();
 
-    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
     expect(useSettingsStore.getState().checkpointsRevision).toBe(0);
   });
 
@@ -178,7 +223,7 @@ describe("checkpoint publication events", () => {
     await notifyCheckpointPublicationSkipped({ status: "not_attempted" });
     await notifyCheckpointPublicationSkipped({ status: "unchanged" });
 
-    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
     expect(mocks.getConfig).not.toHaveBeenCalled();
     expect(useSettingsStore.getState().checkpointsRevision).toBe(0);
   });

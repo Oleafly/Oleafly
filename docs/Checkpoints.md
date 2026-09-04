@@ -41,32 +41,8 @@ because Tectonic reruns TeX inside one process and the output depends on what
 the build directory already held from the last compile. latexmk, Biber, shell
 escape, and draft mode remain unavailable for checkpoints.
 
-## Include and ignore rules
-
-The rules live in `project.json` under `checkpoints` and travel with the
-project:
-
-```json
-{
-  "checkpoints": {
-    "mode": "engine_dependencies",
-    "always_include": ["figures/*.png"],
-    "ignored": ["data/raw.csv"]
-  }
-}
-```
-
-`always_include` adds project files the compile did not read, such as notes or
-source data you want versioned with the paper. `ignored` keeps a file's bytes
-out of the store. If an ignored file is still needed by the compile, the
-checkpoint records its path and content hash but does not store its contents,
-and restoring that checkpoint leaves the file as it is on disk. `project.json`
-and the main document cannot be ignored.
-
-Patterns are project-relative, use forward slashes, and support `*` and `?`.
-They cannot target `.git` or `.oleafly` or escape the project. The Versioning
-window offers an ignore action on any file of a checkpoint, and the same list
-can be edited by hand.
+There is nothing to configure. A checkpoint has no include list and no ignore
+list, so no project setting can leave a file out of one.
 
 ## The Versioning window
 

@@ -102,17 +102,12 @@ export interface LogDiagnostic {
     readonly category: LogCategory;
     readonly errorContext?: string;
 }
-export type CheckpointSkipReason =
-    | "invalid_policy"
-    | "dependency_evidence_unavailable"
-    | "untracked_external_commands"
-    | "external_dependency"
-    | "ignored_required_dependency"
-    | "insufficient_space";
+export type CheckpointSkipReason = "storage_unavailable";
 export type CheckpointPublicationOutcome =
     | { status: "not_attempted" }
     | { status: "scheduled" }
     | { status: "unchanged" }
+    | { status: "failed" }
     | { status: "published"; snapshot_root: string; created: boolean }
 
     | {
@@ -251,8 +246,6 @@ export interface FileEntry {
 export type CheckpointCaptureMode = "engine_dependencies" | (string & {});
 export interface CheckpointPolicy {
     mode: CheckpointCaptureMode;
-    always_include: string[];
-    ignored: string[];
     [futureField: string]: unknown;
 }
 export interface ProjectMeta {
@@ -735,8 +728,6 @@ export interface BackendPort {
   checkpointFiles: (projectId: string, snapshotRoot: string) => Promise<CheckpointFileSummary[]>;
   checkpointInspect: (projectId: string) => Promise<CheckpointStoreInspection>;
   checkpointRevealStore: (projectId: string) => Promise<void>;
-  checkpointIgnorePath: (projectId: string, path: string) => Promise<ProjectMeta>;
-  checkpointUnignorePath: (projectId: string, path: string) => Promise<ProjectMeta>;
   checkpointStats: (projectId: string) => Promise<CheckpointStoreStats>;
   checkpointRestore: (projectId: string, snapshotRoot: string, expectedGeneration: number) => Promise<ProjectStateChanged>;
   checkpointDelete: (projectId: string, snapshotRoot: string) => Promise<void>;
@@ -857,7 +848,6 @@ export interface BackendPort {
   searchProject: (projectId: string, query: string) => Promise<SearchHit[]>;
   getConfig: () => Promise<AppConfig>;
   setConfig: (config: AppConfig) => Promise<void>;
-  setCheckpointPolicy: (projectId: string, policy: CheckpointPolicy) => Promise<ProjectMeta>;
   seedStarterPersonas: (starters: Persona[]) => Promise<AppConfig>;
   mcpStatus: () => Promise<McpStatus>;
   mcpSetEnabled: (enabled: boolean) => Promise<McpStatus>;

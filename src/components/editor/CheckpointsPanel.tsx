@@ -31,7 +31,6 @@ import {
   checkpointEngineLabel,
   checkpointExport,
   checkpointFiles,
-  checkpointIgnorePath,
   checkpointImport,
   checkpointInspect,
   checkpointKeepLatest,
@@ -41,7 +40,6 @@ import {
   checkpointRevealStore,
   checkpointSetLabel,
   checkpointStats,
-  checkpointUnignorePath,
   type CheckpointFileSummary,
   type CheckpointStoreInspection,
   type CheckpointStoreStats,
@@ -49,7 +47,6 @@ import {
 } from "@/lib/checkpoints";
 import { logError } from "@/lib/log";
 import { pickOpenPath, pickSavePath } from "@/lib/native-file-dialog";
-import { getProject } from "@/lib/tauri";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, isMac, isWindows } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
@@ -65,15 +62,11 @@ type FileState =
   | { status: "ready"; files: CheckpointFileSummary[] }
   | { status: "error" };
 
-type ProjectPolicy = { mainDocument: string; ignored: string[] };
-
 type PanelActionToken = {
   projectId: string;
   session: number;
   request: number;
 };
-
-const PROTECTED_FILE = "project.json";
 
 const REVEAL_LABEL = isWindows
   ? "Show in Explorer"
@@ -133,16 +126,6 @@ function shortRoot(snapshotRoot: string): string {
 function safeArchiveName(name: string): string {
   const safe = name.trim().replace(/[^\w.-]+/g, "_").replace(/^\.+|\.+$/g, "");
   return safe || "project";
-}
-
-function readProjectPolicy(meta: unknown): ProjectPolicy {
-  const record = (meta ?? {}) as Record<string, unknown>;
-  const mainDocument = typeof record.main_doc === "string" ? record.main_doc : "";
-  const policy = (record.checkpoints ?? {}) as Record<string, unknown>;
-  const ignored = Array.isArray(policy.ignored)
-    ? policy.ignored.filter((entry): entry is string => typeof entry === "string")
-    : [];
-  return { mainDocument, ignored };
 }
 
 function unstoredSentence(count: number): string {
@@ -291,27 +274,10 @@ interface FileListProps {
   id: string;
   label: string;
   state: FileState | undefined;
-  policy: ProjectPolicy | null;
-  mainDocument: string;
-  pendingPath: string | null;
-  busy: boolean;
   onRetry: () => void;
-  onIgnore: (path: string) => void;
-  onUnignore: (path: string) => void;
 }
 
-function FileList({
-  id,
-  label,
-  state,
-  policy,
-  mainDocument,
-  pendingPath,
-  busy,
-  onRetry,
-  onIgnore,
-  onUnignore,
-}: FileListProps) {
+function FileList({ id, label, state, onRetry }: FileListProps) {
   if (!state || state.status === "loading") {
     return (
       <div
@@ -349,12 +315,6 @@ function FileList({
   return (
     <ul id={id} aria-label={`Files in ${label}`} className="mt-2 list-none rounded-md border bg-muted/20 p-0">
       {state.files.map((file) => {
-        const protectedPath =
-          file.path === PROTECTED_FILE ||
-          file.path === mainDocument ||
-          file.path === policy?.mainDocument;
-        const ignored = policy?.ignored.includes(file.path) ?? false;
-        const pending = pendingPath === file.path;
         return (
           <li
             key={file.path}
@@ -377,20 +337,6 @@ function FileList({
                 {formatBytes(file.bytes)} · {file.replayed ? "Compiler input" : "Included by policy"}
               </p>
             </div>
-            {policy && !protectedPath ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 shrink-0 text-[11px] text-muted-foreground hover:text-foreground"
-                disabled={busy || pending}
-                onClick={() => (ignored ? onUnignore(file.path) : onIgnore(file.path))}
-              >
-                {pending ? (
-                  <Loader2 className="size-3 animate-spin motion-reduce:animate-none" aria-hidden />
-                ) : null}
-                {ignored ? "Stop ignoring" : "Ignore in future checkpoints"}
-              </Button>
-            ) : null}
           </li>
         );
       })}
@@ -406,8 +352,6 @@ interface TimelineEntryProps {
   expanded: boolean;
   confirmation: Confirmation;
   fileState: FileState | undefined;
-  policy: ProjectPolicy | null;
-  pendingPath: string | null;
   copied: boolean;
   editingLabel: boolean;
   labelDraft: string;
@@ -418,8 +362,6 @@ interface TimelineEntryProps {
   onDelete: () => void;
   onCopyRoot: () => void;
   onRetryFiles: () => void;
-  onIgnore: (path: string) => void;
-  onUnignore: (path: string) => void;
   onStartLabelEdit: () => void;
   onLabelDraftChange: (value: string) => void;
   onSaveLabel: () => void;
@@ -435,8 +377,6 @@ function TimelineEntry({
   expanded,
   confirmation,
   fileState,
-  policy,
-  pendingPath,
   copied,
   editingLabel,
   labelDraft,
@@ -447,8 +387,6 @@ function TimelineEntry({
   onDelete,
   onCopyRoot,
   onRetryFiles,
-  onIgnore,
-  onUnignore,
   onStartLabelEdit,
   onLabelDraftChange,
   onSaveLabel,
@@ -612,9 +550,9 @@ function TimelineEntry({
                 size="sm"
                 disabled={busy}
                 onClick={onRestore}
-                title={`Overwrite all files with ${version}`}
+                title={`Overwrite your current copies with the files in ${version}. Files added since are left in place.`}
               >
-                Overwrite all
+                Restore files
               </Button>
               <Button variant="ghost" size="sm" disabled={busy} onClick={() => onConfirm(null)}>
                 Cancel
@@ -684,18 +622,7 @@ function TimelineEntry({
       </button>
 
       {expanded ? (
-        <FileList
-          id={filesId}
-          label={version}
-          state={fileState}
-          policy={policy}
-          mainDocument={checkpoint.main_document}
-          pendingPath={pendingPath}
-          busy={busy}
-          onRetry={onRetryFiles}
-          onIgnore={onIgnore}
-          onUnignore={onUnignore}
-        />
+        <FileList id={filesId} label={version} state={fileState} onRetry={onRetryFiles} />
       ) : null}
     </li>
   );
@@ -718,10 +645,8 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
   const [confirmation, setConfirmation] = useState<Confirmation>(null);
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [policy, setPolicy] = useState<ProjectPolicy | null>(null);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [fileStates, setFileStates] = useState<Record<string, FileState>>({});
-  const [pendingFile, setPendingFile] = useState<string | null>(null);
   const [copiedRoot, setCopiedRoot] = useState<string | null>(null);
   const [editingLabelRoot, setEditingLabelRoot] = useState<string | null>(null);
   const [labelDraft, setLabelDraft] = useState("");
@@ -732,7 +657,6 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [catalogExpanded, setCatalogExpanded] = useState<string[]>([]);
   const loadRequest = useRef(0);
-  const policyRequest = useRef(0);
   const inspectRequest = useRef(0);
   const sessionRequest = useRef(0);
   const actionRequest = useRef(0);
@@ -804,27 +728,6 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
     [isCurrentSession],
   );
 
-  const loadPolicy = useCallback(
-    async (targetProjectId: string | null, session: number) => {
-      if (!isCurrentSession(targetProjectId, session)) return;
-      const request = ++policyRequest.current;
-      if (!targetProjectId) {
-        setPolicy(null);
-        return;
-      }
-      try {
-        const meta = await getProject(targetProjectId);
-        if (request !== policyRequest.current || !isCurrentSession(targetProjectId, session)) return;
-        setPolicy(readProjectPolicy(meta));
-      } catch (error) {
-        if (request !== policyRequest.current || !isCurrentSession(targetProjectId, session)) return;
-        void logError("load checkpoint policy", error);
-        setPolicy(null);
-      }
-    },
-    [isCurrentSession],
-  );
-
   const loadInspection = useCallback(
     (targetProjectId: string | null, session: number) => {
       const request = ++inspectRequest.current;
@@ -883,7 +786,6 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
     const session = ++sessionRequest.current;
     actionRequest.current += 1;
     loadRequest.current += 1;
-    policyRequest.current += 1;
     inspectRequest.current += 1;
     fileRequests.current.clear();
     if (copyTimer.current !== null) {
@@ -896,7 +798,6 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
     setPasswordError(null);
     setExpanded([]);
     setFileStates({});
-    setPendingFile(null);
     setCopiedRoot(null);
     setEditingLabelRoot(null);
     setLabelDraft("");
@@ -912,14 +813,11 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
     }
     setCheckpoints([]);
     setStats(null);
-    setPolicy(null);
     void refresh(projectId, true, session);
-    void loadPolicy(projectId, session);
     return () => {
       sessionRequest.current += 1;
       actionRequest.current += 1;
       loadRequest.current += 1;
-      policyRequest.current += 1;
       inspectRequest.current += 1;
       fileRequests.current.clear();
       if (copyTimer.current !== null) {
@@ -927,7 +825,7 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
         copyTimer.current = null;
       }
     };
-  }, [open, projectId, loadPolicy, refresh]);
+  }, [open, projectId, refresh]);
 
   useEffect(() => {
     if (seenRevision.current === checkpointsRevision) return;
@@ -959,7 +857,6 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
   if (!open) return null;
 
   const visibleStats = renderIdentityChanged ? null : stats;
-  const visiblePolicy = renderIdentityChanged ? null : policy;
   const visibleInspection = renderIdentityChanged ? null : inspection;
   const visibleLoading = Boolean(projectId) && (renderIdentityChanged || loading);
   const checkpointCount = visibleStats?.checkpoint_count ?? visibleCheckpoints.length;
@@ -1047,36 +944,6 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
       notifyError("save checkpoint label", error, "Couldn't save the checkpoint label.");
     } finally {
       if (isCurrentAction(action)) setBusyAction(null);
-    }
-  };
-
-  const changeIgnore = async (path: string, ignore: boolean) => {
-    if (!projectId) return;
-    const action = beginAction(projectId);
-    if (!action || !isCurrentAction(action)) return;
-    setPendingFile(path);
-    setBusyAction(`ignore:${path}`);
-    try {
-      const meta = ignore
-        ? await checkpointIgnorePath(action.projectId, path)
-        : await checkpointUnignorePath(action.projectId, path);
-      if (!isCurrentAction(action)) return;
-      setPolicy(readProjectPolicy(meta));
-      toast.success(
-        ignore ? "Ignored in future checkpoints." : "Stopped ignoring this file.",
-      );
-    } catch (error) {
-      if (!isCurrentAction(action)) return;
-      notifyError(
-        "change checkpoint ignore list",
-        error,
-        "Couldn't change this project's ignore list.",
-      );
-    } finally {
-      if (isCurrentAction(action)) {
-        setPendingFile(null);
-        setBusyAction(null);
-      }
     }
   };
 
@@ -1329,8 +1196,6 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                 expanded={expanded.includes(checkpoint.snapshot_root)}
                 confirmation={confirmation}
                 fileState={fileStates[checkpoint.snapshot_root]}
-                policy={visiblePolicy}
-                pendingPath={pendingFile}
                 copied={copiedRoot === checkpoint.snapshot_root}
                 editingLabel={editingLabelRoot === checkpoint.snapshot_root}
                 labelDraft={labelDraft}
@@ -1341,8 +1206,6 @@ export function CheckpointsPanel({ onBusyChange }: { onBusyChange?: (busy: boole
                 onDelete={() => void deleteCheckpoint(checkpoint)}
                 onCopyRoot={() => void copyRoot(checkpoint.snapshot_root)}
                 onRetryFiles={() => ensureFiles(checkpoint.snapshot_root)}
-                onIgnore={(path) => void changeIgnore(path, true)}
-                onUnignore={(path) => void changeIgnore(path, false)}
                 onStartLabelEdit={() => startLabelEdit(checkpoint)}
                 onLabelDraftChange={setLabelDraft}
                 onSaveLabel={() => void saveLabel(checkpoint.snapshot_root, labelDraft)}
