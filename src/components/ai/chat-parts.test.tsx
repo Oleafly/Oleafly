@@ -2,6 +2,22 @@
 
 import { act, fireEvent, getByRole, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useFilesStore } from "@/store/files";
+
+const tauriMocks = vi.hoisted(() => ({
+  writeFileContent: vi.fn(async () => ({ generation: 1 })),
+  writeProjectBytes: vi.fn(async () => ({ generation: 1 })),
+}));
+
+vi.mock("@/lib/tauri", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/tauri")>();
+  return {
+    ...actual,
+    writeFileContent: tauriMocks.writeFileContent,
+    writeProjectBytes: tauriMocks.writeProjectBytes,
+  };
+});
+
 import {
   AgentRunSummary,
   AgentStatusPill,
@@ -10,7 +26,166 @@ import {
   ReasoningBlock,
   SubagentCard,
   ToolBadge,
+  ToolPicture,
+  freeFigurePath,
 } from "./chat-parts";
+
+describe("ToolPicture", () => {
+  const png = "data:image/png;base64,iVBORw0KGgo=";
+
+  it("shows the rendered figure first and switches to the TikZ source", () => {
+    render(
+      <ToolPicture
+        tc={{
+          id: "fig-1",
+          name: "preview_figure",
+          status: "done",
+          image: png,
+          code: "\\begin{tikzpicture}\\draw (0,0) circle (1);\\end{tikzpicture}",
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("tool-image")).toHaveAttribute("src", png);
+    expect(screen.queryByTestId("tool-picture-code")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("tool-picture-view-code"));
+
+    expect(screen.getByTestId("tool-picture-code").textContent).toContain("tikzpicture");
+    expect(screen.queryByTestId("tool-image")).toBeNull();
+    expect(screen.getByTestId("tool-picture-view-code")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("offers no toggle when the tool produced an image without code", () => {
+    render(<ToolPicture tc={{ id: "img-1", name: "load_image", status: "done", image: png }} />);
+
+    expect(screen.getByTestId("tool-image")).toBeInTheDocument();
+    expect(screen.queryByTestId("tool-picture-view-code")).toBeNull();
+  });
+
+  it("picks a free name under figures/ and skips taken ones regardless of case", () => {
+    expect(freeFigurePath([], "tex")).toBe("figures/figure.tex");
+    expect(freeFigurePath(["figures/figure.tex"], "tex")).toBe("figures/figure-2.tex");
+    expect(freeFigurePath(["figures/Figure.tex", "figures/figure-2.tex"], "tex")).toBe(
+      "figures/figure-3.tex",
+    );
+    expect(freeFigurePath(["figures/figure.tex"], "png")).toBe("figures/figure.png");
+  });
+
+  it("saves the TikZ source into the project's figures folder without clobbering", async () => {
+    const refreshTree = vi.fn(async () => undefined);
+    useFilesStore.setState({
+      projectId: "proj-save",
+      tree: [{ path: "figures", is_dir: true }, { path: "figures/figure.tex", is_dir: false }],
+      refreshTree,
+    });
+    tauriMocks.writeFileContent.mockClear();
+    render(
+      <ToolPicture
+        tc={{
+          id: "fig-1",
+          name: "preview_figure",
+          status: "done",
+          image: png,
+          code: "\\begin{tikzpicture}\\end{tikzpicture}",
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("tool-picture-save"));
+
+    await waitFor(() =>
+      expect(tauriMocks.writeFileContent).toHaveBeenCalledWith(
+        "proj-save",
+        "figures/figure-2.tex",
+        "\\begin{tikzpicture}\\end{tikzpicture}\n",
+      ),
+    );
+    await waitFor(() => expect(refreshTree).toHaveBeenCalled());
+  });
+
+  it("shows only the last finished preview outside the folded steps", () => {
+    render(
+      <MessageItem
+        msg={{
+          id: "m2",
+          role: "assistant",
+          content: "Second try rendered clean.",
+          createdAt: 1,
+          toolCalls: [
+            {
+              id: "fig-1",
+              name: "preview_figure",
+              status: "done",
+              output: '{"success": true}',
+              image: png,
+              code: "first",
+            },
+            {
+              id: "fig-2",
+              name: "preview_figure",
+              status: "done",
+              output: '{"success": true}',
+              image: png,
+              code: "second",
+            },
+          ],
+        }}
+        live={false}
+      />,
+    );
+
+    expect(screen.getAllByTestId("tool-picture")).toHaveLength(1);
+    fireEvent.click(screen.getByTestId("tool-picture-view-code"));
+    expect(screen.getByTestId("tool-picture-code").textContent).toBe("second");
+  });
+
+  it("keeps a finished card compact until it is opened, but shows the picture while live", () => {
+    const tc = {
+      id: "fig-1",
+      name: "preview_figure",
+      status: "done" as const,
+      output: '{"success": true}',
+      image: png,
+      code: "\\begin{tikzpicture}\\end{tikzpicture}",
+    };
+    const finished = render(<ToolBadge tc={tc} />);
+    expect(finished.queryByTestId("tool-image")).toBeNull();
+    fireEvent.click(finished.getByRole("button", { name: /preview_figure/ }));
+    expect(finished.getByTestId("tool-image")).toBeInTheDocument();
+    finished.unmount();
+
+    const running = render(<ToolBadge tc={tc} live />);
+    expect(running.getByTestId("tool-image")).toBeInTheDocument();
+  });
+
+  it("keeps a finished preview visible outside the folded steps", () => {
+    render(
+      <MessageItem
+        msg={{
+          id: "m1",
+          role: "assistant",
+          content: "Here is the stack.",
+          createdAt: 1,
+          toolCalls: [
+            {
+              id: "fig-1",
+              name: "preview_figure",
+              status: "done",
+              output: '{"success": true}',
+              image: png,
+              code: "\\begin{tikzpicture}\\end{tikzpicture}",
+            },
+          ],
+        }}
+        live={false}
+      />,
+    );
+
+    expect(screen.getByTestId("tool-picture")).toBeInTheDocument();
+    expect(screen.getByTestId("tool-image")).toHaveAttribute("src", png);
+  });
+});
 
 describe("SubagentCard", () => {
   it("shows a spinner and current tool while a subagent runs", () => {

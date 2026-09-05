@@ -214,6 +214,13 @@ import {
 import type { EngineFeature } from "@/lib/tauri";
 
 const MAX_AGENT_TOOL_DEFINITIONS = 128;
+const IMAGE_TOOLS = new Set(["preview_figure", "load_image", "verify_pdf_pages"]);
+
+function figureCodeOf(args: unknown): string | undefined {
+  if (!args || typeof args !== "object") return undefined;
+  const code = (args as { code?: unknown }).code;
+  return typeof code === "string" && code.trim() ? code : undefined;
+}
 
 interface ChatSuggestion {
   label: string;
@@ -1674,6 +1681,19 @@ export function ChatCore() {
     const updateRunLastText = (fn: (message: ChatMessage) => ChatMessage) => {
       if (runIsCurrent()) updateLast(runChatId, fn, "text");
     };
+    const collectRunImage = (dataUrl: string) => {
+      runPendingImages.push(dataUrl);
+      updateRunLast((m) => {
+        const calls = [...(m.toolCalls || [])];
+        for (let i = calls.length - 1; i >= 0; i--) {
+          if (calls[i].status === "running" && IMAGE_TOOLS.has(calls[i].name)) {
+            calls[i] = { ...calls[i], image: dataUrl };
+            return { ...m, toolCalls: calls };
+          }
+        }
+        return m;
+      });
+    };
     let runEndedCleanly = false;
     const setRunThinking = (value: string | null) => {
       if (runIsCurrent()) setThinkingText(value);
@@ -1936,7 +1956,7 @@ USER_CUSTOM_INSTRUCTIONS`
         confirm,
         isActive: () =>
           !ac.signal.aborted && activeRunRequestIdRef.current !== null,
-        onImage: (dataUrl) => runPendingImages.push(dataUrl),
+        onImage: collectRunImage,
         projectId: () => runProjectId,
         runId: () => activeRunRequestIdRef.current,
       }),
@@ -1949,7 +1969,7 @@ USER_CUSTOM_INSTRUCTIONS`
       mode: "chat",
       createOpts: {
         confirm,
-        onImage: (dataUrl: string) => runPendingImages.push(dataUrl),
+        onImage: collectRunImage,
         runId: () => activeRunRequestIdRef.current,
       },
       additions: runToolAdditions,
@@ -2358,11 +2378,20 @@ ${sandboxedCustom}`;
             outputToolCalls.set(call.id, outputCall);
             const baseline = captureFileBaseline(outputCall);
             openReadOutput(outputCall);
+            const figureCode =
+              IMAGE_TOOLS.has(call.name) || call.name === "insert_figure"
+                ? figureCodeOf(call.args)
+                : undefined;
             updateRunLast((m) => ({
               ...m,
               toolCalls: [
                 ...(m.toolCalls || []),
-                { id: call.id, name: call.name, status: "running" as const },
+                {
+                  id: call.id,
+                  name: call.name,
+                  status: "running" as const,
+                  ...(figureCode ? { code: figureCode } : {}),
+                },
               ],
             }));
             await baseline;

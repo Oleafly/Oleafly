@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A rendered figure now shows up in the chat. Every preview_figure,
+  load_image and verify_pdf_pages call keeps its image on the tool card,
+  and the final figure of a reply sits above the folded steps with a
+  Figure / TikZ toggle, Copy code, and Save to project, which writes the
+  source (or the image) under figures/ without overwriting an existing
+  file.
 - The chat composer highlights a `/skill-id` that matches an installed skill
   and an `@path` that matches a project file or folder, and typing `@` opens a
   fast picker over the project tree. A mentioned file travels with the
