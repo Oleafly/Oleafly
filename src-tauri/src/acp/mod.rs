@@ -70,7 +70,7 @@ pub fn lifecycle_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 #[cfg(all(test, target_os = "macos"))]
 mod task_tests;

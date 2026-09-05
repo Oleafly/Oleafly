@@ -165,7 +165,11 @@ impl Connection {
                             let _ = sender.send(response);
                         }
                     }
-                } else if reader_incoming.try_send(Incoming::Message(value)).is_err() {
+                } else if reader_incoming
+                    .send(Incoming::Message(value))
+                    .await
+                    .is_err()
+                {
                     break;
                 }
             }

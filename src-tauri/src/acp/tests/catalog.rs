@@ -768,3 +768,410 @@ async fn local_install_commands_handle_spawn_failure_and_timeout() {
         .unwrap_err()
         .contains("timed out and was stopped"));
 }
+
+#[cfg(unix)]
+mod managed_install {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    const FIXTURE_ROOT: &str = "OLEAFLY_CATALOG_INSTALL_FIXTURE";
+    const INSTALLER: &str = r#"
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const root = process.env.OLEAFLY_CATALOG_INSTALL_FIXTURE;
+const settings = JSON.parse(fs.readFileSync(path.join(root, 'settings.json')));
+const args = process.argv.slice(2);
+const npm = path.basename(process.argv[1]) === 'npm-cli.js';
+fs.appendFileSync(path.join(root, 'invocations.jsonl'), JSON.stringify({npm, args}) + '\n');
+if (npm) {
+  assert.deepEqual(args.slice(0, 7), ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--save-exact', '--registry=https://registry.npmjs.org', '--prefix']);
+  assert.equal(args[8], '@oleafly-fixture/agent@1.2.3');
+  assert.equal(process.cwd(), fs.realpathSync(args[7]));
+  assert.equal(process.env.npm_config_userconfig, path.join(args[7], 'empty-npmrc'));
+  assert.equal(JSON.parse(fs.readFileSync(path.join(args[7], 'package.json'))).private, true);
+  const packageRoot = path.join(args[7], 'node_modules/@oleafly-fixture/agent');
+  fs.mkdirSync(packageRoot, {recursive: true});
+  if (settings.manifest !== null) fs.writeFileSync(path.join(packageRoot, 'package.json'), typeof settings.manifest === 'string' ? settings.manifest : JSON.stringify(settings.manifest));
+  for (const [name, content] of Object.entries(settings.files || {})) {
+    const target = path.join(packageRoot, name);
+    fs.mkdirSync(path.dirname(target), {recursive: true});
+    fs.writeFileSync(target, content);
+  }
+  if (settings.escape) fs.symlinkSync(path.join(root, 'outside'), path.join(packageRoot, 'escaped.js'));
+} else {
+  assert.deepEqual(args, ['tool', 'install', '--no-config', '--python-preference', 'only-system', 'oleafly-fixture-agent==1.2.3']);
+  const tools = process.env.UV_TOOL_DIR;
+  const bin = process.env.UV_TOOL_BIN_DIR;
+  assert.equal(fs.realpathSync(process.cwd()), fs.realpathSync(path.dirname(tools)));
+  assert.equal(path.dirname(tools), path.dirname(bin));
+  fs.mkdirSync(bin, {recursive: true});
+  fs.mkdirSync(path.join(tools, 'oleafly-fixture-agent/bin'), {recursive: true});
+  const executable = path.join(tools, 'oleafly-fixture-agent/bin/catalog-agent');
+  fs.writeFileSync(executable, '#!/bin/sh\nprintf "%s\\n" "$@"\n', {mode: 0o700});
+  if (settings.layout !== 'missing') fs.symlinkSync(settings.layout === 'escaped' ? path.join(root, 'outside') : executable, path.join(bin, 'catalog-agent'));
+}
+if (settings.fail) process.exit(2);
+"#;
+
+    fn shell_quote(value: &Path) -> String {
+        format!("'{}'", value.to_string_lossy().replace('\'', "'\\''"))
+    }
+
+    fn executable(path: &Path, content: &str) {
+        std::fs::write(path, content).unwrap();
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700)).unwrap();
+    }
+
+    async fn isolated(name: &str) -> Option<PathBuf> {
+        if let Some(root) = std::env::var_os(FIXTURE_ROOT) {
+            let root = PathBuf::from(root);
+            assert_eq!(discover("node"), Some(root.join("bin/node")));
+            assert_eq!(discover("uv"), Some(root.join("bin/uv")));
+            assert_eq!(
+                npm_cli(),
+                Some(root.join("bin/node_modules/npm/bin/npm-cli.js"))
+            );
+            return Some(root);
+        }
+        let temporary = tempfile::Builder::new()
+            .prefix("oleafly managed install ")
+            .tempdir()
+            .unwrap();
+        let root = temporary.path().canonicalize().unwrap();
+        let bin = root.join("bin");
+        let npm = bin.join("node_modules/npm/bin");
+        std::fs::create_dir_all(&npm).unwrap();
+        let node = discover("node").expect("Node.js is required for managed install fixtures");
+        executable(
+            &bin.join("node"),
+            &format!("#!/bin/sh\nexec {} \"$@\"\n", shell_quote(&node)),
+        );
+        executable(&npm.join("npm-cli.js"), INSTALLER);
+        std::os::unix::fs::symlink(npm.join("npm-cli.js"), bin.join("npm")).unwrap();
+        let uv = root.join("uv.js");
+        std::fs::write(&uv, INSTALLER).unwrap();
+        executable(
+            &bin.join("uv"),
+            &format!(
+                "#!/bin/sh\nexec {} {} \"$@\"\n",
+                shell_quote(&node),
+                shell_quote(&uv),
+            ),
+        );
+        std::fs::write(root.join("outside"), b"outside fixture must stay unchanged").unwrap();
+        let output = tokio::time::timeout(
+            Duration::from_secs(30),
+            tokio::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    &format!("acp::catalog::catalog_tests::managed_install::{name}"),
+                    "--nocapture",
+                ])
+                .env("PATH", &bin)
+                .env(FIXTURE_ROOT, &root)
+                .kill_on_drop(true)
+                .output(),
+        )
+        .await
+        .expect("managed install fixture timed out")
+        .unwrap();
+        assert!(
+            output.status.success(),
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed"));
+        None
+    }
+
+    fn definition(npm: bool, cmd: Option<&str>) -> AgentDefinition {
+        let mut definition = binary_definition();
+        let package = PackageDistribution {
+            package: if npm {
+                "@oleafly-fixture/agent@1.2.3"
+            } else {
+                "oleafly-fixture-agent==1.2.3"
+            }
+            .into(),
+            cmd: cmd.map(str::to_owned),
+            args: vec!["--acp".into(), "argument with spaces".into()],
+            node_major: npm.then_some(20),
+            env: BTreeMap::new(),
+        };
+        definition.distribution = if npm {
+            Distribution {
+                npx: Some(package),
+                ..Distribution::default()
+            }
+        } else {
+            Distribution {
+                uvx: Some(package),
+                ..Distribution::default()
+            }
+        };
+        definition
+    }
+
+    fn settings(root: &Path, value: Value) {
+        std::fs::write(root.join("settings.json"), value.to_string()).unwrap();
+    }
+
+    fn node_package(bin: Value) -> Value {
+        json!({
+            "manifest": {"name": "@oleafly-fixture/agent", "version": "1.2.3", "bin": bin},
+            "files": {"bin/agent.js": "process.stdout.write(JSON.stringify(process.argv.slice(2)));"}
+        })
+    }
+
+    fn clean_failure(root: &Path, data: &Path, definition: &AgentDefinition) {
+        assert!(read_receipt(data, definition).is_none());
+        assert!(!receipt_dir(data, definition).exists());
+        assert_eq!(
+            std::fs::read_dir(data.join("agents").join(&definition.id))
+                .unwrap()
+                .count(),
+            0
+        );
+        assert_eq!(
+            std::fs::read(root.join("outside")).unwrap(),
+            b"outside fixture must stay unchanged"
+        );
+    }
+
+    async fn launch(data: &Path, definition: &AgentDefinition) -> (Launch, String) {
+        let launch = resolve(data, definition).unwrap();
+        assert!(launch.managed);
+        assert_eq!(launch.version.as_deref(), Some("1.2.3"));
+        let mut command = tokio::process::Command::new(&launch.executable);
+        command.args(&launch.args);
+        let output = bounded_command(command, Duration::from_secs(5))
+            .await
+            .unwrap();
+        (launch, output)
+    }
+
+    #[tokio::test]
+    async fn npm_installs_manifest_bin_forms_and_reuses_the_receipt() {
+        let Some(root) = isolated("npm_installs_manifest_bin_forms_and_reuses_the_receipt").await
+        else {
+            return;
+        };
+        for (index, (bin, cmd)) in [
+            (json!("bin/agent.js"), None),
+            (json!({"only-command": "bin/agent.js"}), None),
+            (
+                json!({"other-command": "missing.js", "catalog-agent": "bin/agent.js"}),
+                Some("catalog-agent"),
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let data = root.join(format!("data-{index}"));
+            let definition = definition(true, cmd);
+            settings(&root, node_package(bin));
+            install(&data, &definition).await.unwrap();
+            let receipt = read_receipt(&data, &definition).unwrap();
+            assert!(receipt.node);
+            assert!(receipt
+                .executable
+                .ends_with("node_modules/@oleafly-fixture/agent/bin/agent.js"));
+            let (resolved, output) = launch(&data, &definition).await;
+            assert_eq!(resolved.executable, root.join("bin/node"));
+            assert_eq!(output, "[\"--acp\",\"argument with spaces\"]");
+            let calls = std::fs::read(root.join("invocations.jsonl")).unwrap();
+            settings(&root, json!({"fail": true, "manifest": null}));
+            install(&data, &definition).await.unwrap();
+            assert_eq!(
+                std::fs::read(root.join("invocations.jsonl")).unwrap(),
+                calls
+            );
+            assert_eq!(
+                std::fs::read_dir(data.join("agents").join(&definition.id))
+                    .unwrap()
+                    .count(),
+                1
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn npm_detects_node_shebangs_and_sets_native_executable_permissions() {
+        let Some(root) =
+            isolated("npm_detects_node_shebangs_and_sets_native_executable_permissions").await
+        else {
+            return;
+        };
+        for (index, (content, node, expected)) in [
+            (
+                "#!/usr/bin/env node\nprocess.stdout.write(JSON.stringify(process.argv.slice(2)));",
+                true,
+                "[\"--acp\",\"argument with spaces\"]",
+            ),
+            (
+                "#!/bin/sh\nprintf '%s\\n' \"$@\"\n",
+                false,
+                "--acp\nargument with spaces\n",
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let data = root.join(format!("data-{index}"));
+            let definition = definition(true, None);
+            settings(
+                &root,
+                json!({"manifest": {"bin": "bin/agent"}, "files": {"bin/agent": content}}),
+            );
+            install(&data, &definition).await.unwrap();
+            let receipt = read_receipt(&data, &definition).unwrap();
+            assert_eq!(receipt.node, node);
+            if !node {
+                assert_eq!(
+                    std::fs::metadata(&receipt.executable)
+                        .unwrap()
+                        .permissions()
+                        .mode()
+                        & 0o777,
+                    0o700
+                );
+            }
+            assert_eq!(launch(&data, &definition).await.1, expected);
+        }
+    }
+
+    #[tokio::test]
+    async fn npm_rejects_invalid_layouts_and_cleans_up_before_retry() {
+        let Some(root) = isolated("npm_rejects_invalid_layouts_and_cleans_up_before_retry").await
+        else {
+            return;
+        };
+        for (index, (invalid, error)) in [
+            (json!({"manifest": null}), "has no manifest"),
+            (json!({"manifest": "{"}), "manifest is invalid"),
+            (json!({"manifest": {}}), "several executables"),
+            (
+                json!({"manifest": {"bin": {"one": "one.js", "two": "two.js"}}}),
+                "several executables",
+            ),
+            (
+                json!({"manifest": {"bin": "missing.js"}}),
+                "was not installed",
+            ),
+            (
+                json!({"manifest": {"bin": "../outside.js"}}),
+                "escapes its directory",
+            ),
+            (
+                json!({"manifest": {"bin": "escaped.js"}, "escape": true}),
+                "escapes its installation",
+            ),
+            (
+                json!({"manifest": null, "fail": true}),
+                "installation failed",
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let data = root.join(format!("data-{index}"));
+            let definition = definition(true, None);
+            settings(&root, invalid);
+            assert!(
+                install(&data, &definition)
+                    .await
+                    .unwrap_err()
+                    .contains(error),
+                "{error}"
+            );
+            clean_failure(&root, &data, &definition);
+            settings(&root, node_package(json!("bin/agent.js")));
+            install(&data, &definition).await.unwrap();
+            assert_eq!(
+                launch(&data, &definition).await.1,
+                "[\"--acp\",\"argument with spaces\"]"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn uv_installs_internal_links_and_launches_from_its_receipt() {
+        let Some(root) = isolated("uv_installs_internal_links_and_launches_from_its_receipt").await
+        else {
+            return;
+        };
+        let data = root.join("data");
+        let definition = definition(false, Some("catalog-agent"));
+        settings(&root, json!({"layout": "valid"}));
+        install(&data, &definition).await.unwrap();
+        let receipt = read_receipt(&data, &definition).unwrap();
+        assert!(!receipt.node);
+        assert!(receipt
+            .executable
+            .ends_with("tools/oleafly-fixture-agent/bin/catalog-agent"));
+        assert_eq!(
+            launch(&data, &definition).await.1,
+            "--acp\nargument with spaces\n"
+        );
+        let calls = std::fs::read(root.join("invocations.jsonl")).unwrap();
+        settings(&root, json!({"fail": true}));
+        install(&data, &definition).await.unwrap();
+        assert_eq!(
+            std::fs::read(root.join("invocations.jsonl")).unwrap(),
+            calls
+        );
+        assert_eq!(
+            std::fs::read_dir(data.join("agents").join(&definition.id))
+                .unwrap()
+                .count(),
+            1
+        );
+        let before = std::fs::read(&receipt.executable).unwrap();
+        std::fs::remove_file(receipt_dir(&data, &definition).join("receipt.json")).unwrap();
+        assert!(install(&data, &definition)
+            .await
+            .unwrap_err()
+            .contains("incomplete installation"));
+        assert_eq!(std::fs::read(&receipt.executable).unwrap(), before);
+        assert_eq!(
+            std::fs::read(root.join("invocations.jsonl")).unwrap(),
+            calls
+        );
+    }
+
+    #[tokio::test]
+    async fn uv_rejects_failed_or_incomplete_layouts_and_allows_retry() {
+        let Some(root) = isolated("uv_rejects_failed_or_incomplete_layouts_and_allows_retry").await
+        else {
+            return;
+        };
+        for (index, (invalid, error)) in [
+            (json!({"fail": true}), "installation failed"),
+            (json!({"layout": "missing"}), "was not installed"),
+            (json!({"layout": "escaped"}), "escapes its installation"),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let data = root.join(format!("data-{index}"));
+            let definition = definition(false, Some("catalog-agent"));
+            settings(&root, invalid);
+            assert!(
+                install(&data, &definition)
+                    .await
+                    .unwrap_err()
+                    .contains(error),
+                "{error}"
+            );
+            clean_failure(&root, &data, &definition);
+            settings(&root, json!({"layout": "valid"}));
+            install(&data, &definition).await.unwrap();
+            assert_eq!(
+                launch(&data, &definition).await.1,
+                "--acp\nargument with spaces\n"
+            );
+        }
+    }
+}

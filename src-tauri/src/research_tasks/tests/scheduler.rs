@@ -6,6 +6,9 @@ use tokio::sync::{mpsc, oneshot};
 use super::*;
 use crate::worktree_lock::ProjectWorktreeLock;
 
+#[path = "recovery.rs"]
+mod recovery;
+
 struct DataRoot {
     directory: tempfile::TempDir,
     previous: Option<OsString>,

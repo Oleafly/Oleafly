@@ -121,6 +121,16 @@ for line in sys.stdin:
         elif prompt == "crash":
             update("agent_message_chunk", content={"type": "text", "text": "Partial saved answer"})
             sys.exit(3)
+        elif prompt == "missing-stop":
+            update("agent_message_chunk", content={"type": "text", "text": "Partial saved answer"})
+            result(request, {})
+        elif prompt.startswith("stop:"):
+            update("agent_message_chunk", content={"type": "text", "text": "Partial saved answer"})
+            result(request, {"stopReason": prompt.removeprefix("stop:")})
+        elif prompt == "paged-answer":
+            for index in range(520):
+                update("agent_message_chunk", content={"type": "text", "text": str(index) + "|"})
+            result(request, {"stopReason": "end_turn"})
         else:
             update("usage_update", used=900, size=32000)
             update("agent_message_chunk", content={"type": "text", "text": "Fixture answer: " + prompt})

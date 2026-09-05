@@ -165,23 +165,7 @@ impl AcpChild {
                 }
             }
         }
-        let mut cursor = before;
-        let mut output = String::new();
-        loop {
-            let page = self.runtime.events(&session_id, cursor, 500)?;
-            for event in page.events {
-                cursor = cursor.max(event.sequence);
-                if event.kind == "agent_message_chunk" {
-                    if let Some(text) = event_text(&event.data) {
-                        output.push_str(text);
-                    }
-                }
-            }
-            if !page.has_more {
-                break;
-            }
-        }
-        Ok(output)
+        completed_turn_output(&self.runtime, &session_id, before)
     }
 
     fn activity(&self, id: &str, label: &str, state: &str, detail: Option<String>) -> AgentEvent {
@@ -213,6 +197,46 @@ fn event_text(data: &serde_json::Value) -> Option<&str> {
         .or_else(|| data["content"]["text"].as_str())
 }
 
+fn completed_turn_output(
+    runtime: &crate::acp::AcpRuntime,
+    session_id: &str,
+    before: u64,
+) -> Result<String, String> {
+    let mut cursor = before;
+    let mut output = String::new();
+    let mut stop_reason = None;
+    loop {
+        let page = runtime.events(session_id, cursor, 500)?;
+        for event in page.events {
+            cursor = cursor.max(event.sequence);
+            match event.kind.as_str() {
+                "agent_message_chunk" => {
+                    if let Some(text) = event_text(&event.data) {
+                        output.push_str(text);
+                    }
+                }
+                "turn_complete" => {
+                    stop_reason = event.data["stopReason"].as_str().map(str::to_owned);
+                }
+                _ => {}
+            }
+        }
+        if !page.has_more {
+            break;
+        }
+    }
+    if stop_reason.as_deref() != Some("end_turn") {
+        let reason = super::subagents::bounded_output(
+            stop_reason.as_deref().unwrap_or("no completion event"),
+            80,
+        );
+        return Err(format!(
+            "The agent stopped before completing this turn ({reason})."
+        ));
+    }
+    Ok(output)
+}
+
 impl Drop for AcpChild {
     fn drop(&mut self) {
         let runtime = self.runtime.clone();
@@ -230,3 +254,6 @@ impl Drop for AcpChild {
         });
     }
 }
+
+#[cfg(test)]
+mod tests;

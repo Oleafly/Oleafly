@@ -922,13 +922,15 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
     let temporary = parent.join(format!("install-{}", new_id()));
     std::fs::create_dir(&temporary)
         .map_err(|_| "The agent installation directory could not be created.")?;
-    struct Cleanup(PathBuf);
+    struct Cleanup(Option<PathBuf>);
     impl Drop for Cleanup {
         fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
+            if let Some(path) = &self.0 {
+                let _ = std::fs::remove_dir_all(path);
+            }
         }
     }
-    let _cleanup = Cleanup(temporary.clone());
+    let _cleanup = Cleanup(Some(temporary.clone()));
     let (relative, node) = if let Some(package) = &definition.distribution.npx {
         check_node(package.node_major.unwrap_or(20)).await?;
         std::fs::write(temporary.join("package.json"), b"{\"private\":true}")
@@ -999,6 +1001,7 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
     } else if let Some(package) = &definition.distribution.uvx {
         std::fs::create_dir(&destination)
             .map_err(|_| "The Python agent directory could not be created.")?;
+        let mut cleanup = Cleanup(Some(destination.clone()));
         let mut command = tokio::process::Command::new(discover("uv").ok_or("uv was not found.")?);
         command
             .args([
@@ -1012,10 +1015,7 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
             .env("UV_TOOL_DIR", destination.join("tools"))
             .env("UV_TOOL_BIN_DIR", destination.join("bin"))
             .current_dir(&destination);
-        if let Err(error) = bounded_command(command, Duration::from_secs(300)).await {
-            let _ = std::fs::remove_dir_all(&destination);
-            return Err(error);
-        }
+        bounded_command(command, Duration::from_secs(300)).await?;
         let cmd = package
             .cmd
             .as_ref()
@@ -1037,7 +1037,9 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
             .strip_prefix(&canonical)
             .map_err(|_| "The Python executable escapes its installation.")?
             .to_path_buf();
-        return write_receipt(&destination, &definition.version, relative, false);
+        write_receipt(&destination, &definition.version, relative, false)?;
+        cleanup.0 = None;
+        return Ok(());
     } else {
         let binary = definition
             .distribution

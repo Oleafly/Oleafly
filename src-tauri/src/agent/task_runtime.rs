@@ -734,8 +734,88 @@ fn task_prompt(context: &TaskRunContext, skills: &str) -> String {
 
 #[derive(Clone)]
 struct BuiltinTaskAdapter {
-    app: tauri::AppHandle,
+    host: Arc<dyn TaskHost>,
     tokens: Arc<Mutex<HashMap<String, ActiveTaskRun>>>,
+}
+
+struct TaskProvider {
+    client: reqwest::Client,
+    resolved: oleafly_agent::Resolved,
+    usage_root: PathBuf,
+}
+
+trait TaskBridge: Send + Sync {
+    fn mcp_server(&self) -> Value;
+    fn call_tool(self: Arc<Self>, name: String, args: Value) -> TaskRuntimeFuture<Value>;
+    fn shutdown(self: Arc<Self>)
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>;
+}
+
+impl TaskBridge for crate::research_mcp::ScopedResearchMcp {
+    fn mcp_server(&self) -> Value {
+        self.mcp_server()
+    }
+
+    fn call_tool(self: Arc<Self>, name: String, args: Value) -> TaskRuntimeFuture<Value> {
+        Box::pin(async move {
+            crate::research_mcp::ScopedResearchMcp::call_tool(&self, &name, &args).await
+        })
+    }
+
+    fn shutdown(
+        self: Arc<Self>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+        Box::pin(async move { crate::research_mcp::ScopedResearchMcp::shutdown(&self).await })
+    }
+}
+
+trait TaskHost: Send + Sync {
+    fn skills(&self, context: &TaskRunContext) -> Result<String, String>;
+    fn provider(&self, context: TaskRunContext) -> TaskRuntimeFuture<TaskProvider>;
+    fn bridge(&self, context: TaskRunContext) -> TaskRuntimeFuture<Arc<dyn TaskBridge>>;
+}
+
+struct NativeTaskHost {
+    app: tauri::AppHandle,
+}
+
+impl TaskHost for NativeTaskHost {
+    fn skills(&self, context: &TaskRunContext) -> Result<String, String> {
+        skill_prompt(&self.app, context)
+    }
+
+    fn provider(&self, context: TaskRunContext) -> TaskRuntimeFuture<TaskProvider> {
+        let app = self.app.clone();
+        Box::pin(async move {
+            let resolved = super::resolve_for_run_off_thread(
+                Some(super::ProviderOverride {
+                    provider_id: context.agent_id,
+                    model_id: context.model_id,
+                }),
+                true,
+            )
+            .await?;
+            Ok(TaskProvider {
+                client: app.state::<super::AgentState>().client()?,
+                resolved,
+                usage_root: crate::paths::oleafly_root()?,
+            })
+        })
+    }
+
+    fn bridge(&self, context: TaskRunContext) -> TaskRuntimeFuture<Arc<dyn TaskBridge>> {
+        let app = self.app.clone();
+        Box::pin(async move {
+            let bridge = crate::research_mcp::start_restricted(
+                app,
+                context.project_id,
+                PathBuf::from(context.execution_root),
+                context.allowed_paths,
+            )
+            .await?;
+            Ok(Arc::new(bridge) as Arc<dyn TaskBridge>)
+        })
+    }
 }
 
 #[derive(Clone)]
@@ -794,18 +874,14 @@ impl TaskRuntimeAdapter for BuiltinTaskAdapter {
                 Path::new(&context.execution_root),
                 &context.allowed_paths,
             )?);
-            let skills = skill_prompt(&adapter.app, &context)?;
-            let resolved = super::resolve_for_run_off_thread(
-                Some(super::ProviderOverride {
-                    provider_id: context.agent_id.clone(),
-                    model_id: context.model_id.clone(),
-                }),
-                true,
-            )
-            .await?;
-            let client = adapter.app.state::<super::AgentState>().client()?;
+            let skills = adapter.host.skills(&context)?;
+            let TaskProvider {
+                client,
+                resolved,
+                usage_root,
+            } = adapter.host.provider(context.clone()).await?;
             let usage = super::usage::NativeUsageGuard::new(
-                crate::paths::oleafly_root()?,
+                usage_root,
                 super::usage::UsageScope {
                     session_id: context.session_id.clone(),
                     turn_id: format!("{}:{}", context.task_id, context.execution_generation),
@@ -815,15 +891,7 @@ impl TaskRuntimeAdapter for BuiltinTaskAdapter {
                 },
                 &resolved,
             );
-            let bridge = Arc::new(
-                crate::research_mcp::start_restricted(
-                    adapter.app.clone(),
-                    context.project_id.clone(),
-                    PathBuf::from(&context.execution_root),
-                    context.allowed_paths.clone(),
-                )
-                .await?,
-            );
+            let bridge = adapter.host.bridge(context.clone()).await?;
             let jobs = Arc::new(CommandJobs::default());
             let mut request =
                 CompletionRequest::prompt(task_prompt(&context, &skills), context.prompt.clone());
@@ -887,7 +955,7 @@ impl TaskRuntimeAdapter for BuiltinTaskAdapter {
                                 jobs.run(context, text_argument(&args, "command")?.into(), token)
                                     .await
                             }
-                            name => bridge.call_tool(name, &args).await,
+                            name => bridge.call_tool(name.into(), args).await,
                         }
                     }
                     .await;
@@ -1010,10 +1078,11 @@ pub fn register_task_runtimes(app: &tauri::AppHandle) -> Result<(), String> {
     let tasks = app
         .try_state::<ResearchTaskState>()
         .ok_or("Research task storage is unavailable.")?;
+    let host: Arc<dyn TaskHost> = Arc::new(NativeTaskHost { app: app.clone() });
     tasks.register_runtime(
         "builtin",
         Arc::new(BuiltinTaskAdapter {
-            app: app.clone(),
+            host: host.clone(),
             tokens: Arc::new(Mutex::new(HashMap::new())),
         }),
     )?;
@@ -1025,7 +1094,7 @@ pub fn register_task_runtimes(app: &tauri::AppHandle) -> Result<(), String> {
     tasks.register_runtime(
         "acp",
         Arc::new(AcpTaskAdapter {
-            app: app.clone(),
+            host,
             runtime,
             tokens: Arc::new(Mutex::new(HashMap::new())),
         }),
@@ -1035,7 +1104,7 @@ pub fn register_task_runtimes(app: &tauri::AppHandle) -> Result<(), String> {
 
 #[derive(Clone)]
 struct AcpTaskAdapter {
-    app: tauri::AppHandle,
+    host: Arc<dyn TaskHost>,
     runtime: Arc<crate::acp::AcpRuntime>,
     tokens: Arc<Mutex<HashMap<String, ActiveTaskRun>>>,
 }
@@ -1127,15 +1196,11 @@ impl AcpTaskAdapter {
             return Err("The task was cancelled.".into());
         }
         let files = TaskFiles::open(Path::new(&context.execution_root), &context.allowed_paths)?;
-        let skills = skill_prompt(&self.app, &context)?;
+        let skills = self.host.skills(&context)?;
         let (options, generation) = acp_task_start(&self.runtime, &context, files.root.clone());
-        let bridge = crate::research_mcp::start_restricted(
-            self.app.clone(),
-            context.project_id.clone(),
-            files.root.clone(),
-            context.allowed_paths.clone(),
-        )
-        .await?;
+        let mut bridge_context = context.clone();
+        bridge_context.execution_root = files.root.to_string_lossy().into_owned();
+        let bridge = self.host.bridge(bridge_context).await?;
         if cancel.is_cancelled() {
             bridge.shutdown().await;
             return Err("The task was cancelled.".into());

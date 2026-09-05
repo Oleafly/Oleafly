@@ -332,3 +332,834 @@ async fn active_task_cleanup_cancels_its_children_and_notifies_completion() {
     assert!(!lock(&sessions).contains_key("session"));
     assert!(lock(&sessions).contains_key("other"));
 }
+
+struct LoopbackBridge {
+    url: String,
+    calls: Arc<Mutex<Vec<Value>>>,
+    cancel: CancellationToken,
+    server: Mutex<Option<tokio::task::JoinHandle<()>>>,
+}
+
+impl LoopbackBridge {
+    async fn start() -> Arc<Self> {
+        use axum::{routing::post, Json, Router};
+        let calls = Arc::new(Mutex::new(Vec::new()));
+        let observed = calls.clone();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let router = Router::new().route("/mcp", post(move |Json(request): Json<Value>| {
+            lock(&observed).push(request);
+            async { Json(json!({"content":[{"type":"text","text":"scoped research evidence"}],"isError":false})) }
+        }));
+        let cancel = CancellationToken::new();
+        let stopped = cancel.clone();
+        let server = tokio::spawn(async move {
+            axum::serve(listener, router)
+                .with_graceful_shutdown(async move { stopped.cancelled().await })
+                .await
+                .unwrap();
+        });
+        Arc::new(Self {
+            url: format!("http://{address}/mcp"),
+            calls,
+            cancel,
+            server: Mutex::new(Some(server)),
+        })
+    }
+
+    async fn assert_closed(&self) {
+        assert!(self.cancel.is_cancelled());
+        assert!(lock(&self.server).is_none());
+        assert!(reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .unwrap()
+            .post(&self.url)
+            .json(&json!({}))
+            .send()
+            .await
+            .is_err());
+    }
+}
+
+impl TaskBridge for LoopbackBridge {
+    fn mcp_server(&self) -> Value {
+        json!({"type":"http","name":"fixture-research","url":self.url,"headers":[]})
+    }
+
+    fn call_tool(self: Arc<Self>, name: String, args: Value) -> TaskRuntimeFuture<Value> {
+        Box::pin(async move {
+            reqwest::Client::builder()
+                .no_proxy()
+                .build()
+                .unwrap()
+                .post(&self.url)
+                .json(&json!({"name":name,"arguments":args}))
+                .send()
+                .await
+                .map_err(|error| error.to_string())?
+                .json()
+                .await
+                .map_err(|error| error.to_string())
+        })
+    }
+
+    fn shutdown(
+        self: Arc<Self>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+        Box::pin(async move {
+            self.cancel.cancel();
+            let server = lock(&self.server).take();
+            if let Some(server) = server {
+                tokio::time::timeout(Duration::from_secs(3), server)
+                    .await
+                    .unwrap()
+                    .unwrap();
+            }
+        })
+    }
+}
+
+impl Drop for LoopbackBridge {
+    fn drop(&mut self) {
+        self.cancel.cancel();
+        if let Some(server) = self.server.get_mut().unwrap().take() {
+            server.abort();
+        }
+    }
+}
+
+struct FixtureHost {
+    usage_root: PathBuf,
+    provider_url: String,
+    bridge: Arc<LoopbackBridge>,
+    preparations: Mutex<Vec<TaskRunContext>>,
+    bridge_gate: Option<Arc<tokio::sync::Semaphore>>,
+    bridge_started: tokio::sync::Notify,
+}
+
+impl TaskHost for FixtureHost {
+    fn skills(&self, context: &TaskRunContext) -> Result<String, String> {
+        assert!(context.skill_ids.is_empty());
+        Ok(String::new())
+    }
+
+    fn provider(&self, context: TaskRunContext) -> TaskRuntimeFuture<TaskProvider> {
+        let usage_root = self.usage_root.clone();
+        let base_url = self.provider_url.clone();
+        Box::pin(async move {
+            Ok(TaskProvider {
+                client: reqwest::Client::builder().no_proxy().build().unwrap(),
+                resolved: oleafly_agent::Resolved {
+                    provider_id: context.agent_id,
+                    model_id: context.model_id,
+                    credential: String::new(),
+                    auth: None,
+                    wire: oleafly_agent::Wire::OpenAiChat {
+                        base_url,
+                        reasoning_content: true,
+                    },
+                },
+                usage_root,
+            })
+        })
+    }
+
+    fn bridge(&self, context: TaskRunContext) -> TaskRuntimeFuture<Arc<dyn TaskBridge>> {
+        lock(&self.preparations).push(context);
+        self.bridge_started.notify_one();
+        let gate = self.bridge_gate.clone();
+        let bridge = self.bridge.clone();
+        Box::pin(async move {
+            if let Some(gate) = gate {
+                gate.acquire().await.unwrap().forget();
+            }
+            Ok(bridge as Arc<dyn TaskBridge>)
+        })
+    }
+}
+
+#[derive(Clone, Copy)]
+enum ProviderBehavior {
+    Edit,
+    Reject,
+    Wait,
+    RepeatTool,
+}
+
+struct ProviderFixture {
+    url: String,
+    requests: Arc<Mutex<Vec<Value>>>,
+    server: tokio::task::JoinHandle<()>,
+}
+
+fn tool_delta(calls: Vec<(&str, Value)>) -> Value {
+    json!({"tool_calls": calls.into_iter().enumerate().map(|(index,(name,args))| {
+        json!({"index":index,"id":format!("call-{index}"),"type":"function","function":{"name":name,"arguments":args.to_string()}})
+    }).collect::<Vec<_>>()})
+}
+
+impl ProviderFixture {
+    async fn start(behavior: ProviderBehavior) -> Self {
+        use axum::{
+            body::Body,
+            http::StatusCode,
+            response::{IntoResponse, Response},
+            routing::post,
+            Json, Router,
+        };
+        let requests = Arc::new(Mutex::new(Vec::new()));
+        let observed = requests.clone();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let router = Router::new().route("/v1/chat/completions", post(move |Json(request): Json<Value>| {
+            let step = { let mut requests = lock(&observed); let step = requests.len(); requests.push(request); step };
+            async move {
+                if matches!(behavior, ProviderBehavior::Reject) {
+                    return (StatusCode::BAD_REQUEST, Json(json!({"error":{"message":"fixture rejected this task"}}))).into_response();
+                }
+                if matches!(behavior, ProviderBehavior::Wait) {
+                    let stream = futures_util::stream::pending::<Result<String,std::io::Error>>();
+                    return Response::builder().header("content-type","text/event-stream").body(Body::from_stream(stream)).unwrap();
+                }
+                let delta = match (behavior,step) {
+                    (ProviderBehavior::RepeatTool,_) => tool_delta(vec![("list_files",json!({}))]),
+                    (_,0) => tool_delta(vec![
+                        ("write_file",json!({"path":"analysis/result.md","content":"Isolated manuscript revision"})),
+                        ("write_file",json!({"path":"../original/main.tex","content":"Forbidden revision"})),
+                    ]),
+                    (_,1) => tool_delta(vec![
+                        ("read_file",json!({"path":"analysis/result.md"})),
+                        ("list_files",json!({})),
+                        ("search_project",json!({"query":"revision"})),
+                        ("research_context",json!({})),
+                    ]),
+                    _ => json!({"content":"The isolated revision is ready.","reasoning_content":"Checked the scoped evidence."}),
+                };
+                let finish = if delta.get("tool_calls").is_some() { "tool_calls" } else { "stop" };
+                let content = format!("data: {}\n\ndata: {}\n\ndata: [DONE]\n\n",
+                    json!({"choices":[{"delta":delta}]}),
+                    json!({"choices":[{"delta":{},"finish_reason":finish}],"usage":{"prompt_tokens":10,"completion_tokens":2}}));
+                ([("content-type","text/event-stream")],content).into_response()
+            }
+        }));
+        let server = tokio::spawn(async move {
+            axum::serve(listener, router).await.unwrap();
+        });
+        Self {
+            url: format!("http://{address}/v1"),
+            requests,
+            server,
+        }
+    }
+}
+
+impl Drop for ProviderFixture {
+    fn drop(&mut self) {
+        self.server.abort();
+    }
+}
+
+async fn fixture_host(root: &Path, url: String) -> Arc<FixtureHost> {
+    Arc::new(FixtureHost {
+        usage_root: root.join("usage"),
+        provider_url: url,
+        bridge: LoopbackBridge::start().await,
+        preparations: Mutex::new(Vec::new()),
+        bridge_gate: None,
+        bridge_started: tokio::sync::Notify::new(),
+    })
+}
+
+fn event_log() -> (Arc<Mutex<Vec<TaskRuntimeEvent>>>, TaskEventSink) {
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let sink = events.clone();
+    (events, Arc::new(move |event| lock(&sink).push(event)))
+}
+
+async fn bounded_wait(mut ready: impl FnMut() -> bool) {
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while !ready() {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("the fixture did not reach its controlled boundary");
+}
+
+fn usage_row(root: &Path) -> (String, Option<i64>, Option<i64>, String, String, String) {
+    let database = crate::library_db::open(root).unwrap();
+    assert_eq!(
+        database
+            .query_row("SELECT COUNT(*) FROM usage_records", [], |row| row
+                .get::<_, i64>(0))
+            .unwrap(),
+        1
+    );
+    database.query_row("SELECT status,input_tokens,output_tokens,task_id,session_id,model_id FROM usage_records", [], |row| {
+        Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?,row.get(5)?))
+    }).unwrap()
+}
+
+#[tokio::test]
+async fn builtin_adapter_edits_isolated_files_and_records_native_usage() {
+    let root = tempfile::tempdir().unwrap();
+    let original = root.path().join("original");
+    let workspace = root.path().join("workspace");
+    std::fs::create_dir(&original).unwrap();
+    std::fs::create_dir(&workspace).unwrap();
+    std::fs::write(original.join("main.tex"), "Original manuscript").unwrap();
+    let provider = ProviderFixture::start(ProviderBehavior::Edit).await;
+    let host = fixture_host(root.path(), provider.url.clone()).await;
+    let adapter = BuiltinTaskAdapter {
+        host: host.clone(),
+        tokens: Arc::new(Mutex::new(HashMap::new())),
+    };
+    let (events, sink) = event_log();
+    let result = tokio::time::timeout(
+        Duration::from_secs(15),
+        adapter.run(context(&workspace), CancellationToken::new(), sink),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(result.summary, "The isolated revision is ready.");
+    assert_eq!(
+        (result.input_tokens, result.output_tokens),
+        (Some(30), Some(6))
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.join("analysis/result.md")).unwrap(),
+        "Isolated manuscript revision"
+    );
+    assert_eq!(
+        std::fs::read_to_string(original.join("main.tex")).unwrap(),
+        "Original manuscript"
+    );
+    assert!(lock(&adapter.tokens).is_empty());
+    host.bridge.assert_closed().await;
+    assert_eq!(lock(&host.bridge.calls)[0]["name"], "research_context");
+    {
+        let requests = lock(&provider.requests);
+        assert_eq!(requests.len(), 3);
+        assert!(requests.iter().all(|request| request["model"] == "test"));
+        let tool_results = requests[2]["messages"].to_string();
+        assert!(tool_results.contains("Isolated manuscript revision"));
+        assert!(tool_results.contains("Use a relative path"));
+        assert!(tool_results.contains("scoped research evidence"));
+    }
+    assert!(lock(&events).iter().any(|event| matches!(event,TaskRuntimeEvent::Reasoning{text} if text=="Checked the scoped evidence.")));
+    assert_eq!(
+        usage_row(&host.usage_root),
+        (
+            "completed".into(),
+            Some(30),
+            Some(6),
+            "task".into(),
+            "session".into(),
+            "test".into()
+        )
+    );
+}
+
+#[tokio::test]
+async fn builtin_adapter_failure_and_step_limit_close_resources_without_success() {
+    for (behavior, expected) in [
+        (ProviderBehavior::Reject, "fixture rejected"),
+        (ProviderBehavior::RepeatTool, "step limit"),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let provider = ProviderFixture::start(behavior).await;
+        let host = fixture_host(root.path(), provider.url.clone()).await;
+        let adapter = BuiltinTaskAdapter {
+            host: host.clone(),
+            tokens: Arc::new(Mutex::new(HashMap::new())),
+        };
+        let error = tokio::time::timeout(
+            Duration::from_secs(20),
+            adapter.run(
+                context(root.path()),
+                CancellationToken::new(),
+                event_log().1,
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap_err();
+        assert!(error.contains(expected), "{error}");
+        assert!(lock(&adapter.tokens).is_empty());
+        host.bridge.assert_closed().await;
+        let row = usage_row(&host.usage_root);
+        assert_eq!(row.0, "failed");
+        if matches!(behavior, ProviderBehavior::Reject) {
+            assert_eq!((row.1, row.2), (None, None));
+        } else {
+            assert_eq!(lock(&provider.requests).len(), 50);
+            assert_eq!((row.1, row.2), (Some(500), Some(100)));
+        }
+    }
+}
+
+#[tokio::test]
+async fn builtin_adapter_cancellation_waits_for_the_stream_and_bridge() {
+    let root = tempfile::tempdir().unwrap();
+    let provider = ProviderFixture::start(ProviderBehavior::Wait).await;
+    let host = fixture_host(root.path(), provider.url.clone()).await;
+    let adapter = BuiltinTaskAdapter {
+        host: host.clone(),
+        tokens: Arc::new(Mutex::new(HashMap::new())),
+    };
+    let run = tokio::spawn(adapter.run(
+        context(root.path()),
+        CancellationToken::new(),
+        event_log().1,
+    ));
+    bounded_wait(|| !lock(&provider.requests).is_empty()).await;
+    tokio::time::timeout(Duration::from_secs(5), adapter.cancel("session".into()))
+        .await
+        .unwrap()
+        .unwrap();
+    let error = run.await.unwrap().unwrap_err();
+    assert!(error.contains("cancelled"), "{error}");
+    assert!(lock(&adapter.tokens).is_empty());
+    host.bridge.assert_closed().await;
+    let row = usage_row(&host.usage_root);
+    assert_eq!((row.0, row.1, row.2), ("cancelled".into(), None, None));
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+const ACP_TASK_FIXTURE: &str = r#"
+import json
+import os
+from pathlib import Path
+import sys
+import time
+import urllib.request
+
+scenario = sys.argv[1]
+original = Path(sys.argv[2])
+native = "fixture-native"
+pending = None
+servers = []
+model = "default-model"
+
+def send(value):
+    print(json.dumps({"jsonrpc":"2.0", **value}), flush=True)
+
+def result(request, value):
+    send({"id":request["id"], "result":value})
+
+def update(kind, **data):
+    send({"method":"session/update", "params":{"sessionId":native, "update":{"sessionUpdate":kind, **data}}})
+
+for line in sys.stdin:
+    request = json.loads(line)
+    method = request.get("method")
+    params = request.get("params", {})
+    if method == "initialize":
+        Path("analysis/agent.pid").write_text(str(os.getpid()))
+        result(request, {"protocolVersion":1, "agentCapabilities":{"mcpCapabilities":{"http":True}}})
+    elif method == "session/new":
+        servers = params["mcpServers"]
+        assert Path(params["cwd"]).samefile(Path.cwd())
+        result(request, {"sessionId":native,"models":{"currentModelId":model,"availableModels":[{"modelId":"default-model","name":"Default"},{"modelId":"test","name":"Selected"}]}})
+    elif method == "session/set_model":
+        model = params["modelId"]
+        result(request, {})
+    elif method == "session/prompt":
+        Path("analysis/selected-model").write_text(model)
+        update("agent_thought_chunk", content={"type":"text","text":"Checking isolated evidence."})
+        update("tool_call", toolCallId="write-1", title="Write isolated result", status="in_progress")
+        if scenario == "hang":
+            child = os.fork()
+            if child == 0:
+                for count in range(1000):
+                    with open("analysis/heartbeat", "a") as handle:
+                        handle.write(str(count) + "\n")
+                    time.sleep(0.02)
+                os._exit(0)
+            Path("analysis/child.pid").write_text(str(child))
+            pending = request
+            continue
+        if scenario == "error":
+            update("agent_message_chunk", content={"type":"text","text":"Partial fixture answer"})
+            send({"id":request["id"],"error":{"code":-32000,"message":"fixture task failed"}})
+            continue
+        if scenario == "length":
+            update("usage_update", used=900,size=32000)
+            update("agent_message_chunk", content={"type":"text","text":"Incomplete fixture answer"})
+            result(request, {"stopReason":"max_tokens"})
+            continue
+        try:
+            original.read_text()
+            raise AssertionError("An unlinked original was readable")
+        except (PermissionError, FileNotFoundError):
+            pass
+        Path("analysis/result.md").write_text("Native ACP isolated revision")
+        payload = json.dumps({"name":"research_context","arguments":{}}).encode()
+        call = urllib.request.Request(servers[0]["url"], data=payload,headers={"Content-Type":"application/json"})
+        with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(call,timeout=5) as response:
+            assert json.load(response)["content"][0]["text"] == "scoped research evidence"
+        update("tool_call_update", toolCallId="write-1", title="Write isolated result",status="completed")
+        update("usage_update", used=900,size=32000)
+        for index in range(300):
+            update("agent_message_chunk", content={"type":"text","text":str(index) + ","})
+        result(request, {"stopReason":"end_turn","usage":{"inputTokens":11,"outputTokens":7}})
+    elif method == "session/cancel" and pending:
+        result(pending,{"stopReason":"cancelled"})
+        pending = None
+"#;
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+struct AcpFixture {
+    directory: tempfile::TempDir,
+    workspace: PathBuf,
+    original: PathBuf,
+    host: Arc<FixtureHost>,
+    adapter: AcpTaskAdapter,
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+impl Drop for AcpFixture {
+    fn drop(&mut self) {
+        self.adapter.runtime.stop_all_now();
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+impl AcpFixture {
+    async fn new(scenario: &str) -> Self {
+        let directory = tempfile::tempdir().unwrap();
+        let original = directory.path().join("original.tex");
+        let workspace = directory.path().join("workspace");
+        std::fs::create_dir(&workspace).unwrap();
+        std::fs::create_dir(workspace.join("analysis")).unwrap();
+        std::fs::write(&original, "Original manuscript").unwrap();
+        let script = directory.path().join("fixture.py");
+        std::fs::write(&script, ACP_TASK_FIXTURE).unwrap();
+        let output = std::process::Command::new("python3")
+            .args(["-c", "import sys; print(sys.executable)"])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let python = PathBuf::from(String::from_utf8(output.stdout).unwrap().trim())
+            .canonicalize()
+            .unwrap();
+        #[cfg(target_os = "macos")]
+        let python = python
+            .parent()
+            .and_then(Path::parent)
+            .map(|prefix| prefix.join("Resources/Python.app/Contents/MacOS/Python"))
+            .filter(|path| path.is_file())
+            .unwrap_or(python);
+        let runtime = crate::acp::AcpRuntime::new(directory.path().join("acp")).unwrap();
+        let definition = crate::acp::AgentDefinition {
+            id: "fixture-task-agent".into(),
+            name: "Task fixture".into(),
+            version: "1.0.0".into(),
+            description: String::new(),
+            builtin: false,
+            distribution: crate::acp::Distribution {
+                command: Some(crate::acp::CommandDistribution {
+                    executable: python.to_string_lossy().into_owned(),
+                    args: vec![
+                        "-u".into(),
+                        "-B".into(),
+                        script.to_string_lossy().into_owned(),
+                        scenario.into(),
+                        original.to_string_lossy().into_owned(),
+                    ],
+                }),
+                ..Default::default()
+            },
+        };
+        runtime
+            .register(&serde_json::to_string(&definition).unwrap())
+            .unwrap();
+        let host = fixture_host(directory.path(), "http://127.0.0.1:9".into()).await;
+        let adapter = AcpTaskAdapter {
+            host: host.clone(),
+            runtime,
+            tokens: Arc::new(Mutex::new(HashMap::new())),
+        };
+        Self {
+            directory,
+            workspace,
+            original,
+            host,
+            adapter,
+        }
+    }
+
+    fn context(&self) -> TaskRunContext {
+        let mut context = context(&self.workspace);
+        context.runtime_id = "acp".into();
+        context.agent_id = "fixture-task-agent".into();
+        context
+    }
+
+    fn saved_events(&self, session_id: &str) -> Vec<crate::acp::AcpEvent> {
+        let mut after = 0;
+        let mut events = Vec::new();
+        loop {
+            let page = self.adapter.runtime.events(session_id, after, 256).unwrap();
+            if let Some(last) = page.events.last() {
+                after = last.sequence;
+            }
+            events.extend(page.events);
+            if !page.has_more {
+                return events;
+            }
+        }
+    }
+
+    async fn assert_cleaned(&self) {
+        assert!(lock(&self.adapter.tokens).is_empty());
+        self.host.bridge.assert_closed().await;
+        let temporary = self.directory.path().join("acp/task-temp");
+        bounded_wait(|| {
+            !temporary.exists() || std::fs::read_dir(&temporary).unwrap().next().is_none()
+        })
+        .await;
+        #[cfg(target_os = "macos")]
+        {
+            let pid = std::fs::read_to_string(self.workspace.join("analysis/agent.pid"))
+                .unwrap()
+                .parse::<i32>()
+                .unwrap();
+            bounded_wait(|| unsafe { libc::kill(pid, 0) } != 0).await;
+        }
+        assert_eq!(
+            std::fs::read_to_string(&self.original).unwrap(),
+            "Original manuscript"
+        );
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[tokio::test]
+async fn acp_adapter_runs_confined_tools_and_replays_the_durable_transcript() {
+    let fixture = AcpFixture::new("complete").await;
+    let (events, sink) = event_log();
+    let outcome = tokio::time::timeout(
+        Duration::from_secs(20),
+        fixture
+            .adapter
+            .run(fixture.context(), CancellationToken::new(), sink),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(
+        outcome.summary,
+        (0..300)
+            .map(|index| format!("{index},"))
+            .collect::<String>()
+    );
+    assert_eq!(
+        (outcome.input_tokens, outcome.output_tokens),
+        (Some(11), Some(7))
+    );
+    assert_eq!(
+        std::fs::read_to_string(fixture.workspace.join("analysis/result.md")).unwrap(),
+        "Native ACP isolated revision"
+    );
+    assert_eq!(
+        std::fs::read_to_string(fixture.workspace.join("analysis/selected-model")).unwrap(),
+        "test"
+    );
+    assert_eq!(lock(&fixture.host.bridge.calls).len(), 1);
+    fixture.assert_cleaned().await;
+    let id = outcome.native_session_id.unwrap();
+    let saved = fixture.saved_events(&id);
+    assert_eq!(
+        saved
+            .iter()
+            .filter(|event| event.kind == "agent_message_chunk")
+            .count(),
+        300
+    );
+    assert!(saved
+        .iter()
+        .any(|event| event.kind == "usage" && event.data["inputTokens"] == 11));
+    {
+        let transcript = lock(&events);
+        assert_eq!(
+            transcript
+                .iter()
+                .filter(|event| matches!(event, TaskRuntimeEvent::Text { .. }))
+                .count(),
+            300
+        );
+        assert!(transcript.iter().any(|event|matches!(event,TaskRuntimeEvent::Reasoning{text} if text=="Checking isolated evidence.")));
+        assert!(transcript.iter().any(
+            |event| matches!(event,TaskRuntimeEvent::Tool{name,..} if name=="Write isolated result")
+        ));
+    }
+    let mut replay = TaskRuntimeOutcome {
+        summary: String::new(),
+        artifacts: Vec::new(),
+        native_session_id: Some(id.clone()),
+        input_tokens: None,
+        output_tokens: None,
+    };
+    let mut cursor = 0;
+    let mut stop = None;
+    let (replayed, sink) = event_log();
+    fixture
+        .adapter
+        .catch_up(&id, &mut cursor, &mut replay, &mut stop, &sink)
+        .unwrap();
+    assert_eq!(replay.summary, outcome.summary);
+    assert_eq!(
+        (replay.input_tokens, replay.output_tokens),
+        (Some(11), Some(7))
+    );
+    assert_eq!(stop.as_deref(), Some("end_turn"));
+    assert_eq!(cursor, saved.last().unwrap().sequence);
+    let event_count = lock(&replayed).len();
+    fixture
+        .adapter
+        .catch_up(&id, &mut cursor, &mut replay, &mut stop, &sink)
+        .unwrap();
+    assert_eq!(lock(&replayed).len(), event_count);
+    let reopened = crate::acp::AcpRuntime::new(fixture.directory.path().join("acp")).unwrap();
+    let record = reopened.record(&id).unwrap();
+    assert_eq!(record.task_id.as_deref(), Some("task"));
+    assert_eq!(record.controls.model_id.as_deref(), Some("test"));
+    assert_eq!(
+        record.project_path,
+        fixture.workspace.canonicalize().unwrap().to_string_lossy()
+    );
+    assert_eq!(reopened.events(&id, 0, 256).unwrap().events.len(), 256);
+    assert_eq!(record.status, crate::acp::SessionStatus::Disconnected);
+    reopened.shutdown_all().await;
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[tokio::test]
+async fn acp_adapter_rejects_incomplete_and_failed_turns_but_keeps_the_transcript() {
+    for (scenario, expected, stop) in [
+        ("length", "max_tokens", "max_tokens"),
+        (
+            "error",
+            "The agent could not complete this request.",
+            "error",
+        ),
+    ] {
+        let fixture = AcpFixture::new(scenario).await;
+        let error = tokio::time::timeout(
+            Duration::from_secs(15),
+            fixture
+                .adapter
+                .run(fixture.context(), CancellationToken::new(), event_log().1),
+        )
+        .await
+        .unwrap()
+        .unwrap_err();
+        assert!(error.contains(expected), "{error}");
+        assert!(!error.contains("fixture task failed"));
+        fixture.assert_cleaned().await;
+        let sessions = fixture.adapter.runtime.list("project").unwrap();
+        assert_eq!(sessions.len(), 1);
+        let saved = fixture.saved_events(&sessions[0].id);
+        assert!(saved
+            .iter()
+            .any(|event| event.kind == "turn_complete" && event.data["stopReason"] == stop));
+        assert!(saved
+            .iter()
+            .any(|event| event.kind == "agent_message_chunk"));
+        assert!(!saved
+            .iter()
+            .any(|event| event.kind == "usage" && event.data["source"] == "acp_prompt"));
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[tokio::test]
+async fn acp_adapter_cancellation_stops_child_writes_before_returning() {
+    let fixture = AcpFixture::new("hang").await;
+    let run = tokio::spawn(fixture.adapter.run(
+        fixture.context(),
+        CancellationToken::new(),
+        event_log().1,
+    ));
+    let heartbeat = fixture.workspace.join("analysis/heartbeat");
+    bounded_wait(|| {
+        std::fs::read_to_string(&heartbeat).is_ok_and(|text| text.lines().count() >= 3)
+    })
+    .await;
+    tokio::time::timeout(
+        Duration::from_secs(5),
+        fixture.adapter.cancel("session".into()),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    let error = run.await.unwrap().unwrap_err();
+    assert!(
+        error.contains("cancelled") || error.contains("disconnected"),
+        "{error}"
+    );
+    fixture.assert_cleaned().await;
+    let settled = std::fs::read(&heartbeat).unwrap();
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    assert_eq!(std::fs::read(&heartbeat).unwrap(), settled);
+    #[cfg(target_os = "macos")]
+    {
+        let child = std::fs::read_to_string(fixture.workspace.join("analysis/child.pid"))
+            .unwrap()
+            .parse::<i32>()
+            .unwrap();
+        bounded_wait(|| unsafe { libc::kill(child, 0) } != 0).await;
+    }
+    let sessions = fixture.adapter.runtime.list("project").unwrap();
+    assert_eq!(sessions[0].status, crate::acp::SessionStatus::Cancelled);
+}
+
+#[tokio::test]
+async fn acp_adapter_cancel_during_bridge_preparation_prevents_native_start() {
+    let root = tempfile::tempdir().unwrap();
+    let gate = Arc::new(tokio::sync::Semaphore::new(0));
+    let host = Arc::new(FixtureHost {
+        usage_root: root.path().join("usage"),
+        provider_url: String::new(),
+        bridge: LoopbackBridge::start().await,
+        preparations: Mutex::new(Vec::new()),
+        bridge_gate: Some(gate.clone()),
+        bridge_started: tokio::sync::Notify::new(),
+    });
+    let runtime = crate::acp::AcpRuntime::new(root.path().join("acp")).unwrap();
+    let adapter = AcpTaskAdapter {
+        host: host.clone(),
+        runtime: runtime.clone(),
+        tokens: Arc::new(Mutex::new(HashMap::new())),
+    };
+    let run = tokio::spawn(adapter.run(
+        context(root.path()),
+        CancellationToken::new(),
+        event_log().1,
+    ));
+    tokio::time::timeout(Duration::from_secs(5), host.bridge_started.notified())
+        .await
+        .unwrap();
+    let cancellation = tokio::spawn(adapter.cancel("session".into()));
+    bounded_wait(|| {
+        lock(&adapter.tokens)
+            .get("session")
+            .is_some_and(|active| active.token.is_cancelled())
+    })
+    .await;
+    assert!(!cancellation.is_finished());
+    gate.add_permits(1);
+    tokio::time::timeout(Duration::from_secs(5), cancellation)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    assert!(run.await.unwrap().unwrap_err().contains("cancelled"));
+    assert!(runtime.list("project").unwrap().is_empty());
+    assert!(!root.path().join("acp/task-temp").exists());
+    assert!(lock(&adapter.tokens).is_empty());
+    host.bridge.assert_closed().await;
+}

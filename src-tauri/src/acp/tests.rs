@@ -8,14 +8,14 @@ use super::{
 use serde_json::json;
 use std::{path::Path, sync::Arc, time::Duration};
 
-pub(super) fn fixture_temp() -> tempfile::TempDir {
+pub(crate) fn fixture_temp() -> tempfile::TempDir {
     tempfile::Builder::new()
         .prefix("oleafly-acp-fixture-")
         .tempdir()
         .unwrap()
 }
 
-pub(super) fn fixture_definition(extra: Vec<String>, root: &Path) -> AgentDefinition {
+pub(crate) fn fixture_definition(extra: Vec<String>, root: &Path) -> AgentDefinition {
     let python =
         catalog::discover("python3").expect("Python 3 is required for ACP protocol fixtures");
     #[cfg(target_os = "macos")]
@@ -867,16 +867,34 @@ fn permission_prefix_aliases_preserve_drive_and_share_boundaries() {
 #[cfg(windows)]
 #[test]
 fn permission_paths_accept_plain_and_verbatim_windows_paths() {
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
+    use windows_sys::Win32::Storage::FileSystem::GetShortPathNameW;
+
+    fn short_path(path: &Path) -> std::path::PathBuf {
+        let input: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+        let mut output = vec![0u16; 32_768];
+        let written =
+            unsafe { GetShortPathNameW(input.as_ptr(), output.as_mut_ptr(), output.len() as u32) }
+                as usize;
+        assert!(written > 0 && written < output.len());
+        std::ffi::OsString::from_wide(&output[..written]).into()
+    }
+
     let temp = tempfile::tempdir().unwrap();
-    let project = temp.path().join("project");
+    let project = temp.path().join("project with a long directory name");
     std::fs::create_dir(&project).unwrap();
     std::fs::write(project.join("existing.tex"), "fixture").unwrap();
     let root = project.canonicalize().unwrap();
+    let short = short_path(&project);
     for path in [
         project.join("existing.tex"),
         project.join("new.tex"),
         root.join("existing.tex"),
         root.join("new.tex"),
+        short.join("existing.tex"),
+        short.join("new.tex"),
+        short.join("new-directory/nested/new.tex"),
+        short_path(&project.join("existing.tex")),
     ] {
         assert!(
             permission_paths_allowed(&root, &json!({"locations":[{"path":path}]})),
@@ -888,8 +906,10 @@ fn permission_paths_accept_plain_and_verbatim_windows_paths() {
     std::fs::create_dir(&sibling).unwrap();
     for path in [
         sibling.join("new.tex"),
+        short_path(&sibling).join("new.tex"),
         project.join("../outside.tex"),
         root.join("../outside.tex"),
+        short.join("../outside.tex"),
     ] {
         assert!(
             !permission_paths_allowed(&root, &json!({"locations":[{"path":path}]})),
@@ -897,6 +917,45 @@ fn permission_paths_accept_plain_and_verbatim_windows_paths() {
             path.display()
         );
     }
+}
+
+#[cfg(windows)]
+#[test]
+fn permission_alias_expansion_preserves_junction_boundaries() {
+    fn junction(target: &Path, link: &Path) {
+        let output = std::process::Command::new("cmd.exe")
+            .args(["/D", "/C", "mklink", "/J"])
+            .arg(link)
+            .arg(target)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let temp = tempfile::tempdir().unwrap();
+    let project = temp.path().join("project");
+    let outside = temp.path().join("outside");
+    std::fs::create_dir(&project).unwrap();
+    std::fs::create_dir(&outside).unwrap();
+    let root = project.canonicalize().unwrap();
+    let outward = project.join("linked-outside");
+    let inward = outside.join("linked-project");
+    junction(&outside, &outward);
+    junction(&project, &inward);
+    for path in [outward.join("new.tex"), inward.join("new.tex")] {
+        assert!(
+            !permission_paths_allowed(&root, &json!({"locations":[{"path":path}]})),
+            "{}",
+            path.display()
+        );
+    }
+    std::fs::remove_dir(outward).unwrap();
+    std::fs::remove_dir(inward).unwrap();
 }
 
 #[tokio::test]
