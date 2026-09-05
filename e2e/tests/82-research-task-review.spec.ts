@@ -62,6 +62,47 @@ function revisedManuscript(original: string, paragraph: string) {
   return original.replace("\\end{document}", `\\par ${paragraph}\n\\end{document}`);
 }
 
+function editorText(source: string) {
+  return source.replace(/\r\n?/g, "\n");
+}
+
+async function reportCreationState(page: Page, projectId: string) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const diagnostics = await Promise.race([
+      page.evaluate(`(() => {
+      const panel = document.querySelector('[data-testid="research-tasks-panel"]');
+      const summary = (task) => ({ id: task.id, title: task.title.slice(0, 160), status: task.status, generation: task.executionGeneration });
+      const ui = {
+        titleLength: document.querySelector('#research-task-title')?.value.length ?? null,
+        promptLength: document.querySelector('#research-task-prompt')?.value.length ?? null,
+        agent: document.querySelector('#research-task-agent')?.value.slice(0, 300) ?? null,
+        error: panel?.querySelector('[role="alert"]')?.textContent.slice(0, 500) ?? null,
+        buttons: [...(panel?.querySelectorAll('button') ?? [])].slice(0, 20).map((button) => ({ label: button.textContent.trim().slice(0, 80), disabled: button.disabled })),
+      };
+      return Promise.race([
+        Promise.all([
+          import("/src/store/research-tasks.ts").then(({ useResearchTasksStore }) => {
+            const state = useResearchTasksStore.getState();
+            return { projectId: state.projectId, selectedTaskId: state.selectedTaskId, action: state.action, error: state.error?.slice(0, 500), tasks: state.tasks.slice(0, 8).map(summary) };
+          }).catch(() => ({ unavailable: true })),
+          import("/src/lib/research-tasks.ts").then(({ listResearchTasks }) => listResearchTasks(${JSON.stringify(projectId)})).then((tasks) => tasks.slice(0, 8).map(summary)).catch(() => ({ unavailable: true })),
+        ]).then(([store, native]) => ({ ui, store, native })),
+        new Promise((resolve) => setTimeout(() => resolve({ ui, timedOut: true }), 2000)),
+      ]);
+      })()`),
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error("Task creation diagnostics timed out")), 2000);
+      }),
+    ]);
+    console.error("Task creation diagnostics", JSON.stringify(diagnostics));
+  } catch (error) {
+    console.error("Task creation diagnostics unavailable", String(error).slice(0, 500));
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 async function runRevision(page: Page, projectId: string, title: string, proposed: string) {
   await page.getByText("New task", { exact: true }).click();
   await page.fill("#research-task-title", title);
@@ -80,7 +121,12 @@ async function runRevision(page: Page, projectId: string, title: string, propose
   server.resetRequests();
   server.setToolCall({ name: "write_file", args: { path: "main.tex", content: proposed }, then: `Revision ready: ${title}` });
   await page.getByText("Create task", { exact: true }).click();
-  await expect(page.locator(detailSelector)).toContainText(title, { timeout: 20_000 });
+  try {
+    await expect(page.locator(detailSelector)).toContainText(title, { timeout: 20_000 });
+  } catch (error) {
+    await reportCreationState(page, projectId);
+    throw error;
+  }
   await page.getByText("Start", { exact: true }).click();
   await expect(page.locator(detailSelector)).toContainText("Review needed", { timeout: 90_000 });
   await expect(page.locator(detailSelector)).toContainText(`Revision ready: ${title}`);
@@ -113,7 +159,7 @@ test("a native task edits its isolated manuscript and applies only after preview
   const proposed = revisedManuscript(original, marker);
   const task = await runRevision(tauriPage, projectId, `Review revision ${run}`, proposed);
   expect(await readMain(tauriPage, projectId)).toBe(original);
-  expect(await editorSource(tauriPage)).toBe(original);
+  expect(await editorSource(tauriPage)).toBe(editorText(original));
   const preview = await previewMain(tauriPage, task.id);
   expect(preview.before.text).toBe(original);
   expect(preview.after.text).toBe(proposed);
@@ -129,7 +175,7 @@ test("a native task edits its isolated manuscript and applies only after preview
   await expect(detail).toContainText("Completed", { timeout: 20_000 });
   expect(await readMain(tauriPage, projectId)).toBe(proposed);
   await tauriPage.waitForFunction(
-    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => getEditorView()?.state.doc.toString() === ${JSON.stringify(proposed)})`,
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => getEditorView()?.state.doc.toString() === ${JSON.stringify(editorText(proposed))})`,
     20_000,
   );
   const applied = await nativeTask(tauriPage, projectId, task.title);
@@ -145,7 +191,7 @@ test("applying a task preserves an unsaved editor edit and retains the conflicti
   const original = await readMain(tauriPage, projectId);
   const marker = `E2E isolated proposal ${run}`;
   const proposed = revisedManuscript(original, marker);
-  const manual = revisedManuscript(original, `E2E unsaved manuscript edit ${run}`);
+  const manual = editorText(revisedManuscript(original, `E2E unsaved manuscript edit ${run}`));
   const task = await runRevision(tauriPage, projectId, `Preserve manual edits ${run}`, proposed);
   const detail = tauriPage.locator(detailSelector);
   await detail.getByText("Preview", { exact: true }).click();
@@ -171,7 +217,23 @@ test("applying a task preserves an unsaved editor edit and retains the conflicti
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: ${JSON.stringify(manual)} } });
     const pending = files.useFilesStore.getState().files["main.tex"];
     const observed = { disk, dirty: pending.dirty, buffer: pending.content, editor: view.state.doc.toString() };
-    if (!observed.dirty || observed.buffer !== ${JSON.stringify(manual)}) throw new Error("The editor edit was not pending before Apply");
+    if (!observed.dirty || observed.buffer !== ${JSON.stringify(manual)}) {
+      const describe = (text) => ({ length: text.length, crlf: text.split("\\r\\n").length - 1, cr: text.split("\\r").length - 1, lf: text.split("\\n").length - 1 });
+      const normalize = (text) => text.replace(/\\r\\n?/g, "\\n");
+      const mutationLocked = await Promise.race([
+        import("/src/lib/editor-mutation-lease.ts").then(({ isEditorMutationLocked }) => isEditorMutationLocked(${JSON.stringify(projectId)})).catch(() => null),
+        new Promise((resolve) => setTimeout(() => resolve(null), 500)),
+      ]);
+      const diagnostics = {
+        dirty: observed.dirty, disk: describe(disk), buffer: describe(observed.buffer),
+        editor: describe(observed.editor), expected: describe(${JSON.stringify(manual)}),
+        normalizedBufferMatches: normalize(observed.buffer) === ${JSON.stringify(manual)},
+        editorMatchesExpected: observed.editor === ${JSON.stringify(manual)},
+        editorMatchesBuffer: observed.editor === observed.buffer,
+        mutationLocked, editorReadOnly: view.state.readOnly, contentEditable: view.contentDOM.isContentEditable,
+      };
+      throw new Error("The editor edit was not pending before Apply: " + JSON.stringify(diagnostics));
+    }
     apply.click();
     return observed;
   })`);

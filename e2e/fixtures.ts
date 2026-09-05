@@ -251,7 +251,10 @@ function createNativeTest(dismissTours: boolean) {
       const page = adaptForPackagedRuntime(new TauriPage(client));
       page.setDefaultTimeout(20_000);
       const firstPage = !nativePageOpened;
-      if (nativePageOpened || testInfo.retry > 0) {
+      const inheritedProject = firstPage && await page.evaluate<boolean>(
+        `document.querySelector('button[aria-label="Home"]') !== null`,
+      );
+      if (nativePageOpened || testInfo.retry > 0 || inheritedProject) {
         await reloadNativePage(page);
       }
       await ensureNativePageReady(page);

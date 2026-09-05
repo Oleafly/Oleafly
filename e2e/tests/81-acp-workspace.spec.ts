@@ -25,10 +25,32 @@ function acpCall(method: string, ...args: unknown[]) {
 }
 
 async function selectNativeOption(page: Page, selector: string, value: string) {
-  await page.waitForFunction(`(() => {
-    const select = document.querySelector(${JSON.stringify(selector)});
-    return !!select && !select.disabled && [...select.options].some((option) => option.value === ${JSON.stringify(value)});
-  })()`, 20_000);
+  try {
+    await page.waitForFunction(`(() => {
+      const select = document.querySelector(${JSON.stringify(selector)});
+      return !!select && !select.disabled && [...select.options].some((option) => option.value === ${JSON.stringify(value)});
+    })()`, 20_000);
+  } catch (error) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const diagnostic = await Promise.race([
+        page.evaluate(`(() => {
+          const matches = document.querySelectorAll(${JSON.stringify(selector)});
+          const select = matches[0];
+          return {
+            present: !!select, matches: matches.length, disabled: select?.disabled ?? null,
+            selected: select?.value ?? null,
+            optionIds: Array.from(select?.options ?? []).slice(0, 120).map((option) => option.value),
+          };
+        })()`).catch((failure: unknown) => ({ unavailable: String(failure) })),
+        new Promise((resolve) => { timer = setTimeout(() => resolve({ unavailable: "Diagnostic deadline exceeded" }), 2_000); }),
+      ]);
+      console.error("ACP selector timeout", JSON.stringify({ selector, desired: value, diagnostic }));
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+    throw error;
+  }
   await page.evaluate(`(() => {
     const select = document.querySelector(${JSON.stringify(selector)});
     select.value = ${JSON.stringify(value)};
