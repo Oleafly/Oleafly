@@ -355,6 +355,7 @@ fn rollback(project_root: &Path, journal: &Path, plan: &ApplyPlan) -> Result<(),
             }
         }
     }
+    drop(backup_files);
     retire_journal(journal, "recovered")
 }
 

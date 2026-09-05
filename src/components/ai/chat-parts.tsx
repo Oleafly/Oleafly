@@ -921,7 +921,9 @@ function WorkedSteps({
   const [open, setOpen] = usePersistentExpansion(expansionKey, false);
   const listId = useId();
   const seconds = Math.max(1, Math.round(totalMs / 1000));
-  const label = totalMs > 0 ? `Worked for ${seconds}s` : `Worked through ${rows.length} steps`;
+  const label = totalMs > 0
+    ? `Worked for ${seconds}s`
+    : `Worked through ${rows.length} ${rows.length === 1 ? "step" : "steps"}`;
   return (
     <div className="max-w-[85%]">
       <button

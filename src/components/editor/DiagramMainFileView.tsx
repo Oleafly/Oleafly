@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DiagramCanvas, DiagramKitContext } from "@oleafly/diagram";
 import {
   buildStandaloneDoc,
@@ -8,7 +8,9 @@ import {
   type DiagramModel,
 } from "@oleafly/latex";
 import { KIT } from "@/components/diagram/diagram-kit";
-import { readFileContent, writeFileContent } from "@/lib/tauri";
+import { readFileContent } from "@/lib/tauri";
+import { useFilesStore } from "@/store/files";
+import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 
 // Lazy-loaded from Editor.tsx (React.lazy): this is the only place the
 // always-mounted editor would otherwise pull in @oleafly/diagram (and its
@@ -24,33 +26,41 @@ export default function DiagramMainFileView({
   const [notDrawable, setNotDrawable] = useState(false);
   const [background, setBackground] = useState("#ffffff");
 
+  const loadGeneration = useRef(0);
+  const reload = useCallback(async () => {
+    const generation = ++loadGeneration.current;
+    setModel(null);
+    const content = useFilesStore.getState().files[path]?.content ?? await readFileContent(projectId, path);
+    if (generation !== loadGeneration.current || useFilesStore.getState().projectId !== projectId) return;
+    const model = parseEmbeddedModel(content);
+    setModel(model);
+    setNotDrawable(!model);
+    setBackground(model?.background ?? "#ffffff");
+  }, [projectId, path]);
   useEffect(() => {
-    let cancelled = false;
     setModel(null);
     setNotDrawable(false);
-    readFileContent(projectId, path).then((content) => {
-      if (cancelled) return;
-      const m = parseEmbeddedModel(content);
-      if (m) {
-        setModel(m);
-        setBackground(m.background !== undefined ? m.background : "#ffffff");
-      } else {
-        setNotDrawable(true);
-      }
+    void reload().catch(() => setNotDrawable(true));
+    const unregister = registerEditorMutationOwner({
+      projectId: () => projectId,
+      reconcile: reload,
     });
     return () => {
-      cancelled = true;
+      loadGeneration.current++;
+      unregister();
     };
-  }, [projectId, path]);
+  }, [projectId, reload]);
 
   const onModelChange = (m: DiagramModel) => {
+    const files = useFilesStore.getState();
+    if (isEditorMutationLocked(projectId) || files.projectId !== projectId || files.activePath !== path) return;
     setModel(m);
     const doc = buildStandaloneDoc({
       code: serializeDiagram({ ...m, background }),
       libraries: DIAGRAM_LIBS,
       background,
     });
-    void writeFileContent(projectId, path, doc);
+    useFilesStore.getState().setContent(path, doc);
   };
 
   if (notDrawable) {

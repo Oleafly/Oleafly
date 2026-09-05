@@ -1,6 +1,12 @@
 import { useMemo } from "react";
 import { openBrowserWindow } from "@/lib/browser-window";
-import { safeWebUrl, type ResearchChatActions } from "@/lib/chat-activity";
+import {
+  createResearchArtifactAction,
+  safeWebUrl,
+  type ProjectResearchArtifactTarget,
+  type ResearchChatActions,
+} from "@/lib/chat-activity";
+import { readResearchRootFile } from "@/lib/research-workspace";
 import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -17,14 +23,25 @@ export function useResearchChatActions(projectId: string | null): ResearchChatAc
         if (!opened) toast.error("The source could not be opened.");
       }).catch(() => toast.error("The source could not be opened."));
     },
-    openArtifact(target) {
-      if (!projectId || useFilesStore.getState().projectId !== projectId || (target.projectId && target.projectId !== projectId)) return;
+    openArtifact: createResearchArtifactAction(projectId, {
+      inspectLinked(currentProjectId, target) {
+        return readResearchRootFile(currentProjectId, target.rootId, target.relativePath);
+      },
+      openProject(currentProjectId, target) {
+        if (useFilesStore.getState().projectId !== currentProjectId) return;
+        return openProjectArtifact(currentProjectId, target);
+      },
+    }),
+  }), [projectId]);
+}
+
+function openProjectArtifact(projectId: string, target: ProjectResearchArtifactTarget): Promise<void> | void {
       const path = target.path.replaceAll("\\", "/");
       if (!path || path.startsWith("/") || /^[A-Za-z]:/.test(path) || path.includes("\0") || path.split("/").some((part) => part === ".." || [".git", ".private"].includes(part.toLowerCase()))) {
         toast.error("This result does not contain a project file path.");
         return;
       }
-      void useFilesStore.getState().openFile(path).then(async () => {
+      return useFilesStore.getState().openFile(path).then(async () => {
         const files = useFilesStore.getState();
         if (files.projectId !== projectId) return;
         if (files.activePath !== path) { toast.error("The result file could not be opened."); return; }
@@ -39,7 +56,7 @@ export function useResearchChatActions(projectId: string | null): ResearchChatAc
           const current = useFilesStore.getState();
           if (ready && current.projectId === projectId && current.activePath === path) editor.gotoLine(target.line);
         } finally { clearTimeout(timeout); }
-      }).catch(() => toast.error("The result file could not be opened."));
-    },
-  }), [projectId]);
+      }).catch(() => {
+        toast.error("The result file could not be opened.");
+      });
 }

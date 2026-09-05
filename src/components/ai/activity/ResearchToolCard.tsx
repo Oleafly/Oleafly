@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import {
   BookOpen,
   CheckCircle2,
@@ -16,6 +16,7 @@ import {
 import type { ToolEntry } from "@/store/chats";
 import {
   projectToolEntry,
+  type ResearchArtifactPreview,
   type ResearchChatActions,
   type ResearchToolStatus,
   type ResearchToolView,
@@ -94,6 +95,9 @@ export function ResearchToolCard({
   const view = projectToolEntry(tc);
   const [expanded, setExpanded] = usePersistentExpansion(expansionKey, false);
   const [full, setFull] = usePersistentExpansion(expansionKey ? `${expansionKey}:full` : undefined, false);
+  const [artifactPreview, setArtifactPreview] = useState<ResearchArtifactPreview>();
+  const [artifactError, setArtifactError] = useState(false);
+  const [artifactLoading, setArtifactLoading] = useState(false);
   const regionId = useId();
   const hasStructuredResults = Boolean(view.results?.length);
   const hasOutput = Boolean(view.output);
@@ -101,7 +105,7 @@ export function ResearchToolCard({
   const failed = view.status === "failed" || view.status === "declined";
   const preview = full ? view.output : view.output.slice(0, PREVIEW_LIMIT);
   const truncated = view.output.length > PREVIEW_LIMIT;
-  const canOpenArtifact = Boolean(actions?.openArtifact && view.path);
+  const canOpenArtifact = Boolean(actions?.openArtifact && view.artifactTarget);
   const canOpenSource = Boolean(actions?.openSource && (view.url || view.doi));
   const canOpenSession = Boolean(actions?.openSession && view.threadId);
   return (
@@ -143,14 +147,31 @@ export function ResearchToolCard({
           {preview && (
             <pre className="max-h-80 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words border-t px-2.5 py-2 font-mono text-[10px] text-muted-foreground">{preview}</pre>
           )}
+          {artifactPreview && (
+            <div className="border-t px-2.5 py-2">
+              <p className="mb-1 truncate text-[10px] font-medium">{artifactPreview.relativePath}</p>
+              {artifactPreview.isBinary ? (
+                <p className="text-[10px] text-muted-foreground">This linked file is binary, so it cannot be previewed here.</p>
+              ) : (
+                <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] text-muted-foreground">{artifactPreview.content}</pre>
+              )}
+              {artifactPreview.truncated && <p className="mt-1 text-[10px] text-muted-foreground">Preview stopped at 256 KiB.</p>}
+            </div>
+          )}
+          {artifactError && <p className="border-t px-2.5 py-2 text-[10px] text-destructive">This linked source could not be previewed.</p>}
           <div className="flex flex-wrap items-center gap-1 border-t px-2 py-1">
             {truncated && (
               <button type="button" className="rounded px-1.5 py-1 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground" onClick={() => setFull((value) => !value)}>{full ? "Show less" : `Show all ${view.output.length.toLocaleString()} characters`}</button>
             )}
             {canOpenArtifact && (
-              <button type="button" className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent" onClick={() => {
-                if (view.path) actions?.openArtifact?.({ path: view.path, line: view.line, page: view.page });
-              }}>Open file</button>
+              <button type="button" disabled={artifactLoading} className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent disabled:opacity-50" onClick={() => {
+                if (!view.artifactTarget || !actions?.openArtifact) return;
+                setArtifactLoading(true);
+                setArtifactError(false);
+                Promise.resolve(actions.openArtifact(view.artifactTarget)).then((result) => {
+                  if (result) setArtifactPreview(result);
+                }).catch(() => setArtifactError(true)).finally(() => setArtifactLoading(false));
+              }}>{view.artifactTarget?.scope === "linked" ? (artifactLoading ? "Loading source" : "Inspect source") : "Open file"}</button>
             )}
             {canOpenSource && (
               <button type="button" className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent" onClick={() => actions?.openSource?.({ url: view.url, doi: view.doi, page: view.page })}>Open source</button>

@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { projectToolEntry, safeWebUrl, stripAnsi } from "./chat-activity";
+import { describe, expect, it, vi } from "vitest";
+import {
+  createResearchArtifactAction,
+  projectToolEntry,
+  safeWebUrl,
+  stripAnsi,
+} from "./chat-activity";
 
 describe("research chat activity", () => {
   it("projects literature results without inventing citation verification", () => {
@@ -107,5 +112,63 @@ describe("research chat activity", () => {
     expect(safeWebUrl("file:///tmp/paper.pdf")).toBeUndefined();
     expect(safeWebUrl("https://example.org/paper")).toBe("https://example.org/paper");
     expect(stripAnsi("\u001b[32mok\u001b[0m")).toBe("ok");
+  });
+
+  it("requires a linked root identity before offering a file action", () => {
+    const unscoped = projectToolEntry({
+      name: "Read linked file",
+      status: "done",
+      output: JSON.stringify({ path: "notes.md", content: "linked notes" }),
+    });
+    const scoped = projectToolEntry({
+      name: "read_linked_file",
+      status: "done",
+      output: JSON.stringify({
+        root_id: "references",
+        relative_path: "notes.md",
+        path: "notes.md",
+        content: "linked notes",
+      }),
+    });
+    const ambiguous = projectToolEntry({
+      name: "Read notes.md",
+      status: "done",
+      output: JSON.stringify({ path: "notes.md", content: "linked notes" }),
+    });
+
+    expect(unscoped.artifactTarget).toBeUndefined();
+    expect(ambiguous.artifactTarget).toBeUndefined();
+    expect(scoped.artifactTarget).toEqual({
+      scope: "linked",
+      rootId: "references",
+      relativePath: "notes.md",
+    });
+  });
+
+  it("never routes a linked source to a same-named manuscript file", async () => {
+    const openProject = vi.fn();
+    const inspectLinked = vi.fn().mockResolvedValue({
+      relativePath: "notes.md",
+      content: "linked notes",
+      truncated: false,
+      isBinary: false,
+    });
+    const openArtifact = createResearchArtifactAction("paper", {
+      openProject,
+      inspectLinked,
+    });
+
+    await openArtifact({
+      scope: "linked",
+      rootId: "references",
+      relativePath: "notes.md",
+    });
+
+    expect(inspectLinked).toHaveBeenCalledWith("paper", {
+      scope: "linked",
+      rootId: "references",
+      relativePath: "notes.md",
+    });
+    expect(openProject).not.toHaveBeenCalled();
   });
 });

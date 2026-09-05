@@ -1,5 +1,6 @@
+import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import { useEffect, useRef, useState } from "react";
-import { EditorState, type Extension } from "@codemirror/state";
+import { Compartment, EditorState, type Extension } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import {
   getChunks,
@@ -10,10 +11,9 @@ import { scrollEditorPositionLocally } from "@oleafly/editor";
 import { ChevronDown, ChevronUp, Columns2, GitCompare, Rows3 } from "lucide-react";
 import { editorTheme } from "../cm/theme";
 import { languageForPath } from "../cm/languages";
-import { gitShow, readFileContent, writeFileContent } from "@/lib/tauri";
+import { gitShow, readFileContent } from "@/lib/tauri";
 import { useDiffStore, activeDiff } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
-import { useGitStatusStore } from "@/store/git-status";
 import { cn } from "@/lib/utils";
 import { diffSides } from "./sides";
 import { attachSplitResizer } from "./split-resizer";
@@ -62,36 +62,52 @@ export function DiffView() {
     let cancelled = false;
     let view: { destroy: () => void } | null = null;
     let detachResizer: () => void = () => {};
-    let writeTimer: ReturnType<typeof setTimeout> | null = null;
     setLoading(true);
     setError(null);
     setNotice(null);
     const { oldRev, newRev, editable } = diffSides(side);
 
-    // Debounced write-through so git sees edits as the MergeView re-diffs live.
-    const persist = async (content: string) => {
-      try {
-        await writeFileContent(projectId, path, content);
-        useFilesStore.setState((s) => ({
-          files: { ...s.files, [path]: { content, dirty: false } },
-        }));
-        void useGitStatusStore.getState().refresh(projectId);
-        window.dispatchEvent(new CustomEvent("oleafly:git-changed"));
-      } catch {
-        /* ignore transient write errors */
+    let synchronizing = false;
+    const editability = new Compartment();
+    const editabilityExtensions = (locked: boolean) => [
+      EditorState.readOnly.of(!editable || locked),
+      EditorView.editable.of(editable && !locked),
+    ];
+    const onEdit = EditorView.updateListener.of((update) => {
+      if (update.docChanged && !synchronizing && useFilesStore.getState().projectId === projectId) {
+        useFilesStore.getState().setContent(path, update.state.doc.toString());
       }
-    };
-    let pending: string | null = null;
-    const onEdit = EditorView.updateListener.of((vu) => {
-      if (vu.docChanged) {
-        if (writeTimer) clearTimeout(writeTimer);
-        pending = vu.state.doc.toString();
-        writeTimer = setTimeout(() => {
-          const c = pending;
-          pending = null;
-          if (c !== null) void persist(c);
-        }, 400);
-      }
+    });
+    const unregisterMutationOwner = registerEditorMutationOwner({
+      projectId: () => projectId,
+      setLocked: (locked) => navViewRef.current?.dispatch({
+        effects: editability.reconfigure(editabilityExtensions(locked)),
+      }),
+      reconcile: async () => {
+        if (!editable || cancelled) return;
+        const files = useFilesStore.getState();
+        if (!files.tree.some((entry) => entry.path === path && !entry.is_dir)) {
+          useDiffStore.getState().closeDiff(`working:${path}`);
+          return;
+        }
+        const content = files.files[path]?.content ?? await readFileContent(projectId, path).catch((error) => {
+          view?.destroy();
+          view = null;
+          navViewRef.current = null;
+          if (hostRef.current) hostRef.current.innerHTML = "";
+          setError("The diff could not be reloaded. Close this tab and open it again.");
+          throw error;
+        });
+        if (cancelled || useFilesStore.getState().projectId !== projectId) return;
+        const current = navViewRef.current;
+        if (!current || current.state.doc.toString() === content) return;
+        synchronizing = true;
+        try {
+          current.dispatch({ filter: false, changes: { from: 0, to: current.state.doc.length, insert: content } });
+        } finally {
+          synchronizing = false;
+        }
+      },
     });
 
     const build = async () => {
@@ -99,7 +115,7 @@ export function DiffView() {
         const oldText = await gitShow(projectId, oldRev, path);
         const newText =
           newRev === "WORKTREE"
-            ? await readFileContent(projectId, path).catch(() => "")
+            ? useFilesStore.getState().files[path]?.content ?? await readFileContent(projectId, path).catch(() => "")
             : await gitShow(projectId, "INDEX", path);
         if (cancelled) return;
 
@@ -126,7 +142,13 @@ export function DiffView() {
         ];
         const base: Extension[] = [lineNumbers(), editorTheme(), ...(lang ? [lang] : [])];
         const oldExt: Extension[] = [...base, ...readOnly];
-        const newExt: Extension[] = editable ? [...base, onEdit] : [...base, ...readOnly];
+        const newExt: Extension[] = [
+          ...base,
+          editability.of(editabilityExtensions(isEditorMutationLocked(projectId))),
+          EditorState.transactionFilter.of((transaction) =>
+            transaction.docChanged && isEditorMutationLocked(projectId) ? [] : transaction),
+          ...(editable ? [onEdit] : readOnly),
+        ];
 
         if (mode === "split") {
           const mv = new MergeView({
@@ -164,8 +186,7 @@ export function DiffView() {
 
     return () => {
       cancelled = true;
-      if (writeTimer) clearTimeout(writeTimer);
-      if (pending !== null) void persist(pending);
+      unregisterMutationOwner();
       detachResizer();
       detachResizer = () => {};
       view?.destroy();

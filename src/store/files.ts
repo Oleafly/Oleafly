@@ -53,6 +53,7 @@ import { useMcpApprovalStore } from "@/store/mcp-approvals";
 import { nextTabSeq } from "@/store/tab-order";
 import { recordProjectStateRevision } from "@/lib/project-state-revision";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { acquireEditorMutationLease, isEditorMutationLocked } from "@/lib/editor-mutation-lease";
 import {
   flushWysiwygPendingEdits,
   invalidateWysiwygProjectSession,
@@ -234,6 +235,10 @@ interface FilesStore {
   copyEntry: (path: string, isDir?: boolean) => Promise<void>;
   importPaths: (destDir: string, sourcePaths: string[]) => Promise<void>;
   prepareExternalMutation: (projectId: string) => Promise<number>;
+  runExternalProjectMutation: <T extends { projectState: ProjectStateChanged }>(
+    projectId: string,
+    action: (generation: number) => Promise<T>,
+  ) => Promise<T>;
   recordMutationGeneration: (projectId: string, generation: number) => void;
   applyExternalWrite: (projectId: string, path: string, content: string) => boolean;
   applyExternalDelete: (projectId: string, path: string) => boolean;
@@ -350,11 +355,12 @@ function enqueueWrite(projectId: string, path: string, content: string): Promise
   return tracked.then(() => {});
 }
 
-async function drainProjectWrites(projectId: string): Promise<void> {
+async function drainProjectWrites(projectId: string, assertCurrent: () => void = () => {}): Promise<void> {
   // Take repeated snapshots because completing one queued write can expose the
   // next write for the same path. A restore must begin only after none of the
   // old revision's writes can still land on top of it.
   for (;;) {
+    assertCurrent();
     const prefix = `${projectId}\0`;
     const writes = [...pendingWrites.entries()]
       .filter(([key]) => key.startsWith(prefix))
@@ -379,12 +385,13 @@ function scheduleAutosave(get: () => FilesStore) {
   }, 1500);
 }
 
-async function flushDirtyBuffers(projectId: string, get: () => FilesStore): Promise<void> {
+async function flushDirtyBuffers(projectId: string, get: () => FilesStore, assertCurrent: () => void = () => {}): Promise<void> {
   stopAutosaveTimer();
 
   // A save can finish while the user is still editing. Loop until the current
   // project has no dirty snapshots left, then the caller may safely reset it.
   for (;;) {
+    assertCurrent();
     const state = get();
     if (state.projectId !== projectId) {
       throw new Error("Project changed while its files were being saved.");
@@ -806,6 +813,9 @@ const BINARY_RELOAD_EXTENSIONS = new Set([
   "woff2",
 ]);
 
+const projectStateApplications = new Map<string, Promise<boolean>>();
+let projectStateReloadFailure: { projectId: string; error: unknown } | null = null;
+
 function projectMetadataState(event: ProjectStateChanged): ProjectMetadataState {
   return {
     projectName: event.project.name,
@@ -863,7 +873,10 @@ async function loadChangedProjectFiles(
     Object.entries(captured).map(async ([path, file]) => {
       if (file.dirty || !filePaths.has(path) || isBinaryReloadPath(path)) return;
       attempted.add(path);
-      const content = await readCanonicalFileContent(projectId, path).catch(() => null);
+      const content = await readCanonicalFileContent(projectId, path).catch((error) => {
+        if (isEditorMutationLocked(projectId)) throw error;
+        return null;
+      });
       if (content !== null) loaded.set(path, content);
     }),
   );
@@ -1403,6 +1416,56 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     return generation;
   },
 
+  runExternalProjectMutation: (projectId, action) => {
+    if (get().projectId !== projectId) return Promise.reject(new Error("The open project changed."));
+    const lease = acquireEditorMutationLease(projectId);
+    let expired = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        expired = true;
+        reject(new Error("Saving the project took too long. Your edits are still available; try again after saving finishes."));
+      }, 15_000);
+    });
+    const assertCurrent = () => {
+      lease.assertActive();
+      if (expired) throw new Error("The project update timed out before it started.");
+      if (get().projectId !== projectId) throw new Error("The open project changed.");
+    };
+    const operation = enqueueProjectTransition(async () => {
+      assertCurrent();
+      flushWysiwygPendingEdits();
+      await lease.flush();
+      assertCurrent();
+      await flushDirtyBuffers(projectId, get, assertCurrent);
+      await drainProjectWrites(projectId, assertCurrent);
+      assertCurrent();
+      const generation = await refreshMutationGeneration(projectId);
+      assertCurrent();
+      if (Object.values(get().files).some((file) => file.dirty)) {
+        throw new Error("The project changed while it was being saved. Try applying the task again.");
+      }
+      clearTimeout(timer);
+      const result = await action(generation);
+      if (get().projectId !== projectId || result.projectState.projectId !== projectId) {
+        throw new Error("The open project changed while the task was applied.");
+      }
+      await get().applyProjectStateChanged(result.projectState);
+      await Promise.all([...projectStateApplications.entries()]
+        .filter(([key]) => key.startsWith(`${projectId}:`)).map(([, pending]) => pending));
+      if (projectStateReloadFailure?.projectId === projectId) {
+        await lease.reconcile().catch(() => {});
+        throw new Error("The task was applied, but its files could not be reloaded. Reopen the project before editing.", { cause: projectStateReloadFailure.error });
+      }
+      await lease.reconcile();
+      return result;
+    });
+    return Promise.race([operation, deadline]).finally(() => {
+      clearTimeout(timer);
+      lease.release();
+    });
+  },
+
   recordMutationGeneration: (projectId, generation) => {
     if (get().projectId === projectId) {
       rememberMutationGeneration(projectId, generation);
@@ -1623,9 +1686,14 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     return true;
   },
 
-  applyProjectStateChanged: async (event) => {
+  applyProjectStateChanged: (event) => {
+    const key = `${event.projectId}:${event.revision}`;
+    const existing = projectStateApplications.get(key);
+    if (existing) return existing;
+    const operation = (async () => {
     const projectId = event.projectId;
     if (!projectStateEventIsValid(event, get)) return false;
+    projectStateReloadFailure = null;
     const revision = admitProjectStateEvent(event);
     const metadata = projectMetadataState(event);
     if (!event.filesChanged) {
@@ -1652,15 +1720,33 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       return true;
     } catch (error) {
       if (!projectRevisionIsCurrent(projectId, revision, get)) return false;
-      set(metadata);
+      projectStateReloadFailure = { projectId, error };
+      if (isEditorMutationLocked(projectId)) {
+        set((state) => {
+          const files = Object.fromEntries(Object.entries(state.files).filter(([, file]) => file.dirty));
+          const openTabs = state.openTabs.filter((path) => files[path]);
+          return {
+            ...metadata, files, openTabs,
+            activePath: state.activePath && files[state.activePath] ? state.activePath : openTabs.at(-1) ?? null,
+            docVersion: state.docVersion + 1,
+          };
+        });
+      } else set(metadata);
       void get().refreshTree();
       notifyError(
         "reload project after external change",
         error,
         "Project settings were updated, but some changed files could not be reloaded.",
       );
-      return true;
+      return false;
     }
+    })();
+    projectStateApplications.set(key, operation);
+    const clear = () => {
+      if (projectStateApplications.get(key) === operation) projectStateApplications.delete(key);
+    };
+    void operation.then(clear, clear);
+    return operation;
   },
 
   setMainDoc: async (path) => {

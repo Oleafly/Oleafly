@@ -240,7 +240,10 @@ impl TaskFiles {
                 }
                 let entry = entry.map_err(|error| error.to_string())?;
                 let child = path.join(entry.file_name());
-                if relative_path(&child.to_string_lossy(), false).is_err()
+                let name = child
+                    .to_string_lossy()
+                    .replace(std::path::MAIN_SEPARATOR, "/");
+                if relative_path(&name, false).is_err()
                     || !self.traversable(&child)
                     || !(child.starts_with(&prefix) || prefix.starts_with(&child))
                 {
@@ -250,7 +253,6 @@ impl TaskFiles {
                 if kind.is_dir() {
                     queue.push(child);
                 } else if kind.is_file() && self.allows(&child) && child.starts_with(&prefix) {
-                    let name = child.to_string_lossy().replace('\\', "/");
                     output_bytes += name.len() + 4;
                     if output_bytes > MAX_OUTPUT_BYTES / 2 {
                         return Ok((files.into_iter().collect(), true));
@@ -1450,7 +1452,7 @@ mod tests {
         ));
     }
 
-    #[cfg(target_os = "macos")]
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     fn context(root: &Path) -> TaskRunContext {
         TaskRunContext {
             task_id: "task".into(),
@@ -1508,7 +1510,7 @@ mod tests {
         assert!(!temporary.path().join("acp/task-temp").exists());
     }
 
-    #[cfg(target_os = "macos")]
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[tokio::test]
     async fn commands_cannot_write_original_files_or_follow_writable_links_outside_the_workspace() {
         let source = tempfile::tempdir().unwrap();
@@ -1576,7 +1578,7 @@ mod tests {
         .expect("the command's descendant must be stopped before cleanup finishes");
     }
 
-    #[cfg(target_os = "macos")]
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[tokio::test]
     async fn commands_drain_both_streams_without_retaining_unbounded_output() {
         let isolated = tempfile::tempdir().unwrap();
@@ -1680,7 +1682,7 @@ int main(void) {
         );
     }
 
-    #[cfg(target_os = "macos")]
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[tokio::test]
     async fn task_commands_cannot_read_unlinked_files() {
         let unrelated = tempfile::tempdir().unwrap();
@@ -1729,3 +1731,7 @@ int main(void) {
         assert_eq!(outcome.summary, "A result");
     }
 }
+
+#[cfg(test)]
+#[path = "task_runtime/tests.rs"]
+mod behavior_tests;

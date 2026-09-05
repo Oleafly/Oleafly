@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, FileDiff, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -95,6 +95,9 @@ export function TaskDetail({
   onOpenSession,
   onOpenArtifact,
 }: TaskDetailProps) {
+  const taskRunKey = `${task.id}:${task.executionGeneration}`;
+  const activeTaskRun = useRef(taskRunKey);
+  activeTaskRun.current = taskRunKey;
   const changedFiles = useMemo(() => task.result?.changedFiles ?? [], [task.result?.changedFiles]);
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [filePreviews, setFilePreviews] = useState<Record<string, TaskFilePreview>>({});
@@ -111,27 +114,35 @@ export function TaskDetail({
   }, [changedFiles]);
 
   const previewFile = async (path: string) => {
+    const requestRunKey = taskRunKey;
+    const previewKey = `${requestRunKey}:${path}`;
     setPreviewingPath(path);
     setPreviewError(null);
     try {
       const preview = await previewResearchTaskFile(task.id, path);
-      setFilePreviews((current) => ({ ...current, [path]: preview }));
+      if (activeTaskRun.current !== requestRunKey) return;
+      setFilePreviews((current) => ({ ...current, [previewKey]: preview }));
     } catch (error) {
+      if (activeTaskRun.current !== requestRunKey) return;
       setPreviewError(error instanceof Error ? error.message : String(error));
     } finally {
-      setPreviewingPath(null);
+      if (activeTaskRun.current === requestRunKey) setPreviewingPath(null);
     }
   };
 
   const previewArtifact = async (artifact: TaskArtifact) => {
+    const requestRunKey = taskRunKey;
     setPreviewingPath(artifact.path);
     setPreviewError(null);
     try {
-      setArtifactPreview(await previewResearchTaskArtifact(task.id, artifact.path));
+      const preview = await previewResearchTaskArtifact(task.id, artifact.path);
+      if (activeTaskRun.current !== requestRunKey) return;
+      setArtifactPreview(preview);
     } catch (error) {
+      if (activeTaskRun.current !== requestRunKey) return;
       setPreviewError(error instanceof Error ? error.message : String(error));
     } finally {
-      setPreviewingPath(null);
+      if (activeTaskRun.current === requestRunKey) setPreviewingPath(null);
     }
   };
 
@@ -338,7 +349,7 @@ export function TaskDetail({
               </p>
               <div className="divide-y rounded-md border">
                 {changedFiles.map((change) => {
-                  const preview = filePreviews[change.path];
+                  const preview = filePreviews[`${taskRunKey}:${change.path}`];
                   return (
                     <div key={change.path} className="p-3">
                       <div className="flex items-center gap-3 text-sm">
@@ -403,12 +414,19 @@ export function TaskDetail({
                 </p>
               ) : null}
               {task.status === "awaiting_review" ? (
-                <div className="flex justify-end">
+                <div className="flex items-center justify-between gap-3">
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => void onCancel().catch(() => {})}
+                  >
+                    Discard changes
+                  </Button>
                   <Button
                     disabled={
                       busy ||
                       selectedPaths.length === 0 ||
-                      selectedPaths.some((path) => !filePreviews[path])
+                      selectedPaths.some((path) => !filePreviews[`${taskRunKey}:${path}`])
                     }
                     onClick={() => void onApply(selectedPaths).catch(() => {})}
                   >

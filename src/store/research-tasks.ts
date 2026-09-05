@@ -9,7 +9,6 @@ import {
   listenForResearchTaskChanges,
   listenForResearchTaskEvents,
   loadResearchTaskEvents,
-  readProjectMutationGeneration,
   retryResearchTask,
   startResearchTask,
   type ResearchTask,
@@ -17,6 +16,7 @@ import {
   type ResearchTaskEdit,
   type TaskTranscriptEvent,
 } from "@/lib/research-tasks";
+import { useFilesStore } from "@/store/files";
 
 interface ResearchTasksState {
   projectId: string | null;
@@ -229,11 +229,13 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
     if (!projectId) throw new Error("Open a project before applying task changes.");
     set({ action: taskId, error: null });
     try {
-      const generation = await readProjectMutationGeneration(projectId);
-      if (get().projectId !== projectId) throw new Error("The open project changed.");
-      const result = await applyResearchTask(taskId, generation, selectedPaths);
-      get().receiveTask(result.task);
+      const result = await useFilesStore
+        .getState()
+        .runExternalProjectMutation(projectId, (generation) =>
+          applyResearchTask(taskId, generation, selectedPaths),
+        );
       set({ action: null });
+      get().receiveTask(result.task);
       return result.task;
     } catch (error) {
       set({ action: null, error: message(error) });

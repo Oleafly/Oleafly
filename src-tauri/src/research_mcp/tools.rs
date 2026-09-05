@@ -187,6 +187,14 @@ fn linked_scope(context: &Context, root_id: &str) -> Result<files::FileScope, St
     files::FileScope::open(&current, None)
 }
 
+pub(super) fn linked_file_result(mut result: Value, root_id: &str, relative_path: &str) -> Value {
+    if let Some(result) = result.as_object_mut() {
+        result.insert("root_id".into(), json!(root_id));
+        result.insert("relative_path".into(), json!(relative_path));
+    }
+    result
+}
+
 fn skill_records(context: &Context) -> Result<Vec<crate::skills::SkillRecord>, String> {
     Ok(crate::skills::list_with(
         &context.skills_root,
@@ -237,10 +245,13 @@ fn execute_local(context: &Context, name: &str, arguments: &Value) -> Result<Val
             number(arguments, "max_depth", 2),
             &context.closed,
         )?,
-        "read_linked_file" => linked_scope(context, string(arguments, "root_id"))?.read(
-            string(arguments, "path"),
-            number(arguments, "max_bytes", 32 * 1024),
-        )?,
+        "read_linked_file" => {
+            let root_id = string(arguments, "root_id");
+            let relative_path = string(arguments, "path");
+            let result = linked_scope(context, root_id)?
+                .read(relative_path, number(arguments, "max_bytes", 32 * 1024))?;
+            linked_file_result(result, root_id, relative_path)
+        }
         "list_skills" => json!({"skills": skill_records(context)?.into_iter().map(|skill| json!({
             "id": skill.id,
             "name": skill.name,

@@ -1,14 +1,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { JSDOM } from "jsdom";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import type { ProjectInfo } from "@/lib/tauri";
 import type {
   UsageReport as UsageReportData,
   UsageReportFilter,
 } from "@/lib/usage-report";
-import { projectsKey } from "@/lib/queries/projects";
+import { useFilesStore } from "@/store/files";
 
 let UsageReport: typeof import("./UsageReport").UsageReport;
 let UsageReportDialog: typeof import("./UsageReport").UsageReportDialog;
+let act: typeof import("@testing-library/react").act;
 let cleanup: typeof import("@testing-library/react").cleanup;
 let fireEvent: typeof import("@testing-library/react").fireEvent;
 let render: typeof import("@testing-library/react").render;
@@ -45,12 +47,15 @@ beforeAll(async () => {
     attachEvent: { configurable: true, value: () => {} },
     detachEvent: { configurable: true, value: () => {} },
   });
-  ({ cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react"));
+  ({ act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react"));
   ({ default: userEvent } = await import("@testing-library/user-event"));
   ({ UsageReport, UsageReportDialog } = await import("./UsageReport"));
 });
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  useFilesStore.setState({ projects: [] });
+});
 
 function page() {
   return within(document.body);
@@ -148,12 +153,23 @@ function report(recordCount = 1): UsageReportData {
   };
 }
 
-function renderDialog(
-  query: (filter: UsageReportFilter) => Promise<UsageReportData>,
-  projects: Array<{ id: string; name: string }> = [],
-) {
+function project(id: string, name: string): ProjectInfo {
+  return {
+    id,
+    name,
+    main_doc: "main.tex",
+    kind: "",
+    created_at: 0,
+    updated_at: 0,
+    has_preview: false,
+    exports: [],
+    forked_from: null,
+    recovery_pending: false,
+  };
+}
+
+function renderDialog(query: (filter: UsageReportFilter) => Promise<UsageReportData>) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  client.setQueryData(projectsKey, projects);
   return render(
     <QueryClientProvider client={client}>
       <UsageReportDialog trigger={<button type="button">Open usage</button>} query={query} />
@@ -166,6 +182,7 @@ describe("UsageReport", () => {
     render(<UsageReport report={report()} />);
     expect(page().getByText("Cache rate").parentElement).toHaveTextContent("Unknown");
     expect(page().getByText("Recorded cost estimate").parentElement).toHaveTextContent("Unknown");
+    expect(page().getByText("1 usage record")).toBeVisible();
     expect(page().getByRole("img", { name: /daily input and output token trend/iu })).toBeVisible();
     expect(page().getByRole("img", { name: /token activity by UTC weekday and hour/iu })).toBeVisible();
   });
@@ -211,13 +228,19 @@ describe("UsageReportDialog", () => {
     result.byProvider = [{ ...result.byProject[0], key: "openai" }];
     result.byModel = [{ ...result.byProject[0], key: "model" }];
     const query = vi.fn(async (_filter: UsageReportFilter) => result);
-    renderDialog(query, [{ id: "project", name: "Research notes" }]);
+    renderDialog(query);
     fireEvent.click(page().getByRole("button", { name: "Open usage" }));
     await waitFor(() => expect(query).toHaveBeenCalledTimes(1));
 
     expect(page().getByLabelText("From (UTC)")).toBeVisible();
     expect(page().getByLabelText("Through (UTC)")).toBeVisible();
+    await page().findByRole("button", { name: "project" });
+    act(() => useFilesStore.setState({ projects: [project("project", "Research notes")] }));
     await page().findByRole("button", { name: "Research notes" });
+    act(() =>
+      useFilesStore.setState({ projects: [project("project", "Renamed research notes")] }),
+    );
+    await page().findByRole("button", { name: "Renamed research notes" });
     expect(page().getByRole("option", { name: "Oleafly assistant" })).toBeVisible();
     expect(page().getByRole("option", { name: "OpenAI" })).toBeVisible();
     expect(page().getByRole("option", { name: "model" })).toBeVisible();
@@ -232,7 +255,7 @@ describe("UsageReportDialog", () => {
     );
     expect(page().getByLabelText("Project")).toHaveValue("project");
 
-    const projectChoice = page().getByRole("button", { name: "Research notes" });
+    const projectChoice = page().getByRole("button", { name: "Renamed research notes" });
     expect(projectChoice.closest("td")).toHaveAttribute("title", "project");
     await user.click(page().getByRole("button", { name: "Oleafly assistant" }));
     await waitFor(() =>

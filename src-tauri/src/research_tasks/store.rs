@@ -317,6 +317,7 @@ impl TaskStore {
                    session_id = ?2, native_session_id = NULL, start_requested = 0,
                    cancel_requested = 0,
                    source_revision = NULL, isolation_json = NULL, error = NULL,
+                   result_json = NULL, review_json = NULL,
                    apply_state = NULL, apply_selection_json = NULL,
                    apply_expected_generation = NULL, started_at = ?3,
                    finished_at = NULL, updated_at = ?3
@@ -501,6 +502,19 @@ impl TaskStore {
                     )
                     .map_err(store_error)?;
             }
+            Some("awaiting_review") => {
+                let updated = transaction
+                    .execute(
+                        "UPDATE research_tasks SET status = 'cancelled', start_requested = 0,
+                           cancel_requested = 0, updated_at = ?2, finished_at = ?2
+                         WHERE id = ?1 AND status = 'awaiting_review' AND apply_state IS NULL",
+                        params![id, now_ms()],
+                    )
+                    .map_err(store_error)?;
+                if updated != 1 {
+                    return Err("This task cannot be discarded while changes are being applied or recovered.".into());
+                }
+            }
             Some("running") => {
                 transaction
                     .execute(
@@ -510,7 +524,11 @@ impl TaskStore {
                     )
                     .map_err(store_error)?;
             }
-            _ => return Err("Only a queued or running task can be cancelled.".into()),
+            _ => {
+                return Err(
+                    "You can cancel tasks that are queued, running or awaiting review.".into(),
+                )
+            }
         }
         transaction.commit().map_err(store_error)?;
         self.require(id)
@@ -1062,6 +1080,166 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let store = TaskStore::new(temp.path().join("tasks")).unwrap();
         (temp, store)
+    }
+
+    fn reviewable_task(store: &TaskStore) -> ResearchTask {
+        let task = store.create(draft("paper", "Revise results")).unwrap();
+        store.request_start(&task.id).unwrap();
+        let running = store.claim_next().unwrap().unwrap();
+        let workspace = store.root().join(&task.id).join("saved-workspace");
+        std::fs::create_dir_all(&workspace).unwrap();
+        std::fs::write(workspace.join("main.tex"), "reviewed result").unwrap();
+        let isolation = TaskIsolation {
+            kind: super::super::model::TaskIsolationKind::StagedProject,
+            execution_root: workspace.to_string_lossy().into_owned(),
+            baseline_root: store
+                .root()
+                .join(&task.id)
+                .join("baseline")
+                .to_string_lossy()
+                .into_owned(),
+            source_revision: "snapshot:base".into(),
+            baseline_hash: "base".into(),
+            baseline: Vec::new(),
+            allowed_paths: vec!["main.tex".into()],
+            created_at: now_ms(),
+        };
+        assert!(store
+            .set_isolation(&task.id, running.execution_generation, &isolation)
+            .unwrap());
+        assert!(store
+            .set_native_session(&task.id, running.execution_generation, "native-session")
+            .unwrap());
+        store
+            .append_event(
+                &task.id,
+                running.execution_generation,
+                &TaskRuntimeEvent::Text {
+                    text: "Saved a revised manuscript.".into(),
+                },
+            )
+            .unwrap();
+        let result = TaskResultMetadata {
+            summary: "Revised results".into(),
+            changed_files: vec![super::super::model::TaskFileChange {
+                path: "main.tex".into(),
+                kind: super::super::model::TaskFileChangeKind::Modified,
+                before_sha256: Some("before".into()),
+                after_sha256: Some("after".into()),
+                before_size: Some(4),
+                after_size: Some(15),
+            }],
+            artifacts: Vec::new(),
+            native_session_id: Some("native-session".into()),
+            input_tokens: Some(10),
+            output_tokens: Some(5),
+        };
+        assert!(store
+            .finish_success(&task.id, running.execution_generation, &result)
+            .unwrap());
+        store.require(&task.id).unwrap()
+    }
+
+    #[test]
+    fn discarding_review_keeps_saved_work_until_a_new_generation_is_claimed() {
+        let (_temp, store) = store();
+        let reviewed = reviewable_task(&store);
+        store
+            .clear_apply(
+                &reviewed.id,
+                Some("The project changed since this task started."),
+            )
+            .unwrap();
+        let cancelled = store.request_cancel(&reviewed.id).unwrap();
+        assert_eq!(cancelled.status, ResearchTaskStatus::Cancelled);
+        assert_eq!(cancelled.result, reviewed.result);
+        assert_eq!(cancelled.isolation, reviewed.isolation);
+        assert_eq!(cancelled.session_id, reviewed.session_id);
+        assert_eq!(cancelled.native_session_id, reviewed.native_session_id);
+        assert!(cancelled.error.is_some());
+        let queued = store.retry(&reviewed.id).unwrap();
+        assert_eq!(queued.status, ResearchTaskStatus::Queued);
+        assert_eq!(queued.result, reviewed.result);
+        assert_eq!(queued.isolation, reviewed.isolation);
+        assert_eq!(queued.execution_generation, reviewed.execution_generation);
+        store.request_start(&reviewed.id).unwrap();
+        let claimed = store.claim_next().unwrap().unwrap();
+        assert_eq!(
+            claimed.execution_generation,
+            reviewed.execution_generation + 1
+        );
+        assert!(claimed.result.is_none());
+        assert!(claimed.review.is_none());
+        assert!(claimed.isolation.is_none());
+        let history = store
+            .events(&reviewed.id, reviewed.execution_generation, None, 100)
+            .unwrap();
+        assert_eq!(history.events.len(), 1);
+        let saved =
+            Path::new(&reviewed.isolation.as_ref().unwrap().execution_root).join("main.tex");
+        assert_eq!(std::fs::read_to_string(saved).unwrap(), "reviewed result");
+    }
+
+    #[test]
+    fn discarding_review_is_blocked_until_an_apply_is_cleared() {
+        let (_temp, store) = store();
+        let reviewed = reviewable_task(&store);
+        store
+            .begin_apply(
+                &reviewed.id,
+                reviewed.execution_generation,
+                1,
+                &["main.tex".into()],
+            )
+            .unwrap();
+        assert!(store
+            .request_cancel(&reviewed.id)
+            .unwrap_err()
+            .contains("being applied or recovered"));
+        assert!(store.retry(&reviewed.id).is_err());
+        assert_eq!(
+            store.require(&reviewed.id).unwrap().status,
+            ResearchTaskStatus::AwaitingReview
+        );
+        assert_eq!(store.pending_applies().unwrap().len(), 1);
+        store.clear_apply(&reviewed.id, None).unwrap();
+        assert_eq!(
+            store.request_cancel(&reviewed.id).unwrap().status,
+            ResearchTaskStatus::Cancelled
+        );
+    }
+
+    #[test]
+    fn review_cancellation_and_apply_claim_cannot_both_win() {
+        let (_temp, store) = store();
+        let reviewed = reviewable_task(&store);
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
+        let cancel_store = store.clone();
+        let cancel_id = reviewed.id.clone();
+        let cancel_barrier = barrier.clone();
+        let cancellation = std::thread::spawn(move || {
+            cancel_barrier.wait();
+            cancel_store.request_cancel(&cancel_id)
+        });
+        barrier.wait();
+        let applying = store.begin_apply(
+            &reviewed.id,
+            reviewed.execution_generation,
+            1,
+            &["main.tex".into()],
+        );
+        let cancellation = cancellation.join().unwrap();
+        assert_ne!(applying.is_ok(), cancellation.is_ok());
+        let current = store.require(&reviewed.id).unwrap();
+        if applying.is_ok() {
+            assert_eq!(current.status, ResearchTaskStatus::AwaitingReview);
+            assert_eq!(store.pending_applies().unwrap().len(), 1);
+        } else {
+            assert_eq!(current.status, ResearchTaskStatus::Cancelled);
+            assert!(store.pending_applies().unwrap().is_empty());
+        }
+        assert_eq!(current.result, reviewed.result);
+        assert_eq!(current.isolation, reviewed.isolation);
     }
 
     #[test]

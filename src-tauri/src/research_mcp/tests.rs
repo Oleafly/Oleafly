@@ -32,6 +32,19 @@ fn decode(result: &Value) -> Value {
     serde_json::from_str(result["content"][0]["text"].as_str().unwrap()).unwrap()
 }
 
+#[test]
+fn linked_file_results_preserve_their_root_identity() {
+    let result = tools::linked_file_result(
+        json!({"path":"notes.md","content":"linked notes"}),
+        "references",
+        "notes.md",
+    );
+    assert_eq!(result["root_id"], "references");
+    assert_eq!(result["relative_path"], "notes.md");
+    assert_eq!(result["path"], "notes.md");
+    assert_eq!(result["content"], "linked notes");
+}
+
 fn headers(bridge: &ScopedResearchMcp) -> HeaderMap {
     let mut headers = HeaderMap::new();
     headers.insert(

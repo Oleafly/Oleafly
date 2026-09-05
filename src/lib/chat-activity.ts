@@ -1,5 +1,3 @@
-import type { ToolEntry } from "@/store/chats";
-
 export type ResearchToolStatus =
   | "running"
   | "completed"
@@ -7,12 +5,41 @@ export type ResearchToolStatus =
   | "cancelled"
   | "declined";
 
-export interface ResearchArtifactTarget {
+export interface ProjectResearchArtifactTarget {
+  scope: "project";
   projectId?: string;
   path: string;
   line?: number;
   page?: number;
   revision?: string;
+}
+
+export interface LinkedResearchArtifactTarget {
+  scope: "linked";
+  rootId: string;
+  relativePath: string;
+}
+
+export type ResearchArtifactTarget =
+  | ProjectResearchArtifactTarget
+  | LinkedResearchArtifactTarget;
+
+export interface ResearchArtifactPreview {
+  relativePath: string;
+  content: string;
+  truncated: boolean;
+  isBinary: boolean;
+}
+
+export interface ResearchArtifactPorts {
+  openProject: (
+    projectId: string,
+    target: ProjectResearchArtifactTarget,
+  ) => void | Promise<void>;
+  inspectLinked: (
+    projectId: string,
+    target: LinkedResearchArtifactTarget,
+  ) => ResearchArtifactPreview | Promise<ResearchArtifactPreview>;
 }
 
 export interface ResearchSourceTarget {
@@ -24,7 +51,9 @@ export interface ResearchSourceTarget {
 }
 
 export interface ResearchChatActions {
-  openArtifact?: (target: ResearchArtifactTarget) => void;
+  openArtifact?: (
+    target: ResearchArtifactTarget,
+  ) => Promise<ResearchArtifactPreview | undefined>;
   openSource?: (target: ResearchSourceTarget) => void;
   openSession?: (target: { threadId: string; runtime?: string | null; projectId?: string }) => void;
   reviewChanges?: (target: { turnId: string; paths: string[] }) => void;
@@ -59,6 +88,7 @@ export type ResearchToolView = {
   output: string;
   summary?: string;
   path?: string;
+  artifactTarget?: ResearchArtifactTarget;
   line?: number;
   page?: number;
   doi?: string;
@@ -80,6 +110,8 @@ const LABELS: Record<string, string> = {
   verify_citation: "Check citation",
   project_library_search: "Search project sources",
   read_file: "Read file",
+  read_linked_file: "Read linked file",
+  read_research_root_file: "Read linked file",
   list_files: "List project files",
   search_project: "Search project",
   project_map: "Map project",
@@ -117,7 +149,15 @@ function parseOutput(output: string | undefined): unknown {
   }
 }
 
-function explicitStatus(entry: ToolEntry, value: unknown): ResearchToolStatus {
+export interface ToolActivityEntry {
+  id?: string;
+  name: string;
+  status: "running" | "done" | "error";
+  output?: string;
+  approval?: "approved" | "rejected";
+}
+
+function explicitStatus(entry: ToolActivityEntry, value: unknown): ResearchToolStatus {
   if (entry.approval === "rejected") return "declined";
   const data = record(value);
   const rawStatus = stringValue(data?.status)?.toLowerCase();
@@ -260,18 +300,68 @@ function kindFor(name: string): ResearchToolView["kind"] {
   if (name === "run_command" || name === "exec_command" || name === "shell_command") return "command";
   if (name === "literature_search" || name === "alphaxiv_search") return "literature";
   if (name === "verify_citation") return "citation";
-  if (["read_file", "project_library_search", "alphaxiv_paper_content", "search_project", "list_files", "project_map", "get_log", "read_pdf_text", "verify_pdf_pages"].includes(name)) return "source";
+  if (["read_file", "read_linked_file", "read_research_root_file", "project_library_search", "alphaxiv_paper_content", "search_project", "list_files", "project_map", "get_log", "read_pdf_text", "verify_pdf_pages"].includes(name)) return "source";
   if (name === "compile" || name === "preview_figure") return "compile";
   if (name === "insert_figure" || name === "generate_artifact" || name === "create_artifact") return "artifact";
   if (["spawn_agent", "wait_agent", "send_message", "send_message_to_agent"].includes(name)) return "delegation";
   return "generic";
 }
 
-export function projectToolEntry(entry: ToolEntry): ResearchToolView {
+function normalizedToolName(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function artifactTarget(
+  name: string,
+  data: Record<string, unknown> | null,
+  path: string | undefined,
+  line: number | undefined,
+  page: number | undefined,
+): ResearchArtifactTarget | undefined {
+  const linked = name === "read_linked_file" || name === "read_research_root_file";
+  if (linked) {
+    const rootId = stringValue(data?.rootId) ?? stringValue(data?.root_id);
+    const relativePath = stringValue(data?.relativePath) ?? stringValue(data?.relative_path) ?? path;
+    return rootId && relativePath
+      ? { scope: "linked", rootId, relativePath }
+      : undefined;
+  }
+  const projectScoped = [
+    "read_file",
+    "project_library_search",
+    "search_project",
+    "list_files",
+    "project_map",
+    "compile",
+    "get_log",
+    "read_pdf_text",
+    "verify_pdf_pages",
+    "preview_figure",
+    "insert_figure",
+    "generate_artifact",
+    "create_artifact",
+  ].includes(name);
+  return projectScoped && path ? { scope: "project", path, line, page } : undefined;
+}
+
+export function createResearchArtifactAction(
+  projectId: string | null,
+  ports: ResearchArtifactPorts,
+): NonNullable<ResearchChatActions["openArtifact"]> {
+  return async (target) => {
+    if (!projectId) return;
+    if (target.scope === "linked") return await ports.inspectLinked(projectId, target);
+    if (target.projectId && target.projectId !== projectId) return;
+    await ports.openProject(projectId, target);
+  };
+}
+
+export function projectToolEntry(entry: ToolActivityEntry): ResearchToolView {
   const value = parseOutput(entry.output);
   const data = record(value);
   const status = explicitStatus(entry, value);
-  const kind = kindFor(entry.name);
+  const name = normalizedToolName(entry.name);
+  const kind = kindFor(name);
   const rawResults = Array.isArray(data?.results)
     ? data.results
     : Array.isArray(data?.works)
@@ -280,7 +370,10 @@ export function projectToolEntry(entry: ToolEntry): ResearchToolView {
   const results = rawResults
     .map(literatureResult)
     .filter((result): result is LiteratureResultView => result !== null);
-  const path = stringValue(data?.path) ?? stringValue(data?.file);
+  const path = stringValue(data?.path) ?? stringValue(data?.file) ??
+    stringValue(data?.relativePath) ?? stringValue(data?.relative_path);
+  const line = numberValue(data?.line) ?? numberValue(data?.offset);
+  const page = numberValue(data?.page);
   const command = stringValue(data?.command);
   const doi = stringValue(data?.doi)?.replace(/^https?:\/\/doi\.org\//i, "");
   const url = safeWebUrl(stringValue(data?.url) ?? stringValue(data?.source_url));
@@ -296,15 +389,16 @@ export function projectToolEntry(entry: ToolEntry): ResearchToolView {
   if (kind === "source" && path) summary = path;
   return {
     kind,
-    name: entry.name,
-    label: LABELS[entry.name] ?? entry.name.replaceAll("_", " "),
+    name,
+    label: LABELS[name] ?? entry.name.replaceAll("_", " "),
     status,
     statusLabel: statusLabel(status, value),
     output: readableOutput(entry.output, value),
     summary,
     path,
-    line: numberValue(data?.line) ?? numberValue(data?.offset),
-    page: numberValue(data?.page),
+    artifactTarget: artifactTarget(name, data, path, line, page),
+    line,
+    page,
     doi,
     url,
     verified,

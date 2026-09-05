@@ -248,6 +248,7 @@ export function ResearchTasksPanel({
           <main className="min-h-0 p-4">
             {selectedTask ? (
               <TaskDetail
+                key={`${selectedTask.id}:${selectedTask.executionGeneration}`}
                 task={selectedTask}
                 tasks={tasks}
                 events={events}

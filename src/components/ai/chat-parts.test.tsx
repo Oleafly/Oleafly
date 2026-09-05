@@ -131,6 +131,58 @@ describe("ResearchToolCard", () => {
     expect(screen.queryByRole("button", { name: "Open source" })).toBeNull();
     expect(openSource).not.toHaveBeenCalled();
   });
+
+  it("does not offer manuscript navigation for an unscoped linked result", () => {
+    const openArtifact = vi.fn();
+    render(
+      <ResearchToolCard
+        actions={{ openArtifact }}
+        tc={{
+          name: "Read linked file",
+          status: "done",
+          output: JSON.stringify({ path: "notes.md", content: "linked notes" }),
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Read linked file/ }));
+    expect(screen.queryByRole("button", { name: "Open file" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Inspect source" })).toBeNull();
+    expect(openArtifact).not.toHaveBeenCalled();
+  });
+
+  it("previews a linked file through its root-scoped action", async () => {
+    const openArtifact = vi.fn().mockResolvedValue({
+      relativePath: "notes.md",
+      content: "fresh linked content",
+      truncated: false,
+      isBinary: false,
+    });
+    render(
+      <ResearchToolCard
+        actions={{ openArtifact }}
+        tc={{
+          name: "read_research_root_file",
+          status: "done",
+          output: JSON.stringify({
+            rootId: "references",
+            relativePath: "notes.md",
+            content: "saved linked content",
+          }),
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Read linked file/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Inspect source" }));
+
+    expect(openArtifact).toHaveBeenCalledWith({
+      scope: "linked",
+      rootId: "references",
+      relativePath: "notes.md",
+    });
+    expect(await screen.findByText("fresh linked content")).toBeInTheDocument();
+  });
 });
 
 const PILL_TODOS = [

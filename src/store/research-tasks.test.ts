@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ResearchTask, TaskTranscriptEvent } from "@/lib/research-tasks";
 
+const fileMocks = vi.hoisted(() => ({
+  runExternalProjectMutation: vi.fn(),
+}));
+
 vi.mock("@/lib/research-tasks", () => ({
   acceptResearchTaskResult: vi.fn(),
   applyResearchTask: vi.fn(),
@@ -14,6 +18,14 @@ vi.mock("@/lib/research-tasks", () => ({
   readProjectMutationGeneration: vi.fn(),
   retryResearchTask: vi.fn(),
   startResearchTask: vi.fn(),
+}));
+
+vi.mock("@/store/files", () => ({
+  useFilesStore: {
+    getState: () => ({
+      runExternalProjectMutation: fileMocks.runExternalProjectMutation,
+    }),
+  },
 }));
 
 import * as api from "@/lib/research-tasks";
@@ -59,6 +71,12 @@ function deferred<T>() {
 describe("research task store", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    fileMocks.runExternalProjectMutation.mockImplementation(
+      async (
+        _projectId: string,
+        action: (generation: number) => Promise<unknown>,
+      ) => action(17),
+    );
     useResearchTasksStore.setState({
       projectId: null,
       tasks: [],
@@ -113,11 +131,10 @@ describe("research task store", () => {
     expect(useResearchTasksStore.getState().events.map((value) => value.sequence)).toEqual([1, 2]);
   });
 
-  it("pins apply to the current project mutation generation", async () => {
+  it("runs native apply inside the external project mutation transaction", async () => {
     const reviewed = task("reviewed", "paper");
     const completed = { ...reviewed, status: "completed" as const };
     useResearchTasksStore.setState({ projectId: "paper", tasks: [reviewed] });
-    vi.mocked(api.readProjectMutationGeneration).mockResolvedValue(17);
     vi.mocked(api.applyResearchTask).mockResolvedValue({
       task: completed,
       projectState: {} as never,
@@ -125,7 +142,25 @@ describe("research task store", () => {
 
     await useResearchTasksStore.getState().applyTask(reviewed.id, ["main.tex"]);
 
+    expect(fileMocks.runExternalProjectMutation).toHaveBeenCalledWith(
+      "paper",
+      expect.any(Function),
+    );
     expect(api.applyResearchTask).toHaveBeenCalledWith(reviewed.id, 17, ["main.tex"]);
     expect(useResearchTasksStore.getState().tasks[0].status).toBe("completed");
+  });
+
+  it("does not invoke native apply when the mutation transaction rejects preflight", async () => {
+    const reviewed = task("reviewed", "paper");
+    fileMocks.runExternalProjectMutation.mockRejectedValue(new Error("editor flush failed"));
+    useResearchTasksStore.setState({ projectId: "paper", tasks: [reviewed] });
+
+    await expect(
+      useResearchTasksStore.getState().applyTask(reviewed.id, ["main.tex"]),
+    ).rejects.toThrow("editor flush failed");
+
+    expect(api.applyResearchTask).not.toHaveBeenCalled();
+    expect(useResearchTasksStore.getState().action).toBeNull();
+    expect(useResearchTasksStore.getState().error).toBe("editor flush failed");
   });
 });

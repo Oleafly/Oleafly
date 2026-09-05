@@ -1,5 +1,5 @@
 import { useId, useMemo, useState, type ReactNode } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,8 +11,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { projectsKey } from "@/lib/queries/projects";
-import type { ProjectInfo } from "@/lib/tauri";
 import {
   createUsageReportFilter,
   downloadUsageReportCsv,
@@ -22,6 +20,7 @@ import {
   type UsageReport as UsageReportData,
   type UsageReportFilter,
 } from "@/lib/usage-report";
+import { useFilesStore } from "@/store/files";
 
 type ReportQuery = (filter: UsageReportFilter) => Promise<UsageReportData>;
 
@@ -467,7 +466,7 @@ export function UsageReport({
         <Metric
           label="Sessions"
           value={totals.sessionCount.toLocaleString()}
-          detail={`${totals.recordCount} usage records`}
+          detail={`${totals.recordCount} usage ${totals.recordCount === 1 ? "record" : "records"}`}
         />
       </dl>
 
@@ -667,12 +666,11 @@ export function UsageReportDialog({
 }: UsageReportDialogProps) {
   const initial = useMemo(() => createUsageReportFilter(initialFilter), [initialFilter]);
   const [open, setOpen] = useState(false);
-  const queryClient = useQueryClient();
   const startDateId = useId();
   const endDateId = useId();
   const [filter, setFilter] = useState(initial);
   const [draft, setDraft] = useState(() => draftFromFilter(initial));
-  const projects = queryClient.getQueryData<ProjectInfo[]>(projectsKey) ?? [];
+  const projects = useFilesStore((state) => state.projects);
   const projectNames = useMemo(
     () => new Map(projects.map((project) => [project.id, project.name])),
     [projects],

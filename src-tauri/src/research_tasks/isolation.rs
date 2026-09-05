@@ -19,6 +19,7 @@ const MAX_FILE_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 const MAX_GIT_OUTPUT_BYTES: u64 = 64 * 1024;
 const GIT_COMMAND_TIMEOUT: Duration = Duration::from_secs(60);
+const PREPARATION_LOCK_TIMEOUT: Duration = Duration::from_secs(60);
 
 const EXCLUDED_DIRECTORIES: &[&str] = &[
     ".git",
@@ -58,7 +59,25 @@ pub(crate) fn prepare(
     cancel: &CancellationToken,
 ) -> Result<TaskIsolation, String> {
     let project_root = crate::paths::project_dir(&task.project_id)?;
-    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&task.project_id)?;
+    let lock_deadline = Instant::now() + PREPARATION_LOCK_TIMEOUT;
+    let _worktree = loop {
+        if cancel.is_cancelled() {
+            return Err("The task was cancelled before isolation was ready.".into());
+        }
+        if let Some(lock) = crate::worktree_lock::ProjectWorktreeLock::try_shared(&task.project_id)?
+        {
+            if cancel.is_cancelled() {
+                return Err("The task was cancelled before isolation was ready.".into());
+            }
+            break lock;
+        }
+        if Instant::now() >= lock_deadline {
+            return Err(
+                "The project stayed busy for 60 seconds. Try starting the task again.".into(),
+            );
+        }
+        std::thread::sleep(Duration::from_millis(25));
+    };
     let generation_root = store
         .root()
         .join("workspaces")

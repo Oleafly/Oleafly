@@ -2,6 +2,9 @@ mod apply;
 mod isolation;
 mod model;
 mod preview;
+#[cfg(test)]
+#[path = "tests/scheduler.rs"]
+mod scheduler_tests;
 mod store;
 
 use std::collections::{HashMap, HashSet};
@@ -579,6 +582,10 @@ pub async fn research_task_cancel(
     task_id: String,
 ) -> Result<ResearchTask, String> {
     state.attach_app(app);
+    cancel_task(&state, task_id).await
+}
+
+async fn cancel_task(state: &ResearchTaskState, task_id: String) -> Result<ResearchTask, String> {
     let store = state.store()?;
     let current = store.require(&task_id)?;
     let mut active = if current.status == ResearchTaskStatus::Running {
@@ -823,6 +830,50 @@ mod tests {
         fn cancel(&self, _session_id: String) -> TaskRuntimeFuture<()> {
             Box::pin(async { Ok(()) })
         }
+    }
+
+    #[tokio::test]
+    async fn review_cancellation_does_not_need_an_attached_runtime() {
+        let temp = tempfile::tempdir().unwrap();
+        let state = ResearchTaskState::for_test(temp.path().join("tasks"), 1);
+        let store = state.store().unwrap();
+        let task = store
+            .create(ResearchTaskDraft {
+                project_id: "paper".into(),
+                title: "Revise".into(),
+                prompt: "Revise the manuscript".into(),
+                runtime_id: "unavailable-runtime".into(),
+                agent_id: "unavailable-agent".into(),
+                model_id: "model".into(),
+                skill_ids: Vec::new(),
+                dependency_ids: Vec::new(),
+            })
+            .unwrap();
+        store.request_start(&task.id).unwrap();
+        let claimed = store.claim_next().unwrap().unwrap();
+        let result = TaskResultMetadata {
+            summary: "Saved changes for review".into(),
+            changed_files: vec![model::TaskFileChange {
+                path: "main.tex".into(),
+                kind: model::TaskFileChangeKind::Modified,
+                before_sha256: Some("before".into()),
+                after_sha256: Some("after".into()),
+                before_size: Some(4),
+                after_size: Some(8),
+            }],
+            artifacts: Vec::new(),
+            native_session_id: None,
+            input_tokens: None,
+            output_tokens: None,
+        };
+        assert!(store
+            .finish_success(&task.id, claimed.execution_generation, &result)
+            .unwrap());
+        let cancelled = cancel_task(&state, task.id).await.unwrap();
+        assert_eq!(cancelled.status, ResearchTaskStatus::Cancelled);
+        assert_eq!(cancelled.result, Some(result));
+        assert!(lock(&state.inner.active).is_empty());
+        assert!(lock(&state.inner.runtimes).is_empty());
     }
 
     #[tokio::test]
