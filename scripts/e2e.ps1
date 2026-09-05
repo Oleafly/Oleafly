@@ -38,6 +38,7 @@ $log = $null
 $logStream = $null
 $heartbeat = $null
 $code = 1
+$checkpointHints = ""
 $stamp = [System.Guid]::NewGuid().ToString("N").Substring(0, 8)
 $dataDir = Join-Path ([System.IO.Path]::GetTempPath()) "oleafly-e2e-$stamp"
 
@@ -75,8 +76,51 @@ function Stop-App {
   $script:app = $null
 }
 
+# Checkpoint publication walks and hashes the whole project tree behind every
+# successful compile. Only the specs that assert it need that cost; leaving it
+# on for the rest writes the whole tree into the store on every compile, on the
+# slowest lane in CI. Mirrors configure_checkpoints_for_spec in scripts/e2e.sh.
+#
+# The JS lives in a file rather than in `node -e`: CI invokes this script with
+# powershell.exe (Windows PowerShell 5.1), which strips embedded double quotes
+# when it forwards a string to a native command, so an inline script would
+# reach node as require(node:fs) and die. The target path and the flag travel
+# as argv for the same reason, and so they stay out of the environment the app
+# and Playwright inherit.
+function Set-CheckpointsForSpec {
+  $enabled = "false"
+  if ($script:checkpointHints -match "66-checkpoints" -or
+      $script:checkpointHints -match "24-synctex-inverse") {
+    $enabled = "true"
+  }
+  $writer = Join-Path ([System.IO.Path]::GetTempPath()) "oleafly-e2e-$stamp-checkpoints.js"
+  if (-not (Test-Path -LiteralPath $writer)) {
+    $nodeScript = @'
+const fs = require("node:fs");
+const path = require("node:path");
+const [target, enabled] = process.argv.slice(2);
+let config = {};
+try {
+  config = JSON.parse(fs.readFileSync(target, "utf8"));
+} catch {
+  config = {};
+}
+config.checkpoints_enabled = enabled === "true";
+fs.mkdirSync(path.dirname(target), { recursive: true });
+fs.writeFileSync(target, JSON.stringify(config, null, 2));
+'@
+    Set-Content -LiteralPath $writer -Value $nodeScript -Encoding ASCII
+  }
+  $configPath = Join-Path $script:dataDir "config.json"
+  & node $writer $configPath $enabled
+  if ($LASTEXITCODE -ne 0) {
+    throw "e2e: could not write checkpoints_enabled into $configPath"
+  }
+}
+
 function Start-App([string]$label) {
   Stop-App
+  Set-CheckpointsForSpec
   $safeLabel = $label -replace "[^A-Za-z0-9._-]", "-"
   $script:log = Join-Path ([System.IO.Path]::GetTempPath()) "oleafly-e2e-$stamp-$safeLabel.log"
   New-Item -ItemType File -Force -Path $script:log | Out-Null
@@ -188,6 +232,7 @@ try {
 
   if ($hasSpec) {
     $label = "requested-spec-selection"
+    $script:checkpointHints = ($playwrightArgs -join " ")
     Start-App $label
     $code = Run-Playwright $label @()
     Stop-App
@@ -217,6 +262,7 @@ try {
     foreach ($spec in $specs) {
       $label = $spec.Name
       $specPath = "e2e/tests/$($spec.Name)"
+      $script:checkpointHints = $specPath
       Start-App $label
       $status = Run-Playwright $label @($specPath)
       Stop-App

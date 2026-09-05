@@ -733,7 +733,10 @@ jobs:
         run: ./scripts/e2e.sh --shard=${{ matrix.shard }}/4 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
-        if: failure()
+        # always(), not failure(): a shard killed by timeout-minutes ends as
+        # cancelled, which failure() does not cover, so the three Windows shards
+        # that time out every run currently upload nothing at all.
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: e2e-test-results-macos-shard-${{ matrix.shard }}
@@ -891,7 +894,10 @@ jobs:
         run: xvfb-run -a ./scripts/e2e.sh --shard=${{ matrix.shard }}/4 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
-        if: failure()
+        # always(), not failure(): a shard killed by timeout-minutes ends as
+        # cancelled, which failure() does not cover, so the three Windows shards
+        # that time out every run currently upload nothing at all.
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: e2e-test-results-linux-shard-${{ matrix.shard }}
@@ -1035,7 +1041,10 @@ jobs:
         run: powershell -File scripts/e2e.ps1 --shard=${{ matrix.shard }}/4 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
-        if: failure()
+        # always(), not failure(): a shard killed by timeout-minutes ends as
+        # cancelled, which failure() does not cover, so the three Windows shards
+        # that time out every run currently upload nothing at all.
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: e2e-test-results-windows-shard-${{ matrix.shard }}
