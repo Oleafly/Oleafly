@@ -97,13 +97,98 @@ pub fn platform() -> String {
 }
 
 fn exact_version(value: &str) -> bool {
-    !value.is_empty()
-        && value.len() <= 80
-        && value
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b".-+".contains(&b))
-        && value.as_bytes()[0].is_ascii_digit()
-        && value.split('.').count() >= 2
+    exact_npm_version(value) || exact_python_version(value)
+}
+
+fn exact_npm_version(value: &str) -> bool {
+    if value.is_empty() || value.len() > 80 || !value.is_ascii() {
+        return false;
+    }
+    let (release, build) = value
+        .split_once('+')
+        .map_or((value, None), |(a, b)| (a, Some(b)));
+    let (release, pre) = release
+        .split_once('-')
+        .map_or((release, None), |(a, b)| (a, Some(b)));
+    let numeric = |part: &str| {
+        !part.is_empty()
+            && part.bytes().all(|byte| byte.is_ascii_digit())
+            && (part == "0" || !part.starts_with('0'))
+    };
+    let identifiers = |value: &str, prerelease: bool| {
+        value.split('.').all(|part| {
+            !part.is_empty()
+                && part
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+                && (!prerelease || !part.bytes().all(|byte| byte.is_ascii_digit()) || numeric(part))
+        })
+    };
+    release.split('.').count() == 3
+        && release.split('.').all(numeric)
+        && pre.map_or(true, |part| identifiers(part, true))
+        && build.map_or(true, |part| identifiers(part, false))
+}
+
+fn exact_python_version(value: &str) -> bool {
+    if value.is_empty() || value.len() > 80 || !value.is_ascii() {
+        return false;
+    }
+    let normalized = value.to_ascii_lowercase();
+    let (public, local) = normalized
+        .split_once('+')
+        .map_or((normalized.as_str(), None), |(a, b)| (a, Some(b)));
+    if local.is_some_and(|part| {
+        !part
+            .split(['.', '-', '_'])
+            .all(|part| !part.is_empty() && part.bytes().all(|byte| byte.is_ascii_alphanumeric()))
+    }) {
+        return false;
+    }
+    let public = public.strip_prefix('v').unwrap_or(public);
+    let release = if let Some((epoch, release)) = public.split_once('!') {
+        if epoch.is_empty() || !epoch.bytes().all(|byte| byte.is_ascii_digit()) {
+            return false;
+        }
+        release
+    } else {
+        public
+    };
+    if !release.starts_with(|ch: char| ch.is_ascii_digit()) {
+        return false;
+    }
+    let mut rest = release.trim_start_matches(|ch: char| ch.is_ascii_digit());
+    while rest
+        .strip_prefix('.')
+        .is_some_and(|part| part.starts_with(|ch: char| ch.is_ascii_digit()))
+    {
+        rest = rest[1..].trim_start_matches(|ch: char| ch.is_ascii_digit());
+    }
+    rest = python_version_suffix(
+        rest,
+        &["preview", "alpha", "beta", "pre", "rc", "a", "b", "c"],
+    );
+    rest = if let Some(post) = rest
+        .strip_prefix('-')
+        .filter(|part| part.starts_with(|ch: char| ch.is_ascii_digit()))
+    {
+        post.trim_start_matches(|ch: char| ch.is_ascii_digit())
+    } else {
+        python_version_suffix(rest, &["post", "rev", "r"])
+    };
+    python_version_suffix(rest, &["dev"]).is_empty()
+}
+
+fn python_version_suffix<'a>(value: &'a str, labels: &[&str]) -> &'a str {
+    let candidate = value.strip_prefix(['.', '-', '_']).unwrap_or(value);
+    labels
+        .iter()
+        .find_map(|label| candidate.strip_prefix(label))
+        .map_or(value, |rest| {
+            rest.strip_prefix(['.', '-', '_'])
+                .unwrap_or(rest)
+                .trim_start_matches(|ch: char| ch.is_ascii_digit())
+        })
 }
 
 pub fn package_parts(spec: &str, npm: bool) -> Result<(&str, &str), String> {
@@ -121,13 +206,22 @@ pub fn package_parts(spec: &str, npm: bool) -> Result<(&str, &str), String> {
     let scoped =
         name.starts_with('@') && name.matches('/').count() == 1 && !name[1..].contains('@');
     let unscoped = !name.contains('/') && !name.contains('@');
-    if !valid || (!scoped && !unscoped) || name.contains("..") || !exact_version(version) {
+    let pinned = if npm {
+        exact_npm_version(version)
+    } else {
+        exact_python_version(version)
+    };
+    if !valid || (!scoped && !unscoped) || name.contains("..") || !pinned {
         return Err(
             "Use a package name with an exact version, without a URL or version range.".into(),
         );
     }
     Ok((name, version))
 }
+
+#[cfg(test)]
+#[path = "tests/catalog.rs"]
+mod catalog_tests;
 
 fn valid_id(value: &str) -> bool {
     !value.is_empty()
@@ -971,7 +1065,7 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(
             temporary.join(&relative),
-            std::fs::Permissions::from_mode(0o755),
+            std::fs::Permissions::from_mode(0o700),
         )
         .map_err(|_| "The agent executable permissions could not be set.")?;
     }

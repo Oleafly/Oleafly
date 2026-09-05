@@ -8,7 +8,14 @@ use super::{
 use serde_json::json;
 use std::{path::Path, sync::Arc, time::Duration};
 
-pub(super) fn fixture_definition(extra: Vec<String>) -> AgentDefinition {
+pub(super) fn fixture_temp() -> tempfile::TempDir {
+    tempfile::Builder::new()
+        .prefix("oleafly-acp-fixture-")
+        .tempdir()
+        .unwrap()
+}
+
+pub(super) fn fixture_definition(extra: Vec<String>, root: &Path) -> AgentDefinition {
     let python =
         catalog::discover("python3").expect("Python 3 is required for ACP protocol fixtures");
     #[cfg(target_os = "macos")]
@@ -21,7 +28,7 @@ pub(super) fn fixture_definition(extra: Vec<String>) -> AgentDefinition {
     let script = Path::new(file!())
         .parent()
         .unwrap()
-        .join("fixtures/agent.py");
+        .join("tests/fixtures/agent.py");
     let script = if script.is_absolute() {
         script
     } else {
@@ -30,6 +37,7 @@ pub(super) fn fixture_definition(extra: Vec<String>) -> AgentDefinition {
     };
     let mut args = vec!["-u".into(), script.to_string_lossy().into_owned()];
     args.extend(extra);
+    args.extend(["--fixture-root".into(), root.to_string_lossy().into_owned()]);
     AgentDefinition {
         id: "fixture-agent".into(),
         name: "Fixture agent".into(),
@@ -47,12 +55,12 @@ pub(super) fn fixture_definition(extra: Vec<String>) -> AgentDefinition {
 }
 
 async fn runtime(extra: Vec<String>) -> (tempfile::TempDir, Arc<AcpRuntime>, SessionSnapshot) {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = fixture_temp();
     let project = temp.path().join("project");
     std::fs::create_dir(&project).unwrap();
     let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
     runtime
-        .register(&serde_json::to_string(&fixture_definition(extra)).unwrap())
+        .register(&serde_json::to_string(&fixture_definition(extra, temp.path())).unwrap())
         .unwrap();
     let session = runtime
         .start(StartSession {
@@ -128,7 +136,13 @@ async fn malformed_oversized_and_truncated_frames_fail() {
 
 #[tokio::test]
 async fn controlled_process_negotiates_streams_persists_and_resumes_without_duplicates() {
-    let (temp, runtime, snapshot) = runtime(Vec::new()).await;
+    let raw_input_marker = new_id();
+    let (temp, runtime, snapshot) = runtime(vec![
+        String::new(),
+        "--raw-input-marker".into(),
+        raw_input_marker.clone(),
+    ])
+    .await;
     let id = snapshot.session.id;
     assert_eq!(snapshot.session.agent_version.as_deref(), Some("1.2.3"));
     assert!(snapshot.session.capabilities.image);
@@ -156,7 +170,10 @@ async fn controlled_process_negotiates_streams_persists_and_resumes_without_dupl
         && event.data["inputTokens"].is_null()));
     assert!(!serde_json::to_string(&events)
         .unwrap()
-        .contains("never-persist-this"));
+        .contains(&raw_input_marker));
+    assert!(events
+        .iter()
+        .all(|event| event.data.get("rawInput").is_none()));
     runtime.close(&id).await.unwrap();
     let before = runtime.events(&id, 0, 500).unwrap().events.len();
     let reopened = runtime
@@ -281,9 +298,8 @@ async fn crash_retains_partial_transcript_and_no_pending_requests() {
 #[cfg(unix)]
 #[tokio::test]
 async fn cancellation_reaps_a_real_descendant_process() {
-    let pid_temp = tempfile::tempdir().unwrap();
-    let pid_path = pid_temp.path().join("child.pid");
-    let (_temp, runtime, snapshot) = runtime(vec![pid_path.to_string_lossy().into_owned()]).await;
+    let (temp, runtime, snapshot) = runtime(vec!["child.pid".into()]).await;
+    let pid_path = temp.path().join("child.pid");
     let id = snapshot.session.id;
     let task_runtime = runtime.clone();
     let task_id = id.clone();
@@ -384,7 +400,7 @@ fn archive_escape_and_symlinks_are_rejected() {
     let mut header = tar::Header::new_gnu();
     header.set_entry_type(tar::EntryType::Symlink);
     header.set_size(0);
-    header.set_mode(0o777);
+    header.set_mode(0o600);
     header.set_link_name("/etc/passwd").unwrap();
     header.set_cksum();
     archive.append_data(&mut header, "link", &b""[..]).unwrap();
@@ -519,12 +535,12 @@ fn task_availability_distinguishes_platform_and_agent_family() {
 }
 
 fn pending_runtime(extra: Vec<String>) -> (tempfile::TempDir, Arc<AcpRuntime>, StartSession) {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = fixture_temp();
     let project = temp.path().join("project");
     std::fs::create_dir(&project).unwrap();
     let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
     runtime
-        .register(&serde_json::to_string(&fixture_definition(extra)).unwrap())
+        .register(&serde_json::to_string(&fixture_definition(extra, temp.path())).unwrap())
         .unwrap();
     let options = StartSession {
         project_id: "test-project".into(),
@@ -731,12 +747,9 @@ async fn shutdown_waits_for_pending_starts_and_rejects_later_starts() {
 
 #[tokio::test]
 async fn shutdown_reaps_an_agent_waiting_for_initialization() {
-    let marker = tempfile::tempdir().unwrap();
-    let pid_path = marker.path().join("agent.pid");
-    let (_temp, runtime, options) = pending_runtime(vec![
-        pid_path.to_string_lossy().into_owned(),
-        "--initialize-barrier".into(),
-    ]);
+    let (temp, runtime, options) =
+        pending_runtime(vec!["agent.pid".into(), "--initialize-barrier".into()]);
+    let pid_path = temp.path().join("agent.pid");
     let pending = runtime.clone();
     let start = tokio::spawn(async move { pending.start(options).await });
     let pid = tokio::time::timeout(Duration::from_secs(5), async {
@@ -751,6 +764,14 @@ async fn shutdown_reaps_an_agent_waiting_for_initialization() {
     })
     .await
     .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(
+            std::fs::metadata(&pid_path).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+    }
     tokio::time::timeout(Duration::from_secs(5), runtime.shutdown_all())
         .await
         .unwrap();
@@ -770,9 +791,8 @@ async fn shutdown_reaps_an_agent_waiting_for_initialization() {
 #[cfg(unix)]
 #[tokio::test]
 async fn cancellation_reaps_processes_and_releases_resources_when_persistence_fails() {
-    let marker = tempfile::tempdir().unwrap();
-    let pid_path = marker.path().join("child.pid");
-    let (temp, runtime, snapshot) = runtime(vec![pid_path.to_string_lossy().into_owned()]).await;
+    let (temp, runtime, snapshot) = runtime(vec!["child.pid".into()]).await;
+    let pid_path = temp.path().join("child.pid");
     let id = snapshot.session.id;
     let dropped = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     runtime
@@ -806,4 +826,126 @@ async fn cancellation_reaps_processes_and_releases_resources_when_persistence_fa
     assert_ne!(unsafe { libc::kill(pid, 0) }, 0);
     assert!(runtime.assert_owner(&id, "fixture-window").await.is_err());
     let _ = prompt.await.unwrap();
+}
+
+#[test]
+fn permission_prefix_aliases_preserve_drive_and_share_boundaries() {
+    use super::runtime::equivalent_path_prefixes;
+    use std::{ffi::OsStr, path::Prefix};
+    assert!(equivalent_path_prefixes(
+        Prefix::Disk(b'C'),
+        Prefix::VerbatimDisk(b'C')
+    ));
+    assert!(equivalent_path_prefixes(
+        Prefix::VerbatimDisk(b'C'),
+        Prefix::Disk(b'c')
+    ));
+    assert!(!equivalent_path_prefixes(
+        Prefix::Disk(b'D'),
+        Prefix::VerbatimDisk(b'C')
+    ));
+    let server = OsStr::new("server");
+    let share = OsStr::new("project-share");
+    assert!(equivalent_path_prefixes(
+        Prefix::UNC(server, share),
+        Prefix::VerbatimUNC(server, share)
+    ));
+    assert!(!equivalent_path_prefixes(
+        Prefix::UNC(OsStr::new("other-server"), share),
+        Prefix::VerbatimUNC(server, share)
+    ));
+    assert!(!equivalent_path_prefixes(
+        Prefix::UNC(server, OsStr::new("other-share")),
+        Prefix::VerbatimUNC(server, share)
+    ));
+    assert!(!equivalent_path_prefixes(
+        Prefix::DeviceNS(OsStr::new("C:")),
+        Prefix::VerbatimDisk(b'C')
+    ));
+}
+
+#[cfg(windows)]
+#[test]
+fn permission_paths_accept_plain_and_verbatim_windows_paths() {
+    let temp = tempfile::tempdir().unwrap();
+    let project = temp.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    std::fs::write(project.join("existing.tex"), "fixture").unwrap();
+    let root = project.canonicalize().unwrap();
+    for path in [
+        project.join("existing.tex"),
+        project.join("new.tex"),
+        root.join("existing.tex"),
+        root.join("new.tex"),
+    ] {
+        assert!(
+            permission_paths_allowed(&root, &json!({"locations":[{"path":path}]})),
+            "{}",
+            path.display()
+        );
+    }
+    let sibling = temp.path().join("project-other");
+    std::fs::create_dir(&sibling).unwrap();
+    for path in [
+        sibling.join("new.tex"),
+        project.join("../outside.tex"),
+        root.join("../outside.tex"),
+    ] {
+        assert!(
+            !permission_paths_allowed(&root, &json!({"locations":[{"path":path}]})),
+            "{}",
+            path.display()
+        );
+    }
+}
+
+#[tokio::test]
+async fn fixture_pid_paths_stay_in_the_harness_and_do_not_overwrite_files() {
+    for outside in [true, false] {
+        let (temp, runtime, options) = pending_runtime(Vec::new());
+        let external = tempfile::tempdir().unwrap();
+        let outside_pid = external.path().join("agent.pid");
+        let existing_pid = temp.path().join("agent.pid");
+        std::fs::write(&existing_pid, "keep fixture contents").unwrap();
+        let requested = if outside {
+            outside_pid.to_string_lossy().into_owned()
+        } else {
+            "agent.pid".into()
+        };
+        runtime
+            .register(
+                &serde_json::to_string(&fixture_definition(
+                    vec![requested, "--initialize-barrier".into()],
+                    temp.path(),
+                ))
+                .unwrap(),
+            )
+            .unwrap();
+        let started = tokio::time::timeout(Duration::from_secs(3), runtime.start(options)).await;
+        runtime.shutdown_all().await;
+        assert!(started
+            .expect("The fixture did not reject the PID path")
+            .is_err());
+        assert!(!outside_pid.exists());
+        assert_eq!(
+            std::fs::read_to_string(existing_pid).unwrap(),
+            "keep fixture contents"
+        );
+    }
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn fixture_pid_paths_reject_symlink_escapes() {
+    let (temp, runtime, options) =
+        pending_runtime(vec!["agent.pid".into(), "--initialize-barrier".into()]);
+    let external = tempfile::tempdir().unwrap();
+    let outside_pid = external.path().join("agent.pid");
+    std::os::unix::fs::symlink(&outside_pid, temp.path().join("agent.pid")).unwrap();
+    let started = tokio::time::timeout(Duration::from_secs(3), runtime.start(options)).await;
+    runtime.shutdown_all().await;
+    assert!(started
+        .expect("The fixture followed the PID symlink")
+        .is_err());
+    assert!(!outside_pid.exists());
 }

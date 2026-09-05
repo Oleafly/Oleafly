@@ -1398,6 +1398,36 @@ fn canonical_root(path: &Path) -> Result<PathBuf, String> {
     Ok(root)
 }
 
+pub(super) fn equivalent_path_prefixes(
+    left: std::path::Prefix<'_>,
+    right: std::path::Prefix<'_>,
+) -> bool {
+    use std::path::Prefix;
+    match (left, right) {
+        (
+            Prefix::Disk(left) | Prefix::VerbatimDisk(left),
+            Prefix::Disk(right) | Prefix::VerbatimDisk(right),
+        ) => left.eq_ignore_ascii_case(&right),
+        (
+            Prefix::UNC(left_server, left_share) | Prefix::VerbatimUNC(left_server, left_share),
+            Prefix::UNC(right_server, right_share) | Prefix::VerbatimUNC(right_server, right_share),
+        ) => left_server == right_server && left_share == right_share,
+        (left, right) => left == right,
+    }
+}
+
+fn lexical_path_within(path: &Path, root: &Path) -> bool {
+    let mut components = path.components();
+    root.components()
+        .all(|root_component| match (components.next(), root_component) {
+            (Some(Component::Prefix(path)), Component::Prefix(root)) => {
+                equivalent_path_prefixes(path.kind(), root.kind())
+            }
+            (Some(path), root) => path == root,
+            (None, _) => false,
+        })
+}
+
 pub fn permission_paths_allowed(root: &Path, tool: &Value) -> bool {
     let paths = tool["locations"]
         .as_array()
@@ -1438,7 +1468,7 @@ pub fn permission_paths_allowed(root: &Path, tool: &Value) -> bool {
             existing
                 .canonicalize()
                 .is_ok_and(|path| path.starts_with(root))
-                && candidate.starts_with(root)
+                && lexical_path_within(&candidate, root)
         })
 }
 

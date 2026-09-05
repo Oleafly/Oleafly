@@ -1,8 +1,44 @@
 import json
 import os
+from pathlib import Path
+import secrets
 import subprocess
 import sys
 import time
+
+def argument(name):
+    if name not in sys.argv:
+        return None
+    index = sys.argv.index(name) + 1
+    if index >= len(sys.argv):
+        raise ValueError("Missing fixture argument")
+    return sys.argv[index]
+
+declared_root = Path(argument("--fixture-root") or "").resolve(strict=True)
+fixture_root = Path.cwd().resolve().parent
+if not fixture_root.name.startswith("oleafly-acp-fixture-") or not declared_root.samefile(fixture_root):
+    raise ValueError("Use an ACP harness temporary directory")
+
+def fixture_path(value):
+    path = Path(value)
+    if ".." in path.parts:
+        raise ValueError("Fixture paths cannot contain parent traversal")
+    if not path.is_absolute():
+        path = fixture_root / path
+    if not path.parent.resolve(strict=True).samefile(fixture_root) or path.is_symlink():
+        raise ValueError("Fixture files must be direct children of the harness directory")
+    return fixture_root / path.name
+
+def write_pid(value):
+    path = fixture_path(pid_file)
+    if path.parent != fixture_root or path.name not in ("agent.pid", "child.pid"):
+        raise ValueError("Use a harness PID filename")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags, 0o600)
+    with os.fdopen(descriptor, "w") as handle:
+        handle.write(str(value))
+
+raw_input_marker = argument("--raw-input-marker") or secrets.token_hex(24)
 
 native_id = "fixture-native"
 authenticated = "--require-login" not in sys.argv
@@ -25,8 +61,7 @@ for line in sys.stdin:
     params = request.get("params", {})
     if method == "initialize":
         if "--initialize-barrier" in sys.argv:
-            with open(pid_file, "w") as handle:
-                handle.write(str(os.getpid()))
+            write_pid(os.getpid())
             time.sleep(300)
         result(request, {"protocolVersion": 1, "agentInfo": {"name": "fixture", "version": "1.2.3"}, "agentCapabilities": {"loadSession": True, "promptCapabilities": {"image": True}, "mcpCapabilities": {"http": True}}, "authMethods": [{"id": "fixture-login", "name": "Fixture sign-in"}]})
     elif method == "authenticate":
@@ -55,7 +90,7 @@ for line in sys.stdin:
     elif method == "session/prompt":
         prompt = params["prompt"][0]["text"]
         update("agent_thought_chunk", content={"type": "text", "text": "Checking the fixture."})
-        update("tool_call", toolCallId="read-1", title="Read fixture", kind="read", status="in_progress", rawInput={"password": "never-persist-this"})
+        update("tool_call", toolCallId="read-1", title="Read fixture", kind="read", status="in_progress", rawInput={"password": raw_input_marker})
         update("tool_call_update", toolCallId="read-1", status="completed", content=[{"type": "content", "content": {"type": "text", "text": "Read complete."}}])
         if prompt == "leak-model":
             update("current_model_update", currentModelId=credential)
@@ -71,12 +106,12 @@ for line in sys.stdin:
             send({"id": "permission-wire", "method": "session/request_permission", "params": {"sessionId": native_id, "toolCall": {"toolCallId": credential if prompt == "leak-permission-tool" else "write-1", "title": "Update paper", "locations": [{"path": path}]}, "options": [{"optionId": credential if prompt == "leak-permission-option" else "yes", "name": "Allow once", "kind": "allow_once"}, {"optionId": "no", "name": "Reject", "kind": "reject_once"}]}})
         elif prompt == "hang":
             child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(300)"])
-            with open(pid_file, "w") as handle:
-                handle.write(str(child.pid))
+            write_pid(child.pid)
             pending_prompt = request
         elif prompt == "scope-probe":
+            probe_path = fixture_path(sys.argv[2])
             try:
-                with open(sys.argv[2]) as handle:
+                with probe_path.open() as handle:
                     handle.read()
                 outcome = "outside read allowed"
             except PermissionError:

@@ -2,15 +2,15 @@ use super::{AcpRuntime, StartSession};
 
 #[tokio::test]
 async fn confined_acp_fixture_cannot_read_unlinked_files() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = super::tests::fixture_temp();
     let project = temp.path().join("project");
     std::fs::create_dir(&project).unwrap();
     let outside = temp.path().join("unlinked.txt");
     std::fs::write(&outside, "private fixture data").unwrap();
-    let definition = super::tests::fixture_definition(vec![
-        String::new(),
-        outside.to_string_lossy().into_owned(),
-    ]);
+    let definition = super::tests::fixture_definition(
+        vec![String::new(), outside.to_string_lossy().into_owned()],
+        temp.path(),
+    );
     let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
     runtime
         .register(&serde_json::to_string(&definition).unwrap())
