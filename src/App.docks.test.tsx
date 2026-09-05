@@ -130,6 +130,7 @@ vi.mock("react-resizable-panels", async () => {
 
 vi.mock("@/lib/theme", () => ({
   ThemeProvider: ({ children }: { children?: unknown }) => children,
+  useAppTheme: () => "dark",
 }));
 vi.mock("@/components/ErrorBoundary", () => ({
   ErrorBoundary: ({ children }: { children?: unknown }) => children,

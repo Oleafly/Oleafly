@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Check, Palette, Pencil, Plus, X } from "lucide-react";
+import { Check, Palette, Pencil, Plus, Settings2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -14,7 +14,11 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { BOOK_COLOR_OPTIONS } from "@/components/library/Book";
-import { useSettingsStore } from "@/store/settings";
+import { useAppTheme } from "@/lib/theme";
+import { useResolvedTerminalTheme, useSettingsStore } from "@/store/settings";
+
+const stripButtonClass =
+  "inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
 import {
   TERMINAL_LIMIT,
   TERMINAL_LIMIT_MESSAGE,
@@ -284,7 +288,9 @@ export function TerminalDock({
   const tabs = useTerminalsStore((state) => state.tabs);
   const activeId = useTerminalsStore((state) => state.activeId);
   const setTerminalOpen = useSettingsStore((state) => state.setTerminalOpen);
-  const terminalBackground = useSettingsStore((state) => state.terminalBackground);
+  const terminalBackground = useResolvedTerminalTheme(useAppTheme()).background;
+  const openTerminalSettings = () =>
+    useSettingsStore.getState().openSettingsAt("appearance", "terminal");
   const ready = storeProjectId === projectId;
   const empty = tabs.length === 0;
   const atLimit = tabs.length >= TERMINAL_LIMIT;
@@ -345,9 +351,19 @@ export function TerminalDock({
             aria-label="New terminal"
             disabled={atLimit || !ready}
             onClick={() => useTerminalsStore.getState().addTerminal()}
-            className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+            className={stripButtonClass}
           >
             <Plus className="size-4" aria-hidden />
+          </button>
+        </Tooltip>
+        <Tooltip label="Terminal settings" side="bottom">
+          <button
+            type="button"
+            aria-label="Terminal settings"
+            onClick={openTerminalSettings}
+            className={cn(stripButtonClass, "ml-auto mr-0.5")}
+          >
+            <Settings2 className="size-4" aria-hidden />
           </button>
         </Tooltip>
       </div>

@@ -381,7 +381,7 @@ describe("Appearance settings tabs", () => {
       screen.getByRole("switch", { name: "Start shell with project" }),
     );
     await user.click(screen.getByLabelText("Terminal color theme"));
-    await user.click(await screen.findByRole("option", { name: "Light" }));
+    await user.click(await screen.findByRole("option", { name: "Light · light" }));
     fireEvent.change(screen.getByLabelText("Terminal background color"), {
       target: { value: "#f8f8f8" },
     });

@@ -3,9 +3,16 @@ import { cn } from "@/lib/utils";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { Unicode11Addon } from "@xterm/addon-unicode11";
+import { WebglAddon } from "@xterm/addon-webgl";
 import { Loader2 } from "lucide-react";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
-import { TERMINAL_COLOR_THEMES, useSettingsStore } from "@/store/settings";
+import { useAppTheme } from "@/lib/theme";
+import {
+  resolveTerminalTheme,
+  useSettingsStore,
+  withTerminalGlyphFallbacks,
+} from "@/store/settings";
 import "@xterm/xterm/css/xterm.css";
 
 type TerminalChannelMessage =
@@ -70,6 +77,24 @@ export interface TerminalPaneProps {
 }
 
 const MAX_HIDDEN_OUTPUT_CHARS = 256_000;
+const SCROLLBACK_LINES = 5_000;
+
+/**
+ * GPU renderer: much faster than the DOM renderer for busy output and it draws
+ * glyph fallbacks from the font stack the same way. Falls back silently to the
+ * DOM renderer when WebGL is unavailable (older WebKitGTK, software GPUs) or
+ * when the context is lost later.
+ */
+function attachRenderer(terminal: Terminal): void {
+  if (E2E_HOOKS) return;
+  try {
+    const webgl = new WebglAddon();
+    webgl.onContextLoss(() => webgl.dispose());
+    terminal.loadAddon(webgl);
+  } catch {
+    // DOM renderer stays active.
+  }
+}
 
 export function TerminalPane({
   projectId,
@@ -108,6 +133,9 @@ export function TerminalPane({
   const terminalBackground = useSettingsStore((state) => state.terminalBackground);
   const terminalForeground = useSettingsStore((state) => state.terminalForeground);
   const terminalCursorColor = useSettingsStore((state) => state.terminalCursorColor);
+  const appTheme = useAppTheme();
+  const appThemeRef = useRef(appTheme);
+  appThemeRef.current = appTheme;
   const appearanceRef = useRef({
     terminalFontSize,
     terminalFontFamily,
@@ -145,24 +173,29 @@ export function TerminalPane({
     sessionLiveRef.current = false;
     surfacedErrorsRef.current.clear();
     const appearance = appearanceRef.current;
-    const theme = {
-      ...TERMINAL_COLOR_THEMES[appearance.terminalColorTheme].colors,
-      background: appearance.terminalBackground,
-      foreground: appearance.terminalForeground,
-      cursor: appearance.terminalCursorColor,
-    };
+    const theme = resolveTerminalTheme(appearance, appThemeRef.current);
     const terminal = new Terminal({
       fontSize: appearance.terminalFontSize,
-      fontFamily: appearance.terminalFontFamily,
+      fontFamily: withTerminalGlyphFallbacks(appearance.terminalFontFamily),
       fontWeight: appearance.terminalFontWeight,
       fontWeightBold: appearance.terminalFontWeightBold,
       cursorStyle: appearance.terminalCursorStyle,
       cursorBlink: appearance.terminalCursorBlink,
       drawBoldTextInBrightColors: true,
+      scrollback: SCROLLBACK_LINES,
+      // Unicode 11 width tables: Nerd Font icons, emoji and CJK take the right
+      // number of cells, so right-aligned prompts (Powerlevel10k, Starship) line up.
+      allowProposedApi: true,
       theme,
     });
     const fit = new FitAddon();
     terminal.loadAddon(fit);
+    try {
+      terminal.loadAddon(new Unicode11Addon());
+      terminal.unicode.activeVersion = "11";
+    } catch {
+      // Version 6 tables remain; only alignment of wide glyphs is affected.
+    }
     const outputTarget = host.parentElement;
     const outputWritten = terminalOutputCallback(terminal, outputTarget);
     outputWrittenRef.current = outputWritten;
@@ -171,6 +204,7 @@ export function TerminalPane({
     if (visibleRef.current) {
       terminal.open(host);
       openedRef.current = true;
+      attachRenderer(terminal);
       fit.fit();
       terminal.focus();
     }
@@ -344,18 +378,16 @@ export function TerminalPane({
     const terminal = terminalRef.current;
     if (!terminal) return;
     terminal.options.fontSize = terminalFontSize;
-    terminal.options.fontFamily = terminalFontFamily;
+    terminal.options.fontFamily = withTerminalGlyphFallbacks(terminalFontFamily);
     terminal.options.fontWeight = terminalFontWeight;
     terminal.options.fontWeightBold = terminalFontWeightBold;
     terminal.options.cursorStyle = terminalCursorStyle;
     terminal.options.cursorBlink = terminalCursorBlink;
     terminal.options.drawBoldTextInBrightColors = true;
-    terminal.options.theme = {
-      ...TERMINAL_COLOR_THEMES[terminalColorTheme].colors,
-      background: terminalBackground,
-      foreground: terminalForeground,
-      cursor: terminalCursorColor,
-    };
+    terminal.options.theme = resolveTerminalTheme(
+      { terminalColorTheme, terminalBackground, terminalForeground, terminalCursorColor },
+      appTheme,
+    );
     if (!visibleRef.current || !openedRef.current) return;
     fitRef.current?.fit();
     const id = sessionIdRef.current;
@@ -382,6 +414,7 @@ export function TerminalPane({
       });
     }
   }, [
+    appTheme,
     projectId,
     terminalBackground,
     terminalColorTheme,
@@ -408,6 +441,7 @@ export function TerminalPane({
       if (terminal && host && !openedRef.current) {
         terminal.open(host);
         openedRef.current = true;
+        attachRenderer(terminal);
       }
       if (!openedRef.current) return;
       if (terminal && hiddenOutputRef.current.length > 0) {
@@ -449,6 +483,11 @@ export function TerminalPane({
     return () => window.cancelAnimationFrame(frame);
   }, [projectId, visible]);
 
+  const paneBackground = resolveTerminalTheme(
+    { terminalColorTheme, terminalBackground, terminalForeground, terminalCursorColor },
+    appTheme,
+  ).background;
+
   return (
     <div
       className={cn(
@@ -460,7 +499,7 @@ export function TerminalPane({
       data-terminal-color-theme={terminalColorTheme}
       aria-hidden={!visible}
       onMouseDown={() => terminalRef.current?.focus()}
-      style={{ backgroundColor: terminalBackground }}
+      style={{ backgroundColor: paneBackground }}
     >
       <div
         ref={hostRef}
@@ -471,7 +510,7 @@ export function TerminalPane({
         <div
           className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-muted-foreground"
           data-testid={active ? "dock-terminal-loading" : "dock-terminal-loading-inactive"}
-          style={{ backgroundColor: terminalBackground }}
+          style={{ backgroundColor: paneBackground }}
         >
           <Loader2 className="size-6 animate-spin motion-reduce:animate-none" />
           <p className="text-xs">Starting the project shell…</p>

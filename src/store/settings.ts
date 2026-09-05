@@ -83,7 +83,20 @@ export type EditorThemeId =
   | "catppuccin"
   | "one-dark";
 export type TerminalCursorStyle = "block" | "underline" | "bar";
-export type TerminalColorThemeId = "dark" | "light";
+export type TerminalColorThemeId =
+  | "system"
+  | "dark"
+  | "light"
+  | "one-dark"
+  | "one-light"
+  | "dracula"
+  | "catppuccin-mocha"
+  | "catppuccin-latte"
+  | "tokyo-night"
+  | "nord"
+  | "github-dark"
+  | "solarized-dark"
+  | "solarized-light";
 export type BrowserSearchEngineId =
   | "google"
   | "bing"
@@ -119,11 +132,53 @@ export interface TerminalThemeColors {
   brightWhite: string;
 }
 
-export const TERMINAL_COLOR_THEMES: Record<
-  TerminalColorThemeId,
-  { id: TerminalColorThemeId; name: string; colors: TerminalThemeColors }
-> = {
+export interface TerminalColorTheme {
+  id: TerminalColorThemeId;
+  name: string;
+  /** Which app theme this palette is designed for; "system" follows the app. */
+  appearance: "dark" | "light" | "system";
+  colors: TerminalThemeColors;
+}
+
+function palette(
+  base: Pick<
+    TerminalThemeColors,
+    "background" | "foreground" | "cursor" | "selectionBackground"
+  >,
+  ansi: [
+    string, string, string, string, string, string, string, string,
+    string, string, string, string, string, string, string, string,
+  ],
+): TerminalThemeColors {
+  const [
+    black, red, green, yellow, blue, magenta, cyan, white,
+    brightBlack, brightRed, brightGreen, brightYellow, brightBlue, brightMagenta, brightCyan, brightWhite,
+  ] = ansi;
+  return {
+    ...base,
+    cursorAccent: base.background,
+    selectionForeground: base.foreground,
+    selectionInactiveBackground: base.selectionBackground,
+    black, red, green, yellow, blue, magenta, cyan, white,
+    brightBlack, brightRed, brightGreen, brightYellow, brightBlue, brightMagenta, brightCyan, brightWhite,
+  };
+}
+
+export const TERMINAL_COLOR_THEMES: Record<TerminalColorThemeId, TerminalColorTheme> = {
+  // Resolved at render time to "dark" or "light" depending on the app theme.
+  // The colors here are only a placeholder for code that reads the map directly.
+  system: {
+    id: "system",
+    name: "Match app theme",
+    appearance: "system",
+    colors: palette(
+      { background: "#1e1e1e", foreground: "#f2f2f2", cursor: "#ffffff", selectionBackground: "#264f78" },
+      ["#000000", "#cd3131", "#0dbc79", "#e5e510", "#2472c8", "#bc3fbc", "#11a8cd", "#e5e5e5",
+       "#666666", "#f14c4c", "#23d18b", "#f5f543", "#3b8eea", "#d670d6", "#29b8db", "#ffffff"],
+    ),
+  },
   dark: {
+    appearance: "dark",
     id: "dark",
     name: "Dark",
     colors: {
@@ -155,6 +210,7 @@ export const TERMINAL_COLOR_THEMES: Record<
   light: {
     id: "light",
     name: "Light",
+    appearance: "light",
     colors: {
       background: "#ffffff",
       foreground: "#1f2328",
@@ -181,7 +237,157 @@ export const TERMINAL_COLOR_THEMES: Record<
       brightWhite: "#24292f",
     },
   },
+  "one-dark": {
+    id: "one-dark",
+    name: "One Dark",
+    appearance: "dark",
+    colors: palette(
+      { background: "#282c34", foreground: "#abb2bf", cursor: "#528bff", selectionBackground: "#3e4451" },
+      ["#3f4451", "#e06c75", "#98c379", "#e5c07b", "#61afef", "#c678dd", "#56b6c2", "#d7dae0",
+       "#4f5666", "#ff7b86", "#b1e18b", "#ffd68a", "#67cdff", "#e48bff", "#63d4e0", "#ffffff"],
+    ),
+  },
+  "one-light": {
+    id: "one-light",
+    name: "One Light",
+    appearance: "light",
+    colors: palette(
+      { background: "#fafafa", foreground: "#383a42", cursor: "#526eff", selectionBackground: "#e5e5e6" },
+      ["#383a42", "#e45649", "#50a14f", "#c18401", "#4078f2", "#a626a4", "#0184bc", "#a0a1a7",
+       "#4f525e", "#e06c75", "#98c379", "#e5c07b", "#61afef", "#c678dd", "#56b6c2", "#ffffff"],
+    ),
+  },
+  dracula: {
+    id: "dracula",
+    name: "Dracula",
+    appearance: "dark",
+    colors: palette(
+      { background: "#282a36", foreground: "#f8f8f2", cursor: "#f8f8f2", selectionBackground: "#44475a" },
+      ["#21222c", "#ff5555", "#50fa7b", "#f1fa8c", "#bd93f9", "#ff79c6", "#8be9fd", "#f8f8f2",
+       "#6272a4", "#ff6e6e", "#69ff94", "#ffffa5", "#d6acff", "#ff92df", "#a4ffff", "#ffffff"],
+    ),
+  },
+  "catppuccin-mocha": {
+    id: "catppuccin-mocha",
+    name: "Catppuccin Mocha",
+    appearance: "dark",
+    colors: palette(
+      { background: "#1e1e2e", foreground: "#cdd6f4", cursor: "#f5e0dc", selectionBackground: "#45475a" },
+      ["#45475a", "#f38ba8", "#a6e3a1", "#f9e2af", "#89b4fa", "#f5c2e7", "#94e2d5", "#bac2de",
+       "#585b70", "#f38ba8", "#a6e3a1", "#f9e2af", "#89b4fa", "#f5c2e7", "#94e2d5", "#a6adc8"],
+    ),
+  },
+  "catppuccin-latte": {
+    id: "catppuccin-latte",
+    name: "Catppuccin Latte",
+    appearance: "light",
+    colors: palette(
+      { background: "#eff1f5", foreground: "#4c4f69", cursor: "#dc8a78", selectionBackground: "#ccd0da" },
+      ["#5c5f77", "#d20f39", "#40a02b", "#df8e1d", "#1e66f5", "#ea76cb", "#179299", "#acb0be",
+       "#6c6f85", "#d20f39", "#40a02b", "#df8e1d", "#1e66f5", "#ea76cb", "#179299", "#bcc0cc"],
+    ),
+  },
+  "tokyo-night": {
+    id: "tokyo-night",
+    name: "Tokyo Night",
+    appearance: "dark",
+    colors: palette(
+      { background: "#1a1b26", foreground: "#c0caf5", cursor: "#c0caf5", selectionBackground: "#33467c" },
+      ["#15161e", "#f7768e", "#9ece6a", "#e0af68", "#7aa2f7", "#bb9af7", "#7dcfff", "#a9b1d6",
+       "#414868", "#f7768e", "#9ece6a", "#e0af68", "#7aa2f7", "#bb9af7", "#7dcfff", "#c0caf5"],
+    ),
+  },
+  nord: {
+    id: "nord",
+    name: "Nord",
+    appearance: "dark",
+    colors: palette(
+      { background: "#2e3440", foreground: "#d8dee9", cursor: "#d8dee9", selectionBackground: "#434c5e" },
+      ["#3b4252", "#bf616a", "#a3be8c", "#ebcb8b", "#81a1c1", "#b48ead", "#88c0d0", "#e5e9f0",
+       "#4c566a", "#bf616a", "#a3be8c", "#ebcb8b", "#81a1c1", "#b48ead", "#8fbcbb", "#eceff4"],
+    ),
+  },
+  "github-dark": {
+    id: "github-dark",
+    name: "GitHub Dark",
+    appearance: "dark",
+    colors: palette(
+      { background: "#0d1117", foreground: "#e6edf3", cursor: "#e6edf3", selectionBackground: "#264f78" },
+      ["#484f58", "#ff7b72", "#3fb950", "#d29922", "#58a6ff", "#bc8cff", "#39c5cf", "#b1bac4",
+       "#6e7681", "#ffa198", "#56d364", "#e3b341", "#79c0ff", "#d2a8ff", "#56d4dd", "#ffffff"],
+    ),
+  },
+  "solarized-dark": {
+    id: "solarized-dark",
+    name: "Solarized Dark",
+    appearance: "dark",
+    colors: palette(
+      { background: "#002b36", foreground: "#839496", cursor: "#93a1a1", selectionBackground: "#073642" },
+      ["#073642", "#dc322f", "#859900", "#b58900", "#268bd2", "#d33682", "#2aa198", "#eee8d5",
+       "#586e75", "#cb4b16", "#586e75", "#657b83", "#839496", "#6c71c4", "#93a1a1", "#fdf6e3"],
+    ),
+  },
+  "solarized-light": {
+    id: "solarized-light",
+    name: "Solarized Light",
+    appearance: "light",
+    colors: palette(
+      { background: "#fdf6e3", foreground: "#657b83", cursor: "#586e75", selectionBackground: "#eee8d5" },
+      ["#073642", "#dc322f", "#859900", "#b58900", "#268bd2", "#d33682", "#2aa198", "#eee8d5",
+       "#586e75", "#cb4b16", "#586e75", "#657b83", "#839496", "#6c71c4", "#93a1a1", "#fdf6e3"],
+    ),
+  },
 };
+
+/**
+ * The palette to paint for a chosen theme id. "system" follows the app's
+ * resolved light/dark theme so a plain shell looks right in either mode.
+ */
+export interface TerminalAppearanceColors {
+  terminalColorTheme: TerminalColorThemeId;
+  terminalBackground: string;
+  terminalForeground: string;
+  terminalCursorColor: string;
+}
+
+/**
+ * The exact xterm theme to paint: the resolved palette plus the user's base
+ * color overrides. "Match app theme" ignores the overrides because they were
+ * captured for one fixed palette and would not fit both light and dark.
+ */
+export function resolveTerminalTheme(
+  appearance: TerminalAppearanceColors,
+  appTheme: "light" | "dark",
+): TerminalThemeColors {
+  const palette = resolveTerminalColorTheme(appearance.terminalColorTheme, appTheme);
+  if (appearance.terminalColorTheme === "system") return { ...palette.colors };
+  return {
+    ...palette.colors,
+    background: appearance.terminalBackground,
+    foreground: appearance.terminalForeground,
+    cursor: appearance.terminalCursorColor,
+  };
+}
+
+/** Hook form of resolveTerminalTheme for components rendering terminal chrome. */
+export function useResolvedTerminalTheme(appTheme: "light" | "dark"): TerminalThemeColors {
+  const terminalColorTheme = useSettingsStore((state) => state.terminalColorTheme);
+  const terminalBackground = useSettingsStore((state) => state.terminalBackground);
+  const terminalForeground = useSettingsStore((state) => state.terminalForeground);
+  const terminalCursorColor = useSettingsStore((state) => state.terminalCursorColor);
+  return resolveTerminalTheme(
+    { terminalColorTheme, terminalBackground, terminalForeground, terminalCursorColor },
+    appTheme,
+  );
+}
+
+export function resolveTerminalColorTheme(
+  id: TerminalColorThemeId,
+  appTheme: "light" | "dark",
+): TerminalColorTheme {
+  if (id === "system") return TERMINAL_COLOR_THEMES[appTheme];
+  return TERMINAL_COLOR_THEMES[id] ?? TERMINAL_COLOR_THEMES[appTheme];
+}
 
 export const BROWSER_SEARCH_ENGINES: {
   id: BrowserSearchEngineId;
@@ -218,7 +424,37 @@ export const BROWSER_SEARCH_ENGINES: {
 ];
 
 export const DEFAULT_TERMINAL_FONT_FAMILY =
-  'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace';
+  'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
+
+/**
+ * Fonts consulted per glyph after the chosen family, so prompt/ls icons from
+ * Nerd Fonts (Powerlevel10k, Starship, eza, lsd) render whichever one the
+ * user happens to have installed. Missing families are skipped by the browser.
+ */
+export const TERMINAL_GLYPH_FALLBACK_FONTS = [
+  '"MesloLGS NF"',
+  '"MesloLGS Nerd Font Mono"',
+  '"MesloLGM Nerd Font Mono"',
+  '"JetBrainsMono Nerd Font Mono"',
+  '"JetBrainsMono NF"',
+  '"FiraCode Nerd Font Mono"',
+  '"Hack Nerd Font Mono"',
+  '"CaskaydiaCove Nerd Font Mono"',
+  '"CaskaydiaCove NF"',
+  '"SFMono Nerd Font"',
+  '"Symbols Nerd Font Mono"',
+  '"Symbols Nerd Font"',
+].join(", ");
+
+/** Append the glyph fallbacks ahead of the trailing generic family. */
+export function withTerminalGlyphFallbacks(fontFamily: string): string {
+  const family = fontFamily.trim() || DEFAULT_TERMINAL_FONT_FAMILY;
+  if (family.includes("Nerd Font") && family.includes("Symbols")) return family;
+  const generic = /,\s*monospace\s*$/iu;
+  return generic.test(family)
+    ? `${family.replace(generic, "")}, ${TERMINAL_GLYPH_FALLBACK_FONTS}, monospace`
+    : `${family}, ${TERMINAL_GLYPH_FALLBACK_FONTS}, monospace`;
+}
 
 function ls(k: string, fb: string): string {
   try {
@@ -267,7 +503,7 @@ function readTerminalCursorStyle(raw: string): TerminalCursorStyle {
   return raw === "underline" || raw === "bar" ? raw : "block";
 }
 function readTerminalColorTheme(raw: string): TerminalColorThemeId {
-  return raw === "light" ? "light" : "dark";
+  return raw in TERMINAL_COLOR_THEMES ? (raw as TerminalColorThemeId) : "system";
 }
 function readTerminalColor(raw: string, fallback: string): string {
   return /^#[\da-f]{6}$/iu.test(raw) ? raw.toLowerCase() : fallback;
@@ -347,6 +583,11 @@ export const EDITOR_FONTS: { name: string; value: string }[] = [
 ];
 export const TERMINAL_FONTS: { name: string; value: string }[] = [
   { name: "Terminal default", value: DEFAULT_TERMINAL_FONT_FAMILY },
+  { name: "MesloLGS Nerd Font (Powerlevel10k)", value: '"MesloLGS NF", "MesloLGS Nerd Font Mono", ui-monospace, monospace' },
+  { name: "JetBrainsMono Nerd Font", value: '"JetBrainsMono Nerd Font Mono", "JetBrainsMono NF", ui-monospace, monospace' },
+  { name: "FiraCode Nerd Font", value: '"FiraCode Nerd Font Mono", "FiraCode NF", ui-monospace, monospace' },
+  { name: "Hack Nerd Font", value: '"Hack Nerd Font Mono", ui-monospace, monospace' },
+  { name: "CaskaydiaCove Nerd Font", value: '"CaskaydiaCove Nerd Font Mono", "CaskaydiaCove NF", ui-monospace, monospace' },
   ...EDITOR_FONTS.filter(({ value }) => value),
 ];
 
@@ -521,6 +762,11 @@ interface SettingsState {
   setSettingsOpen: (v: boolean) => void;
   settingsInitialSection: string;
   setSettingsInitialSection: (v: string) => void;
+  /** Appearance tab to show when the settings modal next opens; cleared once consumed. */
+  settingsInitialAppearanceTab: string | null;
+  setSettingsInitialAppearanceTab: (v: string | null) => void;
+  /** Open the settings modal on a section, optionally on an Appearance tab. */
+  openSettingsAt: (section: string, appearanceTab?: string | null) => void;
   // One-shot scroll target within a settings section (e.g. "templates" inside
   // Downloads); consumed and cleared by the section that renders it so it
   // never re-triggers on a later, unrelated open.
@@ -670,7 +916,7 @@ const PREF_DEFAULTS = {
   terminalCursorStyle: "block" as TerminalCursorStyle,
   terminalCursorBlink: true,
   terminalStartWithProject: true,
-  terminalColorTheme: "dark" as TerminalColorThemeId,
+  terminalColorTheme: "system" as TerminalColorThemeId,
   terminalBackground: TERMINAL_COLOR_THEMES.dark.colors.background,
   terminalForeground: TERMINAL_COLOR_THEMES.dark.colors.foreground,
   terminalCursorColor: TERMINAL_COLOR_THEMES.dark.colors.cursor,
@@ -792,6 +1038,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   settingsInitialSection: "general",
   setSettingsInitialSection: (v) =>
     set({ settingsInitialSection: SETTINGS_SECTIONS.has(v) ? v : "general" }),
+  settingsInitialAppearanceTab: null,
+  setSettingsInitialAppearanceTab: (v) => set({ settingsInitialAppearanceTab: v }),
+  openSettingsAt: (section, appearanceTab = null) => {
+    get().setSettingsInitialSection(section);
+    set({ settingsInitialAppearanceTab: appearanceTab, settingsOpen: true });
+  },
   settingsScrollTarget: null,
   setSettingsScrollTarget: (v) => set({ settingsScrollTarget: v }),
   viewMode: "split",
@@ -901,7 +1153,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ terminalStartWithProject: v });
   },
   terminalColorTheme: readTerminalColorTheme(
-    ls("oleafly.terminal.colorTheme", "dark"),
+    ls("oleafly.terminal.colorTheme", "system"),
   ),
   setTerminalColorTheme: (v) => {
     const terminalColorTheme = readTerminalColorTheme(v);
@@ -919,7 +1171,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   terminalBackground: (() => {
     const theme = readTerminalColorTheme(
-      ls("oleafly.terminal.colorTheme", "dark"),
+      ls("oleafly.terminal.colorTheme", "system"),
     );
     const fallback = TERMINAL_COLOR_THEMES[theme].colors.background;
     return readTerminalColor(ls("oleafly.terminal.background", fallback), fallback);
@@ -931,7 +1183,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   terminalForeground: (() => {
     const theme = readTerminalColorTheme(
-      ls("oleafly.terminal.colorTheme", "dark"),
+      ls("oleafly.terminal.colorTheme", "system"),
     );
     const fallback = TERMINAL_COLOR_THEMES[theme].colors.foreground;
     return readTerminalColor(ls("oleafly.terminal.foreground", fallback), fallback);
@@ -943,7 +1195,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   terminalCursorColor: (() => {
     const theme = readTerminalColorTheme(
-      ls("oleafly.terminal.colorTheme", "dark"),
+      ls("oleafly.terminal.colorTheme", "system"),
     );
     const fallback = TERMINAL_COLOR_THEMES[theme].colors.cursor;
     return readTerminalColor(ls("oleafly.terminal.cursorColor", fallback), fallback);

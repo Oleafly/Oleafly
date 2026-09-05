@@ -129,6 +129,7 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
   const [expanded, setExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
   const excerpt = extractErrorExcerpt(log, err.message);
+  const collapsible = Boolean(excerpt);
   const title = err.explanation ?? err.message;
   const location = err.file
     ? `${err.file}${err.line != null ? ` · line ${err.line}` : ""}`
@@ -152,15 +153,18 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
       <div className="flex w-full items-start gap-1 px-2 py-2.5 text-left">
         <button
           type="button"
-          aria-expanded={expanded}
+          aria-expanded={collapsible ? expanded : undefined}
+          disabled={!collapsible}
           onClick={() => setExpanded((value) => !value)}
-          className="flex min-w-0 flex-1 items-start gap-2 rounded px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-w-0 flex-1 items-start gap-2 rounded px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
         >
-          {expanded ? (
-            <ChevronDown className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-          )}
+          {/* Only offer a chevron when there is an excerpt to reveal. */}
+          {collapsible &&
+            (expanded ? (
+              <ChevronDown className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+            ))}
           <span
             aria-hidden="true"
             className={cn(
@@ -183,7 +187,7 @@ function ErrorCard({ err, log }: { err: CompileError; log: string }) {
             {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
           </button>
         </Tooltip>
-        {expanded && err.line != null && (
+        {err.line != null && (
           <Tooltip label="Go to code location" side="top">
             <button
               type="button"

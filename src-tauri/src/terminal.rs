@@ -228,6 +228,31 @@ fn drain_utf8_lossy(pending: &mut Vec<u8>) -> String {
     out
 }
 
+/// Environment that lets prompts and CLI tools render at their best inside
+/// the embedded xterm: 256 colors plus truecolor, a UTF-8 locale when the
+/// GUI launch left none (so icons and box drawing are not replaced by `?`),
+/// and a TERM_PROGRAM identity tools can special-case.
+fn apply_terminal_env(cmd: &mut CommandBuilder) {
+    cmd.env("TERM", "xterm-256color");
+    cmd.env("COLORTERM", "truecolor");
+    cmd.env("TERM_PROGRAM", "Oleafly");
+    cmd.env("TERM_PROGRAM_VERSION", env!("CARGO_PKG_VERSION"));
+    #[cfg(not(windows))]
+    {
+        let has_locale = ["LC_ALL", "LC_CTYPE", "LANG"]
+            .iter()
+            .any(|key| std::env::var_os(key).is_some_and(|v| !v.is_empty()));
+        if !has_locale {
+            let locale = if cfg!(target_os = "macos") {
+                "en_US.UTF-8"
+            } else {
+                "C.UTF-8"
+            };
+            cmd.env("LANG", locale);
+        }
+    }
+}
+
 fn default_shell() -> CommandBuilder {
     #[cfg(windows)]
     {
@@ -279,7 +304,7 @@ fn open_terminal(
     let pty_ready = started.elapsed();
 
     cmd.cwd(cwd);
-    cmd.env("TERM", "xterm-256color");
+    apply_terminal_env(&mut cmd);
     let mut child = pty
         .slave
         .spawn_command(cmd)
@@ -503,6 +528,29 @@ fn kill_terminal(owner: &SessionOwner, id: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn terminal_env_advertises_truecolor_and_identity() {
+        let mut cmd = super::CommandBuilder::new("sh");
+        super::apply_terminal_env(&mut cmd);
+        let get = |k: &str| cmd.get_env(k).map(|v| v.to_string_lossy().into_owned());
+        assert_eq!(get("TERM").as_deref(), Some("xterm-256color"));
+        assert_eq!(get("COLORTERM").as_deref(), Some("truecolor"));
+        assert_eq!(get("TERM_PROGRAM").as_deref(), Some("Oleafly"));
+        assert_eq!(
+            get("TERM_PROGRAM_VERSION").as_deref(),
+            Some(env!("CARGO_PKG_VERSION"))
+        );
+        #[cfg(not(windows))]
+        {
+            // Either the host already has a UTF-8-capable locale, or we supplied one.
+            let host_has_locale = ["LC_ALL", "LC_CTYPE", "LANG"]
+                .iter()
+                .any(|k| std::env::var_os(k).is_some_and(|v| !v.is_empty()));
+            if !host_has_locale {
+                assert!(get("LANG").is_some_and(|v| v.ends_with("UTF-8")));
+            }
+        }
+    }
 
     #[test]
     fn drain_window_removes_only_that_windows_sessions() {

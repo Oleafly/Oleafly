@@ -2,8 +2,12 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BROWSER_SEARCH_ENGINES,
   DEFAULT_HIDDEN_FILE_PATTERNS,
+  DEFAULT_TERMINAL_FONT_FAMILY,
+  TERMINAL_COLOR_THEMES,
   fileTreePathIsHidden,
+  resolveTerminalColorTheme,
   useSettingsStore,
+  withTerminalGlyphFallbacks,
 } from "./settings";
 
 const lsValues = new Map<string, string>();
@@ -122,13 +126,12 @@ describe("useSettingsStore dock appearance settings", () => {
 
     expect(useSettingsStore.getState()).toMatchObject({
       terminalFontSize: 14,
-      terminalFontFamily:
-        'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace',
+      terminalFontFamily: DEFAULT_TERMINAL_FONT_FAMILY,
       terminalFontWeight: 500,
       terminalFontWeightBold: 700,
       terminalCursorStyle: "block",
       terminalCursorBlink: true,
-      terminalColorTheme: "dark",
+      terminalColorTheme: "system",
       terminalBackground: "#1e1e1e",
       terminalForeground: "#f2f2f2",
       terminalCursorColor: "#ffffff",
@@ -209,7 +212,7 @@ describe("useSettingsStore dock appearance settings", () => {
       terminalFontWeight: 500,
       terminalFontWeightBold: 700,
       terminalCursorStyle: "block",
-      terminalColorTheme: "dark",
+      terminalColorTheme: "system",
       terminalBackground: "#1e1e1e",
       terminalForeground: "#f2f2f2",
       terminalCursorColor: "#ffffff",
@@ -383,5 +386,59 @@ describe("revealEditor", () => {
       workspaceHidden: false,
       viewMode: "split",
     });
+  });
+});
+
+describe("terminal color themes", () => {
+  it("follows the app theme when set to system", () => {
+    expect(resolveTerminalColorTheme("system", "dark")).toBe(TERMINAL_COLOR_THEMES.dark);
+    expect(resolveTerminalColorTheme("system", "light")).toBe(TERMINAL_COLOR_THEMES.light);
+  });
+
+  it("keeps a fixed palette regardless of the app theme", () => {
+    expect(resolveTerminalColorTheme("dracula", "light")).toBe(TERMINAL_COLOR_THEMES.dracula);
+    expect(resolveTerminalColorTheme("solarized-light", "dark")).toBe(
+      TERMINAL_COLOR_THEMES["solarized-light"],
+    );
+  });
+
+  it("gives every palette a full set of ANSI colors and the appearance it is designed for", () => {
+    const keys = [
+      "background", "foreground", "cursor", "cursorAccent",
+      "selectionBackground", "selectionForeground", "selectionInactiveBackground",
+      "black", "red", "green", "yellow", "blue", "magenta", "cyan", "white",
+      "brightBlack", "brightRed", "brightGreen", "brightYellow",
+      "brightBlue", "brightMagenta", "brightCyan", "brightWhite",
+    ];
+    for (const theme of Object.values(TERMINAL_COLOR_THEMES)) {
+      expect(theme.id).toBeTruthy();
+      expect(["dark", "light", "system"]).toContain(theme.appearance);
+      for (const key of keys) {
+        expect(theme.colors[key as keyof typeof theme.colors]).toMatch(/^#[\da-f]{6}$/iu);
+      }
+    }
+  });
+
+  it("falls back to following the app theme for unknown stored ids", () => {
+    localStorage.setItem("oleafly.terminal.colorTheme", "no-such-theme");
+    useSettingsStore.setState({ terminalColorTheme: "dracula" });
+    useSettingsStore.getState().setTerminalColorTheme("no-such-theme" as never);
+    expect(useSettingsStore.getState().terminalColorTheme).toBe("system");
+  });
+});
+
+describe("terminal font glyph fallbacks", () => {
+  it("adds Nerd Font symbol fallbacks ahead of the generic family", () => {
+    const stack = withTerminalGlyphFallbacks('"JetBrains Mono", ui-monospace, monospace');
+    expect(stack.startsWith('"JetBrains Mono", ui-monospace, ')).toBe(true);
+    expect(stack).toContain('"Symbols Nerd Font Mono"');
+    expect(stack.endsWith(", monospace")).toBe(true);
+    expect(stack.match(/monospace/gu)).toHaveLength(2);
+  });
+
+  it("uses the default stack for an empty family and does not double up", () => {
+    const stack = withTerminalGlyphFallbacks("");
+    expect(stack.startsWith(DEFAULT_TERMINAL_FONT_FAMILY.replace(/,\s*monospace$/u, ""))).toBe(true);
+    expect(withTerminalGlyphFallbacks(stack)).toBe(stack);
   });
 });

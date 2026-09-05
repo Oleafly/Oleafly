@@ -36,6 +36,7 @@ import {
   Search,
   TableOfContents,
   Sparkles,
+  Settings2,
   SquareArrowOutUpRight,
   X,
   XCircle,
@@ -1710,6 +1711,11 @@ export function PreviewPane() {
       ),
     );
   }
+  windowGroup.push(
+    iconControl("pdf-settings", Settings2, "PDF preview settings", () =>
+      useSettingsStore.getState().openSettingsAt("appearance", "pdf"),
+    ),
+  );
   viewGroup.push(
     iconControl(
       "fullscreen",

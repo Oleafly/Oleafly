@@ -463,6 +463,7 @@ function TerminalAppearanceTab() {
   const terminalColorTheme = useSettingsStore(
     (state) => state.terminalColorTheme,
   );
+  const followsAppTheme = terminalColorTheme === "system";
   const setTerminalColorTheme = useSettingsStore(
     (state) => state.setTerminalColorTheme,
   );
@@ -631,13 +632,18 @@ function TerminalAppearanceTab() {
             setTerminalColorTheme(value as TerminalColorThemeId)
           }
         >
-          <SelectTrigger className="w-[120px]" aria-label="Terminal color theme">
+          <SelectTrigger className="w-[180px]" aria-label="Terminal color theme">
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="z-[100]">
             {Object.values(TERMINAL_COLOR_THEMES).map((theme) => (
               <SelectItem key={theme.id} value={theme.id}>
                 {theme.name}
+                {theme.appearance === "system"
+                  ? ""
+                  : theme.appearance === "light"
+                    ? " · light"
+                    : " · dark"}
               </SelectItem>
             ))}
           </SelectContent>
@@ -647,7 +653,9 @@ function TerminalAppearanceTab() {
       <div className="rounded-lg border bg-card p-3">
         <div className="text-sm font-medium">Terminal colors</div>
         <div className="mb-3 text-xs text-muted-foreground">
-          Adjust the base colors while keeping the selected ANSI palette.
+          {followsAppTheme
+            ? "Following the app theme: dark palette in dark mode, light palette in light mode. Pick a specific palette above to customize these."
+            : "Adjust the base colors while keeping the selected ANSI palette."}
         </div>
         <div className="grid grid-cols-3 gap-3">
           <label className="flex items-center justify-between gap-2 text-xs">
@@ -655,9 +663,10 @@ function TerminalAppearanceTab() {
             <input
               type="color"
               aria-label="Terminal background color"
+              disabled={followsAppTheme}
               value={terminalBackground}
               onChange={(event) => setTerminalBackground(event.target.value)}
-              className="size-8 cursor-pointer rounded border bg-transparent p-0.5"
+              className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
             />
           </label>
           <label className="flex items-center justify-between gap-2 text-xs">
@@ -665,9 +674,10 @@ function TerminalAppearanceTab() {
             <input
               type="color"
               aria-label="Terminal foreground color"
+              disabled={followsAppTheme}
               value={terminalForeground}
               onChange={(event) => setTerminalForeground(event.target.value)}
-              className="size-8 cursor-pointer rounded border bg-transparent p-0.5"
+              className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
             />
           </label>
           <label className="flex items-center justify-between gap-2 text-xs">
@@ -675,9 +685,10 @@ function TerminalAppearanceTab() {
             <input
               type="color"
               aria-label="Terminal cursor color"
+              disabled={followsAppTheme}
               value={terminalCursorColor}
               onChange={(event) => setTerminalCursorColor(event.target.value)}
-              className="size-8 cursor-pointer rounded border bg-transparent p-0.5"
+              className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
             />
           </label>
         </div>
@@ -950,8 +961,21 @@ function FileManagementTab() {
   );
 }
 
+function isAppearanceTab(value: unknown): value is AppearanceTabId {
+  return APPEARANCE_TABS.some((tab) => tab.id === value);
+}
+
 export function AppearanceSection() {
-  const [activeTab, setActiveTab] = useState<AppearanceTabId>("app");
+  const requestedTab = useSettingsStore((state) => state.settingsInitialAppearanceTab);
+  const setRequestedTab = useSettingsStore((state) => state.setSettingsInitialAppearanceTab);
+  const [activeTab, setActiveTab] = useState<AppearanceTabId>(() =>
+    isAppearanceTab(requestedTab) ? requestedTab : "app",
+  );
+  useEffect(() => {
+    if (!isAppearanceTab(requestedTab)) return;
+    setActiveTab(requestedTab);
+    setRequestedTab(null);
+  }, [requestedTab, setRequestedTab]);
   const resetAppearancePreferences = useSettingsStore(
     (state) => state.resetAppearancePreferences,
   );

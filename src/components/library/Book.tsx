@@ -151,7 +151,7 @@ export function Book({
 
             {illustration}
 
-            <div className="relative z-10 flex flex-1 flex-col justify-end p-3">
+            <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-end p-3">
               {engine && (
                 <span
                   className="mb-1 text-[9px] font-semibold uppercase leading-none tracking-wide opacity-55"
@@ -161,7 +161,7 @@ export function Book({
                 </span>
               )}
               <span
-                className="line-clamp-3 break-words text-[13px] font-semibold leading-snug"
+                className="line-clamp-3 text-[13px] font-semibold leading-snug [overflow-wrap:anywhere]"
                 style={{ color: ink }}
               >
                 {title}

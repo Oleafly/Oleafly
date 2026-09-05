@@ -88,6 +88,8 @@
     "@unified-latex/unified-latex-util-parse": "^1.8.4",
     "@unified-latex/unified-latex-util-print-raw": "^1.8.4",
     "@xterm/addon-fit": "0.10.0",
+    "@xterm/addon-unicode11": "0.8.0",
+    "@xterm/addon-webgl": "0.18.0",
     "@xterm/xterm": "5.5.0",
     "@xyflow/react": "^12.11.2",
     "canvas-confetti": "^1.9.4",

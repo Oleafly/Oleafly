@@ -1,8 +1,10 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { useSettingsStore } from "@/store/settings";
 import {
   ArrowRight,
   ArrowRightToLine,
+  Settings2,
   Asterisk,
   Bold,
   Braces,
@@ -497,6 +499,12 @@ export function EditorToolbar({
             <Search className="size-4" />
           </IconBtn>
         )}
+        <IconBtn
+          onClick={() => useSettingsStore.getState().openSettingsAt("appearance", "editor")}
+          title="Editor settings"
+        >
+          <Settings2 className="size-4" />
+        </IconBtn>
         {!wysiwyg && syncTexSupported && (
           <>
             <Divider />

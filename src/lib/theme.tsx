@@ -149,3 +149,13 @@ export function useTheme() {
   if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
   return ctx;
 }
+
+/**
+ * The resolved light/dark theme for components that may render outside the
+ * ThemeProvider (docks, secondary windows). Updates whenever the theme changes.
+ */
+export function useAppTheme(): Theme {
+  const [theme, setTheme] = useState<Theme>(() => currentTheme());
+  useEffect(() => subscribeTheme(setTheme), []);
+  return theme;
+}

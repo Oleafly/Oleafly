@@ -119,6 +119,7 @@ vi.mock("@xterm/xterm", () => ({
     cols = 80;
     rows = 24;
     options: Record<string, unknown>;
+    unicode = { activeVersion: "6" };
     focus = vi.fn();
     loadAddon = vi.fn();
     open = vi.fn();
@@ -149,8 +150,39 @@ vi.mock("@xterm/addon-fit", () => ({
   },
 }));
 
+vi.mock("@xterm/addon-unicode11", () => ({
+  Unicode11Addon: class {},
+}));
+
+vi.mock("@xterm/addon-webgl", () => ({
+  WebglAddon: class {
+    onContextLoss = vi.fn();
+    dispose = vi.fn();
+  },
+}));
+
 vi.mock("@/store/settings", () => ({
   TERMINAL_COLOR_THEMES: mocks.terminalColorThemes,
+  resolveTerminalTheme: (
+    appearance: {
+      terminalColorTheme: string;
+      terminalBackground: string;
+      terminalForeground: string;
+      terminalCursorColor: string;
+    },
+    appTheme: "light" | "dark",
+  ) => {
+    const themes = mocks.terminalColorThemes as Record<string, { colors: Record<string, string> }>;
+    const palette = themes[appearance.terminalColorTheme] ?? themes[appTheme];
+    if (appearance.terminalColorTheme === "system") return { ...themes[appTheme].colors };
+    return {
+      ...palette.colors,
+      background: appearance.terminalBackground,
+      foreground: appearance.terminalForeground,
+      cursor: appearance.terminalCursorColor,
+    };
+  },
+  withTerminalGlyphFallbacks: (family: string) => `${family}, "Symbols Nerd Font Mono"`,
   useSettingsStore: (selector: (settings: typeof mocks.settings) => unknown) =>
     selector(mocks.settings),
 }));
@@ -538,7 +570,8 @@ describe("TerminalPane", () => {
 
     expect(mocks.terminals[0].options).toMatchObject({
       fontSize: 17,
-      fontFamily: "JetBrains Mono",
+      fontFamily: 'JetBrains Mono, "Symbols Nerd Font Mono"',
+      allowProposedApi: true,
       fontWeight: 600,
       fontWeightBold: 800,
       cursorStyle: "bar",
@@ -592,7 +625,7 @@ describe("TerminalPane", () => {
 
     expect(terminal.options).toMatchObject({
       fontSize: 18,
-      fontFamily: "Iosevka",
+      fontFamily: 'Iosevka, "Symbols Nerd Font Mono"',
       fontWeight: 550,
       fontWeightBold: 750,
       cursorStyle: "underline",

@@ -31,8 +31,8 @@ import {
   Brain,
   Check,
   ChevronDown,
-  Filter,
   FilePlus2,
+  Filter,
   Frame,
   History,
   Info,
@@ -40,20 +40,21 @@ import {
   Lightbulb,
   Loader2,
   MessageSquareQuote,
+  PanelRightOpen,
   Plus,
   Quote,
   RotateCcw,
-  PanelRightOpen,
   Search,
+  Settings2,
   Sparkles,
   Square,
   Target,
   Trash2,
+  type LucideIcon,
   WalletCards,
   Workflow,
   Wrench,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
 import { agentProbeModel, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, usageRecord, type AppConfig, type CustomProvider, type McpAgentServer, type ModelProbe, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
@@ -471,6 +472,11 @@ export function ChatCore() {
     setSettingsScrollTarget("ai-mcp");
     setSettingsOpen(true);
   }, [setSettingsInitialSection, setSettingsOpen, setSettingsScrollTarget]);
+
+  const openAssistantSettings = useCallback(() => {
+    setSettingsInitialSection("ai");
+    setSettingsOpen(true);
+  }, [setSettingsInitialSection, setSettingsOpen]);
 
   const openSkillsSettings = useCallback(() => {
     setSettingsInitialSection("ai");
@@ -2527,6 +2533,18 @@ ${sandboxedCustom}`;
               groups={toolManagerAvailability.groups}
               onOpen={() => void mcpAgentToolsQuery.refetch()}
             />
+            <Tooltip label="Assistant settings">
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                aria-label="Assistant settings"
+                onClick={openAssistantSettings}
+                className="size-7 shrink-0 p-0 text-muted-foreground hover:text-foreground"
+              >
+                <Settings2 className="size-4" />
+              </Button>
+            </Tooltip>
           </div>
           {configuredProviders.length > 0 && (
             <>

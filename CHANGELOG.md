@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Terminal color palettes: One Dark, One Light, Dracula, Catppuccin Mocha and
+  Latte, Tokyo Night, Nord, GitHub Dark, Solarized Dark and Light, plus a
+  "Match app theme" default that follows light and dark mode.
+- Settings shortcuts where they are needed: a gear on the terminal tab strip,
+  the editor toolbar, the PDF preview toolbar and the assistant header, each
+  opening the matching settings page directly.
+
+### Changed
+
+- The terminal renders Nerd Font icons and emoji correctly: Powerlevel10k,
+  Starship, eza and similar tools line up, whichever Nerd Font is installed.
+  Shells start with truecolor and a UTF-8 locale advertised, and busy output is
+  drawn on the GPU when available.
+
+### Fixed
+
+- The terminal tab strip no longer stays dark when the app is in light mode.
+- Long project names on library covers wrap and end with an ellipsis instead of
+  being clipped.
+- Compile log entries only show an expand chevron when there is an excerpt to
+  reveal, and the "Open" link no longer disappears when an entry is collapsed.
+
 ## [0.3.13] - 2026-08-29
 
 ### Fixed

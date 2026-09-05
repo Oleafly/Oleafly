@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/store/settings", () => ({
   useSettingsStore: (selector: (settings: typeof mocks.settings) => unknown) =>
     selector(mocks.settings),
+  useResolvedTerminalTheme: () => ({ background: mocks.settings.terminalBackground }),
 }));
 
 vi.mock("./TerminalPane", () => ({
