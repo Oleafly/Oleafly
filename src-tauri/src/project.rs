@@ -3032,13 +3032,17 @@ pub(crate) fn recover_project_on_open_for_test(
 /// Persist a project's book-cover color to its `project.json` so it survives
 /// across machines (previously kept only in the browser's localStorage).
 #[tauri::command]
-pub fn set_project_color(project_id: String, color: String) -> Result<ProjectMeta, String> {
-    with_project_metadata(&project_id, || {
-        let mut meta = read_meta(&project_id)?;
-        meta.color = color;
-        write_meta(&project_id, &meta)?;
-        Ok(meta)
+pub async fn set_project_color(project_id: String, color: String) -> Result<ProjectMeta, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        with_project_metadata(&project_id, || {
+            let mut meta = read_meta(&project_id)?;
+            meta.color = color;
+            write_meta(&project_id, &meta)?;
+            Ok(meta)
+        })
     })
+    .await
+    .map_err(|error| format!("failed to set the project color: {error}"))?
 }
 
 /// Open the webview devtools. Only does anything in debug builds (`tauri dev`),
@@ -3904,7 +3908,13 @@ pub fn create_diagram_project(name: String, source: String) -> Result<String, St
 }
 
 #[tauri::command]
-pub fn get_or_create_scratch_project() -> Result<String, String> {
+pub async fn get_or_create_scratch_project() -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(get_or_create_scratch_project_blocking)
+        .await
+        .map_err(|error| format!("failed to prepare the scratch project: {error}"))?
+}
+
+pub(crate) fn get_or_create_scratch_project_blocking() -> Result<String, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(SCRATCH_PROJECT_ID)?;
     let dir = paths::create_project_dir(SCRATCH_PROJECT_ID)?;
     with_project_metadata_lock_held(SCRATCH_PROJECT_ID, || {
@@ -4198,33 +4208,44 @@ fn checkpoint_project_ids() -> Result<HashSet<String>, String> {
 }
 
 #[tauri::command]
-pub fn export_pdf(
+pub async fn export_pdf(
     project_id: String,
     dest: String,
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<(), String> {
-    {
-        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-        let transaction = AtomicFile::for_export(&dest)?;
-        let meta = read_meta(&project_id)?;
-        let pdf =
-            crate::document_engine::compiled_pdf_path(&project_id, &meta.engine, &meta.main_doc)?;
-        if !pdf.exists() {
-            return Err("No compiled PDF found - recompile first.".into());
-        }
-        std::fs::copy(&pdf, transaction.staging_path())
-            .map_err(|e| format!("failed to stage PDF: {e}"))?;
-        transaction.commit()?;
-    }
+    let staged_project = project_id.clone();
+    let staged_dest = dest.clone();
+    tauri::async_runtime::spawn_blocking(move || stage_exported_pdf(&staged_project, &staged_dest))
+        .await
+        .map_err(|error| format!("failed to export PDF: {error}"))??;
+
     // Allow reveal_in_dir for this user-chosen export path.
     if let Ok(canon) = std::path::Path::new(&dest).canonicalize() {
-        let mut allow = state.reveal_allowlist.blocking_lock();
+        let mut allow = state.reveal_allowlist.lock().await;
         if allow.len() >= 1024 {
             allow.pop_front();
         }
         allow.push_back(canon);
     }
 
+    let _ = tauri::async_runtime::spawn_blocking(move || record_pdf_export(project_id, dest)).await;
+    Ok(())
+}
+
+fn stage_exported_pdf(project_id: &str, dest: &str) -> Result<(), String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
+    let transaction = AtomicFile::for_export(dest)?;
+    let meta = read_meta(project_id)?;
+    let pdf = crate::document_engine::compiled_pdf_path(project_id, &meta.engine, &meta.main_doc)?;
+    if !pdf.exists() {
+        return Err("No compiled PDF found - recompile first.".into());
+    }
+    std::fs::copy(&pdf, transaction.staging_path())
+        .map_err(|e| format!("failed to stage PDF: {e}"))?;
+    transaction.commit()
+}
+
+fn record_pdf_export(project_id: String, dest: String) -> Result<(), String> {
     // The artifact is already durably published. Export-history bookkeeping is
     // best-effort so a metadata failure never reports a false export failure.
     let _ = with_project_metadata(&project_id, || {
@@ -5681,7 +5702,13 @@ where
 }
 
 #[tauri::command]
-pub fn clear_build_cache(project_id: String) -> Result<(), String> {
+pub async fn clear_build_cache(project_id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || clear_build_cache_blocking(project_id))
+        .await
+        .map_err(|error| format!("failed to clear the build cache: {error}"))?
+}
+
+fn clear_build_cache_blocking(project_id: String) -> Result<(), String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
     let build = paths::build_dir(&project_id)?;
     if let Ok(entries) = std::fs::read_dir(&build) {
@@ -5760,14 +5787,14 @@ mod tests {
         create_markdown_project_in, create_path_in_project, create_project_from_pdf_conversion,
         create_project_transaction, create_typst_project_in, download_project_zip,
         duplicate_project, engine_for_main_document, extract_pandoc, flatten_single_root_folder,
-        get_or_create_scratch_project, import_paths_transactional, import_paths_transactional_with,
-        import_project_zip_bytes, import_project_zip_bytes_with, import_skip, infer_main_document,
-        normalize_loaded_tex_flavor, normalize_relative, pandoc_asset_for,
-        pandoc_version_supported, read_meta, rel_slash, rename_exclusive, rename_path_in_project,
-        search_docs, set_main_doc_synchronized, set_main_doc_unlocked, tex_root_magic_target,
-        try_reserve_project_directory, validate_conversion_export, validate_tex_flavor,
-        write_meta_at, CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure,
-        ProjectMeta, RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID,
+        get_or_create_scratch_project_blocking, import_paths_transactional,
+        import_paths_transactional_with, import_project_zip_bytes, import_project_zip_bytes_with,
+        import_skip, infer_main_document, normalize_loaded_tex_flavor, normalize_relative,
+        pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash, rename_exclusive,
+        rename_path_in_project, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
+        tex_root_magic_target, try_reserve_project_directory, validate_conversion_export,
+        validate_tex_flavor, write_meta_at, CreateFileResult, FileConflictStrategy, MutationScope,
+        PdfConversionFigure, ProjectMeta, RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID,
     };
     use std::collections::HashMap;
     use std::io::Write;
@@ -8071,8 +8098,8 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("scratch-project");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let id1 = get_or_create_scratch_project().unwrap();
-        let id2 = get_or_create_scratch_project().unwrap();
+        let id1 = get_or_create_scratch_project_blocking().unwrap();
+        let id2 = get_or_create_scratch_project_blocking().unwrap();
         assert_eq!(id1, id2);
         assert_eq!(id1, SCRATCH_PROJECT_ID);
         let meta = read_meta(&id1).unwrap();

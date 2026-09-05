@@ -751,7 +751,13 @@ fn restore_ai_secrets(config: &mut AppConfig, stored: &AppConfig) -> Vec<String>
 }
 
 #[tauri::command]
-pub fn get_config() -> Result<AppConfig, String> {
+pub async fn get_config() -> Result<AppConfig, String> {
+    tauri::async_runtime::spawn_blocking(get_config_blocking)
+        .await
+        .map_err(|error| format!("failed to read settings: {error}"))?
+}
+
+pub fn get_config_blocking() -> Result<AppConfig, String> {
     let mut cfg = read_config()?;
     // Never expose the GitHub push token to the webview; report only presence.
     cfg.github_connected = !cfg.github_token.is_empty();
@@ -788,7 +794,7 @@ pub fn seed_starter_personas(starters: Vec<Persona>) -> Result<AppConfig, String
         apply_starter_persona_seed(config, &starters);
         Ok(())
     })?;
-    get_config()
+    get_config_blocking()
 }
 
 fn key_unchanged(config: &AppConfig, stored: &AppConfig, id: &str) -> bool {
@@ -1865,7 +1871,7 @@ mod tests {
         assert!(serialized.contains("stdio-secret"));
         assert!(serialized.contains("Bearer remote-secret"));
 
-        let visible = get_config().unwrap();
+        let visible = get_config_blocking().unwrap();
         let serialized = serde_json::to_string(&visible).unwrap();
         assert!(!serialized.contains("stdio-secret"));
         assert!(!serialized.contains("remote-secret"));
@@ -1997,7 +2003,7 @@ mod tests {
             ..AppConfig::default()
         };
         write_config(&stored).unwrap();
-        let mut incoming = get_config().unwrap();
+        let mut incoming = get_config_blocking().unwrap();
         incoming.github_user = "octocat".to_string();
         incoming.mcp_servers.clear();
 
@@ -2016,7 +2022,7 @@ mod tests {
         std::env::set_var("OLEAFLY_DATA_DIR", &dir);
         let _guard = DataDirGuard;
         write_config(&AppConfig::default()).unwrap();
-        let mut incoming = get_config().unwrap();
+        let mut incoming = get_config_blocking().unwrap();
         assert!(incoming.checkpoints_enabled);
         assert!(incoming.checkpoint_notifications);
         incoming.github_user = "octocat".to_string();
@@ -2047,7 +2053,7 @@ mod tests {
             Ok(())
         })
         .unwrap();
-        let mut incoming = get_config().unwrap();
+        let mut incoming = get_config_blocking().unwrap();
         assert_eq!(incoming.ai_model_probes.len(), 1);
         incoming
             .ai_model_lists_refreshed_at
@@ -2089,7 +2095,7 @@ mod tests {
             Ok(())
         })
         .unwrap();
-        let mut incoming = get_config().unwrap();
+        let mut incoming = get_config_blocking().unwrap();
         assert_eq!(incoming.ai_model_probes.len(), 2);
         incoming.ai_custom_providers[0].base_url = "http://other.test/v1".into();
 
@@ -2114,7 +2120,7 @@ mod tests {
         std::env::set_var("OLEAFLY_DATA_DIR", &dir);
         let _guard = DataDirGuard;
         write_config(&AppConfig::default()).unwrap();
-        let mut incoming = get_config().unwrap();
+        let mut incoming = get_config_blocking().unwrap();
         assert!(incoming.git_auto_init);
         incoming.github_user = "octocat".to_string();
         incoming.git_auto_init = false;
@@ -2270,7 +2276,7 @@ mod tests {
             ..AppConfig::default()
         };
         write_config(&previous).unwrap();
-        let mut replacement = get_config().unwrap();
+        let mut replacement = get_config_blocking().unwrap();
         let McpServerTransport::Remote { url, .. } = &mut replacement.mcp_servers[0].transport
         else {
             unreachable!();
@@ -2435,7 +2441,7 @@ mod tests {
             ..AppConfig::default()
         };
         write_config(&stored).unwrap();
-        let mut visible = get_config().unwrap();
+        let mut visible = get_config_blocking().unwrap();
         visible.mcp_servers[0].enabled = false;
 
         write_config(&visible).unwrap();

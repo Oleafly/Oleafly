@@ -14,7 +14,7 @@ pub struct InitialState {
 
 pub fn compute() -> InitialState {
     InitialState {
-        config: config::get_config().ok(),
+        config: config::get_config_blocking().ok(),
         projects: project::list_projects_blocking().unwrap_or_default(),
     }
 }
