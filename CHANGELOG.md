@@ -86,6 +86,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Source control lists every file inside a new folder, nested folders
+  included, instead of one folder row with an empty diff. Staging and the
+  diff view work per file, the way they do for files at the top level.
 - Approving a shell command in the chat no longer opens a second system
   dialog asking the same question. The card in the chat is the approval;
   project deny rules and the one time run token still apply.

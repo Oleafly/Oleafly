@@ -6,8 +6,10 @@ import {
   CheckCircle2,
   ChevronRight,
   Circle,
+  Code2,
   Copy,
   FolderDown,
+  Image as ImageIcon,
   Info,
   Loader2,
   Paperclip,
@@ -24,6 +26,8 @@ import {
 } from "@/store/agent-file-changes";
 import { Markdown } from "@/components/ui/markdown";
 import { Popover } from "@/components/ui/popover";
+import { Tooltip } from "@/components/ui/tooltip";
+import { TikzSourceView } from "@/components/ai/TikzSourceView";
 import { tokenizeComposer } from "@/lib/composer-tokens";
 import { writeFileContent, writeProjectBytes } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
@@ -765,6 +769,17 @@ export function ToolPicture({ tc }: { tc: ToolEntry }) {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const hasCode = Boolean(tc.code);
+  const label = tc.name === "preview_figure" ? "Rendered figure preview" : "Image from the tool";
+  const copyCode = async () => {
+    if (!tc.code) return;
+    try {
+      await navigator.clipboard.writeText(tc.code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
   const saveToProject = async () => {
     if (saving) return;
     setSaving(true);
@@ -778,80 +793,73 @@ export function ToolPicture({ tc }: { tc: ToolEntry }) {
       setSaving(false);
     }
   };
-  const label = tc.name === "preview_figure" ? "Rendered figure preview" : "Image from the tool";
-  const copyCode = async () => {
-    if (!tc.code) return;
-    try {
-      await navigator.clipboard.writeText(tc.code);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
-  };
+  const pill = (active: boolean) =>
+    cn(
+      "flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors",
+      active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+    );
+  const iconButton =
+    "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-60";
   return (
     <div data-testid="tool-picture-body" className="bg-background">
-      {hasCode && (
-        <div className="flex items-center gap-1 border-b px-2 py-1">
-          <button
-            type="button"
-            data-testid="tool-picture-view-image"
-            aria-pressed={view === "image"}
-            onClick={() => setView("image")}
-            className={cn(
-              "rounded px-2 py-0.5 text-[11px]",
-              view === "image" ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent/50",
-            )}
-          >
-            Figure
-          </button>
-          <button
-            type="button"
-            data-testid="tool-picture-view-code"
-            aria-pressed={view === "code"}
-            onClick={() => setView("code")}
-            className={cn(
-              "rounded px-2 py-0.5 text-[11px]",
-              view === "code" ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent/50",
-            )}
-          >
-            TikZ
-          </button>
-          <button
-            type="button"
-            data-testid="tool-picture-save"
-            disabled={saving}
-            onClick={() => void saveToProject()}
-            className="ml-auto flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent/50 disabled:opacity-60"
-          >
-            <FolderDown className="size-3" />
-            {saving ? "Saving" : "Save to project"}
-          </button>
-          <button
-            type="button"
-            data-testid="tool-picture-copy"
-            onClick={() => void copyCode()}
-            className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent/50"
-          >
-            {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
-            {copied ? "Copied" : "Copy code"}
-          </button>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center border-b px-2 py-1">
+        <span />
+        {hasCode ? (
+          <div className="flex h-7 items-center rounded-full bg-muted p-0.5 text-[11px] font-medium">
+            <button
+              type="button"
+              data-testid="tool-picture-view-image"
+              aria-label="Show the rendered figure"
+              aria-pressed={view === "image"}
+              onClick={() => setView("image")}
+              className={pill(view === "image")}
+            >
+              <ImageIcon className="size-3.5" />
+              Figure
+            </button>
+            <button
+              type="button"
+              data-testid="tool-picture-view-code"
+              aria-label="Show the TikZ source"
+              aria-pressed={view === "code"}
+              onClick={() => setView("code")}
+              className={pill(view === "code")}
+            >
+              <Code2 className="size-3.5" />
+              TikZ
+            </button>
+          </div>
+        ) : (
+          <span />
+        )}
+        <div className="flex items-center justify-end gap-0.5">
+          <Tooltip label={saving ? "Saving" : "Save to project"}>
+            <button
+              type="button"
+              data-testid="tool-picture-save"
+              aria-label="Save to project"
+              disabled={saving}
+              onClick={() => void saveToProject()}
+              className={iconButton}
+            >
+              <FolderDown className="size-3.5" />
+            </button>
+          </Tooltip>
+          {hasCode && (
+            <Tooltip label={copied ? "Copied" : "Copy code"}>
+              <button
+                type="button"
+                data-testid="tool-picture-copy"
+                aria-label="Copy code"
+                onClick={() => void copyCode()}
+                className={iconButton}
+              >
+                {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+              </button>
+            </Tooltip>
+          )}
         </div>
-      )}
-      {!hasCode && (
-        <div className="flex items-center border-b px-2 py-1">
-          <button
-            type="button"
-            data-testid="tool-picture-save"
-            disabled={saving}
-            onClick={() => void saveToProject()}
-            className="ml-auto flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent/50 disabled:opacity-60"
-          >
-            <FolderDown className="size-3" />
-            {saving ? "Saving" : "Save to project"}
-          </button>
-        </div>
-      )}
+      </div>
       {view === "image" || !hasCode ? (
         <div className="p-2">
           <img
@@ -862,12 +870,7 @@ export function ToolPicture({ tc }: { tc: ToolEntry }) {
           />
         </div>
       ) : (
-        <pre
-          data-testid="tool-picture-code"
-          className="max-h-80 overflow-auto whitespace-pre-wrap break-words px-2.5 py-1.5 font-mono text-[10px] text-foreground"
-        >
-          {tc.code}
-        </pre>
+        <TikzSourceView source={tc.code ?? ""} />
       )}
     </div>
   );
