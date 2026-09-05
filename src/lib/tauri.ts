@@ -1,6 +1,38 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { receiveChunkedText } from "@/lib/chunked-ipc";
+
+export interface McpRegistrySearchRequest {
+  query: string;
+  cursor: string | null;
+}
+
+export interface McpRegistryReview {
+  label: string;
+  transport: string;
+  commandOrUrl: string;
+  arguments: string[];
+  environmentVariableNames: string[];
+  config: McpServerConfig | null;
+  unsupportedReason: string | null;
+}
+
+export interface McpRegistryServer {
+  name: string;
+  description: string | null;
+  version: string;
+  status: string | null;
+  reviews: McpRegistryReview[];
+}
+
+export interface McpRegistrySearchResult {
+  servers: McpRegistryServer[];
+  nextCursor: string | null;
+  warnings: string[];
+}
+
+export const mcpRegistrySearch = (request: McpRegistrySearchRequest) =>
+  invoke<McpRegistrySearchResult>("mcp_registry_search", { request });
 import type { ApprovalMode } from "@oleafly/ai-tools";
 import type { SkillEntry } from "@/lib/skills";
 

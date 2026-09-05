@@ -78,6 +78,10 @@ pub struct MetadataSnapshot {
 }
 
 impl MetadataSnapshot {
+    pub fn generated_at(&self) -> &str {
+        &self.generated_at
+    }
+
     pub fn lookup(&self, provider_id: &str, model_id: &str) -> Option<&ModelMetadata> {
         let models = self.providers.get(provider_id)?;
         if let Some(found) = models.get(model_id) {

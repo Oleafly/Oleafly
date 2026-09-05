@@ -32,6 +32,7 @@ struct ExecRegistry {
     approvals: HashMap<String, ExecApproval>,
     approval_order: VecDeque<String>,
     active: HashMap<String, HashMap<String, ActiveExec>>,
+    completions: HashMap<String, HashMap<String, tokio::sync::watch::Receiver<bool>>>,
     cancelled_runs: VecDeque<String>,
     // Renderer-minted `external:` owners are only trusted once registered
     // through a live command. Membership is TTL-bounded and cleared on cancel,
@@ -80,6 +81,8 @@ struct ExecLease<'a> {
     exec_id: Option<String>,
     pid: Option<u32>,
     completed: bool,
+    completion_id: String,
+    completion: tokio::sync::watch::Sender<bool>,
 }
 
 enum UnregisterResult {
@@ -205,6 +208,12 @@ impl AgentExecState {
         if registry.cancelled_runs.iter().any(|id| id == run_id) {
             return Err("the agent run was cancelled".to_string());
         }
+        let (completion, receiver) = tokio::sync::watch::channel(false);
+        registry
+            .completions
+            .entry(run_id.to_string())
+            .or_default()
+            .insert(token.to_string(), receiver);
         registry
             .active
             .entry(run_id.to_string())
@@ -222,6 +231,8 @@ impl AgentExecState {
             exec_id: Some(token.to_string()),
             pid: None,
             completed: false,
+            completion_id: token.to_string(),
+            completion,
         })
     }
 }
@@ -286,6 +297,19 @@ impl ExecLease<'_> {
         self.exec_id = None;
         self.pid = None;
         self.completed = true;
+        self.finish_completion();
+    }
+
+    fn finish_completion(&self) {
+        let _ = self.completion.send(true);
+        if let Ok(mut registry) = self.state.registry.lock() {
+            if let Some(entries) = registry.completions.get_mut(&self.run_id) {
+                entries.remove(&self.completion_id);
+                if entries.is_empty() {
+                    registry.completions.remove(&self.run_id);
+                }
+            }
+        }
     }
 }
 
@@ -301,6 +325,7 @@ impl Drop for ExecLease<'_> {
         if let Some(pid) = process {
             terminate_process(pid);
         }
+        self.finish_completion();
     }
 }
 
@@ -324,6 +349,48 @@ pub fn cancel_run(state: &AgentExecState, run_id: &str) {
     );
     for pid in processes {
         terminate_process(pid);
+    }
+}
+
+pub async fn cancel_run_and_wait(state: &AgentExecState, run_id: &str) {
+    let receivers = state.registry.lock().map_or_else(
+        |_| Vec::new(),
+        |registry| {
+            registry
+                .completions
+                .get(run_id)
+                .map(|entries| entries.values().cloned().collect::<Vec<_>>())
+                .unwrap_or_default()
+        },
+    );
+    cancel_run(state, run_id);
+    for mut receiver in receivers {
+        while !*receiver.borrow_and_update() {
+            if receiver.changed().await.is_err() {
+                break;
+            }
+        }
+    }
+}
+
+pub async fn cancel_all_and_wait(state: &AgentExecState) {
+    let receivers = state.registry.lock().map_or_else(
+        |_| Vec::new(),
+        |registry| {
+            registry
+                .completions
+                .values()
+                .flat_map(|entries| entries.values().cloned())
+                .collect::<Vec<_>>()
+        },
+    );
+    cancel_all(state);
+    for mut receiver in receivers {
+        while !*receiver.borrow_and_update() {
+            if receiver.changed().await.is_err() {
+                break;
+            }
+        }
     }
 }
 
@@ -1511,6 +1578,60 @@ mod tests {
             Some("run_command approval is invalid or already used")
         );
         assert_eq!(late.err().as_deref(), Some("the agent run was cancelled"));
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn cancel_wait_reaps_a_command_after_an_earlier_cancel_request() {
+        let root = test_root("cancel-wait-reap");
+        let cwd = root.join("projects/proj");
+        let started = cwd.join("started-reap");
+        let state = std::sync::Arc::new(AgentExecState::default());
+        let command = "touch started-reap; sleep 30";
+        let token = state.authorize("proj", command, "run-reap").unwrap();
+        let task_state = state.clone();
+        let task_root = root.clone();
+        let task = tokio::spawn(async move {
+            execute_command(
+                &task_state,
+                &task_root,
+                "proj",
+                &cwd,
+                command.into(),
+                "run-reap",
+                &token,
+            )
+            .await
+        });
+        tokio::time::timeout(Duration::from_secs(3), async {
+            while !started.exists() {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .unwrap();
+        let pid = state.registry.lock().unwrap().active["run-reap"]
+            .values()
+            .next()
+            .unwrap()
+            .pid
+            .unwrap();
+        cancel_run(&state, "run-reap");
+        tokio::time::timeout(
+            Duration::from_secs(3),
+            cancel_run_and_wait(&state, "run-reap"),
+        )
+        .await
+        .unwrap();
+        assert_eq!(unsafe { libc::kill(pid as i32, 0) }, -1);
+        assert!(!state
+            .registry
+            .lock()
+            .unwrap()
+            .completions
+            .contains_key("run-reap"));
+        task.await.unwrap().unwrap();
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[cfg(unix)]

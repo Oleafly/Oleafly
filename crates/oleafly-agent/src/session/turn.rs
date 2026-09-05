@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use crate::complete::{CompletionRequest, Usage};
+use crate::complete::{CompletionRequest, InputTokenSemantics, Usage};
 use crate::error::Result;
 use crate::event::AgentEvent;
 use crate::message::{ContentPart, Message, Role};
@@ -35,12 +35,14 @@ where
 {
     let mut request = request;
     let mut result = RunOutcome::default();
+    let mut usage = TurnUsage::default();
     ensure_budget(
         client,
         resolved,
         &mut request,
         config,
         pipeline,
+        &mut usage,
         &mut on_event,
     )
     .await?;
@@ -56,14 +58,18 @@ where
             config,
             pipeline,
             &mut retries_remaining,
+            &mut usage,
             &mut on_event,
         )
         .await;
+        result.usage = usage.total;
         let outcome = match outcome {
             Ok(outcome) => outcome,
-            Err(error) => return Ok(finish_with_stream_error(result, error, &mut on_event)),
+            Err(error) => {
+                return Ok(finish_with_stream_error(result, error, &mut on_event));
+            }
         };
-        record_stream_outcome(&mut result, &outcome, &mut on_event);
+        record_stream_outcome(&mut result, &outcome);
         let has_next_step = step.saturating_add(1) < step_limit;
         if outcome.tool_calls.is_empty() {
             if has_next_step {
@@ -78,6 +84,7 @@ where
                             &mut request,
                             config,
                             pipeline,
+                            &mut usage,
                             &mut on_event,
                         )
                         .await?;
@@ -110,12 +117,14 @@ where
             &mut request,
             config,
             pipeline,
+            &mut usage,
             &mut on_event,
         )
         .await?;
         acknowledge_steers(acknowledgements, &mut on_event);
     }
 
+    result.usage = usage.total;
     result.stopped_at_cap = true;
     Ok(result)
 }
@@ -129,6 +138,7 @@ async fn ensure_budget<F>(
     request: &mut CompletionRequest,
     config: &RunConfig,
     pipeline: &ToolPipeline,
+    usage: &mut TurnUsage,
     on_event: &mut F,
 ) -> Result<()>
 where
@@ -138,7 +148,8 @@ where
         Ok(_) => Ok(()),
         Err(error) if config.auto_compact && is_history_limit(&error) => {
             let summary =
-                compact::compact_history(client, resolved, request, &pipeline.token).await;
+                compact_with_usage(client, resolved, request, &pipeline.token, usage, on_event)
+                    .await;
             match summary {
                 Ok(summary) => {
                     let dropped = compact::apply_compaction(request, summary);
@@ -167,6 +178,7 @@ async fn stream_step_with_compaction<F>(
     config: &RunConfig,
     pipeline: &ToolPipeline,
     retries_remaining: &mut u32,
+    usage: &mut TurnUsage,
     on_event: &mut F,
 ) -> Result<StreamOutcome>
 where
@@ -179,16 +191,25 @@ where
         config,
         retries_remaining,
         &pipeline.token,
+        usage,
         on_event,
     )
     .await;
     match first {
         Err(error) if config.auto_compact && error.is_context_overflow() => {
-            let summary =
-                match compact::compact_history(client, resolved, request, &pipeline.token).await {
-                    Ok(summary) => summary,
-                    Err(_) => return Err(error),
-                };
+            let summary = match compact_with_usage(
+                client,
+                resolved,
+                request,
+                &pipeline.token,
+                usage,
+                on_event,
+            )
+            .await
+            {
+                Ok(summary) => summary,
+                Err(_) => return Err(error),
+            };
             let dropped = compact::apply_compaction(request, summary);
             on_event(AgentEvent::Compacted {
                 dropped_messages: u32::try_from(dropped).unwrap_or(u32::MAX),
@@ -201,6 +222,7 @@ where
                 config,
                 retries_remaining,
                 &pipeline.token,
+                usage,
                 on_event,
             )
             .await
@@ -209,6 +231,7 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn stream_with_retries<F>(
     client: &reqwest::Client,
     resolved: &Resolved,
@@ -216,6 +239,7 @@ async fn stream_with_retries<F>(
     config: &RunConfig,
     retries_remaining: &mut u32,
     token: &crate::tasks::CancellationToken,
+    usage: &mut TurnUsage,
     on_event: &mut F,
 ) -> Result<StreamOutcome>
 where
@@ -224,6 +248,8 @@ where
     let mut attempt = 0;
     loop {
         let mut saw_output = false;
+        let mut latest_usage = Usage::default();
+        usage.preview(latest_usage, on_event);
         let streamed = {
             let forward = &mut |event: AgentEvent| {
                 if matches!(
@@ -232,7 +258,12 @@ where
                 ) {
                     saw_output = true;
                 }
-                on_event(event);
+                if let AgentEvent::Usage { usage: observed } = event {
+                    latest_usage = observed;
+                    usage.preview(observed, on_event);
+                } else {
+                    on_event(event);
+                }
             };
             tokio::select! {
                 response = stream_completion(client, resolved, request, forward) => response,
@@ -241,8 +272,12 @@ where
         };
 
         match streamed {
-            Ok(outcome) => return Ok(outcome),
+            Ok(outcome) => {
+                usage.record(outcome.usage, on_event);
+                return Ok(outcome);
+            }
             Err(error) => {
+                usage.record(latest_usage, on_event);
                 if !should_retry(&error, *retries_remaining, saw_output) {
                     return Err(error);
                 }
@@ -348,9 +383,77 @@ fn empty(outcome: &StreamOutcome) -> bool {
     outcome.text.is_empty() && outcome.tool_calls.is_empty()
 }
 
-fn accumulate_usage(total: &mut Usage, addition: Usage) {
+#[derive(Default)]
+struct TurnUsage {
+    total: Usage,
+    has_calls: bool,
+}
+
+impl TurnUsage {
+    fn snapshot(&self, addition: Usage) -> Usage {
+        let mut total = self.total;
+        accumulate_usage(&mut total, addition, self.has_calls);
+        total
+    }
+
+    fn preview(&self, addition: Usage, on_event: &mut impl FnMut(AgentEvent)) {
+        on_event(AgentEvent::Usage {
+            usage: self.snapshot(addition),
+        });
+    }
+
+    fn record(&mut self, addition: Usage, on_event: &mut impl FnMut(AgentEvent)) {
+        self.total = self.snapshot(addition);
+        self.has_calls = true;
+        on_event(AgentEvent::Usage { usage: self.total });
+    }
+}
+
+async fn compact_with_usage<F>(
+    client: &reqwest::Client,
+    resolved: &Resolved,
+    request: &CompletionRequest,
+    token: &crate::tasks::CancellationToken,
+    usage: &mut TurnUsage,
+    on_event: &mut F,
+) -> Result<String>
+where
+    F: FnMut(AgentEvent),
+{
+    usage.preview(Usage::default(), on_event);
+    let response = compact::compact_history(client, resolved, request, token).await;
+    usage.record(
+        response
+            .as_ref()
+            .map(|(_, usage)| *usage)
+            .unwrap_or_default(),
+        on_event,
+    );
+    response.map(|(summary, _)| summary)
+}
+
+fn accumulate_usage(total: &mut Usage, addition: Usage, has_previous: bool) {
+    if !has_previous {
+        *total = addition;
+        return;
+    }
+    total.input_known =
+        Some(total.reported_input().is_some() && addition.reported_input().is_some());
+    total.output_known =
+        Some(total.reported_output().is_some() && addition.reported_output().is_some());
     total.input = total.input.saturating_add(addition.input);
     total.output = total.output.saturating_add(addition.output);
+    total.cache_read = match (total.cache_read, addition.cache_read) {
+        (Some(total), Some(addition)) => Some(total.saturating_add(addition)),
+        _ => None,
+    };
+    total.cache_write = match (total.cache_write, addition.cache_write) {
+        (Some(total), Some(addition)) => Some(total.saturating_add(addition)),
+        _ => None,
+    };
+    if total.input_semantics != addition.input_semantics {
+        total.input_semantics = InputTokenSemantics::Unknown;
+    }
 }
 
 fn should_retry(
@@ -396,15 +499,8 @@ where
     result
 }
 
-fn record_stream_outcome<F>(result: &mut RunOutcome, outcome: &StreamOutcome, on_event: &mut F)
-where
-    F: FnMut(AgentEvent),
-{
-    accumulate_usage(&mut result.usage, outcome.usage);
+fn record_stream_outcome(result: &mut RunOutcome, outcome: &StreamOutcome) {
     result.steps = result.steps.saturating_add(1);
-    on_event(AgentEvent::Usage {
-        usage: result.usage,
-    });
     if !outcome.text.is_empty() {
         result.text.clone_from(&outcome.text);
     }
@@ -513,6 +609,43 @@ mod tests {
 
     fn default_pipeline() -> ToolPipeline {
         ToolPipeline::default()
+    }
+
+    #[test]
+    fn cumulative_presence_requires_every_step_to_report_each_counter() {
+        let known = Usage {
+            input: 10,
+            output: 5,
+            input_known: Some(true),
+            output_known: Some(true),
+            ..Usage::default()
+        };
+        for steps in [vec![Usage::default(), known], vec![known, Usage::default()]] {
+            let mut total = TurnUsage::default();
+            let mut events = Vec::new();
+            for usage in steps {
+                total.record(usage, &mut |event| events.push(event));
+            }
+            assert_eq!(total.total.reported_input(), None);
+            assert_eq!(total.total.reported_output(), None);
+            assert!(
+                matches!(events.last(), Some(AgentEvent::Usage { usage }) if usage.reported_input().is_none() && usage.reported_output().is_none())
+            );
+        }
+        for (input_known, output_known) in [(true, false), (false, true)] {
+            let mut total = known;
+            accumulate_usage(
+                &mut total,
+                Usage {
+                    input_known: Some(input_known),
+                    output_known: Some(output_known),
+                    ..Usage::default()
+                },
+                true,
+            );
+            assert_eq!(total.reported_input(), input_known.then_some(10));
+            assert_eq!(total.reported_output(), output_known.then_some(5));
+        }
     }
 
     #[test]
@@ -774,16 +907,29 @@ mod tests {
         let mut usage = Usage {
             input: u32::MAX - 1,
             output: u32::MAX,
+            input_known: Some(true),
+            output_known: Some(true),
+            cache_read: Some(u32::MAX - 1),
+            cache_write: Some(2),
+            input_semantics: InputTokenSemantics::Inclusive,
         };
         accumulate_usage(
             &mut usage,
             Usage {
                 input: 10,
                 output: 1,
+                input_known: Some(true),
+                output_known: Some(true),
+                cache_read: Some(10),
+                cache_write: Some(3),
+                input_semantics: InputTokenSemantics::Inclusive,
             },
+            true,
         );
 
         assert_eq!(usage.input, u32::MAX);
         assert_eq!(usage.output, u32::MAX);
+        assert_eq!(usage.cache_read, Some(u32::MAX));
+        assert_eq!(usage.cache_write, Some(5));
     }
 }

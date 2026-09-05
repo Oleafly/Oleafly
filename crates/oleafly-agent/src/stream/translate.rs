@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use serde_json::Value;
 
-use crate::complete::Usage;
+use crate::complete::{InputTokenSemantics, Usage};
 use crate::error::AgentError;
 use crate::event::AgentEvent;
 use crate::provider::Wire;
@@ -176,11 +176,18 @@ impl Translator {
         };
         let mut out = Vec::new();
 
-        if let Some(usage) = value.get("usage").filter(|u| !u.is_null()) {
-            self.usage = Usage {
+        if let Some(usage) = value.get("usage").filter(|u| u.is_object()) {
+            self.usage.merge_snapshot(Usage {
                 input: u32_at(usage, "prompt_tokens"),
                 output: u32_at(usage, "completion_tokens"),
-            };
+                input_known: Some(optional_u32_at(usage, "prompt_tokens").is_some()),
+                output_known: Some(optional_u32_at(usage, "completion_tokens").is_some()),
+                cache_read: optional_u32_at_path(usage, "/prompt_tokens_details/cached_tokens"),
+                cache_write: (optional_u32_at(usage, "prompt_tokens").is_some()
+                    || optional_u32_at(usage, "completion_tokens").is_some())
+                .then_some(0),
+                input_semantics: InputTokenSemantics::Inclusive,
+            });
             out.push(AgentEvent::Usage { usage: self.usage });
         }
 
@@ -340,11 +347,24 @@ impl Translator {
                         );
                     }
                 }
-                if let Some(usage) = value.pointer("/response/usage") {
-                    self.usage = Usage {
+                if let Some(usage) = value
+                    .pointer("/response/usage")
+                    .filter(|value| value.is_object())
+                {
+                    self.usage.merge_snapshot(Usage {
                         input: u32_at(usage, "input_tokens"),
                         output: u32_at(usage, "output_tokens"),
-                    };
+                        input_known: Some(optional_u32_at(usage, "input_tokens").is_some()),
+                        output_known: Some(optional_u32_at(usage, "output_tokens").is_some()),
+                        cache_read: optional_u32_at_path(
+                            usage,
+                            "/input_tokens_details/cached_tokens",
+                        ),
+                        cache_write: (optional_u32_at(usage, "input_tokens").is_some()
+                            || optional_u32_at(usage, "output_tokens").is_some())
+                        .then_some(0),
+                        input_semantics: InputTokenSemantics::Inclusive,
+                    });
                     out.push(AgentEvent::Usage { usage: self.usage });
                 }
                 self.stop_reason = Some(if kind == "response.completed" {
@@ -393,7 +413,21 @@ impl Translator {
 
         match kind {
             "message_start" => {
-                self.usage.input = u32_at_path(&value, "/message/usage/input_tokens");
+                if let Some(usage) = value
+                    .pointer("/message/usage")
+                    .filter(|value| value.is_object())
+                {
+                    self.usage.merge_snapshot(Usage {
+                        input: u32_at(usage, "input_tokens"),
+                        output: u32_at(usage, "output_tokens"),
+                        input_known: Some(optional_u32_at(usage, "input_tokens").is_some()),
+                        output_known: Some(optional_u32_at(usage, "output_tokens").is_some()),
+                        cache_read: optional_u32_at(usage, "cache_read_input_tokens"),
+                        cache_write: optional_u32_at(usage, "cache_creation_input_tokens"),
+                        input_semantics: InputTokenSemantics::Exclusive,
+                    });
+                    out.push(AgentEvent::Usage { usage: self.usage });
+                }
             }
             "content_block_start" => out.extend(self.anthropic_block_start(&value, index)),
             "content_block_delta" => out.extend(self.anthropic_block_delta(&value, index)),
@@ -463,9 +497,9 @@ impl Translator {
         if let Some(reason) = value.pointer("/delta/stop_reason").and_then(|r| r.as_str()) {
             self.stop_reason = Some(reason.to_string());
         }
-        let output = u32_at_path(value, "/usage/output_tokens");
-        if output > 0 {
+        if let Some(output) = optional_u32_at_path(value, "/usage/output_tokens") {
             self.usage.output = output;
+            self.usage.output_known = Some(true);
             out.push(AgentEvent::Usage { usage: self.usage });
         }
         out
@@ -494,11 +528,18 @@ impl Translator {
         };
         let mut out = Vec::new();
 
-        if let Some(meta) = value.get("usageMetadata") {
-            self.usage = Usage {
+        if let Some(meta) = value.get("usageMetadata").filter(|value| value.is_object()) {
+            self.usage.merge_snapshot(Usage {
                 input: u32_at(meta, "promptTokenCount"),
                 output: u32_at(meta, "candidatesTokenCount"),
-            };
+                input_known: Some(optional_u32_at(meta, "promptTokenCount").is_some()),
+                output_known: Some(optional_u32_at(meta, "candidatesTokenCount").is_some()),
+                cache_read: optional_u32_at(meta, "cachedContentTokenCount"),
+                cache_write: (optional_u32_at(meta, "promptTokenCount").is_some()
+                    || optional_u32_at(meta, "candidatesTokenCount").is_some())
+                .then_some(0),
+                input_semantics: InputTokenSemantics::Inclusive,
+            });
             out.push(AgentEvent::Usage { usage: self.usage });
         }
 
@@ -601,8 +642,12 @@ fn u32_at(value: &Value, key: &str) -> u32 {
     saturating_u32(value.get(key))
 }
 
-fn u32_at_path(value: &Value, path: &str) -> u32 {
-    saturating_u32(value.pointer(path))
+fn optional_u32_at(value: &Value, key: &str) -> Option<u32> {
+    optional_saturating_u32(value.get(key))
+}
+
+fn optional_u32_at_path(value: &Value, path: &str) -> Option<u32> {
+    optional_saturating_u32(value.pointer(path))
 }
 
 fn saturating_u32(value: Option<&Value>) -> u32 {
@@ -610,4 +655,10 @@ fn saturating_u32(value: Option<&Value>) -> u32 {
         .and_then(|value| value.as_u64())
         .map(|number| u32::try_from(number).unwrap_or(u32::MAX))
         .unwrap_or(0)
+}
+
+fn optional_saturating_u32(value: Option<&Value>) -> Option<u32> {
+    value
+        .and_then(|value| value.as_u64())
+        .map(|number| u32::try_from(number).unwrap_or(u32::MAX))
 }

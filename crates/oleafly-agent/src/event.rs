@@ -53,6 +53,16 @@ pub enum AgentEvent {
         label: String,
         state: String,
         detail: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        runtime: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider_id: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        model_id: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        agent_id: Option<String>,
     },
     /// Older history was summarized away mid-run so the turn could continue
     /// in a fresh context window.

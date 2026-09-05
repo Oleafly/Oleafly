@@ -66,6 +66,11 @@ export interface EditorHost {
   useCompletionSyntax(path: string | null): CompletionSyntax;
   getContent(path: string): string;
   setContent(path: string, content: string): void;
+  isEditLocked?(): boolean;
+  registerMutationOwner?(owner: {
+    setLocked: (locked: boolean) => void;
+    reconcile: () => void;
+  }): () => void;
   useSettings(): {
     vim: boolean;
     spellcheck: boolean;
@@ -207,6 +212,7 @@ export function CodeMirrorEditor({
   const hostToolsCompartmentRef = useRef<Compartment | null>(null);
   const prevPathRef = useRef<string | null>(null);
   const suppressSyncRef = useRef(false);
+  const synchronizeRef = useRef<() => void>(() => {});
 
   const editorPrefsCompartmentRef = useRef<Compartment | null>(null);
   const stickyCompartmentRef = useRef<Compartment | null>(null);
@@ -262,6 +268,10 @@ export function CodeMirrorEditor({
     const initialGhostCompletionSources =
       extraGhostCompletionSourcesForPath?.(initialPath) ?? [];
 
+    const editability = new Compartment();
+    const editabilityExtensions = (locked: boolean) => [
+      EditorState.readOnly.of(locked), EditorView.editable.of(!locked),
+    ];
     const state = EditorState.create({
       doc: initialContent,
       extensions: [
@@ -301,6 +311,9 @@ export function CodeMirrorEditor({
             ghostCompletionEnabled,
           ),
         ),
+        editability.of(editabilityExtensions(host.isEditLocked?.() ?? false)),
+        EditorState.transactionFilter.of((transaction) =>
+          transaction.docChanged && host.isEditLocked?.() ? [] : transaction),
         ...(extraExtensions ?? []),
         hostToolsCompartment.of(extraExtensionsForPath?.(initialPath) ?? []),
         keymap.of([
@@ -332,9 +345,14 @@ export function CodeMirrorEditor({
     viewRef.current = view;
     setEditorView(view);
     setEditorDocumentPath(initialPath);
+    const unregisterMutationOwner = host.registerMutationOwner?.({
+      setLocked: (locked) => view.dispatch({ effects: editability.reconfigure(editabilityExtensions(locked)) }),
+      reconcile: () => synchronizeRef.current(),
+    });
     view.focus();
 
     return () => {
+      unregisterMutationOwner?.();
       cancelSourceProofreading(prevPathRef.current ?? undefined);
       setEditorDocumentPath(null);
       view.destroy();
@@ -360,7 +378,8 @@ export function CodeMirrorEditor({
   }, [active]);
 
   // When the active file changes (or a version is restored), swap the document.
-  useEffect(() => {
+  synchronizeRef.current = () => {
+    const activePath = host.getActivePath();
     const view = viewRef.current;
     if (!view) return;
     if (!activePath) {
@@ -374,6 +393,7 @@ export function CodeMirrorEditor({
       suppressSyncRef.current = true;
       view.dispatch(setDiagnostics(view.state, []));
       view.dispatch({
+        filter: false,
         changes: {
           from: 0,
           to: view.state.doc.length,
@@ -441,6 +461,7 @@ export function CodeMirrorEditor({
     }
     if (current !== activeContent) {
       view.dispatch({
+        filter: false,
         changes: { from: 0, to: view.state.doc.length, insert: activeContent },
         effects,
       });
@@ -458,7 +479,8 @@ export function CodeMirrorEditor({
     });
     view.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePath, docVersion]);
+  };
+  useEffect(() => synchronizeRef.current(), [activePath, docVersion]);
 
   // Sticky scroll depends on both the preference and the file's syntax, and it
   // rebuilds its own scope list on reconfigure, so a single effect covers a

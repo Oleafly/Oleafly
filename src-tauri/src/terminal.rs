@@ -680,7 +680,10 @@ mod tests {
         let response = response.map(|body| body.deserialize::<()>().unwrap());
         let received_path = project.join("terminal-input.txt");
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
-        while !received_path.exists() && std::time::Instant::now() < deadline {
+        while !std::fs::read_to_string(&received_path)
+            .is_ok_and(|received| received == "hello from the main webview")
+            && std::time::Instant::now() < deadline
+        {
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
         let received = std::fs::read_to_string(&received_path);
@@ -839,7 +842,10 @@ mod tests {
         write_terminal(&owner, &session_id, "hello from the owner\n").unwrap();
         let received_path = project.join("terminal-input.txt");
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
-        while !received_path.exists() && std::time::Instant::now() < deadline {
+        while !std::fs::read_to_string(&received_path)
+            .is_ok_and(|received| received == "hello from the owner")
+            && std::time::Instant::now() < deadline
+        {
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
         let received = std::fs::read_to_string(received_path).unwrap();

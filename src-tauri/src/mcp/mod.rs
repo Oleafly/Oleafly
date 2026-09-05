@@ -1,6 +1,7 @@
 pub mod client;
 pub mod native;
 pub mod protocol;
+pub mod registry;
 pub mod server;
 pub mod source_import;
 

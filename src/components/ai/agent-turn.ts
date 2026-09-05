@@ -27,15 +27,10 @@ export interface HarnessHandlers {
   onReasoningEnd(): void;
   onToolCall(call: HarnessToolCall): void | Promise<void>;
   onToolResult(result: { id: string; name: string; output: unknown }): void;
-  onUsage(usage: { input: number; output: number }): void;
+  onUsage(usage: Extract<AgentEvent, { kind: "usage" }>["usage"]): void;
   onStep(step: number): void;
   onRetry(attempt: number, max: number): void;
-  onSubagentUpdate(update: {
-    id: string;
-    label: string;
-    state: string;
-    detail: string | null;
-  }): void;
+  onSubagentUpdate(update: Extract<AgentEvent, { kind: "subagentUpdate" }>): void;
   onSteered?(text: string): void;
 }
 

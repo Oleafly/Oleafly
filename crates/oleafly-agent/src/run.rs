@@ -399,6 +399,103 @@ mod tests {
         Arc::new(|_| Box::pin(async { ToolOutput::text("unused") }))
     }
 
+    #[tokio::test]
+    async fn compaction_usage_is_counted_once_and_missing_summary_usage_stays_unknown() {
+        for (provider_overflow, summary_reported) in [(false, true), (false, false), (true, true)] {
+            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            let address = listener.local_addr().unwrap();
+            let server = std::thread::spawn(move || {
+                let mut requests = Vec::new();
+                if provider_overflow {
+                    let (mut stream, _) = listener.accept().unwrap();
+                    requests.push(read_request(&mut stream));
+                    respond(&mut stream, "400 Bad Request", "application/json", "{\"error\":{\"message\":\"maximum context length exceeded\",\"code\":\"context_length_exceeded\"}}");
+                }
+                let (mut summary, _) = listener.accept().unwrap();
+                requests.push(read_request(&mut summary));
+                let mut body = serde_json::json!({"choices":[{"message":{"content":"summary"}}]});
+                if summary_reported {
+                    body["usage"] = serde_json::json!({"prompt_tokens":40,"completion_tokens":7,"prompt_tokens_details":{"cached_tokens":10}});
+                }
+                respond(
+                    &mut summary,
+                    "200 OK",
+                    "application/json",
+                    &body.to_string(),
+                );
+                let (mut sampled, _) = listener.accept().unwrap();
+                requests.push(read_request(&mut sampled));
+                respond(&mut sampled, "200 OK", "text/event-stream", "data: {\"choices\":[{\"delta\":{\"content\":\"answer\"}}],\"usage\":{\"prompt_tokens\":60,\"completion_tokens\":3,\"prompt_tokens_details\":{\"cached_tokens\":20}}}\n\ndata: [DONE]\n\n");
+                requests
+            });
+            let mut request = CompletionRequest::prompt("system", "prompt");
+            if !provider_overflow {
+                request.messages = (0..129).map(|_| Message::user("x".repeat(4000))).collect();
+            }
+            let mut events = Vec::new();
+            let outcome = tokio::time::timeout(
+                Duration::from_secs(5),
+                run_agent_with_pipeline(
+                    &crate::build_client().unwrap(),
+                    &local_resolved(address),
+                    request,
+                    &RunConfig {
+                        max_steps: 1,
+                        max_retries: 0,
+                        ..RunConfig::default()
+                    },
+                    ToolPipeline::default(),
+                    None,
+                    no_tools(),
+                    |event| events.push(event),
+                ),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+            let requests = server.join().unwrap();
+            assert_eq!(requests.len(), if provider_overflow { 3 } else { 2 });
+            let summary_request: serde_json::Value = serde_json::from_str(
+                requests[usize::from(provider_overflow)]
+                    .split_once("\r\n\r\n")
+                    .unwrap()
+                    .1,
+            )
+            .unwrap();
+            assert_ne!(summary_request["stream"], true);
+            assert_eq!(outcome.steps, 1);
+            assert_eq!(outcome.text, "answer");
+            assert!(outcome.error.is_none());
+            assert_eq!(outcome.usage.input, if summary_reported { 100 } else { 60 });
+            assert_eq!(outcome.usage.output, if summary_reported { 10 } else { 3 });
+            if summary_reported && !provider_overflow {
+                assert_eq!(outcome.usage.reported_input(), Some(100));
+                assert_eq!(outcome.usage.reported_output(), Some(10));
+                assert_eq!(outcome.usage.cache_read, Some(30));
+                assert_eq!(outcome.usage.cache_write, Some(0));
+            } else {
+                assert_eq!(outcome.usage.reported_input(), None);
+                assert_eq!(outcome.usage.reported_output(), None);
+            }
+            assert_eq!(
+                events
+                    .iter()
+                    .filter(|event| matches!(event, AgentEvent::Compacted { .. }))
+                    .count(),
+                1
+            );
+            let latest = events
+                .iter()
+                .rev()
+                .find_map(|event| match event {
+                    AgentEvent::Usage { usage } => Some(usage),
+                    _ => None,
+                })
+                .unwrap();
+            assert_eq!(*latest, outcome.usage);
+        }
+    }
+
     #[test]
     fn tool_outputs_are_bounded_before_entering_history() {
         let output = ToolOutput {

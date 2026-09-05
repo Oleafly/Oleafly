@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { PanelBottomClose, GripVertical } from "lucide-react";
-import { ChatCore } from "@/components/ai/ChatCore";
+import { ResearchAssistant } from "@/components/ai/ResearchAssistant";
 import { useSettingsStore } from "@/store/settings";
 import { clampRect, type Rect } from "@/lib/overlay-rect";
 import { assistantMinimumWidth } from "@/lib/assistant-layout";
@@ -117,7 +117,7 @@ export function CopilotOverlay() {
         </button>
       </div>
       <div className="min-h-0 flex-1">
-        <ChatCore />
+        <ResearchAssistant />
       </div>
       <div
         data-testid="copilot-overlay-resize"

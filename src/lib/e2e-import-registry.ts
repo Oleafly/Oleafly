@@ -9,6 +9,7 @@
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 const registry: Record<string, () => Promise<unknown>> = !E2E_HOOKS ? {} : {
+  "/src/lib/acp.ts": () => import("@/lib/acp"),
   "/src/components/editor/cm/controller.ts": () => import("@/components/editor/cm/controller"),
   "/src/components/editor/SymbolPicker.tsx": () => import("@/components/editor/SymbolPicker"),
   "/src/components/editor/wysiwyg/controller.ts": () =>
@@ -24,6 +25,7 @@ const registry: Record<string, () => Promise<unknown>> = !E2E_HOOKS ? {} : {
   "/src/lib/mcp-bridge.ts": () => import("@/lib/mcp-bridge"),
   "/src/lib/proofreading/client.ts": () => import("@/lib/proofreading/client"),
   "/src/lib/proofreading/hunspell.ts": () => import("@/lib/proofreading/hunspell"),
+  "/src/lib/research-tasks.ts": () => import("@/lib/research-tasks"),
   "/src/lib/tauri.ts": () => import("@/lib/tauri"),
   "/src/lib/wordcount.ts": () => import("@/lib/wordcount"),
   "/src/store/citation.ts": () => import("@/store/citation"),

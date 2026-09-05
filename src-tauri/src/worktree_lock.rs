@@ -36,6 +36,20 @@ impl ProjectWorktreeLock {
         Ok(Self { _file: file, _held })
     }
 
+    pub(crate) fn try_shared(project_id: &str) -> Result<Option<Self>, String> {
+        let file = open_lock_file(project_id)?;
+        match fs4::FileExt::try_lock_shared(&file) {
+            Ok(()) => {}
+            Err(fs4::TryLockError::WouldBlock) => return Ok(None),
+            Err(fs4::TryLockError::Error(error)) => {
+                return Err(format!("could not acquire project read lock: {error}"))
+            }
+        }
+        let _held = held(project_id, "shared-try");
+        reject_pending_restore(project_id)?;
+        Ok(Some(Self { _file: file, _held }))
+    }
+
     pub(crate) fn exclusive(project_id: &str) -> Result<Self, String> {
         let file = open_lock_file(project_id)?;
         {

@@ -23,6 +23,10 @@ use crate::agent_config::MultiAgentConfig;
 /// Everything a spawned child needs, cloned from the parent run.
 #[derive(Clone)]
 pub struct RunContext {
+    pub app: Option<tauri::AppHandle>,
+    pub data_root: std::path::PathBuf,
+    pub session_id: String,
+    pub parent_session_id: Option<String>,
     pub client: reqwest::Client,
     pub resolved: Resolved,
     pub request_template: CompletionRequest,
@@ -31,7 +35,7 @@ pub struct RunContext {
     pub gate: ToolGate,
     pub parent_token: CancellationToken,
     pub tool_runner: ToolRunner,
-    pub parent_sink: tauri::ipc::Channel<AgentEvent>,
+    pub parent_sink: ActivitySink,
     pub project_id: String,
     /// 0 for the root run; children record depth + 1.
     pub depth: u32,
@@ -43,6 +47,28 @@ pub struct RunContext {
 impl RunContext {
     pub fn root_task_path() -> String {
         "/root".to_string()
+    }
+}
+
+#[derive(Clone)]
+pub struct ActivitySink {
+    channel: tauri::ipc::Channel<AgentEvent>,
+    recorder: Option<Arc<Mutex<TurnRecorder>>>,
+}
+
+impl ActivitySink {
+    pub fn new(
+        channel: tauri::ipc::Channel<AgentEvent>,
+        recorder: Option<Arc<Mutex<TurnRecorder>>>,
+    ) -> Self {
+        Self { channel, recorder }
+    }
+
+    pub fn send(&self, event: AgentEvent) -> tauri::Result<()> {
+        if let Some(recorder) = &self.recorder {
+            lock(recorder).record(&event);
+        }
+        self.channel.send(event)
     }
 }
 
@@ -81,10 +107,14 @@ struct SubAgentEntry {
     handle: tokio::task::JoinHandle<()>,
     done_rx: watch::Receiver<bool>,
     done_tx: watch::Sender<bool>,
+    selection: Option<ChildSelection>,
+    context: Option<RunContext>,
+    history: Arc<Mutex<Vec<oleafly_agent::Message>>>,
 }
 
 #[derive(Default)]
 pub struct SubagentManager {
+    mutation: tokio::sync::Mutex<()>,
     agents: Mutex<HashMap<String, SubAgentEntry>>,
     /// Cancels a child's native command owner (its process tree and pending
     /// approvals). Wired to the exec registry in production; None in tests.
@@ -102,7 +132,6 @@ impl Drop for SubagentManager {
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             for entry in agents.values() {
                 entry.token.cancel();
-                entry.handle.abort();
                 owners.push(entry.exec_owner.clone());
             }
         }
@@ -189,8 +218,86 @@ pub fn bounded_output(text: &str, max_chars: usize) -> String {
     truncated
 }
 
+#[derive(Clone)]
+enum ChildSelection {
+    BuiltIn(Resolved),
+    Acp(Arc<super::child_acp::AcpChild>),
+}
+
+#[derive(Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct RuntimeSelection {
+    #[serde(default)]
+    runtime: Option<String>,
+    #[serde(default, alias = "provider_id")]
+    provider_id: Option<String>,
+    #[serde(default, alias = "model_id")]
+    model_id: Option<String>,
+    #[serde(default, alias = "agent_id")]
+    agent_id: Option<String>,
+}
+
+impl RuntimeSelection {
+    async fn resolve(&self, ctx: &RunContext, owner: String) -> Result<ChildSelection, String> {
+        match self.runtime.as_deref().unwrap_or("built-in") {
+            "built-in" => {
+                if self.agent_id.is_some() {
+                    return Err(
+                        "Choose providerId for a built-in agent. agentId is used by ACP agents."
+                            .into(),
+                    );
+                }
+                if self.provider_id.is_none() && self.model_id.is_none() {
+                    return Ok(ChildSelection::BuiltIn(ctx.resolved.clone()));
+                }
+                let provider_id = self
+                    .provider_id
+                    .clone()
+                    .unwrap_or_else(|| ctx.resolved.provider_id.clone());
+                let model_id = self.model_id.clone().unwrap_or_else(|| {
+                    if provider_id == ctx.resolved.provider_id {
+                        ctx.resolved.model_id.clone()
+                    } else {
+                        String::new()
+                    }
+                });
+                let resolved = super::resolve_for_run_off_thread(
+                    Some(super::ProviderOverride {
+                        provider_id,
+                        model_id,
+                    }),
+                    !ctx.request_template.tools.is_empty(),
+                )
+                .await?;
+                Ok(ChildSelection::BuiltIn(resolved))
+            }
+            "acp" => {
+                if self.provider_id.is_some() {
+                    return Err(
+                        "Choose agentId for an ACP agent. The agent manages its provider.".into(),
+                    );
+                }
+                let agent_id = self
+                    .agent_id
+                    .as_ref()
+                    .filter(|id| !id.trim().is_empty())
+                    .ok_or("Choose a configured ACP agentId before delegating this task.")?;
+                Ok(ChildSelection::Acp(Arc::new(
+                    super::child_acp::AcpChild::new(
+                        ctx,
+                        agent_id.clone(),
+                        self.model_id.clone(),
+                        owner,
+                    )?,
+                )))
+            }
+            _ => Err("Choose built-in or acp as the agent runtime.".into()),
+        }
+    }
+}
+
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct SpawnAgentArgs {
     #[serde(alias = "task_name", alias = "taskName")]
     task_name: String,
@@ -198,6 +305,14 @@ struct SpawnAgentArgs {
     prompt: String,
     #[serde(default)]
     label: Option<String>,
+    #[serde(default)]
+    runtime: Option<String>,
+    #[serde(default, alias = "provider_id")]
+    provider_id: Option<String>,
+    #[serde(default, alias = "model_id")]
+    model_id: Option<String>,
+    #[serde(default, alias = "agent_id")]
+    agent_id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -261,7 +376,7 @@ fn collect_wait_targets(
     selected
         .into_iter()
         .map(|id| {
-            let entry = agents.get(id).ok_or_else(|| format!("no agent {id}"))?;
+            let entry = find_entry(&agents, id)?;
             Ok((
                 entry.id.clone(),
                 entry.done_rx.clone(),
@@ -278,6 +393,7 @@ impl SubagentManager {
     pub fn with_exec_canceller(cancel: Arc<dyn Fn(&str) + Send + Sync>) -> Self {
         Self {
             agents: Mutex::new(HashMap::new()),
+            mutation: tokio::sync::Mutex::new(()),
             cancel_exec: Some(cancel),
         }
     }
@@ -295,6 +411,18 @@ impl SubagentManager {
             .count()
     }
 
+    pub async fn cancel_descendants(&self, task_path: &str) {
+        let prefix = format!("{task_path}/");
+        let ids = lock(&self.agents)
+            .values()
+            .filter(|entry| entry.task_path.starts_with(&prefix))
+            .map(|entry| entry.id.clone())
+            .collect::<Vec<_>>();
+        for id in ids {
+            let _ = self.close(&id).await;
+        }
+    }
+
     pub fn list(&self, path_prefix: Option<&str>) -> Value {
         let agents = lock(&self.agents);
         let mut rows: Vec<Value> = agents
@@ -310,6 +438,18 @@ impl SubagentManager {
                     "taskPath": entry.task_path,
                     "label": entry.label,
                     "status": lock_status(&entry.status).as_str(),
+                    "sessionId": match &entry.selection {
+                        Some(ChildSelection::Acp(runtime)) => runtime.session_id(),
+                        _ => Some(entry.thread_id.clone()),
+                    },
+                    "runtime": if matches!(entry.selection, Some(ChildSelection::Acp(_))) { "acp" } else { "built-in" },
+                    "providerId": match &entry.selection { Some(ChildSelection::BuiltIn(resolved)) => Some(resolved.provider_id.clone()), _ => None },
+                    "modelId": match &entry.selection {
+                        Some(ChildSelection::BuiltIn(resolved)) => Some(resolved.model_id.clone()),
+                        Some(ChildSelection::Acp(runtime)) => runtime.selected_model(),
+                        None => None,
+                    },
+                    "agentId": match &entry.selection { Some(ChildSelection::Acp(runtime)) => Some(runtime.agent_id.clone()), _ => None },
                 })
             })
             .collect();
@@ -320,67 +460,78 @@ impl SubagentManager {
     /// Interrupt every running agent (the "stop all subagents" affordance):
     /// the parent run keeps going. Returns how many were interrupted.
     pub fn interrupt_all(&self) -> usize {
-        let mut owners = Vec::new();
-        let interrupted = {
+        let owners = {
             let agents = lock(&self.agents);
-            let mut count = 0;
-            for entry in agents.values() {
-                if *lock_status(&entry.status) == SubagentStatus::Running {
+            agents
+                .values()
+                .filter(|entry| {
+                    *lock_status(&entry.status) == SubagentStatus::Running
+                        && !entry.token.is_cancelled()
+                })
+                .map(|entry| {
                     entry.token.cancel();
-                    entry.handle.abort();
-                    *lock_status(&entry.status) = SubagentStatus::Interrupted;
-                    let _ = entry.done_tx.send(true);
-                    owners.push(entry.exec_owner.clone());
-                    count += 1;
-                }
-            }
-            count
+                    entry.exec_owner.clone()
+                })
+                .collect::<Vec<_>>()
         };
-        // Cancel each child's native commands after releasing the agents lock,
-        // so the exec registry lock is never taken while holding it.
         for owner in &owners {
             self.cancel_owner(owner);
         }
-        interrupted
+        owners.len()
     }
 
-    pub fn interrupt(&self, agent: &str) -> Result<Value, String> {
-        let (result, owner) = {
+    pub async fn interrupt(&self, agent: &str) -> Result<Value, String> {
+        let (id, owner, mut done) = {
             let agents = lock(&self.agents);
-            let entry = agents
-                .get(agent)
-                .ok_or_else(|| format!("no agent {agent}"))?;
+            let entry = find_entry(&agents, agent)?;
+            let current = *lock_status(&entry.status);
+            if current != SubagentStatus::Running {
+                return Ok(serde_json::json!({ "id": entry.id, "status": current.as_str() }));
+            }
             entry.token.cancel();
-            *lock_status(&entry.status) = SubagentStatus::Interrupted;
-            let _ = entry.done_tx.send(true);
             (
-                serde_json::json!({ "id": entry.id, "status": "interrupted" }),
+                entry.id.clone(),
                 entry.exec_owner.clone(),
+                entry.done_rx.clone(),
             )
         };
         self.cancel_owner(&owner);
-        Ok(result)
+        while !*done.borrow_and_update() {
+            if done.changed().await.is_err() {
+                break;
+            }
+        }
+        Ok(serde_json::json!({ "id": id, "status": "interrupted" }))
     }
 
-    pub fn close(&self, agent: &str) -> Result<Value, String> {
-        let (summary, owner) = {
-            let mut agents = lock(&self.agents);
-            let entry = agents
-                .get(agent)
-                .ok_or_else(|| format!("no agent {agent}"))?;
-            let status = *lock_status(&entry.status);
-            entry.token.cancel();
-            entry.handle.abort();
-            let owner = entry.exec_owner.clone();
-            let summary = serde_json::json!({
-                "id": entry.id,
-                "status": status.as_str(),
-            });
-            agents.remove(agent);
-            (summary, owner)
+    pub async fn interrupt_all_and_wait(&self) -> usize {
+        let ids = lock(&self.agents)
+            .values()
+            .filter(|entry| *lock_status(&entry.status) == SubagentStatus::Running)
+            .map(|entry| entry.id.clone())
+            .collect::<Vec<_>>();
+        let count = self.interrupt_all();
+        for id in ids {
+            let _ = self.interrupt(&id).await;
+        }
+        count
+    }
+
+    pub async fn close(&self, agent: &str) -> Result<Value, String> {
+        let id = {
+            let agents = lock(&self.agents);
+            find_entry(&agents, agent)?.id.clone()
         };
-        self.cancel_owner(&owner);
-        Ok(summary)
+        let entry = lock(&self.agents)
+            .remove(&id)
+            .ok_or_else(|| format!("no agent {agent}"))?;
+        entry.token.cancel();
+        self.cancel_owner(&entry.exec_owner);
+        let _ = entry.handle.await;
+        if let Some(ChildSelection::Acp(runtime)) = &entry.selection {
+            runtime.close().await;
+        }
+        Ok(serde_json::json!({ "id": id, "status": lock_status(&entry.status).as_str() }))
     }
 
     pub async fn send_message(&self, agent: &str, message: &str) -> Result<Value, String> {
@@ -389,13 +540,14 @@ impl SubagentManager {
         }
         let steer = {
             let agents = lock(&self.agents);
-            let entry = agents
-                .get(agent)
-                .ok_or_else(|| format!("no agent {agent}"))?;
+            let entry = find_entry(&agents, agent)?;
             if *lock_status(&entry.status) != SubagentStatus::Running {
                 return Err(format!(
                     "agent {agent} is not running (use followup_task to give it new work)"
                 ));
+            }
+            if matches!(entry.selection, Some(ChildSelection::Acp(_))) {
+                return Err("This ACP agent cannot receive messages during a turn. Wait for it to finish, then use followup_task.".into());
             }
             entry.steer.clone()
         };
@@ -468,13 +620,18 @@ impl SubagentManager {
     /// Spawn a child agent: registers it, launches its run in the background
     /// (sharing the parent's gate and cancellation lineage), and returns the
     /// agent id immediately.
-    pub fn spawn(
+    async fn spawn(
         self: &Arc<Self>,
         ctx: &RunContext,
         task_name: &str,
         prompt: &str,
         label: Option<String>,
+        selection: RuntimeSelection,
     ) -> Result<String, String> {
+        let _mutation = self.mutation.lock().await;
+        if prompt.trim().is_empty() {
+            return Err("The task prompt must not be empty.".into());
+        }
         let child_depth = ctx.depth + 1;
         if child_depth > ctx.multi_agent.max_agent_depth {
             return Err(format!(
@@ -489,6 +646,12 @@ impl SubagentManager {
             ));
         }
         let task_path = child_task_path(&ctx.task_path, task_name)?;
+        if lock(&self.agents)
+            .values()
+            .any(|entry| entry.task_path == task_path)
+        {
+            return Err("An agent already owns this task name. Use followup_task to continue it or choose another name.".into());
+        }
         let label = label.unwrap_or_else(|| {
             let preview: String = prompt.trim().chars().take(60).collect();
             preview
@@ -502,8 +665,8 @@ impl SubagentManager {
         // per-launch prefix this cannot normally happen; guard anyway so a
         // future id-scheme change fails loudly instead of silently splicing an
         // unrelated transcript onto the new child.
-        if let Ok(root) = crate::paths::oleafly_root() {
-            if crate::rollout::rollout_path(&root, &thread_id)
+        {
+            if crate::rollout::rollout_path(&ctx.data_root, &thread_id)
                 .map(|path| path.exists())
                 .unwrap_or(false)
             {
@@ -514,6 +677,18 @@ impl SubagentManager {
         }
 
         let exec_owner = new_exec_owner();
+        let selection = selection.resolve(ctx, exec_owner.clone()).await?;
+        if ctx.parent_token.is_cancelled() {
+            return Err("The parent task was cancelled.".into());
+        }
+        let mut child_ctx = ctx.clone();
+        child_ctx.depth = child_depth;
+        child_ctx.task_path = task_path.clone();
+        child_ctx.parent_session_id = Some(ctx.session_id.clone());
+        child_ctx.session_id = thread_id.clone();
+        if let ChildSelection::BuiltIn(resolved) = &selection {
+            child_ctx.resolved = resolved.clone();
+        }
 
         let mut request = ctx.request_template.clone();
         request.messages = vec![oleafly_agent::Message::user(prompt.to_string())];
@@ -533,8 +708,10 @@ impl SubagentManager {
         let final_output: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
         let (done_tx, done_rx) = watch::channel(false);
 
+        let history = Arc::new(Mutex::new(request.messages.clone()));
+        child_ctx.request_template = request.clone();
         let child = spawn_child_run(
-            ctx.clone(),
+            child_ctx.clone(),
             request,
             token.clone(),
             steer_rx,
@@ -545,6 +722,9 @@ impl SubagentManager {
             status.clone(),
             final_output.clone(),
             done_tx.clone(),
+            selection.clone(),
+            history.clone(),
+            self.clone(),
         );
 
         let entry = SubAgentEntry {
@@ -560,6 +740,9 @@ impl SubagentManager {
             handle: child,
             done_rx,
             done_tx,
+            selection: Some(selection),
+            context: Some(child_ctx),
+            history,
         };
         lock(&self.agents).insert(id.clone(), entry);
         Ok(id)
@@ -576,38 +759,82 @@ impl SubagentManager {
         if message.trim().is_empty() {
             return Err("the task message must not be empty".into());
         }
-        let (running, _thread_id, task_path) = {
+        let (id, running) = {
             let agents = lock(&self.agents);
-            let entry = agents
-                .get(agent)
-                .ok_or_else(|| format!("no agent {agent}"))?;
+            let entry = find_entry(&agents, agent)?;
             let running = *lock_status(&entry.status) == SubagentStatus::Running;
-            (running, entry.thread_id.clone(), entry.task_path.clone())
+            (entry.id.clone(), running)
         };
         if running {
-            // Still working: the message lands at its next message boundary.
             self.send_message(agent, message).await?;
             return Ok(serde_json::json!({ "delivered": true, "triggeredTurn": false }));
         }
-        let prior = {
-            let agents = lock(&self.agents);
-            agents
-                .get(agent)
-                .and_then(|entry| lock_output(&entry.final_output).clone())
-                .unwrap_or_default()
-        };
-        let prompt = format!(
-            "Earlier you completed {task_path}. Your final answer was:\n\n{}\n\nNew task:\n{message}",
-            bounded_output(&prior, 2_000)
+        let _mutation = self.mutation.lock().await;
+        if self.running_count() >= ctx.multi_agent.max_concurrent_subagents {
+            return Err("All agent slots are in use. Wait for an agent to finish before continuing this task.".into());
+        }
+        let mut agents = lock(&self.agents);
+        let entry = agents
+            .get_mut(&id)
+            .ok_or_else(|| format!("no agent {agent}"))?;
+        if *lock_status(&entry.status) == SubagentStatus::Running {
+            return Err("This agent already started another turn.".into());
+        }
+        let child_ctx = entry
+            .context
+            .clone()
+            .ok_or("This agent has no saved runtime context.")?;
+        let selection = entry
+            .selection
+            .clone()
+            .ok_or("This agent has no saved runtime selection.")?;
+        let mut request = child_ctx.request_template.clone();
+        {
+            let mut history = lock(&entry.history);
+            history.push(oleafly_agent::Message::user(message.to_string()));
+            request.messages = history.clone();
+        }
+        let token = child_ctx.parent_token.child();
+        if token.is_cancelled() {
+            return Err("The parent task was cancelled.".into());
+        }
+        let (steer, steer_rx) = SteerHandle::channel();
+        let (done_tx, done_rx) = watch::channel(false);
+        *lock_status(&entry.status) = SubagentStatus::Running;
+        *lock_output(&entry.final_output) = None;
+        entry.token = token.clone();
+        entry.steer = steer;
+        entry.done_rx = done_rx;
+        entry.done_tx = done_tx.clone();
+        entry.exec_owner = new_exec_owner();
+        entry.handle = spawn_child_run(
+            child_ctx,
+            request,
+            token,
+            steer_rx,
+            id.clone(),
+            entry.label.clone(),
+            entry.thread_id.clone(),
+            entry.exec_owner.clone(),
+            entry.status.clone(),
+            entry.final_output.clone(),
+            done_tx,
+            selection,
+            entry.history.clone(),
+            self.clone(),
         );
-        let child_id = self.spawn(
-            ctx,
-            task_path.rsplit('/').next().unwrap_or("task"),
-            &prompt,
-            None,
-        )?;
-        Ok(serde_json::json!({ "id": child_id, "triggeredTurn": true }))
+        Ok(serde_json::json!({ "id": id, "triggeredTurn": true }))
     }
+}
+
+fn find_entry<'a>(
+    agents: &'a HashMap<String, SubAgentEntry>,
+    target: &str,
+) -> Result<&'a SubAgentEntry, String> {
+    agents
+        .get(target)
+        .or_else(|| agents.values().find(|entry| entry.task_path == target))
+        .ok_or_else(|| format!("no agent {target}"))
 }
 
 fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -649,7 +876,7 @@ pub fn strip_delegation_tools(request: &mut CompletionRequest) {
 /// status/output for wait_agent.
 #[allow(clippy::too_many_arguments)]
 fn spawn_child_run(
-    ctx: RunContext,
+    mut ctx: RunContext,
     request: CompletionRequest,
     token: CancellationToken,
     steer_rx: tokio::sync::mpsc::UnboundedReceiver<oleafly_agent::run::SteeredInput>,
@@ -660,140 +887,210 @@ fn spawn_child_run(
     status: Arc<Mutex<SubagentStatus>>,
     final_output: Arc<Mutex<Option<String>>>,
     done_tx: watch::Sender<bool>,
+    selection: ChildSelection,
+    history: Arc<Mutex<Vec<oleafly_agent::Message>>>,
+    manager: Arc<SubagentManager>,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
-        let token_for_check = token.clone();
-        let parent_sink = ctx.parent_sink.clone();
-        let sink_for_final = parent_sink.clone();
-        let pipeline = oleafly_agent::ToolPipeline {
-            registry: ctx.registry.clone(),
-            gate: ctx.gate.clone(),
-            token,
-        };
-        let event_id = id.clone();
-        let event_label = label.clone();
+        let turn_id = format!("{id}-turn-{}", next_agent_id());
         let initial_user_message = request
             .messages
-            .first()
-            .map(|message| {
-                message
-                    .content
-                    .iter()
-                    .filter_map(|part| match part {
-                        oleafly_agent::ContentPart::Text { text } => Some(text.as_str()),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            })
+            .last()
+            .map(message_text)
             .unwrap_or_default();
-        let mut recorder = TurnRecorder::new(&id);
-        recorder.seed_user_message(initial_user_message);
+        let mut recorder = TurnRecorder::new(&turn_id);
+        recorder.seed_user_message(initial_user_message.clone());
         let shared_recorder = Arc::new(Mutex::new(recorder));
-        let record_sink = shared_recorder.clone();
-
+        let root = ctx.data_root.clone();
+        let mut persist = super::InterruptedRunPersist {
+            thread_id: Some(thread_id.clone()),
+            recorder: Some(shared_recorder.clone()),
+            root: root.clone(),
+            project: ctx.project_id.clone(),
+            settled: false,
+        };
+        let _ = ctx.parent_sink.send(activity_update(
+            &selection, &thread_id, &id, &label, "started", None,
+        ));
         subagent_start_hook(&thread_id, &label, &ctx.project_id, &request);
-
-        let _ = parent_sink.send(AgentEvent::SubagentUpdate {
-            id: event_id.clone(),
-            label: event_label.clone(),
-            state: "started".into(),
-            detail: None,
-        });
-
-        let outcome = oleafly_agent::run_agent_with_pipeline(
-            &ctx.client,
-            &ctx.resolved,
-            request,
-            &ctx.config,
-            pipeline,
-            Some(steer_rx),
-            exec_owner_tagging_runner(exec_owner.clone(), ctx.tool_runner.clone()),
-            move |event| {
-                let state = match &event {
-                    AgentEvent::StepStart { .. } => Some(("thinking", None)),
-                    AgentEvent::ToolCallStart { name, .. } => Some(("tool", Some(name.clone()))),
-                    AgentEvent::Steered { .. } => Some(("interacted", None)),
-                    _ => None,
+        ctx.parent_token = token.clone();
+        let result: Result<String, String> = match &selection {
+            ChildSelection::BuiltIn(resolved) => {
+                let usage = super::usage::NativeUsageGuard::new(
+                    root.clone(),
+                    super::usage::UsageScope {
+                        session_id: thread_id.clone(),
+                        turn_id: turn_id.clone(),
+                        project_id: Some(ctx.project_id.clone()),
+                        task_id: None,
+                        parent_session_id: ctx.parent_session_id.clone(),
+                    },
+                    resolved,
+                );
+                let pipeline = oleafly_agent::ToolPipeline {
+                    registry: ctx.registry.clone(),
+                    gate: ctx.gate.clone(),
+                    token: token.clone(),
                 };
-                if let Some((state, detail)) = state {
-                    let _ = parent_sink.send(AgentEvent::SubagentUpdate {
-                        id: event_id.clone(),
-                        label: event_label.clone(),
-                        state: state.to_string(),
-                        detail,
-                    });
-                }
-                if let Ok(mut recorder) = record_sink.lock() {
-                    recorder.record(&event);
-                }
-            },
-        )
-        .await;
-
-        let (settled, output) = match &outcome {
-            Ok(outcome) => {
-                let text = if outcome.text.trim().is_empty() {
-                    outcome
-                        .error
-                        .clone()
-                        .unwrap_or_else(|| "The agent finished without a text answer.".into())
-                } else {
-                    outcome.text.clone()
+                let runner =
+                    multi_agent_tool_runner(ctx.clone(), manager.clone(), ctx.tool_runner.clone());
+                let runner = exec_owner_tagging_runner(exec_owner.clone(), runner);
+                let runner = super::allowlisted_tool_runner(
+                    request.tools.iter().map(|tool| tool.name.clone()).collect(),
+                    runner,
+                );
+                let outcome = tokio::select! {
+                    biased;
+                    _ = token.cancelled() => Err("The agent was interrupted.".into()),
+                    outcome = oleafly_agent::run_agent_with_pipeline(
+                        &ctx.client, resolved, request, &ctx.config, pipeline, Some(steer_rx), runner,
+                        |event| {
+                            usage.observe(&event);
+                            let update = match &event {
+                                AgentEvent::StepStart { .. } => Some(("thinking", None)),
+                                AgentEvent::ToolCallStart { name, .. } => Some(("tool", Some(name.clone()))),
+                                AgentEvent::Steered { .. } => Some(("interacted", None)),
+                                _ => None,
+                            };
+                            if let Some((state, detail)) = update {
+                                let _ = ctx.parent_sink.send(activity_update(&selection, &thread_id, &id, &label, state, detail));
+                            }
+                            lock(&shared_recorder).record(&event);
+                        },
+                    ) => outcome.map_err(super::tagged),
                 };
-                if outcome.error.is_some() {
-                    (SubagentStatus::Failed, text)
+                usage.finish(if token.is_cancelled() {
+                    "cancelled"
+                } else if matches!(&outcome, Ok(outcome) if outcome.error.is_none()) {
+                    "completed"
                 } else {
-                    (SubagentStatus::Done, text)
+                    "failed"
+                });
+                outcome.and_then(|outcome| {
+                    lock(&shared_recorder).finish(outcome.stopped_at_cap);
+                    if let Some(error) = outcome.error {
+                        Err(error)
+                    } else {
+                        Ok(outcome.text)
+                    }
+                })
+            }
+            ChildSelection::Acp(runtime) => {
+                persist.settled = true;
+                runtime
+                    .run(initial_user_message, &token, &ctx.parent_sink, &id, &label)
+                    .await
+            }
+        };
+        manager.cancel_descendants(&ctx.task_path).await;
+        if let Some(app) = &ctx.app {
+            use tauri::Manager;
+            if let Some(exec) = app.try_state::<crate::agent_exec::AgentExecState>() {
+                crate::agent_exec::cancel_run_and_wait(exec.inner(), &exec_owner).await;
+            }
+        }
+        let settled = if token.is_cancelled() {
+            SubagentStatus::Interrupted
+        } else if result.is_ok() {
+            SubagentStatus::Done
+        } else {
+            SubagentStatus::Failed
+        };
+        let output = result.unwrap_or_else(|error| error);
+        if matches!(selection, ChildSelection::BuiltIn(_)) {
+            let mut recorder = lock(&shared_recorder);
+            if token.is_cancelled() {
+                recorder.record(&AgentEvent::Error {
+                    message: "The agent was interrupted.".into(),
+                    retryable: false,
+                });
+            }
+            recorder.finish(false);
+            let record = recorder.snapshot().clone();
+            drop(recorder);
+            if crate::rollout::append_turn(&root, &thread_id, &record).is_ok() {
+                if let Ok(turns) = crate::rollout::read_turns(&root, &thread_id) {
+                    let _ = crate::library_db::resync_thread(
+                        &root,
+                        &thread_id,
+                        &ctx.project_id,
+                        &turns,
+                    );
                 }
             }
-            Err(_) => (
-                SubagentStatus::Failed,
-                "the agent run failed before finishing".into(),
-            ),
-        };
-        if token_for_check.is_cancelled() {
-            // Interrupt wins over a clean finish raced against cancel.
-            *lock_status(&status) = SubagentStatus::Interrupted;
-        } else {
-            *lock_status(&status) = settled;
+            persist.settled = true;
+            lock(&history).push(oleafly_agent::Message {
+                role: oleafly_agent::Role::Assistant,
+                content: vec![oleafly_agent::ContentPart::text(output.clone())],
+            });
         }
         *lock_output(&final_output) = Some(output.clone());
-
-        let stopped_at_cap = matches!(&outcome, Ok(outcome) if outcome.stopped_at_cap);
-        {
-            let mut recorder = lock(&shared_recorder);
-            recorder.finish(stopped_at_cap);
-            let record = recorder.snapshot().clone();
-            if let Ok(root) = crate::paths::oleafly_root() {
-                if crate::rollout::append_turn(&root, &thread_id, &record).is_ok() {
-                    if let Ok(turns) = crate::rollout::read_turns(&root, &thread_id) {
-                        let _ = crate::library_db::resync_thread(
-                            &root,
-                            &thread_id,
-                            &ctx.project_id,
-                            &turns,
-                        );
-                    }
-                }
-            }
-        }
-
+        *lock_status(&status) = settled;
         subagent_stop_hook(&thread_id, &label, &output, settled);
-
-        let _ = sink_for_final.send(AgentEvent::SubagentUpdate {
-            id,
-            label,
-            state: match *lock_status(&status) {
-                SubagentStatus::Done => "done".into(),
-                SubagentStatus::Failed => "error".into(),
-                SubagentStatus::Interrupted => "interrupted".into(),
-                SubagentStatus::Running => "done".into(),
+        let _ = ctx.parent_sink.send(activity_update(
+            &selection,
+            &thread_id,
+            &id,
+            &label,
+            match settled {
+                SubagentStatus::Done => "done",
+                SubagentStatus::Failed => "error",
+                SubagentStatus::Interrupted => "interrupted",
+                SubagentStatus::Running => "thinking",
             },
-            detail: Some(bounded_output(&output, 240)),
-        });
+            Some(bounded_output(&output, 240)),
+        ));
         let _ = done_tx.send(true);
     })
+}
+
+fn activity_update(
+    selection: &ChildSelection,
+    thread_id: &str,
+    id: &str,
+    label: &str,
+    state: &str,
+    detail: Option<String>,
+) -> AgentEvent {
+    let (runtime, session_id, provider_id, model_id, agent_id) = match selection {
+        ChildSelection::BuiltIn(resolved) => (
+            "built-in",
+            Some(thread_id.into()),
+            Some(resolved.provider_id.clone()),
+            Some(resolved.model_id.clone()),
+            None,
+        ),
+        ChildSelection::Acp(runtime) => (
+            "acp",
+            runtime.session_id(),
+            None,
+            runtime.selected_model(),
+            Some(runtime.agent_id.clone()),
+        ),
+    };
+    AgentEvent::SubagentUpdate {
+        id: id.into(),
+        label: label.into(),
+        state: state.into(),
+        detail,
+        runtime: Some(runtime.into()),
+        session_id,
+        provider_id,
+        model_id,
+        agent_id,
+    }
+}
+
+fn message_text(message: &oleafly_agent::Message) -> String {
+    message
+        .content
+        .iter()
+        .filter_map(|part| match part {
+            oleafly_agent::ContentPart::Text { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// SubagentStart hook: the audited payload fields, routed through the
@@ -867,7 +1164,16 @@ pub async fn dispatch(
                 Ok(path) => path,
                 Err(error) => return Some(Err(error)),
             };
-            match manager.spawn(ctx, &args.task_name, &args.prompt, args.label) {
+            let selection = RuntimeSelection {
+                runtime: args.runtime,
+                provider_id: args.provider_id,
+                model_id: args.model_id,
+                agent_id: args.agent_id,
+            };
+            match manager
+                .spawn(ctx, &args.task_name, &args.prompt, args.label, selection)
+                .await
+            {
                 Ok(id) => Some(Ok(ToolOutput::text(
                     serde_json::json!({ "id": id, "taskPath": path, "status": "running" })
                         .to_string(),
@@ -944,6 +1250,7 @@ pub async fn dispatch(
             Some(
                 manager
                     .interrupt(&args.agent)
+                    .await
                     .map(|result| ToolOutput::text(result.to_string())),
             )
         }
@@ -962,6 +1269,7 @@ pub async fn dispatch(
             Some(
                 manager
                     .close(&args.agent)
+                    .await
                     .map(|result| ToolOutput::text(result.to_string())),
             )
         }
@@ -980,7 +1288,7 @@ pub async fn dispatch(
                 return Some(Err("spawn_subagents runs 1 to 4 tasks per call".into()));
             }
             let mut ids = Vec::new();
-            for task in &tasks {
+            for (index, task) in tasks.iter().enumerate() {
                 let prompt = task
                     .get("prompt")
                     .and_then(Value::as_str)
@@ -990,7 +1298,16 @@ pub async fn dispatch(
                     .get("label")
                     .and_then(Value::as_str)
                     .map(str::to_string);
-                match manager.spawn(ctx, "task", &prompt, label) {
+                match manager
+                    .spawn(
+                        ctx,
+                        &format!("task_{}_{}", next_agent_id(), index),
+                        &prompt,
+                        label,
+                        RuntimeSelection::default(),
+                    )
+                    .await
+                {
                     Ok(id) => ids.push(id),
                     Err(error) => return Some(Err(error)),
                 }
@@ -1042,6 +1359,119 @@ pub fn dispatch_error(message: String) -> ToolOutput {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn followup_preserves_child_identity_model_and_native_usage() {
+        use axum::{routing::post, Json, Router};
+        let data = tempfile::tempdir().unwrap();
+        let seen = Arc::new(Mutex::new(Vec::<Value>::new()));
+        let request_log = seen.clone();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let app = Router::new().route("/v1/chat/completions", post(move |Json(request): Json<Value>| {
+            lock(&request_log).push(request);
+            async {
+                ([("content-type", "text/event-stream")],
+                 "data: {\"choices\":[{\"delta\":{\"content\":\"answer\"}}]}\n\ndata: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":12,\"completion_tokens\":3}}\n\ndata: [DONE]\n\n")
+            }
+        }));
+        let server = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+        let ctx = RunContext {
+            app: None,
+            data_root: data.path().into(),
+            session_id: "parent-session".into(),
+            parent_session_id: None,
+            client: reqwest::Client::new(),
+            resolved: Resolved {
+                provider_id: "test-provider".into(),
+                model_id: "chosen-model".into(),
+                credential: String::new(),
+                auth: None,
+                wire: oleafly_agent::Wire::OpenAiChat {
+                    base_url: format!("http://{address}/v1"),
+                    reasoning_content: false,
+                },
+            },
+            request_template: CompletionRequest::prompt("system", "parent"),
+            config: RunConfig::default(),
+            registry: ToolRegistry::default(),
+            gate: ToolGate::new(),
+            parent_token: CancellationToken::new(),
+            tool_runner: Arc::new(|_| Box::pin(async { ToolOutput::text("unused") })),
+            parent_sink: ActivitySink::new(tauri::ipc::Channel::new(|_| Ok(())), None),
+            project_id: "project".into(),
+            depth: 0,
+            task_path: "/root".into(),
+            multi_agent: MultiAgentConfig::default(),
+        };
+        let manager = Arc::new(SubagentManager::default());
+        let id = manager
+            .spawn(
+                &ctx,
+                "review",
+                "first task",
+                None,
+                RuntimeSelection::default(),
+            )
+            .await
+            .unwrap();
+        let first = manager
+            .wait(
+                std::slice::from_ref(&id),
+                Some(5000),
+                None,
+                &ctx.multi_agent,
+            )
+            .await
+            .unwrap();
+        assert_eq!(first["status"], "done");
+        let followup = manager
+            .followup_task(&ctx, "/root/review", "second task")
+            .await
+            .unwrap();
+        assert_eq!(followup["id"], id);
+        let second = manager
+            .wait(
+                std::slice::from_ref(&id),
+                Some(5000),
+                None,
+                &ctx.multi_agent,
+            )
+            .await
+            .unwrap();
+        assert_eq!(second["status"], "done");
+        {
+            let requests = lock(&seen);
+            assert_eq!(requests.len(), 2);
+            assert_eq!(requests[0]["model"], "chosen-model");
+            assert_eq!(requests[1]["model"], "chosen-model");
+            assert!(requests[1]["messages"].to_string().contains("first task"));
+            assert!(requests[1]["messages"].to_string().contains("second task"));
+        }
+        let db = crate::library_db::open(data.path()).unwrap();
+        let row: (i64, i64, String) = db.query_row(
+            "SELECT COUNT(*), COUNT(DISTINCT session_id), MIN(parent_session_id) FROM usage_records", [],
+            |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?)),
+        ).unwrap();
+        assert_eq!(row, (2, 1, "parent-session".into()));
+        manager.close(&id).await.unwrap();
+        server.abort();
+    }
+
+    #[test]
+    fn spawn_schema_accepts_explicit_runtime_and_rejects_unknown_options() {
+        let args: SpawnAgentArgs = serde_json::from_value(serde_json::json!({
+            "task_name":"check", "prompt":"check it", "runtime":"acp", "agentId":"codex", "modelId":"offered-model",
+        })).unwrap();
+        assert_eq!(args.agent_id.as_deref(), Some("codex"));
+        assert_eq!(args.runtime.as_deref(), Some("acp"));
+        assert!(serde_json::from_value::<SpawnAgentArgs>(serde_json::json!({
+            "task_name":"check", "prompt":"check it", "fakeSetting":true,
+        }))
+        .is_err());
+    }
 
     #[test]
     fn canonical_task_paths_join_like_the_audited_core() {
@@ -1104,6 +1534,9 @@ mod tests {
             handle: tokio::spawn(async {}),
             done_rx,
             done_tx,
+            selection: None,
+            context: None,
+            history: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -1112,7 +1545,14 @@ mod tests {
         let manager = SubagentManager::default();
         let running_token = {
             let mut entry = dummy_entry("agent-1", SubagentStatus::Running);
-            entry.handle = tokio::spawn(std::future::pending());
+            let cancelled = entry.token.clone();
+            let stopped = entry.status.clone();
+            let done = entry.done_tx.clone();
+            entry.handle = tokio::spawn(async move {
+                cancelled.cancelled().await;
+                *lock_status(&stopped) = SubagentStatus::Interrupted;
+                let _ = done.send(true);
+            });
             let token = entry.token.clone();
             lock(&manager.agents).insert("agent-1".into(), entry);
             token
@@ -1146,7 +1586,10 @@ mod tests {
             recorder.lock().unwrap().push(owner.to_string());
         }));
         let mut running = dummy_entry("agent-1", SubagentStatus::Running);
-        running.handle = tokio::spawn(std::future::pending());
+        let token = running.token.clone();
+        running.handle = tokio::spawn(async move {
+            token.cancelled().await;
+        });
         lock(&manager.agents).insert("agent-1".into(), running);
         // A finished child must not have its owner cancelled by a stop-all.
         lock(&manager.agents).insert(
@@ -1159,7 +1602,7 @@ mod tests {
 
         // Closing the finished child still cancels its owner (its process may
         // outlive the agent), and does so exactly once.
-        manager.close("agent-2").unwrap();
+        manager.close("agent-2").await.unwrap();
         assert_eq!(
             cancelled.lock().unwrap().as_slice(),
             ["external:agent-1", "external:agent-2"]
@@ -1170,7 +1613,14 @@ mod tests {
     async fn a_missing_canceller_never_panics_on_interrupt() {
         let manager = SubagentManager::default();
         let mut entry = dummy_entry("agent-1", SubagentStatus::Running);
-        entry.handle = tokio::spawn(std::future::pending());
+        let cancelled = entry.token.clone();
+        let stopped = entry.status.clone();
+        let done = entry.done_tx.clone();
+        entry.handle = tokio::spawn(async move {
+            cancelled.cancelled().await;
+            *lock_status(&stopped) = SubagentStatus::Interrupted;
+            let _ = done.send(true);
+        });
         lock(&manager.agents).insert("agent-1".into(), entry);
         assert_eq!(manager.interrupt_all(), 1);
     }
@@ -1190,10 +1640,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn dropping_a_manager_aborts_running_children() {
+    async fn dropping_a_manager_cancels_running_children() {
         let manager = SubagentManager::default();
         let mut entry = dummy_entry("agent-1", SubagentStatus::Running);
-        entry.handle = tokio::spawn(std::future::pending());
+        let cancelled = entry.token.clone();
+        let stopped = entry.status.clone();
+        let done = entry.done_tx.clone();
+        entry.handle = tokio::spawn(async move {
+            cancelled.cancelled().await;
+            *lock_status(&stopped) = SubagentStatus::Interrupted;
+            let _ = done.send(true);
+        });
         let abort = entry.handle.abort_handle();
         lock(&manager.agents).insert("agent-1".into(), entry);
 

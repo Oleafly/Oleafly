@@ -1,3 +1,6 @@
+import { Extension } from "@tiptap/core";
+import { Plugin } from "@tiptap/pm/state";
+import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import {
   useCallback,
   useEffect,
@@ -71,6 +74,17 @@ function isMarkdownPath(path: string): boolean {
 }
 
 const FLUSH_DEBOUNCE_MS = 300;
+const EXTERNAL_DOCUMENT_SYNC = "oleaflyExternalDocumentSync";
+const ExternalMutationGate = Extension.create({
+  name: "externalMutationGate",
+  addProseMirrorPlugins() {
+    return [new Plugin({
+      filterTransaction: (transaction) => !transaction.docChanged ||
+        transaction.getMeta(EXTERNAL_DOCUMENT_SYNC) === true ||
+        !isEditorMutationLocked(useFilesStore.getState().projectId),
+    })];
+  },
+});
 const MARKDOWN_FRONTMATTER_RE = /^(---\r?\n[\s\S]*?\r?\n---)\r?\n?/u;
 
 function markdownMathRanges(source: string) {
@@ -82,7 +96,7 @@ function markdownMathRanges(source: string) {
 }
 
 function replaceContentAndResetHistory(editor: Editor, content: Parameters<Editor["commands"]["setContent"]>[0]) {
-  editor.chain().setContent(content, { emitUpdate: false }).setMeta("addToHistory", false).run();
+  editor.chain().setContent(content, { emitUpdate: false }).setMeta("addToHistory", false).setMeta(EXTERNAL_DOCUMENT_SYNC, true).run();
 
   // Loading a file is a synchronization boundary, not a user edit. Reinitialize
   // plugin state so Undo cannot erase the loaded document or replay edits from
@@ -436,6 +450,7 @@ function VisualProofreadingPopover({
 }
 
 export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
+  const synchronizeRef = useRef<() => void>(() => {});
   const projectId = useFilesStore((s) => s.projectId);
   const activePath = useFilesStore((s) => s.activePath);
   const docVersion = useFilesStore((s) => s.docVersion);
@@ -529,6 +544,7 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
   const editor = useEditor({
     extensions: [
       ...WYSIWYG_EXTENSIONS,
+      ExternalMutationGate,
       VisualMathPreview,
       VisualProjectIntelligence,
       VisualProofreading,
@@ -597,6 +613,11 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
 
   useEffect(() => {
     setWysiwygEditor(editor ?? null);
+    const unregisterMutationOwner = editor ? registerEditorMutationOwner({
+      projectId: () => projectIdRef.current,
+      setLocked: (locked) => editor.setEditable(!locked, false),
+      reconcile: () => synchronizeRef.current(),
+    }) : undefined;
     setWysiwygFlushController(
       editor
         ? () => {
@@ -618,6 +639,7 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
         : null,
     );
     return () => {
+      unregisterMutationOwner?.();
       setWysiwygProjectNavigation(null);
       setWysiwygFlushController(null);
       setWysiwygEditor(null);
@@ -688,9 +710,16 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
     }
   }, [editor, intelligenceState, activePath]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: wysiwyg/docVersion are re-sync triggers, not read directly; the store is read imperatively below
-  useEffect(() => {
-    if (!editor || !activePath) return;
+  synchronizeRef.current = () => {
+    const activePath = useFilesStore.getState().activePath;
+    if (!editor) return;
+    if (!activePath) {
+      visualDirtyRef.current = false;
+      lastSyncedPathRef.current = null;
+      lastSyncedTextRef.current = "";
+      replaceContentAndResetHistory(editor, { type: "doc", content: [{ type: "paragraph" }] });
+      return;
+    }
     const raw = useFilesStore.getState().files[activePath]?.content ?? "";
     if (
       activePath === lastSyncedPathRef.current &&
@@ -731,6 +760,13 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
       editor,
       intelligenceRevisionRef.current,
     );
+  };
+  useEffect(() => {
+    if (!editor) return;
+    void activePath;
+    void wysiwyg;
+    void docVersion;
+    synchronizeRef.current();
   }, [editor, activePath, wysiwyg, docVersion]);
 
   useEffect(() => {
@@ -756,6 +792,7 @@ export function WysiwygEditor({ wysiwyg }: { wysiwyg: boolean }) {
   }, [editor, activePath, projectId, saveFile, flush]);
 
   const onPreambleChange = (value: string) => {
+    if (isEditorMutationLocked(projectIdRef.current)) return;
     setPreamble(value);
     preambleRef.current = value;
     visualDirtyRef.current = true;

@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import { FileText, GitBranch, Plug, Search, SearchCode, ShieldCheck } from "lucide-react";
+import { FileText, FlaskConical, GitBranch, Plug, Search, SearchCode, ShieldCheck } from "lucide-react";
 import { registerRailTab } from "@oleafly/registry";
 import { useGitStatusStore } from "@/store/git-status";
 import { useMcpActivityStore } from "@/store/mcp-activity";
@@ -14,7 +14,19 @@ const ReferencesPanel = lazy(() =>
   })),
 );
 
+const ResearchWorkspacePanel = lazy(() =>
+  import("@/components/research/ResearchWorkspacePanel").then((module) => ({ default: module.ResearchWorkspacePanel })),
+);
+
 export function registerRailTabs() {
+  registerRailTab({
+    id: "research",
+    label: "Research workspace",
+    icon: FlaskConical,
+    section: "assist",
+    order: 60,
+    panel: ResearchWorkspacePanel,
+  });
   registerRailTab({
     id: "files",
     label: "Source Tree",

@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import { FileText, Loader2, Settings2, X } from "lucide-react";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
@@ -85,6 +86,17 @@ function ImageFileView({ projectId, path }: { projectId: string; path: string })
 const DiagramMainFileView = lazy(() => import("./DiagramMainFileView"));
 
 export function Editor() {
+  const interactionRoot = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => registerEditorMutationOwner({
+    projectId: () => useFilesStore.getState().projectId,
+    setLocked: (locked) => {
+      const element = interactionRoot.current;
+      if (!element) return;
+      element.inert = locked;
+      if (locked) element.setAttribute("aria-busy", "true");
+      else element.removeAttribute("aria-busy");
+    },
+  }), []);
   const openTabs = useFilesStore((s) => s.openTabs);
   const activePath = useFilesStore((s) => s.activePath);
   const setActive = useFilesStore((s) => s.setActive);
@@ -188,6 +200,7 @@ export function Editor() {
 
   return (
     <div
+      ref={interactionRoot}
       data-tour="project-editor"
       className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background"
     >

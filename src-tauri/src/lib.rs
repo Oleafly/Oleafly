@@ -1,3 +1,4 @@
+mod acp;
 mod agent;
 mod agent_config;
 mod agent_exec;
@@ -49,6 +50,11 @@ mod project_sources;
 mod protocol;
 mod quit_gate;
 mod rag;
+mod research_lifecycle;
+mod research_mcp;
+mod research_tasks;
+mod research_workspace;
+mod usage_report;
 // Thread persistence; the thread-store commands land on top of it next.
 #[allow(dead_code)]
 mod rollout;
@@ -95,6 +101,8 @@ pub fn run() {
         .manage(language_service::LanguageServiceState::default())
         .plugin(language_service::lifecycle_plugin())
         .plugin(terminal::lifecycle_plugin())
+        .plugin(acp::lifecycle_plugin())
+        .plugin(research_lifecycle::lifecycle_plugin())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_dialog::init());
@@ -144,6 +152,7 @@ pub fn run() {
 
     builder
         .manage(AppState::default())
+        .manage(research_tasks::ResearchTaskState::default())
         .manage(agent::AgentState::default())
         .manage(agent_exec::AgentExecState::default())
         .manage(agent_server::AgentServerState::default())
@@ -174,6 +183,25 @@ pub fn run() {
             }
         })
         .setup(|app| {
+            acp::attach(app.handle()).map_err(std::io::Error::other)?;
+            agent::usage::attach_acp_usage(app.handle()).map_err(std::io::Error::other)?;
+            agent::task_runtime::register_task_runtimes(app.handle())
+                .map_err(std::io::Error::other)?;
+            {
+                use tauri::Manager;
+                let handle = app.handle().clone();
+                handle
+                    .state::<research_tasks::ResearchTaskState>()
+                    .attach_app(handle.clone());
+                tauri::async_runtime::spawn(async move {
+                    let tasks = handle.state::<research_tasks::ResearchTaskState>();
+                    if let Err(error) = tasks.recover(handle.state::<AppState>().inner()).await {
+                        let _ = crate::project::append_app_log(format!(
+                            "Research task recovery failed: {error}"
+                        ));
+                    }
+                });
+            }
             crate::stall_trace::mark_ui_thread();
             crate::stall_trace::start_watchdog();
             if std::env::var("OLEAFLY_E2E_WINDOW").is_err() {
@@ -259,6 +287,33 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(traced_commands(tauri::generate_handler![
+            research_tasks::research_task_list,
+            research_tasks::research_task_create,
+            research_tasks::research_task_edit,
+            research_tasks::research_task_start,
+            research_tasks::research_task_cancel,
+            research_tasks::research_task_retry,
+            research_tasks::research_task_events,
+            research_tasks::research_task_file_preview,
+            research_tasks::research_task_artifact_preview,
+            research_tasks::research_task_apply,
+            research_tasks::research_task_accept_result,
+            acp::commands::acp_catalog,
+            acp::commands::acp_registry_search,
+            acp::commands::acp_register,
+            acp::commands::acp_remove_agent,
+            acp::commands::acp_install,
+            acp::commands::acp_start,
+            acp::commands::acp_reconnect,
+            acp::commands::acp_prompt,
+            acp::commands::acp_cancel,
+            acp::commands::acp_disconnect,
+            acp::commands::acp_authenticate,
+            acp::commands::acp_set_model,
+            acp::commands::acp_permission,
+            acp::commands::acp_sessions,
+            acp::commands::acp_snapshot,
+            acp::commands::acp_events,
             agent::agent_complete,
             agent::agent_cancel,
             agent::agent_cancel_all,
@@ -342,6 +397,19 @@ pub fn run() {
             library_db::chats_search,
             library_db::usage_record,
             library_db::usage_summary,
+            usage_report::record_usage_event,
+            usage_report::usage_report_query,
+            usage_report::usage_estimate_update,
+            research_workspace::get_research_workspace,
+            research_workspace::add_research_root,
+            research_workspace::update_research_root,
+            research_workspace::remove_research_root,
+            research_workspace::list_research_root_files,
+            research_workspace::read_research_root_file,
+            research_workspace::write_research_root_file,
+            research_workspace::research_root_capabilities,
+            research_workspace::preview_research_project,
+            research_workspace::create_research_project,
             library_db::budget_get_cmd,
             library_db::budget_set_cmd,
             terminal::term_open,
@@ -495,6 +563,7 @@ pub fn run() {
             mcp::client::mcp_server_set_enabled,
             mcp::client::mcp_server_validate,
             mcp::source_import::mcp_import_source,
+            mcp::registry::mcp_registry_search,
             mcp::client::mcp_agent_tools_list,
             mcp::client::mcp_agent_tool_authorize,
             mcp::client::mcp_agent_tool_call,

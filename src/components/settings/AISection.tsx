@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   agentListModels,
@@ -49,13 +49,15 @@ import {
   type AddCustomProviderInput,
   type CustomProviderEditTarget,
 } from "./ai/AddCustomProviderDialog";
-import { editableKeys, withKey, withoutKey } from "./ai-keys";
+import { editableKeys, mergeKeyChanges, withKey, withoutKey } from "./ai-keys";
 import { agentErrorKind } from "@/lib/agent-backend";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import {
   aiSettingsDestination,
   type AiSettingsTab,
 } from "./ai-settings-navigation";
+
+const AcpAgentsTab = lazy(() => import("./ai/AcpAgentsTab").then((module) => ({ default: module.AcpAgentsTab })));
 
 type DiscoveryResult =
   | { ok: true; models: ProviderModel[] }
@@ -285,14 +287,16 @@ export function AISection() {
   }, [savedOllamaHost]);
 
   const persist = async (next: AppConfig) => {
-    let merged = next;
     const changed = changedConfigFields(cfg, next);
-    try {
-      const latest = await getConfig();
-      merged = { ...latest, ...changed } as AppConfig;
-    } catch {}
+    const latest = await getConfig();
+    const merged = {
+      ...latest,
+      ...changed,
+      ai_keys: mergeKeyChanges(cfg.ai_keys, next.ai_keys, latest.ai_keys ?? {}),
+    } as AppConfig;
     await setConfig(merged);
     setCfg(merged);
+    setSavedKeys(merged.ai_keys);
     // Notifies listeners outside this component tree, e.g. the chat panel.
     window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: merged }));
   };
@@ -311,7 +315,6 @@ export function AISection() {
         ai_model: model,
       });
       setKeys(editableKeys(nextKeys));
-      setSavedKeys(nextKeys);
       setMsg({ ok: true, text: `Ollama connected · ${model}` });
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
@@ -364,7 +367,6 @@ export function AISection() {
       };
       await persist(next);
       setKeys({ ...editableKeys(nextKeys), [id]: "" });
-      setSavedKeys(nextKeys);
       setStatus((s) => ({ ...s, [id]: "valid" }));
       const label = provider?.name ?? custom?.name ?? id;
       const validated = res.ok && supportsModelDiscovery(id, Boolean(custom));
@@ -416,7 +418,6 @@ export function AISection() {
       await persist(next);
       if (apiKey) {
         setKeys((k) => ({ ...k, [id]: apiKey }));
-        setSavedKeys((k) => ({ ...k, [id]: apiKey }));
       }
       setOpenProviders((m) => ({ ...m, [id]: true }));
       setMsg({ ok: true, text: `${name} added.` });
@@ -481,7 +482,6 @@ export function AISection() {
           return { ok: false, message: KEY_NOT_KEPT };
         }
         setKeys((k) => ({ ...k, [id]: "" }));
-        setSavedKeys((k) => ({ ...k, [id]: apiKey }));
       }
       setMsg({
         ok: true,
@@ -525,7 +525,6 @@ export function AISection() {
       };
       await persist(next);
       setKeys(editableKeys(nextKeys));
-      setSavedKeys(nextKeys);
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
     } finally {
@@ -638,7 +637,6 @@ export function AISection() {
       };
       await persist(next);
       setKeys(editableKeys(nextKeys));
-      setSavedKeys(nextKeys);
       setMsg({
         ok: true,
         text: wasActive
@@ -673,6 +671,9 @@ export function AISection() {
             className="shrink-0"
           >
             Providers and keys
+          </TabsTrigger>
+          <TabsTrigger value="agents" data-testid="ai-settings-tab-agents" className="shrink-0">
+            CLI agents
           </TabsTrigger>
           <TabsTrigger
             value="instructions"
@@ -735,6 +736,12 @@ export function AISection() {
             <ProjectApprovals />
             <ProjectBudget key={preferencesResetVersion} />
           </div>
+        </TabsContent>
+
+        <TabsContent value="agents">
+          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading agents…</p>}>
+            <AcpAgentsTab projectId={projectId ?? undefined} />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="instructions">

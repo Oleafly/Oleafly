@@ -82,6 +82,7 @@ mod tests {
         budget.record(Usage {
             input: 10,
             output: 10,
+            ..Usage::default()
         });
         assert_eq!(budget.input, u64::MAX);
         assert_eq!(budget.output, 15);
@@ -93,6 +94,7 @@ mod tests {
         unlimited.record(Usage {
             input: 1_000,
             output: 0,
+            ..Usage::default()
         });
         assert!(!unlimited.token_limit_reached());
         assert_eq!(unlimited.remaining(), None);
@@ -105,12 +107,14 @@ mod tests {
         limited.record(Usage {
             input: 999,
             output: 0,
+            ..Usage::default()
         });
         assert!(!limited.token_limit_reached());
         assert_eq!(limited.remaining(), Some(1));
         limited.record(Usage {
             input: 1,
             output: 0,
+            ..Usage::default()
         });
         assert!(limited.token_limit_reached());
         assert_eq!(limited.remaining(), Some(0));

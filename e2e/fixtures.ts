@@ -227,7 +227,7 @@ function createNativeTest(dismissTours: boolean) {
   const port = Number(process.env.TAURI_PLAYWRIGHT_TCP_PORT ?? 6274);
   const socket = process.env.TAURI_PLAYWRIGHT_SOCKET ?? "/tmp/tauri-playwright.sock";
   const test = base.extend<{ tauriPage: TauriPage }>({
-    tauriPage: async ({}, use) => {
+    tauriPage: async ({}, use, testInfo) => {
       if (bridgeStoppedAnswering) throw new Error(bridgeStoppedAnswering);
       const client = failFastOnBridgeSilence(
         process.platform === "win32"
@@ -251,7 +251,10 @@ function createNativeTest(dismissTours: boolean) {
       const page = adaptForPackagedRuntime(new TauriPage(client));
       page.setDefaultTimeout(20_000);
       const firstPage = !nativePageOpened;
-      if (nativePageOpened) {
+      const inheritedProject = firstPage && await page.evaluate<boolean>(
+        `document.querySelector('button[aria-label="Home"]') !== null`,
+      );
+      if (nativePageOpened || testInfo.retry > 0 || inheritedProject) {
         await reloadNativePage(page);
       }
       await ensureNativePageReady(page);
@@ -266,6 +269,9 @@ function createNativeTest(dismissTours: boolean) {
           localStorage.setItem("oleafly.webBrowser", "1");
           localStorage.setItem("oleafly.openInTree", "0");
           localStorage.setItem("oleafly:compile:mode", "normal");
+          localStorage.setItem("oleafly.appFontSize", "16");
+          localStorage.setItem("oleafly.appFont", "");
+          localStorage.setItem("oleafly.assistant-runtime.v1", '{"state":{"runtime":"built-in"},"version":0}');
           return true;
         })()`);
         await reloadNativePage(page);

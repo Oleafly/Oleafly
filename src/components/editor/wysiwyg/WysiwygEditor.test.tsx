@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
 import { WysiwygEditor } from "./WysiwygEditor";
 import { useFilesStore } from "@/store/files";
+import { acquireEditorMutationLease } from "@/lib/editor-mutation-lease";
 import {
   flushWysiwygPendingEdits,
   invalidateWysiwygProjectSession,
@@ -375,4 +376,31 @@ describe("WysiwygEditor", () => {
     render(<WysiwygEditor wysiwyg={true} />);
     expect(screen.queryByText("Show document preamble")).not.toBeInTheDocument();
   });
+});
+
+
+it("blocks visual commands while leased and flushes edits made before acquisition", async () => {
+  useFilesStore.setState({ projectId: "lease-project", activePath: "main.tex", files: { "main.tex": { content: LATEX_A, dirty: false } } });
+  const mounted = render(<WysiwygEditor wysiwyg={true} />);
+  const editor = requireEditor();
+  act(() => { editor.commands.insertContentAt(editor.state.doc.content.size, " Pending"); });
+  const lease = acquireEditorMutationLease("lease-project");
+  try {
+    act(() => {
+      flushWysiwygPendingEdits();
+      editor.commands.insertContentAt(editor.state.doc.content.size, " Blocked");
+    });
+    expect(useFilesStore.getState().files["main.tex"].content).toContain("Pending");
+    expect(editor.getText()).not.toContain("Blocked");
+    await act(async () => {
+      useFilesStore.setState({ files: { "main.tex": { content: LATEX_B, dirty: false } } });
+      await lease.reconcile();
+    });
+    expect(editor.getText()).toContain("Second");
+    expect(editor.getText()).not.toContain("Pending");
+  } finally {
+    lease.release();
+    mounted.unmount();
+    useFilesStore.setState({ projectId: null });
+  }
 });

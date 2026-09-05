@@ -22,6 +22,7 @@ const TRANSCRIPT = [
 const mocks = vi.hoisted(() => ({
   stop: vi.fn(),
   read: vi.fn(),
+  acpEvents: vi.fn(),
 }));
 
 vi.mock("@/lib/agent-backend", () => ({
@@ -33,6 +34,10 @@ vi.mock("@/lib/agent-backend", () => ({
     mocks.read(id);
     return Promise.resolve(TRANSCRIPT);
   },
+}));
+
+vi.mock("@/lib/acp", () => ({
+  acpEvents: (...args: unknown[]) => mocks.acpEvents(...args),
 }));
 
 function seedChat(chatId: string, events: AgentEvent[]) {
@@ -47,6 +52,7 @@ describe("SubagentActivity", () => {
     useAgentTurnsStore.getState().reset();
     mocks.stop.mockClear();
     mocks.read.mockClear();
+    mocks.acpEvents.mockReset();
   });
 
   it("renders nothing until a turn records subagent activity", () => {
@@ -110,5 +116,110 @@ describe("SubagentActivity", () => {
     render(<SubagentActivity chatId="chat-1" streaming={true} activeRunId={() => null} />);
     expect(screen.getByTestId("subagent-chip-agent-1")).toBeTruthy();
     expect(screen.getByTestId("subagent-chip-agent-2")).toBeTruthy();
+  });
+
+  it("loads an ACP child transcript from its recorded project and session", async () => {
+    const openSession = vi.fn();
+    mocks.acpEvents.mockResolvedValue({
+      hasMore: false,
+      events: [
+        {
+          sessionId: "acp-session",
+          projectId: "project-1",
+          agentId: "codex",
+          modelId: "research-model",
+          taskId: null,
+          turnId: "turn-1",
+          sequence: 1,
+          timestamp: 1,
+          kind: "agent_message_chunk",
+          data: { content: { type: "text", text: "I found the reported result." } },
+        },
+        {
+          sessionId: "acp-session",
+          projectId: "project-1",
+          agentId: "codex",
+          modelId: "research-model",
+          taskId: null,
+          turnId: "turn-1",
+          sequence: 2,
+          timestamp: 2,
+          kind: "tool_call",
+          data: { toolCallId: "read-1", title: "Read source", status: "in_progress" },
+        },
+        {
+          sessionId: "acp-session",
+          projectId: "project-1",
+          agentId: "codex",
+          modelId: "research-model",
+          taskId: null,
+          turnId: "turn-1",
+          sequence: 3,
+          timestamp: 3,
+          kind: "tool_call_update",
+          data: {
+            toolCallId: "read-1",
+            title: "Read source",
+            status: "completed",
+            content: [{ type: "content", content: { type: "text", text: "Page 4 excerpt" } }],
+          },
+        },
+      ],
+    });
+    seedChat("chat-1", [{
+      kind: "subagentUpdate",
+      id: "agent-1",
+      label: "survey",
+      state: "done",
+      detail: "finished",
+      runtime: "acp",
+      sessionId: "acp-session",
+      providerId: "acp",
+      modelId: "research-model",
+      agentId: "codex",
+    }]);
+
+    render(
+      <SubagentActivity
+        chatId="chat-1"
+        projectId="project-1"
+        streaming={false}
+        activeRunId={() => null}
+        onOpenSession={openSession}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+
+    await waitFor(() => expect(mocks.acpEvents).toHaveBeenCalledWith(
+      "project-1",
+      "acp-session",
+      0,
+      300,
+    ));
+    await waitFor(() => expect(screen.getByText("I found the reported result.")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: /Worked through 1 step/ }));
+    expect(document.querySelector('[data-tool-name="Read source"]')).not.toBeNull();
+    expect(screen.getByText("codex · acp · research-model")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Open task" }));
+    expect(openSession).toHaveBeenCalledWith("acp-session", "acp");
+    expect(mocks.read).not.toHaveBeenCalled();
+  });
+
+  it("uses a recorded built-in session instead of constructing one", async () => {
+    seedChat("chat-1", [{
+      kind: "subagentUpdate",
+      id: "agent-1",
+      label: "survey",
+      state: "done",
+      detail: "finished",
+      runtime: "built-in",
+      sessionId: "thread-recorded",
+      providerId: null,
+      modelId: null,
+      agentId: null,
+    }]);
+    render(<SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} />);
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+    await waitFor(() => expect(mocks.read).toHaveBeenCalledWith("thread-recorded"));
   });
 });
