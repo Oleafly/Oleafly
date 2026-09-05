@@ -53,6 +53,14 @@ test("saving one provider keeps every other stored credential", async ({ tauriPa
       await setConfig({ ...cfg, ai_keys: { ...(cfg.ai_keys ?? {}), openai: ${JSON.stringify(seeded)} } });
     })()
   `);
+  const afterSeed = await tauriPage.evaluate<string[]>(`
+    (async () => {
+      const { getConfig } = await import("/src/lib/tauri.ts");
+      const cfg = await getConfig();
+      return Object.keys(cfg.ai_keys ?? {}).sort();
+    })()
+  `);
+  expect(afterSeed, "the seeded key must be stored before the settings screen opens").toContain("openai");
 
   await openSettings(tauriPage, "ai");
   await tauriPage.click('[data-testid="ai-provider-card-perplexity"] button[aria-expanded]');
@@ -70,7 +78,7 @@ test("saving one provider keeps every other stored credential", async ({ tauriPa
       return Object.keys(cfg.ai_keys ?? {}).sort();
     })()
   `);
-  expect(stored).toContain("openai");
+  expect(stored, `keys after saving perplexity: ${JSON.stringify(stored)}; before: ${JSON.stringify(afterSeed)}`).toContain("openai");
   expect(stored).toContain("perplexity");
 
   const root = process.env.OLEAFLY_DATA_DIR;

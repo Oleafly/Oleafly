@@ -6,7 +6,10 @@ import {
   CheckCircle2,
   ChevronRight,
   Circle,
+  Code2,
   Copy,
+  FolderDown,
+  Image as ImageIcon,
   Info,
   Loader2,
   Paperclip,
@@ -23,7 +26,45 @@ import {
 } from "@/store/agent-file-changes";
 import { Markdown } from "@/components/ui/markdown";
 import { Popover } from "@/components/ui/popover";
+import { Tooltip } from "@/components/ui/tooltip";
+import { TikzSourceView } from "@/components/ai/TikzSourceView";
+import { tokenizeComposer } from "@/lib/composer-tokens";
+import { writeFileContent, writeProjectBytes } from "@/lib/tauri";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { useFilesStore } from "@/store/files";
+
+const USER_SKILL_CHIP_CLASS =
+  "rounded bg-blue-300/35 px-1 py-px font-medium text-white";
+const USER_MENTION_CHIP_CLASS =
+  "rounded bg-teal-300/35 px-1 py-px font-medium text-white";
+
+export function userTokenChips(msg: ChatMessage): React.ReactNode | null {
+  const skillIds = msg.skillId ? [msg.skillId] : [];
+  const mentions = msg.mentions ?? [];
+  if (skillIds.length === 0 && mentions.length === 0) return null;
+  const tokens = tokenizeComposer(msg.content, { skillIds, paths: mentions });
+  if (!tokens.some((token) => token.kind !== "text")) return null;
+  return (
+    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+      {tokens.map((token) => (
+        <span
+          key={`${token.kind}-${token.start}`}
+          data-token={token.kind}
+          className={
+            token.kind === "skill"
+              ? USER_SKILL_CHIP_CLASS
+              : token.kind === "mention"
+                ? USER_MENTION_CHIP_CLASS
+                : undefined
+          }
+        >
+          {msg.content.slice(token.start, token.end)}
+        </span>
+      ))}
+    </p>
+  );
+}
 
 export function Shimmer({ text }: { text?: string }) {
   return text ? <span className="ai-shimmer text-xs">{text}</span> : null;
@@ -679,7 +720,163 @@ export function ExplorationGroup({ tools }: { tools: ToolEntry[] }) {
   );
 }
 
-export function ToolBadge({ tc }: { tc: ToolEntry }) {
+function lastFinishedPicture(tools: readonly ToolEntry[]): ToolEntry[] {
+  for (let i = tools.length - 1; i >= 0; i--) {
+    const tool = tools[i];
+    if (tool.image && tool.status === "done") return [tool];
+  }
+  return [];
+}
+
+export function freeFigurePath(
+  existing: readonly string[],
+  extension: string,
+  base = "figure",
+): string {
+  const taken = new Set(existing.map((path) => path.toLowerCase()));
+  const first = `figures/${base}.${extension}`;
+  if (!taken.has(first.toLowerCase())) return first;
+  for (let n = 2; n < 10_000; n++) {
+    const candidate = `figures/${base}-${n}.${extension}`;
+    if (!taken.has(candidate.toLowerCase())) return candidate;
+  }
+  return `figures/${base}-${Date.now()}.${extension}`;
+}
+
+async function saveToolPicture(tc: ToolEntry): Promise<string | null> {
+  const files = useFilesStore.getState();
+  const projectId = files.projectId;
+  if (!projectId) return null;
+  const existing = files.tree.map((entry) => entry.path);
+  if (tc.code) {
+    const path = freeFigurePath(existing, "tex");
+    await writeFileContent(projectId, path, tc.code.endsWith("\n") ? tc.code : `${tc.code}\n`);
+    await files.refreshTree();
+    return path;
+  }
+  if (tc.image) {
+    const path = freeFigurePath(existing, "png");
+    const base64 = tc.image.split(",")[1] ?? "";
+    await writeProjectBytes(projectId, path, base64);
+    await files.refreshTree();
+    return path;
+  }
+  return null;
+}
+
+export function ToolPicture({ tc }: { tc: ToolEntry }) {
+  const [view, setView] = useState<"image" | "code">("image");
+  const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const hasCode = Boolean(tc.code);
+  const label = tc.name === "preview_figure" ? "Rendered figure preview" : "Image from the tool";
+  const copyCode = async () => {
+    if (!tc.code) return;
+    try {
+      await navigator.clipboard.writeText(tc.code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
+  const saveToProject = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const path = await saveToolPicture(tc);
+      if (path) toast.success(`Saved ${path}`);
+      else toast.error("Open a project to save this figure.");
+    } catch (error) {
+      toast.error(`Could not save the figure: ${String(error)}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+  const pill = (active: boolean) =>
+    cn(
+      "flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors",
+      active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+    );
+  const iconButton =
+    "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-60";
+  return (
+    <div data-testid="tool-picture-body" className="bg-background">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center border-b px-2 py-1">
+        <span />
+        {hasCode ? (
+          <div className="flex h-7 items-center rounded-full bg-muted p-0.5 text-[11px] font-medium">
+            <button
+              type="button"
+              data-testid="tool-picture-view-image"
+              aria-label="Show the rendered figure"
+              aria-pressed={view === "image"}
+              onClick={() => setView("image")}
+              className={pill(view === "image")}
+            >
+              <ImageIcon className="size-3.5" />
+              Figure
+            </button>
+            <button
+              type="button"
+              data-testid="tool-picture-view-code"
+              aria-label="Show the TikZ source"
+              aria-pressed={view === "code"}
+              onClick={() => setView("code")}
+              className={pill(view === "code")}
+            >
+              <Code2 className="size-3.5" />
+              TikZ
+            </button>
+          </div>
+        ) : (
+          <span />
+        )}
+        <div className="flex items-center justify-end gap-0.5">
+          <Tooltip label={saving ? "Saving" : "Save to project"}>
+            <button
+              type="button"
+              data-testid="tool-picture-save"
+              aria-label="Save to project"
+              disabled={saving}
+              onClick={() => void saveToProject()}
+              className={iconButton}
+            >
+              <FolderDown className="size-3.5" />
+            </button>
+          </Tooltip>
+          {hasCode && (
+            <Tooltip label={copied ? "Copied" : "Copy code"}>
+              <button
+                type="button"
+                data-testid="tool-picture-copy"
+                aria-label="Copy code"
+                onClick={() => void copyCode()}
+                className={iconButton}
+              >
+                {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+              </button>
+            </Tooltip>
+          )}
+        </div>
+      </div>
+      {view === "image" || !hasCode ? (
+        <div className="p-2">
+          <img
+            src={tc.image}
+            alt={label}
+            data-testid="tool-image"
+            className="mx-auto max-h-80 max-w-full rounded object-contain"
+          />
+        </div>
+      ) : (
+        <TikzSourceView source={tc.code ?? ""} />
+      )}
+    </div>
+  );
+}
+
+export function ToolBadge({ tc, live = false }: { tc: ToolEntry; live?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const result = tc.output?.includes('"success": true')
     ? "success"
@@ -694,8 +891,8 @@ export function ToolBadge({ tc }: { tc: ToolEntry }) {
       className="max-w-[85%] rounded-md border bg-muted text-xs"
     >
       <button type="button"
-        onClick={() => tc.output && setExpanded(!expanded)}
-        className={cn("flex w-full items-center gap-2 px-2.5 py-1.5", tc.output && "cursor-pointer hover:bg-accent/50")}
+        onClick={() => (tc.output || tc.image) && setExpanded(!expanded)}
+        className={cn("flex w-full items-center gap-2 px-2.5 py-1.5", (tc.output || tc.image) && "cursor-pointer hover:bg-accent/50")}
       >
         <Wrench className="size-3.5 text-muted-foreground" />
         <span className="font-mono">{tc.name}</span>
@@ -719,11 +916,16 @@ export function ToolBadge({ tc }: { tc: ToolEntry }) {
               Rejected
             </span>
           )}
-          {tc.output && (
+          {(tc.output || tc.image) && (
             <ChevronRight className={cn("size-3 text-muted-foreground transition-transform", expanded && "rotate-90")} />
           )}
         </span>
       </button>
+      {tc.image && (live || expanded) && (
+        <div className="border-t">
+          <ToolPicture tc={tc} />
+        </div>
+      )}
       {expanded && tc.output && (
         <pre className="max-h-96 animate-in fade-in overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words border-t px-2.5 py-1.5 font-mono text-[10px] text-muted-foreground duration-150 motion-reduce:animate-none">
           {tc.output}
@@ -1013,7 +1215,7 @@ export const MessageItem = memo(function MessageItem({
       if (tool.name === "run_command") {
         rows.push(<ExecCard key={key} tc={tool} />);
       } else {
-        rows.push(<ToolBadge key={key} tc={tool} />);
+        rows.push(<ToolBadge key={key} tc={tool} live={live} />);
       }
     }
   }
@@ -1022,6 +1224,8 @@ export const MessageItem = memo(function MessageItem({
   }
   const totalMs = blocks.reduce((sum, block) => sum + (block.ms ?? 0), 0);
   const foldSteps = !live && rows.length > 0 && msg.role === "assistant";
+  const pictures = foldSteps ? lastFinishedPicture(msg.toolCalls ?? []) : [];
+  const tokenizedUserText = msg.role === "user" ? userTokenChips(msg) : null;
   const createdAt = msg.createdAt === undefined ? null : new Date(msg.createdAt);
   const validCreatedAt = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : null;
   const messageTime = validCreatedAt?.toLocaleTimeString([], {
@@ -1032,6 +1236,15 @@ export const MessageItem = memo(function MessageItem({
   return (
     <div className={cn("flex flex-col gap-1.5", msg.role === "user" && "items-end")}>
       {foldSteps ? <WorkedSteps rows={rows} totalMs={totalMs} /> : rows}
+      {pictures.map((tool, index) => (
+        <div
+          key={tool.id ?? `picture-${index}`}
+          data-testid="tool-picture"
+          className="max-w-[85%] rounded-md border bg-muted text-xs"
+        >
+          <ToolPicture tc={tool} />
+        </div>
+      ))}
       {msg.role === "user" && msg.steered && (
         <span
           data-testid="steered-message-label"
@@ -1073,13 +1286,15 @@ export const MessageItem = memo(function MessageItem({
                 : "w-full bg-muted text-foreground",
             )}
           >
-            <Markdown
-              className="chat-markdown"
-              inverted={msg.role === "user"}
-              streaming={live}
-            >
-              {msg.content}
-            </Markdown>
+            {tokenizedUserText ?? (
+              <Markdown
+                className="chat-markdown"
+                inverted={msg.role === "user"}
+                streaming={live}
+              >
+                {msg.content}
+              </Markdown>
+            )}
           </div>
           <div className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
             {messageTime && (

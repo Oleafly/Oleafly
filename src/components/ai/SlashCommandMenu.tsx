@@ -37,17 +37,25 @@ export function slashCommandQuery(value: string): string {
   return isSlashCommandInput(value) ? value.slice(1).trim() : "";
 }
 
+export function filterSlashCommands(
+  commands: readonly ComposerCommand[],
+  query: string,
+): ComposerCommand[] {
+  const terms = query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return [...commands];
+  return commands.filter((command) => {
+    const searchable =
+      `${command.label} ${command.description} ${command.keywords ?? ""}`.toLocaleLowerCase();
+    return terms.every((term) => searchable.includes(term));
+  });
+}
+
 export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProps>(
   ({ commands, query, onSelect, onClose, onActiveCommandChange }, ref) => {
-    const filteredCommands = useMemo(() => {
-      const terms = query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
-      if (terms.length === 0) return commands;
-      return commands.filter((command) => {
-        const searchable =
-          `${command.label} ${command.description} ${command.keywords ?? ""}`.toLocaleLowerCase();
-        return terms.every((term) => searchable.includes(term));
-      });
-    }, [commands, query]);
+    const filteredCommands = useMemo(
+      () => filterSlashCommands(commands, query),
+      [commands, query],
+    );
     const [activeCommandId, setActiveCommandId] = useState<string | null>(null);
     const selectedIndex = activeCommandId
       ? filteredCommands.findIndex((command) => command.id === activeCommandId)
@@ -71,6 +79,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
       ref,
       () => ({
         handleKeyDown: (event) => {
+          if (filteredCommands.length === 0) return false;
           if (
             event.nativeEvent?.isComposing ||
             (event.key === "Enter" && event.shiftKey)
@@ -104,6 +113,8 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
       [activeCommand, activeIndex, filteredCommands, onClose, select],
     );
 
+    if (filteredCommands.length === 0) return null;
+
     return (
       <div
         id="ai-slash-command-menu"
@@ -111,12 +122,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
         aria-label="Slash commands"
         className="absolute bottom-full left-0 z-50 mb-2 max-h-72 w-full overflow-y-auto rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
       >
-        {filteredCommands.length === 0 ? (
-          <p className="px-3 py-6 text-center text-xs text-muted-foreground">
-            No matching commands
-          </p>
-        ) : (
-          filteredCommands.map((command, index) => {
+        {filteredCommands.map((command, index) => {
             const selected = index === activeIndex;
             const group = command.group ?? "";
             const heading =
@@ -152,8 +158,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
                 </button>
               </Fragment>
             );
-          })
-        )}
+        })}
       </div>
     );
   },

@@ -16,6 +16,7 @@ interface HarnessOptions {
   guardToolCall?: (call: { id: string; name: string; args: unknown }) => string | null;
   takePendingImages: () => string[];
   handlers: {
+    onStep?: (step: number) => void;
     onText: (text: string) => void;
     onToolCall: (call: { id: string; name: string; args: unknown }) => void | Promise<void>;
     onToolResult: (result: { id: string; output: unknown }) => void;
@@ -208,6 +209,16 @@ vi.mock("@oleafly/registry", () => ({
               }),
             }),
           },
+        }),
+      },
+      {
+        id: "figure-tools",
+        mode: "chat",
+        source: { kind: "figure" },
+        create: () => ({
+          preview_figure: { execute: async () => ({ success: true }) },
+          insert_figure: { execute: async () => ({ success: true }) },
+          load_image: { execute: async () => ({ loaded: true }) },
         }),
       },
     ],
@@ -525,6 +536,7 @@ beforeEach(() => {
       new Promise((resolve) => {
         const requestId = `request-${mocks.runs.length + 1}`;
         options.onRequestId?.(requestId);
+        options.handlers.onStep?.(0);
         mocks.runs.push({ options, resolve });
       }),
   );
@@ -556,7 +568,6 @@ beforeEach(() => {
     browserOpen: false,
     webBrowser: true,
     chatFloating: false,
-    figureModeOpen: false,
     settingsInitialSection: "general",
     settingsOpen: false,
     settingsScrollTarget: null,
@@ -804,8 +815,7 @@ describe("ChatCore agent turns", () => {
     const prompts = rendered.getByRole("button", { name: "Prompt shortcuts" });
     const persona = rendered.getByRole("button", { name: "Choose persona" });
     const plan = rendered.getByRole("button", { name: "Plan mode" });
-    const figure = rendered.getByRole("button", { name: "Toggle figure mode" });
-    const leftControls = [attach, approval, prompts, persona, plan, figure];
+    const leftControls = [attach, approval, prompts, persona, plan];
     for (const control of leftControls) expect(left).toContainElement(control);
     for (let index = 0; index < leftControls.length - 1; index += 1) {
       expect(
@@ -1417,7 +1427,7 @@ describe("ChatCore agent turns", () => {
     await waitFor(() => expect(activeChatRun()).toBeNull());
   });
 
-  it("waits for the run id before the steer button is usable", async () => {
+  it("waits for the run's first step before the steer button is usable", async () => {
     mocks.runAgentHarness.mockImplementationOnce(
       (options: HarnessOptions) =>
         new Promise((resolve) => {
@@ -1438,6 +1448,12 @@ describe("ChatCore agent turns", () => {
     expect(mocks.agentSteer).not.toHaveBeenCalled();
 
     act(() => mocks.runs[0].options.onRequestId?.("request-1"));
+    expect(steerButton.disabled).toBe(true);
+    expect(steerButton.title).toBe("Starting the run");
+    fireEvent.click(steerButton);
+    expect(mocks.agentSteer).not.toHaveBeenCalled();
+
+    act(() => mocks.runs[0].options.handlers.onStep?.(0));
     await waitFor(() => expect(steerButton.disabled).toBe(false));
     expect(steerButton.title).toBe("");
 
@@ -1807,7 +1823,7 @@ describe("ChatCore agent turns", () => {
 
     await waitFor(() =>
       expect(mocks.toastError).toHaveBeenCalledWith(
-        "129 tools are enabled, but a run supports up to 128. Disable at least 1 in Tools and try again.",
+        "132 tools are enabled, but a run supports up to 128. Disable at least 4 in Tools and try again.",
       ),
     );
     expect(mocks.runs).toHaveLength(0);
@@ -1826,6 +1842,9 @@ describe("ChatCore agent turns", () => {
         run_command: false,
         literature_search: false,
         mcp__papers__search_papers: false,
+        preview_figure: false,
+        insert_figure: false,
+        load_image: false,
       },
     });
     const rendered = await renderChat();
@@ -2031,6 +2050,91 @@ describe("ChatCore agent turns", () => {
       'Use the skill "Oleafly Literature Sweep" (oleafly-literature-sweep) for this request.\nBuild an annotated reading list for this project\'s research question',
     );
     expect(last.content).not.toContain("/oleafly-literature-sweep");
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("attaches a mentioned file to the model message and keeps the mention in the stored bubble", async () => {
+    mocks.readFileContent.mockResolvedValue("\\section{Intro}\nHello.\n");
+    useFilesStore.setState({
+      tree: [
+        { path: "sections", is_dir: true },
+        { path: "sections/intro.tex", is_dir: false },
+        { path: "figures", is_dir: true },
+        { path: "figures/plot.png", is_dir: false },
+      ],
+    });
+    const rendered = await renderChat();
+
+    submit(rendered, "Summarise @sections/intro.tex for me");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    const last = mocks.runs[0].options.messages[mocks.runs[0].options.messages.length - 1];
+    expect(Array.isArray(last.content)).toBe(true);
+    const parts = last.content as Array<Record<string, unknown>>;
+    expect(parts[0]).toEqual({ type: "text", text: "Summarise @sections/intro.tex for me" });
+    const file = parts.find((part) => part.type === "file");
+    expect(file).toMatchObject({ name: "sections/intro.tex", mediaType: "text/plain" });
+    expect(mocks.readFileContent).toHaveBeenCalledWith(
+      useFilesStore.getState().projectId,
+      "sections/intro.tex",
+    );
+    const stored = useChatsStore.getState().byId("chat-1")?.messages.at(-2);
+    expect(stored).toMatchObject({
+      role: "user",
+      content: "Summarise @sections/intro.tex for me",
+      mentions: ["sections/intro.tex"],
+    });
+    await act(async () => finishRun(0, "Summarised"));
+  });
+
+  it("attaches a folder listing for a mentioned folder", async () => {
+    useFilesStore.setState({
+      tree: [
+        { path: "figures", is_dir: true },
+        { path: "figures/plot.png", is_dir: false },
+        { path: "figures/map.pdf", is_dir: false },
+      ],
+    });
+    const rendered = await renderChat();
+
+    submit(rendered, "What is in @figures/ right now");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    const last = mocks.runs[0].options.messages[mocks.runs[0].options.messages.length - 1];
+    const parts = last.content as Array<Record<string, unknown>>;
+    const listing = parts.find((part) => part.type === "file") as { name: string; data: string };
+    expect(listing.name).toBe("figures/ (listing)");
+    const decoded = Buffer.from(String(listing.data).split(",")[1] ?? "", "base64").toString("utf8");
+    expect(decoded).toContain("figures/plot.png");
+    expect(decoded).toContain("figures/map.pdf");
+    expect(mocks.readFileContent).not.toHaveBeenCalled();
+    await act(async () => finishRun(0, "Listed"));
+  });
+
+  it("keeps the typed slash command in the stored bubble while the model gets the directive", async () => {
+    mocks.skillEntries.push(
+      skillEntry({
+        id: "citation-audit",
+        name: "Citation Audit",
+        description: "Check every citation.",
+        instructions: "Inspect every bibliography entry.",
+      }),
+    );
+    const rendered = await renderChat();
+
+    submit(rendered, "/citation-audit check section 3");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    const stored = useChatsStore.getState().byId("chat-1")?.messages.at(-2);
+    expect(stored).toMatchObject({
+      role: "user",
+      content: "/citation-audit check section 3",
+      skillId: "citation-audit",
+    });
+    const modelMessages = mocks.runs[0].options.messages;
+    expect(modelMessages[modelMessages.length - 1].content).toBe(
+      'Use the skill "Citation Audit" (citation-audit) for this request.\ncheck section 3',
+    );
     await act(async () => finishRun(0, "Ready"));
   });
 
@@ -2253,6 +2357,7 @@ describe("ChatCore agent turns", () => {
 
     expect(Object.keys(planning.tools).sort()).toEqual([
       "literature_search",
+      "load_image",
       "read_file",
       "update_todos",
     ]);
@@ -2350,6 +2455,7 @@ describe("ChatCore agent turns", () => {
     const revision = mocks.runs[1].options;
     expect(Object.keys(revision.tools).sort()).toEqual([
       "literature_search",
+      "load_image",
       "read_file",
       "update_todos",
     ]);
@@ -2543,32 +2649,49 @@ describe("ChatCore agent turns", () => {
     await act(async () => finishRun(0, "Done"));
   });
 
-  it("keeps the active project goal in the figure mode system prompt", async () => {
-    const projectId = useFilesStore.getState().projectId;
-    useChatGoalStore.getState().setGoal(projectId, "Finish the diagram");
+  it("offers the figure tools and their guidance to an ordinary LaTeX run", async () => {
     const rendered = await renderChat();
-    fireEvent.click(rendered.getByRole("button", { name: "Toggle figure mode" }));
 
-    changeComposer("Draw the next block");
-    pressComposerKey("Enter");
+    submit(rendered, "Draw the encoder block");
     await waitFor(() => expect(mocks.runs).toHaveLength(1));
 
-    expect(mocks.runs[0].options.system).toContain("Persistent goal: Finish the diagram");
+    expect(mocks.runs[0].options.tools).toHaveProperty("preview_figure");
+    expect(mocks.runs[0].options.tools).toHaveProperty("insert_figure");
+    expect(mocks.runs[0].options.tools).toHaveProperty("load_image");
+    expect(mocks.runs[0].options.system).toContain("Figures and diagrams:");
+    expect(mocks.runs[0].options.system).toContain(
+      "Render it with preview_figure",
+    );
     await act(async () => finishRun(0, "Done"));
   });
 
-  it("uses a Frame icon and primary color for active figure mode", async () => {
+  it("leaves the figure tools and their guidance out of a Markdown run", async () => {
+    useFilesStore.setState({
+      engine: {
+        ...LATEX_ENGINE,
+        id: "markdown",
+        label: "Markdown",
+        source_format: "markdown",
+        main_document: "main.md",
+        source_extensions: ["md"],
+        capabilities: {
+          ...LATEX_ENGINE.capabilities,
+          formatting_profile: "markdown",
+          supports_isolated_compile: false,
+        },
+      },
+      mainDoc: "main.md",
+    });
     const rendered = await renderChat();
-    const toggle = rendered.getByRole("button", { name: "Toggle figure mode" });
 
-    expect(toggle).toHaveAttribute("aria-pressed", "false");
-    expect(toggle.querySelector(".lucide-frame")).not.toBeNull();
-    expect(toggle.querySelector(".lucide-sparkles")).toBeNull();
+    submit(rendered, "Draw the encoder block");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
 
-    fireEvent.click(toggle);
-
-    expect(toggle).toHaveAttribute("aria-pressed", "true");
-    expect(toggle).toHaveClass("bg-primary/15", "text-primary");
+    expect(mocks.runs[0].options.tools).not.toHaveProperty("preview_figure");
+    expect(mocks.runs[0].options.tools).not.toHaveProperty("insert_figure");
+    expect(mocks.runs[0].options.tools).not.toHaveProperty("load_image");
+    expect(mocks.runs[0].options.system).not.toContain("Figures and diagrams:");
+    await act(async () => finishRun(0, "Done"));
   });
 
   it("edits and clears the active project goal from the composer", async () => {
@@ -3484,6 +3607,9 @@ describe("ChatCore model trust", () => {
         run_command: false,
         literature_search: false,
         mcp__papers__search_papers: false,
+        preview_figure: false,
+        insert_figure: false,
+        load_image: false,
       },
     });
     const rendered = await renderChat();

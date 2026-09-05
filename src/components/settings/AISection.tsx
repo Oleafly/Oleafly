@@ -37,6 +37,7 @@ import {
 } from "@/lib/skills";
 import { cn } from "@/lib/utils";
 import { ProvidersTab, type ProviderStatus } from "./ai/ProvidersTab";
+import { ApprovalsFileEditor } from "./ai/ApprovalsFileEditor";
 import { ProjectApprovals } from "./ai/ProjectApprovals";
 import { ProjectBudget } from "./ai/ProjectBudget";
 import { InstructionsTab } from "./ai/InstructionsTab";
@@ -434,10 +435,6 @@ export function AISection() {
     if (!current) return { ok: false, message: "That provider no longer exists." };
     const baseURL = normalizeBaseURL(input.baseURL);
     const urlChanged = baseURL !== normalizeBaseURL(current.baseURL);
-    const hasStoredKey = (cfg.ai_keys[id] ?? "").trim().length > 0;
-    if (urlChanged && hasStoredKey && !apiKey) {
-      return { ok: false, message: "Enter the API key again to change the base URL." };
-    }
     const res = await discoverModels({
       providerId: id,
       key: apiKey || undefined,
@@ -733,6 +730,7 @@ export function AISection() {
           />
           <div className="mt-3 space-y-3">
             <ProjectApprovals />
+            <ApprovalsFileEditor />
             <ProjectBudget key={preferencesResetVersion} />
           </div>
         </TabsContent>

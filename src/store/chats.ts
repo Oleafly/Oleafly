@@ -10,6 +10,8 @@ export interface ToolEntry {
   name: string;
   status: "running" | "done" | "error";
   output?: string;
+  image?: string;
+  code?: string;
   // For gated edits: whether the user approved or rejected the change. Left a
   // persistent trace in the chat after the approval prompt is dismissed.
   approval?: "approved" | "rejected";
@@ -40,6 +42,8 @@ export interface ChatMessage {
   toolCalls?: ToolEntry[];
   attachments?: AttachmentMeta[];
   steered?: boolean;
+  skillId?: string;
+  mentions?: string[];
   // Legacy single-block chain-of-thought; still read for chats persisted
   // before reasoningBlocks existed.
   reasoning?: string;

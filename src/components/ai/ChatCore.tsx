@@ -24,7 +24,6 @@ import {
 } from "@/lib/agent-backend";
 import { launchBrowser } from "@/lib/browser-window";
 import {
-  ArrowLeftRight,
   ArrowUp,
   BadgeDollarSign,
   BookOpen,
@@ -32,12 +31,9 @@ import {
   Check,
   ChevronDown,
   ClipboardCheck,
-  Filter,
-  Frame,
   Glasses,
   History,
   Info,
-  Layers,
   Lightbulb,
   Loader2,
   MessageSquareQuote,
@@ -54,7 +50,6 @@ import {
   Trash2,
   type LucideIcon,
   WalletCards,
-  Workflow,
   Wrench,
   X,
 } from "lucide-react";
@@ -65,11 +60,10 @@ import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
 import {
-  buildFigureSystemPrompt,
   modelSupportsVision,
   setFigureInsertTarget,
 } from "@/lib/ai-figure";
-import { canUseFigureMode } from "@/lib/document-engine";
+import { supportsFigureTools } from "@/lib/document-engine";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { ToolConfirm } from "@/components/ai/ToolConfirm";
 import { ApprovalModeSelector } from "@/components/ai/ApprovalModeSelector";
@@ -83,11 +77,25 @@ import {
 } from "@/components/ai/ModelSelector";
 import { ComposerAttachMenu } from "@/components/ai/ComposerAttachMenu";
 import {
+  filterSlashCommands,
   isSlashCommandInput,
   slashCommandQuery,
   SlashCommandMenu,
   type SlashCommandMenuHandle,
 } from "@/components/ai/SlashCommandMenu";
+import { ComposerHighlight } from "@/components/ai/ComposerHighlight";
+import {
+  buildMentionEntries,
+  filterMentionEntries,
+  MentionMenu,
+  type MentionMenuHandle,
+} from "@/components/ai/MentionMenu";
+import {
+  activeMentionQuery,
+  composerMentionPaths,
+  mentionTokenEnd,
+  normalizeMentionPath,
+} from "@/lib/composer-tokens";
 import {
   createAttachCommands,
   createSkillCommands,
@@ -206,6 +214,13 @@ import {
 import type { EngineFeature } from "@/lib/tauri";
 
 const MAX_AGENT_TOOL_DEFINITIONS = 128;
+const IMAGE_TOOLS = new Set(["preview_figure", "load_image", "verify_pdf_pages"]);
+
+function figureCodeOf(args: unknown): string | undefined {
+  if (!args || typeof args !== "object") return undefined;
+  const code = (args as { code?: unknown }).code;
+  return typeof code === "string" && code.trim() ? code : undefined;
+}
 
 interface ChatSuggestion {
   label: string;
@@ -277,20 +292,6 @@ export function availableSuggestions(
   );
 }
 
-const FIGURE_SUGGESTIONS = [
-  "Draw a transformer encoder with 6 blocks, attention highlighted, residual connections",
-  "Show the TCP three-way handshake between a client and a server",
-  "Draw a compiler pipeline: lexer, parser, AST, optimizer, code generator",
-  "Diagram a data preprocessing flow ending in a training loop",
-];
-
-const FIGURE_SUGGESTION_ICONS: Record<string, LucideIcon> = {
-  "Draw a transformer encoder with 6 blocks, attention highlighted, residual connections": Layers,
-  "Show the TCP three-way handshake between a client and a server": ArrowLeftRight,
-  "Draw a compiler pipeline: lexer, parser, AST, optimizer, code generator": Workflow,
-  "Diagram a data preprocessing flow ending in a training loop": Filter,
-};
-
 export const APPROVAL_POSTURE_LINES: Record<ApprovalMode, string> = {
   "ask-for-approval":
     "Approval posture: Ask for approval before external file changes, internet access, or shell commands.",
@@ -349,22 +350,40 @@ const CODE_EDIT_TOOLS = new Set([
 ]);
 
 const UNIVERSAL_TOOLS = ["read_file", "write_file", "replace_in_file", "create_file", "delete_file", "rename_file", "list_files", "search_project", "compile", "get_log", "get_pdf_text", "verify_pdf_pages", "update_todos", "get_todos", "remember_note", "forget_note", "list_notes", "set_main_doc", "toggle_theme"];
+export const FIGURE_TOOLS = ["preview_figure", "insert_figure", "load_image"];
+
 export function buildAiToolInventory(
   features: EngineFeature[],
-  figure: boolean,
-  isolated: boolean,
   enabledByName: Readonly<Record<string, boolean>> = {},
   resolvedNames?: readonly string[],
 ): string[] {
   const available = resolvedNames ??
-    (figure
-      ? isolated
-        ? ["preview_figure", "insert_figure", "load_image"]
-        : []
-      : features.includes("document_index")
-        ? [...UNIVERSAL_TOOLS, "project_map"]
-        : UNIVERSAL_TOOLS);
+    (features.includes("document_index")
+      ? [...UNIVERSAL_TOOLS, "project_map"]
+      : UNIVERSAL_TOOLS);
   return available.filter((name) => isToolEnabled(enabledByName, name));
+}
+
+export function excludedToolNames(
+  features: readonly EngineFeature[],
+  figureTools: boolean,
+): string[] {
+  return [
+    ...(features.includes("document_index") ? [] : ["project_map"]),
+    ...(figureTools ? [] : FIGURE_TOOLS),
+  ];
+}
+
+export function figureGuidance(toolNames: readonly string[]): string {
+  if (!toolNames.includes("preview_figure")) return "";
+  return `
+Figures and diagrams:
+- When the user asks for a figure, diagram, plot, or schematic, write it as TikZ or PGFPlots.
+- Render it with preview_figure and look at the result before you go any further.
+- Keep refining until labels do not overlap, spacing is even, and the layout reads cleanly at print size.
+- Call insert_figure to place the finished figure at the cursor, with a short caption and a label.
+- Use load_image when you need to look at an image already in the project, such as a sketch to redraw.
+- Never invent data. Use the numbers the user gives you, and keep any placeholder obviously a placeholder.`;
 }
 
 export function drainPendingImages(
@@ -429,6 +448,86 @@ function inputModelMessage(
   return { role: "user", content };
 }
 
+const MENTION_FILE_MAX_BYTES = 200 * 1024;
+const MENTION_LISTING_MAX_ENTRIES = 400;
+
+function textDataUrl(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  }
+  return `data:text/plain;base64,${btoa(binary)}`;
+}
+
+function cappedMentionText(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  if (bytes.length <= MENTION_FILE_MAX_BYTES) return text;
+  const head = new TextDecoder("utf-8", { fatal: false }).decode(
+    bytes.subarray(0, MENTION_FILE_MAX_BYTES),
+  );
+  return `${head}\n\n[Only the first 200 KB of this file is shown. Use read_file with an offset for the rest.]`;
+}
+
+function mentionFolderListing(
+  tree: readonly { path: string; is_dir: boolean }[],
+  folder: string,
+): string {
+  const prefix = `${folder}/`;
+  const entries = tree
+    .filter((entry) => entry.path.startsWith(prefix))
+    .map((entry) => (entry.is_dir ? `${entry.path}/` : entry.path))
+    .sort((left, right) => left.localeCompare(right));
+  const shown = entries.slice(0, MENTION_LISTING_MAX_ENTRIES);
+  const rest = entries.length - shown.length;
+  const body = shown.length > 0 ? shown.join("\n") : "This folder is empty.";
+  return rest > 0 ? `${body}\n[${rest} more entries not listed.]` : body;
+}
+
+export async function mentionAttachments(
+  projectId: string | null,
+  text: string,
+  tree: readonly { path: string; is_dir: boolean }[],
+): Promise<PendingAttachment[]> {
+  if (!projectId || !text.includes("@")) return [];
+  const byPath = new Map<string, boolean>();
+  for (const entry of tree) {
+    const path = normalizeMentionPath(entry.path);
+    if (path) byPath.set(path, entry.is_dir);
+  }
+  const attachments: PendingAttachment[] = [];
+  for (const path of composerMentionPaths(text, byPath.keys())) {
+    const isDir = byPath.get(path);
+    if (isDir === undefined) continue;
+    if (isDir) {
+      attachments.push({
+        id: `mention-folder:${path}`,
+        name: `${path}/ (listing)`,
+        mediaType: "text/plain",
+        dataUrl: textDataUrl(mentionFolderListing(tree, path)),
+      });
+      continue;
+    }
+    try {
+      const content = await readFileContent(projectId, path);
+      attachments.push({
+        id: `mention-file:${path}`,
+        name: path,
+        mediaType: "text/plain",
+        dataUrl: textDataUrl(cappedMentionText(content)),
+      });
+    } catch {
+      attachments.push({
+        id: `mention-file:${path}`,
+        name: path,
+        mediaType: "text/plain",
+        dataUrl: textDataUrl(`[This file could not be read. Try read_file instead.]`),
+      });
+    }
+  }
+  return attachments;
+}
+
 const EMPTY_FOLLOW_UPS: QueuedFollowUp[] = [];
 
 type ModelNotice = { providerId: string; modelId: string } & (
@@ -472,8 +571,9 @@ export function ChatCore() {
   const projectName = useFilesStore((s) => s.projectName);
   const documentEngine = useFilesStore((s) => s.engine);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
-  const figureModeAvailable = canUseFigureMode(documentEngine, engineLoaded);
+  const figureToolsAvailable = supportsFigureTools(documentEngine, engineLoaded);
   const projectKind = useFilesStore((s) => s.projectKind);
+  const projectTree = useFilesStore((s) => s.tree);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const setSettingsScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
@@ -509,10 +609,13 @@ export function ChatCore() {
     activeChatId ? s.threadByChat[activeChatId] ?? null : null,
   );
   const activeRunRequestIdRef = useRef<string | null>(null);
-  const [activeRunRequestId, setActiveRunRequestId] = useState<string | null>(null);
+  const [steerableRunId, setSteerableRunId] = useState<string | null>(null);
   const trackRunRequestId = useCallback((id: string | null) => {
     activeRunRequestIdRef.current = id;
-    setActiveRunRequestId(id);
+    setSteerableRunId(null);
+  }, []);
+  const markRunSteerable = useCallback((id: string) => {
+    if (activeRunRequestIdRef.current === id) setSteerableRunId(id);
   }, []);
   const loadChats = useChatsStore((s) => s.load);
   const removeChat = useChatsStore((s) => s.remove);
@@ -647,6 +750,11 @@ export function ChatCore() {
   const [goalDraft, setGoalDraft] = useState("");
   const [slashMenuDismissedInput, setSlashMenuDismissedInput] = useState<string | null>(null);
   const [activeSlashCommandId, setActiveSlashCommandId] = useState<string | null>(null);
+  const [composerCaret, setComposerCaret] = useState(0);
+  const [mentionMenuDismissedInput, setMentionMenuDismissedInput] = useState<string | null>(
+    null,
+  );
+  const [activeMentionPath, setActiveMentionPath] = useState<string | null>(null);
   const [currentHead, setCurrentHead] = useState<string | null>(null);
   const [quotaWarning, setQuotaWarning] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<RegisteredApproval | null>(null);
@@ -667,8 +775,6 @@ export function ChatCore() {
     setGoal(projectId, goalDraft);
     setGoalEditorProjectId(null);
   }, [goalDraft, projectId, setGoal]);
-  // Figure studio mode: swaps in the figure system prompt + figure toolset.
-  const [figureMode, setFigureMode] = useState(false);
   const agentTodos = useAgentTodoStore((s) => s.todos);
   const [runUsage, setRunUsage] = useState<{
     input: number;
@@ -681,8 +787,6 @@ export function ChatCore() {
   const pendingImagesRef = useRef<string[]>([]);
   // Timestamp of the last stream part, for the stall watchdog.
   const lastPartAtRef = useRef<number>(0);
-  const figureModeOpen = useSettingsStore((s) => s.figureModeOpen);
-  const setFigureModeOpen = useSettingsStore((s) => s.setFigureModeOpen);
   // User's own system-prompt addition (sandboxed into our prompt at send time).
   const [customPrompt, setCustomPrompt] = useState(initialProvider?.state.customPrompt ?? "");
   // Named, colored saved prompts from AI settings; and the one active for
@@ -711,6 +815,8 @@ export function ChatCore() {
   const goalInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const slashCommandMenuRef = useRef<SlashCommandMenuHandle>(null);
+  const mentionMenuRef = useRef<MentionMenuHandle>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
   const inputShellRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!goalEditorOpen) return;
@@ -719,11 +825,9 @@ export function ChatCore() {
   }, [goalEditorOpen]);
   const inputPlaceholder = !engineLoaded
     ? "Document engine unavailable. AI editing disabled"
-    : figureMode
-      ? "Describe a figure to draw…"
-      : planApprovalStatus === "awaiting"
-        ? PLAN_REVISION_PLACEHOLDER
-        : "Ask AI to help with your document…";
+    : planApprovalStatus === "awaiting"
+      ? PLAN_REVISION_PLACEHOLDER
+      : "Ask AI to help with your document…";
   useAutoSizeTextarea(
     textareaRef,
     inputShellRef,
@@ -787,7 +891,6 @@ export function ChatCore() {
     () => createLoadSkillTools(availableSkills),
     [availableSkills],
   );
-  const toolManagerMode = figureMode && figureModeAvailable ? "figure" : "chat";
   const availableMcpToolsets = useMemo(
     () =>
       createMcpRuntimeToolsets(mcpAgentToolsQuery.data ?? [], {
@@ -808,28 +911,49 @@ export function ChatCore() {
     ];
     return resolveAvailableTools({
       toolsets: registry.aiToolsets,
-      mode: toolManagerMode,
+      mode: "chat",
       createOpts: {
         confirm: async () => false,
         onImage: () => {},
         runId: () => null,
       },
       additions,
-      excludedNames: documentEngine.capabilities.features.includes("document_index")
-        ? []
-        : ["project_map"],
+      excludedNames: excludedToolNames(
+        documentEngine.capabilities.features,
+        figureToolsAvailable,
+      ),
     });
   }, [
     availableMcpToolsets,
     availableSkillTools,
     documentEngine.capabilities.features,
-    toolManagerMode,
+    figureToolsAvailable,
   ]);
   const invocableSkills = useMemo(() => validSkills(skills), [skills]);
+  const invocableSkillIds = useMemo(
+    () => invocableSkills.map((skill) => skill.id),
+    [invocableSkills],
+  );
+  const mentionEntries = useMemo(() => buildMentionEntries(projectTree), [projectTree]);
+  const mentionPaths = useMemo(
+    () => new Set(mentionEntries.map((entry) => entry.path)),
+    [mentionEntries],
+  );
+  const mentionToken = activeMentionQuery(input, composerCaret);
+  const mentionQuery = mentionToken?.query ?? null;
+  const mentionMatches = useMemo(
+    () =>
+      mentionQuery === null ? [] : filterMentionEntries(mentionEntries, mentionQuery),
+    [mentionEntries, mentionQuery],
+  );
+  const mentionMenuOpen =
+    mentionToken !== null &&
+    mentionMatches.length > 0 &&
+    mentionMenuDismissedInput !== input;
   const composerSkillToken = parseSkillCommand(input, invocableSkills);
   const composerSkillTokenClosed =
     composerSkillToken !== null && input.length > composerSkillToken.skill.id.length + 1;
-  const slashMenuOpen =
+  const slashCommandTriggered =
     isSlashCommandInput(input) &&
     slashMenuDismissedInput !== input &&
     !composerSkillTokenClosed;
@@ -907,18 +1031,6 @@ export function ChatCore() {
     return () => window.removeEventListener("oleafly:chats-quota-exceeded", onQuota);
   }, []);
 
-  // Open figure mode when requested from elsewhere (omnibar / command palette).
-  useEffect(() => {
-    if (figureModeOpen && figureModeAvailable) {
-      setFigureMode(true);
-    }
-    if (figureModeOpen) setFigureModeOpen(false);
-  }, [figureModeAvailable, figureModeOpen, setFigureModeOpen]);
-
-  useEffect(() => {
-    if (!figureModeAvailable) setFigureMode(false);
-  }, [figureModeAvailable]);
-
   // Stall notice: if the provider goes quiet mid-run, tell the user it is
   // still working rather than looking frozen. Hard aborts belong to the
   // backend stream's idle timeout, which knows whether the provider is a
@@ -936,17 +1048,6 @@ export function ChatCore() {
     }, 5000);
     return () => window.clearInterval(id);
   }, [streaming]);
-
-  // Prefill figure mode from a selected paragraph (editor right-click).
-  useEffect(() => {
-    const onFromSelection = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { text?: string };
-      setFigureMode(true);
-      setInput(detail?.text ? `Draw a figure for this: ${detail.text}` : "Draw a figure: ");
-    };
-    window.addEventListener("oleafly:figure-from-selection", onFromSelection);
-    return () => window.removeEventListener("oleafly:figure-from-selection", onFromSelection);
-  }, [setInput]);
 
   useEffect(() => {
     let active = true;
@@ -1271,6 +1372,36 @@ export function ChatCore() {
     ...createSkillCommands(invocableSkills),
   ];
   const attachCommands = createAttachCommands(commandActions);
+  const slashMenuOpen =
+    slashCommandTriggered &&
+    filterSlashCommands(slashCommands, slashCommandQuery(input)).length > 0;
+
+  const insertMention = useCallback(
+    (start: number, text: string) => {
+      const current = inputRef.current;
+      const end = mentionTokenEnd(current, start);
+      const next = `${current.slice(0, start)}${text}${current.slice(end)}`;
+      const caret = start + text.length;
+      setInput(next);
+      setComposerCaret(caret);
+      setMentionMenuDismissedInput(null);
+      setActiveMentionPath(null);
+      requestAnimationFrame(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        textarea.focus({ preventScroll: true });
+        textarea.setSelectionRange(caret, caret);
+      });
+    },
+    [setInput],
+  );
+
+  const syncComposerCaret = useCallback((textarea: HTMLTextAreaElement | null) => {
+    const caret = textarea?.selectionStart;
+    setComposerCaret(
+      typeof caret === "number" ? caret : (textarea?.value ?? "").length,
+    );
+  }, []);
 
   const scrollAnchorRef = useRef<ChatMessage | null | undefined>(undefined);
   useEffect(() => {
@@ -1436,6 +1567,15 @@ export function ChatCore() {
     const runText = skillCommand
       ? `${skillDirectiveLine(skillCommand.skill)}\n${skillCommand.text}`.trim()
       : text;
+    const runTree = useFilesStore.getState().tree;
+    const mentionedPaths = composerMentionPaths(
+      text,
+      runTree.map((entry) => normalizeMentionPath(entry.path)),
+    );
+    const runAttachments = [
+      ...outgoing,
+      ...(await mentionAttachments(projectId, text, runTree)),
+    ];
     let runMcpServers: McpAgentServer[] = [];
     try {
       const result = await mcpAgentToolsQueryRef.current.refetch();
@@ -1450,7 +1590,6 @@ export function ChatCore() {
     const enabledToolsForRun = {
       ...useAiToolSettingsStore.getState().enabledByName,
     };
-    const figure = figureMode && figureModeAvailable;
     const capacitySkillTools = createLoadSkillTools(runSkills, requestedSkillIds);
     const capacityAdditions: RuntimeToolset[] = [
       ...createMcpRuntimeToolsets(runMcpServers, {
@@ -1468,16 +1607,17 @@ export function ChatCore() {
       filterResolvedTools(
         resolveAvailableTools({
           toolsets: registry.aiToolsets,
-          mode: figure ? "figure" : "chat",
+          mode: "chat",
           createOpts: {
             confirm: async () => false,
             onImage: () => {},
             runId: () => null,
           },
           additions: capacityAdditions,
-          excludedNames: documentEngine.capabilities.features.includes("document_index")
-            ? []
-            : ["project_map"],
+          excludedNames: excludedToolNames(
+            documentEngine.capabilities.features,
+            figureToolsAvailable,
+          ),
         }),
         enabledToolsForRun,
       ).tools,
@@ -1544,6 +1684,19 @@ export function ChatCore() {
     const updateRunLastText = (fn: (message: ChatMessage) => ChatMessage) => {
       if (runIsCurrent()) updateLast(runChatId, fn, "text");
     };
+    const collectRunImage = (dataUrl: string) => {
+      runPendingImages.push(dataUrl);
+      updateRunLast((m) => {
+        const calls = [...(m.toolCalls || [])];
+        for (let i = calls.length - 1; i >= 0; i--) {
+          if (calls[i].status === "running" && IMAGE_TOOLS.has(calls[i].name)) {
+            calls[i] = { ...calls[i], image: dataUrl };
+            return { ...m, toolCalls: calls };
+          }
+        }
+        return m;
+      });
+    };
     let runEndedCleanly = false;
     const setRunThinking = (value: string | null) => {
       if (runIsCurrent()) setThinkingText(value);
@@ -1593,12 +1746,10 @@ export function ChatCore() {
       }
     }
 
-    // In figure mode, remember where to place the finished figure (the selected
-    // paragraph it was generated from, else the cursor).
-    if (figureMode && figureModeAvailable) {
+    if (figureToolsAvailable) {
       const view = getEditorView();
       const sel = view?.state.selection.main;
-      setFigureInsertTarget(sel ? { from: sel.from, to: sel.to } : null);
+      setFigureInsertTarget(sel && !sel.empty ? { from: sel.from, to: sel.to } : null);
     }
 
     projectApprovalsRef.current = {};
@@ -1666,6 +1817,7 @@ export function ChatCore() {
     let usageIn = 0;
     let usageOut = 0;
     let usageSteps = 0;
+    let runRequestId: string | null = null;
 
     if (!reservationIsCurrent()) {
       releaseRunReservation();
@@ -1678,8 +1830,10 @@ export function ChatCore() {
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
-      content: runText,
+      content: text,
       createdAt,
+      ...(skillCommand ? { skillId: skillCommand.skill.id } : {}),
+      ...(mentionedPaths.length > 0 ? { mentions: mentionedPaths } : {}),
       ...(outgoing.length
         ? { attachments: outgoing.map((a) => ({ name: a.name, mediaType: a.mediaType })) }
         : {}),
@@ -1806,7 +1960,7 @@ USER_CUSTOM_INSTRUCTIONS`
         confirm,
         isActive: () =>
           !ac.signal.aborted && activeRunRequestIdRef.current !== null,
-        onImage: (dataUrl) => runPendingImages.push(dataUrl),
+        onImage: collectRunImage,
         projectId: () => runProjectId,
         runId: () => activeRunRequestIdRef.current,
       }),
@@ -1816,16 +1970,17 @@ USER_CUSTOM_INSTRUCTIONS`
     ];
     const resolvedToolsForRun = resolveAvailableTools({
       toolsets: registry.aiToolsets,
-      mode: figure ? "figure" : "chat",
+      mode: "chat",
       createOpts: {
         confirm,
-        onImage: (dataUrl: string) => runPendingImages.push(dataUrl),
+        onImage: collectRunImage,
         runId: () => activeRunRequestIdRef.current,
       },
       additions: runToolAdditions,
-      excludedNames: documentEngine.capabilities.features.includes("document_index")
-        ? []
-        : ["project_map"],
+      excludedNames: excludedToolNames(
+        documentEngine.capabilities.features,
+        figureToolsAvailable,
+      ),
     });
     const enabledTools = filterResolvedTools(resolvedToolsForRun, enabledToolsForRun).tools;
     const tools: ToolSet = chatOnly
@@ -1849,11 +2004,10 @@ USER_CUSTOM_INSTRUCTIONS`
           : "engine-neutral prose";
     const toolInventory = buildAiToolInventory(
       documentEngine.capabilities.features,
-      false,
-      false,
       enabledToolsForRun,
       Object.keys(tools),
     );
+    const figureBlock = figureGuidance(Object.keys(tools));
     const systemPrompt = `You are Oleafly AI, a fully agentic writing partner inside Oleafly, a local-first technical document editor.
 Available tools for this run: ${toolInventory.length > 0 ? toolInventory.join(", ") : "none"}.
 The current project is "${projectName}" (ID: ${projectId}). Main document: ${mainDocument}. The document engine is ${documentEngine.label}. Use only valid ${sourceVocabulary} source rules.${
@@ -1896,18 +2050,11 @@ Research rules:
 - Compile after each section you write, and fix what breaks before you move on.
 - Never delete a file the user wrote without asking first.
 - When the user asks for a review, report your findings and leave the files alone unless they ask you to edit.
-`}
+`}${figureBlock}
 ${workspaceCtx}
 ${sandboxedCustom}`;
 
-    // Figure mode gets the same untrusted-instruction sandbox as main chat so a
-    // crafted custom prompt cannot override figure tools or safety rules.
-    const effectiveSystemBase = figure
-      ? `${buildFigureSystemPrompt(Object.keys(tools)) + sandboxedCustom}\n\n${workspaceCtx}${
-          activeGoalLine ? `\n\n${activeGoalLine}` : ""
-        }`
-      : systemPrompt;
-    const effectiveSystem = `${effectiveSystemBase}${
+    const effectiveSystem = `${systemPrompt}${
       runSkillCatalog ? `\n\n${runSkillCatalog}` : ""
     }${requestedSkillBlock ? `\n\n${requestedSkillBlock}` : ""}\n\n${approvalPostureLine(runApprovalMode)}${
       planTurn
@@ -1925,7 +2072,7 @@ ${sandboxedCustom}`;
         role: m.role === "assistant" ? "assistant" : "user",
         content: m.content,
       })),
-      inputModelMessage(runText, outgoing),
+      inputModelMessage(runText, runAttachments),
     ];
     let queuedAccepted = false;
     const acknowledgeQueued = () => {
@@ -2151,6 +2298,7 @@ ${sandboxedCustom}`;
         threadId: turnThreadId ?? undefined,
         clientTurnId,
         onRequestId: (id) => {
+          runRequestId = id;
           trackRunRequestId(id);
           acknowledgeQueued();
         },
@@ -2171,9 +2319,8 @@ ${sandboxedCustom}`;
             runPendingImages,
             modelSupportsVision(provider, model),
           ),
-        imageInstruction: figure
-          ? "Here is the rendered figure. Check for overlapping labels, cramped spacing, misalignment, and legibility, and refine it if it is not clean."
-          : "Here are rendered PDF page image(s) from verify_pdf_pages. Check for overflow, cut-off text, empty regions, and layout problems. Fix source if needed, then recompile and re-verify.",
+        imageInstruction:
+          "Here are rendered image(s) from the last tool call: compiled PDF pages, a figure preview, or an image you loaded. Check for overflow, cut-off text, empty regions, overlapping labels, cramped spacing, and legibility. Fix the source if needed, then compile or preview again and re-check.",
         handlers: {
           onActivity: () => {
             lastPartAtRef.current = Date.now();
@@ -2182,6 +2329,7 @@ ${sandboxedCustom}`;
           onThinking: (label) => setRunThinking(label),
           onStep: (step) => {
             usageSteps = step + 1;
+            if (runRequestId && runIsCurrent()) markRunSteerable(runRequestId);
             updateRunLast((m) => {
               stepContent = m.content ?? "";
               stepBlocks = m.reasoningBlocks ? [...m.reasoningBlocks] : [];
@@ -2236,11 +2384,20 @@ ${sandboxedCustom}`;
             outputToolCalls.set(call.id, outputCall);
             const baseline = captureFileBaseline(outputCall);
             openReadOutput(outputCall);
+            const figureCode =
+              IMAGE_TOOLS.has(call.name) || call.name === "insert_figure"
+                ? figureCodeOf(call.args)
+                : undefined;
             updateRunLast((m) => ({
               ...m,
               toolCalls: [
                 ...(m.toolCalls || []),
-                { id: call.id, name: call.name, status: "running" as const },
+                {
+                  id: call.id,
+                  name: call.name,
+                  status: "running" as const,
+                  ...(figureCode ? { code: figureCode } : {}),
+                },
               ],
             }));
             await baseline;
@@ -2416,7 +2573,7 @@ ${sandboxedCustom}`;
         }
       }
     }
-  }, [streaming, apiKey, provider, model, providerModelsMap, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId, trackRunRequestId, persistDebounced]);
+  }, [streaming, apiKey, provider, model, providerModelsMap, projectId, projectName, currentHead, figureToolsAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId, trackRunRequestId, markRunSteerable, persistDebounced]);
 
   const stop = useCallback(() => {
     pendingImagesRef.current = [];
@@ -2838,27 +2995,14 @@ ${sandboxedCustom}`;
             {messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-2">
                 <OleaflyAssistantMascot />
-                {figureMode ? (
-                  <p className="text-sm text-muted-foreground">
-                    Describe a figure and I will draw, compile, and refine it.
-                  </p>
-                ) : (
-                  <div className="space-y-1 text-center">
-                    <p className="text-base font-semibold text-foreground">How can I help with your research?</p>
-                    {projectName && (
-                      <p className="text-xs text-muted-foreground">Working on "{projectName}"</p>
-                    )}
-                  </div>
-                )}
+                <div className="space-y-1 text-center">
+                  <p className="text-base font-semibold text-foreground">How can I help with your research?</p>
+                  {projectName && (
+                    <p className="text-xs text-muted-foreground">Working on "{projectName}"</p>
+                  )}
+                </div>
                 <div className="flex w-full flex-wrap items-center justify-center gap-1.5">
-                  {(figureMode
-                    ? FIGURE_SUGGESTIONS.map((s) => ({
-                        label: s,
-                        send: s,
-                        icon: FIGURE_SUGGESTION_ICONS[s],
-                      }))
-                    : availableSuggestions(SUGGESTIONS, skillsQuery.data)
-                  ).map((suggestion) => {
+                  {availableSuggestions(SUGGESTIONS, skillsQuery.data).map((suggestion) => {
                     const Icon = suggestion.icon;
                     return (
                       <button
@@ -3062,8 +3206,8 @@ ${sandboxedCustom}`;
                           <button
                             type="button"
                             data-testid="agent-follow-up-steer"
-                            disabled={awaitingSafePoint || beingSent || !activeRunRequestId}
-                            title={activeRunRequestId ? undefined : "Starting the run"}
+                            disabled={awaitingSafePoint || beingSent || !steerableRunId}
+                            title={steerableRunId ? undefined : "Starting the run"}
                             className="shrink-0 rounded-md px-2 py-0.5 font-medium text-primary transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
                             onClick={() => {
                               const runId = activeRunRequestIdRef.current;
@@ -3073,16 +3217,27 @@ ${sandboxedCustom}`;
                                 steeringFollowUpIdsRef.current.has(item.id) ||
                                 sendingFollowUpIdRef.current === item.id
                               ) return;
-                              const message = toAgentMessages([
-                                inputModelMessage(steeredSkillText(item.text, skillsRef.current), item.attachments),
-                              ])[0];
-                              if (!message) return;
                               steeringFollowUpIdsRef.current.add(item.id);
                               setSteeringFollowUpIds(new Set(steeringFollowUpIdsRef.current));
-                              agentSteer(runId, message)
-                                .then((result) => {
-                                  if (result?.status === "run_finished") return;
-                                  useAgentTurnsStore.getState().markSteered(chatId, item.id);
+                              mentionAttachments(
+                                projectId,
+                                item.text,
+                                useFilesStore.getState().tree,
+                              )
+                                .then((mentioned) => {
+                                  const message = toAgentMessages([
+                                    inputModelMessage(
+                                      steeredSkillText(item.text, skillsRef.current),
+                                      [...item.attachments, ...mentioned],
+                                    ),
+                                  ])[0];
+                                  if (!message) return;
+                                  return agentSteer(runId, message).then((result) => {
+                                    if (result?.status === "run_finished") return;
+                                    useAgentTurnsStore
+                                      .getState()
+                                      .markSteered(chatId, item.id);
+                                  });
                                 })
                                 .catch(() =>
                                   toast.error("The running turn could not be steered."),
@@ -3239,6 +3394,7 @@ ${sandboxedCustom}`;
                     const inserted =
                       command.kind === "insert" ? (command.insertText ?? "") : "";
                     setInput(inserted);
+                    setComposerCaret(inserted.length);
                     setSlashMenuDismissedInput(inserted ? inserted : null);
                     setActiveSlashCommandId(null);
                     if (inserted) {
@@ -3249,27 +3405,68 @@ ${sandboxedCustom}`;
                   }}
                 />
               )}
+              {mentionMenuOpen && (
+                <MentionMenu
+                  ref={mentionMenuRef}
+                  entries={mentionMatches}
+                  onActiveEntryChange={setActiveMentionPath}
+                  onClose={() => {
+                    setMentionMenuDismissedInput(input);
+                    setActiveMentionPath(null);
+                  }}
+                  onSelect={(selection) => {
+                    if (mentionToken) insertMention(mentionToken.start, selection.text);
+                  }}
+                />
+              )}
+              <div className="relative">
+              <ComposerHighlight
+                ref={highlightRef}
+                text={input}
+                skillIds={invocableSkillIds}
+                paths={mentionPaths}
+                className="max-h-56 rounded-md px-0.5 py-2 text-sm"
+              />
               <Textarea
                 ref={textareaRef}
                 data-tour="ai-input"
                 role="combobox"
                 aria-autocomplete="list"
-                aria-controls={slashMenuOpen ? "ai-slash-command-menu" : undefined}
-                aria-expanded={slashMenuOpen}
+                aria-controls={
+                  mentionMenuOpen
+                    ? "ai-mention-menu"
+                    : slashMenuOpen
+                      ? "ai-slash-command-menu"
+                      : undefined
+                }
+                aria-expanded={mentionMenuOpen || slashMenuOpen}
                 aria-haspopup="listbox"
                 aria-activedescendant={
-                  slashMenuOpen && activeSlashCommandId
-                    ? `ai-slash-command-${activeSlashCommandId}`
-                    : undefined
+                  mentionMenuOpen && activeMentionPath
+                    ? `ai-mention-${activeMentionPath}`
+                    : slashMenuOpen && activeSlashCommandId
+                      ? `ai-slash-command-${activeSlashCommandId}`
+                      : undefined
                 }
                 value={input}
                 onChange={(e) => {
                   setSlashMenuDismissedInput(null);
                   setActiveSlashCommandId(null);
+                  setMentionMenuDismissedInput(null);
+                  setActiveMentionPath(null);
                   setInput(e.target.value);
+                  syncComposerCaret(e.target);
                 }}
+                onScroll={(e) => {
+                  const layer = highlightRef.current;
+                  if (layer) layer.scrollTop = e.currentTarget.scrollTop;
+                }}
+                onSelect={(e) => syncComposerCaret(e.currentTarget)}
+                onClick={(e) => syncComposerCaret(e.currentTarget)}
+                onKeyUp={(e) => syncComposerCaret(e.currentTarget)}
                 onKeyDown={(e) => {
                   if (e.nativeEvent.isComposing) return;
+                  if (mentionMenuOpen && mentionMenuRef.current?.handleKeyDown(e)) return;
                   if (slashMenuOpen && slashCommandMenuRef.current?.handleKeyDown(e)) return;
                   if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault();
@@ -3279,8 +3476,9 @@ ${sandboxedCustom}`;
                 placeholder={inputPlaceholder}
                 disabled={!engineLoaded}
                 rows={1}
-                className="max-h-56 min-h-[32px] w-full resize-none overflow-y-auto rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none outline-none placeholder:text-muted-foreground/70"
+                className="relative max-h-56 min-h-[32px] w-full resize-none overflow-y-auto rounded-md border-0 bg-transparent px-0.5 text-sm text-transparent caret-foreground shadow-none outline-none placeholder:text-muted-foreground/70"
               />
+              </div>
               {modelNoticeLine && (
                 <p
                   data-testid="ai-model-notice"
@@ -3324,163 +3522,160 @@ ${sandboxedCustom}`;
                     onOpenProjectRules={openProjectApprovalSettings}
                     disabled={approvalModeLocked}
                   />
-                  {!figureMode && (
-                    <span
-                      data-tour="ai-prompts"
-                      className="ai-composer-prompts inline-flex shrink-0"
-                    >
-                      <Tooltip label="Prompts">
-                        <Popover
-                          align="left"
-                          ariaLabel="Prompt shortcuts"
-                          triggerClassName="ai-composer-prompts-trigger h-7 shrink-0 gap-1 px-2 text-xs font-medium"
-                          className="max-h-96 w-80 overflow-y-auto p-1.5"
-                          trigger={
-                            <>
-                              <WalletCards className="ai-composer-prompts-icon hidden size-4 shrink-0" />
-                              <span className="ai-composer-prompts-value">Prompts</span>
-                              <ChevronDown className="ai-composer-prompts-chevron size-3.5 shrink-0" />
-                            </>
-                          }
-                        >
-                          {[...PROMPT_CATEGORIES, ...skillPromptCategories].map((category, i) => (
-                            <div
-                              key={category.label}
-                              className={cn("py-2", i > 0 && "mt-1 border-t pt-2.5")}
-                            >
-                              <span className="block px-2.5 pb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                                {category.label}
-                              </span>
-                              <div className="space-y-0.5">
-                                {category.items.map((item) => (
-                                  <button
-                                    type="button"
-                                    key={item.label}
-                                    onClick={() => {
-                                      setInput(item.prompt);
-                                      requestAnimationFrame(() =>
-                                        textareaRef.current?.focus({
-                                          preventScroll: true,
-                                        }),
-                                      );
-                                    }}
-                                    className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2.5 text-left transition-colors hover:bg-accent"
-                                  >
-                                    <item.icon className="mt-0.5 size-4 shrink-0 text-primary" />
-                                    <span className="min-w-0 flex-1">
-                                      <span className="block truncate text-xs font-medium leading-snug">{item.label}</span>
-                                      <span className="block truncate text-[11px] leading-snug text-muted-foreground">
-                                        {item.description}
-                                      </span>
-                                    </span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </Popover>
-                      </Tooltip>
-                    </span>
-                  )}
-                  {!figureMode && (
-                    <span
-                      data-tour="ai-persona"
-                      className="ai-composer-persona inline-flex shrink-0"
-                    >
-                      <Tooltip
-                        side="top"
-                        label={
-                          activePersona
-                            ? `${activePersona.name} is active and replaces your default instructions.`
-                            : "Choose persona"
+                  <span
+                    data-tour="ai-prompts"
+                    className="ai-composer-prompts inline-flex shrink-0"
+                  >
+                    <Tooltip label="Prompts">
+                      <Popover
+                        align="left"
+                        ariaLabel="Prompt shortcuts"
+                        triggerClassName="ai-composer-prompts-trigger h-7 shrink-0 gap-1 px-2 text-xs font-medium"
+                        className="max-h-96 w-80 overflow-y-auto p-1.5"
+                        trigger={
+                          <>
+                            <WalletCards className="ai-composer-prompts-icon hidden size-4 shrink-0" />
+                            <span className="ai-composer-prompts-value">Prompts</span>
+                            <ChevronDown className="ai-composer-prompts-chevron size-3.5 shrink-0" />
+                          </>
                         }
                       >
-                        <Popover
-                          align="left"
-                          ariaLabel={
-                            activePersona
-                              ? `Persona. ${activePersona.name} active and replacing default instructions.`
-                              : "Choose persona"
-                          }
-                          triggerClassName="ai-composer-persona-trigger h-7 max-w-40 shrink-0 gap-1.5 px-2 text-xs font-medium"
-                          className="max-h-64 w-64 overflow-y-auto p-1.5"
-                          trigger={
-                            <>
-                              {activePersona ? (
-                                <span
-                                  data-testid="ai-active-persona-indicator"
-                                  className="size-2.5 shrink-0 rounded-full ring-1 ring-background"
-                                  style={{
-                                    background: personaGradient(activePersona.color),
-                                  }}
-                                />
-                              ) : (
-                                <span
-                                  data-testid="ai-inactive-persona-indicator"
-                                  className="size-2.5 shrink-0 rounded-full border border-muted-foreground/50"
-                                />
-                              )}
-                              <span className="ai-composer-persona-value truncate">
-                                {activePersona ? activePersona.name : "Persona"}
-                              </span>
-                              <ChevronDown className="size-3.5 shrink-0" />
-                            </>
-                          }
-                        >
-                          {personas.length === 0 ? (
-                            <button
-                              type="button"
-                              data-testid="ai-persona-create"
-                              onClick={() => {
-                                setSettingsInitialSection("ai");
-                                setSettingsScrollTarget("ai-personas");
-                                setSettingsOpen(true);
-                              }}
-                              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                            >
-                              <Plus className="size-3.5 shrink-0" />
-                              Create a persona in Settings
-                            </button>
-                          ) : (
+                        {[...PROMPT_CATEGORIES, ...skillPromptCategories].map((category, i) => (
+                          <div
+                            key={category.label}
+                            className={cn("py-2", i > 0 && "mt-1 border-t pt-2.5")}
+                          >
+                            <span className="block px-2.5 pb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                              {category.label}
+                            </span>
                             <div className="space-y-0.5">
-                              <button
-                                type="button"
-                                data-testid="ai-persona-none"
-                                onClick={() => setActivePersonaId(null)}
-                                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
-                              >
-                                <span className="size-3 shrink-0 rounded-full border border-muted-foreground/40" />
-                                <span className="min-w-0 flex-1 truncate text-xs font-medium">None</span>
-                                {activePersonaId === null && (
-                                  <Check className="size-3.5 shrink-0 text-emerald-500" />
-                                )}
-                              </button>
-                              {personas.map((persona) => (
+                              {category.items.map((item) => (
                                 <button
                                   type="button"
-                                  key={persona.id}
-                                  data-testid={`ai-persona-${persona.name}`}
-                                  onClick={() => setActivePersonaId(persona.id)}
-                                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
+                                  key={item.label}
+                                  onClick={() => {
+                                    setInput(item.prompt);
+                                    setComposerCaret(item.prompt.length);
+                                    requestAnimationFrame(() =>
+                                      textareaRef.current?.focus({
+                                        preventScroll: true,
+                                      }),
+                                    );
+                                  }}
+                                  className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2.5 text-left transition-colors hover:bg-accent"
                                 >
-                                  <span
-                                    className="size-3 shrink-0 rounded-full"
-                                    style={{ background: personaGradient(persona.color) }}
-                                  />
-                                  <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                                    {persona.name}
+                                  <item.icon className="mt-0.5 size-4 shrink-0 text-primary" />
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-xs font-medium leading-snug">{item.label}</span>
+                                    <span className="block truncate text-[11px] leading-snug text-muted-foreground">
+                                      {item.description}
+                                    </span>
                                   </span>
-                                  {activePersonaId === persona.id && (
-                                    <Check className="size-3.5 shrink-0 text-emerald-500" />
-                                  )}
                                 </button>
                               ))}
                             </div>
-                          )}
-                        </Popover>
-                      </Tooltip>
-                    </span>
-                  )}
+                          </div>
+                        ))}
+                      </Popover>
+                    </Tooltip>
+                  </span>
+                  <span
+                    data-tour="ai-persona"
+                    className="ai-composer-persona inline-flex shrink-0"
+                  >
+                    <Tooltip
+                      side="top"
+                      label={
+                        activePersona
+                          ? `${activePersona.name} is active and replaces your default instructions.`
+                          : "Choose persona"
+                      }
+                    >
+                      <Popover
+                        align="left"
+                        ariaLabel={
+                          activePersona
+                            ? `Persona. ${activePersona.name} active and replacing default instructions.`
+                            : "Choose persona"
+                        }
+                        triggerClassName="ai-composer-persona-trigger h-7 max-w-40 shrink-0 gap-1.5 px-2 text-xs font-medium"
+                        className="max-h-64 w-64 overflow-y-auto p-1.5"
+                        trigger={
+                          <>
+                            {activePersona ? (
+                              <span
+                                data-testid="ai-active-persona-indicator"
+                                className="size-2.5 shrink-0 rounded-full ring-1 ring-background"
+                                style={{
+                                  background: personaGradient(activePersona.color),
+                                }}
+                              />
+                            ) : (
+                              <span
+                                data-testid="ai-inactive-persona-indicator"
+                                className="size-2.5 shrink-0 rounded-full border border-muted-foreground/50"
+                              />
+                            )}
+                            <span className="ai-composer-persona-value truncate">
+                              {activePersona ? activePersona.name : "Persona"}
+                            </span>
+                            <ChevronDown className="size-3.5 shrink-0" />
+                          </>
+                        }
+                      >
+                        {personas.length === 0 ? (
+                          <button
+                            type="button"
+                            data-testid="ai-persona-create"
+                            onClick={() => {
+                              setSettingsInitialSection("ai");
+                              setSettingsScrollTarget("ai-personas");
+                              setSettingsOpen(true);
+                            }}
+                            className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                          >
+                            <Plus className="size-3.5 shrink-0" />
+                            Create a persona in Settings
+                          </button>
+                        ) : (
+                          <div className="space-y-0.5">
+                            <button
+                              type="button"
+                              data-testid="ai-persona-none"
+                              onClick={() => setActivePersonaId(null)}
+                              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
+                            >
+                              <span className="size-3 shrink-0 rounded-full border border-muted-foreground/40" />
+                              <span className="min-w-0 flex-1 truncate text-xs font-medium">None</span>
+                              {activePersonaId === null && (
+                                <Check className="size-3.5 shrink-0 text-emerald-500" />
+                              )}
+                            </button>
+                            {personas.map((persona) => (
+                              <button
+                                type="button"
+                                key={persona.id}
+                                data-testid={`ai-persona-${persona.name}`}
+                                onClick={() => setActivePersonaId(persona.id)}
+                                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
+                              >
+                                <span
+                                  className="size-3 shrink-0 rounded-full"
+                                  style={{ background: personaGradient(persona.color) }}
+                                />
+                                <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                                  {persona.name}
+                                </span>
+                                {activePersonaId === persona.id && (
+                                  <Check className="size-3.5 shrink-0 text-emerald-500" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </Popover>
+                    </Tooltip>
+                  </span>
                   <Tooltip label={planMode ? "Plan mode on" : "Plan mode off"}>
                     <button
                       type="button"
@@ -3509,22 +3704,6 @@ ${sandboxedCustom}`;
                         className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
                       >
                         <Info className="size-3.5" />
-                      </button>
-                    </Tooltip>
-                  )}
-                  {figureModeAvailable && (
-                    <Tooltip label={figureMode ? "Figure mode on" : "Draw a figure"}>
-                      <button type="button"
-                        onClick={() => setFigureMode((v) => !v)}
-                        aria-label="Toggle figure mode"
-                        aria-pressed={figureMode}
-                        className={cn(
-                          "ai-composer-figure flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                          figureMode && "bg-primary/15 text-primary hover:bg-primary/20",
-                        )}
-                      >
-                        <Frame className="size-4 shrink-0" />
-                        <span className="ai-composer-figure-value">Figure</span>
                       </button>
                     </Tooltip>
                   )}

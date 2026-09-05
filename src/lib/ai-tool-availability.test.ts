@@ -37,7 +37,7 @@ describe("AI tool availability", () => {
         },
         {
           id: "figure-tools",
-          mode: "figure",
+          mode: "chat",
           source: { kind: "figure" },
           create: () => ({ preview_figure: tool("Preview a figure.") }),
         },
@@ -58,6 +58,7 @@ describe("AI tool availability", () => {
       "literature_search",
       "search_papers",
       "fetch_record",
+      "preview_figure",
       "load_skill",
     ]);
     expect(resolved.groups.map(({ label, server, tools }) => ({
@@ -68,11 +69,12 @@ describe("AI tool availability", () => {
       { label: "Project tools", server: undefined, tools: ["read_file", "literature_search"] },
       { label: "MCP", server: "Papers", tools: ["search_papers"] },
       { label: "MCP", server: "Library", tools: ["fetch_record"] },
+      { label: "Figure", server: undefined, tools: ["preview_figure"] },
       { label: "Skills", server: undefined, tools: ["load_skill"] },
     ]);
   });
 
-  it("uses only figure contributions in figure mode", () => {
+  it("keeps the figure group out of a run that excludes the figure tools", () => {
     const resolved = resolveAvailableTools({
       toolsets: [
         {
@@ -83,17 +85,22 @@ describe("AI tool availability", () => {
         },
         {
           id: "figure-tools",
-          mode: "figure",
+          mode: "chat",
           source: { kind: "figure" },
-          create: () => ({ preview_figure: tool("Preview a figure.") }),
+          create: () => ({
+            preview_figure: tool("Preview a figure."),
+            insert_figure: tool("Insert a figure."),
+            load_image: tool("Load an image."),
+          }),
         },
       ],
-      mode: "figure",
+      mode: "chat",
       createOpts: {},
+      excludedNames: ["preview_figure", "insert_figure", "load_image"],
     });
 
-    expect(Object.keys(resolved.tools)).toEqual(["preview_figure"]);
-    expect(resolved.groups.map((group) => group.label)).toEqual(["Figure"]);
+    expect(Object.keys(resolved.tools)).toEqual(["read_file"]);
+    expect(resolved.groups.map((group) => group.label)).toEqual(["Project tools"]);
   });
 
   it("keeps resolving when one active contribution fails to initialize", () => {

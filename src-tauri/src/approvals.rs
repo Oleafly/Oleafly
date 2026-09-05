@@ -177,6 +177,47 @@ pub fn set_decision(
     write_file(root, &approvals)
 }
 
+pub fn read_raw(root: &Path) -> Result<String, String> {
+    match std::fs::read_to_string(approvals_path(root)) {
+        Ok(raw) => Ok(raw),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+        Err(error) => Err(format!("failed to read approvals: {error}")),
+    }
+}
+
+pub fn write_raw(root: &Path, text: &str) -> Result<(), String> {
+    let _guard = APPROVALS_WRITE_LOCK
+        .lock()
+        .map_err(|_| "approvals are being written by another task".to_string())?;
+    let parsed: ApprovalsFile =
+        toml::from_str(text).map_err(|error| format!("The file is not valid: {error}"))?;
+    for (project, tools) in &parsed.decisions {
+        if project.trim().is_empty() {
+            return Err("A project table needs a project id as its name.".to_string());
+        }
+        for tool in tools.keys() {
+            if tool.trim().is_empty() {
+                return Err(format!("A rule under [{project}] has an empty tool name."));
+            }
+        }
+    }
+    std::fs::create_dir_all(root).map_err(|e| format!("failed to create data dir: {e}"))?;
+    let tmp = approvals_path(root).with_extension("toml.tmp");
+    std::fs::write(&tmp, text).map_err(|e| format!("failed to write approvals: {e}"))?;
+    crate::sandbox::replace_file(&tmp, &approvals_path(root))
+        .map_err(|e| format!("failed to replace approvals: {e}"))
+}
+
+#[tauri::command]
+pub fn approvals_read_raw() -> Result<String, String> {
+    read_raw(&crate::paths::oleafly_root()?)
+}
+
+#[tauri::command]
+pub fn approvals_write_raw(text: String) -> Result<(), String> {
+    write_raw(&crate::paths::oleafly_root()?, &text)
+}
+
 #[tauri::command]
 pub fn approvals_list(project_id: String) -> Result<BTreeMap<String, ToolDecision>, String> {
     crate::paths::validate_project_id(&project_id)?;
@@ -246,6 +287,34 @@ async fn confirm_full_access(app: tauri::AppHandle) -> Result<bool, String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn raw_edits_round_trip_and_keep_comments() {
+        let root =
+            std::env::temp_dir().join(format!("oleafly-approvals-raw-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let text = "# my rules\n[\"$approval_modes\"]\nproj = \"custom\"\n\n[proj]\nrun_command = \"deny\"\n";
+        super::write_raw(&root, text).unwrap();
+        assert_eq!(super::read_raw(&root).unwrap(), text);
+        assert_eq!(super::mode_for(&root, "proj"), super::ApprovalMode::Custom);
+        assert_eq!(
+            super::decisions_for(&root, "proj").get("run_command"),
+            Some(&super::ToolDecision::Deny)
+        );
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn raw_edits_are_refused_when_invalid() {
+        let root =
+            std::env::temp_dir().join(format!("oleafly-approvals-raw-bad-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        assert!(super::write_raw(&root, "[proj\nrun_command = deny").is_err());
+        assert!(super::write_raw(&root, "[proj]\nrun_command = \"maybe\"").is_err());
+        assert!(super::write_raw(&root, "[\"$approval_modes\"]\nproj = \"yolo\"").is_err());
+        assert_eq!(super::read_raw(&root).unwrap(), "");
+        std::fs::remove_dir_all(&root).ok();
+    }
+
     use super::*;
 
     fn temp_root(tag: &str) -> PathBuf {

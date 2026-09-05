@@ -120,6 +120,30 @@ instead of deciding to load it partway through.
 /oleafly-pre-submission check this manuscript for NeurIPS
 ```
 
+A skill command that matches an installed skill turns blue in the composer as
+you type, so you can tell a real one from a typo before you send. If nothing
+matches what you typed after the slash, no menu appears and the message goes
+out as plain text.
+
+## Pointing the assistant at files and folders
+
+Type `@` and a list of the project's files and folders opens, filtered as you
+keep typing and ordered so the closest match to the file name comes first.
+Pick one with the arrow keys and Enter, or keep typing the path yourself. A
+mention that resolves to a real path turns violet in the composer. When you
+send, the file's content travels with the message (the first 200 KB, with a
+note when it was cut) and a folder mention sends a listing of what is inside
+it, so the assistant can answer without a round of read_file calls first.
+Both kinds of mention show as small chips in your message in the transcript.
+
+```
+Tighten the argument in @sections/related-work.tex and keep every citation
+```
+
+```
+Which of the plots in @figures/ are referenced from the text
+```
+
 ## Device-wide and per-project
 
 The switch next to a skill's name in Settings turns it on for every project
