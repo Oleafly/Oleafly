@@ -189,15 +189,51 @@ function adaptForPackagedRuntime<T>(target: T): T {
   return target;
 }
 
+const BRIDGE_SILENCE_LIMIT_MS = 90_000;
+let bridgeStoppedAnswering: string | null = null;
+
+function failFastOnBridgeSilence(client: PluginClient): PluginClient {
+  const send = client.send.bind(client);
+  client.send = async (command: Record<string, unknown>) => {
+    if (bridgeStoppedAnswering) throw new Error(bridgeStoppedAnswering);
+    const label = typeof command.type === "string" ? command.type : "command";
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let silent = false;
+    try {
+      return await Promise.race([
+        send(command),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            silent = true;
+            reject(
+              new Error(
+                `the app never answered '${label}' within ${BRIDGE_SILENCE_LIMIT_MS}ms; its main thread or async runtime is blocked`,
+              ),
+            );
+          }, BRIDGE_SILENCE_LIMIT_MS);
+        }),
+      ]);
+    } catch (error) {
+      if (silent) bridgeStoppedAnswering = String((error as Error)?.message ?? error);
+      throw error;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  };
+  return client;
+}
+
 function createNativeTest(dismissTours: boolean) {
   const port = Number(process.env.TAURI_PLAYWRIGHT_TCP_PORT ?? 6274);
   const socket = process.env.TAURI_PLAYWRIGHT_SOCKET ?? "/tmp/tauri-playwright.sock";
   const test = base.extend<{ tauriPage: TauriPage }>({
     tauriPage: async ({}, use) => {
-      const client =
+      if (bridgeStoppedAnswering) throw new Error(bridgeStoppedAnswering);
+      const client = failFastOnBridgeSilence(
         process.platform === "win32"
           ? new PluginClient(undefined, port)
-          : new PluginClient(socket);
+          : new PluginClient(socket),
+      );
       let lastErr: unknown = null;
       for (let i = 0; i < 30; i++) {
         try {
