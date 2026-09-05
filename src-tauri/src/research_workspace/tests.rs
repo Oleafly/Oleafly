@@ -1,7 +1,9 @@
+#[cfg(unix)]
+use super::model::ResearchRootOperation;
 use super::model::{
     AddResearchRootRequest, LinkedResearchRoot, ResearchDocumentEngine, ResearchProjectRequest,
-    ResearchRootAccess, ResearchRootAvailability, ResearchRootConsumer, ResearchRootOperation,
-    ResearchRootRole, ResearchStarter, ResearchWorkspace,
+    ResearchRootAccess, ResearchRootAvailability, ResearchRootConsumer, ResearchRootRole,
+    ResearchStarter, ResearchWorkspace,
 };
 use super::{roots, setup};
 use std::collections::HashSet;

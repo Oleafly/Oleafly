@@ -1990,99 +1990,142 @@ fn app_pack_root(app: &tauri::AppHandle) -> Option<PathBuf> {
     crate::skills_pack::pack_root(app)
 }
 
+async fn off_ui_thread<T, F>(label: &'static str, work: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|error| format!("failed to {label}: {error}"))?
+}
+
 #[tauri::command]
-pub fn skills_list(
+pub async fn skills_list(
     app: tauri::AppHandle,
     project_id: Option<String>,
 ) -> Result<Vec<SkillRecord>, String> {
     let pack_root = app_pack_root(&app);
-    let records = list_with(
-        &crate::paths::oleafly_root()?,
-        pack_root.as_deref(),
-        project_id.as_deref().filter(|project| !project.is_empty()),
-    )?;
-    crate::skills_share::sync_after_list(&records);
-    Ok(records)
+    off_ui_thread("list the skills", move || {
+        let records = list_with(
+            &crate::paths::oleafly_root()?,
+            pack_root.as_deref(),
+            project_id.as_deref().filter(|project| !project.is_empty()),
+        )?;
+        crate::skills_share::sync_after_list(&records);
+        Ok(records)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn skills_add(app: tauri::AppHandle, source_path: String) -> Result<SkillRecord, String> {
+pub async fn skills_add(app: tauri::AppHandle, source_path: String) -> Result<SkillRecord, String> {
     let pack_root = app_pack_root(&app);
-    add(
-        &crate::paths::oleafly_root()?,
-        pack_root.as_deref(),
-        Path::new(&source_path),
-    )
+    off_ui_thread("add the skill", move || {
+        add(
+            &crate::paths::oleafly_root()?,
+            pack_root.as_deref(),
+            Path::new(&source_path),
+        )
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn skills_create(
+pub async fn skills_create(
     app: tauri::AppHandle,
     input: CreateSkillInput,
 ) -> Result<SkillRecord, String> {
     let pack_root = app_pack_root(&app);
-    create(&crate::paths::oleafly_root()?, pack_root.as_deref(), input)
+    off_ui_thread("create the skill", move || {
+        create(&crate::paths::oleafly_root()?, pack_root.as_deref(), input)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn skills_update(id: String, input: UpdateSkillInput) -> Result<SkillRecord, String> {
-    update(&crate::paths::oleafly_root()?, &id, input)
+pub async fn skills_update(id: String, input: UpdateSkillInput) -> Result<SkillRecord, String> {
+    off_ui_thread("update the skill", move || {
+        update(&crate::paths::oleafly_root()?, &id, input)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn skills_validate(id: String) -> Result<SkillRecord, String> {
-    validate(&crate::paths::oleafly_root()?, &id)
+pub async fn skills_validate(id: String) -> Result<SkillRecord, String> {
+    off_ui_thread("validate the skill", move || {
+        validate(&crate::paths::oleafly_root()?, &id)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn skills_set_enabled(
+pub async fn skills_set_enabled(
     app: tauri::AppHandle,
     id: String,
     enabled: bool,
     project_id: Option<String>,
 ) -> Result<SkillRecord, String> {
     let pack_root = app_pack_root(&app);
-    set_enabled(
-        &crate::paths::oleafly_root()?,
-        pack_root.as_deref(),
-        project_id.as_deref().filter(|project| !project.is_empty()),
-        &id,
-        enabled,
-    )
+    off_ui_thread("update the skill", move || {
+        set_enabled(
+            &crate::paths::oleafly_root()?,
+            pack_root.as_deref(),
+            project_id.as_deref().filter(|project| !project.is_empty()),
+            &id,
+            enabled,
+        )
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn skills_set_project_enabled(
+pub async fn skills_set_project_enabled(
     app: tauri::AppHandle,
     project_id: String,
     id: String,
     enabled: Option<bool>,
 ) -> Result<SkillRecord, String> {
     let pack_root = app_pack_root(&app);
-    set_project_enabled(
-        &crate::paths::oleafly_root()?,
-        pack_root.as_deref(),
-        &project_id,
-        &id,
-        enabled,
-    )
+    off_ui_thread("update the skill", move || {
+        set_project_enabled(
+            &crate::paths::oleafly_root()?,
+            pack_root.as_deref(),
+            &project_id,
+            &id,
+            enabled,
+        )
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn skills_remove(id: String) -> Result<(), String> {
-    remove(&crate::paths::oleafly_root()?, &id)
+pub async fn skills_remove(id: String) -> Result<(), String> {
+    off_ui_thread("remove the skill", move || {
+        remove(&crate::paths::oleafly_root()?, &id)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn skills_read_file(id: String, path: String) -> Result<SkillFileContent, String> {
-    read_skill_file(&crate::paths::oleafly_root()?, &id, &path)
+pub async fn skills_read_file(id: String, path: String) -> Result<SkillFileContent, String> {
+    off_ui_thread("read the skill file", move || {
+        read_skill_file(&crate::paths::oleafly_root()?, &id, &path)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn skills_update_builtin(app: tauri::AppHandle, id: String) -> Result<SkillRecord, String> {
+pub async fn skills_update_builtin(
+    app: tauri::AppHandle,
+    id: String,
+) -> Result<SkillRecord, String> {
     let pack_root = app_pack_root(&app)
         .ok_or_else(|| "The built-in skill pack is not available.".to_string())?;
-    update_builtin(&crate::paths::oleafly_root()?, &pack_root, &id)
+    off_ui_thread("update the built-in skill", move || {
+        update_builtin(&crate::paths::oleafly_root()?, &pack_root, &id)
+    })
+    .await
 }
 
 #[cfg(test)]
