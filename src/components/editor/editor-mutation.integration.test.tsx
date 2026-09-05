@@ -82,6 +82,7 @@ afterEach(async () => {
   cleanup();
   mocks.write.mockResolvedValue({ generation: 1 });
   await useFilesStore.getState().closeProject();
+  await vi.dynamicImportSettled();
 });
 
 it("flushes a just-edited working diff through the save queue and reconciles it while locked", async () => {
