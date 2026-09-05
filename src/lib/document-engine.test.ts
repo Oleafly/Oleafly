@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  canUseFigureMode,
+  supportsFigureTools,
   compileOfflineForEngine,
   formattingForEngine,
   LATEX_ENGINE,
@@ -106,12 +106,12 @@ describe("formattingForEngine", () => {
   });
 });
 
-describe("canUseFigureMode", () => {
+describe("supportsFigureTools", () => {
   it("requires both LaTeX formatting and isolated compilation", () => {
-    expect(canUseFigureMode(LATEX_ENGINE)).toBe(true);
-    expect(canUseFigureMode(LATEX_ENGINE, false)).toBe(false);
+    expect(supportsFigureTools(LATEX_ENGINE)).toBe(true);
+    expect(supportsFigureTools(LATEX_ENGINE, false)).toBe(false);
     expect(
-      canUseFigureMode({
+      supportsFigureTools({
         ...LATEX_ENGINE,
         id: "typst",
         capabilities: {

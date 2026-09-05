@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { canUseFigureMode, LATEX_ENGINE } from "@/lib/document-engine";
+import { supportsFigureTools, LATEX_ENGINE } from "@/lib/document-engine";
 
 const mocks = vi.hoisted(() => ({
   getProject: vi.fn(),
@@ -1535,7 +1535,7 @@ describe("project engine transition", () => {
     expect(during.engine.capabilities.formatting_profile).toBe("none");
     expect(during.engine.capabilities.supports_synctex).toBe(false);
     expect(during.engine.capabilities.supports_isolated_compile).toBe(false);
-    expect(canUseFigureMode(during.engine, during.engineLoaded)).toBe(false);
+    expect(supportsFigureTools(during.engine, during.engineLoaded)).toBe(false);
 
     pending.resolve(LATEX_ENGINE);
     await opening;
@@ -1543,7 +1543,7 @@ describe("project engine transition", () => {
     expect(ready.engineLoaded).toBe(true);
     expect(ready.engine).toEqual(LATEX_ENGINE);
     expect(ready.engine.capabilities.supports_synctex).toBe(true);
-    expect(canUseFigureMode(ready.engine, ready.engineLoaded)).toBe(true);
+    expect(supportsFigureTools(ready.engine, ready.engineLoaded)).toBe(true);
     expect(ready.loading).toBe(false);
   });
 

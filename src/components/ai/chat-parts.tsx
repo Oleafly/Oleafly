@@ -23,7 +23,40 @@ import {
 } from "@/store/agent-file-changes";
 import { Markdown } from "@/components/ui/markdown";
 import { Popover } from "@/components/ui/popover";
+import { tokenizeComposer } from "@/lib/composer-tokens";
 import { cn } from "@/lib/utils";
+
+const USER_SKILL_CHIP_CLASS =
+  "rounded bg-blue-300/35 px-1 py-px font-medium text-white";
+const USER_MENTION_CHIP_CLASS =
+  "rounded bg-teal-300/35 px-1 py-px font-medium text-white";
+
+export function userTokenChips(msg: ChatMessage): React.ReactNode | null {
+  const skillIds = msg.skillId ? [msg.skillId] : [];
+  const mentions = msg.mentions ?? [];
+  if (skillIds.length === 0 && mentions.length === 0) return null;
+  const tokens = tokenizeComposer(msg.content, { skillIds, paths: mentions });
+  if (!tokens.some((token) => token.kind !== "text")) return null;
+  return (
+    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+      {tokens.map((token) => (
+        <span
+          key={`${token.kind}-${token.start}`}
+          data-token={token.kind}
+          className={
+            token.kind === "skill"
+              ? USER_SKILL_CHIP_CLASS
+              : token.kind === "mention"
+                ? USER_MENTION_CHIP_CLASS
+                : undefined
+          }
+        >
+          {msg.content.slice(token.start, token.end)}
+        </span>
+      ))}
+    </p>
+  );
+}
 
 export function Shimmer({ text }: { text?: string }) {
   return text ? <span className="ai-shimmer text-xs">{text}</span> : null;
@@ -1022,6 +1055,7 @@ export const MessageItem = memo(function MessageItem({
   }
   const totalMs = blocks.reduce((sum, block) => sum + (block.ms ?? 0), 0);
   const foldSteps = !live && rows.length > 0 && msg.role === "assistant";
+  const tokenizedUserText = msg.role === "user" ? userTokenChips(msg) : null;
   const createdAt = msg.createdAt === undefined ? null : new Date(msg.createdAt);
   const validCreatedAt = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : null;
   const messageTime = validCreatedAt?.toLocaleTimeString([], {
@@ -1073,13 +1107,15 @@ export const MessageItem = memo(function MessageItem({
                 : "w-full bg-muted text-foreground",
             )}
           >
-            <Markdown
-              className="chat-markdown"
-              inverted={msg.role === "user"}
-              streaming={live}
-            >
-              {msg.content}
-            </Markdown>
+            {tokenizedUserText ?? (
+              <Markdown
+                className="chat-markdown"
+                inverted={msg.role === "user"}
+                streaming={live}
+              >
+                {msg.content}
+              </Markdown>
+            )}
           </div>
           <div className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
             {messageTime && (

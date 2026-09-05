@@ -662,7 +662,7 @@ describe("AISection custom provider editing", () => {
     expect(screen.getByText("Lab updated.")).toBeInTheDocument();
   });
 
-  it("refuses a base URL change without the key when one is stored", async () => {
+  it("changes the base URL without the key and keeps the stored key", async () => {
     configFixture = {
       ...configuredAiConfig(),
       ai_keys: { ...configuredAiConfig().ai_keys, "local-lab": "__stored__" },
@@ -680,11 +680,16 @@ describe("AISection custom provider editing", () => {
       });
     });
 
-    expect(result).toEqual({
-      ok: false,
-      message: "Enter the API key again to change the base URL.",
+    expect(result).toEqual({ ok: true });
+    expect(mockInvoke).toHaveBeenCalledWith("agent_list_models", {
+      providerId: "local-lab",
+      key: null,
+      baseUrl: "http://127.0.0.1:9100/v1",
     });
-    expect(mockInvoke).not.toHaveBeenCalledWith("agent_list_models", expect.anything());
+    const written = lastConfigWrite();
+    expect(written.ai_custom_providers[0].id).toBe("local-lab");
+    expect(written.ai_custom_providers[0].baseURL).toBe("http://127.0.0.1:9100/v1");
+    expect(written.ai_keys["local-lab"]).toBe("__stored__");
   });
 
   it("keeps the saved base URL out of the listing call when only the name changes", async () => {

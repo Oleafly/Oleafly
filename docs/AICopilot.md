@@ -55,6 +55,19 @@ summary appears under the last assistant message instead, along the lines of
 "Plan · 2/2 done · 3 files changed +40 -12", with the file rows under it. A run
 that changed files without a plan gets the same summary minus the Plan label.
 
+## Figures
+
+Ask for a figure in the ordinary chat. The assistant writes it as TikZ or
+PGFPlots, compiles the picture on its own with `preview_figure`, and looks at
+what came out. It keeps fixing and previewing again until the labels stop
+overlapping and the spacing looks right. `insert_figure` puts the finished
+picture at your cursor with a caption and a label, and `load_image` opens a
+sketch you already have in the project so it can redraw it.
+
+Those three tools only show up in a LaTeX project whose engine can compile a
+figure by itself. They sit in the Tools popover under Figure, so you can turn
+them off.
+
 ## Skills
 
 Skills teach the assistant a repeatable workflow instead of leaving it to
@@ -122,10 +135,10 @@ was a bad moment for the provider rather than the model. Chat-only models and
 runs with every tool switched off skip the check.
 
 Custom providers have an Edit action next to Remove. It opens the same dialog
-used to add one, with the name and base URL filled in and the ID fixed. If a
-key is saved for the provider and you change the base URL, the dialog asks for
-the key again before it saves, because the backend will not point a stored key
-at a new endpoint. Saving refreshes the model list from the new address.
+used to add one, with the name and base URL filled in and the ID fixed.
+Changing the base URL no longer requires re-entering the saved key: the dialog
+shows a note that the key will be sent to the new address, and saving
+refreshes the model list from there when it can.
 
 ## Provider and data boundary
 
