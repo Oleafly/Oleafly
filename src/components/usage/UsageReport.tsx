@@ -1,5 +1,5 @@
 import { useId, useMemo, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { projectsKey } from "@/lib/queries/projects";
+import type { ProjectInfo } from "@/lib/tauri";
 import {
   createUsageReportFilter,
   downloadUsageReportCsv,
@@ -32,6 +34,8 @@ type UsageReportDialogProps = {
 type UsageReportProps = {
   report: UsageReportData;
   onExport?: (report: UsageReportData) => void;
+  projectNames?: ReadonlyMap<string, string>;
+  onSelectFilter?: (dimension: UsageFilterDimension, value: string) => void;
 };
 
 type DraftFilter = {
@@ -44,6 +48,14 @@ type DraftFilter = {
   session: string;
 };
 
+type UsageFilterDimension = "project" | "runtime" | "provider" | "model" | "session";
+
+type FilterOption = {
+  value: string;
+  label: string;
+};
+
+const EMPTY_PROJECT_NAMES = new Map<string, string>();
 const DAY_MS = 86_400_000;
 const WEEKDAYS = [
   { label: "Sun", value: 0 },
@@ -131,6 +143,40 @@ function formatCombinedTokens(input: number | null, output: number | null): stri
   if (input === null && output === null) return "Unknown";
   const value = formatTokens((input ?? 0) + (output ?? 0));
   return input === null || output === null ? `At least ${value}` : value;
+}
+
+function shortIdentifier(value: string): string {
+  return value.length > 28 ? `${value.slice(0, 12)}…${value.slice(-8)}` : value;
+}
+
+function projectLabel(value: string, projectNames: ReadonlyMap<string, string>): string {
+  if (value === "global") return "General";
+  return projectNames.get(value) ?? shortIdentifier(value);
+}
+
+function runtimeLabel(value: string): string {
+  if (value === "built-in") return "Oleafly assistant";
+  if (value === "acp") return "ACP agents";
+  return shortIdentifier(value);
+}
+
+function providerLabel(value: string): string {
+  const names: Record<string, string> = {
+    anthropic: "Anthropic",
+    google: "Google",
+    ollama: "Ollama",
+    openai: "OpenAI",
+  };
+  return names[value.toLowerCase()] ?? shortIdentifier(value);
+}
+
+function filterOptions(
+  values: Iterable<string | null>,
+  label: (value: string) => string,
+): FilterOption[] {
+  return [...new Set([...values].filter((value): value is string => Boolean(value && value !== "Unknown")))]
+    .map((value) => ({ value, label: label(value) }))
+    .sort((left, right) => left.label.localeCompare(right.label));
 }
 
 function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
@@ -308,7 +354,17 @@ function UsageHeatmap({ report }: { report: UsageReportData }) {
   );
 }
 
-function BreakdownTable({ title, rows }: { title: string; rows: UsageBreakdown[] }) {
+function BreakdownTable({
+  title,
+  rows,
+  labelForKey = (value) => value,
+  onSelect,
+}: {
+  title: string;
+  rows: UsageBreakdown[];
+  labelForKey?: (value: string) => string;
+  onSelect?: (value: string) => void;
+}) {
   return (
     <section className="min-w-0 rounded-lg border bg-card">
       <h3 className="border-b px-3 py-2 text-sm font-medium">{title}</h3>
@@ -328,7 +384,17 @@ function BreakdownTable({ title, rows }: { title: string; rows: UsageBreakdown[]
               {rows.map((row) => (
                 <tr key={row.key} className="border-t">
                   <td className="max-w-48 truncate px-3 py-2" title={row.key}>
-                    {row.key}
+                    {onSelect && row.key !== "Unknown" ? (
+                      <button
+                        type="button"
+                        className="max-w-full truncate text-left font-medium text-foreground underline-offset-4 hover:underline"
+                        onClick={() => onSelect(row.key)}
+                      >
+                        {labelForKey(row.key)}
+                      </button>
+                    ) : (
+                      labelForKey(row.key)
+                    )}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {formatCombinedTokens(row.inputTotal, row.outputTotal)}
@@ -344,7 +410,12 @@ function BreakdownTable({ title, rows }: { title: string; rows: UsageBreakdown[]
   );
 }
 
-export function UsageReport({ report, onExport = downloadUsageReportCsv }: UsageReportProps) {
+export function UsageReport({
+  report,
+  onExport = downloadUsageReportCsv,
+  projectNames = EMPTY_PROJECT_NAMES,
+  onSelectFilter,
+}: UsageReportProps) {
   const totals = report.totals;
   const cost = totals.costKnownRecords > 0 ? formatCost(totals.estimatedCostUsd) : "Unknown";
   const cacheRate = totals.cacheRate === null ? "Unknown" : `${(totals.cacheRate * 100).toFixed(1)}%`;
@@ -426,10 +497,36 @@ export function UsageReport({ report, onExport = downloadUsageReportCsv }: Usage
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <BreakdownTable title="Projects" rows={report.byProject} />
-        <BreakdownTable title="Agents" rows={report.byRuntime} />
-        <BreakdownTable title="Providers" rows={report.byProvider} />
-        <BreakdownTable title="Models" rows={report.byModel} />
+        <BreakdownTable
+          title="Projects"
+          rows={report.byProject}
+          labelForKey={(value) => projectLabel(value, projectNames)}
+          onSelect={
+            onSelectFilter ? (value) => onSelectFilter("project", value) : undefined
+          }
+        />
+        <BreakdownTable
+          title="Agents"
+          rows={report.byRuntime}
+          labelForKey={runtimeLabel}
+          onSelect={
+            onSelectFilter ? (value) => onSelectFilter("runtime", value) : undefined
+          }
+        />
+        <BreakdownTable
+          title="Providers"
+          rows={report.byProvider}
+          labelForKey={providerLabel}
+          onSelect={
+            onSelectFilter ? (value) => onSelectFilter("provider", value) : undefined
+          }
+        />
+        <BreakdownTable
+          title="Models"
+          rows={report.byModel}
+          labelForKey={shortIdentifier}
+          onSelect={onSelectFilter ? (value) => onSelectFilter("model", value) : undefined}
+        />
       </div>
 
       <section className="rounded-lg border bg-card">
@@ -462,12 +559,24 @@ export function UsageReport({ report, onExport = downloadUsageReportCsv }: Usage
                   className="border-t"
                 >
                   <td className="max-w-48 truncate px-3 py-2" title={session.sessionId}>
-                    {session.sessionId}
+                    {onSelectFilter ? (
+                      <button
+                        type="button"
+                        className="max-w-full truncate text-left font-medium text-foreground underline-offset-4 hover:underline"
+                        onClick={() => onSelectFilter("session", session.sessionId)}
+                      >
+                        {shortIdentifier(session.sessionId)}
+                      </button>
+                    ) : (
+                      shortIdentifier(session.sessionId)
+                    )}
                   </td>
                   <td className="max-w-40 truncate px-3 py-2" title={session.projectId}>
-                    {session.projectId}
+                    {projectLabel(session.projectId, projectNames)}
                   </td>
-                  <td className="px-3 py-2">{session.runtimeId}</td>
+                  <td className="px-3 py-2" title={session.runtimeId}>
+                    {runtimeLabel(session.runtimeId)}
+                  </td>
                   <td className="max-w-40 truncate px-3 py-2" title={session.modelId ?? undefined}>
                     {session.modelId ?? "Unknown"}
                   </td>
@@ -508,16 +617,20 @@ function FilterField({
   value,
   onChange,
   placeholder,
+  options = [],
+  onPick,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
+  options?: FilterOption[];
+  onPick?: (value: string) => void;
 }) {
   const id = useId();
   return (
-    <label htmlFor={id} className="space-y-1 text-xs text-muted-foreground">
-      <span>{label}</span>
+    <div className="space-y-1 text-xs text-muted-foreground">
+      <label htmlFor={id}>{label}</label>
       <Input
         id={id}
         value={value}
@@ -525,7 +638,25 @@ function FilterField({
         placeholder={placeholder}
         className="h-8 text-xs"
       />
-    </label>
+      {options.length > 0 && onPick && (
+        <select
+          aria-label={`Choose a recorded ${label.toLowerCase()}`}
+          defaultValue=""
+          className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
+          onChange={(event) => {
+            if (event.target.value) onPick(event.target.value);
+            event.target.value = "";
+          }}
+        >
+          <option value="">Choose from this report</option>
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
   );
 }
 
@@ -536,10 +667,16 @@ export function UsageReportDialog({
 }: UsageReportDialogProps) {
   const initial = useMemo(() => createUsageReportFilter(initialFilter), [initialFilter]);
   const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
   const startDateId = useId();
   const endDateId = useId();
   const [filter, setFilter] = useState(initial);
   const [draft, setDraft] = useState(() => draftFromFilter(initial));
+  const projects = queryClient.getQueryData<ProjectInfo[]>(projectsKey) ?? [];
+  const projectNames = useMemo(
+    () => new Map(projects.map((project) => [project.id, project.name])),
+    [projects],
+  );
   const reportQuery = useQuery({
     queryKey: ["usage-report", filter],
     queryFn: () => query(filter),
@@ -549,6 +686,48 @@ export function UsageReportDialog({
 
   const setDraftValue = (key: keyof DraftFilter, value: string) => {
     setDraft((current) => ({ ...current, [key]: value }));
+  };
+
+  const choices = useMemo(() => {
+    const report = reportQuery.data;
+    if (!report) {
+      return { project: [], runtime: [], provider: [], model: [], session: [] };
+    }
+    return {
+      project: filterOptions(
+        report.byProject.map((row) => row.key),
+        (value) => projectLabel(value, projectNames),
+      ),
+      runtime: filterOptions(
+        report.byRuntime.map((row) => row.key),
+        runtimeLabel,
+      ),
+      provider: filterOptions(
+        report.byProvider.map((row) => row.key),
+        providerLabel,
+      ),
+      model: filterOptions(
+        report.byModel.map((row) => row.key),
+        shortIdentifier,
+      ),
+      session: filterOptions(
+        report.sessions.items.map((session) => session.sessionId),
+        shortIdentifier,
+      ),
+    };
+  }, [projectNames, reportQuery.data]);
+
+  const chooseFilter = (dimension: UsageFilterDimension, value: string) => {
+    const keys = {
+      project: { draft: "project", filter: "projectIds" },
+      runtime: { draft: "runtime", filter: "runtimeIds" },
+      provider: { draft: "provider", filter: "providerIds" },
+      model: { draft: "model", filter: "modelIds" },
+      session: { draft: "session", filter: "sessionIds" },
+    } as const;
+    const key = keys[dimension];
+    setDraft((current) => ({ ...current, [key.draft]: value }));
+    setFilter((current) => ({ ...current, [key.filter]: [value], page: 0 }));
   };
 
   return (
@@ -569,55 +748,68 @@ export function UsageReportDialog({
             setFilter((current) => filterFromDraft(draft, current));
           }}
         >
-          <label htmlFor={startDateId} className="space-y-1 text-xs text-muted-foreground">
-            <span>From</span>
-            <Input
-              id={startDateId}
-              type="date"
-              value={draft.start}
-              onChange={(event) => setDraftValue("start", event.target.value)}
-              className="h-8 text-xs"
-            />
-          </label>
-          <label htmlFor={endDateId} className="space-y-1 text-xs text-muted-foreground">
-            <span>Through</span>
-            <Input
-              id={endDateId}
-              type="date"
-              value={draft.end}
-              onChange={(event) => setDraftValue("end", event.target.value)}
-              className="h-8 text-xs"
-            />
-          </label>
+          <fieldset className="grid grid-cols-2 gap-2 sm:col-span-2">
+            <legend className="sr-only">Date range in UTC</legend>
+            <label htmlFor={startDateId} className="space-y-1 text-xs text-muted-foreground">
+              <span>From (UTC)</span>
+              <Input
+                id={startDateId}
+                type="date"
+                value={draft.start}
+                onChange={(event) => setDraftValue("start", event.target.value)}
+                className="h-8 text-xs"
+              />
+            </label>
+            <label htmlFor={endDateId} className="space-y-1 text-xs text-muted-foreground">
+              <span>Through (UTC)</span>
+              <Input
+                id={endDateId}
+                type="date"
+                value={draft.end}
+                onChange={(event) => setDraftValue("end", event.target.value)}
+                className="h-8 text-xs"
+              />
+            </label>
+          </fieldset>
           <FilterField
             label="Project"
             value={draft.project}
             onChange={(value) => setDraftValue("project", value)}
             placeholder="All projects"
+            options={choices.project}
+            onPick={(value) => chooseFilter("project", value)}
           />
           <FilterField
             label="Agent"
             value={draft.runtime}
             onChange={(value) => setDraftValue("runtime", value)}
             placeholder="All agents"
+            options={choices.runtime}
+            onPick={(value) => chooseFilter("runtime", value)}
           />
           <FilterField
             label="Provider"
             value={draft.provider}
             onChange={(value) => setDraftValue("provider", value)}
             placeholder="All providers"
+            options={choices.provider}
+            onPick={(value) => chooseFilter("provider", value)}
           />
           <FilterField
             label="Model"
             value={draft.model}
             onChange={(value) => setDraftValue("model", value)}
             placeholder="All models"
+            options={choices.model}
+            onPick={(value) => chooseFilter("model", value)}
           />
           <FilterField
             label="Session"
             value={draft.session}
             onChange={(value) => setDraftValue("session", value)}
             placeholder="All sessions"
+            options={choices.session}
+            onPick={(value) => chooseFilter("session", value)}
           />
           <div className="flex items-end gap-2">
             <Button type="submit" size="sm" className="h-8 flex-1">
@@ -675,7 +867,11 @@ export function UsageReportDialog({
             </div>
           )}
           {reportQuery.data && reportQuery.data.totals.recordCount > 0 && (
-            <UsageReport report={reportQuery.data} />
+            <UsageReport
+              report={reportQuery.data}
+              projectNames={projectNames}
+              onSelectFilter={chooseFilter}
+            />
           )}
         </div>
 

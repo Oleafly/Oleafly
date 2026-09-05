@@ -69,6 +69,9 @@ pub async fn mcp_registry_search<R: tauri::Runtime>(
 fn normalize_request(
     request: McpRegistrySearchRequest,
 ) -> Result<McpRegistrySearchRequest, String> {
+    if request.query.chars().any(char::is_control) {
+        return Err("Registry searches cannot contain control characters.".into());
+    }
     let query = request.query.trim().to_string();
     if query.is_empty() {
         return Err("Enter a server name to search the official MCP registry.".into());
@@ -76,15 +79,19 @@ fn normalize_request(
     if query.len() > MAX_QUERY_BYTES || !query.is_char_boundary(MAX_QUERY_BYTES.min(query.len())) {
         return Err("Registry searches are limited to 256 bytes.".into());
     }
-    if query.chars().any(char::is_control) {
-        return Err("Registry searches cannot contain control characters.".into());
-    }
     let cursor = request
         .cursor
-        .map(|value| value.trim().to_string())
+        .map(|value| {
+            if value.chars().any(char::is_control) {
+                Err("Registry page cursor is invalid.".to_string())
+            } else {
+                Ok(value.trim().to_string())
+            }
+        })
+        .transpose()?
         .filter(|value| !value.is_empty());
     if let Some(cursor) = cursor.as_deref() {
-        if cursor.len() > MAX_CURSOR_BYTES || cursor.chars().any(char::is_control) {
+        if cursor.len() > MAX_CURSOR_BYTES {
             return Err("Registry page cursor is invalid.".into());
         }
     }

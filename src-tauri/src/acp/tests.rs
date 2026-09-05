@@ -11,6 +11,13 @@ use std::{path::Path, sync::Arc, time::Duration};
 pub(super) fn fixture_definition(extra: Vec<String>) -> AgentDefinition {
     let python =
         catalog::discover("python3").expect("Python 3 is required for ACP protocol fixtures");
+    #[cfg(target_os = "macos")]
+    let python = python
+        .parent()
+        .and_then(Path::parent)
+        .map(|prefix| prefix.join("Resources/Python.app/Contents/MacOS/Python"))
+        .filter(|path| path.is_file())
+        .unwrap_or(python);
     let script = Path::new(file!())
         .parent()
         .unwrap()

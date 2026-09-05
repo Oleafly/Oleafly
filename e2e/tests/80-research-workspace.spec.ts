@@ -128,15 +128,15 @@ test("a research task runs in Rust, reaches review, and records the same native 
     `(() => {
       const report = document.querySelector('[data-testid="usage-report"]');
       return !!report &&
-        report.textContent.includes(${JSON.stringify(task.nativeSessionId)}) &&
-        report.textContent.includes(${JSON.stringify(projectId)});
+        !!report.querySelector(${JSON.stringify(`[title="${task.nativeSessionId}"]`)}) &&
+        !!report.querySelector(${JSON.stringify(`[title="${projectId}"]`)});
     })()`,
     30_000,
   );
   const report = tauriPage.getByTestId("usage-report");
-  await expect(report).toContainText(task.nativeSessionId as string);
-  await expect(report).toContainText(projectId);
-  await expect(report).toContainText("built-in");
+  await expect(report.locator(`[title="${task.nativeSessionId}"]`)).toBeVisible();
+  await expect(report).toContainText(projectName);
+  await expect(report).toContainText("Oleafly assistant");
   await expect(report).toContainText("13");
   await expect(report).toContainText("9");
   await expect(report).toContainText("1 usage records");

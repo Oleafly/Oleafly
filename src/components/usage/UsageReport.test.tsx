@@ -5,6 +5,7 @@ import type {
   UsageReport as UsageReportData,
   UsageReportFilter,
 } from "@/lib/usage-report";
+import { projectsKey } from "@/lib/queries/projects";
 
 let UsageReport: typeof import("./UsageReport").UsageReport;
 let UsageReportDialog: typeof import("./UsageReport").UsageReportDialog;
@@ -147,8 +148,12 @@ function report(recordCount = 1): UsageReportData {
   };
 }
 
-function renderDialog(query: (filter: UsageReportFilter) => Promise<UsageReportData>) {
+function renderDialog(
+  query: (filter: UsageReportFilter) => Promise<UsageReportData>,
+  projects: Array<{ id: string; name: string }> = [],
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client.setQueryData(projectsKey, projects);
   return render(
     <QueryClientProvider client={client}>
       <UsageReportDialog trigger={<button type="button">Open usage</button>} query={query} />
@@ -200,6 +205,44 @@ describe("UsageReport", () => {
 });
 
 describe("UsageReportDialog", () => {
+  it("offers friendly recorded choices while keeping exact identifiers", async () => {
+    const result = report();
+    result.byRuntime = [{ ...result.byProject[0], key: "built-in" }];
+    result.byProvider = [{ ...result.byProject[0], key: "openai" }];
+    result.byModel = [{ ...result.byProject[0], key: "model" }];
+    const query = vi.fn(async (_filter: UsageReportFilter) => result);
+    renderDialog(query, [{ id: "project", name: "Research notes" }]);
+    fireEvent.click(page().getByRole("button", { name: "Open usage" }));
+    await waitFor(() => expect(query).toHaveBeenCalledTimes(1));
+
+    expect(page().getByLabelText("From (UTC)")).toBeVisible();
+    expect(page().getByLabelText("Through (UTC)")).toBeVisible();
+    await page().findByRole("button", { name: "Research notes" });
+    expect(page().getByRole("option", { name: "Oleafly assistant" })).toBeVisible();
+    expect(page().getByRole("option", { name: "OpenAI" })).toBeVisible();
+    expect(page().getByRole("option", { name: "model" })).toBeVisible();
+    expect(page().getByRole("option", { name: "session" })).toBeVisible();
+    const user = userEvent.setup();
+    await user.selectOptions(page().getByLabelText("Choose a recorded project"), "project");
+    await waitFor(() =>
+      expect(query.mock.calls.at(-1)?.[0]).toMatchObject({
+        projectIds: ["project"],
+        page: 0,
+      }),
+    );
+    expect(page().getByLabelText("Project")).toHaveValue("project");
+
+    const projectChoice = page().getByRole("button", { name: "Research notes" });
+    expect(projectChoice.closest("td")).toHaveAttribute("title", "project");
+    await user.click(page().getByRole("button", { name: "Oleafly assistant" }));
+    await waitFor(() =>
+      expect(query.mock.calls.at(-1)?.[0]).toMatchObject({
+        runtimeIds: ["built-in"],
+        page: 0,
+      }),
+    );
+  });
+
   it("applies agent filters and requests the next bounded page", async () => {
     const result = report();
     result.sessions.total = 30;

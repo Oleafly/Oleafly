@@ -9,6 +9,7 @@
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 const registry: Record<string, () => Promise<unknown>> = !E2E_HOOKS ? {} : {
+  "/src/lib/acp.ts": () => import("@/lib/acp"),
   "/src/components/editor/cm/controller.ts": () => import("@/components/editor/cm/controller"),
   "/src/components/editor/SymbolPicker.tsx": () => import("@/components/editor/SymbolPicker"),
   "/src/components/editor/wysiwyg/controller.ts": () =>

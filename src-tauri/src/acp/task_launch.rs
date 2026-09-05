@@ -24,7 +24,8 @@ pub fn runtime_reads(root: &Path, definition: &AgentDefinition, launch: &Launch)
         .executable
         .file_stem()
         .and_then(|value| value.to_str())
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .to_ascii_lowercase();
     if executable_name == "node" || executable_name.starts_with("python") {
         if let Some(script) = launch
             .args

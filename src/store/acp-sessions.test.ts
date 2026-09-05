@@ -1,7 +1,19 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { JSDOM } from "jsdom";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+const { dom, originalGlobals } = await vi.hoisted(async () => {
+  vi.resetModules();
+  const { JSDOM } = await import("jsdom");
+  const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "http://localhost" });
+  const originalGlobals = new Map<string, PropertyDescriptor | undefined>();
+  const globals = { window: dom.window, document: dom.window.document, navigator: dom.window.navigator, HTMLElement: dom.window.HTMLElement, Element: dom.window.Element, Node: dom.window.Node, MutationObserver: dom.window.MutationObserver, FileReader: dom.window.FileReader, getComputedStyle: dom.window.getComputedStyle.bind(dom.window) };
+  for (const [key, value] of Object.entries(globals)) {
+    originalGlobals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+    Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
+  }
+  Object.defineProperties(dom.window.HTMLElement.prototype, { attachEvent: { configurable: true, value: () => {} }, detachEvent: { configurable: true, value: () => {} } });
+  return { dom, originalGlobals };
+});
 vi.mock("@/lib/acp", () => ({ acpCatalog: vi.fn(), acpEvents: vi.fn(), acpSessions: vi.fn(), acpSnapshot: vi.fn(), onAcpEvent: vi.fn(), onAcpResync: vi.fn(), acpDisconnect: vi.fn(), acpSetModel: vi.fn(), acpPrompt: vi.fn(), acpError: (error: unknown) => String(error) }));
 vi.mock("@/components/ai/MessageList", () => ({ MessageList: () => null }));
 vi.mock("@/components/settings/ai/AcpAgentsTab", () => ({ AcpAgentsTab: () => null }));
@@ -35,6 +47,12 @@ describe("ACP session event recovery", () => {
 });
 
 
+function typeMessage(input: HTMLTextAreaElement, value: string) {
+  fireEvent.focusIn(input);
+  fireEvent.change(input, { target: { value } });
+  fireEvent.keyUp(input, { key: "a" });
+}
+
 function savedSession(id: string, status: AcpSession["status"] = "ready"): AcpSession {
   return {
     id, projectId: "p", projectPath: "/project", agentId: "fixture", agentVersion: null,
@@ -46,16 +64,7 @@ function savedSession(id: string, status: AcpSession["status"] = "ready"): AcpSe
 }
 
 describe("ACP controlled conversation selectors", () => {
-  let dom: JSDOM;
-  const originalGlobals = new Map<string, PropertyDescriptor | undefined>();
-  beforeAll(() => {
-    dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "http://localhost" });
-    const globals = { window: dom.window, document: dom.window.document, navigator: dom.window.navigator, HTMLElement: dom.window.HTMLElement, Element: dom.window.Element, Node: dom.window.Node, MutationObserver: dom.window.MutationObserver, FileReader: dom.window.FileReader, getComputedStyle: dom.window.getComputedStyle.bind(dom.window) };
-    for (const [key, value] of Object.entries(globals)) {
-      originalGlobals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
-      Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
-    }
-  });
+  afterEach(cleanup);
   afterAll(() => {
     cleanup();
     dom.window.close();
@@ -120,12 +129,14 @@ describe("ACP controlled conversation selectors", () => {
     const ui = render(createElement(AcpWorkspaceAssistant, { projectId: "p" }));
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("p", "first", 0));
     const message = ui.getByLabelText("Message CLI agent") as HTMLTextAreaElement;
-    fireEvent.change(message, { target: { value: "Keep this unsent question" } });
+    typeMessage(message, "Keep this unsent question");
     const input = ui.container.querySelector<HTMLInputElement>('input[type="file"]');
-    expect(input).not.toBeNull();
-    fireEvent.change(input!, { target: { files: [new dom.window.File(["image data"], "figure.png", { type: "image/png" })] } });
+    if (!input) throw new Error("The image picker is missing.");
+    fireEvent.change(input, { target: { files: [new dom.window.File(["image data"], "figure.png", { type: "image/png" })] } });
     await waitFor(() => expect(ui.getByRole("button", { name: "figure.png ×" })).toBeInTheDocument());
-    fireEvent.submit(message.closest("form")!);
+    const form = message.closest("form");
+    if (!form) throw new Error("The message form is missing.");
+    fireEvent.submit(form);
     await waitFor(() => expect(ui.getByRole("alert")).toHaveTextContent("The image data is invalid."));
     await waitFor(() => expect(acpEvents).toHaveBeenCalledTimes(2));
     expect(acpPrompt).toHaveBeenCalledWith("p", "first", "Keep this unsent question", [expect.objectContaining({ mimeType: "image/png" })]);
@@ -143,8 +154,10 @@ describe("ACP controlled conversation selectors", () => {
     const ui = render(createElement(AcpWorkspaceAssistant, { projectId: "p" }));
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("p", "first", 0));
     const message = ui.getByLabelText("Message CLI agent") as HTMLTextAreaElement;
-    fireEvent.change(message, { target: { value: "Already sent" } });
-    fireEvent.submit(message.closest("form")!);
+    typeMessage(message, "Already sent");
+    const form = message.closest("form");
+    if (!form) throw new Error("The message form is missing.");
+    fireEvent.submit(form);
     await waitFor(() => expect(acpPrompt).toHaveBeenCalledWith("p", "first", "Already sent", []));
     await waitFor(() => expect(message.value).toBe(""));
     expect(useAcpSessionsStore.getState().events.first).toContainEqual(expect.objectContaining({ kind: "user_message" }));
@@ -158,14 +171,16 @@ describe("ACP controlled conversation selectors", () => {
     const ui = render(createElement(AcpWorkspaceAssistant, { projectId: "p" }));
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("p", "first", 0));
     const message = ui.getByLabelText("Message CLI agent") as HTMLTextAreaElement;
-    fireEvent.change(message, { target: { value: "Compare these figures" } });
+    typeMessage(message, "Compare these figures");
     const input = ui.container.querySelector<HTMLInputElement>('input[type="file"]');
-    expect(input).not.toBeNull();
+    if (!input) throw new Error("The image picker is missing.");
     for (const name of ["first.png", "second.png"]) {
-      fireEvent.change(input!, { target: { files: [new dom.window.File([new Uint8Array(470 * 1024)], name, { type: "image/png" })] } });
+      fireEvent.change(input, { target: { files: [new dom.window.File([new Uint8Array(470 * 1024)], name, { type: "image/png" })] } });
       await waitFor(() => expect(ui.getByRole("button", { name: `${name} ×` })).toBeInTheDocument());
     }
-    fireEvent.submit(message.closest("form")!);
+    const form = message.closest("form");
+    if (!form) throw new Error("The message form is missing.");
+    fireEvent.submit(form);
     expect(ui.getByRole("alert")).toHaveTextContent("This message and its images are too large.");
     expect(acpPrompt).not.toHaveBeenCalled();
     expect(message.value).toBe("Compare these figures");
