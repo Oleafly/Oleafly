@@ -31,9 +31,10 @@ import {
   Brain,
   Check,
   ChevronDown,
-  FilePlus2,
+  ClipboardCheck,
   Filter,
   Frame,
+  Glasses,
   History,
   Info,
   Layers,
@@ -42,9 +43,10 @@ import {
   MessageSquareQuote,
   PanelRightOpen,
   Plus,
-  Quote,
+  Presentation,
   RotateCcw,
   Search,
+  Send,
   Settings2,
   Sparkles,
   Square,
@@ -205,23 +207,75 @@ import type { EngineFeature } from "@/lib/tauri";
 
 const MAX_AGENT_TOOL_DEFINITIONS = 128;
 
-const SUGGESTIONS = [
-  "Find papers to cite",
-  "Write a literature review",
-  "Fix any source errors in my document",
-  "Create a new section called 'Publications'",
-  "Find every citation in the project",
-  "Recompile and check for errors",
+interface ChatSuggestion {
+  label: string;
+  send: string;
+  icon: LucideIcon;
+  skillId?: string;
+}
+
+const SUGGESTIONS: ChatSuggestion[] = [
+  {
+    label: "Sweep the literature for this project",
+    send: "/oleafly-literature-sweep Build an annotated reading list for this project's research question",
+    icon: Search,
+    skillId: "oleafly-literature-sweep",
+  },
+  {
+    label: "Draft the related work section",
+    send: "/oleafly-related-work Draft the related work section from the reading list and the bibliography",
+    icon: BookOpen,
+    skillId: "oleafly-related-work",
+  },
+  {
+    label: "Check every claim against its source",
+    send: "/oleafly-verify-claims Audit the claims in this manuscript against their cited sources",
+    icon: ClipboardCheck,
+    skillId: "oleafly-verify-claims",
+  },
+  {
+    label: "Review it like a referee",
+    send: "/oleafly-review-manuscript Review the full manuscript and write the report",
+    icon: Glasses,
+    skillId: "oleafly-review-manuscript",
+  },
+  {
+    label: "Fix any source errors in my document",
+    send: "/oleafly-latex-build Compile this project and fix every error until it builds cleanly",
+    icon: Wrench,
+    skillId: "oleafly-latex-build",
+  },
+  {
+    label: "Get it ready to submit",
+    send: "/oleafly-pre-submission Run the pre-submission checks for the target venue",
+    icon: Send,
+    skillId: "oleafly-pre-submission",
+  },
+  {
+    label: "Turn this paper into a talk",
+    send: "/oleafly-slides-and-posters Build a 15 minute conference talk from this paper",
+    icon: Presentation,
+    skillId: "oleafly-slides-and-posters",
+  },
+  {
+    label: "Recompile and check for errors",
+    send: "Recompile and check for errors",
+    icon: RotateCcw,
+  },
 ];
 
-const SUGGESTION_ICONS: Record<string, LucideIcon> = {
-  "Find papers to cite": Search,
-  "Write a literature review": BookOpen,
-  "Fix any source errors in my document": Wrench,
-  "Create a new section called 'Publications'": FilePlus2,
-  "Find every citation in the project": Quote,
-  "Recompile and check for errors": RotateCcw,
-};
+export function availableSuggestions(
+  suggestions: readonly ChatSuggestion[],
+  skills: readonly SkillEntry[] | undefined,
+): ChatSuggestion[] {
+  if (!skills) return suggestions.filter((suggestion) => !suggestion.skillId);
+  const ids = new Set(
+    skills.filter((skill) => skill.validation.status === "valid").map((skill) => skill.id),
+  );
+  return suggestions.filter(
+    (suggestion) => !suggestion.skillId || ids.has(suggestion.skillId),
+  );
+}
 
 const FIGURE_SUGGESTIONS = [
   "Draw a transformer encoder with 6 blocks, attention highlighted, residual connections",
@@ -2797,18 +2851,26 @@ ${sandboxedCustom}`;
                   </div>
                 )}
                 <div className="flex w-full flex-wrap items-center justify-center gap-1.5">
-                  {(figureMode ? FIGURE_SUGGESTIONS : SUGGESTIONS).map((s) => {
-                    const Icon = figureMode ? FIGURE_SUGGESTION_ICONS[s] : SUGGESTION_ICONS[s];
+                  {(figureMode
+                    ? FIGURE_SUGGESTIONS.map((s) => ({
+                        label: s,
+                        send: s,
+                        icon: FIGURE_SUGGESTION_ICONS[s],
+                      }))
+                    : availableSuggestions(SUGGESTIONS, skillsQuery.data)
+                  ).map((suggestion) => {
+                    const Icon = suggestion.icon;
                     return (
                       <button
                         type="button"
-                        key={s}
-                        title={s}
-                        onClick={() => void send(s)}
+                        key={suggestion.label}
+                        title={suggestion.label}
+                        data-testid="chat-suggestion"
+                        onClick={() => void send(suggestion.send)}
                         className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-left text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/70"
                       >
                         {Icon && <Icon className="size-3.5 shrink-0" />}
-                        <span className="min-w-0 truncate">{s}</span>
+                        <span className="min-w-0 truncate">{suggestion.label}</span>
                       </button>
                     );
                   })}

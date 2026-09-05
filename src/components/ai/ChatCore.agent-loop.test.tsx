@@ -2003,6 +2003,37 @@ describe("ChatCore agent turns", () => {
     await act(async () => finishRun(0, "Ready"));
   });
 
+  it("offers skill-backed suggestions and runs the skill when one is clicked", async () => {
+    mocks.skillEntries.push(
+      skillEntry({
+        id: "oleafly-literature-sweep",
+        name: "Oleafly Literature Sweep",
+        description: "Build a reading list.",
+        instructions: "Search the literature and write research/reading-list.md.",
+      }),
+    );
+    const rendered = await renderChat();
+
+    const chips = rendered.getAllByTestId("chat-suggestion").map((chip) => chip.textContent);
+    expect(chips).toContain("Sweep the literature for this project");
+    expect(chips).toContain("Recompile and check for errors");
+    expect(chips).not.toContain("Draft the related work section");
+
+    fireEvent.click(rendered.getByTitle("Sweep the literature for this project"));
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    const run = mocks.runs[0].options;
+    expect(run.system).toContain(
+      '<requested_skill id="oleafly-literature-sweep" name="Oleafly Literature Sweep">',
+    );
+    const last = run.messages[run.messages.length - 1];
+    expect(last.content).toBe(
+      'Use the skill "Oleafly Literature Sweep" (oleafly-literature-sweep) for this request.\nBuild an annotated reading list for this project\'s research question',
+    );
+    expect(last.content).not.toContain("/oleafly-literature-sweep");
+    await act(async () => finishRun(0, "Ready"));
+  });
+
   it("sends an unknown slash word as plain text", async () => {
     const rendered = await renderChat();
 
