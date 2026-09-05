@@ -55,6 +55,7 @@ mod rollout;
 mod sandbox;
 mod secrets;
 mod skills;
+mod stall_trace;
 mod state;
 mod storage;
 mod synctex;
@@ -66,6 +67,20 @@ mod tinytex_archive;
 mod worktree_lock;
 
 use state::AppState;
+
+fn traced_commands<R, F>(
+    handler: F,
+) -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static
+where
+    R: tauri::Runtime,
+    F: Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static,
+{
+    move |invoke| {
+        let command = invoke.message.command().to_string();
+        let _traced = crate::stall_trace::watch(|| format!("command {command}"));
+        handler(invoke)
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -156,6 +171,8 @@ pub fn run() {
             }
         })
         .setup(|app| {
+            crate::stall_trace::mark_ui_thread();
+            crate::stall_trace::start_watchdog();
             if std::env::var("OLEAFLY_E2E_WINDOW").is_err() {
                 use tauri::Manager;
                 if let Some(window) = app.get_webview_window("main") {
@@ -238,7 +255,7 @@ pub fn run() {
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
+        .invoke_handler(traced_commands(tauri::generate_handler![
             agent::agent_complete,
             agent::agent_cancel,
             agent::agent_cancel_all,
@@ -496,7 +513,7 @@ pub fn run() {
             git::git_unstage_all,
             git::git_commit,
             git::git_show,
-        ])
+        ]))
         .run(tauri::generate_context!())
         .expect("error while running Oleafly");
 }

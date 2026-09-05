@@ -13,23 +13,40 @@ pub(crate) const RESTORE_PENDING_FILE: &str = "checkpoint-restore-pending";
 #[derive(Debug)]
 pub(crate) struct ProjectWorktreeLock {
     _file: File,
+    _held: crate::stall_trace::Guard,
+}
+
+fn held(project_id: &str, mode: &str) -> crate::stall_trace::Guard {
+    let project_id = project_id.to_string();
+    let mode = mode.to_string();
+    crate::stall_trace::watch(move || format!("worktree {mode} held on {project_id}"))
 }
 
 impl ProjectWorktreeLock {
     pub(crate) fn shared(project_id: &str) -> Result<Self, String> {
         let file = open_lock_file(project_id)?;
-        fs4::FileExt::lock_shared(&file)
-            .map_err(|error| format!("could not acquire project read lock: {error}"))?;
+        {
+            let _waiting =
+                crate::stall_trace::watch(|| format!("worktree shared wait on {project_id}"));
+            fs4::FileExt::lock_shared(&file)
+                .map_err(|error| format!("could not acquire project read lock: {error}"))?;
+        }
+        let _held = held(project_id, "shared");
         reject_pending_restore(project_id)?;
-        Ok(Self { _file: file })
+        Ok(Self { _file: file, _held })
     }
 
     pub(crate) fn exclusive(project_id: &str) -> Result<Self, String> {
         let file = open_lock_file(project_id)?;
-        fs4::FileExt::lock(&file)
-            .map_err(|error| format!("could not acquire project write lock: {error}"))?;
+        {
+            let _waiting =
+                crate::stall_trace::watch(|| format!("worktree exclusive wait on {project_id}"));
+            fs4::FileExt::lock(&file)
+                .map_err(|error| format!("could not acquire project write lock: {error}"))?;
+        }
+        let _held = held(project_id, "exclusive");
         reject_pending_restore(project_id)?;
-        Ok(Self { _file: file })
+        Ok(Self { _file: file, _held })
     }
 
     /// Acquire the read lock, but give up instead of waiting forever. Project
@@ -56,8 +73,9 @@ impl ProjectWorktreeLock {
                 }
             }
         }
+        let _held = held(project_id, "shared-bounded");
         reject_pending_restore(project_id)?;
-        Ok(Self { _file: file })
+        Ok(Self { _file: file, _held })
     }
 
     /// Take the write lock only when it is free. Background maintenance that
@@ -72,8 +90,9 @@ impl ProjectWorktreeLock {
                 return Err(format!("could not acquire project write lock: {error}"))
             }
         }
+        let _held = held(project_id, "try-exclusive");
         reject_pending_restore(project_id)?;
-        Ok(Some(Self { _file: file }))
+        Ok(Some(Self { _file: file, _held }))
     }
 
     /// Identity allocation must serialize on the same stable lock, but an
@@ -81,9 +100,14 @@ impl ProjectWorktreeLock {
     /// not a reason to abort allocation of an unrelated new project id.
     pub(crate) fn exclusive_for_identity_allocation(project_id: &str) -> Result<Self, String> {
         let file = open_lock_file(project_id)?;
-        fs4::FileExt::lock(&file)
-            .map_err(|error| format!("could not acquire project identity lock: {error}"))?;
-        Ok(Self { _file: file })
+        {
+            let _waiting =
+                crate::stall_trace::watch(|| format!("worktree identity wait on {project_id}"));
+            fs4::FileExt::lock(&file)
+                .map_err(|error| format!("could not acquire project identity lock: {error}"))?;
+        }
+        let _held = held(project_id, "identity");
+        Ok(Self { _file: file, _held })
     }
 
     /// Dedicated admission for project-open and Checkpoint restore recovery.
@@ -91,9 +115,14 @@ impl ProjectWorktreeLock {
     /// observing a worktree whose prior restore may have stopped mid-commit.
     pub(crate) fn exclusive_for_restore_recovery(project_id: &str) -> Result<Self, String> {
         let file = open_lock_file(project_id)?;
-        fs4::FileExt::lock(&file)
-            .map_err(|error| format!("could not acquire project recovery lock: {error}"))?;
-        Ok(Self { _file: file })
+        {
+            let _waiting =
+                crate::stall_trace::watch(|| format!("worktree recovery wait on {project_id}"));
+            fs4::FileExt::lock(&file)
+                .map_err(|error| format!("could not acquire project recovery lock: {error}"))?;
+        }
+        let _held = held(project_id, "recovery");
+        Ok(Self { _file: file, _held })
     }
 }
 

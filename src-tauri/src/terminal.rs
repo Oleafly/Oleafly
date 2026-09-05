@@ -497,9 +497,7 @@ fn kill_terminal(owner: &SessionOwner, id: &str) -> Result<(), String> {
             None
         }
     };
-    if let Some(session) = session {
-        stop_session(session);
-    }
+    stop_sessions_in_background(session.into_iter().collect());
     Ok(())
 }
 
