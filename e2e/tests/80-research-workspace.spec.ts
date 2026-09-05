@@ -4,6 +4,7 @@ import { basename, join } from "node:path";
 import { test, expect } from "../fixtures";
 import {
   createBlankProject,
+  fillTextarea,
   listProjectEntries,
   openGallery,
   openRailTab,
@@ -21,6 +22,13 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await server?.close();
+});
+
+test.beforeEach(async ({ tauriPage }) => {
+  const hasBack = await tauriPage.evaluate<boolean>(
+    `!!document.querySelector('[title="Back to library"]')`,
+  );
+  if (hasBack) await tauriPage.click('[title="Back to library"]');
 });
 
 async function connectAgent(page: Page) {
@@ -64,10 +72,22 @@ test("a research task runs in Rust, reaches review, and records the same native 
   await expect(newTask).toBeEnabled({ timeout: 20_000 });
   await newTask.click();
   await tauriPage.fill("#research-task-title", taskTitle);
-  await tauriPage.fill(
+  await fillTextarea(
+    tauriPage,
     "#research-task-prompt",
     "Review the manuscript structure and return a concise readiness note. Do not change any files.",
   );
+  const targetAgent = ["builtin", "ollama", "llama3.2"].join("\u0000");
+  await tauriPage.waitForFunction(`(() => {
+    const select = document.querySelector('#research-task-agent');
+    return !!select && [...select.options].some((option) => option.value === ${JSON.stringify(targetAgent)});
+  })()`, 20_000);
+  await tauriPage.evaluate(`(() => {
+    const select = document.querySelector('#research-task-agent');
+    select.value = ${JSON.stringify(targetAgent)};
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    return select.value;
+  })()`);
   server.resetRequests();
   server.setToolCall(null);
   server.setReply(reply);
@@ -114,7 +134,7 @@ test("a research task runs in Rust, reaches review, and records the same native 
 
   await openRailTab(tauriPage, "Research Assistant");
   await tauriPage.click('[aria-label="Usage report"]');
-  const reportDialog = tauriPage.getByRole("dialog", { name: "Usage report" });
+  const reportDialog = tauriPage.locator('[role="dialog"]:has(input[placeholder="All projects"])');
   await expect(reportDialog).toBeVisible({ timeout: 20_000 });
   await reportDialog.locator('input[placeholder="All projects"]').fill(projectId);
   await reportDialog.locator('input[placeholder="All agents"]').fill("built-in");
@@ -139,7 +159,7 @@ test("a research task runs in Rust, reaches review, and records the same native 
   await expect(report).toContainText("Oleafly assistant");
   await expect(report).toContainText("13");
   await expect(report).toContainText("9");
-  await expect(report).toContainText("1 usage records");
+  await expect(report).toContainText("1 usage record");
 });
 
 test("a linked folder keeps its access profile, previews a source, and unlinks without deletion", async ({
@@ -156,7 +176,19 @@ test("a linked folder keeps its access profile, previews a source, and unlinks w
   try {
     await createBlankProject(tauriPage, `Linked research ${run}`);
     await openRailTab(tauriPage, "Research workspace");
-    await tauriPage.getByText("Linked folders", { exact: true }).click();
+    const workspace = tauriPage.getByTestId("research-workspace-panel");
+    await expect(workspace).toBeVisible({ timeout: 20_000 });
+    await expect(workspace.locator('[role="tab"][id$="-trigger-folders"]')).toBeVisible({
+      timeout: 20_000,
+    });
+    await tauriPage.evaluate(`(() => {
+      const workspace = document.querySelector('[data-testid="research-workspace-panel"]');
+      const tab = workspace?.querySelector('[role="tab"][id$="-trigger-folders"]');
+      if (!tab) throw new Error('Linked folders tab is unavailable');
+      tab.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+      tab.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, button: 0 }));
+      tab.click();
+    })()`);
     await expect(tauriPage.getByText("Research folders", { exact: true })).toBeVisible({
       timeout: 20_000,
     });
@@ -171,7 +203,7 @@ test("a linked folder keeps its access profile, previews a source, and unlinks w
 
     const root = tauriPage.locator("article[data-root-id]");
     await expect(root).toBeVisible({ timeout: 20_000 });
-    await expect(root).toContainText("Study evidence");
+    await expect(root.locator('input[id^="research-root-label-"]')).toHaveValue("Study evidence");
     await expect(root.locator('[aria-label="Study evidence role"]')).toContainText("References");
     await expect(root.locator('[aria-label="Study evidence access"]')).toContainText(
       "Read and write",
@@ -202,7 +234,7 @@ test("research project setup previews the planned tree and creates its queued fi
   await connectAgent(tauriPage);
   await openGallery(tauriPage);
   await tauriPage.click('[data-testid="new-research-project"]');
-  const dialog = tauriPage.getByRole("dialog", { name: "New research project" });
+  const dialog = tauriPage.locator('[role="dialog"]:has(#research-project-name)');
   await expect(dialog).toBeVisible({ timeout: 20_000 });
   await tauriPage.fill("#research-project-name", projectName);
   await chooseSelectOption(tauriPage, "#research-project-engine", "Markdown");

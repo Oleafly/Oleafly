@@ -4,7 +4,7 @@ Oleafly should let a researcher plan a study, work with several assistants, insp
 
 This branch builds on main at `072d8c4144c63e449d087b9203ed06ce75323bee`, which merged the skills work in PR #125.
 
-The first implementation checkpoint is available for review. Full native tests, Linux coverage and app E2E validation are still in progress. The sections below describe the architecture and acceptance criteria; they are not a claim that every supported account and platform has been exercised.
+The implementation is available for review in draft PR #128. Its description records validation for each checkpoint. The sections below describe the architecture and acceptance criteria; they do not establish compatibility with every account or platform.
 
 ## Existing capabilities to extend
 
@@ -55,6 +55,10 @@ Claim work atomically and cap concurrency. Reject results from a superseded gene
 
 Use Git worktrees for Git-backed projects. Preserve uncommitted user changes and record the exact source revision. For projects without Git, use a staged snapshot and compare-before-apply. The user's manuscript receives no agent changes before review. Applying reviewed work must use the existing project mutation lock and reject a changed base. Preserve the result on conflict so the user can review or retry. Never automatically push, publish, delete a branch with unique work, or modify linked data while accepting a manuscript task.
 
+Before applying a result, acquire an editor mutation lease, flush pending source and visual edits, and drain queued writes. Keep editing locked through the native apply and editor reload. A preparation timeout must prevent a later apply from starting; once the native apply starts, keep the lease until it settles. File previews belong to a specific task and execution generation, so a late preview cannot authorize changes from another run.
+
+Discarding a result retains its history and isolated files. Retrying creates a new execution generation when the queue claims it. Task preparation must stop waiting for a manuscript lock when cancelled, including during shutdown.
+
 The task UI supports creation, editing queued work, choosing an agent, starting, cancelling, reading the session and reviewing the result. Dependencies and failures must be visible. Research starters include literature review, evidence audit, analysis, manuscript revision and response to reviewers.
 
 Availability depends on the agent and platform. Isolated commands require macOS sandbox-exec or Linux bubblewrap. Isolated CLI tasks are unavailable on Windows. The current Codex configuration is disabled for isolated tasks on macOS because the local compatibility probe failed under that profile; interactive sessions remain available. Research-tool sessions also require negotiated HTTP MCP support. Protocol fixtures do not establish live subscription compatibility.
@@ -62,6 +66,8 @@ Availability depends on the agent and platform. Isolated commands require macOS 
 ## Linked folders and project setup
 
 A research workspace can reference several roots with an ID, canonical path, label, role and access policy. Roles include manuscript, references, data and analysis. The manuscript remains the primary project and compiler root. Linked roots default to read access. Authorization is per root, including path traversal and symlink checks.
+
+Linked-file results retain the root ID and relative path through the tool response and chat card. Opening a result reads that exact source into a read-only preview; matching filenames in the manuscript cannot redirect it to another file.
 
 Project setup extends the existing templates and research workflows. The preview shows the files and folders that will be created, the document engine and the initial research task. Creation uses exclusive destination creation and does not overwrite an existing directory. Reuse the skills pack for instructions and existing template/compile services for documents.
 
