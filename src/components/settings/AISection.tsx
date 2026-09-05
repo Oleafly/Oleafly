@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   agentListModels,
@@ -56,6 +56,8 @@ import {
   aiSettingsDestination,
   type AiSettingsTab,
 } from "./ai-settings-navigation";
+
+const AcpAgentsTab = lazy(() => import("./ai/AcpAgentsTab").then((module) => ({ default: module.AcpAgentsTab })));
 
 type DiscoveryResult =
   | { ok: true; models: ProviderModel[] }
@@ -674,6 +676,9 @@ export function AISection() {
           >
             Providers and keys
           </TabsTrigger>
+          <TabsTrigger value="agents" data-testid="ai-settings-tab-agents" className="shrink-0">
+            CLI agents
+          </TabsTrigger>
           <TabsTrigger
             value="instructions"
             data-testid="ai-settings-tab-instructions"
@@ -735,6 +740,12 @@ export function AISection() {
             <ProjectApprovals />
             <ProjectBudget key={preferencesResetVersion} />
           </div>
+        </TabsContent>
+
+        <TabsContent value="agents">
+          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading agents…</p>}>
+            <AcpAgentsTab projectId={projectId ?? undefined} />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="instructions">

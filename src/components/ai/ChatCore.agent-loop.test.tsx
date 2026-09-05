@@ -1492,6 +1492,7 @@ describe("ChatCore agent turns", () => {
     });
     const originalRequestFrame = globalThis.requestAnimationFrame;
     const originalCancelFrame = globalThis.cancelAnimationFrame;
+    let unsubscribe = () => {};
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
       value: "visible",
@@ -1509,6 +1510,17 @@ describe("ChatCore agent turns", () => {
       const rendered = await renderChat();
       submit(rendered, "Stream a burst");
       await waitFor(() => expect(mocks.runs).toHaveLength(1));
+      const publishedLengths: number[] = [];
+      unsubscribe = useChatsStore.subscribe((state, previous) => {
+        const length = state.live["chat-1"]?.at(-1)?.content.length ?? 0;
+        const previousLength = previous.live["chat-1"]?.at(-1)?.content.length ?? 0;
+        if (length !== previousLength) publishedLengths.push(length);
+      });
+      const flushFrame = (timestamp: number) => {
+        const scheduled = [...callbacks.values()];
+        callbacks.clear();
+        act(() => { for (const callback of scheduled) callback(timestamp); });
+      };
 
       act(() => {
         for (let index = 0; index < 600; index += 1) {
@@ -1516,20 +1528,15 @@ describe("ChatCore agent turns", () => {
         }
       });
 
-      expect(requestFrame).toHaveBeenCalledTimes(1);
-      expect(callbacks).toHaveLength(1);
-      const first = callbacks.entries().next().value as [number, FrameRequestCallback];
-      callbacks.delete(first[0]);
-      act(() => first[1](0));
-      expect(requestFrame).toHaveBeenCalledTimes(2);
-      expect(callbacks).toHaveLength(1);
+      expect(publishedLengths).toEqual([]);
+      flushFrame(0);
+      expect(publishedLengths).toEqual([512]);
       expect(useChatsStore.getState().live["chat-1"].at(-1)?.content).toHaveLength(512);
 
-      const second = callbacks.entries().next().value as [number, FrameRequestCallback];
-      callbacks.delete(second[0]);
-      act(() => second[1](16));
-      expect(callbacks).toHaveLength(0);
+      flushFrame(16);
+      expect(publishedLengths).toEqual([512, 600]);
       expect(useChatsStore.getState().live["chat-1"].at(-1)?.content).toHaveLength(600);
+      unsubscribe();
 
       await act(async () => {
         mocks.runs[0].resolve({
@@ -1542,6 +1549,7 @@ describe("ChatCore agent turns", () => {
       });
       await waitFor(() => expect(activeChatRun()).toBeNull());
     } finally {
+      unsubscribe();
       Reflect.deleteProperty(document, "visibilityState");
       Object.defineProperties(globalThis, {
         requestAnimationFrame: { configurable: true, value: originalRequestFrame },
@@ -1825,6 +1833,9 @@ describe("ChatCore agent turns", () => {
         write_file: false,
         run_command: false,
         literature_search: false,
+        list_research_roots: false,
+        list_research_root_files: false,
+        read_research_root_file: false,
         mcp__papers__search_papers: false,
       },
     });
@@ -2252,8 +2263,11 @@ describe("ChatCore agent turns", () => {
     const planning = await planFirstTurn(rendered, "Rename the intro and tighten the abstract");
 
     expect(Object.keys(planning.tools).sort()).toEqual([
+      "list_research_root_files",
+      "list_research_roots",
       "literature_search",
       "read_file",
+      "read_research_root_file",
       "update_todos",
     ]);
     for (const name of ["write_file", "run_command", "mcp__papers__search_papers"]) {
@@ -2349,8 +2363,11 @@ describe("ChatCore agent turns", () => {
     await waitFor(() => expect(mocks.runs).toHaveLength(2));
     const revision = mocks.runs[1].options;
     expect(Object.keys(revision.tools).sort()).toEqual([
+      "list_research_root_files",
+      "list_research_roots",
       "literature_search",
       "read_file",
+      "read_research_root_file",
       "update_todos",
     ]);
     expect(revision.system).toContain(PLAN_MODE_PLANNING_PROMPT);
@@ -3483,6 +3500,9 @@ describe("ChatCore model trust", () => {
         write_file: false,
         run_command: false,
         literature_search: false,
+        list_research_roots: false,
+        list_research_root_files: false,
+        read_research_root_file: false,
         mcp__papers__search_papers: false,
       },
     });

@@ -158,13 +158,18 @@ fn reasoning_content_is_kept_apart_from_the_answer() {
 
 #[test]
 fn openai_usage_is_reported_when_the_provider_sends_it() {
-    let raw = "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":11,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n";
+    let raw = "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":11,\"completion_tokens\":4,\"prompt_tokens_details\":{\"cached_tokens\":3}}}\n\ndata: [DONE]\n\n";
     let (_, translator) = run(WireKind::OpenAi, raw);
     assert_eq!(
         translator.usage(),
         Usage {
             input: 11,
-            output: 4
+            output: 4,
+            input_known: Some(true),
+            output_known: Some(true),
+            cache_read: Some(3),
+            cache_write: Some(0),
+            input_semantics: crate::complete::InputTokenSemantics::Inclusive,
         }
     );
 }
@@ -179,7 +184,7 @@ fn responses_text_reasoning_and_usage_stream_through_the_common_events() {
         "event: response.output_item.done\n",
         "data: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"reasoning\",\"id\":\"rs_1\",\"encrypted_content\":\"opaque\"}}\n\n",
         "event: response.completed\n",
-        "data: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":21,\"output_tokens\":8}}}\n\n",
+        "data: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":21,\"output_tokens\":8,\"input_tokens_details\":{\"cached_tokens\":5}}}}\n\n",
     );
     let (events, translator) = run(WireKind::OpenAiResponses, raw);
     assert_eq!(reasoning_of(&events), "think");
@@ -188,7 +193,12 @@ fn responses_text_reasoning_and_usage_stream_through_the_common_events() {
         translator.usage(),
         Usage {
             input: 21,
-            output: 8
+            output: 8,
+            input_known: Some(true),
+            output_known: Some(true),
+            cache_read: Some(5),
+            cache_write: Some(0),
+            input_semantics: crate::complete::InputTokenSemantics::Inclusive,
         }
     );
     assert_eq!(translator.stop_reason().as_deref(), Some("completed"));
@@ -405,7 +415,7 @@ fn provider_tool_calls_are_bounded_during_stream_translation() {
 #[test]
 fn anthropic_text_and_thinking_split_by_delta_type() {
     let raw = concat!(
-            "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":9}}}\n\n",
+            "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":9,\"cache_read_input_tokens\":4,\"cache_creation_input_tokens\":2}}}\n\n",
             "event: content_block_delta\ndata: {\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"hmm\"}}\n\n",
             "event: content_block_delta\ndata: {\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hi \"}}\n\n",
             "event: content_block_delta\ndata: {\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"there\"}}\n\n",
@@ -419,7 +429,12 @@ fn anthropic_text_and_thinking_split_by_delta_type() {
         translator.usage(),
         Usage {
             input: 9,
-            output: 6
+            output: 6,
+            input_known: Some(true),
+            output_known: Some(true),
+            cache_read: Some(4),
+            cache_write: Some(2),
+            input_semantics: crate::complete::InputTokenSemantics::Exclusive,
         }
     );
     assert_eq!(translator.stop_reason().as_deref(), Some("end_turn"));
@@ -507,7 +522,7 @@ fn an_event_with_no_data_is_not_a_decode_error() {
 fn google_parts_stream_as_text() {
     let raw = concat!(
             "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"Hel\"}]}}]}\n\n",
-            "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"lo\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":3,\"candidatesTokenCount\":2}}\n\n"
+            "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"lo\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":3,\"candidatesTokenCount\":2,\"cachedContentTokenCount\":1}}\n\n"
         );
     let (events, translator) = run(WireKind::Google, raw);
     assert_eq!(text_of(&events), "Hello");
@@ -516,7 +531,12 @@ fn google_parts_stream_as_text() {
         translator.usage(),
         Usage {
             input: 3,
-            output: 2
+            output: 2,
+            input_known: Some(true),
+            output_known: Some(true),
+            cache_read: Some(1),
+            cache_write: Some(0),
+            input_semantics: crate::complete::InputTokenSemantics::Inclusive,
         }
     );
 }
@@ -718,4 +738,26 @@ fn endpoint_locality_controls_the_default_idle_timeout_independently_of_auth() {
 
     assert_eq!(default_idle_timeout(&local), Duration::from_secs(360));
     assert_eq!(default_idle_timeout(&cloud), Duration::from_secs(120));
+}
+
+#[test]
+fn streaming_usage_preserves_presence_and_anthropic_zero_updates() {
+    let (_, absent) = run(
+        WireKind::OpenAi,
+        "data: {\"choices\":[]}\n\ndata: [DONE]\n\n",
+    );
+    assert_eq!(absent.usage().reported_input(), None);
+    assert_eq!(absent.usage().reported_output(), None);
+    let (_, partial) = run(
+        WireKind::OpenAi,
+        "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":0}}\n\n",
+    );
+    assert_eq!(partial.usage().reported_input(), Some(0));
+    assert_eq!(partial.usage().reported_output(), None);
+    let (_, merged) = run(WireKind::OpenAi, "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":4}}\n\ndata: {\"choices\":[],\"usage\":{\"completion_tokens\":0}}\n\n");
+    assert_eq!(merged.usage().reported_input(), Some(4));
+    assert_eq!(merged.usage().reported_output(), Some(0));
+    let (_, anthropic) = run(WireKind::Anthropic, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":4}}}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"usage\":{\"output_tokens\":0}}\n\n");
+    assert_eq!(anthropic.usage().reported_input(), Some(4));
+    assert_eq!(anthropic.usage().reported_output(), Some(0));
 }

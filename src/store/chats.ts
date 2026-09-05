@@ -27,6 +27,11 @@ export interface SubagentEntry {
   label: string;
   state: string;
   detail?: string;
+  runtime?: string;
+  sessionId?: string;
+  providerId?: string;
+  modelId?: string;
+  agentId?: string;
 }
 
 export interface ChatMessage {

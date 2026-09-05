@@ -11,10 +11,9 @@ import {
   Loader2,
   Paperclip,
   Terminal,
-  Wrench,
   XCircle,
 } from "lucide-react";
-import type { ChatMessage, ToolEntry } from "@/store/chats";
+import type { ChatMessage, SubagentEntry, ToolEntry } from "@/store/chats";
 import { agentTodoProgress, type AgentTodo } from "@/store/agent-todos";
 import {
   agentFileChangeTotals,
@@ -23,6 +22,9 @@ import {
 } from "@/store/agent-file-changes";
 import { Markdown } from "@/components/ui/markdown";
 import { Popover } from "@/components/ui/popover";
+import { ResearchToolCard } from "@/components/ai/activity/ResearchToolCard";
+import { usePersistentExpansion } from "@/components/ai/activity/expansion-state";
+import { projectToolEntry, stripAnsi, type ResearchChatActions } from "@/lib/chat-activity";
 import { cn } from "@/lib/utils";
 
 export function Shimmer({ text }: { text?: string }) {
@@ -568,8 +570,8 @@ function parseExecView(
 // Command card for run_command results: `$ command`, aggregated output, and a
 // status pill (Success / Failed with exit code N / Stopped / Declined / an
 // error), per the reference exec item.
-export function ExecCard({ tc }: { tc: ToolEntry }) {
-  const [expanded, setExpanded] = useState(false);
+export function ExecCard({ tc, expansionKey }: { tc: ToolEntry; expansionKey?: string }) {
+  const [expanded, setExpanded] = usePersistentExpansion(expansionKey, false);
   const view = parseExecView(tc.output, tc.status);
   const running = view.kind === "pending";
   // A finished command succeeds only on a clean exit code 0. A null exit
@@ -580,7 +582,7 @@ export function ExecCard({ tc }: { tc: ToolEntry }) {
     (view.kind === "exec" && (view.timedOut || view.exitCode !== 0));
   const command =
     view.kind === "exec" || view.kind === "declined" ? view.command : "";
-  const body = view.kind === "exec" ? view.body : "";
+  const body = view.kind === "exec" ? stripAnsi(view.body) : "";
   const statusLine =
     view.kind === "exec"
       ? view.status
@@ -650,8 +652,16 @@ export function ExecCard({ tc }: { tc: ToolEntry }) {
 // A collapsed run of read-only tool calls: "Explored 3 files, 2 searches",
 // expandable to the individual tool badges. Mirrors the reference exploration
 // grouping so a long read-heavy turn stays scannable.
-export function ExplorationGroup({ tools }: { tools: ToolEntry[] }) {
-  const [open, setOpen] = useState(false);
+export function ExplorationGroup({
+  tools,
+  actions,
+  expansionKey,
+}: {
+  tools: ToolEntry[];
+  actions?: ResearchChatActions;
+  expansionKey?: string;
+}) {
+  const [open, setOpen] = usePersistentExpansion(expansionKey, false);
   const listId = useId();
   return (
     <div className="max-w-[85%]" data-testid="exploration-group">
@@ -671,7 +681,12 @@ export function ExplorationGroup({ tools }: { tools: ToolEntry[] }) {
       {open && (
         <div id={listId} className="mt-1.5 flex animate-in fade-in flex-col gap-1.5 border-l pl-2.5 duration-150 motion-reduce:animate-none">
           {tools.map((tool, index) => (
-            <ToolBadge key={tool.id ?? `explore-${index}`} tc={tool} />
+            <ToolBadge
+              key={tool.id ?? `explore-${index}`}
+              tc={tool}
+              actions={actions}
+              expansionKey={expansionKey ? `${expansionKey}:${tool.id ?? index}` : undefined}
+            />
           ))}
         </div>
       )}
@@ -679,58 +694,16 @@ export function ExplorationGroup({ tools }: { tools: ToolEntry[] }) {
   );
 }
 
-export function ToolBadge({ tc }: { tc: ToolEntry }) {
-  const [expanded, setExpanded] = useState(false);
-  const result = tc.output?.includes('"success": true')
-    ? "success"
-    : tc.output?.includes('"error"')
-      ? "error"
-      : undefined;
-  return (
-    <div
-      data-tool-name={tc.name}
-      data-tool-status={tc.status}
-      data-tool-result={result}
-      className="max-w-[85%] rounded-md border bg-muted text-xs"
-    >
-      <button type="button"
-        onClick={() => tc.output && setExpanded(!expanded)}
-        className={cn("flex w-full items-center gap-2 px-2.5 py-1.5", tc.output && "cursor-pointer hover:bg-accent/50")}
-      >
-        <Wrench className="size-3.5 text-muted-foreground" />
-        <span className="font-mono">{tc.name}</span>
-        {tc.approval === "rejected" ? (
-          <XCircle className="size-3 text-destructive" />
-        ) : (
-          <>
-            {tc.status === "running" && <Loader2 className="size-3 animate-spin" />}
-            {tc.status === "done" && <CheckCircle2 className="size-3 text-emerald-500" />}
-            {tc.status === "error" && <XCircle className="size-3 text-destructive" />}
-          </>
-        )}
-        <span className="ml-auto flex items-center gap-1.5">
-          {tc.approval === "approved" && (
-            <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-              Approved
-            </span>
-          )}
-          {tc.approval === "rejected" && (
-            <span className="rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
-              Rejected
-            </span>
-          )}
-          {tc.output && (
-            <ChevronRight className={cn("size-3 text-muted-foreground transition-transform", expanded && "rotate-90")} />
-          )}
-        </span>
-      </button>
-      {expanded && tc.output && (
-        <pre className="max-h-96 animate-in fade-in overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words border-t px-2.5 py-1.5 font-mono text-[10px] text-muted-foreground duration-150 motion-reduce:animate-none">
-          {tc.output}
-        </pre>
-      )}
-    </div>
-  );
+export function ToolBadge({
+  tc,
+  actions,
+  expansionKey,
+}: {
+  tc: ToolEntry;
+  actions?: ResearchChatActions;
+  expansionKey?: string;
+}) {
+  return <ResearchToolCard tc={tc} actions={actions} expansionKey={expansionKey} />;
 }
 
 export function formatToolOutput(output: unknown): string {
@@ -818,13 +791,14 @@ export function ReasoningBlock({
   text,
   active,
   durationMs,
+  expansionKey,
 }: {
   text: string;
   active?: boolean;
   durationMs?: number;
+  expansionKey?: string;
 }) {
-  const [userToggled, setUserToggled] = useState<boolean | null>(null);
-  const open = userToggled ?? false;
+  const [open, setOpen] = usePersistentExpansion(expansionKey, false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -845,10 +819,15 @@ export function ReasoningBlock({
   if (!active && !text.trim()) return null;
 
   return (
-    <div className="max-w-[85%] rounded-md border bg-muted text-xs">
+    <div
+      data-reasoning-block
+      data-reasoning-status={active ? "running" : "completed"}
+      className="max-w-[85%] rounded-md border bg-muted text-xs"
+    >
       <button
         type="button"
-        onClick={() => setUserToggled(!open)}
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
         className="flex w-full items-center gap-2 px-2.5 py-1.5 text-muted-foreground hover:bg-accent/50"
       >
         <Brain className={cn("size-3.5", active && "ai-shimmer-icon")} />
@@ -876,8 +855,10 @@ export function ReasoningBlock({
 // asked, where it is, and a preview of what came back.
 export function SubagentCard({
   entry,
+  actions,
 }: {
-  entry: { id: string; label: string; state: string; detail?: string };
+  entry: SubagentEntry;
+  actions?: ResearchChatActions;
 }) {
   const running = entry.state !== "done" && entry.state !== "error";
   return (
@@ -906,6 +887,21 @@ export function SubagentCard({
             : entry.detail}
         </div>
       )}
+      {entry.sessionId && actions?.openSession && (
+        <div className="border-t px-2 py-1">
+          <button
+            type="button"
+            className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent"
+            onClick={() => {
+              if (entry.sessionId) {
+                actions.openSession?.({ threadId: entry.sessionId, runtime: entry.runtime });
+              }
+            }}
+          >
+            Open task
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -916,11 +912,13 @@ export function SubagentCard({
 function WorkedSteps({
   rows,
   totalMs,
+  expansionKey,
 }: {
   rows: React.ReactNode[];
   totalMs: number;
+  expansionKey?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = usePersistentExpansion(expansionKey, false);
   const listId = useId();
   const seconds = Math.max(1, Math.round(totalMs / 1000));
   const label = totalMs > 0 ? `Worked for ${seconds}s` : `Worked through ${rows.length} steps`;
@@ -956,9 +954,13 @@ function WorkedSteps({
 export const MessageItem = memo(function MessageItem({
   msg,
   live,
+  actions,
+  expansionScope,
 }: {
   msg: ChatMessage;
   live?: boolean;
+  actions?: ResearchChatActions;
+  expansionScope?: string;
 }) {
   const tools = msg.toolCalls ?? [];
   const attachmentOccurrences = new Map<string, number>();
@@ -979,6 +981,7 @@ export const MessageItem = memo(function MessageItem({
             text={b.text}
             active={!!live && b.ms === undefined}
             durationMs={b.ms}
+            expansionKey={expansionScope ? `${expansionScope}:reasoning:${b.id ?? blockIndex}` : undefined}
           />,
         );
       }
@@ -1002,6 +1005,8 @@ export const MessageItem = memo(function MessageItem({
             <ExplorationGroup
               key={tools[i].id ?? `explore-group-${i}`}
               tools={tools.slice(i, j + 1)}
+              actions={actions}
+              expansionKey={expansionScope ? `${expansionScope}:exploration:${tools[i].id ?? i}` : undefined}
             />,
           );
           i = j;
@@ -1011,17 +1016,48 @@ export const MessageItem = memo(function MessageItem({
       const tool = tools[i];
       const key = tool.id ?? `legacy-tool-${i}`;
       if (tool.name === "run_command") {
-        rows.push(<ExecCard key={key} tc={tool} />);
+        rows.push(
+          <ExecCard
+            key={key}
+            tc={tool}
+            expansionKey={expansionScope ? `${expansionScope}:tool:${key}` : undefined}
+          />,
+        );
       } else {
-        rows.push(<ToolBadge key={key} tc={tool} />);
+        rows.push(
+          <ToolBadge
+            key={key}
+            tc={tool}
+            actions={actions}
+            expansionKey={expansionScope ? `${expansionScope}:tool:${key}` : undefined}
+          />,
+        );
       }
     }
   }
   for (const entry of msg.subagents ?? []) {
-    rows.push(<SubagentCard key={entry.id} entry={entry} />);
+    rows.push(<SubagentCard key={entry.id} entry={entry} actions={actions} />);
   }
   const totalMs = blocks.reduce((sum, block) => sum + (block.ms ?? 0), 0);
-  const foldSteps = !live && rows.length > 0 && msg.role === "assistant";
+  const hasVisibleOutcome = tools.some((tool) => {
+    const view = projectToolEntry(tool);
+    return (
+      view.status === "failed" ||
+      view.status === "cancelled" ||
+      view.status === "declined" ||
+      view.kind === "literature" ||
+      view.kind === "citation" ||
+      view.kind === "compile" ||
+      view.kind === "artifact" ||
+      view.kind === "delegation"
+    );
+  });
+  const foldSteps =
+    !live &&
+    rows.length > 0 &&
+    msg.role === "assistant" &&
+    !hasVisibleOutcome &&
+    !(msg.subagents?.length);
   const createdAt = msg.createdAt === undefined ? null : new Date(msg.createdAt);
   const validCreatedAt = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : null;
   const messageTime = validCreatedAt?.toLocaleTimeString([], {
@@ -1031,7 +1067,13 @@ export const MessageItem = memo(function MessageItem({
   });
   return (
     <div className={cn("flex flex-col gap-1.5", msg.role === "user" && "items-end")}>
-      {foldSteps ? <WorkedSteps rows={rows} totalMs={totalMs} /> : rows}
+      {foldSteps ? (
+        <WorkedSteps
+          rows={rows}
+          totalMs={totalMs}
+          expansionKey={expansionScope ? `${expansionScope}:steps` : undefined}
+        />
+      ) : rows}
       {msg.role === "user" && msg.steered && (
         <span
           data-testid="steered-message-label"

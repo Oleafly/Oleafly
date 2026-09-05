@@ -5,3 +5,4 @@ export * from "./agent-events";
 export * from "./thread-items";
 export * from "./item-views";
 export * from "./delta-queues";
+export * from "./usage";

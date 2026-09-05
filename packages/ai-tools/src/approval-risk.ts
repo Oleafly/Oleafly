@@ -10,6 +10,9 @@ export type ApprovalRuleDecision = "allow" | "deny";
 export const DEFAULT_APPROVAL_MODE: ApprovalMode = "approve-for-me";
 
 const READ_TOOLS = new Set([
+  "list_research_roots",
+  "list_research_root_files",
+  "read_research_root_file",
   "read_file",
   "read_skill_file",
   "show_location",
@@ -59,6 +62,9 @@ const NETWORK_TOOLS = new Set([
 ]);
 
 const READ_ONLY_TOOLS = new Set([
+  "list_research_roots",
+  "list_research_root_files",
+  "read_research_root_file",
   "read_file",
   "list_files",
   "project_map",

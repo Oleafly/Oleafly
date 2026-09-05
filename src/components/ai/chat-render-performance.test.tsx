@@ -157,7 +157,7 @@ describe("heavy chat render path", () => {
     expect(revealMermaidRenders).toBe(HEAVY_CONVERSATION_COUNTS.mermaidDiagrams - visibleDiagrams);
   }, 60_000);
 
-  it("paints the newest messages before the rest of a large conversation mounts", async () => {
+  it("paints the newest messages while older rows stay unmounted", async () => {
     const messages = buildHeavyConversation();
     const rendered: RenderedMessage[] = messages.map((msg, index) => ({
       key: msg.id ?? `${index}`,
@@ -171,7 +171,6 @@ describe("heavy chat render path", () => {
 
     const start = performance.now();
     const view = render(<ListHarness messages={rendered} />);
-    const pendingAtFirstPaint = view.container.querySelectorAll('[data-message-pending="true"]').length;
     await waitFor(
       () =>
         expect(
@@ -180,25 +179,17 @@ describe("heavy chat render path", () => {
       { interval: 2, timeout: 30_000 },
     );
     const firstPaintMs = performance.now() - start;
-    await waitFor(
-      () => {
-        expect(view.container.querySelector('[data-message-pending="true"]')).toBeNull();
-        expectFullyRendered(view.container);
-      },
-      { interval: 2, timeout: 30_000 },
-    );
-    const completeMs = performance.now() - start;
+    const mounted = view.container.querySelectorAll("[data-mm-index]").length;
 
     console.info(
       `[chat-render-performance] ${JSON.stringify({
-        progressive: true,
+        windowed: true,
         messages: messages.length,
-        pendingAtFirstPaint,
+        mounted,
         newestVisibleMs: Math.round(firstPaintMs),
-        allMountedMs: Math.round(completeMs),
       })}`,
     );
-    expect(pendingAtFirstPaint).toBeGreaterThan(0);
-    expect(view.container.querySelectorAll("[data-mm-index]")).toHaveLength(messages.length);
+    expect(view.container.querySelector('[data-message-spacer="top"]')).not.toBeNull();
+    expect(mounted).toBeLessThan(messages.length);
   }, 60_000);
 });

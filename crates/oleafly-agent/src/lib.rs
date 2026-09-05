@@ -16,7 +16,7 @@ pub mod tool;
 pub mod tools;
 pub mod wire;
 
-pub use complete::{complete, CompletionRequest, CompletionResponse, Usage};
+pub use complete::{complete, CompletionRequest, CompletionResponse, InputTokenSemantics, Usage};
 pub use error::{AgentError, Result};
 pub use event::AgentEvent;
 pub use message::{ContentPart, Message, Role};

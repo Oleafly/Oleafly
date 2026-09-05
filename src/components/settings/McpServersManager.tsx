@@ -6,6 +6,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Search,
   Server,
   Terminal,
   Trash2,
@@ -15,6 +16,7 @@ import {
   McpServerImportDialog,
   type McpServerImportSelection,
 } from "@/components/settings/McpServerImportDialog";
+import { McpRegistryBrowser } from "@/components/settings/McpRegistryBrowser";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -573,6 +575,7 @@ export function McpServersManager() {
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [registryOpen, setRegistryOpen] = useState(false);
   const [importSummary, setImportSummary] = useState<McpServerImportResult | null>(null);
   const [removeName, setRemoveName] = useState<string | null>(null);
   const [busy, setBusy] = useState<Set<string>>(new Set());
@@ -813,6 +816,16 @@ export function McpServersManager() {
         </Button>
         <Button
           type="button"
+          variant="outline"
+          size="sm"
+          disabled={loading || loadError !== null}
+          onClick={() => setRegistryOpen((open) => !open)}
+        >
+          <Search aria-hidden />
+          {registryOpen ? "Hide registry" : "Browse registry"}
+        </Button>
+        <Button
+          type="button"
           size="sm"
           onClick={() => {
             setEditorError(null);
@@ -823,6 +836,15 @@ export function McpServersManager() {
           Add server
         </Button>
       </div>
+
+      {registryOpen ? (
+        <McpRegistryBrowser
+          onReview={(config) => {
+            setEditorError(null);
+            setEditor({ mode: "add", originalName: null, config });
+          }}
+        />
+      ) : null}
 
       {importSummary ? (
         <div

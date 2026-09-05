@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { applyThemeCustomization } from "@/lib/theme-customization";
 
 export type Theme = "light" | "dark";
 export type ThemePreference = "system" | "light" | "dark";
@@ -75,6 +76,7 @@ export function applyTheme(theme: Theme): void {
   root.classList.remove("light", "dark");
   root.classList.add(theme);
   root.style.colorScheme = theme;
+  applyThemeCustomization(theme);
   const changed = appliedTheme !== theme;
   appliedTheme = theme;
   if (!changed) return;

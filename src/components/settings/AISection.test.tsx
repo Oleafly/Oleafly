@@ -297,7 +297,8 @@ describe("AISection", () => {
     expect(tabList).not.toHaveClass("w-full");
 
     const mcpTab = screen.getByRole("tab", { name: "MCP" });
-    expect(within(tabList).getAllByRole("tab")).toHaveLength(5);
+    expect(within(tabList).getAllByRole("tab")).toHaveLength(6);
+    expect(within(tabList).getByRole("tab", { name: "CLI agents" })).toBeInTheDocument();
     await user.click(mcpTab);
 
     expect(

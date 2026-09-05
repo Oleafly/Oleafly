@@ -100,6 +100,16 @@ pub enum ThreadItem {
         kind: String,
         #[serde(default)]
         detail: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        runtime: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider_id: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        model_id: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        runtime_agent_id: Option<String>,
     },
     #[serde(rename = "todo-list")]
     TodoList {
@@ -530,6 +540,11 @@ impl TurnRecorder {
                 label,
                 state,
                 detail,
+                runtime,
+                session_id,
+                provider_id,
+                model_id,
+                agent_id,
             } => {
                 self.push(
                     ThreadItem::SubAgentActivity {
@@ -537,8 +552,13 @@ impl TurnRecorder {
                         label: label.clone(),
                         kind: state.clone(),
                         detail: detail.clone(),
+                        runtime: runtime.clone(),
+                        session_id: session_id.clone(),
+                        provider_id: provider_id.clone(),
+                        model_id: model_id.clone(),
+                        runtime_agent_id: agent_id.clone(),
                     },
-                    state == "done" || state == "error",
+                    state == "done" || state == "error" || state == "interrupted",
                 );
             }
             AgentEvent::Compacted {
@@ -734,6 +754,11 @@ mod tests {
                     label: "research".into(),
                     kind: "started".into(),
                     detail: None,
+                    runtime: None,
+                    session_id: None,
+                    provider_id: None,
+                    model_id: None,
+                    runtime_agent_id: None,
                 },
                 serde_json::json!({
                     "type": "subAgentActivity",
@@ -1038,6 +1063,11 @@ mod tests {
                     label: "research".into(),
                     kind: "started".into(),
                     detail: None,
+                    runtime: None,
+                    session_id: None,
+                    provider_id: None,
+                    model_id: None,
+                    runtime_agent_id: None,
                 },
             ),
             (
@@ -1220,6 +1250,7 @@ mod tests {
             usage: Usage {
                 input: 10,
                 output: 5,
+                ..Usage::default()
             },
         });
         recorder.finish(false);
@@ -1395,6 +1426,11 @@ mod tests {
             label: "research".into(),
             state: "done".into(),
             detail: Some("found 3 papers".into()),
+            runtime: Some("acp".into()),
+            session_id: Some("acp-session".into()),
+            provider_id: None,
+            model_id: Some("selected".into()),
+            agent_id: Some("codex".into()),
         });
         recorder.record(&AgentEvent::Compacted {
             dropped_messages: 12,
@@ -1405,8 +1441,10 @@ mod tests {
         let record = recorder.into_record();
         assert!(matches!(
             &record.items[0].item,
-            ThreadItem::SubAgentActivity { kind, detail, .. }
+            ThreadItem::SubAgentActivity { kind, detail, runtime, session_id, runtime_agent_id, .. }
                 if kind == "done" && detail.as_deref() == Some("found 3 papers")
+                    && runtime.as_deref() == Some("acp") && session_id.as_deref() == Some("acp-session")
+                    && runtime_agent_id.as_deref() == Some("codex")
         ));
         assert!(matches!(
             &record.items[1].item,

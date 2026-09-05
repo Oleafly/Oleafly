@@ -4,7 +4,7 @@
 //! injected before the kept tail so the most recent user message is never
 //! summarized away.
 
-use crate::complete::CompletionRequest;
+use crate::complete::{CompletionRequest, Usage};
 use crate::error::Result;
 use crate::message::{ContentPart, Message};
 use crate::provider::Resolved;
@@ -136,7 +136,7 @@ pub(crate) async fn compact_history(
     resolved: &Resolved,
     request: &CompletionRequest,
     token: &CancellationToken,
-) -> Result<String> {
+) -> Result<(String, Usage)> {
     let summary_request = CompletionRequest {
         system: Some(DEFAULT_COMPACT_PROMPT.to_string()),
         messages: summarizable_messages(&request.messages),
@@ -145,7 +145,7 @@ pub(crate) async fn compact_history(
     };
     let call = crate::complete(client, resolved, &summary_request);
     tokio::select! {
-        response = call => Ok(response?.text),
+        response = call => response.map(|response| (response.text, response.usage)),
         _ = token.cancelled() => Err(crate::error::AgentError::Cancelled),
     }
 }

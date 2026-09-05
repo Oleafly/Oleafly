@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { lazy, Suspense, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
 import { runAgentHarness, toAgentMessages } from "./agent-turn";
-import { DeltaQueues, MAX_BATCH } from "@oleafly/ai-core";
+import { DeltaQueues, MAX_BATCH, normalizeAgentUsage } from "@oleafly/ai-core";
 import {
   DEFAULT_APPROVAL_MODE,
   PLAN_MODE_TOOL_ERROR,
@@ -16,6 +16,11 @@ import { windowFlushScheduler } from "@/lib/agent-stream-scheduler";
 import { useAgentTurnsStore, type QueuedFollowUp } from "@/store/agent-turns";
 import { useAssistantOutputsStore } from "@/store/assistant-outputs";
 import { SubagentActivity } from "./SubagentActivity";
+import { AgentMentionMenu } from "./AgentMentionMenu";
+import { useAgentTargets } from "./use-agent-targets";
+import { useResearchChatActions } from "./use-research-chat-actions";
+import { activeAgentMention, agentDelegationPrompt, type DelegationTarget } from "@/lib/agent-mentions";
+import { createResearchWorkspaceTools } from "@/lib/research-workspace-tools";
 import {
   agentSteer,
   agentThreadArchive,
@@ -59,7 +64,7 @@ import {
   X,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { agentProbeModel, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, usageRecord, type AppConfig, type CustomProvider, type McpAgentServer, type ModelProbe, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
+import { agentProbeModel, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, type AppConfig, type CustomProvider, type McpAgentServer, type ModelProbe, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
@@ -154,7 +159,6 @@ import { useAgentHandoffStore } from "@/store/agent-handoff";
 import { isToolEnabled, useAiToolSettingsStore } from "@/store/ai-tool-settings";
 import { buildWorkspaceContext } from "@/lib/ai-context";
 import { packChatHistory } from "@/lib/ai-context-pack";
-import { estimateUsd, formatUsd } from "@/lib/ai-pricing";
 import { formatRagContext, retrieveProjectChunks } from "@/lib/ai-rag";
 import { ChatHistoryModal } from "@/components/ai/ChatHistoryModal";
 import { PROMPT_CATEGORIES } from "@/components/ai/prompt-shortcuts";
@@ -467,8 +471,13 @@ export function modelNoticeText(
   return chatOnly ? CHAT_ONLY_MODEL_HINT : "";
 }
 
+const UsageReportDialog = lazy(() =>
+  import("@/components/usage/UsageReport").then((module) => ({ default: module.UsageReportDialog })),
+);
+
 export function ChatCore() {
   const projectId = useFilesStore((s) => s.projectId);
+  const researchChatActions = useResearchChatActions(projectId);
   const projectName = useFilesStore((s) => s.projectName);
   const documentEngine = useFilesStore((s) => s.engine);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
@@ -671,10 +680,9 @@ export function ChatCore() {
   const [figureMode, setFigureMode] = useState(false);
   const agentTodos = useAgentTodoStore((s) => s.todos);
   const [runUsage, setRunUsage] = useState<{
-    input: number;
-    output: number;
+    input: number | null;
+    output: number | null;
     steps: number;
-    usd: number;
   } | null>(null);
   const [restoringCheckpoint, setRestoringCheckpoint] = useState<string | null>(null);
   const handoffPending = useAgentHandoffStore((s) => s.pendingPrompt);
@@ -711,6 +719,11 @@ export function ChatCore() {
   const goalInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const slashCommandMenuRef = useRef<SlashCommandMenuHandle>(null);
+  const agentMentionMenuRef = useRef<SlashCommandMenuHandle>(null);
+  const [inputCaret, setInputCaret] = useState(input.length);
+  const [mentionDismissed, setMentionDismissed] = useState(false);
+  const [activeMentionId, setActiveMentionId] = useState<string | null>(null);
+  const mention = mentionDismissed ? null : activeAgentMention(input, inputCaret);
   const inputShellRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!goalEditorOpen) return;
@@ -801,6 +814,7 @@ export function ChatCore() {
   );
   const toolManagerAvailability = useMemo(() => {
     const additions: RuntimeToolset[] = [
+      { id: "research-workspace", source: { kind: "project" }, tools: createResearchWorkspaceTools(projectId) },
       ...availableMcpToolsets,
       ...(Object.keys(availableSkillTools).length > 0
         ? [{ id: "skills", source: { kind: "skills" } as const, tools: availableSkillTools }]
@@ -820,6 +834,7 @@ export function ChatCore() {
         : ["project_map"],
     });
   }, [
+    projectId,
     availableMcpToolsets,
     availableSkillTools,
     documentEngine.capabilities.features,
@@ -1091,6 +1106,10 @@ export function ChatCore() {
       models: available,
     };
   });
+  const delegationTargets = useAgentTargets(projectId, modelGroups);
+  const delegationTargetsRef = useRef<DelegationTarget[]>(delegationTargets);
+  delegationTargetsRef.current = delegationTargets;
+
   // Load sticky agent memory when the project changes. Also drop the in-run
   // todo checklist, which is not project-scoped, so project A's plan does not
   // linger under project B.
@@ -1665,6 +1684,8 @@ export function ChatCore() {
     if (runIsCurrent()) setRunUsage(null);
     let usageIn = 0;
     let usageOut = 0;
+    let displayedUsageIn: number | null = null;
+    let displayedUsageOut: number | null = null;
     let usageSteps = 0;
 
     if (!reservationIsCurrent()) {
@@ -1802,6 +1823,7 @@ USER_CUSTOM_INSTRUCTIONS`
     const activeGoalLine = goalPromptLine(useChatGoalStore.getState().goal(projectId));
     const runSkillTools = createLoadSkillTools(runSkills, requestedSkillIds);
     const runToolAdditions: RuntimeToolset[] = [
+      { id: "research-workspace", source: { kind: "project" }, tools: createResearchWorkspaceTools(runProjectId) },
       ...createMcpRuntimeToolsets(runMcpServers, {
         confirm,
         isActive: () =>
@@ -1907,7 +1929,7 @@ ${sandboxedCustom}`;
           activeGoalLine ? `\n\n${activeGoalLine}` : ""
         }`
       : systemPrompt;
-    const effectiveSystem = `${effectiveSystemBase}${
+    const effectiveSystem = `${effectiveSystemBase}${agentDelegationPrompt(runText, delegationTargetsRef.current)}${
       runSkillCatalog ? `\n\n${runSkillCatalog}` : ""
     }${requestedSkillBlock ? `\n\n${requestedSkillBlock}` : ""}\n\n${approvalPostureLine(runApprovalMode)}${
       planTurn
@@ -2266,12 +2288,14 @@ ${sandboxedCustom}`;
           onUsage: (usage) => {
             usageIn = usage.input;
             usageOut = usage.output;
+            const normalized = normalizeAgentUsage(usage);
+            displayedUsageIn = normalized.inputTotal;
+            displayedUsageOut = normalized.outputTotal;
             if (runIsCurrent())
               setRunUsage({
-                input: usageIn,
-                output: usageOut,
+                input: displayedUsageIn,
+                output: displayedUsageOut,
                 steps: usageSteps,
-                usd: estimateUsd(model, usageIn, usageOut).usd,
               });
           },
           onSteered: (steeredText) => appendSteeredTurn(steeredText),
@@ -2284,6 +2308,11 @@ ${sandboxedCustom}`;
                 label: update.label,
                 state: update.state,
                 detail: update.detail ?? undefined,
+                runtime: update.runtime ?? undefined,
+                sessionId: update.sessionId ?? undefined,
+                providerId: update.providerId ?? undefined,
+                modelId: update.modelId ?? undefined,
+                agentId: update.agentId ?? undefined,
               };
               if (index >= 0) list[index] = entry;
               else list.push(entry);
@@ -2357,18 +2386,12 @@ ${sandboxedCustom}`;
       }
       if (abortRef.current === ac) abortRef.current = null;
       if (projectId && runChatId && (usageIn > 0 || usageOut > 0 || usageSteps > 0)) {
-        const { usd } = estimateUsd(model, usageIn, usageOut);
         void useChatsStore.getState().addUsageForProject(projectId, runChatId, {
           inputTokens: usageIn,
           outputTokens: usageOut,
           steps: usageSteps,
-          estimatedUsd: usd,
         });
-        // Durable per-provider/model ledger (library.db); drives the budget gate.
-        void usageRecord(projectId, runChatId, provider, model, usageIn, usageOut, usd).catch(
-          () => {},
-        );
-        if (runIsCurrent()) setRunUsage({ input: usageIn, output: usageOut, steps: usageSteps, usd });
+        if (runIsCurrent()) setRunUsage({ input: displayedUsageIn, output: displayedUsageOut, steps: usageSteps });
       }
       if (runIsCurrent()) {
         const completedAt = Date.now();
@@ -2618,7 +2641,7 @@ ${sandboxedCustom}`;
           chatUsage.steps > 0)),
   );
   const usageSummary = runUsage
-    ? `Last run: ${runUsage.steps} step${runUsage.steps === 1 ? "" : "s"}, ${(runUsage.input + runUsage.output).toLocaleString()} tokens${runUsage.usd > 0 ? `, about ${formatUsd(runUsage.usd)}` : ""}`
+    ? `Last run: ${runUsage.steps} step${runUsage.steps === 1 ? "" : "s"}, ${runUsage.input === null || runUsage.output === null ? "token total unavailable" : `${(runUsage.input + runUsage.output).toLocaleString()} reported tokens`}`
     : chatUsage
       ? `This chat: ${chatUsage.steps} steps, ${chatTotal.toLocaleString()} tokens`
       : "AI usage";
@@ -2698,19 +2721,14 @@ ${sandboxedCustom}`;
                         <section data-testid="ai-run-usage">
                           <div className="mb-1.5 flex items-center justify-between">
                             <span className="font-medium text-foreground">Last run</span>
-                            {runUsage.usd > 0 && (
-                              <span className="font-medium tabular-nums text-emerald-600 dark:text-emerald-400">
-                                {formatUsd(runUsage.usd)}
-                              </span>
-                            )}
                           </div>
                           <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
                             <dt>Steps</dt>
                             <dd className="text-right tabular-nums">{runUsage.steps}</dd>
                             <dt>Input</dt>
-                            <dd className="text-right tabular-nums">{runUsage.input.toLocaleString()}</dd>
+                            <dd className="text-right tabular-nums">{runUsage.input?.toLocaleString() ?? "Unknown"}</dd>
                             <dt>Output</dt>
-                            <dd className="text-right tabular-nums">{runUsage.output.toLocaleString()}</dd>
+                            <dd className="text-right tabular-nums">{runUsage.output?.toLocaleString() ?? "Unknown"}</dd>
                           </dl>
                         </section>
                       )}
@@ -2721,11 +2739,6 @@ ${sandboxedCustom}`;
                         >
                           <div className="mb-1.5 flex items-center justify-between">
                             <span className="font-medium text-foreground">This chat</span>
-                            {(chatUsage.estimatedUsd ?? 0) > 0 && (
-                              <span className="font-medium tabular-nums text-emerald-600 dark:text-emerald-400">
-                                {formatUsd(chatUsage.estimatedUsd ?? 0)}
-                              </span>
-                            )}
                           </div>
                           <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
                             <dt>Runs</dt>
@@ -2737,9 +2750,14 @@ ${sandboxedCustom}`;
                           </dl>
                         </section>
                       )}
-                      <p className="border-t pt-2 text-[10px] leading-relaxed text-muted-foreground">
-                        Costs are estimates based on public model pricing, not billing totals.
-                      </p>
+                      <div className="border-t pt-2">
+                        <Suspense fallback={null}>
+                          <UsageReportDialog trigger={<Button variant="outline" size="sm" className="w-full">Open full usage report</Button>} />
+                        </Suspense>
+                        <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+                          The report includes cache usage and available cost estimates.
+                        </p>
+                      </div>
                     </div>
                   </Popover>
                 </Tooltip>
@@ -2919,6 +2937,7 @@ ${sandboxedCustom}`;
                 <div className="flex flex-col gap-3">
                   <MessageList
                     messages={renderedMessages}
+                    actions={researchChatActions}
                     chatId={activeChatId}
                     scrollRef={scrollRef}
                     nearBottomRef={nearBottomRef}
@@ -2997,6 +3016,7 @@ ${sandboxedCustom}`;
             {activeChatId && (
               <SubagentActivity
                 chatId={activeChatId}
+                projectId={projectId}
                 streaming={streaming}
                 activeRunId={() => activeRunRequestIdRef.current}
                 onError={(message) => toast.error(message)}
@@ -3225,6 +3245,27 @@ ${sandboxedCustom}`;
                 className="hidden"
                 onChange={(e) => { void addFiles(e.target.files); e.target.value = ""; }}
               />
+              {mention && !slashMenuOpen && (
+                <AgentMentionMenu
+                  ref={agentMentionMenuRef}
+                  targets={delegationTargets}
+                  query={mention.query}
+                  onClose={() => setMentionDismissed(true)}
+                  onActiveChange={setActiveMentionId}
+                  onSelect={(target) => {
+                    const token = `@${target.id} `;
+                    const next = `${input.slice(0, mention.start)}${token}${input.slice(mention.end)}`;
+                    const caret = mention.start + token.length;
+                    setInput(next);
+                    setInputCaret(caret);
+                    setMentionDismissed(true);
+                    requestAnimationFrame(() => {
+                      textareaRef.current?.focus({ preventScroll: true });
+                      textareaRef.current?.setSelectionRange(caret, caret);
+                    });
+                  }}
+                />
+              )}
               {slashMenuOpen && (
                 <SlashCommandMenu
                   ref={slashCommandMenuRef}
@@ -3254,23 +3295,27 @@ ${sandboxedCustom}`;
                 data-tour="ai-input"
                 role="combobox"
                 aria-autocomplete="list"
-                aria-controls={slashMenuOpen ? "ai-slash-command-menu" : undefined}
-                aria-expanded={slashMenuOpen}
+                aria-controls={slashMenuOpen ? "ai-slash-command-menu" : mention ? "ai-agent-mention-menu" : undefined}
+                aria-expanded={slashMenuOpen || Boolean(mention)}
                 aria-haspopup="listbox"
                 aria-activedescendant={
                   slashMenuOpen && activeSlashCommandId
                     ? `ai-slash-command-${activeSlashCommandId}`
-                    : undefined
+                    : mention && activeMentionId ? `ai-agent-${activeMentionId}` : undefined
                 }
                 value={input}
                 onChange={(e) => {
                   setSlashMenuDismissedInput(null);
                   setActiveSlashCommandId(null);
                   setInput(e.target.value);
+                  setInputCaret(e.target.selectionStart);
+                  setMentionDismissed(false);
                 }}
+                onSelect={(e) => setInputCaret(e.currentTarget.selectionStart)}
                 onKeyDown={(e) => {
                   if (e.nativeEvent.isComposing) return;
                   if (slashMenuOpen && slashCommandMenuRef.current?.handleKeyDown(e)) return;
+                  if (mention && agentMentionMenuRef.current?.handleKeyDown(e)) return;
                   if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault();
                     void send(input);

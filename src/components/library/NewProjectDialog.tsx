@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { FolderInput, Loader2 } from "lucide-react";
+import { FlaskConical, FolderInput, Loader2 } from "lucide-react";
 import {
   NewProjectDialog as NewProjectDialogCore,
   type TemplatesHost,
@@ -8,6 +8,9 @@ import {
 } from "@oleafly/templates";
 import { generateTemplateAvailable } from "@/features/template-generate";
 import { TemplateGenerateModal } from "@/components/library/TemplateGenerateModal";
+import { ResearchProjectSetup } from "@/components/research/workspace/ResearchProjectSetup";
+import { useFilesStore } from "@/store/files";
+import { ensureResearchStarterTask } from "@/lib/research-starter-task";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,6 +97,7 @@ export function NewProjectDialog(props: {
 }) {
   const [canGenerate, setCanGenerate] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [researchOpen, setResearchOpen] = useState(false);
   useEffect(() => {
     if (props.open) void generateTemplateAvailable().then(setCanGenerate);
   }, [props.open]);
@@ -110,8 +114,20 @@ export function NewProjectDialog(props: {
     <>
       <NewProjectDialogCore
         {...props}
+        open={props.open && !researchOpen}
         onGenerateWithAi={canGenerate ? () => setGenerateOpen(true) : undefined}
         importControl={
+          <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={props.busy || props.allowClose === false}
+            onClick={() => setResearchOpen(true)}
+            className="gap-2"
+            data-testid="new-research-project"
+          >
+            <FlaskConical className="size-4" /> Research project
+          </Button>
           <ProjectImportMenu
             align="end"
             onImportSelected={props.onClose}
@@ -133,12 +149,21 @@ export function NewProjectDialog(props: {
               </Button>
             )}
           />
+          </div>
         }
         onOpenTemplateDownloads={openTemplateDownloads}
         host={HOST}
         kit={KIT}
         colorOptions={BOOK_COLOR_OPTIONS}
         defaultColor={DEFAULT_BOOK_COLOR}
+      />
+      <ResearchProjectSetup
+        open={props.open && researchOpen}
+        ensureInitialTask={ensureResearchStarterTask}
+        onClose={() => { setResearchOpen(false); props.onClose(); }}
+        onCreated={async (projectId) => {
+          await useFilesStore.getState().openProject(projectId);
+        }}
       />
       <TemplateGenerateModal
         open={generateOpen}

@@ -24,6 +24,7 @@ const registry: Record<string, () => Promise<unknown>> = !E2E_HOOKS ? {} : {
   "/src/lib/mcp-bridge.ts": () => import("@/lib/mcp-bridge"),
   "/src/lib/proofreading/client.ts": () => import("@/lib/proofreading/client"),
   "/src/lib/proofreading/hunspell.ts": () => import("@/lib/proofreading/hunspell"),
+  "/src/lib/research-tasks.ts": () => import("@/lib/research-tasks"),
   "/src/lib/tauri.ts": () => import("@/lib/tauri"),
   "/src/lib/wordcount.ts": () => import("@/lib/wordcount"),
   "/src/store/citation.ts": () => import("@/store/citation"),
