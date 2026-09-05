@@ -1383,6 +1383,9 @@ mod tests {
 
     #[test]
     fn a_file_that_is_present_still_has_to_pass_the_stores_validation() {
+        if !crate::paths::symlink_creation_is_permitted() {
+            return;
+        }
         let _env_guard = crate::paths::data_dir_env_lock();
         let directory = tempdir().unwrap();
         std::env::set_var("OLEAFLY_DATA_DIR", directory.path());

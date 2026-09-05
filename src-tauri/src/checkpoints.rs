@@ -1,7 +1,9 @@
 //! External Checkpoints lifecycle and transactional worktree restore.
 
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::fs::{self, File, OpenOptions};
+#[cfg(unix)]
+use std::fs::File;
+use std::fs::{self, OpenOptions};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex, OnceLock, Weak};
 

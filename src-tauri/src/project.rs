@@ -5759,15 +5759,15 @@ mod tests {
         copy_path_in_project, create_diagram_project, create_image_project_in,
         create_markdown_project_in, create_path_in_project, create_project_from_pdf_conversion,
         create_project_transaction, create_typst_project_in, download_project_zip,
-        duplicate_project, engine_for_main_document, extract_pandoc, find_pandoc_on_path,
-        flatten_single_root_folder, get_or_create_scratch_project, import_paths_transactional,
-        import_paths_transactional_with, import_project_zip_bytes, import_project_zip_bytes_with,
-        import_skip, infer_main_document, normalize_loaded_tex_flavor, normalize_relative,
-        pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash, rename_exclusive,
-        rename_path_in_project, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
-        tex_root_magic_target, try_reserve_project_directory, validate_conversion_export,
-        validate_tex_flavor, write_meta_at, CreateFileResult, FileConflictStrategy, MutationScope,
-        PdfConversionFigure, ProjectMeta, RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID,
+        duplicate_project, engine_for_main_document, extract_pandoc, flatten_single_root_folder,
+        get_or_create_scratch_project, import_paths_transactional, import_paths_transactional_with,
+        import_project_zip_bytes, import_project_zip_bytes_with, import_skip, infer_main_document,
+        normalize_loaded_tex_flavor, normalize_relative, pandoc_asset_for,
+        pandoc_version_supported, read_meta, rel_slash, rename_exclusive, rename_path_in_project,
+        search_docs, set_main_doc_synchronized, set_main_doc_unlocked, tex_root_magic_target,
+        try_reserve_project_directory, validate_conversion_export, validate_tex_flavor,
+        write_meta_at, CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure,
+        ProjectMeta, RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID,
     };
     use std::collections::HashMap;
     use std::io::Write;
@@ -8267,6 +8267,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn pandoc_path_resolution_returns_canonical_supported_executable() {
+        use super::find_pandoc_on_path;
         use std::os::unix::fs::PermissionsExt as _;
 
         let directory = tempfile::tempdir().unwrap();

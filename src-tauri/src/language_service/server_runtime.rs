@@ -1446,7 +1446,7 @@ fn replace_file_atomically(source: &Path, destination: &Path) -> std::io::Result
         .encode_wide()
         .chain(Some(0))
         .collect();
-    for attempt in 0..=RETRY_DELAYS_MS.len() {
+    let attempt_replacement = || -> std::io::Result<()> {
         let result = unsafe {
             MoveFileExW(
                 source.as_ptr(),
@@ -1457,15 +1457,18 @@ fn replace_file_atomically(source: &Path, destination: &Path) -> std::io::Result
         if result != 0 {
             return Ok(());
         }
-        let error = std::io::Error::last_os_error();
-        if attempt == RETRY_DELAYS_MS.len()
-            || !matches!(error.raw_os_error(), Some(5 | 32 | 33 | 1224))
-        {
-            return Err(error);
+        Err(std::io::Error::last_os_error())
+    };
+    for delay in RETRY_DELAYS_MS {
+        match attempt_replacement() {
+            Ok(()) => return Ok(()),
+            Err(error) if !matches!(error.raw_os_error(), Some(5 | 32 | 33 | 1224)) => {
+                return Err(error)
+            }
+            Err(_) => std::thread::sleep(Duration::from_millis(delay)),
         }
-        std::thread::sleep(Duration::from_millis(RETRY_DELAYS_MS[attempt]));
     }
-    unreachable!("the bounded Windows replacement loop always returns")
+    attempt_replacement()
 }
 
 fn verify_bytes(

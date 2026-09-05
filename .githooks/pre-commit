@@ -41,7 +41,15 @@ if printf '%s\n' "$staged" | grep -qE '^(src-tauri/|crates/|Cargo\.(toml|lock)$|
   echo "→ rust: clippy"
   cargo clippy --workspace --all-targets -- -D warnings || fail "cargo clippy"
   echo "→ rust: tests"
-  cargo test --workspace --all-targets || fail "cargo test"
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+      OLEAFLY_EMBED_TEST_MANIFEST=1 cargo test --workspace --lib || fail "cargo test"
+      cargo test -p oleafly-cli --test cli || fail "cargo test (oleaflyc)"
+      ;;
+    *)
+      cargo test --workspace --all-targets || fail "cargo test"
+      ;;
+  esac
 fi
 
 # Docs-site gate: any authored docs or docsite source. Builds the Starlight

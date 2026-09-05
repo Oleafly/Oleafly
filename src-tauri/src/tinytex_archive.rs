@@ -503,6 +503,9 @@ mod tests {
 
     #[test]
     fn world_writable_symlink_modes_are_accepted() {
+        if !crate::paths::symlink_creation_is_permitted() {
+            return;
+        }
         let link = "TinyTeX/bin/x86_64-linux/texhash";
         let mut writer = tar::Builder::new(Vec::new());
         let mut header = tar::Header::new_gnu();

@@ -420,6 +420,28 @@ pub(crate) fn data_dir_env_lock() -> std::sync::MutexGuard<'static, ()> {
 }
 
 #[cfg(test)]
+pub(crate) fn symlink_creation_is_permitted() -> bool {
+    let Ok(probe) = tempfile::tempdir() else {
+        return false;
+    };
+    let target = probe.path().join("target");
+    if std::fs::write(&target, b"probe").is_err() {
+        return false;
+    }
+    let link = probe.path().join("link");
+    #[cfg(unix)]
+    let created = std::os::unix::fs::symlink(&target, &link).is_ok();
+    #[cfg(windows)]
+    let created = std::os::windows::fs::symlink_file(&target, &link).is_ok();
+    if !created {
+        eprintln!(
+            "skipping: this session may not create symbolic links (enable Developer Mode on Windows)"
+        );
+    }
+    created
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
