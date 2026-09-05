@@ -606,6 +606,102 @@ describe("AISection", () => {
   });
 });
 
+describe("credentials changed while AI settings are open", () => {
+  beforeEach(() => {
+    resetHarness();
+  });
+
+  async function openLoadedSection() {
+    renderSection();
+    await waitFor(() => expect(captured.providersTab?.cfg.ai_keys).toEqual(configFixture.ai_keys));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Reset to defaults" })).toBeEnabled(),
+    );
+  }
+
+  async function savePerplexity() {
+    act(() => captured.providersTab?.setKeys((keys) => ({ ...keys, perplexity: "new-provider-key" })));
+    await act(async () => {
+      await captured.providersTab?.validateAndSave("perplexity");
+    });
+  }
+
+  it("preserves an unseen stored credential when another provider is saved", async () => {
+    await openLoadedSection();
+    configFixture = {
+      ...configFixture,
+      ai_keys: { ...configFixture.ai_keys, openai: "__stored__" },
+    };
+    expect(captured.providersTab?.cfg.ai_keys.openai).toBeUndefined();
+
+    await savePerplexity();
+
+    expect(lastConfigWrite().ai_keys).toEqual({
+      anthropic: "__stored__",
+      ollama: "http://127.0.0.1:11434",
+      openai: "__stored__",
+      perplexity: "new-provider-key",
+    });
+    expect(captured.providersTab?.savedKeys.openai).toBe("__stored__");
+  });
+
+  it("deletes the selected known provider while preserving an unseen credential", async () => {
+    await openLoadedSection();
+    configFixture = {
+      ...configFixture,
+      ai_keys: { ...configFixture.ai_keys, openai: "__stored__" },
+    };
+
+    await act(async () => {
+      await captured.providersTab?.deleteKey("anthropic");
+    });
+
+    expect(lastConfigWrite().ai_keys).toEqual({
+      ollama: "http://127.0.0.1:11434",
+      openai: "__stored__",
+    });
+    expect(lastConfigWrite().ai_provider).toBe("");
+    expect(lastConfigWrite().ai_model).toBe("");
+    expect(captured.providersTab?.savedKeys.anthropic).toBeUndefined();
+    expect(captured.providersTab?.savedKeys.openai).toBe("__stored__");
+  });
+
+  it("keeps the entered key for retry without writing when the latest config cannot be read", async () => {
+    await openLoadedSection();
+    const harness = mockInvoke.getMockImplementation();
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === "get_config") throw new Error("Settings refresh failed");
+      return harness?.(command, args);
+    });
+
+    await savePerplexity();
+
+    expect(mockInvoke.mock.calls.some(([command]) => command === "set_config")).toBe(false);
+    expect(captured.providersTab?.keys.perplexity).toBe("new-provider-key");
+    expect(captured.providersTab?.savedKeys.perplexity).toBeUndefined();
+    expect(captured.providersTab?.saving).toBeNull();
+    expect(captured.providersTab?.status.perplexity).toBe("error");
+    expect(captured.providersTab?.errorMsg.perplexity).toContain("Settings refresh failed");
+  });
+
+  it("does not restore an unchanged placeholder removed by another settings writer", async () => {
+    await openLoadedSection();
+    configFixture = {
+      ...configFixture,
+      ai_keys: { ollama: "http://127.0.0.1:11434", openai: "__stored__" },
+    };
+
+    await savePerplexity();
+
+    expect(lastConfigWrite().ai_keys).toEqual({
+      ollama: "http://127.0.0.1:11434",
+      openai: "__stored__",
+      perplexity: "new-provider-key",
+    });
+    expect(captured.providersTab?.savedKeys.anthropic).toBeUndefined();
+  });
+});
+
 describe("AISection custom provider editing", () => {
   beforeEach(() => {
     resetHarness();

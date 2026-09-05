@@ -17,3 +17,14 @@ export function withoutKey(stored: KeyMap, id: string): KeyMap {
   delete next[id];
   return next;
 }
+
+export function mergeKeyChanges(previous: KeyMap, next: KeyMap, latest: KeyMap): KeyMap {
+  const merged = { ...latest };
+  for (const id of Object.keys(previous)) {
+    if (!Object.hasOwn(next, id)) delete merged[id];
+  }
+  for (const [id, value] of Object.entries(next)) {
+    if (!Object.hasOwn(previous, id) || previous[id] !== value) merged[id] = value;
+  }
+  return merged;
+}
