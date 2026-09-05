@@ -10,6 +10,8 @@
   "sideEffects": false,
   "dependencies": {
     "@tiptap/core": "*",
+    "@tiptap/extension-image": "*",
+    "@tiptap/extension-table": "*",
     "@tiptap/starter-kit": "*",
     "@unified-latex/unified-latex-types": "*",
     "@unified-latex/unified-latex-util-parse": "*",

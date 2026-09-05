@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Markdown files in any project get the Markdown toolbar with Code and Visual
+  modes, whatever engine the project compiles with.
+- Visual mode inserts real links, images and tables: the link and image
+  buttons ask for a URL or file, and the table button builds a table with a
+  header row.
+- A Markdown tab under Settings › Engines shows whether pandoc is installed
+  and can fetch it ahead of the first compile.
+- The editor settings button sits pinned at the right end of the file tab bar.
+
 - Terminal color palettes: One Dark, One Light, Dracula, Catppuccin Mocha and
   Latte, Tokyo Night, Nord, GitHub Dark, Solarized Dark and Light, plus a
   "Match app theme" default that follows light and dark mode.
@@ -24,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   drawn on the GPU when available.
 
 ### Fixed
+
+- Inserting a link, image or table in Visual mode no longer writes Markdown
+  syntax into the source behind the visual document, which produced run-on
+  text like "Column 1Column 2Column 3link text".
+- The Project Info button is hidden on Markdown files that are not the
+  project's compiled document.
 
 - The terminal tab strip no longer stays dark when the app is in light mode.
 - Long project names on library covers wrap and end with an ellipsis instead of

@@ -139,13 +139,54 @@ export function insertMarkdownSubscript() {
   wrapSelectionOrPlaceholder("~", "~", "text");
 }
 
-export function insertMarkdownLink() {
+/** Visual mode: the current link's href, or null when the cursor is not in a link. */
+export function currentMarkdownLinkHref(): string | null {
+  if (!isWysiwygActive()) return null;
+  const editor = getWysiwygEditor();
+  if (!editor) return null;
+  const href = editor.getAttributes("link").href;
+  return typeof href === "string" ? href : null;
+}
+
+/**
+ * Source mode inserts the `[text](url)` template. Visual mode needs a URL:
+ * it links the selection (or inserts "link text") and, with an empty `href`,
+ * removes the link instead.
+ */
+export function insertMarkdownLink(href?: string) {
+  if (isWysiwygActive()) {
+    const editor = getWysiwygEditor();
+    if (!editor) return;
+    const url = (href ?? "").trim();
+    if (!url) {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      return;
+    }
+    if (editor.state.selection.empty && !editor.isActive("link")) {
+      editor
+        .chain()
+        .focus()
+        .insertContent({ type: "text", text: "link text", marks: [{ type: "link", attrs: { href: url } }] })
+        .run();
+      return;
+    }
+    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    return;
+  }
   const template = "[link text](url)";
   const start = template.indexOf("link text");
   insertTemplate(template, start, start + "link text".length);
 }
 
-export function insertMarkdownImage() {
+/** Source mode inserts the `![caption](file)` template; Visual mode needs a path. */
+export function insertMarkdownImage(src?: string) {
+  if (isWysiwygActive()) {
+    const editor = getWysiwygEditor();
+    const path = (src ?? "").trim();
+    if (!editor || !path) return;
+    editor.chain().focus().setImage({ src: path, alt: "" }).run();
+    return;
+  }
   const template = "![caption](image-filename)";
   const start = template.indexOf("image-filename");
   insertTemplate(template, start, start + "image-filename".length);
@@ -184,6 +225,17 @@ export function insertMarkdownTaskList() {
 
 export function insertMarkdownTable(rows: number, cols: number) {
   const columns = Math.max(1, cols);
+  if (
+    withWysiwyg((editor) =>
+      editor
+        .chain()
+        .focus()
+        .insertTable({ rows: Math.max(1, rows) + 1, cols: columns, withHeaderRow: true })
+        .run(),
+    )
+  ) {
+    return;
+  }
   const header = `| ${Array.from({ length: columns }, (_unused, index) => `Column ${index + 1}`).join(" | ")} |`;
   const rule = `| ${Array.from({ length: columns }, () => "---").join(" | ")} |`;
   const body = Array.from(

@@ -332,6 +332,43 @@
   line-height: 1.7;
   color: var(--foreground);
 }
+/* Tables and images inserted from the Markdown toolbar in Visual mode. */
+.wysiwyg-content .ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0.75em 0;
+  overflow: hidden;
+}
+.wysiwyg-content .ProseMirror th,
+.wysiwyg-content .ProseMirror td {
+  position: relative;
+  min-width: 3em;
+  border: 1px solid var(--border);
+  padding: 0.35em 0.6em;
+  vertical-align: top;
+}
+.wysiwyg-content .ProseMirror th {
+  background: color-mix(in oklch, var(--muted) 50%, transparent);
+  font-weight: 600;
+  text-align: left;
+}
+.wysiwyg-content .ProseMirror .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklch, var(--primary) 12%, transparent);
+  pointer-events: none;
+}
+.wysiwyg-content .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.375rem;
+}
+.wysiwyg-content .ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--primary);
+}
+
 .wysiwyg-content .ProseMirror > * + * {
   margin-top: 0.75em;
 }

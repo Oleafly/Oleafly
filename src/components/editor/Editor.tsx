@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { FileText, Loader2, X } from "lucide-react";
+import { FileText, Loader2, Settings2, X } from "lucide-react";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
 import { EditorToolbar } from "./EditorToolbar";
@@ -9,6 +9,7 @@ import { SelectionActionMenu } from "./SelectionActionMenu";
 import { DiffView } from "./diff/DiffView";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
 import { SidebarCollapseToggle } from "@/components/layout/WorkspaceControls";
+import { Tooltip } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { wrapSelection } from "./cm/controller";
 import { useFilesStore } from "@/store/files";
@@ -157,9 +158,14 @@ export function Editor() {
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const engine = useFilesStore((s) => s.engine);
   const formattingProfile = useFilesStore((s) => s.engine.capabilities.formatting_profile);
-  const showLatexToolbar = engineLoaded && formattingProfile === "latex" && pathUsesEngineSource(engine, activePath);
-  const showMarkdownToolbar =
+  // Any Markdown file gets the Markdown toolbar, whatever engine the project
+  // compiles with: README.md inside a LaTeX project edits like a Markdown project.
+  const isMarkdownFile = /\.(md|markdown)$/iu.test(activePath ?? "");
+  const showLatexToolbar =
+    engineLoaded && formattingProfile === "latex" && pathUsesEngineSource(engine, activePath) && !isMarkdownFile;
+  const markdownIsEngineSource =
     engineLoaded && formattingProfile === "markdown" && pathUsesEngineSource(engine, activePath);
+  const showMarkdownToolbar = isMarkdownFile || markdownIsEngineSource;
   const showTypstToolbar =
     engineLoaded && formattingProfile === "typst" && pathUsesEngineSource(engine, activePath);
 
@@ -259,6 +265,18 @@ export function Editor() {
           )
         )}
         </div>
+        <div className="flex shrink-0 items-center border-l border-border pl-1 pr-2">
+          <Tooltip label="Editor settings" side="bottom">
+            <button
+              type="button"
+              aria-label="Editor settings"
+              onClick={() => useSettingsStore.getState().openSettingsAt("appearance", "editor")}
+              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <Settings2 className="size-4" aria-hidden />
+            </button>
+          </Tooltip>
+        </div>
       </div>
       {!diffFocused ? (
         <ProofreadingNotifications
@@ -285,7 +303,12 @@ export function Editor() {
           )}
           {showMarkdownToolbar && (
             <div className="shrink-0">
-              <MarkdownToolbar wysiwyg={wysiwyg} onToggleWysiwyg={toggleWysiwyg} showVisualToggle={visualEnabled} />
+              <MarkdownToolbar
+                wysiwyg={wysiwyg}
+                onToggleWysiwyg={toggleWysiwyg}
+                showVisualToggle={visualEnabled}
+                showProjectInfo={markdownIsEngineSource}
+              />
             </div>
           )}
           {showTypstToolbar && (

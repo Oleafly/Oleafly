@@ -1,4 +1,4 @@
-import { Fragment, useMemo } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
   Bold,
   ChevronDown,
@@ -42,6 +42,7 @@ import {
 import { editorFind, editorRedo, editorUndo } from "@/components/editor/cm/controller";
 import {
   MARKDOWN_HEADING_LEVELS,
+  currentMarkdownLinkHref,
   insertMarkdownBlockquote,
   insertMarkdownBold,
   insertMarkdownBulletList,
@@ -104,6 +105,93 @@ function MarkdownHeadingDropdown({ variant }: { variant: "bar" | "menu" }) {
   );
 }
 
+/**
+ * Visual mode has no text template to edit, so link and image take their
+ * target from a small popover. Enter applies, an empty link removes the link.
+ */
+function TargetPopover({
+  icon,
+  label,
+  placeholder,
+  initialValue,
+  onApply,
+  removeLabel,
+  menuRow,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  placeholder: string;
+  initialValue?: () => string;
+  onApply: (value: string) => void;
+  removeLabel?: string;
+  menuRow?: boolean;
+}) {
+  const [value, setValue] = useState("");
+  return (
+    <Popover
+      ariaLabel={label}
+      closeOnClick={false}
+      className="w-72 p-2"
+      onOpenChange={(open) => {
+        if (open) setValue(initialValue?.() ?? "");
+      }}
+      trigger={
+        menuRow ? (
+          <span className="flex items-center gap-2 text-sm">
+            {icon}
+            {label}
+          </span>
+        ) : (
+          icon
+        )
+      }
+      triggerClassName={menuRow ? "w-full justify-start px-2 py-1.5" : undefined}
+    >
+      <form
+        className="flex flex-col gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onApply(value);
+          (event.currentTarget.closest("[data-radix-popper-content-wrapper]") as HTMLElement | null)
+            ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        }}
+      >
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          {label}
+          <input
+            ref={(node) => node?.focus()}
+            aria-label={label}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            placeholder={placeholder}
+            className="h-8 rounded-md border bg-background px-2 text-sm font-normal text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+        </label>
+        <div className="flex justify-end gap-1">
+          {removeLabel && (
+            <button
+              type="button"
+              onClick={() => {
+                setValue("");
+                onApply("");
+              }}
+              className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              {removeLabel}
+            </button>
+          )}
+          <button
+            type="submit"
+            className="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90"
+          >
+            Apply
+          </button>
+        </div>
+      </form>
+    </Popover>
+  );
+}
+
 function MarkdownListDropdown({ variant }: { variant: "bar" | "menu" }) {
   return (
     <Popover
@@ -147,10 +235,13 @@ export function MarkdownToolbar({
   wysiwyg,
   onToggleWysiwyg,
   showVisualToggle = true,
+  showProjectInfo = true,
 }: {
   wysiwyg: boolean;
   onToggleWysiwyg: () => void;
   showVisualToggle?: boolean;
+  /** Project statistics describe the compiled document, so hide them for stray .md files in other projects. */
+  showProjectInfo?: boolean;
 }) {
   const controls = useMemo<ToolbarControl[]>(() => {
     const list: ToolbarControl[] = [
@@ -211,7 +302,36 @@ export function MarkdownToolbar({
       );
     }
 
-    list.push(btnControl("link", LinkIcon, "Insert link", insertMarkdownLink));
+    if (wysiwyg) {
+      list.push({
+        id: "link",
+        width: ICON_BUTTON_WIDTH,
+        render: () => (
+          <TargetPopover
+            icon={<LinkIcon className="size-4" />}
+            label="Link URL"
+            placeholder="https://"
+            initialValue={() => currentMarkdownLinkHref() ?? ""}
+            onApply={insertMarkdownLink}
+            removeLabel="Remove link"
+          />
+        ),
+        renderMenu: () => (
+          <TargetPopover
+            key="link"
+            menuRow
+            icon={<LinkIcon className="size-4" />}
+            label="Link URL"
+            placeholder="https://"
+            initialValue={() => currentMarkdownLinkHref() ?? ""}
+            onApply={insertMarkdownLink}
+            removeLabel="Remove link"
+          />
+        ),
+      });
+    } else {
+      list.push(btnControl("link", LinkIcon, "Insert link", () => insertMarkdownLink()));
+    }
 
     if (!wysiwyg) {
       list.push(
@@ -233,7 +353,30 @@ export function MarkdownToolbar({
 
     list.push(
       dividerControl("divider-3"),
-      btnControl("image", ImageIcon, "Insert image", insertMarkdownImage),
+      wysiwyg
+        ? {
+            id: "image",
+            width: ICON_BUTTON_WIDTH,
+            render: () => (
+              <TargetPopover
+                icon={<ImageIcon className="size-4" />}
+                label="Image file"
+                placeholder="figures/plot.png"
+                onApply={insertMarkdownImage}
+              />
+            ),
+            renderMenu: () => (
+              <TargetPopover
+                key="image"
+                menuRow
+                icon={<ImageIcon className="size-4" />}
+                label="Image file"
+                placeholder="figures/plot.png"
+                onApply={insertMarkdownImage}
+              />
+            ),
+          }
+        : btnControl("image", ImageIcon, "Insert image", () => insertMarkdownImage()),
       {
         id: "table",
         width: ICON_BUTTON_WIDTH,
@@ -306,7 +449,7 @@ export function MarkdownToolbar({
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
-        <ProjectInfoButton surface={wysiwyg ? "visual" : "source"} />
+        {showProjectInfo && <ProjectInfoButton surface={wysiwyg ? "visual" : "source"} />}
         {!wysiwyg && (
           <IconBtn onClick={editorFind} title={`Find (${shortcut("⌘F")})`}>
             <Search className="size-4" />

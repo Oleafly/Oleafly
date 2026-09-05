@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, Check, Cpu, Download, HardDrive, Info, Loader2, Trash2, X } from "lucide-react";
 import { installPhaseLabel, useEngineStore } from "@/store/engine";
 import { useSettingsStore, type DefaultLatexEngine } from "@/store/settings";
 import { LATEX_PACKAGES, type TaggingStatus } from "@/lib/latex-packages";
-import { texDistributions, type TexDistribution } from "@/lib/tauri";
+import { hasPandoc, texDistributions, type TexDistribution } from "@/lib/tauri";
+import { ensurePandoc } from "@/features/pandoc";
+import { Button } from "@/components/ui/button";
 import { isTauri } from "@tauri-apps/api/core";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
@@ -49,6 +51,84 @@ const TAG_BADGE: Record<TaggingStatus, { label: string; className: string } | nu
   breaks: { label: "breaks tagging", className: "bg-red-500/10 text-red-600 dark:text-red-400" },
 };
 
+/**
+ * Markdown projects compile through pandoc into LaTeX and then the bundled
+ * Tectonic, so the only moving part the user can affect is pandoc itself.
+ */
+function MarkdownEngineTab() {
+  const [pandoc, setPandoc] = useState<"checking" | "ready" | "missing" | "installing">("checking");
+  const refresh = useCallback(async () => {
+    try {
+      setPandoc((await hasPandoc()) ? "ready" : "missing");
+    } catch {
+      setPandoc("missing");
+    }
+  }, []);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+  const install = async () => {
+    setPandoc("installing");
+    const ok = await ensurePandoc();
+    setPandoc(ok ? "ready" : "missing");
+  };
+  return (
+    <>
+      <div className="flex items-center gap-1.5">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Markdown compiler</h3>
+        <Tooltip
+          wide
+          side="right"
+          label="Markdown projects are converted with pandoc (Pandoc Markdown: tables, footnotes, citations, math) into LaTeX, then typeset to PDF by the bundled Tectonic. Pandoc is downloaded on demand the first time it is needed."
+        >
+          <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
+        </Tooltip>
+      </div>
+      <div
+        className={cn(
+          "rounded-lg border p-3",
+          pandoc === "ready" && "border-primary ring-1 ring-primary",
+        )}
+        data-testid="markdown-engine-pandoc"
+      >
+        <div className="flex items-center gap-2">
+          <Cpu className="size-4 text-muted-foreground" />
+          <span className="text-sm">pandoc</span>
+          {pandoc === "ready" && <Check className="size-3.5 text-primary" />}
+          {pandoc === "missing" && (
+            <Button type="button" size="sm" variant="outline" className="ml-auto h-7" onClick={() => void install()}>
+              Install pandoc
+            </Button>
+          )}
+          {pandoc === "installing" && (
+            <span className="ml-auto text-xs text-muted-foreground">Downloading…</span>
+          )}
+        </div>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {pandoc === "checking" && "Checking for pandoc…"}
+          {pandoc === "ready" && "Detected. Markdown projects convert to LaTeX with pandoc, then compile with the bundled Tectonic."}
+          {pandoc === "missing" &&
+            "Not found on this Mac. Oleafly downloads a compatible pandoc (2.19 or newer) into its own folder; nothing else on your system changes."}
+          {pandoc === "installing" && "Fetching a pinned pandoc release. This takes a moment on first use."}
+        </p>
+      </div>
+      <div className="rounded-lg border border-primary p-3 ring-1 ring-primary">
+        <div className="flex items-center gap-2">
+          <Cpu className="size-4 text-muted-foreground" />
+          <span className="text-sm">Tectonic (built in)</span>
+          <Check className="size-3.5 text-primary" />
+        </div>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Typesets the LaTeX that pandoc produces. Ships with Oleafly; nothing to configure.
+        </p>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Choosing a different PDF backend for Markdown, or a system pandoc over the managed one, is not available yet.
+      </p>
+    </>
+  );
+}
+
 export function EngineSection() {
   const { info, installing, progress, installed, busyPkg, refresh, refreshPackages, install, remove, addPackage, removePackage } =
     useEngineStore();
@@ -59,7 +139,7 @@ export function EngineSection() {
   const partialDownloadBytes = useEngineStore((s) => s.partialDownloadBytes);
   const [query, setQuery] = useState("");
   const [distros, setDistros] = useState<TexDistribution[]>([]);
-  const [tab, setTab] = useState<"latex" | "typst">("latex");
+  const [tab, setTab] = useState<"latex" | "typst" | "markdown">("latex");
 
   useEffect(() => {
     // refreshPackages() needs engine info from refresh() first, so run in sequence.
@@ -84,7 +164,7 @@ export function EngineSection() {
   return (
     <Tabs
       value={tab}
-      onValueChange={(value) => setTab(value as "latex" | "typst")}
+      onValueChange={(value) => setTab(value as "latex" | "typst" | "markdown")}
       className="flex flex-col gap-5"
     >
       <TabsList aria-label="Engines" className="w-fit self-start">
@@ -94,7 +174,14 @@ export function EngineSection() {
         <TabsTrigger value="typst" data-testid="engines-tab-typst">
           Typst
         </TabsTrigger>
+        <TabsTrigger value="markdown" data-testid="engines-tab-markdown">
+          Markdown
+        </TabsTrigger>
       </TabsList>
+
+      <TabsContent value="markdown" className="flex flex-col gap-5">
+        <MarkdownEngineTab />
+      </TabsContent>
 
       <TabsContent value="typst" className="flex flex-col gap-5">
           <div className="flex items-center gap-1.5">
