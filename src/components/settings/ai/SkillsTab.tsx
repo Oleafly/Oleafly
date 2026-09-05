@@ -407,10 +407,8 @@ export function SkillsTab() {
         <div>
           <p className="font-medium">Skills</p>
           <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
-            A skill teaches the assistant a repeatable workflow. Turn one on here and it applies to
-            every project on this device. Open a project and you can also turn a skill on for that
-            project alone. The assistant loads a skill's full instructions only when it decides it
-            needs one, or right away if you type /skill-id in the chat.
+            The assistant loads a skill's full instructions only when it decides it needs one, or
+            right away if you type /skill-id in the chat.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">

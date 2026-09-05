@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
+import { runCommand } from "./exec.mjs";
 import { mkdtemp, mkdir, readFile, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -26,7 +26,7 @@ function parseArgs(argv) {
 async function bundledSkillMdPaths() {
   const entries = await readdir(SKILLS_ROOT, { withFileTypes: true });
   const paths = [];
-  for (const entry of entries.filter((e) => e.isDirectory()).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+  for (const entry of entries.filter((e) => e.isDirectory()).sort((a, b) => byCodeUnit(a.name, b.name))) {
     const path = join(SKILLS_ROOT, entry.name, "SKILL.md");
     try {
       await stat(path);
@@ -43,18 +43,22 @@ async function shelfArchives(assetsRoot) {
   const ids = (await readdir(downloads, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
-    .sort();
+    .sort(byCodeUnit);
   const archives = [];
   for (const id of ids) {
     const versions = (await readdir(join(downloads, id), { withFileTypes: true }))
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
-      .sort();
+      .sort(byCodeUnit);
     for (const version of versions) {
       archives.push({ id, version, path: join(downloads, id, version, `${id}.tar.gz`) });
     }
   }
   return archives;
+}
+
+function byCodeUnit(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function pickSample(archives, size) {
@@ -66,7 +70,7 @@ function pickSample(archives, size) {
 }
 
 function extract(archivePath, destination) {
-  const run = spawnSync("tar", ["-xzf", archivePath, "-C", destination], { encoding: "utf8" });
+  const run = runCommand("tar", ["-xzf", archivePath, "-C", destination], { encoding: "utf8" });
   if (run.error || run.status !== 0) {
     throw new Error(`could not extract ${archivePath}: ${run.stderr ?? run.error?.message ?? "tar failed"}`);
   }

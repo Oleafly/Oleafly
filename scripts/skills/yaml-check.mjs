@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { runCommand } from "./exec.mjs";
 
 const PY_PROBE = "import yaml";
 
@@ -39,13 +39,13 @@ json.dump(failures, sys.stdout)
 `;
 
 export function pythonYamlAvailable() {
-  const probe = spawnSync("python3", ["-c", PY_PROBE], { encoding: "utf8" });
+  const probe = runCommand("python3", ["-c", PY_PROBE], { encoding: "utf8" });
   return probe.status === 0;
 }
 
 export function pythonYamlCheck(paths) {
   if (paths.length === 0) return { available: pythonYamlAvailable(), failures: [] };
-  const run = spawnSync("python3", ["-c", PY_CHECK], {
+  const run = runCommand("python3", ["-c", PY_CHECK], {
     input: JSON.stringify(paths),
     encoding: "utf8",
     maxBuffer: 32 * 1024 * 1024,

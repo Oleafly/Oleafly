@@ -75,7 +75,7 @@ function mappingOf(value) {
 
 async function main() {
   const entries = await readdir(SKILLS_ROOT, { withFileTypes: true });
-  const skillDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name).sort();
+  const skillDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 
   const skills = [];
   for (const id of skillDirs) {

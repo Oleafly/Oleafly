@@ -43,6 +43,10 @@ const BUNDLED_CATALOG_PATH = join(
 const SHELF_COPYRIGHT = "K-Dense Inc.";
 const BLOCK_SCALAR_INDICATOR_SET = new Set(BLOCK_SCALAR_INDICATORS);
 
+function byCodeUnit(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function parseArgs(argv) {
   const args = { source: null, out: null, generatedAt: null };
   for (let i = 0; i < argv.length; i++) {
@@ -183,8 +187,8 @@ function buildUstarTar(rootName, relPaths, readFileSync) {
       dirs.add(acc);
     }
   }
-  const sortedDirs = [...dirs].sort();
-  const sortedFiles = [...relPaths].sort();
+  const sortedDirs = [...dirs].sort(byCodeUnit);
+  const sortedFiles = [...relPaths].sort(byCodeUnit);
 
   const chunks = [];
   chunks.push(
