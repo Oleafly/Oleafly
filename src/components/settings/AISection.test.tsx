@@ -199,6 +199,11 @@ function resetHarness() {
           }
         : undefined;
     }
+    if (command === "skills_set_project_enabled") {
+      const input = args as { id?: string; enabled?: boolean } | undefined;
+      const skill = skillsFixture.find((entry) => entry.id === input?.id);
+      return skill ? { ...skill, projectEnabled: input?.enabled } : undefined;
+    }
     if (command === "budget_set_cmd") return undefined;
     throw new Error(`Unexpected command: ${command}`);
   });
@@ -207,6 +212,73 @@ function resetHarness() {
 describe("AISection", () => {
   beforeEach(() => {
     resetHarness();
+  });
+
+  it("clears per-project skill enablement for the open project on reset", async () => {
+    const user = userEvent.setup();
+    useFilesStore.setState({ projectId: "proj-1" });
+    skillsFixture = [
+      {
+        id: "peer-review",
+        name: "Peer Review",
+        description: "Review a manuscript.",
+        instructions: "Read it closely.",
+        dir: "/skills/peer-review",
+        files: [],
+        allowedTools: [],
+        tier: "user",
+        tools: [],
+        updateAvailable: false,
+        projectEnabled: true,
+        source: "user",
+        enabled: false,
+        removable: true,
+        validation: { status: "valid" },
+      },
+    ];
+    renderSection();
+    await waitFor(() =>
+      expect(mockInvoke.mock.calls.some(([command]) => command === "get_config")).toBe(true),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Reset to defaults" }));
+    const confirmation = await screen.findByRole("alertdialog");
+    await user.click(
+      within(confirmation).getByRole("button", { name: "Reset to defaults" }),
+    );
+
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith("skills_set_project_enabled", {
+        projectId: "proj-1",
+        id: "peer-review",
+        enabled: false,
+      }),
+    );
+    expect(mockInvoke).toHaveBeenCalledWith("skills_list", { projectId: "proj-1" });
+    expect(mockInvoke).not.toHaveBeenCalledWith("skills_set_enabled", {
+      id: "peer-review",
+      enabled: false,
+    });
+  });
+
+  it("keeps a config field another panel changed while the section stayed open", async () => {
+    const user = userEvent.setup();
+    configFixture = { ...configuredAiConfig(), skills_share_with_agents: true };
+    renderSection();
+    await waitFor(() =>
+      expect(
+        mockInvoke.mock.calls.some(([command]) => command === "get_config"),
+      ).toBe(true),
+    );
+
+    configFixture = { ...configFixture, skills_share_with_agents: false };
+
+    await user.click(screen.getByRole("button", { name: "Reset to defaults" }));
+    const confirmation = await screen.findByRole("alertdialog");
+    await user.click(within(confirmation).getByRole("button", { name: "Reset to defaults" }));
+
+    await waitFor(() => expect(lastConfigWrite().ai_system_prompt).toBe(""));
+    expect(lastConfigWrite().skills_share_with_agents).toBe(false);
   });
 
   it("shows assistant servers on a fit-content MCP tab and retains manager state", async () => {
@@ -269,6 +341,13 @@ describe("AISection", () => {
         name: "Claim Checker",
         description: "Check claims against sources.",
         instructions: "Check every claim.",
+        dir: "/skills/claim-checker",
+        files: [],
+        allowedTools: [],
+        tier: "user",
+        tools: [],
+        updateAvailable: false,
+        projectEnabled: false,
         source: "user",
         enabled: true,
         removable: true,
@@ -279,6 +358,13 @@ describe("AISection", () => {
         name: "Disabled Skill",
         description: "Already disabled.",
         instructions: "Stay disabled.",
+        dir: "/skills/disabled-skill",
+        files: [],
+        allowedTools: [],
+        tier: "user",
+        tools: [],
+        updateAvailable: false,
+        projectEnabled: false,
         source: "user",
         enabled: false,
         removable: true,
@@ -455,6 +541,13 @@ describe("AISection", () => {
         name: "Failing Skill",
         description: "Fails while resetting.",
         instructions: "Fail.",
+        dir: "/skills/failing-skill",
+        files: [],
+        allowedTools: [],
+        tier: "user",
+        tools: [],
+        updateAvailable: false,
+        projectEnabled: false,
         source: "user",
         enabled: true,
         removable: true,

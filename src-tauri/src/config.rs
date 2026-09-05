@@ -170,6 +170,8 @@ pub struct AppConfig {
     pub mcp_token: String,
     #[serde(default)]
     pub mcp_servers: Vec<McpServerConfig>,
+    #[serde(default = "default_true")]
+    pub skills_share_with_agents: bool,
 }
 
 fn default_mcp_port() -> u16 {
@@ -213,6 +215,7 @@ impl Default for AppConfig {
             mcp_approval_policy: default_mcp_approval_policy(),
             mcp_token: String::new(),
             mcp_servers: Vec::new(),
+            skills_share_with_agents: true,
         }
     }
 }

@@ -1,0 +1,79 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{hyperref}
+
+\begin{document}
+
+\title{Working title}
+
+\author{\IEEEauthorblockN{Author One}
+\IEEEauthorblockA{\textit{Department} \\
+\textit{Institution}\\
+City, Country \\
+author@example.org}
+}
+
+\maketitle
+
+\begin{abstract}
+One paragraph. Problem, approach, headline result with a number, and the
+consequence. Around 150 to 250 words for most IEEE conferences, but check the
+call for the exact limit.
+\end{abstract}
+
+\begin{IEEEkeywords}
+keyword one, keyword two, keyword three
+\end{IEEEkeywords}
+
+\section{Introduction}
+\label{sec:introduction}
+
+The question, why it is open, and the contributions of this paper.
+
+\section{Related Work}
+\label{sec:related}
+
+The neighbouring lines of work and the gap this paper fills.
+
+\section{Method}
+\label{sec:method}
+
+Setup, notation, procedure.
+
+\begin{equation}
+\label{eq:objective}
+\mathcal{L}(\theta) = \frac{1}{n} \sum_{i=1}^{n} \ell\bigl(f_\theta(x_i), y_i\bigr)
+\end{equation}
+
+\section{Experiments}
+\label{sec:experiments}
+
+Data, baselines, protocol, metrics, and uncertainty.
+
+\begin{table}[t]
+  \centering
+  \caption{Results on the evaluation suite. Replace with real numbers.}
+  \label{tab:results}
+  \begin{tabular}{lcc}
+    \toprule
+    Method & Accuracy (\%) & Latency (ms) \\
+    \midrule
+    Baseline & 00.0 & 000 \\
+    This work & 00.0 & 000 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+What changed, and the limitation a reader should carry away.
+
+\end{document}

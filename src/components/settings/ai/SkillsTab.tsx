@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { FolderPlus, Loader2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  FolderPlus,
+  Loader2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
@@ -16,20 +25,28 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
 import { pickOpenPath } from "@/lib/native-file-dialog";
+import { useFilesStore } from "@/store/files";
 import {
   addSkill,
   createSkill,
+  mergeToggledSkillRecord,
   removeSkill,
   setSkillEnabled,
+  setSkillProjectEnabled,
   SKILLS_QUERY_KEY,
+  skillsQueryKey,
+  updateBuiltinSkill,
   updateSkill,
+  upsertSkillRecord,
   useSkills,
   validateSkill,
   type CreateSkillInput,
   type SkillEntry,
+  type SkillToggleScope,
   type UpdateSkillInput,
-  upsertSkillRecord,
 } from "@/lib/skills";
+import { SkillCatalogList } from "./SkillCatalogList";
+import { SkillShareCard } from "./SkillShareCard";
 
 type EditorTarget = "create" | SkillEntry | null;
 
@@ -44,6 +61,87 @@ const EMPTY_FORM: EditorForm = {
   description: "",
   instructions: "",
 };
+
+const PHASE_ORDER = [
+  "research",
+  "authoring",
+  "figures",
+  "review",
+  "submission",
+  "communication",
+  "tooling",
+] as const;
+
+const PHASE_LABELS: Record<string, string> = {
+  research: "Research",
+  authoring: "Authoring",
+  figures: "Figures",
+  review: "Review",
+  submission: "Submission",
+  communication: "Communication",
+  tooling: "Tooling",
+};
+
+interface SkillGroup {
+  key: string;
+  label: string;
+  skills: SkillEntry[];
+}
+
+function groupSkills(skills: readonly SkillEntry[]): SkillGroup[] {
+  const byPhase = new Map<string, SkillEntry[]>();
+  const yours: SkillEntry[] = [];
+  const shelf: SkillEntry[] = [];
+  for (const skill of skills) {
+    if (skill.tier === "shelf") {
+      shelf.push(skill);
+      continue;
+    }
+    if (skill.phase && PHASE_LABELS[skill.phase]) {
+      const list = byPhase.get(skill.phase) ?? [];
+      list.push(skill);
+      byPhase.set(skill.phase, list);
+      continue;
+    }
+    yours.push(skill);
+  }
+  const byName = (list: SkillEntry[]) => [...list].sort((a, b) => a.name.localeCompare(b.name));
+  const groups: SkillGroup[] = [];
+  for (const phase of PHASE_ORDER) {
+    const list = byPhase.get(phase);
+    if (list && list.length > 0) {
+      groups.push({ key: phase, label: PHASE_LABELS[phase], skills: byName(list) });
+    }
+  }
+  if (yours.length > 0) groups.push({ key: "user", label: "Your skills", skills: byName(yours) });
+  if (shelf.length > 0) groups.push({ key: "shelf", label: "Domain shelf", skills: byName(shelf) });
+  return groups;
+}
+
+function sourceBadge(source: SkillEntry["source"]): string {
+  if (source === "bundled") return "Built in";
+  if (source === "catalog") return "Installed";
+  return "Added";
+}
+
+function tierLine(skill: SkillEntry): string {
+  if (skill.tier === "vendored") {
+    const bits = [skill.author, skill.license].filter((value): value is string => Boolean(value));
+    return bits.length > 0 ? `From ${bits.join(", ")}` : "Vendored skill";
+  }
+  if (skill.tier === "native") return "Oleafly workflow";
+  if (skill.tier === "shelf") return skill.license ? `Domain shelf, ${skill.license}` : "Domain shelf skill";
+  return "Your own skill";
+}
+
+function formatBytes(bytes: number): string {
+  if (!bytes) return "0 B";
+  if (bytes < 1000) return `${bytes} B`;
+  const kb = bytes / 1000;
+  if (kb < 1000) return `${kb.toFixed(kb >= 10 ? 0 : 1)} KB`;
+  const mb = kb / 1000;
+  return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`;
+}
 
 function SkillEditorDialog({
   target,
@@ -177,34 +275,47 @@ function SkillEditorDialog({
   );
 }
 
-function sourceLabel(source: SkillEntry["source"]): string {
-  return source === "first-party" ? "Built in" : "Added";
-}
-
 export function SkillsTab() {
-  const query = useSkills();
+  const projectId = useFilesStore((s) => s.projectId);
   const queryClient = useQueryClient();
+  const query = useSkills(projectId);
+  const skills = query.data ?? [];
   const [editor, setEditor] = useState<EditorTarget>(null);
   const [removeTarget, setRemoveTarget] = useState<SkillEntry | null>(null);
+  const [updateTarget, setUpdateTarget] = useState<SkillEntry | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const skills = query.data ?? [];
+  const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
 
   const cacheRecord = (record: SkillEntry) => {
-    queryClient.setQueryData<SkillEntry[]>(SKILLS_QUERY_KEY, (current) =>
-      upsertSkillRecord(current, record),
+    queryClient.setQueryData<SkillEntry[]>(skillsQueryKey(projectId), (current) => {
+      const previous = (current ?? []).find((skill) => skill.id === record.id);
+      return upsertSkillRecord(
+        current,
+        previous ? { ...record, projectEnabled: previous.projectEnabled } : record,
+      );
+    });
+    void queryClient.invalidateQueries({ queryKey: SKILLS_QUERY_KEY });
+  };
+
+  const cacheToggle = (record: SkillEntry, scope: SkillToggleScope) => {
+    queryClient.setQueryData<SkillEntry[]>(skillsQueryKey(projectId), (current) =>
+      mergeToggledSkillRecord(current, record, scope),
     );
+    void queryClient.invalidateQueries({ queryKey: SKILLS_QUERY_KEY });
   };
 
   const runRecordMutation = async (
     id: string,
     action: () => Promise<SkillEntry>,
+    scope?: SkillToggleScope,
   ): Promise<SkillEntry | null> => {
     setBusyId(id);
     setMessage(null);
     try {
       const record = await action();
-      cacheRecord(record);
+      if (scope) cacheToggle(record, scope);
+      else cacheRecord(record);
       return record;
     } catch (error) {
       setMessage({ ok: false, text: String(error) });
@@ -260,7 +371,7 @@ export function SkillsTab() {
     setMessage(null);
     try {
       await removeSkill(target.id);
-      queryClient.setQueryData<SkillEntry[]>(SKILLS_QUERY_KEY, (current) =>
+      queryClient.setQueryData<SkillEntry[]>(skillsQueryKey(projectId), (current) =>
         (current ?? []).filter((skill) => skill.id !== target.id),
       );
       setMessage({ ok: true, text: `Removed ${target.name}.` });
@@ -271,14 +382,33 @@ export function SkillsTab() {
     }
   };
 
+  const confirmUpdate = async () => {
+    const target = updateTarget;
+    setUpdateTarget(null);
+    if (!target) return;
+    const record = await runRecordMutation(target.id, () => updateBuiltinSkill(target.id));
+    if (record) setMessage({ ok: true, text: `Updated ${record.name}.` });
+  };
+
+  const toggleFiles = (id: string) => {
+    setExpandedFiles((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const groups = groupSkills(skills);
+
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-medium">Skills</p>
           <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
-            Skills teach the assistant a repeatable workflow. Enabled skills apply to every
-            project on this device. The assistant loads full instructions only when it needs one.
+            The assistant loads a skill's full instructions only when it decides it needs one, or
+            right away if you type /skill-id in the chat.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -297,6 +427,8 @@ export function SkillsTab() {
         </div>
       </div>
 
+      <SkillShareCard />
+
       {query.isPending ? (
         <div className="flex items-center gap-2 rounded-md border px-3 py-4 text-xs text-muted-foreground">
           <Loader2 className="size-3.5 animate-spin" />
@@ -311,107 +443,201 @@ export function SkillsTab() {
         </div>
       ) : skills.length === 0 ? (
         <div className="rounded-md border px-3 py-4 text-xs text-muted-foreground">
-          No skills found. Add a folder or create a skill to get started.
+          No skills found. Add a folder, or create one.
         </div>
       ) : (
-        <div className="space-y-2">
-          {skills.map((skill) => {
-            const validationMessage =
-              skill.validation.status === "invalid" ? skill.validation.message : null;
-            const invalid = validationMessage !== null;
-            const busy = busyId === skill.id;
-            return (
-              <div
-                key={skill.id}
-                className="rounded-md border bg-card px-3 py-3"
-                data-testid={`skill-row-${skill.id}`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-medium text-foreground">{skill.name}</p>
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                        {sourceLabel(skill.source)}
-                      </span>
+        <div className="space-y-4">
+          {groups.map((group) => (
+            <div key={group.key} data-testid={`skills-phase-${group.key}`} className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {group.label}
+              </h3>
+              <div className="space-y-2">
+                {group.skills.map((skill) => {
+                  const validationMessage =
+                    skill.validation.status === "invalid" ? skill.validation.message : null;
+                  const invalid = validationMessage !== null;
+                  const busy = busyId === skill.id;
+                  const filesExpanded = expandedFiles.has(skill.id);
+                  const metaBits = [
+                    tierLine(skill),
+                    skill.version ? `v${skill.version}` : null,
+                    skill.phase ? PHASE_LABELS[skill.phase] ?? skill.phase : null,
+                  ].filter((value): value is string => Boolean(value));
+                  const isUserSkill = skill.source === "user";
+                  return (
+                    <div
+                      key={skill.id}
+                      className="rounded-md border bg-card px-3 py-3"
+                      data-testid={`skill-row-${skill.id}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-medium text-foreground">{skill.name}</p>
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                              {sourceBadge(skill.source)}
+                            </span>
+                            {invalid ? (
+                              <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                                Invalid
+                              </span>
+                            ) : null}
+                          </div>
+                          {metaBits.length > 0 ? (
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">
+                              {metaBits.join(" · ")}
+                            </p>
+                          ) : null}
+                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                            {skill.description || "This skill needs a description."}
+                          </p>
+                          {skill.files.length > 0 ? (
+                            <div className="mt-1.5">
+                              <button
+                                type="button"
+                                data-testid={`skill-files-toggle-${skill.id}`}
+                                onClick={() => toggleFiles(skill.id)}
+                                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                              >
+                                {filesExpanded ? (
+                                  <ChevronDown className="size-3" />
+                                ) : (
+                                  <ChevronRight className="size-3" />
+                                )}
+                                {skill.files.length} file{skill.files.length === 1 ? "" : "s"}
+                              </button>
+                              {filesExpanded ? (
+                                <ul className="mt-1 space-y-0.5 rounded-md border bg-background p-2">
+                                  {skill.files.map((file) => (
+                                    <li
+                                      key={file.path}
+                                      className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground"
+                                    >
+                                      <code className="min-w-0 truncate">{file.path}</code>
+                                      <span className="shrink-0">{formatBytes(file.bytes)}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1.5">
+                          <Switch
+                            checked={skill.enabled}
+                            disabled={invalid || busy}
+                            aria-label={`Enable ${skill.name}`}
+                            onCheckedChange={(enabled) =>
+                              void runRecordMutation(
+                                skill.id,
+                                () => setSkillEnabled(skill.id, enabled),
+                                "device",
+                              )
+                            }
+                          />
+                          {projectId ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-muted-foreground">
+                                Use in this project
+                              </span>
+                              <Switch
+                                data-testid={`skill-project-toggle-${skill.id}`}
+                                checked={skill.projectEnabled}
+                                disabled={invalid || busy}
+                                aria-label={`Use ${skill.name} in this project`}
+                                onCheckedChange={(enabled) =>
+                                  void runRecordMutation(
+                                    skill.id,
+                                    () => setSkillProjectEnabled(projectId, skill.id, enabled),
+                                    "project",
+                                  )
+                                }
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+
                       {invalid ? (
-                        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
-                          Invalid
-                        </span>
+                        <p
+                          aria-live="polite"
+                          className="mt-2 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-2 text-xs text-destructive"
+                        >
+                          {validationMessage}
+                        </p>
                       ) : null}
+
+                      <div className="mt-2 flex items-center justify-end gap-1">
+                        {skill.updateAvailable ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            data-testid={`skill-update-${skill.id}`}
+                            disabled={busy}
+                            onClick={() => setUpdateTarget(skill)}
+                          >
+                            {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                            Update
+                          </Button>
+                        ) : null}
+                        {isUserSkill ? (
+                          <>
+                            <Tooltip label={`Validate ${skill.name}`}>
+                              <button
+                                type="button"
+                                aria-label={`Validate ${skill.name}`}
+                                disabled={busy}
+                                onClick={() =>
+                                  void runRecordMutation(skill.id, () => validateSkill(skill.id))
+                                }
+                                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                              >
+                                {busy ? (
+                                  <Loader2 className="size-3.5 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="size-3.5" />
+                                )}
+                              </button>
+                            </Tooltip>
+                            <Tooltip label={`Edit ${skill.name}`}>
+                              <button
+                                type="button"
+                                aria-label={`Edit ${skill.name}`}
+                                disabled={busy}
+                                onClick={() => setEditor(skill)}
+                                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                              >
+                                <Pencil className="size-3.5" />
+                              </button>
+                            </Tooltip>
+                          </>
+                        ) : null}
+                        {skill.removable ? (
+                          <Tooltip label={`Remove ${skill.name}`}>
+                            <button
+                              type="button"
+                              aria-label={`Remove ${skill.name}`}
+                              disabled={busy}
+                              onClick={() => setRemoveTarget(skill)}
+                              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </Tooltip>
+                        ) : null}
+                      </div>
                     </div>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      {skill.description || "This skill needs a description."}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={skill.enabled}
-                    disabled={invalid || busy}
-                    aria-label={`Enable ${skill.name}`}
-                    onCheckedChange={(enabled) =>
-                      void runRecordMutation(skill.id, () =>
-                        setSkillEnabled(skill.id, enabled),
-                      )
-                    }
-                  />
-                </div>
-
-                {invalid ? (
-                  <p
-                    aria-live="polite"
-                    className="mt-2 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-2 text-xs text-destructive"
-                  >
-                    {validationMessage}
-                  </p>
-                ) : null}
-
-                <div className="mt-2 flex items-center justify-end gap-1">
-                  <Tooltip label={`Validate ${skill.name}`}>
-                    <button
-                      type="button"
-                      aria-label={`Validate ${skill.name}`}
-                      disabled={busy}
-                      onClick={() =>
-                        void runRecordMutation(skill.id, () => validateSkill(skill.id))
-                      }
-                      className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                    >
-                      {busy ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <RefreshCw className="size-3.5" />
-                      )}
-                    </button>
-                  </Tooltip>
-                  <Tooltip label={`Edit ${skill.name}`}>
-                    <button
-                      type="button"
-                      aria-label={`Edit ${skill.name}`}
-                      disabled={busy}
-                      onClick={() => setEditor(skill)}
-                      className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                    >
-                      <Pencil className="size-3.5" />
-                    </button>
-                  </Tooltip>
-                  {skill.removable ? (
-                    <Tooltip label={`Remove ${skill.name}`}>
-                      <button
-                        type="button"
-                        aria-label={`Remove ${skill.name}`}
-                        disabled={busy}
-                        onClick={() => setRemoveTarget(skill)}
-                        className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </Tooltip>
-                  ) : null}
-                </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
+
+      <SkillCatalogList />
 
       {message ? (
         <div
@@ -443,6 +669,16 @@ export function SkillsTab() {
         destructive
         onConfirm={() => void removeSelected()}
         onCancel={() => setRemoveTarget(null)}
+      />
+
+      <ConfirmationDialog
+        open={updateTarget !== null}
+        title="Update skill"
+        description={`Replace "${updateTarget?.name ?? ""}" with the latest bundled version? Any local edits to its files will be lost.`}
+        confirmLabel="Update"
+        destructive
+        onConfirm={() => void confirmUpdate()}
+        onCancel={() => setUpdateTarget(null)}
       />
     </div>
   );

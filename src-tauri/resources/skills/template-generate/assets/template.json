@@ -1,0 +1,15 @@
+{
+  "id": "my-template",
+  "name": "My Template",
+  "category": "Journals & Conferences",
+  "description": "One sentence in plain language saying what this starter is for.",
+  "main_doc": "main.tex",
+  "engine": "xetex",
+  "ats_profile": null,
+  "layout": "single-column",
+  "pages": "multi",
+  "default_color": "#3d5afe",
+  "license": { "spdx": "CC0-1.0", "author": "Your Name", "url": "" },
+  "requires": { "packages": [], "fonts": [], "engine": "tectonic" },
+  "order": 10
+}

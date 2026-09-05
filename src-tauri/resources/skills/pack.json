@@ -1,0 +1,519 @@
+{
+  "schemaVersion": 1,
+  "pack": "research-core",
+  "version": "2026.09.04.4638ceea",
+  "skills": [
+    {
+      "id": "citation-management",
+      "name": "citation-management",
+      "description": "Comprehensive citation management for academic research. Search OpenAlex, PubMed, and Google Scholar for papers, extract accurate metadata, validate citations, and generate properly formatted BibTeX entries. This skill should be used when you need to find papers, verify citation information, convert DOIs to BibTeX, or ensure reference accuracy in scientific writing.",
+      "tier": "vendored",
+      "phase": "research",
+      "license": "MIT License",
+      "treeSha256": "b872140d43e576f4ca65d0d945bce68f5603071355684ae2d111a0007f5767e4",
+      "files": 21,
+      "bytes": 278795,
+      "version": "2.1",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "experimental-design",
+      "name": "experimental-design",
+      "description": "Design experiments and studies BEFORE data is collected — choosing a design, randomizing, blocking, and laying out treatment combinations so results are interpretable. Use whenever someone is planning a study, asks how to assign subjects/samples to groups, mentions randomization, blocking, stratification, controls, factorial or fractional-factorial designs, design of experiments (DOE), screening many factors, response-surface optimization, crossover or repeated-measures or split-plot designs, cluster/group randomization, Latin squares, plate layouts, batch/run-order effects, replication vs. pseudoreplication, or sequential/adaptive/group-sequential designs. Trigger even for informal phrasings like \"how should I set up this experiment\", \"how do I avoid confounding\", \"what's the best way to test these 6 factors\", or \"assign these mice to conditions\". For computing the sample size or power once the design is chosen, use statistical-power; for analyzing data already collected, use statistical-analysis.",
+      "tier": "vendored",
+      "phase": "authoring",
+      "license": "MIT license",
+      "treeSha256": "4cd743eedd6ad526d831f43345ce8588d379d66f48766b179a4e76af91e5aa11",
+      "files": 7,
+      "bytes": 55288,
+      "version": "1.2",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "exploratory-data-analysis",
+      "name": "exploratory-data-analysis",
+      "description": "Perform bounded, local exploratory analysis of explicitly supported scientific files. Use for redacted CSV/TSV/JSON profiles; optional NumPy, HDF5, FASTA/FASTQ, and basic image metadata inspection; missingness/leakage audits; outlier and transformation sensitivity; and rigorous EDA report scaffolds. Other domain formats are reference-only and unknown formats fail closed.",
+      "tier": "vendored",
+      "phase": "research",
+      "license": "MIT",
+      "treeSha256": "732ceb5db173a0a451c9347f12bd0d761d885fa3db65b368d221bc9f774b4966",
+      "files": 21,
+      "bytes": 206619,
+      "version": "1.2",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "hypothesis-generation",
+      "name": "hypothesis-generation",
+      "description": "Formulate evidence-bounded scientific questions, candidate hypotheses, rival explanations, causal or associational claims, discriminating predictions, measurements, and preregistration-ready analysis plans. Use when turning observations or preliminary findings into transparent, testable research plans without treating hypotheses as facts.",
+      "tier": "vendored",
+      "phase": "research",
+      "license": "MIT",
+      "treeSha256": "50dc3e59709e2e2d915d20da335da913b3254e08b0596fefd67155ec2696eb96",
+      "files": 27,
+      "bytes": 256352,
+      "version": "2.2",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "import-refine",
+      "name": "Import refine",
+      "description": "Turn a document Oleafly imported from Word, Markdown, or PDF into a project that compiles cleanly and reads like it was written here. Use after any import, or when a project is full of pandoc leftovers, longtable wrappers, hypertarget blocks, broken math, or citations that arrived as plain text.",
+      "tier": "native",
+      "phase": "tooling",
+      "license": "MIT",
+      "treeSha256": "c167697153c2661c54df9e9f54712161eb1b49b865c4ff90c96f367b4fc31986",
+      "files": 2,
+      "bytes": 20150,
+      "version": "1.0.0"
+    },
+    {
+      "id": "literature-review",
+      "name": "literature-review",
+      "description": "Conduct comprehensive, systematic literature reviews using multiple academic databases (PubMed, arXiv, bioRxiv, Semantic Scholar, etc.). This skill should be used when conducting systematic literature reviews, meta-analyses, research synthesis, or comprehensive literature searches across biomedical, scientific, and technical domains. Creates professionally formatted markdown documents and PDFs with verified citations in multiple citation styles (APA, Nature, Vancouver, etc.).",
+      "tier": "vendored",
+      "phase": "research",
+      "license": "MIT license",
+      "treeSha256": "f83e3b7b7f49d364e4750d541f407d7654fbc1e1e514cf30a705ce12caf5af07",
+      "files": 10,
+      "bytes": 88269,
+      "version": "1.8",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "oleafly-data-analysis",
+      "name": "Data analysis",
+      "description": "Take data files that live in the project through to numbers, figures, and tables in the manuscript. Picks the method with the statistics skills, runs it as a saved script rather than an inline command, writes figures to figures/ and LaTeX tables to tables/, and reports effect sizes and confidence intervals in APA style.",
+      "tier": "native",
+      "phase": "authoring",
+      "license": "MIT",
+      "treeSha256": "3f907efed5639a9c036cbcb09febe3499ac6f15c6628f1a748bb6039bec68db7",
+      "files": 3,
+      "bytes": 27140,
+      "version": "1.0.0"
+    },
+    {
+      "id": "oleafly-figure-prep",
+      "name": "Figure prep",
+      "description": "Build and place publication-quality figures in an Oleafly manuscript. Use when the user wants a TikZ or pgfplots figure, a diagram, an architecture or pipeline drawing, a matplotlib or seaborn plot, a chart from a CSV, a multi-panel figure, subfigures, a colorblind-safe palette, correct figure sizing for a journal column, or help with captions, labels, includegraphics and cross-references.",
+      "tier": "native",
+      "phase": "figures",
+      "license": "MIT",
+      "treeSha256": "1a49026a95afbc92b40afa888e025b634ec737ad2093fbe279da64370a220c0a",
+      "files": 3,
+      "bytes": 19772,
+      "version": "1.0.0"
+    },
+    {
+      "id": "oleafly-latex-build",
+      "name": "Build and fix",
+      "description": "Drive Oleafly's compile, diagnose, fix loop until the document builds clean. Use when a compile fails, when the log shows undefined control sequence, missing package or file not found, missing $ inserted, runaway argument, undefined citation or reference, a font that will not load, overfull hbox warnings, a bibliography that will not resolve, a Typst error, or when the user says it will not compile, the PDF is stale, or asks why the build is different on another machine.",
+      "tier": "native",
+      "phase": "tooling",
+      "license": "MIT",
+      "treeSha256": "614dda1cea9c98242b0dc3cefddc3852c122e449fe2e58fad8fab60470eb33cd",
+      "files": 3,
+      "bytes": 25347,
+      "version": "1.0.0"
+    },
+    {
+      "id": "oleafly-literature-sweep",
+      "name": "oleafly-literature-sweep",
+      "description": "Turn a research question into an annotated reading list with provenance. Use when the user asks to find papers, survey the literature, gather background on a topic, collect sources for a section, or fill out a thin bibliography. Searches OpenAlex with literature_search, resolves canonical BibTeX with verify_citation, dedupes against the project bibliography before writing anything, and leaves behind research/reading-list.md plus one source note per paper.",
+      "tier": "native",
+      "phase": "research",
+      "license": "MIT",
+      "treeSha256": "1e445facde6e9715bfa81376e1a88ae99855296d14c9495a26437a22ff83dd96",
+      "files": 5,
+      "bytes": 24286,
+      "version": "1.0.0"
+    },
+    {
+      "id": "oleafly-manuscript-scaffold",
+      "name": "Manuscript scaffold",
+      "description": "Build a venue-shaped manuscript skeleton inside the open Oleafly project. Use when the user wants to start a paper, set up a NeurIPS, ICML, ICLR, ACL, CVPR or AAAI submission, an IEEE or ACM conference paper, an Elsevier or Springer journal article, a PLOS, Nature or medical manuscript, an arXiv preprint or a thesis chapter, or asks for main.tex plus sections and a bibliography, or wants an existing draft reshaped to a venue layout.",
+      "tier": "native",
+      "phase": "authoring",
+      "license": "MIT",
+      "treeSha256": "f52cc418a93db95d37f5ada4adef0ee45deb4fcdcd72f628b8f81e98b6bbef99",
+      "files": 5,
+      "bytes": 21968,
+      "version": "1.0.0"
+    },
+    {
+      "id": "oleafly-pre-submission",
+      "name": "oleafly-pre-submission",
+      "description": "Run a pre-flight pass over the project before uploading to arXiv or a venue, and write a pass or fail checklist. Use when preparing an arXiv submission or a camera-ready, when checking anonymity for a double-blind venue, page limits, reference style, or supplementary material rules, when hunting undefined references, missing fonts, or figure problems that only surface at the publisher, or when building a clean source bundle to upload.",
+      "tier": "native",
+      "phase": "submission",
+      "license": "MIT",
+      "treeSha256": "c504a7391e340995883f33232a99f67582b108ccfab68c98f0c7b46f7fec3725",
+      "files": 5,
+      "bytes": 28850,
+      "version": "1.0.0"
+    },
+    {
+      "id": "oleafly-related-work",
+      "name": "oleafly-related-work",
+      "description": "Draft or revise a related-work, background, or prior-art section in which every citation key already exists in the project bibliography. Use when the user asks to write related work, expand the background, group prior work by theme, position their contribution against existing work, or repair a section full of unresolved citations. Checks project_map unresolvedCites, adds verified entries before writing, and compiles until nothing is left unresolved.",
+      "tier": "native",
+      "phase": "authoring",
+      "license": "MIT",
+      "treeSha256": "1b8f128d40b11a7ac44158ae22cb16bd3b411ddd782ef9e6bb0d3d0850e980c6",
+      "files": 6,
+      "bytes": 20301,
+      "version": "1.0.0"
+    },
+    {
+      "id": "oleafly-research-loop",
+      "name": "oleafly-research-loop",
+      "description": "Entry point for research writing in Oleafly. Load this first when the user says they are writing a paper, starting a literature review, drafting related work, checking citations, preparing figures, responding to reviewers, or getting a submission ready. It sets the project layout every other research skill honours, plans the work with update_todos, and names the exact skill to load at each stage of the loop.",
+      "tier": "native",
+      "phase": "research",
+      "license": "MIT",
+      "treeSha256": "67227005750d54ac743f3edb31be57ce5236e261d42b894529d68b17c7f3f774",
+      "files": 7,
+      "bytes": 30696,
+      "version": "1.0.0"
+    },
+    {
+      "id": "oleafly-response-letter",
+      "name": "oleafly-response-letter",
+      "description": "Turn reviewer comments and the changes already made into a point-by-point response letter, in LaTeX and in plain text. Use when preparing a rebuttal, an author response, or a revision cover letter for a journal or conference, when mapping each reviewer point to the passage that changed, when a resubmission needs every comment answered, or when a response letter has to compile alongside the paper.",
+      "tier": "native",
+      "phase": "review",
+      "license": "MIT",
+      "treeSha256": "ee6ed87f0fb135694cc35ad0b340b2317e33074223dd3a6e109486fb4ed1d880",
+      "files": 4,
+      "bytes": 15028,
+      "version": "1.0.0"
+    },
+    {
+      "id": "oleafly-review-manuscript",
+      "name": "oleafly-review-manuscript",
+      "description": "Run a referee-grade review of the manuscript in the open project without changing a single manuscript file. Use when asked to review, referee, critique, or assess a paper, preprint, thesis chapter, or grant draft, to find unsupported claims, methods and statistics problems, missing reporting items, or figure and citation issues, or to produce a structured report with strengths, major and minor comments, line notes anchored to file and line, and scores per dimension.",
+      "tier": "native",
+      "phase": "review",
+      "license": "MIT",
+      "treeSha256": "a22ac2d84d710973a5d3dd31a9674d3c93af3e5b791384b0d842370cd1ffc65d",
+      "files": 4,
+      "bytes": 20415,
+      "version": "1.0.0"
+    },
+    {
+      "id": "oleafly-slides-and-posters",
+      "name": "oleafly-slides-and-posters",
+      "description": "Turn the manuscript in the open project into a talk deck or a conference poster and compile it in place. Use when asked for slides, a presentation, a Beamer deck, a defense talk, a conference poster, or a PowerPoint version of a paper, when a deck has to be built for a 15 minute slot or a 45 minute seminar, or when a poster needs the right size and font scale for a printed board.",
+      "tier": "native",
+      "phase": "communication",
+      "license": "MIT",
+      "treeSha256": "d18ea94f1d2fd72722a56e6f5e3847fe0990504039b3210e4d480ad3a7112d09",
+      "files": 8,
+      "bytes": 35510,
+      "version": "1.0.0"
+    },
+    {
+      "id": "oleafly-verify-claims",
+      "name": "oleafly-verify-claims",
+      "description": "Audit a section claim by claim and report which statements the cited sources actually support. Use when the user asks to check the citations, verify the claims in a section, find unsupported or overstated statements, confirm nothing was fabricated, or get a manuscript ready for review or submission. Builds research/claims.md with a support level and an evidence note per claim, and reports problems rather than quietly rewriting the prose.",
+      "tier": "native",
+      "phase": "review",
+      "license": "MIT",
+      "treeSha256": "5ca059b9cbd301536101e2dae798983c14fa76afc770b4cf4c371592ad5b3e48",
+      "files": 4,
+      "bytes": 18797,
+      "version": "1.0.0"
+    },
+    {
+      "id": "openresearch",
+      "name": "OpenResearch (orx)",
+      "description": "Search literature and drive OpenResearch experiments through the local orx CLI, then record every run in the project so the results reach the manuscript. Use when the user mentions orx, OpenResearch, an experiment tree, a run id, or wants an experiment launched, polled, or written up.",
+      "tier": "native",
+      "phase": "research",
+      "license": "MIT",
+      "treeSha256": "7beaf6bc091080bc08b60d3b8a7fd860d2df022de9bc743121d0ad08ab8e55c6",
+      "files": 3,
+      "bytes": 20828,
+      "version": "1.0.0"
+    },
+    {
+      "id": "paper-lookup",
+      "name": "paper-lookup",
+      "description": "Search 11 academic literature APIs for papers, preprints, citations, and open-access full text, and return results with reproducible provenance. Covers PubMed, PMC (full text), Europe PMC (full-text and preprint search), bioRxiv, medRxiv, arXiv, OpenAlex, Crossref, Semantic Scholar, CORE, Unpaywall. Use when searching for papers, citations, DOI/PMID/arXiv lookups, abstracts, full text, open-access PDFs, preprints, citation graphs, author publications, or any scholarly literature query. Triggers on mentions of any supported database or requests like \"find papers on X\", \"look up this DOI\", \"who cites this paper\", or \"get me the PDF\".",
+      "tier": "vendored",
+      "phase": "research",
+      "license": "MIT",
+      "treeSha256": "f2e75b030e72755419c4181d7b7f50a6d6cf0f63bfd937c726a8b3a284f6ec1b",
+      "files": 17,
+      "bytes": 141638,
+      "version": "2.1",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "pdf-to-latex",
+      "name": "PDF to LaTeX",
+      "description": "Finish rebuilding a PDF as an editable LaTeX project after the app's importer has made its first pass. Reconstructs sectioning, math, tables, figures, and the bibliography one section at a time, verifying each against the original and keeping a progress log so the work survives across chats.",
+      "tier": "native",
+      "phase": "tooling",
+      "license": "MIT",
+      "treeSha256": "b3f1d33473b14531e384770413adbb5473a55e3723e5ec834960d4ea4e784b4c",
+      "files": 3,
+      "bytes": 20996,
+      "version": "1.0.0"
+    },
+    {
+      "id": "peer-review",
+      "name": "peer-review",
+      "description": "Prepare evidence-bounded, constructive peer-review drafts and structured manuscript assessments. Use for authorized review of scientific manuscripts, protocols, preprints, or research proposals; reporting-guideline selection; claim–evidence checks; methods, statistics, reproducibility, ethics, figure/table, and citation critique; or revision-response planning.",
+      "tier": "vendored",
+      "phase": "review",
+      "license": "MIT",
+      "treeSha256": "c63b3663106b761d00bdfd89d65a00ba82e4df9259dc31299c636a528d44ede1",
+      "files": 24,
+      "bytes": 189585,
+      "version": "2.2",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "pptx-posters",
+      "name": "pptx-posters",
+      "description": "Create and audit editable scientific posters in macro-free PowerPoint (.pptx) from author-approved local content and assets. Use when the requested deliverable is a PowerPoint research/conference poster and exact physical, printer, accessibility, provenance, and package-security checks are required.",
+      "tier": "vendored",
+      "phase": "communication",
+      "license": "MIT",
+      "treeSha256": "df0ad8c37bc95dfb8cbc7ed1353c9d48eead5869bb00b62fee2109582529ce60",
+      "files": 21,
+      "bytes": 246228,
+      "version": "2.2",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "research-grants",
+      "name": "research-grants",
+      "description": "Write competitive research proposals for NSF, NIH, DOE, DARPA, and Taiwan NSTC. Agency-specific formatting, review criteria, budget preparation, broader impacts, significance statements, innovation narratives, and compliance with submission requirements.",
+      "tier": "vendored",
+      "phase": "communication",
+      "license": "MIT license",
+      "treeSha256": "68d1a4c6be126ccad156e139980172839a470c75aa36698ea62c32a59a4654d4",
+      "files": 16,
+      "bytes": 252582,
+      "version": "1.3",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "research-lookup",
+      "name": "research-lookup",
+      "description": "Compile current scholarly evidence for a scientific manuscript or research brief. Use when the user explicitly asks to gather literature, references, background evidence, competing findings, or a manuscript research packet. Uses Parallel Search by default, Parallel Extract for source verification, Parallel Research for explicitly deep/exhaustive work, optional explicit Parallel Chat, and optional Perplexity only when requested or allowed as a failure fallback.",
+      "tier": "vendored",
+      "phase": "research",
+      "license": "MIT license",
+      "treeSha256": "d2bbb44d7e2dc3b16bd63f2cbbf5da32a6c98fdadddabb0f054e64de85c75685",
+      "files": 4,
+      "bytes": 91042,
+      "version": "1.5",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "scholar-evaluation",
+      "name": "scholar-evaluation",
+      "description": "Provide qualitative-first, evidence-traceable developmental review of scholarly works and audit low-stakes research-assessment rubrics with optional local quality controls. Never use for ranking people or consequential decisions.",
+      "tier": "vendored",
+      "phase": "review",
+      "license": "MIT",
+      "treeSha256": "27e77ad224685d9aa0e728b5a5162dd38542b65527e97b1b959f319e174e3be2",
+      "files": 19,
+      "bytes": 157887,
+      "version": "2.2",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "scientific-brainstorming",
+      "name": "scientific-brainstorming",
+      "description": "Facilitates evidence-aware scientific ideation with independent generation, structured discussion, explicit assumptions, transparent evaluation, adversarial review, and decision logs. Use for early-stage research brainstorming or prioritizing candidate directions; hand off empirical validation, study design, ethics or regulatory review, and clinical questions to appropriate experts or skills.",
+      "tier": "vendored",
+      "phase": "research",
+      "license": "MIT",
+      "treeSha256": "683ced0df12451990b8011be6bc1e551af5e1e08f22b65d3ee353cceaa226a86",
+      "files": 10,
+      "bytes": 129843,
+      "version": "1.2",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "scientific-critical-thinking",
+      "name": "scientific-critical-thinking",
+      "description": "Evaluate scientific claims and evidence quality. Use for assessing experimental design validity, identifying biases and confounders, applying evidence grading frameworks (GRADE, Cochrane Risk of Bias), or teaching critical analysis. Best for understanding evidence quality, identifying flaws. For formal peer review writing use peer-review.",
+      "tier": "vendored",
+      "phase": "research",
+      "license": "MIT license",
+      "treeSha256": "bcefd0a3d8256711f322adae20c6ae8ef7287b23c8223e46eeee089a44b6b86e",
+      "files": 8,
+      "bytes": 107364,
+      "version": "1.3",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "scientific-schematics",
+      "name": "scientific-schematics",
+      "description": "Create publication-quality scientific diagrams using Nano Banana 2 AI with smart iterative refinement. Uses Gemini 3.6 Flash for quality review. Only regenerates if quality is below threshold for your document type. Specialized in neural network architectures, system diagrams, flowcharts, biological pathways, and complex scientific visualizations.",
+      "tier": "vendored",
+      "phase": "figures",
+      "license": "MIT license",
+      "treeSha256": "03018e0e823ab74d5e72e0e6926738e5376c1877c1fc64a21d4a95b66d04c299",
+      "files": 4,
+      "bytes": 49196,
+      "version": "1.7",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "scientific-slides",
+      "name": "scientific-slides",
+      "description": "Build slide decks and presentations for research talks. Use this for making PowerPoint slides, conference presentations, seminar talks, research presentations, thesis defense slides, or any scientific talk. Provides slide structure, design templates, timing guidance, and visual validation. Works with PowerPoint and LaTeX Beamer.",
+      "tier": "vendored",
+      "phase": "communication",
+      "license": "MIT license",
+      "treeSha256": "3d8c0433e50510e558f0bc8831fe830d3f5cc576a0ba5916e0aec35ed8bec68f",
+      "files": 20,
+      "bytes": 295851,
+      "version": "1.8",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "scientific-visualization",
+      "name": "scientific-visualization",
+      "description": "Create and audit truthful, accessible, publication-ready scientific figures with Matplotlib, Seaborn, or Plotly. Use for figure design, multi-panel layouts, uncertainty and missing-data displays, color/contrast review, image metadata validation, and journal export planning.",
+      "tier": "vendored",
+      "phase": "figures",
+      "license": "MIT",
+      "treeSha256": "de0b1ec1e6c281049b75928a989469bad12a44b2a3ae14ab7577a6a9c3e2ac51",
+      "files": 18,
+      "bytes": 191255,
+      "version": "1.2",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "scientific-writing",
+      "name": "scientific-writing",
+      "description": "Draft, revise, and audit scientific manuscripts or reports with explicit evidence provenance, reporting-guideline coverage, authorship accountability, confidentiality controls, and local consistency checks. Use for manuscript sections, references, declarations, tables, figures, or submission preparation when scientific accuracy and traceability matter.",
+      "tier": "vendored",
+      "phase": "authoring",
+      "license": "MIT",
+      "treeSha256": "9cf6560519662adb6cfb2c970110bf1dba10ec60ea1700b3b56b556db455f25f",
+      "files": 31,
+      "bytes": 173665,
+      "version": "2.1",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "statistical-analysis",
+      "name": "statistical-analysis",
+      "description": "Guided statistical analysis for research data - test selection, assumption checking, effect sizes, power analysis, Bayesian alternatives, and APA-formatted reporting. Use whenever a user wants to compare groups, test a hypothesis, analyze experimental or survey data, check statistical assumptions, compute required sample sizes, or write up results - even if they never name a specific test. Covers t-tests, ANOVA, chi-square, correlation, regression, non-parametric and Bayesian methods. For low-level model APIs, see the statsmodels and pymc skills.",
+      "tier": "vendored",
+      "phase": "authoring",
+      "license": "MIT license",
+      "treeSha256": "5d75363f100b32b15843a33e35697489ce3b6e8da49117efded36f53dcceb790",
+      "files": 7,
+      "bytes": 118115,
+      "version": "1.2",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "statistical-power",
+      "name": "statistical-power",
+      "description": "Sample-size and statistical power calculations for planning studies. Use whenever someone asks \"how many subjects/samples/replicates do I need\", wants an a priori power analysis, a minimum detectable effect (MDE), a power curve, or needs to justify a sample size for a grant, IRB protocol, or pre-registration. Covers closed-form power for t-tests, ANOVA, proportions, correlations, chi-square, and regression, plus simulation-based (Monte Carlo) power for designs with no formula — logistic/Poisson regression, mixed models, cluster-randomized trials, survival, and interactions. Use this skill even when the request only mentions an effect size, alpha, or \"80% power\" without saying \"power analysis\" explicitly. For laying out the study (randomization, blocking, factorial/DOE, crossover, sequential designs) use experimental-design; for analyzing data already collected and reporting it use statistical-analysis.",
+      "tier": "vendored",
+      "phase": "authoring",
+      "license": "MIT license",
+      "treeSha256": "d65f7891dd1f0c04cdf0a4b0edf0619fa6462ede3b8166fa78e5899e3aa668db",
+      "files": 6,
+      "bytes": 53440,
+      "version": "1.1",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    },
+    {
+      "id": "template-generate",
+      "name": "Reusable template",
+      "description": "Turn the current document into a reusable Oleafly template that follows the template pack authoring rules. Use when the user says make this a template, save this layout, reuse this format for future papers, build a starter for my group, or asks how to add a template to the New Project gallery or how to package a class or style for reuse.",
+      "tier": "native",
+      "phase": "tooling",
+      "license": "MIT",
+      "treeSha256": "03a258642f61c0194fa247fc47de5173c227a6938291a058904b9c444fe042ca",
+      "files": 4,
+      "bytes": 17447,
+      "version": "1.0.0"
+    },
+    {
+      "id": "venue-templates",
+      "name": "venue-templates",
+      "description": "Prepare journal manuscripts, conference papers, research posters, and grant documents using venue-specific formatting guidance and bundled LaTeX scaffolds. Use when selecting an official template, checking current page or anonymity rules, adapting academic writing to a venue, or inspecting a submission PDF.",
+      "tier": "vendored",
+      "phase": "authoring",
+      "license": "MIT license",
+      "treeSha256": "d0ded22682e5c8bcff1f5cb92a1e1c2329d91ab4a9f1bc660ae0a428f601fd51",
+      "files": 31,
+      "bytes": 402668,
+      "version": "1.3",
+      "origin": {
+        "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
+      }
+    }
+  ]
+}

@@ -59,6 +59,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { cn } from "@/lib/utils";
+import { AssistantOutputsBridge } from "@/components/ai/AssistantOutputsBridge";
 import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
 import { ChatPanel } from "@/components/ai/ChatPanel";
 import { AboutModal } from "@/components/layout/AboutModal";
@@ -994,6 +995,7 @@ function AppContent() {
         <CommandPalette />
         <SearchOmnibar />
         <GlobalNewProject />
+        <AssistantOutputsBridge />
         <ExternalToolApprovals />
         <EnginePickerModal />
         <TinytexGuards />

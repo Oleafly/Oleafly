@@ -55,6 +55,9 @@ mod rollout;
 mod sandbox;
 mod secrets;
 mod skills;
+mod skills_catalog;
+mod skills_pack;
+mod skills_share;
 mod stall_trace;
 mod state;
 mod storage;
@@ -327,7 +330,15 @@ pub fn run() {
             skills::skills_update,
             skills::skills_validate,
             skills::skills_set_enabled,
+            skills::skills_set_project_enabled,
             skills::skills_remove,
+            skills::skills_read_file,
+            skills::skills_update_builtin,
+            skills_catalog::skills_catalog,
+            skills_catalog::skills_install,
+            skills_catalog::skills_uninstall,
+            skills_share::skills_share_targets,
+            skills_share::skills_share_sync,
             library_db::chats_search,
             library_db::usage_record,
             library_db::usage_summary,

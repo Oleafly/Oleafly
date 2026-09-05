@@ -42,11 +42,12 @@ $checkpointHints = ""
 $stamp = [System.Guid]::NewGuid().ToString("N").Substring(0, 8)
 $dataDir = Join-Path ([System.IO.Path]::GetTempPath()) "oleafly-e2e-$stamp"
 
-# Hermetic remote endpoints: specs 42/44 run a local fixture server on this
+# Hermetic remote endpoints: specs 42/44/75 run a local fixture server on this
 # fixed port; other specs never call the pack/deadline commands, so this is
 # harmless. Mirrors scripts/e2e.sh.
 if (-not $env:OLEAFLY_PACKS_BASE_URL) { $env:OLEAFLY_PACKS_BASE_URL = "http://127.0.0.1:38999" }
 if (-not $env:OLEAFLY_DEADLINES_URL) { $env:OLEAFLY_DEADLINES_URL = "http://127.0.0.1:38999/allconf.yml" }
+if (-not $env:OLEAFLY_SKILLS_BASE_URL) { $env:OLEAFLY_SKILLS_BASE_URL = "http://127.0.0.1:38999" }
 
 function Start-OutputProcess([string]$command) {
   $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))

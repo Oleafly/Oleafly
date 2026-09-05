@@ -1,0 +1,57 @@
+{
+  "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
+  "pin": "1e5eeffbdad3749125afe7ab48a39694e27f181c",
+  "exclude": [
+    {
+      "glob": "**/scripts/generate_schematic.py",
+      "why": "Calls OpenRouter and walks parent directories reading .env files; Oleafly routes figure generation through its own pipeline."
+    },
+    {
+      "glob": "**/scripts/generate_schematic_ai.py",
+      "why": "Calls OpenRouter and walks parent directories reading .env files; Oleafly routes figure generation through its own pipeline."
+    },
+    {
+      "glob": "**/scripts/generate_slide_image.py",
+      "why": "Calls OpenRouter and walks parent directories reading .env files; Oleafly routes figure generation through its own pipeline."
+    },
+    {
+      "glob": "**/scripts/generate_slide_image_ai.py",
+      "why": "Calls OpenRouter and walks parent directories reading .env files; Oleafly routes figure generation through its own pipeline."
+    },
+    {
+      "glob": "**/*.git/**",
+      "why": "Version control metadata, not part of a skill tree."
+    },
+    {
+      "glob": "**/__pycache__/**",
+      "why": "Compiled Python bytecode cache, not source."
+    },
+    {
+      "glob": "**/.DS_Store",
+      "why": "macOS Finder metadata, not part of a skill tree."
+    }
+  ],
+  "maxFileBytes": 5242880,
+  "skills": [
+    { "id": "scientific-brainstorming", "phase": "research" },
+    { "id": "hypothesis-generation", "phase": "research" },
+    { "id": "paper-lookup", "phase": "research" },
+    { "id": "literature-review", "phase": "research" },
+    { "id": "research-lookup", "phase": "research" },
+    { "id": "citation-management", "phase": "research" },
+    { "id": "exploratory-data-analysis", "phase": "research" },
+    { "id": "scientific-critical-thinking", "phase": "research" },
+    { "id": "experimental-design", "phase": "authoring" },
+    { "id": "statistical-power", "phase": "authoring" },
+    { "id": "statistical-analysis", "phase": "authoring" },
+    { "id": "scientific-writing", "phase": "authoring" },
+    { "id": "venue-templates", "phase": "authoring" },
+    { "id": "scientific-visualization", "phase": "figures" },
+    { "id": "scientific-schematics", "phase": "figures" },
+    { "id": "scientific-slides", "phase": "communication" },
+    { "id": "pptx-posters", "phase": "communication" },
+    { "id": "research-grants", "phase": "communication" },
+    { "id": "peer-review", "phase": "review" },
+    { "id": "scholar-evaluation", "phase": "review" }
+  ]
+}

@@ -303,6 +303,15 @@ kompilieren, das Log inspizieren und PDF-Text extrahieren, um sein eigenes
 Ergebnis zu überprüfen. Er hilft außerdem bei Zitaten, importierten Dokumenten
 und editierbaren TikZ-Abbildungen.
 
+Ein mitgeliefertes Paket an Recherche-Skills bringt ihm die Schritte dieser
+Arbeit einzeln bei: die Literatur durchsuchen, einen Abschnitt zum Stand der
+Forschung entwerfen, prüfen, ob eine Aussage noch zu ihrer Quelle passt,
+Abbildungen vorbereiten, ein Manuskript gegenlesen, es einreichfertig machen.
+Tippe `/skill-id` im Chat, um einen Skill sofort zu nutzen. In den
+Einstellungen schaltest du einen Skill für alle Projekte oder nur für das
+geöffnete ein, schreibst eigene oder installierst weitere aus einem
+zusätzlichen Online-Angebot.
+
 Du wählst das Modell:
 
 - Verbinde einen unterstützten gehosteten Anbieter mit deinem eigenen
@@ -409,8 +418,6 @@ Forschungsablauf nützlich.
 
 - **Lokalisierung der App.** Nutze Oleafly in weiteren Sprachen und arbeite in
   der Oberfläche, die sich für dich am natürlichsten anfühlt.
-- **Agenten-Skills und Plugins.** Ergänze gezielte, wiederverwendbare
-  KI-Abläufe, die weniger Kontext erneut senden und weniger Tokens verbrauchen.
 - **Autonome Forschungsagenten.** Verwandle eine Forschungsfrage und eine
   Quellensammlung in einen strukturierten ersten Entwurf.
 - **Echtzeit-Zusammenarbeit und Kommentare.** Arbeite mit unbegrenzter,

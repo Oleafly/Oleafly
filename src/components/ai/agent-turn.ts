@@ -36,6 +36,7 @@ export interface HarnessHandlers {
     state: string;
     detail: string | null;
   }): void;
+  onSteered?(text: string): void;
 }
 
 export function toolSchemasFor(tools: ToolSet): AgentToolSchema[] {
@@ -283,6 +284,7 @@ export async function runAgentHarness(args: {
             break;
           case "steered":
             handlers.onActivity();
+            handlers.onSteered?.(event.text);
             break;
           case "done":
             endReasoning();

@@ -23,6 +23,9 @@ export const AI_TOOLS: { name: string; desc: string }[] = [
   { name: "list_notes", desc: "List sticky project memory notes" },
   { name: "set_main_doc", desc: "Set the main document" },
   { name: "toggle_theme", desc: "Toggle light/dark mode" },
+  { name: "load_skill", desc: "Load one skill's full instructions" },
+  { name: "read_skill_file", desc: "Read a reference or script from a skill folder" },
+  { name: "show_location", desc: "Reveal a file line in the editor and the PDF" },
 ];
 
 export function AiToolsGrid({

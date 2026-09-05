@@ -2,6 +2,7 @@ export {
   registerPdfView,
   clearPdfView,
   gotoRect,
+  gotoPdfPage,
   pageClickToBp,
   setPdfLogger,
   type SynctexRect,

@@ -11,6 +11,7 @@ import {
   createFigureTools,
   type ConfirmFn,
 } from "@/lib/ai-tools";
+import { loadSkills, readSkillFile, validSkills } from "@/lib/skills";
 import { isAutoApprovable, useMcpApprovalStore } from "@/store/mcp-approvals";
 import { summarizeMcpResult, useMcpActivityStore } from "@/store/mcp-activity";
 import {
@@ -254,6 +255,80 @@ export function toMcpResult(raw: unknown, images: string[]): McpResult {
   return isError ? { content, isError: true } : { content };
 }
 
+function createSkillTools(): Record<string, McpToolEntry> {
+  return {
+    list_skills: {
+      description:
+        "List the installed Oleafly skills with their id, name, description, phase, and whether they are enabled.",
+      inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
+      execute: async () => {
+        try {
+          const skills = await loadSkills();
+          return {
+            skills: validSkills(skills).map((skill) => ({
+              id: skill.id,
+              name: skill.name,
+              description: skill.description,
+              phase: skill.phase ?? null,
+              tier: skill.tier,
+              enabled: skill.enabled || skill.projectEnabled,
+            })),
+          };
+        } catch (e) {
+          return { error: String(e) };
+        }
+      },
+    },
+    load_skill: {
+      description:
+        "Load one skill: its full instructions, the absolute folder path, and the list of supporting files.",
+      inputSchema: {
+        type: "object",
+        properties: { id: { type: "string", description: "The skill id (see list_skills)" } },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      execute: async (input) => {
+        const id = String(input.id ?? "");
+        try {
+          const skill = validSkills(await loadSkills()).find((entry) => entry.id === id);
+          if (!skill) return { error: `no skill named ${id} is installed` };
+          return {
+            id: skill.id,
+            name: skill.name,
+            description: skill.description,
+            dir: skill.dir,
+            files: skill.files,
+            instructions: skill.instructions,
+          };
+        } catch (e) {
+          return { error: String(e) };
+        }
+      },
+    },
+    read_skill_file: {
+      description:
+        "Read one supporting file from a skill folder, using a path from the file list that load_skill returned.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "The skill id (see list_skills)" },
+          path: { type: "string", description: "Path inside the skill folder" },
+        },
+        required: ["id", "path"],
+        additionalProperties: false,
+      },
+      execute: async (input) => {
+        try {
+          return await readSkillFile(String(input.id ?? ""), String(input.path ?? ""));
+        } catch (e) {
+          return { error: String(e) };
+        }
+      },
+    },
+  };
+}
+
 // MCP-only orientation tools: thin wrappers over existing app services.
 function createMcpOnlyTools(
   confirm: ConfirmFn,
@@ -342,6 +417,7 @@ export function buildMcpToolRegistry(opts: {
       string,
       McpToolEntry
     >),
+    ...createSkillTools(),
     ...createMcpOnlyTools(opts.confirm, opts.mutationAllowed ?? (() => true)),
   };
   if (opts.readOnly) {

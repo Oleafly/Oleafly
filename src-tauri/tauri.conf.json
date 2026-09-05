@@ -55,7 +55,9 @@
       "resources/deadlines-seed.json",
       "resources/deadlines-extra.json",
       "resources/licenses/**/*",
-      "resources/language-servers/**/*"
+      "resources/language-servers/**/*",
+      "resources/skills/**/*",
+      "resources/skills-catalog.json"
     ],
     "macOS": {
       "hardenedRuntime": true,

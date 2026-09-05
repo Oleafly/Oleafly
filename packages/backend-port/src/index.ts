@@ -584,6 +584,7 @@ export interface AppConfig {
     mcp_read_only: boolean;
     mcp_approval_policy: string;
     mcp_servers: McpServerConfig[];
+    skills_share_with_agents?: boolean;
 }
 export type McpServerConfig = {
     name: string;

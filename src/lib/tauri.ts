@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { receiveChunkedText } from "@/lib/chunked-ipc";
 import type { ApprovalMode } from "@oleafly/ai-tools";
+import type { SkillEntry } from "@/lib/skills";
 
 import type {
   AheadBehind,
@@ -560,6 +561,79 @@ export const installTemplatePack = (id: string) =>
 
 export const removeTemplatePack = (id: string) =>
   invoke<void>("remove_template_pack", { id });
+
+export interface SkillCatalogOrigin {
+  repo: string;
+  commit: string;
+}
+
+export interface SkillCatalogEntry {
+  id: string;
+  name: string;
+  description: string;
+  phase?: string;
+  domain?: string;
+  license: string;
+  version: string;
+  bytes: number;
+  files: number;
+  sha256?: string;
+  url?: string;
+  pack?: string;
+  origin?: SkillCatalogOrigin;
+  bundled: boolean;
+  installed: boolean;
+  installedVersion?: string;
+  updateAvailable: boolean;
+}
+
+export type SkillCatalogSource = "bundled" | "cached" | "fetched";
+
+export interface SkillCatalog {
+  source: SkillCatalogSource;
+  generatedAt: string;
+  fetchedAt?: string;
+  error?: string;
+  skills: SkillCatalogEntry[];
+}
+
+export type SkillSharePeerAgent = "claude" | "codex" | "agents" | "cursor" | "gemini";
+
+export interface SkillShareTarget {
+  agent: SkillSharePeerAgent;
+  label: string;
+  root: string;
+  detected: boolean;
+  linked: number;
+  total: number;
+  supported: boolean;
+  enabled: boolean;
+}
+
+export type SkillAssetProgressPhase = "download" | "extract" | "done" | "error";
+
+export interface SkillAssetProgress {
+  kind: "skill";
+  id: string;
+  phase: SkillAssetProgressPhase;
+  received: number;
+  total: number;
+  message?: string;
+}
+
+export const skillsCatalog = (refresh: boolean) =>
+  invoke<SkillCatalog>("skills_catalog", { refresh });
+
+export const skillsInstall = (id: string) =>
+  invoke<SkillEntry>("skills_install", { id });
+
+export const skillsUninstall = (id: string) => invoke<void>("skills_uninstall", { id });
+
+export const skillsShareTargets = () =>
+  invoke<SkillShareTarget[]>("skills_share_targets");
+
+export const skillsShareSync = (enabled: boolean) =>
+  invoke<SkillShareTarget[]>("skills_share_sync", { enabled });
 
 export const readDeadlines = () => invoke<string>("read_deadlines");
 

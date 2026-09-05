@@ -126,6 +126,20 @@ describe("mcp tool registry", () => {
     }
   });
 
+  it("advertises the skill tools the Rust server answers natively", () => {
+    expect(registry.list_skills).toBeDefined();
+    expect(registry.load_skill).toBeDefined();
+    expect(registry.read_skill_file).toBeDefined();
+    const ro = buildMcpToolRegistry({
+      confirm: async () => true,
+      readOnly: true,
+      onImage: () => {},
+    });
+    expect(ro.list_skills).toBeDefined();
+    expect(ro.load_skill).toBeDefined();
+    expect(ro.read_skill_file).toBeDefined();
+  });
+
   it("adds the MCP-only orientation tools", () => {
     expect(registry.get_status).toBeDefined();
     expect(registry.list_projects).toBeDefined();

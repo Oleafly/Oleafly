@@ -505,6 +505,20 @@ fn the_pipeline_marks_read_tools_parallel_and_everything_else_exclusive() {
     );
 }
 
+#[test]
+fn show_location_reads_without_prompting_but_never_runs_beside_another_tool() {
+    assert_eq!(
+        tool_risk("show_location"),
+        oleafly_agent::ToolRisk::Read,
+        "revealing a location must not ask for approval"
+    );
+    assert_eq!(
+        tool_pipeline().registry.parallel_policy("show_location"),
+        oleafly_agent::ParallelPolicy::Exclusive,
+        "two reveals in one batch would race for the active file"
+    );
+}
+
 #[tokio::test]
 async fn unadvertised_tools_are_rejected_before_native_or_subagent_dispatch() {
     let calls = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
@@ -598,20 +612,39 @@ async fn steering_requires_user_content_and_an_active_run() {
 }
 
 #[tokio::test]
-async fn steering_is_acknowledged_only_after_the_run_receives_it() {
+async fn a_steer_into_a_finished_run_reports_run_finished() {
     let state = crate::agent::AgentState::default();
     let (handle, receiver) = oleafly_agent::SteerHandle::channel();
     crate::agent::register_steer_for_test(&state, "run-1", handle);
     drop(receiver);
-    let error = crate::agent::steer_run(
+    let result = crate::agent::steer_run(
         &state,
         "run-1",
         oleafly_agent::Message::user("redirect now"),
     )
     .await
-    .unwrap_err();
-    assert!(error.contains("stopped before receiving"));
+    .expect("a finished run is not an error");
+    assert_eq!(result.status, crate::agent::SteerStatus::RunFinished);
+    assert_eq!(
+        serde_json::to_value(result).unwrap(),
+        serde_json::json!({ "status": "run_finished" })
+    );
+}
 
+#[test]
+fn the_steer_result_reaches_the_webview_as_a_status_string() {
+    assert_eq!(
+        serde_json::to_value(crate::agent::SteerResult {
+            status: crate::agent::SteerStatus::Delivered,
+        })
+        .unwrap(),
+        serde_json::json!({ "status": "delivered" })
+    );
+}
+
+#[tokio::test]
+async fn a_cancelled_run_can_no_longer_be_steered() {
+    let state = crate::agent::AgentState::default();
     let token = oleafly_agent::CancellationToken::new();
     let child = token.child();
     crate::agent::register_token_for_test(&state, "run-1", token);

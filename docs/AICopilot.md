@@ -55,6 +55,24 @@ summary appears under the last assistant message instead, along the lines of
 "Plan · 2/2 done · 3 files changed +40 -12", with the file rows under it. A run
 that changed files without a plan gets the same summary minus the Plan label.
 
+## Skills
+
+Skills teach the assistant a repeatable workflow instead of leaving it to
+improvise one. Oleafly ships with a research pack, and you can install more
+from a domain shelf or write your own. Type `/skill-id` at the start of a
+message to use one directly. [Skills](Skills.md) covers the format, the tiers,
+the phase table that routes a research task to the right skill, and how the
+assistant picks one without being told.
+
+## Steering a running turn
+
+A message sent while the assistant is mid turn does not have to wait for the
+run to end. **Steer now** on a queued follow-up hands it to the running turn
+at the next safe point. Once it lands it appears in the conversation as a
+"Steered" message, and the assistant starts a fresh reply to it. If the run
+finishes first, nothing is dropped: the message goes out as the next turn and
+the chip says "Sent as the next turn".
+
 ## Models: trust, capability data, and refresh
 
 Every model row in Settings, and every entry in the chat picker, has a trust
@@ -125,3 +143,5 @@ shared by the built-in assistant and figure-generation flows.
 - `src/lib/document-citation/`: paper-review prompts and document citation scan.
 - `src/contributions/ai-toolsets.ts`: registered tool groups.
 - `docs/mcp.md`: external-client integration using the same tool boundary.
+- `src-tauri/src/skills.rs` and `src/lib/skills.ts`: skill storage, validation, and prompt wiring.
+- `docs/Skills.md`: the skills format, tiers, and research-loop phase table.

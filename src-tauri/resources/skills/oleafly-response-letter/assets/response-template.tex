@@ -1,0 +1,67 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{xcolor}
+\usepackage{parskip}
+
+\definecolor{replyaccent}{RGB}{0,90,140}
+\definecolor{quoterule}{RGB}{160,160,160}
+
+\newcommand{\reviewer}[1]{%
+  \bigskip
+  \noindent{\large\bfseries Reviewer #1}\par
+  \vspace{0.3em}%
+  {\color{quoterule}\hrule}%
+  \vspace{0.6em}%
+}
+
+\newcommand{\point}[2]{%
+  \medskip
+  \noindent\textbf{#1}\quad{\itshape #2}\par
+}
+
+\newcommand{\reply}[1]{%
+  \smallskip
+  \noindent\textcolor{replyaccent}{\bfseries Response.}\ #1\par
+}
+
+\newcommand{\changed}[2]{%
+  \smallskip
+  \noindent\textbf{Changed in} \texttt{#1}\par
+  \begin{quote}#2\end{quote}%
+}
+
+\newcommand{\notchanged}[1]{%
+  \smallskip
+  \noindent\textbf{No change.} #1\par
+}
+
+\title{Response to reviewers}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\noindent We thank the reviewers for their careful reading. Reviewer comments are
+reproduced in italics, followed by our response and the corresponding change in
+the manuscript. Line numbers refer to the revised version.
+
+\reviewer{1}
+
+\point{R1.1}{Reviewer comment, reproduced word for word.}
+\reply{What we did about it, in one or two sentences.}
+\changed{sections/methods.tex, line 84}{The new or revised sentence, quoted exactly as it now appears.}
+
+\point{R1.2}{A second comment.}
+\reply{Our answer.}
+\notchanged{Why the manuscript was not changed, and what we did instead.}
+
+\reviewer{2}
+
+\point{R2.1}{A comment from the second reviewer.}
+\reply{Our answer.}
+\changed{sections/results.tex, line 121}{The revised passage.}
+
+\end{document}

@@ -6,7 +6,8 @@
   "files": [
     "tests/72-terminal-dock.spec.ts",
     "tests/73-browser-dock.spec.ts",
-    "tests/74-agent-steer.spec.ts"
+    "tests/74-agent-steer.spec.ts",
+    "tests/75-skills.spec.ts"
   ],
   "include": ["../src", "../packages"]
 }

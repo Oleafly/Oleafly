@@ -1,0 +1,99 @@
+\documentclass[aspectratio=169]{beamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\graphicspath{{../figures/}}
+
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+
+\title{The finding, stated as a claim}
+\subtitle{}
+\author{Author Name}
+\institute{Institution}
+\date{Venue, Month Year}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\section{Problem}
+
+\begin{frame}{The question nobody could answer}
+  \begin{itemize}
+    \item One line of context.
+    \item What was missing.
+    \item Why it mattered.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{What we did about it}
+  \begin{block}{Contribution}
+    One sentence. This is the slide the audience should remember.
+  \end{block}
+\end{frame}
+
+\section{Method}
+
+\begin{frame}{How the study was set up}
+  \begin{columns}[T]
+    \column{0.55\textwidth}
+      \begin{itemize}
+        \item Design in one phrase.
+        \item Sample or dataset.
+        \item The one analysis choice worth defending.
+      \end{itemize}
+    \column{0.45\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{design}
+  \end{columns}
+\end{frame}
+
+\section{Results}
+
+\begin{frame}{The main result, stated in the title}
+  \centering
+  \includegraphics[width=0.8\textwidth]{main-result}
+\end{frame}
+
+\begin{frame}{The effect holds when the largest site is removed}
+  \centering
+  \begin{tabular}{lrr}
+    \toprule
+    Condition & Estimate & 95\% CI \\
+    \midrule
+    All sites & 0.42 & 0.31 to 0.53 \\
+    Largest site removed & 0.39 & 0.26 to 0.52 \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+\section{Discussion}
+
+\begin{frame}{What this changes}
+  \begin{itemize}
+    \item The implication for practice.
+    \item How it sits against prior work.
+    \item The limit worth naming out loud.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Takeaway}
+  \begin{block}{}
+    \large One sentence the audience can repeat to a colleague tomorrow.
+  \end{block}
+  \vfill
+  {\footnotesize Thanks to collaborators and funders.}
+\end{frame}
+
+\appendix
+
+\begin{frame}{Backup: full results table}
+\end{frame}
+
+\end{document}

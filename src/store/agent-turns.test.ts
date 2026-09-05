@@ -100,6 +100,33 @@ describe("useAgentTurnsStore", () => {
     ]);
   });
 
+  it("drops delivered steers and keeps queued messages when a run ends badly", () => {
+    const store = useAgentTurnsStore.getState();
+    store.queueFollowUp("chat-1", "already delivered");
+    store.queueFollowUp("chat-1", "still waiting its turn");
+    const delivered = useAgentTurnsStore.getState().queuedByChat["chat-1"][0];
+    store.markSteered("chat-1", delivered.id);
+
+    store.purgeSteeredFollowUps("chat-1");
+
+    expect(useAgentTurnsStore.getState().queuedByChat["chat-1"].map((item) => item.text)).toEqual([
+      "still waiting its turn",
+    ]);
+  });
+
+  it("clears a chat queue whose only follow-ups were steered", () => {
+    const store = useAgentTurnsStore.getState();
+    store.queueFollowUp("chat-1", "delivered mid-run");
+    store.queueFollowUp("chat-2", "another chat waits");
+    const delivered = useAgentTurnsStore.getState().queuedByChat["chat-1"][0];
+    store.markSteered("chat-1", delivered.id);
+
+    store.purgeSteeredFollowUps("chat-1");
+
+    expect(useAgentTurnsStore.getState().queuedByChat).not.toHaveProperty("chat-1");
+    expect(useAgentTurnsStore.getState().queuedByChat["chat-2"]).toHaveLength(1);
+  });
+
   it("cleans up a chat queue after removing its final follow-up", () => {
     const store = useAgentTurnsStore.getState();
     store.queueFollowUp("chat-1", "discard the final message");

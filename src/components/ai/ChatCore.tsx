@@ -31,9 +31,10 @@ import {
   Brain,
   Check,
   ChevronDown,
-  FilePlus2,
+  ClipboardCheck,
   Filter,
   Frame,
+  Glasses,
   History,
   Info,
   Layers,
@@ -42,9 +43,10 @@ import {
   MessageSquareQuote,
   PanelRightOpen,
   Plus,
-  Quote,
+  Presentation,
   RotateCcw,
   Search,
+  Send,
   Settings2,
   Sparkles,
   Square,
@@ -88,7 +90,9 @@ import {
 } from "@/components/ai/SlashCommandMenu";
 import {
   createAttachCommands,
+  createSkillCommands,
   createSlashCommands,
+  type ComposerCommand,
 } from "@/components/ai/composer-command-registry";
 import {
   activeChatRun,
@@ -159,11 +163,16 @@ import {
   createSkill,
   draftSkillFromChat,
   enabledSkills,
-  SKILLS_QUERY_KEY,
+  parseSkillCommand,
+  requestedSkillPrompt,
   skillCatalogPrompt,
+  skillDirectiveLine,
+  steeredSkillText,
+  skillsQueryKey,
   type SkillEntry,
   upsertSkillRecord,
   useSkills,
+  validSkills,
 } from "@/lib/skills";
 import { Tooltip } from "@/components/ui/tooltip";
 import { prefetchMarkdownRenderer } from "@/components/ui/markdown";
@@ -198,23 +207,75 @@ import type { EngineFeature } from "@/lib/tauri";
 
 const MAX_AGENT_TOOL_DEFINITIONS = 128;
 
-const SUGGESTIONS = [
-  "Find papers to cite",
-  "Write a literature review",
-  "Fix any source errors in my document",
-  "Create a new section called 'Publications'",
-  "Find every citation in the project",
-  "Recompile and check for errors",
+interface ChatSuggestion {
+  label: string;
+  send: string;
+  icon: LucideIcon;
+  skillId?: string;
+}
+
+const SUGGESTIONS: ChatSuggestion[] = [
+  {
+    label: "Sweep the literature for this project",
+    send: "/oleafly-literature-sweep Build an annotated reading list for this project's research question",
+    icon: Search,
+    skillId: "oleafly-literature-sweep",
+  },
+  {
+    label: "Draft the related work section",
+    send: "/oleafly-related-work Draft the related work section from the reading list and the bibliography",
+    icon: BookOpen,
+    skillId: "oleafly-related-work",
+  },
+  {
+    label: "Check every claim against its source",
+    send: "/oleafly-verify-claims Audit the claims in this manuscript against their cited sources",
+    icon: ClipboardCheck,
+    skillId: "oleafly-verify-claims",
+  },
+  {
+    label: "Review it like a referee",
+    send: "/oleafly-review-manuscript Review the full manuscript and write the report",
+    icon: Glasses,
+    skillId: "oleafly-review-manuscript",
+  },
+  {
+    label: "Fix any source errors in my document",
+    send: "/oleafly-latex-build Compile this project and fix every error until it builds cleanly",
+    icon: Wrench,
+    skillId: "oleafly-latex-build",
+  },
+  {
+    label: "Get it ready to submit",
+    send: "/oleafly-pre-submission Run the pre-submission checks for the target venue",
+    icon: Send,
+    skillId: "oleafly-pre-submission",
+  },
+  {
+    label: "Turn this paper into a talk",
+    send: "/oleafly-slides-and-posters Build a 15 minute conference talk from this paper",
+    icon: Presentation,
+    skillId: "oleafly-slides-and-posters",
+  },
+  {
+    label: "Recompile and check for errors",
+    send: "Recompile and check for errors",
+    icon: RotateCcw,
+  },
 ];
 
-const SUGGESTION_ICONS: Record<string, LucideIcon> = {
-  "Find papers to cite": Search,
-  "Write a literature review": BookOpen,
-  "Fix any source errors in my document": Wrench,
-  "Create a new section called 'Publications'": FilePlus2,
-  "Find every citation in the project": Quote,
-  "Recompile and check for errors": RotateCcw,
-};
+export function availableSuggestions(
+  suggestions: readonly ChatSuggestion[],
+  skills: readonly SkillEntry[] | undefined,
+): ChatSuggestion[] {
+  if (!skills) return suggestions.filter((suggestion) => !suggestion.skillId);
+  const ids = new Set(
+    skills.filter((skill) => skill.validation.status === "valid").map((skill) => skill.id),
+  );
+  return suggestions.filter(
+    (suggestion) => !suggestion.skillId || ids.has(suggestion.skillId),
+  );
+}
 
 const FIGURE_SUGGESTIONS = [
   "Draw a transformer encoder with 6 blocks, attention highlighted, residual connections",
@@ -448,6 +509,11 @@ export function ChatCore() {
     activeChatId ? s.threadByChat[activeChatId] ?? null : null,
   );
   const activeRunRequestIdRef = useRef<string | null>(null);
+  const [activeRunRequestId, setActiveRunRequestId] = useState<string | null>(null);
+  const trackRunRequestId = useCallback((id: string | null) => {
+    activeRunRequestIdRef.current = id;
+    setActiveRunRequestId(id);
+  }, []);
   const loadChats = useChatsStore((s) => s.load);
   const removeChat = useChatsStore((s) => s.remove);
   const setActiveChat = useChatsStore((s) => s.setActive);
@@ -646,8 +712,6 @@ export function ChatCore() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const slashCommandMenuRef = useRef<SlashCommandMenuHandle>(null);
   const inputShellRef = useRef<HTMLDivElement>(null);
-  const slashMenuOpen =
-    isSlashCommandInput(input) && slashMenuDismissedInput !== input;
   useEffect(() => {
     if (!goalEditorOpen) return;
     const frame = requestAnimationFrame(() => goalInputRef.current?.focus());
@@ -709,7 +773,7 @@ export function ChatCore() {
   // run: allow skips the prompt, deny skips execution.
   const projectApprovalsRef = useRef<Record<string, ToolDecision>>({});
   const queryClient = useQueryClient();
-  const skillsQuery = useSkills();
+  const skillsQuery = useSkills(projectId);
   const skills = skillsQuery.data ?? [];
   const skillsRef = useRef(skills);
   skillsRef.current = skills;
@@ -761,6 +825,14 @@ export function ChatCore() {
     documentEngine.capabilities.features,
     toolManagerMode,
   ]);
+  const invocableSkills = useMemo(() => validSkills(skills), [skills]);
+  const composerSkillToken = parseSkillCommand(input, invocableSkills);
+  const composerSkillTokenClosed =
+    composerSkillToken !== null && input.length > composerSkillToken.skill.id.length + 1;
+  const slashMenuOpen =
+    isSlashCommandInput(input) &&
+    slashMenuDismissedInput !== input &&
+    !composerSkillTokenClosed;
   const skillPromptCategories =
     availableSkills.length > 0
       ? [
@@ -770,7 +842,7 @@ export function ChatCore() {
               icon: Sparkles,
               label: skill.name,
               description: skill.description,
-              prompt: `Use the enabled skill "${skill.name}" for this request. Load its full instructions before you start.`,
+              prompt: `/${skill.id} `,
             })),
           },
         ]
@@ -792,7 +864,7 @@ export function ChatCore() {
     if (!draft) return;
     try {
       const created = await createSkill(draft);
-      queryClient.setQueryData<SkillEntry[]>(SKILLS_QUERY_KEY, (current) =>
+      queryClient.setQueryData<SkillEntry[]>(skillsQueryKey(currentProjectId), (current) =>
         upsertSkillRecord(current, created),
       );
       void Promise.resolve(skillsQueryRef.current.refetch()).catch(() => undefined);
@@ -1194,7 +1266,10 @@ export function ChatCore() {
     recordSkill: canRecordSkill ? () => void recordCurrentChatSkill() : undefined,
     togglePlanMode: projectId && !approvalModeLocked ? changePlanMode : undefined,
   };
-  const slashCommands = createSlashCommands(commandActions);
+  const slashCommands = [
+    ...createSlashCommands(commandActions),
+    ...createSkillCommands(invocableSkills),
+  ];
   const attachCommands = createAttachCommands(commandActions);
 
   const scrollAnchorRef = useRef<ChatMessage | null | undefined>(undefined);
@@ -1340,7 +1415,7 @@ export function ChatCore() {
       return;
     }
     const chatOnly = modelIsChatOnly(runStoredModel);
-    let runSkills = enabledSkills(skillsRef.current);
+    let runSkills = skillsRef.current;
     if (skillsQueryRef.current.data === undefined) {
       try {
         const result = await skillsQueryRef.current.refetch();
@@ -1349,13 +1424,18 @@ export function ChatCore() {
           toast.error("Could not load enabled skills. Try again.");
           return;
         }
-        runSkills = enabledSkills(result.data);
+        runSkills = result.data;
       } catch {
         cancelSendPreparation();
         toast.error("Could not load enabled skills. Try again.");
         return;
       }
     }
+    const skillCommand = parseSkillCommand(text, runSkills);
+    const requestedSkillIds = skillCommand ? [skillCommand.skill.id] : [];
+    const runText = skillCommand
+      ? `${skillDirectiveLine(skillCommand.skill)}\n${skillCommand.text}`.trim()
+      : text;
     let runMcpServers: McpAgentServer[] = [];
     try {
       const result = await mcpAgentToolsQueryRef.current.refetch();
@@ -1371,7 +1451,7 @@ export function ChatCore() {
       ...useAiToolSettingsStore.getState().enabledByName,
     };
     const figure = figureMode && figureModeAvailable;
-    const capacitySkillTools = createLoadSkillTools(runSkills);
+    const capacitySkillTools = createLoadSkillTools(runSkills, requestedSkillIds);
     const capacityAdditions: RuntimeToolset[] = [
       ...createMcpRuntimeToolsets(runMcpServers, {
         confirm: async () => false,
@@ -1598,7 +1678,7 @@ export function ChatCore() {
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
-      content: text,
+      content: runText,
       createdAt,
       ...(outgoing.length
         ? { attachments: outgoing.map((a) => ({ name: a.name, mediaType: a.mediaType })) }
@@ -1678,7 +1758,7 @@ export function ChatCore() {
                 useChatsStore.getState().setThreadId(runChatId, threadId),
             },
           );
-        useAgentTurnsStore.getState().beginTurn(runChatId, turnThreadId, clientTurnId, text);
+        useAgentTurnsStore.getState().beginTurn(runChatId, turnThreadId, clientTurnId, runText);
         useAgentTodoStore.getState().beginTurn(runChatId, {
           keep: planTurn === "revision" || planTurn === "execution",
         });
@@ -1711,7 +1791,7 @@ USER_CUSTOM_INSTRUCTIONS`
     }
     // Keyword RAG over project sources (no embeddings).
     try {
-      const chunks = await retrieveProjectChunks(text, { topK: 4 });
+      const chunks = await retrieveProjectChunks(runText, { topK: 4 });
       const rag = formatRagContext(chunks);
       if (rag) workspaceCtx = `${workspaceCtx}\n\n${rag}`;
     } catch {
@@ -1720,7 +1800,7 @@ USER_CUSTOM_INSTRUCTIONS`
 
     const mainDocument = useFilesStore.getState().mainDoc || "main.tex";
     const activeGoalLine = goalPromptLine(useChatGoalStore.getState().goal(projectId));
-    const runSkillTools = createLoadSkillTools(runSkills);
+    const runSkillTools = createLoadSkillTools(runSkills, requestedSkillIds);
     const runToolAdditions: RuntimeToolset[] = [
       ...createMcpRuntimeToolsets(runMcpServers, {
         confirm,
@@ -1757,6 +1837,9 @@ USER_CUSTOM_INSTRUCTIONS`
       !chatOnly && isToolEnabled(enabledToolsForRun, "load_skill")
         ? skillCatalogPrompt(runSkills)
         : "";
+    const requestedSkillBlock = requestedSkillPrompt(
+      skillCommand ? [skillCommand.skill] : [],
+    );
     const sourceVocabulary = documentEngine.capabilities.formatting_profile === "typst"
       ? "Typst markup and scripting"
       : documentEngine.capabilities.formatting_profile === "markdown"
@@ -1804,7 +1887,16 @@ Workflow for "fix errors" requests:
 3. compile again until success is true with empty errors.
 4. verify_pdf_pages or get_pdf_text when layout/content must look right.
 Do not stop until the task is genuinely complete, then explain what you did in a friendly, human way.
-
+${projectKind === "image" ? "" : `
+Research rules:
+- Never invent a reference, a bibliography entry, an author list, or a DOI. If you cannot verify a source, say so plainly.
+- Every \\cite key must resolve to an entry in the project bibliography. Check unresolvedCites in project_map, or search the .bib file with search_project, before you add a citation.
+- Verify a DOI with verify_citation before you rely on it.
+- Keep sources under research/sources/, notes under research/notes/, the reading list at research/reading-list.md, claims at research/claims.md, and reviews under review/. That is the layout the research skills read and write.
+- Compile after each section you write, and fix what breaks before you move on.
+- Never delete a file the user wrote without asking first.
+- When the user asks for a review, report your findings and leave the files alone unless they ask you to edit.
+`}
 ${workspaceCtx}
 ${sandboxedCustom}`;
 
@@ -1817,7 +1909,7 @@ ${sandboxedCustom}`;
       : systemPrompt;
     const effectiveSystem = `${effectiveSystemBase}${
       runSkillCatalog ? `\n\n${runSkillCatalog}` : ""
-    }\n\n${approvalPostureLine(runApprovalMode)}${
+    }${requestedSkillBlock ? `\n\n${requestedSkillBlock}` : ""}\n\n${approvalPostureLine(runApprovalMode)}${
       planTurn
         ? `\n\n${planTurnPrompt(
             planTurn,
@@ -1833,7 +1925,7 @@ ${sandboxedCustom}`;
         role: m.role === "assistant" ? "assistant" : "user",
         content: m.content,
       })),
-      inputModelMessage(text, outgoing),
+      inputModelMessage(runText, outgoing),
     ];
     let queuedAccepted = false;
     const acknowledgeQueued = () => {
@@ -1856,6 +1948,7 @@ ${sandboxedCustom}`;
     };
 
     let planApproved = false;
+    let activeAssistantId = assistantMsg.id;
     try {
       if (turnSetupError) throw turnSetupError;
       if (runChatId) {
@@ -1912,6 +2005,41 @@ ${sandboxedCustom}`;
       let reasoningStartedAt: number | null = null;
       let stepContent = "";
       let stepBlocks: ChatMessage["reasoningBlocks"] = [];
+      const appendSteeredTurn = (steeredText: string) => {
+        if (!runIsCurrent()) return;
+        while (
+          streamPatchesRef.current.text.length > 0 ||
+          streamPatchesRef.current.output.length > 0
+        ) {
+          streamTierDrainRef.current("text");
+          streamTierDrainRef.current("output");
+        }
+        const at = Date.now();
+        const steeredUser: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: "user",
+          content: steeredText,
+          createdAt: at,
+          steered: true,
+        };
+        const nextAssistant: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "",
+          createdAt: at,
+          toolCalls: [],
+        };
+        activeAssistantId = nextAssistant.id;
+        stepContent = "";
+        stepBlocks = [];
+        reasoningStartedAt = null;
+        const next = [...messagesRef.current, steeredUser, nextAssistant];
+        setMessages(next);
+        if (runChatId) {
+          useChatsStore.getState().setLive(runChatId, next);
+          persistDebounced(runChatId, next);
+        }
+      };
       type OutputToolCall = {
         name: string;
         args: unknown;
@@ -2023,7 +2151,7 @@ ${sandboxedCustom}`;
         threadId: turnThreadId ?? undefined,
         clientTurnId,
         onRequestId: (id) => {
-          activeRunRequestIdRef.current = id;
+          trackRunRequestId(id);
           acknowledgeQueued();
         },
         onRawEvent: (event) => {
@@ -2146,6 +2274,7 @@ ${sandboxedCustom}`;
                 usd: estimateUsd(model, usageIn, usageOut).usd,
               });
           },
+          onSteered: (steeredText) => appendSteeredTurn(steeredText),
           onSubagentUpdate: (update) => {
             updateRunLast((m) => {
               const list = [...(m.subagents ?? [])];
@@ -2244,7 +2373,7 @@ ${sandboxedCustom}`;
       if (runIsCurrent()) {
         const completedAt = Date.now();
         updateRunLast((message) =>
-          message.id === assistantMsg.id ? { ...message, createdAt: completedAt } : message,
+          message.id === activeAssistantId ? { ...message, createdAt: completedAt } : message,
         );
         await flushStreamPatches();
         if (runIsCurrent()) {
@@ -2265,11 +2394,14 @@ ${sandboxedCustom}`;
         streamQueuesRef.current?.dispose();
         streamQueuesRef.current = null;
         streamDrainQueuedRef.current = { text: false, output: false };
-        activeRunRequestIdRef.current = null;
+        trackRunRequestId(null);
         runOwnerRef.current = false;
         setApprovalModeLocked(false);
       }
       endChatRun(runHandle);
+      if (!runEndedCleanly && runChatId) {
+        useAgentTurnsStore.getState().purgeSteeredFollowUps(runChatId);
+      }
       if (runEndedCleanly && runChatId) {
         const followUps = useAgentTurnsStore.getState().takeFollowUps(runChatId);
         const next = followUps.find((item) => item.status === "pending");
@@ -2284,7 +2416,7 @@ ${sandboxedCustom}`;
         }
       }
     }
-  }, [streaming, apiKey, provider, model, providerModelsMap, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId]);
+  }, [streaming, apiKey, provider, model, providerModelsMap, projectId, projectName, currentHead, figureMode, figureModeAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId, trackRunRequestId, persistDebounced]);
 
   const stop = useCallback(() => {
     pendingImagesRef.current = [];
@@ -2415,7 +2547,7 @@ ${sandboxedCustom}`;
         streamDrainQueuedRef.current = { text: false, output: false };
       });
       persistTimerRef.current = null;
-      activeRunRequestIdRef.current = null;
+      trackRunRequestId(null);
       runOwnerRef.current = false;
       endChatRun(run);
     }
@@ -2429,7 +2561,7 @@ ${sandboxedCustom}`;
     setGoalEditorProjectId(null);
     setGoalDraft("");
     setInputState(savedDraft(projectId));
-  }, [projectId]);
+  }, [projectId, trackRunRequestId]);
 
   useEffect(() => {
     const sync = () => {
@@ -2719,18 +2851,26 @@ ${sandboxedCustom}`;
                   </div>
                 )}
                 <div className="flex w-full flex-wrap items-center justify-center gap-1.5">
-                  {(figureMode ? FIGURE_SUGGESTIONS : SUGGESTIONS).map((s) => {
-                    const Icon = figureMode ? FIGURE_SUGGESTION_ICONS[s] : SUGGESTION_ICONS[s];
+                  {(figureMode
+                    ? FIGURE_SUGGESTIONS.map((s) => ({
+                        label: s,
+                        send: s,
+                        icon: FIGURE_SUGGESTION_ICONS[s],
+                      }))
+                    : availableSuggestions(SUGGESTIONS, skillsQuery.data)
+                  ).map((suggestion) => {
+                    const Icon = suggestion.icon;
                     return (
                       <button
                         type="button"
-                        key={s}
-                        title={s}
-                        onClick={() => void send(s)}
+                        key={suggestion.label}
+                        title={suggestion.label}
+                        data-testid="chat-suggestion"
+                        onClick={() => void send(suggestion.send)}
                         className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-left text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/70"
                       >
                         {Icon && <Icon className="size-3.5 shrink-0" />}
-                        <span className="min-w-0 truncate">{s}</span>
+                        <span className="min-w-0 truncate">{suggestion.label}</span>
                       </button>
                     );
                   })}
@@ -2897,25 +3037,34 @@ ${sandboxedCustom}`;
           <div className="relative shrink-0">
                 {queuedFollowUps.length > 0 && (
                   <div className="mb-2 flex flex-col gap-1.5">
-                    {queuedFollowUps.map((item) => (
+                    {queuedFollowUps.map((item) => {
+                      const summary =
+                        item.text ||
+                        item.attachments.map((attachment) => attachment.name).join(", ");
+                      const awaitingSafePoint = steeringFollowUpIds.has(item.id);
+                      const beingSent = sendingFollowUpId === item.id;
+                      const chipText =
+                        item.status === "steered"
+                          ? `Steered into the running turn: ${summary}`
+                          : beingSent
+                            ? `Sent as the next turn: ${summary}`
+                            : awaitingSafePoint
+                              ? `Waiting for a safe point in the run: ${summary}`
+                              : `Queued for the next turn: ${summary}`;
+                      return (
                       <div
                         key={item.id}
                         data-testid="agent-follow-up-chip"
                         className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground"
                       >
-                        <span className="min-w-0 flex-1 truncate">
-                          {item.status === "steered"
-                            ? `Steered into the running turn: ${item.text || item.attachments.map((attachment) => attachment.name).join(", ")}`
-                            : `Queued for the next turn: ${item.text || item.attachments.map((attachment) => attachment.name).join(", ")}`}
-                        </span>
+                        <span className="min-w-0 flex-1 truncate">{chipText}</span>
                         {item.status === "pending" && streaming && (
                           <button
                             type="button"
                             data-testid="agent-follow-up-steer"
-                            disabled={
-                              steeringFollowUpIds.has(item.id) || sendingFollowUpId === item.id
-                            }
-                            className="shrink-0 rounded-md px-2 py-0.5 font-medium text-primary transition-colors hover:bg-accent"
+                            disabled={awaitingSafePoint || beingSent || !activeRunRequestId}
+                            title={activeRunRequestId ? undefined : "Starting the run"}
+                            className="shrink-0 rounded-md px-2 py-0.5 font-medium text-primary transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
                             onClick={() => {
                               const runId = activeRunRequestIdRef.current;
                               const chatId = activeChatId;
@@ -2925,15 +3074,16 @@ ${sandboxedCustom}`;
                                 sendingFollowUpIdRef.current === item.id
                               ) return;
                               const message = toAgentMessages([
-                                inputModelMessage(item.text, item.attachments),
+                                inputModelMessage(steeredSkillText(item.text, skillsRef.current), item.attachments),
                               ])[0];
                               if (!message) return;
                               steeringFollowUpIdsRef.current.add(item.id);
                               setSteeringFollowUpIds(new Set(steeringFollowUpIdsRef.current));
                               agentSteer(runId, message)
-                                .then(() =>
-                                  useAgentTurnsStore.getState().markSteered(chatId, item.id),
-                                )
+                                .then((result) => {
+                                  if (result?.status === "run_finished") return;
+                                  useAgentTurnsStore.getState().markSteered(chatId, item.id);
+                                })
                                 .catch(() =>
                                   toast.error("The running turn could not be steered."),
                                 )
@@ -2954,9 +3104,7 @@ ${sandboxedCustom}`;
                             data-testid="agent-follow-up-discard"
                             aria-label="Discard queued message"
                             title="Discard queued message"
-                            disabled={
-                              steeringFollowUpIds.has(item.id) || sendingFollowUpId === item.id
-                            }
+                            disabled={awaitingSafePoint || beingSent}
                             className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                             onClick={() => {
                               if (
@@ -2973,7 +3121,8 @@ ${sandboxedCustom}`;
                           </button>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
                 {pendingApproval && (
@@ -3086,10 +3235,17 @@ ${sandboxedCustom}`;
                     setSlashMenuDismissedInput(input);
                     setActiveSlashCommandId(null);
                   }}
-                  onSelect={() => {
-                    setInput("");
-                    setSlashMenuDismissedInput(null);
+                  onSelect={(command: ComposerCommand) => {
+                    const inserted =
+                      command.kind === "insert" ? (command.insertText ?? "") : "";
+                    setInput(inserted);
+                    setSlashMenuDismissedInput(inserted ? inserted : null);
                     setActiveSlashCommandId(null);
+                    if (inserted) {
+                      requestAnimationFrame(() =>
+                        textareaRef.current?.focus({ preventScroll: true }),
+                      );
+                    }
                   }}
                 />
               )}

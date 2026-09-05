@@ -451,6 +451,18 @@ impl Drop for RunResourcesGuard<'_> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SteerStatus {
+    Delivered,
+    RunFinished,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub struct SteerResult {
+    pub status: SteerStatus,
+}
+
 /// Inject mid-run input into an active run; it lands at the next message
 /// boundary (after the pending tool batch completes).
 #[tauri::command]
@@ -458,7 +470,7 @@ pub async fn agent_steer(
     state: State<'_, AgentState>,
     request_id: String,
     message: oleafly_agent::Message,
-) -> Result<(), String> {
+) -> Result<SteerResult, String> {
     steer_run(state.inner(), &request_id, message).await
 }
 
@@ -488,7 +500,7 @@ async fn steer_run(
     state: &AgentState,
     request_id: &str,
     message: oleafly_agent::Message,
-) -> Result<(), String> {
+) -> Result<SteerResult, String> {
     if message.role != oleafly_agent::Role::User {
         return Err("a steer must be a user message".into());
     }
@@ -505,10 +517,12 @@ async fn steer_run(
         senders.get(request_id).map(|sender| sender.value.clone())
     };
     match sender {
-        Some(handle) if handle.steer(message).await => Ok(()),
-        Some(_) => Err(format!(
-            "run {request_id} stopped before receiving the steer"
-        )),
+        Some(handle) if handle.steer(message).await => Ok(SteerResult {
+            status: SteerStatus::Delivered,
+        }),
+        Some(_) => Ok(SteerResult {
+            status: SteerStatus::RunFinished,
+        }),
         None => Err(format!("no active run {request_id} to steer")),
     }
 }
@@ -735,11 +749,15 @@ pub async fn agent_run(
 pub const SUBAGENT_TOOL: &str = "spawn_subagents";
 
 /// Risk classification mirroring the shell's approval-risk table
-/// (packages/ai-tools/src/approval-risk.ts): read tools run unprompted and
-/// may execute concurrently; everything else confirms, and unknown tools
-/// classify as write so nothing new runs silently.
-const PARALLEL_SAFE_TOOLS: [&str; 24] = [
+/// (packages/ai-tools/src/approval-risk.ts): read tools run unprompted;
+/// everything else confirms, and unknown tools classify as write so nothing
+/// new runs silently. Read-class tools also run concurrently unless they are
+/// listed in SERIAL_READ_TOOLS.
+const READ_RISK_TOOLS: [&str; 27] = [
     "read_file",
+    "read_skill_file",
+    "load_skill",
+    "show_location",
     "list_files",
     "project_map",
     "search_project",
@@ -765,6 +783,8 @@ const PARALLEL_SAFE_TOOLS: [&str; 24] = [
     "close_agent",
 ];
 
+const SERIAL_READ_TOOLS: [&str; 1] = ["show_location"];
+
 const NETWORK_TOOLS: [&str; 4] = [
     "literature_search",
     "alphaxiv_search",
@@ -776,7 +796,7 @@ fn tool_risk(name: &str) -> oleafly_agent::ToolRisk {
     if name == "run_command" {
         return oleafly_agent::ToolRisk::Shell;
     }
-    if PARALLEL_SAFE_TOOLS.contains(&name) {
+    if READ_RISK_TOOLS.contains(&name) {
         return oleafly_agent::ToolRisk::Read;
     }
     if NETWORK_TOOLS.contains(&name) {
@@ -801,8 +821,13 @@ const ORCHESTRATION_TOOLS: [&str; 8] = [
 
 fn tool_pipeline() -> oleafly_agent::ToolPipeline {
     let mut registry = oleafly_agent::ToolRegistry::default();
-    for name in PARALLEL_SAFE_TOOLS {
-        registry.register_trusted(name, oleafly_agent::RegisteredTool::parallel());
+    for name in READ_RISK_TOOLS {
+        let tool = if SERIAL_READ_TOOLS.contains(&name) {
+            oleafly_agent::RegisteredTool::exclusive()
+        } else {
+            oleafly_agent::RegisteredTool::parallel()
+        };
+        registry.register_trusted(name, tool);
     }
     for name in ORCHESTRATION_TOOLS {
         registry.register_trusted(name, oleafly_agent::RegisteredTool::unguarded());
@@ -845,7 +870,7 @@ async fn native_agent_tool(
     name: &str,
     arguments_json: &str,
 ) -> Option<oleafly_agent::ToolOutput> {
-    if !crate::mcp::native::handles(name, "") {
+    if !crate::mcp::native::handles_for_agent(name) {
         return None;
     }
     let arguments: serde_json::Value = match serde_json::from_str(arguments_json) {
@@ -901,7 +926,7 @@ fn composite_tool_runner(
         let handle = handle.clone();
         Box::pin(async move {
             if let Some(project) = project.as_deref() {
-                if crate::mcp::native::handles(&call.name, "") {
+                if crate::mcp::native::handles_for_agent(&call.name) {
                     let active = {
                         let state = handle.state::<crate::mcp::server::McpState>();
                         let guard = state.active_project.lock().await;

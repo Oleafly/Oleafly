@@ -1,0 +1,80 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{microtype}
+\usepackage{natbib}
+\usepackage{hyperref}
+\usepackage{cleveref}
+
+\title{Working title}
+\author{Author One\\ Institution\\ \texttt{author@example.org}}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+One paragraph. State the problem, what you did, the single most important
+result with a number, and why it matters. Write this last.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:introduction}
+
+What question this paper answers, why it is open, and what the paper
+contributes. End with an explicit list of contributions.
+
+\section{Related work}
+\label{sec:related}
+
+The lines of work this paper sits between, and what each one leaves unsolved.
+
+\section{Method}
+\label{sec:method}
+
+The setup, the notation, and the procedure. Define every symbol before using it.
+
+\begin{equation}
+\label{eq:objective}
+\mathcal{L}(\theta) = \frac{1}{n} \sum_{i=1}^{n} \ell\bigl(f_\theta(x_i), y_i\bigr).
+\end{equation}
+
+\Cref{eq:objective} is the objective optimized throughout.
+
+\section{Experiments}
+\label{sec:experiments}
+
+Data, baselines, protocol, and metrics, in that order. Report uncertainty and
+say what it is.
+
+\begin{table}[t]
+  \centering
+  \caption{Results on the evaluation suite. Replace with real numbers.}
+  \label{tab:results}
+  \begin{tabular}{lcc}
+    \toprule
+    Method & Accuracy (\%) & Latency (ms) \\
+    \midrule
+    Baseline & 00.0 & 000 \\
+    This work & 00.0 & 000 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+What is now known that was not known before, and the concrete limitation a
+reader should carry away.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

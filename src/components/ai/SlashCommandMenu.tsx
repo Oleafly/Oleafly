@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  Fragment,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -42,7 +43,8 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
       const terms = query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
       if (terms.length === 0) return commands;
       return commands.filter((command) => {
-        const searchable = `${command.label} ${command.description}`.toLocaleLowerCase();
+        const searchable =
+          `${command.label} ${command.description} ${command.keywords ?? ""}`.toLocaleLowerCase();
         return terms.every((term) => searchable.includes(term));
       });
     }, [commands, query]);
@@ -91,8 +93,9 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
             return true;
           }
           if (event.key === "Enter") {
+            if (!activeCommand) return false;
             event.preventDefault();
-            if (activeCommand) select(activeCommand);
+            select(activeCommand);
             return true;
           }
           return false;
@@ -115,30 +118,39 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
         ) : (
           filteredCommands.map((command, index) => {
             const selected = index === activeIndex;
+            const group = command.group ?? "";
+            const heading =
+              group && group !== (filteredCommands[index - 1]?.group ?? "") ? group : null;
             return (
-              <button
-                key={command.id}
-                id={`ai-slash-command-${command.id}`}
-                type="button"
-                role="option"
-                aria-selected={selected}
-                tabIndex={-1}
-                onMouseEnter={() => setActiveCommandId(command.id)}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => select(command)}
-                className={cn(
-                  "flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left outline-none transition-colors",
-                  selected && "bg-accent text-accent-foreground",
-                )}
-              >
-                <command.icon className="mt-0.5 size-4 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-medium leading-snug">{command.label}</span>
-                  <span className="block text-[11px] leading-snug text-muted-foreground">
-                    {command.description}
+              <Fragment key={command.id}>
+                {heading && (
+                  <span className="mt-1 block border-t px-2.5 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                    {heading}
                   </span>
-                </span>
-              </button>
+                )}
+                <button
+                  id={`ai-slash-command-${command.id}`}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  tabIndex={-1}
+                  onMouseEnter={() => setActiveCommandId(command.id)}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => select(command)}
+                  className={cn(
+                    "flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left outline-none transition-colors",
+                    selected && "bg-accent text-accent-foreground",
+                  )}
+                >
+                  <command.icon className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-medium leading-snug">{command.label}</span>
+                    <span className="line-clamp-2 block text-[11px] leading-snug text-muted-foreground">
+                      {command.description}
+                    </span>
+                  </span>
+                </button>
+              </Fragment>
             );
           })
         )}

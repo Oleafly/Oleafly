@@ -39,6 +39,7 @@ export interface ChatMessage {
   checkpointRestored?: boolean;
   toolCalls?: ToolEntry[];
   attachments?: AttachmentMeta[];
+  steered?: boolean;
   // Legacy single-block chain-of-thought; still read for chats persisted
   // before reasoningBlocks existed.
   reasoning?: string;

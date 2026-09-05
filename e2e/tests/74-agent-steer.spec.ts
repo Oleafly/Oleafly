@@ -77,6 +77,20 @@ test("Enter during a stream queues messages that can be steered, discarded, and 
   ).toBeVisible({ timeout: 25_000 });
   await expect(tauriPage.locator('[aria-label="Stop"]')).toBeVisible();
 
+  await expect(
+    tauriPage.locator('[data-message-role="user"]:has([data-testid="steered-message-label"])'),
+  ).toBeVisible({ timeout: 25_000 });
+  const steeredBubbleText = await tauriPage.evaluate<string>(
+    `[...document.querySelectorAll('[data-message-role="user"]')]
+      .filter((element) => element.querySelector('[data-testid="steered-message-label"]'))
+      .map((element) => element.textContent ?? "")
+      .join("\\n")`,
+  );
+  expect(steeredBubbleText).toContain(steerText);
+  await expect(
+    tauriPage.locator('[data-testid="steered-message-label"]'),
+  ).toHaveCount(1, { timeout: 10_000 });
+
   const discardText = "Discard this queued direction";
   await enterMessage(tauriPage, discardText);
   await expect(

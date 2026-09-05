@@ -144,6 +144,35 @@ window.
 |---|---|
 | `toggle_theme` | Toggle light / dark mode |
 
+### Skills
+
+| Tool | What it does |
+|---|---|
+| `list_skills` | List installed skills with id, name, description, phase, tier, and whether they are enabled |
+| `load_skill` | Load one skill's full instructions, its folder path, and its file list |
+| `read_skill_file` | Read a reference or script from a skill folder |
+
+## Skills over MCP
+
+An external agent connected over MCP gets the same three skill tools the
+built-in assistant uses: `list_skills`, `load_skill`, and `read_skill_file`.
+They work without opening a project first, so a client can call `list_skills`
+right after connecting. Unlike the file-editing tools above, they also stay
+available with no Oleafly renderer window connected. A client sees every valid
+skill whatever its switch says in Settings: the `enabled` and `projectEnabled`
+state governs which skills Oleafly's own assistant loads by itself, not what an
+external client is allowed to read. See [Skills](Skills.md) for the skill
+format and the bundled research pack.
+
+Some agents read their skills straight from a local folder instead of calling
+tools. For those, the other route is the "Share skills with other agents on
+this computer" setting in Settings → AI → Skills. It symlinks every valid
+Oleafly skill into that agent's own `skills/` subfolder (`~/.claude/skills`,
+`~/.codex/skills`, `~/.agents/skills`, `~/.cursor/skills`, or
+`~/.gemini/skills`, whichever of those already exist on this machine), so a
+skill written once in Oleafly is available from disk with no MCP connection
+involved. Turning the setting off removes the symlinks again.
+
 ## Approvals and safety
 
 Your MCP client (Claude Desktop, Claude Code, and others) already asks you to approve tool use on its side before it ever calls Oleafly. Oleafly's own approval is a second, deeper gate that shows the actual change, and it is the one that still protects you after you click "Always allow" in the client. Choose how much of it you want with the **approval policy** in Settings:

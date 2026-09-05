@@ -30,6 +30,26 @@ export interface ComposerCommand {
   description: string;
   icon: ComponentType<{ className?: string }>;
   action: () => void;
+  kind?: "action" | "insert";
+  insertText?: string;
+  group?: string;
+  keywords?: string;
+}
+
+export function createSkillCommands(
+  skills: readonly { id: string; name: string; description: string }[],
+): ComposerCommand[] {
+  return skills.map((skill) => ({
+    id: `skill:${skill.id}`,
+    label: skill.name,
+    description: skill.description,
+    icon: Sparkles,
+    kind: "insert" as const,
+    insertText: `/${skill.id} `,
+    group: "Skills",
+    keywords: skill.id,
+    action: () => {},
+  }));
 }
 
 export function createSlashCommands(actions: ComposerCommandActions): ComposerCommand[] {

@@ -15,6 +15,7 @@ import {
   editorUndo as coreEditorUndo,
   editorRedo as coreEditorRedo,
   editorFind,
+  waitForEditorDocument,
 } from "@oleafly/editor";
 import { getWysiwygEditor, isWysiwygActive } from "@/components/editor/wysiwyg/controller";
 
@@ -29,6 +30,7 @@ export {
   wrapSelection,
   focusEditor,
   editorFind,
+  waitForEditorDocument,
 };
 
 function insertRawIntoWysiwyg(source: string, block: boolean): boolean {

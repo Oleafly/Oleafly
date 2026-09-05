@@ -25,12 +25,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the editor toolbar, the PDF preview toolbar and the assistant header, each
   opening the matching settings page directly.
 
+- A bundled research skill pack for the AI assistant: an Oleafly research
+  loop that plans a project's literature, authoring, figures, review, and
+  submission work, plus vendored literature-search, writing, statistics, and
+  slide skills from Scientific Agent Skills (MIT, K-Dense Inc.). See
+  [Skills](docs/Skills.md).
+- Type `/skill-id` in the chat composer to run a skill directly for that
+  message. Every skill appears in the slash menu, on or off.
+- `read_skill_file` and `show_location` tools, so a skill can point past its
+  own instructions to a reference file it ships with, or to a spot in your
+  project and its compiled PDF.
+- A domain shelf of extra skills under Settings › AI › Skills, installed on
+  demand from `cdn.oleafly.com` and cached for offline use.
+- Skills can be turned on for a single project as well as device-wide.
+- Skills written in Oleafly can be shared with other coding agents on the
+  same computer (Claude Code, Codex, Cursor, Gemini) through a linked skills
+  folder, from a switch in Settings.
+- Skills over MCP: `list_skills`, `load_skill`, and `read_skill_file` are
+  available to any connected external client, not only the built-in
+  assistant.
+
 ### Changed
 
 - The terminal renders Nerd Font icons and emoji correctly: Powerlevel10k,
   Starship, eza and similar tools line up, whichever Nerd Font is installed.
   Shells start with truecolor and a UTF-8 locale advertised, and busy output is
   drawn on the GPU when available.
+
+- No limit on how many skills can be turned on at once.
+- `load_skill` now returns a skill's absolute folder path and its file list
+  along with its instructions, so a skill can point the assistant at its own
+  reference files and scripts instead of describing them in prose.
+- A message steered into a running turn stays in the conversation as its own
+  "Steered" entry, and the reply to it starts a new message instead of running
+  into whatever came before, so the next turn sees it too.
+
+### Removed
+
+- The six built-in one-paragraph skills research-authoring, research-review,
+  research-citation, research-publish, conduct-research, and ai-figure.
+  What they covered is now part of the assistant's always-on research rules
+  and the bundled skill pack, not a skill you had to remember to turn on.
 
 ### Fixed
 
@@ -45,6 +80,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   being clipped.
 - Compile log entries only show an expand chevron when there is an excerpt to
   reveal, and the "Open" link no longer disappears when an entry is collapsed.
+
+- "Steer now" stays disabled, instead of silently doing nothing, until the
+  run it would steer has actually started.
+- While a steer request is in flight, its chip says "Waiting for a safe
+  point in the run" instead of sitting there with no feedback.
+- Steering a message into a turn that had already finished no longer shows an
+  error toast for something that worked fine: it is sent as the next turn
+  instead, and the queued message says so.
+- A "Steered" chip left behind by a stopped or failed run is cleared instead
+  of lingering as if the message had gone through.
 
 ## [0.3.13] - 2026-08-29
 

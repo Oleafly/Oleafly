@@ -332,13 +332,18 @@ async fn run_native_call(
     arguments: Value,
 ) -> Response {
     let mut activity = NativeActivity::start(app, state, epoch, &name);
-    let reported = state.active_project.lock().await.clone();
-    let outcome = match crate::mcp::native::resolve_project(&arguments, reported) {
-        Ok(project_id) => {
-            let result = crate::mcp::native::call(&project_id, &name, &arguments).await;
-            (Some(project_id), result)
+    let outcome = if crate::mcp::native::needs_project(&name) {
+        let reported = state.active_project.lock().await.clone();
+        match crate::mcp::native::resolve_project(&arguments, reported) {
+            Ok(project_id) => {
+                let result = crate::mcp::native::call(&project_id, &name, &arguments).await;
+                (Some(project_id), result)
+            }
+            Err(error) => (None, Err(error)),
         }
-        Err(error) => (None, Err(error)),
+    } else {
+        let result = crate::mcp::native::call("", &name, &arguments).await;
+        (Some(String::new()), result)
     };
     let succeeded = matches!(&outcome, (Some(_), Ok(_)));
     let changed = matches!(&outcome, (Some(_), Ok(result)) if result.change.is_some());
