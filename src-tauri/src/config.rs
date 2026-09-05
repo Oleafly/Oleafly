@@ -789,7 +789,13 @@ fn apply_starter_persona_seed(config: &mut AppConfig, starters: &[Persona]) -> b
 }
 
 #[tauri::command]
-pub fn seed_starter_personas(starters: Vec<Persona>) -> Result<AppConfig, String> {
+pub async fn seed_starter_personas(starters: Vec<Persona>) -> Result<AppConfig, String> {
+    tauri::async_runtime::spawn_blocking(move || seed_starter_personas_blocking(starters))
+        .await
+        .map_err(|error| format!("failed to seed the starter personas: {error}"))?
+}
+
+fn seed_starter_personas_blocking(starters: Vec<Persona>) -> Result<AppConfig, String> {
     update_config(|config| {
         apply_starter_persona_seed(config, &starters);
         Ok(())
@@ -1778,7 +1784,7 @@ mod tests {
             prompt: "Draw carefully.".into(),
         }];
 
-        let visible = seed_starter_personas(starters.clone()).unwrap();
+        let visible = seed_starter_personas_blocking(starters.clone()).unwrap();
 
         assert_eq!(visible.mcp_port, 65001);
         assert_eq!(visible.github_user, "octocat");
@@ -1813,7 +1819,7 @@ mod tests {
 
         persisted.ai_personas.clear();
         write_config(&persisted).unwrap();
-        let after_delete = seed_starter_personas(starters).unwrap();
+        let after_delete = seed_starter_personas_blocking(starters).unwrap();
         assert!(after_delete.ai_personas.is_empty());
         assert!(after_delete.ai_starter_personas_seeded);
         assert!(read_config().unwrap().ai_personas.is_empty());
