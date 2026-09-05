@@ -141,7 +141,7 @@ test("Appearance exposes scrollable dock tabs, search icons, and live terminal s
   await pickOption(
     tauriPage,
     '[role="combobox"][aria-label="Terminal color theme"]',
-    "Light",
+    "Light · light",
   );
   await expect
     .poll(
@@ -176,7 +176,7 @@ test("Appearance exposes scrollable dock tabs, search icons, and live terminal s
   await pickOption(
     tauriPage,
     '[role="combobox"][aria-label="Terminal color theme"]',
-    "Dark",
+    "Dark · dark",
   );
   await tauriPage.click('[aria-label="Close settings"]');
   await tauriPage.click(TERMINAL_TOGGLE);
