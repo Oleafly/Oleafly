@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { setConfig, type AppConfig } from "@/lib/tauri";
 import { mergeCustomProviders } from "@/lib/ai-providers";
 import { enabledModels } from "@/lib/ai-model-state";
-import { AiToolsGrid } from "@/components/ai/AiToolsList";
+import { AiToolsTable } from "@/components/ai/AiToolsList";
 import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
 
 export interface InstructionsTabProps {
@@ -149,7 +149,7 @@ export function InstructionsTab({
               Ask it things like "fix the LaTeX errors", "add a Publications section", or "recompile
               and check the PDF".
             </p>
-            <AiToolsGrid columns={2} />
+            <AiToolsTable />
           </div>
         )}
       </div>

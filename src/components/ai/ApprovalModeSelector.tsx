@@ -40,7 +40,7 @@ const MODE_OPTIONS: Array<{
   {
     mode: "custom",
     label: "Custom (approvals.toml)",
-    description: "Use the saved rules for this project.",
+    description: "Use the rules in approvals.toml. Edit them under Settings, AI Assistant.",
     icon: SlidersHorizontal,
   },
 ];

@@ -322,6 +322,8 @@ pub fn run() {
             logsafe::export_log_archive,
             approvals::approvals_list,
             approvals::approvals_set,
+            approvals::approvals_read_raw,
+            approvals::approvals_write_raw,
             approvals::approvals_mode_get,
             approvals::approvals_mode_set,
             skills::skills_list,

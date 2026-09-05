@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Settings, AI Assistant now has an editor for approvals.toml, the file
+  behind the Custom approval mode, with TOML highlighting, a plain
+  explanation of the format, the open project's id, and validation on
+  save. The tools list under Instructions is a table grouped by area
+  that says what each tool does and when it asks first.
 - A rendered figure now shows up in the chat. Every preview_figure,
   load_image and verify_pdf_pages call keeps its image on the tool card,
   and the final figure of a reply sits above the folded steps with a

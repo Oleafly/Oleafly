@@ -37,6 +37,7 @@ import {
 } from "@/lib/skills";
 import { cn } from "@/lib/utils";
 import { ProvidersTab, type ProviderStatus } from "./ai/ProvidersTab";
+import { ApprovalsFileEditor } from "./ai/ApprovalsFileEditor";
 import { ProjectApprovals } from "./ai/ProjectApprovals";
 import { ProjectBudget } from "./ai/ProjectBudget";
 import { InstructionsTab } from "./ai/InstructionsTab";
@@ -729,6 +730,7 @@ export function AISection() {
           />
           <div className="mt-3 space-y-3">
             <ProjectApprovals />
+            <ApprovalsFileEditor />
             <ProjectBudget key={preferencesResetVersion} />
           </div>
         </TabsContent>
