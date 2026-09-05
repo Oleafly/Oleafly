@@ -292,6 +292,13 @@ The assistant can read and edit files, search the project, compile, inspect the
 log, and extract PDF text to check its own result. It can also help with
 citations, imported documents, and editable TikZ figures.
 
+A bundled pack of research skills teaches it the stages of that work one at a
+time: sweeping the literature, drafting related work, checking that a claim
+still matches its source, preparing figures, reviewing a manuscript, getting
+it ready to submit. Type `/skill-id` in the chat to use one right away. In
+Settings you can turn a skill on for every project or only the one you have
+open, write your own, or install more from a domain shelf.
+
 You choose the model:
 
 - Connect a supported hosted provider with your own API key.
@@ -398,8 +405,6 @@ research workflow.
 
 - **App localization.** Navigate Oleafly in more languages so researchers can
   work in the interface that feels most natural to them.
-- **Agent skills and plugins.** Add focused, reusable AI workflows that send
-  less repeated context and use fewer tokens.
 - **Autonomous research agents.** Turn a research question and source set into
   a structured first draft that gives your work a head start.
 - **Real-time collaboration and comments.** Work together with unlimited,

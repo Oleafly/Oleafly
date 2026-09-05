@@ -32,6 +32,7 @@ import { useFilesStore } from "@/store/files";
 import {
   resetSkillPreferences,
   SKILLS_QUERY_KEY,
+  skillsQueryKey,
   type SkillEntry,
 } from "@/lib/skills";
 import { cn } from "@/lib/utils";
@@ -103,6 +104,19 @@ const DEFAULT_CFG: AppConfig = {
 };
 
 const KEY_NOT_KEPT = "The base URL was saved but the key was not. Enter the key again.";
+
+export function changedConfigFields(
+  previous: AppConfig,
+  next: AppConfig,
+): Partial<AppConfig> {
+  const before = previous as unknown as Record<string, unknown>;
+  const after = next as unknown as Record<string, unknown>;
+  const changed: Record<string, unknown> = {};
+  for (const key of Object.keys(after)) {
+    if (!Object.is(after[key], before[key])) changed[key] = after[key];
+  }
+  return changed as Partial<AppConfig>;
+}
 
 function withRefreshStamp(
   config: AppConfig,
@@ -271,10 +285,16 @@ export function AISection() {
   }, [savedOllamaHost]);
 
   const persist = async (next: AppConfig) => {
-    await setConfig(next);
-    setCfg(next);
+    let merged = next;
+    const changed = changedConfigFields(cfg, next);
+    try {
+      const latest = await getConfig();
+      merged = { ...latest, ...changed } as AppConfig;
+    } catch {}
+    await setConfig(merged);
+    setCfg(merged);
     // Notifies listeners outside this component tree, e.g. the chat panel.
-    window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: next }));
+    window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: merged }));
   };
 
   // Saves the host and activates the model in one step; no separate "Save" button for Ollama.
@@ -579,8 +599,9 @@ export function AISection() {
       } catch {}
       setSysPrompt("");
       setSysPromptSaved(false);
-      const skills = await resetSkillPreferences();
-      queryClient.setQueryData<SkillEntry[]>(SKILLS_QUERY_KEY, skills);
+      const skills = await resetSkillPreferences(projectId);
+      queryClient.setQueryData<SkillEntry[]>(skillsQueryKey(projectId), skills);
+      void queryClient.invalidateQueries({ queryKey: SKILLS_QUERY_KEY });
       if (projectId) {
         await budgetSet(projectId, null);
         queryClient.setQueryData(["project-budget", projectId], null);

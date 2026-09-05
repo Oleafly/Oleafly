@@ -125,6 +125,26 @@ export function gotoRect(rect: SynctexRect, attempt = 0) {
   }, 1800);
 }
 
+export async function gotoPdfPage(page: number, waitMs = 0): Promise<boolean> {
+  const deadline = Date.now() + Math.max(0, waitMs);
+  for (;;) {
+    const entry = pages.find((p) => p.pageNo === page);
+    if (entry) {
+      ensurePageRendered?.(page);
+      scrollWithinPane(entry.el);
+      return true;
+    }
+    if (Date.now() >= deadline) {
+      logMiss(
+        "pdf goto page",
+        `no page element for page ${page} (have pages: ${pages.map((p) => p.pageNo).join(",") || "none"})`
+      );
+      return false;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
 export function pageClickToBp(
   el: HTMLElement,
   pageNo: number,

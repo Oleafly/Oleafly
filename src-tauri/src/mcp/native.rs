@@ -5,7 +5,15 @@ const MAX_SEARCH_QUERY_BYTES: usize = 1_024;
 const MAX_READ_LINES: usize = 800;
 const MAX_READ_CHARS: usize = 40_000;
 const MAX_READ_FILE_BYTES: usize = 16 * 1024 * 1024;
-const READ_ONLY: &[&str] = &["read_file", "list_files", "search_project"];
+const SKILL_TOOLS: &[&str] = &["list_skills", "load_skill", "read_skill_file"];
+const READ_ONLY: &[&str] = &[
+    "read_file",
+    "list_files",
+    "search_project",
+    "list_skills",
+    "load_skill",
+    "read_skill_file",
+];
 
 const MUTATING: &[&str] = &[
     "write_file",
@@ -30,6 +38,14 @@ pub fn is_mutating(name: &str) -> bool {
 
 pub fn handles(name: &str, _approval_policy: &str) -> bool {
     READ_ONLY.contains(&name)
+}
+
+pub fn handles_for_agent(name: &str) -> bool {
+    READ_ONLY.contains(&name) && !SKILL_TOOLS.contains(&name)
+}
+
+pub fn needs_project(name: &str) -> bool {
+    !SKILL_TOOLS.contains(&name)
 }
 
 fn arg<'a>(arguments: &'a Value, key: &str) -> Option<&'a str> {
@@ -147,6 +163,9 @@ pub async fn call(project_id: &str, name: &str, arguments: &Value) -> Result<Cal
         ));
     }
     match name {
+        "list_skills" => list_skills().map(|result| outcome(result, None)),
+        "load_skill" => load_skill(arguments).map(|result| outcome(result, None)),
+        "read_skill_file" => read_skill_file(arguments).map(|result| outcome(result, None)),
         "read_file" => read_file(project_id, arguments).map(|result| outcome(result, None)),
         "list_files" => list_files(project_id)
             .await
@@ -156,6 +175,68 @@ pub async fn call(project_id: &str, name: &str, arguments: &Value) -> Result<Cal
             .map(|result| outcome(result, None)),
         other => Err(format!("{other} is not handled natively")),
     }
+}
+
+fn skill_records() -> Result<Vec<crate::skills::SkillRecord>, String> {
+    let root = crate::paths::oleafly_root()?;
+    let pack_root = crate::skills_pack::cached_pack_root();
+    crate::skills::list_with(&root, pack_root.as_deref(), None)
+}
+
+fn valid_skill(record: &crate::skills::SkillRecord) -> bool {
+    matches!(record.validation, crate::skills::SkillValidation::Valid)
+}
+
+fn list_skills() -> Result<Value, String> {
+    let skills: Vec<Value> = skill_records()?
+        .into_iter()
+        .filter(valid_skill)
+        .map(|record| {
+            json!({
+                "id": record.id,
+                "name": record.name,
+                "description": record.description,
+                "phase": record.phase,
+                "tier": record.tier,
+                "enabled": record.enabled,
+            })
+        })
+        .collect();
+    Ok(payload(json!({ "skills": skills })))
+}
+
+fn load_skill(arguments: &Value) -> Result<Value, String> {
+    let id = required(arguments, "id")?;
+    let record = skill_records()?
+        .into_iter()
+        .filter(valid_skill)
+        .find(|record| record.id == id)
+        .ok_or_else(|| format!("no skill named {id} is installed"))?;
+    let files: Vec<Value> = record
+        .files
+        .iter()
+        .map(|file| json!({ "path": file.path, "bytes": file.bytes }))
+        .collect();
+    Ok(payload(json!({
+        "id": record.id,
+        "name": record.name,
+        "description": record.description,
+        "dir": record.dir,
+        "files": files,
+        "instructions": record.instructions,
+    })))
+}
+
+fn read_skill_file(arguments: &Value) -> Result<Value, String> {
+    let id = required(arguments, "id")?;
+    let path = required(arguments, "path")?;
+    let root = crate::paths::oleafly_root()?;
+    let file = crate::skills::read_skill_file(&root, id, path)?;
+    Ok(payload(json!({
+        "path": file.path,
+        "content": file.content,
+        "truncated": file.truncated,
+    })))
 }
 
 fn read_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
@@ -247,6 +328,31 @@ mod tests {
                 assert!(handles(name, policy), "{name} under {policy}");
             }
         }
+    }
+
+    #[test]
+    fn skill_reads_run_natively_without_an_open_project() {
+        for policy in ["ask", "auto_writes", "trust"] {
+            for name in SKILL_TOOLS {
+                assert!(handles(name, policy), "{name} under {policy}");
+                assert!(!is_mutating(name), "{name}");
+                assert!(!needs_project(name), "{name}");
+            }
+        }
+        for name in ["read_file", "list_files", "search_project"] {
+            assert!(needs_project(name), "{name}");
+        }
+    }
+
+    #[test]
+    fn the_agent_keeps_skill_tools_in_the_webview() {
+        for name in SKILL_TOOLS {
+            assert!(!handles_for_agent(name), "{name}");
+        }
+        for name in ["read_file", "list_files", "search_project"] {
+            assert!(handles_for_agent(name), "{name}");
+        }
+        assert!(!handles_for_agent("write_file"));
     }
 
     #[test]

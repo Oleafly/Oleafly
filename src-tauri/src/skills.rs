@@ -1,28 +1,60 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
-const MAX_SKILL_FILE_BYTES: u64 = 10_000;
-const MAX_PACK_BYTES: u64 = 16 * 1024 * 1024;
-const MAX_PACK_ENTRIES: usize = 256;
-const MAX_PACK_DEPTH: usize = 16;
-const MAX_STATE_BYTES: u64 = 64 * 1024;
-const MAX_ENABLED_SKILLS: usize = 32;
-const FIRST_PARTY_MARKER_FILE: &str = ".oleafly-first-party";
-const FIRST_PARTY_MARKER: &str = "oleafly-first-party-v1\n";
+pub(crate) const MAX_SKILL_FILE_BYTES: u64 = 4 * 1024 * 1024;
+pub(crate) const MAX_PACK_BYTES: u64 = 512 * 1024 * 1024;
+pub(crate) const MAX_PACK_ENTRIES: usize = 50_000;
+pub(crate) const MAX_PACK_DEPTH: usize = 32;
+const MAX_STATE_BYTES: u64 = 16 * 1024 * 1024;
+const MAX_NAME_CHARS: usize = 100;
+const MAX_DESCRIPTION_CHARS: usize = 2_000;
+const MAX_FRONTMATTER_VALUE_CHARS: usize = 1_000;
+const MAX_FRONTMATTER_ITEM_CHARS: usize = 100;
+const MAX_FRONTMATTER_LIST_ITEMS: usize = 64;
+const STATE_VERSION: u8 = 2;
+pub(crate) const MANAGED_MANIFEST_FILE: &str = ".oleafly-skill.json";
+pub(crate) const MANAGED_MANIFEST_SCHEMA_VERSION: u8 = 1;
+pub(crate) const FIRST_PARTY_MARKER_FILE: &str = ".oleafly-first-party";
+pub(crate) const FIRST_PARTY_MARKER: &str = "oleafly-first-party-v1\n";
+pub(crate) const REMOVAL_STAGING_PREFIX: &str = ".skill-remove-";
+pub(crate) const STALE_STAGING_PREFIX: &str = ".skill-stale-";
 const DEFAULT_INSTRUCTIONS: &str =
     "Describe when this skill should be used and list the steps the assistant should follow.";
 
 static SKILLS_WRITE_LOCK: Mutex<()> = Mutex::new(());
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SkillSource {
-    FirstParty,
+    Bundled,
+    Catalog,
     User,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SkillTier {
+    Native,
+    Vendored,
+    Shelf,
+    User,
+}
+
+impl SkillTier {
+    pub fn parse(value: &str) -> Option<Self> {
+        match value.trim() {
+            "native" => Some(Self::Native),
+            "vendored" => Some(Self::Vendored),
+            "shelf" => Some(Self::Shelf),
+            "user" => Some(Self::User),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -50,6 +82,30 @@ pub enum SkillValidation {
     },
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillOrigin {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repo: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commit: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillFile {
+    pub path: String,
+    pub bytes: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillFileContent {
+    pub path: String,
+    pub content: String,
+    pub truncated: bool,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SkillRecord {
@@ -57,10 +113,45 @@ pub struct SkillRecord {
     pub name: String,
     pub description: String,
     pub instructions: String,
+    pub dir: String,
+    pub files: Vec<SkillFile>,
+    pub license: Option<String>,
+    pub compatibility: Option<String>,
+    pub allowed_tools: Vec<String>,
+    pub version: Option<String>,
+    pub author: Option<String>,
+    pub tier: SkillTier,
+    pub phase: Option<String>,
+    pub tools: Vec<String>,
     pub source: SkillSource,
+    pub pack_version: Option<String>,
+    pub update_available: bool,
+    pub project_enabled: bool,
     pub enabled: bool,
     pub removable: bool,
     pub validation: SkillValidation,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagedManifest {
+    pub schema_version: u8,
+    pub id: String,
+    pub source: SkillSource,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pack: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pack_version: Option<String>,
+    #[serde(default)]
+    pub tree_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tier: Option<SkillTier>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phase: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<SkillOrigin>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -80,11 +171,19 @@ pub struct UpdateSkillInput {
     pub instructions: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 struct SkillDocument {
     name: String,
     description: String,
     instructions: String,
+    license: Option<String>,
+    compatibility: Option<String>,
+    allowed_tools: Vec<String>,
+    version: Option<String>,
+    author: Option<String>,
+    tier: Option<SkillTier>,
+    phase: Option<String>,
+    tools: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -94,36 +193,40 @@ struct SkillValidationError {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct SkillsState {
     version: u8,
     #[serde(default)]
     enabled: BTreeSet<String>,
     #[serde(default)]
     seen: BTreeSet<String>,
+    #[serde(default)]
+    project_enabled: BTreeMap<String, BTreeSet<String>>,
 }
 
 impl Default for SkillsState {
     fn default() -> Self {
         Self {
-            version: 1,
+            version: STATE_VERSION,
             enabled: BTreeSet::new(),
             seen: BTreeSet::new(),
+            project_enabled: BTreeMap::new(),
         }
     }
 }
 
 #[derive(Default)]
-struct CopyBudget {
+pub(crate) struct CopyBudget {
     entries: usize,
     bytes: u64,
 }
 
 #[cfg(test)]
-fn skills_root(root: &Path) -> PathBuf {
+pub(crate) fn skills_root(root: &Path) -> PathBuf {
     root.join("skills")
 }
 
-const DEFAULT_SKILLS: [(&str, &str, &str); 10] = [
+const LEGACY_DEFAULT_SKILLS: [(&str, &str, &str); 10] = [
     (
         "research-authoring",
         r#"{ "name": "research-authoring", "version": "1.0.0", "description": "Draft or extend a research manuscript section by section." }"#,
@@ -142,63 +245,37 @@ const DEFAULT_SKILLS: [(&str, &str, &str); 10] = [
     (
         "research-publish",
         r#"{ "name": "research-publish", "version": "1.0.0", "description": "Prepare the manuscript for submission to a venue." }"#,
-        "---\nname: research-publish\ndescription: Prepare the manuscript for submission to a venue.\n---\n\nRun a submission pass: confirm the venue's format and page limits, check the abstract and title, verify anonymization where required, resolve every remaining compile warning, and produce a final clean PDF. List anything that still needs a human decision before upload.\n",
+        "---\nname: research-publish\ndescription: Prepare the manuscript for submission to a venue.\n---\n\nCheck the manuscript against the target venue: page limits, anonymity, template compliance, figure resolution, and reference style. Report every blocker with the exact file and line, fix the mechanical ones, and finish with a clean compile plus a short submission checklist.\n",
     ),
     (
         "conduct-research",
-        r#"{ "name": "conduct-research", "version": "1.0.0", "description": "Run a literature investigation for the current project." }"#,
-        "---\nname: conduct-research\ndescription: Run a literature investigation for the current project.\n---\n\nInvestigate the research question I give you. Search the literature tools for relevant work, read what the connectors return, and build an annotated map: the key papers, how they relate, and where the open gap is. Save the findings as notes in the project so authoring can build on them.\n",
+        r#"{ "name": "conduct-research", "version": "1.0.0", "description": "Run a literature sweep and turn it into usable notes." }"#,
+        "---\nname: conduct-research\ndescription: Run a literature sweep and turn it into usable notes.\n---\n\nStart from the research question, search the literature tools, and keep the results that actually answer it. For each keeper, record the citation, the claim it supports, and where it belongs in the manuscript. Finish with a short synthesis that names the gap the project fills.\n",
     ),
     (
         "openresearch",
         r#"{ "name": "openresearch", "version": "1.0.0", "description": "Ground research in literature and run or inspect experiments with the local orx CLI." }"#,
-        r#"---
-name: OpenResearch (orx)
-description: Ground research in literature and run or inspect experiments with the local orx CLI.
----
-
-Use `orx` when a task needs literature evidence, paper metadata, or access to experiments in a local OpenResearch project.
-
-Before using it, check whether `orx` is available on PATH. Run every command through the normal `run_command` tool. Commands follow the current approval mode.
-
-Commands:
-
-- `orx discover keyword <query>` searches the literature by keyword.
-- `orx paper <arxiv-id-or-doi>` shows metadata for an arXiv paper or DOI.
-- `orx projects` lists local OpenResearch projects.
-- `orx project view <id>` shows one project.
-- `orx runs <project-id>` lists experiment runs for a project.
-- `orx logs <run-id>` shows the logs for a run.
-- `orx exp run <experiment-id>` executes an experiment.
-
-Run `orx --help` for the full interface.
-
-If `orx` is not installed, do not install it automatically. Tell the user to run:
-
-```sh
-curl -LsSf https://openresearch.sh/install.sh | sh
-```
-"#,
+        "---\nname: OpenResearch (orx)\ndescription: Ground research in literature and run or inspect experiments with the local orx CLI.\n---\n\nUse the orx CLI through run_command for literature and experiment work. Discover papers with `orx discover keyword <query>`, read one with `orx read <id>`, and inspect or launch experiments with `orx run`. Keep every downloaded source under research/sources/ and every note under research/notes/ so the project stays reproducible.\n",
     ),
     (
         "import-refine",
-        r#"{ "name": "import-refine", "version": "1.0.0", "description": "Clean up an imported document so it compiles and reads well." }"#,
-        "---\nname: import-refine\ndescription: Clean up an imported document so it compiles and reads well.\n---\n\nReview the imported sources in this project. Fix compile errors first, then normalize the preamble, tidy section structure, and flag any content that did not survive the import. Compile after each change and stop when the document builds cleanly.\n",
+        r#"{ "name": "import-refine", "version": "1.0.0", "description": "Clean up an imported document until it compiles and reads well." }"#,
+        "---\nname: import-refine\ndescription: Clean up an imported document until it compiles and reads well.\n---\n\nCompile first and read the log. Fix the errors in order, then the warnings that affect output. Normalize headings, figures, tables, and citation keys to the project's conventions, and recompile after each group of fixes so the document never regresses.\n",
     ),
     (
         "pdf-to-latex",
-        r#"{ "name": "pdf-to-latex", "version": "1.0.0", "description": "Reconstruct an attached PDF as an editable LaTeX project." }"#,
-        "---\nname: pdf-to-latex\ndescription: Reconstruct an attached PDF as an editable LaTeX project.\n---\n\nRead the attached PDF page by page and rebuild it as LaTeX in this project. Match the section structure, environments, math, and citations. After each section, compile and use the PDF text tools to compare the output against the original.\n",
+        r#"{ "name": "pdf-to-latex", "version": "1.0.0", "description": "Rebuild a PDF as a structured LaTeX source." }"#,
+        "---\nname: pdf-to-latex\ndescription: Rebuild a PDF as a structured LaTeX source.\n---\n\nRead the PDF text, then rebuild the document as LaTeX section by section. Keep the original structure, preserve math and tables faithfully, and mark anything you could not recover with a clear TODO. Compile as you go so the rebuild always produces a document.\n",
     ),
     (
         "template-generate",
-        r#"{ "name": "template-generate", "version": "1.0.0", "description": "Turn the current document into a reusable template." }"#,
-        "---\nname: template-generate\ndescription: Turn the current document into a reusable template.\n---\n\nGeneralize the current document into a reusable template: replace concrete content with placeholder commands, keep the preamble and styling, and document each placeholder at the top of the file. Compile to confirm the skeleton still builds.\n",
+        r#"{ "name": "template-generate", "version": "1.0.0", "description": "Create a reusable project template from the current document." }"#,
+        "---\nname: template-generate\ndescription: Create a reusable project template from the current document.\n---\n\nStrip the current document down to a reusable skeleton: keep the preamble, the section structure, and the placeholder content that shows how each part is used. Remove project-specific text and data, document the template's assumptions, and confirm it compiles from a clean state.\n",
     ),
     (
         "ai-figure",
-        r#"{ "name": "ai-figure", "version": "1.0.0", "description": "Draw a publication-quality TikZ figure from a description." }"#,
-        "---\nname: ai-figure\ndescription: Draw a publication-quality TikZ figure from a description.\n---\n\nDraw the figure I describe as TikZ. Preview it with the figure tools, iterate until the layout is clean and labels do not overlap, then insert it at my cursor with a caption and label.\n",
+        r#"{ "name": "ai-figure", "version": "1.0.0", "description": "Design and insert a figure that matches the document." }"#,
+        "---\nname: ai-figure\ndescription: Design and insert a figure that matches the document.\n---\n\nDecide what the figure has to show before drawing anything. Match the document's fonts, colors, and line weights, keep labels readable at print size, and place the figure with a caption and a label that the text actually references. Compile to confirm the placement.\n",
     ),
 ];
 
@@ -210,17 +287,17 @@ fn validation_error(code: SkillValidationCode, message: impl Into<String>) -> Sk
 }
 
 #[cfg(windows)]
-fn is_reparse_point(metadata: &std::fs::Metadata) -> bool {
+pub(crate) fn is_reparse_point(metadata: &std::fs::Metadata) -> bool {
     use std::os::windows::fs::MetadataExt as _;
     metadata.file_attributes() & 0x400 != 0
 }
 
 #[cfg(not(windows))]
-fn is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
+pub(crate) fn is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
     false
 }
 
-fn open_nofollow(path: &Path) -> std::io::Result<std::fs::File> {
+pub(crate) fn open_nofollow(path: &Path) -> std::io::Result<std::fs::File> {
     let mut options = std::fs::OpenOptions::new();
     options.read(true);
     #[cfg(unix)]
@@ -237,7 +314,7 @@ fn open_nofollow(path: &Path) -> std::io::Result<std::fs::File> {
     options.open(path)
 }
 
-fn managed_skills_root(root: &Path) -> Result<PathBuf, String> {
+pub(crate) fn managed_skills_root(root: &Path) -> Result<PathBuf, String> {
     std::fs::create_dir_all(root)
         .map_err(|error| format!("Could not create the Oleafly data directory: {error}"))?;
     let root_metadata = std::fs::symlink_metadata(root)
@@ -273,7 +350,7 @@ fn managed_skills_root(root: &Path) -> Result<PathBuf, String> {
     Ok(resolved_skills)
 }
 
-fn validate_skill_id(id: &str) -> Result<(), String> {
+pub(crate) fn validate_skill_id(id: &str) -> Result<(), String> {
     let components: Vec<_> = Path::new(id).components().collect();
     let is_single_segment = matches!(components.as_slice(), [Component::Normal(_)]);
     if id.is_empty()
@@ -330,6 +407,10 @@ fn split_frontmatter(markdown: &str) -> Result<(String, String), SkillValidation
     Ok((frontmatter.join("\n"), lines.collect::<Vec<_>>().join("\n")))
 }
 
+fn yaml_field<'a>(mapping: &'a serde_yaml::Mapping, field: &str) -> Option<&'a serde_yaml::Value> {
+    mapping.get(serde_yaml::Value::String(field.to_string()))
+}
+
 fn required_frontmatter_field(
     mapping: &serde_yaml::Mapping,
     field: &str,
@@ -337,8 +418,7 @@ fn required_frontmatter_field(
     invalid_code: SkillValidationCode,
     max_chars: usize,
 ) -> Result<String, SkillValidationError> {
-    let key = serde_yaml::Value::String(field.to_string());
-    let Some(value) = mapping.get(&key) else {
+    let Some(value) = yaml_field(mapping, field) else {
         return Err(validation_error(
             missing_code,
             format!("SKILL.md is missing the front matter field \"{field}\"."),
@@ -360,6 +440,44 @@ fn required_frontmatter_field(
         ));
     }
     Ok(value.to_string())
+}
+
+fn scalar_text(value: &serde_yaml::Value) -> Option<String> {
+    match value {
+        serde_yaml::Value::String(text) => Some(text.trim().to_string()),
+        serde_yaml::Value::Number(number) => Some(number.to_string()),
+        serde_yaml::Value::Bool(flag) => Some(flag.to_string()),
+        _ => None,
+    }
+}
+
+fn optional_text(mapping: &serde_yaml::Mapping, field: &str) -> Option<String> {
+    yaml_field(mapping, field)
+        .and_then(scalar_text)
+        .map(|text| text.replace(['\r', '\n'], " ").trim().to_string())
+        .filter(|text| !text.is_empty() && text.chars().count() <= MAX_FRONTMATTER_VALUE_CHARS)
+}
+
+fn optional_text_list(mapping: &serde_yaml::Mapping, field: &str) -> Vec<String> {
+    let Some(value) = yaml_field(mapping, field) else {
+        return Vec::new();
+    };
+    let items: Vec<String> = match value {
+        serde_yaml::Value::Sequence(items) => items.iter().filter_map(scalar_text).collect(),
+        other => scalar_text(other)
+            .map(|text| {
+                text.split([',', ' ', '\t', '\r', '\n'])
+                    .map(|part| part.trim().to_string())
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default(),
+    };
+    items
+        .into_iter()
+        .map(|item| item.trim().to_string())
+        .filter(|item| !item.is_empty() && item.chars().count() <= MAX_FRONTMATTER_ITEM_CHARS)
+        .take(MAX_FRONTMATTER_LIST_ITEMS)
+        .collect()
 }
 
 fn parse_skill_markdown(markdown: &str) -> Result<SkillDocument, SkillValidationError> {
@@ -387,14 +505,14 @@ fn parse_skill_markdown(markdown: &str) -> Result<SkillDocument, SkillValidation
         "name",
         SkillValidationCode::MissingName,
         SkillValidationCode::InvalidName,
-        100,
+        MAX_NAME_CHARS,
     )?;
     let description = required_frontmatter_field(
         &mapping,
         "description",
         SkillValidationCode::MissingDescription,
         SkillValidationCode::InvalidDescription,
-        500,
+        MAX_DESCRIPTION_CHARS,
     )?;
     let instructions = instructions.trim().to_string();
     if instructions.is_empty() {
@@ -403,10 +521,26 @@ fn parse_skill_markdown(markdown: &str) -> Result<SkillDocument, SkillValidation
             "SKILL.md must include instructions after its front matter.",
         ));
     }
+    let metadata = yaml_field(&mapping, "metadata")
+        .and_then(serde_yaml::Value::as_mapping)
+        .cloned()
+        .unwrap_or_default();
+    let oleafly = yaml_field(&metadata, "oleafly")
+        .and_then(serde_yaml::Value::as_mapping)
+        .cloned()
+        .unwrap_or_default();
     Ok(SkillDocument {
         name,
         description,
         instructions,
+        license: optional_text(&mapping, "license"),
+        compatibility: optional_text(&mapping, "compatibility"),
+        allowed_tools: optional_text_list(&mapping, "allowed-tools"),
+        version: optional_text(&metadata, "version"),
+        author: optional_text(&metadata, "skill-author"),
+        tier: optional_text(&oleafly, "tier").and_then(|tier| SkillTier::parse(&tier)),
+        phase: optional_text(&oleafly, "phase"),
+        tools: optional_text_list(&oleafly, "tools"),
     })
 }
 
@@ -492,7 +626,7 @@ fn recover_skill_fields(markdown: &str, id: &str) -> (String, String, String) {
     let string_field = |field: &str| {
         mapping
             .as_ref()
-            .and_then(|mapping| mapping.get(serde_yaml::Value::String(field.to_string())))
+            .and_then(|mapping| yaml_field(mapping, field))
             .and_then(serde_yaml::Value::as_str)
             .map(str::trim)
             .filter(|value| !value.is_empty())
@@ -505,7 +639,7 @@ fn recover_skill_fields(markdown: &str, id: &str) -> (String, String, String) {
     )
 }
 
-fn regular_file_matches(path: &Path, expected: &[u8]) -> bool {
+pub(crate) fn regular_file_matches(path: &Path, expected: &[u8]) -> bool {
     let Ok(metadata) = std::fs::symlink_metadata(path) else {
         return false;
     };
@@ -533,24 +667,155 @@ fn regular_file_matches(path: &Path, expected: &[u8]) -> bool {
         && bytes == expected
 }
 
-fn source_for(directory: &Path, id: &str) -> SkillSource {
-    if DEFAULT_SKILLS
-        .iter()
-        .any(|(default_id, _, _)| *default_id == id)
-        && regular_file_matches(
-            &directory.join(FIRST_PARTY_MARKER_FILE),
-            FIRST_PARTY_MARKER.as_bytes(),
-        )
+pub(crate) fn read_managed_manifest(directory: &Path) -> Option<ManagedManifest> {
+    let path = directory.join(MANAGED_MANIFEST_FILE);
+    let metadata = std::fs::symlink_metadata(&path).ok()?;
+    if !metadata.is_file()
+        || metadata.file_type().is_symlink()
+        || is_reparse_point(&metadata)
+        || metadata.len() > MAX_STATE_BYTES
     {
-        SkillSource::FirstParty
-    } else {
-        SkillSource::User
+        return None;
     }
+    let mut file = open_nofollow(&path).ok()?;
+    let mut bytes = Vec::new();
+    Read::by_ref(&mut file)
+        .take(MAX_STATE_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    let manifest: ManagedManifest = serde_json::from_slice(&bytes).ok()?;
+    if manifest.schema_version != MANAGED_MANIFEST_SCHEMA_VERSION {
+        return None;
+    }
+    Some(manifest)
+}
+
+pub(crate) fn write_managed_manifest(
+    directory: &Path,
+    manifest: &ManagedManifest,
+) -> Result<(), String> {
+    let raw = serde_json::to_vec_pretty(manifest)
+        .map_err(|error| format!("Could not encode skill provenance: {error}"))?;
+    crate::sandbox::atomic_write(&directory.join(MANAGED_MANIFEST_FILE), &raw)
+        .map_err(|error| format!("Could not write skill provenance: {error}"))
+}
+
+pub(crate) fn has_first_party_marker(directory: &Path) -> bool {
+    regular_file_matches(
+        &directory.join(FIRST_PARTY_MARKER_FILE),
+        FIRST_PARTY_MARKER.as_bytes(),
+    )
+}
+
+fn source_for(directory: &Path, manifest: Option<&ManagedManifest>) -> SkillSource {
+    match manifest.map(|manifest| manifest.source) {
+        Some(SkillSource::Bundled) if has_first_party_marker(directory) => SkillSource::Bundled,
+        Some(SkillSource::Catalog) => SkillSource::Catalog,
+        _ => SkillSource::User,
+    }
+}
+
+fn walk_skill_files(
+    directory: &Path,
+    prefix: &str,
+    depth: usize,
+    budget: &mut CopyBudget,
+    files: &mut Vec<(String, u64)>,
+) -> Result<(), String> {
+    if depth > MAX_PACK_DEPTH {
+        return Err(format!(
+            "Skill folder exceeds the maximum depth of {MAX_PACK_DEPTH}."
+        ));
+    }
+    let entries = std::fs::read_dir(directory)
+        .map_err(|error| format!("Could not read a skill folder: {error}"))?;
+    for entry in entries {
+        let entry = entry.map_err(|error| format!("Could not read a skill entry: {error}"))?;
+        budget.entries += 1;
+        if budget.entries > MAX_PACK_ENTRIES {
+            return Err(format!(
+                "Skill folder exceeds the limit of {MAX_PACK_ENTRIES} entries."
+            ));
+        }
+        let name = entry.file_name().to_string_lossy().to_string();
+        let relative = if prefix.is_empty() {
+            name.clone()
+        } else {
+            format!("{prefix}/{name}")
+        };
+        if depth == 0 && (name == MANAGED_MANIFEST_FILE || name == FIRST_PARTY_MARKER_FILE) {
+            continue;
+        }
+        let metadata = match std::fs::symlink_metadata(entry.path()) {
+            Ok(metadata) => metadata,
+            Err(_) => continue,
+        };
+        if metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
+            continue;
+        }
+        if metadata.is_dir() {
+            walk_skill_files(&entry.path(), &relative, depth + 1, budget, files)?;
+            continue;
+        }
+        if !metadata.is_file() {
+            continue;
+        }
+        budget.bytes = budget.bytes.saturating_add(metadata.len());
+        if budget.bytes > MAX_PACK_BYTES {
+            return Err(format!(
+                "Skill folder exceeds the limit of {MAX_PACK_BYTES} bytes."
+            ));
+        }
+        files.push((relative, metadata.len()));
+    }
+    Ok(())
+}
+
+pub(crate) fn skill_tree_files(directory: &Path) -> Result<Vec<(String, u64)>, String> {
+    let mut files = Vec::new();
+    walk_skill_files(directory, "", 0, &mut CopyBudget::default(), &mut files)?;
+    files.sort_by(|left, right| left.0.cmp(&right.0));
+    Ok(files)
+}
+
+pub(crate) fn tree_sha256(directory: &Path) -> Result<String, String> {
+    let files = skill_tree_files(directory)?;
+    let mut hasher = Sha256::new();
+    for (relative, _) in &files {
+        let path = directory.join(relative.replace('/', std::path::MAIN_SEPARATOR_STR));
+        let mut file = open_nofollow(&path)
+            .map_err(|error| format!("Could not read \"{relative}\": {error}"))?;
+        let mut bytes = Vec::new();
+        Read::by_ref(&mut file)
+            .take(MAX_PACK_BYTES + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|error| format!("Could not read \"{relative}\": {error}"))?;
+        hasher.update(relative.as_bytes());
+        hasher.update([0u8]);
+        hasher.update((bytes.len() as u64).to_le_bytes());
+        hasher.update(&bytes);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+fn supporting_files(directory: &Path) -> Vec<SkillFile> {
+    skill_tree_files(directory)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|(path, _)| path != "SKILL.md")
+        .map(|(path, bytes)| SkillFile { path, bytes })
+        .collect()
+}
+
+fn directory_label(directory: &Path) -> String {
+    directory.to_string_lossy().to_string()
 }
 
 fn invalid_record(
     id: &str,
+    directory: Option<&Path>,
     source: SkillSource,
+    update_available: bool,
     markdown: Option<&str>,
     error: SkillValidationError,
 ) -> SkillRecord {
@@ -562,9 +827,22 @@ fn invalid_record(
         name,
         description,
         instructions,
+        dir: directory.map(directory_label).unwrap_or_default(),
+        files: directory.map(supporting_files).unwrap_or_default(),
+        license: None,
+        compatibility: None,
+        allowed_tools: Vec::new(),
+        version: None,
+        author: None,
+        tier: SkillTier::User,
+        phase: None,
+        tools: Vec::new(),
         source,
+        pack_version: None,
+        update_available,
+        project_enabled: false,
         enabled: false,
-        removable: source == SkillSource::User,
+        removable: source != SkillSource::Bundled,
         validation: SkillValidation::Invalid {
             code: error.code,
             message: error.message,
@@ -572,24 +850,86 @@ fn invalid_record(
     }
 }
 
-fn inspect_real_skill(directory: &Path, id: &str, state: &SkillsState) -> SkillRecord {
-    let source = source_for(directory, id);
+struct RecordContext<'a> {
+    state: &'a SkillsState,
+    project_id: Option<&'a str>,
+    pack_version: Option<&'a str>,
+    pack_ids: &'a BTreeSet<String>,
+}
+
+fn inspect_real_skill(directory: &Path, id: &str, context: &RecordContext<'_>) -> SkillRecord {
+    let manifest = read_managed_manifest(directory);
+    let source = source_for(directory, manifest.as_ref());
+    let repairable = source == SkillSource::Bundled
+        && context.pack_ids.contains(id)
+        && context.pack_version.is_some();
     let markdown = match read_skill_markdown(directory) {
         Ok(markdown) => markdown,
-        Err(error) => return invalid_record(id, source, None, error),
+        Err(error) => return invalid_record(id, Some(directory), source, repairable, None, error),
     };
-    match parse_skill_markdown(&markdown) {
-        Ok(document) => SkillRecord {
-            id: id.to_string(),
-            name: document.name,
-            description: document.description,
-            instructions: document.instructions,
-            source,
-            enabled: state.enabled.contains(id),
-            removable: source == SkillSource::User,
-            validation: SkillValidation::Valid,
-        },
-        Err(error) => invalid_record(id, source, Some(&markdown), error),
+    let document = match parse_skill_markdown(&markdown) {
+        Ok(document) => document,
+        Err(error) => {
+            return invalid_record(
+                id,
+                Some(directory),
+                source,
+                repairable,
+                Some(&markdown),
+                error,
+            )
+        }
+    };
+    let pack_version = manifest
+        .as_ref()
+        .and_then(|manifest| manifest.pack_version.clone());
+    let update_available = source == SkillSource::Bundled
+        && context.pack_ids.contains(id)
+        && context.pack_version.is_some()
+        && pack_version.as_deref() != context.pack_version;
+    let tier = document
+        .tier
+        .or_else(|| manifest.as_ref().and_then(|manifest| manifest.tier))
+        .unwrap_or(match source {
+            SkillSource::Bundled => SkillTier::Native,
+            SkillSource::Catalog => SkillTier::Shelf,
+            SkillSource::User => SkillTier::User,
+        });
+    let project_enabled = context
+        .project_id
+        .and_then(|project| context.state.project_enabled.get(project))
+        .map(|ids| ids.contains(id))
+        .unwrap_or(false);
+    SkillRecord {
+        id: id.to_string(),
+        name: document.name,
+        description: document.description,
+        instructions: document.instructions,
+        dir: directory_label(directory),
+        files: supporting_files(directory),
+        license: document.license.or_else(|| {
+            manifest
+                .as_ref()
+                .and_then(|manifest| manifest.license.clone())
+        }),
+        compatibility: document.compatibility,
+        allowed_tools: document.allowed_tools,
+        version: document.version,
+        author: document.author,
+        tier,
+        phase: document.phase.or_else(|| {
+            manifest
+                .as_ref()
+                .and_then(|manifest| manifest.phase.clone())
+        }),
+        tools: document.tools,
+        source,
+        pack_version,
+        update_available,
+        project_enabled,
+        enabled: context.state.enabled.contains(id),
+        removable: source != SkillSource::Bundled,
+        validation: SkillValidation::Valid,
     }
 }
 
@@ -633,7 +973,7 @@ fn read_state(root: &Path) -> Result<SkillsState, String> {
         .map_err(|error| format!("Skill settings are not valid UTF-8: {error}"))?;
     let state: SkillsState = serde_json::from_str(&raw)
         .map_err(|error| format!("Skill settings are invalid: {error}"))?;
-    if state.version != 1 {
+    if state.version == 0 || state.version > STATE_VERSION {
         return Err(format!(
             "Skill settings use unsupported version {}.",
             state.version
@@ -643,71 +983,21 @@ fn read_state(root: &Path) -> Result<SkillsState, String> {
 }
 
 fn write_state(root: &Path, state: &SkillsState) -> Result<(), String> {
-    let raw = serde_json::to_vec_pretty(state)
+    let mut state = SkillsState {
+        version: STATE_VERSION,
+        enabled: state.enabled.clone(),
+        seen: state.seen.clone(),
+        project_enabled: state.project_enabled.clone(),
+    };
+    state.project_enabled.retain(|_, ids| !ids.is_empty());
+    let raw = serde_json::to_vec_pretty(&state)
         .map_err(|error| format!("Could not encode skill settings: {error}"))?;
     crate::sandbox::atomic_write(&state_path(root), &raw)
         .map_err(|error| format!("Could not save skill settings: {error}"))
 }
 
-fn seed_defaults_in(skills: &Path) -> Result<(), String> {
-    for (id, manifest, skill_md) in DEFAULT_SKILLS {
-        let directory = skills.join(id);
-        match std::fs::symlink_metadata(&directory) {
-            Ok(metadata) => {
-                if metadata.is_dir()
-                    && !metadata.file_type().is_symlink()
-                    && !is_reparse_point(&metadata)
-                {
-                    let marker = directory.join(FIRST_PARTY_MARKER_FILE);
-                    match std::fs::symlink_metadata(&marker) {
-                        Ok(_) => {}
-                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                            if regular_file_matches(
-                                &directory.join("manifest.json"),
-                                manifest.as_bytes(),
-                            ) {
-                                crate::sandbox::atomic_write(
-                                    &marker,
-                                    FIRST_PARTY_MARKER.as_bytes(),
-                                )
-                                .map_err(|error| {
-                                    format!("Could not write built-in skill provenance: {error}")
-                                })?;
-                            }
-                        }
-                        Err(error) => {
-                            return Err(format!(
-                                "Could not inspect built-in skill provenance: {error}"
-                            ));
-                        }
-                    }
-                }
-                continue;
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(error) => {
-                return Err(format!(
-                    "Could not inspect built-in skill \"{id}\": {error}"
-                ));
-            }
-        }
-        std::fs::create_dir(&directory)
-            .map_err(|error| format!("Could not create built-in skill \"{id}\": {error}"))?;
-        crate::sandbox::atomic_write(&directory.join("manifest.json"), manifest.as_bytes())
-            .map_err(|error| format!("Could not write built-in skill manifest: {error}"))?;
-        crate::sandbox::atomic_write(&directory.join("SKILL.md"), skill_md.as_bytes())
-            .map_err(|error| format!("Could not write built-in SKILL.md: {error}"))?;
-        crate::sandbox::atomic_write(
-            &directory.join(FIRST_PARTY_MARKER_FILE),
-            FIRST_PARTY_MARKER.as_bytes(),
-        )
-        .map_err(|error| format!("Could not write built-in skill provenance: {error}"))?;
-    }
-    Ok(())
-}
-
 fn staged_removal_skill_id(id: &str) -> Option<&str> {
-    let suffix = id.strip_prefix(".skill-remove-")?;
+    let suffix = id.strip_prefix(REMOVAL_STAGING_PREFIX)?;
     let (nonce, skill_id) = suffix.split_once('-')?;
     if nonce.len() == 16
         && nonce.bytes().all(|byte| byte.is_ascii_hexdigit())
@@ -719,10 +1009,35 @@ fn staged_removal_skill_id(id: &str) -> Option<&str> {
     }
 }
 
-fn list_unlocked(root: &Path) -> Result<Vec<SkillRecord>, String> {
+pub(crate) fn legacy_default_skills() -> &'static [(&'static str, &'static str, &'static str); 10] {
+    &LEGACY_DEFAULT_SKILLS
+}
+
+fn list_unlocked(
+    root: &Path,
+    pack_root: Option<&Path>,
+    project_id: Option<&str>,
+) -> Result<Vec<SkillRecord>, String> {
     let skills = managed_skills_root(root)?;
-    seed_defaults_in(&skills)?;
+    let pack = pack_root.and_then(|pack_root| {
+        let manifest = crate::skills_pack::read_pack_manifest(pack_root)
+            .ok()
+            .flatten()?;
+        let _ = crate::skills_pack::seed_from_pack_in(&skills, pack_root, &manifest);
+        Some(manifest)
+    });
+    let pack_ids: BTreeSet<String> = pack
+        .as_ref()
+        .map(|manifest| {
+            manifest
+                .skills
+                .iter()
+                .map(|skill| skill.id.clone())
+                .collect()
+        })
+        .unwrap_or_default();
     let mut state = read_state(root)?;
+    let upgraded = state.version != STATE_VERSION;
     let mut records = Vec::new();
     for entry in std::fs::read_dir(&skills)
         .map_err(|error| format!("Could not read the skills directory: {error}"))?
@@ -732,7 +1047,11 @@ fn list_unlocked(root: &Path) -> Result<Vec<SkillRecord>, String> {
         if id.starts_with(".skill-import-") {
             continue;
         }
-        if id.starts_with(".skill-remove-") {
+        if id.starts_with(STALE_STAGING_PREFIX) {
+            let _ = std::fs::remove_dir_all(entry.path());
+            continue;
+        }
+        if id.starts_with(REMOVAL_STAGING_PREFIX) {
             if let Some(skill_id) = staged_removal_skill_id(&id) {
                 if state.enabled.remove(skill_id) {
                     write_state(root, &state)?;
@@ -747,11 +1066,19 @@ fn list_unlocked(root: &Path) -> Result<Vec<SkillRecord>, String> {
         if !file_type.is_dir() && !file_type.is_symlink() {
             continue;
         }
+        let context = RecordContext {
+            state: &state,
+            project_id,
+            pack_version: pack.as_ref().map(|manifest| manifest.version.as_str()),
+            pack_ids: &pack_ids,
+        };
         match secure_skill_directory(&skills, &id) {
-            Ok(directory) => records.push(inspect_real_skill(&directory, &id, &state)),
+            Ok(directory) => records.push(inspect_real_skill(&directory, &id, &context)),
             Err(message) => records.push(invalid_record(
                 &id,
+                None,
                 SkillSource::User,
+                false,
                 None,
                 validation_error(SkillValidationCode::UnsafePath, message),
             )),
@@ -760,37 +1087,70 @@ fn list_unlocked(root: &Path) -> Result<Vec<SkillRecord>, String> {
     records.sort_by(|left, right| left.id.cmp(&right.id));
     let mut normalized_enabled: BTreeSet<String> = BTreeSet::new();
     let mut normalized_seen: BTreeSet<String> = BTreeSet::new();
+    let mut valid_ids: BTreeSet<String> = BTreeSet::new();
     for record in records.iter() {
         if !matches!(&record.validation, SkillValidation::Valid) {
             continue;
         }
+        valid_ids.insert(record.id.clone());
         normalized_seen.insert(record.id.clone());
         let wanted = if state.seen.contains(&record.id) {
             state.enabled.contains(&record.id)
         } else {
             true
         };
-        if wanted && normalized_enabled.len() < MAX_ENABLED_SKILLS {
+        if wanted {
             normalized_enabled.insert(record.id.clone());
         }
     }
-    if normalized_enabled != state.enabled || normalized_seen != state.seen {
+    let mut normalized_projects: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for (project, ids) in state.project_enabled.iter() {
+        let kept: BTreeSet<String> = ids
+            .iter()
+            .filter(|id| valid_ids.contains(*id))
+            .cloned()
+            .collect();
+        if !kept.is_empty() {
+            normalized_projects.insert(project.clone(), kept);
+        }
+    }
+    if upgraded
+        || normalized_enabled != state.enabled
+        || normalized_seen != state.seen
+        || normalized_projects != state.project_enabled
+    {
+        state.version = STATE_VERSION;
         state.enabled = normalized_enabled;
         state.seen = normalized_seen;
+        state.project_enabled = normalized_projects;
         write_state(root, &state)?;
     }
     for record in &mut records {
         record.enabled = matches!(&record.validation, SkillValidation::Valid)
             && state.enabled.contains(&record.id);
+        record.project_enabled = matches!(&record.validation, SkillValidation::Valid)
+            && project_id
+                .and_then(|project| state.project_enabled.get(project))
+                .map(|ids| ids.contains(&record.id))
+                .unwrap_or(false);
     }
     Ok(records)
 }
 
+#[allow(dead_code)]
 pub fn list(root: &Path) -> Result<Vec<SkillRecord>, String> {
+    list_with(root, None, None)
+}
+
+pub fn list_with(
+    root: &Path,
+    pack_root: Option<&Path>,
+    project_id: Option<&str>,
+) -> Result<Vec<SkillRecord>, String> {
     let _guard = SKILLS_WRITE_LOCK
         .lock()
         .map_err(|_| "Skill storage is busy.".to_string())?;
-    list_unlocked(root)
+    list_unlocked(root, pack_root, project_id)
 }
 
 fn validate_unlocked(root: &Path, id: &str) -> Result<SkillRecord, String> {
@@ -798,7 +1158,13 @@ fn validate_unlocked(root: &Path, id: &str) -> Result<SkillRecord, String> {
     validate_skill_id(id)?;
     let directory = secure_skill_directory(&skills, id)?;
     let state = read_state(root)?;
-    Ok(inspect_real_skill(&directory, id, &state))
+    let context = RecordContext {
+        state: &state,
+        project_id: None,
+        pack_version: None,
+        pack_ids: &BTreeSet::new(),
+    };
+    Ok(inspect_real_skill(&directory, id, &context))
 }
 
 pub fn validate(root: &Path, id: &str) -> Result<SkillRecord, String> {
@@ -806,6 +1172,18 @@ pub fn validate(root: &Path, id: &str) -> Result<SkillRecord, String> {
         .lock()
         .map_err(|_| "Skill storage is busy.".to_string())?;
     validate_unlocked(root, id)
+}
+
+fn record_for(root: &Path, skills: &Path, id: &str) -> Result<SkillRecord, String> {
+    let directory = secure_skill_directory(skills, id)?;
+    let state = read_state(root)?;
+    let context = RecordContext {
+        state: &state,
+        project_id: None,
+        pack_version: None,
+        pack_ids: &BTreeSet::new(),
+    };
+    Ok(inspect_real_skill(&directory, id, &context))
 }
 
 fn slugify(name: &str) -> String {
@@ -885,7 +1263,7 @@ fn render_skill_markdown_with_mapping(
     Ok(markdown)
 }
 
-fn copy_tree(
+pub(crate) fn copy_tree(
     source_root: &Path,
     source: &Path,
     destination: &Path,
@@ -922,6 +1300,10 @@ fn copy_tree(
             return Err(format!(
                 "Skill folder exceeds the limit of {MAX_PACK_ENTRIES} entries."
             ));
+        }
+        let name = entry.file_name().to_string_lossy().to_string();
+        if depth == 0 && (name == MANAGED_MANIFEST_FILE || name == FIRST_PARTY_MARKER_FILE) {
+            continue;
         }
         let path = entry.path();
         let target = destination.join(entry.file_name());
@@ -983,15 +1365,97 @@ fn copy_tree(
     Ok(())
 }
 
+pub(crate) fn staging_path(skills: &Path, prefix: &str) -> PathBuf {
+    loop {
+        let candidate = skills.join(format!("{prefix}{:016x}", rand::random::<u64>()));
+        if std::fs::symlink_metadata(&candidate).is_err() {
+            return candidate;
+        }
+    }
+}
+
+pub(crate) fn install_tree(
+    skills: &Path,
+    id: &str,
+    source: &Path,
+    manifest: &ManagedManifest,
+    marker: bool,
+) -> Result<(), String> {
+    validate_skill_id(id)?;
+    let resolved_source = source
+        .canonicalize()
+        .map_err(|error| format!("Could not resolve the skill source folder: {error}"))?;
+    let staging = staging_path(skills, ".skill-import-");
+    let staged = (|| {
+        copy_tree(
+            &resolved_source,
+            &resolved_source,
+            &staging,
+            0,
+            &mut CopyBudget::default(),
+        )?;
+        let markdown = read_skill_markdown(&staging).map_err(|error| error.message)?;
+        parse_skill_markdown(&markdown).map_err(|error| error.message)?;
+        let mut manifest = manifest.clone();
+        manifest.tree_sha256 = tree_sha256(&staging)?;
+        write_managed_manifest(&staging, &manifest)?;
+        if marker {
+            crate::sandbox::atomic_write(
+                &staging.join(FIRST_PARTY_MARKER_FILE),
+                FIRST_PARTY_MARKER.as_bytes(),
+            )
+            .map_err(|error| format!("Could not write built-in skill provenance: {error}"))?;
+        }
+        Ok::<(), String>(())
+    })();
+    if let Err(error) = staged {
+        let _ = std::fs::remove_dir_all(&staging);
+        return Err(error);
+    }
+    let destination = skills.join(id);
+    let replaced = std::fs::symlink_metadata(&destination).is_ok();
+    if replaced {
+        let tombstone = staging_path(skills, STALE_STAGING_PREFIX);
+        let tombstone = tombstone.with_file_name(format!(
+            "{}-{id}",
+            tombstone.file_name().unwrap_or_default().to_string_lossy()
+        ));
+        if let Err(error) = std::fs::rename(&destination, &tombstone) {
+            let _ = std::fs::remove_dir_all(&staging);
+            return Err(format!("Could not replace skill \"{id}\": {error}"));
+        }
+        if let Err(error) = std::fs::rename(&staging, &destination) {
+            let _ = std::fs::rename(&tombstone, &destination);
+            let _ = std::fs::remove_dir_all(&staging);
+            return Err(format!("Could not install skill \"{id}\": {error}"));
+        }
+        let _ = std::fs::remove_dir_all(&tombstone);
+        return Ok(());
+    }
+    if let Err(error) = std::fs::rename(&staging, &destination) {
+        let _ = std::fs::remove_dir_all(&staging);
+        return Err(format!("Could not install skill \"{id}\": {error}"));
+    }
+    Ok(())
+}
+
 fn disable_id(root: &Path, id: &str) -> Result<(), String> {
     let mut state = read_state(root)?;
-    if state.enabled.remove(id) {
+    let changed = state.enabled.remove(id);
+    if changed {
         write_state(root, &state)?;
     }
     Ok(())
 }
 
-pub fn add(root: &Path, source: &Path) -> Result<SkillRecord, String> {
+fn hide_new_skill(root: &Path, id: &str) -> Result<(), String> {
+    let mut state = read_state(root)?;
+    state.enabled.remove(id);
+    state.seen.insert(id.to_string());
+    write_state(root, &state)
+}
+
+pub fn add(root: &Path, pack_root: Option<&Path>, source: &Path) -> Result<SkillRecord, String> {
     let _guard = SKILLS_WRITE_LOCK
         .lock()
         .map_err(|_| "Skill storage is busy.".to_string())?;
@@ -999,7 +1463,7 @@ pub fn add(root: &Path, source: &Path) -> Result<SkillRecord, String> {
         return Err("Choose an absolute skill folder path.".into());
     }
     let skills = managed_skills_root(root)?;
-    seed_defaults_in(&skills)?;
+    seed_in(&skills, pack_root);
     let metadata = std::fs::symlink_metadata(source)
         .map_err(|error| format!("Could not inspect the selected skill folder: {error}"))?;
     if !metadata.is_dir() || metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
@@ -1022,12 +1486,7 @@ pub fn add(root: &Path, source: &Path) -> Result<SkillRecord, String> {
     if std::fs::symlink_metadata(skills.join(&id)).is_ok() {
         return Err(format!("A skill with folder id \"{id}\" already exists."));
     }
-    let staging = loop {
-        let candidate = skills.join(format!(".skill-import-{:016x}", rand::random::<u64>()));
-        if std::fs::symlink_metadata(&candidate).is_err() {
-            break candidate;
-        }
-    };
+    let staging = staging_path(&skills, ".skill-import-");
     let copied = (|| {
         copy_tree(
             &resolved_source,
@@ -1047,16 +1506,19 @@ pub fn add(root: &Path, source: &Path) -> Result<SkillRecord, String> {
         let _ = std::fs::remove_dir_all(&staging);
         return Err(error);
     }
-    let state = read_state(root)?;
-    Ok(inspect_real_skill(&skills.join(&id), &id, &state))
+    record_for(root, &skills, &id)
 }
 
-pub fn create(root: &Path, input: CreateSkillInput) -> Result<SkillRecord, String> {
+pub fn create(
+    root: &Path,
+    pack_root: Option<&Path>,
+    input: CreateSkillInput,
+) -> Result<SkillRecord, String> {
     let _guard = SKILLS_WRITE_LOCK
         .lock()
         .map_err(|_| "Skill storage is busy.".to_string())?;
     let skills = managed_skills_root(root)?;
-    seed_defaults_in(&skills)?;
+    seed_in(&skills, pack_root);
     let instructions = input
         .instructions
         .as_deref()
@@ -1071,13 +1533,12 @@ pub fn create(root: &Path, input: CreateSkillInput) -> Result<SkillRecord, Strin
     if let Err(error) =
         crate::sandbox::atomic_write(&directory.join("SKILL.md"), markdown.as_bytes())
             .map_err(|error| format!("Could not write SKILL.md: {error}"))
-            .and_then(|_| disable_id(root, &id))
+            .and_then(|_| hide_new_skill(root, &id))
     {
         let _ = std::fs::remove_dir_all(&directory);
         return Err(error);
     }
-    let state = read_state(root)?;
-    Ok(inspect_real_skill(&directory, &id, &state))
+    record_for(root, &skills, &id)
 }
 
 pub fn update(root: &Path, id: &str, input: UpdateSkillInput) -> Result<SkillRecord, String> {
@@ -1098,27 +1559,39 @@ pub fn update(root: &Path, id: &str, input: UpdateSkillInput) -> Result<SkillRec
         &input.description,
         &input.instructions,
     )?;
-    let state = read_state(root)?;
+    let _ = read_state(root)?;
     crate::sandbox::atomic_write(&directory.join("SKILL.md"), markdown.as_bytes())
         .map_err(|error| format!("Could not update SKILL.md: {error}"))?;
-    Ok(inspect_real_skill(&directory, id, &state))
+    record_for(root, &skills, id)
 }
 
-pub fn set_enabled(root: &Path, id: &str, enabled: bool) -> Result<SkillRecord, String> {
+pub fn set_enabled(
+    root: &Path,
+    pack_root: Option<&Path>,
+    project_id: Option<&str>,
+    id: &str,
+    enabled: bool,
+) -> Result<SkillRecord, String> {
     let _guard = SKILLS_WRITE_LOCK
         .lock()
         .map_err(|_| "Skill storage is busy.".to_string())?;
-    let _ = list_unlocked(root)?;
+    if let Some(project) = project_id {
+        crate::paths::validate_project_id(project)?;
+    }
+    let _ = list_unlocked(root, pack_root, project_id)?;
     let skills = managed_skills_root(root)?;
     let directory = secure_skill_directory(&skills, id)?;
     let mut state = read_state(root)?;
-    let current = inspect_real_skill(&directory, id, &state);
+    let context = RecordContext {
+        state: &state,
+        project_id,
+        pack_version: None,
+        pack_ids: &BTreeSet::new(),
+    };
+    let current = inspect_real_skill(&directory, id, &context);
     if enabled {
         if let SkillValidation::Invalid { message, .. } = &current.validation {
             return Err(message.clone());
-        }
-        if !state.enabled.contains(id) && state.enabled.len() >= MAX_ENABLED_SKILLS {
-            return Err(format!("You can enable up to {MAX_ENABLED_SKILLS} skills."));
         }
         state.enabled.insert(id.to_string());
     } else {
@@ -1126,7 +1599,61 @@ pub fn set_enabled(root: &Path, id: &str, enabled: bool) -> Result<SkillRecord, 
     }
     state.seen.insert(id.to_string());
     write_state(root, &state)?;
-    Ok(inspect_real_skill(&directory, id, &state))
+    listed_record(root, pack_root, project_id, id)
+}
+
+pub fn set_project_enabled(
+    root: &Path,
+    pack_root: Option<&Path>,
+    project_id: &str,
+    id: &str,
+    enabled: bool,
+) -> Result<SkillRecord, String> {
+    let _guard = SKILLS_WRITE_LOCK
+        .lock()
+        .map_err(|_| "Skill storage is busy.".to_string())?;
+    crate::paths::validate_project_id(project_id)?;
+    let _ = list_unlocked(root, pack_root, Some(project_id))?;
+    let skills = managed_skills_root(root)?;
+    let directory = secure_skill_directory(&skills, id)?;
+    let mut state = read_state(root)?;
+    let context = RecordContext {
+        state: &state,
+        project_id: Some(project_id),
+        pack_version: None,
+        pack_ids: &BTreeSet::new(),
+    };
+    let current = inspect_real_skill(&directory, id, &context);
+    if enabled {
+        if let SkillValidation::Invalid { message, .. } = &current.validation {
+            return Err(message.clone());
+        }
+        state
+            .project_enabled
+            .entry(project_id.to_string())
+            .or_default()
+            .insert(id.to_string());
+    } else if let Some(ids) = state.project_enabled.get_mut(project_id) {
+        ids.remove(id);
+        if ids.is_empty() {
+            state.project_enabled.remove(project_id);
+        }
+    }
+    state.seen.insert(id.to_string());
+    write_state(root, &state)?;
+    listed_record(root, pack_root, Some(project_id), id)
+}
+
+fn listed_record(
+    root: &Path,
+    pack_root: Option<&Path>,
+    project_id: Option<&str>,
+    id: &str,
+) -> Result<SkillRecord, String> {
+    list_unlocked(root, pack_root, project_id)?
+        .into_iter()
+        .find(|record| record.id == id)
+        .ok_or_else(|| format!("Skill \"{id}\" could not be read after saving."))
 }
 
 fn remove_unlocked_with_writer(
@@ -1136,19 +1663,24 @@ fn remove_unlocked_with_writer(
 ) -> Result<(), String> {
     let skills = managed_skills_root(root)?;
     let directory = secure_skill_directory(&skills, id)?;
-    if source_for(&directory, id) == SkillSource::FirstParty {
+    let manifest = read_managed_manifest(&directory);
+    if source_for(&directory, manifest.as_ref()) == SkillSource::Bundled {
         return Err("Built-in skills can be disabled but cannot be removed.".into());
     }
     let mut state = read_state(root)?;
-    let staging = loop {
-        let candidate = skills.join(format!(".skill-remove-{:016x}-{id}", rand::random::<u64>()));
-        if std::fs::symlink_metadata(&candidate).is_err() {
-            break candidate;
-        }
-    };
+    let staging = staging_path(&skills, REMOVAL_STAGING_PREFIX);
+    let staging = staging.with_file_name(format!(
+        "{}-{id}",
+        staging.file_name().unwrap_or_default().to_string_lossy()
+    ));
     std::fs::rename(&directory, &staging)
         .map_err(|error| format!("Could not unregister skill \"{id}\": {error}"))?;
-    if state.enabled.remove(id) {
+    let removed_enabled = state.enabled.remove(id);
+    let mut removed_project = false;
+    for ids in state.project_enabled.values_mut() {
+        removed_project |= ids.remove(id);
+    }
+    if removed_enabled || removed_project {
         if let Err(error) = state_writer(root, &state) {
             return match std::fs::rename(&staging, &directory) {
                 Ok(()) => Err(error),
@@ -1169,19 +1701,172 @@ pub fn remove(root: &Path, id: &str) -> Result<(), String> {
     remove_unlocked_with_writer(root, id, write_state)
 }
 
-#[tauri::command]
-pub fn skills_list() -> Result<Vec<SkillRecord>, String> {
-    list(&crate::paths::oleafly_root()?)
+pub(crate) fn install_staged_skill(
+    root: &Path,
+    id: &str,
+    staged: &Path,
+    manifest: &ManagedManifest,
+) -> Result<SkillRecord, String> {
+    let _guard = SKILLS_WRITE_LOCK
+        .lock()
+        .map_err(|_| "Skill storage is busy.".to_string())?;
+    let skills = managed_skills_root(root)?;
+    install_tree(&skills, id, staged, manifest, false)?;
+    list_unlocked(root, None, None)?
+        .into_iter()
+        .find(|record| record.id == id)
+        .ok_or_else(|| format!("Skill \"{id}\" could not be read after installing."))
+}
+
+fn seed_in(skills: &Path, pack_root: Option<&Path>) {
+    let Some(pack_root) = pack_root else {
+        return;
+    };
+    let Ok(Some(manifest)) = crate::skills_pack::read_pack_manifest(pack_root) else {
+        return;
+    };
+    let _ = crate::skills_pack::seed_from_pack_in(skills, pack_root, &manifest);
+}
+
+pub fn update_builtin(root: &Path, pack_root: &Path, id: &str) -> Result<SkillRecord, String> {
+    let _guard = SKILLS_WRITE_LOCK
+        .lock()
+        .map_err(|_| "Skill storage is busy.".to_string())?;
+    let skills = managed_skills_root(root)?;
+    crate::skills_pack::force_update_from_pack(&skills, pack_root, id)?;
+    record_for(root, &skills, id)
+}
+
+fn resolve_skill_file(directory: &Path, relative: &str) -> Result<PathBuf, String> {
+    if relative.trim().is_empty() {
+        return Err("Name a file inside the skill folder.".into());
+    }
+    if relative.contains('\0') || relative.chars().any(char::is_control) {
+        return Err("That skill file path is not allowed.".into());
+    }
+    if Path::new(relative).is_absolute() || relative.starts_with('/') || relative.starts_with('\\')
+    {
+        return Err("Use a path relative to the skill folder.".into());
+    }
+    let mut current = directory.to_path_buf();
+    let mut segments = 0usize;
+    let parts: Vec<&str> = relative.split(['/', '\\']).collect();
+    let last = parts.len();
+    for (index, segment) in parts.iter().enumerate() {
+        if segment.is_empty() || *segment == "." {
+            continue;
+        }
+        if *segment == ".." || segment.contains(':') {
+            return Err("That skill file path is not allowed.".into());
+        }
+        segments += 1;
+        if segments > MAX_PACK_DEPTH {
+            return Err("That skill file path is too deeply nested.".into());
+        }
+        current = current.join(segment);
+        let metadata = std::fs::symlink_metadata(&current)
+            .map_err(|_| format!("The skill does not contain \"{relative}\"."))?;
+        if metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
+            return Err("That skill file is a link and cannot be read.".into());
+        }
+        let is_last = index + 1 == last;
+        if is_last {
+            if !metadata.is_file() {
+                return Err(format!("\"{relative}\" is not a file in this skill."));
+            }
+        } else if !metadata.is_dir() {
+            return Err(format!("The skill does not contain \"{relative}\"."));
+        }
+    }
+    if segments == 0 {
+        return Err("Name a file inside the skill folder.".into());
+    }
+    let resolved = current
+        .canonicalize()
+        .map_err(|_| format!("The skill does not contain \"{relative}\"."))?;
+    if !resolved.starts_with(directory) {
+        return Err("That skill file path is not allowed.".into());
+    }
+    Ok(resolved)
+}
+
+pub fn read_skill_file(root: &Path, id: &str, relative: &str) -> Result<SkillFileContent, String> {
+    let _guard = SKILLS_WRITE_LOCK
+        .lock()
+        .map_err(|_| "Skill storage is busy.".to_string())?;
+    let skills = managed_skills_root(root)?;
+    let directory = secure_skill_directory(&skills, id)?;
+    let path = resolve_skill_file(&directory, relative)?;
+    let mut file =
+        open_nofollow(&path).map_err(|error| format!("Could not read that skill file: {error}"))?;
+    let opened = file
+        .metadata()
+        .map_err(|error| format!("Could not inspect that skill file: {error}"))?;
+    if !opened.is_file() || is_reparse_point(&opened) {
+        return Err("That skill file is not a readable regular file.".into());
+    }
+    let mut bytes = Vec::new();
+    Read::by_ref(&mut file)
+        .take(MAX_SKILL_FILE_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| format!("Could not read that skill file: {error}"))?;
+    let truncated = bytes.len() as u64 > MAX_SKILL_FILE_BYTES;
+    if truncated {
+        bytes.truncate(MAX_SKILL_FILE_BYTES as usize);
+    }
+    if bytes.contains(&0) {
+        return Err(format!("\"{relative}\" is not a text file."));
+    }
+    let content = match std::str::from_utf8(&bytes) {
+        Ok(text) => text.to_string(),
+        Err(error) if truncated && error.error_len().is_none() => {
+            String::from_utf8_lossy(&bytes[..error.valid_up_to()]).into_owned()
+        }
+        Err(_) => return Err(format!("\"{relative}\" is not a text file.")),
+    };
+    Ok(SkillFileContent {
+        path: relative.replace('\\', "/"),
+        content,
+        truncated,
+    })
+}
+
+fn app_pack_root(app: &tauri::AppHandle) -> Option<PathBuf> {
+    crate::skills_pack::pack_root(app)
 }
 
 #[tauri::command]
-pub fn skills_add(source_path: String) -> Result<SkillRecord, String> {
-    add(&crate::paths::oleafly_root()?, Path::new(&source_path))
+pub fn skills_list(
+    app: tauri::AppHandle,
+    project_id: Option<String>,
+) -> Result<Vec<SkillRecord>, String> {
+    let pack_root = app_pack_root(&app);
+    let records = list_with(
+        &crate::paths::oleafly_root()?,
+        pack_root.as_deref(),
+        project_id.as_deref().filter(|project| !project.is_empty()),
+    )?;
+    crate::skills_share::sync_after_list(&records);
+    Ok(records)
 }
 
 #[tauri::command]
-pub fn skills_create(input: CreateSkillInput) -> Result<SkillRecord, String> {
-    create(&crate::paths::oleafly_root()?, input)
+pub fn skills_add(app: tauri::AppHandle, source_path: String) -> Result<SkillRecord, String> {
+    let pack_root = app_pack_root(&app);
+    add(
+        &crate::paths::oleafly_root()?,
+        pack_root.as_deref(),
+        Path::new(&source_path),
+    )
+}
+
+#[tauri::command]
+pub fn skills_create(
+    app: tauri::AppHandle,
+    input: CreateSkillInput,
+) -> Result<SkillRecord, String> {
+    let pack_root = app_pack_root(&app);
+    create(&crate::paths::oleafly_root()?, pack_root.as_deref(), input)
 }
 
 #[tauri::command]
@@ -1195,8 +1880,37 @@ pub fn skills_validate(id: String) -> Result<SkillRecord, String> {
 }
 
 #[tauri::command]
-pub fn skills_set_enabled(id: String, enabled: bool) -> Result<SkillRecord, String> {
-    set_enabled(&crate::paths::oleafly_root()?, &id, enabled)
+pub fn skills_set_enabled(
+    app: tauri::AppHandle,
+    id: String,
+    enabled: bool,
+    project_id: Option<String>,
+) -> Result<SkillRecord, String> {
+    let pack_root = app_pack_root(&app);
+    set_enabled(
+        &crate::paths::oleafly_root()?,
+        pack_root.as_deref(),
+        project_id.as_deref().filter(|project| !project.is_empty()),
+        &id,
+        enabled,
+    )
+}
+
+#[tauri::command]
+pub fn skills_set_project_enabled(
+    app: tauri::AppHandle,
+    project_id: String,
+    id: String,
+    enabled: bool,
+) -> Result<SkillRecord, String> {
+    let pack_root = app_pack_root(&app);
+    set_project_enabled(
+        &crate::paths::oleafly_root()?,
+        pack_root.as_deref(),
+        &project_id,
+        &id,
+        enabled,
+    )
 }
 
 #[tauri::command]
@@ -1204,96 +1918,22 @@ pub fn skills_remove(id: String) -> Result<(), String> {
     remove(&crate::paths::oleafly_root()?, &id)
 }
 
+#[tauri::command]
+pub fn skills_read_file(id: String, path: String) -> Result<SkillFileContent, String> {
+    read_skill_file(&crate::paths::oleafly_root()?, &id, &path)
+}
+
+#[tauri::command]
+pub fn skills_update_builtin(app: tauri::AppHandle, id: String) -> Result<SkillRecord, String> {
+    let pack_root = app_pack_root(&app)
+        .ok_or_else(|| "The built-in skill pack is not available.".to_string())?;
+    update_builtin(&crate::paths::oleafly_root()?, &pack_root, &id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn temp_root(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("oleafly-skills-{tag}-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
-    }
-
-    #[test]
-    fn first_list_seeds_the_default_workflow_skills() {
-        let root = temp_root("seed");
-        let packs = list(&root).unwrap();
-        let ids: Vec<_> = packs.iter().map(|p| p.id.as_str()).collect();
-        assert!(ids.contains(&"import-refine"));
-        assert!(ids.contains(&"pdf-to-latex"));
-        assert!(ids.contains(&"template-generate"));
-        assert!(ids.contains(&"ai-figure"));
-        std::fs::remove_dir_all(&root).ok();
-    }
-
-    #[test]
-    fn bundled_openresearch_skill_is_valid_first_party_and_on_by_default() {
-        let root = tempfile::tempdir().unwrap();
-
-        let skill = list(root.path())
-            .unwrap()
-            .into_iter()
-            .find(|skill| skill.id == "openresearch")
-            .expect("the bundled OpenResearch skill should be discovered");
-
-        assert_eq!(skill.name, "OpenResearch (orx)");
-        assert_eq!(
-            skill.description,
-            "Ground research in literature and run or inspect experiments with the local orx CLI."
-        );
-        assert!(!skill.instructions.trim().is_empty());
-        assert_eq!(skill.source, SkillSource::FirstParty);
-        assert!(skill.enabled);
-        assert!(!skill.removable);
-        assert_eq!(skill.validation, SkillValidation::Valid);
-
-        let disabled = set_enabled(root.path(), "openresearch", false).unwrap();
-        assert!(!disabled.enabled);
-        let after_relist = list(root.path())
-            .unwrap()
-            .into_iter()
-            .find(|skill| skill.id == "openresearch")
-            .expect("the bundled OpenResearch skill should still be discovered");
-        assert!(!after_relist.enabled);
-
-        let enabled = set_enabled(root.path(), "openresearch", true).unwrap();
-        assert!(enabled.enabled);
-        assert!(enabled
-            .instructions
-            .contains("orx discover keyword <query>"));
-    }
-
-    #[test]
-    fn user_edits_survive_reseeding() {
-        let root = temp_root("edits");
-        list(&root).unwrap();
-        let skill = skills_root(&root).join("ai-figure").join("SKILL.md");
-        std::fs::write(&skill, "customized").unwrap();
-
-        let packs = list(&root).unwrap();
-        let figure = packs.iter().find(|p| p.id == "ai-figure").unwrap();
-        assert_eq!(std::fs::read_to_string(skill).unwrap(), "customized");
-        assert!(matches!(
-            figure.validation,
-            SkillValidation::Invalid {
-                code: SkillValidationCode::InvalidFrontmatter,
-                ..
-            }
-        ));
-        std::fs::remove_dir_all(&root).ok();
-    }
-
-    #[test]
-    fn extra_user_skills_are_listed_sorted() {
-        let root = temp_root("extra");
-        let dir = skills_root(&root).join("zz-custom");
-        std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("SKILL.md"), "---\nname: zz-custom\n---\nbody").unwrap();
-
-        let packs = list(&root).unwrap();
-        assert_eq!(packs.last().unwrap().id, "zz-custom");
-        std::fs::remove_dir_all(&root).ok();
-    }
+    use crate::skills_pack::{seed_from_pack, PackManifest, PackOrigin, PackSkill};
 
     fn valid_skill(name: &str, description: &str, instructions: &str) -> String {
         format!("---\nname: {name}\ndescription: {description}\n---\n\n{instructions}\n")
@@ -1304,6 +1944,79 @@ mod tests {
         std::fs::create_dir_all(&directory).unwrap();
         std::fs::write(directory.join("SKILL.md"), markdown).unwrap();
         directory
+    }
+
+    struct Pack {
+        dir: tempfile::TempDir,
+    }
+
+    impl Pack {
+        fn new(version: &str, ids: &[&str]) -> Self {
+            let dir = tempfile::tempdir().unwrap();
+            let pack = Pack { dir };
+            for id in ids {
+                pack.write_skill(
+                    id,
+                    &valid_skill(id, "A bundled research skill.", "Follow the steps."),
+                );
+            }
+            pack.write_manifest(version, ids);
+            pack
+        }
+
+        fn path(&self) -> &Path {
+            self.dir.path()
+        }
+
+        fn write_skill(&self, id: &str, markdown: &str) {
+            let directory = self.dir.path().join(id);
+            std::fs::create_dir_all(&directory).unwrap();
+            std::fs::write(directory.join("SKILL.md"), markdown).unwrap();
+        }
+
+        fn write_file(&self, id: &str, relative: &str, contents: &str) {
+            let path = self.dir.path().join(id).join(relative);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, contents).unwrap();
+        }
+
+        fn write_manifest(&self, version: &str, ids: &[&str]) {
+            let manifest = PackManifest {
+                schema_version: 1,
+                pack: "research-core".into(),
+                version: version.into(),
+                skills: ids
+                    .iter()
+                    .map(|id| PackSkill {
+                        id: (*id).to_string(),
+                        name: Some((*id).to_string()),
+                        description: Some("A bundled research skill.".into()),
+                        tier: Some("native".into()),
+                        phase: Some("research".into()),
+                        license: Some("MIT".into()),
+                        tree_sha256: String::new(),
+                        files: None,
+                        bytes: None,
+                        origin: Some(PackOrigin {
+                            repo: Some("https://example.invalid/pack".into()),
+                            commit: Some("abc1234".into()),
+                        }),
+                    })
+                    .collect(),
+            };
+            std::fs::write(
+                self.dir.path().join("pack.json"),
+                serde_json::to_vec_pretty(&manifest).unwrap(),
+            )
+            .unwrap();
+        }
+    }
+
+    fn record<'a>(records: &'a [SkillRecord], id: &str) -> &'a SkillRecord {
+        records
+            .iter()
+            .find(|record| record.id == id)
+            .unwrap_or_else(|| panic!("no record for {id}"))
     }
 
     #[test]
@@ -1321,6 +2034,30 @@ mod tests {
             parsed.instructions,
             "Read each claim and verify its dependencies."
         );
+    }
+
+    #[test]
+    fn parses_the_optional_agent_skill_frontmatter() {
+        let markdown = "---\nname: paper-lookup\ndescription: Find papers.\nlicense: MIT\ncompatibility: Oleafly 0.4\nallowed-tools: read_file, search_project\nmetadata:\n  version: 2.1.0\n  skill-author: K-Dense\n  oleafly:\n    tier: vendored\n    phase: research\n    tools:\n      - literature_search\n      - verify_citation\n---\n\nLook the paper up.\n";
+
+        let parsed = parse_skill_markdown(markdown).unwrap();
+
+        assert_eq!(parsed.license.as_deref(), Some("MIT"));
+        assert_eq!(parsed.compatibility.as_deref(), Some("Oleafly 0.4"));
+        assert_eq!(parsed.allowed_tools, vec!["read_file", "search_project"]);
+        assert_eq!(
+            parse_skill_markdown(
+                "---\nname: paper-lookup\ndescription: Find papers.\nallowed-tools: Read Write Edit Bash\n---\n\nLook it up.\n"
+            )
+            .unwrap()
+            .allowed_tools,
+            vec!["Read", "Write", "Edit", "Bash"]
+        );
+        assert_eq!(parsed.version.as_deref(), Some("2.1.0"));
+        assert_eq!(parsed.author.as_deref(), Some("K-Dense"));
+        assert_eq!(parsed.tier, Some(SkillTier::Vendored));
+        assert_eq!(parsed.phase.as_deref(), Some("research"));
+        assert_eq!(parsed.tools, vec!["literature_search", "verify_citation"]);
     }
 
     #[test]
@@ -1376,74 +2113,99 @@ mod tests {
     }
 
     #[test]
+    fn accepts_the_long_descriptions_the_vendored_pack_ships() {
+        let description = "Search, verify, and format references. ".repeat(20);
+        assert!(description.chars().count() > 500);
+        let markdown = valid_skill("citation-management", &description, "Follow the steps.");
+
+        assert_eq!(
+            parse_skill_markdown(&markdown).unwrap().description,
+            description.trim()
+        );
+
+        let too_long = "x".repeat(MAX_DESCRIPTION_CHARS + 1);
+        let error = parse_skill_markdown(&valid_skill("too-long", &too_long, "Follow the steps."))
+            .unwrap_err();
+        assert_eq!(error.code, SkillValidationCode::InvalidDescription);
+    }
+
+    #[test]
+    fn the_repository_pack_seeds_every_skill_it_declares() {
+        let Some(pack_root) = crate::skills_pack::cached_pack_root() else {
+            return;
+        };
+        let Ok(Some(manifest)) = crate::skills_pack::read_pack_manifest(&pack_root) else {
+            return;
+        };
+        let root = tempfile::tempdir().unwrap();
+
+        let records = list_with(root.path(), Some(&pack_root), None).unwrap();
+
+        for entry in &manifest.skills {
+            let seeded = record(&records, &entry.id);
+            assert!(
+                matches!(seeded.validation, SkillValidation::Valid),
+                "{} is invalid: {:?}",
+                entry.id,
+                seeded.validation
+            );
+            assert_eq!(seeded.source, SkillSource::Bundled, "{}", entry.id);
+            assert_eq!(
+                seeded.pack_version.as_deref(),
+                Some(manifest.version.as_str()),
+                "{}",
+                entry.id
+            );
+            assert!(seeded.phase.is_some(), "{} has no phase", entry.id);
+            assert!(seeded.license.is_some(), "{} has no license", entry.id);
+        }
+    }
+
+    #[test]
+    fn accepts_a_skill_file_far_larger_than_the_old_limit() {
+        let body = "Follow the steps. ".repeat(2_000);
+        let markdown = valid_skill("long-skill", "A long research skill.", &body);
+
+        assert!(markdown.len() > 10_000);
+        assert!(parse_skill_markdown(&markdown).is_ok());
+    }
+
+    #[test]
+    fn extra_user_skills_are_listed_sorted() {
+        let root = tempfile::tempdir().unwrap();
+        write_skill(
+            root.path(),
+            "aa-custom",
+            &valid_skill("aa-custom", "First.", "Follow the steps."),
+        );
+        write_skill(
+            root.path(),
+            "zz-custom",
+            &valid_skill("zz-custom", "Last.", "Follow the steps."),
+        );
+
+        let records = list(root.path()).unwrap();
+
+        assert_eq!(records.first().unwrap().id, "aa-custom");
+        assert_eq!(records.last().unwrap().id, "zz-custom");
+    }
+
+    #[test]
     fn lists_an_unreadable_skill_as_invalid() {
         let root = tempfile::tempdir().unwrap();
         let directory = skills_root(root.path()).join("unreadable");
         std::fs::create_dir_all(directory.join("SKILL.md")).unwrap();
 
         let records = list(root.path()).unwrap();
-        let record = records
-            .iter()
-            .find(|skill| skill.id == "unreadable")
-            .unwrap();
 
         assert!(matches!(
-            record.validation,
+            record(&records, "unreadable").validation,
             SkillValidation::Invalid {
                 code: SkillValidationCode::UnreadableSkillFile,
                 ..
             }
         ));
-        assert!(!record.enabled);
-    }
-
-    #[test]
-    fn reserved_id_requires_first_party_provenance() {
-        let root = tempfile::tempdir().unwrap();
-        write_skill(
-            root.path(),
-            "research-review",
-            &valid_skill(
-                "Personal Review",
-                "Review with a personal checklist.",
-                "Apply the personal checklist.",
-            ),
-        );
-
-        let record = list(root.path())
-            .unwrap()
-            .into_iter()
-            .find(|skill| skill.id == "research-review")
-            .unwrap();
-
-        assert_eq!(record.source, SkillSource::User);
-        assert!(record.removable);
-        remove(root.path(), "research-review").unwrap();
-        assert!(!skills_root(root.path()).join("research-review").exists());
-
-        let seeded_root = tempfile::tempdir().unwrap();
-        let seeded = list(seeded_root.path())
-            .unwrap()
-            .into_iter()
-            .find(|skill| skill.id == "research-review")
-            .unwrap();
-        assert_eq!(seeded.source, SkillSource::FirstParty);
-        assert!(!seeded.removable);
-
-        std::fs::write(
-            skills_root(seeded_root.path())
-                .join("research-review")
-                .join("manifest.json"),
-            r#"{ "name": "research-review", "version": "2.0.0" }"#,
-        )
-        .unwrap();
-        let upgraded = list(seeded_root.path())
-            .unwrap()
-            .into_iter()
-            .find(|skill| skill.id == "research-review")
-            .unwrap();
-        assert_eq!(upgraded.source, SkillSource::FirstParty);
-        assert!(!upgraded.removable);
+        assert!(!record(&records, "unreadable").enabled);
     }
 
     #[test]
@@ -1483,146 +2245,374 @@ mod tests {
             "---\nname: broken\n---\n\nRead each claim.\n",
         );
 
-        set_enabled(root.path(), "proof-review", true).unwrap();
-        assert!(
-            list(root.path())
-                .unwrap()
-                .iter()
-                .find(|skill| skill.id == "proof-review")
-                .unwrap()
-                .enabled
-        );
-        assert!(set_enabled(root.path(), "broken", true).is_err());
-        assert!(
-            !list(root.path())
-                .unwrap()
-                .iter()
-                .find(|skill| skill.id == "broken")
-                .unwrap()
-                .enabled
-        );
+        set_enabled(root.path(), None, None, "proof-review", true).unwrap();
+        assert!(record(&list(root.path()).unwrap(), "proof-review").enabled);
+        assert!(set_enabled(root.path(), None, None, "broken", true).is_err());
+        assert!(!record(&list(root.path()).unwrap(), "broken").enabled);
 
-        set_enabled(root.path(), "proof-review", false).unwrap();
-        assert!(
-            !list(root.path())
-                .unwrap()
-                .iter()
-                .find(|skill| skill.id == "proof-review")
-                .unwrap()
-                .enabled
-        );
+        set_enabled(root.path(), None, None, "proof-review", false).unwrap();
+        assert!(!record(&list(root.path()).unwrap(), "proof-review").enabled);
     }
 
     #[test]
-    fn enable_state_rejects_more_than_thirty_two_skills() {
+    fn any_number_of_skills_can_be_enabled_at_once() {
         let root = tempfile::tempdir().unwrap();
-        for index in 1..=33 {
-            let id = format!("skill-{index}");
-            write_skill(
-                root.path(),
-                &id,
-                &valid_skill(
-                    &id,
-                    "Exercise the enabled skill limit.",
-                    "Follow the steps.",
-                ),
-            );
-        }
-        let discovered = list(root.path()).unwrap();
-        let enabled_ids: Vec<_> = discovered
-            .iter()
-            .filter(|skill| skill.enabled)
-            .map(|skill| skill.id.clone())
-            .collect();
-        assert_eq!(enabled_ids.len(), MAX_ENABLED_SKILLS);
-
-        let leftover = discovered
-            .iter()
-            .find(|skill| !skill.enabled)
-            .expect("the cap should leave one skill off")
-            .id
-            .clone();
-
-        let error = set_enabled(root.path(), &leftover, true).unwrap_err();
-
-        assert_eq!(error, "You can enable up to 32 skills.");
-        assert!(!validate(root.path(), &leftover).unwrap().enabled);
-    }
-
-    #[test]
-    fn list_prunes_an_enabled_skill_deleted_outside_the_app() {
-        let root = tempfile::tempdir().unwrap();
-        let directory = write_skill(
-            root.path(),
-            "draft",
-            &valid_skill("Draft", "Review a draft.", "Review the draft."),
-        );
-        set_enabled(root.path(), "draft", true).unwrap();
-        std::fs::remove_dir_all(directory).unwrap();
-
-        list(root.path()).unwrap();
-
-        assert!(!read_state(root.path()).unwrap().enabled.contains("draft"));
-    }
-
-    #[test]
-    fn list_prunes_an_enabled_skill_made_invalid_outside_the_app() {
-        let root = tempfile::tempdir().unwrap();
-        let directory = write_skill(
-            root.path(),
-            "draft",
-            &valid_skill("Draft", "Review a draft.", "Review the draft."),
-        );
-        set_enabled(root.path(), "draft", true).unwrap();
-        std::fs::write(
-            directory.join("SKILL.md"),
-            "---\nname: Draft\n---\n\nReview the draft.\n",
-        )
-        .unwrap();
-
-        let record = list(root.path())
-            .unwrap()
-            .into_iter()
-            .find(|skill| skill.id == "draft")
-            .unwrap();
-
-        assert!(matches!(record.validation, SkillValidation::Invalid { .. }));
-        assert!(!record.enabled);
-        assert!(!read_state(root.path()).unwrap().enabled.contains("draft"));
-    }
-
-    #[test]
-    fn list_caps_an_oversized_enabled_state_to_valid_installed_skills() {
-        let root = tempfile::tempdir().unwrap();
-        let mut state = SkillsState::default();
-        for index in 1..=33 {
+        for index in 1..=40 {
             let id = format!("skill-{index:02}");
             write_skill(
                 root.path(),
                 &id,
-                &valid_skill(
-                    &id,
-                    "Exercise enable state normalization.",
-                    "Follow the steps.",
-                ),
+                &valid_skill(&id, "Exercise the enable state.", "Follow the steps."),
             );
-            state.enabled.insert(id);
         }
-        write_state(root.path(), &state).unwrap();
+
+        let discovered = list(root.path()).unwrap();
+
+        assert_eq!(discovered.len(), 40);
+        assert_eq!(discovered.iter().filter(|skill| skill.enabled).count(), 40);
+        assert_eq!(read_state(root.path()).unwrap().enabled.len(), 40);
+        assert!(set_enabled(root.path(), None, None, "skill-40", true).is_ok());
+    }
+
+    #[test]
+    fn a_version_one_state_file_is_upgraded_in_place() {
+        let root = tempfile::tempdir().unwrap();
+        write_skill(
+            root.path(),
+            "draft",
+            &valid_skill("Draft", "Review a draft.", "Review the draft."),
+        );
+        std::fs::create_dir_all(root.path()).unwrap();
+        std::fs::write(
+            state_path(root.path()),
+            r#"{ "version": 1, "enabled": ["draft"], "seen": ["draft"] }"#,
+        )
+        .unwrap();
 
         let records = list(root.path()).unwrap();
-        let stored = read_state(root.path()).unwrap();
 
-        assert_eq!(records.iter().filter(|skill| skill.enabled).count(), 32);
-        assert_eq!(stored.enabled.len(), 32);
-        assert!(!stored.enabled.contains("skill-33"));
-        assert!(
-            !records
-                .iter()
-                .find(|skill| skill.id == "skill-33")
-                .unwrap()
-                .enabled
+        assert!(record(&records, "draft").enabled);
+        let raw = std::fs::read_to_string(state_path(root.path())).unwrap();
+        let stored: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(stored["version"], 2);
+        assert!(stored["projectEnabled"].is_object());
+        assert_eq!(read_state(root.path()).unwrap().version, 2);
+    }
+
+    #[test]
+    fn project_enablement_is_tracked_next_to_the_device_setting() {
+        let root = tempfile::tempdir().unwrap();
+        write_skill(
+            root.path(),
+            "draft",
+            &valid_skill("Draft", "Review a draft.", "Review the draft."),
         );
+        set_enabled(root.path(), None, None, "draft", false).unwrap();
+
+        let scoped =
+            set_project_enabled(root.path(), None, "swift-violet-fox", "draft", true).unwrap();
+        assert!(scoped.project_enabled);
+        assert!(!scoped.enabled);
+
+        let for_project = list_with(root.path(), None, Some("swift-violet-fox")).unwrap();
+        assert!(record(&for_project, "draft").project_enabled);
+        assert!(!record(&for_project, "draft").enabled);
+
+        let for_other = list_with(root.path(), None, Some("other-project")).unwrap();
+        assert!(!record(&for_other, "draft").project_enabled);
+
+        set_project_enabled(root.path(), None, "swift-violet-fox", "draft", false).unwrap();
+        let cleared = list_with(root.path(), None, Some("swift-violet-fox")).unwrap();
+        assert!(!record(&cleared, "draft").project_enabled);
+        assert!(read_state(root.path()).unwrap().project_enabled.is_empty());
+    }
+
+    #[test]
+    fn project_enablement_rejects_an_unsafe_project_id() {
+        let root = tempfile::tempdir().unwrap();
+        write_skill(
+            root.path(),
+            "draft",
+            &valid_skill("Draft", "Review a draft.", "Review the draft."),
+        );
+
+        assert!(set_project_enabled(root.path(), None, "../escape", "draft", true).is_err());
+        assert!(set_project_enabled(root.path(), None, "", "draft", true).is_err());
+    }
+
+    #[test]
+    fn seeding_installs_the_bundled_pack_with_provenance() {
+        let root = tempfile::tempdir().unwrap();
+        let pack = Pack::new("2026.09.04", &["oleafly-research-loop", "paper-lookup"]);
+        pack.write_file("paper-lookup", "references/checklist.md", "Check it.\n");
+
+        seed_from_pack(root.path(), pack.path()).unwrap();
+        let records = list_with(root.path(), Some(pack.path()), None).unwrap();
+
+        let seeded = record(&records, "paper-lookup");
+        assert_eq!(seeded.source, SkillSource::Bundled);
+        assert!(!seeded.removable);
+        assert!(seeded.enabled);
+        assert!(!seeded.update_available);
+        assert_eq!(seeded.pack_version.as_deref(), Some("2026.09.04"));
+        assert_eq!(
+            seeded.files,
+            vec![SkillFile {
+                path: "references/checklist.md".into(),
+                bytes: 10,
+            }]
+        );
+        assert!(seeded.dir.ends_with("paper-lookup"));
+
+        let directory = skills_root(root.path()).join("paper-lookup");
+        assert!(directory.join(MANAGED_MANIFEST_FILE).is_file());
+        assert!(has_first_party_marker(&directory));
+        let manifest = read_managed_manifest(&directory).unwrap();
+        assert_eq!(manifest.pack.as_deref(), Some("research-core"));
+        assert_eq!(manifest.tree_sha256, tree_sha256(&directory).unwrap());
+    }
+
+    #[test]
+    fn an_unmodified_bundled_skill_is_replaced_by_a_newer_pack() {
+        let root = tempfile::tempdir().unwrap();
+        let pack = Pack::new("2026.09.04", &["paper-lookup"]);
+        seed_from_pack(root.path(), pack.path()).unwrap();
+
+        pack.write_skill(
+            "paper-lookup",
+            &valid_skill("paper-lookup", "A bundled research skill.", "Do it better."),
+        );
+        pack.write_manifest("2026.10.01", &["paper-lookup"]);
+        seed_from_pack(root.path(), pack.path()).unwrap();
+
+        let records = list_with(root.path(), Some(pack.path()), None).unwrap();
+        let updated = record(&records, "paper-lookup");
+        assert_eq!(updated.instructions, "Do it better.");
+        assert!(!updated.update_available);
+        assert_eq!(updated.pack_version.as_deref(), Some("2026.10.01"));
+    }
+
+    #[test]
+    fn a_modified_bundled_skill_is_flagged_instead_of_replaced() {
+        let root = tempfile::tempdir().unwrap();
+        let pack = Pack::new("2026.09.04", &["paper-lookup"]);
+        seed_from_pack(root.path(), pack.path()).unwrap();
+        let directory = skills_root(root.path()).join("paper-lookup");
+        std::fs::write(
+            directory.join("SKILL.md"),
+            valid_skill("paper-lookup", "A bundled research skill.", "My own steps."),
+        )
+        .unwrap();
+
+        pack.write_skill(
+            "paper-lookup",
+            &valid_skill("paper-lookup", "A bundled research skill.", "Do it better."),
+        );
+        pack.write_manifest("2026.10.01", &["paper-lookup"]);
+        seed_from_pack(root.path(), pack.path()).unwrap();
+
+        let records = list_with(root.path(), Some(pack.path()), None).unwrap();
+        let kept = record(&records, "paper-lookup");
+        assert_eq!(kept.instructions, "My own steps.");
+        assert!(kept.update_available);
+        assert_eq!(kept.pack_version.as_deref(), Some("2026.09.04"));
+    }
+
+    #[test]
+    fn a_forced_update_replaces_a_modified_bundled_skill() {
+        let root = tempfile::tempdir().unwrap();
+        let pack = Pack::new("2026.09.04", &["paper-lookup"]);
+        seed_from_pack(root.path(), pack.path()).unwrap();
+        let directory = skills_root(root.path()).join("paper-lookup");
+        std::fs::write(
+            directory.join("SKILL.md"),
+            valid_skill("paper-lookup", "A bundled research skill.", "My own steps."),
+        )
+        .unwrap();
+        pack.write_skill(
+            "paper-lookup",
+            &valid_skill("paper-lookup", "A bundled research skill.", "Do it better."),
+        );
+        pack.write_manifest("2026.10.01", &["paper-lookup"]);
+
+        let updated = update_builtin(root.path(), pack.path(), "paper-lookup").unwrap();
+
+        assert_eq!(updated.instructions, "Do it better.");
+        assert_eq!(updated.pack_version.as_deref(), Some("2026.10.01"));
+        assert!(update_builtin(root.path(), pack.path(), "missing-skill").is_err());
+    }
+
+    fn seed_legacy(root: &Path, id: &str) -> PathBuf {
+        let (_, manifest, skill_md) = legacy_default_skills()
+            .iter()
+            .find(|(default_id, _, _)| *default_id == id)
+            .copied()
+            .unwrap();
+        let directory = skills_root(root).join(id);
+        std::fs::create_dir_all(&directory).unwrap();
+        std::fs::write(directory.join("manifest.json"), manifest).unwrap();
+        std::fs::write(directory.join("SKILL.md"), skill_md).unwrap();
+        std::fs::write(directory.join(FIRST_PARTY_MARKER_FILE), FIRST_PARTY_MARKER).unwrap();
+        directory
+    }
+
+    #[test]
+    fn unmodified_legacy_skills_are_removed_when_the_pack_seeds() {
+        let root = tempfile::tempdir().unwrap();
+        for (id, _, _) in legacy_default_skills() {
+            seed_legacy(root.path(), id);
+        }
+        let pack = Pack::new("2026.09.04", &["openresearch"]);
+
+        seed_from_pack(root.path(), pack.path()).unwrap();
+        let records = list_with(root.path(), Some(pack.path()), None).unwrap();
+
+        for (id, _, _) in legacy_default_skills() {
+            if *id == "openresearch" {
+                continue;
+            }
+            assert!(
+                !skills_root(root.path()).join(id).exists(),
+                "{id} should be gone"
+            );
+        }
+        let reseeded = record(&records, "openresearch");
+        assert_eq!(reseeded.source, SkillSource::Bundled);
+        assert_eq!(reseeded.description, "A bundled research skill.");
+    }
+
+    #[test]
+    fn a_modified_legacy_skill_becomes_a_removable_user_skill() {
+        let root = tempfile::tempdir().unwrap();
+        let directory = seed_legacy(root.path(), "research-review");
+        std::fs::write(
+            directory.join("SKILL.md"),
+            valid_skill("research-review", "My own review.", "Follow my checklist."),
+        )
+        .unwrap();
+        let pack = Pack::new("2026.09.04", &["paper-lookup"]);
+
+        seed_from_pack(root.path(), pack.path()).unwrap();
+        let records = list_with(root.path(), Some(pack.path()), None).unwrap();
+
+        let demoted = record(&records, "research-review");
+        assert_eq!(demoted.source, SkillSource::User);
+        assert!(demoted.removable);
+        assert!(!directory.join(FIRST_PARTY_MARKER_FILE).exists());
+        remove(root.path(), "research-review").unwrap();
+    }
+
+    #[test]
+    fn reading_a_skill_file_stays_inside_the_skill_folder() {
+        let root = tempfile::tempdir().unwrap();
+        let directory = write_skill(
+            root.path(),
+            "paper-lookup",
+            &valid_skill("paper-lookup", "Find papers.", "Read the checklist."),
+        );
+        std::fs::create_dir_all(directory.join("references")).unwrap();
+        std::fs::write(directory.join("references/checklist.md"), "Check it.\n").unwrap();
+        std::fs::write(root.path().join("secret.txt"), "keep").unwrap();
+
+        let read = read_skill_file(root.path(), "paper-lookup", "references/checklist.md").unwrap();
+        assert_eq!(read.content, "Check it.\n");
+        assert_eq!(read.path, "references/checklist.md");
+        assert!(!read.truncated);
+
+        for path in [
+            "../secret.txt",
+            "references/../../secret.txt",
+            "/etc/hosts",
+            "references",
+            "",
+            "missing.md",
+        ] {
+            assert!(
+                read_skill_file(root.path(), "paper-lookup", path).is_err(),
+                "read accepted {path}"
+            );
+        }
+        assert!(read_skill_file(root.path(), "../outside", "SKILL.md").is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn reading_a_linked_skill_file_is_refused() {
+        use std::os::unix::fs::symlink;
+
+        let root = tempfile::tempdir().unwrap();
+        let directory = write_skill(
+            root.path(),
+            "paper-lookup",
+            &valid_skill("paper-lookup", "Find papers.", "Read the checklist."),
+        );
+        let outside = tempfile::tempdir().unwrap();
+        std::fs::write(outside.path().join("private.txt"), "keep").unwrap();
+        symlink(
+            outside.path().join("private.txt"),
+            directory.join("linked.txt"),
+        )
+        .unwrap();
+
+        let error = read_skill_file(root.path(), "paper-lookup", "linked.txt").unwrap_err();
+
+        assert!(error.contains("link"), "{error}");
+    }
+
+    #[test]
+    fn reading_a_binary_skill_file_is_refused() {
+        let root = tempfile::tempdir().unwrap();
+        let directory = write_skill(
+            root.path(),
+            "paper-lookup",
+            &valid_skill("paper-lookup", "Find papers.", "Read the checklist."),
+        );
+        std::fs::write(directory.join("logo.png"), [0x89, 0x50, 0x4e, 0x00, 0x0d]).unwrap();
+
+        let error = read_skill_file(root.path(), "paper-lookup", "logo.png").unwrap_err();
+
+        assert!(error.contains("not a text file"), "{error}");
+    }
+
+    #[test]
+    fn the_file_listing_hides_internal_skill_files() {
+        let root = tempfile::tempdir().unwrap();
+        let pack = Pack::new("2026.09.04", &["paper-lookup"]);
+        pack.write_file("paper-lookup", "scripts/run.py", "print('hi')\n");
+        pack.write_file("paper-lookup", "references/a.md", "a\n");
+        seed_from_pack(root.path(), pack.path()).unwrap();
+
+        let records = list_with(root.path(), Some(pack.path()), None).unwrap();
+        let paths: Vec<_> = record(&records, "paper-lookup")
+            .files
+            .iter()
+            .map(|file| file.path.as_str())
+            .collect();
+
+        assert_eq!(paths, vec!["references/a.md", "scripts/run.py"]);
+    }
+
+    #[test]
+    fn a_created_draft_stays_disabled_after_the_next_listing() {
+        let root = tempfile::tempdir().unwrap();
+        let created = create(
+            root.path(),
+            None,
+            CreateSkillInput {
+                name: "Methods Coach".into(),
+                description: "Check a methods section for reproducibility.".into(),
+                instructions: None,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(created.id, "methods-coach");
+        assert!(!created.enabled);
+        assert!(read_state(root.path())
+            .unwrap()
+            .seen
+            .contains("methods-coach"));
+        assert!(!record(&list(root.path()).unwrap(), "methods-coach").enabled);
     }
 
     #[test]
@@ -1646,12 +2636,13 @@ mod tests {
         )
         .unwrap();
 
-        let added = add(root.path(), &source).unwrap();
+        let added = add(root.path(), None, &source).unwrap();
 
         assert_eq!(added.id, "imported-review");
         assert!(matches!(added.validation, SkillValidation::Valid));
         assert!(!added.enabled);
         assert_eq!(added.source, SkillSource::User);
+        assert_eq!(added.tier, SkillTier::User);
         assert_eq!(
             std::fs::read_to_string(
                 skills_root(root.path()).join("imported-review/references/checklist.md")
@@ -1666,45 +2657,12 @@ mod tests {
     fn add_rejects_sources_that_contain_the_managed_skills_directory() {
         let root = tempfile::tempdir().unwrap();
 
-        let error = add(root.path(), root.path()).unwrap_err();
+        let error = add(root.path(), None, root.path()).unwrap_err();
 
         assert_eq!(
             error,
             "Choose a skill folder outside the Oleafly data directory."
         );
-        assert!(std::fs::read_dir(skills_root(root.path()))
-            .unwrap()
-            .all(|entry| !entry
-                .unwrap()
-                .file_name()
-                .to_string_lossy()
-                .starts_with(".skill-import-")));
-    }
-
-    #[test]
-    fn add_rejects_a_skill_folder_over_the_copy_budget() {
-        let root = tempfile::tempdir().unwrap();
-        let source_parent = tempfile::tempdir().unwrap();
-        let source = source_parent.path().join("large-pack");
-        std::fs::create_dir_all(&source).unwrap();
-        std::fs::write(
-            source.join("SKILL.md"),
-            valid_skill(
-                "Large Pack",
-                "Exercise the skill folder copy limit.",
-                "Read the bundled resources.",
-            ),
-        )
-        .unwrap();
-        std::fs::File::create(source.join("resource.bin"))
-            .unwrap()
-            .set_len(MAX_PACK_BYTES + 1)
-            .unwrap();
-
-        let error = add(root.path(), &source).unwrap_err();
-
-        assert!(error.contains("exceeds the limit"));
-        assert!(!skills_root(root.path()).join("large-pack").exists());
     }
 
     #[test]
@@ -1722,11 +2680,14 @@ mod tests {
             ),
         )
         .unwrap();
-        for index in 0..MAX_PACK_ENTRIES {
-            std::fs::create_dir(source.join(format!("resource-{index}"))).unwrap();
-        }
+        let mut budget = CopyBudget {
+            entries: MAX_PACK_ENTRIES,
+            bytes: 0,
+        };
+        let resolved = source.canonicalize().unwrap();
+        let staging = source_parent.path().join("staging");
 
-        let error = add(root.path(), &source).unwrap_err();
+        let error = copy_tree(&resolved, &resolved, &staging, 0, &mut budget).unwrap_err();
 
         assert!(error.contains("exceeds the limit"));
         assert!(!skills_root(root.path()).join("wide-pack").exists());
@@ -1753,7 +2714,7 @@ mod tests {
             std::fs::create_dir(&current).unwrap();
         }
 
-        let error = add(root.path(), &source).unwrap_err();
+        let error = add(root.path(), None, &source).unwrap_err();
 
         assert!(error.contains("maximum depth"));
         assert!(!skills_root(root.path()).join("deep-pack").exists());
@@ -1785,7 +2746,7 @@ mod tests {
         )
         .unwrap();
 
-        let error = add(root.path(), &source).unwrap_err();
+        let error = add(root.path(), None, &source).unwrap_err();
 
         assert!(error.contains("linked entry"));
         assert!(!skills_root(root.path()).join("linked-pack").exists());
@@ -1813,6 +2774,7 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let created = create(
             root.path(),
+            None,
             CreateSkillInput {
                 name: "Methods Coach".into(),
                 description: "Check a methods section for reproducibility.".into(),
@@ -1837,6 +2799,7 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         create(
             root.path(),
+            None,
             CreateSkillInput {
                 name: "Methods Coach".into(),
                 description: "Check a methods section for reproducibility.".into(),
@@ -1844,14 +2807,14 @@ mod tests {
             },
         )
         .unwrap();
-        set_enabled(root.path(), "methods-coach", true).unwrap();
+        set_enabled(root.path(), None, None, "methods-coach", true).unwrap();
+        set_project_enabled(root.path(), None, "swift-violet-fox", "methods-coach", true).unwrap();
 
         remove(root.path(), "methods-coach").unwrap();
 
-        assert!(!read_state(root.path())
-            .unwrap()
-            .enabled
-            .contains("methods-coach"));
+        let state = read_state(root.path()).unwrap();
+        assert!(!state.enabled.contains("methods-coach"));
+        assert!(state.project_enabled.is_empty());
     }
 
     #[test]
@@ -1885,10 +2848,10 @@ mod tests {
         let directory = write_skill(
             root.path(),
             "draft",
-            "---\nname: Draft\ndescription: Review a draft.\nlicense: MIT\nmetadata:\n  owner: user\n---\n\nReview the draft.\n",
+            "---\nname: Draft\ndescription: Review a draft.\nlicense: MIT\nmetadata:\n  owner: user\n  oleafly:\n    tier: vendored\n---\n\nReview the draft.\n",
         );
 
-        update(
+        let updated = update(
             root.path(),
             "draft",
             UpdateSkillInput {
@@ -1899,21 +2862,20 @@ mod tests {
         )
         .unwrap();
 
+        assert_eq!(updated.license.as_deref(), Some("MIT"));
+        assert_eq!(updated.tier, SkillTier::Vendored);
         let markdown = std::fs::read_to_string(directory.join("SKILL.md")).unwrap();
         let (frontmatter, _) = split_frontmatter(&markdown).unwrap();
         let value: serde_yaml::Value = serde_yaml::from_str(&frontmatter).unwrap();
         let mapping = value.as_mapping().unwrap();
         assert_eq!(
-            mapping
-                .get(serde_yaml::Value::String("license".into()))
-                .and_then(serde_yaml::Value::as_str),
+            yaml_field(mapping, "license").and_then(serde_yaml::Value::as_str),
             Some("MIT")
         );
         assert_eq!(
-            mapping
-                .get(serde_yaml::Value::String("metadata".into()))
+            yaml_field(mapping, "metadata")
                 .and_then(serde_yaml::Value::as_mapping)
-                .and_then(|metadata| metadata.get(serde_yaml::Value::String("owner".into())))
+                .and_then(|metadata| yaml_field(metadata, "owner"))
                 .and_then(serde_yaml::Value::as_str),
             Some("user")
         );
@@ -1972,7 +2934,7 @@ mod tests {
             "draft",
             &valid_skill("Draft", "Review a draft.", "Review the draft."),
         );
-        set_enabled(root.path(), "draft", true).unwrap();
+        set_enabled(root.path(), None, None, "draft", true).unwrap();
 
         let error = remove_unlocked_with_writer(root.path(), "draft", |_, _| {
             Err("Injected state write failure.".into())
@@ -2014,8 +2976,12 @@ mod tests {
                 "update accepted {id}"
             );
             assert!(
-                set_enabled(root.path(), id, true).is_err(),
+                set_enabled(root.path(), None, None, id, true).is_err(),
                 "enable accepted {id}"
+            );
+            assert!(
+                set_project_enabled(root.path(), None, "swift-violet-fox", id, true).is_err(),
+                "project enable accepted {id}"
             );
             assert!(remove(root.path(), id).is_err(), "remove accepted {id}");
         }
@@ -2029,12 +2995,44 @@ mod tests {
     #[test]
     fn bundled_skills_cannot_be_removed() {
         let root = tempfile::tempdir().unwrap();
-        list(root.path()).unwrap();
+        let pack = Pack::new("2026.09.04", &["paper-lookup"]);
+        seed_from_pack(root.path(), pack.path()).unwrap();
 
-        assert!(remove(root.path(), "research-review").is_err());
+        assert!(remove(root.path(), "paper-lookup").is_err());
         assert!(skills_root(root.path())
-            .join("research-review/SKILL.md")
+            .join("paper-lookup/SKILL.md")
             .is_file());
+    }
+
+    #[test]
+    fn a_hand_made_folder_cannot_claim_bundled_provenance() {
+        let root = tempfile::tempdir().unwrap();
+        let directory = write_skill(
+            root.path(),
+            "paper-lookup",
+            &valid_skill("paper-lookup", "My own lookup.", "Follow my steps."),
+        );
+        write_managed_manifest(
+            &directory,
+            &ManagedManifest {
+                schema_version: 1,
+                id: "paper-lookup".into(),
+                source: SkillSource::Bundled,
+                pack: Some("research-core".into()),
+                pack_version: Some("2026.09.04".into()),
+                tree_sha256: String::new(),
+                license: None,
+                tier: None,
+                phase: None,
+                origin: None,
+            },
+        )
+        .unwrap();
+
+        let records = list(root.path()).unwrap();
+
+        assert_eq!(record(&records, "paper-lookup").source, SkillSource::User);
+        assert!(record(&records, "paper-lookup").removable);
     }
 
     #[cfg(unix)]
@@ -2049,11 +3047,188 @@ mod tests {
         symlink(outside.path(), skills_root(root.path()).join("linked")).unwrap();
 
         assert!(validate(root.path(), "linked").is_err());
-        assert!(set_enabled(root.path(), "linked", true).is_err());
+        assert!(set_enabled(root.path(), None, None, "linked", true).is_err());
         assert!(remove(root.path(), "linked").is_err());
         assert_eq!(
             std::fs::read_to_string(outside.path().join("sentinel")).unwrap(),
             "keep"
         );
+    }
+
+    #[test]
+    fn the_tree_hash_covers_paths_and_contents_in_sorted_order() {
+        let root = tempfile::tempdir().unwrap();
+        let directory = write_skill(
+            root.path(),
+            "paper-lookup",
+            &valid_skill("paper-lookup", "Find papers.", "Follow the steps."),
+        );
+        let before = tree_sha256(&directory).unwrap();
+
+        std::fs::write(directory.join(FIRST_PARTY_MARKER_FILE), FIRST_PARTY_MARKER).unwrap();
+        assert_eq!(tree_sha256(&directory).unwrap(), before);
+
+        std::fs::write(directory.join("notes.md"), "note\n").unwrap();
+        assert_ne!(tree_sha256(&directory).unwrap(), before);
+    }
+
+    #[test]
+    fn an_added_folder_cannot_smuggle_built_in_provenance() {
+        let root = tempfile::tempdir().unwrap();
+        let source = tempfile::tempdir().unwrap();
+        std::fs::write(
+            source.path().join("SKILL.md"),
+            valid_skill("paper helper", "Help with papers.", "Follow my steps."),
+        )
+        .unwrap();
+        std::fs::write(
+            source.path().join(FIRST_PARTY_MARKER_FILE),
+            FIRST_PARTY_MARKER,
+        )
+        .unwrap();
+        std::fs::write(
+            source.path().join(MANAGED_MANIFEST_FILE),
+            r#"{ "schemaVersion": 1, "id": "paper-helper", "source": "bundled",
+                 "treeSha256": "", "tier": "native" }"#,
+        )
+        .unwrap();
+
+        let added = add(root.path(), None, source.path()).unwrap();
+
+        assert_eq!(added.id, "paper-helper");
+        assert_eq!(added.source, SkillSource::User);
+        assert_eq!(added.tier, SkillTier::User);
+        assert!(added.removable);
+        let directory = skills_root(root.path()).join(&added.id);
+        assert!(!directory.join(MANAGED_MANIFEST_FILE).exists());
+        assert!(!has_first_party_marker(&directory));
+        assert!(remove(root.path(), &added.id).is_ok());
+    }
+
+    #[test]
+    fn a_leftover_upgrade_folder_is_reaped_without_disabling_the_skill() {
+        assert_ne!(STALE_STAGING_PREFIX, REMOVAL_STAGING_PREFIX);
+        assert!(staged_removal_skill_id(".skill-stale-0000000000000001-peer-review").is_none());
+
+        let root = tempfile::tempdir().unwrap();
+        write_skill(
+            root.path(),
+            "peer-review",
+            &valid_skill("peer-review", "Review a paper.", "Read every claim."),
+        );
+        let leftover = write_skill(
+            root.path(),
+            ".skill-stale-0000000000000001-peer-review",
+            &valid_skill("peer-review", "Review a paper.", "Read every claim."),
+        );
+        let mut state = SkillsState::default();
+        state.enabled.insert("peer-review".into());
+        state.seen.insert("peer-review".into());
+        write_state(root.path(), &state).unwrap();
+
+        let records = list(root.path()).unwrap();
+
+        assert!(!leftover.exists());
+        assert!(!records.iter().any(|skill| skill.id.starts_with('.')));
+        assert!(record(&records, "peer-review").enabled);
+        assert!(read_state(root.path())
+            .unwrap()
+            .enabled
+            .contains("peer-review"));
+    }
+
+    #[test]
+    fn an_invalid_built_in_skill_can_still_be_restored_from_the_pack() {
+        let root = tempfile::tempdir().unwrap();
+        let pack = Pack::new("2026.09.04", &["oleafly-research-loop"]);
+        seed_from_pack(root.path(), pack.path()).unwrap();
+        std::fs::write(
+            skills_root(root.path())
+                .join("oleafly-research-loop")
+                .join("SKILL.md"),
+            "---\nname: oleafly-research-loop\n---\n\nFollow the steps.\n",
+        )
+        .unwrap();
+
+        let records = list_with(root.path(), Some(pack.path()), None).unwrap();
+        let broken = record(&records, "oleafly-research-loop");
+
+        assert!(matches!(
+            broken.validation,
+            SkillValidation::Invalid {
+                code: SkillValidationCode::MissingDescription,
+                ..
+            }
+        ));
+        assert!(broken.update_available);
+        assert!(!broken.removable);
+
+        let repaired = update_builtin(root.path(), pack.path(), "oleafly-research-loop").unwrap();
+
+        assert_eq!(repaired.validation, SkillValidation::Valid);
+    }
+
+    #[test]
+    fn an_unsafe_skill_path_is_never_offered_a_pack_update() {
+        let root = tempfile::tempdir().unwrap();
+        let unsafe_record = invalid_record(
+            "..",
+            None,
+            SkillSource::User,
+            false,
+            None,
+            validation_error(SkillValidationCode::UnsafePath, "unsafe path"),
+        );
+
+        assert!(!unsafe_record.update_available);
+        let _ = root;
+    }
+
+    #[test]
+    fn toggling_a_skill_returns_the_record_the_listing_would() {
+        let root = tempfile::tempdir().unwrap();
+        let pack = Pack::new("2026.09.04", &["paper-lookup"]);
+        seed_from_pack(root.path(), pack.path()).unwrap();
+        std::fs::write(
+            skills_root(root.path())
+                .join("paper-lookup")
+                .join("SKILL.md"),
+            valid_skill("paper-lookup", "A bundled research skill.", "My own steps."),
+        )
+        .unwrap();
+        pack.write_manifest("2026.10.01", &["paper-lookup"]);
+
+        set_project_enabled(
+            root.path(),
+            Some(pack.path()),
+            "swift-violet-fox",
+            "paper-lookup",
+            true,
+        )
+        .unwrap();
+        let device_off = set_enabled(
+            root.path(),
+            Some(pack.path()),
+            Some("swift-violet-fox"),
+            "paper-lookup",
+            false,
+        )
+        .unwrap();
+
+        assert!(!device_off.enabled);
+        assert!(device_off.project_enabled);
+        assert!(device_off.update_available);
+
+        let scoped_off = set_project_enabled(
+            root.path(),
+            Some(pack.path()),
+            "swift-violet-fox",
+            "paper-lookup",
+            false,
+        )
+        .unwrap();
+
+        assert!(!scoped_off.project_enabled);
+        assert!(scoped_off.update_available);
     }
 }

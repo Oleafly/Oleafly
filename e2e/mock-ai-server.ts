@@ -14,6 +14,8 @@ export interface MockAiServer {
   setStreamDelay: (milliseconds: number) => void;
   setToolCall: (call: { name: string; args: Record<string, unknown>; then: string } | null) => void;
   requestCount: () => number;
+  requestBodies: () => string[];
+  resetRequests: () => void;
 }
 
 export async function startMockAiServer(): Promise<MockAiServer> {
@@ -21,6 +23,7 @@ export async function startMockAiServer(): Promise<MockAiServer> {
   let streamDelay = 0;
   let toolCall: { name: string; args: Record<string, unknown>; then: string } | null = null;
   let requests = 0;
+  let bodies: string[] = [];
 
   const server: Server = createServer((req, res) => {
     const url = req.url || "";
@@ -53,6 +56,7 @@ export async function startMockAiServer(): Promise<MockAiServer> {
       req.on("data", (c) => (body += c));
       req.on("end", async () => {
         requests++;
+        bodies.push(body);
         const hasToolResult = /"role"\s*:\s*"tool"/.test(body);
         // generateText (single-shot, e.g. image-to-LaTeX) posts stream:false and
         // expects a plain JSON completion instead of SSE.
@@ -159,5 +163,10 @@ export async function startMockAiServer(): Promise<MockAiServer> {
       toolCall = c;
     },
     requestCount: () => requests,
+    requestBodies: () => [...bodies],
+    resetRequests: () => {
+      requests = 0;
+      bodies = [];
+    },
   };
 }

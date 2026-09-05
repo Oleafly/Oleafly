@@ -163,6 +163,7 @@ function harness(
     onStep: vi.fn(),
     onRetry: vi.fn(),
     onSubagentUpdate: vi.fn(),
+    onSteered: vi.fn(),
   };
 
   return {
@@ -189,6 +190,16 @@ describe("harness", () => {
     ]);
     await h.run();
     expect(h.handlers.onText.mock.calls.map((c) => c[0])).toEqual(["Hel", "lo"]);
+  });
+
+  it("hands the steered text to the caller so it can join the transcript", async () => {
+    const h = harness([
+      { kind: "textDelta", text: "working" },
+      { kind: "steered", text: "change direction" },
+      { kind: "done", stopReason: "stop" },
+    ]);
+    await h.run();
+    expect(h.handlers.onSteered).toHaveBeenCalledWith("change direction");
   });
 
   it("opens a reasoning block once and closes it when text starts", async () => {

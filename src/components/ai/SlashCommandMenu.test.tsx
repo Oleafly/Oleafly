@@ -45,6 +45,66 @@ describe("SlashCommandMenu", () => {
     expect(screen.queryByRole("option", { name: /Plan mode/ })).not.toBeInTheDocument();
   });
 
+  it("finds a skill by its id and heads its group once", () => {
+    const skillCommand: ComposerCommand = {
+      id: "skill:paper-lookup",
+      label: "Paper Lookup",
+      description: "Search literature APIs.",
+      icon: Circle,
+      kind: "insert",
+      insertText: "/paper-lookup ",
+      group: "Skills",
+      keywords: "paper-lookup",
+      action: () => {},
+    };
+    render(
+      <SlashCommandMenu
+        commands={[
+          command("model", "Model", "Choose the model for this chat", () => {}),
+          skillCommand,
+          { ...skillCommand, id: "skill:peer-review", label: "Peer Review", keywords: "peer-review" },
+        ]}
+        query=""
+        onSelect={() => {}}
+        onClose={() => {}}
+      />,
+    );
+
+    expect(screen.getAllByText("Skills")).toHaveLength(1);
+    expect(screen.getByRole("option", { name: /Paper Lookup/ })).toBeInTheDocument();
+  });
+
+  it("matches a skill typed by id rather than by name", () => {
+    const skillCommand: ComposerCommand = {
+      id: "skill:paper-lookup",
+      label: "Paper Lookup",
+      description: "Search literature APIs.",
+      icon: Circle,
+      kind: "insert",
+      insertText: "/paper-lookup ",
+      group: "Skills",
+      keywords: "paper-lookup",
+      action: () => {},
+    };
+    const selected: ComposerCommand[] = [];
+    const ref = createRef<SlashCommandMenuHandle>();
+    render(
+      <SlashCommandMenu
+        ref={ref}
+        commands={[command("model", "Model", "Choose a model", () => {}), skillCommand]}
+        query="paper-look"
+        onSelect={(item) => selected.push(item)}
+        onClose={() => {}}
+      />,
+    );
+
+    expect(screen.queryByRole("option", { name: /Model/ })).not.toBeInTheDocument();
+    act(() => ref.current?.handleKeyDown(keyEvent("Enter")));
+
+    expect(selected).toHaveLength(1);
+    expect(selected[0]).toMatchObject({ kind: "insert", insertText: "/paper-lookup " });
+  });
+
   it("moves the active command with arrow keys and selects it with Enter", () => {
     const selected: string[] = [];
     const ref = createRef<SlashCommandMenuHandle>();
@@ -92,7 +152,7 @@ describe("SlashCommandMenu", () => {
     );
   });
 
-  it("consumes Enter without dispatching when no command matches", () => {
+  it("lets Enter send the message when no command matches", () => {
     const action = vi.fn();
     const preventDefault = vi.fn();
     const ref = createRef<SlashCommandMenuHandle>();
@@ -106,8 +166,8 @@ describe("SlashCommandMenu", () => {
       />,
     );
 
-    expect(ref.current?.handleKeyDown({ key: "Enter", preventDefault })).toBe(true);
-    expect(preventDefault).toHaveBeenCalledOnce();
+    expect(ref.current?.handleKeyDown({ key: "Enter", preventDefault })).toBe(false);
+    expect(preventDefault).not.toHaveBeenCalled();
     expect(action).not.toHaveBeenCalled();
   });
 

@@ -117,6 +117,120 @@ const replaceRangeHost: AiToolsHost["replaceRange"] = async (
   return useFilesStore.getState().applyExternalWrite(projectId, path, next);
 };
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function syncTexAvailable(): boolean {
+  const files = useFilesStore.getState();
+  if (!files.engineLoaded || files.engine?.capabilities?.supports_synctex !== true) return false;
+  return useCompileStore.getState().pdfBytes !== null;
+}
+
+export const EDITOR_DOCUMENT_WAIT_MS = 4000;
+
+function inEditor(node: Element | null | undefined): boolean {
+  return !!node?.closest?.(".cm-editor");
+}
+
+export async function revealEditorLine(path: string, line: number): Promise<boolean> {
+  const files = useFilesStore.getState();
+  if (files.activePath !== path) {
+    await files.openFile(path);
+    if (useFilesStore.getState().activePath !== path) return false;
+  }
+  const { gotoLine, getEditorView, waitForEditorDocument } = await import(
+    "@/components/editor/cm/controller"
+  );
+  const controller = new AbortController();
+  const giveUp = setTimeout(() => controller.abort(), EDITOR_DOCUMENT_WAIT_MS);
+  let ready: unknown = null;
+  try {
+    ready = await waitForEditorDocument(path, controller.signal);
+  } finally {
+    clearTimeout(giveUp);
+  }
+  if (!ready) return false;
+  const restore =
+    typeof document === "undefined" ? null : (document.activeElement as HTMLElement | null);
+  gotoLine(line);
+  if (typeof document === "undefined") return true;
+  if (restore && !inEditor(restore) && typeof restore.focus === "function") {
+    restore.focus({ preventScroll: true });
+  }
+  if (!inEditor(restore) && inEditor(document.activeElement)) {
+    getEditorView()?.contentDOM.blur();
+  }
+  return true;
+}
+
+async function showPreviewSurfaces(needsEditor: boolean, needsPdf: boolean): Promise<boolean> {
+  const settings = useSettingsStore.getState();
+  const mode = settings.viewMode;
+  let next: typeof mode | null = null;
+  if (needsEditor && needsPdf && mode !== "split") next = "split";
+  else if (needsEditor && !needsPdf && mode === "pdf") next = "editor";
+  else if (needsPdf && !needsEditor && mode === "editor") next = "split";
+  if (!next) return false;
+  settings.setViewMode(next);
+  await delay(60);
+  return true;
+}
+
+async function showPdfPage(page: number, waitMs: number): Promise<boolean> {
+  const { gotoPdfPage } = await import("@/components/pdf/pdfController");
+  return gotoPdfPage(page, waitMs);
+}
+
+async function forwardSyncTexToRevealedLine(): Promise<void> {
+  const { forwardFromCursor } = await import("@/features/synctex");
+  await forwardFromCursor();
+}
+
+const revealLocationHost = async (target: {
+  path?: string;
+  line?: number;
+  page?: number;
+}): Promise<{ revealed: boolean; note?: string }> => {
+  const projectId = useFilesStore.getState().projectId;
+  if (!projectId) return { revealed: false, note: "No project is open." };
+
+  const notes: string[] = [];
+  const wantsPage = typeof target.page === "number";
+  const wantsSyncTex = !wantsPage && !!target.path && typeof target.line === "number";
+  const syncTexReady = wantsSyncTex && syncTexAvailable();
+  if (wantsSyncTex && !syncTexReady && useFilesStore.getState().engine?.capabilities?.supports_synctex === true) {
+    notes.push("Compile the project to move the PDF preview to the same spot.");
+  }
+
+  const switched = await showPreviewSurfaces(!!target.path, wantsPage || syncTexReady);
+
+  let editorRevealed = false;
+  if (target.path) {
+    editorRevealed = await revealEditorLine(target.path, target.line ?? 1);
+    if (!editorRevealed) notes.push(`Could not open ${target.path} in the editor.`);
+  }
+
+  let pdfRevealed = false;
+  if (wantsPage) {
+    pdfRevealed = await showPdfPage(target.page as number, switched ? 1500 : 0);
+    if (!pdfRevealed) notes.push("The PDF preview is not showing a document, so its page did not change.");
+  } else if (editorRevealed && syncTexReady) {
+    try {
+      await forwardSyncTexToRevealedLine();
+    } catch {
+      notes.push("The PDF preview stayed where it was.");
+    }
+  }
+
+  return {
+    revealed: editorRevealed || pdfRevealed,
+    ...(notes.length ? { note: notes.join(" ") } : {}),
+  };
+};
+
 const HOST: AiToolsHost = {
   getProjectId: () => useFilesStore.getState().projectId,
   readFileContent,
@@ -248,6 +362,7 @@ const HOST: AiToolsHost = {
     }
     return true;
   },
+  revealLocation: revealLocationHost,
   rememberNote: (content) => {
     const note = useAgentMemoryStore.getState().add(content);
     return note ? { id: note.id, content: note.content } : { error: "No project open or empty note" };

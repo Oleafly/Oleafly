@@ -735,6 +735,18 @@ describe("MessageItem streaming render", () => {
     );
   });
 
+  it("labels a user message that was steered into a running turn", () => {
+    const { getByTestId } = render(
+      <MessageItem msg={{ role: "user", content: "Change direction", steered: true }} />,
+    );
+    expect(getByTestId("steered-message-label")).toHaveTextContent("Steered");
+
+    const plain = render(<MessageItem msg={{ role: "user", content: "Change direction" }} />);
+    expect(
+      plain.container.querySelector('[data-testid="steered-message-label"]'),
+    ).toBeNull();
+  });
+
   it("keeps user message links and inline code readable on the primary bubble", async () => {
     const { container } = render(
       <MessageItem

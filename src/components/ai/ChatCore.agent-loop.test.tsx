@@ -19,6 +19,7 @@ interface HarnessOptions {
     onText: (text: string) => void;
     onToolCall: (call: { id: string; name: string; args: unknown }) => void | Promise<void>;
     onToolResult: (result: { id: string; output: unknown }) => void;
+    onSteered?: (text: string) => void;
   };
 }
 
@@ -459,7 +460,7 @@ beforeEach(() => {
   mocks.agentProbeModel
     .mockReset()
     .mockResolvedValue({ verdict: "verified", reason: "", probedAt: 1 });
-  mocks.agentSteer.mockReset().mockResolvedValue(undefined);
+  mocks.agentSteer.mockReset().mockResolvedValue({ status: "delivered" });
   mocks.agentThreadArchive.mockReset().mockResolvedValue(true);
   mocks.agentThreadFork.mockReset().mockResolvedValue("thread-forked");
   mocks.claimPrewarmed.mockReset().mockResolvedValue(null);
@@ -508,16 +509,14 @@ beforeEach(() => {
     content: [{ type: "text", text: "No papers found" }],
   });
   mocks.toastError.mockReset();
-  mocks.createSkill.mockReset().mockResolvedValue({
-    id: "recorded-review",
-    name: "Recorded Review",
-    description: "Repeat the review approach from this chat.",
-    instructions: "Review this draft before enabling it.",
-    source: "user",
-    enabled: false,
-    removable: true,
-    validation: { status: "valid" },
-  });
+  mocks.createSkill.mockReset().mockResolvedValue(
+    skillEntry({
+      id: "recorded-review",
+      name: "Recorded Review",
+      description: "Repeat the review approach from this chat.",
+      instructions: "Review this draft before enabling it.",
+    }),
+  );
   mocks.refetchSkills.mockReset().mockResolvedValue(undefined);
   mocks.skillEntries.length = 0;
   mocks.skillsLoaded = true;
@@ -687,6 +686,34 @@ async function attachTextFile(rendered: RenderResult, name: string, text: string
     target: { files: [new File([text], name, { type: "text/plain", lastModified: 1 })] },
   });
   await waitFor(() => expect(rendered.getByText(name)).toBeTruthy());
+}
+
+function skillEntry(
+  overrides: Record<string, unknown> & { id: string },
+): Record<string, unknown> {
+  return {
+    name: overrides.id,
+    description: `Description for ${overrides.id}.`,
+    instructions: `Instructions for ${overrides.id}.`,
+    dir: `/skills/${overrides.id}`,
+    files: [],
+    license: null,
+    compatibility: null,
+    allowedTools: [],
+    version: null,
+    author: null,
+    tier: "user",
+    phase: null,
+    tools: [],
+    source: "user",
+    packVersion: null,
+    updateAvailable: false,
+    projectEnabled: false,
+    enabled: false,
+    removable: true,
+    validation: { status: "valid" },
+    ...overrides,
+  };
 }
 
 function seedCompletedChat() {
@@ -1030,7 +1057,7 @@ describe("ChatCore agent turns", () => {
     }) as HTMLButtonElement;
     expect(discard.disabled).toBe(true);
     fireEvent.click(discard);
-    expect(rendered.getByText("Queued for the next turn: Reserve this follow-up")).toBeTruthy();
+    expect(rendered.getByText("Sent as the next turn: Reserve this follow-up")).toBeTruthy();
 
     await act(async () => followUpBudget.resolve("blocked"));
     await waitFor(() => expect(discard.disabled).toBe(false));
@@ -1133,7 +1160,7 @@ describe("ChatCore agent turns", () => {
   });
 
   it("marks only the acknowledged queued steer as delivered", async () => {
-    const steerAck = deferred<void>();
+    const steerAck = deferred<{ status: string }>();
     mocks.agentSteer.mockReturnValueOnce(steerAck.promise);
     const rendered = await renderChat();
     submit(rendered, "First request");
@@ -1157,12 +1184,22 @@ describe("ChatCore agent turns", () => {
     });
     expect(mocks.agentSteer).toHaveBeenCalledTimes(1);
     expect(discardButton.disabled).toBe(true);
+    expect(
+      (
+        rendered.getAllByRole("button", {
+          name: "Discard queued message",
+        })[0] as HTMLButtonElement
+      ).disabled,
+    ).toBe(false);
+    expect(
+      rendered.getByText("Waiting for a safe point in the run: Use this now"),
+    ).toBeTruthy();
     expect(useAgentTurnsStore.getState().queuedByChat["chat-1"].map((item) => item.status)).toEqual([
       "pending",
       "pending",
     ]);
 
-    await act(async () => steerAck.resolve());
+    await act(async () => steerAck.resolve({ status: "delivered" }));
     await waitFor(() => {
       expect(
         useAgentTurnsStore.getState().queuedByChat["chat-1"].map((item) => ({
@@ -1207,6 +1244,239 @@ describe("ChatCore agent turns", () => {
       mocks.runs[0].options.onRawEvent?.({ kind: "steered", text: "Use the attachment now" }),
     );
     await act(async () => finishRun(0, "First response"));
+  });
+
+  it("records a delivered steer as its own user turn and reopens the assistant reply", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    act(() => mocks.runs[0].options.handlers.onText("Working on it."));
+
+    submit(rendered, "Use this direction now");
+    fireEvent.click(rendered.getByRole("button", { name: "Steer now" }));
+    await waitFor(() =>
+      expect(rendered.getByText("Steered into the running turn: Use this direction now")),
+    );
+
+    await act(async () => {
+      mocks.runs[0].options.handlers.onSteered?.("Use this direction now");
+    });
+    act(() => mocks.runs[0].options.handlers.onText("Following the new direction."));
+    await act(async () => finishRun(0, ""));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    const stored = useChatsStore.getState().byId("chat-1")?.messages ?? [];
+    expect(
+      stored.map((message: ChatMessage) => ({
+        role: message.role,
+        content: message.content,
+        steered: message.steered ?? false,
+      })),
+    ).toEqual([
+      { role: "user", content: "First request", steered: false },
+      { role: "assistant", content: "Working on it.", steered: false },
+      { role: "user", content: "Use this direction now", steered: true },
+      { role: "assistant", content: "Following the new direction.", steered: false },
+    ]);
+    submit(rendered, "Second request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    expect(plainTranscript(mocks.runs[1].options.messages)).toEqual([
+      { role: "user", content: "First request" },
+      { role: "assistant", content: "Working on it." },
+      { role: "user", content: "Use this direction now" },
+      { role: "assistant", content: "Following the new direction." },
+      { role: "user", content: "Second request" },
+    ]);
+    await act(async () => finishRun(1, "Second response"));
+  });
+
+  it("leaves a steer the run could not take queued for the next turn", async () => {
+    mocks.agentSteer.mockResolvedValueOnce({ status: "run_finished" });
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    submit(rendered, "Apply this instead");
+    fireEvent.click(rendered.getByRole("button", { name: "Steer now" }));
+
+    await waitFor(() => expect(mocks.agentSteer).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(rendered.getByText("Queued for the next turn: Apply this instead")),
+    );
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(
+      useAgentTurnsStore.getState().queuedByChat["chat-1"].map((item) => item.status),
+    ).toEqual(["pending"]);
+
+    await act(async () => finishRun(0, "First response"));
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    expect(plainTranscript(mocks.runs[1].options.messages).at(-1)).toEqual({
+      role: "user",
+      content: "Apply this instead",
+    });
+    await act(async () => finishRun(1, "Second response"));
+  });
+
+  it("stops offering discard once the steer request is in flight", async () => {
+    const steerAck = deferred<{ status: string }>();
+    mocks.agentSteer.mockReturnValueOnce(steerAck.promise);
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    submit(rendered, "Drop this while it waits");
+    const discard = rendered.getByRole("button", {
+      name: "Discard queued message",
+    }) as HTMLButtonElement;
+    expect(discard.disabled).toBe(false);
+
+    fireEvent.click(rendered.getByRole("button", { name: "Steer now" }));
+    await waitFor(() =>
+      expect(
+        rendered.getByText("Waiting for a safe point in the run: Drop this while it waits"),
+      ),
+    );
+
+    expect(discard.disabled).toBe(true);
+    fireEvent.click(discard);
+    expect(useAgentTurnsStore.getState().queuedByChat["chat-1"]).toHaveLength(1);
+
+    await act(async () => steerAck.resolve({ status: "delivered" }));
+    await waitFor(() =>
+      expect(
+        rendered.getByText("Steered into the running turn: Drop this while it waits"),
+      ),
+    );
+
+    await act(async () => finishRun(0, "First response"));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(mocks.runs).toHaveLength(1);
+  });
+
+  it("steers a queued skill command as the resolved skill directive", async () => {
+    mocks.skillEntries.push(
+      skillEntry({
+        id: "proof-review",
+        name: "Proof Review",
+        description: "Review a proof carefully.",
+        instructions: "Check every inference.",
+        enabled: true,
+      }),
+    );
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    submit(rendered, "/proof-review check table 2");
+    fireEvent.click(rendered.getByRole("button", { name: "Steer now" }));
+
+    await waitFor(() => expect(mocks.agentSteer).toHaveBeenCalledTimes(1));
+    expect(mocks.agentSteer).toHaveBeenCalledWith("request-1", {
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: 'Use the skill "Proof Review" (proof-review) for this request.\ncheck table 2',
+        },
+      ],
+    });
+
+    await act(async () => finishRun(0, "First response"));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+  });
+
+  it("carries the instructions of a skill the run cannot load into the steer", async () => {
+    mocks.skillEntries.push(
+      skillEntry({
+        id: "proof-review",
+        name: "Proof Review",
+        description: "Review a proof carefully.",
+        instructions: "Check every inference.",
+        enabled: false,
+      }),
+    );
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    submit(rendered, "/proof-review check table 2");
+    fireEvent.click(rendered.getByRole("button", { name: "Steer now" }));
+
+    await waitFor(() => expect(mocks.agentSteer).toHaveBeenCalledTimes(1));
+    const steered = mocks.agentSteer.mock.calls[0][1] as {
+      content: Array<{ text: string }>;
+    };
+    expect(steered.content[0].text).toContain(
+      'Use the skill "Proof Review" (proof-review) for this request.',
+    );
+    expect(steered.content[0].text).toContain("<requested_skill");
+    expect(steered.content[0].text).toContain("Check every inference.");
+    expect(steered.content[0].text).toContain("check table 2");
+
+    await act(async () => finishRun(0, "First response"));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+  });
+
+  it("waits for the run id before the steer button is usable", async () => {
+    mocks.runAgentHarness.mockImplementationOnce(
+      (options: HarnessOptions) =>
+        new Promise((resolve) => {
+          mocks.runs.push({ options, resolve });
+        }),
+    );
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    submit(rendered, "Steer once the run starts");
+    const steerButton = rendered.getByRole("button", {
+      name: "Steer now",
+    }) as HTMLButtonElement;
+    expect(steerButton.disabled).toBe(true);
+    expect(steerButton.title).toBe("Starting the run");
+    fireEvent.click(steerButton);
+    expect(mocks.agentSteer).not.toHaveBeenCalled();
+
+    act(() => mocks.runs[0].options.onRequestId?.("request-1"));
+    await waitFor(() => expect(steerButton.disabled).toBe(false));
+    expect(steerButton.title).toBe("");
+
+    await act(async () => finishRun(0, "First response"));
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    await act(async () => finishRun(1, "Second response"));
+  });
+
+  it("drops delivered steers but keeps queued messages when a run fails", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    submit(rendered, "Steer this one");
+    fireEvent.click(rendered.getByRole("button", { name: "Steer now" }));
+    await waitFor(() =>
+      expect(rendered.getByText("Steered into the running turn: Steer this one")),
+    );
+    submit(rendered, "Keep this one queued");
+
+    await act(async () => {
+      mocks.runs[0].options.handlers.onSteered?.("Steer this one");
+      mocks.runs[0].resolve({
+        text: "",
+        usage: { input: 0, output: 0 },
+        steps: 1,
+        stopped_at_cap: false,
+        error: "the provider failed",
+      });
+    });
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    expect(
+      useAgentTurnsStore.getState().queuedByChat["chat-1"].map((item) => ({
+        text: item.text,
+        status: item.status,
+      })),
+    ).toEqual([{ text: "Keep this one queued", status: "pending" }]);
+    expect(mocks.runs).toHaveLength(1);
   });
 
   it("publishes no more than one capped text batch per animation frame", async () => {
@@ -1572,16 +1842,15 @@ describe("ChatCore agent turns", () => {
   });
 
   it("does not advertise enabled skills when load_skill is disabled", async () => {
-    mocks.skillEntries.push({
-      id: "proof-review",
-      name: "Proof Review",
-      description: "Review a proof carefully.",
-      instructions: "Check every inference.",
-      source: "user",
-      enabled: true,
-      removable: true,
-      validation: { status: "valid" },
-    });
+    mocks.skillEntries.push(
+      skillEntry({
+        id: "proof-review",
+        name: "Proof Review",
+        description: "Review a proof carefully.",
+        instructions: "Check every inference.",
+        enabled: true,
+      }),
+    );
     useAiToolSettingsStore.setState({ enabledByName: { load_skill: false } });
     const rendered = await renderChat();
 
@@ -1597,42 +1866,36 @@ describe("ChatCore agent turns", () => {
 
   it("injects enabled OpenResearch metadata and loads its full instructions on demand", async () => {
     mocks.skillEntries.push(
-      {
+      skillEntry({
         id: "openresearch",
         name: "OpenResearch (orx)",
         description:
           "Ground research in literature and run or inspect experiments with the local orx CLI.",
         instructions:
           "Before using it, check whether `orx` is available on PATH. Run `orx --help` for the full interface.",
-        source: "first-party",
+        source: "bundled",
+        tier: "native",
+        phase: "research",
         enabled: true,
         removable: false,
-        validation: { status: "valid" },
-      },
-      {
+      }),
+      skillEntry({
         id: "citation-audit",
         name: "Citation Audit",
         description: "Check every citation.",
         instructions: "Inspect every bibliography entry.",
-        source: "user",
-        enabled: false,
-        removable: true,
-        validation: { status: "valid" },
-      },
-      {
+      }),
+      skillEntry({
         id: "broken",
         name: "Broken Skill",
         description: "This skill is invalid.",
         instructions: "Do not load this.",
-        source: "user",
-        enabled: false,
-        removable: true,
         validation: {
           status: "invalid",
           code: "missing-description",
           message: "Missing description.",
         },
-      },
+      }),
     );
     const rendered = await renderChat();
 
@@ -1652,17 +1915,190 @@ describe("ChatCore agent turns", () => {
     await act(async () => finishRun(0, "Ready"));
   });
 
+  it("groups the skill catalog by phase and states the workflow rules", async () => {
+    mocks.skillEntries.push(
+      skillEntry({
+        id: "oleafly-research-loop",
+        name: "Research loop",
+        description: "Entry point for research writing in Oleafly.",
+        instructions: "Plan the work, then hand off.",
+        phase: "research",
+        tier: "native",
+        source: "bundled",
+        enabled: true,
+      }),
+      skillEntry({
+        id: "scientific-writing",
+        name: "Scientific writing",
+        description: "Draft a section that reads like a paper.",
+        phase: "authoring",
+        tier: "vendored",
+        source: "bundled",
+        enabled: true,
+      }),
+    );
+    const rendered = await renderChat();
+
+    submit(rendered, "Help me start this paper");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    const system = mocks.runs[0].options.system;
+    expect(system).toContain("Research workflow map");
+    expect(system.indexOf("## research")).toBeLessThan(system.indexOf("## authoring"));
+    expect(system).toContain(
+      'call load_skill with "oleafly-research-loop" first and follow the handoffs it names',
+    );
+    expect(mocks.runs[0].options.tools).toHaveProperty("read_skill_file");
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("states the research rules for a document project and not for an image project", async () => {
+    const rendered = await renderChat();
+
+    submit(rendered, "Draft the introduction");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    const system = mocks.runs[0].options.system;
+    expect(system).toContain("Never invent a reference");
+    expect(system).toContain("Every \\cite key must resolve to an entry in the project bibliography");
+    expect(system).toContain("research/sources/");
+    expect(system).toContain("Compile after each section you write");
+    await act(async () => finishRun(0, "Ready"));
+
+    act(() => {
+      useFilesStore.setState({ projectKind: "image" });
+    });
+    submit(rendered, "Add an arrow");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+
+    expect(mocks.runs[1].options.system).not.toContain("Never invent a reference");
+    await act(async () => finishRun(1, "Ready"));
+  });
+
+  it("loads a slash-requested skill that is not enabled and directs the turn to it", async () => {
+    mocks.skillEntries.push(
+      skillEntry({
+        id: "citation-audit",
+        name: "Citation Audit",
+        description: "Check every citation.",
+        instructions: "Inspect every bibliography entry.",
+      }),
+    );
+    const rendered = await renderChat();
+
+    submit(rendered, "/citation-audit check section 3");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    const run = mocks.runs[0].options;
+    expect(run.system).toContain('<requested_skill id="citation-audit" name="Citation Audit">');
+    expect(run.system).toContain("Inspect every bibliography entry.");
+    const last = run.messages[run.messages.length - 1];
+    expect(last.content).toBe(
+      'Use the skill "Citation Audit" (citation-audit) for this request.\ncheck section 3',
+    );
+    expect(last.content).not.toContain("/citation-audit");
+    await expect(
+      run.tools.load_skill.execute?.({ id: "citation-audit" }),
+    ).resolves.toContain("Inspect every bibliography entry.");
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("sends an unknown slash word as plain text", async () => {
+    const rendered = await renderChat();
+
+    submit(rendered, "/summarise the results");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    const run = mocks.runs[0].options;
+    expect(run.messages[run.messages.length - 1].content).toBe("/summarise the results");
+    expect(run.system).not.toContain("<requested_skill");
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("gives a chat-only model the requested skill in the system prompt", async () => {
+    mocks.getConfig.mockResolvedValue({
+      ai_provider: "openai",
+      ai_model: "gpt-4o",
+      ai_api_key: "test-key",
+      ai_keys: { openai: "test-key" },
+      ai_provider_models: {
+        openai: [
+          {
+            id: "gpt-4o",
+            name: "GPT-4o",
+            enabled: true,
+            source: "fetched",
+            trust: "trusted",
+            metadata: {
+              name: "GPT-4o",
+              inputModalities: ["text"],
+              outputModalities: ["text"],
+              toolCall: false,
+              reasoning: false,
+              attachment: false,
+              structuredOutput: false,
+              status: "active",
+            },
+          },
+        ],
+      },
+      ai_model_probes: {},
+      ai_custom_providers: [],
+      ai_system_prompt: "",
+      ai_personas: [],
+    });
+    mocks.skillEntries.push(
+      skillEntry({
+        id: "citation-audit",
+        name: "Citation Audit",
+        description: "Check every citation.",
+        instructions: "Inspect every bibliography entry.",
+      }),
+    );
+    const rendered = await renderChat();
+
+    submit(rendered, "/citation-audit look at the bibliography");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.runs[0].options.tools).toEqual({});
+    expect(mocks.runs[0].options.system).toContain('<requested_skill id="citation-audit"');
+    expect(mocks.runs[0].options.system).toContain("Inspect every bibliography entry.");
+    await act(async () => finishRun(0, "Ready"));
+  });
+
+  it("inserts a skill token from the slash menu instead of clearing the composer", async () => {
+    mocks.skillEntries.push(
+      skillEntry({
+        id: "paper-lookup",
+        name: "Paper Lookup",
+        description: "Search literature APIs.",
+        enabled: true,
+      }),
+    );
+    const rendered = await renderChat();
+
+    changeComposer("/paper-look");
+    await waitFor(() =>
+      expect(rendered.getByRole("option", { name: /Paper Lookup/ })).toBeTruthy(),
+    );
+    fireEvent.click(rendered.getByRole("option", { name: /Paper Lookup/ }));
+
+    await waitFor(() =>
+      expect(
+        rendered.getByPlaceholderText("Ask AI to help with your document…"),
+      ).toHaveValue("/paper-lookup "),
+    );
+    expect(rendered.queryByRole("listbox", { name: "Slash commands" })).toBeNull();
+  });
+
   it("waits for the initial skills query before assembling a run", async () => {
-    const skill = {
+    const skill = skillEntry({
       id: "proof-review",
       name: "Proof Review",
       description: "Review a proof for logical gaps.",
       instructions: "Read each claim and verify its dependencies.",
-      source: "user",
       enabled: true,
-      removable: true,
-      validation: { status: "valid" },
-    };
+    });
     mocks.skillEntries.push(skill);
     mocks.skillsLoaded = false;
     const pending = deferred<{ data: Array<Record<string, unknown>>; error: null }>();
@@ -2289,7 +2725,9 @@ describe("ChatCore agent turns", () => {
       enabled: false,
     });
     await waitFor(() =>
-      expect(chatQueryClient.getQueryData(["skills"])).toEqual([
+      expect(
+        chatQueryClient.getQueryData(["skills", useFilesStore.getState().projectId]),
+      ).toEqual([
         expect.objectContaining({ id: "recorded-review", enabled: false }),
       ]),
     );

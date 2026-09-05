@@ -36,6 +36,7 @@ interface AgentTurnsState {
   queueFollowUp: (chatId: string, text: string, attachments?: QueuedAttachment[]) => void;
   markSteered: (chatId: string, followUpId: string) => void;
   removeFollowUp: (chatId: string, followUpId: string) => void;
+  purgeSteeredFollowUps: (chatId: string) => void;
   takeFollowUps: (chatId: string) => QueuedFollowUp[];
   acknowledgeFollowUp: (chatId: string, followUpId: string) => void;
   threadFor: (
@@ -262,19 +263,23 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
     });
   },
 
+  purgeSteeredFollowUps: (chatId) => {
+    const queued = get().queuedByChat[chatId] ?? [];
+    if (!queued.some((item) => item.status === "steered")) return;
+    set((state) => {
+      const next = { ...state.queuedByChat };
+      const remaining = (next[chatId] ?? []).filter((item) => item.status === "pending");
+      if (remaining.length > 0) next[chatId] = remaining;
+      else delete next[chatId];
+      return { queuedByChat: next };
+    });
+  },
+
   takeFollowUps: (chatId) => {
     const queued = get().queuedByChat[chatId] ?? [];
     const pendingIndex = queued.findIndex((item) => item.status === "pending");
     const taken = pendingIndex >= 0 ? [queued[pendingIndex]] : [];
-    if (queued.some((item) => item.status === "steered")) {
-      set((state) => {
-        const next = { ...state.queuedByChat };
-        const remaining = (next[chatId] ?? []).filter((item) => item.status === "pending");
-        if (remaining.length > 0) next[chatId] = remaining;
-        else delete next[chatId];
-        return { queuedByChat: next };
-      });
-    }
+    get().purgeSteeredFollowUps(chatId);
     return taken;
   },
 

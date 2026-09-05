@@ -11,6 +11,8 @@ export const DEFAULT_APPROVAL_MODE: ApprovalMode = "approve-for-me";
 
 const READ_TOOLS = new Set([
   "read_file",
+  "read_skill_file",
+  "show_location",
   "list_files",
   "project_map",
   "search_project",
@@ -70,6 +72,8 @@ const READ_ONLY_TOOLS = new Set([
   "load_image",
   "verify_pdf_pages",
   "load_skill",
+  "read_skill_file",
+  "show_location",
   "list_agents",
   "literature_search",
   "alphaxiv_search",

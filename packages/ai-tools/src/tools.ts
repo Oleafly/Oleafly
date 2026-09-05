@@ -33,6 +33,17 @@ export interface ProjectIndexView {
   definitionFor(use: IndexUseView): unknown;
 }
 
+export interface RevealLocationTarget {
+  path?: string;
+  line?: number;
+  page?: number;
+}
+
+export interface RevealLocationResult {
+  revealed: boolean;
+  note?: string;
+}
+
 // The app builds one adapter over its Tauri client and stores; this package
 // stays free of them.
 export interface AiToolsHost {
@@ -108,6 +119,7 @@ export interface AiToolsHost {
   setAgentTodos(todos: { id: string; content: string; status: string }[]): void;
   // PDF vision verify (optional privacy gate).
   getAiPdfCaptureEnabled(): boolean;
+  revealLocation?(target: RevealLocationTarget): Promise<RevealLocationResult>;
   // Sticky project memory notes (across chats).
   rememberNote(content: string): { id: string; content: string } | { error: string };
   forgetNote(id: string): { success: boolean; error?: string };
@@ -800,6 +812,77 @@ export function createOleaflyTools(
           if (!mutationAllowed()) return { error: "The external request was cancelled before mutation." };
           window.dispatchEvent(new CustomEvent("oleafly:toggle-theme"));
           return { success: true };
+        } catch (e) {
+          return { error: String(e) };
+        }
+      },
+    },
+
+    show_location: {
+      description:
+        "Reveal a project file at a line in the editor and, when SyncTeX is available, move the PDF preview to that spot. With only a page number, jump the PDF preview to that page.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "Project-relative path of the file to reveal",
+          },
+          line: {
+            type: "integer",
+            minimum: 1,
+            description: "1-based line in that file",
+          },
+          page: {
+            type: "integer",
+            minimum: 1,
+            description: "1-based PDF page to show",
+          },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+      execute: async (input) => {
+        try {
+          const rawPath = input.path;
+          const rawLine = input.line;
+          const rawPage = input.page;
+          if (rawPath !== undefined && typeof rawPath !== "string") {
+            return { error: "path must be a string" };
+          }
+          const path = typeof rawPath === "string" ? rawPath.trim() : undefined;
+          const positive = (value: unknown, name: string): number | { error: string } | undefined => {
+            if (value === undefined || value === null) return undefined;
+            if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+              return { error: `${name} must be a whole number of 1 or more` };
+            }
+            return value;
+          };
+          const line = positive(rawLine, "line");
+          if (line !== undefined && typeof line !== "number") return line;
+          const page = positive(rawPage, "page");
+          if (page !== undefined && typeof page !== "number") return page;
+          if (!path && page === undefined) {
+            return { error: "Pass a path to reveal in the editor, a page to show in the PDF, or both." };
+          }
+          if (!host.revealLocation) {
+            return { error: "This window has no editor or preview to reveal a location in." };
+          }
+          const target: RevealLocationTarget = {
+            ...(path ? { path } : {}),
+            ...(typeof line === "number" ? { line } : {}),
+            ...(typeof page === "number" ? { page } : {}),
+          };
+          const result = await host.revealLocation(target);
+          if (!result.revealed) {
+            return { error: result.note ?? "Could not reveal that location." };
+          }
+          return {
+            success: true,
+            revealed: true,
+            ...target,
+            ...(result.note ? { note: result.note } : {}),
+          };
         } catch (e) {
           return { error: String(e) };
         }

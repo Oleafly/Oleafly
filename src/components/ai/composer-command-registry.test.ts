@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createAttachCommands,
+  createSkillCommands,
   createSlashCommands,
   type ComposerCommandActions,
 } from "./composer-command-registry";
@@ -60,6 +61,32 @@ describe("composer command registry", () => {
 
     expect(createSlashCommands(actions).map((command) => command.id)).toEqual(["mcp"]);
     expect(createAttachCommands(actions).map((command) => command.id)).toEqual(["browser"]);
+  });
+
+  it("offers one insert command per skill, searchable by id", () => {
+    const commands = createSkillCommands([
+      { id: "paper-lookup", name: "Paper Lookup", description: "Search literature APIs." },
+      { id: "peer-review", name: "Peer Review", description: "Review a manuscript." },
+    ]);
+
+    expect(commands.map((command) => command.id)).toEqual([
+      "skill:paper-lookup",
+      "skill:peer-review",
+    ]);
+    expect(commands[0]).toMatchObject({
+      kind: "insert",
+      insertText: "/paper-lookup ",
+      group: "Skills",
+      keywords: "paper-lookup",
+      label: "Paper Lookup",
+    });
+  });
+
+  it("keeps the built-in commands as plain actions", () => {
+    for (const command of createSlashCommands(actionLayer([]))) {
+      expect(command.kind, command.id).toBeUndefined();
+      expect(command.insertText, command.id).toBeUndefined();
+    }
   });
 
   it.each([

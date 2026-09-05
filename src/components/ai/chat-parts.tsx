@@ -471,6 +471,8 @@ export function CopyMessageButton({ text }: { text: string }) {
 // summary, matching the reference exploration grouping.
 const EXPLORATION_TOOLS: Record<string, "file" | "search" | "list"> = {
   read_file: "file",
+  read_skill_file: "file",
+  load_skill: "file",
   get_pdf_text: "file",
   get_log: "file",
   search_project: "search",
@@ -1030,6 +1032,14 @@ export const MessageItem = memo(function MessageItem({
   return (
     <div className={cn("flex flex-col gap-1.5", msg.role === "user" && "items-end")}>
       {foldSteps ? <WorkedSteps rows={rows} totalMs={totalMs} /> : rows}
+      {msg.role === "user" && msg.steered && (
+        <span
+          data-testid="steered-message-label"
+          className="text-[10px] font-medium text-muted-foreground"
+        >
+          Steered
+        </span>
+      )}
       {msg.attachments && msg.attachments.length > 0 && (
         <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
           {msg.attachments.map((a) => {

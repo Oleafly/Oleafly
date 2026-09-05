@@ -1,0 +1,118 @@
+\documentclass[final]{beamer}
+
+\usepackage[size=a0,scale=1.24,orientation=portrait]{beamerposter}
+\usetheme{Berlin}
+\usecolortheme{seahorse}
+
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\graphicspath{{../figures/}}
+
+\definecolor{OIorange}{RGB}{230,159,0}
+\definecolor{OIskyblue}{RGB}{86,180,233}
+\definecolor{OIgreen}{RGB}{0,158,115}
+\definecolor{OIblue}{RGB}{0,114,178}
+\definecolor{OIvermillion}{RGB}{213,94,0}
+
+\setbeamercolor{block title}{fg=white,bg=OIblue}
+\setbeamercolor{block body}{fg=black,bg=white}
+\setbeamertemplate{navigation symbols}{}
+
+\title{The finding, stated so a passer-by can decide to stop}
+\author{First Author \and Second Author \and Third Author}
+\institute{Department, University}
+\date{}
+
+\begin{document}
+
+\begin{frame}[t]
+
+  \begin{center}
+    {\Huge\bfseries\inserttitle}\\[0.6cm]
+    {\Large\insertauthor}\\[0.3cm]
+    {\large\insertinstitute}
+  \end{center}
+
+  \vspace{1cm}
+
+  \begin{columns}[t]
+
+    \begin{column}{0.31\textwidth}
+
+      \begin{block}{Background}
+        Two or three sentences. What the problem is and why it is open.
+        Keep this under 150 words.
+      \end{block}
+
+      \begin{block}{Question}
+        One sentence, phrased as a question.
+      \end{block}
+
+      \begin{block}{Method}
+        Design, data, and the one analysis choice that matters. A diagram
+        does this better than a paragraph.
+        \begin{center}
+          \includegraphics[width=0.9\textwidth]{design}
+        \end{center}
+      \end{block}
+
+    \end{column}
+
+    \begin{column}{0.35\textwidth}
+
+      \begin{block}{Main result}
+        \begin{center}
+          \includegraphics[width=\textwidth]{main-result}
+        \end{center}
+        One sentence saying what the reader should see in the figure.
+      \end{block}
+
+      \begin{block}{Robustness}
+        \begin{center}
+          \begin{tabular}{lrr}
+            \toprule
+            Condition & Estimate & 95\% CI \\
+            \midrule
+            All sites & 0.42 & 0.31 to 0.53 \\
+            Largest removed & 0.39 & 0.26 to 0.52 \\
+            \bottomrule
+          \end{tabular}
+        \end{center}
+      \end{block}
+
+    \end{column}
+
+    \begin{column}{0.31\textwidth}
+
+      \begin{block}{What it means}
+        The implication, in plain language, for someone one field over.
+      \end{block}
+
+      \begin{block}{Limits}
+        \begin{itemize}
+          \item The honest one.
+          \item The second honest one.
+        \end{itemize}
+      \end{block}
+
+      \begin{block}{Conclusion}
+        The sentence you want remembered.
+      \end{block}
+
+      \begin{block}{References and contact}
+        {\small
+          Smith et al., 2023. \emph{Journal}, 12(3), 45-60.\\
+          Okafor and Lee, 2024. \emph{Proceedings}, 101-110.\\[0.4cm]
+          author@institution.edu
+        }
+      \end{block}
+
+    \end{column}
+
+  \end{columns}
+
+\end{frame}
+
+\end{document}

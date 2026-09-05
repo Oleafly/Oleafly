@@ -9,5 +9,6 @@ export {
   registerPdfView,
   clearPdfView,
   gotoRect,
+  gotoPdfPage,
   pageClickToBp,
 } from "@oleafly/preview/controller";
