@@ -91,6 +91,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Steer now on a queued message waits until the run has actually started.
+  A quick click used to fail with "The running turn could not be steered"
+  and the message went out as a separate turn once the run ended.
 - Source control lists every file inside a new folder, nested folders
   included, instead of one folder row with an empty diff. Staging and the
   diff view work per file, the way they do for files at the top level.

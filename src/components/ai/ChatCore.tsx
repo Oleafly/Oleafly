@@ -609,10 +609,13 @@ export function ChatCore() {
     activeChatId ? s.threadByChat[activeChatId] ?? null : null,
   );
   const activeRunRequestIdRef = useRef<string | null>(null);
-  const [activeRunRequestId, setActiveRunRequestId] = useState<string | null>(null);
+  const [steerableRunId, setSteerableRunId] = useState<string | null>(null);
   const trackRunRequestId = useCallback((id: string | null) => {
     activeRunRequestIdRef.current = id;
-    setActiveRunRequestId(id);
+    setSteerableRunId(null);
+  }, []);
+  const markRunSteerable = useCallback((id: string) => {
+    if (activeRunRequestIdRef.current === id) setSteerableRunId(id);
   }, []);
   const loadChats = useChatsStore((s) => s.load);
   const removeChat = useChatsStore((s) => s.remove);
@@ -1814,6 +1817,7 @@ export function ChatCore() {
     let usageIn = 0;
     let usageOut = 0;
     let usageSteps = 0;
+    let runRequestId: string | null = null;
 
     if (!reservationIsCurrent()) {
       releaseRunReservation();
@@ -2294,6 +2298,7 @@ ${sandboxedCustom}`;
         threadId: turnThreadId ?? undefined,
         clientTurnId,
         onRequestId: (id) => {
+          runRequestId = id;
           trackRunRequestId(id);
           acknowledgeQueued();
         },
@@ -2324,6 +2329,7 @@ ${sandboxedCustom}`;
           onThinking: (label) => setRunThinking(label),
           onStep: (step) => {
             usageSteps = step + 1;
+            if (runRequestId && runIsCurrent()) markRunSteerable(runRequestId);
             updateRunLast((m) => {
               stepContent = m.content ?? "";
               stepBlocks = m.reasoningBlocks ? [...m.reasoningBlocks] : [];
@@ -2567,7 +2573,7 @@ ${sandboxedCustom}`;
         }
       }
     }
-  }, [streaming, apiKey, provider, model, providerModelsMap, projectId, projectName, currentHead, figureToolsAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId, trackRunRequestId, persistDebounced]);
+  }, [streaming, apiKey, provider, model, providerModelsMap, projectId, projectName, currentHead, figureToolsAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId, trackRunRequestId, markRunSteerable, persistDebounced]);
 
   const stop = useCallback(() => {
     pendingImagesRef.current = [];
@@ -3200,8 +3206,8 @@ ${sandboxedCustom}`;
                           <button
                             type="button"
                             data-testid="agent-follow-up-steer"
-                            disabled={awaitingSafePoint || beingSent || !activeRunRequestId}
-                            title={activeRunRequestId ? undefined : "Starting the run"}
+                            disabled={awaitingSafePoint || beingSent || !steerableRunId}
+                            title={steerableRunId ? undefined : "Starting the run"}
                             className="shrink-0 rounded-md px-2 py-0.5 font-medium text-primary transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
                             onClick={() => {
                               const runId = activeRunRequestIdRef.current;

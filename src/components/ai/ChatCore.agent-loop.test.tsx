@@ -16,6 +16,7 @@ interface HarnessOptions {
   guardToolCall?: (call: { id: string; name: string; args: unknown }) => string | null;
   takePendingImages: () => string[];
   handlers: {
+    onStep?: (step: number) => void;
     onText: (text: string) => void;
     onToolCall: (call: { id: string; name: string; args: unknown }) => void | Promise<void>;
     onToolResult: (result: { id: string; output: unknown }) => void;
@@ -535,6 +536,7 @@ beforeEach(() => {
       new Promise((resolve) => {
         const requestId = `request-${mocks.runs.length + 1}`;
         options.onRequestId?.(requestId);
+        options.handlers.onStep?.(0);
         mocks.runs.push({ options, resolve });
       }),
   );
@@ -1425,7 +1427,7 @@ describe("ChatCore agent turns", () => {
     await waitFor(() => expect(activeChatRun()).toBeNull());
   });
 
-  it("waits for the run id before the steer button is usable", async () => {
+  it("waits for the run's first step before the steer button is usable", async () => {
     mocks.runAgentHarness.mockImplementationOnce(
       (options: HarnessOptions) =>
         new Promise((resolve) => {
@@ -1446,6 +1448,12 @@ describe("ChatCore agent turns", () => {
     expect(mocks.agentSteer).not.toHaveBeenCalled();
 
     act(() => mocks.runs[0].options.onRequestId?.("request-1"));
+    expect(steerButton.disabled).toBe(true);
+    expect(steerButton.title).toBe("Starting the run");
+    fireEvent.click(steerButton);
+    expect(mocks.agentSteer).not.toHaveBeenCalled();
+
+    act(() => mocks.runs[0].options.handlers.onStep?.(0));
     await waitFor(() => expect(steerButton.disabled).toBe(false));
     expect(steerButton.title).toBe("");
 
