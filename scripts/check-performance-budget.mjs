@@ -70,7 +70,10 @@ const limits = {
   // trimming the mermaid diagram set, not the startup path.
   // +100 KB for the browser window chrome, terminal tabs, plan-first mode
   // and the split diff resizer: combined graph measures 12.92 MB.
-  totalJavaScript: 13_000_000,
+  // Raised to 14 MB after the Markdown project editing and terminal prompt
+  // work on main (13.14 MB there) plus the skills settings tab, catalog,
+  // sharing card and slash invocation: combined graph measures 13.17 MB.
+  totalJavaScript: 14_000_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each
