@@ -189,8 +189,9 @@ export function parseUsageFilterValues(value: string): string[] {
 }
 
 function csvCell(value: string | number): string {
-  const text = String(value);
-  return /[",\n\r]/u.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+  const literal = typeof value === "string" && /^[\s\p{Cc}\p{Cf}]*[=+\-@＝＋－＠\p{Cc}\p{Cf}]/u.test(value);
+  const text = literal ? `'${value}` : String(value);
+  return literal || /[",\n\r]/u.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
 export function usageReportCsv(report: UsageReport): string {

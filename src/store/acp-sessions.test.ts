@@ -19,8 +19,9 @@ vi.mock("@/components/ai/MessageList", () => ({ MessageList: () => null }));
 vi.mock("@/components/settings/ai/AcpAgentsTab", () => ({ AcpAgentsTab: () => null }));
 vi.mock("@/components/ai/use-research-chat-actions", () => ({ useResearchChatActions: () => ({}) }));
 import { mergeAcpEvents, useAcpSessionsStore } from "./acp-sessions";
-import { acpCatalog, acpDisconnect, acpEvents, acpPrompt, acpSessions, acpSetModel, acpSnapshot, onAcpEvent, onAcpResync, type AcpEvent, type AcpSession } from "@/lib/acp";
+import { acpCatalog, acpDisconnect, acpEvents, acpPrompt, acpSessions, acpSetModel, acpSnapshot, onAcpEvent, onAcpResync, type AcpAgentStatus, type AcpEvent, type AcpSession } from "@/lib/acp";
 import { AcpWorkspaceAssistant } from "@/components/ai/acp/AcpWorkspaceAssistant";
+import { agent, deferred } from "@/components/ai/acp/tests/ui-fixtures";
 const event = (sequence: number, kind = "agent_message_chunk", data = {}): AcpEvent => ({ sessionId: "s", projectId: "p", agentId: "a", modelId: null, taskId: null, turnId: "turn", sequence, timestamp: sequence, kind, data });
 
 describe("ACP session event recovery", () => {
@@ -62,6 +63,77 @@ function savedSession(id: string, status: AcpSession["status"] = "ready"): AcpSe
     controls: { modelId: "first-model", modelConfigId: null, models: [{ modelId: "first-model", name: "First model" }, { modelId: "second-model", name: "Second model" }] },
   };
 }
+
+describe("ACP catalog and session-list request ordering", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    useAcpSessionsStore.setState({ catalog: [], sessions: {}, events: {}, permissions: {}, activeByProject: {} });
+  });
+
+  it("keeps a newly registered agent when an earlier catalog refresh finishes last", async () => {
+    const initial = deferred<AcpAgentStatus[]>();
+    const registered = [agent("builtin"), agent("newly-registered")];
+    vi.mocked(acpCatalog).mockReturnValueOnce(initial.promise).mockResolvedValueOnce(registered);
+    const first = useAcpSessionsStore.getState().refreshCatalog();
+    await useAcpSessionsStore.getState().refreshCatalog(true);
+    expect(useAcpSessionsStore.getState().catalog).toEqual(registered);
+    initial.resolve([agent("builtin")]);
+    await first;
+    expect(useAcpSessionsStore.getState().catalog).toEqual(registered);
+    expect(vi.mocked(acpCatalog).mock.calls).toEqual([[false], [true]]);
+  });
+
+  it("ignores an obsolete catalog error after the newer refresh succeeds", async () => {
+    const initial = deferred<AcpAgentStatus[]>();
+    const registered = [agent("newly-registered")];
+    vi.mocked(acpCatalog).mockReturnValueOnce(initial.promise).mockResolvedValueOnce(registered);
+    const first = useAcpSessionsStore.getState().refreshCatalog();
+    const settled = expect(first).resolves.toBeUndefined();
+    await useAcpSessionsStore.getState().refreshCatalog();
+    initial.reject(new Error("The earlier discovery failed."));
+    await settled;
+    expect(useAcpSessionsStore.getState().catalog).toEqual(registered);
+  });
+
+  it("surfaces the current catalog failure while preserving the last accepted catalog", async () => {
+    const known = [agent("previously-loaded")];
+    useAcpSessionsStore.setState({ catalog: known });
+    const initial = deferred<AcpAgentStatus[]>();
+    const failure = new Error("Current agent discovery failed.");
+    vi.mocked(acpCatalog).mockReturnValueOnce(initial.promise).mockRejectedValueOnce(failure);
+    const first = useAcpSessionsStore.getState().refreshCatalog();
+    await expect(useAcpSessionsStore.getState().refreshCatalog(true)).rejects.toBe(failure);
+    initial.resolve([agent("obsolete")]);
+    await first;
+    expect(useAcpSessionsStore.getState().catalog).toEqual(known);
+  });
+
+  it("does not replace live session progress with an older pending saved-conversation list", async () => {
+    const original = { ...savedSession("s"), lastSequence: 2 };
+    useAcpSessionsStore.setState({ sessions: { s: original } });
+    const pending = deferred<AcpSession[]>();
+    vi.mocked(acpSessions).mockReturnValue(pending.promise);
+    const loading = useAcpSessionsStore.getState().loadProject("p");
+    const newer = { ...savedSession("s", "running"), lastSequence: 5, controls: { ...original.controls, modelId: "second-model" } };
+    useAcpSessionsStore.getState().setSnapshot({ session: newer, permissions: [] });
+    const progress = event(6, "agent_message_chunk", { content: { type: "text", text: "New answer" } });
+    useAcpSessionsStore.getState().ingest([progress]);
+    pending.resolve([original, savedSession("another")]);
+    await loading;
+    expect(useAcpSessionsStore.getState().sessions.s).toMatchObject({ lastSequence: 6, status: "running", controls: { modelId: "second-model" } });
+    expect(useAcpSessionsStore.getState().sessions.another).toEqual(savedSession("another"));
+    expect(useAcpSessionsStore.getState().events.s).toEqual([progress]);
+  });
+
+  it("accepts newer listed state while retaining sessions belonging to other projects", async () => {
+    const other = { ...savedSession("other"), projectId: "another-project" };
+    useAcpSessionsStore.setState({ sessions: { s: savedSession("s"), other } });
+    const refreshed = { ...savedSession("s", "cancelled"), lastSequence: 8, title: "Stopped review" };
+    vi.mocked(acpSessions).mockResolvedValue([refreshed]);
+    await useAcpSessionsStore.getState().loadProject("p");
+    expect(useAcpSessionsStore.getState().sessions).toEqual({ s: refreshed, other });
+  });
+});
 
 describe("ACP controlled conversation selectors", () => {
   afterEach(cleanup);

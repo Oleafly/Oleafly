@@ -67,20 +67,22 @@ export function ResearchProjectSetup({
   const [name, setName] = useState("");
   const [engine, setEngine] = useState<ResearchDocumentEngine>("latex");
   const [starter, setStarter] = useState<ResearchStarter>("article");
-  const [preview, setPreview] = useState<ResearchProjectPreview | null>(null);
+  const [previewResult, setPreviewResult] = useState<{ requestKey: string; value: ResearchProjectPreview } | null>(null);
   const [selectedPreviewPath, setSelectedPreviewPath] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [initialTaskReady, setInitialTaskReady] = useState(false);
+  const requestKey = JSON.stringify({ name, engine, starter });
+  const preview = previewResult?.requestKey === requestKey ? previewResult.value : null;
 
   useEffect(() => {
     if (!open) return;
     setName("");
     setEngine("latex");
     setStarter("article");
-    setPreview(null);
+    setPreviewResult(null);
     setSelectedPreviewPath(null);
     setError(null);
     setCreatedProjectId(null);
@@ -89,7 +91,8 @@ export function ResearchProjectSetup({
 
   useEffect(() => {
     if (!open || !name.trim()) {
-      setPreview(null);
+      setPreviewResult(null);
+      setPreviewing(false);
       setSelectedPreviewPath(null);
       return;
     }
@@ -101,7 +104,7 @@ export function ResearchProjectSetup({
       void previewResearchProject(request)
         .then((result) => {
           if (current) {
-            setPreview(result);
+            setPreviewResult({ requestKey: JSON.stringify(request), value: result });
             setSelectedPreviewPath(result.mainDocument);
           }
         })
@@ -119,6 +122,7 @@ export function ResearchProjectSetup({
   }, [engine, name, open, starter]);
 
   const create = async () => {
+    if (!preview || previewing || creating) return;
     setCreating(true);
     setError(null);
     try {
@@ -126,7 +130,7 @@ export function ResearchProjectSetup({
         request: { name, engine, starter },
         task: {
           title: TASK_TITLES[starter],
-          prompt: preview?.initialTask ?? "Plan the first research task.",
+          prompt: preview.initialTask,
           starter,
         },
         progress: { projectId: createdProjectId, initialTaskReady },
@@ -175,11 +179,11 @@ export function ResearchProjectSetup({
           <div className="space-y-4">
             <div className="grid gap-1.5 text-sm font-medium">
               <label htmlFor="research-project-name">Project name</label>
-              <Input id="research-project-name" autoFocus disabled={Boolean(createdProjectId)} value={name} maxLength={120} placeholder="My research project" onChange={(event) => setName(event.target.value)} />
+              <Input id="research-project-name" autoFocus disabled={creating || Boolean(createdProjectId)} value={name} maxLength={120} placeholder="My research project" onChange={(event) => setName(event.target.value)} />
             </div>
             <div className="grid gap-1.5 text-sm font-medium">
               <label htmlFor="research-project-engine">Document engine</label>
-              <Select value={engine} disabled={Boolean(createdProjectId)} onValueChange={(value) => setEngine(value as ResearchDocumentEngine)}>
+              <Select value={engine} disabled={creating || Boolean(createdProjectId)} onValueChange={(value) => setEngine(value as ResearchDocumentEngine)}>
                 <SelectTrigger id="research-project-engine"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {ENGINES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
@@ -188,7 +192,7 @@ export function ResearchProjectSetup({
             </div>
             <div className="grid gap-1.5 text-sm font-medium">
               <label htmlFor="research-project-starter">Study starter</label>
-              <Select value={starter} disabled={Boolean(createdProjectId)} onValueChange={(value) => setStarter(value as ResearchStarter)}>
+              <Select value={starter} disabled={creating || Boolean(createdProjectId)} onValueChange={(value) => setStarter(value as ResearchStarter)}>
                 <SelectTrigger id="research-project-starter"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {STARTERS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}

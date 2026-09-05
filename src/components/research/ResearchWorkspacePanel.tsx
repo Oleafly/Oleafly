@@ -38,7 +38,7 @@ export function ResearchWorkspacePanel() {
       });
   }, [config]);
   const targets = useAgentTargets(projectId, groups);
-  const agents: ResearchTaskAgentOption[] = targets.map((target) => ({
+  const agents = useMemo<ResearchTaskAgentOption[]>(() => targets.map((target) => ({
     runtimeId: target.runtime === "built-in" ? "builtin" : "acp",
     agentId: target.agentId ?? target.providerId ?? "",
     modelId: target.modelId ?? "",
@@ -46,7 +46,7 @@ export function ResearchWorkspacePanel() {
     modelLabel: target.detail,
     available: !target.taskUnavailableReason,
     unavailableReason: target.taskUnavailableReason ?? undefined,
-  }));
+  })), [targets]);
   const openSettings = () => {
     const settings = useSettingsStore.getState();
     settings.setSettingsInitialSection("ai");

@@ -108,6 +108,75 @@ describe("usage report client", () => {
     expect(csv).toContain("1970-01-01T00:00:00.000Z,,,2,0,0.01");
   });
 
+  it.each([
+    ["equals", "=1+1"],
+    ["plus", "+1+1"],
+    ["minus", "-1"],
+    ["at sign", "@SUM(1)"],
+    ["full-width equals", "＝1+1"],
+    ["full-width plus", "＋1+1"],
+    ["full-width minus", "－1"],
+    ["full-width at sign", "＠SUM(1)"],
+    ["leading spaces", "  =1+1"],
+    ["leading Unicode whitespace", "\u00a0\u3000＋1+1"],
+    ["leading tab", "\tmodel"],
+    ["leading carriage return", "\rmodel"],
+    ["leading line feed", "\nmodel"],
+    ["space before a control character", " \tmodel"],
+    ["mixed whitespace and controls", " \t\r\n=1+1"],
+    ["leading null", "\u0000=1+1"],
+    ["leading delete", "\u007f=1+1"],
+    ["leading format character", "\u200b=1+1"],
+  ])("exports %s metadata as literal text", (_name, value) => {
+    const unsafe = report();
+    Object.assign(unsafe.sessions.items[0], {
+      sessionId: value,
+      projectId: value,
+      runtimeId: value,
+      providerId: value,
+      modelId: value,
+      priceVersion: value,
+    });
+
+    const csv = usageReportCsv(unsafe);
+    const literal = `"'${value}"`;
+    expect(csv).toContain(
+      `${literal},${literal},${literal},${literal},${literal},1970-01-01T00:00:00.000Z,10,4,2,0,0.01,${literal},completed,provider_reported,api\r\n`,
+    );
+  });
+
+  it("keeps quotes, delimiters and line breaks inside a protected metadata cell", () => {
+    const unsafe = report();
+    unsafe.sessions.items[0].modelId = '=HYPERLINK("https://example.invalid","model");\r\n=1+1';
+
+    expect(usageReportCsv(unsafe)).toContain(
+      '"session,one",project,built-in,provider,"\'=HYPERLINK(""https://example.invalid"",""model"");\r\n=1+1",1970-01-01T00:00:00.000Z,10,4,2,0,0.01,model-metadata:test,completed,provider_reported,api\r\n',
+    );
+  });
+
+  it("preserves numeric cells while protecting numeric-looking metadata", () => {
+    const numeric = report();
+    numeric.sessions.items[0].modelId = "-1";
+    numeric.sessions.items[0].outputTotal = 0;
+
+    const csv = usageReportCsv(numeric);
+    expect(csv).toContain("1970-01-01,10,4,2,0.01,1\r\n");
+    expect(csv).toContain(
+      '"session,one",project,built-in,provider,"\'-1",1970-01-01T00:00:00.000Z,10,0,2,0,0.01,model-metadata:test,completed,provider_reported,api\r\n',
+    );
+  });
+
+  it("preserves ordinary model identifiers and absent metadata", () => {
+    const ordinary = report();
+    ordinary.sessions.items[0].modelId = "family/model-1+variant@latest";
+    ordinary.sessions.items[0].providerId = null;
+    ordinary.sessions.items[0].priceVersion = null;
+
+    expect(usageReportCsv(ordinary)).toContain(
+      '"session,one",project,built-in,,family/model-1+variant@latest,1970-01-01T00:00:00.000Z,10,4,2,0,0.01,,completed,provider_reported,api\r\n',
+    );
+  });
+
   it("parses distinct comma-separated filter values", () => {
     expect(parseUsageFilterValues(" one, two,one,  ")).toEqual(["one", "two"]);
   });

@@ -26,12 +26,22 @@ export function mergeAcpEvents(current: readonly AcpEvent[], incoming: readonly 
   return [...bySequence.values()].sort((a, b) => a.sequence - b.sequence);
 }
 
+let catalogRequest = 0;
+
 export const useAcpSessionsStore = create<AcpState>((set, get) => ({
   catalog: [], sessions: {}, activeByProject: {}, events: {}, permissions: {},
-  refreshCatalog: async (probe = false) => { set({ catalog: await acpCatalog(probe) }); },
+  refreshCatalog: async (probe = false) => {
+    const request = ++catalogRequest;
+    try {
+      const catalog = await acpCatalog(probe);
+      if (request === catalogRequest) set({ catalog });
+    } catch (error) {
+      if (request === catalogRequest) throw error;
+    }
+  },
   loadProject: async (projectId) => {
     const sessions = await acpSessions(projectId);
-    set((state) => ({ sessions: { ...state.sessions, ...Object.fromEntries(sessions.map((session) => [session.id, session])) } }));
+    set((state) => ({ sessions: { ...state.sessions, ...Object.fromEntries(sessions.filter((session) => (state.sessions[session.id]?.lastSequence ?? -1) <= session.lastSequence).map((session) => [session.id, session])) } }));
   },
   setSnapshot: (snapshot) => set((state) => (state.sessions[snapshot.session.id]?.lastSequence ?? -1) > snapshot.session.lastSequence ? state : ({
     sessions: { ...state.sessions, [snapshot.session.id]: snapshot.session },

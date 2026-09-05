@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Loader2, Plus, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,7 +66,21 @@ export function ResearchTasksPanel({
   const clearError = useResearchTasksStore((state) => state.clearError);
   const [composerProjectId, setComposerProjectId] = useState<string | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [composerInstance, setComposerInstance] = useState(0);
+  const [savingComposerInstance, setSavingComposerInstance] = useState<number | null>(null);
+  const composerGeneration = useRef(0);
+  const pendingComposerInstance = useRef<number | null>(null);
   const composerOpen = composerProjectId === projectId;
+  const projectBinding = useMemo(() => ({ projectId }), [projectId]);
+  const activeProjectBinding = useRef<typeof projectBinding | null>(projectBinding);
+  activeProjectBinding.current = projectBinding;
+
+  useEffect(() => {
+    activeProjectBinding.current = projectBinding;
+    return () => {
+      if (activeProjectBinding.current === projectBinding) activeProjectBinding.current = null;
+    };
+  }, [projectBinding]);
 
   useEffect(() => {
     void bindProject(projectId);
@@ -98,6 +112,33 @@ export function ResearchTasksPanel({
     () => tasks.find((task) => task.id === editingTaskId) ?? null,
     [editingTaskId, tasks],
   );
+
+  const openComposer = (taskId: string | null = null) => {
+    setComposerInstance(++composerGeneration.current);
+    setEditingTaskId(taskId);
+    setComposerProjectId(projectId);
+  };
+
+  const closeComposer = () => {
+    composerGeneration.current += 1;
+    setComposerProjectId(null);
+    setEditingTaskId(null);
+  };
+
+  const saveComposer = async (save: () => Promise<ResearchTask>, selectCreated = false) => {
+    if (composerGeneration.current !== composerInstance || pendingComposerInstance.current === composerInstance) return;
+    pendingComposerInstance.current = composerInstance;
+    setSavingComposerInstance(composerInstance);
+    try {
+      const task = await save();
+      if (activeProjectBinding.current !== projectBinding || composerGeneration.current !== composerInstance) return;
+      closeComposer();
+      if (selectCreated) await selectTask(task.id);
+    } finally {
+      if (pendingComposerInstance.current === composerInstance) pendingComposerInstance.current = null;
+      setSavingComposerInstance((current) => current === composerInstance ? null : current);
+    }
+  };
 
   if (!projectId) {
     return (
@@ -135,10 +176,7 @@ export function ResearchTasksPanel({
           <Button
             size="sm"
             disabled={agents.length === 0}
-            onClick={() => {
-              setEditingTaskId(null);
-              setComposerProjectId(projectId);
-            }}
+            onClick={() => openComposer()}
           >
             <Plus /> New task
           </Button>
@@ -163,25 +201,15 @@ export function ResearchTasksPanel({
       {composerOpen ? (
         <div className="overflow-auto p-4">
           <TaskComposer
+            key={composerInstance}
             projectId={projectId}
             agents={agents}
             tasks={tasks}
             editingTask={editingTask}
-            busy={action === "create" || action === editingTask?.id}
-            onCancel={() => {
-              setComposerProjectId(null);
-              setEditingTaskId(null);
-            }}
-            onCreate={async (draft) => {
-              const task = await createTask(draft);
-              setComposerProjectId(null);
-              await selectTask(task.id);
-            }}
-            onSave={async (taskId, edit) => {
-              await editTask(taskId, edit);
-              setComposerProjectId(null);
-              setEditingTaskId(null);
-            }}
+            busy={savingComposerInstance === composerInstance}
+            onCancel={closeComposer}
+            onCreate={(draft) => saveComposer(() => createTask(draft), true)}
+            onSave={(taskId, edit) => saveComposer(() => editTask(taskId, edit))}
           />
         </div>
       ) : loading && tasks.length === 0 ? (
@@ -198,7 +226,7 @@ export function ResearchTasksPanel({
             <Button
               className="mt-4"
               disabled={agents.length === 0}
-              onClick={() => setComposerProjectId(projectId)}
+              onClick={() => openComposer()}
             >
               Create a task
             </Button>
@@ -255,10 +283,7 @@ export function ResearchTasksPanel({
                 eventsLoading={eventsLoading}
                 canLoadMoreEvents={eventsNextSequence !== null}
                 busy={action === selectedTask.id}
-                onEdit={() => {
-                  setEditingTaskId(selectedTask.id);
-                  setComposerProjectId(projectId);
-                }}
+                onEdit={() => openComposer(selectedTask.id)}
                 onStart={async () => {
                   await startTask(selectedTask.id);
                 }}
@@ -270,6 +295,7 @@ export function ResearchTasksPanel({
                 }}
                 onApply={async (paths) => {
                   const task = await applyTask(selectedTask.id, paths);
+                  if (activeProjectBinding.current !== projectBinding) return;
                   onApplied?.(task);
                 }}
                 onAccept={async () => {

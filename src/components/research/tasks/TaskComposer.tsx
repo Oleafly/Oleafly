@@ -68,11 +68,15 @@ interface TaskComposerProps {
   onSave: (taskId: string, input: ResearchTaskEdit) => Promise<void>;
 }
 
-function selectedAgentKey(agent: ResearchTaskAgentOption): string {
+function selectedAgentKey(agent: Pick<ResearchTaskAgentOption, "runtimeId" | "agentId" | "modelId">): string {
   return `${agent.runtimeId}\u0000${agent.agentId}\u0000${agent.modelId}`;
 }
 
-export function TaskComposer({
+export function TaskComposer(props: TaskComposerProps) {
+  return <TaskComposerDraft key={JSON.stringify([props.projectId, props.editingTask?.id ?? null])} {...props} />;
+}
+
+function TaskComposerDraft({
   projectId,
   agents,
   tasks,
@@ -86,34 +90,17 @@ export function TaskComposer({
     () => agents.find((agent) => agent.available !== false) ?? agents[0],
     [agents],
   );
-  const [title, setTitle] = useState("");
-  const [prompt, setPrompt] = useState("");
-  const [agentKey, setAgentKey] = useState("");
-  const [skillIds, setSkillIds] = useState<string[]>([]);
-  const [dependencyIds, setDependencyIds] = useState<string[]>([]);
+  const [title, setTitle] = useState(editingTask?.title ?? "");
+  const [prompt, setPrompt] = useState(editingTask?.prompt ?? "");
+  const [agentKey, setAgentKey] = useState(() => editingTask
+    ? selectedAgentKey(editingTask)
+    : firstAvailable ? selectedAgentKey(firstAvailable) : "");
+  const [skillIds, setSkillIds] = useState<string[]>(editingTask?.skillIds ?? []);
+  const [dependencyIds, setDependencyIds] = useState<string[]>(editingTask?.dependencyIds ?? []);
 
   useEffect(() => {
-    if (editingTask) {
-      setTitle(editingTask.title);
-      setPrompt(editingTask.prompt);
-      setAgentKey(
-        selectedAgentKey({
-          runtimeId: editingTask.runtimeId,
-          agentId: editingTask.agentId,
-          modelId: editingTask.modelId,
-          label: editingTask.agentId,
-        }),
-      );
-      setSkillIds(editingTask.skillIds);
-      setDependencyIds(editingTask.dependencyIds);
-      return;
-    }
-    setTitle("");
-    setPrompt("");
-    setAgentKey(firstAvailable ? selectedAgentKey(firstAvailable) : "");
-    setSkillIds([]);
-    setDependencyIds([]);
-  }, [editingTask, firstAvailable]);
+    if (firstAvailable) setAgentKey((current) => current || selectedAgentKey(firstAvailable));
+  }, [firstAvailable]);
 
   const chooseStarter = (starterId: string) => {
     const starter = RESEARCH_TASK_STARTERS.find((candidate) => candidate.id === starterId);
@@ -125,7 +112,7 @@ export function TaskComposer({
 
   const submit = async () => {
     const agent = agents.find((candidate) => selectedAgentKey(candidate) === agentKey);
-    if (!agent || !title.trim() || !prompt.trim()) return;
+    if (busy || !agent || agent.available === false || !title.trim() || !prompt.trim()) return;
     const input: ResearchTaskEdit = {
       title: title.trim(),
       prompt: prompt.trim(),
@@ -176,6 +163,7 @@ export function TaskComposer({
           </label>
           <select
             id="research-task-starter"
+            disabled={busy}
             defaultValue=""
             onChange={(event) => chooseStarter(event.target.value)}
             className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -196,6 +184,7 @@ export function TaskComposer({
         </label>
         <Input
           id="research-task-title"
+          disabled={busy}
           value={title}
           maxLength={160}
           onChange={(event) => setTitle(event.target.value)}
@@ -209,6 +198,7 @@ export function TaskComposer({
         </label>
         <Textarea
           id="research-task-prompt"
+          disabled={busy}
           value={prompt}
           maxLength={32_000}
           rows={7}
@@ -223,11 +213,13 @@ export function TaskComposer({
         </label>
         <select
           id="research-task-agent"
+          disabled={busy}
           value={agentKey}
           onChange={(event) => setAgentKey(event.target.value)}
           className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
         >
           {agents.length === 0 ? <option value="">No agents available</option> : null}
+          {agents.length > 0 && !chosenAgent ? <option value={agentKey} disabled>Choose an agent and model</option> : null}
           {agents.map((agent) => (
             <option
               key={selectedAgentKey(agent)}
@@ -260,6 +252,7 @@ export function TaskComposer({
                 >
                   <Checkbox
                     id={checkboxId}
+                    disabled={busy}
                     checked={checked}
                     onCheckedChange={(next) =>
                       setDependencyIds((current) =>

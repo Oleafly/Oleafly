@@ -113,6 +113,7 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
   };
   const choosePermission = async (id: string, option: string | null) => {
     if (!activeId) return;
+    setError(null);
     try { await acpPermission(projectId, activeId, id, option); }
     catch (value) { setError(acpError(value)); }
   };

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { File, Folder, FolderPlus, Link2Off, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +59,7 @@ function RootEditor({
   const [selected, setSelected] = useState<ResearchRootFileContent | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const previewRequest = useRef(0);
   const labelId = `research-root-label-${root.id}`;
   const roleId = `research-root-role-${root.id}`;
   const accessId = `research-root-access-${root.id}`;
@@ -68,6 +69,8 @@ function RootEditor({
     setRole(root.role);
     setAccess(root.access);
   }, [root]);
+
+  useEffect(() => () => { previewRequest.current += 1; }, []);
 
   const save = async () => {
     setBusy(true);
@@ -84,38 +87,45 @@ function RootEditor({
   };
 
   const browse = async () => {
+    const request = ++previewRequest.current;
     setBusy(true);
     setError(null);
+    setSelected(null);
     try {
       const listing = await listResearchRootFiles(projectId, root.id, "", 8);
+      if (request !== previewRequest.current) return;
       setFiles(listing.entries);
-      setSelected(null);
       if (listing.truncated) {
         setError("This view stops after 2,000 files or eight folder levels.");
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      if (request === previewRequest.current) setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
-      setBusy(false);
+      if (request === previewRequest.current) setBusy(false);
     }
   };
 
   const inspect = async (file: ResearchRootFileEntry) => {
     if (file.isDirectory || file.isSymlink) return;
+    const request = ++previewRequest.current;
     setBusy(true);
     setError(null);
+    setSelected(null);
     try {
-      setSelected(await readResearchRootFile(projectId, root.id, file.relativePath));
+      const content = await readResearchRootFile(projectId, root.id, file.relativePath);
+      if (request === previewRequest.current) setSelected(content);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      if (request === previewRequest.current) setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
-      setBusy(false);
+      if (request === previewRequest.current) setBusy(false);
     }
   };
 
   const unlink = async () => {
+    previewRequest.current += 1;
     setBusy(true);
     setError(null);
+    setSelected(null);
     try {
       onRemoved(await removeResearchRoot(projectId, root.id));
     } catch (cause) {
@@ -328,7 +338,7 @@ export function ResearchRootsPanel({ projectId }: { projectId: string }) {
       ) : (
         <div className="space-y-3">
           {workspace?.roots.map((root) => (
-            <RootEditor key={root.id} projectId={projectId} root={root} onChanged={setWorkspace} onRemoved={setWorkspace} />
+            <RootEditor key={JSON.stringify([projectId, root.id, root.identity, root.canonicalPath])} projectId={projectId} root={root} onChanged={setWorkspace} onRemoved={setWorkspace} />
           ))}
         </div>
       )}
