@@ -620,8 +620,7 @@ mod tests {
         let result = read(&project, request(&paths, &[]));
         assert_eq!(result.files.len(), sources.len());
         for file in &result.files {
-            let expected =
-                crate::project::read_file(project.id.clone(), file.path.clone()).unwrap();
+            let expected = crate::project::read_file_blocking(&project.id, &file.path).unwrap();
             assert_eq!(file.text, expected);
             let bytes = &sources.iter().find(|(rel, _)| rel == &file.path).unwrap().1;
             assert_eq!(file.hash, source_hash(bytes));
@@ -676,7 +675,7 @@ mod tests {
         for _ in 0..10 {
             let start = Instant::now();
             for path in &paths {
-                crate::project::read_file(project.id.clone(), path.clone()).unwrap();
+                crate::project::read_file_blocking(&project.id, path).unwrap();
             }
             per_file.push(start.elapsed().as_secs_f64() * 1000.0);
         }

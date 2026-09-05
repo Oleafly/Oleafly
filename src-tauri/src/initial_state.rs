@@ -15,13 +15,15 @@ pub struct InitialState {
 pub fn compute() -> InitialState {
     InitialState {
         config: config::get_config().ok(),
-        projects: project::list_projects().unwrap_or_default(),
+        projects: project::list_projects_blocking().unwrap_or_default(),
     }
 }
 
 #[tauri::command]
-pub fn initial_state() -> InitialState {
-    compute()
+pub async fn initial_state() -> Result<InitialState, String> {
+    tauri::async_runtime::spawn_blocking(compute)
+        .await
+        .map_err(|error| format!("failed to compute initial state: {error}"))
 }
 
 #[cfg(test)]

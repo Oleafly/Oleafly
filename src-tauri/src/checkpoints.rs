@@ -2605,7 +2605,7 @@ mod tests {
         assert!(!project.join("project.json").exists());
         assert!(transaction.exists());
         assert!(super::has_restore_pending_marker(&project));
-        let listed = crate::project::list_projects().unwrap();
+        let listed = crate::project::list_projects_blocking().unwrap();
         let pending = listed
             .iter()
             .find(|project| project.id == "paper")

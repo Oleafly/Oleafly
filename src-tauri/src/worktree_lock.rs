@@ -6,6 +6,7 @@
 
 use std::fs::{File, OpenOptions};
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 pub(crate) const RESTORE_PENDING_FILE: &str = "checkpoint-restore-pending";
 
@@ -27,6 +28,34 @@ impl ProjectWorktreeLock {
         let file = open_lock_file(project_id)?;
         fs4::FileExt::lock(&file)
             .map_err(|error| format!("could not acquire project write lock: {error}"))?;
+        reject_pending_restore(project_id)?;
+        Ok(Self { _file: file })
+    }
+
+    /// Acquire the read lock, but give up instead of waiting forever. Project
+    /// enumeration runs on every visit to the library and must never be able
+    /// to park its caller: one holder of the write lock would otherwise stall
+    /// the whole listing, and every action that triggers one after it.
+    pub(crate) fn shared_bounded(project_id: &str, budget: Duration) -> Result<Self, String> {
+        let file = open_lock_file(project_id)?;
+        let deadline = Instant::now() + budget;
+        loop {
+            match fs4::FileExt::try_lock_shared(&file) {
+                Ok(()) => break,
+                Err(fs4::TryLockError::WouldBlock) => {
+                    if Instant::now() >= deadline {
+                        return Err(format!(
+                            "project read lock was busy for {}ms",
+                            budget.as_millis()
+                        ));
+                    }
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(fs4::TryLockError::Error(error)) => {
+                    return Err(format!("could not acquire project read lock: {error}"))
+                }
+            }
+        }
         reject_pending_restore(project_id)?;
         Ok(Self { _file: file })
     }
@@ -242,6 +271,26 @@ mod tests {
         drop(first);
         acquired_rx.recv_timeout(Duration::from_secs(2)).unwrap();
         waiter.join().unwrap();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn bounded_shared_lock_gives_up_instead_of_waiting_for_a_writer() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+
+        let held = ProjectWorktreeLock::exclusive("paper").unwrap();
+        let started = std::time::Instant::now();
+        let outcome = ProjectWorktreeLock::shared_bounded("paper", Duration::from_millis(150));
+        let waited = started.elapsed();
+
+        assert!(outcome.is_err());
+        assert!(waited >= Duration::from_millis(150));
+        assert!(waited < Duration::from_secs(5));
+
+        drop(held);
+        assert!(ProjectWorktreeLock::shared_bounded("paper", Duration::from_millis(150)).is_ok());
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 

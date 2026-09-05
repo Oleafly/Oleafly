@@ -820,9 +820,15 @@ pub(crate) async fn list_files_bounded(project_id: String) -> Result<BoundedFile
 }
 
 #[tauri::command]
-pub fn read_file(project_id: String, path: String) -> Result<String, String> {
-    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-    let p = resolve(&project_id, &path)?;
+pub async fn read_file(project_id: String, path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || read_file_blocking(&project_id, &path))
+        .await
+        .map_err(|error| format!("failed to read file: {error}"))?
+}
+
+pub(crate) fn read_file_blocking(project_id: &str, path: &str) -> Result<String, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
+    let p = resolve(project_id, path)?;
     // Legacy encodings (Latin-1 .bib exports are common) must read, not
     // error: decode lossily so odd bytes surface as U+FFFD instead of a
     // hard failure. Genuine binaries still carry NUL bytes downstream,
@@ -3083,8 +3089,16 @@ fn recovery_pending_project_info(project_id: String) -> ProjectInfo {
     }
 }
 
+const PROJECT_ENUMERATION_LOCK_BUDGET: std::time::Duration = std::time::Duration::from_millis(750);
+
 #[tauri::command]
-pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
+pub async fn list_projects() -> Result<Vec<ProjectInfo>, String> {
+    tauri::async_runtime::spawn_blocking(list_projects_blocking)
+        .await
+        .map_err(|error| format!("failed to list projects: {error}"))?
+}
+
+pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
     let root = paths::projects_root()?;
     let mut out = Vec::new();
     let entries = std::fs::read_dir(&root).map_err(|e| e.to_string())?;
@@ -3102,7 +3116,10 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
             }
             continue;
         }
-        let _worktree = match crate::worktree_lock::ProjectWorktreeLock::shared(&id) {
+        let _worktree = match crate::worktree_lock::ProjectWorktreeLock::shared_bounded(
+            &id,
+            PROJECT_ENUMERATION_LOCK_BUDGET,
+        ) {
             Ok(lock) => lock,
             Err(error) => {
                 // Do not read possibly half-restored metadata. Keep the
@@ -3118,7 +3135,10 @@ pub fn list_projects() -> Result<Vec<ProjectInfo>, String> {
                         // admission and the marker check. Retry once so a
                         // freshly recovered project does not disappear for
                         // the rest of this library refresh.
-                        match crate::worktree_lock::ProjectWorktreeLock::shared(&id) {
+                        match crate::worktree_lock::ProjectWorktreeLock::shared_bounded(
+                            &id,
+                            PROJECT_ENUMERATION_LOCK_BUDGET,
+                        ) {
                             Ok(lock) => lock,
                             Err(retry_error) => {
                                 log_project_enumeration_skip(
@@ -5742,13 +5762,12 @@ mod tests {
         duplicate_project, engine_for_main_document, extract_pandoc, find_pandoc_on_path,
         flatten_single_root_folder, get_or_create_scratch_project, import_paths_transactional,
         import_paths_transactional_with, import_project_zip_bytes, import_project_zip_bytes_with,
-        import_skip, infer_main_document, list_projects, normalize_loaded_tex_flavor,
-        normalize_relative, pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash,
-        rename_exclusive, rename_path_in_project, search_docs, set_main_doc_synchronized,
-        set_main_doc_unlocked, tex_root_magic_target, try_reserve_project_directory,
-        validate_conversion_export, validate_tex_flavor, write_meta_at, CreateFileResult,
-        FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta, RenameFileResult,
-        SearchHit, TexSpec, SCRATCH_PROJECT_ID,
+        import_skip, infer_main_document, normalize_loaded_tex_flavor, normalize_relative,
+        pandoc_asset_for, pandoc_version_supported, read_meta, rel_slash, rename_exclusive,
+        rename_path_in_project, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
+        tex_root_magic_target, try_reserve_project_directory, validate_conversion_export,
+        validate_tex_flavor, write_meta_at, CreateFileResult, FileConflictStrategy, MutationScope,
+        PdfConversionFigure, ProjectMeta, RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID,
     };
     use std::collections::HashMap;
     use std::io::Write;
@@ -8059,7 +8078,7 @@ mod tests {
         let meta = read_meta(&id1).unwrap();
         assert!(meta.hidden);
         assert_eq!(meta.kind, "diagram");
-        let listed = list_projects().unwrap();
+        let listed = super::list_projects_blocking().unwrap();
         assert!(listed.iter().all(|p| p.id != SCRATCH_PROJECT_ID));
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
@@ -8148,7 +8167,7 @@ mod tests {
         };
 
         ready.wait();
-        let staged_listing = list_projects().unwrap();
+        let staged_listing = super::list_projects_blocking().unwrap();
         assert_eq!(
             staged_listing
                 .iter()
@@ -8164,7 +8183,7 @@ mod tests {
         publish.wait();
         worker.join().unwrap();
 
-        let published_listing = list_projects().unwrap();
+        let published_listing = super::list_projects_blocking().unwrap();
         let mut ids: Vec<_> = published_listing
             .iter()
             .map(|project| project.id.as_str())
