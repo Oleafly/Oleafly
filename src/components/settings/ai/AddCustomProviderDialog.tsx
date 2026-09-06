@@ -35,8 +35,6 @@ export interface AddCustomProviderDialogProps {
 
 const EMPTY: AddCustomProviderInput = { id: "", name: "", baseURL: "", apiKey: "" };
 
-export const KEY_REQUIRED_FOR_URL_CHANGE = "Enter the API key again to change the base URL.";
-
 type FieldErrors = Partial<Record<"id" | "name" | "baseURL" | "apiKey", string>>;
 
 export function normalizeBaseURL(url: string): string {
@@ -68,15 +66,15 @@ function validate(form: AddCustomProviderInput, editing: CustomProviderEditTarge
       errors.baseURL = "Enter a full URL, e.g. https://api.example.com/v1 or http://localhost:1234/v1.";
     }
   }
-  if (
-    editing?.hasStoredKey &&
-    !errors.baseURL &&
-    normalizeBaseURL(baseURL) !== normalizeBaseURL(editing.baseURL) &&
-    !form.apiKey.trim()
-  ) {
-    errors.apiKey = KEY_REQUIRED_FOR_URL_CHANGE;
-  }
   return errors;
+}
+
+function baseURLWillResendKey(
+  form: AddCustomProviderInput,
+  editing: CustomProviderEditTarget | null,
+): boolean {
+  if (!editing?.hasStoredKey) return false;
+  return normalizeBaseURL(form.baseURL) !== normalizeBaseURL(editing.baseURL);
 }
 
 export function AddCustomProviderDialog({
@@ -149,6 +147,7 @@ export function AddCustomProviderDialog({
       ? "API key (leave blank to keep the saved key)"
       : "API key (optional)"
     : "API key (optional)";
+  const showKeyResendNote = baseURLWillResendKey(form, editing);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -166,7 +165,7 @@ export function AddCustomProviderDialog({
           <DialogTitle>{editing ? "Edit custom provider" : "Add custom provider"}</DialogTitle>
           <DialogDescription>
             {editing
-              ? "Change the name or base URL. A new base URL needs the API key entered again."
+              ? "Change the name or base URL."
               : "Connect any OpenAI-compatible endpoint by its base URL."}
           </DialogDescription>
         </DialogHeader>
@@ -226,6 +225,11 @@ export function AddCustomProviderDialog({
             {fieldErrors.baseURL && (
               <p data-testid="custom-provider-baseurl-error" className="text-xs text-destructive">
                 {fieldErrors.baseURL}
+              </p>
+            )}
+            {!fieldErrors.baseURL && showKeyResendNote && (
+              <p data-testid="custom-provider-baseurl-note" className="text-xs text-muted-foreground">
+                Your saved API key will be sent to this new address.
               </p>
             )}
           </div>

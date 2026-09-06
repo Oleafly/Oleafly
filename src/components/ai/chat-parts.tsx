@@ -23,9 +23,43 @@ import {
 import { Markdown } from "@/components/ui/markdown";
 import { Popover } from "@/components/ui/popover";
 import { ResearchToolCard } from "@/components/ai/activity/ResearchToolCard";
+import { lastFinishedPicture, ToolPicture } from "@/components/ai/activity/ToolPicture";
 import { usePersistentExpansion } from "@/components/ai/activity/expansion-state";
 import { projectToolEntry, stripAnsi, type ResearchChatActions } from "@/lib/chat-activity";
+import { tokenizeComposer } from "@/lib/composer-tokens";
 import { cn } from "@/lib/utils";
+
+const USER_SKILL_CHIP_CLASS =
+  "rounded bg-blue-300/35 px-1 py-px font-medium text-white";
+const USER_MENTION_CHIP_CLASS =
+  "rounded bg-teal-300/35 px-1 py-px font-medium text-white";
+
+export function userTokenChips(msg: ChatMessage): React.ReactNode | null {
+  const skillIds = msg.skillId ? [msg.skillId] : [];
+  const mentions = msg.mentions ?? [];
+  if (skillIds.length === 0 && mentions.length === 0) return null;
+  const tokens = tokenizeComposer(msg.content, { skillIds, paths: mentions });
+  if (!tokens.some((token) => token.kind !== "text")) return null;
+  return (
+    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+      {tokens.map((token) => (
+        <span
+          key={`${token.kind}-${token.start}`}
+          data-token={token.kind}
+          className={
+            token.kind === "skill"
+              ? USER_SKILL_CHIP_CLASS
+              : token.kind === "mention"
+                ? USER_MENTION_CHIP_CLASS
+                : undefined
+          }
+        >
+          {msg.content.slice(token.start, token.end)}
+        </span>
+      ))}
+    </p>
+  );
+}
 
 export function Shimmer({ text }: { text?: string }) {
   return text ? <span className="ai-shimmer text-xs">{text}</span> : null;
@@ -694,16 +728,20 @@ export function ExplorationGroup({
   );
 }
 
+export { freeFigurePath, ToolPicture } from "@/components/ai/activity/ToolPicture";
+
 export function ToolBadge({
   tc,
   actions,
   expansionKey,
+  live = false,
 }: {
   tc: ToolEntry;
   actions?: ResearchChatActions;
   expansionKey?: string;
+  live?: boolean;
 }) {
-  return <ResearchToolCard tc={tc} actions={actions} expansionKey={expansionKey} />;
+  return <ResearchToolCard tc={tc} actions={actions} expansionKey={expansionKey} live={live} />;
 }
 
 export function formatToolOutput(output: unknown): string {
@@ -1032,6 +1070,7 @@ export const MessageItem = memo(function MessageItem({
             tc={tool}
             actions={actions}
             expansionKey={expansionScope ? `${expansionScope}:tool:${key}` : undefined}
+            live={live}
           />,
         );
       }
@@ -1060,6 +1099,8 @@ export const MessageItem = memo(function MessageItem({
     msg.role === "assistant" &&
     !hasVisibleOutcome &&
     !(msg.subagents?.length);
+  const pictures = !live && msg.role === "assistant" ? lastFinishedPicture(msg.toolCalls ?? []) : [];
+  const tokenizedUserText = msg.role === "user" ? userTokenChips(msg) : null;
   const createdAt = msg.createdAt === undefined ? null : new Date(msg.createdAt);
   const validCreatedAt = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : null;
   const messageTime = validCreatedAt?.toLocaleTimeString([], {
@@ -1076,6 +1117,15 @@ export const MessageItem = memo(function MessageItem({
           expansionKey={expansionScope ? `${expansionScope}:steps` : undefined}
         />
       ) : rows}
+      {pictures.map((tool, index) => (
+        <div
+          key={tool.id ?? `picture-${index}`}
+          data-testid="tool-picture"
+          className="max-w-[85%] rounded-md border bg-muted text-xs"
+        >
+          <ToolPicture tc={tool} />
+        </div>
+      ))}
       {msg.role === "user" && msg.steered && (
         <span
           data-testid="steered-message-label"
@@ -1117,13 +1167,15 @@ export const MessageItem = memo(function MessageItem({
                 : "w-full bg-muted text-foreground",
             )}
           >
-            <Markdown
-              className="chat-markdown"
-              inverted={msg.role === "user"}
-              streaming={live}
-            >
-              {msg.content}
-            </Markdown>
+            {tokenizedUserText ?? (
+              <Markdown
+                className="chat-markdown"
+                inverted={msg.role === "user"}
+                streaming={live}
+              >
+                {msg.content}
+              </Markdown>
+            )}
           </div>
           <div className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
             {messageTime && (

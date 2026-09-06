@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { Check, Copy, RotateCcw } from "lucide-react";
+import { Check, Copy, GitBranch, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/store/settings";
@@ -175,11 +175,18 @@ export function GitHistoryPanel() {
   };
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto p-2">
+    <div className="flex min-h-0 flex-1 flex-col overflow-auto p-2">
       {visibleCommits.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          No Git history yet. Initialize Source Control, then commit when you want a version here.
-        </p>
+        <div
+          data-testid="git-history-empty"
+          className="flex min-h-44 flex-1 flex-col items-center justify-center text-center"
+        >
+          <GitBranch className="size-7 text-muted-foreground" />
+          <p className="mt-3 text-sm font-medium">No Git history yet</p>
+          <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+            Initialize Source Control, then commit when you want a version here.
+          </p>
+        </div>
       ) : (
         <div className="relative py-1">
           {visibleCommits.length > 1 ? (

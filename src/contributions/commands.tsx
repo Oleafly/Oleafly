@@ -37,6 +37,7 @@ import {
   closeEnvironmentAtCursor,
   surroundSelectionWithEnvironment,
 } from "@oleafly/editor";
+import { handoffToAssistant } from "@/features/assistant-handoff";
 import { forwardFromCursor } from "@/features/synctex";
 import { exportCurrentPdf } from "@/features/export";
 import { useFilesStore } from "@/store/files";
@@ -149,9 +150,8 @@ export function registerOmnibarCommands() {
     order: 30,
     when: (ctx) => !!ctx.projectId && isLatex() && supportsIsolatedCompile(),
     run: () => {
-      const s = useSettingsStore.getState();
-      s.setAssistantOpen(true);
-      s.setFigureModeOpen(true);
+      useSettingsStore.getState().setAssistantOpen(true);
+      handoffToAssistant("Draw a figure of ");
     },
   });
   registerCommand({

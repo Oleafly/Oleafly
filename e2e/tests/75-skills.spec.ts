@@ -139,6 +139,55 @@ async function ask(page: Page, text: string) {
   await page.press(TA, "Enter");
 }
 
+async function steerSnapshot(page: Page): Promise<string> {
+  return page.evaluate<string>(
+    `(async () => {
+      const text = (element) => (element?.textContent ?? "").replace(/\\s+/g, " ").trim().slice(0, 160);
+      const chips = [...document.querySelectorAll('[data-testid="agent-follow-up-chip"]')].map(text);
+      const toasts = [...document.querySelectorAll('[data-sonner-toast]')].map(text);
+      const messages = [...document.querySelectorAll('[data-message-role]')].map((element) => ({
+        role: element.getAttribute("data-message-role"),
+        pending: element.getAttribute("data-message-pending"),
+        steered: !!element.querySelector('[data-testid="steered-message-label"]'),
+        text: text(element),
+      }));
+      let store = "unavailable";
+      try {
+        const chats = await import("/src/store/chats.ts");
+        const state = chats.useChatsStore.getState();
+        const active = state.chats?.find?.((chat) => chat.id === state.activeId);
+        const live = state.live?.[state.activeId] ?? active?.messages ?? [];
+        store = JSON.stringify(live.map((m) => ({ role: m.role, steered: m.steered ?? false, content: (m.content ?? "").slice(0, 60) })));
+      } catch (error) {
+        store = "error: " + String(error);
+      }
+      return JSON.stringify({
+        stop: !!document.querySelector('[aria-label="Stop"]'),
+        chips,
+        toasts,
+        messages,
+        store,
+      });
+    })()`,
+  );
+}
+
+async function waitForSteeredLabel(page: Page, timeoutMs: number) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const found = await page.evaluate<boolean>(
+      `!!document.querySelector('[data-testid="steered-message-label"]')`,
+    );
+    if (found) return;
+    if (Date.now() > deadline) {
+      throw new Error(
+        `steered label never appeared within ${timeoutMs}ms; requests=${server.requestCount()}; ${await steerSnapshot(page)}`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+}
+
 async function waitForReply(page: Page, marker: string, timeoutMs = 60_000) {
   await waitLong(
     page,
@@ -417,11 +466,7 @@ test("a steered message survives reopening the assistant", async ({ tauriPage })
     20_000,
   );
 
-  await waitLong(
-    tauriPage,
-    `!!document.querySelector('[data-testid="steered-message-label"]')`,
-    40_000,
-  );
+  await waitForSteeredLabel(tauriPage, 40_000);
   server.setStreamDelay(0);
   await waitLong(tauriPage, `!document.querySelector('[aria-label="Stop"]')`, 60_000);
 
@@ -430,11 +475,7 @@ test("a steered message survives reopening the assistant", async ({ tauriPage })
   await openRailTab(tauriPage, "Research Assistant");
   await expect(tauriPage.locator(TA)).toBeVisible({ timeout: 15_000 });
 
-  await waitLong(
-    tauriPage,
-    `!!document.querySelector('[data-testid="steered-message-label"]')`,
-    30_000,
-  );
+  await waitForSteeredLabel(tauriPage, 30_000);
   const bubble = await tauriPage.evaluate<boolean>(
     `[...document.querySelectorAll('[data-message-role="user"]')]
       .some((element) => element.textContent?.includes(${JSON.stringify(steerText)}))`,

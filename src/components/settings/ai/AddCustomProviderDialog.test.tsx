@@ -4,7 +4,6 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   AddCustomProviderDialog,
-  KEY_REQUIRED_FOR_URL_CHANGE,
   normalizeBaseURL,
   type CustomProviderEditTarget,
 } from "./AddCustomProviderDialog";
@@ -62,7 +61,7 @@ describe("AddCustomProviderDialog", () => {
     expect(screen.getByTestId("custom-provider-submit")).toHaveTextContent("Save");
   });
 
-  it("requires the key again when the base URL changes and a key is stored", async () => {
+  it("submits a base URL change without the key when one is stored", async () => {
     const onSubmit = vi.fn().mockResolvedValue({ ok: true });
     render(
       <AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} editing={ACME} />,
@@ -71,23 +70,42 @@ describe("AddCustomProviderDialog", () => {
     fill("custom-provider-baseurl", "https://api.acme.test/v2");
     fireEvent.click(screen.getByTestId("custom-provider-submit"));
 
-    expect(screen.getByTestId("custom-provider-key-error")).toHaveTextContent(
-      KEY_REQUIRED_FOR_URL_CHANGE,
-    );
-    expect(onSubmit).not.toHaveBeenCalled();
-
-    fill("custom-provider-key", "sk-new");
     expect(screen.queryByTestId("custom-provider-key-error")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("custom-provider-submit"));
-
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith({
         id: "acme",
         name: "Acme",
         baseURL: "https://api.acme.test/v2",
-        apiKey: "sk-new",
+        apiKey: "",
       }),
     );
+  });
+
+  it("shows a note that the saved key will be sent, only while the URL differs and a key is stored", () => {
+    const { rerender } = render(
+      <AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} editing={ACME} />,
+    );
+
+    expect(screen.queryByTestId("custom-provider-baseurl-note")).not.toBeInTheDocument();
+
+    fill("custom-provider-baseurl", "https://api.acme.test/v2");
+    expect(screen.getByTestId("custom-provider-baseurl-note")).toHaveTextContent(
+      "Your saved API key will be sent to this new address.",
+    );
+
+    fill("custom-provider-baseurl", "https://api.acme.test/v1");
+    expect(screen.queryByTestId("custom-provider-baseurl-note")).not.toBeInTheDocument();
+
+    rerender(
+      <AddCustomProviderDialog
+        open
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+        editing={{ ...ACME, hasStoredKey: false }}
+      />,
+    );
+    fill("custom-provider-baseurl", "https://api.acme.test/v2");
+    expect(screen.queryByTestId("custom-provider-baseurl-note")).not.toBeInTheDocument();
   });
 
   it("saves a rename without the key when the base URL is unchanged", async () => {

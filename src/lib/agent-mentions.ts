@@ -9,13 +9,6 @@ export interface DelegationTarget {
   taskUnavailableReason?: string | null;
 }
 
-export function activeAgentMention(text: string, caret: number) {
-  const before = text.slice(0, Math.max(0, caret));
-  const match = /(?:^|\s)@([^\s@]*)$/u.exec(before);
-  if (!match) return null;
-  return { query: match[1], start: before.length - match[1].length - 1, end: caret };
-}
-
 export function mentionedAgents(text: string, targets: readonly DelegationTarget[]) {
   const byId = new Map(targets.map((target) => [target.id, target]));
   const found = new Map<string, DelegationTarget>();

@@ -20,7 +20,7 @@ export function registerAiToolsets() {
   });
   registerAiToolset({
     id: "figure-tools",
-    mode: "figure",
+    mode: "chat",
     source: { kind: "figure" },
     create: (opts: { confirm?: ConfirmFn; onImage?: (dataUrl: string) => void }) =>
       createFigureTools(opts),

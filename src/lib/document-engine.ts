@@ -66,7 +66,7 @@ export const pathUsesEngineSource = (
   return !!extension && engine.source_extensions.includes(extension);
 };
 
-export const canUseFigureMode = (engine: DocumentEngineDescriptor, engineLoaded = true) =>
+export const supportsFigureTools = (engine: DocumentEngineDescriptor, engineLoaded = true) =>
   engineLoaded &&
   engine.capabilities.formatting_profile === "latex" &&
   engine.capabilities.supports_isolated_compile;

@@ -744,8 +744,6 @@ interface SettingsState {
   setPaletteOpen: (v: boolean) => void;
   newProjectOpen: boolean;
   setNewProjectOpen: (v: boolean) => void;
-  figureModeOpen: boolean;
-  setFigureModeOpen: (v: boolean) => void;
   wordCountOpen: boolean;
   setWordCountOpen: (v: boolean) => void;
   versioningOpen: boolean;
@@ -1015,8 +1013,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setPaletteOpen: (v) => set({ paletteOpen: v }),
   newProjectOpen: false,
   setNewProjectOpen: (v) => set({ newProjectOpen: v }),
-  figureModeOpen: false,
-  setFigureModeOpen: (v) => set({ figureModeOpen: v }),
   wordCountOpen: false,
   setWordCountOpen: (v) => set({ wordCountOpen: v }),
   versioningOpen: false,

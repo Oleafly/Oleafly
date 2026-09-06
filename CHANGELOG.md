@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Settings, AI Assistant now has an editor for approvals.toml, the file
+  behind the Custom approval mode, with TOML highlighting, a plain
+  explanation of the format, the open project's id, and validation on
+  save. The tools list under Instructions is a table grouped by area
+  that says what each tool does and when it asks first.
+- A rendered figure now shows up in the chat. Every preview_figure,
+  load_image and verify_pdf_pages call keeps its image on the tool card,
+  and the final figure of a reply sits above the folded steps with a
+  Figure / TikZ toggle, Copy code, and Save to project, which writes the
+  source (or the image) under figures/ without overwriting an existing
+  file.
+- The chat composer highlights a `/skill-id` that matches an installed skill
+  and an `@path` that matches a project file or folder, and typing `@` opens a
+  fast picker over the project tree. A mentioned file travels with the
+  message as an attachment and a mentioned folder sends its listing, so the
+  assistant does not have to read them first. Both show as chips in the
+  transcript, which now keeps what you typed rather than the directive line.
 - Markdown files in any project get the Markdown toolbar with Code and Visual
   modes, whatever engine the project compiles with.
 - Visual mode inserts real links, images and tables: the link and image
@@ -47,6 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Typing a slash word that matches no command or skill no longer shows an
+  empty "No matching commands" menu; the text is sent as written.
 - The terminal renders Nerd Font icons and emoji correctly: Powerlevel10k,
   Starship, eza and similar tools line up, whichever Nerd Font is installed.
   Shells start with truecolor and a UTF-8 locale advertised, and busy output is
@@ -59,6 +78,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A message steered into a running turn stays in the conversation as its own
   "Steered" entry, and the reply to it starts a new message instead of running
   into whatever came before, so the next turn sees it too.
+- The Figure button is gone. Ask for a diagram in the ordinary chat instead and
+  the assistant draws it, looks at the render, and inserts it at your cursor.
+  This works in any LaTeX project whose engine can compile a figure by itself.
 
 ### Removed
 
@@ -69,6 +91,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Steer now on a queued message waits until the run has actually started.
+  A quick click used to fail with "The running turn could not be steered"
+  and the message went out as a separate turn once the run ended.
+- Source control lists every file inside a new folder, nested folders
+  included, instead of one folder row with an empty diff. Staging and the
+  diff view work per file, the way they do for files at the top level.
+- Approving a shell command in the chat no longer opens a second system
+  dialog asking the same question. The card in the chat is the approval;
+  project deny rules and the one time run token still apply.
 - Inserting a link, image or table in Visual mode no longer writes Markdown
   syntax into the source behind the visual document, which produced run-on
   text like "Column 1Column 2Column 3link text".
@@ -90,6 +121,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead, and the queued message says so.
 - A "Steered" chip left behind by a stopped or failed run is cleared instead
   of lingering as if the message had gone through.
+
+- Editing a custom provider's base URL no longer demands the API key back
+  first. The saved key stays in place, and the dialog notes when it will be
+  sent to the new address.
 
 ## [0.3.13] - 2026-08-29
 

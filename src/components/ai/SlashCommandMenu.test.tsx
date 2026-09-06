@@ -6,6 +6,7 @@ import { Circle } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
 import type { ComposerCommand } from "./composer-command-registry";
 import {
+  filterSlashCommands,
   isSlashCommandInput,
   SlashCommandMenu,
   type SlashCommandMenuHandle,
@@ -169,6 +170,50 @@ describe("SlashCommandMenu", () => {
     expect(ref.current?.handleKeyDown({ key: "Enter", preventDefault })).toBe(false);
     expect(preventDefault).not.toHaveBeenCalled();
     expect(action).not.toHaveBeenCalled();
+  });
+
+  it("renders nothing at all when no command matches", () => {
+    const { container } = render(
+      <SlashCommandMenu
+        commands={[command("goal", "Goal", "Set a goal", () => {})]}
+        query="nothing-matches"
+        onSelect={() => {}}
+        onClose={() => {}}
+      />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(screen.queryByText("No matching commands")).toBeNull();
+  });
+
+  it("leaves the arrow and escape keys to the composer when nothing matches", () => {
+    const onClose = vi.fn();
+    const ref = createRef<SlashCommandMenuHandle>();
+    render(
+      <SlashCommandMenu
+        ref={ref}
+        commands={[command("goal", "Goal", "Set a goal", () => {})]}
+        query="nothing-matches"
+        onSelect={() => {}}
+        onClose={onClose}
+      />,
+    );
+
+    expect(ref.current?.handleKeyDown(keyEvent("ArrowDown"))).toBe(false);
+    expect(ref.current?.handleKeyDown(keyEvent("Escape"))).toBe(false);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("filters a command list the same way the menu does", () => {
+    const commands = [
+      command("goal", "Goal", "Set a persistent target", () => {}),
+      command("model", "Model", "Choose the model for this chat", () => {}),
+    ];
+
+    expect(filterSlashCommands(commands, "")).toHaveLength(2);
+    expect(filterSlashCommands(commands, "model").map((item) => item.id)).toEqual(["model"]);
+    expect(filterSlashCommands(commands, "nothing-matches")).toEqual([]);
   });
 
   it("keeps virtual-focus options out of the tab order", () => {

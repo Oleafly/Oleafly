@@ -23,6 +23,7 @@ import {
 } from "@/lib/chat-activity";
 import { cn } from "@/lib/utils";
 import { usePersistentExpansion } from "./expansion-state";
+import { ToolPicture } from "./ToolPicture";
 
 const PREVIEW_LIMIT = 4_000;
 
@@ -83,14 +84,22 @@ function LiteratureResults({ view, actions }: { view: ResearchToolView; actions?
   );
 }
 
+function toolResult(tc: ToolEntry): "success" | "error" | undefined {
+  if (tc.output?.includes('"success": true')) return "success";
+  if (tc.output?.includes('"error"')) return "error";
+  return undefined;
+}
+
 export function ResearchToolCard({
   tc,
   actions,
   expansionKey,
+  live = false,
 }: {
   tc: ToolEntry;
   actions?: ResearchChatActions;
   expansionKey?: string;
+  live?: boolean;
 }) {
   const view = projectToolEntry(tc);
   const [expanded, setExpanded] = usePersistentExpansion(expansionKey, false);
@@ -101,7 +110,8 @@ export function ResearchToolCard({
   const regionId = useId();
   const hasStructuredResults = Boolean(view.results?.length);
   const hasOutput = Boolean(view.output);
-  const expandable = hasOutput || hasStructuredResults || Boolean(view.diagnostics?.length);
+  const hasPicture = Boolean(tc.image);
+  const expandable = hasOutput || hasStructuredResults || hasPicture || Boolean(view.diagnostics?.length);
   const failed = view.status === "failed" || view.status === "declined";
   const preview = full ? view.output : view.output.slice(0, PREVIEW_LIMIT);
   const truncated = view.output.length > PREVIEW_LIMIT;
@@ -111,8 +121,9 @@ export function ResearchToolCard({
   return (
     <div
       data-tool-name={tc.name}
-      data-tool-status={view.status}
-      data-tool-result={view.status}
+      data-tool-status={tc.status}
+      data-tool-result={toolResult(tc)}
+      data-research-status={view.status}
       data-testid={view.kind === "command" ? "exec-card" : "research-tool-card"}
       data-exec-status={view.kind === "command" ? (view.status === "completed" ? view.statusLabel : view.statusLabel.toLowerCase()) : undefined}
       className="max-w-[85%] overflow-hidden rounded-md border bg-muted text-xs"
@@ -134,6 +145,11 @@ export function ResearchToolCard({
         <div className="flex items-center gap-2 border-t px-2.5 py-1 text-[10px] text-muted-foreground">
           {view.summary && <span className={cn("min-w-0 flex-1 truncate", view.verified === false && "text-destructive")}>{view.summary}</span>}
           {tc.approval && <span className={cn("ml-auto rounded-full px-1.5 py-0.5 font-medium", tc.approval === "approved" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-destructive/15 text-destructive")}>{tc.approval === "approved" ? "Approved" : "Rejected"}</span>}
+        </div>
+      )}
+      {hasPicture && (live || expanded) && (
+        <div className="border-t">
+          <ToolPicture tc={tc} />
         </div>
       )}
       {expanded && (

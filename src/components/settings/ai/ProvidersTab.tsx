@@ -489,7 +489,7 @@ export function ProvidersTab({
                     ) : null}
                     {isCustom ? (
                       <>
-                        <Tooltip label="Edit name or base URL">
+                        <Tooltip label="Edit name or endpoint">
                           <button type="button"
                             data-testid={`ai-provider-edit-${p.id}`}
                             aria-label={`Edit ${p.name}`}

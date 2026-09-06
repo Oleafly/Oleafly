@@ -821,7 +821,7 @@ fn parse_status_porcelain(text: &str) -> Vec<GitFileChange> {
         // porcelain "XY path" or "XY orig -> path"
         let rest = &line[3..];
         let path = rest.split(" -> ").last().unwrap_or(rest).trim().to_string();
-        if path.is_empty() {
+        if path.is_empty() || path.ends_with('/') {
             continue;
         }
         let (code, staged) = if x == '?' || x == '!' {
@@ -847,7 +847,7 @@ pub async fn git_status(project_id: String) -> Result<Vec<GitFileChange>, String
         let Some(root) = initialized_repo(&project_id)? else {
             return Ok(Vec::new());
         };
-        let out = run_git_read_only(&root, &["status", "--porcelain"])?;
+        let out = run_git_read_only(&root, &["status", "--porcelain", "--untracked-files=all"])?;
         let text = String::from_utf8_lossy(&out.stdout);
         Ok(parse_status_porcelain(&text))
     })
@@ -1644,6 +1644,31 @@ mod tests {
     #[test]
     fn porcelain_skips_blank_and_short_lines() {
         assert!(parse_status_porcelain("\n\nx").is_empty());
+    }
+
+    #[test]
+    fn porcelain_never_reports_a_directory_as_a_change() {
+        let c = parse_status_porcelain("?? sections/\n?? sections/intro.tex\n?? figures/a/b.png");
+        let paths: Vec<&str> = c.iter().map(|change| change.path.as_str()).collect();
+        assert_eq!(paths, vec!["sections/intro.tex", "figures/a/b.png"]);
+        assert!(c
+            .iter()
+            .all(|change| change.status == "?" && !change.staged));
+    }
+
+    #[test]
+    fn status_lists_every_file_inside_an_untracked_folder() {
+        let root = temp_repo();
+        std::fs::create_dir_all(root.join("sections/deep")).unwrap();
+        std::fs::write(root.join("sections/intro.tex"), "a").unwrap();
+        std::fs::write(root.join("sections/deep/notes.tex"), "b").unwrap();
+        let out =
+            run_git_read_only(&root, &["status", "--porcelain", "--untracked-files=all"]).unwrap();
+        let c = parse_status_porcelain(&String::from_utf8_lossy(&out.stdout));
+        let mut paths: Vec<String> = c.into_iter().map(|change| change.path).collect();
+        paths.sort();
+        std::fs::remove_dir_all(&root).ok();
+        assert_eq!(paths, vec!["sections/deep/notes.tex", "sections/intro.tex"]);
     }
 
     #[test]
