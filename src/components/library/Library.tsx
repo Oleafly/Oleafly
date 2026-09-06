@@ -844,19 +844,6 @@ export function Library() {
                   >
                     <Plus className="size-4" /> Create new project
                   </Button>
-                  <ProjectImportMenu
-                    align="center"
-                    trigger={(busy) => (
-                      <Button variant="outline" disabled={busy}>
-                        {busy ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <FolderInput className="size-4" />
-                        )}
-                        Import an existing project
-                      </Button>
-                    )}
-                  />
                 </div>
               </EmptyContent>
             </Empty>

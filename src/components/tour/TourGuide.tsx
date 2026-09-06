@@ -580,7 +580,7 @@ export function shouldCloseProjectDialogOnBack(
   tourId: string | null,
   stepId: string | undefined,
 ) {
-  return tourId === "home" && stepId === "home-gallery";
+  return tourId === "home" && (stepId === "home-kind" || stepId === "home-gallery");
 }
 
 export function autoSkipAction(
@@ -1458,7 +1458,7 @@ export function TourGuide() {
       activeTourId === "home" &&
       activeStep?.id === "home-create" &&
       newProjectOpen &&
-      document.querySelector('[data-tour="project-template-gallery"]')
+      document.querySelector('[data-tour="project-kind-chooser"]')
     ) {
       useTourStore.getState()[autoSkipAction(navigationDirection.current)]();
     }

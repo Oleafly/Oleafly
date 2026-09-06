@@ -140,6 +140,7 @@ const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
 const TOUR_LABELS = {
   home: "Home and project creation",
   workspace: "Project workspace",
+  research: "Research workspace",
   settings: "Settings",
   "ai-settings": "AI Assistant settings",
   ai: "AI Assistant",

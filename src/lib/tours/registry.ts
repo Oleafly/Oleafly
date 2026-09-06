@@ -1,4 +1,4 @@
-export const TOUR_IDS = ["home", "workspace", "settings", "ai-settings", "ai", "diagram"] as const;
+export const TOUR_IDS = ["home", "workspace", "research", "settings", "ai-settings", "ai", "diagram"] as const;
 
 export type TourId = (typeof TOUR_IDS)[number];
 export type TourStatus = "pending" | "completed" | "dismissed";
@@ -41,7 +41,7 @@ export const tourRegistry = {
   home: {
     id: "home",
     label: "Getting started",
-    version: 5,
+    version: 6,
     contexts: ["home"],
     priority: 10,
     steps: [
@@ -59,9 +59,27 @@ export const tourRegistry = {
         target: '[data-tour="new-project"]',
         kind: "required-click",
         title: "Create a real project",
-        content: "Choose New project to open the template gallery.",
+        content: "Choose New project to see the ways a piece of work can begin.",
         waitForTarget: true,
         placement: "bottom-end",
+      },
+      {
+        id: "home-kind",
+        target: '[data-tour="project-kind-chooser"]',
+        kind: "informational",
+        title: "Three ways to begin",
+        content: "Start a research project, bring in a manuscript you already have, or work from a prepared template.",
+        waitForTarget: true,
+        placement: "center",
+      },
+      {
+        id: "home-kind-template",
+        target: '[data-tour="project-kind-template"]',
+        kind: "required-click",
+        title: "Work from a template",
+        content: "Choose Use a template to open the gallery. The other two starting points are there whenever you need them.",
+        waitForTarget: true,
+        placement: "top",
       },
       {
         id: "home-gallery",
@@ -202,10 +220,47 @@ export const tourRegistry = {
       },
     ],
   },
+  research: {
+    id: "research",
+    label: "Research workspace",
+    version: 1,
+    contexts: ["project"],
+    priority: 25,
+    steps: [
+      {
+        id: "research-open",
+        target: '[data-tour="rail-research"]',
+        kind: "required-click",
+        title: "Research workspace",
+        content: "Open the research workspace. It is in beta, so expect it to keep changing.",
+        waitForTarget: true,
+        placement: "bottom",
+      },
+      {
+        id: "research-tasks",
+        target: '[data-tour="research-tasks"]',
+        spotlightTarget: '[data-tour="research-workspace"]',
+        kind: "informational",
+        title: "Queue research tasks",
+        content: "Describe a piece of work and hand it to an agent. Each task keeps its own conversation, outputs, and review notes.",
+        waitForTarget: true,
+        placement: "bottom",
+      },
+      {
+        id: "research-folders",
+        target: '[data-tour="research-folders"]',
+        kind: "informational",
+        title: "Link folders you already keep",
+        content: "Point the workspace at reading folders and datasets outside the project. Nothing is copied or moved.",
+        waitForTarget: true,
+        placement: "bottom",
+      },
+    ],
+  },
   settings: {
     id: "settings",
     label: "Settings",
-    version: 2,
+    version: 3,
     contexts: ["settings"],
     priority: 30,
     steps: [
@@ -311,7 +366,7 @@ export const tourRegistry = {
       },
       {
         id: "settings-mcp",
-        target: '[data-tour="settings-mcp"]',
+        target: '[data-tour="settings-mcp-panel"]',
         spotlightTarget: '[data-tour="settings-mcp-panel"]',
         kind: "transition",
         title: "Assistant MCP",
@@ -410,7 +465,7 @@ export const tourRegistry = {
   ai: {
     id: "ai",
     label: "AI Assistant",
-    version: 5,
+    version: 6,
     contexts: ["ai"],
     priority: 40,
     steps: [
@@ -421,6 +476,15 @@ export const tourRegistry = {
         kind: "informational",
         title: "AI Assistant",
         content: "Work with a project-aware assistant without sending anything during this tour.",
+        waitForTarget: true,
+        placement: "bottom",
+      },
+      {
+        id: "ai-runtime",
+        target: '[data-tour="assistant-runtime"]',
+        kind: "informational",
+        title: "Two kinds of agent",
+        content: "The Oleafly agent runs on the model provider you configure. The CLI agent, in beta, drives a coding agent already installed on this computer.",
         waitForTarget: true,
         placement: "bottom",
       },

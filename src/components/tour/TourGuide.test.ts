@@ -97,6 +97,7 @@ describe("tour auto-skip direction", () => {
 
   it("closes project creation when backing out of the template gallery", () => {
     expect(shouldCloseProjectDialogOnBack("home", "home-gallery")).toBe(true);
+    expect(shouldCloseProjectDialogOnBack("home", "home-kind")).toBe(true);
     expect(shouldCloseProjectDialogOnBack("home", "home-name")).toBe(false);
     expect(shouldCloseProjectDialogOnBack("settings", "home-gallery")).toBe(false);
   });

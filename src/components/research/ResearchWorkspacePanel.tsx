@@ -67,7 +67,7 @@ export function ResearchWorkspacePanel() {
     settings.setSettingsOpen(true);
   };
   return (
-    <div className="flex h-full min-h-0 flex-col" data-testid="research-workspace-panel">
+    <div className="flex h-full min-h-0 flex-col" data-tour="research-workspace" data-testid="research-workspace-panel">
       <div className="flex h-10 shrink-0 items-center gap-2 border-b px-3">
         <FlaskConical className="size-4 text-muted-foreground" />
         <h2 className="text-sm font-medium">Research workspace</h2>
@@ -78,8 +78,8 @@ export function ResearchWorkspacePanel() {
       {configError && <p role="status" className="px-3 pt-2 text-xs text-destructive">{configError}</p>}
       <Tabs defaultValue="tasks" className="flex min-h-0 flex-1 flex-col">
         <TabsList className="mx-3 mt-2 grid shrink-0 grid-cols-2">
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="folders">Linked folders</TabsTrigger>
+          <TabsTrigger value="tasks" data-tour="research-tasks">Tasks</TabsTrigger>
+          <TabsTrigger value="folders" data-tour="research-folders">Linked folders</TabsTrigger>
         </TabsList>
         <TabsContent value="tasks" className="min-h-0 flex-1 overflow-auto">
           <ResearchTasksPanel projectId={projectId} agents={agents} onOpenSession={openSession} />

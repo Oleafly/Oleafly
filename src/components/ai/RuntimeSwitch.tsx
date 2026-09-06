@@ -20,6 +20,7 @@ export function RuntimeSwitch() {
   const setRuntime = useAssistantRuntimeStore((state) => state.setRuntime);
   return (
     <fieldset
+      data-tour="assistant-runtime"
       className="flex shrink-0 items-center rounded-md bg-muted p-0.5"
       aria-label="Assistant runtime"
     >

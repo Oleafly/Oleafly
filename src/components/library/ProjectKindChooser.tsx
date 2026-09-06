@@ -58,6 +58,7 @@ export function ProjectKindChooser({
       }}
     >
       <DialogContent
+        data-tour="project-kind-chooser"
         data-testid="project-kind-chooser"
         closeDisabled={!allowClose}
         onEscapeKeyDown={(event) => {
@@ -79,6 +80,7 @@ export function ProjectKindChooser({
             <button
               key={kind.id}
               type="button"
+              data-tour={`project-kind-${kind.id}`}
               data-testid={`project-kind-${kind.id}`}
               onClick={() => onChoose(kind.id)}
               className={cn(

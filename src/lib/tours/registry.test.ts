@@ -6,19 +6,21 @@ describe("tour registry", () => {
     expect(tourRegistry.home.steps.map((step) => [step.id, step.kind, step.target])).toEqual([
       ["home-overview", "informational", '[data-tour="home"]'],
       ["home-create", "required-click", '[data-tour="new-project"]'],
+      ["home-kind", "informational", '[data-tour="project-kind-chooser"]'],
+      ["home-kind-template", "required-click", '[data-tour="project-kind-template"]'],
       ["home-gallery", "informational", '[data-tour="project-template-list"]'],
       ["home-template", "required-click", '[data-tour="project-template-list"]'],
       ["home-name", "required-input", '[data-tour="project-name"]'],
       ["home-color", "informational", '[data-tour="project-cover-color"]'],
       ["home-create-project", "required-click", '[data-tour="create-project"]'],
     ]);
-    expect(tourRegistry.home.steps[3].interactionTarget).toBe(
+    expect(tourRegistry.home.steps[5].interactionTarget).toBe(
       '[data-tour="project-template-card"]',
     );
-    expect(tourRegistry.home.steps[3].interactionArea).toBe(
+    expect(tourRegistry.home.steps[5].interactionArea).toBe(
       '[data-tour="project-template-list"]',
     );
-    expect(tourRegistry.home.steps[5].interactionArea).toBe(
+    expect(tourRegistry.home.steps[7].interactionArea).toBe(
       '[data-tour="project-cover-color"]',
     );
   });
@@ -80,6 +82,7 @@ describe("tour registry", () => {
   it("covers conditional AI states without sending a request", () => {
     expect(tourRegistry.ai.steps.map((step) => step.id)).toEqual([
       "ai-assistant",
+      "ai-runtime",
       "ai-connect-provider",
       "ai-provider-model",
       "ai-prompts",

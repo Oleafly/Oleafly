@@ -54,6 +54,7 @@ function ViewButton({
     <Tooltip label={tooltip} side="bottom">
       <button
         type="button"
+        data-tour={`rail-${tab.id}`}
         aria-label={tab.label}
         aria-current={active ? "page" : undefined}
         onClick={onSelect}
