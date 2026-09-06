@@ -340,9 +340,18 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
           <div className="ai-composer-controls-right ml-auto flex shrink-0 flex-nowrap items-center gap-1">
             {session && session.controls.models.length > 0 ? (
               <Select
+                key={session.id}
                 value={session.controls.modelId ?? ""}
                 disabled={busy || running || session.status !== "ready"}
                 onValueChange={(modelId) => void perform(async () => {
+                  const current = useAcpSessionsStore.getState().sessions[session.id];
+                  if (
+                    !current ||
+                    current.controls.modelId === modelId ||
+                    !current.controls.models.some((model) => model.modelId === modelId)
+                  ) {
+                    return;
+                  }
                   useAcpSessionsStore.getState().setSnapshot(await acpSetModel(projectId, session.id, modelId));
                 })}
               >

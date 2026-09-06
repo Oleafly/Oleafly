@@ -322,6 +322,36 @@ describe("ACP assistant acceptance", () => {
     expect(useAcpSessionsStore.getState().composers.paper?.agentId).toBe("other");
   });
 
+  it("does not carry the previous agent's model into the new conversation", async () => {
+    const other = agent("other", {
+      definition: { ...agent().definition, id: "other", name: "Other CLI" },
+    });
+    vi.mocked(acpCatalog).mockResolvedValue([agent(), other]);
+    const switched = session("switched", { agentId: "other" });
+    vi.mocked(acpStart).mockResolvedValue({
+      session: {
+        ...switched,
+        controls: {
+          modelId: "codex-spark",
+          modelConfigId: null,
+          models: [{ modelId: "codex-spark", name: "Codex Spark" }],
+        },
+      },
+      permissions: [],
+    });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
+    expect(ui.getByRole("combobox", { name: "Agent model" })).toHaveTextContent("First model");
+
+    fireEvent.click(ui.getByTestId("agent-picker-other"));
+
+    await waitFor(() =>
+      expect(ui.getByRole("combobox", { name: "Agent model" })).toHaveTextContent("Codex Spark"),
+    );
+    expect(acpSetModel).not.toHaveBeenCalled();
+    expect(ui.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("drops the open conversation when the chosen agent is not installed yet", async () => {
     const missing = agent("missing", {
       definition: { ...agent().definition, id: "missing", name: "Missing CLI" },
