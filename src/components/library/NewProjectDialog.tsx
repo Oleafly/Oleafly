@@ -85,7 +85,7 @@ const HOST: TemplatesHost = {
   logError: (scope, e) => void logError(scope, e),
 };
 
-const FOCUS_RESTORE_FRAMES = 30;
+const FOCUS_RESTORE_FRAMES = 12;
 
 export function NewProjectDialog(props: {
   open: boolean;
@@ -131,7 +131,11 @@ export function NewProjectDialog(props: {
     const restore = () => {
       if (!opener.isConnected) return;
       const active = document.activeElement;
-      if (active === null || active === document.body) opener.focus();
+      // Yield the moment anything else takes the focus: a menu or a select
+      // opened right after this closed owns it, and stealing it back would
+      // dismiss them.
+      if (active !== null && active !== document.body && active !== opener) return;
+      if (active !== opener) opener.focus();
       attempts += 1;
       if (attempts < FOCUS_RESTORE_FRAMES) frame = requestAnimationFrame(restore);
     };
