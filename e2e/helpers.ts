@@ -1729,3 +1729,16 @@ export async function chooseAppSelectOption(
   })()`);
   await page.waitForFunction(`!document.querySelector(${optionJs})`, timeoutMs);
 }
+
+export async function clickTabByText(page: Page, scope: string, name: string, timeoutMs = 20_000) {
+  const match = `[...document.querySelectorAll(${JSON.stringify(`${scope} [role="tab"]`)})].find((tab) => (tab.textContent ?? "").trim() === ${JSON.stringify(name)})`;
+  await page.waitForFunction(`!!(${match})`, timeoutMs);
+  await page.evaluate(`(() => {
+    const tab = ${match};
+    for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
+      tab.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: 0 }));
+    }
+    return true;
+  })()`);
+  await page.waitForFunction(`(${match})?.getAttribute("aria-selected") === "true"`, timeoutMs);
+}

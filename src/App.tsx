@@ -15,7 +15,8 @@ import {
   type ImperativePanelHandle,
 } from "react-resizable-panels";
 import { RefreshCw } from "lucide-react";
-import { ThemeProvider } from "@/lib/theme";
+import { ThemeProvider, currentTheme, subscribeTheme, type Theme } from "@/lib/theme";
+import { themeTokenOverride } from "@/lib/theme-customization";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
@@ -469,10 +470,20 @@ function AppContent() {
     else root.style.removeProperty("font-family");
     if (editorFontFamily) root.style.setProperty("--cm-font-family", editorFontFamily);
     else root.style.removeProperty("--cm-font-family");
-    const accent = accentColor || "#2563eb";
-    root.style.setProperty("--primary", accent);
-    root.style.setProperty("--primary-foreground", "#ffffff");
-  }, [editorFontSize, appFontSize, appFontFamily, editorFontFamily, accentColor]);
+  }, [editorFontSize, appFontSize, appFontFamily, editorFontFamily]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const apply = (theme: Theme) => {
+      if (themeTokenOverride(theme, "primary")) return;
+      root.style.setProperty("--primary", accentColor || "#2563eb");
+      if (!themeTokenOverride(theme, "primary-foreground")) {
+        root.style.setProperty("--primary-foreground", "#ffffff");
+      }
+    };
+    apply(currentTheme());
+    return subscribeTheme(apply);
+  }, [accentColor]);
 
   // SourceControl / DiffView refresh after git mutations; we only re-poll on
   // project switch, window focus, and a slow interval (no 5s hot loop).

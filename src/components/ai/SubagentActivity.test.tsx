@@ -112,6 +112,59 @@ describe("SubagentActivity", () => {
     expect(screen.queryByText("A delegated agent is waiting for permission.")).toBeNull();
   });
 
+  it("moves the Codex skills budget warning into a notice row", async () => {
+    mocks.acpEvents.mockResolvedValue({
+      events: [
+        {
+          sequence: 1,
+          kind: "agent_message_chunk",
+          data: {
+            content: {
+              type: "text",
+              text: "Warning: Exceeded skills context budget of 4000 tokens.\nThe sources are ready.",
+            },
+          },
+          turnId: "turn-1",
+          sessionId: "session-1",
+          projectId: "project-1",
+          agentId: "codex",
+          modelId: null,
+          taskId: null,
+          timestamp: 1,
+        },
+      ],
+      hasMore: false,
+    });
+    seedChat("chat-1", [
+      {
+        kind: "subagentUpdate",
+        id: "agent-1",
+        label: "sources",
+        state: "done",
+        detail: "finished",
+        runtime: "acp",
+        sessionId: "session-1",
+      },
+    ]);
+    render(
+      <SubagentActivity
+        chatId="chat-1"
+        streaming={false}
+        activeRunId={() => null}
+        projectId="project-1"
+      />,
+    );
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("agent-notice")).toHaveTextContent(
+        "Codex could not list all of its skills.",
+      ),
+    );
+    expect(screen.getByText("The sources are ready.")).toBeTruthy();
+    expect(screen.queryByText(/Exceeded skills context budget/)).toBeNull();
+  });
+
   it("shows a chip per agent with its latest status and avatar", () => {
     seedChat("chat-1", [
       { kind: "subagentUpdate", id: "agent-1", label: "survey", state: "started", detail: null },

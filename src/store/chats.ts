@@ -49,6 +49,7 @@ export interface ChatMessage {
   steered?: boolean;
   skillId?: string;
   mentions?: string[];
+  notices?: string[];
   // Legacy single-block chain-of-thought; still read for chats persisted
   // before reasoningBlocks existed.
   reasoning?: string;

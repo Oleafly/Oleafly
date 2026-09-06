@@ -758,8 +758,11 @@ async fn streamed_deltas_collapse_into_one_row_per_segment_and_only_text_rows_ar
         (run.events)(TaskRuntimeEvent::Reasoning { text: delta.into() });
     }
     (run.events)(TaskRuntimeEvent::Tool {
+        call_id: Some("call_1".into()),
         name: "read_file".into(),
+        phase: ToolPhase::Request,
         detail: "main.tex".into(),
+        status: Some("running".into()),
     });
     for delta in ["The ", "sample ", "sizes match."] {
         (run.events)(TaskRuntimeEvent::Text { text: delta.into() });
@@ -779,8 +782,11 @@ async fn streamed_deltas_collapse_into_one_row_per_segment_and_only_text_rows_ar
                 text: "Checking the sources.".into()
             },
             TaskRuntimeEvent::Tool {
+                call_id: Some("call_1".into()),
                 name: "read_file".into(),
-                detail: "main.tex".into()
+                phase: ToolPhase::Request,
+                detail: "main.tex".into(),
+                status: Some("running".into()),
             },
             TaskRuntimeEvent::Text {
                 text: "The sample sizes match.".into()

@@ -8,6 +8,21 @@ function event(sequence: number, kind: string, data: Record<string, unknown>, tu
 const chunk = (sequence: number, text: string) => event(sequence, "agent_message_chunk", { content: { type: "text", text } });
 
 describe("ACP conversation projection", () => {
+  it("splits the Codex skills budget warning off the answer", () => {
+    const project = createAcpProjector();
+    const first = [chunk(1, "Warning: Exceeded skills context budget")];
+    project(first, true);
+    const rows = project(
+      [...first, chunk(2, " of 4000 tokens.\nThe revision is ready.")],
+      false,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].msg.content).toBe("The revision is ready.");
+    expect(rows[0].msg.notices).toEqual([
+      "Codex could not list all of its skills. It keeps a 2% context budget for skill descriptions, so trim the skills folder or ask for a skill by name.",
+    ]);
+  });
+
   it("keeps text, reasoning and tool activity in observed order", () => {
     const rows = projectAcpEvents([
       event(1, "user_message", { text: "Review this paper" }),

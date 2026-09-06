@@ -256,6 +256,9 @@ function measurementLabel(value: string): string {
 
 function statusClass(value: string): string {
   if (value === "failed") return "border-destructive/30 bg-destructive/10 text-destructive";
+  if (value === "completed") {
+    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+  }
   if (value === "cancelled" || value === "interrupted") {
     return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400";
   }
@@ -633,7 +636,7 @@ function BreakdownTable({
       {rows.length === 0 ? (
         <p className="p-3 text-xs text-muted-foreground">No recorded usage.</p>
       ) : (
-        <Table containerClassName="max-h-64">
+        <Table containerClassName="max-h-64 overflow-x-auto" className="min-w-[24rem]">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead>Name</TableHead>
@@ -649,8 +652,8 @@ function BreakdownTable({
               const selectable = onSelect && row.key !== "Unknown";
               return (
                 <TableRow key={row.key} data-key={row.key}>
-                  <TableCell className="max-w-0">
-                    <span className="flex items-center gap-2">
+                  <TableCell className="min-w-[10rem]">
+                    <span className="flex min-w-0 items-center gap-2">
                       {icon?.(row.key)}
                       {selectable ? (
                         <Tooltip label={row.key} wide>
@@ -707,7 +710,7 @@ function SessionsTable({
     const scope = scopeLabel(session.scope);
     return (
       <TableRow key={session.sessionId} data-session-id={session.sessionId}>
-        <TableCell className="max-w-0">
+        <TableCell className="min-w-[12rem] whitespace-nowrap">
           <span className="flex items-center gap-2">
             {onSelectFilter ? (
               <Tooltip label={session.sessionId} wide>
@@ -729,13 +732,13 @@ function SessionsTable({
             )}
           </span>
         </TableCell>
-        <TableCell className="max-w-0" data-project-id={session.projectId}>
+        <TableCell className="min-w-[12rem] whitespace-nowrap" data-project-id={session.projectId}>
           <Truncated value={session.projectId} label={projectLabel(session.projectId, projectNames)} />
         </TableCell>
-        <TableCell className="whitespace-nowrap" data-runtime-id={session.runtimeId}>
+        <TableCell className="min-w-[9rem] whitespace-nowrap" data-runtime-id={session.runtimeId}>
           {runtimeLabel(session.runtimeId)}
         </TableCell>
-        <TableCell className="max-w-0">
+        <TableCell className="min-w-[11rem] whitespace-nowrap">
           <span className="flex items-center gap-2">
             {session.providerId && session.providerId !== "Mixed" && (
               <ProviderLogo providerId={session.providerId} size={14} />
@@ -743,7 +746,7 @@ function SessionsTable({
             <Truncated value={session.modelId ?? "Unknown"} className="max-w-[10rem]" />
           </span>
         </TableCell>
-        <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">
+        <TableCell className="min-w-[11rem] whitespace-nowrap tabular-nums text-muted-foreground">
           {formatUtcTime(session.occurredAtMs)}
         </TableCell>
         <TableCell numeric>{tokenCell(session.inputTotal)}</TableCell>
@@ -800,14 +803,14 @@ function SessionsTable({
           </EmptyHeader>
         </Empty>
       ) : (
-        <Table containerClassName="max-h-[28rem]" className="min-w-[960px]">
+        <Table containerClassName="max-h-[28rem] overflow-x-auto" className="min-w-[1180px]">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Session</TableHead>
-              <TableHead>Project</TableHead>
-              <TableHead>Agent</TableHead>
-              <TableHead>Model</TableHead>
-              <TableHead>Last activity (UTC)</TableHead>
+              <TableHead className="min-w-[12rem]">Session</TableHead>
+              <TableHead className="min-w-[12rem]">Project</TableHead>
+              <TableHead className="min-w-[9rem]">Agent</TableHead>
+              <TableHead className="min-w-[11rem]">Model</TableHead>
+              <TableHead className="min-w-[11rem] whitespace-nowrap">Last activity (UTC)</TableHead>
               <TableHead numeric>Input</TableHead>
               <TableHead numeric>Output</TableHead>
               <TableHead numeric>Cost</TableHead>

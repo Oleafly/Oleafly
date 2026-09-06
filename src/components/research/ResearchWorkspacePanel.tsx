@@ -46,10 +46,13 @@ export function ResearchWorkspacePanel() {
     agentId: target.agentId ?? target.providerId ?? "",
     modelId: target.modelId ?? "",
     label: target.label,
+    agentName: target.runtime === "built-in"
+      ? groups.find((group) => group.id === target.providerId)?.name
+      : target.label,
     modelLabel: target.detail,
     available: !target.taskUnavailableReason,
     unavailableReason: target.taskUnavailableReason ?? undefined,
-  })), [targets]);
+  })), [groups, targets]);
   const openSession = useCallback((task: ResearchTask) => {
     if (!projectId || task.runtimeId !== "acp" || !task.nativeSessionId) return;
     useAssistantRuntimeStore.getState().setRuntime("acp");

@@ -176,6 +176,15 @@ pub struct TaskTranscriptPage {
     pub next_sequence: Option<u64>,
 }
 
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ToolPhase {
+    #[default]
+    Request,
+    Result,
+    Update,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(
     tag = "kind",
@@ -196,8 +205,14 @@ pub enum TaskRuntimeEvent {
         text: String,
     },
     Tool {
+        #[serde(default)]
+        call_id: Option<String>,
         name: String,
+        #[serde(default)]
+        phase: ToolPhase,
         detail: String,
+        #[serde(default)]
+        status: Option<String>,
     },
     Artifact {
         artifact: TaskArtifact,

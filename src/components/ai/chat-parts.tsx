@@ -25,7 +25,12 @@ import { Popover } from "@/components/ui/popover";
 import { ResearchToolCard } from "@/components/ai/activity/ResearchToolCard";
 import { lastFinishedPicture, ToolPicture } from "@/components/ai/activity/ToolPicture";
 import { usePersistentExpansion } from "@/components/ai/activity/expansion-state";
-import { projectToolEntry, stripAnsi, type ResearchChatActions } from "@/lib/chat-activity";
+import {
+  projectToolEntry,
+  splitAgentNotices,
+  stripAnsi,
+  type ResearchChatActions,
+} from "@/lib/chat-activity";
 import { tokenizeComposer } from "@/lib/composer-tokens";
 import { cn } from "@/lib/utils";
 
@@ -899,6 +904,7 @@ export function SubagentCard({
   actions?: ResearchChatActions;
 }) {
   const running = entry.state !== "done" && entry.state !== "error";
+  const detail = splitAgentNotices(entry.detail ?? "");
   return (
     <div
       data-testid="subagent-card"
@@ -916,15 +922,24 @@ export function SubagentCard({
           <XCircle className="size-3 shrink-0 text-destructive" />
         )}
       </div>
-      {(running || entry.detail) && (
+      {(running || detail.text) && (
         <div className="border-t px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground">
           {running
-            ? entry.state === "tool" && entry.detail
-              ? `Using ${entry.detail}`
+            ? entry.state === "tool" && detail.text
+              ? `Using ${detail.text}`
               : "Working on it"
-            : entry.detail}
+            : detail.text}
         </div>
       )}
+      {detail.notices.map((notice) => (
+        <p
+          key={notice}
+          data-testid="agent-notice"
+          className="border-t px-2.5 py-1.5 text-[10px] leading-snug text-muted-foreground"
+        >
+          {notice}
+        </p>
+      ))}
       {entry.sessionId && actions?.openSession && (
         <div className="border-t px-2 py-1">
           <button
@@ -1152,6 +1167,15 @@ export const MessageItem = memo(function MessageItem({
           })}
         </div>
       )}
+      {msg.notices?.map((notice) => (
+        <p
+          key={notice}
+          data-testid="agent-notice"
+          className="max-w-[85%] rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground"
+        >
+          {notice}
+        </p>
+      ))}
       {msg.content ? (
         <div
           className={cn(

@@ -4,8 +4,38 @@ import {
   createResearchArtifactAction,
   projectToolEntry,
   safeWebUrl,
+  SKILLS_BUDGET_NOTICE,
+  splitAgentNotices,
   stripAnsi,
 } from "./chat-activity";
+
+describe("splitAgentNotices", () => {
+  it("keeps ordinary text untouched", () => {
+    expect(splitAgentNotices("The revision is ready.")).toEqual({
+      notices: [],
+      text: "The revision is ready.",
+    });
+  });
+
+  it("splits the Codex skills budget warning off the answer", () => {
+    const split = splitAgentNotices(
+      "Warning: Exceeded skills context budget of 4000 tokens.\nThe revision is ready.",
+    );
+    expect(split.notices).toEqual([SKILLS_BUDGET_NOTICE]);
+    expect(split.text).toBe("The revision is ready.");
+  });
+
+  it("reports the warning once when it is the whole message", () => {
+    const split = splitAgentNotices("warning: exceeded skills context budget of 4000 tokens.");
+    expect(split.notices).toEqual([SKILLS_BUDGET_NOTICE]);
+    expect(split.text).toBe("");
+  });
+
+  it("leaves the warning in place when it does not open the message", () => {
+    const value = "Done.\nWarning: Exceeded skills context budget of 4000 tokens.";
+    expect(splitAgentNotices(value)).toEqual({ notices: [], text: value });
+  });
+});
 
 describe("research chat activity", () => {
   it("projects literature results without inventing citation verification", () => {

@@ -39,7 +39,8 @@ function ToolIcon({ view }: { view: ResearchToolView }) {
 function StatusIcon({ status }: { status: ResearchToolStatus }) {
   if (status === "running") return <Loader2 className="size-3 shrink-0 animate-spin motion-reduce:animate-none" />;
   if (status === "completed") return <CheckCircle2 className="size-3 shrink-0 text-emerald-500" />;
-  if (status === "cancelled") return <CircleStop className="size-3 shrink-0 text-muted-foreground" />;
+  if (status === "cancelled" || status === "interrupted")
+    return <CircleStop className="size-3 shrink-0 text-muted-foreground" />;
   return <XCircle className="size-3 shrink-0 text-destructive" />;
 }
 
@@ -96,7 +97,7 @@ export function ResearchToolCard({
   expansionKey,
   live = false,
 }: {
-  tc: ToolEntry;
+  tc: ToolEntry & { interrupted?: boolean };
   actions?: ResearchChatActions;
   expansionKey?: string;
   live?: boolean;

@@ -171,6 +171,8 @@ describe("ResearchWorkspacePanel integration", () => {
       draft: { projectId: "paper", title: "Check the cohort evidence", prompt: "Compare the claims to the attached data", runtimeId: "builtin", agentId: "openai", modelId: "research-model", skillIds: ["oleafly-verify-claims"], dependencyIds: [] },
     }));
     await waitFor(() => expect(page().queryByLabelText("Instructions")).not.toBeInTheDocument());
+    expect(within(page().getByRole("dialog")).getByRole("heading", { name: "Check the cohort evidence" })).toBeInTheDocument();
+    fireEvent.click(within(page().getByRole("dialog")).getByRole("button", { name: "Close" }));
     expect(within(page().getByRole("navigation", { name: "Research task list" })).getByText("Check the cohort evidence")).toBeInTheDocument();
     expect(native.invoke).not.toHaveBeenCalledWith("research_task_start", expect.anything());
   });

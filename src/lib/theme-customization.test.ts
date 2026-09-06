@@ -3,6 +3,7 @@ import { JSDOM } from "jsdom";
 import {
   THEME_CUSTOMIZATION_STORAGE_KEY,
   applyThemeCustomization,
+  themeTokenOverride,
   clearThemeCustomization,
   emptyThemeCustomization,
   parseThemeCustomizationJson,
@@ -83,5 +84,26 @@ describe("theme customization application", () => {
     applyThemeCustomization("dark", readThemeCustomization());
     expect(document.documentElement.style.getPropertyValue("--primary")).toBe("");
     expect(document.querySelector("style[data-oleafly-custom-theme]")?.textContent).toBe("");
+  });
+
+  it("leaves an accent colour set elsewhere alone when the mode switches", () => {
+    const root = document.documentElement;
+    root.style.setProperty("--primary", "#2563eb");
+    root.style.setProperty("--primary-foreground", "#ffffff");
+    const customization = writeThemeCustomization({
+      ...emptyThemeCustomization(),
+      dark: { accent: "#101010" },
+      radius: "8px",
+    });
+    applyThemeCustomization("dark", customization);
+    expect(root.style.getPropertyValue("--primary")).toBe("#2563eb");
+    expect(root.style.getPropertyValue("--accent")).toBe("#101010");
+    applyThemeCustomization("light", customization);
+    expect(root.style.getPropertyValue("--primary")).toBe("#2563eb");
+    expect(root.style.getPropertyValue("--primary-foreground")).toBe("#ffffff");
+    expect(root.style.getPropertyValue("--accent")).toBe("");
+    expect(root.style.getPropertyValue("--radius")).toBe("8px");
+    expect(themeTokenOverride("dark", "primary")).toBeUndefined();
+    expect(themeTokenOverride("dark", "accent")).toBe("#101010");
   });
 });

@@ -4,6 +4,7 @@ import { basename, join } from "node:path";
 import { test, expect } from "../fixtures";
 import {
   chooseAppSelectOption,
+  clickTabByText,
   createBlankProject,
   fillTextarea,
   listProjectEntries,
@@ -89,12 +90,13 @@ test("a research task runs in Rust, reaches review, and records the same native 
   await expect(detail.getByText("Review needed", { exact: true })).toBeVisible({
     timeout: 90_000,
   });
+  await clickTabByText(tauriPage, '[data-testid="research-task-detail"]', "Output");
   await expect(detail.locator('section[aria-labelledby="research-task-result"]')).toContainText(
     reply,
   );
-  await expect(detail.locator('section[aria-labelledby="research-task-activity"]')).toContainText(
-    "Usage: 13 input, 9 output tokens.",
-  );
+  await expect(detail).toContainText("Input 13, output 9");
+  await clickTabByText(tauriPage, '[data-testid="research-task-detail"]', "Activity");
+  await expect(detail.locator('section[aria-labelledby="research-task-activity"]')).toBeVisible();
 
   const task = await tauriPage.evaluate<{
     nativeSessionId: string | null;
@@ -117,8 +119,11 @@ test("a research task runs in Rust, reaches review, and records the same native 
   expect(task.resultSessionId).toBe(task.nativeSessionId);
   expect(server.requestCount()).toBeGreaterThan(0);
 
+  await clickTabByText(tauriPage, '[data-testid="research-task-detail"]', "Review");
   await detail.getByText("Mark reviewed", { exact: true }).click();
   await expect(detail).toContainText("Completed", { timeout: 20_000 });
+  await tauriPage.press("body", "Escape");
+  await expect(tauriPage.locator('[data-testid="research-task-detail"]')).toHaveCount(0);
 
   await openRailTab(tauriPage, "Research Assistant");
   await tauriPage.click('[aria-label="Usage report"]');

@@ -88,7 +88,36 @@ describe("research task store", () => {
       eventsLoading: false,
       action: null,
       error: null,
+      detailOpen: false,
+      detailTab: null,
     });
+  });
+
+  it("opens the task detail on a chosen tab and selects the task", async () => {
+    const first = task("first", "paper");
+    const second = task("second", "paper");
+    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [], nextSequence: null });
+    useResearchTasksStore.setState({
+      projectId: "paper",
+      tasks: [first, second],
+      selectedTaskId: first.id,
+    });
+
+    useResearchTasksStore.getState().openTaskDetail(second.id, "review");
+    expect(useResearchTasksStore.getState()).toMatchObject({
+      detailOpen: true,
+      detailTab: "review",
+      selectedTaskId: second.id,
+    });
+
+    useResearchTasksStore.getState().setDetailOpen(false);
+    expect(useResearchTasksStore.getState()).toMatchObject({
+      detailOpen: false,
+      detailTab: null,
+      selectedTaskId: second.id,
+    });
+
+    await Promise.resolve();
   });
 
   it("ignores a stale task list after the open project changes", async () => {

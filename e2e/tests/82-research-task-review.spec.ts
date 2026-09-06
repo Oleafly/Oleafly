@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ResearchTask, TaskFilePreview } from "../../src/lib/research-tasks";
 import { test, expect } from "../fixtures";
-import { chooseAppSelectOption, createBlankProject, editorSource, fillTextarea, openRailTab, type Page } from "../helpers";
+import { chooseAppSelectOption, clickTabByText, createBlankProject, editorSource, fillTextarea, openRailTab, type Page } from "../helpers";
 import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
 const detailSelector = 'article[aria-labelledby="research-task-detail-title"]';
@@ -120,7 +120,9 @@ async function runRevision(page: Page, projectId: string, title: string, propose
   }
   await page.getByText("Start", { exact: true }).click();
   await expect(page.locator(detailSelector)).toContainText("Review needed", { timeout: 90_000 });
+  await clickTabByText(page, '[data-testid="research-task-detail"]', "Output");
   await expect(page.locator(detailSelector)).toContainText(`Revision ready: ${title}`);
+  await clickTabByText(page, '[data-testid="research-task-detail"]', "Review");
   const task = await nativeTask(page, projectId, title);
   expect(task.runtimeId).toBe("builtin");
   expect(task.agentId).toBe("ollama");

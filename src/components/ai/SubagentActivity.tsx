@@ -19,6 +19,7 @@ import { useAgentTurnsStore } from "@/store/agent-turns";
 import { agentSubagentsStop, agentThreadRead } from "@/lib/agent-backend";
 import { acpEvents, type AcpEvent } from "@/lib/acp";
 import { projectAcpEvents } from "@/components/ai/acp/projection";
+import { splitAgentNotices } from "@/lib/chat-activity";
 import { MessageItem } from "@/components/ai/chat-parts";
 import type { RenderedMessage } from "@/components/ai/MessageList";
 import { cn } from "@/lib/utils";
@@ -331,10 +332,28 @@ export function SubagentActivity({
                   />
                 )) : <p>This task has not reported any transcript activity yet.</p>}
               </div>
-            ) : transcript?.agent === expanded && transcript.type === "text" ? (
-              transcript.text
             ) : (
-              `Latest: ${agents.find((agent) => agent.id === expanded)?.detail ?? "working"}`
+              (() => {
+                const answered = transcript?.agent === expanded && transcript.type === "text";
+                const raw = answered
+                  ? transcript.text
+                  : (agents.find((agent) => agent.id === expanded)?.detail ?? "working");
+                const split = splitAgentNotices(raw);
+                return (
+                  <>
+                    {split.text ? <p>{answered ? split.text : `Latest: ${split.text}`}</p> : null}
+                    {split.notices.map((notice) => (
+                      <p
+                        key={notice}
+                        data-testid="agent-notice"
+                        className="mt-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-[10px] leading-snug"
+                      >
+                        {notice}
+                      </p>
+                    ))}
+                  </>
+                );
+              })()
             )}
           </div>
           {(() => {

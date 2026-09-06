@@ -20,6 +20,10 @@ vi.mock("@/components/editor/diff/InlineDiffPreview", () => ({
   InlineDiffPreview: ({ oldText, newText }: { oldText: string; newText: string }) => <div>{`${oldText} -> ${newText}`}</div>,
 }));
 
+vi.mock("@/components/ui/markdown", () => ({
+  Markdown: ({ children }: { children: string }) => <p>{children}</p>,
+}));
+
 import * as api from "@/lib/research-tasks";
 import { useResearchTasksStore } from "@/store/research-tasks";
 
@@ -61,8 +65,24 @@ function page() {
   return within(document.body);
 }
 
-function selectTab(name: string) {
+function selectTab(name: RegExp) {
   fireEvent.mouseDown(page().getByRole("tab", { name }), { button: 0 });
+}
+
+function card(title: string) {
+  return page().getByRole("button", { name: new RegExp(title) });
+}
+
+function openTask(title: string) {
+  fireEvent.click(card(title));
+}
+
+function closeDetail() {
+  fireEvent.click(within(page().getByRole("dialog")).getByRole("button", { name: "Close" }));
+}
+
+function openActivity() {
+  fireEvent.mouseDown(page().getByRole("tab", { name: "Activity" }), { button: 0 });
 }
 
 function choose(label: string, option: string) {
@@ -138,9 +158,13 @@ describe("ResearchTasksPanel lifecycle", () => {
     render(<ResearchTasksPanel projectId="paper" agents={agents} />);
     expect(page().getByRole("status")).toHaveTextContent("Loading research tasks");
     await act(async () => pending.resolve([older, newer]));
-    await page().findByRole("heading", { name: "Task newer" });
+    await page().findByRole("button", { name: /Task newer/ });
+    openTask("Task newer");
+    openActivity();
     await page().findByText("newer activity");
-    fireEvent.click(page().getByRole("button", { name: /Task older/ }));
+    closeDetail();
+    openTask("Task older");
+    openActivity();
     await page().findByText("older activity");
     expect(page().queryByText("newer activity")).not.toBeInTheDocument();
     expect(api.loadResearchTaskEvents).toHaveBeenLastCalledWith(older.id, 1);
@@ -153,6 +177,8 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.applyResearchTask).mockResolvedValue({ task: completed, projectState: {} as never });
     const onApplied = vi.fn();
     render(<ResearchTasksPanel projectId="paper" agents={agents} onApplied={onApplied} />);
+    await page().findByRole("button", { name: new RegExp(current.title) });
+    openTask(current.title);
     await page().findByRole("heading", { name: current.title });
     fireEvent.click(page().getByRole("checkbox", { name: "Apply references.bib" }));
     fireEvent.click(page().getAllByRole("button", { name: "Preview" })[0]);
@@ -177,7 +203,8 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.startResearchTask).mockResolvedValue(running);
     const onApplied = vi.fn();
     render(<ResearchTasksPanel projectId="paper" agents={agents} onApplied={onApplied} />);
-    await page().findByRole("heading", { name: current.title });
+    await page().findByRole("button", { name: new RegExp(current.title) });
+    openTask(current.title);
     fireEvent.click(page().getByRole("checkbox", { name: "Apply references.bib" }));
     fireEvent.click(page().getAllByRole("button", { name: "Preview" })[0]);
     await page().findByText("before -> main.tex");
@@ -201,8 +228,9 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.listResearchTasks).mockResolvedValue([current]);
     vi.mocked(api.startResearchTask).mockResolvedValue({ ...current, startRequested: true });
     const view = render(<ResearchTasksPanel projectId="paper" agents={agents} />);
-    await page().findByRole("heading", { name: current.title });
+    await page().findByRole("button", { name: new RegExp(current.title) });
     expect(page().getByText("Waiting on a task")).toBeInTheDocument();
+    openTask(current.title);
     fireEvent.click(page().getByRole("button", { name: "Start when ready" }));
     expect(await page().findByRole("button", { name: "Waiting" })).toBeDisabled();
     const running = { ...current, status: "running" as const, executionGeneration: 1 };
@@ -223,7 +251,7 @@ describe("ResearchTasksPanel lifecycle", () => {
     render(<ResearchTasksPanel projectId="paper" agents={agents} />);
     expect(await page().findByRole("alert")).toHaveTextContent("Task storage could not be read");
     fireEvent.click(page().getByRole("button", { name: "Refresh research tasks" }));
-    await page().findByRole("heading", { name: "Task recovered" });
+    await page().findByRole("button", { name: /Task recovered/ });
     expect(page().queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -234,13 +262,13 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.listResearchTasks).mockImplementation(async (id) => id === "first" ? [first] : [second]);
     vi.mocked(api.createResearchTask).mockReturnValue(pending.promise);
     const view = render(<ResearchTasksPanel projectId="first" agents={agents} />);
-    await page().findByRole("heading", { name: first.title });
+    await page().findByRole("button", { name: new RegExp(first.title) });
     fireEvent.click(page().getByRole("button", { name: "New task" }));
     choose("Start from", "Analysis");
     fireEvent.click(page().getByRole("button", { name: "Create task" }));
     expect(api.createResearchTask).toHaveBeenCalledOnce();
     view.rerender(<ResearchTasksPanel projectId="second" agents={agents} />);
-    await page().findByRole("heading", { name: second.title });
+    await page().findByRole("button", { name: new RegExp(second.title) });
     if (returnToOriginal) {
       view.rerender(<ResearchTasksPanel projectId="first" agents={agents} />);
       await page().findByRole("heading", { name: "New research task" });
@@ -248,7 +276,11 @@ describe("ResearchTasksPanel lifecycle", () => {
     }
     await act(async () => pending.resolve(task("created-in-first", "first")));
     const selected = returnToOriginal ? first : second;
-    expect(page().getByRole("heading", { name: returnToOriginal ? "New research task" : selected.title })).toBeInTheDocument();
+    if (returnToOriginal) {
+      expect(page().getByRole("heading", { name: "New research task" })).toBeInTheDocument();
+    } else {
+      expect(card(selected.title)).toBeInTheDocument();
+    }
     expect(useResearchTasksStore.getState().selectedTaskId).toBe(selected.id);
   });
 
@@ -259,12 +291,13 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.listResearchTasks).mockImplementation(async (id) => id === "first" ? [first] : [second]);
     vi.mocked(api.editResearchTask).mockReturnValue(pending.promise);
     const view = render(<ResearchTasksPanel projectId="first" agents={agents} />);
-    await page().findByRole("heading", { name: first.title });
+    await page().findByRole("button", { name: new RegExp(first.title) });
+    openTask(first.title);
     fireEvent.click(page().getByRole("button", { name: "Edit" }));
     fireEvent.click(page().getByRole("button", { name: "Save task" }));
     expect(api.editResearchTask).toHaveBeenCalledOnce();
     view.rerender(<ResearchTasksPanel projectId="second" agents={agents} />);
-    await page().findByRole("heading", { name: second.title });
+    await page().findByRole("button", { name: new RegExp(second.title) });
     fireEvent.click(page().getByRole("button", { name: "New task" }));
     await act(async () => pending.resolve({ ...first, title: "Updated first task" }));
 
@@ -284,6 +317,7 @@ describe("ResearchTasksPanel lifecycle", () => {
     choose("Start from", "Analysis");
     fireEvent.click(page().getByRole("button", { name: "Create task" }));
     await page().findByRole("heading", { name: created.title });
+    expect(page().getByRole("dialog")).toHaveAttribute("data-testid", "research-task-detail");
     expect(api.createResearchTask).toHaveBeenCalledWith(expect.objectContaining({ projectId: "paper", runtimeId: "builtin", agentId: "provider", modelId: "model", skillIds: expect.arrayContaining(["statistical-analysis"]) }));
     fireEvent.click(page().getByRole("button", { name: "Edit" }));
     expect(page().getByLabelText("Title")).toHaveValue(created.title);
@@ -302,18 +336,20 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.createResearchTask).mockReturnValue(pending.promise);
     vi.mocked(api.editResearchTask).mockReturnValue(pending.promise);
     render(<ResearchTasksPanel projectId="paper" agents={agents} />);
-    await page().findByRole("heading", { name: existing.title });
+    await page().findByRole("button", { name: new RegExp(existing.title) });
     const user = userEvent.setup({ document });
     if (operation === "create") {
       await user.click(page().getByRole("button", { name: "New task" }));
       choose("Start from", "Analysis");
       await user.click(page().getByRole("button", { name: "Create task" }));
     } else {
+      openTask(existing.title);
       await user.click(page().getByRole("button", { name: "Edit" }));
       await user.click(page().getByRole("button", { name: "Save task" }));
     }
     expect(page().getByRole("button", { name: "Saving..." })).toBeDisabled();
     await user.click(page().getByRole("button", { name: "Cancel" }));
+    if (operation === "edit") closeDetail();
     await user.click(page().getByRole("button", { name: "New task" }));
     await user.type(page().getByLabelText("Title"), "A separate draft");
     await user.type(page().getByLabelText("Instructions"), "Keep this new work");
@@ -335,12 +371,14 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.listResearchTasks).mockResolvedValue([first, second]);
     vi.mocked(api.editResearchTask).mockReturnValue(pending.promise);
     render(<ResearchTasksPanel projectId="paper" agents={agents} />);
-    await page().findByRole("heading", { name: first.title });
+    await page().findByRole("button", { name: new RegExp(first.title) });
     const user = userEvent.setup({ document });
+    openTask(first.title);
     await user.click(page().getByRole("button", { name: "Edit" }));
     await user.click(page().getByRole("button", { name: "Save task" }));
     await user.click(page().getByRole("button", { name: "Cancel" }));
-    await user.click(page().getByRole("button", { name: /Task second/ }));
+    closeDetail();
+    openTask("Task second");
     await user.click(page().getByRole("button", { name: "Edit" }));
     await user.clear(page().getByLabelText("Title"));
     await user.type(page().getByLabelText("Title"), "Second task draft");
@@ -385,7 +423,7 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.createResearchTask).mockReturnValueOnce(pending.promise);
     vi.mocked(api.createResearchTask).mockResolvedValueOnce({ ...dependency, id: "created", title: "Revised analysis" });
     render(<ResearchTasksPanel projectId="paper" agents={agents} />);
-    await page().findByRole("heading", { name: dependency.title });
+    await page().findByRole("button", { name: new RegExp(dependency.title) });
     const user = userEvent.setup({ document });
     await user.click(page().getByRole("button", { name: "New task" }));
     choose("Start from", "Analysis");
@@ -422,6 +460,8 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.acceptResearchTaskResult).mockResolvedValue({ ...current, status: "completed" });
     const onApplied = vi.fn();
     render(<ResearchTasksPanel projectId="paper" agents={agents} onApplied={onApplied} />);
+    await page().findByRole("button", { name: new RegExp(current.title) });
+    openTask(current.title);
     fireEvent.click(await page().findByRole("button", { name: "Mark reviewed" }));
     await waitFor(() => expect(page().queryByRole("button", { name: "Mark reviewed" })).not.toBeInTheDocument());
     expect(api.acceptResearchTaskResult).toHaveBeenCalledWith(current.id);
@@ -436,7 +476,8 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.applyResearchTask).mockReturnValue(pending.promise);
     const onApplied = vi.fn();
     const view = render(<ResearchTasksPanel projectId="paper" agents={agents} onApplied={onApplied} />);
-    await page().findByRole("heading", { name: current.title });
+    await page().findByRole("button", { name: new RegExp(current.title) });
+    openTask(current.title);
     fireEvent.click(page().getByRole("checkbox", { name: "Apply references.bib" }));
     fireEvent.click(page().getAllByRole("button", { name: "Preview" })[0]);
     await page().findByText("before -> main.tex");
@@ -445,6 +486,29 @@ describe("ResearchTasksPanel lifecycle", () => {
     view.unmount();
     await act(async () => pending.resolve({ task: { ...current, status: "completed" }, projectState: {} as never }));
     expect(onApplied).not.toHaveBeenCalled();
+  });
+
+  it("opens the task modal from View task and keeps the list reachable after closing it", async () => {
+    const running = { ...task("running", "paper", "running"), result: null, createdAt: 2 };
+    const review = task("review");
+    vi.mocked(api.listResearchTasks).mockResolvedValue([running, review]);
+    render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+    await page().findByRole("button", { name: /Task running/ });
+
+    expect(page().queryByRole("dialog")).not.toBeInTheDocument();
+    expect(page().getByRole("button", { name: "View progress" })).toBeInTheDocument();
+    fireEvent.click(page().getByRole("button", { name: "View task" }));
+
+    const dialog = page().getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: review.title })).toBeInTheDocument();
+    expect(dialog.querySelector('article[aria-labelledby="research-task-detail-title"]')).not.toBeNull();
+    await waitFor(() => expect(useResearchTasksStore.getState().selectedTaskId).toBe(review.id));
+
+    closeDetail();
+    expect(page().queryByRole("dialog")).not.toBeInTheDocument();
+    expect(useResearchTasksStore.getState().selectedTaskId).toBe(review.id);
+    fireEvent.click(page().getByRole("button", { name: "View task" }));
+    expect(within(page().getByRole("dialog")).getByRole("heading", { name: review.title })).toBeInTheDocument();
   });
 
   it("filters the task list by run state without losing the other tasks", async () => {
@@ -458,15 +522,20 @@ describe("ResearchTasksPanel lifecycle", () => {
 
     const list = () => within(page().getByRole("navigation", { name: "Research task list" }));
 
-    selectTab("Needs review");
+    expect(page().getByRole("tab", { name: /^All/ })).toHaveTextContent("All3");
+    expect(page().getByRole("tab", { name: /^Running/ })).toHaveTextContent("Running1");
+    expect(page().getByRole("tab", { name: /^Review/ })).toHaveTextContent("Review1");
+    expect(page().getByRole("tab", { name: /^Done/ })).toHaveTextContent("Done1");
+
+    selectTab(/^Review/);
     expect(list().getByRole("button", { name: /Task review/ })).toBeInTheDocument();
     expect(list().queryByRole("button", { name: /Task done/ })).not.toBeInTheDocument();
 
-    selectTab("Done");
+    selectTab(/^Done/);
     expect(list().getByRole("button", { name: /Task done/ })).toBeInTheDocument();
     expect(list().queryByRole("button", { name: /Task running/ })).not.toBeInTheDocument();
 
-    selectTab("All");
+    selectTab(/^All/);
     expect(page().getAllByRole("listitem")).toHaveLength(3);
   });
 
@@ -476,7 +545,8 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.listResearchTasks).mockResolvedValue([first, second]);
     vi.mocked(api.deleteResearchTask).mockResolvedValue(undefined);
     render(<ResearchTasksPanel projectId="paper" agents={agents} />);
-    await page().findByRole("heading", { name: first.title });
+    await page().findByRole("button", { name: new RegExp(first.title) });
+    openTask(first.title);
 
     fireEvent.click(page().getByRole("button", { name: `Delete ${first.title}` }));
     fireEvent.click(within(page().getByRole("alertdialog")).getByRole("button", { name: /Cancel/ }));
@@ -498,10 +568,11 @@ describe("ResearchTasksPanel lifecycle", () => {
     vi.mocked(api.listResearchTasks).mockResolvedValue([current]);
     vi.mocked(api.deleteResearchTask).mockRejectedValue(new Error("Another task waits for this one"));
     render(<ResearchTasksPanel projectId="paper" agents={agents} />);
-    await page().findByRole("heading", { name: current.title });
+    await page().findByRole("button", { name: new RegExp(current.title) });
+    openTask(current.title);
     fireEvent.click(page().getByRole("button", { name: `Delete ${current.title}` }));
     fireEvent.click(within(page().getByRole("alertdialog")).getByRole("button", { name: "Delete task" }));
     expect(await page().findByRole("alert")).toHaveTextContent("Another task waits for this one");
-    expect(page().getByRole("heading", { name: current.title })).toBeInTheDocument();
+    expect(card(current.title)).toBeInTheDocument();
   });
 });

@@ -100,12 +100,23 @@ export interface ResearchTaskDraft {
 
 export type ResearchTaskEdit = Omit<ResearchTaskDraft, "projectId">;
 
+export type TaskToolPhase = "request" | "result" | "update";
+
+export interface TaskToolEvent {
+  kind: "tool";
+  name: string;
+  detail: string;
+  callId?: string | null;
+  phase?: TaskToolPhase;
+  status?: string | null;
+}
+
 export type TaskRuntimeEvent =
   | { kind: "sessionBound"; nativeSessionId: string }
   | { kind: "status"; message: string }
   | { kind: "text"; text: string }
   | { kind: "reasoning"; text: string }
-  | { kind: "tool"; name: string; detail: string }
+  | TaskToolEvent
   | { kind: "artifact"; artifact: TaskArtifact }
   | { kind: "usage"; inputTokens: number | null; outputTokens: number | null };
 

@@ -18,7 +18,7 @@ use oleafly_agent::CancellationToken;
 use tauri::Emitter;
 use tokio::sync::{Notify, OwnedSemaphorePermit, Semaphore};
 
-pub use model::{ResearchTask, TaskRunContext, TaskRuntimeEvent, TaskRuntimeOutcome};
+pub use model::{ResearchTask, TaskRunContext, TaskRuntimeEvent, TaskRuntimeOutcome, ToolPhase};
 
 use model::{
     now_ms, ResearchTaskDraft, ResearchTaskEdit, ResearchTaskStatus, TaskApplyRequest,

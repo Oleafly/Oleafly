@@ -214,6 +214,24 @@ describe("SubagentCard", () => {
     expect(getByText("Found 3 papers.")).toBeInTheDocument();
   });
 
+  it("splits the Codex skills budget warning into a notice row", () => {
+    const { getByTestId, getByText, queryByText } = render(
+      <SubagentCard
+        entry={{
+          id: "s1",
+          label: "Survey diffusion",
+          state: "done",
+          detail: "Warning: Exceeded skills context budget of 4000 tokens.\nFound 3 papers.",
+        }}
+      />,
+    );
+    expect(getByTestId("agent-notice")).toHaveTextContent(
+      "Codex could not list all of its skills.",
+    );
+    expect(getByText("Found 3 papers.")).toBeInTheDocument();
+    expect(queryByText(/Exceeded skills context budget/)).toBeNull();
+  });
+
   it("opens the recorded delegated session through the supplied boundary", () => {
     const openSession = vi.fn();
     render(

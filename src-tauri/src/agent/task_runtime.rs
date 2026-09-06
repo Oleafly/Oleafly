@@ -17,7 +17,7 @@ use tokio::io::{AsyncRead, AsyncReadExt};
 
 use crate::research_tasks::{
     ResearchTaskState, TaskEventSink, TaskRunContext, TaskRuntimeAdapter, TaskRuntimeEvent,
-    TaskRuntimeFuture, TaskRuntimeOutcome,
+    TaskRuntimeFuture, TaskRuntimeOutcome, ToolPhase,
 };
 
 const TASK_TURN_FAILED: &str = "The agent could not complete this request.";
@@ -1131,19 +1131,55 @@ impl TaskRuntimeAdapter for BuiltinTaskAdapter {
     }
 }
 
+fn tool_result_status(output: &str) -> &'static str {
+    let Ok(value) = serde_json::from_str::<Value>(output) else {
+        return "done";
+    };
+    let failed = value.get("error").is_some_and(|entry| !entry.is_null())
+        || value.get("success") == Some(&Value::Bool(false))
+        || value.get("timed_out") == Some(&Value::Bool(true));
+    if failed {
+        "error"
+    } else {
+        "done"
+    }
+}
+
 fn builtin_event(event: AgentEvent) -> Option<TaskRuntimeEvent> {
     match event {
         AgentEvent::TextDelta { text } => Some(TaskRuntimeEvent::Text { text }),
         AgentEvent::ReasoningDelta { text } => Some(TaskRuntimeEvent::Reasoning { text }),
         AgentEvent::ToolRequest {
-            name, arguments, ..
-        } => Some(TaskRuntimeEvent::Tool {
+            id,
             name,
+            arguments,
+        } => Some(TaskRuntimeEvent::Tool {
+            call_id: Some(id),
+            name,
+            phase: ToolPhase::Request,
             detail: arguments,
+            status: Some("running".into()),
+        }),
+        AgentEvent::ToolCallStart { id, name } => Some(TaskRuntimeEvent::Tool {
+            call_id: Some(id),
+            name,
+            phase: ToolPhase::Request,
+            detail: String::new(),
+            status: Some("running".into()),
+        }),
+        AgentEvent::ToolCallEnd { id, arguments } => Some(TaskRuntimeEvent::Tool {
+            call_id: Some(id),
+            name: String::new(),
+            phase: ToolPhase::Update,
+            detail: bounded(&arguments, MAX_OUTPUT_BYTES),
+            status: Some("running".into()),
         }),
         AgentEvent::ToolOutcome { id, output } => Some(TaskRuntimeEvent::Tool {
-            name: id,
+            call_id: Some(id),
+            name: String::new(),
+            phase: ToolPhase::Result,
             detail: bounded(&output, MAX_OUTPUT_BYTES),
+            status: Some(tool_result_status(&output).into()),
         }),
         AgentEvent::Usage { usage } => Some(TaskRuntimeEvent::Usage {
             input_tokens: usage.reported_input().map(u64::from),
@@ -1407,6 +1443,15 @@ impl AcpTaskAdapter {
     }
 }
 
+fn acp_tool_status(status: &str) -> String {
+    match status {
+        "completed" => "done",
+        "failed" | "error" | "cancelled" | "canceled" => "error",
+        _ => "running",
+    }
+    .into()
+}
+
 fn acp_event(
     event: &crate::acp::AcpEvent,
     outcome: &mut TaskRuntimeOutcome,
@@ -1430,10 +1475,26 @@ fn acp_event(
                 .unwrap_or_default()
                 .into(),
         }),
-        "tool_call" | "tool_call_update" => Some(TaskRuntimeEvent::Tool {
-            name: event.data["title"].as_str().unwrap_or("Agent tool").into(),
-            detail: bounded(&event.data.to_string(), MAX_OUTPUT_BYTES),
-        }),
+        "tool_call" | "tool_call_update" => {
+            let detail = json!({
+                "kind": event.data["kind"],
+                "status": event.data["status"],
+                "rawInput": event.data["rawInput"],
+                "rawOutput": event.data["rawOutput"],
+                "content": event.data["content"],
+            });
+            Some(TaskRuntimeEvent::Tool {
+                call_id: event.data["toolCallId"].as_str().map(str::to_string),
+                name: event.data["title"].as_str().unwrap_or("Agent tool").into(),
+                phase: if event.kind == "tool_call" {
+                    ToolPhase::Request
+                } else {
+                    ToolPhase::Update
+                },
+                detail: bounded(&detail.to_string(), MAX_OUTPUT_BYTES),
+                status: event.data["status"].as_str().map(acp_tool_status),
+            })
+        }
         "usage" if event.data["source"] != "acp_context" => {
             outcome.input_tokens = event.data["inputTokens"].as_u64().or(outcome.input_tokens);
             outcome.output_tokens = event.data["outputTokens"]
@@ -1573,6 +1634,175 @@ mod tests {
         };
         assert!(acp_event(&event, &mut outcome).is_none());
         assert_eq!(outcome.input_tokens, None);
+    }
+
+    #[test]
+    fn builtin_tool_events_pair_a_request_with_its_result() {
+        let request = builtin_event(AgentEvent::ToolRequest {
+            id: "call_17".into(),
+            name: "read_file".into(),
+            arguments: r#"{"path":"main.tex"}"#.into(),
+        });
+        assert_eq!(
+            request,
+            Some(TaskRuntimeEvent::Tool {
+                call_id: Some("call_17".into()),
+                name: "read_file".into(),
+                phase: ToolPhase::Request,
+                detail: r#"{"path":"main.tex"}"#.into(),
+                status: Some("running".into()),
+            })
+        );
+        assert_eq!(
+            builtin_event(AgentEvent::ToolOutcome {
+                id: "call_17".into(),
+                output: r#"{"content":"body"}"#.into(),
+            }),
+            Some(TaskRuntimeEvent::Tool {
+                call_id: Some("call_17".into()),
+                name: String::new(),
+                phase: ToolPhase::Result,
+                detail: r#"{"content":"body"}"#.into(),
+                status: Some("done".into()),
+            })
+        );
+        assert!(matches!(
+            builtin_event(AgentEvent::ToolOutcome {
+                id: "call_18".into(),
+                output: r#"{"error":"missing file"}"#.into(),
+            }),
+            Some(TaskRuntimeEvent::Tool { status: Some(status), .. }) if status == "error"
+        ));
+    }
+
+    #[test]
+    fn streamed_tool_calls_record_the_name_first_and_the_arguments_when_they_finish() {
+        assert_eq!(
+            builtin_event(AgentEvent::ToolCallStart {
+                id: "call_21".into(),
+                name: "write_file".into(),
+            }),
+            Some(TaskRuntimeEvent::Tool {
+                call_id: Some("call_21".into()),
+                name: "write_file".into(),
+                phase: ToolPhase::Request,
+                detail: String::new(),
+                status: Some("running".into()),
+            })
+        );
+        assert_eq!(
+            builtin_event(AgentEvent::ToolCallEnd {
+                id: "call_21".into(),
+                arguments: r#"{"path":"main.tex","content":"x"}"#.into(),
+            }),
+            Some(TaskRuntimeEvent::Tool {
+                call_id: Some("call_21".into()),
+                name: String::new(),
+                phase: ToolPhase::Update,
+                detail: r#"{"path":"main.tex","content":"x"}"#.into(),
+                status: Some("running".into()),
+            })
+        );
+        assert_eq!(
+            builtin_event(AgentEvent::ToolCallArgsDelta {
+                id: "call_21".into(),
+                json: "{".into(),
+            }),
+            None
+        );
+    }
+
+    #[test]
+    fn acp_tool_calls_keep_their_identity_status_and_payload() {
+        let mut outcome = TaskRuntimeOutcome {
+            summary: String::new(),
+            artifacts: Vec::new(),
+            native_session_id: None,
+            input_tokens: None,
+            output_tokens: None,
+        };
+        let event = |kind: &str, data: Value| crate::acp::AcpEvent {
+            session_id: "session".into(),
+            project_id: "project".into(),
+            agent_id: "agent".into(),
+            model_id: None,
+            task_id: None,
+            turn_id: None,
+            sequence: 1,
+            timestamp: 0,
+            kind: kind.into(),
+            data,
+        };
+        let call = acp_event(
+            &event(
+                "tool_call",
+                json!({
+                    "toolCallId": "tool-9",
+                    "title": "Read file",
+                    "kind": "read",
+                    "status": "pending",
+                    "rawInput": {"path": "main.tex"},
+                }),
+            ),
+            &mut outcome,
+        );
+        let Some(TaskRuntimeEvent::Tool {
+            call_id,
+            name,
+            phase,
+            detail,
+            status,
+        }) = call
+        else {
+            panic!("an ACP tool call must project a tool event");
+        };
+        assert_eq!(call_id.as_deref(), Some("tool-9"));
+        assert_eq!(name, "Read file");
+        assert_eq!(phase, ToolPhase::Request);
+        assert_eq!(status.as_deref(), Some("running"));
+        let payload: Value = serde_json::from_str(&detail).unwrap();
+        assert_eq!(payload["kind"], "read");
+        assert_eq!(payload["rawInput"]["path"], "main.tex");
+        assert!(payload["rawOutput"].is_null());
+
+        let update = acp_event(
+            &event(
+                "tool_call_update",
+                json!({
+                    "toolCallId": "tool-9",
+                    "title": "Read file",
+                    "status": "completed",
+                    "rawOutput": {"content": "body"},
+                }),
+            ),
+            &mut outcome,
+        );
+        assert!(matches!(
+            update,
+            Some(TaskRuntimeEvent::Tool {
+                call_id: Some(id),
+                phase: ToolPhase::Update,
+                status: Some(status),
+                ..
+            }) if id == "tool-9" && status == "done"
+        ));
+    }
+
+    #[test]
+    fn legacy_tool_rows_still_parse_without_the_pairing_fields() {
+        let legacy: TaskRuntimeEvent =
+            serde_json::from_str(r#"{"kind":"tool","name":"read_file","detail":"main.tex"}"#)
+                .unwrap();
+        assert_eq!(
+            legacy,
+            TaskRuntimeEvent::Tool {
+                call_id: None,
+                name: "read_file".into(),
+                phase: ToolPhase::Request,
+                detail: "main.tex".into(),
+                status: None,
+            }
+        );
     }
 
     #[test]

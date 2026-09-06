@@ -239,26 +239,43 @@ function styleElement() {
   return style;
 }
 
+const appliedProperties = new Set<string>();
+
+function removeAppliedProperties(root: HTMLElement) {
+  for (const property of appliedProperties) root.style.removeProperty(property);
+  appliedProperties.clear();
+}
+
+export function themeTokenOverride(theme: Theme, token: ThemeTokenName): string | undefined {
+  try {
+    return validateThemeCustomization(readThemeCustomization())[theme][token];
+  } catch {
+    return undefined;
+  }
+}
+
 export function applyThemeCustomization(
   theme: Theme,
   customization: ThemeCustomization = readThemeCustomization(),
 ): ThemeCustomization {
   const valid = validateThemeCustomization(customization);
   const root = document.documentElement;
-  for (const token of THEME_TOKEN_NAMES) root.style.removeProperty(`--${token}`);
-  root.style.removeProperty("--radius");
+  removeAppliedProperties(root);
   for (const [token, value] of Object.entries(valid[theme])) {
-    root.style.setProperty(`--${token}`, value);
+    const property = `--${token}`;
+    root.style.setProperty(property, value);
+    appliedProperties.add(property);
   }
-  if (valid.radius) root.style.setProperty("--radius", valid.radius);
+  if (valid.radius) {
+    root.style.setProperty("--radius", valid.radius);
+    appliedProperties.add("--radius");
+  }
   const style = styleElement();
   style.textContent = valid.customCss ? `#root { ${valid.customCss} }` : "";
   return valid;
 }
 
 export function clearThemeCustomization(): void {
-  const root = document.documentElement;
-  for (const token of THEME_TOKEN_NAMES) root.style.removeProperty(`--${token}`);
-  root.style.removeProperty("--radius");
+  removeAppliedProperties(document.documentElement);
   document.querySelector("style[data-oleafly-custom-theme]")?.remove();
 }

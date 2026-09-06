@@ -3,6 +3,7 @@ export type ResearchToolStatus =
   | "completed"
   | "failed"
   | "cancelled"
+  | "interrupted"
   | "declined";
 
 export interface ProjectResearchArtifactTarget {
@@ -155,10 +156,12 @@ export interface ToolActivityEntry {
   status: "running" | "done" | "error";
   output?: string;
   approval?: "approved" | "rejected";
+  interrupted?: boolean;
 }
 
 function explicitStatus(entry: ToolActivityEntry, value: unknown): ResearchToolStatus {
   if (entry.approval === "rejected") return "declined";
+  if (entry.interrupted === true) return "interrupted";
   const data = record(value);
   const rawStatus = stringValue(data?.status)?.toLowerCase();
   if (data?.declined === true || rawStatus === "declined" || rawStatus === "rejected") {
@@ -202,6 +205,7 @@ function statusLabel(status: ResearchToolStatus, value: unknown): string {
   const data = record(value);
   if (status === "running") return "Running";
   if (status === "declined") return "Declined";
+  if (status === "interrupted") return "Interrupted";
   if (status === "cancelled") return "Stopped";
   if (status === "failed") {
     if (data?.timed_out === true) return "Timed out";
@@ -373,6 +377,34 @@ export function coalesceTranscriptEvents<T extends TranscriptTextEvent>(
     merged.push(entry);
   }
   return merged;
+}
+
+export const SKILLS_BUDGET_NOTICE =
+  "Codex could not list all of its skills. It keeps a 2% context budget for skill descriptions, so trim the skills folder or ask for a skill by name.";
+
+const AGENT_NOTICES: { prefix: string; text: string }[] = [
+  { prefix: "warning: exceeded skills context budget", text: SKILLS_BUDGET_NOTICE },
+];
+
+export interface AgentNoticeSplit {
+  notices: string[];
+  text: string;
+}
+
+export function splitAgentNotices(value: string): AgentNoticeSplit {
+  const notices: string[] = [];
+  let rest = value;
+  for (;;) {
+    const body = rest.replace(/^\s+/, "");
+    const matched = AGENT_NOTICES.find((notice) =>
+      body.toLowerCase().startsWith(notice.prefix),
+    );
+    if (!matched) break;
+    const lineEnd = body.indexOf("\n");
+    rest = lineEnd === -1 ? "" : body.slice(lineEnd + 1);
+    if (!notices.includes(matched.text)) notices.push(matched.text);
+  }
+  return notices.length === 0 ? { notices, text: value } : { notices, text: rest.replace(/^\s+/, "") };
 }
 
 export function createResearchArtifactAction(

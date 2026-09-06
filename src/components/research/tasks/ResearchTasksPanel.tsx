@@ -1,33 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  AlertCircle,
-  CheckCircle2,
-  CircleDashed,
-  CircleSlash,
-  FlaskConical,
-  Link2,
-  Loader2,
-  Plus,
-  RefreshCw,
-  XCircle,
-} from "lucide-react";
+import { AlertCircle, Link2, Loader2, Plus, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip } from "@/components/ui/tooltip";
+import { getProvider } from "@/lib/ai-providers";
 import type { ResearchTask } from "@/lib/research-tasks";
 import {
   mountResearchTaskSubscriptions,
   useResearchTasksStore,
 } from "@/store/research-tasks";
 import { composerDraftKey, TaskComposer } from "./TaskComposer";
-import { TaskDetail } from "./TaskDetail";
+import { relativeTime } from "./task-status";
+import { TaskAgentChip, TaskStatusBadge } from "./TaskChips";
+import { TaskDetailDialog } from "./TaskDetailDialog";
 
 export interface ResearchTaskAgentOption {
   runtimeId: string;
   agentId: string;
   modelId: string;
   label: string;
+  agentName?: string;
   modelLabel?: string;
   available?: boolean;
   unavailableReason?: string;
@@ -42,28 +37,10 @@ export interface ResearchTasksPanelProps {
 
 type TaskFilter = "all" | "running" | "review" | "done";
 
-const STATUS_LABELS: Record<ResearchTask["status"], string> = {
-  queued: "Queued",
-  running: "Running",
-  awaiting_review: "Review",
-  completed: "Completed",
-  failed: "Failed",
-  cancelled: "Cancelled",
-};
-
-const STATUS_ICONS: Record<ResearchTask["status"], typeof CircleDashed> = {
-  queued: CircleDashed,
-  running: Loader2,
-  awaiting_review: FlaskConical,
-  completed: CheckCircle2,
-  failed: XCircle,
-  cancelled: CircleSlash,
-};
-
 const FILTERS: { id: TaskFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "running", label: "Running" },
-  { id: "review", label: "Needs review" },
+  { id: "review", label: "Review" },
   { id: "done", label: "Done" },
 ];
 
@@ -80,16 +57,6 @@ function matchesFilter(task: ResearchTask, filter: TaskFilter): boolean {
   }
 }
 
-function relativeTime(value: number): string {
-  const seconds = Math.max(0, Math.round((Date.now() - value) / 1000));
-  if (seconds < 60) return "just now";
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.round(hours / 24)}d ago`;
-}
-
 export function ResearchTasksPanel({
   projectId,
   agents,
@@ -104,9 +71,13 @@ export function ResearchTasksPanel({
   const eventsLoading = useResearchTasksStore((state) => state.eventsLoading);
   const action = useResearchTasksStore((state) => state.action);
   const error = useResearchTasksStore((state) => state.error);
+  const detailOpen = useResearchTasksStore((state) => state.detailOpen);
+  const detailTab = useResearchTasksStore((state) => state.detailTab);
   const bindProject = useResearchTasksStore((state) => state.bindProject);
   const refresh = useResearchTasksStore((state) => state.refresh);
   const selectTask = useResearchTasksStore((state) => state.selectTask);
+  const openTaskDetail = useResearchTasksStore((state) => state.openTaskDetail);
+  const setDetailOpen = useResearchTasksStore((state) => state.setDetailOpen);
   const loadMoreEvents = useResearchTasksStore((state) => state.loadMoreEvents);
   const createTask = useResearchTasksStore((state) => state.createTask);
   const editTask = useResearchTasksStore((state) => state.editTask);
@@ -124,6 +95,7 @@ export function ResearchTasksPanel({
   const [savingComposerInstance, setSavingComposerInstance] = useState<number | null>(null);
   const [filter, setFilter] = useState<TaskFilter>("all");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [reopenDetail, setReopenDetail] = useState(false);
   const composerGeneration = useRef(0);
   const pendingComposerInstance = useRef<number | null>(null);
   const composerOpen = composerProjectId === projectId;
@@ -164,6 +136,25 @@ export function ResearchTasksPanel({
     () => tasks.find((task) => task.id === selectedTaskId) ?? null,
     [selectedTaskId, tasks],
   );
+
+  useEffect(() => {
+    if (!selectedTask) setDetailOpen(false);
+  }, [selectedTask, setDetailOpen]);
+
+  const agentNames = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const agent of agents) {
+      const name = agent.agentName?.trim();
+      const key = `${agent.runtimeId}:${agent.agentId}`;
+      if (name && !names.has(key)) names.set(key, name);
+    }
+    return names;
+  }, [agents]);
+
+  const agentNameFor = (task: ResearchTask) =>
+    agentNames.get(`${task.runtimeId}:${task.agentId}`) ??
+    (task.runtimeId === "acp" ? undefined : getProvider(task.agentId)?.name);
+
   const editingTask = useMemo(
     () => tasks.find((task) => task.id === editingTaskId) ?? null,
     [editingTaskId, tasks],
@@ -171,6 +162,17 @@ export function ResearchTasksPanel({
   const visibleTasks = useMemo(
     () => tasks.filter((task) => matchesFilter(task, filter)),
     [filter, tasks],
+  );
+  const counts = useMemo(
+    () =>
+      FILTERS.reduce<Record<TaskFilter, number>>(
+        (totals, entry) => {
+          totals[entry.id] = tasks.filter((task) => matchesFilter(task, entry.id)).length;
+          return totals;
+        },
+        { all: 0, running: 0, review: 0, done: 0 },
+      ),
+    [tasks],
   );
   const pendingDelete = useMemo(
     () => tasks.find((task) => task.id === pendingDeleteId) ?? null,
@@ -197,16 +199,27 @@ export function ResearchTasksPanel({
       const task = await save();
       if (activeProjectBinding.current !== projectBinding || composerGeneration.current !== composerInstance) return;
       closeComposer();
-      if (selectCreated) await selectTask(task.id);
+      if (selectCreated) {
+        await selectTask(task.id);
+        if (activeProjectBinding.current !== projectBinding) return;
+        setDetailOpen(true);
+      }
     } finally {
       if (pendingComposerInstance.current === composerInstance) pendingComposerInstance.current = null;
       setSavingComposerInstance((current) => current === composerInstance ? null : current);
     }
   };
 
+  const cancelDelete = () => {
+    setPendingDeleteId(null);
+    if (reopenDetail) setDetailOpen(true);
+    setReopenDetail(false);
+  };
+
   const confirmDelete = async () => {
     const taskId = pendingDeleteId;
     setPendingDeleteId(null);
+    setReopenDetail(false);
     if (!taskId || !projectId) return;
     clearComposerDraft(composerDraftKey(projectId, taskId));
     await deleteTask(taskId).catch(() => {});
@@ -226,15 +239,18 @@ export function ResearchTasksPanel({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col" data-testid="research-tasks-panel">
+    <div
+      className="flex h-full min-h-0 flex-col overflow-x-hidden"
+      data-testid="research-tasks-panel"
+    >
       <header className="flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
-        <div>
+        <div className="min-w-0">
           <h2 className="text-base font-semibold">Research tasks</h2>
           <p className="text-xs text-muted-foreground">
             Run longer work separately, inspect the result, then choose what reaches your project.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             size="sm"
             variant="outline"
@@ -258,7 +274,7 @@ export function ResearchTasksPanel({
         >
           <div className="flex min-w-0 items-start gap-2 text-sm">
             <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
-            <p>{error}</p>
+            <p className="min-w-0 break-words">{error}</p>
           </div>
           <Button size="xs" variant="ghost" onClick={clearError}>
             Dismiss
@@ -288,115 +304,142 @@ export function ResearchTasksPanel({
           </div>
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 grid-cols-[minmax(240px,0.36fr)_minmax(0,1fr)]">
-          <nav aria-label="Research task list" className="flex min-h-0 flex-col border-r">
-            <div className="shrink-0 px-2 pt-2">
-              <Tabs value={filter} onValueChange={(next) => setFilter(next as TaskFilter)}>
-                <TabsList size="sm" className="grid w-full grid-cols-4">
-                  {FILTERS.map((entry) => (
-                    <TabsTrigger key={entry.id} value={entry.id} size="sm">
-                      {entry.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </div>
-            <ul className="min-h-0 flex-1 space-y-1.5 overflow-auto p-2">
-              {visibleTasks.length === 0 ? (
-                <li className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
-                  No tasks in this view.
-                </li>
-              ) : null}
-              {visibleTasks.map((task) => {
-                const selected = task.id === selectedTaskId;
-                const blocked = task.dependencyIds.some(
-                  (dependencyId) =>
-                    tasks.find((candidate) => candidate.id === dependencyId)?.status !== "completed",
-                );
-                const StatusIcon = STATUS_ICONS[task.status];
-                return (
-                  <li key={task.id}>
+        <nav aria-label="Research task list" className="flex min-h-0 flex-1 flex-col">
+          <div className="shrink-0 px-3 pt-3">
+            <Tabs value={filter} onValueChange={(next) => setFilter(next as TaskFilter)}>
+              <TabsList size="sm" className="flex w-full overflow-x-auto">
+                {FILTERS.map((entry) => (
+                  <TabsTrigger
+                    key={entry.id}
+                    value={entry.id}
+                    size="sm"
+                    className="min-w-0 flex-1 gap-1 px-1.5"
+                  >
+                    <span className="min-w-0 truncate">{entry.label}</span>
+                    <Badge
+                      variant="quiet"
+                      className="border-transparent bg-transparent px-0.5 py-0 text-[10px] tabular-nums text-muted-foreground"
+                    >
+                      {counts[entry.id]}
+                    </Badge>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </div>
+          <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden p-3">
+            {visibleTasks.length === 0 ? (
+              <li className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+                No tasks in this view.
+              </li>
+            ) : null}
+            {visibleTasks.map((task) => {
+              const selected = task.id === selectedTaskId;
+              const blocked = task.dependencyIds.some(
+                (dependencyId) =>
+                  tasks.find((candidate) => candidate.id === dependencyId)?.status !== "completed",
+              );
+              return (
+                <li key={task.id}>
+                  <div
+                    className={cn(
+                      "min-w-0 rounded-lg border bg-card shadow-sm transition-colors",
+                      selected ? "border-primary/40 bg-primary/5" : "hover:bg-accent",
+                    )}
+                  >
                     <button
                       type="button"
                       aria-current={selected ? "page" : undefined}
-                      onClick={() => void selectTask(task.id)}
-                      className={`w-full rounded-lg border bg-card px-3 py-2.5 text-left shadow-sm transition-colors ${
-                        selected ? "border-primary/40 bg-primary/5" : "hover:bg-accent"
-                      }`}
+                      onClick={() => openTaskDetail(task.id)}
+                      className="block w-full rounded-t-lg px-3 pb-1.5 pt-2.5 text-left"
                     >
-                      <span className="block truncate text-sm font-medium">{task.title}</span>
-                      <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <Badge
-                          variant={task.status === "awaiting_review" ? "primaryGhost" : "quiet"}
-                          className="gap-1"
-                        >
-                          <StatusIcon
-                            aria-hidden="true"
-                            className={`size-3 ${task.status === "running" ? "animate-spin" : ""}`}
-                          />
-                          {STATUS_LABELS[task.status]}
-                        </Badge>
-                        <Badge variant="outline" className="max-w-[9rem] truncate">
-                          {task.agentId}
-                        </Badge>
-                        {task.dependencyIds.length > 0 ? (
-                          <Badge variant="outline" className="gap-1">
-                            <Link2 aria-hidden="true" className="size-3" />
-                            {task.dependencyIds.length}
-                          </Badge>
-                        ) : null}
-                      </span>
-                      <span className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                        <span className="tabular-nums">{relativeTime(task.updatedAt)}</span>
-                        {blocked && task.status === "queued" ? <span>Waiting on a task</span> : null}
+                      <Tooltip label={task.title} className="max-w-full">
+                        <span className="block w-full truncate text-sm font-medium">
+                          {task.title}
+                        </span>
+                      </Tooltip>
+                      <span className="mt-1 line-clamp-2 block text-xs text-muted-foreground">
+                        {task.prompt}
                       </span>
                     </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-
-          <main className="min-h-0 overflow-auto p-4">
-            {selectedTask ? (
-              <TaskDetail
-                key={`${selectedTask.id}:${selectedTask.executionGeneration}`}
-                task={selectedTask}
-                tasks={tasks}
-                events={events}
-                eventsLoading={eventsLoading}
-                canLoadMoreEvents={eventsNextSequence !== null}
-                busy={action === selectedTask.id}
-                onEdit={() => openComposer(selectedTask.id)}
-                onStart={async () => {
-                  await startTask(selectedTask.id);
-                }}
-                onCancel={async () => {
-                  await cancelTask(selectedTask.id);
-                }}
-                onRetry={async () => {
-                  await retryTask(selectedTask.id);
-                }}
-                onApply={async (paths) => {
-                  const task = await applyTask(selectedTask.id, paths);
-                  if (activeProjectBinding.current !== projectBinding) return;
-                  onApplied?.(task);
-                }}
-                onAccept={async () => {
-                  await acceptTask(selectedTask.id);
-                }}
-                onDelete={() => setPendingDeleteId(selectedTask.id)}
-                onLoadMoreEvents={loadMoreEvents}
-                onOpenSession={onOpenSession}
-              />
-            ) : (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                Select a task to see its instructions and result.
-              </p>
-            )}
-          </main>
-        </div>
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 px-3 pb-2.5">
+                      <TaskStatusBadge status={task.status} />
+                      <TaskAgentChip
+                        task={task}
+                        agentName={agentNameFor(task)}
+                        className="max-w-[13rem]"
+                      />
+                      {task.dependencyIds.length > 0 ? (
+                        <Badge variant="outline" className="gap-1">
+                          <Link2 aria-hidden="true" className="size-3" />
+                          {task.dependencyIds.length}
+                        </Badge>
+                      ) : null}
+                      <span className="text-[11px] tabular-nums text-muted-foreground">
+                        {relativeTime(task.updatedAt)}
+                      </span>
+                      {blocked && task.status === "queued" ? (
+                        <span className="text-[11px] text-muted-foreground">Waiting on a task</span>
+                      ) : null}
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="ml-auto shrink-0"
+                        onClick={() => openTaskDetail(task.id)}
+                      >
+                        {task.status === "running" ? "View progress" : "View task"}
+                      </Button>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
       )}
+
+      {selectedTask ? (
+        <TaskDetailDialog
+          key={`${selectedTask.id}:${selectedTask.executionGeneration}`}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          task={selectedTask}
+          tasks={tasks}
+          events={events}
+          eventsLoading={eventsLoading}
+          canLoadMoreEvents={eventsNextSequence !== null}
+          busy={action === selectedTask.id}
+          agentName={agentNameFor(selectedTask)}
+          initialTab={detailTab}
+          onEdit={() => openComposer(selectedTask.id)}
+          onStart={async () => {
+            await startTask(selectedTask.id);
+          }}
+          onCancel={async () => {
+            await cancelTask(selectedTask.id);
+          }}
+          onRetry={async () => {
+            await retryTask(selectedTask.id);
+          }}
+          onApply={async (paths) => {
+            const task = await applyTask(selectedTask.id, paths);
+            if (activeProjectBinding.current !== projectBinding) return;
+            onApplied?.(task);
+          }}
+          onAccept={async () => {
+            await acceptTask(selectedTask.id);
+          }}
+          onDelete={() => {
+            setReopenDetail(detailOpen);
+            setDetailOpen(false);
+            setPendingDeleteId(selectedTask.id);
+          }}
+          onLoadMoreEvents={loadMoreEvents}
+          onOpenSession={onOpenSession}
+          error={error}
+          onDismissError={clearError}
+        />
+      ) : null}
 
       {composerOpen ? (
         <TaskComposer
@@ -420,7 +463,7 @@ export function ResearchTasksPanel({
         description={`"${pendingDelete?.title ?? ""}" and its isolated workspace are removed. Files already applied to your project stay.`}
         confirmLabel="Delete task"
         onConfirm={() => void confirmDelete()}
-        onCancel={() => setPendingDeleteId(null)}
+        onCancel={cancelDelete}
       />
     </div>
   );

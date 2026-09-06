@@ -1,11 +1,22 @@
 import type { AcpEvent } from "@/lib/acp";
 import type { ChatMessage, ToolEntry } from "@/store/chats";
 import type { RenderedMessage } from "@/components/ai/MessageList";
+import { splitAgentNotices } from "@/lib/chat-activity";
 
 type Data = Record<string, unknown>;
-type Row = { id: string; turn: string | null; kind: string; msg: ChatMessage };
+type Row = { id: string; turn: string | null; kind: string; msg: ChatMessage; raw?: string };
 function object(value: unknown): Data { return value && typeof value === "object" ? value as Data : {}; }
 function text(value: unknown): string { return typeof value === "string" ? value : ""; }
+
+function noticed(message: ChatMessage, raw: string, prefix = ""): ChatMessage {
+  const split = splitAgentNotices(raw);
+  if (split.notices.length === 0) return { ...message, content: `${prefix}${raw}` };
+  return {
+    ...message,
+    content: split.text ? `${prefix}${split.text}` : "",
+    notices: split.notices,
+  };
+}
 
 function toolOutput(data: Data): string {
   if (!Array.isArray(data.content)) return "";
@@ -32,7 +43,7 @@ export function createAcpProjector() {
       const event = events[position];
       const data = event.data;
       const id = `${event.sessionId}:${event.sequence}`;
-      const append = (kind: string, msg: ChatMessage) => { rows.push({ id, turn: event.turnId, kind, msg: { id, createdAt: event.timestamp, ...msg } }); };
+      const append = (kind: string, msg: ChatMessage, raw?: string) => { rows.push({ id, turn: event.turnId, kind, msg: { id, createdAt: event.timestamp, ...msg }, raw }); };
       if (event.kind === "user_message") {
         append("user", { role: "user", content: text(data.text), attachments: Array.isArray(data.images) ? data.images.map((image: unknown, index) => ({ name: `Image ${index + 1}`, mediaType: text(object(image).mimeType) })) : undefined });
       } else if (event.kind === "agent_message_chunk" || event.kind === "agent_thought_chunk") {
@@ -43,10 +54,17 @@ export function createAcpProjector() {
         const reasoning = event.kind === "agent_thought_chunk";
         if (previous?.kind === event.kind && previous.turn === event.turnId && lastKind === event.kind) {
           const block = previous.msg.reasoningBlocks?.[0];
-          previous.msg = reasoning && block
-            ? { ...previous.msg, reasoningBlocks: [{ ...block, text: block.text + chunk }] }
-            : { ...previous.msg, content: previous.msg.content + chunk };
-        } else append(event.kind, reasoning ? { role: "assistant", content: "", reasoningBlocks: [{ id, text: chunk, beforeTool: 0 }] } : { role: "assistant", content: chunk });
+          if (reasoning && block) {
+            previous.msg = { ...previous.msg, reasoningBlocks: [{ ...block, text: block.text + chunk }] };
+          } else {
+            previous.raw = `${previous.raw ?? previous.msg.content}${chunk}`;
+            previous.msg = noticed(previous.msg, previous.raw);
+          }
+        } else if (reasoning) {
+          append(event.kind, { role: "assistant", content: "", reasoningBlocks: [{ id, text: chunk, beforeTool: 0 }] });
+        } else {
+          append(event.kind, noticed({ role: "assistant", content: chunk }, chunk), chunk);
+        }
       } else if (event.kind === "tool_call" || event.kind === "tool_call_update") {
         const toolId = text(data.toolCallId);
         if (!toolId) continue;
@@ -61,7 +79,7 @@ export function createAcpProjector() {
         append("plan", { role: "assistant", content: data.entries.map((entry: unknown) => { const value = object(entry); return `- ${value.status === "completed" ? "[x]" : "[ ]"} ${text(value.content)}`; }).join("\n") });
       } else if (event.kind === "diagnostics") {
         const detail = text(data.stderr);
-        if (detail) append("error", { role: "assistant", content: `The agent reported: ${detail}` });
+        if (detail) append("error", noticed({ role: "assistant", content: "" }, detail, "The agent reported: "));
       } else if (event.kind === "turn_complete" || event.kind === "status") {
         const terminal = event.kind === "turn_complete" || ["failed", "disconnected", "cancelled"].includes(text(data.status));
         if (terminal) {
@@ -70,7 +88,7 @@ export function createAcpProjector() {
             if (row.msg.reasoningBlocks?.some((block) => block.ms === undefined)) row.msg = { ...row.msg, reasoningBlocks: row.msg.reasoningBlocks.map((block) => ({ ...block, ms: block.ms ?? 0 })) };
             if (row.msg.toolCalls?.some((tool) => tool.status === "running")) row.msg = { ...row.msg, toolCalls: row.msg.toolCalls.map((tool) => tool.status === "running" ? { ...tool, status: "error" } : tool) };
           }
-          if (data.error) append("error", { role: "assistant", content: text(data.error) });
+          if (data.error) append("error", noticed({ role: "assistant", content: "" }, text(data.error)));
         }
       }
       lastKind = event.kind;

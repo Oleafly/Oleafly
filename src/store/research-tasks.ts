@@ -19,6 +19,8 @@ import {
 } from "@/lib/research-tasks";
 import { useFilesStore } from "@/store/files";
 
+export type ResearchTaskDetailTab = "activity" | "review" | "output";
+
 export interface ResearchTaskComposerDraft {
   starterId: string;
   title: string;
@@ -38,7 +40,12 @@ interface ResearchTasksState {
   eventsLoading: boolean;
   action: string | null;
   error: string | null;
+  detailOpen: boolean;
+  detailTab: ResearchTaskDetailTab | null;
   composerDrafts: Record<string, ResearchTaskComposerDraft>;
+  openTaskDetail: (taskId: string, tab?: ResearchTaskDetailTab) => void;
+  setDetailOpen: (open: boolean) => void;
+  setDetailTab: (tab: ResearchTaskDetailTab | null) => void;
   saveComposerDraft: (key: string, draft: ResearchTaskComposerDraft) => void;
   clearComposerDraft: (key: string) => void;
   deleteTask: (taskId: string) => Promise<void>;
@@ -123,7 +130,18 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
   eventsLoading: false,
   action: null,
   error: null,
+  detailOpen: false,
+  detailTab: null,
   composerDrafts: {},
+
+  openTaskDetail: (taskId, tab) => {
+    if (get().selectedTaskId !== taskId) void get().selectTask(taskId);
+    set({ detailOpen: true, detailTab: tab ?? null });
+  },
+
+  setDetailOpen: (open) => set(open ? { detailOpen: true } : { detailOpen: false, detailTab: null }),
+
+  setDetailTab: (tab) => set({ detailTab: tab }),
 
   saveComposerDraft: (key, draft) =>
     set((state) => ({ composerDrafts: { ...state.composerDrafts, [key]: draft } })),
@@ -148,7 +166,14 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
           action: null,
           tasks,
           ...(state.selectedTaskId === taskId
-            ? { selectedTaskId: null, events: [], eventsNextSequence: null, eventsLoading: false }
+            ? {
+                selectedTaskId: null,
+                events: [],
+                eventsNextSequence: null,
+                eventsLoading: false,
+                detailOpen: false,
+                detailTab: null,
+              }
             : {}),
         };
       });
@@ -172,6 +197,8 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
       eventsLoading: false,
       action: null,
       error: null,
+      detailOpen: false,
+      detailTab: null,
     });
     if (!projectId) return;
     const baseline = get().tasks;
