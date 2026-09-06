@@ -52,15 +52,15 @@ describe("ResearchAssistant shell", () => {
     expect(screen.queryByRole("button", { name: "Agent setup" })).toBeNull();
     expect(screen.queryByRole("button", { name: "New conversation" })).toBeNull();
     expect(runtimeButtons()).toEqual([
-      { label: "Oleafly", pressed: "true" },
-      { label: "CLI agents", pressed: "false" },
+      { label: "Oleafly Agent", pressed: "true" },
+      { label: "CLI Agent", pressed: "false" },
     ]);
   });
 
   it("shows the CLI runtime actions in the same row when CLI agents are selected", async () => {
     render(<ResearchAssistant />);
 
-    fireEvent.click(screen.getByRole("button", { name: "CLI agents" }));
+    fireEvent.click(screen.getByRole("button", { name: "CLI Agent" }));
 
     expect(screen.queryByTestId("chat-core")).toBeNull();
     expect(await screen.findByTestId("acp-assistant")).toBeTruthy();
@@ -77,8 +77,8 @@ describe("ResearchAssistant shell", () => {
     expect(screen.getByTestId("ai-chat-float")).toBeTruthy();
     expect(document.querySelectorAll('[aria-label="Assistant runtime"]')).toHaveLength(1);
     expect(runtimeButtons()).toEqual([
-      { label: "Oleafly", pressed: "false" },
-      { label: "CLI agents", pressed: "true" },
+      { label: "Oleafly Agent", pressed: "false" },
+      { label: "CLI Agent", pressed: "true" },
     ]);
   });
 
@@ -110,8 +110,8 @@ describe("ResearchAssistant shell", () => {
     expect(screen.getByTestId("chat-core")).toBeTruthy();
     expect(screen.queryByTestId("acp-assistant")).toBeNull();
     expect(runtimeButtons()).toEqual([
-      { label: "Oleafly", pressed: "true" },
-      { label: "CLI agents", pressed: "false" },
+      { label: "Oleafly Agent", pressed: "true" },
+      { label: "CLI Agent", pressed: "false" },
     ]);
     expect(useAssistantRuntimeStore.getState().runtime).toBe("acp");
   });

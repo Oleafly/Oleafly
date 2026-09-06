@@ -6,8 +6,8 @@ import {
 import { cn } from "@/lib/utils";
 
 const RUNTIMES: ReadonlyArray<readonly [AssistantRuntime, string]> = [
-  ["built-in", "Oleafly"],
-  ["acp", "CLI agents"],
+  ["built-in", "Oleafly Agent"],
+  ["acp", "CLI Agent"],
 ];
 
 export function RuntimeSwitch() {

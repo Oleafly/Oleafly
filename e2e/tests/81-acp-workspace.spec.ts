@@ -96,7 +96,7 @@ async function clickHeaderAction(page: Page, label: string) {
 
 async function openAcp(page: Page) {
   await openRailTab(page, "Research Assistant");
-  await page.getByText("CLI agents", { exact: true }).click();
+  await page.getByText("CLI Agent", { exact: true }).click();
   await expect(page.locator(assistantSelector)).toBeVisible({ timeout: 20_000 });
 }
 
