@@ -195,6 +195,75 @@ fn python_pins_accept_exact_release_and_qualified_versions() {
 }
 
 #[test]
+fn every_builtin_agent_has_a_vendor_cli_and_a_usable_acp_entry_point() {
+    let definitions = builtins();
+    assert!(definitions.len() >= 14);
+    let mut ids = std::collections::BTreeSet::new();
+    for definition in &definitions {
+        assert!(
+            ids.insert(definition.id.clone()),
+            "duplicate id {}",
+            definition.id
+        );
+        validate(definition).unwrap();
+        let vendor =
+            vendor_cli(definition).unwrap_or_else(|| panic!("{} has no vendor CLI", definition.id));
+        assert!(!vendor.command.is_empty());
+        assert!(!vendor.sign_in_command.is_empty());
+        match (
+            &definition.distribution.command,
+            &definition.distribution.npx,
+        ) {
+            (Some(command), None) => {
+                assert_eq!(command.executable, vendor.command);
+                assert!(
+                    !command.args.is_empty(),
+                    "{} serves ACP with no arguments",
+                    definition.id
+                );
+                assert!(vendor.shares_bridge, "{} runs its own CLI", definition.id);
+                assert_eq!(
+                    install_reason(definition).as_deref(),
+                    Some("This definition uses an existing executable. Install it using the agent's instructions.")
+                );
+            }
+            (None, Some(npx)) => {
+                assert!(npx.package.contains('@'));
+                assert!(npx.cmd.is_some());
+                assert!(npx.node_major.is_some());
+            }
+            _ => panic!("{} needs exactly one distribution", definition.id),
+        }
+    }
+    for (id, _) in VENDOR_CLIS {
+        assert!(ids.contains(*id), "{id} has a vendor CLI but no definition");
+    }
+}
+
+#[test]
+fn sign_in_hints_name_the_vendor_command_and_stay_specific_for_api_key_agents() {
+    let by_id = |id: &str| builtins().into_iter().find(|value| value.id == id).unwrap();
+    let installed = |command: &str| CliStatus {
+        command: command.into(),
+        display_name: command.into(),
+        path: Some(format!("/usr/local/bin/{command}")),
+        version: None,
+        sign_in_command: command.into(),
+    };
+    assert_eq!(
+        sign_in_hint(&by_id("opencode"), Some(&installed("opencode"))),
+        "Run opencode auth login in your terminal, then reconnect."
+    );
+    assert_eq!(
+        sign_in_hint(&by_id("kimi"), None),
+        "Install Kimi Code, run kimi login in your terminal, then reconnect."
+    );
+    assert!(sign_in_hint(&by_id("deepseek"), None).contains("DEEPSEEK_API_KEY"));
+    assert!(sign_in_hint(&by_id("pi"), None).contains("/login"));
+    assert!(sign_in_hint(&by_id("gemini"), None).contains("workspace trust"));
+}
+
+#[test]
 fn definition_validation_checks_every_distribution() {
     for definition in builtins().into_iter().chain([binary_definition()]) {
         validate(&definition).unwrap();

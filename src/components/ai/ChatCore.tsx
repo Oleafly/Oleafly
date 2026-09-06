@@ -46,7 +46,6 @@ import {
   Info,
   Lightbulb,
   Loader2,
-  MessageSquareQuote,
   Plus,
   Presentation,
   RotateCcw,
@@ -138,6 +137,8 @@ import { useChatsStore, type ChatMessage, type StoredChat } from "@/store/chats"
 import { objectKey } from "@/lib/react-key";
 import { registerAiToolsets } from "@/contributions/ai-toolsets";
 import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
+import { AssistantHome } from "@/components/ai/home/AssistantHome";
+import { RecentChats } from "@/components/ai/home/RecentChats";
 import { useAutoSizeTextarea } from "@/components/ai/use-auto-size-textarea";
 import {
   approvalModeForProject,
@@ -1430,6 +1431,23 @@ export function ChatCore() {
     slashCommandTriggered &&
     filterSlashCommands(slashCommands, slashCommandQuery(input)).length > 0;
 
+  const pickHomeSkill = useCallback(
+    (skill: SkillEntry) => {
+      const next = `/${skill.id} `;
+      setInput(next);
+      setComposerCaret(next.length);
+      setSlashMenuDismissedInput(next);
+      setActiveSlashCommandId(null);
+      requestAnimationFrame(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        textarea.focus({ preventScroll: true });
+        textarea.setSelectionRange(next.length, next.length);
+      });
+    },
+    [setInput],
+  );
+
   const insertMention = useCallback(
     (start: number, text: string) => {
       const current = inputRef.current;
@@ -2652,6 +2670,17 @@ ${sandboxedCustom}`;
     void send(PLAN_APPROVED_MESSAGE, undefined, { approvedPlan: true });
   }, [activeChatId, send, streaming]);
 
+  const homeQuickStarts = useMemo(
+    () =>
+      availableSuggestions(SUGGESTIONS, skillsQuery.data).map((suggestion) => ({
+        id: suggestion.label,
+        label: suggestion.label,
+        icon: suggestion.icon,
+        onSelect: () => void send(suggestion.send),
+      })),
+    [skillsQuery.data, send],
+  );
+
   const revisePlan = useCallback(() => {
     requestAnimationFrame(() => textareaRef.current?.focus({ preventScroll: true }));
   }, []);
@@ -3049,64 +3078,22 @@ ${sandboxedCustom}`;
             )}
           >
             {messages.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center gap-3 px-2">
-                <OleaflyAssistantMascot />
-                <div className="space-y-1 text-center">
-                  <p className="text-base font-semibold text-foreground">How can I help with your research?</p>
-                  {projectName && (
-                    <p className="text-xs text-muted-foreground">Working on "{projectName}"</p>
-                  )}
-                </div>
-                <div className="flex w-full flex-wrap items-center justify-center gap-1.5">
-                  {availableSuggestions(SUGGESTIONS, skillsQuery.data).map((suggestion) => {
-                    const Icon = suggestion.icon;
-                    return (
-                      <button
-                        type="button"
-                        key={suggestion.label}
-                        title={suggestion.label}
-                        data-testid="chat-suggestion"
-                        onClick={() => void send(suggestion.send)}
-                        className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-left text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/70"
-                      >
-                        {Icon && <Icon className="size-3.5 shrink-0" />}
-                        <span className="min-w-0 truncate">{suggestion.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {chats.length > 0 && (
-                  <div className="mt-2 flex w-full max-w-[300px] flex-col gap-0.5">
-                    <span className="px-1 pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">Recent chats</span>
-                    {chats.slice(0, 3).map((chat) => {
-                      const stale = chat.headOid && currentHead && chat.headOid !== currentHead;
-                      return (
-                        <button type="button"
-                          key={chat.id}
-                          onClick={() => openChat(chat)}
-                          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
-                        >
-                          <MessageSquareQuote className="size-3.5 shrink-0 text-muted-foreground" />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-xs font-medium">{chat.title || "New chat"}</span>
-                            <span className="block truncate text-[10px] text-muted-foreground">
-                              {new Date(chat.updatedAt).toLocaleDateString()} · {chat.messages.length} msgs
-                            </span>
-                          </span>
-                          {stale && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" title="Older version" />}
-                        </button>
-                      );
-                    })}
-                    <button type="button"
-                      onClick={() => setHistoryOpen(true)}
-                      className="mt-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                    >
-                      <History className="size-3.5" />
-                      Show all history ({chats.length})
-                    </button>
-                  </div>
-                )}
+              <div className="flex min-h-full flex-col items-center justify-center px-1">
+                <AssistantHome
+                  before={<OleaflyAssistantMascot />}
+                  subtitle={projectName ? `Working on "${projectName}"` : undefined}
+                  skills={skills}
+                  onPickSkill={pickHomeSkill}
+                  onOpenSkills={openSkillsSettings}
+                  quickStarts={homeQuickStarts}
+                >
+                  <RecentChats
+                    chats={chats}
+                    currentHead={currentHead}
+                    onOpen={openChat}
+                    onShowAll={() => setHistoryOpen(true)}
+                  />
+                </AssistantHome>
               </div>
             ) : (
               <ErrorBoundary

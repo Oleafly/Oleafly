@@ -58,10 +58,6 @@ const READINESS_LABELS: Record<AcpReadiness, string> = {
 export function acpReadinessLabel(readiness: AcpReadiness): string {
   return READINESS_LABELS[readiness];
 }
-const LOGO_IDS: Record<string, string> = { claude: "anthropic", codex: "openai", gemini: "google" };
-export function acpLogoId(agentId: string): string | null {
-  return LOGO_IDS[agentId] ?? null;
-}
 export interface AcpRegistryEntry {
   id: string;
   name: string;

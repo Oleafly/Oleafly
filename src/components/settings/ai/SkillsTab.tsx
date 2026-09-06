@@ -47,6 +47,7 @@ import {
   type SkillToggleScope,
   type UpdateSkillInput,
 } from "@/lib/skills";
+import { SKILL_PHASE_LABELS, groupSkills } from "@/lib/skill-groups";
 import { SkillCatalogList } from "./SkillCatalogList";
 import { SkillShareCard } from "./SkillShareCard";
 
@@ -63,62 +64,6 @@ const EMPTY_FORM: EditorForm = {
   description: "",
   instructions: "",
 };
-
-const PHASE_ORDER = [
-  "research",
-  "authoring",
-  "figures",
-  "review",
-  "submission",
-  "communication",
-  "tooling",
-] as const;
-
-const PHASE_LABELS: Record<string, string> = {
-  research: "Research",
-  authoring: "Authoring",
-  figures: "Figures",
-  review: "Review",
-  submission: "Submission",
-  communication: "Communication",
-  tooling: "Tooling",
-};
-
-interface SkillGroup {
-  key: string;
-  label: string;
-  skills: SkillEntry[];
-}
-
-function groupSkills(skills: readonly SkillEntry[]): SkillGroup[] {
-  const byPhase = new Map<string, SkillEntry[]>();
-  const yours: SkillEntry[] = [];
-  const shelf: SkillEntry[] = [];
-  for (const skill of skills) {
-    if (skill.tier === "shelf") {
-      shelf.push(skill);
-      continue;
-    }
-    if (skill.phase && PHASE_LABELS[skill.phase]) {
-      const list = byPhase.get(skill.phase) ?? [];
-      list.push(skill);
-      byPhase.set(skill.phase, list);
-      continue;
-    }
-    yours.push(skill);
-  }
-  const byName = (list: SkillEntry[]) => [...list].sort((a, b) => a.name.localeCompare(b.name));
-  const groups: SkillGroup[] = [];
-  for (const phase of PHASE_ORDER) {
-    const list = byPhase.get(phase);
-    if (list && list.length > 0) {
-      groups.push({ key: phase, label: PHASE_LABELS[phase], skills: byName(list) });
-    }
-  }
-  if (yours.length > 0) groups.push({ key: "user", label: "Your skills", skills: byName(yours) });
-  if (shelf.length > 0) groups.push({ key: "shelf", label: "Domain shelf", skills: byName(shelf) });
-  return groups;
-}
 
 function sourceBadge(source: SkillEntry["source"]): string {
   if (source === "bundled") return "Built in";
@@ -471,7 +416,7 @@ export function SkillsTab() {
                   const metaBits = [
                     tierLine(skill),
                     skill.version ? `v${skill.version}` : null,
-                    skill.phase ? PHASE_LABELS[skill.phase] ?? skill.phase : null,
+                    skill.phase ? SKILL_PHASE_LABELS[skill.phase] ?? skill.phase : null,
                   ].filter((value): value is string => Boolean(value));
                   const isUserSkill = skill.source === "user";
                   const projectOverride = skillProjectOverride(skill);

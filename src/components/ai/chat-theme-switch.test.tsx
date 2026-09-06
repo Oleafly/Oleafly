@@ -114,9 +114,11 @@ describe("theme switch with a rendered chat", () => {
     expect(mermaidInitialize).toHaveBeenLastCalledWith(
       expect.objectContaining({ theme: "default" }),
     );
-    expect(
-      container.querySelector('[data-message-id="assistant-1"] [role="img"] svg'),
-    ).not.toBeNull();
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-message-id="assistant-1"] [role="img"] svg'),
+      ).not.toBeNull(),
+    );
 
     intersection.setVisible(() => true);
     await waitFor(() =>

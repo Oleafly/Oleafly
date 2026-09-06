@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
-import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as renderWithoutProviders, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const { dom, restore } = await vi.hoisted(async () => {
   vi.resetModules();
   const { installUiDom } = await import("@/components/ai/acp/tests/ui-fixtures");
@@ -13,11 +14,22 @@ vi.mock("@/lib/acp", async (original) => ({
 vi.mock("@/components/ai/MessageList", () => ({ MessageList: () => null }));
 vi.mock("@/components/ai/use-research-chat-actions", () => ({ useResearchChatActions: () => ({}) }));
 vi.mock("@/components/usage/UsageReport", () => ({ UsageReportDialog: () => null }));
+vi.mock("@/lib/skills", async (original) => ({
+  ...await original<typeof import("@/lib/skills")>(),
+  useSkills: () => ({ data: [], isPending: false, isFetching: false }),
+}));
 import { isDelegatedSession, mergeAcpEvents, useAcpSessionsStore } from "./acp-sessions";
 import { acpCatalog, acpDisconnect, acpEvents, acpPrompt, acpSessions, acpSetModel, acpSnapshot, onAcpEvent, onAcpResync, type AcpAgentStatus, type AcpEvent, type AcpSession } from "@/lib/acp";
 import { AssistantShellAcpActions } from "@/components/ai/AssistantShellAcpActions";
 import { AcpWorkspaceAssistant } from "@/components/ai/acp/AcpWorkspaceAssistant";
 import { agent, chooseMenuItem, chooseOption, deferred } from "@/components/ai/acp/tests/ui-fixtures";
+
+function render(ui: Parameters<typeof renderWithoutProviders>[0]) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return renderWithoutProviders(
+    createElement(QueryClientProvider, { client }, ui as never),
+  );
+}
 
 const workspace = (projectId: string) =>
   createElement(

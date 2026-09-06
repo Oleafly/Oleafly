@@ -40,52 +40,213 @@ pub struct Launch {
     pub managed: bool,
 }
 
-pub fn builtins() -> Vec<AgentDefinition> {
-    [
-        (
-            "claude",
-            "Claude Code",
-            "@agentclientprotocol/claude-agent-acp@0.74.0",
-            "claude-agent-acp",
-            22,
-            vec![],
-        ),
-        (
-            "codex",
-            "Codex",
-            "@agentclientprotocol/codex-acp@1.10.0",
-            "codex-acp",
-            20,
-            vec![],
-        ),
-        (
-            "gemini",
-            "Gemini CLI",
-            "@google/gemini-cli@0.57.0",
-            "gemini",
-            20,
-            vec!["--acp".into()],
-        ),
-    ]
-    .into_iter()
-    .map(|(id, name, package, cmd, node, args)| AgentDefinition {
-        id: id.into(),
-        name: name.into(),
-        version: package.rsplit('@').next().unwrap_or_default().into(),
-        description: "Uses the agent's own CLI account and permissions.".into(),
-        builtin: true,
-        distribution: Distribution {
-            npx: Some(PackageDistribution {
-                package: package.into(),
-                cmd: Some(cmd.into()),
-                args,
-                node_major: Some(node),
-                env: BTreeMap::new(),
-            }),
-            ..Distribution::default()
+struct Builtin {
+    id: &'static str,
+    name: &'static str,
+    description: &'static str,
+    version: &'static str,
+    dist: BuiltinDist,
+}
+
+enum BuiltinDist {
+    Native {
+        cmd: &'static str,
+        args: &'static [&'static str],
+    },
+    Bridge {
+        package: &'static str,
+        cmd: &'static str,
+        args: &'static [&'static str],
+        node: u32,
+    },
+}
+
+const BUILTINS: &[Builtin] = &[
+    Builtin {
+        id: "claude",
+        name: "Claude Code",
+        description: "Uses the agent's own CLI account and permissions.",
+        version: "0.74.0",
+        dist: BuiltinDist::Bridge {
+            package: "@agentclientprotocol/claude-agent-acp@0.74.0",
+            cmd: "claude-agent-acp",
+            args: &[],
+            node: 22,
         },
-    })
-    .collect()
+    },
+    Builtin {
+        id: "codex",
+        name: "Codex CLI",
+        description: "Uses the agent's own CLI account and permissions.",
+        version: "1.10.0",
+        dist: BuiltinDist::Bridge {
+            package: "@agentclientprotocol/codex-acp@1.10.0",
+            cmd: "codex-acp",
+            args: &[],
+            node: 20,
+        },
+    },
+    Builtin {
+        id: "gemini",
+        name: "Gemini CLI",
+        description: "Uses the agent's own CLI account and permissions.",
+        version: "0.57.0",
+        dist: BuiltinDist::Bridge {
+            package: "@google/gemini-cli@0.57.0",
+            cmd: "gemini",
+            args: &["--acp"],
+            node: 20,
+        },
+    },
+    Builtin {
+        id: "pi",
+        name: "Pi",
+        description: "Uses the agent's own CLI account and permissions.",
+        version: "0.0.33",
+        dist: BuiltinDist::Bridge {
+            package: "pi-acp@0.0.33",
+            cmd: "pi-acp",
+            args: &[],
+            node: 22,
+        },
+    },
+    Builtin {
+        id: "opencode",
+        name: "OpenCode",
+        description: "Serves ACP from the installed CLI.",
+        version: "1.18.29",
+        dist: BuiltinDist::Native {
+            cmd: "opencode",
+            args: &["acp"],
+        },
+    },
+    Builtin {
+        id: "openclaw",
+        name: "OpenClaw",
+        description: "Serves ACP from the installed CLI.",
+        version: "2026.9.2",
+        dist: BuiltinDist::Native {
+            cmd: "openclaw",
+            args: &["acp"],
+        },
+    },
+    Builtin {
+        id: "cline",
+        name: "Cline",
+        description: "Serves ACP from the installed CLI.",
+        version: "3.0.61",
+        dist: BuiltinDist::Native {
+            cmd: "cline",
+            args: &["--acp"],
+        },
+    },
+    Builtin {
+        id: "hermes",
+        name: "Hermes Agent",
+        description: "Serves ACP from the installed CLI.",
+        version: "0.21.0",
+        dist: BuiltinDist::Native {
+            cmd: "hermes",
+            args: &["acp"],
+        },
+    },
+    Builtin {
+        id: "codebuddy",
+        name: "CodeBuddy",
+        description: "Serves ACP from the installed CLI.",
+        version: "2.146.0",
+        dist: BuiltinDist::Native {
+            cmd: "codebuddy",
+            args: &["--acp"],
+        },
+    },
+    Builtin {
+        id: "kimi",
+        name: "Kimi Code",
+        description: "Serves ACP from the installed CLI.",
+        version: "0.41.0",
+        dist: BuiltinDist::Native {
+            cmd: "kimi",
+            args: &["acp"],
+        },
+    },
+    Builtin {
+        id: "grok",
+        name: "Grok Build",
+        description: "Serves ACP from the installed CLI.",
+        version: "1.0.13",
+        dist: BuiltinDist::Native {
+            cmd: "grok",
+            args: &["agent", "stdio"],
+        },
+    },
+    Builtin {
+        id: "cursor",
+        name: "Cursor",
+        description: "Serves ACP from the installed CLI.",
+        version: "2026.09.02",
+        dist: BuiltinDist::Native {
+            cmd: "agent",
+            args: &["acp"],
+        },
+    },
+    Builtin {
+        id: "deepseek",
+        name: "DeepSeek Harness",
+        description: "Serves ACP from the installed CLI.",
+        version: "0.1.2-rc.1",
+        dist: BuiltinDist::Native {
+            cmd: "dsh",
+            args: &["--profile", "acp"],
+        },
+    },
+    Builtin {
+        id: "qoder",
+        name: "Qoder",
+        description: "Serves ACP from the installed CLI.",
+        version: "1.1.45",
+        dist: BuiltinDist::Native {
+            cmd: "qodercli",
+            args: &["--acp"],
+        },
+    },
+];
+
+pub fn builtins() -> Vec<AgentDefinition> {
+    BUILTINS
+        .iter()
+        .map(|entry| AgentDefinition {
+            id: entry.id.into(),
+            name: entry.name.into(),
+            version: entry.version.into(),
+            description: entry.description.into(),
+            builtin: true,
+            distribution: match &entry.dist {
+                BuiltinDist::Native { cmd, args } => Distribution {
+                    command: Some(CommandDistribution {
+                        executable: (*cmd).into(),
+                        args: args.iter().map(|value| (*value).to_string()).collect(),
+                    }),
+                    ..Distribution::default()
+                },
+                BuiltinDist::Bridge {
+                    package,
+                    cmd,
+                    args,
+                    node,
+                } => Distribution {
+                    npx: Some(PackageDistribution {
+                        package: (*package).into(),
+                        cmd: Some((*cmd).into()),
+                        args: args.iter().map(|value| (*value).to_string()).collect(),
+                        node_major: Some(*node),
+                        env: BTreeMap::new(),
+                    }),
+                    ..Distribution::default()
+                },
+            },
+        })
+        .collect()
 }
 
 pub fn platform() -> String {
@@ -719,6 +880,7 @@ pub(super) fn task_unavailable_reason_for(
     None
 }
 
+#[derive(Clone)]
 struct VendorCli {
     command: &'static str,
     display_name: &'static str,
@@ -726,28 +888,140 @@ struct VendorCli {
     shares_bridge: bool,
 }
 
-fn vendor_cli(definition: &AgentDefinition) -> Option<VendorCli> {
-    match definition.id.as_str() {
-        "claude" => Some(VendorCli {
+const VENDOR_CLIS: &[(&str, VendorCli)] = &[
+    (
+        "claude",
+        VendorCli {
             command: "claude",
             display_name: "Claude Code",
             sign_in_command: "claude auth login",
             shares_bridge: false,
-        }),
-        "codex" => Some(VendorCli {
+        },
+    ),
+    (
+        "codex",
+        VendorCli {
             command: "codex",
             display_name: "Codex",
             sign_in_command: "codex login",
             shares_bridge: false,
-        }),
-        "gemini" => Some(VendorCli {
+        },
+    ),
+    (
+        "gemini",
+        VendorCli {
             command: "gemini",
             display_name: "Gemini CLI",
             sign_in_command: "gemini",
             shares_bridge: true,
-        }),
-        _ => None,
-    }
+        },
+    ),
+    (
+        "pi",
+        VendorCli {
+            command: "pi",
+            display_name: "Pi",
+            sign_in_command: "pi",
+            shares_bridge: false,
+        },
+    ),
+    (
+        "opencode",
+        VendorCli {
+            command: "opencode",
+            display_name: "OpenCode",
+            sign_in_command: "opencode auth login",
+            shares_bridge: true,
+        },
+    ),
+    (
+        "openclaw",
+        VendorCli {
+            command: "openclaw",
+            display_name: "OpenClaw",
+            sign_in_command: "openclaw models auth login",
+            shares_bridge: true,
+        },
+    ),
+    (
+        "cline",
+        VendorCli {
+            command: "cline",
+            display_name: "Cline",
+            sign_in_command: "cline auth",
+            shares_bridge: true,
+        },
+    ),
+    (
+        "hermes",
+        VendorCli {
+            command: "hermes",
+            display_name: "Hermes Agent",
+            sign_in_command: "hermes setup",
+            shares_bridge: true,
+        },
+    ),
+    (
+        "codebuddy",
+        VendorCli {
+            command: "codebuddy",
+            display_name: "CodeBuddy Code",
+            sign_in_command: "codebuddy",
+            shares_bridge: true,
+        },
+    ),
+    (
+        "kimi",
+        VendorCli {
+            command: "kimi",
+            display_name: "Kimi Code",
+            sign_in_command: "kimi login",
+            shares_bridge: true,
+        },
+    ),
+    (
+        "grok",
+        VendorCli {
+            command: "grok",
+            display_name: "Grok Build",
+            sign_in_command: "grok login",
+            shares_bridge: true,
+        },
+    ),
+    (
+        "cursor",
+        VendorCli {
+            command: "agent",
+            display_name: "Cursor CLI",
+            sign_in_command: "agent login",
+            shares_bridge: true,
+        },
+    ),
+    (
+        "deepseek",
+        VendorCli {
+            command: "dsh",
+            display_name: "DeepSeek Harness",
+            sign_in_command: "dsh web",
+            shares_bridge: true,
+        },
+    ),
+    (
+        "qoder",
+        VendorCli {
+            command: "qodercli",
+            display_name: "Qoder CLI",
+            sign_in_command: "qodercli login",
+            shares_bridge: true,
+        },
+    ),
+];
+
+fn vendor_cli(definition: &AgentDefinition) -> Option<VendorCli> {
+    VENDOR_CLIS
+        .iter()
+        .find(|(id, _)| *id == definition.id)
+        .map(|(_, cli)| cli.clone())
 }
 
 pub(crate) fn parse_cli_version(output: &str) -> Option<String> {
@@ -794,23 +1068,29 @@ async fn cli_status(definition: &AgentDefinition, probe: bool) -> Option<CliStat
 }
 
 fn sign_in_hint(definition: &AgentDefinition, cli: Option<&CliStatus>) -> String {
-    match (
-        definition.id.as_str(),
-        cli.and_then(|value| value.path.as_deref()),
-    ) {
-        ("claude", Some(_)) => "Run claude auth login in your terminal, then reconnect.".into(),
-        ("claude", None) => {
-            "Install Claude Code, run claude auth login in your terminal, then reconnect.".into()
-        }
-        ("codex", Some(_)) => "Run codex login in your terminal, then reconnect.".into(),
-        ("codex", None) => {
-            "Install Codex, run codex login in your terminal, then reconnect.".into()
-        }
-        ("gemini", _) => {
-            "Run gemini in your terminal and finish sign-in and workspace trust, then reconnect."
-                .into()
-        }
-        _ => "Use the agent's CLI sign-in, or choose a sign-in method after connecting.".into(),
+    if definition.id == "gemini" {
+        return "Run gemini in your terminal and finish sign-in and workspace trust, then reconnect."
+            .into();
+    }
+    if definition.id == "deepseek" {
+        return "Set DEEPSEEK_API_KEY in your environment, or run dsh web and add the key under Settings, then reconnect."
+            .into();
+    }
+    if definition.id == "pi" {
+        return "Run pi in your terminal and sign in with /login, then reconnect.".into();
+    }
+    let Some(vendor) = vendor_cli(definition) else {
+        return "Use the agent's CLI sign-in, or choose a sign-in method after connecting.".into();
+    };
+    match cli.and_then(|value| value.path.as_deref()) {
+        Some(_) => format!(
+            "Run {} in your terminal, then reconnect.",
+            vendor.sign_in_command
+        ),
+        None => format!(
+            "Install {}, run {} in your terminal, then reconnect.",
+            vendor.display_name, vendor.sign_in_command
+        ),
     }
 }
 

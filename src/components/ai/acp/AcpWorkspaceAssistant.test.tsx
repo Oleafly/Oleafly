@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as renderWithoutProviders, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const { restore } = await vi.hoisted(async () => {
   vi.resetModules();
@@ -12,6 +13,10 @@ vi.mock("@/lib/acp", async (original) => ({
   acpStart: vi.fn(), acpAuthenticate: vi.fn(), acpDisconnect: vi.fn(), acpReconnect: vi.fn(),
   acpSetModel: vi.fn(), acpPrompt: vi.fn(), acpPermission: vi.fn(), acpCancel: vi.fn(),
   onAcpEvent: vi.fn(), onAcpResync: vi.fn(),
+}));
+vi.mock("@/lib/skills", async (original) => ({
+  ...await original<typeof import("@/lib/skills")>(),
+  useSkills: () => ({ data: [], isPending: false, isFetching: false }),
 }));
 vi.mock("@/components/usage/UsageReport", () => ({
   UsageReportDialog: ({ trigger }: { trigger: ReactNode }) => trigger,
@@ -29,6 +34,11 @@ import {
   agent, chooseMenuItem, chooseOption, deferred, event, menuItemNames, optionNames, session,
 } from "./tests/ui-fixtures";
 import { AcpWorkspaceAssistant } from "./AcpWorkspaceAssistant";
+
+function render(ui: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return renderWithoutProviders(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 function AcpWorkspace({ projectId = "paper" }: { projectId?: string }) {
   return (
@@ -65,7 +75,10 @@ beforeEach(() => {
   vi.mocked(onAcpResync).mockResolvedValue(stopResync);
   vi.mocked(acpDisconnect).mockResolvedValue();
 });
-afterEach(cleanup);
+afterEach(async () => {
+  cleanup();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+});
 afterAll(restore);
 
 function typeMessage(input: HTMLElement, value: string) {
@@ -259,12 +272,15 @@ describe("ACP assistant acceptance", () => {
     vi.mocked(acpStart).mockResolvedValueOnce({ session: session("new"), permissions: [] });
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
     const start = await ui.findByTestId("acp-start-conversation");
-    expect(ui.getByTestId("acp-empty-intro")).toHaveTextContent("Work with a CLI agent in this project");
-    const logoTitles = [...ui.getByTestId("acp-empty-logos").querySelectorAll("[title]")].map((node) => node.getAttribute("title"));
-    expect(logoTitles[0]).toBe("Research CLI");
-    expect(logoTitles).toEqual(expect.arrayContaining(["OpenAI", "Anthropic", "Google Gemini", "Ollama (local)"]));
-    expect(logoTitles).toHaveLength(12);
-    expect(new Set(logoTitles).size).toBe(logoTitles.length);
+    expect(ui.getByTestId("assistant-home")).toHaveTextContent("What would you like to do today?");
+    const roster = ui.getByTestId("agent-picker-row");
+    const rosterNames = [...roster.querySelectorAll("button")].map((node) => node.getAttribute("aria-label"));
+    expect(rosterNames[0]).toBe("Research CLI");
+    expect(rosterNames).toEqual(expect.arrayContaining(["Claude Code", "Codex CLI", "Pi", "Hermes Agent", "Google Antigravity"]));
+    expect(rosterNames).toHaveLength(16);
+    expect(ui.getByTestId("agent-picker-fixture")).toHaveAttribute("aria-pressed", "true");
+    expect(ui.getByTestId("agent-picker-pi")).toHaveAttribute("data-available", "false");
+    expect(new Set(rosterNames).size).toBe(rosterNames.length);
     expect(ui.queryByTestId("acp-session-status")).not.toBeInTheDocument();
     expect(ui.container).not.toHaveTextContent("CLI account limits apply");
     await waitFor(() => expect(start).toBeEnabled());
@@ -273,10 +289,50 @@ describe("ACP assistant acceptance", () => {
     await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("fixture · ready"));
     expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready");
     expect(ui.getByTestId("acp-empty-ready")).toHaveTextContent("Research CLI is ready");
+    expect(ui.getByTestId("agent-picker-row")).toBeInTheDocument();
     const controls = ui.getByTestId("acp-composer-controls");
     expect(within(controls).getByRole("combobox", { name: "Agent" })).toHaveTextContent("Research CLI");
     expect(within(controls).getByRole("combobox", { name: "Agent model" })).toHaveTextContent("First model");
     expect(within(controls).getByRole("button", { name: "Send" })).toBeDisabled();
+  });
+
+  it("moves the live conversation to the agent the picker chooses", async () => {
+    const other = agent("other", {
+      definition: { ...agent().definition, id: "other", name: "Other CLI" },
+    });
+    vi.mocked(acpCatalog).mockResolvedValue([agent(), other]);
+    vi.mocked(acpStart).mockResolvedValue({
+      session: session("switched", { agentId: "other" }),
+      permissions: [],
+    });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
+    expect(ui.getByTestId("acp-session-status")).toHaveTextContent("fixture · ready");
+
+    await chooseOption(ui.getByRole("combobox", { name: "Agent" }), "Other CLI");
+
+    await waitFor(() => expect(acpStart).toHaveBeenCalledExactlyOnceWith("paper", "other"));
+    expect(acpDisconnect).toHaveBeenCalledExactlyOnceWith("paper", "saved");
+    await waitFor(() => expect(useAcpSessionsStore.getState().activeByProject.paper).toBe("switched"));
+    expect(useAcpSessionsStore.getState().composers.paper?.agentId).toBe("other");
+  });
+
+  it("drops the open conversation when the chosen agent is not installed yet", async () => {
+    const missing = agent("missing", {
+      definition: { ...agent().definition, id: "missing", name: "Missing CLI" },
+      installed: false,
+      executable: null,
+    });
+    vi.mocked(acpCatalog).mockResolvedValue([agent(), missing]);
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
+
+    await chooseOption(ui.getByRole("combobox", { name: "Agent" }), "Missing CLI");
+
+    await waitFor(() => expect(acpDisconnect).toHaveBeenCalledExactlyOnceWith("paper", "saved"));
+    expect(acpStart).not.toHaveBeenCalled();
+    await waitFor(() => expect(useAcpSessionsStore.getState().activeByProject.paper).toBeNull());
+    expect(ui.queryByTestId("acp-session-status")).not.toBeInTheDocument();
   });
 
   it("keeps the composer draft when the panel unmounts", async () => {

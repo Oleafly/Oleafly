@@ -1092,19 +1092,23 @@ describe("ChatCore agent turns", () => {
     try {
       submit(rendered, "Timestamp this turn");
       await waitFor(() => expect(mocks.runs).toHaveLength(1));
-      expect(useChatsStore.getState().byId("chat-1")?.messages).toEqual([
-        expect.objectContaining({ role: "user", createdAt: 1_000 }),
-        expect.objectContaining({ role: "assistant", createdAt: 1_000 }),
-      ]);
+      await waitFor(() =>
+        expect(useChatsStore.getState().byId("chat-1")?.messages).toEqual([
+          expect.objectContaining({ role: "user", createdAt: 1_000 }),
+          expect.objectContaining({ role: "assistant", createdAt: 1_000 }),
+        ]),
+      );
 
       now = 2_000;
       await act(async () => finishRun(0, "Timestamped response"));
       await waitFor(() => expect(activeChatRun()).toBeNull());
 
-      expect(useChatsStore.getState().byId("chat-1")?.messages).toEqual([
-        expect.objectContaining({ role: "user", createdAt: 1_000 }),
-        expect.objectContaining({ role: "assistant", createdAt: 2_000 }),
-      ]);
+      await waitFor(() =>
+        expect(useChatsStore.getState().byId("chat-1")?.messages).toEqual([
+          expect.objectContaining({ role: "user", createdAt: 1_000 }),
+          expect.objectContaining({ role: "assistant", createdAt: 2_000 }),
+        ]),
+      );
     } finally {
       dateNow.mockRestore();
     }

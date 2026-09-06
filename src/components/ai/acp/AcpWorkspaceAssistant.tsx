@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, Bot, FolderOpen, KeyRound, Loader2, Paperclip, Plus, ShieldCheck, Square, X } from "lucide-react";
+import { ArrowUp, Loader2, Paperclip, Plus, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,14 +14,18 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useResearchChatActions } from "@/components/ai/use-research-chat-actions";
 import { MessageList } from "@/components/ai/MessageList";
 import {
-  acpAuthenticate, acpCancel, acpDisconnect, acpError, acpLogoId, acpPermission, acpPrompt, acpReadiness,
+  acpAuthenticate, acpCancel, acpDisconnect, acpError, acpPermission, acpPrompt, acpReadiness,
   acpReconnect, acpSetModel, type AcpAgentStatus, type AcpImage, type AcpReadiness, type AcpSession,
 } from "@/lib/acp";
 import { cn } from "@/lib/utils";
 import { attachAcpListeners, isDelegatedSession, useAcpSessionsStore, type AcpAttachment } from "@/store/acp-sessions";
-import { PROVIDERS } from "@oleafly/ai-core";
-import { ProviderLogo } from "@/components/ai/ProviderLogo";
+import { AssistantHome } from "@/components/ai/home/AssistantHome";
+import { AgentPickerRow, type AgentPickerEntry } from "@/components/ai/home/AgentPickerRow";
+import { openCliAgentSettings } from "@/components/ai/AssistantShellAcpActions";
+import { useSkills, type SkillEntry } from "@/lib/skills";
+import { useSettingsStore } from "@/store/settings";
 import { AgentLogo } from "./AgentLogo";
+import { AGENT_MARK_IDS } from "./agent-marks";
 import { BridgeInstallCard, ReadinessBadge } from "./AgentReadiness";
 import { PermissionCard } from "./PermissionCard";
 import { createAcpProjector } from "./projection";
@@ -68,7 +72,50 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
     [catalog, agentId],
   );
   const selectedReadiness = selectedAgent ? acpReadiness(selectedAgent) : null;
+  const skillsQuery = useSkills(projectId);
+  const skills = skillsQuery.data ?? [];
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const setDraft = useCallback((value: string) => setComposer(projectId, { draft: value }), [projectId, setComposer]);
+  const pickSkill = useCallback(
+    (skill: SkillEntry) => {
+      setComposer(projectId, { draft: `Use the "${skill.name}" skill: ` });
+      requestAnimationFrame(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        textarea.focus({ preventScroll: true });
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      });
+    },
+    [projectId, setComposer],
+  );
+  const chooseAgent = (nextAgentId: string) => {
+    const state = useAcpSessionsStore.getState();
+    if (state.composers[projectId]?.agentId === nextAgentId) return;
+    setComposer(projectId, { agentId: nextAgentId });
+    const openId = state.activeByProject[projectId];
+    const open = openId ? state.sessions[openId] : undefined;
+    if (!openId || !open || open.agentId === nextAgentId) return;
+    const ready = state.catalog.some(
+      (value) => value.definition.id === nextAgentId && value.installed,
+    );
+    void perform(async () => {
+      if (ready) {
+        await useAcpSessionsStore.getState().start(projectId, nextAgentId);
+        return;
+      }
+      if (["ready", "auth_required"].includes(open.status)) {
+        await acpDisconnect(projectId, openId);
+      }
+      useAcpSessionsStore.getState().setActive(projectId, null);
+    });
+  };
+
+  const openSkillsSettings = useCallback(() => {
+    const settings = useSettingsStore.getState();
+    settings.setSettingsInitialSection("ai");
+    settings.setSettingsScrollTarget("ai-skills");
+    settings.setSettingsOpen(true);
+  }, []);
   const setImages = useCallback((value: AcpAttachment[]) => setComposer(projectId, { images: value }), [projectId, setComposer]);
 
   useEffect(() => {
@@ -170,15 +217,25 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
       {messages.length > 0 ? (
         <MessageList actions={researchChatActions} messages={messages} chatId={activeId} scrollRef={scrollRef} nearBottomRef={nearBottomRef} />
       ) : (
-        <AcpEmptyState
-          catalog={catalog}
-          selectedAgent={selectedAgent}
-          readiness={selectedReadiness}
-          session={session}
-          canStart={canStart}
-          onStart={start}
-          onError={setError}
-        />
+        <AssistantHome
+          skills={skills}
+          onPickSkill={pickSkill}
+          onOpenSkills={openSkillsSettings}
+          quickStartTestId="acp-quick-start"
+        >
+          <AcpEmptyState
+            catalog={catalog}
+            agentId={agentId}
+            selectedAgent={selectedAgent}
+            readiness={selectedReadiness}
+            session={session}
+            canStart={canStart}
+            pickerDisabled={running || busy}
+            onPickAgent={chooseAgent}
+            onStart={start}
+            onError={setError}
+          />
+        </AssistantHome>
       )}
     </div>
     {(error || session?.error) && <div role="alert" className="mx-3 my-2 rounded-md border border-destructive/40 p-2 text-xs text-destructive">{error ?? session?.error}</div>}
@@ -212,6 +269,7 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
           onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) addImage(file); }}
         />
         <Textarea
+          ref={textareaRef}
           aria-label="Message CLI agent"
           placeholder={session?.status === "ready" ? "Ask the agent to work on this project" : "Start or reconnect a conversation to send a message"}
           value={draft}
@@ -233,7 +291,7 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
                 </button>
               </Tooltip>
             )}
-            <Select value={agentId ?? ""} disabled={running || busy} onValueChange={(value) => setComposer(projectId, { agentId: value })}>
+            <Select value={agentId ?? ""} disabled={running || busy} onValueChange={chooseAgent}>
               <SelectTrigger aria-label="Agent" data-testid="acp-agent-picker" className="h-7 w-auto min-w-0 max-w-44 shrink-0 gap-1 border-0 bg-transparent px-2 text-xs font-medium shadow-none hover:bg-accent focus:ring-0">
                 {agentId && <span className="flex size-4 shrink-0 items-center justify-center [&>svg]:block"><AgentLogo agentId={agentId} size={14} /></span>}
                 <SelectValue placeholder="Choose a CLI agent" />
@@ -320,106 +378,104 @@ function SessionStatusPill({ session, busy }: { session: AcpSession; busy: boole
   );
 }
 
-function emptyStateLogos(catalog: AcpAgentStatus[]) {
-  const logos: { kind: "agent" | "provider"; id: string; title: string }[] = [];
+export function agentRoster(catalog: AcpAgentStatus[]): AgentPickerEntry[] {
+  const entries: AgentPickerEntry[] = [];
   const seen = new Set<string>();
   for (const agent of catalog) {
-    const key = acpLogoId(agent.definition.id) ?? `agent:${agent.definition.id}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    logos.push({ kind: "agent", id: agent.definition.id, title: agent.definition.name });
+    seen.add(agent.definition.id);
+    const readiness = acpReadiness(agent);
+    entries.push({
+      id: agent.definition.id,
+      name: agent.definition.name,
+      available: readiness === "ready",
+      hint:
+        readiness === "bridge-missing"
+          ? "install the bridge in Agent setup"
+          : readiness === "cli-missing"
+            ? "CLI not found on this computer"
+            : "not available on this computer",
+    });
   }
-  for (const provider of PROVIDERS) {
-    if (seen.has(provider.id)) continue;
-    seen.add(provider.id);
-    logos.push({ kind: "provider", id: provider.id, title: provider.name });
+  for (const id of AGENT_MARK_IDS) {
+    if (seen.has(id)) continue;
+    entries.push({ id, name: AGENT_ROSTER_NAMES[id] ?? id, available: false, hint: "coming soon" });
   }
-  return logos;
+  return entries;
 }
 
-const EMPTY_STATE_POINTS = [
-  { icon: KeyRound, tone: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", text: "Uses the agent's own account and plan" },
-  { icon: ShieldCheck, tone: "bg-amber-500/10 text-amber-600 dark:text-amber-400", text: "Asks before actions that need permission" },
-  { icon: FolderOpen, tone: "bg-primary/10 text-primary", text: "Works inside this project folder" },
-] as const;
+const AGENT_ROSTER_NAMES: Record<string, string> = {
+  claude: "Claude Code",
+  codex: "Codex CLI",
+  opencode: "OpenCode",
+  gemini: "Gemini CLI",
+  openclaw: "OpenClaw",
+  cline: "Cline",
+  hermes: "Hermes Agent",
+  codebuddy: "CodeBuddy",
+  kimi: "Kimi Code",
+  pi: "Pi",
+  grok: "Grok Build",
+  cursor: "Cursor",
+  deepseek: "DeepSeek Harness",
+  qoder: "Qoder",
+  antigravity: "Google Antigravity",
+};
 
 function AcpEmptyState({
   catalog,
+  agentId,
   selectedAgent,
   readiness,
   session,
   canStart,
+  pickerDisabled,
+  onPickAgent,
   onStart,
   onError,
 }: {
   catalog: AcpAgentStatus[];
+  agentId: string | null;
   selectedAgent: AcpAgentStatus | undefined;
   readiness: AcpReadiness | null;
   session: AcpSession | undefined;
   canStart: boolean;
+  pickerDisabled: boolean;
+  onPickAgent: (id: string) => void;
   onStart: () => void;
   onError: (message: string) => void;
 }) {
+  const roster = agentRoster(catalog);
   const agentName = selectedAgent?.definition.name ?? "a CLI agent";
-  if (session && session.status === "ready") {
-    return (
-      <div data-testid="acp-empty-ready" className="mx-auto flex max-w-sm flex-col items-center gap-3 py-12 text-center">
-        <span className="flex size-12 items-center justify-center rounded-2xl border bg-background shadow-sm">
-          <AgentLogo agentId={session.agentId} size={24} />
-        </span>
-        <div>
-          <p className="text-base font-semibold">{agentName} is ready</p>
-          <p className="mt-1 text-sm text-muted-foreground">Ask it to review, edit, or build something in this project.</p>
-        </div>
-      </div>
-    );
-  }
-  const logos = emptyStateLogos(catalog);
+  const ready = session?.status === "ready";
+  const knownAgent = !agentId || catalog.some((agent) => agent.definition.id === agentId);
   return (
-    <div data-testid="acp-empty-intro" className="mx-auto flex max-w-sm flex-col items-center gap-5 py-10 text-center">
-      <div data-testid="acp-empty-logos" className="flex max-w-xs flex-wrap items-center justify-center -space-x-2">
-        {logos.length === 0 ? (
-          <span className="flex size-10 items-center justify-center rounded-full border bg-background shadow-sm">
-            <Bot aria-hidden className="size-4.5 text-muted-foreground" />
-          </span>
-        ) : null}
-        {logos.map((logo) => (
-          <span
-            key={`${logo.kind}:${logo.id}`}
-            title={logo.title}
-            className="flex size-9 items-center justify-center rounded-full border bg-background shadow-sm"
-          >
-            {logo.kind === "agent" ? (
-              <AgentLogo agentId={logo.id} size={16} />
-            ) : (
-              <ProviderLogo providerId={logo.id} size={16} />
-            )}
-          </span>
-        ))}
-      </div>
-      <div>
-        <p className="text-base font-semibold">Work with a CLI agent in this project</p>
-        <p className="mt-1 text-sm text-muted-foreground">Choose an installed agent and start a conversation from the composer below.</p>
-      </div>
-      <ul className="grid w-full gap-1.5 text-left text-xs">
-        {EMPTY_STATE_POINTS.map((point) => (
-          <li key={point.text} className="flex items-center gap-2.5 rounded-lg border bg-background/60 px-3 py-2">
-            <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-md", point.tone)}>
-              <point.icon aria-hidden className="size-4" />
-            </span>
-            <span className="text-foreground/90">{point.text}</span>
-          </li>
-        ))}
-      </ul>
-      {selectedAgent && readiness !== "ready" ? (
-        <div className="w-full text-left">
-          <BridgeInstallCard agent={selectedAgent} onError={onError} />
-        </div>
+    <div className="flex w-full flex-col items-center gap-4">
+      <AgentPickerRow
+        agents={roster}
+        selectedId={agentId}
+        disabled={pickerDisabled}
+        onSelect={(id) => {
+          if (catalog.some((agent) => agent.definition.id === id)) onPickAgent(id);
+          else openCliAgentSettings();
+        }}
+      />
+      {ready ? (
+        <p data-testid="acp-empty-ready" className="text-xs text-muted-foreground">
+          {agentName} is ready. Ask it to review, edit, or build something in this project.
+        </p>
       ) : (
-        <Button type="button" size="sm" data-testid="acp-start-conversation" disabled={!canStart} onClick={onStart}>
-          <Plus className="size-3.5" />
-          Start a conversation with {agentName}
-        </Button>
+        <div data-testid="acp-empty-intro" className="flex w-full max-w-sm flex-col items-center gap-3">
+          {!knownAgent ? null : selectedAgent && readiness !== "ready" ? (
+            <div className="w-full text-left">
+              <BridgeInstallCard agent={selectedAgent} onError={onError} />
+            </div>
+          ) : (
+            <Button type="button" size="sm" data-testid="acp-start-conversation" disabled={!canStart} onClick={onStart}>
+              <Plus className="size-3.5" />
+              Start a conversation with {agentName}
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );

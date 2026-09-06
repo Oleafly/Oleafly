@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acpLogoId, acpReadiness, acpReadinessLabel, type AcpAgentStatus } from "./acp";
+import { acpReadiness, acpReadinessLabel, type AcpAgentStatus } from "./acp";
 
 function status(overrides: Partial<AcpAgentStatus> = {}): AcpAgentStatus {
   return {
@@ -34,10 +34,4 @@ describe("ACP readiness", () => {
     expect(acpReadinessLabel("unavailable")).toBe("Unavailable");
   });
 
-  it("maps the built-in agents to their vendor logos", () => {
-    expect(acpLogoId("claude")).toBe("anthropic");
-    expect(acpLogoId("codex")).toBe("openai");
-    expect(acpLogoId("gemini")).toBe("google");
-    expect(acpLogoId("custom-agent")).toBeNull();
-  });
 });
