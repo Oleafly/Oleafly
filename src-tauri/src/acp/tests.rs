@@ -882,7 +882,13 @@ async fn shutdown_reaps_an_agent_waiting_for_initialization() {
         .unwrap();
     assert!(start.await.unwrap().is_err());
     #[cfg(unix)]
-    assert_ne!(unsafe { libc::kill(pid as i32, 0) }, 0);
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while unsafe { libc::kill(pid as i32, 0) } == 0 {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("child outlived shutdown");
     #[cfg(not(unix))]
     let _ = pid;
     for record in runtime.list("test-project").unwrap() {
@@ -928,7 +934,15 @@ async fn cancellation_reaps_processes_and_releases_resources_when_persistence_fa
     let error = runtime.cancel(&id).await.unwrap_err();
     assert!(error.contains("could not be saved"));
     assert_eq!(dropped.load(std::sync::atomic::Ordering::SeqCst), 1);
-    assert_ne!(unsafe { libc::kill(pid, 0) }, 0);
+    // The child is signalled during cancel and reaped by its own task, so a
+    // loaded runner can still be tearing it down when cancel returns.
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while unsafe { libc::kill(pid, 0) } == 0 {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("cancelled child was not reaped");
     assert!(runtime.assert_owner(&id, "fixture-window").await.is_err());
     let _ = prompt.await.unwrap();
 }
