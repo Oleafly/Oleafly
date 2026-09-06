@@ -32,7 +32,7 @@ vi.mock("@oleafly/diagram", async () => {
 });
 vi.mock("@oleafly/latex", async (original) => ({
   ...await original<typeof import("@oleafly/latex")>(),
-  parseEmbeddedModel: () => ({ nodes: [], edges: [] }),
+  diagramFromSource: () => ({ version: 1, nodes: [], edges: [] }),
   serializeDiagram: () => "Diagram edit",
   buildStandaloneDoc: ({ code }: { code: string }) => code,
 }));
@@ -110,21 +110,30 @@ it("flushes a just-edited working diff through the save queue and reconciles it 
   expect(isEditorMutationLocked("project")).toBe(false);
 });
 
+// A canvas edit only counts when the model actually changes: React Flow emits
+// the model it was handed on its first measurement pass, and writing that back
+// would rewrite the file the moment it is opened.
+const EDITED = {
+  version: 1 as const,
+  nodes: [{ id: "a", shape: "rectangle" as const, x: 0, y: 0, w: 80, h: 40, label: "A" }],
+  edges: [],
+};
+
 it("queues diagram edits immediately and rejects stale-project and leased callbacks", async () => {
   const mounted = render(<DiagramMainFileView projectId="project" path="notes.txt" />);
   await waitFor(() => expect(mounted.container.querySelector('[data-testid="diagram-canvas"]')).not.toBeNull());
-  act(() => mocks.diagramChange?.({ nodes: [], edges: [] }));
+  act(() => mocks.diagramChange?.(EDITED));
   expect(useFilesStore.getState().files["notes.txt"]).toEqual({ content: "Diagram edit", dirty: true });
   expect(mocks.write).not.toHaveBeenCalled();
   useFilesStore.setState({ files: { "notes.txt": { content: "Saved", dirty: false } } });
   const lease = acquireEditorMutationLease("project");
   try {
-    act(() => mocks.diagramChange?.({ nodes: [], edges: [] }));
+    act(() => mocks.diagramChange?.(EDITED));
     expect(useFilesStore.getState().files["notes.txt"].content).toBe("Saved");
   } finally { lease.release(); }
   act(() => {
     useFilesStore.setState({ projectId: "other", files: {} });
-    mocks.diagramChange?.({ nodes: [], edges: [] });
+    mocks.diagramChange?.(EDITED);
   });
   expect(useFilesStore.getState().files).toEqual({});
 });

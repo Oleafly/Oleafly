@@ -87,8 +87,10 @@ describe("modelToTikz", () => {
         },
       ],
     });
+    // The route's ends are written as node anchors, not as the raw points they
+    // resolve to, so the connector survives a hand edit that moves a shape.
     expect(tikz).toContain(
-      "(1,-1) -- (1,-1.5) -- (1,-2) -- (0.75,-2) -- (0.75,-2.5) -- (0.75,-3)",
+      "(a.south) -- (1,-1.5) -- (1,-2) -- (0.75,-2) -- (0.75,-2.5) -- (b.north)",
     );
     expect(tikz).toContain("rounded corners=0.125cm");
     expect(tikz).toContain("dash pattern=on 0.15cm off 0.1cm");
@@ -111,7 +113,7 @@ describe("modelToTikz", () => {
       ],
     });
     expect(sameSide).toContain(
-      "(2,-0.5) -- (2.5,-0.5) -- (2.5,-3.75) -- (2,-3.75) -- (1.5,-3.75)",
+      "(a.east) -- (2.5,-0.5) -- (2.5,-3.75) -- (2,-3.75) -- (b.east)",
     );
 
     const perpendicular = modelToTikz({
@@ -129,8 +131,8 @@ describe("modelToTikz", () => {
         },
       ],
     });
-    expect(perpendicular).toContain("(1,-1)");
-    expect(perpendicular).toContain("(0,-3.75)");
+    expect(perpendicular).toContain("(a.south)");
+    expect(perpendicular).toContain("(b.west)");
   });
 
   it("draws edges on the background layer so they sit behind the shapes", () => {
