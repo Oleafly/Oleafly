@@ -217,6 +217,7 @@ vi.mock("@/lib/agent-item-effects", () => ({
   },
 }));
 vi.mock("@/lib/open-compile", () => ({
+  openCompileHydrated: () => false,
   resetOpenCompileMarker: () => null,
   shouldCompileOnOpen: () => false,
 }));

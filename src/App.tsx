@@ -51,7 +51,11 @@ import { useSettingsStore } from "@/store/settings";
 import { registerBrowserCuaSurface } from "@/lib/browser-window";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
-import { resetOpenCompileMarker, shouldCompileOnOpen } from "@/lib/open-compile";
+import {
+  openCompileHydrated,
+  resetOpenCompileMarker,
+  shouldCompileOnOpen,
+} from "@/lib/open-compile";
 import { useGitStatusStore } from "@/store/git-status";
 import { useGithubStore } from "@/store/github";
 import { forwardFromCursor } from "@/features/synctex";
@@ -262,10 +266,8 @@ function AppContent() {
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const projectLoading = useFilesStore((state) => state.loading);
   const mainDocument = useFilesStore((state) => state.mainDoc);
-  const mainDocumentHydrated = useFilesStore(
-    (state) =>
-      state.activePath === state.mainDoc &&
-      state.files[state.mainDoc] !== undefined,
+  const mainDocumentLoaded = useFilesStore(
+    (state) => state.files[state.mainDoc] !== undefined,
   );
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const recompile = useCompileStore((s) => s.recompile);
@@ -685,14 +687,14 @@ function AppContent() {
   const [openCompileEpoch, setOpenCompileEpoch] = useState(0);
   useEffect(() => {
     void openCompileEpoch;
+    void mainDocumentLoaded;
     openCompiledRef.current = resetOpenCompileMarker(projectId, openCompiledRef.current);
-    const analysisReady =
-      analysisIdentity.projectId === projectId &&
-      analysisIdentity.projectRevision > 0;
-    const hydrated =
-      !projectLoading &&
-      mainDocumentHydrated &&
-      analysisReady;
+    const hydrated = openCompileHydrated(
+      projectLoading,
+      projectId,
+      analysisIdentity.projectId,
+      analysisIdentity.projectRevision,
+    );
     const hasValidCurrentArtifact =
       compileCheckpoint !== null &&
       isCompileCheckpointCurrent(compileCheckpoint);
@@ -781,7 +783,7 @@ function AppContent() {
     compileStatus,
     engineLoaded,
     mainDocument,
-    mainDocumentHydrated,
+    mainDocumentLoaded,
     openCompileEpoch,
     projectId,
     projectLoading,

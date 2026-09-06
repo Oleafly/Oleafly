@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resetOpenCompileMarker, shouldCompileOnOpen } from "./open-compile";
+import {
+  openCompileHydrated,
+  resetOpenCompileMarker,
+  shouldCompileOnOpen,
+} from "./open-compile";
 
 describe("shouldCompileOnOpen", () => {
   it("defers the one-shot compile until the engine finishes loading", () => {
@@ -20,5 +24,19 @@ describe("shouldCompileOnOpen", () => {
     const marker = resetOpenCompileMarker(null, "project");
     expect(marker).toBeNull();
     expect(shouldCompileOnOpen("project", true, true, marker, "split", "idle")).toBe(true);
+  });
+});
+
+describe("openCompileHydrated", () => {
+  it("waits for the project load and the first analysis revision", () => {
+    expect(openCompileHydrated(true, "project", "project", 3)).toBe(false);
+    expect(openCompileHydrated(false, "project", "project", 0)).toBe(false);
+    expect(openCompileHydrated(false, "project", "other", 3)).toBe(false);
+    expect(openCompileHydrated(false, null, null, 3)).toBe(false);
+    expect(openCompileHydrated(false, "project", "project", 3)).toBe(true);
+  });
+
+  it("holds for a layout with no editor, whatever file the tree left active", () => {
+    expect(openCompileHydrated(false, "project", "project", 1)).toBe(true);
   });
 });
