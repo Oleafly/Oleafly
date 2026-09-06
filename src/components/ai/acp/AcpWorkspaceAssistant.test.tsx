@@ -276,7 +276,7 @@ describe("ACP assistant acceptance", () => {
     vi.mocked(acpStart).mockResolvedValueOnce({ session: session("new"), permissions: [] });
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
     const start = await ui.findByTestId("acp-start-conversation");
-    expect(ui.getByTestId("assistant-home")).toHaveTextContent("What would you like to do today?");
+    expect(ui.queryByTestId("assistant-home")).not.toBeInTheDocument();
     const roster = ui.getByTestId("agent-picker-row");
     const rosterNames = [...roster.querySelectorAll("button")].map((node) => node.getAttribute("aria-label"));
     expect(rosterNames[0]).toBe("Research CLI");
@@ -293,6 +293,7 @@ describe("ACP assistant acceptance", () => {
     await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("fixture · ready"));
     expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready");
     expect(ui.getByTestId("assistant-home")).toHaveTextContent("Research CLI is ready in this project");
+    expect(ui.getByTestId("assistant-home")).toHaveTextContent("What would you like to do today?");
     expect(ui.getByTestId("agent-picker-row")).toBeInTheDocument();
     expect(ui.queryByTestId("acp-start-conversation")).not.toBeInTheDocument();
     const controls = ui.getByTestId("acp-composer-controls");

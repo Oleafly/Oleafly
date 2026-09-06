@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { SkillEntry } from "@/lib/skills";
 import type { StoredChat } from "@/store/chats";
@@ -127,6 +127,47 @@ describe("AssistantHome", () => {
     expect(labels).toEqual(["gamma", "Recompile and check for errors"]);
     fireEvent.click(screen.getByTestId("chat-suggestion"));
     expect(onSelect).toHaveBeenCalledOnce();
+  });
+
+  it("drifts the slider on its own and holds still while the pointer is on it", () => {
+    const frames: FrameRequestCallback[] = [];
+    const raf = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback) => {
+        frames.push(callback);
+        return frames.length;
+      });
+    const cancel = vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
+    try {
+      render(
+        <AssistantHome
+          skills={[skill("alpha"), skill("beta"), skill("gamma"), skill("delta"), skill("epsilon")]}
+          onPickSkill={vi.fn()}
+        />,
+      );
+      const slider = screen.getByTestId("assistant-home-chips");
+      Object.defineProperty(slider, "scrollWidth", { configurable: true, value: 400 });
+      Object.defineProperty(slider, "clientWidth", { configurable: true, value: 200 });
+      expect(slider).toHaveAttribute("data-marquee", "running");
+      expect(raf).toHaveBeenCalled();
+
+      act(() => frames.at(-1)?.(0));
+      act(() => frames.at(-1)?.(1000));
+      expect(slider.scrollLeft).toBeGreaterThan(0);
+
+      cancel.mockClear();
+      fireEvent.mouseEnter(slider);
+      expect(slider).toHaveAttribute("data-marquee", "paused");
+      expect(cancel).toHaveBeenCalled();
+      const scheduled = frames.length;
+      expect(frames.length).toBe(scheduled);
+
+      fireEvent.mouseLeave(slider);
+      expect(slider).toHaveAttribute("data-marquee", "running");
+      expect(frames.length).toBeGreaterThan(scheduled);
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 
   it("colors cards and slider entries from one rotating palette", () => {

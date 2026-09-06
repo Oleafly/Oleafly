@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import {
   ArrowUpRight,
   BookOpen,
@@ -15,6 +15,7 @@ import {
 import { groupSkills, type SkillGroup } from "@/lib/skill-groups";
 import { isSkillAvailable, type SkillEntry } from "@/lib/skills";
 import { cn } from "@/lib/utils";
+import { useMarquee } from "./use-marquee";
 
 type IconComponent = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
 
@@ -118,6 +119,7 @@ function AssistantHomeView({
     }
     onPickSkill(skill);
   };
+  const sliderRef = useRef<HTMLDivElement>(null);
   const groupIcon = GROUP_ICONS[active?.key ?? "user"] ?? Sparkles;
   const shelf: ShelfEntry[] = [
     ...chips.map((skill) => ({
@@ -141,6 +143,8 @@ function AssistantHomeView({
       onSelect: start.onSelect,
     })),
   ];
+
+  const marquee = useMarquee(sliderRef, shelf.length > 1);
 
   return (
     <div
@@ -242,8 +246,11 @@ function AssistantHomeView({
       {shelf.length > 0 ? (
         <div className="relative w-full">
           <div
+            ref={sliderRef}
             data-testid="assistant-home-chips"
+            data-marquee={marquee.running ? "running" : "paused"}
             className="no-scrollbar flex w-full items-center gap-2 overflow-x-auto px-0.5 py-1"
+            {...marquee.handlers}
           >
             {shelf.map((entry, index) => {
               const chipTone = tone(cards.length + index);

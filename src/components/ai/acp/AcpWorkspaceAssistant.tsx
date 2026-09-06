@@ -238,7 +238,7 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
         </div>
       ) : messages.length > 0 ? (
         <MessageList actions={researchChatActions} messages={messages} chatId={activeId} scrollRef={scrollRef} nearBottomRef={nearBottomRef} />
-      ) : (
+      ) : session ? (
         <AssistantHome
           skills={skills}
           onPickSkill={pickSkill}
@@ -250,7 +250,7 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
               : undefined
           }
         />
-      )}
+      ) : null}
     </div>
     {(error || session?.error) && <div role="alert" className="mx-3 my-2 rounded-md border border-destructive/40 p-2 text-xs text-destructive">{error ?? session?.error}</div>}
     {session?.status === "auth_required" && <div className="space-y-2 border-t border-border p-3 text-xs">
