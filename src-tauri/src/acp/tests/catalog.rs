@@ -264,6 +264,21 @@ fn sign_in_hints_name_the_vendor_command_and_stay_specific_for_api_key_agents() 
 }
 
 #[test]
+fn gemini_starts_in_the_acp_mode_its_own_cli_offers() {
+    let gemini = builtins()
+        .into_iter()
+        .find(|value| value.id == "gemini")
+        .unwrap();
+    let args = gemini
+        .distribution
+        .npx
+        .as_ref()
+        .map(|npx| npx.args.clone())
+        .unwrap_or_default();
+    assert_eq!(args, ["--experimental-acp"]);
+}
+
+#[test]
 fn definition_validation_checks_every_distribution() {
     for definition in builtins().into_iter().chain([binary_definition()]) {
         validate(&definition).unwrap();
@@ -473,10 +488,17 @@ fn managed_node_receipts_put_the_script_before_agent_arguments() {
         Some(node) => {
             let launch = resolve(temp.path(), &definition).unwrap();
             assert_eq!(launch.executable, node);
-            assert_eq!(
-                launch.args,
-                [script.to_string_lossy().into_owned(), "--acp".into()]
-            );
+            let agent_args = definition
+                .distribution
+                .npx
+                .as_ref()
+                .map(|npx| npx.args.clone())
+                .unwrap_or_default();
+            assert!(!agent_args.is_empty());
+            let expected: Vec<String> = std::iter::once(script.to_string_lossy().into_owned())
+                .chain(agent_args)
+                .collect();
+            assert_eq!(launch.args, expected);
             assert!(launch.managed);
             assert_eq!(launch.version, Some(definition.version));
         }

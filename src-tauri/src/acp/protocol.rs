@@ -61,10 +61,16 @@ pub fn rpc_error_message(error: &Value) -> String {
     }
 }
 
+pub fn reads_as_command_help(tail: &str) -> bool {
+    tail.contains("--help") || tail.contains("Options:") || tail.starts_with("Usage:")
+}
+
 fn disconnect_message(prefix: &str, tail: &StderrTail) -> String {
     let tail = tail_text(tail);
     if tail.is_empty() {
         prefix.to_owned()
+    } else if reads_as_command_help(&tail) {
+        format!("{prefix} It answered with its command-line help, so this version does not accept the options Oleafly started it with.")
     } else {
         format!("{prefix} It reported: {tail}")
     }

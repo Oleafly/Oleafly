@@ -103,7 +103,12 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
     );
     void perform(async () => {
       if (ready) {
-        await useAcpSessionsStore.getState().start(projectId, nextAgentId);
+        try {
+          await useAcpSessionsStore.getState().start(projectId, nextAgentId);
+        } catch (value) {
+          setComposer(projectId, { agentId: open.agentId });
+          throw value;
+        }
         return;
       }
       if (["ready", "auth_required"].includes(open.status)) {

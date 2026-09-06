@@ -398,6 +398,19 @@ async fn a_failed_turn_keeps_the_agent_connected_and_reports_its_message() {
 }
 
 #[test]
+fn a_cli_that_prints_its_usage_is_not_quoted_back_at_the_reader() {
+    assert!(protocol::reads_as_command_help(
+        "-d, --debug Run in debug mode? [boolean] Options: --experimental-acp Starts the agent in ACP mode"
+    ));
+    assert!(protocol::reads_as_command_help(
+        "Usage: gemini [options] Run --help for the full list"
+    ));
+    assert!(!protocol::reads_as_command_help(
+        "Traceback: the agent could not open paper.tex"
+    ));
+}
+
+#[test]
 fn an_agents_wording_decides_whether_a_failure_needs_a_sign_in() {
     assert!(protocol::RpcError {
         code: -32000,
