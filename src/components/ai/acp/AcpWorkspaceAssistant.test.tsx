@@ -501,4 +501,26 @@ describe("ACP assistant acceptance", () => {
     expect(acpPermission).not.toHaveBeenCalled();
     expect(acpReconnect).not.toHaveBeenCalled();
   });
+
+  it("offers the CLI sign-in instead of repeating an expired login", async () => {
+    const detail = "Internal error: Failed to authenticate: OAuth session expired and could not be refreshed";
+    vi.mocked(acpPrompt).mockImplementation(async (_project, _id, text) => {
+      const accepted = event(1, "user_message", { text });
+      history.saved = [
+        accepted,
+        event(2, "agent_message_chunk", { content: { type: "text", text: "Failed to authenticate: OAuth session expired and could not be refreshed" } }),
+        event(3, "turn_complete", { stopReason: "error", error: detail }),
+      ];
+      snapshots.saved = { session: session("saved", { status: "auth_required", lastSequence: 3, error: detail }), permissions: [] };
+      emit(accepted);
+      throw new Error(detail);
+    });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
+    typeMessage(ui.getByLabelText("Message CLI agent"), "Hello");
+    fireEvent.click(ui.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(ui.getByText("Run research-fixture login")).toBeInTheDocument());
+    expect(ui.getByRole("button", { name: "Reconnect after sign-in" })).toBeInTheDocument();
+    expect(ui.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });

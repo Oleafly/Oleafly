@@ -70,6 +70,29 @@ fn disconnect_message(prefix: &str, tail: &StderrTail) -> String {
     }
 }
 
+const AUTH_FAILURE_PHRASES: &[&str] = &[
+    "failed to authenticate",
+    "authentication failed",
+    "not authenticated",
+    "oauth",
+    "unauthorized",
+    "invalid api key",
+    "expired credentials",
+    "credentials have expired",
+    "session expired",
+    "please log in",
+    "please sign in",
+    "log in again",
+    "sign in again",
+];
+
+pub fn reads_as_auth_failure(message: &str) -> bool {
+    let message = message.to_lowercase();
+    AUTH_FAILURE_PHRASES
+        .iter()
+        .any(|phrase| message.contains(phrase))
+}
+
 #[derive(Clone, Debug)]
 pub struct RpcError {
     pub code: i64,
@@ -84,7 +107,7 @@ impl RpcError {
         }
     }
     pub fn auth_required(&self) -> bool {
-        self.code == -32000
+        self.code == -32000 || reads_as_auth_failure(&self.message)
     }
 }
 

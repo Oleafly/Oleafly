@@ -73,4 +73,24 @@ describe("ACP conversation projection", () => {
     expect(rows).toHaveLength(2);
     expect(rows.map((row) => row.msg.toolCalls?.[0].name)).toEqual(["First", "Second"]);
   });
+
+  it("does not repeat a failure the agent already said in its own words", () => {
+    const rows = projectAcpEvents([
+      event(1, "user_message", { text: "Hello" }),
+      chunk(2, "Failed to authenticate: OAuth session expired and could not be refreshed"),
+      event(3, "turn_complete", { stopReason: "error", error: "Internal error: Failed to authenticate: OAuth session expired and could not be refreshed" }),
+    ], false);
+    expect(rows).toHaveLength(2);
+    expect(rows[1].msg.content).toBe("Failed to authenticate: OAuth session expired and could not be refreshed");
+  });
+
+  it("still reports a failure the agent never mentioned", () => {
+    const rows = projectAcpEvents([
+      event(1, "user_message", { text: "Hello" }),
+      chunk(2, "Reading the manuscript."),
+      event(3, "turn_complete", { stopReason: "error", error: "The agent stopped before completing this turn." }),
+    ], false);
+    expect(rows).toHaveLength(3);
+    expect(rows[2].msg.content).toBe("The agent stopped before completing this turn.");
+  });
 });
