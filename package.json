@@ -87,7 +87,7 @@
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-shell": "^2",
     "@tauri-apps/plugin-updater": "^2.10.1",
-    "@tiptap/core": "^3.29.0",
+    "@tiptap/core": "^3.30.4",
     "@tiptap/extension-image": "^3.31.2",
     "@tiptap/extension-table": "^3.31.2",
     "@tiptap/pm": "^3.29.0",
