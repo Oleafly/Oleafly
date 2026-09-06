@@ -1038,7 +1038,7 @@ function FilterSelect({
 }) {
   return (
     <div className="min-w-0 space-y-1">
-      <span className="block text-[11px] text-muted-foreground">{label}</span>
+      <span className="block text-[11px] leading-4 text-muted-foreground">{label}</span>
       <Select value={value || ALL} onValueChange={(next) => onChange(next === ALL ? "" : next)}>
         <SelectTrigger className="h-8 text-xs" aria-label={label}>
           <SelectValue />
@@ -1150,48 +1150,69 @@ export function UsageReportDialog({
             setFilter((current) => filterFromDraft(draft, current));
           }}
         >
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <span className="block text-[11px] text-muted-foreground">From</span>
-                <DatePicker
-                  aria-label="From"
-                  value={draft.start}
-                  max={draft.end || today}
-                  buttonClassName="h-8 w-40 text-xs"
-                  onChange={(value) => setDraftValue("start", value ?? draft.start)}
-                />
-              </div>
-              <div className="space-y-1">
-                <span className="block text-[11px] text-muted-foreground">Through</span>
-                <DatePicker
-                  aria-label="Through"
-                  value={draft.end}
-                  min={draft.start}
-                  max={today}
-                  buttonClassName="h-8 w-40 text-xs"
-                  onChange={(value) => setDraftValue("end", value ?? draft.end)}
-                />
-              </div>
+          <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+            <div className="space-y-1">
+              <span className="block text-[11px] leading-4 text-muted-foreground">From</span>
+              <DatePicker
+                aria-label="From"
+                value={draft.start}
+                max={draft.end || today}
+                buttonClassName="h-8 w-40 text-xs"
+                onChange={(value) => setDraftValue("start", value ?? draft.start)}
+              />
             </div>
-            <fieldset className="flex items-center gap-1 pb-1">
+            <div className="space-y-1">
+              <span className="block text-[11px] leading-4 text-muted-foreground">Through</span>
+              <DatePicker
+                aria-label="Through"
+                value={draft.end}
+                min={draft.start}
+                max={today}
+                buttonClassName="h-8 w-40 text-xs"
+                onChange={(value) => setDraftValue("end", value ?? draft.end)}
+              />
+            </div>
+            <fieldset className="flex h-8 items-center gap-0.5 rounded-md border bg-background p-0.5">
               <legend className="sr-only">Quick ranges</legend>
               {USAGE_QUICK_RANGES.map((range) => (
                 <Button
                   key={range.id}
                   type="button"
                   size="xs"
-                  variant={quickRange === range.id ? "secondary" : "outline"}
+                  variant="ghost"
                   aria-pressed={quickRange === range.id}
+                  className={cn(
+                    "h-6.5 rounded-[5px] px-2.5 text-[11px] font-medium text-muted-foreground hover:text-foreground",
+                    quickRange === range.id && "bg-secondary text-foreground shadow-sm hover:bg-secondary",
+                  )}
                   onClick={() => applyQuickRange(range.id)}
                 >
                   {range.label}
                 </Button>
               ))}
             </fieldset>
-            <span className="pb-1.5 text-[11px] text-muted-foreground">Dates and hours are in UTC.</span>
+            <span className="flex h-8 items-center text-[11px] text-muted-foreground">
+              Dates and hours are in UTC.
+            </span>
+            <div className="ml-auto flex h-8 items-center gap-2">
+              <Button type="submit" size="sm" className="h-8 px-5">
+                Apply
+              </Button>
+              <Tooltip label="Refresh">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 px-0"
+                  aria-label="Refresh usage report"
+                  onClick={() => void reportQuery.refetch()}
+                >
+                  <RefreshCw aria-hidden="true" className={cn(reportQuery.isFetching && "motion-safe:animate-spin")} />
+                </Button>
+              </Tooltip>
+            </div>
           </div>
-          <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
             <FilterSelect
               label="Project"
               value={draft.project}
@@ -1227,23 +1248,6 @@ export function UsageReportDialog({
               allLabel="All sessions"
               onChange={(value) => setDraftValue("session", value)}
             />
-            <div className="flex items-end gap-2">
-              <Button type="submit" size="sm" className="h-8 flex-1">
-                Apply
-              </Button>
-              <Tooltip label="Refresh">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8 w-8 px-0"
-                  aria-label="Refresh usage report"
-                  onClick={() => void reportQuery.refetch()}
-                >
-                  <RefreshCw aria-hidden="true" className={cn(reportQuery.isFetching && "motion-safe:animate-spin")} />
-                </Button>
-              </Tooltip>
-            </div>
           </div>
         </form>
 
