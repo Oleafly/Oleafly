@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
-import { acpDisconnect, acpError, acpStart } from "@/lib/acp";
+import { acpDisconnect, acpError } from "@/lib/acp";
 import { isDelegatedSession, useAcpSessionsStore } from "@/store/acp-sessions";
 import { useSettingsStore } from "@/store/settings";
 
@@ -61,16 +61,7 @@ function AcpWorkspaceActions({ projectId }: { projectId: string }) {
 
   const start = () =>
     void perform(async () => {
-      if (!agentId) return;
-      const current = useAcpSessionsStore.getState();
-      const openId = current.activeByProject[projectId];
-      const open = openId ? current.sessions[openId] : undefined;
-      if (openId && open && ["ready", "auth_required"].includes(open.status)) {
-        await acpDisconnect(projectId, openId);
-      }
-      const snapshot = await acpStart(projectId, agentId);
-      useAcpSessionsStore.getState().setSnapshot(snapshot);
-      useAcpSessionsStore.getState().setActive(projectId, snapshot.session.id);
+      if (agentId) await useAcpSessionsStore.getState().start(projectId, agentId);
     });
 
   const openSaved = (selectedId: string) => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, Paperclip, Square, X } from "lucide-react";
+import { ArrowUp, Bot, FolderOpen, KeyRound, Loader2, Paperclip, Plus, ShieldCheck, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,12 +15,12 @@ import { useResearchChatActions } from "@/components/ai/use-research-chat-action
 import { MessageList } from "@/components/ai/MessageList";
 import {
   acpAuthenticate, acpCancel, acpDisconnect, acpError, acpPermission, acpPrompt, acpReadiness,
-  acpReconnect, acpSetModel, type AcpImage, type AcpSession,
+  acpReconnect, acpSetModel, type AcpAgentStatus, type AcpImage, type AcpReadiness, type AcpSession,
 } from "@/lib/acp";
+import { cn } from "@/lib/utils";
 import { attachAcpListeners, isDelegatedSession, useAcpSessionsStore, type AcpAttachment } from "@/store/acp-sessions";
 import { AgentLogo } from "./AgentLogo";
 import { BridgeInstallCard, ReadinessBadge } from "./AgentReadiness";
-import { readinessDetail } from "./agent-copy";
 import { PermissionCard } from "./PermissionCard";
 import { createAcpProjector } from "./projection";
 
@@ -157,63 +157,27 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
 
   const canSend = session?.status === "ready" && !busy && (!!draft.trim() || images.length > 0);
   const composerDisabled = session?.status !== "ready" || sending;
+  const canStart = !!selectedAgent?.installed && !busy && !running;
+  const start = () => void perform(async () => {
+    if (agentId) await useAcpSessionsStore.getState().start(projectId, agentId);
+  });
 
   return <section className="flex h-full min-h-0 flex-col bg-sidebar text-foreground" aria-label="CLI agent assistant">
-    <div className="space-y-1.5 border-b border-border px-3 py-2">
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-        <Select value={agentId ?? ""} disabled={running || busy} onValueChange={(value) => setComposer(projectId, { agentId: value })}>
-          <SelectTrigger aria-label="Agent" data-testid="acp-agent-picker" className="h-7 w-auto min-w-32 max-w-56 gap-1 border-0 bg-transparent px-2 text-xs font-medium shadow-none hover:bg-accent focus:ring-0">
-            <SelectValue placeholder="Choose a CLI agent" />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {catalog.map((agent) => (
-              <SelectItem key={agent.definition.id} value={agent.definition.id} icon={<AgentLogo agentId={agent.definition.id} size={14} />}>
-                {agent.definition.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {session && (
-          <span data-testid="acp-session-status" className="min-w-0 truncate text-[11px] text-muted-foreground">
-            {session.agentId} · {session.status.replaceAll("_", " ")}
-          </span>
-        )}
-        {session && session.controls.models.length > 0 ? (
-          <Select
-            value={session.controls.modelId ?? ""}
-            disabled={busy || running || session.status !== "ready"}
-            onValueChange={(modelId) => void perform(async () => {
-              useAcpSessionsStore.getState().setSnapshot(await acpSetModel(projectId, session.id, modelId));
-            })}
-          >
-            <SelectTrigger aria-label="Agent model" data-testid="acp-model-picker" className="ml-auto h-7 w-auto min-w-28 gap-1 border-0 bg-transparent px-2 text-xs font-medium shadow-none hover:bg-accent focus:ring-0">
-              <SelectValue placeholder="Agent model" />
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              {session.controls.models.map((model) => (
-                <SelectItem key={model.modelId} value={model.modelId}>{model.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : session ? (
-          <span className="ml-auto truncate text-[11px] text-muted-foreground">
-            {session.controls.modelId ?? "Model managed by the agent"}
-          </span>
-        ) : null}
-      </div>
-      {selectedAgent && selectedReadiness !== "ready" && (
-        <p className="text-[11px] leading-relaxed text-muted-foreground">{readinessDetail(selectedAgent, selectedReadiness ?? "unavailable")}</p>
-      )}
-    </div>
     <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-3" onScroll={() => { const el = scrollRef.current; if (el) nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
       {events[0]?.sequence > 1 && <Button variant="outline" size="sm" type="button" className="mb-3 w-full" disabled={busy} onClick={() => { if (activeId) void perform(() => useAcpSessionsStore.getState().loadEarlier(projectId, activeId)); }}>Load earlier activity</Button>}
-      {messages.length > 0 ? <MessageList actions={researchChatActions} messages={messages} chatId={activeId} scrollRef={scrollRef} nearBottomRef={nearBottomRef} /> : <div className="mx-auto max-w-sm space-y-3 py-10 text-sm text-muted-foreground">
-        <p>Work with a CLI agent in this project.</p>
-        <p>Choose an installed agent and start a conversation. The agent uses its own account and asks before actions that need permission.</p>
-        {selectedAgent && selectedReadiness !== "ready" && (
-          <BridgeInstallCard agent={selectedAgent} onError={setError} />
-        )}
-      </div>}
+      {messages.length > 0 ? (
+        <MessageList actions={researchChatActions} messages={messages} chatId={activeId} scrollRef={scrollRef} nearBottomRef={nearBottomRef} />
+      ) : (
+        <AcpEmptyState
+          catalog={catalog}
+          selectedAgent={selectedAgent}
+          readiness={selectedReadiness}
+          session={session}
+          canStart={canStart}
+          onStart={start}
+          onError={setError}
+        />
+      )}
     </div>
     {(error || session?.error) && <div role="alert" className="mx-3 my-2 rounded-md border border-destructive/40 p-2 text-xs text-destructive">{error ?? session?.error}</div>}
     {session?.status === "auth_required" && <div className="space-y-2 border-t border-border p-3 text-xs">
@@ -258,31 +222,176 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
           }}
           className="max-h-56 min-h-[32px] w-full resize-none overflow-y-auto rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none outline-none placeholder:text-muted-foreground/70 focus-visible:ring-0"
         />
-        <div className="mt-2 flex min-h-7 items-center gap-1">
-          {session?.capabilities.image && (
-            <Tooltip label="Attach image">
-              <Button type="button" variant="ghost" size="icon" aria-label="Attach image" className="size-8 shrink-0 text-muted-foreground" disabled={running} onClick={() => fileRef.current?.click()}>
-                <Paperclip className="size-4" />
-              </Button>
-            </Tooltip>
-          )}
-          <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">{busy ? "Connecting" : "CLI account limits apply"}</span>
-          {selectedAgent && selectedReadiness !== "ready" && <ReadinessBadge readiness={selectedReadiness ?? "unavailable"} />}
-          {running ? (
-            <Tooltip label="Stop">
-              <Button type="button" aria-label="Stop" size="icon" className="size-8 shrink-0 rounded-full" disabled={session?.status === "cancelling"} onClick={() => { if (activeId) void perform(async () => { await acpCancel(projectId, activeId); await useAcpSessionsStore.getState().resync(projectId, activeId); }); }}>
-                <Square className="size-3.5 fill-current" />
-              </Button>
-            </Tooltip>
-          ) : (
-            <Tooltip label="Send">
-              <Button type="submit" aria-label="Send" size="icon" className="size-8 shrink-0 rounded-full" disabled={!canSend}>
-                <ArrowUp className="size-4" />
-              </Button>
-            </Tooltip>
-          )}
+        <div data-testid="acp-composer-controls" className="ai-composer-controls mt-2 flex min-h-7 min-w-0 flex-nowrap items-center justify-between gap-0.5">
+          <div className="ai-composer-controls-left no-scrollbar flex min-w-0 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden">
+            {session?.capabilities.image && (
+              <Tooltip label="Attach image">
+                <button type="button" aria-label="Attach image" className="ai-composer-attach flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40" disabled={running} onClick={() => fileRef.current?.click()}>
+                  <Paperclip className="size-4" />
+                </button>
+              </Tooltip>
+            )}
+            <Select value={agentId ?? ""} disabled={running || busy} onValueChange={(value) => setComposer(projectId, { agentId: value })}>
+              <SelectTrigger aria-label="Agent" data-testid="acp-agent-picker" className="h-7 w-auto min-w-0 max-w-44 shrink-0 gap-1 border-0 bg-transparent px-2 text-xs font-medium shadow-none hover:bg-accent focus:ring-0">
+                {agentId && <span className="flex size-4 shrink-0 items-center justify-center [&>svg]:block"><AgentLogo agentId={agentId} size={14} /></span>}
+                <SelectValue placeholder="Choose a CLI agent" />
+              </SelectTrigger>
+              <SelectContent className="z-[100]">
+                {catalog.map((agent) => (
+                  <SelectItem key={agent.definition.id} value={agent.definition.id} icon={<AgentLogo agentId={agent.definition.id} size={14} />}>
+                    {agent.definition.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {session && <SessionStatusPill session={session} busy={busy} />}
+            {selectedAgent && selectedReadiness !== "ready" && <ReadinessBadge readiness={selectedReadiness ?? "unavailable"} />}
+          </div>
+          <div className="ai-composer-controls-right ml-auto flex shrink-0 flex-nowrap items-center gap-1">
+            {session && session.controls.models.length > 0 ? (
+              <Select
+                value={session.controls.modelId ?? ""}
+                disabled={busy || running || session.status !== "ready"}
+                onValueChange={(modelId) => void perform(async () => {
+                  useAcpSessionsStore.getState().setSnapshot(await acpSetModel(projectId, session.id, modelId));
+                })}
+              >
+                <SelectTrigger aria-label="Agent model" data-testid="acp-model-picker" className="h-7 w-auto min-w-0 max-w-44 gap-1 border-0 bg-transparent px-2 text-xs font-medium shadow-none hover:bg-accent focus:ring-0">
+                  <SelectValue placeholder="Agent model" />
+                </SelectTrigger>
+                <SelectContent className="z-[100]" align="end">
+                  {session.controls.models.map((model) => (
+                    <SelectItem key={model.modelId} value={model.modelId}>{model.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : session ? (
+              <span className="hidden max-w-40 truncate px-1 text-[11px] text-muted-foreground sm:inline">
+                {session.controls.modelId ?? "Model managed by the agent"}
+              </span>
+            ) : null}
+            {running ? (
+              <Tooltip label="Stop">
+                <button type="button" aria-label="Stop" title="Stop the agent" className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:opacity-90 disabled:opacity-40" disabled={session?.status === "cancelling"} onClick={() => { if (activeId) void perform(async () => { await acpCancel(projectId, activeId); await useAcpSessionsStore.getState().resync(projectId, activeId); }); }}>
+                  <Square className="size-3.5 fill-current" />
+                </button>
+              </Tooltip>
+            ) : (
+              <Tooltip label="Send">
+                <button type="submit" aria-label="Send" className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40" disabled={!canSend}>
+                  <ArrowUp className="size-4" />
+                </button>
+              </Tooltip>
+            )}
+          </div>
         </div>
       </div>
     </form>
   </section>;
+}
+
+const STATUS_DOT: Record<AcpSession["status"], string> = {
+  connecting: "bg-primary animate-pulse",
+  auth_required: "bg-amber-500",
+  ready: "bg-emerald-500",
+  running: "bg-primary animate-pulse",
+  cancelling: "bg-amber-500 animate-pulse",
+  cancelled: "bg-muted-foreground/60",
+  disconnected: "bg-muted-foreground/60",
+  failed: "bg-destructive",
+};
+
+function SessionStatusPill({ session, busy }: { session: AcpSession; busy: boolean }) {
+  return (
+    <span
+      data-testid="acp-session-status"
+      data-status={session.status}
+      className="inline-flex h-6 max-w-44 shrink-0 items-center gap-1.5 rounded-full border bg-background px-2 text-[10px] text-muted-foreground"
+    >
+      {busy ? (
+        <Loader2 aria-hidden className="size-2.5 shrink-0 animate-spin" />
+      ) : (
+        <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[session.status])} />
+      )}
+      <span className="truncate">{busy ? "Connecting" : `${session.agentId} · ${session.status.replaceAll("_", " ")}`}</span>
+    </span>
+  );
+}
+
+const EMPTY_STATE_POINTS = [
+  { icon: KeyRound, tone: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", text: "Uses the agent's own account and plan" },
+  { icon: ShieldCheck, tone: "bg-amber-500/10 text-amber-600 dark:text-amber-400", text: "Asks before actions that need permission" },
+  { icon: FolderOpen, tone: "bg-primary/10 text-primary", text: "Works inside this project folder" },
+] as const;
+
+function AcpEmptyState({
+  catalog,
+  selectedAgent,
+  readiness,
+  session,
+  canStart,
+  onStart,
+  onError,
+}: {
+  catalog: AcpAgentStatus[];
+  selectedAgent: AcpAgentStatus | undefined;
+  readiness: AcpReadiness | null;
+  session: AcpSession | undefined;
+  canStart: boolean;
+  onStart: () => void;
+  onError: (message: string) => void;
+}) {
+  const agentName = selectedAgent?.definition.name ?? "a CLI agent";
+  if (session && session.status === "ready") {
+    return (
+      <div data-testid="acp-empty-ready" className="mx-auto flex max-w-sm flex-col items-center gap-3 py-12 text-center">
+        <span className="flex size-12 items-center justify-center rounded-2xl border bg-background shadow-sm">
+          <AgentLogo agentId={session.agentId} size={24} />
+        </span>
+        <div>
+          <p className="text-base font-semibold">{agentName} is ready</p>
+          <p className="mt-1 text-sm text-muted-foreground">Ask it to review, edit, or build something in this project.</p>
+        </div>
+      </div>
+    );
+  }
+  const logos = catalog.slice(0, 3);
+  return (
+    <div data-testid="acp-empty-intro" className="mx-auto flex max-w-sm flex-col items-center gap-5 py-10 text-center">
+      <div className="flex items-center -space-x-2">
+        {(logos.length > 0 ? logos : [null]).map((agent, index) => (
+          <span
+            key={agent?.definition.id ?? index}
+            className="flex size-10 items-center justify-center rounded-full border bg-background shadow-sm"
+          >
+            {agent ? <AgentLogo agentId={agent.definition.id} size={18} /> : <Bot aria-hidden className="size-4.5 text-muted-foreground" />}
+          </span>
+        ))}
+      </div>
+      <div>
+        <p className="text-base font-semibold">Work with a CLI agent in this project</p>
+        <p className="mt-1 text-sm text-muted-foreground">Choose an installed agent and start a conversation from the composer below.</p>
+      </div>
+      <ul className="grid w-full gap-1.5 text-left text-xs">
+        {EMPTY_STATE_POINTS.map((point) => (
+          <li key={point.text} className="flex items-center gap-2.5 rounded-lg border bg-background/60 px-3 py-2">
+            <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-md", point.tone)}>
+              <point.icon aria-hidden className="size-4" />
+            </span>
+            <span className="text-foreground/90">{point.text}</span>
+          </li>
+        ))}
+      </ul>
+      {selectedAgent && readiness !== "ready" ? (
+        <div className="w-full text-left">
+          <BridgeInstallCard agent={selectedAgent} onError={onError} />
+        </div>
+      ) : (
+        <Button type="button" size="sm" data-testid="acp-start-conversation" disabled={!canStart} onClick={onStart}>
+          <Plus className="size-3.5" />
+          Start a conversation with {agentName}
+        </Button>
+      )}
+    </div>
+  );
 }

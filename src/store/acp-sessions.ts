@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import {
-  acpCatalog, acpEvents, acpSessions, acpSnapshot, onAcpEvent, onAcpResync,
+  acpCatalog, acpDisconnect, acpEvents, acpSessions, acpSnapshot, acpStart, onAcpEvent, onAcpResync,
   type AcpAgentStatus, type AcpEvent, type AcpImage, type AcpPermission, type AcpSession, type AcpSnapshot,
 } from "@/lib/acp";
 
@@ -21,6 +21,7 @@ interface AcpState {
   refreshCatalog: (probe?: boolean) => Promise<void>;
   loadProject: (projectId: string) => Promise<void>;
   open: (projectId: string, id: string) => Promise<void>;
+  start: (projectId: string, agentId: string) => Promise<void>;
   loadEarlier: (projectId: string, id: string) => Promise<void>;
   resync: (projectId: string, id: string) => Promise<void>;
   setSnapshot: (snapshot: AcpSnapshot) => void;
@@ -63,6 +64,16 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
   })),
   setActive: (projectId, id) => set((state) => ({ activeByProject: { ...state.activeByProject, [projectId]: id } })),
   setComposer: (projectId, patch) => set((state) => ({ composers: { ...state.composers, [projectId]: { ...EMPTY_COMPOSER, ...state.composers[projectId], ...patch } } })),
+  start: async (projectId, agentId) => {
+    const openId = get().activeByProject[projectId];
+    const open = openId ? get().sessions[openId] : undefined;
+    if (openId && open && ["ready", "auth_required"].includes(open.status)) {
+      await acpDisconnect(projectId, openId);
+    }
+    const snapshot = await acpStart(projectId, agentId);
+    get().setSnapshot(snapshot);
+    get().setActive(projectId, snapshot.session.id);
+  },
   open: async (projectId, id) => {
     get().setActive(projectId, id);
     const snapshot = await acpSnapshot(projectId, id);

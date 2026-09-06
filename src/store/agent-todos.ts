@@ -9,6 +9,8 @@ export interface AgentTodo {
   status: AgentTodoStatus;
 }
 
+export type AgentTurnOutcome = "completed" | "paused";
+
 export function agentTodoProgress(todos: readonly AgentTodo[]): {
   current: number;
   total: number;
@@ -22,6 +24,16 @@ export function agentTodoProgress(todos: readonly AgentTodo[]): {
         : active.filter((todo) => todo.status === "completed").length,
     total: active.length,
   };
+}
+
+export function settleAgentTodos(
+  todos: readonly AgentTodo[],
+  outcome: AgentTurnOutcome,
+): AgentTodo[] {
+  const settled: AgentTodoStatus = outcome === "completed" ? "completed" : "pending";
+  return todos.map((todo) =>
+    todo.status === "in_progress" ? { ...todo, status: settled } : todo,
+  );
 }
 
 const STORAGE_PREFIX = "oleafly.agent-todos.";
@@ -71,11 +83,12 @@ function writeStoredTodos(chatId: string, todos: readonly AgentTodo[]): void {
 interface AgentTodoState {
   projectId: string | null;
   activeChatId: string | null;
+  viewChatId: string | null;
   todos: AgentTodo[];
   todosByChat: Record<string, AgentTodo[]>;
   bindProject: (projectId: string | null) => void;
   beginTurn: (chatId: string, options?: { keep?: boolean }) => void;
-  finishTurn: (chatId: string) => void;
+  finishTurn: (chatId: string, outcome?: AgentTurnOutcome) => void;
   selectChat: (chatId: string | null) => void;
   todosForChat: (chatId: string) => AgentTodo[];
   setTodos: (todos: AgentTodo[]) => void;
@@ -86,13 +99,14 @@ interface AgentTodoState {
 export const useAgentTodoStore = create<AgentTodoState>((set, get) => ({
   projectId: null,
   activeChatId: null,
+  viewChatId: null,
   todos: [],
   todosByChat: {},
   bindProject: (projectId) =>
     set((state) =>
       state.projectId === projectId
         ? state
-        : { projectId, activeChatId: null, todos: [], todosByChat: {} },
+        : { projectId, viewChatId: null, todos: [], todosByChat: {} },
     ),
   beginTurn: (chatId, options) =>
     set((state) => {
@@ -100,25 +114,36 @@ export const useAgentTodoStore = create<AgentTodoState>((set, get) => ({
       if (!options?.keep) writeStoredTodos(chatId, []);
       return {
         activeChatId: chatId,
+        viewChatId: chatId,
         todos,
         todosByChat: { ...state.todosByChat, [chatId]: todos },
       };
     }),
-  finishTurn: (chatId) =>
-    set((state) => (state.activeChatId === chatId ? { activeChatId: null } : state)),
+  finishTurn: (chatId, outcome = "completed") =>
+    set((state) => {
+      if (state.activeChatId !== chatId) return state;
+      const settled = settleAgentTodos(get().todosForChat(chatId), outcome);
+      writeStoredTodos(chatId, settled);
+      return {
+        activeChatId: null,
+        todos: state.viewChatId === chatId ? settled : state.todos,
+        todosByChat: { ...state.todosByChat, [chatId]: settled },
+      };
+    }),
   selectChat: (chatId) =>
     set(() => ({
-      activeChatId: null,
+      viewChatId: chatId,
       todos: chatId ? [...get().todosForChat(chatId)] : [],
     })),
   todosForChat: (chatId) => get().todosByChat[chatId] ?? readStoredTodos(chatId),
   setTodos: (todos) =>
     set((state) => {
-      if (!state.activeChatId) return { todos };
-      writeStoredTodos(state.activeChatId, todos);
+      const chatId = state.activeChatId ?? state.viewChatId;
+      if (!chatId) return state;
+      writeStoredTodos(chatId, todos);
       return {
-        todos,
-        todosByChat: { ...state.todosByChat, [state.activeChatId]: todos },
+        todos: state.viewChatId === chatId ? todos : state.todos,
+        todosByChat: { ...state.todosByChat, [chatId]: todos },
       };
     }),
   clear: () =>
@@ -134,6 +159,6 @@ if (typeof window !== "undefined" && E2E_HOOKS) {
     __agentTodosSet?: (todos: AgentTodo[]) => void;
     __agentTodosClear?: () => void;
   };
-  w.__agentTodosSet = (todos) => useAgentTodoStore.getState().setTodos(todos);
+  w.__agentTodosSet = (todos) => useAgentTodoStore.setState({ todos });
   w.__agentTodosClear = () => useAgentTodoStore.getState().clear();
 }

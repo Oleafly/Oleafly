@@ -84,6 +84,7 @@ impl ActivitySink {
 }
 
 const ACTIVITY_TEXT_TAIL_CHARS: usize = 240;
+const ACTIVITY_FINAL_OUTPUT_CHARS: usize = 40_000;
 const ACTIVITY_TEXT_FLUSH_INTERVAL: Duration = Duration::from_millis(250);
 
 struct ActivityDelivery {
@@ -1153,7 +1154,7 @@ fn spawn_child_run(
                 SubagentStatus::Interrupted => "interrupted",
                 SubagentStatus::Running => "thinking",
             },
-            Some(bounded_output(&output, 240)),
+            Some(bounded_output(&output, ACTIVITY_FINAL_OUTPUT_CHARS)),
         ));
         let _ = done_tx.send(true);
     })

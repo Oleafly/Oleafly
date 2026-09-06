@@ -154,6 +154,16 @@ export function ResearchTasksPanel({
   const agentNameFor = (task: ResearchTask) =>
     agentNames.get(`${task.runtimeId}:${task.agentId}`) ??
     (task.runtimeId === "acp" ? undefined : getProvider(task.agentId)?.name);
+  const modelNames = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const agent of agents) {
+      const key = `${agent.runtimeId}:${agent.agentId}:${agent.modelId}`;
+      if (!names.has(key)) names.set(key, agent.label);
+    }
+    return names;
+  }, [agents]);
+  const modelNameFor = (task: ResearchTask) =>
+    modelNames.get(`${task.runtimeId}:${task.agentId}:${task.modelId ?? ""}`);
 
   const editingTask = useMemo(
     () => tasks.find((task) => task.id === editingTaskId) ?? null,
@@ -318,7 +328,13 @@ export function ResearchTasksPanel({
                     <span className="min-w-0 truncate">{entry.label}</span>
                     <Badge
                       variant="quiet"
-                      className="border-transparent bg-transparent px-0.5 py-0 text-[10px] tabular-nums text-muted-foreground"
+                      data-testid={`research-task-filter-count-${entry.id}`}
+                      className={cn(
+                        "min-w-[1.125rem] border-transparent px-1 py-0 text-[10px] tabular-nums",
+                        filter === entry.id
+                          ? "bg-primary/15 text-primary"
+                          : "bg-muted-foreground/10 text-muted-foreground",
+                      )}
                     >
                       {counts[entry.id]}
                     </Badge>
@@ -342,10 +358,8 @@ export function ResearchTasksPanel({
               return (
                 <li key={task.id}>
                   <div
-                    className={cn(
-                      "min-w-0 rounded-lg border bg-card shadow-sm transition-colors",
-                      selected ? "border-primary/40 bg-primary/5" : "hover:bg-accent",
-                    )}
+                    data-selected={selected ? "true" : undefined}
+                    className="min-w-0 rounded-lg border bg-card shadow-sm transition-colors hover:bg-accent has-[button:active]:border-primary/40 has-[button:active]:bg-primary/5"
                   >
                     <button
                       type="button"
@@ -367,6 +381,7 @@ export function ResearchTasksPanel({
                       <TaskAgentChip
                         task={task}
                         agentName={agentNameFor(task)}
+                        modelName={modelNameFor(task)}
                         className="max-w-[13rem]"
                       />
                       {task.dependencyIds.length > 0 ? (

@@ -526,6 +526,14 @@ describe("ResearchTasksPanel lifecycle", () => {
     expect(page().getByRole("tab", { name: /^Running/ })).toHaveTextContent("Running1");
     expect(page().getByRole("tab", { name: /^Review/ })).toHaveTextContent("Review1");
     expect(page().getByRole("tab", { name: /^Done/ })).toHaveTextContent("Done1");
+    expect(page().getByTestId("research-task-filter-count-all")).toHaveTextContent("3");
+    expect(page().getByTestId("research-task-filter-count-all")).toHaveClass("bg-primary/15");
+    expect(page().getByTestId("research-task-filter-count-done")).not.toHaveClass("bg-primary/15");
+
+    const chips = page().getAllByTestId("task-agent-chip");
+    expect(chips).toHaveLength(3);
+    expect(chips[0]).toHaveTextContent("Research model");
+    expect(chips[0]).not.toHaveTextContent("provider");
 
     selectTab(/^Review/);
     expect(list().getByRole("button", { name: /Task review/ })).toBeInTheDocument();

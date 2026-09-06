@@ -1263,10 +1263,7 @@ export function ChatCore() {
     if (approval.load(activeChatId) === "approved" && !activeChatRun()) {
       approval.setStatus(activeChatId, "planning");
     }
-    const todoState = useAgentTodoStore.getState();
-    if (todoState.activeChatId === null && todoState.todosByChat[activeChatId] === undefined) {
-      todoState.selectChat(activeChatId);
-    }
+    useAgentTodoStore.getState().selectChat(activeChatId);
   }, [activeChatId]);
 
   // The panel unmounts whenever the sidebar collapses or another rail tab is
@@ -2568,7 +2565,16 @@ ${sandboxedCustom}`;
       if (runChatId && trackedTurnId) {
         useAgentFileChangesStore.getState().finishTurn(runChatId, trackedTurnId);
       }
-      if (runChatId) useAgentTodoStore.getState().finishTurn(runChatId);
+      if (runChatId) {
+        useAgentTodoStore
+          .getState()
+          .finishTurn(
+            runChatId,
+            runEndedCleanly && planTurn !== "planning" && planTurn !== "revision"
+              ? "completed"
+              : "paused",
+          );
+      }
       if (runChatId && planTurn) {
         const approval = usePlanApprovalStore.getState();
         if (planTurn === "execution") {

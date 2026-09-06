@@ -232,6 +232,52 @@ describe("SubagentCard", () => {
     expect(queryByText(/Exceeded skills context budget/)).toBeNull();
   });
 
+  it("shows a stopped icon instead of a spinner for an interrupted subagent", () => {
+    const { container, getByText } = render(
+      <SubagentCard
+        entry={{ id: "s1", label: "Survey diffusion", state: "interrupted", detail: "" }}
+      />,
+    );
+    expect(container.querySelector(".animate-spin")).toBeNull();
+    expect(getByText("Stopped")).toBeInTheDocument();
+    expect(getByText("The task was stopped before it answered.")).toBeInTheDocument();
+  });
+
+  it("shows the model badge and offers to expand a long answer", () => {
+    const originalScrollHeight = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "scrollHeight",
+    );
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+      configurable: true,
+      get: () => 800,
+    });
+    try {
+      const { getByTestId, getByRole } = render(
+        <SubagentCard
+          entry={{
+            id: "s1",
+            label: "Codex: review main.tex",
+            state: "done",
+            detail: "1) Severity: nitpick.\n\n2) Severity: major.",
+            runtime: "acp",
+            agentId: "codex",
+            modelId: "gpt-5.3-codex-spark",
+          }}
+        />,
+      );
+      expect(getByTestId("subagent-model")).toHaveTextContent("gpt-5.3-codex-spark");
+      expect(getByTestId("subagent-output")).toHaveAttribute("data-expanded", "false");
+      fireEvent.click(getByRole("button", { name: "Show more" }));
+      expect(getByTestId("subagent-output")).toHaveAttribute("data-expanded", "true");
+      expect(getByRole("button", { name: "Show less" })).toBeInTheDocument();
+    } finally {
+      if (originalScrollHeight) {
+        Object.defineProperty(HTMLElement.prototype, "scrollHeight", originalScrollHeight);
+      }
+    }
+  });
+
   it("opens the recorded delegated session through the supplied boundary", () => {
     const openSession = vi.fn();
     render(
@@ -1155,11 +1201,19 @@ describe("MessageItem streaming render", () => {
 
     await waitFor(() => expect(container.querySelector("a")).toHaveTextContent("the guide"));
     expect(container.querySelector("a")).toHaveClass("text-white");
-    expect(container.querySelector("code")).toHaveClass(
-      "border-white/20",
-      "bg-white/10",
-      "text-white",
+    expect(container.querySelector("code")).toHaveClass("bg-white/15", "text-white");
+    expect(container.querySelector("code")).not.toHaveClass("border");
+  });
+
+  it("gives assistant bubbles a white surface in light theme and soft chips for inline code", async () => {
+    const { container } = render(
+      <MessageItem msg={{ role: "assistant", content: "Main document is back on `main.tex`." }} />,
     );
+    await waitFor(() => expect(container.querySelector("code")).toHaveTextContent("main.tex"));
+    expect(container.querySelector("code")).toHaveClass("bg-primary/10", "text-primary", "rounded-md");
+    expect(container.querySelector("code")).not.toHaveClass("border");
+    const bubble = container.querySelector(".chat-markdown")?.parentElement;
+    expect(bubble).toHaveClass("bg-background", "dark:bg-muted");
   });
 
   it("renders closed math while the assistant message streams", async () => {

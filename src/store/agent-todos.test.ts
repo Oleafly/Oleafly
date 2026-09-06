@@ -8,6 +8,7 @@ beforeEach(() => {
   useAgentTodoStore.setState({
     projectId: null,
     activeChatId: null,
+    viewChatId: null,
     todos: [],
     todosByChat: {},
   });
@@ -38,6 +39,7 @@ describe("agent todo progress", () => {
 describe("todo project binding", () => {
   it("keeps the last checklist across a same-project remount and clears it for another project", () => {
     useAgentTodoStore.getState().bindProject("project-1");
+    useAgentTodoStore.getState().selectChat("chat-a");
     useAgentTodoStore.getState().setTodos([
       { id: "done", content: "Finished step", status: "completed" },
     ]);
@@ -47,6 +49,42 @@ describe("todo project binding", () => {
 
     useAgentTodoStore.getState().bindProject("project-2");
     expect(useAgentTodoStore.getState().todos).toEqual([]);
+  });
+
+  it("drops checklist writes when no chat is bound or shown", () => {
+    useAgentTodoStore.getState().bindProject("project-1");
+    useAgentTodoStore.getState().setTodos([{ id: "a", content: "Orphan", status: "pending" }]);
+    expect(useAgentTodoStore.getState().todos).toEqual([]);
+    expect(useAgentTodoStore.getState().todosByChat).toEqual({});
+  });
+
+  it("keeps a background run's checklist out of the project shown on screen", () => {
+    const store = useAgentTodoStore.getState();
+    store.bindProject("project-1");
+    store.beginTurn("chat-a");
+    store.setTodos([{ id: "a", content: "Project A step", status: "in_progress" }]);
+
+    useAgentTodoStore.getState().bindProject("project-2");
+    useAgentTodoStore.getState().selectChat("chat-b");
+    useAgentTodoStore
+      .getState()
+      .setTodos([{ id: "a2", content: "Project A step two", status: "in_progress" }]);
+    expect(useAgentTodoStore.getState().todos).toEqual([]);
+    expect(readStoredTodos("chat-a")).toEqual([
+      { id: "a2", content: "Project A step two", status: "in_progress" },
+    ]);
+
+    useAgentTodoStore.getState().finishTurn("chat-a");
+    expect(useAgentTodoStore.getState().todos).toEqual([]);
+    expect(readStoredTodos("chat-a")).toEqual([
+      { id: "a2", content: "Project A step two", status: "completed" },
+    ]);
+
+    useAgentTodoStore.getState().bindProject("project-1");
+    useAgentTodoStore.getState().selectChat("chat-a");
+    expect(useAgentTodoStore.getState().todos).toEqual([
+      { id: "a2", content: "Project A step two", status: "completed" },
+    ]);
   });
 
   it("restores the last checklist for each chat", () => {
@@ -68,6 +106,59 @@ describe("todo project binding", () => {
     expect(useAgentTodoStore.getState().todos).toEqual([
       { id: "a", content: "Chat A step", status: "completed" },
     ]);
+  });
+});
+
+describe("turn settlement", () => {
+  it("marks the running step done when the turn ends cleanly", () => {
+    const store = useAgentTodoStore.getState();
+    store.bindProject("project-1");
+    store.beginTurn("chat-a");
+    store.setTodos([
+      { id: "a", content: "Inspect", status: "completed" },
+      { id: "b", content: "Synthesize", status: "in_progress" },
+    ]);
+    store.finishTurn("chat-a");
+    expect(useAgentTodoStore.getState().todos).toEqual([
+      { id: "a", content: "Inspect", status: "completed" },
+      { id: "b", content: "Synthesize", status: "completed" },
+    ]);
+    expect(agentTodoProgress(useAgentTodoStore.getState().todos)).toEqual({
+      current: 2,
+      total: 2,
+    });
+  });
+
+  it("returns the running step to pending when the turn stops early", () => {
+    const store = useAgentTodoStore.getState();
+    store.bindProject("project-1");
+    store.beginTurn("chat-a");
+    store.setTodos([
+      { id: "a", content: "Inspect", status: "completed" },
+      { id: "b", content: "Edit", status: "in_progress" },
+      { id: "c", content: "Verify", status: "pending" },
+    ]);
+    store.finishTurn("chat-a", "paused");
+    expect(useAgentTodoStore.getState().todos.map((todo) => todo.status)).toEqual([
+      "completed",
+      "pending",
+      "pending",
+    ]);
+    expect(readStoredTodos("chat-a").map((todo) => todo.status)).toEqual([
+      "completed",
+      "pending",
+      "pending",
+    ]);
+  });
+
+  it("ignores a finish for a chat that does not own the turn", () => {
+    const store = useAgentTodoStore.getState();
+    store.bindProject("project-1");
+    store.beginTurn("chat-a");
+    store.setTodos([{ id: "b", content: "Edit", status: "in_progress" }]);
+    store.finishTurn("chat-b");
+    expect(useAgentTodoStore.getState().activeChatId).toBe("chat-a");
+    expect(useAgentTodoStore.getState().todos[0].status).toBe("in_progress");
   });
 });
 
@@ -101,6 +192,7 @@ describe("plan carry-over and persistence", () => {
     useAgentTodoStore.setState({
       projectId: null,
       activeChatId: null,
+      viewChatId: null,
       todos: [],
       todosByChat: {},
     });
@@ -125,6 +217,7 @@ describe("plan carry-over and persistence", () => {
     useAgentTodoStore.setState({
       projectId: null,
       activeChatId: null,
+      viewChatId: null,
       todos: [],
       todosByChat: {},
     });

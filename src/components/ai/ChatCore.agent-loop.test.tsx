@@ -992,6 +992,63 @@ describe("ChatCore agent turns", () => {
     );
   });
 
+  it("marks the running step done once the turn ends cleanly", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "Review the manuscript");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    act(() => {
+      useAgentTodoStore.getState().setTodos([
+        { id: "1", content: "Inspect", status: "completed" },
+        { id: "2", content: "Synthesize", status: "in_progress" },
+      ]);
+    });
+    expect(rendered.getByTestId("agent-status-pill")).toBeInTheDocument();
+    expect(mocks.planProps.at(-1)?.todos).toHaveLength(2);
+
+    await act(async () => finishRun(0, "Here is the synthesis."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    await waitFor(() =>
+      expect(useAgentTodoStore.getState().todos.map((todo) => todo.status)).toEqual([
+        "completed",
+        "completed",
+      ]),
+    );
+    expect(rendered.queryByTestId("agent-status-pill")).toBeNull();
+    await waitFor(() => expect(rendered.getByTestId("agent-run-summary")).toBeInTheDocument());
+    const summaryTodos = (mocks.runSummaryProps.at(-1)?.todos ?? []) as Array<{ status: string }>;
+    expect(summaryTodos).toHaveLength(2);
+    expect(summaryTodos.every((todo) => todo.status === "completed")).toBe(true);
+  });
+
+  it("returns the running step to pending when the turn is stopped", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "Review the manuscript");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    act(() => {
+      useAgentTodoStore.getState().setTodos([
+        { id: "1", content: "Inspect", status: "completed" },
+        { id: "2", content: "Edit", status: "in_progress" },
+        { id: "3", content: "Verify", status: "pending" },
+      ]);
+    });
+
+    fireEvent.click(rendered.getByRole("button", { name: "Stop" }));
+    await act(async () => finishRun(0, ""));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    await waitFor(() =>
+      expect(useAgentTodoStore.getState().todos.map((todo) => todo.status)).toEqual([
+        "completed",
+        "pending",
+        "pending",
+      ]),
+    );
+    expect(rendered.getByTestId("agent-status-pill")).toBeInTheDocument();
+    const pillTodos = (mocks.planProps.at(-1)?.todos ?? []) as Array<{ status: string }>;
+    expect(pillTodos.map((todo) => todo.status)).toEqual(["completed", "pending", "pending"]);
+  });
+
   it("clears the previous checklist when starting a new chat", async () => {
     const rendered = await renderChat();
     submit(rendered, "Finish a planned turn");

@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
   Circle,
+  CircleSlash,
   Copy,
   Info,
   Loader2,
@@ -23,6 +24,8 @@ import {
 } from "@/store/agent-file-changes";
 import { Markdown } from "@/components/ui/markdown";
 import { Popover } from "@/components/ui/popover";
+import { AgentLogo } from "@/components/ai/acp/AgentLogo";
+import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { ResearchToolCard } from "@/components/ai/activity/ResearchToolCard";
 import { lastFinishedPicture, ToolPicture } from "@/components/ai/activity/ToolPicture";
 import { usePersistentExpansion } from "@/components/ai/activity/expansion-state";
@@ -901,8 +904,27 @@ export function ReasoningBlock({
   );
 }
 
+const SUBAGENT_PREVIEW_HEIGHT = 176;
+
+function SubagentIdentity({ entry }: { entry: SubagentEntry }) {
+  if (entry.runtime === "acp" && entry.agentId) {
+    return <AgentLogo agentId={entry.agentId} size={14} />;
+  }
+  if (entry.providerId) return <ProviderLogo providerId={entry.providerId} size={14} />;
+  return <Bot aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />;
+}
+
+function SubagentStatusIcon({ state }: { state: string }) {
+  if (state === "done") return <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />;
+  if (state === "error") return <XCircle className="size-3.5 shrink-0 text-destructive" />;
+  if (state === "interrupted") {
+    return <CircleSlash className="size-3.5 shrink-0 text-muted-foreground" />;
+  }
+  return <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />;
+}
+
 // Delegated child run, in the multi-agent-action card shape: what it was
-// asked, where it is, and a preview of what came back.
+// asked, where it is, and what came back.
 export function SubagentCard({
   entry,
   actions,
@@ -910,56 +932,140 @@ export function SubagentCard({
   entry: SubagentEntry;
   actions?: ResearchChatActions;
 }) {
-  const running = entry.state !== "done" && entry.state !== "error";
+  const settled =
+    entry.state === "done" || entry.state === "error" || entry.state === "interrupted";
+  const running = !settled;
   const detail = splitAgentNotices(entry.detail ?? "");
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const bodyId = useId();
+
+  useEffect(() => {
+    const node = bodyRef.current;
+    if (!node || running) {
+      setOverflows(false);
+      return;
+    }
+    const measure = () => setOverflows(node.scrollHeight > SUBAGENT_PREVIEW_HEIGHT + 8);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [running]);
+
+  const openSession =
+    entry.sessionId && actions?.openSession
+      ? () => {
+          if (entry.sessionId) {
+            actions.openSession?.({ threadId: entry.sessionId, runtime: entry.runtime });
+          }
+        }
+      : null;
+  const statusLabel =
+    entry.state === "done"
+      ? "Finished"
+      : entry.state === "error"
+        ? "Failed"
+        : entry.state === "interrupted"
+          ? "Stopped"
+          : entry.state === "tool" && detail.text
+            ? `Using ${detail.text}`
+            : "Working on it";
+
   return (
     <div
       data-testid="subagent-card"
       data-subagent-state={entry.state}
-      className="max-w-[85%] rounded-md border bg-muted text-xs"
+      className="max-w-[85%] overflow-hidden rounded-lg border bg-muted/60 text-xs"
     >
-      <div className="flex items-center gap-2 px-2.5 py-1.5">
-        <Bot className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate font-medium">{entry.label}</span>
-        {running && <Loader2 className="size-3 shrink-0 animate-spin" />}
-        {entry.state === "done" && (
-          <CheckCircle2 className="size-3 shrink-0 text-emerald-500" />
+      <div className="flex items-center gap-2 px-2.5 py-2">
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-md border bg-background">
+          <SubagentIdentity entry={entry} />
+        </span>
+        <span className="min-w-0 flex-1 truncate font-medium text-foreground">{entry.label}</span>
+        {entry.modelId && (
+          <span
+            data-testid="subagent-model"
+            className="hidden max-w-[10rem] shrink-0 truncate rounded-full border bg-background px-1.5 py-px font-mono text-[10px] text-muted-foreground sm:inline"
+          >
+            {entry.modelId}
+          </span>
         )}
-        {entry.state === "error" && (
-          <XCircle className="size-3 shrink-0 text-destructive" />
-        )}
+        <SubagentStatusIcon state={entry.state} />
+        {settled && <span className="sr-only">{statusLabel}</span>}
       </div>
-      {(running || detail.text) && (
+      {running && (
         <div className="border-t px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground">
-          {running
-            ? entry.state === "tool" && detail.text
-              ? `Using ${detail.text}`
-              : "Working on it"
-            : detail.text}
+          <Shimmer text={statusLabel} />
+        </div>
+      )}
+      {!running && (detail.text || entry.state !== "done") && (
+        <div className="relative border-t">
+          <div
+            id={bodyId}
+            ref={bodyRef}
+            data-testid="subagent-output"
+            data-expanded={expanded ? "true" : "false"}
+            className={cn(
+              "px-2.5 py-2 text-[11px] leading-relaxed text-foreground/90",
+              !expanded && "max-h-44 overflow-hidden",
+            )}
+          >
+            {detail.text ? (
+              <Markdown className="chat-markdown">{detail.text}</Markdown>
+            ) : (
+              <span className="text-muted-foreground">
+                {entry.state === "error"
+                  ? "The agent could not complete this task."
+                  : "The task was stopped before it answered."}
+              </span>
+            )}
+          </div>
+          {overflows && !expanded && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-muted to-transparent"
+            />
+          )}
         </div>
       )}
       {detail.notices.map((notice) => (
         <p
           key={notice}
           data-testid="agent-notice"
-          className="border-t px-2.5 py-1.5 text-[10px] leading-snug text-muted-foreground"
+          className="flex items-start gap-1.5 border-t bg-amber-500/5 px-2.5 py-1.5 text-[10px] leading-snug text-muted-foreground"
         >
-          {notice}
+          <Info aria-hidden="true" className="mt-px size-3 shrink-0 text-amber-500" />
+          <span className="min-w-0">{notice}</span>
         </p>
       ))}
-      {entry.sessionId && actions?.openSession && (
-        <div className="border-t px-2 py-1">
-          <button
-            type="button"
-            className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent"
-            onClick={() => {
-              if (entry.sessionId) {
-                actions.openSession?.({ threadId: entry.sessionId, runtime: entry.runtime });
-              }
-            }}
-          >
-            Open task
-          </button>
+      {(overflows || openSession) && (
+        <div className="flex items-center justify-between gap-2 border-t px-1.5 py-1">
+          <span>
+            {overflows && (
+              <button
+                type="button"
+                aria-expanded={expanded}
+                aria-controls={bodyId}
+                className="rounded px-1.5 py-1 text-[10px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                onClick={() => setExpanded((value) => !value)}
+              >
+                {expanded ? "Show less" : "Show more"}
+              </button>
+            )}
+          </span>
+          {openSession && (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-foreground hover:bg-accent"
+              onClick={openSession}
+            >
+              Open task
+              <ChevronRight aria-hidden="true" className="size-3" />
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -1195,7 +1301,7 @@ export const MessageItem = memo(function MessageItem({
               "overflow-hidden rounded-lg px-3 py-2 text-sm",
               msg.role === "user"
                 ? "max-w-[85%] bg-primary text-white"
-                : "w-full bg-muted text-foreground",
+                : "w-full bg-background text-foreground ring-1 ring-border/60 dark:bg-muted dark:ring-0",
             )}
           >
             {tokenizedUserText ?? (

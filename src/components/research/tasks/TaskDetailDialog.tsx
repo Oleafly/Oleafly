@@ -288,7 +288,7 @@ export function TaskDetailDialog({
                 </DialogTitle>
                 <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
                   <TaskStatusBadge status={task.status} />
-                  <TaskAgentChip task={task} agentName={agentName} className="max-w-[22rem]" />
+                  <TaskAgentChip task={task} agentName={agentName} showAgent className="max-w-[22rem]" />
                   <span className="text-[11px] tabular-nums text-muted-foreground">
                     {relativeTime(task.updatedAt)}
                   </span>

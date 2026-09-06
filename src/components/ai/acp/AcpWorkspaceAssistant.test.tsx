@@ -253,6 +253,27 @@ describe("ACP assistant acceptance", () => {
     await waitFor(() => expect(reopened.getByRole("combobox", { name: "Agent" })).toHaveTextContent("Claude Code"));
   });
 
+  it("starts a conversation from the empty state and shows the session status inside the composer", async () => {
+    useAcpSessionsStore.setState({ activeByProject: {} });
+    snapshots = {};
+    vi.mocked(acpStart).mockResolvedValueOnce({ session: session("new"), permissions: [] });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const start = await ui.findByTestId("acp-start-conversation");
+    expect(ui.getByTestId("acp-empty-intro")).toHaveTextContent("Work with a CLI agent in this project");
+    expect(ui.queryByTestId("acp-session-status")).not.toBeInTheDocument();
+    expect(ui.container).not.toHaveTextContent("CLI account limits apply");
+    await waitFor(() => expect(start).toBeEnabled());
+    fireEvent.click(start);
+    await waitFor(() => expect(acpStart).toHaveBeenCalledExactlyOnceWith("paper", "fixture"));
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("fixture · ready"));
+    expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready");
+    expect(ui.getByTestId("acp-empty-ready")).toHaveTextContent("Research CLI is ready");
+    const controls = ui.getByTestId("acp-composer-controls");
+    expect(within(controls).getByRole("combobox", { name: "Agent" })).toHaveTextContent("Research CLI");
+    expect(within(controls).getByRole("combobox", { name: "Agent model" })).toHaveTextContent("First model");
+    expect(within(controls).getByRole("button", { name: "Send" })).toBeDisabled();
+  });
+
   it("keeps the composer draft when the panel unmounts", async () => {
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
