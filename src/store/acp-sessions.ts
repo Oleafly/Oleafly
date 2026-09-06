@@ -22,6 +22,7 @@ interface AcpState {
   loadProject: (projectId: string) => Promise<void>;
   open: (projectId: string, id: string) => Promise<void>;
   start: (projectId: string, agentId: string) => Promise<void>;
+  starting: Record<string, boolean>;
   loadEarlier: (projectId: string, id: string) => Promise<void>;
   resync: (projectId: string, id: string) => Promise<void>;
   setSnapshot: (snapshot: AcpSnapshot) => void;
@@ -43,7 +44,7 @@ export function mergeAcpEvents(current: readonly AcpEvent[], incoming: readonly 
 let catalogRequest = 0;
 
 export const useAcpSessionsStore = create<AcpState>((set, get) => ({
-  catalog: [], sessions: {}, activeByProject: {}, events: {}, permissions: {}, composers: {}, errors: {},
+  catalog: [], sessions: {}, activeByProject: {}, events: {}, permissions: {}, composers: {}, errors: {}, starting: {},
   setError: (projectId, message) => set((state) => state.errors[projectId] === message ? state : ({ errors: { ...state.errors, [projectId]: message } })),
   refreshCatalog: async (probe = false) => {
     const request = ++catalogRequest;
@@ -65,14 +66,19 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
   setActive: (projectId, id) => set((state) => ({ activeByProject: { ...state.activeByProject, [projectId]: id } })),
   setComposer: (projectId, patch) => set((state) => ({ composers: { ...state.composers, [projectId]: { ...EMPTY_COMPOSER, ...state.composers[projectId], ...patch } } })),
   start: async (projectId, agentId) => {
-    const openId = get().activeByProject[projectId];
-    const open = openId ? get().sessions[openId] : undefined;
-    if (openId && open && ["ready", "auth_required"].includes(open.status)) {
-      await acpDisconnect(projectId, openId);
+    set((state) => ({ starting: { ...state.starting, [projectId]: true } }));
+    try {
+      const openId = get().activeByProject[projectId];
+      const open = openId ? get().sessions[openId] : undefined;
+      if (openId && open && ["ready", "auth_required"].includes(open.status)) {
+        await acpDisconnect(projectId, openId);
+      }
+      const snapshot = await acpStart(projectId, agentId);
+      get().setSnapshot(snapshot);
+      get().setActive(projectId, snapshot.session.id);
+    } finally {
+      set((state) => ({ starting: { ...state.starting, [projectId]: false } }));
     }
-    const snapshot = await acpStart(projectId, agentId);
-    get().setSnapshot(snapshot);
-    get().setActive(projectId, snapshot.session.id);
   },
   open: async (projectId, id) => {
     get().setActive(projectId, id);

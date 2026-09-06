@@ -158,7 +158,13 @@ async function withAgent(page: Page, login: boolean, work: (fixture: AgentFixtur
     await openAcp(page);
     const assistant = page.locator(assistantSelector);
     await page.evaluate(acpCall("acpRegister", JSON.stringify(definition)));
-    await selectAppOption(page, "acp-agent-picker", definition.name);
+    const rosterButton = `[data-testid="agent-picker-${fixture.agentId}"]`;
+    await page.waitForFunction(`!!document.querySelector('${rosterButton}')`, 15_000);
+    await page.click(rosterButton);
+    await page.waitForFunction(
+      `document.querySelector('${rosterButton}')?.getAttribute('aria-pressed') === 'true'`,
+      10_000,
+    );
     await clickHeaderAction(page, "New conversation");
     await expect(assistant).toContainText(`${fixture.agentId} · ${login ? "auth required" : "ready"}`, { timeout: 30_000 });
     await work(fixture);

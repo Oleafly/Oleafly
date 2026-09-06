@@ -15,7 +15,7 @@ import { useResearchChatActions } from "@/components/ai/use-research-chat-action
 import { MessageList } from "@/components/ai/MessageList";
 import {
   acpAuthenticate, acpCancel, acpDisconnect, acpError, acpPermission, acpPrompt, acpReadiness,
-  acpReconnect, acpSetModel, type AcpAgentStatus, type AcpImage, type AcpReadiness, type AcpSession,
+  acpReconnect, acpSetModel, type AcpAgentStatus, type AcpImage, type AcpSession,
 } from "@/lib/acp";
 import { cn } from "@/lib/utils";
 import { attachAcpListeners, isDelegatedSession, useAcpSessionsStore, type AcpAttachment } from "@/store/acp-sessions";
@@ -26,7 +26,7 @@ import { useSkills, type SkillEntry } from "@/lib/skills";
 import { useSettingsStore } from "@/store/settings";
 import { AgentLogo } from "./AgentLogo";
 import { AGENT_MARK_IDS } from "./agent-marks";
-import { BridgeInstallCard, ReadinessBadge } from "./AgentReadiness";
+import { BridgeInstallCard } from "./AgentReadiness";
 import { PermissionCard } from "./PermissionCard";
 import { createAcpProjector } from "./projection";
 
@@ -53,6 +53,7 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
   const images = composer?.images ?? EMPTY_IMAGES;
   const setComposer = useAcpSessionsStore((state) => state.setComposer);
   const error = useAcpSessionsStore((state) => state.errors[projectId] ?? null);
+  const starting = useAcpSessionsStore((state) => state.starting[projectId] ?? false);
   const setProjectError = useAcpSessionsStore((state) => state.setError);
   const setError = useCallback(
     (message: string | null) => setProjectError(projectId, message),
@@ -214,7 +215,28 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
   return <section className="flex h-full min-h-0 flex-col bg-sidebar text-foreground" aria-label="CLI agent assistant">
     <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-3" onScroll={() => { const el = scrollRef.current; if (el) nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
       {events[0]?.sequence > 1 && <Button variant="outline" size="sm" type="button" className="mb-3 w-full" disabled={busy} onClick={() => { if (activeId) void perform(() => useAcpSessionsStore.getState().loadEarlier(projectId, activeId)); }}>Load earlier activity</Button>}
-      {messages.length > 0 ? (
+      {(busy || starting) && messages.length === 0 ? (
+        <div
+          data-testid="acp-connecting"
+          role="status"
+          className="mx-auto flex max-w-sm flex-col items-center gap-3 py-16 text-center"
+        >
+          <span className="flex size-12 items-center justify-center rounded-2xl border bg-background shadow-sm">
+            {agentId ? (
+              <AgentLogo agentId={agentId} size={22} />
+            ) : (
+              <Loader2 aria-hidden className="size-5 animate-spin text-muted-foreground" />
+            )}
+          </span>
+          <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Loader2 aria-hidden className="size-3.5 animate-spin text-muted-foreground" />
+            Starting {selectedAgent?.definition.name ?? "the agent"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            The agent's command line tool is launching. This takes a few seconds the first time.
+          </p>
+        </div>
+      ) : messages.length > 0 ? (
         <MessageList actions={researchChatActions} messages={messages} chatId={activeId} scrollRef={scrollRef} nearBottomRef={nearBottomRef} />
       ) : (
         <AssistantHome
@@ -222,20 +244,12 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
           onPickSkill={pickSkill}
           onOpenSkills={openSkillsSettings}
           quickStartTestId="acp-quick-start"
-        >
-          <AcpEmptyState
-            catalog={catalog}
-            agentId={agentId}
-            selectedAgent={selectedAgent}
-            readiness={selectedReadiness}
-            session={session}
-            canStart={canStart}
-            pickerDisabled={running || busy}
-            onPickAgent={chooseAgent}
-            onStart={start}
-            onError={setError}
-          />
-        </AssistantHome>
+          subtitle={
+            session?.status === "ready"
+              ? `${selectedAgent?.definition.name ?? session.agentId} is ready in this project`
+              : undefined
+          }
+        />
       )}
     </div>
     {(error || session?.error) && <div role="alert" className="mx-3 my-2 rounded-md border border-destructive/40 p-2 text-xs text-destructive">{error ?? session?.error}</div>}
@@ -252,7 +266,23 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
     {permissions.length > 0 && <div className="max-h-64 space-y-2 overflow-y-auto border-t border-border p-3">
       {permissions.map((request) => <PermissionCard key={request.id} request={request} agentName={selectedAgent?.definition.name ?? session?.agentId} onChoose={choosePermission} />)}
     </div>}
-    <form className="p-3 pt-2" onSubmit={(event) => { event.preventDefault(); void send(); }}>
+    {selectedAgent && selectedReadiness !== "ready" && (
+      <div data-testid="acp-readiness-card" className="px-3 pb-2 pt-1">
+        <BridgeInstallCard agent={selectedAgent} onError={setError} />
+      </div>
+    )}
+    <div className="px-3 pb-1.5 pt-1">
+      <AgentPickerRow
+        agents={agentRoster(catalog)}
+        selectedId={agentId}
+        disabled={running || busy || starting}
+        onSelect={(id) => {
+          if (catalog.some((agent) => agent.definition.id === id)) chooseAgent(id);
+          else openCliAgentSettings();
+        }}
+      />
+    </div>
+    <form className="p-3 pt-1" onSubmit={(event) => { event.preventDefault(); void send(); }}>
       {images.length > 0 && <div className="mb-2 flex flex-wrap gap-1.5">
         {images.map((value, index) => (
           <Button key={value.id} type="button" variant="outline" size="xs" aria-label={`Remove ${value.name}`} onClick={() => setImages(images.filter((_, position) => position !== index))}>
@@ -291,21 +321,21 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
                 </button>
               </Tooltip>
             )}
-            <Select value={agentId ?? ""} disabled={running || busy} onValueChange={chooseAgent}>
-              <SelectTrigger aria-label="Agent" data-testid="acp-agent-picker" className="h-7 w-auto min-w-0 max-w-44 shrink-0 gap-1 border-0 bg-transparent px-2 text-xs font-medium shadow-none hover:bg-accent focus:ring-0">
-                {agentId && <span className="flex size-4 shrink-0 items-center justify-center [&>svg]:block"><AgentLogo agentId={agentId} size={14} /></span>}
-                <SelectValue placeholder="Choose a CLI agent" />
-              </SelectTrigger>
-              <SelectContent className="z-[100]">
-                {catalog.map((agent) => (
-                  <SelectItem key={agent.definition.id} value={agent.definition.id} icon={<AgentLogo agentId={agent.definition.id} size={14} />}>
-                    {agent.definition.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {session && <SessionStatusPill session={session} busy={busy} />}
-            {selectedAgent && selectedReadiness !== "ready" && <ReadinessBadge readiness={selectedReadiness ?? "unavailable"} />}
+            {session ? (
+              <SessionStatusPill session={session} busy={busy} />
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                data-testid="acp-start-conversation"
+                className="h-7 shrink-0"
+                disabled={!canStart || starting}
+                onClick={start}
+              >
+                <Plus className="size-3.5" />
+                Start a conversation with {selectedAgent?.definition.name ?? "an agent"}
+              </Button>
+            )}
           </div>
           <div className="ai-composer-controls-right ml-auto flex shrink-0 flex-nowrap items-center gap-1">
             {session && session.controls.models.length > 0 ? (
@@ -420,63 +450,3 @@ const AGENT_ROSTER_NAMES: Record<string, string> = {
   qoder: "Qoder",
   antigravity: "Google Antigravity",
 };
-
-function AcpEmptyState({
-  catalog,
-  agentId,
-  selectedAgent,
-  readiness,
-  session,
-  canStart,
-  pickerDisabled,
-  onPickAgent,
-  onStart,
-  onError,
-}: {
-  catalog: AcpAgentStatus[];
-  agentId: string | null;
-  selectedAgent: AcpAgentStatus | undefined;
-  readiness: AcpReadiness | null;
-  session: AcpSession | undefined;
-  canStart: boolean;
-  pickerDisabled: boolean;
-  onPickAgent: (id: string) => void;
-  onStart: () => void;
-  onError: (message: string) => void;
-}) {
-  const roster = agentRoster(catalog);
-  const agentName = selectedAgent?.definition.name ?? "a CLI agent";
-  const ready = session?.status === "ready";
-  const knownAgent = !agentId || catalog.some((agent) => agent.definition.id === agentId);
-  return (
-    <div className="flex w-full flex-col items-center gap-4">
-      <AgentPickerRow
-        agents={roster}
-        selectedId={agentId}
-        disabled={pickerDisabled}
-        onSelect={(id) => {
-          if (catalog.some((agent) => agent.definition.id === id)) onPickAgent(id);
-          else openCliAgentSettings();
-        }}
-      />
-      {ready ? (
-        <p data-testid="acp-empty-ready" className="text-xs text-muted-foreground">
-          {agentName} is ready. Ask it to review, edit, or build something in this project.
-        </p>
-      ) : (
-        <div data-testid="acp-empty-intro" className="flex w-full max-w-sm flex-col items-center gap-3">
-          {!knownAgent ? null : selectedAgent && readiness !== "ready" ? (
-            <div className="w-full text-left">
-              <BridgeInstallCard agent={selectedAgent} onError={onError} />
-            </div>
-          ) : (
-            <Button type="button" size="sm" data-testid="acp-start-conversation" disabled={!canStart} onClick={onStart}>
-              <Plus className="size-3.5" />
-              Start a conversation with {agentName}
-            </Button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}

@@ -31,7 +31,7 @@ import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useSettingsStore } from "@/store/settings";
 import { AssistantShellAcpActions } from "@/components/ai/AssistantShellAcpActions";
 import {
-  agent, chooseMenuItem, chooseOption, deferred, event, menuItemNames, optionNames, session,
+  agent, chooseMenuItem, chooseOption, deferred, event, menuItemNames, session,
 } from "./tests/ui-fixtures";
 import { AcpWorkspaceAssistant } from "./AcpWorkspaceAssistant";
 
@@ -139,7 +139,7 @@ describe("ACP assistant acceptance", () => {
     vi.mocked(acpReconnect).mockResolvedValue({ session: session("new"), permissions: [] });
     vi.mocked(acpSetModel).mockImplementation(async (_project, id, modelId) => ({ session: { ...session(id), controls: { ...session(id).controls, modelId } }, permissions: [] }));
     const ui = render(<AcpWorkspace />);
-    await waitFor(() => expect(ui.getByRole("combobox", { name: "Agent" })).toHaveTextContent("Research CLI"));
+    await waitFor(() => expect(ui.getByTestId("agent-picker-fixture")).toHaveTextContent("Research CLI"));
     fireEvent.click(ui.getByRole("button", { name: "New conversation" }));
     expect(await ui.findByRole("alert")).toHaveTextContent("The agent executable is missing.");
     expect(ui.getByLabelText("Message CLI agent")).toBeDisabled();
@@ -251,10 +251,14 @@ describe("ACP assistant acceptance", () => {
     });
     vi.mocked(acpCatalog).mockResolvedValue([missing, agent()]);
     const ui = render(<AcpWorkspace />);
-    await waitFor(() => expect(ui.getByRole("combobox", { name: "Agent" })).toHaveTextContent("Research CLI"));
+    await waitFor(() => expect(ui.getByTestId("agent-picker-fixture")).toHaveTextContent("Research CLI"));
     expect(ui.getByRole("button", { name: "New conversation" })).toBeEnabled();
-    expect(await optionNames(ui.getByRole("combobox", { name: "Agent" }))).toEqual(["Claude Code", "Research CLI"]);
-    await chooseOption(ui.getByRole("combobox", { name: "Agent" }), "Claude Code");
+    expect(
+      [...ui.getByTestId("agent-picker-row").querySelectorAll("button")]
+        .map((node) => node.getAttribute("aria-label"))
+        .slice(0, 2),
+    ).toEqual(["Claude Code", "Research CLI"]);
+    fireEvent.click(ui.getByTestId("agent-picker-claude"));
     await waitFor(() => expect(ui.getByRole("button", { name: "New conversation" })).toBeDisabled());
     expect(ui.getByTestId("acp-bridge-card-claude")).toHaveTextContent(
       "Claude Code 2.1.258 found at /home/researcher/.local/bin/claude",
@@ -263,7 +267,7 @@ describe("ACP assistant acceptance", () => {
     expect(useAcpSessionsStore.getState().composers.paper?.agentId).toBe("claude");
     ui.unmount();
     const reopened = render(<AcpWorkspaceAssistant projectId="paper" />);
-    await waitFor(() => expect(reopened.getByRole("combobox", { name: "Agent" })).toHaveTextContent("Claude Code"));
+    await waitFor(() => expect(reopened.getByTestId("agent-picker-claude")).toHaveTextContent("Claude Code"));
   });
 
   it("starts a conversation from the empty state and shows the session status inside the composer", async () => {
@@ -288,10 +292,11 @@ describe("ACP assistant acceptance", () => {
     await waitFor(() => expect(acpStart).toHaveBeenCalledExactlyOnceWith("paper", "fixture"));
     await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("fixture · ready"));
     expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready");
-    expect(ui.getByTestId("acp-empty-ready")).toHaveTextContent("Research CLI is ready");
+    expect(ui.getByTestId("assistant-home")).toHaveTextContent("Research CLI is ready in this project");
     expect(ui.getByTestId("agent-picker-row")).toBeInTheDocument();
+    expect(ui.queryByTestId("acp-start-conversation")).not.toBeInTheDocument();
     const controls = ui.getByTestId("acp-composer-controls");
-    expect(within(controls).getByRole("combobox", { name: "Agent" })).toHaveTextContent("Research CLI");
+    expect(ui.getByTestId("agent-picker-fixture")).toHaveTextContent("Research CLI");
     expect(within(controls).getByRole("combobox", { name: "Agent model" })).toHaveTextContent("First model");
     expect(within(controls).getByRole("button", { name: "Send" })).toBeDisabled();
   });
@@ -309,7 +314,7 @@ describe("ACP assistant acceptance", () => {
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
     expect(ui.getByTestId("acp-session-status")).toHaveTextContent("fixture · ready");
 
-    await chooseOption(ui.getByRole("combobox", { name: "Agent" }), "Other CLI");
+    fireEvent.click(ui.getByTestId("agent-picker-other"));
 
     await waitFor(() => expect(acpStart).toHaveBeenCalledExactlyOnceWith("paper", "other"));
     expect(acpDisconnect).toHaveBeenCalledExactlyOnceWith("paper", "saved");
@@ -327,12 +332,34 @@ describe("ACP assistant acceptance", () => {
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
 
-    await chooseOption(ui.getByRole("combobox", { name: "Agent" }), "Missing CLI");
+    fireEvent.click(ui.getByTestId("agent-picker-missing"));
 
     await waitFor(() => expect(acpDisconnect).toHaveBeenCalledExactlyOnceWith("paper", "saved"));
     expect(acpStart).not.toHaveBeenCalled();
     await waitFor(() => expect(useAcpSessionsStore.getState().activeByProject.paper).toBeNull());
     expect(ui.queryByTestId("acp-session-status")).not.toBeInTheDocument();
+  });
+
+  it("shows a starting state while a conversation opens from the header", async () => {
+    useAcpSessionsStore.setState({ activeByProject: {} });
+    snapshots = {};
+    const pending = deferred<AcpSnapshot>();
+    vi.mocked(acpStart).mockReturnValueOnce(pending.promise);
+    const ui = render(<AcpWorkspace />);
+    await waitFor(() => expect(ui.getByRole("button", { name: "New conversation" })).toBeEnabled());
+    expect(ui.queryByTestId("acp-connecting")).not.toBeInTheDocument();
+
+    fireEvent.click(ui.getByRole("button", { name: "New conversation" }));
+
+    const connecting = await ui.findByTestId("acp-connecting");
+    expect(connecting).toHaveTextContent("Starting Research CLI");
+    expect(ui.queryByTestId("assistant-home")).not.toBeInTheDocument();
+
+    await act(async () => {
+      pending.resolve({ session: session("new"), permissions: [] });
+    });
+    await waitFor(() => expect(ui.queryByTestId("acp-connecting")).not.toBeInTheDocument());
+    expect(ui.getByTestId("acp-session-status")).toHaveTextContent("fixture · ready");
   });
 
   it("keeps the composer draft when the panel unmounts", async () => {
