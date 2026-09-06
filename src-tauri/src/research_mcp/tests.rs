@@ -474,6 +474,7 @@ async fn a_device_enabled_skill_loads_with_its_folder_and_script_commands() {
     assert!(loaded["scripts"][0]["command"]
         .as_str()
         .unwrap()
+        .replace('\\', "/")
         .contains("scripts/verify_citations.py"));
 
     crate::skills::set_project_enabled(

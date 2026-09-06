@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
   NewProjectDialog as NewProjectDialogCore,
@@ -98,9 +98,22 @@ export function NewProjectDialog(props: {
   const [canGenerate, setCanGenerate] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
   const [kind, setKind] = useState<ProjectKind | null>(null);
+  // The flow hands off between two dialogs, so the one that closes last would
+  // restore focus to a card that no longer exists. Remember what opened the
+  // flow and give the focus back to that.
+  const openerRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    if (props.open) void generateTemplateAvailable().then(setCanGenerate);
-    else setKind(null);
+    if (props.open) {
+      openerRef.current = document.activeElement as HTMLElement | null;
+      void generateTemplateAvailable().then(setCanGenerate);
+      return;
+    }
+    setKind(null);
+    const opener = openerRef.current;
+    openerRef.current = null;
+    if (!opener?.isConnected) return;
+    const frame = requestAnimationFrame(() => opener.focus());
+    return () => cancelAnimationFrame(frame);
   }, [props.open]);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);

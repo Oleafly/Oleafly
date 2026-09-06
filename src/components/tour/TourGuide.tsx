@@ -451,6 +451,8 @@ export function stepNeedsScroll(element: Element | null): boolean {
   return rect.top < 0 || rect.top + leadIn > window.innerHeight;
 }
 
+const TOUR_DIALOG_POLL_ATTEMPTS = 40;
+
 export function joyrideDrawsSpotlight(placement?: string) {
   return (placement ?? "bottom") !== "center";
 }
@@ -1453,15 +1455,23 @@ export function TourGuide() {
     return () => window.clearTimeout(timeout);
   }, [activeStep, activeTourId]);
 
+  // The chooser is a portal and TourGuide is lazy, so the dialog's content is
+  // not reliably in the document by the time this effect runs. Poll briefly
+  // rather than reading the DOM once and giving up.
   useEffect(() => {
-    if (
-      activeTourId === "home" &&
-      activeStep?.id === "home-create" &&
-      newProjectOpen &&
-      document.querySelector('[data-tour="project-kind-chooser"]')
-    ) {
-      useTourStore.getState()[autoSkipAction(navigationDirection.current)]();
-    }
+    if (activeTourId !== "home" || activeStep?.id !== "home-create" || !newProjectOpen) return;
+    let attempts = 0;
+    let timer = 0;
+    const look = () => {
+      if (document.querySelector('[data-tour="project-kind-chooser"]')) {
+        useTourStore.getState()[autoSkipAction(navigationDirection.current)]();
+        return;
+      }
+      attempts += 1;
+      if (attempts < TOUR_DIALOG_POLL_ATTEMPTS) timer = window.setTimeout(look, 50);
+    };
+    timer = window.setTimeout(look, 0);
+    return () => window.clearTimeout(timer);
   }, [activeStep, activeTourId, newProjectOpen]);
 
   useEffect(() => {

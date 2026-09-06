@@ -1925,7 +1925,7 @@ fn resolved_program(name: &str) -> String {
 }
 
 fn quoted(value: &str) -> String {
-    serde_json::to_string(value).unwrap_or_else(|_| format!("\"{value}\""))
+    format!("\"{}\"", value.replace('"', "\\\""))
 }
 
 pub struct SkillScript {
@@ -2537,6 +2537,22 @@ mod tests {
     }
 
     #[test]
+    fn a_script_command_quotes_a_path_without_escaping_its_separators() {
+        assert_eq!(
+            quoted(r"C:\Users\me\skills\draft\scripts\check.py"),
+            r#""C:\Users\me\skills\draft\scripts\check.py""#
+        );
+        assert_eq!(
+            quoted("/home/me/skills/draft/scripts/check.py"),
+            r#""/home/me/skills/draft/scripts/check.py""#
+        );
+        assert_eq!(
+            quoted(r#"/tmp/say "hi"/run.py"#),
+            r#""/tmp/say \"hi\"/run.py""#
+        );
+    }
+
+    #[test]
     fn the_shared_tool_payload_carries_the_folder_and_a_command_per_script() {
         let root = tempfile::tempdir().unwrap();
         write_skill(
@@ -2563,7 +2579,10 @@ mod tests {
         );
         assert!(scripts[0].command.contains("python3"));
         assert!(scripts[0].command.contains(&draft.dir));
-        assert!(scripts[0].command.ends_with("scripts/check.py\""));
+        assert!(scripts[0]
+            .command
+            .replace('\\', "/")
+            .ends_with("scripts/check.py\""));
         assert!(scripts[1].command.contains("bash"));
 
         let payload = skill_tool_payload(draft);
