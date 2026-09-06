@@ -158,7 +158,7 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
   const canSend = session?.status === "ready" && !busy && (!!draft.trim() || images.length > 0);
   const composerDisabled = session?.status !== "ready" || sending;
 
-  return <section className="flex h-full min-h-0 flex-col bg-background text-foreground" aria-label="CLI agent assistant">
+  return <section className="flex h-full min-h-0 flex-col bg-sidebar text-foreground" aria-label="CLI agent assistant">
     <div className="space-y-1.5 border-b border-border px-3 py-2">
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         <Select value={agentId ?? ""} disabled={running || busy} onValueChange={(value) => setComposer(projectId, { agentId: value })}>

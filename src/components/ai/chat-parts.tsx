@@ -877,9 +877,9 @@ export function ReasoningBlock({
         {open ? (
           <ChevronDown className="size-3.5 shrink-0" />
         ) : (
-          <span className="relative flex size-3.5 shrink-0 items-center justify-center">
-            <Brain className={cn("size-3.5 transition-opacity group-hover:opacity-0", active && "ai-shimmer-icon")} />
-            <ChevronRight className="absolute inset-0 size-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
+          <span className="flex size-3.5 shrink-0 items-center justify-center">
+            <Brain className={cn("size-3.5 group-hover:hidden", active && "ai-shimmer-icon")} />
+            <ChevronRight className="hidden size-3.5 group-hover:block" />
           </span>
         )}
         {active ? <Shimmer text={label} /> : <span>{label}</span>}

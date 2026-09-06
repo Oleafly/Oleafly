@@ -42,9 +42,9 @@ function LeadingIcon({ view, expandable, expanded }: { view: ResearchToolView; e
   if (!expandable) return <ToolIcon view={view} />;
   if (expanded) return <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />;
   return (
-    <span className="relative flex size-3.5 shrink-0 items-center justify-center">
-      <ToolIcon view={view} className="transition-opacity group-hover:opacity-0" />
-      <ChevronRight className="absolute inset-0 size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+    <span className="flex size-3.5 shrink-0 items-center justify-center">
+      <ToolIcon view={view} className="group-hover:hidden" />
+      <ChevronRight className="hidden size-3.5 text-muted-foreground group-hover:block" />
     </span>
   );
 }
