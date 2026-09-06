@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { StreamLanguage } from "@codemirror/language";
@@ -143,7 +143,7 @@ export function ApprovalsFileEditor() {
           <ChevronRight className={cn("size-3 transition-transform", helpOpen && "rotate-90")} />
           How the file works
         </button>
-        <div className={cn("mt-2 space-y-2 text-muted-foreground", !helpOpen && "hidden")}>
+        <div className={cn("mt-2 min-w-0 space-y-2 break-words text-muted-foreground", !helpOpen && "hidden")}>
           <p>
             The first table, <code className="font-mono">["$approval_modes"]</code>, sets the
             approval mode per project: <code className="font-mono">"ask-for-approval"</code>,{" "}
@@ -169,11 +169,12 @@ export function ApprovalsFileEditor() {
               </>
             ) : null}
           </p>
-          <p>
-            Tool names you can use: {TOOL_NAMES.map((name) => (
-              <code key={name} className="mr-1 font-mono">
-                {name}
-              </code>
+          <p className="break-words">
+            Tool names you can use:{" "}
+            {TOOL_NAMES.map((name) => (
+              <Fragment key={name}>
+                <code className="font-mono">{name}</code>{" "}
+              </Fragment>
             ))}
             and any MCP tool by its full name from the Tools list.
           </p>

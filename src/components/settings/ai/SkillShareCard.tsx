@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Share2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { Switch } from "@/components/ui/switch";
 import { skillsShareSync, skillsShareTargets, type SkillShareTarget } from "@/lib/tauri";
@@ -64,7 +64,6 @@ export function SkillShareCard() {
   return (
     <CollapsibleSection
       id="skills-share-card"
-      icon={Share2}
       headingLevel="h4"
       title="Share skills with other agents on this computer"
       description="Link your skills into the folders other coding agents on this computer already read, so you write a skill once and every agent can use it."

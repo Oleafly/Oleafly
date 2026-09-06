@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FlaskConical, Settings2 } from "lucide-react";
+import { BetaBadge } from "@/components/ui/beta-badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResearchRootsPanel } from "@/components/research/workspace/ResearchRootsPanel";
@@ -69,7 +70,9 @@ export function ResearchWorkspacePanel() {
     <div className="flex h-full min-h-0 flex-col" data-testid="research-workspace-panel">
       <div className="flex h-10 shrink-0 items-center gap-2 border-b px-3">
         <FlaskConical className="size-4 text-muted-foreground" />
-        <h2 className="flex-1 text-sm font-medium">Research workspace</h2>
+        <h2 className="text-sm font-medium">Research workspace</h2>
+        <BetaBadge />
+        <span className="flex-1" />
         <Button variant="ghost" size="icon" className="size-7" aria-label="Configure research agents" onClick={openSettings}><Settings2 className="size-4" /></Button>
       </div>
       {configError && <p role="status" className="px-3 pt-2 text-xs text-destructive">{configError}</p>}

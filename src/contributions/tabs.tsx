@@ -25,6 +25,7 @@ export function registerRailTabs() {
     icon: FlaskConical,
     section: "assist",
     order: 60,
+    beta: true,
     panel: ResearchWorkspacePanel,
   });
   registerRailTab({

@@ -153,7 +153,7 @@ function AssistantHomeView({
       data-testid="assistant-home"
       className="mx-auto flex w-full max-w-2xl flex-col items-center gap-5 px-1 py-6 [container-type:inline-size]"
     >
-      {before}
+      <div className="flex h-28 w-full shrink-0 items-center justify-center">{before}</div>
       <div className="space-y-1 text-center">
         <h2 className="text-balance text-2xl font-semibold tracking-tight text-foreground">
           {plain}

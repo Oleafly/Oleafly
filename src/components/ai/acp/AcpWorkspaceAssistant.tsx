@@ -20,7 +20,6 @@ import {
 import { cn } from "@/lib/utils";
 import { attachAcpListeners, isDelegatedSession, useAcpSessionsStore, type AcpAttachment } from "@/store/acp-sessions";
 import { AssistantHome } from "@/components/ai/home/AssistantHome";
-import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
 import { AgentPickerRow, type AgentPickerEntry } from "@/components/ai/home/AgentPickerRow";
 import { openCliAgentSettings } from "@/components/ai/AssistantShellAcpActions";
 import { useSkills, type SkillEntry } from "@/lib/skills";
@@ -243,7 +242,13 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
         <MessageList actions={researchChatActions} messages={messages} chatId={activeId} scrollRef={scrollRef} nearBottomRef={nearBottomRef} />
       ) : (
         <AssistantHome
-          before={<OleaflyAssistantMascot />}
+          before={
+            agentId ? (
+              <span className="flex size-16 items-center justify-center rounded-2xl border bg-background shadow-sm">
+                <AgentLogo agentId={agentId} size={30} />
+              </span>
+            ) : null
+          }
           skills={skills}
           showSkills={!!session}
           onPickSkill={pickSkill}

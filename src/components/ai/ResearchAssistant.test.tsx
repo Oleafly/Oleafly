@@ -53,7 +53,7 @@ describe("ResearchAssistant shell", () => {
     expect(screen.queryByRole("button", { name: "New conversation" })).toBeNull();
     expect(runtimeButtons()).toEqual([
       { label: "Oleafly Agent", pressed: "true" },
-      { label: "CLI Agent", pressed: "false" },
+      { label: "CLI AgentBeta", pressed: "false" },
     ]);
   });
 
@@ -78,7 +78,7 @@ describe("ResearchAssistant shell", () => {
     expect(document.querySelectorAll('[aria-label="Assistant runtime"]')).toHaveLength(1);
     expect(runtimeButtons()).toEqual([
       { label: "Oleafly Agent", pressed: "false" },
-      { label: "CLI Agent", pressed: "true" },
+      { label: "CLI AgentBeta", pressed: "true" },
     ]);
   });
 
@@ -111,7 +111,7 @@ describe("ResearchAssistant shell", () => {
     expect(screen.queryByTestId("acp-assistant")).toBeNull();
     expect(runtimeButtons()).toEqual([
       { label: "Oleafly Agent", pressed: "true" },
-      { label: "CLI Agent", pressed: "false" },
+      { label: "CLI AgentBeta", pressed: "false" },
     ]);
     expect(useAssistantRuntimeStore.getState().runtime).toBe("acp");
   });

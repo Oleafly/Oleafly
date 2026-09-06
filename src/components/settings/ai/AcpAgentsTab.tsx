@@ -374,12 +374,9 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
     <section className="space-y-4" aria-label="ACP agents">
       <div className="space-y-2">
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Connect a local agent through ACP. Each agent manages its own models, tools and sign-in.
-          API provider settings are separate.
-        </p>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Use the official CLI account for sign-in. Oleafly does not import account tokens or
-          estimate subscription quotas.
+          Connect a local agent through ACP. Each agent manages its own models, tools and
+          sign-in, and API provider settings stay separate. Use the official CLI account for
+          sign-in: Oleafly does not import account tokens or estimate subscription quotas.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -392,11 +389,16 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
             }
           >
             {busy === "preflight" ? (
-              <Loader2 className="size-3.5 animate-spin" />
+              <>
+                <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+                Checking installed agents
+              </>
             ) : (
-              <RefreshCw className="size-3.5" />
+              <>
+                <RefreshCw aria-hidden="true" className="size-3.5" />
+                Check installed agents
+              </>
             )}
-            Check installed agents
           </Button>
           {projectId && (
             <Button variant="outline" size="sm" type="button" onClick={openTerminal}>
