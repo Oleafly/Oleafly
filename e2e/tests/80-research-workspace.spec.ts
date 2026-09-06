@@ -192,15 +192,26 @@ test("a linked folder keeps its access profile, previews a source, and unlinks w
       timeout: 20_000,
     });
 
+    // The button disables itself while the panel reloads, so a click can land
+    // on it between the readiness check and the commit that disables it and be
+    // discarded. Click until the dialog is actually up, the way the project
+    // creation helper does for the same reason.
     await tauriPage.waitForFunction(`(() => {
       const button = document.querySelector('[data-testid="research-root-link"]');
       return !!button && !button.disabled;
     })()`, 20_000);
-    await tauriPage.evaluate(`(() => {
-      document.querySelector('[data-testid="research-root-link"]').click();
-      return true;
-    })()`);
     const linkDialog = tauriPage.locator('[role="dialog"]:has(#new-research-root-path)');
+    const clickDeadline = Date.now() + 20_000;
+    for (;;) {
+      const opened = await tauriPage.evaluate<boolean>(`(() => {
+        if (document.querySelector('#new-research-root-path')) return true;
+        const button = document.querySelector('[data-testid="research-root-link"]');
+        if (button && !button.disabled) button.click();
+        return !!document.querySelector('#new-research-root-path');
+      })()`);
+      if (opened || Date.now() > clickDeadline) break;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
     try {
       await expect(linkDialog).toBeVisible({ timeout: 20_000 });
     } catch (error) {
