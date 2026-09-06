@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { FlaskConical, FolderInput, Loader2 } from "lucide-react";
 import {
   NewProjectDialog as NewProjectDialogCore,
   type TemplatesHost,
@@ -16,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/store/settings";
-import { ProjectImportMenu } from "@/components/library/ProjectImportMenu";
+import { ProjectImportDialog } from "@/components/library/ProjectImportDialog";
+import { ProjectKindChooser, type ProjectKind } from "@/components/library/ProjectKindChooser";
 import {
   Select,
   SelectContent,
@@ -97,9 +97,10 @@ export function NewProjectDialog(props: {
 }) {
   const [canGenerate, setCanGenerate] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
-  const [researchOpen, setResearchOpen] = useState(false);
+  const [kind, setKind] = useState<ProjectKind | null>(null);
   useEffect(() => {
     if (props.open) void generateTemplateAvailable().then(setCanGenerate);
+    else setKind(null);
   }, [props.open]);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
@@ -112,56 +113,39 @@ export function NewProjectDialog(props: {
   };
   return (
     <>
+      <ProjectKindChooser
+        open={props.open && kind === null}
+        allowClose={props.allowClose !== false}
+        onClose={props.onClose}
+        onChoose={setKind}
+      />
       <NewProjectDialogCore
         {...props}
-        open={props.open && !researchOpen}
+        open={props.open && kind === "template"}
+        onClose={() => {
+          setKind(null);
+          props.onClose();
+        }}
         onGenerateWithAi={canGenerate ? () => setGenerateOpen(true) : undefined}
-        importControl={
-          <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={props.busy || props.allowClose === false}
-            onClick={() => setResearchOpen(true)}
-            className="gap-2"
-            data-testid="new-research-project"
-          >
-            <FlaskConical className="size-4" /> Research project
-          </Button>
-          <ProjectImportMenu
-            align="end"
-            onImportSelected={props.onClose}
-            trigger={(busy) => (
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={busy}
-                className="gap-2"
-                data-testid="import-from-overleaf"
-                data-tour-hide
-              >
-                {busy ? (
-                  <Loader2 className="size-5 animate-spin" />
-                ) : (
-                  <FolderInput className="size-5" />
-                )}
-                Import
-              </Button>
-            )}
-          />
-          </div>
-        }
         onOpenTemplateDownloads={openTemplateDownloads}
         host={HOST}
         kit={KIT}
         colorOptions={BOOK_COLOR_OPTIONS}
         defaultColor={DEFAULT_BOOK_COLOR}
       />
+      <ProjectImportDialog
+        open={props.open && kind === "import"}
+        onClose={() => setKind(null)}
+        onImportStarted={props.onClose}
+      />
       <ResearchProjectSetup
-        open={props.open && researchOpen}
+        open={props.open && kind === "research"}
         ensureInitialTask={ensureResearchStarterTask}
-        onClose={() => setResearchOpen(false)}
-        onFinished={() => { setResearchOpen(false); props.onClose(); }}
+        onClose={() => setKind(null)}
+        onFinished={() => {
+          setKind(null);
+          props.onClose();
+        }}
         onCreated={async (projectId) => {
           await useFilesStore.getState().openProject(projectId);
         }}

@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
-import { FileText, Folder, Loader2 } from "lucide-react";
+import { ChevronRight, FolderOpen, FolderTree, Loader2, Star } from "lucide-react";
+import { FileIcon } from "@/components/files/fileIcon";
+import { HighlightedCode } from "@/components/ui/code-highlighter";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +50,15 @@ const TASK_TITLES: Record<ResearchStarter, string> = {
   thesis: "Plan the thesis",
   reproducible_analysis: "Plan the analysis",
 };
+
+const PREVIEW_TREE_SKELETON = [82, 58, 71, 46, 64, 52];
+const PREVIEW_TEXT_SKELETON = [92, 68, 79, 44, 86, 61, 74];
+
+function previewLanguage(path: string): string | undefined {
+  const extension = path.split(".").pop()?.toLowerCase();
+  if (!extension || extension === path.toLowerCase()) return undefined;
+  return extension;
+}
 
 export function ResearchProjectSetup({
   open,
@@ -172,7 +184,7 @@ export function ResearchProjectSetup({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && !creating && onClose()}>
-      <DialogContent className="max-h-[88vh] max-w-4xl overflow-hidden" closeDisabled={creating}>
+      <DialogContent className="max-h-[92vh] max-w-4xl overflow-hidden" closeDisabled={creating}>
         <DialogHeader>
           <DialogTitle>New research project</DialogTitle>
           <DialogDescription>Choose a starting structure and inspect every file before Oleafly creates it.</DialogDescription>
@@ -201,57 +213,156 @@ export function ResearchProjectSetup({
                 </SelectContent>
               </Select>
             </div>
-            <p className="text-xs leading-relaxed text-muted-foreground">{selectedStarter?.description}</p>
-            {preview && (
-              <div className="rounded-md border bg-muted/30 p-3">
+            <p className="min-h-[2.5rem] text-xs leading-relaxed text-muted-foreground">{selectedStarter?.description}</p>
+            <div className="flex min-h-[4.75rem] items-start gap-3 rounded-md border bg-muted/30 p-3">
+              <img
+                src="/project-kind/first-research-task.webp"
+                alt=""
+                aria-hidden="true"
+                draggable={false}
+                loading="lazy"
+                decoding="async"
+                className="pointer-events-none size-9 shrink-0 select-none object-contain"
+              />
+              <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium">First research task</p>
-                <p className="mt-1 text-xs text-muted-foreground">{preview.initialTask}</p>
-              </div>
-            )}
-          </div>
-          <div className="min-h-72 rounded-lg border bg-muted/20">
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <div>
-                <p className="text-sm font-medium">Project preview</p>
-                {preview && <p className="text-xs text-muted-foreground">Main document: {preview.mainDocument}</p>}
-              </div>
-              {previewing && <Loader2 className="animate-spin text-muted-foreground" />}
-            </div>
-            <div className="grid max-h-[52vh] min-h-64 overflow-hidden md:grid-cols-[minmax(12rem,0.45fr)_minmax(0,1fr)]">
-              <div className="overflow-auto border-r p-3">
-                {!preview ? (
-                  <p className="p-2 text-sm text-muted-foreground">Name the project to see its files.</p>
+                {preview ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{preview.initialTask}</p>
                 ) : (
-                  <ul className="space-y-1">
-                    {preview.files.map((file) => (
-                      <li key={file.path}>
-                        {file.kind === "directory" ? (
-                          <div className="flex items-center gap-2 rounded px-2 py-1 text-xs text-muted-foreground">
-                            <Folder />
-                            <span className="truncate">{file.path}</span>
-                          </div>
-                        ) : (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {previewing
+                      ? "Working out the first task…"
+                      : "Name the project to see the task Oleafly queues for it."}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex h-[32rem] flex-col overflow-hidden rounded-lg border bg-background">
+            <div className="flex h-9 items-center justify-between border-b bg-sidebar px-3">
+              <div className="flex items-center gap-1.5">
+                <FolderTree aria-hidden="true" className="size-3.5 text-muted-foreground" />
+                <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
+                  Project preview
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground">
+                  {preview ? `Main document: ${preview.mainDocument}` : "\u00a0"}
+                </span>
+                {previewing ? (
+                  <Loader2
+                    aria-label="Building the preview"
+                    className="size-3.5 animate-spin text-muted-foreground"
+                  />
+                ) : null}
+              </div>
+            </div>
+            <div className="grid min-h-0 flex-1 overflow-hidden md:grid-cols-[minmax(12rem,0.42fr)_minmax(0,1fr)]">
+              <div className="overflow-auto border-r bg-sidebar p-1.5">
+                {previewing && !preview ? (
+                  <ul className="space-y-1 p-1" aria-hidden="true">
+                    {PREVIEW_TREE_SKELETON.map((width) => (
+                      <li
+                        key={width}
+                        className="h-5 animate-pulse rounded bg-muted"
+                        style={{ width: `${width}%` }}
+                      />
+                    ))}
+                  </ul>
+                ) : !preview ? (
+                  <p className="p-2 text-sm text-muted-foreground">
+                    Name the project to see its files.
+                  </p>
+                ) : (
+                  <ul aria-label="Project preview files" className="space-y-px">
+                    {preview.files.map((file) => {
+                      const depth = file.path.split("/").length - 1;
+                      const name = file.path.split("/").pop() ?? file.path;
+                      const isMain = file.path === preview.mainDocument;
+                      const selected = selectedPreviewPath === file.path;
+                      const indent = { paddingLeft: `${depth * 12 + 8}px` };
+                      if (file.kind === "directory") {
+                        return (
+                          <li key={file.path}>
+                            <div
+                              className="flex items-center gap-1.5 rounded-md py-1.5 pr-2 text-sm text-sidebar-foreground"
+                              style={indent}
+                            >
+                              <ChevronRight
+                                aria-hidden="true"
+                                className="size-3.5 shrink-0 rotate-90 text-muted-foreground"
+                              />
+                              <FolderOpen aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                              <span className="truncate">{name}</span>
+                            </div>
+                          </li>
+                        );
+                      }
+                      return (
+                        <li key={file.path}>
                           <button
                             type="button"
-                            className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-accent aria-pressed:bg-accent"
-                            aria-pressed={selectedPreviewPath === file.path}
+                            aria-pressed={selected}
+                            className={cn(
+                              "flex w-full cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-sm text-sidebar-foreground outline-none hover:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-ring",
+                              selected && "bg-sidebar-accent",
+                            )}
+                            style={indent}
                             onClick={() => setSelectedPreviewPath(file.path)}
                           >
-                            <FileText />
-                            <span className="truncate">{file.path}</span>
+                            <span className="flex w-3.5 shrink-0 items-center justify-center">
+                              {isMain ? (
+                                <Star
+                                  aria-hidden="true"
+                                  className="size-3 shrink-0 fill-foreground text-foreground"
+                                />
+                              ) : null}
+                            </span>
+                            <FileIcon name={name} className="size-4 shrink-0" />
+                            <span className="truncate">{name}</span>
                           </button>
-                        )}
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
-              <div className="overflow-auto p-4">
-                {preview ? (
-                  <pre className="whitespace-pre-wrap break-words text-xs leading-relaxed">
-                    {preview.files.find((file) => file.path === selectedPreviewPath)?.content}
-                  </pre>
+              <div className="flex min-w-0 flex-col overflow-hidden">
+                {preview && selectedPreviewPath ? (
+                  <div className="flex h-9 shrink-0 items-center gap-1.5 border-b bg-card px-3">
+                    <FileIcon
+                      name={selectedPreviewPath.split("/").pop() ?? selectedPreviewPath}
+                      className="size-4 shrink-0"
+                    />
+                    <span className="truncate text-xs text-foreground">
+                      {selectedPreviewPath.split("/").pop()}
+                    </span>
+                  </div>
                 ) : null}
+                <div className="min-h-0 flex-1 overflow-auto">
+                  {previewing && !preview ? (
+                    <div className="space-y-2 px-4 py-3" aria-hidden="true">
+                      {PREVIEW_TEXT_SKELETON.map((width) => (
+                        <div
+                          key={width}
+                          className="h-3 animate-pulse rounded bg-muted"
+                          style={{ width: `${width}%` }}
+                        />
+                      ))}
+                    </div>
+                  ) : preview && selectedPreviewPath ? (
+                    <pre className="whitespace-pre-wrap break-words px-4 py-3 text-xs leading-relaxed">
+                      <HighlightedCode
+                        language={previewLanguage(selectedPreviewPath)}
+                        source={
+                          preview.files.find((file) => file.path === selectedPreviewPath)
+                            ?.content ?? ""
+                        }
+                      />
+                    </pre>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>

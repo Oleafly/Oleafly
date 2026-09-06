@@ -13,6 +13,8 @@ import {
   setNextImportPaths,
   waitLong,
   type Page,
+  chooseProjectKind,
+  openNewProject,
 } from "../helpers";
 import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
@@ -268,8 +270,8 @@ test("research project setup previews the planned tree and creates its queued fi
   const projectName = `Evidence review ${run}`;
 
   await connectAgent(tauriPage);
-  await openGallery(tauriPage);
-  await tauriPage.click('[data-testid="new-research-project"]');
+  await openNewProject(tauriPage);
+  await chooseProjectKind(tauriPage, "research");
   const dialog = tauriPage.locator('[role="dialog"]:has(#research-project-name)');
   await expect(dialog).toBeVisible({ timeout: 20_000 });
   await tauriPage.fill("#research-project-name", projectName);
@@ -279,14 +281,10 @@ test("research project setup previews the planned tree and creates its queued fi
   await expect(dialog.getByText("Main document: main.md", { exact: true })).toBeVisible({
     timeout: 20_000,
   });
-  for (const path of [
-    "main.md",
-    "research/sources",
-    "research/reading-list.md",
-    "research/claims.md",
-    "review/notes.md",
-  ]) {
-    await expect(dialog.getByText(path, { exact: true })).toBeVisible();
+  // The preview mirrors the Source Tree, so rows show the leaf name at a depth
+  // rather than the full path.
+  for (const name of ["main.md", "sources", "reading-list.md", "claims.md", "notes.md"]) {
+    await expect(dialog.getByText(name, { exact: true })).toBeVisible();
   }
   await dialog.getByText("main.md", { exact: true }).click();
   await expect(dialog.locator("pre")).toContainText(`# ${projectName}`);

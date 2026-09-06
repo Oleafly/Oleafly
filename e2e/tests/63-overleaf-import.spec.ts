@@ -9,6 +9,8 @@ import {
   setNextImportPaths,
   waitLong,
   type Page,
+  chooseProjectKind,
+  openNewProject,
 } from "../helpers";
 
 // Overleaf import end to end: ZIP in, main document inferred, engine flow
@@ -240,10 +242,11 @@ test("the template chooser imports an Overleaf ZIP from its header button", asyn
     "main.tex":
       "\\documentclass{article}\n\\begin{document}From the chooser.\\end{document}\n",
   });
-  await openGallery(tauriPage);
+  await openNewProject(tauriPage);
+  await chooseProjectKind(tauriPage, "import");
   // The path must be queued before the click: the picker opens immediately.
   await setNextImportPaths(tauriPage, [zipPath]);
-  await chooseExistingProject(tauriPage, "import-from-overleaf");
+  await tauriPage.click('[data-testid="project-import-project"]');
   await waitLong(
     tauriPage,
     `!!document.querySelector('[data-tour="project-editor"] .cm-content')`,

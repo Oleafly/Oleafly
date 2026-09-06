@@ -129,10 +129,41 @@ export async function openGallery(page: Page) {
     `!!document.querySelector('[data-testid="create-first-project"]')`,
   );
   await page.click(hasWelcome ? '[data-testid="create-first-project"]' : '[data-testid="new-project"]');
+  await chooseProjectKind(page, "template");
   const gallery = page.locator(
     '[data-testid="template-gallery"]',
   ) as unknown as LocatorLike;
   await expect(gallery).toBeVisible({ timeout: SHELL_READY_TIMEOUT_MS });
+}
+
+export async function openNewProject(page: Page) {
+  const library = page.locator(
+    '[data-testid="library"][data-projects-loaded="true"]',
+  ) as unknown as LocatorLike;
+  await expect(library).toBeVisible({ timeout: SHELL_READY_TIMEOUT_MS });
+  const hasWelcome = await page.evaluate<boolean>(
+    `!!document.querySelector('[data-testid="create-first-project"]')`,
+  );
+  await page.click(hasWelcome ? '[data-testid="create-first-project"]' : '[data-testid="new-project"]');
+}
+
+// The bridge's press dispatches its synthetic key on window, and Radix listens
+// on document, so a window-only Escape never reaches a Radix dialog. Dispatch
+// on document, which is where a real key event passes on its way up.
+export async function pressEscape(page: Page) {
+  await page.evaluate(
+    `document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }))`,
+  );
+}
+
+// Creating a project now starts on a chooser: research, import or template.
+export async function chooseProjectKind(
+  page: Page,
+  kind: "research" | "import" | "template",
+) {
+  const card = `[data-testid="project-kind-${kind}"]`;
+  await page.waitForFunction(`!!document.querySelector('${card}')`, SHELL_READY_TIMEOUT_MS);
+  await page.click(card);
 }
 
 // Insert through CodeMirror's authoritative state rather than searching its
