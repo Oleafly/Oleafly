@@ -148,11 +148,21 @@ describe("AssistantHome", () => {
       const slider = screen.getByTestId("assistant-home-chips");
       Object.defineProperty(slider, "scrollWidth", { configurable: true, value: 400 });
       Object.defineProperty(slider, "clientWidth", { configurable: true, value: 200 });
+      let rounded = 0;
+      Object.defineProperty(slider, "scrollLeft", {
+        configurable: true,
+        get: () => rounded,
+        set: (value: number) => {
+          rounded = Math.round(value);
+        },
+      });
       expect(slider).toHaveAttribute("data-marquee", "running");
       expect(raf).toHaveBeenCalled();
 
       act(() => frames.at(-1)?.(0));
-      act(() => frames.at(-1)?.(1000));
+      for (let step = 1; step <= 6; step++) {
+        act(() => frames.at(-1)?.(step * 16));
+      }
       expect(slider.scrollLeft).toBeGreaterThan(0);
 
       cancel.mockClear();

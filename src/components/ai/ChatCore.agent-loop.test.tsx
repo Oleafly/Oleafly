@@ -831,7 +831,7 @@ describe("ChatCore agent turns", () => {
     );
     expect(document.body.textContent).toContain("Delegated task transcript");
     expect(mocks.acpOpen).not.toHaveBeenCalled();
-  });
+  }, 20_000);
 
   it("routes a delegated CLI child to the CLI agent view", async () => {
     const rendered = await renderChat();

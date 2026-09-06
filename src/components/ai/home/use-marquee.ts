@@ -43,17 +43,22 @@ export function useMarquee(ref: RefObject<HTMLElement | null>, enabled: boolean)
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     let direction: MarqueeDirection = 1;
     let previous: number | null = null;
+    let position = node.scrollLeft;
+    let written = node.scrollLeft;
     let frame = requestAnimationFrame(function tick(time: number) {
       if (previous !== null) {
+        if (Math.abs(node.scrollLeft - written) > 1) position = node.scrollLeft;
         const max = node.scrollWidth - node.clientWidth;
         const step = marqueeStep(
-          node.scrollLeft,
+          position,
           max,
           direction,
           (PIXELS_PER_SECOND * (time - previous)) / 1000,
         );
-        node.scrollLeft = step.position;
+        position = step.position;
         direction = step.direction;
+        node.scrollLeft = position;
+        written = node.scrollLeft;
       }
       previous = time;
       frame = requestAnimationFrame(tick);

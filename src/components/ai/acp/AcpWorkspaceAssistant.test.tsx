@@ -16,7 +16,30 @@ vi.mock("@/lib/acp", async (original) => ({
 }));
 vi.mock("@/lib/skills", async (original) => ({
   ...await original<typeof import("@/lib/skills")>(),
-  useSkills: () => ({ data: [], isPending: false, isFetching: false }),
+  useSkills: () => ({
+    data: [
+      {
+        id: "fixture-skill",
+        name: "Fixture skill",
+        description: "A skill the fixture offers.",
+        instructions: "",
+        dir: "/skills/fixture-skill",
+        files: [],
+        allowedTools: [],
+        tier: "native",
+        phase: "research",
+        tools: [],
+        source: "bundled",
+        updateAvailable: false,
+        projectEnabled: false,
+        enabled: true,
+        removable: false,
+        validation: { status: "valid" },
+      },
+    ],
+    isPending: false,
+    isFetching: false,
+  }),
 }));
 vi.mock("@/components/usage/UsageReport", () => ({
   UsageReportDialog: ({ trigger }: { trigger: ReactNode }) => trigger,
@@ -276,7 +299,10 @@ describe("ACP assistant acceptance", () => {
     vi.mocked(acpStart).mockResolvedValueOnce({ session: session("new"), permissions: [] });
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
     const start = await ui.findByTestId("acp-start-conversation");
-    expect(ui.queryByTestId("assistant-home")).not.toBeInTheDocument();
+    expect(ui.getByTestId("assistant-home")).toHaveTextContent("What would you like to do today?");
+    expect(ui.queryByTestId("assistant-home-cards")).not.toBeInTheDocument();
+    expect(ui.queryByTestId("assistant-home-chips")).not.toBeInTheDocument();
+    expect(ui.queryByRole("tablist")).not.toBeInTheDocument();
     const roster = ui.getByTestId("agent-picker-row");
     const rosterNames = [...roster.querySelectorAll("button")].map((node) => node.getAttribute("aria-label"));
     expect(rosterNames[0]).toBe("Research CLI");
@@ -294,6 +320,7 @@ describe("ACP assistant acceptance", () => {
     expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready");
     expect(ui.getByTestId("assistant-home")).toHaveTextContent("Research CLI is ready in this project");
     expect(ui.getByTestId("assistant-home")).toHaveTextContent("What would you like to do today?");
+    expect(ui.getByTestId("assistant-home-cards")).toBeInTheDocument();
     expect(ui.getByTestId("agent-picker-row")).toBeInTheDocument();
     expect(ui.queryByTestId("acp-start-conversation")).not.toBeInTheDocument();
     const controls = ui.getByTestId("acp-composer-controls");

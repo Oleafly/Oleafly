@@ -82,6 +82,7 @@ function AssistantHomeView({
   onOpenSkills,
   quickStarts,
   quickStartTestId = "chat-suggestion",
+  showSkills = true,
   before,
   children,
 }: {
@@ -93,6 +94,7 @@ function AssistantHomeView({
   onOpenSkills?: () => void;
   quickStarts?: readonly HomeQuickStart[];
   quickStartTestId?: string;
+  showSkills?: boolean;
   before?: ReactNode;
   children?: ReactNode;
 }) {
@@ -144,7 +146,7 @@ function AssistantHomeView({
     })),
   ];
 
-  const marquee = useMarquee(sliderRef, shelf.length > 1);
+  const marquee = useMarquee(sliderRef, showSkills && shelf.length > 1);
 
   return (
     <div
@@ -164,7 +166,7 @@ function AssistantHomeView({
         {subtitle ? <p className="text-xs text-muted-foreground">{subtitle}</p> : null}
       </div>
 
-      {groups.length > 1 ? (
+      {showSkills && groups.length > 1 ? (
         <div
           role="tablist"
           aria-label="Skill categories"
@@ -194,7 +196,7 @@ function AssistantHomeView({
         </div>
       ) : null}
 
-      {cards.length > 0 ? (
+      {showSkills && cards.length > 0 ? (
         <div
           data-testid="assistant-home-cards"
           className="grid w-full gap-2.5 @md:grid-cols-2 @2xl:grid-cols-3"
@@ -243,7 +245,7 @@ function AssistantHomeView({
         </div>
       ) : null}
 
-      {shelf.length > 0 ? (
+      {showSkills && shelf.length > 0 ? (
         <div className="relative w-full">
           <div
             ref={sliderRef}

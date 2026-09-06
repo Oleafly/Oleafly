@@ -20,9 +20,11 @@ import {
 import { cn } from "@/lib/utils";
 import { attachAcpListeners, isDelegatedSession, useAcpSessionsStore, type AcpAttachment } from "@/store/acp-sessions";
 import { AssistantHome } from "@/components/ai/home/AssistantHome";
+import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
 import { AgentPickerRow, type AgentPickerEntry } from "@/components/ai/home/AgentPickerRow";
 import { openCliAgentSettings } from "@/components/ai/AssistantShellAcpActions";
 import { useSkills, type SkillEntry } from "@/lib/skills";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { AgentLogo } from "./AgentLogo";
 import { AGENT_MARK_IDS } from "./agent-marks";
@@ -73,6 +75,7 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
     [catalog, agentId],
   );
   const selectedReadiness = selectedAgent ? acpReadiness(selectedAgent) : null;
+  const projectName = useFilesStore((state) => state.projectName);
   const skillsQuery = useSkills(projectId);
   const skills = skillsQuery.data ?? [];
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -238,19 +241,23 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
         </div>
       ) : messages.length > 0 ? (
         <MessageList actions={researchChatActions} messages={messages} chatId={activeId} scrollRef={scrollRef} nearBottomRef={nearBottomRef} />
-      ) : session ? (
+      ) : (
         <AssistantHome
+          before={<OleaflyAssistantMascot />}
           skills={skills}
+          showSkills={!!session}
           onPickSkill={pickSkill}
           onOpenSkills={openSkillsSettings}
           quickStartTestId="acp-quick-start"
           subtitle={
             session?.status === "ready"
               ? `${selectedAgent?.definition.name ?? session.agentId} is ready in this project`
-              : undefined
+              : projectName
+                ? `Working on "${projectName}"`
+                : undefined
           }
         />
-      ) : null}
+      )}
     </div>
     {(error || session?.error) && <div role="alert" className="mx-3 my-2 rounded-md border border-destructive/40 p-2 text-xs text-destructive">{error ?? session?.error}</div>}
     {session?.status === "auth_required" && <div className="space-y-2 border-t border-border p-3 text-xs">
