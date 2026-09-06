@@ -296,21 +296,22 @@ async fn crash_retains_partial_transcript_and_no_pending_requests() {
 }
 
 #[cfg(unix)]
-#[tokio::test]
-async fn cancellation_reaps_a_real_descendant_process() {
-    let (temp, runtime, snapshot) = runtime(vec!["child.pid".into()]).await;
-    let pid_path = temp.path().join("child.pid");
-    let id = snapshot.session.id;
+async fn hanging_turn(
+    runtime: &Arc<AcpRuntime>,
+    pid_path: &Path,
+    id: &str,
+    prompt: &str,
+) -> (
+    tokio::task::JoinHandle<Result<SessionSnapshot, String>>,
+    i32,
+) {
     let task_runtime = runtime.clone();
-    let task_id = id.clone();
-    let task = tokio::spawn(async move {
-        task_runtime
-            .prompt(&task_id, "hang".into(), Vec::new())
-            .await
-    });
+    let task_id = id.to_owned();
+    let text = prompt.to_owned();
+    let task = tokio::spawn(async move { task_runtime.prompt(&task_id, text, Vec::new()).await });
     let pid = tokio::time::timeout(Duration::from_secs(5), async {
         loop {
-            if let Ok(pid) = std::fs::read_to_string(&pid_path) {
+            if let Ok(pid) = std::fs::read_to_string(pid_path) {
                 if let Ok(pid) = pid.parse::<i32>() {
                     break pid;
                 }
@@ -320,6 +321,16 @@ async fn cancellation_reaps_a_real_descendant_process() {
     })
     .await
     .unwrap();
+    (task, pid)
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn cancellation_reaps_a_real_descendant_process() {
+    let (temp, runtime, snapshot) = runtime(vec!["child.pid".into()]).await;
+    let pid_path = temp.path().join("child.pid");
+    let id = snapshot.session.id;
+    let (task, pid) = hanging_turn(&runtime, &pid_path, &id, "hang-ignore-cancel").await;
     assert_eq!(unsafe { libc::kill(pid, 0) }, 0);
     runtime.cancel(&id).await.unwrap();
     let _ = task.await.unwrap();
@@ -330,6 +341,99 @@ async fn cancellation_reaps_a_real_descendant_process() {
     })
     .await
     .unwrap();
+    assert!(runtime.assert_owner(&id, "fixture-window").await.is_err());
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn cancelling_a_compliant_turn_keeps_the_session_connected() {
+    let (temp, runtime, snapshot) = runtime(vec!["child.pid".into()]).await;
+    let pid_path = temp.path().join("child.pid");
+    let id = snapshot.session.id;
+    let (task, pid) = hanging_turn(&runtime, &pid_path, &id, "hang").await;
+    runtime.cancel(&id).await.unwrap();
+    task.await.unwrap().unwrap();
+    assert_eq!(
+        runtime.snapshot(&id).await.unwrap().session.status,
+        SessionStatus::Ready
+    );
+    assert!(runtime.assert_owner(&id, "fixture-window").await.is_ok());
+    let events = runtime.events(&id, 0, 500).unwrap().events;
+    assert!(events
+        .iter()
+        .any(|event| event.kind == "turn_complete" && event.data["stopReason"] == "cancelled"));
+    runtime
+        .prompt(&id, "after cancel".into(), Vec::new())
+        .await
+        .unwrap();
+    runtime.close(&id).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while unsafe { libc::kill(pid, 0) } == 0 {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn a_failed_turn_keeps_the_agent_connected_and_reports_its_message() {
+    let (_temp, runtime, snapshot) = runtime(Vec::new()).await;
+    let id = snapshot.session.id;
+    let error = runtime
+        .prompt(&id, "leak-error".into(), Vec::new())
+        .await
+        .unwrap_err();
+    assert!(error.contains("Agent failure"), "{error}");
+    assert_ne!(
+        runtime.snapshot(&id).await.unwrap().session.status,
+        SessionStatus::Disconnected
+    );
+    assert!(runtime.assert_owner(&id, "fixture-window").await.is_ok());
+    runtime
+        .prompt(&id, "after failure".into(), Vec::new())
+        .await
+        .unwrap();
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn startup_failures_carry_the_agent_stderr() {
+    let temp = fixture_temp();
+    let project = temp.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    runtime
+        .register(
+            &serde_json::to_string(&fixture_definition(
+                vec!["".into(), "--stderr-crash".into()],
+                temp.path(),
+            ))
+            .unwrap(),
+        )
+        .unwrap();
+    let error = runtime
+        .start(StartSession {
+            project_id: "test-project".into(),
+            project_path: project,
+            agent_id: "fixture-agent".into(),
+            owner: Some("fixture-window".into()),
+            ..StartSession::default()
+        })
+        .await
+        .unwrap_err();
+    assert!(error.contains("missing runtime"), "{error}");
+    let record = runtime
+        .list("test-project")
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap();
+    let events = runtime.events(&record.id, 0, 500).unwrap().events;
+    assert!(events.iter().any(|event| event.kind == "diagnostics"
+        && event.data["stderr"]
+            .as_str()
+            .is_some_and(|value| value.contains("missing runtime"))));
 }
 
 #[test]
@@ -600,8 +704,9 @@ async fn credentials_in_protocol_metadata_never_reach_snapshots_events_or_storag
                 !serde_json::to_string(&snapshot).unwrap().contains(token),
                 "{scenario}"
             );
-            assert!(
-                runtime.assert_owner(&id, "fixture-window").await.is_err(),
+            assert_ne!(
+                runtime.snapshot(&id).await.unwrap().session.status,
+                SessionStatus::Running,
                 "{scenario}"
             );
         }

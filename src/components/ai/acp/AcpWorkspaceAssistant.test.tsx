@@ -13,14 +13,31 @@ vi.mock("@/lib/acp", async (original) => ({
   acpSetModel: vi.fn(), acpPrompt: vi.fn(), acpPermission: vi.fn(), acpCancel: vi.fn(),
   onAcpEvent: vi.fn(), onAcpResync: vi.fn(),
 }));
+vi.mock("@/components/usage/UsageReport", () => ({
+  UsageReportDialog: ({ trigger }: { trigger: ReactNode }) => trigger,
+}));
+import type { ReactNode } from "react";
 import {
   acpAuthenticate, acpCancel, acpCatalog, acpDisconnect, acpEvents, acpPermission, acpPrompt,
   acpReconnect, acpSessions, acpSetModel, acpSnapshot, acpStart, onAcpEvent, onAcpResync,
   type AcpEvent, type AcpPermission, type AcpSnapshot,
 } from "@/lib/acp";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
-import { agent, deferred, event, session } from "./tests/ui-fixtures";
+import { useSettingsStore } from "@/store/settings";
+import { AssistantShellAcpActions } from "@/components/ai/AssistantShellAcpActions";
+import {
+  agent, chooseMenuItem, chooseOption, deferred, event, menuItemNames, optionNames, session,
+} from "./tests/ui-fixtures";
 import { AcpWorkspaceAssistant } from "./AcpWorkspaceAssistant";
+
+function AcpWorkspace({ projectId = "paper" }: { projectId?: string }) {
+  return (
+    <>
+      <AssistantShellAcpActions projectId={projectId} />
+      <AcpWorkspaceAssistant projectId={projectId} />
+    </>
+  );
+}
 
 let snapshots: Record<string, AcpSnapshot>;
 let history: Record<string, AcpEvent[]>;
@@ -33,7 +50,7 @@ beforeEach(() => {
   snapshots = { saved: { session: session(), permissions: [] } };
   history = { saved: [] };
   emit = () => { throw new Error("The native event listener is not attached"); };
-  useAcpSessionsStore.setState({ catalog: [], sessions: {}, events: {}, permissions: {}, activeByProject: { paper: "saved" } });
+  useAcpSessionsStore.setState({ catalog: [], sessions: {}, events: {}, permissions: {}, activeByProject: { paper: "saved" }, composers: {}, errors: {} });
   vi.mocked(acpCatalog).mockResolvedValue([agent()]);
   vi.mocked(acpSessions).mockImplementation(async () => Object.values(snapshots).map((value) => value.session));
   vi.mocked(acpSnapshot).mockImplementation(async (_project, id) => {
@@ -108,9 +125,8 @@ describe("ACP assistant acceptance", () => {
     vi.mocked(acpDisconnect).mockReturnValueOnce(disconnect.promise);
     vi.mocked(acpReconnect).mockResolvedValue({ session: session("new"), permissions: [] });
     vi.mocked(acpSetModel).mockImplementation(async (_project, id, modelId) => ({ session: { ...session(id), controls: { ...session(id).controls, modelId } }, permissions: [] }));
-    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
-    await ui.findByRole("option", { name: "Research CLI" });
-    fireEvent.change(ui.getByLabelText("Agent"), { target: { value: "fixture" } });
+    const ui = render(<AcpWorkspace />);
+    await waitFor(() => expect(ui.getByRole("combobox", { name: "Agent" })).toHaveTextContent("Research CLI"));
     fireEvent.click(ui.getByRole("button", { name: "New conversation" }));
     expect(await ui.findByRole("alert")).toHaveTextContent("The agent executable is missing.");
     expect(ui.getByLabelText("Message CLI agent")).toBeDisabled();
@@ -126,8 +142,8 @@ describe("ACP assistant acceptance", () => {
     await waitFor(() => expect(ui.getByLabelText("Message CLI agent")).toBeEnabled());
     expect(acpReconnect).toHaveBeenCalledExactlyOnceWith("paper", "new");
     expect(ui.queryByRole("alert")).not.toBeInTheDocument();
-    fireEvent.change(ui.getByLabelText("Agent model"), { target: { value: "chosen" } });
-    await waitFor(() => expect(ui.getByLabelText("Agent model")).toHaveValue("chosen"));
+    await chooseOption(ui.getByRole("combobox", { name: "Agent model" }), "Chosen model");
+    await waitFor(() => expect(ui.getByRole("combobox", { name: "Agent model" })).toHaveTextContent("Chosen model"));
     expect(acpSetModel).toHaveBeenCalledExactlyOnceWith("paper", "new", "chosen");
     expect(vi.mocked(acpStart).mock.calls).toEqual([["paper", "fixture"], ["paper", "fixture"]]);
   });
@@ -210,6 +226,102 @@ describe("ACP assistant acceptance", () => {
     expect(acpReconnect).toHaveBeenLastCalledWith("paper", "saved");
     expect(ui.queryByRole("alert")).not.toBeInTheDocument();
     expect(ui.getByText("The first result needs a larger sample.")).toBeInTheDocument();
+  });
+
+  it("defaults to a ready agent, keeps the draft across remounts, and offers the bridge install for the rest", async () => {
+    useAcpSessionsStore.setState({ activeByProject: {} });
+    snapshots = {};
+    const missing = agent("claude", {
+      definition: { ...agent().definition, id: "claude", name: "Claude Code", builtin: true },
+      installed: false, executable: null, managed: false, canInstall: true,
+      cli: { command: "claude", displayName: "Claude Code", path: "/home/researcher/.local/bin/claude", version: "2.1.258", signInCommand: "claude auth login" },
+    });
+    vi.mocked(acpCatalog).mockResolvedValue([missing, agent()]);
+    const ui = render(<AcpWorkspace />);
+    await waitFor(() => expect(ui.getByRole("combobox", { name: "Agent" })).toHaveTextContent("Research CLI"));
+    expect(ui.getByRole("button", { name: "New conversation" })).toBeEnabled();
+    expect(await optionNames(ui.getByRole("combobox", { name: "Agent" }))).toEqual(["Claude Code", "Research CLI"]);
+    await chooseOption(ui.getByRole("combobox", { name: "Agent" }), "Claude Code");
+    await waitFor(() => expect(ui.getByRole("button", { name: "New conversation" })).toBeDisabled());
+    expect(ui.getByTestId("acp-bridge-card-claude")).toHaveTextContent(
+      "Claude Code 2.1.258 found at /home/researcher/.local/bin/claude",
+    );
+    expect(ui.container).not.toHaveTextContent("not installed");
+    expect(useAcpSessionsStore.getState().composers.paper?.agentId).toBe("claude");
+    ui.unmount();
+    const reopened = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(reopened.getByRole("combobox", { name: "Agent" })).toHaveTextContent("Claude Code"));
+  });
+
+  it("keeps the composer draft when the panel unmounts", async () => {
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
+    typeMessage(ui.getByLabelText("Message CLI agent"), "Half written question");
+    expect(useAcpSessionsStore.getState().composers.paper?.draft).toBe("Half written question");
+    ui.unmount();
+    const reopened = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(reopened.getByLabelText("Message CLI agent")).toHaveValue("Half written question"));
+  });
+
+  it("hides delegated conversations from the saved list", async () => {
+    snapshots = {
+      saved: { session: session(), permissions: [] },
+      "task-run": { session: session("task-run", { taskId: "task-9", title: "Task conversation" }), permissions: [] },
+      "child-run": { session: session("child-run", { parentSessionId: "chat-1", title: "Delegated conversation" }), permissions: [] },
+    };
+    history["task-run"] = [];
+    history["child-run"] = [];
+    const ui = render(<AcpWorkspace />);
+    await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
+    const names = await menuItemNames(ui.getByRole("button", { name: "Saved conversations" }));
+    expect(names).toEqual(["Conversation saved · fixture"]);
+  });
+
+  it("opens a saved conversation from the header menu after disconnecting the current one", async () => {
+    snapshots.other = { session: session("other", { status: "disconnected", title: "Earlier review" }), permissions: [] };
+    history.other = [];
+    const ui = render(<AcpWorkspace />);
+    await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
+    await chooseMenuItem(
+      ui.getByRole("button", { name: "Saved conversations" }),
+      "Earlier review · fixture",
+    );
+    await waitFor(() => expect(acpDisconnect).toHaveBeenCalledExactlyOnceWith("paper", "saved"));
+    await waitFor(() => expect(useAcpSessionsStore.getState().activeByProject.paper).toBe("other"));
+    expect(acpEvents).toHaveBeenLastCalledWith("paper", "other", 0);
+  });
+
+  it("does not offer reconnect for a delegated child conversation", async () => {
+    snapshots.saved = { session: session("saved", { status: "failed", parentSessionId: "chat-1" }), permissions: [] };
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    expect(await ui.findByText("This conversation belongs to a delegated agent run.")).toBeInTheDocument();
+    expect(ui.queryByRole("button", { name: "Reconnect to conversation" })).not.toBeInTheDocument();
+  });
+
+  it("re-enables the composer when a stop leaves the agent connected", async () => {
+    history.saved = [event(1, "user_message", { text: "Review these results" })];
+    snapshots.saved = { session: session("saved", { status: "running", lastSequence: 1 }), permissions: [] };
+    vi.mocked(acpCancel).mockImplementation(async () => {
+      history.saved.push(event(2, "turn_complete", { stopReason: "cancelled" }));
+      snapshots.saved = { session: session("saved", { status: "ready", lastSequence: 2 }), permissions: [] };
+    });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(ui.getByRole("button", { name: "Stop" })).toBeEnabled());
+    fireEvent.click(ui.getByRole("button", { name: "Stop" }));
+    await waitFor(() => expect(ui.getByLabelText("Message CLI agent")).toBeEnabled());
+    expect(ui.queryByRole("button", { name: "Reconnect to conversation" })).not.toBeInTheDocument();
+    expect(acpReconnect).not.toHaveBeenCalled();
+  });
+
+  it("opens agent setup in settings instead of embedding it", async () => {
+    const ui = render(<AcpWorkspace />);
+    await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
+    expect(ui.queryByRole("button", { name: "Configure CLI agents" })).not.toBeInTheDocument();
+    fireEvent.click(ui.getByRole("button", { name: "Agent setup" }));
+    const settings = useSettingsStore.getState();
+    expect(settings.settingsOpen).toBe(true);
+    expect(settings.settingsInitialSection).toBe("ai");
+    expect(settings.settingsScrollTarget).toBe("ai-agents");
   });
 
   it("does not offer expired approvals or reconnect a task conversation outside the task lifecycle", async () => {

@@ -43,6 +43,7 @@ raw_input_marker = argument("--raw-input-marker") or secrets.token_hex(24)
 native_id = "fixture-native"
 authenticated = "--require-login" not in sys.argv
 pending_prompt = None
+ignore_cancel = False
 credential = ""
 pid_file = sys.argv[1] if len(sys.argv) > 1 else ""
 
@@ -60,6 +61,9 @@ for line in sys.stdin:
     method = request.get("method")
     params = request.get("params", {})
     if method == "initialize":
+        if "--stderr-crash" in sys.argv:
+            print("fixture cannot start: missing runtime", file=sys.stderr, flush=True)
+            sys.exit(4)
         if "--initialize-barrier" in sys.argv:
             write_pid(os.getpid())
             time.sleep(300)
@@ -104,10 +108,11 @@ for line in sys.stdin:
             pending_prompt = request
             path = "/etc/passwd" if prompt == "outside-permission" else os.path.join(params.get("cwd", os.getcwd()), "paper.tex")
             send({"id": "permission-wire", "method": "session/request_permission", "params": {"sessionId": native_id, "toolCall": {"toolCallId": credential if prompt == "leak-permission-tool" else "write-1", "title": "Update paper", "locations": [{"path": path}]}, "options": [{"optionId": credential if prompt == "leak-permission-option" else "yes", "name": "Allow once", "kind": "allow_once"}, {"optionId": "no", "name": "Reject", "kind": "reject_once"}]}})
-        elif prompt == "hang":
+        elif prompt in ("hang", "hang-ignore-cancel"):
             child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(300)"])
             write_pid(child.pid)
             pending_prompt = request
+            ignore_cancel = prompt == "hang-ignore-cancel"
         elif prompt == "scope-probe":
             probe_path = fixture_path(sys.argv[2])
             try:
@@ -136,7 +141,7 @@ for line in sys.stdin:
             update("agent_message_chunk", content={"type": "text", "text": "Fixture answer: " + prompt})
             result(request, {"stopReason": "end_turn", "usage": {"inputTokens": 11, "outputTokens": 7, "cachedReadTokens": 3, "cachedWriteTokens": 2, "totalTokens": 23}})
     elif method == "session/cancel":
-        if pending_prompt:
+        if pending_prompt and not ignore_cancel:
             result(pending_prompt, {"stopReason": "cancelled"})
             pending_prompt = None
     elif request.get("id") == "permission-wire" and pending_prompt:

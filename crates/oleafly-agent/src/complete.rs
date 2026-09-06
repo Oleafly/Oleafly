@@ -106,6 +106,13 @@ impl Usage {
             || self.input_semantics != InputTokenSemantics::Unknown
     }
 
+    pub fn is_observed(&self) -> bool {
+        self.reported_input().is_some()
+            || self.reported_output().is_some()
+            || self.cache_read.is_some()
+            || self.cache_write.is_some()
+    }
+
     pub(crate) fn merge_snapshot(&mut self, next: Self) {
         if let Some(input) = next.reported_input() {
             self.input = input;
@@ -152,6 +159,24 @@ fn as_optional_u32(value: Option<&Value>) -> Option<u32> {
         .map(|number| u32::try_from(number).unwrap_or(u32::MAX))
 }
 
+pub(crate) fn openai_cached_tokens(usage: &Value) -> Option<u32> {
+    as_optional_u32(usage.pointer("/prompt_tokens_details/cached_tokens"))
+        .or_else(|| as_optional_u32(usage.get("prompt_cache_hit_tokens")))
+}
+
+pub(crate) fn google_output_tokens(meta: &Value) -> Option<u32> {
+    let candidates = as_optional_u32(meta.get("candidatesTokenCount"));
+    let thoughts = as_optional_u32(meta.get("thoughtsTokenCount"));
+    match (candidates, thoughts) {
+        (None, None) => None,
+        (candidates, thoughts) => Some(
+            candidates
+                .unwrap_or(0)
+                .saturating_add(thoughts.unwrap_or(0)),
+        ),
+    }
+}
+
 pub(crate) fn parse_openai(body: &Value) -> Result<(String, Usage)> {
     let message = body
         .pointer("/choices/0/message")
@@ -166,7 +191,7 @@ pub(crate) fn parse_openai(body: &Value) -> Result<(String, Usage)> {
         output: as_u32(body.pointer("/usage/completion_tokens")),
         input_known: Some(as_optional_u32(body.pointer("/usage/prompt_tokens")).is_some()),
         output_known: Some(as_optional_u32(body.pointer("/usage/completion_tokens")).is_some()),
-        cache_read: as_optional_u32(body.pointer("/usage/prompt_tokens_details/cached_tokens")),
+        cache_read: body.get("usage").and_then(openai_cached_tokens),
         cache_write: (as_optional_u32(body.pointer("/usage/prompt_tokens")).is_some()
             || as_optional_u32(body.pointer("/usage/completion_tokens")).is_some())
         .then_some(0),
@@ -263,19 +288,16 @@ pub(crate) fn parse_google(body: &Value) -> Result<(String, Usage)> {
         .filter_map(|p| p.get("text").and_then(|t| t.as_str()))
         .collect::<Vec<_>>()
         .join("");
+    let meta = body.get("usageMetadata").unwrap_or(&Value::Null);
+    let output = google_output_tokens(meta);
+    let counted = as_optional_u32(meta.get("promptTokenCount")).is_some() || output.is_some();
     let usage = Usage {
-        input: as_u32(body.pointer("/usageMetadata/promptTokenCount")),
-        output: as_u32(body.pointer("/usageMetadata/candidatesTokenCount")),
-        input_known: Some(
-            as_optional_u32(body.pointer("/usageMetadata/promptTokenCount")).is_some(),
-        ),
-        output_known: Some(
-            as_optional_u32(body.pointer("/usageMetadata/candidatesTokenCount")).is_some(),
-        ),
-        cache_read: as_optional_u32(body.pointer("/usageMetadata/cachedContentTokenCount")),
-        cache_write: (as_optional_u32(body.pointer("/usageMetadata/promptTokenCount")).is_some()
-            || as_optional_u32(body.pointer("/usageMetadata/candidatesTokenCount")).is_some())
-        .then_some(0),
+        input: as_u32(meta.get("promptTokenCount")),
+        output: output.unwrap_or(0),
+        input_known: Some(as_optional_u32(meta.get("promptTokenCount")).is_some()),
+        output_known: Some(output.is_some()),
+        cache_read: as_optional_u32(meta.get("cachedContentTokenCount")).or(counted.then_some(0)),
+        cache_write: counted.then_some(0),
         input_semantics: InputTokenSemantics::Inclusive,
     };
     Ok((
@@ -674,6 +696,66 @@ mod tests {
                 input_semantics: InputTokenSemantics::Inclusive,
             }
         );
+    }
+
+    #[test]
+    fn google_thinking_tokens_count_as_output_and_absent_cache_reads_as_zero() {
+        let body = json!({
+            "candidates": [{ "content": { "parts": [{ "text": "a" }] } }],
+            "usageMetadata": {
+                "promptTokenCount": 9,
+                "candidatesTokenCount": 2,
+                "thoughtsTokenCount": 30
+            }
+        });
+        let (_, usage) = parse_google(&body).unwrap();
+        assert_eq!(usage.reported_output(), Some(32));
+        assert_eq!(usage.cache_read, Some(0));
+        assert_eq!(usage.cache_write, Some(0));
+
+        let thoughts_only = json!({
+            "candidates": [{ "content": { "parts": [] } }],
+            "usageMetadata": { "promptTokenCount": 9, "thoughtsTokenCount": 5 }
+        });
+        assert_eq!(
+            parse_google(&thoughts_only).unwrap().1.reported_output(),
+            Some(5)
+        );
+    }
+
+    #[test]
+    fn openai_compatible_cache_hits_are_read_from_either_documented_key() {
+        let deepseek = json!({
+            "choices": [{ "message": { "content": "x" } }],
+            "usage": { "prompt_tokens": 12, "completion_tokens": 3, "prompt_cache_hit_tokens": 8 }
+        });
+        assert_eq!(parse_openai(&deepseek).unwrap().1.cache_read, Some(8));
+        let unreported = json!({
+            "choices": [{ "message": { "content": "x" } }],
+            "usage": { "prompt_tokens": 12, "completion_tokens": 3 }
+        });
+        assert_eq!(parse_openai(&unreported).unwrap().1.cache_read, None);
+    }
+
+    #[test]
+    fn usage_observation_presence_ignores_unreported_zero_counters() {
+        assert!(!Usage::default().is_observed());
+        assert!(!Usage {
+            input_known: Some(false),
+            output_known: Some(false),
+            ..Usage::default()
+        }
+        .is_observed());
+        assert!(Usage {
+            input_known: Some(true),
+            ..Usage::default()
+        }
+        .is_observed());
+        assert!(Usage {
+            cache_read: Some(0),
+            ..Usage::default()
+        }
+        .is_observed());
     }
 
     #[test]

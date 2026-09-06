@@ -1,6 +1,37 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { File, Folder, FolderPlus, Link2Off, Loader2, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  CircleAlert,
+  CircleCheck,
+  CircleHelp,
+  File,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  Link2Off,
+  Loader2,
+  Lock,
+  MoreHorizontal,
+  Pencil,
+  RefreshCw,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -9,18 +40,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tooltip } from "@/components/ui/tooltip";
 import { pickOpenPath } from "@/lib/native-file-dialog";
+import { revealInDir } from "@/lib/tauri";
+import { isMac } from "@/lib/utils";
 import {
   addResearchRoot,
+  getResearchRootHealth,
   getResearchWorkspace,
   listResearchRootFiles,
   readResearchRootFile,
   removeResearchRoot,
   updateResearchRoot,
   type LinkedResearchRoot,
-  type ResearchRootAccess,
+  type ResearchRootAvailability,
   type ResearchRootFileContent,
   type ResearchRootFileEntry,
+  type ResearchRootHealth,
   type ResearchRootRole,
   type ResearchWorkspace,
 } from "@/lib/research-workspace";
@@ -32,59 +68,201 @@ const ROLE_LABELS: Record<ResearchRootRole, string> = {
   manuscript: "Manuscript",
 };
 
-const ACCESS_LABELS: Record<ResearchRootAccess, string> = {
-  read_only: "Read only",
-  read_write: "Read and write",
+const HEALTH_LABELS: Record<ResearchRootAvailability, string> = {
+  available: "Available",
+  missing: "Missing",
+  unreadable: "Unreadable",
 };
 
-function FieldLabel({ children, htmlFor }: { children: ReactNode; htmlFor: string }) {
-  return <label className="text-xs font-medium text-muted-foreground" htmlFor={htmlFor}>{children}</label>;
+const HEALTH_ICONS: Record<ResearchRootAvailability, typeof CircleCheck> = {
+  available: CircleCheck,
+  missing: CircleHelp,
+  unreadable: CircleAlert,
+};
+
+function folderName(path: string): string {
+  const parts = path.replace(/\\/g, "/").split("/").filter(Boolean);
+  return parts.at(-1) ?? "Research files";
 }
 
-function RootEditor({
+function detail(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
+}
+
+function HealthBadge({ health }: { health: ResearchRootHealth | undefined }) {
+  const availability = health?.availability ?? "available";
+  const Icon = HEALTH_ICONS[availability];
+  const badge = (
+    <Badge
+      variant={availability === "available" ? "quiet" : "outline"}
+      className={availability === "available" ? "gap-1" : "gap-1 border-destructive/40 text-destructive"}
+    >
+      <Icon aria-hidden="true" className="size-3" />
+      {HEALTH_LABELS[availability]}
+    </Badge>
+  );
+  if (!health?.detail) return badge;
+  return <Tooltip label={health.detail}>{badge}</Tooltip>;
+}
+
+function LinkFolderDialog({
+  open,
+  editing,
+  busy,
+  error,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  editing: LinkedResearchRoot | null;
+  busy: boolean;
+  error: string | null;
+  onClose: () => void;
+  onSubmit: (values: { path: string; label: string; role: ResearchRootRole }) => void;
+}) {
+  const [path, setPath] = useState("");
+  const [label, setLabel] = useState("");
+  const [role, setRole] = useState<ResearchRootRole>("data");
+
+  useEffect(() => {
+    if (!open) return;
+    setPath(editing?.canonicalPath ?? "");
+    setLabel(editing?.label ?? "");
+    setRole(editing?.role ?? "data");
+  }, [editing, open]);
+
+  const chooseFolder = async () => {
+    const chosen = await pickOpenPath({ directory: true, multiple: false, title: "Link research folder" });
+    if (typeof chosen !== "string") return;
+    setPath(chosen);
+    if (!label.trim()) setLabel(folderName(chosen));
+  };
+
+  if (!open) return null;
+
+  return (
+    <Dialog open onOpenChange={(next) => { if (!next && !busy) onClose(); }}>
+      <DialogContent className="max-w-lg" closeDisabled={busy} data-testid="research-root-dialog">
+        <DialogHeader>
+          <DialogTitle>{editing ? "Edit linked folder" : "Link a research folder"}</DialogTitle>
+          <DialogDescription>
+            Keep datasets, source libraries, and analysis folders beside this manuscript. The folder
+            stays where it is and Oleafly only reads from it.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4">
+          <div className="grid gap-1.5">
+            <label htmlFor="new-research-root-path" className="text-xs font-medium">
+              Folder
+            </label>
+            <div className="flex gap-2">
+              <Input
+                id="new-research-root-path"
+                value={path}
+                readOnly
+                placeholder="Choose a folder"
+                className="font-mono text-xs"
+              />
+              {editing ? null : (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Choose folder"
+                  disabled={busy}
+                  onClick={chooseFolder}
+                >
+                  <FolderPlus />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-1.5">
+            <label htmlFor="new-research-root-label" className="text-xs font-medium">
+              Label
+            </label>
+            <Input
+              id="new-research-root-label"
+              value={label}
+              maxLength={120}
+              placeholder="Study data"
+              disabled={busy}
+              onChange={(event) => setLabel(event.target.value)}
+            />
+          </div>
+
+          <div className="grid gap-1.5">
+            <label htmlFor="new-research-root-role" className="text-xs font-medium">
+              Role
+            </label>
+            <Select value={role} disabled={busy} onValueChange={(value) => setRole(value as ResearchRootRole)}>
+              <SelectTrigger id="new-research-root-role" aria-label="Folder role">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(ROLE_LABELS).map(([value, text]) => (
+                  <SelectItem key={value} value={value}>
+                    {text}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              The role tells the assistant what the folder holds. It does not change access.
+            </p>
+          </div>
+
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Lock aria-hidden="true" className="size-3" />
+            Linked folders are read only. Oleafly never writes to them.
+          </p>
+        </div>
+
+        {error ? (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        <DialogFooter>
+          <Button variant="outline" disabled={busy} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            disabled={busy || !path || !label.trim()}
+            onClick={() => onSubmit({ path, label, role })}
+            data-testid="research-root-submit"
+          >
+            {busy ? <Loader2 className="animate-spin" /> : <FolderPlus />}
+            {editing ? "Save folder" : "Link folder"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RootCard({
   projectId,
   root,
-  onChanged,
-  onRemoved,
+  health,
+  onEdit,
+  onUnlink,
 }: {
   projectId: string;
   root: LinkedResearchRoot;
-  onChanged: (workspace: ResearchWorkspace) => void;
-  onRemoved: (workspace: ResearchWorkspace) => void;
+  health: ResearchRootHealth | undefined;
+  onEdit: () => void;
+  onUnlink: () => void;
 }) {
-  const [label, setLabel] = useState(root.label);
-  const [role, setRole] = useState(root.role);
-  const [access, setAccess] = useState(root.access);
   const [files, setFiles] = useState<ResearchRootFileEntry[] | null>(null);
   const [selected, setSelected] = useState<ResearchRootFileContent | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const previewRequest = useRef(0);
-  const labelId = `research-root-label-${root.id}`;
-  const roleId = `research-root-role-${root.id}`;
-  const accessId = `research-root-access-${root.id}`;
-
-  useEffect(() => {
-    setLabel(root.label);
-    setRole(root.role);
-    setAccess(root.access);
-  }, [root]);
 
   useEffect(() => () => { previewRequest.current += 1; }, []);
-
-  const save = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      onChanged(
-        await updateResearchRoot({ projectId, rootId: root.id, label, role, access }),
-      );
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const browse = async () => {
     const request = ++previewRequest.current;
@@ -95,11 +273,9 @@ function RootEditor({
       const listing = await listResearchRootFiles(projectId, root.id, "", 8);
       if (request !== previewRequest.current) return;
       setFiles(listing.entries);
-      if (listing.truncated) {
-        setError("This view stops after 2,000 files or eight folder levels.");
-      }
+      if (listing.truncated) setError("This view stops after 2,000 files or eight folder levels.");
     } catch (cause) {
-      if (request === previewRequest.current) setError(cause instanceof Error ? cause.message : String(cause));
+      if (request === previewRequest.current) setError(detail(cause));
     } finally {
       if (request === previewRequest.current) setBusy(false);
     }
@@ -115,73 +291,71 @@ function RootEditor({
       const content = await readResearchRootFile(projectId, root.id, file.relativePath);
       if (request === previewRequest.current) setSelected(content);
     } catch (cause) {
-      if (request === previewRequest.current) setError(cause instanceof Error ? cause.message : String(cause));
+      if (request === previewRequest.current) setError(detail(cause));
     } finally {
       if (request === previewRequest.current) setBusy(false);
     }
   };
 
-  const unlink = async () => {
-    previewRequest.current += 1;
-    setBusy(true);
-    setError(null);
-    setSelected(null);
-    try {
-      onRemoved(await removeResearchRoot(projectId, root.id));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-      setBusy(false);
-    }
-  };
-
-  const changed = label.trim() !== root.label || role !== root.role || access !== root.access;
-
   return (
-    <article className="rounded-lg border bg-card p-4" data-root-id={root.id}>
-      <div className="grid gap-3 lg:grid-cols-[minmax(12rem,1fr)_10rem_11rem_auto]">
-        <div className="grid gap-1.5">
-          <FieldLabel htmlFor={labelId}>Label</FieldLabel>
-          <Input id={labelId} value={label} maxLength={120} onChange={(event) => setLabel(event.target.value)} />
+    <article className="rounded-lg border bg-card p-4 shadow-sm" data-root-id={root.id}>
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-muted">
+          <Folder aria-hidden="true" className="size-4 text-muted-foreground" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{root.label}</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <Badge variant="outline">{ROLE_LABELS[root.role]}</Badge>
+            <Badge variant="quiet" className="gap-1">
+              <Lock aria-hidden="true" className="size-3" />
+              Read only
+            </Badge>
+            <HealthBadge health={health} />
+          </div>
+          <Tooltip label={root.canonicalPath} wide className="mt-2 block min-w-0 max-w-full">
+            <code className="block w-full truncate text-xs text-muted-foreground">
+              {root.canonicalPath}
+            </code>
+          </Tooltip>
+          <div className="mt-2">
+            <Button variant="outline" size="xs" disabled={busy} onClick={browse}>
+              {busy ? <Loader2 className="animate-spin" /> : <RefreshCw />} Browse files
+            </Button>
+          </div>
         </div>
-        <div className="grid gap-1.5">
-          <FieldLabel htmlFor={roleId}>Role</FieldLabel>
-          <Select value={role} onValueChange={(value) => setRole(value as ResearchRootRole)}>
-            <SelectTrigger id={roleId} aria-label={`${root.label} role`}><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {Object.entries(ROLE_LABELS).map(([value, text]) => (
-                <SelectItem key={value} value={value}>{text}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid gap-1.5">
-          <FieldLabel htmlFor={accessId}>Access</FieldLabel>
-          <Select value={access} onValueChange={(value) => setAccess(value as ResearchRootAccess)}>
-            <SelectTrigger id={accessId} aria-label={`${root.label} access`}><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {Object.entries(ACCESS_LABELS).map(([value, text]) => (
-                <SelectItem key={value} value={value}>{text}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-end gap-2">
-          <Button variant="outline" size="sm" disabled={busy || !changed || !label.trim()} onClick={save}>
-            Save
-          </Button>
-          <Button variant="ghost" size="sm" disabled={busy} onClick={unlink}>
-            <Link2Off /> Unlink
-          </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                aria-label={`More actions for ${root.label}`}
+              >
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onClick={() => void revealInDir(root.canonicalPath).catch(() => {})}>
+                <FolderOpen className="size-4 text-muted-foreground" />
+                {isMac ? "Show in Finder" : "Show in Explorer"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil className="size-4 text-muted-foreground" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={onUnlink}
+              >
+                <Link2Off className="size-4" /> Unlink
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
-        <code className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={root.canonicalPath}>
-          {root.canonicalPath}
-        </code>
-        <Button variant="ghost" size="sm" disabled={busy} onClick={browse}>
-          {busy ? <Loader2 className="animate-spin" /> : <RefreshCw />} Browse files
-        </Button>
-      </div>
+
       {files && (
         <div className="mt-3 grid max-h-80 gap-3 overflow-hidden rounded-md border bg-muted/20 p-3 md:grid-cols-2">
           <div className="overflow-auto">
@@ -223,28 +397,35 @@ function RootEditor({
           </div>
         </div>
       )}
-      {error && <p className="mt-2 text-xs text-destructive" role="alert">{error}</p>}
-      <p className="mt-2 text-xs text-muted-foreground">Unlinking removes this shortcut. Your files stay where they are.</p>
+      {error && (
+        <p className="mt-2 text-xs text-destructive" role="alert">
+          {error}
+        </p>
+      )}
     </article>
   );
 }
 
 export function ResearchRootsPanel({ projectId }: { projectId: string }) {
   const [workspace, setWorkspace] = useState<ResearchWorkspace | null>(null);
-  const [path, setPath] = useState("");
-  const [label, setLabel] = useState("");
-  const [role, setRole] = useState<ResearchRootRole>("data");
-  const [access, setAccess] = useState<ResearchRootAccess>("read_only");
+  const [health, setHealth] = useState<Record<string, ResearchRootHealth>>({});
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingRootId, setEditingRootId] = useState<string | null>(null);
+  const [unlinkRootId, setUnlinkRootId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dialogError, setDialogError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
-      setWorkspace(await getResearchWorkspace(projectId));
+      const next = await getResearchWorkspace(projectId);
+      setWorkspace(next);
+      const checks = await getResearchRootHealth(projectId).catch(() => [] as ResearchRootHealth[]);
+      setHealth(Object.fromEntries(checks.map((entry) => [entry.rootId, entry])));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(detail(cause));
     } finally {
       setBusy(false);
     }
@@ -254,94 +435,157 @@ export function ResearchRootsPanel({ projectId }: { projectId: string }) {
     void load();
   }, [load]);
 
-  const chooseFolder = async () => {
-    const chosen = await pickOpenPath({ directory: true, multiple: false, title: "Link research folder" });
-    if (typeof chosen !== "string") return;
-    setPath(chosen);
-    if (!label.trim()) {
-      const parts = chosen.replace(/\\/g, "/").split("/").filter(Boolean);
-      setLabel(parts.at(-1) ?? "Research files");
+  const roots = workspace?.roots ?? [];
+  const editingRoot = roots.find((root) => root.id === editingRootId) ?? null;
+  const unlinkRoot = roots.find((root) => root.id === unlinkRootId) ?? null;
+
+  const openAdd = () => {
+    setEditingRootId(null);
+    setDialogError(null);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (rootId: string) => {
+    setEditingRootId(rootId);
+    setDialogError(null);
+    setDialogOpen(true);
+  };
+
+  const submit = async (values: { path: string; label: string; role: ResearchRootRole }) => {
+    setBusy(true);
+    setDialogError(null);
+    try {
+      if (editingRoot) {
+        setWorkspace(
+          await updateResearchRoot({
+            projectId,
+            rootId: editingRoot.id,
+            label: values.label,
+            role: values.role,
+            access: editingRoot.access,
+          }),
+        );
+      } else {
+        setWorkspace(
+          await addResearchRoot({
+            projectId,
+            path: values.path,
+            label: values.label,
+            role: values.role,
+            access: "read_only",
+          }),
+        );
+      }
+      setDialogOpen(false);
+      setEditingRootId(null);
+      const checks = await getResearchRootHealth(projectId).catch(() => [] as ResearchRootHealth[]);
+      setHealth(Object.fromEntries(checks.map((entry) => [entry.rootId, entry])));
+    } catch (cause) {
+      setDialogError(detail(cause));
+    } finally {
+      setBusy(false);
     }
   };
 
-  const add = async () => {
+  const confirmUnlink = async () => {
+    const rootId = unlinkRootId;
+    setUnlinkRootId(null);
+    if (!rootId) return;
     setBusy(true);
     setError(null);
     try {
-      setWorkspace(await addResearchRoot({ projectId, path, label, role, access }));
-      setPath("");
-      setLabel("");
-      setRole("data");
-      setAccess("read_only");
+      setWorkspace(await removeResearchRoot(projectId, rootId));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(detail(cause));
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <section className="flex h-full min-h-0 flex-col gap-4 overflow-auto p-5" aria-labelledby="research-roots-title">
-      <div>
-        <h2 id="research-roots-title" className="text-lg font-semibold">Research folders</h2>
-        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Keep datasets, source libraries, and analysis folders beside this manuscript. Linked folders stay in their original locations.
-        </p>
-      </div>
-      <div className="rounded-lg border bg-muted/20 p-4">
-        <div className="grid gap-3 lg:grid-cols-[minmax(14rem,1fr)_minmax(10rem,0.6fr)_10rem_11rem_auto]">
-          <div className="grid gap-1.5">
-            <FieldLabel htmlFor="new-research-root-path">Folder</FieldLabel>
-            <div className="flex gap-2">
-              <Input id="new-research-root-path" value={path} readOnly placeholder="Choose a folder" />
-              <Button variant="outline" size="icon" aria-label="Choose folder" disabled={busy} onClick={chooseFolder}>
-                <FolderPlus />
-              </Button>
-            </div>
-          </div>
-          <div className="grid gap-1.5">
-            <FieldLabel htmlFor="new-research-root-label">Label</FieldLabel>
-            <Input id="new-research-root-label" value={label} maxLength={120} placeholder="Study data" onChange={(event) => setLabel(event.target.value)} />
-          </div>
-          <div className="grid gap-1.5">
-            <FieldLabel htmlFor="new-research-root-role">Role</FieldLabel>
-            <Select value={role} onValueChange={(value) => setRole(value as ResearchRootRole)}>
-              <SelectTrigger id="new-research-root-role" aria-label="Folder role"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {Object.entries(ROLE_LABELS).map(([value, text]) => <SelectItem key={value} value={value}>{text}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-1.5">
-            <FieldLabel htmlFor="new-research-root-access">Access</FieldLabel>
-            <Select value={access} onValueChange={(value) => setAccess(value as ResearchRootAccess)}>
-              <SelectTrigger id="new-research-root-access" aria-label="Folder access"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {Object.entries(ACCESS_LABELS).map(([value, text]) => <SelectItem key={value} value={value}>{text}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-end">
-            <Button disabled={busy || !path || !label.trim()} onClick={add}>
-              {busy ? <Loader2 className="animate-spin" /> : <FolderPlus />} Link folder
-            </Button>
-          </div>
+    <section
+      className="flex h-full min-h-0 flex-col gap-4 overflow-auto p-5"
+      aria-labelledby="research-roots-title"
+      data-testid="research-roots-panel"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="research-roots-title" className="text-lg font-semibold">
+            Research folders
+          </h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Datasets, source libraries, and analysis folders stay in their original locations.
+            Oleafly reads them and never writes to them.
+          </p>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">New links start read-only. Write access applies only to native Oleafly actions that check this link.</p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Refresh linked folders"
+            disabled={busy}
+            onClick={() => void load()}
+          >
+            <RefreshCw className={busy ? "animate-spin" : ""} /> Refresh
+          </Button>
+          <Button size="sm" disabled={busy} onClick={openAdd} data-testid="research-root-link">
+            <FolderPlus /> Link folder
+          </Button>
+        </div>
       </div>
-      {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+
+      {error && (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      )}
       {busy && !workspace ? <Loader2 className="animate-spin text-muted-foreground" /> : null}
-      {workspace?.roots.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No research folders are linked to this manuscript.
+
+      {workspace && roots.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            No research folders are linked to this manuscript.
+          </p>
+          <Button className="mt-4" disabled={busy} onClick={openAdd} data-testid="research-root-link-empty">
+            <FolderPlus /> Link folder
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">
-          {workspace?.roots.map((root) => (
-            <RootEditor key={JSON.stringify([projectId, root.id, root.identity, root.canonicalPath])} projectId={projectId} root={root} onChanged={setWorkspace} onRemoved={setWorkspace} />
+          {roots.map((root) => (
+            <RootCard
+              key={JSON.stringify([projectId, root.id, root.identity, root.canonicalPath])}
+              projectId={projectId}
+              root={root}
+              health={health[root.id]}
+              onEdit={() => openEdit(root.id)}
+              onUnlink={() => setUnlinkRootId(root.id)}
+            />
           ))}
         </div>
       )}
+
+      <LinkFolderDialog
+        open={dialogOpen}
+        editing={editingRoot}
+        busy={busy}
+        error={dialogError}
+        onClose={() => {
+          setDialogOpen(false);
+          setEditingRootId(null);
+        }}
+        onSubmit={(values) => void submit(values)}
+      />
+
+      <ConfirmationDialog
+        open={unlinkRoot !== null}
+        destructive
+        title="Unlink this folder?"
+        description={`"${unlinkRoot?.label ?? ""}" is removed from this manuscript. The folder and its files stay where they are.`}
+        confirmLabel="Unlink"
+        onConfirm={() => void confirmUnlink()}
+        onCancel={() => setUnlinkRootId(null)}
+      />
     </section>
   );
 }

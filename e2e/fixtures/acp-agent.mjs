@@ -106,13 +106,13 @@ if (process.argv.includes("--child")) {
               ],
             },
           });
-        } else if (prompt.startsWith("wait ")) {
+        } else if (prompt.startsWith("wait ") || prompt.startsWith("wait-ignore-cancel ")) {
           const child = spawn(process.execPath, [process.argv[1], "--child"], { stdio: "ignore" });
           child.once("spawn", () => {
             if (pidFile) writeFileSync(pidFile, JSON.stringify({ parentPid: process.pid, childPid: child.pid }));
             text("ACP fixture waiting for cancellation.");
           });
-          pending = { request, prompt };
+          pending = { request, prompt, ignoreCancel: prompt.startsWith("wait-ignore-cancel ") };
         } else {
           update("usage_update", { used: 900, size: 32_000 });
           finish(request, `ACP fixture answer: ${prompt}`, !prompt.startsWith("unknown "));
@@ -120,7 +120,7 @@ if (process.argv.includes("--child")) {
         break;
       }
       case "session/cancel":
-        if (pending) {
+        if (pending && !pending.ignoreCancel) {
           result(pending.request, { stopReason: "cancelled" });
           pending = null;
         }

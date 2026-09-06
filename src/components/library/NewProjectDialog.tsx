@@ -160,7 +160,8 @@ export function NewProjectDialog(props: {
       <ResearchProjectSetup
         open={props.open && researchOpen}
         ensureInitialTask={ensureResearchStarterTask}
-        onClose={() => { setResearchOpen(false); props.onClose(); }}
+        onClose={() => setResearchOpen(false)}
+        onFinished={() => { setResearchOpen(false); props.onClose(); }}
         onCreated={async (projectId) => {
           await useFilesStore.getState().openProject(projectId);
         }}

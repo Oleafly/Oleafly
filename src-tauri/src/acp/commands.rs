@@ -200,6 +200,26 @@ pub async fn acp_permission(
 }
 
 #[tauri::command]
+pub async fn acp_delegated_permission(
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    session_id: String,
+    parent_session_id: String,
+    permission_id: String,
+    option_id: Option<String>,
+) -> Result<(), String> {
+    let record = check_project(&runtime, &session_id, &project_id)?;
+    if parent_session_id.trim().is_empty()
+        || record.parent_session_id.as_deref() != Some(parent_session_id.as_str())
+    {
+        return Err("This permission request belongs to another conversation.".into());
+    }
+    runtime
+        .resolve_delegated_permission(&session_id, &permission_id, option_id)
+        .await
+}
+
+#[tauri::command]
 pub fn acp_sessions(
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,

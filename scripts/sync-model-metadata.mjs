@@ -86,6 +86,8 @@ export function normalizeCost(value) {
   if (output !== undefined) cost.output = output;
   const cacheRead = price(value.cache_read);
   if (cacheRead !== undefined) cost.cacheRead = cacheRead;
+  const cacheWrite = price(value.cache_write);
+  if (cacheWrite !== undefined) cost.cacheWrite = cacheWrite;
   return Object.keys(cost).length > 0 ? cost : undefined;
 }
 

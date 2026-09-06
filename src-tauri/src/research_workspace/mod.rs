@@ -78,6 +78,13 @@ pub async fn write_research_root_file(
 }
 
 #[tauri::command]
+pub async fn research_root_health(project_id: String) -> Result<Vec<ResearchRootHealth>, String> {
+    tauri::async_runtime::spawn_blocking(move || roots::health(&project_id))
+        .await
+        .map_err(|error| format!("linked-folder check stopped: {error}"))?
+}
+
+#[tauri::command]
 pub fn research_root_capabilities(
     project_id: String,
     consumer: ResearchRootConsumer,

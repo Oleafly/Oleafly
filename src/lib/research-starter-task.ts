@@ -7,7 +7,6 @@ export function ensureResearchStarterTask({ projectId, title, prompt }: {
   projectId: string;
   title: string;
   prompt: string;
-  starter: string;
 }): Promise<void> {
   const existing = pending.get(projectId);
   if (existing) return existing;

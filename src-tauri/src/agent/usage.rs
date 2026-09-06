@@ -1,11 +1,18 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use oleafly_agent::{AgentEvent, InputTokenSemantics, Resolved, Usage, Wire};
+use rusqlite::Connection;
 
 pub use super::acp_usage::attach_acp_usage;
-use crate::usage_report::{apply_model_metadata_cost, record_usage_observation, UsageEventInput};
+use crate::usage_report::{
+    apply_model_metadata_cost, record_usage_observation_with, validate_usage_event, UsageEventInput,
+};
+
+pub const BUILTIN_RUNTIME: &str = "built-in";
+pub const HELPER_RUNTIME: &str = "built-in:helper";
+const PERSIST_INTERVAL: Duration = Duration::from_millis(750);
 
 pub struct UsageScope {
     pub session_id: String,
@@ -25,6 +32,19 @@ struct UsageState {
     event: UsageEventInput,
     latest: Option<Usage>,
     settled: bool,
+    connection: Option<Connection>,
+    last_persist: Option<Instant>,
+}
+
+fn runtime_id(scope: &UsageScope) -> &'static str {
+    let one_shot = scope.session_id == scope.turn_id
+        && scope.parent_session_id.is_none()
+        && scope.task_id.is_none();
+    if one_shot {
+        HELPER_RUNTIME
+    } else {
+        BUILTIN_RUNTIME
+    }
 }
 
 impl NativeUsageGuard {
@@ -34,6 +54,7 @@ impl NativeUsageGuard {
             .unwrap_or_default()
             .as_millis()
             .min(i64::MAX as u128) as i64;
+        let runtime = runtime_id(&scope);
         Self {
             root,
             started: Instant::now(),
@@ -47,7 +68,7 @@ impl NativeUsageGuard {
                     session_id: scope.session_id,
                     parent_session_id: scope.parent_session_id,
                     parent_record_key: None,
-                    runtime_id: "built-in".into(),
+                    runtime_id: runtime.into(),
                     provider_id: Some(resolved.provider_id.clone()),
                     model_id: Some(resolved.model_id.clone()),
                     occurred_at_ms,
@@ -68,6 +89,8 @@ impl NativeUsageGuard {
                 },
                 latest: None,
                 settled: false,
+                connection: None,
+                last_persist: None,
             }),
         }
     }
@@ -105,7 +128,13 @@ impl NativeUsageGuard {
             "unavailable"
         }
         .into();
-        self.persist(&mut state);
+        let due = match state.last_persist {
+            Some(last) => last.elapsed() >= PERSIST_INTERVAL,
+            None => true,
+        };
+        if due {
+            self.persist(&mut state);
+        }
     }
 
     pub fn finish(&self, status: &str) {
@@ -116,6 +145,7 @@ impl NativeUsageGuard {
         state.event.status = status.into();
         self.persist(&mut state);
         state.settled = true;
+        state.connection = None;
     }
 
     fn persist(&self, state: &mut UsageState) {
@@ -131,7 +161,19 @@ impl NativeUsageGuard {
         state.event.estimated_cost_usd = None;
         state.event.price_version = None;
         apply_model_metadata_cost(&crate::ai_model_metadata::snapshot(), &mut state.event);
-        if let Err(error) = record_usage_observation(&self.root, &state.event) {
+        state.last_persist = Some(Instant::now());
+        let result = validate_usage_event(&state.event).and_then(|()| {
+            if state.connection.is_none() {
+                state.connection = Some(crate::library_db::open(&self.root)?);
+            }
+            let connection = state
+                .connection
+                .as_ref()
+                .expect("connection was just opened");
+            record_usage_observation_with(connection, &state.event).map(|_| ())
+        });
+        if let Err(error) = result {
+            state.connection = None;
             crate::logsafe::info(
                 "usage persistence",
                 serde_json::json!({"error": error}),
@@ -154,21 +196,7 @@ fn billing_mode(resolved: &Resolved) -> &'static str {
         | Wire::Anthropic { base_url }
         | Wire::Google { base_url } => base_url,
     };
-    let local = reqwest::Url::parse(base_url)
-        .ok()
-        .and_then(|url| url.host_str().map(str::to_owned))
-        .is_some_and(|host| {
-            host.eq_ignore_ascii_case("localhost")
-                || host.ends_with(".localhost")
-                || host
-                    .parse::<std::net::IpAddr>()
-                    .is_ok_and(|ip| ip.is_loopback())
-        });
-    if resolved.provider_id == "ollama" || local {
-        "local"
-    } else {
-        "api"
-    }
+    crate::ai_model_metadata::classify_billing(&resolved.provider_id, base_url).as_str()
 }
 
 #[cfg(test)]

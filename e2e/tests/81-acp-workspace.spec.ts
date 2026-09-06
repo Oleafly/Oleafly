@@ -24,39 +24,74 @@ function acpCall(method: string, ...args: unknown[]) {
   return `import("/src/lib/acp.ts").then((acp) => acp[${JSON.stringify(method)}](${args.map((arg) => JSON.stringify(arg)).join(",")}))`;
 }
 
-async function selectNativeOption(page: Page, selector: string, value: string) {
+async function openAppOverlay(page: Page, testId: string, label: string) {
+  const trigger = `[data-testid=${JSON.stringify(testId)}]`;
   try {
     await page.waitForFunction(`(() => {
-      const select = document.querySelector(${JSON.stringify(selector)});
-      return !!select && !select.disabled && [...select.options].some((option) => option.value === ${JSON.stringify(value)});
+      const control = document.querySelector(${JSON.stringify(trigger)});
+      return !!control && !control.disabled;
     })()`, 20_000);
   } catch (error) {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    try {
-      const diagnostic = await Promise.race([
-        page.evaluate(`(() => {
-          const matches = document.querySelectorAll(${JSON.stringify(selector)});
-          const select = matches[0];
-          return {
-            present: !!select, matches: matches.length, disabled: select?.disabled ?? null,
-            selected: select?.value ?? null,
-            optionIds: Array.from(select?.options ?? []).slice(0, 120).map((option) => option.value),
-          };
-        })()`).catch((failure: unknown) => ({ unavailable: String(failure) })),
-        new Promise((resolve) => { timer = setTimeout(() => resolve({ unavailable: "Diagnostic deadline exceeded" }), 2_000); }),
-      ]);
-      console.error("ACP selector timeout", JSON.stringify({ selector, desired: value, diagnostic }));
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
+    const diagnostic = await page.evaluate(`(() => {
+      const control = document.querySelector(${JSON.stringify(trigger)});
+      return { present: !!control, disabled: control?.disabled ?? null, shown: control?.textContent ?? null };
+    })()`).catch((failure: unknown) => ({ unavailable: String(failure) }));
+    console.error("ACP picker timeout", JSON.stringify({ testId, label, diagnostic }));
     throw error;
   }
   await page.evaluate(`(() => {
-    const select = document.querySelector(${JSON.stringify(selector)});
-    select.value = ${JSON.stringify(value)};
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-    return select.value;
+    const control = document.querySelector(${JSON.stringify(trigger)});
+    control.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse" }));
+    return true;
   })()`);
+}
+
+async function pickOverlayEntry(page: Page, role: string, container: string, label: string) {
+  const match = `[...document.querySelectorAll('[role="${role}"]')].find((entry) => (entry.textContent ?? "").trim().startsWith(${JSON.stringify(label)}))`;
+  try {
+    await page.waitForFunction(`!!(${match})`, 20_000);
+  } catch (error) {
+    const diagnostic = await page.evaluate(`(() => {
+      const entries = [...document.querySelectorAll('[role="${role}"]')].map((entry) => (entry.textContent ?? "").trim().slice(0, 120));
+      const containers = [...document.querySelectorAll('[role="${container}"]')].length;
+      const triggers = [...document.querySelectorAll('[data-testid$="-picker"]')].map((entry) => ({
+        id: entry.getAttribute("data-testid"), state: entry.getAttribute("data-state"), expanded: entry.getAttribute("aria-expanded"), disabled: entry.disabled ?? null,
+      }));
+      return { entries, containers, triggers };
+    })()`).catch((failure: unknown) => ({ unavailable: String(failure) }));
+    console.error("ACP overlay entry timeout", JSON.stringify({ role, container, label, diagnostic }));
+    throw error;
+  }
+  await page.evaluate(`(() => {
+    (${match}).dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+    return true;
+  })()`);
+  await page.waitForFunction(`!document.querySelector('[role="${container}"]')`, 20_000);
+}
+
+async function selectAppOption(page: Page, testId: string, label: string) {
+  await openAppOverlay(page, testId, label);
+  await pickOverlayEntry(page, "option", "listbox", label);
+}
+
+async function selectAppMenuItemByValue(page: Page, testId: string, value: string) {
+  await openAppOverlay(page, testId, value);
+  const selector = `[role="menuitem"][data-value=${JSON.stringify(value)}]`;
+  await page.waitForFunction(`!!document.querySelector(${JSON.stringify(selector)})`, 20_000);
+  await page.evaluate(`(() => {
+    document.querySelector(${JSON.stringify(selector)}).dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+    return true;
+  })()`);
+  await page.waitForFunction(`!document.querySelector('[role="menu"]')`, 20_000);
+}
+
+async function clickHeaderAction(page: Page, label: string) {
+  const selector = `button[aria-label=${JSON.stringify(label)}]`;
+  await page.waitForFunction(`(() => {
+    const control = document.querySelector(${JSON.stringify(selector)});
+    return !!control && !control.disabled;
+  })()`, 20_000);
+  await page.click(selector);
 }
 
 async function openAcp(page: Page) {
@@ -122,13 +157,9 @@ async function withAgent(page: Page, login: boolean, work: (fixture: AgentFixtur
     expect(fixture.projectId).not.toBe("");
     await openAcp(page);
     const assistant = page.locator(assistantSelector);
-    await page.getByText("Agent setup", { exact: true }).click();
-    await fillTextarea(page, "#acp-custom-definition", JSON.stringify(definition));
-    await page.getByText("Register definition", { exact: true }).click();
-    await expect(assistant).toContainText(`${definition.name} is registered.`, { timeout: 20_000 });
-    await page.getByText("Agent setup", { exact: true }).click();
-    await selectNativeOption(page, "#acp-agent", fixture.agentId);
-    await page.getByText("New conversation", { exact: true }).click();
+    await page.evaluate(acpCall("acpRegister", JSON.stringify(definition)));
+    await selectAppOption(page, "acp-agent-picker", definition.name);
+    await clickHeaderAction(page, "New conversation");
     await expect(assistant).toContainText(`${fixture.agentId} · ${login ? "auth required" : "ready"}`, { timeout: 30_000 });
     await work(fixture);
   } finally {
@@ -164,7 +195,7 @@ async function onlySession(page: Page, fixture: AgentFixture) {
 async function sendPrompt(page: Page, prompt: string) {
   await expect(page.locator(composerSelector)).toBeEnabled({ timeout: 20_000 });
   await fillTextarea(page, composerSelector, prompt);
-  await page.getByText("Send", { exact: true }).click();
+  await page.click('button[aria-label="Send"]');
 }
 
 async function usageReport(page: Page, fixture: AgentFixture, sessionId: string, count = 1) {
@@ -193,7 +224,7 @@ test("a custom ACP agent signs in, selects its model, and resolves a native perm
     await expect(tauriPage.locator(composerSelector)).toBeDisabled();
     await assistant.getByText("Sign in to E2E agent", { exact: true }).click();
     await expect(tauriPage.locator(composerSelector)).toBeEnabled({ timeout: 20_000 });
-    await selectNativeOption(tauriPage, 'select[aria-label="Agent model"]', "e2e-model-b");
+    await selectAppOption(tauriPage, "acp-model-picker", "E2E model B");
     await tauriPage.waitForFunction(`${acpCall("acpSnapshot", fixture.projectId, session.id)}.then((snapshot) => snapshot.session.controls.modelId === "e2e-model-b")`, 20_000);
 
     const prompt = `permission ${fixture.run}`;
@@ -252,7 +283,7 @@ test("ACP history survives reload and reconnect without inventing token usage", 
     await reloadNativePage(tauriPage as TauriPage);
     await openProject(tauriPage, fixture.projectName);
     await openAcp(tauriPage);
-    await selectNativeOption(tauriPage, "#acp-history", session.id);
+    await selectAppMenuItemByValue(tauriPage, "acp-history-picker", session.id);
     const assistant = tauriPage.locator(assistantSelector);
     await expect(assistant).toContainText(reply, { timeout: 20_000 });
     await assistant.getByText("Reconnect to conversation", { exact: true }).click();
@@ -273,18 +304,18 @@ test("ACP history survives reload and reconnect without inventing token usage", 
   });
 });
 
-test("Stop cancels the native ACP turn and reaps its running child process", async ({ tauriPage }) => {
-  test.setTimeout(120_000);
+test("Stop reaps the child process of an agent that ignores cancellation", async ({ tauriPage }) => {
+  test.setTimeout(180_000);
   await withAgent(tauriPage, false, async (fixture) => {
     const session = await onlySession(tauriPage, fixture);
     const assistant = tauriPage.locator(assistantSelector);
-    await sendPrompt(tauriPage, `wait ${fixture.run}`);
+    await sendPrompt(tauriPage, `wait-ignore-cancel ${fixture.run}`);
     await expect(assistant).toContainText("ACP fixture waiting for cancellation.", { timeout: 20_000 });
     await waitHost(() => fixturePids(fixture.pidFile).length === 2, "the fixture did not start its child process");
     const pids = fixturePids(fixture.pidFile);
     expect(pids.every(processAlive)).toBe(true);
-    await assistant.getByText("Stop", { exact: true }).click();
-    await expect(assistant).toContainText(`${fixture.agentId} · cancelled`, { timeout: 20_000 });
+    await tauriPage.click('button[aria-label="Stop"]');
+    await expect(assistant).toContainText(`${fixture.agentId} · cancelled`, { timeout: 60_000 });
     await waitHost(() => pids.every((pid) => !processAlive(pid)), "Stop left an ACP fixture process running");
     const stopped = await tauriPage.evaluate<AcpSnapshot>(acpCall("acpSnapshot", fixture.projectId, session.id));
     expect(stopped.session.status).toBe("cancelled");
@@ -293,5 +324,34 @@ test("Stop cancels the native ACP turn and reaps its running child process", asy
     const report = await usageReport(tauriPage, fixture, session.id);
     expect(report.sessions.items[0].status).toBe("cancelled");
     expect(report.totals.inputUnknownRecords).toBe(1);
+  });
+});
+
+test("Stop ends the turn and leaves a compliant agent connected", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
+  await withAgent(tauriPage, false, async (fixture) => {
+    const session = await onlySession(tauriPage, fixture);
+    const assistant = tauriPage.locator(assistantSelector);
+    await sendPrompt(tauriPage, `wait ${fixture.run}`);
+    await expect(assistant).toContainText("ACP fixture waiting for cancellation.", { timeout: 20_000 });
+    await waitHost(() => fixturePids(fixture.pidFile).length === 2, "the fixture did not start its child process");
+    await tauriPage.click('button[aria-label="Stop"]');
+    await expect(assistant).toContainText(`${fixture.agentId} · ready`, { timeout: 30_000 });
+    await expect(tauriPage.locator(composerSelector)).toBeEnabled({ timeout: 20_000 });
+    await expect(assistant.getByText("Reconnect to conversation", { exact: true })).toHaveCount(0);
+    const stopped = await tauriPage.evaluate<AcpSnapshot>(acpCall("acpSnapshot", fixture.projectId, session.id));
+    expect(stopped.session.status).toBe("ready");
+    await sendPrompt(tauriPage, `after stop ${fixture.run}`);
+    await expect(assistant).toContainText(`ACP fixture answer: after stop ${fixture.run}`, { timeout: 20_000 });
+  });
+});
+
+test("Agent setup opens the CLI agents tab in settings", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
+  await withAgent(tauriPage, false, async (fixture) => {
+    await clickHeaderAction(tauriPage, "Agent setup");
+    await expect(tauriPage.locator('[data-testid="ai-settings-tab-agents"]')).toBeVisible({ timeout: 20_000 });
+    await expect(tauriPage.locator(`[data-testid="acp-agent-card-${fixture.agentId}"]`)).toBeVisible({ timeout: 20_000 });
+    await tauriPage.press("body", "Escape");
   });
 });

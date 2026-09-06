@@ -70,6 +70,18 @@ pub struct AgentStatus {
     pub reason: Option<String>,
     pub sign_in_hint: Option<String>,
     pub task_unavailable_reason: Option<String>,
+    pub cli: Option<CliStatus>,
+    pub bridge_shared_with_cli: bool,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CliStatus {
+    pub command: String,
+    pub display_name: String,
+    pub path: Option<String>,
+    pub version: Option<String>,
+    pub sign_in_command: String,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]

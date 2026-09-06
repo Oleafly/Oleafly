@@ -378,6 +378,11 @@ fn run_git(
         .arg("-C")
         .arg(project)
         .args(arguments)
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .env_remove("GIT_COMMON_DIR")
+        .env_remove("GIT_PREFIX")
         .stdin(Stdio::null())
         .stdout(Stdio::from(stdout.try_clone().map_err(|error| {
             format!("could not capture Git output: {error}")
@@ -458,6 +463,35 @@ fn reap_process(child: &mut tokio::process::Child) {
             Ok(None) => std::thread::sleep(Duration::from_millis(10)),
         }
     }
+}
+
+pub(crate) fn task_workspace_root(store_root: &Path, task_id: &str) -> PathBuf {
+    store_root.join("workspaces").join(task_id)
+}
+
+pub(crate) fn purge_task_workspaces(project: Option<&Path>, task_root: &Path) {
+    let Ok(entries) = fs::read_dir(task_root) else {
+        remove_created_path(task_root);
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if let Some(project) = project {
+            let arguments = [
+                "worktree".to_string(),
+                "remove".to_string(),
+                "--force".to_string(),
+                path.to_string_lossy().into_owned(),
+            ];
+            let _ = run_git(project, &arguments, &CancellationToken::new());
+        }
+        remove_created_path(&path);
+    }
+    if let Some(project) = project {
+        let arguments = ["worktree".to_string(), "prune".to_string()];
+        let _ = run_git(project, &arguments, &CancellationToken::new());
+    }
+    remove_created_path(task_root);
 }
 
 fn cleanup_incomplete_workspace(project: &Path, workspace: &Path, baseline: &Path) {
@@ -917,6 +951,11 @@ mod tests {
                 .arg("-C")
                 .arg(&project)
                 .args(arguments)
+                .env_remove("GIT_DIR")
+                .env_remove("GIT_WORK_TREE")
+                .env_remove("GIT_INDEX_FILE")
+                .env_remove("GIT_COMMON_DIR")
+                .env_remove("GIT_PREFIX")
                 .output()
                 .unwrap();
             assert!(
@@ -952,5 +991,79 @@ mod tests {
         let metadata = fs::symlink_metadata(destination.join("main.tex")).unwrap();
         assert!(metadata.is_file());
         assert!(!metadata.file_type().is_symlink());
+    }
+    #[test]
+    fn purging_a_task_removes_both_generations_and_unregisters_its_git_worktree() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().join("project");
+        fs::create_dir(&project).unwrap();
+        fs::write(project.join("main.tex"), "manuscript").unwrap();
+        let run = |arguments: &[&str]| {
+            let output = Command::new("git")
+                .arg("-C")
+                .arg(&project)
+                .args(arguments)
+                .env_remove("GIT_DIR")
+                .env_remove("GIT_WORK_TREE")
+                .env_remove("GIT_INDEX_FILE")
+                .env_remove("GIT_COMMON_DIR")
+                .env_remove("GIT_PREFIX")
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        };
+        run(&["init"]);
+        run(&["config", "user.name", "Fixture"]);
+        run(&["config", "user.email", "fixture@example.invalid"]);
+        run(&["add", "main.tex"]);
+        run(&["commit", "-m", "fixture"]);
+
+        let store_root = temp.path().join("store");
+        let task_root = task_workspace_root(&store_root, "task-one");
+        let first = task_root.join("1");
+        let second = task_root.join("2");
+        for generation in [&first, &second] {
+            let isolation = prepare_at(&project, generation, &CancellationToken::new()).unwrap();
+            assert_eq!(isolation.kind, TaskIsolationKind::GitWorktree);
+        }
+        let registrations = project.join(".git/worktrees");
+        assert_eq!(fs::read_dir(&registrations).unwrap().count(), 2);
+        assert!(first.with_file_name("1-baseline").is_dir());
+
+        purge_task_workspaces(Some(&project), &task_root);
+
+        assert!(!task_root.exists());
+        assert!(
+            fs::read_dir(&registrations)
+                .map(|entries| entries.count())
+                .unwrap_or(0)
+                == 0
+        );
+        assert_eq!(
+            fs::read_to_string(project.join("main.tex")).unwrap(),
+            "manuscript"
+        );
+    }
+
+    #[test]
+    fn purging_a_task_without_a_project_still_removes_its_snapshots() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().join("project");
+        fs::create_dir(&project).unwrap();
+        fs::write(project.join("main.tex"), "manuscript").unwrap();
+        let store_root = temp.path().join("store");
+        let task_root = task_workspace_root(&store_root, "task-two");
+        let isolation =
+            prepare_at(&project, &task_root.join("1"), &CancellationToken::new()).unwrap();
+        assert_eq!(isolation.kind, TaskIsolationKind::StagedProject);
+        fs::remove_dir_all(&project).unwrap();
+
+        purge_task_workspaces(None, &task_root);
+
+        assert!(!task_root.exists());
     }
 }

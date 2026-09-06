@@ -299,3 +299,31 @@ async fn conflicting_recovery_preserves_evidence_and_defers_the_queue_until_reso
     finish_run(&state, next, Ok(outcome("recovery resumed"))).await;
     stop(&state).await;
 }
+
+#[tokio::test]
+async fn a_pending_apply_for_a_deleted_project_no_longer_blocks_every_other_recovery() {
+    let data = DataRoot::new();
+    let paper = data.project("paper");
+    data.project("other");
+    let state = data.state(1);
+    let app_state = crate::state::AppState::default();
+    let stranded = pending_review(&state, &paper).await;
+    let store = state.store().unwrap();
+    let interrupted = requested(&store, draft("other", "Interrupted elsewhere"));
+    let claimed = store.claim_next().unwrap().unwrap();
+    assert_eq!(claimed.id, interrupted.id);
+    assert_eq!(claimed.status, ResearchTaskStatus::Running);
+    fs::remove_dir_all(&paper).unwrap();
+
+    let error = state.recover(&app_state).await.unwrap_err();
+
+    assert!(error.contains(&stranded.id));
+    assert!(store.pending_applies().unwrap().is_empty());
+    let repaired = store.require(&interrupted.id).unwrap();
+    assert_eq!(repaired.status, ResearchTaskStatus::Failed);
+    assert!(repaired.error.is_some());
+    let cleared = store.require(&stranded.id).unwrap();
+    assert_eq!(cleared.status, ResearchTaskStatus::AwaitingReview);
+    assert!(cleared.error.is_some());
+    stop(&state).await;
+}

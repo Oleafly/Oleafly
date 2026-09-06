@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ExternalLink, FileDiff, Loader2 } from "lucide-react";
+import { AlertTriangle, ChevronRight, ExternalLink, FileDiff, Loader2, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InlineDiffPreview } from "@/components/editor/diff/InlineDiffPreview";
+import { coalesceTranscriptEvents } from "@/lib/chat-activity";
 import {
   previewResearchTaskArtifact,
   previewResearchTaskFile,
@@ -30,10 +32,12 @@ interface TaskDetailProps {
   onEdit: () => void;
   onApply: (paths: string[]) => Promise<void>;
   onAccept: () => Promise<void>;
+  onDelete: () => void;
   onLoadMoreEvents: () => Promise<void>;
   onOpenSession?: (task: ResearchTask) => void;
-  onOpenArtifact?: (task: ResearchTask, artifact: TaskArtifact) => void;
 }
+
+const EMPTY_CHANGES: NonNullable<ResearchTask["result"]>["changedFiles"] = [];
 
 const STATUS_LABELS: Record<ResearchTask["status"], string> = {
   queued: "Queued",
@@ -44,6 +48,24 @@ const STATUS_LABELS: Record<ResearchTask["status"], string> = {
   cancelled: "Cancelled",
 };
 
+function ReasoningRow({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="flex items-center gap-1 text-left text-foreground hover:underline"
+      >
+        <ChevronRight className={cn("size-3 transition-transform", open && "rotate-90")} />
+        Reported reasoning
+      </button>
+      {open ? <p className="mt-2 whitespace-pre-wrap">{text}</p> : null}
+    </div>
+  );
+}
+
 function EventRow({ event }: { event: TaskRuntimeEvent }) {
   switch (event.kind) {
     case "sessionBound":
@@ -53,12 +75,7 @@ function EventRow({ event }: { event: TaskRuntimeEvent }) {
     case "text":
       return <p className="whitespace-pre-wrap text-foreground">{event.text}</p>;
     case "reasoning":
-      return (
-        <details>
-          <summary className="cursor-pointer text-foreground">Reported reasoning</summary>
-          <p className="mt-2 whitespace-pre-wrap">{event.text}</p>
-        </details>
-      );
+      return <ReasoningRow text={event.text} />;
     case "tool":
       return (
         <p>
@@ -91,27 +108,27 @@ export function TaskDetail({
   onEdit,
   onApply,
   onAccept,
+  onDelete,
   onLoadMoreEvents,
   onOpenSession,
-  onOpenArtifact,
 }: TaskDetailProps) {
   const taskRunKey = `${task.id}:${task.executionGeneration}`;
   const activeTaskRun = useRef(taskRunKey);
   activeTaskRun.current = taskRunKey;
-  const changedFiles = useMemo(() => task.result?.changedFiles ?? [], [task.result?.changedFiles]);
-  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
+  const transcript = useMemo(() => coalesceTranscriptEvents(events), [events]);
+  const changedFiles = task.result?.changedFiles ?? EMPTY_CHANGES;
+  const changedPathsKey = changedFiles.map((change) => change.path).join("\n");
+  const [selectedPaths, setSelectedPaths] = useState<string[]>(() =>
+    changedFiles.map((change) => change.path),
+  );
   const [filePreviews, setFilePreviews] = useState<Record<string, TaskFilePreview>>({});
   const [previewingPath, setPreviewingPath] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [artifactPreview, setArtifactPreview] = useState<TaskArtifactPreview | null>(null);
 
   useEffect(() => {
-    setSelectedPaths(changedFiles.map((change) => change.path));
-    setFilePreviews({});
-    setPreviewingPath(null);
-    setPreviewError(null);
-    setArtifactPreview(null);
-  }, [changedFiles]);
+    setSelectedPaths(changedPathsKey ? changedPathsKey.split("\n") : []);
+  }, [changedPathsKey]);
 
   const previewFile = async (path: string) => {
     const requestRunKey = taskRunKey;
@@ -122,6 +139,9 @@ export function TaskDetail({
       const preview = await previewResearchTaskFile(task.id, path);
       if (activeTaskRun.current !== requestRunKey) return;
       setFilePreviews((current) => ({ ...current, [previewKey]: preview }));
+      if (preview.baseIsCurrent === false) {
+        setSelectedPaths((current) => current.filter((candidate) => candidate !== path));
+      }
     } catch (error) {
       if (activeTaskRun.current !== requestRunKey) return;
       setPreviewError(error instanceof Error ? error.message : String(error));
@@ -154,6 +174,9 @@ export function TaskDetail({
     [task.dependencyIds, tasks],
   );
   const blocked = dependencies.some((dependency) => dependency.status !== "completed");
+  const driftedPaths = changedFiles
+    .map((change) => change.path)
+    .filter((path) => filePreviews[`${taskRunKey}:${path}`]?.baseIsCurrent === false);
 
   return (
     <article aria-labelledby="research-task-detail-title" className="min-h-0 space-y-5 overflow-auto">
@@ -211,10 +234,21 @@ export function TaskDetail({
                 Retry
               </Button>
             ) : null}
-            {task.sessionId && onOpenSession ? (
+            {task.runtimeId === "acp" && task.nativeSessionId && onOpenSession ? (
               <Button size="sm" variant="outline" onClick={() => onOpenSession(task)}>
                 Open session
                 <ExternalLink />
+              </Button>
+            ) : null}
+            {task.status !== "running" ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={`Delete ${task.title}`}
+                disabled={busy}
+                onClick={onDelete}
+              >
+                <Trash2 /> Delete
               </Button>
             ) : null}
           </div>
@@ -291,18 +325,7 @@ export function TaskDetail({
               ))}
               {artifactPreview ? (
                 <div className="rounded-md border bg-muted/30 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium">{artifactPreview.artifact.label}</p>
-                    {onOpenArtifact ? (
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        onClick={() => onOpenArtifact(task, artifactPreview.artifact)}
-                      >
-                        Open elsewhere
-                      </Button>
-                    ) : null}
-                  </div>
+                  <p className="text-sm font-medium">{artifactPreview.artifact.label}</p>
                   {artifactPreview.content.text !== null ? (
                     <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap text-xs">
                       {artifactPreview.content.text}
@@ -315,7 +338,8 @@ export function TaskDetail({
                     />
                   ) : (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Binary file · {artifactPreview.content.size ?? 0} bytes. Use Open elsewhere to inspect it.
+                      Binary file · {artifactPreview.content.size ?? 0} bytes. Apply it to your
+                      project to open it.
                     </p>
                   )}
                 </div>
@@ -337,7 +361,9 @@ export function TaskDetail({
                     setSelectedPaths(
                       selectedPaths.length === changedFiles.length
                         ? []
-                        : changedFiles.map((change) => change.path),
+                        : changedFiles
+                            .map((change) => change.path)
+                            .filter((path) => !driftedPaths.includes(path)),
                     )
                   }
                 >
@@ -347,16 +373,30 @@ export function TaskDetail({
               <p className="text-xs text-muted-foreground">
                 Preview every selected file before applying it.
               </p>
+              {driftedPaths.length > 0 ? (
+                <p
+                  role="alert"
+                  className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs"
+                >
+                  <AlertTriangle aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+                  <span>
+                    {driftedPaths.length === 1
+                      ? `${driftedPaths[0]} changed in your project after this task started. Its diff is against the older version, so it cannot be applied.`
+                      : `${driftedPaths.length} files changed in your project after this task started. Their diffs are against the older versions, so they cannot be applied.`}
+                  </span>
+                </p>
+              ) : null}
               <div className="divide-y rounded-md border">
                 {changedFiles.map((change) => {
                   const preview = filePreviews[`${taskRunKey}:${change.path}`];
+                  const drifted = preview?.baseIsCurrent === false;
                   return (
                     <div key={change.path} className="p-3">
                       <div className="flex items-center gap-3 text-sm">
                         <Checkbox
                           aria-label={`Apply ${change.path}`}
                           checked={selectedPaths.includes(change.path)}
-                          disabled={task.status !== "awaiting_review" || busy}
+                          disabled={task.status !== "awaiting_review" || busy || drifted}
                           onCheckedChange={(checked) =>
                             setSelectedPaths((current) =>
                               checked === true
@@ -368,6 +408,12 @@ export function TaskDetail({
                         <span className="min-w-0 flex-1 truncate font-mono text-xs">
                           {change.path}
                         </span>
+                        {drifted ? (
+                          <Badge variant="outline" className="shrink-0 gap-1 border-amber-500/50">
+                            <AlertTriangle aria-hidden="true" className="size-3" />
+                            Changed since
+                          </Badge>
+                        ) : null}
                         <span className="text-xs capitalize text-muted-foreground">
                           {change.kind}
                         </span>
@@ -451,13 +497,13 @@ export function TaskDetail({
           <h4 id="research-task-activity" className="text-sm font-medium">
             Activity
           </h4>
-          {events.length === 0 && !eventsLoading ? (
+          {transcript.length === 0 && !eventsLoading ? (
             <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
               No activity was recorded for this run.
             </p>
           ) : (
             <ol className="space-y-2">
-              {events.map((event) => (
+              {transcript.map((event) => (
                 <li
                   key={`${event.executionGeneration}:${event.sequence}`}
                   className="rounded-md border bg-card px-3 py-2 text-xs text-muted-foreground"

@@ -527,18 +527,57 @@ pub fn resolve(root: &Path, definition: &AgentDefinition) -> Result<Launch, Stri
     Err("The agent is not installed. Install the pinned version or make its executable available on PATH.".into())
 }
 
+pub(super) fn npm_roots_from(
+    directories: impl IntoIterator<Item = PathBuf>,
+    node: Option<PathBuf>,
+    home: Option<PathBuf>,
+    appdata: Option<PathBuf>,
+) -> Vec<PathBuf> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    let add_bin = |candidates: &mut Vec<PathBuf>, directory: &Path| {
+        candidates.push(directory.join("node_modules"));
+        if let Some(prefix) = directory.parent() {
+            candidates.push(prefix.join("lib").join("node_modules"));
+        }
+    };
+    for directory in directories {
+        add_bin(&mut candidates, &directory);
+    }
+    if let Some(directory) = node.as_deref().and_then(Path::parent) {
+        add_bin(&mut candidates, directory);
+    }
+    if let Some(home) = home {
+        candidates.push(home.join(".npm-global").join("lib").join("node_modules"));
+    }
+    candidates.push(PathBuf::from("/opt/homebrew/lib/node_modules"));
+    candidates.push(PathBuf::from("/usr/local/lib/node_modules"));
+    if let Some(appdata) = appdata {
+        candidates.push(appdata.join("npm").join("node_modules"));
+    }
+    let mut roots: Vec<PathBuf> = Vec::new();
+    for candidate in candidates {
+        if !roots.contains(&candidate) {
+            roots.push(candidate);
+        }
+    }
+    roots
+}
+
+fn npm_global_roots() -> Vec<PathBuf> {
+    npm_roots_from(
+        std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
+            .filter(|path| path.is_absolute()),
+        discover("node"),
+        crate::paths::home_dir().ok(),
+        std::env::var_os("APPDATA").map(PathBuf::from),
+    )
+}
+
 fn existing_npm_launch(definition: &AgentDefinition, args: &[String]) -> Option<Launch> {
     let package = definition.distribution.npx.as_ref()?;
     let (name, _) = package_parts(&package.package, true).ok()?;
-    let mut directories: Vec<PathBuf> =
-        std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
-            .filter(|path| path.is_absolute())
-            .collect();
-    if let Some(appdata) = std::env::var_os("APPDATA") {
-        directories.push(PathBuf::from(appdata).join("npm"));
-    }
-    for directory in directories {
-        let package_root = directory.join("node_modules").join(name);
+    for root in npm_global_roots() {
+        let package_root = root.join(name);
         let manifest_path = package_root.join("package.json");
         if manifest_path
             .metadata()
@@ -581,9 +620,12 @@ fn existing_npm_launch(definition: &AgentDefinition, args: &[String]) -> Option<
             continue;
         }
         let mut header = [0u8; 128];
-        let count = std::fs::File::open(&executable)
+        let Some(count) = std::fs::File::open(&executable)
             .and_then(|mut file| file.read(&mut header))
-            .ok()?;
+            .ok()
+        else {
+            continue;
+        };
         let node_script = String::from_utf8_lossy(&header[..count])
             .lines()
             .next()
@@ -677,6 +719,149 @@ pub(super) fn task_unavailable_reason_for(
     None
 }
 
+struct VendorCli {
+    command: &'static str,
+    display_name: &'static str,
+    sign_in_command: &'static str,
+    shares_bridge: bool,
+}
+
+fn vendor_cli(definition: &AgentDefinition) -> Option<VendorCli> {
+    match definition.id.as_str() {
+        "claude" => Some(VendorCli {
+            command: "claude",
+            display_name: "Claude Code",
+            sign_in_command: "claude auth login",
+            shares_bridge: false,
+        }),
+        "codex" => Some(VendorCli {
+            command: "codex",
+            display_name: "Codex",
+            sign_in_command: "codex login",
+            shares_bridge: false,
+        }),
+        "gemini" => Some(VendorCli {
+            command: "gemini",
+            display_name: "Gemini CLI",
+            sign_in_command: "gemini",
+            shares_bridge: true,
+        }),
+        _ => None,
+    }
+}
+
+pub(crate) fn parse_cli_version(output: &str) -> Option<String> {
+    let version = output
+        .split_whitespace()
+        .map(|token| token.trim_start_matches('v'))
+        .find(|token| {
+            token.contains('.')
+                && token.split('.').next().is_some_and(|part| {
+                    !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit())
+                })
+        })
+        .map(|token| {
+            token
+                .trim_end_matches(|c: char| !c.is_ascii_alphanumeric())
+                .to_string()
+        })?;
+    (!version.is_empty() && version.len() <= 40).then_some(version)
+}
+
+async fn cli_version(path: &Path) -> Option<String> {
+    let mut command = tokio::process::Command::new(path);
+    command.arg("--version");
+    let output = bounded_command(command, Duration::from_secs(5))
+        .await
+        .ok()?;
+    parse_cli_version(&output)
+}
+
+async fn cli_status(definition: &AgentDefinition, probe: bool) -> Option<CliStatus> {
+    let vendor = vendor_cli(definition)?;
+    let path = discover(vendor.command);
+    let version = match (&path, probe) {
+        (Some(path), true) => cli_version(path).await,
+        _ => None,
+    };
+    Some(CliStatus {
+        command: vendor.command.into(),
+        display_name: vendor.display_name.into(),
+        path: path.map(|value| value.to_string_lossy().into_owned()),
+        version,
+        sign_in_command: vendor.sign_in_command.into(),
+    })
+}
+
+fn sign_in_hint(definition: &AgentDefinition, cli: Option<&CliStatus>) -> String {
+    match (
+        definition.id.as_str(),
+        cli.and_then(|value| value.path.as_deref()),
+    ) {
+        ("claude", Some(_)) => "Run claude auth login in your terminal, then reconnect.".into(),
+        ("claude", None) => {
+            "Install Claude Code, run claude auth login in your terminal, then reconnect.".into()
+        }
+        ("codex", Some(_)) => "Run codex login in your terminal, then reconnect.".into(),
+        ("codex", None) => {
+            "Install Codex, run codex login in your terminal, then reconnect.".into()
+        }
+        ("gemini", _) => {
+            "Run gemini in your terminal and finish sign-in and workspace trust, then reconnect."
+                .into()
+        }
+        _ => "Use the agent's CLI sign-in, or choose a sign-in method after connecting.".into(),
+    }
+}
+
+static NODE_MAJOR: std::sync::Mutex<Option<(PathBuf, std::time::Instant, Option<u32>)>> =
+    std::sync::Mutex::new(None);
+
+async fn detected_node_major() -> Option<u32> {
+    let node = discover("node")?;
+    if let Ok(cache) = NODE_MAJOR.lock() {
+        if let Some((path, probed, major)) = cache.as_ref() {
+            if path == &node && probed.elapsed() < Duration::from_secs(60) {
+                return *major;
+            }
+        }
+    }
+    let mut command = tokio::process::Command::new(&node);
+    command.arg("--version");
+    let major = bounded_command(command, Duration::from_secs(5))
+        .await
+        .ok()
+        .and_then(|output| {
+            output
+                .trim()
+                .trim_start_matches('v')
+                .split('.')
+                .next()
+                .and_then(|value| value.parse::<u32>().ok())
+        });
+    if let Ok(mut cache) = NODE_MAJOR.lock() {
+        *cache = Some((node, std::time::Instant::now(), major));
+    }
+    major
+}
+
+async fn node_major_reason(definition: &AgentDefinition) -> Option<String> {
+    let required = definition
+        .distribution
+        .npx
+        .as_ref()
+        .and_then(|package| package.node_major)?;
+    match detected_node_major().await {
+        Some(major) if major >= required => None,
+        Some(major) => Some(format!(
+            "This agent needs Node.js {required} or newer. The detected version is {major}."
+        )),
+        None => Some(format!(
+            "Install Node.js {required} or newer to run this agent."
+        )),
+    }
+}
+
 pub async fn status(root: &Path, definition: AgentDefinition, probe: bool) -> AgentStatus {
     let resolution = resolve(root, &definition);
     let mut reason = install_reason(&definition);
@@ -686,24 +871,26 @@ pub async fn status(root: &Path, definition: AgentDefinition, probe: bool) -> Ag
         }
     }
     let resolved = resolution.ok();
-    if probe && resolved.is_some() {
-        if let Some(required) = definition
-            .distribution
-            .npx
-            .as_ref()
-            .and_then(|v| v.node_major)
-        {
-            if let Err(error) = check_node(required).await {
-                reason = Some(error);
-            }
-        }
+    let node_reason = node_major_reason(&definition).await;
+    if node_reason.is_some() {
+        reason = node_reason.clone();
     }
+    let cli = cli_status(&definition, probe).await;
+    let bridge_shared_with_cli = vendor_cli(&definition).is_some_and(|vendor| vendor.shares_bridge);
     AgentStatus {
-        platform: platform(), installed: resolved.is_some(), executable: resolved.as_ref().map(|v| v.executable.to_string_lossy().into_owned()),
-        installed_version: resolved.as_ref().and_then(|v| v.version.clone()), managed: resolved.as_ref().is_some_and(|v| v.managed),
-        can_install: install_reason(&definition).is_none(), reason,
-        sign_in_hint: match definition.id.as_str() { "claude" => Some("Run claude auth login in your terminal, then reconnect.".into()), "codex" => Some("Run codex login in your terminal, then reconnect.".into()), "gemini" => Some("Run gemini in your terminal and finish sign-in and workspace trust, then reconnect.".into()), _ => Some("Use the agent's CLI sign-in, or choose a sign-in method after connecting.".into()) },
+        platform: platform(),
+        installed: resolved.is_some(),
+        executable: resolved
+            .as_ref()
+            .map(|v| v.executable.to_string_lossy().into_owned()),
+        installed_version: resolved.as_ref().and_then(|v| v.version.clone()),
+        managed: resolved.as_ref().is_some_and(|v| v.managed),
+        can_install: install_reason(&definition).is_none() && node_reason.is_none(),
+        reason,
+        sign_in_hint: Some(sign_in_hint(&definition, cli.as_ref())),
         task_unavailable_reason: task_unavailable_reason(&definition),
+        cli,
+        bridge_shared_with_cli,
         definition,
     }
 }

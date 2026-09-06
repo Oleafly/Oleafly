@@ -43,6 +43,14 @@ export interface UpdateResearchRootRequest {
   access: ResearchRootAccess;
 }
 
+export type ResearchRootAvailability = "available" | "missing" | "unreadable";
+
+export interface ResearchRootHealth {
+  rootId: string;
+  availability: ResearchRootAvailability;
+  detail: string | null;
+}
+
 export interface ResearchRootCapability {
   rootId: string;
   label: string;
@@ -51,6 +59,7 @@ export interface ResearchRootCapability {
   effectiveAccess: ResearchRootAccess;
   canonicalPath: string | null;
   exposure: "native_capability" | "native_read_context" | "context_only";
+  availability: ResearchRootAvailability;
 }
 
 export interface ResearchRootFileEntry {
@@ -164,6 +173,9 @@ export const writeResearchRootFile = (
     relativePath,
     content,
   });
+
+export const getResearchRootHealth = (projectId: string) =>
+  invoke<ResearchRootHealth[]>("research_root_health", { projectId });
 
 export const getResearchRootCapabilities = (
   projectId: string,

@@ -1,7 +1,7 @@
 use super::model::{
     AddResearchRootRequest, LinkedResearchRoot, ResearchDocumentEngine, ResearchProjectRequest,
-    ResearchRootAccess, ResearchRootConsumer, ResearchRootOperation, ResearchRootRole,
-    ResearchStarter, ResearchWorkspace,
+    ResearchRootAccess, ResearchRootAvailability, ResearchRootConsumer, ResearchRootOperation,
+    ResearchRootRole, ResearchStarter, ResearchWorkspace,
 };
 use super::{roots, setup};
 use std::collections::HashSet;
@@ -265,8 +265,17 @@ fn a_replaced_linked_folder_is_stale_until_relinked() {
     let root_id = workspace.roots[0].id.clone();
     std::fs::rename(&linked, temp.path().join("old-linked")).unwrap();
     std::fs::create_dir(&linked).unwrap();
-    let error = roots::capabilities(project_id, ResearchRootConsumer::Native).unwrap_err();
-    assert!(error.contains("replaced"));
+    let capabilities = roots::capabilities(project_id, ResearchRootConsumer::Native).unwrap();
+    assert_eq!(capabilities.len(), 1);
+    assert_eq!(
+        capabilities[0].availability,
+        ResearchRootAvailability::Unreadable
+    );
+    assert!(capabilities[0].canonical_path.is_none());
+    let health = roots::health(project_id).unwrap();
+    assert_eq!(health.len(), 1);
+    assert_eq!(health[0].availability, ResearchRootAvailability::Unreadable);
+    assert!(health[0].detail.as_deref().unwrap().contains("replaced"));
     roots::remove_root(project_id, &root_id).unwrap();
     assert!(linked.is_dir());
     match previous {
@@ -324,6 +333,143 @@ fn native_writes_require_explicit_read_write_access() {
     )
     .unwrap();
     assert_eq!(std::fs::read(linked.join("result.txt")).unwrap(), b"first");
+    match previous {
+        Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
+        None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+    }
+}
+
+#[test]
+fn an_empty_relative_path_never_stages_a_write_outside_the_linked_root() {
+    let _env_guard = crate::paths::data_dir_env_lock();
+    let temp = tempfile::tempdir().unwrap();
+    let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+    std::env::set_var("OLEAFLY_DATA_DIR", temp.path().join("data"));
+    let projects = crate::paths::projects_root().unwrap();
+    let project_id = "empty-write";
+    std::fs::create_dir(projects.join(project_id)).unwrap();
+    std::fs::write(projects.join(project_id).join("project.json"), "{}").unwrap();
+    let parent = temp.path().join("outside");
+    std::fs::create_dir(&parent).unwrap();
+    let linked = parent.join("linked");
+    std::fs::create_dir(&linked).unwrap();
+    let workspace = roots::add_root(AddResearchRootRequest {
+        project_id: project_id.into(),
+        path: linked.to_string_lossy().into_owned(),
+        label: "Writable".into(),
+        role: ResearchRootRole::Analysis,
+        access: ResearchRootAccess::ReadWrite,
+    })
+    .unwrap();
+    let root_id = workspace.roots[0].id.clone();
+    for empty in ["", "  "] {
+        let error = roots::write_root_file(
+            project_id,
+            &root_id,
+            empty,
+            b"escaped",
+            ResearchRootConsumer::Native,
+        )
+        .unwrap_err();
+        assert!(error.contains("Choose a file inside the linked folder."));
+    }
+    let strays: Vec<_> = std::fs::read_dir(&parent)
+        .unwrap()
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .filter(|name| name != "linked")
+        .collect();
+    assert!(strays.is_empty(), "unexpected staging files: {strays:?}");
+    assert!(roots::list_root_files(project_id, &root_id, "", 1).is_ok());
+    match previous {
+        Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
+        None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+    }
+}
+
+#[test]
+fn a_missing_linked_folder_reports_as_missing_without_failing_its_neighbours() {
+    let _env_guard = crate::paths::data_dir_env_lock();
+    let temp = tempfile::tempdir().unwrap();
+    let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+    std::env::set_var("OLEAFLY_DATA_DIR", temp.path().join("data"));
+    let projects = crate::paths::projects_root().unwrap();
+    let project_id = "missing-root";
+    std::fs::create_dir(projects.join(project_id)).unwrap();
+    std::fs::write(projects.join(project_id).join("project.json"), "{}").unwrap();
+    let gone = temp.path().join("gone");
+    let kept = temp.path().join("kept");
+    std::fs::create_dir(&gone).unwrap();
+    std::fs::create_dir(&kept).unwrap();
+    for (path, label) in [(&gone, "Unmounted"), (&kept, "Present")] {
+        roots::add_root(AddResearchRootRequest {
+            project_id: project_id.into(),
+            path: path.to_string_lossy().into_owned(),
+            label: label.into(),
+            role: ResearchRootRole::Data,
+            access: ResearchRootAccess::ReadOnly,
+        })
+        .unwrap();
+    }
+    std::fs::remove_dir_all(&gone).unwrap();
+
+    let health = roots::health(project_id).unwrap();
+    assert_eq!(health.len(), 2);
+    assert_eq!(health[0].availability, ResearchRootAvailability::Missing);
+    assert!(health[0].detail.as_deref().unwrap().contains("missing"));
+    assert_eq!(health[1].availability, ResearchRootAvailability::Available);
+    assert!(health[1].detail.is_none());
+
+    let capabilities = roots::capabilities(project_id, ResearchRootConsumer::Native).unwrap();
+    assert_eq!(capabilities.len(), 2);
+    assert_eq!(
+        capabilities[0].availability,
+        ResearchRootAvailability::Missing
+    );
+    assert!(capabilities[0].canonical_path.is_none());
+    assert_eq!(
+        capabilities[1].availability,
+        ResearchRootAvailability::Available
+    );
+    assert!(capabilities[1].canonical_path.is_some());
+    match previous {
+        Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
+        None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+    }
+}
+
+#[test]
+fn forgetting_a_project_removes_only_its_linked_folder_metadata() {
+    let _env_guard = crate::paths::data_dir_env_lock();
+    let temp = tempfile::tempdir().unwrap();
+    let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+    std::env::set_var("OLEAFLY_DATA_DIR", temp.path().join("data"));
+    let projects = crate::paths::projects_root().unwrap();
+    let linked = temp.path().join("shared");
+    std::fs::create_dir(&linked).unwrap();
+    for project_id in ["deleted-one", "kept-one"] {
+        std::fs::create_dir(projects.join(project_id)).unwrap();
+        std::fs::write(projects.join(project_id).join("project.json"), "{}").unwrap();
+        roots::add_root(AddResearchRootRequest {
+            project_id: project_id.into(),
+            path: linked.to_string_lossy().into_owned(),
+            label: "Shared".into(),
+            role: ResearchRootRole::Data,
+            access: ResearchRootAccess::ReadOnly,
+        })
+        .unwrap();
+    }
+    let store = crate::paths::oleafly_root()
+        .unwrap()
+        .join("research-workspaces");
+    assert!(store.join("deleted-one.json").is_file());
+
+    roots::forget_project("deleted-one");
+
+    assert!(!store.join("deleted-one.json").exists());
+    assert!(store.join("kept-one.json").is_file());
+    assert_eq!(roots::get_workspace("kept-one").unwrap().roots.len(), 1);
+    assert!(linked.is_dir());
     match previous {
         Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
         None => std::env::remove_var("OLEAFLY_DATA_DIR"),

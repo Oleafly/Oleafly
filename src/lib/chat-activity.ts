@@ -344,6 +344,37 @@ function artifactTarget(
   return projectScoped && path ? { scope: "project", path, line, page } : undefined;
 }
 
+export interface TranscriptTextEvent {
+  event: { kind: string; text?: string };
+}
+
+const STREAMED_TEXT_KINDS: ReadonlySet<string> = new Set(["text", "reasoning"]);
+
+export function coalesceTranscriptEvents<T extends TranscriptTextEvent>(
+  events: readonly T[],
+  streamedKinds: ReadonlySet<string> = STREAMED_TEXT_KINDS,
+): T[] {
+  const merged: T[] = [];
+  for (const entry of events) {
+    const previous = merged.at(-1);
+    const kind = entry.event.kind;
+    if (
+      previous &&
+      streamedKinds.has(kind) &&
+      previous.event.kind === kind &&
+      typeof entry.event.text === "string"
+    ) {
+      merged[merged.length - 1] = {
+        ...previous,
+        event: { ...previous.event, text: `${previous.event.text ?? ""}${entry.event.text}` },
+      };
+      continue;
+    }
+    merged.push(entry);
+  }
+  return merged;
+}
+
 export function createResearchArtifactAction(
   projectId: string | null,
   ports: ResearchArtifactPorts,
@@ -403,7 +434,7 @@ export function projectToolEntry(entry: ToolActivityEntry): ResearchToolView {
     url,
     verified,
     hasArtifact: data?.has_pdf === true || data?.artifact === true || Boolean(path && kind === "artifact"),
-    threadId: stringValue(data?.threadId) ?? stringValue(data?.thread_id) ?? stringValue(data?.taskPath),
+    threadId: stringValue(data?.threadId) ?? stringValue(data?.thread_id) ?? stringValue(data?.sessionId),
     command,
     exitCode: typeof data?.exit_code === "number" || data?.exit_code === null
       ? (data.exit_code as number | null)

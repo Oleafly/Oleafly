@@ -1042,24 +1042,6 @@ export const initialState = () => invoke<InitialState>("initial_state");
 
 export const chatsSearch = (query: string) =>
   invoke<ChatSearchHit[]>("chats_search", { query });
-export const usageRecord = (
-  projectId: string,
-  chatId: string,
-  provider: string,
-  model: string,
-  inputTokens: number,
-  outputTokens: number,
-  costUsd: number,
-) =>
-  invoke<void>("usage_record", {
-    projectId,
-    chatId,
-    provider,
-    model,
-    inputTokens,
-    outputTokens,
-    costUsd,
-  });
 export const usageSummary = (projectId: string) =>
   invoke<UsageTotals>("usage_summary", { projectId });
 export const budgetGet = (projectId: string) =>

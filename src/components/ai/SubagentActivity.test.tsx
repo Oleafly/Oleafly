@@ -62,6 +62,56 @@ describe("SubagentActivity", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it("flags a child waiting for permission and keeps a resolved one as a plain tool line", () => {
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "agent-1", label: "sources", state: "started", detail: null },
+      {
+        kind: "subagentUpdate",
+        id: "agent-1",
+        label: "sources",
+        state: "permission",
+        detail: "Waiting for permission: Read the linked evidence?",
+      },
+    ]);
+    const view = render(
+      <SubagentActivity chatId="chat-1" streaming={true} activeRunId={() => null} />,
+    );
+
+    const chip = screen.getByTestId("subagent-chip-agent-1");
+    expect(chip).toHaveAttribute("data-subagent-status", "awaiting");
+    expect(screen.getByText("needs permission")).toBeTruthy();
+    expect(screen.getByText("A delegated agent is waiting for permission.")).toBeTruthy();
+    expect(screen.getByTestId("subagent-stop-all")).toBeTruthy();
+
+    fireEvent.click(chip);
+    expect(
+      screen.getByText(
+        "This subagent is still working. Its full transcript opens when it finishes.",
+      ),
+    ).toBeTruthy();
+    expect(mocks.read).not.toHaveBeenCalled();
+
+    view.unmount();
+    useAgentTurnsStore.getState().reset();
+    seedChat("chat-2", [
+      { kind: "subagentUpdate", id: "agent-1", label: "sources", state: "started", detail: null },
+      {
+        kind: "subagentUpdate",
+        id: "agent-1",
+        label: "sources",
+        state: "tool",
+        detail: "Permission granted",
+      },
+    ]);
+    render(<SubagentActivity chatId="chat-2" streaming={true} activeRunId={() => null} />);
+    expect(screen.getByTestId("subagent-chip-agent-1")).toHaveAttribute(
+      "data-subagent-status",
+      "active",
+    );
+    expect(screen.queryByText("needs permission")).toBeNull();
+    expect(screen.queryByText("A delegated agent is waiting for permission.")).toBeNull();
+  });
+
   it("shows a chip per agent with its latest status and avatar", () => {
     seedChat("chat-1", [
       { kind: "subagentUpdate", id: "agent-1", label: "survey", state: "started", detail: null },
@@ -206,6 +256,7 @@ describe("SubagentActivity", () => {
   });
 
   it("uses a recorded built-in session instead of constructing one", async () => {
+    const openSession = vi.fn();
     seedChat("chat-1", [{
       kind: "subagentUpdate",
       id: "agent-1",
@@ -218,8 +269,27 @@ describe("SubagentActivity", () => {
       modelId: null,
       agentId: null,
     }]);
-    render(<SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} />);
+    render(
+      <SubagentActivity
+        chatId="chat-1"
+        streaming={false}
+        activeRunId={() => null}
+        onOpenSession={openSession}
+      />,
+    );
     fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
     await waitFor(() => expect(mocks.read).toHaveBeenCalledWith("thread-recorded"));
+    fireEvent.click(screen.getByRole("button", { name: "Open task" }));
+    expect(openSession).toHaveBeenCalledWith("thread-recorded", "built-in");
+  });
+
+  it("hides the open affordance when no session route is wired", async () => {
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "agent-1", label: "survey", state: "done", detail: "3 papers" },
+    ]);
+    render(<SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} />);
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+    await waitFor(() => expect(mocks.read).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Open task" })).toBeNull();
   });
 });

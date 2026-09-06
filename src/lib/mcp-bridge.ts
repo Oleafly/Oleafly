@@ -11,7 +11,13 @@ import {
   createFigureTools,
   type ConfirmFn,
 } from "@/lib/ai-tools";
-import { loadSkills, readSkillFile, validSkills } from "@/lib/skills";
+import {
+  isSkillAvailable,
+  loadSkills,
+  readSkillFile,
+  skillScriptCommands,
+  validSkills,
+} from "@/lib/skills";
 import { isAutoApprovable, useMcpApprovalStore } from "@/store/mcp-approvals";
 import { summarizeMcpResult, useMcpActivityStore } from "@/store/mcp-activity";
 import {
@@ -271,7 +277,7 @@ function createSkillTools(): Record<string, McpToolEntry> {
               description: skill.description,
               phase: skill.phase ?? null,
               tier: skill.tier,
-              enabled: skill.enabled || skill.projectEnabled,
+              enabled: isSkillAvailable(skill),
             })),
           };
         } catch (e) {
@@ -299,6 +305,7 @@ function createSkillTools(): Record<string, McpToolEntry> {
             description: skill.description,
             dir: skill.dir,
             files: skill.files,
+            scripts: skillScriptCommands(skill),
             instructions: skill.instructions,
           };
         } catch (e) {

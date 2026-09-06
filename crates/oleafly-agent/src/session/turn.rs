@@ -277,7 +277,9 @@ where
                 return Ok(outcome);
             }
             Err(error) => {
-                usage.record(latest_usage, on_event);
+                if latest_usage.is_observed() {
+                    usage.record(latest_usage, on_event);
+                }
                 if !should_retry(&error, *retries_remaining, saw_output) {
                     return Err(error);
                 }
@@ -397,9 +399,12 @@ impl TurnUsage {
     }
 
     fn preview(&self, addition: Usage, on_event: &mut impl FnMut(AgentEvent)) {
-        on_event(AgentEvent::Usage {
-            usage: self.snapshot(addition),
-        });
+        let usage = if addition.is_observed() {
+            self.snapshot(addition)
+        } else {
+            self.total
+        };
+        on_event(AgentEvent::Usage { usage });
     }
 
     fn record(&mut self, addition: Usage, on_event: &mut impl FnMut(AgentEvent)) {
@@ -422,13 +427,9 @@ where
 {
     usage.preview(Usage::default(), on_event);
     let response = compact::compact_history(client, resolved, request, token).await;
-    usage.record(
-        response
-            .as_ref()
-            .map(|(_, usage)| *usage)
-            .unwrap_or_default(),
-        on_event,
-    );
+    if let Ok((_, observed)) = &response {
+        usage.record(*observed, on_event);
+    }
     response.map(|(summary, _)| summary)
 }
 
@@ -646,6 +647,28 @@ mod tests {
             assert_eq!(total.reported_input(), input_known.then_some(10));
             assert_eq!(total.reported_output(), output_known.then_some(5));
         }
+    }
+
+    #[test]
+    fn a_failed_attempt_without_usage_neither_records_nor_previews_unknown_counters() {
+        let known = Usage {
+            input: 10,
+            output: 5,
+            input_known: Some(true),
+            output_known: Some(true),
+            cache_read: Some(2),
+            cache_write: Some(0),
+            input_semantics: InputTokenSemantics::Inclusive,
+        };
+        let mut total = TurnUsage::default();
+        let mut events = Vec::new();
+        total.record(known, &mut |event| events.push(event));
+        total.preview(Usage::default(), &mut |event| events.push(event));
+        assert!(matches!(events.last(), Some(AgentEvent::Usage { usage }) if *usage == known));
+        total.record(known, &mut |event| events.push(event));
+        assert_eq!(total.total.reported_input(), Some(20));
+        assert_eq!(total.total.reported_output(), Some(10));
+        assert_eq!(total.total.cache_read, Some(4));
     }
 
     #[test]

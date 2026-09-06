@@ -51,11 +51,13 @@ const TASK_TITLES: Record<ResearchStarter, string> = {
 export function ResearchProjectSetup({
   open,
   onClose,
+  onFinished,
   onCreated,
   ensureInitialTask,
 }: {
   open: boolean;
   onClose: () => void;
+  onFinished?: () => void;
   onCreated: (projectId: string) => void | Promise<void>;
   ensureInitialTask: (task: {
     projectId: string;
@@ -142,7 +144,7 @@ export function ResearchProjectSetup({
           setInitialTaskReady(progress.initialTaskReady);
         },
       });
-      onClose();
+      (onFinished ?? onClose)();
     } catch (cause) {
       const detail = cause instanceof Error ? cause.message : String(cause);
       if (cause instanceof ResearchProjectSetupStageError && cause.stage === "task") {

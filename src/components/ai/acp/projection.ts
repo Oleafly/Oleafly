@@ -59,6 +59,9 @@ export function createAcpProjector() {
         else rows[index].msg = { ...rows[index].msg, toolCalls: [tool] };
       } else if (event.kind === "plan" && Array.isArray(data.entries)) {
         append("plan", { role: "assistant", content: data.entries.map((entry: unknown) => { const value = object(entry); return `- ${value.status === "completed" ? "[x]" : "[ ]"} ${text(value.content)}`; }).join("\n") });
+      } else if (event.kind === "diagnostics") {
+        const detail = text(data.stderr);
+        if (detail) append("error", { role: "assistant", content: `The agent reported: ${detail}` });
       } else if (event.kind === "turn_complete" || event.kind === "status") {
         const terminal = event.kind === "turn_complete" || ["failed", "disconnected", "cancelled"].includes(text(data.status));
         if (terminal) {

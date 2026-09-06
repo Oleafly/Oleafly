@@ -16,6 +16,11 @@ import { windowFlushScheduler } from "@/lib/agent-stream-scheduler";
 import { useAgentTurnsStore, type QueuedFollowUp } from "@/store/agent-turns";
 import { useAssistantOutputsStore } from "@/store/assistant-outputs";
 import { SubagentActivity } from "./SubagentActivity";
+import {
+  AssistantFloatButton,
+  AssistantShellHeader,
+  useAssistantShellLeading,
+} from "./AssistantShellHeader";
 import { useAgentTargets } from "./use-agent-targets";
 import { useResearchChatActions } from "./use-research-chat-actions";
 import { agentDelegationPrompt, type DelegationTarget } from "@/lib/agent-mentions";
@@ -30,6 +35,7 @@ import { launchBrowser } from "@/lib/browser-window";
 import {
   ArrowUp,
   BadgeDollarSign,
+  BarChart3,
   BookOpen,
   Brain,
   Check,
@@ -41,7 +47,6 @@ import {
   Lightbulb,
   Loader2,
   MessageSquareQuote,
-  PanelRightOpen,
   Plus,
   Presentation,
   RotateCcw,
@@ -70,6 +75,7 @@ import {
 import { supportsFigureTools } from "@/lib/document-engine";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { ToolConfirm } from "@/components/ai/ToolConfirm";
+import { DelegatedPermissions } from "@/components/ai/DelegatedPermissions";
 import { ApprovalModeSelector } from "@/components/ai/ApprovalModeSelector";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
 import { AiToolManager } from "@/components/ai/AiToolManager";
@@ -164,6 +170,9 @@ registerAiToolsets();
 import { useAgentTodoStore, type AgentTodo } from "@/store/agent-todos";
 import { useAgentMemoryStore } from "@/store/agent-memory";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
+import { useAssistantRuntimeStore } from "@/store/assistant-runtime";
+import { useAcpSessionsStore } from "@/store/acp-sessions";
+import { SessionTranscriptDialog } from "@/components/ai/activity/SessionTranscriptDialog";
 import { isToolEnabled, useAiToolSettingsStore } from "@/store/ai-tool-settings";
 import { buildWorkspaceContext } from "@/lib/ai-context";
 import { packChatHistory } from "@/lib/ai-context-pack";
@@ -577,6 +586,26 @@ const UsageReportDialog = lazy(() =>
 export function ChatCore() {
   const projectId = useFilesStore((s) => s.projectId);
   const researchChatActions = useResearchChatActions(projectId);
+  const [transcriptThreadId, setTranscriptThreadId] = useState<string | null>(null);
+  const openSession = useCallback(
+    (target: { threadId: string; runtime?: string | null }) => {
+      if (target.runtime === "acp") {
+        if (!projectId) return;
+        useAssistantRuntimeStore.getState().setRuntime("acp");
+        void useAcpSessionsStore
+          .getState()
+          .open(projectId, target.threadId)
+          .catch(() => toast.error("The agent session could not be opened."));
+        return;
+      }
+      setTranscriptThreadId(target.threadId);
+    },
+    [projectId],
+  );
+  const chatActions = useMemo(
+    () => ({ ...researchChatActions, openSession }),
+    [researchChatActions, openSession],
+  );
   const projectName = useFilesStore((s) => s.projectName);
   const documentEngine = useFilesStore((s) => s.engine);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
@@ -599,9 +628,8 @@ export function ChatCore() {
   const setGoal = useChatGoalStore((s) => s.setGoal);
   const clearGoal = useChatGoalStore((s) => s.clearGoal);
   const goal = goalForProject(goals, projectId);
-  const chatFloating = useSettingsStore((s) => s.chatFloating);
+  const shellLeading = useAssistantShellLeading();
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
-  const setChatFloating = useSettingsStore((s) => s.setChatFloating);
   const chats = useChatsStore((s) => s.chats);
   const chatsProjectId = useChatsStore((s) => s.projectId);
   const activeChatId = useChatsStore((s) => s.activeId);
@@ -707,6 +735,13 @@ export function ChatCore() {
       setMessagesState(resolved);
     },
     [],
+  );
+  const delegatedSubagents = useMemo(
+    () => messages.flatMap((message) => message.subagents ?? []),
+    [messages],
+  );
+  const agentThreadId = useAgentTurnsStore((s) =>
+    activeChatId ? s.threadByChat[activeChatId] : undefined,
   );
   const [input, setInputState] = useState(() => savedDraft(useFilesStore.getState().projectId));
   const inputRef = useRef(input);
@@ -2822,16 +2857,12 @@ ${sandboxedCustom}`;
       }
       className="ai-chat-shell flex h-full flex-col bg-sidebar"
     >
-      <div
+      <AssistantShellHeader
         data-tour="ai-assistant-header"
         data-tour-ready={providerConfigReady ? "true" : "false"}
-        className="flex h-9 shrink-0 items-center gap-1.5 border-b px-2"
-      >
-        {apiKey && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
-          <InfoHint message="This chat started from an older version of the project. File contents may differ from what the AI saw." />
-        )}
-        <div className="ml-auto flex items-center gap-0.5">
-          <div className="flex shrink-0 items-center gap-1">
+        leading={shellLeading}
+        actions={
+          <>
             <Tooltip label="Configure assistant MCP servers">
               <Button
                 type="button"
@@ -2860,12 +2891,8 @@ ${sandboxedCustom}`;
                 <Settings2 className="size-4" />
               </Button>
             </Tooltip>
-          </div>
-          {configuredProviders.length > 0 && (
-            <>
-
-              {hasUsage && (
-                <div data-tour="ai-usage">
+            {configuredProviders.length > 0 && hasUsage && (
+              <div data-tour="ai-usage">
                 <Tooltip label={usageSummary}>
                   <Popover
                     align="right"
@@ -2910,61 +2937,63 @@ ${sandboxedCustom}`;
                           </dl>
                         </section>
                       )}
-                      <div className="border-t pt-2">
-                        <Suspense fallback={null}>
-                          <UsageReportDialog trigger={<Button variant="outline" size="sm" className="w-full">Open full usage report</Button>} />
-                        </Suspense>
-                        <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
-                          The report includes cache usage and available cost estimates.
-                        </p>
-                      </div>
+                      <p className="border-t pt-2 text-[10px] leading-relaxed text-muted-foreground">
+                        Cache usage and cost estimates are in the usage report.
+                      </p>
                     </div>
                   </Popover>
                 </Tooltip>
-                </div>
-              )}
-
-              <Tooltip label="New chat">
-                <button type="button"
-                  onClick={newChat}
-                  disabled={streaming}
-                  aria-label="New chat"
-                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
-                >
-                  <Plus className="size-4" />
-                </button>
+              </div>
+            )}
+            <Suspense fallback={null}>
+              <Tooltip label="Usage report">
+                <UsageReportDialog
+                  trigger={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      aria-label="Usage report"
+                      className="size-7 shrink-0 p-0 text-muted-foreground hover:text-foreground"
+                    >
+                      <BarChart3 className="size-4" />
+                    </Button>
+                  }
+                />
               </Tooltip>
-
+            </Suspense>
+            {configuredProviders.length > 0 && (
+              <>
+                <Tooltip label="New chat">
+                  <button type="button"
+                    onClick={newChat}
+                    disabled={streaming}
+                    aria-label="New chat"
+                    className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
+                  >
+                    <Plus className="size-4" />
+                  </button>
+                </Tooltip>
                 <Tooltip label="Chat history">
-                <button type="button"
-                  data-tour="ai-history"
-                  onClick={() => setHistoryOpen(true)}
-                  aria-label="Chat history"
-                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <History className="size-4" />
-                </button>
-              </Tooltip>
-            </>
-          )}
-
-          {!chatFloating && (
-            <Tooltip label="Float the assistant">
-              <button
-                type="button"
-                aria-label="Float the assistant over the app"
-                data-testid="ai-chat-float"
-                disabled={streaming}
-                onClick={() => setChatFloating(true)}
-                className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
-              >
-                <PanelRightOpen className="size-3.5" />
-              </button>
-            </Tooltip>
-          )}
-
-        </div>
-      </div>
+                  <button type="button"
+                    data-tour="ai-history"
+                    onClick={() => setHistoryOpen(true)}
+                    aria-label="Chat history"
+                    className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    <History className="size-4" />
+                  </button>
+                </Tooltip>
+              </>
+            )}
+            <AssistantFloatButton disabled={streaming} />
+          </>
+        }
+      >
+        {apiKey && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
+          <InfoHint message="This chat started from an older version of the project. File contents may differ from what the AI saw." />
+        )}
+      </AssistantShellHeader>
 
       {quotaWarning && (
         <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600 dark:text-amber-400">
@@ -3084,7 +3113,7 @@ ${sandboxedCustom}`;
                 <div className="flex flex-col gap-3">
                   <MessageList
                     messages={renderedMessages}
-                    actions={researchChatActions}
+                    actions={chatActions}
                     chatId={activeChatId}
                     scrollRef={scrollRef}
                     nearBottomRef={nearBottomRef}
@@ -3167,8 +3196,13 @@ ${sandboxedCustom}`;
                 streaming={streaming}
                 activeRunId={() => activeRunRequestIdRef.current}
                 onError={(message) => toast.error(message)}
+                onOpenSession={(sessionId, runtime) => openSession({ threadId: sessionId, runtime })}
               />
             )}
+            <SessionTranscriptDialog
+              threadId={transcriptThreadId}
+              onClose={() => setTranscriptThreadId(null)}
+            />
           </div>
             {agentStatusPillVisible && (
               <div className="pointer-events-none absolute inset-x-3 bottom-2 z-20">
@@ -3327,6 +3361,12 @@ ${sandboxedCustom}`;
                     }
                   />
                 )}
+                <DelegatedPermissions
+                  projectId={projectId}
+                  parentSessionId={agentThreadId}
+                  subagents={delegatedSubagents}
+                  onError={(message) => toast.error(message)}
+                />
 
                 <div className="px-3 pb-3 pt-1.5">
             {goal && (

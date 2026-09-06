@@ -32,6 +32,35 @@ export interface AcpAgentStatus {
   reason: string | null;
   signInHint: string | null;
   taskUnavailableReason: string | null;
+  cli: AcpCliStatus | null;
+  bridgeSharedWithCli: boolean;
+}
+export interface AcpCliStatus {
+  command: string;
+  displayName: string;
+  path: string | null;
+  version: string | null;
+  signInCommand: string;
+}
+export type AcpReadiness = "ready" | "bridge-missing" | "cli-missing" | "unavailable";
+export function acpReadiness(agent: AcpAgentStatus): AcpReadiness {
+  if (agent.installed) return "ready";
+  if (agent.cli && !agent.cli.path) return "cli-missing";
+  if (agent.canInstall || agent.cli?.path) return "bridge-missing";
+  return "unavailable";
+}
+const READINESS_LABELS: Record<AcpReadiness, string> = {
+  ready: "Ready",
+  "bridge-missing": "Bridge needed",
+  "cli-missing": "CLI not found",
+  unavailable: "Unavailable",
+};
+export function acpReadinessLabel(readiness: AcpReadiness): string {
+  return READINESS_LABELS[readiness];
+}
+const LOGO_IDS: Record<string, string> = { claude: "anthropic", codex: "openai", gemini: "google" };
+export function acpLogoId(agentId: string): string | null {
+  return LOGO_IDS[agentId] ?? null;
 }
 export interface AcpRegistryEntry {
   id: string;
@@ -117,6 +146,7 @@ export const acpDisconnect = (projectId: string, sessionId: string) => invoke<vo
 export const acpAuthenticate = (projectId: string, sessionId: string, methodId: string) => invoke<AcpSnapshot>("acp_authenticate", { projectId, sessionId, methodId });
 export const acpSetModel = (projectId: string, sessionId: string, modelId: string) => invoke<AcpSnapshot>("acp_set_model", { projectId, sessionId, modelId });
 export const acpPermission = (projectId: string, sessionId: string, permissionId: string, optionId: string | null) => invoke<void>("acp_permission", { projectId, sessionId, permissionId, optionId });
+export const acpDelegatedPermission = (projectId: string, sessionId: string, parentSessionId: string, permissionId: string, optionId: string | null) => invoke<void>("acp_delegated_permission", { projectId, sessionId, parentSessionId, permissionId, optionId });
 export const acpSessions = (projectId: string) => invoke<AcpSession[]>("acp_sessions", { projectId });
 export const acpSnapshot = (projectId: string, sessionId: string) => invoke<AcpSnapshot>("acp_snapshot", { projectId, sessionId });
 export const acpEvents = (projectId: string, sessionId: string, after = 0, limit = 300) => invoke<AcpEventPage>("acp_events", { projectId, sessionId, after, limit });

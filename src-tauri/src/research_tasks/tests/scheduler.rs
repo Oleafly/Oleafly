@@ -740,3 +740,146 @@ async fn an_orphaned_running_task_requires_recovery_before_it_can_be_retried() {
     assert!(lock(&state.inner.active).is_empty());
     stop(&state).await;
 }
+
+#[tokio::test]
+async fn streamed_deltas_collapse_into_one_row_per_segment_and_only_text_rows_are_capped() {
+    let data = DataRoot::new();
+    data.project("paper");
+    let state = data.state(1);
+    let (runtime, mut starts) = ControlledRuntime::new();
+    state.register_runtime("fixture", runtime).unwrap();
+    let store = state.store().unwrap();
+    let task = requested(&store, draft("paper", "Streamed answer"));
+    state.launch_ready().await.unwrap();
+    let run = next_run(&mut starts).await;
+    let generation = run.context.execution_generation;
+
+    for delta in ["Chec", "king ", "the sources."] {
+        (run.events)(TaskRuntimeEvent::Reasoning { text: delta.into() });
+    }
+    (run.events)(TaskRuntimeEvent::Tool {
+        name: "read_file".into(),
+        detail: "main.tex".into(),
+    });
+    for delta in ["The ", "sample ", "sizes match."] {
+        (run.events)(TaskRuntimeEvent::Text { text: delta.into() });
+    }
+
+    let stored = store
+        .events(&task.id, generation, None, 100)
+        .unwrap()
+        .events;
+    assert_eq!(
+        stored
+            .iter()
+            .map(|entry| entry.event.clone())
+            .collect::<Vec<_>>(),
+        vec![
+            TaskRuntimeEvent::Reasoning {
+                text: "Checking the sources.".into()
+            },
+            TaskRuntimeEvent::Tool {
+                name: "read_file".into(),
+                detail: "main.tex".into()
+            },
+            TaskRuntimeEvent::Text {
+                text: "The sample sizes match.".into()
+            },
+        ]
+    );
+    assert_eq!(
+        stored
+            .iter()
+            .map(|entry| entry.sequence)
+            .collect::<Vec<_>>(),
+        vec![1, 2, 3]
+    );
+
+    for index in 0..(store::MAX_EVENTS_PER_RUN + 8) {
+        store
+            .append_event(
+                &task.id,
+                generation,
+                &TaskRuntimeEvent::Text {
+                    text: format!("filler {index}"),
+                },
+            )
+            .unwrap();
+    }
+    let kept = store
+        .events(&task.id, generation, None, 200)
+        .unwrap()
+        .events;
+    let tool_rows = kept
+        .iter()
+        .filter(|entry| matches!(entry.event, TaskRuntimeEvent::Tool { .. }))
+        .count();
+    assert_eq!(tool_rows, 1, "the cap must never drop a tool row");
+    let text_rows = store.text_event_count(&task.id, generation).unwrap();
+    assert_eq!(text_rows, store::MAX_EVENTS_PER_RUN as i64);
+    assert!(kept.iter().all(|entry| entry.event
+        != TaskRuntimeEvent::Reasoning {
+            text: "Checking the sources.".into()
+        }));
+    finish_run(&state, run, Ok(outcome("streamed result"))).await;
+    stop(&state).await;
+}
+
+fn skill_record(id: &str, enabled: bool, project_disabled: bool) -> crate::skills::SkillRecord {
+    crate::skills::SkillRecord {
+        id: id.into(),
+        name: id.into(),
+        description: "fixture skill".into(),
+        instructions: "Do the work.".into(),
+        dir: format!("/skills/{id}"),
+        files: Vec::new(),
+        license: None,
+        compatibility: None,
+        allowed_tools: Vec::new(),
+        version: None,
+        author: None,
+        tier: crate::skills::SkillTier::User,
+        phase: None,
+        tools: Vec::new(),
+        source: crate::skills::SkillSource::User,
+        pack_version: None,
+        update_available: false,
+        project_enabled: false,
+        project_disabled,
+        enabled,
+        removable: true,
+        validation: crate::skills::SkillValidation::Valid,
+    }
+}
+
+#[test]
+fn a_task_cannot_be_created_with_a_skill_that_is_off_or_missing() {
+    let records = vec![
+        skill_record("literature-review", true, false),
+        skill_record("peer-review", false, false),
+        skill_record("scientific-writing", true, true),
+    ];
+
+    assert_eq!(
+        unavailable_skill(&records, &["literature-review".into()]),
+        None
+    );
+    assert_eq!(
+        unavailable_skill(
+            &records,
+            &["literature-review".into(), "peer-review".into()]
+        ),
+        Some("The skill peer-review is turned off. Enable it in Settings, AI, Skills.".into())
+    );
+    assert_eq!(
+        unavailable_skill(&records, &["scientific-writing".into()]),
+        Some(
+            "The skill scientific-writing is turned off. Enable it in Settings, AI, Skills.".into()
+        )
+    );
+    assert_eq!(
+        unavailable_skill(&records, &["statistical-analysis".into()]),
+        Some("The skill statistical-analysis is not installed.".into())
+    );
+    assert_eq!(unavailable_skill(&records, &[]), None);
+}

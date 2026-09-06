@@ -94,10 +94,27 @@ impl AcpChild {
                 .await?
         };
         *super::lock_or_recover(&self.session_id) = Some(snapshot.session.id.clone());
+        self.runtime
+            .set_permission_delegate(&snapshot.session.id, self.permission_delegate())
+            .await?;
         if let Some(model) = &self.model_id {
             self.runtime.set_model(&snapshot.session.id, model).await?;
         }
         Ok(snapshot.session.id)
+    }
+
+    fn permission_delegate(&self) -> crate::acp::PermissionDelegate {
+        let mode = crate::paths::oleafly_root()
+            .ok()
+            .and_then(|root| {
+                crate::approvals::policy_for(&root, &self.project_id, "run_command").ok()
+            })
+            .map(|(mode, _)| mode);
+        if mode == Some(crate::approvals::ApprovalMode::FullAccess) {
+            crate::acp::PermissionDelegate::AutoAllow
+        } else {
+            crate::acp::PermissionDelegate::ParentChat
+        }
     }
 
     async fn ready_session(&self) -> Result<String, String> {
@@ -156,7 +173,8 @@ impl AcpChild {
                                 "agent_message_chunk" => ("thinking", event_text(&event.data).map(|text| super::subagents::bounded_output(text, 240))),
                                 "agent_thought_chunk" => ("thinking", None),
                                 "tool_call" | "tool_call_update" => ("tool", event.data["title"].as_str().map(str::to_owned)),
-                                "permission" => ("tool", Some("Waiting for permission".into())),
+                                "permission" => ("permission", Some(permission_detail(&event.data))),
+                                "permission_resolved" => ("tool", Some(resolved_detail(&event.data))),
                                 _ => continue,
                             };
                             let _ = sink.send(self.activity(id, label, state, detail));
@@ -195,6 +213,22 @@ fn event_text(data: &serde_json::Value) -> Option<&str> {
     data["text"]
         .as_str()
         .or_else(|| data["content"]["text"].as_str())
+}
+
+fn permission_detail(data: &serde_json::Value) -> String {
+    let title = data["title"]
+        .as_str()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("Allow this agent action?");
+    super::subagents::bounded_output(&format!("Waiting for permission: {title}"), 240)
+}
+
+fn resolved_detail(data: &serde_json::Value) -> String {
+    match data["outcome"].as_str() {
+        Some("selected") => "Permission granted".into(),
+        _ => "Permission declined".into(),
+    }
 }
 
 fn completed_turn_output(

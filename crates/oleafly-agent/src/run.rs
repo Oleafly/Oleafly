@@ -468,7 +468,7 @@ mod tests {
             assert!(outcome.error.is_none());
             assert_eq!(outcome.usage.input, if summary_reported { 100 } else { 60 });
             assert_eq!(outcome.usage.output, if summary_reported { 10 } else { 3 });
-            if summary_reported && !provider_overflow {
+            if summary_reported {
                 assert_eq!(outcome.usage.reported_input(), Some(100));
                 assert_eq!(outcome.usage.reported_output(), Some(10));
                 assert_eq!(outcome.usage.cache_read, Some(30));

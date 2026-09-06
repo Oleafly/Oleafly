@@ -72,13 +72,6 @@ pub struct UsageCostEstimate {
     pub price_version: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UsageEstimateInput {
-    pub source_id: String,
-    pub source_turn_id: String,
-}
-
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageReportFilter {
@@ -107,6 +100,7 @@ pub struct UsageReportFilter {
 pub struct UsageReportTotals {
     pub record_count: i64,
     pub session_count: i64,
+    pub child_run_count: i64,
     pub input_total: i64,
     pub input_known_records: i64,
     pub input_unknown_records: i64,
@@ -123,6 +117,8 @@ pub struct UsageReportTotals {
     pub estimated_cost_usd: f64,
     pub cost_known_records: i64,
     pub cost_unknown_records: i64,
+    pub unpriced_records: i64,
+    pub plan_records: i64,
     pub reported_records: i64,
     pub estimated_records: i64,
     pub unavailable_records: i64,
@@ -138,6 +134,7 @@ pub struct UsageTrendPoint {
     pub cache_read_total: Option<i64>,
     pub estimated_cost_usd: Option<f64>,
     pub record_count: i64,
+    pub unmeasured_records: i64,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -159,6 +156,9 @@ pub struct UsageBreakdown {
     pub estimated_cost_usd: Option<f64>,
     pub record_count: i64,
     pub session_count: i64,
+    pub unmeasured_records: i64,
+    pub unpriced_records: i64,
+    pub plan_records: i64,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -177,6 +177,10 @@ pub struct UsageSessionDetail {
     pub estimated_cost_usd: Option<f64>,
     pub price_version: Option<String>,
     pub record_count: i64,
+    pub unmeasured_records: i64,
+    pub unpriced_records: i64,
+    pub plan_records: i64,
+    pub scope: String,
     pub status: String,
     pub measurement: String,
     pub billing_mode: String,
@@ -263,7 +267,7 @@ fn allowed(value: &str, choices: &[&str], field: &str) -> Result<(), String> {
     }
 }
 
-fn validate_event(event: &UsageEventInput) -> Result<(), String> {
+pub fn validate_usage_event(event: &UsageEventInput) -> Result<(), String> {
     require_id(&event.event_id, "eventId")?;
     require_id(&event.source_id, "sourceId")?;
     require_id(&event.source_turn_id, "sourceTurnId")?;
@@ -306,6 +310,9 @@ fn validate_event(event: &UsageEventInput) -> Result<(), String> {
     }
     if event.estimated_cost_usd.is_some() != event.price_version.is_some() {
         return Err("estimatedCostUsd and priceVersion must be provided together".into());
+    }
+    if event.observation_sequence.is_some_and(|value| value < 0) {
+        return Err("Usage observation sequence must be nonnegative.".into());
     }
     allowed(
         &event.input_semantics,
@@ -377,22 +384,24 @@ fn priced_tokens(tokens: i64, price_per_million: Option<f64>) -> Option<f64> {
 fn estimate_cost_from_rates(event: &UsageEventInput, rates: &ModelCost) -> Option<f64> {
     let input = event.input_tokens?;
     let output = event.output_tokens?;
-    let cache_read = event.cache_read_tokens?;
-    let cache_write = event.cache_write_tokens?;
-    if input < 0 || output < 0 || cache_read < 0 || cache_write < 0 || cache_write > 0 {
-        return None;
-    }
-    let fresh_input = match event.input_semantics.as_str() {
-        "inclusive" => input.checked_sub(cache_read)?.checked_sub(cache_write)?,
-        "exclusive" => input,
+    let (cache_read, cache_write, fresh_input) = match event.input_semantics.as_str() {
+        "inclusive" => {
+            let cache_read = event.cache_read_tokens.unwrap_or(0);
+            let cache_write = event.cache_write_tokens.unwrap_or(0);
+            let fresh = input.checked_sub(cache_read)?.checked_sub(cache_write)?;
+            (cache_read, cache_write, fresh)
+        }
+        "exclusive" => (event.cache_read_tokens?, event.cache_write_tokens?, input),
         _ => return None,
     };
-    if fresh_input < 0 {
+    if input < 0 || output < 0 || cache_read < 0 || cache_write < 0 || fresh_input < 0 {
         return None;
     }
+    let cache_write_rate = rates.cache_write.or(rates.input);
     let estimate = priced_tokens(fresh_input, rates.input)?
         + priced_tokens(output, rates.output)?
-        + priced_tokens(cache_read, rates.cache_read)?;
+        + priced_tokens(cache_read, rates.cache_read)?
+        + priced_tokens(cache_write, cache_write_rate)?;
     estimate.is_finite().then_some(estimate)
 }
 
@@ -428,12 +437,17 @@ pub fn record_usage_observation(
     root: &Path,
     event: &UsageEventInput,
 ) -> Result<UsageRecordResult, String> {
-    validate_event(event)?;
-    if event.observation_sequence.is_some_and(|value| value < 0) {
-        return Err("Usage observation sequence must be nonnegative.".into());
-    }
+    validate_usage_event(event)?;
     let conn = crate::library_db::open(root)?;
     record_event_with_connection(&conn, event)
+}
+
+pub fn record_usage_observation_with(
+    conn: &Connection,
+    event: &UsageEventInput,
+) -> Result<UsageRecordResult, String> {
+    validate_usage_event(event)?;
+    record_event_with_connection(conn, event)
 }
 
 fn record_event_with_connection(
@@ -712,6 +726,27 @@ fn add_values_filter(
     sql.push(')');
 }
 
+fn add_runtime_filter(sql: &mut String, params: &mut Vec<SqlValue>, values: &[String]) {
+    if values.is_empty() {
+        return;
+    }
+    sql.push_str(" AND (");
+    for (index, value) in values.iter().enumerate() {
+        if index > 0 {
+            sql.push_str(" OR ");
+        }
+        sql.push_str("u.runtime_id = ? OR u.runtime_id LIKE ? || ':%' ESCAPE '\\'");
+        params.push(SqlValue::Text(value.clone()));
+        params.push(SqlValue::Text(
+            value
+                .replace('\\', "\\\\")
+                .replace('%', "\\%")
+                .replace('_', "\\_"),
+        ));
+    }
+    sql.push(')');
+}
+
 fn filter_clause(filter: &NormalizedFilter, exclude_children: bool) -> (String, Vec<SqlValue>) {
     let mut sql = "u.occurred_at_ms >= ? AND u.occurred_at_ms < ?".to_string();
     let mut params = vec![
@@ -719,7 +754,7 @@ fn filter_clause(filter: &NormalizedFilter, exclude_children: bool) -> (String, 
         SqlValue::Integer(filter.end_ms),
     ];
     add_values_filter(&mut sql, &mut params, "u.project_id", &filter.project_ids);
-    add_values_filter(&mut sql, &mut params, "u.runtime_id", &filter.runtime_ids);
+    add_runtime_filter(&mut sql, &mut params, &filter.runtime_ids);
     add_values_filter(&mut sql, &mut params, "u.provider_id", &filter.provider_ids);
     add_values_filter(&mut sql, &mut params, "u.model_id", &filter.model_ids);
     add_values_filter(&mut sql, &mut params, "u.session_id", &filter.session_ids);
@@ -774,14 +809,46 @@ fn comparable_denominator_sql() -> &'static str {
      END"
 }
 
+const TOP_LEVEL_SQL: &str = "(u.parent_session_id IS NULL
+        AND u.task_id IS NULL
+        AND u.runtime_id NOT LIKE '%:helper')";
+
+const PLAN_SQL: &str = "u.billing_mode IN ('subscription', 'local')";
+
+fn partial_sum(expression: &str) -> String {
+    format!("CASE WHEN COUNT({expression}) = 0 THEN NULL ELSE SUM({expression}) END")
+}
+
+fn count_where(condition: &str) -> String {
+    format!("COALESCE(SUM(CASE WHEN {condition} THEN 1 ELSE 0 END), 0)")
+}
+
+fn unmeasured_sql(input_total: &str) -> String {
+    count_where(&format!("{input_total} IS NULL OR u.output_tokens IS NULL"))
+}
+
+fn unpriced_sql() -> String {
+    count_where(&format!(
+        "u.estimated_cost_usd IS NULL AND NOT ({PLAN_SQL})"
+    ))
+}
+
+fn plan_sql() -> String {
+    count_where(PLAN_SQL)
+}
+
 fn query_totals(conn: &Connection, filter: &NormalizedFilter) -> Result<UsageReportTotals, String> {
     let (where_sql, values) = filter_clause(filter, true);
     let input_total = input_total_sql();
     let input_fresh = input_fresh_sql();
     let comparable = comparable_denominator_sql();
+    let unpriced = unpriced_sql();
+    let plan = plan_sql();
     let sql = format!(
         "SELECT
-            COUNT(*), COUNT(DISTINCT u.session_id),
+            COUNT(*),
+            COUNT(DISTINCT CASE WHEN {TOP_LEVEL_SQL} THEN u.session_id END),
+            COUNT(DISTINCT CASE WHEN NOT {TOP_LEVEL_SQL} THEN u.session_id END),
             COALESCE(SUM({input_total}), 0),
             COALESCE(SUM(CASE WHEN {input_total} IS NOT NULL THEN 1 ELSE 0 END), 0),
             COALESCE(SUM(CASE WHEN {input_total} IS NULL THEN 1 ELSE 0 END), 0),
@@ -801,6 +868,8 @@ fn query_totals(conn: &Connection, filter: &NormalizedFilter) -> Result<UsageRep
             COALESCE(SUM(u.estimated_cost_usd), 0),
             COALESCE(SUM(CASE WHEN u.estimated_cost_usd IS NOT NULL THEN 1 ELSE 0 END), 0),
             COALESCE(SUM(CASE WHEN u.estimated_cost_usd IS NULL THEN 1 ELSE 0 END), 0),
+            {unpriced},
+            {plan},
             COALESCE(SUM(CASE WHEN u.measurement IN ('provider_reported', 'runtime_reported') THEN 1 ELSE 0 END), 0),
             COALESCE(SUM(CASE WHEN u.measurement = 'estimated' THEN 1 ELSE 0 END), 0),
             COALESCE(SUM(CASE WHEN u.measurement = 'unavailable' THEN 1 ELSE 0 END), 0)
@@ -811,25 +880,28 @@ fn query_totals(conn: &Connection, filter: &NormalizedFilter) -> Result<UsageRep
             Ok(UsageReportTotals {
                 record_count: row.get(0)?,
                 session_count: row.get(1)?,
-                input_total: row.get(2)?,
-                input_known_records: row.get(3)?,
-                input_unknown_records: row.get(4)?,
-                input_fresh: row.get(5)?,
-                input_fresh_known_records: row.get(6)?,
-                output_total: row.get(7)?,
-                output_known_records: row.get(8)?,
-                output_unknown_records: row.get(9)?,
-                cache_read_total: row.get(10)?,
-                cache_write_total: row.get(11)?,
-                cache_known_records: row.get(12)?,
-                cache_unknown_records: row.get(13)?,
-                cache_rate: row.get(14)?,
-                estimated_cost_usd: row.get(15)?,
-                cost_known_records: row.get(16)?,
-                cost_unknown_records: row.get(17)?,
-                reported_records: row.get(18)?,
-                estimated_records: row.get(19)?,
-                unavailable_records: row.get(20)?,
+                child_run_count: row.get(2)?,
+                input_total: row.get(3)?,
+                input_known_records: row.get(4)?,
+                input_unknown_records: row.get(5)?,
+                input_fresh: row.get(6)?,
+                input_fresh_known_records: row.get(7)?,
+                output_total: row.get(8)?,
+                output_known_records: row.get(9)?,
+                output_unknown_records: row.get(10)?,
+                cache_read_total: row.get(11)?,
+                cache_write_total: row.get(12)?,
+                cache_known_records: row.get(13)?,
+                cache_unknown_records: row.get(14)?,
+                cache_rate: row.get(15)?,
+                estimated_cost_usd: row.get(16)?,
+                cost_known_records: row.get(17)?,
+                cost_unknown_records: row.get(18)?,
+                unpriced_records: row.get(19)?,
+                plan_records: row.get(20)?,
+                reported_records: row.get(21)?,
+                estimated_records: row.get(22)?,
+                unavailable_records: row.get(23)?,
                 excluded_child_records: 0,
             })
         })
@@ -860,13 +932,14 @@ fn query_daily(
     let input_total = input_total_sql();
     let sql = format!(
         "SELECT strftime('%Y-%m-%d', u.occurred_at_ms / 1000, 'unixepoch') day,
-                CASE WHEN COUNT({input_total}) = COUNT(*) THEN SUM({input_total}) ELSE NULL END,
-                CASE WHEN COUNT(u.output_tokens) = COUNT(*) THEN SUM(u.output_tokens) ELSE NULL END,
-                CASE WHEN COUNT(u.cache_read_tokens) = COUNT(*) THEN SUM(u.cache_read_tokens) ELSE NULL END,
-                CASE WHEN COUNT(u.estimated_cost_usd) = COUNT(*) THEN SUM(u.estimated_cost_usd) ELSE NULL END,
-                COUNT(*)
+                {input}, {output}, {cache}, {cost}, COUNT(*), {unmeasured}
          FROM usage_records u WHERE {where_sql}
-         GROUP BY day ORDER BY day"
+         GROUP BY day ORDER BY day",
+        input = partial_sum(input_total),
+        output = partial_sum("u.output_tokens"),
+        cache = partial_sum("u.cache_read_tokens"),
+        cost = partial_sum("u.estimated_cost_usd"),
+        unmeasured = unmeasured_sql(input_total),
     );
     let mut statement = conn
         .prepare(&sql)
@@ -880,6 +953,7 @@ fn query_daily(
                 cache_read_total: row.get(3)?,
                 estimated_cost_usd: row.get(4)?,
                 record_count: row.get(5)?,
+                unmeasured_records: row.get(6)?,
             })
         })
         .map_err(|error| format!("usage trend query failed: {error}"))?;
@@ -896,9 +970,8 @@ fn query_heatmap(
     let sql = format!(
         "SELECT CAST(strftime('%w', u.occurred_at_ms / 1000, 'unixepoch') AS INTEGER),
                 CAST(strftime('%H', u.occurred_at_ms / 1000, 'unixepoch') AS INTEGER),
-                CASE WHEN COUNT({input_total}) = COUNT(*) AND COUNT(u.output_tokens) = COUNT(*)
-                    THEN SUM({input_total}) + SUM(u.output_tokens)
-                    ELSE NULL END,
+                CASE WHEN COUNT({input_total}) + COUNT(u.output_tokens) = 0 THEN NULL
+                    ELSE COALESCE(SUM({input_total}), 0) + COALESCE(SUM(u.output_tokens), 0) END,
                 COUNT(*)
          FROM usage_records u WHERE {where_sql}
          GROUP BY 1, 2 ORDER BY 1, 2"
@@ -929,15 +1002,21 @@ fn query_breakdown(
     let input_total = input_total_sql();
     let sql = format!(
         "SELECT COALESCE({column}, 'Unknown'),
-                CASE WHEN COUNT({input_total}) = COUNT(*) THEN SUM({input_total}) ELSE NULL END,
-                CASE WHEN COUNT(u.output_tokens) = COUNT(*) THEN SUM(u.output_tokens) ELSE NULL END,
-                CASE WHEN COUNT(u.cache_read_tokens) = COUNT(*) THEN SUM(u.cache_read_tokens) ELSE NULL END,
-                CASE WHEN COUNT(u.estimated_cost_usd) = COUNT(*) THEN SUM(u.estimated_cost_usd) ELSE NULL END,
-                COUNT(*), COUNT(DISTINCT u.session_id)
+                {input}, {output}, {cache}, {cost},
+                COUNT(*),
+                COUNT(DISTINCT CASE WHEN {TOP_LEVEL_SQL} THEN u.session_id END),
+                {unmeasured}, {unpriced}, {plan}
          FROM usage_records u WHERE {where_sql}
          GROUP BY 1
          ORDER BY COALESCE(SUM({input_total}), 0) + COALESCE(SUM(u.output_tokens), 0) DESC
-         LIMIT 100"
+         LIMIT 100",
+        input = partial_sum(input_total),
+        output = partial_sum("u.output_tokens"),
+        cache = partial_sum("u.cache_read_tokens"),
+        cost = partial_sum("u.estimated_cost_usd"),
+        unmeasured = unmeasured_sql(input_total),
+        unpriced = unpriced_sql(),
+        plan = plan_sql(),
     );
     let mut statement = conn
         .prepare(&sql)
@@ -952,11 +1031,20 @@ fn query_breakdown(
                 estimated_cost_usd: row.get(4)?,
                 record_count: row.get(5)?,
                 session_count: row.get(6)?,
+                unmeasured_records: row.get(7)?,
+                unpriced_records: row.get(8)?,
+                plan_records: row.get(9)?,
             })
         })
         .map_err(|error| format!("usage breakdown query failed: {error}"))?;
     rows.collect::<Result<Vec<_>, _>>()
         .map_err(|error| format!("usage breakdown row failed: {error}"))
+}
+
+fn mixed_or_max(column: &str) -> String {
+    format!(
+        "CASE WHEN COUNT(DISTINCT COALESCE({column}, '')) > 1 THEN 'Mixed' ELSE MAX({column}) END"
+    )
 }
 
 fn query_sessions(
@@ -965,30 +1053,21 @@ fn query_sessions(
 ) -> Result<UsageSessionPage, String> {
     let (where_sql, mut values) = filter_clause(filter, true);
     let input_total = input_total_sql();
-    let total_sql = format!(
-        "SELECT COUNT(*) FROM (
-            SELECT u.session_id, u.project_id, u.runtime_id
-            FROM usage_records u WHERE {where_sql}
-            GROUP BY 1, 2, 3
-         )"
-    );
+    let total_sql =
+        format!("SELECT COUNT(DISTINCT u.session_id) FROM usage_records u WHERE {where_sql}");
     let total = conn
         .query_row(&total_sql, params_from_iter(values.iter()), |row| {
             row.get(0)
         })
         .map_err(|error| format!("usage session count failed: {error}"))?;
     let sql = format!(
-        "SELECT u.session_id, u.project_id, u.runtime_id,
-                CASE WHEN COUNT(DISTINCT COALESCE(u.provider_id, '')) > 1
-                    THEN 'Mixed' ELSE MAX(u.provider_id) END,
-                CASE WHEN COUNT(DISTINCT COALESCE(u.model_id, '')) > 1
-                    THEN 'Mixed' ELSE MAX(u.model_id) END,
+        "SELECT u.session_id,
+                {project},
+                {runtime},
+                {provider},
+                {model},
                 MAX(u.occurred_at_ms),
-                CASE WHEN COUNT({input_total}) = COUNT(*) THEN SUM({input_total}) ELSE NULL END,
-                CASE WHEN COUNT(u.output_tokens) = COUNT(*) THEN SUM(u.output_tokens) ELSE NULL END,
-                CASE WHEN COUNT(u.cache_read_tokens) = COUNT(*) THEN SUM(u.cache_read_tokens) ELSE NULL END,
-                CASE WHEN COUNT(u.cache_write_tokens) = COUNT(*) THEN SUM(u.cache_write_tokens) ELSE NULL END,
-                CASE WHEN COUNT(u.estimated_cost_usd) = COUNT(*) THEN SUM(u.estimated_cost_usd) ELSE NULL END,
+                {input}, {output}, {cache_read}, {cache_write}, {cost},
                 COUNT(*),
                 CASE
                     WHEN SUM(CASE WHEN u.status = 'failed' THEN 1 ELSE 0 END) > 0 THEN 'failed'
@@ -1007,12 +1086,31 @@ fn query_sessions(
                     WHEN COUNT(DISTINCT u.billing_mode) > 1 THEN 'mixed'
                     ELSE MIN(u.billing_mode)
                 END,
-                CASE WHEN COUNT(DISTINCT COALESCE(u.price_version, '')) > 1
-                    THEN 'Mixed' ELSE MAX(u.price_version) END
+                {price_version},
+                {unmeasured}, {unpriced}, {plan},
+                CASE
+                    WHEN SUM(CASE WHEN u.parent_session_id IS NOT NULL THEN 1 ELSE 0 END) > 0 THEN 'child'
+                    WHEN SUM(CASE WHEN u.task_id IS NOT NULL THEN 1 ELSE 0 END) > 0 THEN 'task'
+                    WHEN SUM(CASE WHEN u.runtime_id LIKE '%:helper' THEN 1 ELSE 0 END) > 0 THEN 'helper'
+                    ELSE 'session'
+                END
          FROM usage_records u WHERE {where_sql}
-         GROUP BY u.session_id, u.project_id, u.runtime_id
+         GROUP BY u.session_id
          ORDER BY MAX(u.occurred_at_ms) DESC
-         LIMIT ? OFFSET ?"
+         LIMIT ? OFFSET ?",
+        project = mixed_or_max("u.project_id"),
+        runtime = mixed_or_max("u.runtime_id"),
+        provider = mixed_or_max("u.provider_id"),
+        model = mixed_or_max("u.model_id"),
+        input = partial_sum(input_total),
+        output = partial_sum("u.output_tokens"),
+        cache_read = partial_sum("u.cache_read_tokens"),
+        cache_write = partial_sum("u.cache_write_tokens"),
+        cost = partial_sum("u.estimated_cost_usd"),
+        price_version = mixed_or_max("u.price_version"),
+        unmeasured = unmeasured_sql(input_total),
+        unpriced = unpriced_sql(),
+        plan = plan_sql(),
     );
     values.push(SqlValue::Integer(i64::from(filter.page_size)));
     values.push(SqlValue::Integer(
@@ -1040,6 +1138,10 @@ fn query_sessions(
                 measurement: row.get(13)?,
                 billing_mode: row.get(14)?,
                 price_version: row.get(15)?,
+                unmeasured_records: row.get(16)?,
+                unpriced_records: row.get(17)?,
+                plan_records: row.get(18)?,
+                scope: row.get(19)?,
             })
         })
         .map_err(|error| format!("usage sessions query failed: {error}"))?;
@@ -1073,118 +1175,6 @@ pub fn query_report(root: &Path, filter: UsageReportFilter) -> Result<UsageRepor
     })
 }
 
-pub fn update_usage_estimate(
-    root: &Path,
-    estimate: &UsageEstimateInput,
-    snapshot: &MetadataSnapshot,
-) -> Result<bool, String> {
-    require_id(&estimate.source_id, "sourceId")?;
-    require_id(&estimate.source_turn_id, "sourceTurnId")?;
-    let conn = crate::library_db::open(root)?;
-    let key = stable_record_key(&estimate.source_id, &estimate.source_turn_id);
-    let current = conn
-        .query_row(
-            "SELECT provider_id, model_id, input_tokens, output_tokens,
-                    cache_read_tokens, cache_write_tokens, input_semantics, billing_mode
-             FROM usage_records WHERE record_key = ?1 AND counter_semantics = 'cumulative'",
-            [&key],
-            |row| {
-                Ok((
-                    row.get::<_, Option<String>>(0)?,
-                    row.get::<_, Option<String>>(1)?,
-                    row.get::<_, Option<i64>>(2)?,
-                    row.get::<_, Option<i64>>(3)?,
-                    row.get::<_, Option<i64>>(4)?,
-                    row.get::<_, Option<i64>>(5)?,
-                    row.get::<_, String>(6)?,
-                    row.get::<_, String>(7)?,
-                ))
-            },
-        )
-        .optional()
-        .map_err(|error| format!("usage estimate lookup failed: {error}"))?;
-    let Some((
-        provider_id,
-        model_id,
-        input_tokens,
-        output_tokens,
-        cache_read_tokens,
-        cache_write_tokens,
-        input_semantics,
-        billing_mode,
-    )) = current
-    else {
-        return Ok(false);
-    };
-    let observed = UsageEventInput {
-        event_id: estimate.source_turn_id.clone(),
-        source_id: estimate.source_id.clone(),
-        source_turn_id: estimate.source_turn_id.clone(),
-        project_id: "repair".into(),
-        task_id: None,
-        session_id: "repair".into(),
-        parent_session_id: None,
-        parent_record_key: None,
-        runtime_id: "repair".into(),
-        provider_id: provider_id.clone(),
-        model_id: model_id.clone(),
-        occurred_at_ms: 0,
-        observation_sequence: None,
-        input_tokens,
-        output_tokens,
-        cache_read_tokens,
-        cache_write_tokens,
-        input_semantics: input_semantics.clone(),
-        counter_semantics: "cumulative".into(),
-        measurement: "provider_reported".into(),
-        billing_mode: billing_mode.clone(),
-        estimated_cost_usd: None,
-        price_version: None,
-        duration_ms: None,
-        status: "completed".into(),
-        aggregation_scope: "self".into(),
-    };
-    let Some(cost) = estimate_usage_cost(snapshot, &observed) else {
-        return Ok(false);
-    };
-    let changed = conn
-        .execute(
-            "UPDATE usage_records
-             SET estimated_cost_usd = ?1, price_version = ?2, updated_at_ms = ?3
-             WHERE record_key = ?4
-               AND provider_id IS ?5 AND model_id IS ?6
-               AND input_tokens IS ?7 AND output_tokens IS ?8
-               AND cache_read_tokens IS ?9 AND cache_write_tokens IS ?10
-               AND input_semantics = ?11 AND billing_mode = ?12",
-            params![
-                cost.estimated_cost_usd,
-                cost.price_version,
-                now_ms(),
-                key,
-                provider_id,
-                model_id,
-                input_tokens,
-                output_tokens,
-                cache_read_tokens,
-                cache_write_tokens,
-                input_semantics,
-                billing_mode,
-            ],
-        )
-        .map_err(|error| format!("usage estimate update failed: {error}"))?;
-    Ok(changed == 1)
-}
-
-#[tauri::command]
-pub async fn record_usage_event(event: UsageEventInput) -> Result<UsageRecordResult, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let root = crate::paths::oleafly_root()?;
-        record_usage_observation(&root, &event)
-    })
-    .await
-    .map_err(|error| format!("usage record task failed: {error}"))?
-}
-
 #[tauri::command]
 pub async fn usage_report_query(filter: UsageReportFilter) -> Result<UsageReport, String> {
     tauri::async_runtime::spawn_blocking(move || {
@@ -1193,17 +1183,6 @@ pub async fn usage_report_query(filter: UsageReportFilter) -> Result<UsageReport
     })
     .await
     .map_err(|error| format!("usage report task failed: {error}"))?
-}
-
-#[tauri::command]
-pub async fn usage_estimate_update(estimate: UsageEstimateInput) -> Result<bool, String> {
-    let snapshot = crate::ai_model_metadata::snapshot();
-    tauri::async_runtime::spawn_blocking(move || {
-        let root = crate::paths::oleafly_root()?;
-        update_usage_estimate(&root, &estimate, &snapshot)
-    })
-    .await
-    .map_err(|error| format!("usage estimate task failed: {error}"))?
 }
 
 #[cfg(test)]
@@ -1451,6 +1430,72 @@ mod tests {
         assert_eq!(result.totals.input_total, 60);
         assert_eq!(result.totals.cache_unknown_records, 1);
         assert_eq!(result.totals.estimated_cost_usd, 0.03);
+        assert_eq!(
+            result.sessions.items[0].price_version.as_deref(),
+            Some("legacy-frontend")
+        );
+    }
+
+    #[test]
+    fn zero_priced_legacy_rows_are_imported_and_repaired_as_unpriced() {
+        let root = TempDir::new().unwrap();
+        let legacy = Connection::open(root.path().join("library.db")).unwrap();
+        legacy
+            .execute_batch(
+                "CREATE TABLE usage (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ts_ms INTEGER NOT NULL,
+                    project_id TEXT NOT NULL,
+                    chat_id TEXT NOT NULL,
+                    provider TEXT NOT NULL,
+                    model TEXT NOT NULL,
+                    input_tokens INTEGER NOT NULL,
+                    output_tokens INTEGER NOT NULL,
+                    cost_usd REAL NOT NULL
+                );
+                INSERT INTO usage (
+                    ts_ms, project_id, chat_id, provider, model,
+                    input_tokens, output_tokens, cost_usd
+                ) VALUES (1800000, 'project', 'plan-chat', 'zai', 'glm-4.6', 60, 20, 0.0);",
+            )
+            .unwrap();
+        drop(legacy);
+        let result = report(root.path());
+        assert_eq!(result.totals.cost_known_records, 0);
+        assert_eq!(result.totals.unpriced_records, 1);
+        assert_eq!(result.sessions.items[0].estimated_cost_usd, None);
+        assert_eq!(result.sessions.items[0].price_version, None);
+
+        let mirrored = crate::library_db::open(root.path()).unwrap();
+        mirrored
+            .execute_batch(
+                "UPDATE usage_records SET estimated_cost_usd = 0.0, price_version = NULL;
+                 INSERT INTO usage_records (
+                    record_key, event_id, source_id, source_turn_id, project_id, session_id,
+                    runtime_id, provider_id, model_id, occurred_at_ms, input_tokens, output_tokens,
+                    input_semantics, counter_semantics, measurement, billing_mode,
+                    estimated_cost_usd, status, aggregation_scope, updated_at_ms
+                 ) VALUES (
+                    'legacy-usage:9', 'legacy-usage:9', 'legacy-frontend', 'legacy-usage:9',
+                    'project', 'guess-chat', 'built-in', 'openai', 'gpt', 1800000, 5, 5,
+                    'unknown', 'delta', 'runtime_reported', 'unknown', 0.5, 'completed', 'self', 1800000
+                 );
+                 DELETE FROM library_migrations WHERE name = 'usage-records-v2';
+                 PRAGMA user_version = 1;",
+            )
+            .unwrap();
+        drop(mirrored);
+        let repaired = report(root.path());
+        assert_eq!(repaired.totals.cost_known_records, 1);
+        assert_eq!(repaired.totals.unpriced_records, 1);
+        let guess = repaired
+            .sessions
+            .items
+            .iter()
+            .find(|item| item.session_id == "guess-chat")
+            .unwrap();
+        assert_eq!(guess.estimated_cost_usd, Some(0.5));
+        assert_eq!(guess.price_version.as_deref(), Some("legacy-frontend"));
     }
 
     #[test]
@@ -1485,28 +1530,6 @@ mod tests {
     }
 
     #[test]
-    fn a_known_estimate_updates_the_existing_native_record() {
-        let root = TempDir::new().unwrap();
-        let mut observation = event("event", "turn", Some(100));
-        observation.provider_id = Some("openai".into());
-        observation.model_id = Some("gpt-4.1".into());
-        observation.estimated_cost_usd = None;
-        observation.price_version = None;
-        record_usage_observation(root.path(), &observation).unwrap();
-        let snapshot = crate::ai_model_metadata::bundled_snapshot();
-        assert!(update_usage_estimate(
-            root.path(),
-            &UsageEstimateInput {
-                source_id: "source".into(),
-                source_turn_id: "turn".into(),
-            },
-            &snapshot,
-        )
-        .unwrap());
-        assert!((report(root.path()).totals.estimated_cost_usd - 0.000345).abs() < 1e-12);
-    }
-
-    #[test]
     fn metadata_estimate_prices_inclusive_cache_without_double_counting() {
         let mut observation = event("event", "turn", Some(100));
         observation.output_tokens = Some(20);
@@ -1528,23 +1551,202 @@ mod tests {
     }
 
     #[test]
-    fn metadata_estimate_requires_complete_supported_cache_pricing() {
+    fn metadata_estimate_prices_missing_inclusive_cache_as_fresh_input() {
         let rates = ModelCost {
             input: Some(2.0),
             output: Some(8.0),
             cache_read: Some(0.5),
+            cache_write: None,
         };
         let mut observation = event("event", "turn", Some(100));
         observation.estimated_cost_usd = None;
+        observation.cache_read_tokens = None;
         observation.cache_write_tokens = None;
-        assert_eq!(estimate_cost_from_rates(&observation, &rates), None);
+        let fresh = 100.0 * 2.0 / 1e6 + 20.0 * 8.0 / 1e6;
+        assert!((estimate_cost_from_rates(&observation, &rates).unwrap() - fresh).abs() < 1e-12);
 
+        observation.cache_read_tokens = Some(40);
         observation.cache_write_tokens = Some(10);
+        let written = 50.0 * 2.0 / 1e6 + 20.0 * 8.0 / 1e6 + 40.0 * 0.5 / 1e6 + 10.0 * 2.0 / 1e6;
+        assert!((estimate_cost_from_rates(&observation, &rates).unwrap() - written).abs() < 1e-12);
+        let priced_writes = ModelCost {
+            cache_write: Some(4.0),
+            ..rates.clone()
+        };
+        let explicit = 50.0 * 2.0 / 1e6 + 20.0 * 8.0 / 1e6 + 40.0 * 0.5 / 1e6 + 10.0 * 4.0 / 1e6;
+        assert!(
+            (estimate_cost_from_rates(&observation, &priced_writes).unwrap() - explicit).abs()
+                < 1e-12
+        );
+
+        observation.input_semantics = "exclusive".into();
+        observation.cache_read_tokens = None;
         assert_eq!(estimate_cost_from_rates(&observation, &rates), None);
 
-        observation.cache_write_tokens = Some(0);
         observation.input_semantics = "unknown".into();
+        observation.cache_read_tokens = Some(0);
         assert_eq!(estimate_cost_from_rates(&observation, &rates), None);
+    }
+
+    #[test]
+    fn plan_and_local_usage_keep_tokens_but_never_a_dollar_estimate() {
+        let root = TempDir::new().unwrap();
+        let snapshot = crate::ai_model_metadata::bundled_snapshot();
+        let mut plan = event("plan", "plan", Some(100));
+        plan.provider_id = Some("zai".into());
+        plan.model_id = Some("glm-5.3".into());
+        plan.billing_mode = "subscription".into();
+        plan.estimated_cost_usd = None;
+        plan.price_version = None;
+        assert!(!apply_model_metadata_cost(&snapshot, &mut plan));
+        record_usage_observation(root.path(), &plan).unwrap();
+        let mut local = event("local", "local", Some(30));
+        local.session_id = "local-session".into();
+        local.provider_id = Some("ollama".into());
+        local.billing_mode = "local".into();
+        local.estimated_cost_usd = None;
+        local.price_version = None;
+        record_usage_observation(root.path(), &local).unwrap();
+        let mut unpriced = event("unpriced", "unpriced", Some(10));
+        unpriced.session_id = "api-session".into();
+        unpriced.estimated_cost_usd = None;
+        unpriced.price_version = None;
+        record_usage_observation(root.path(), &unpriced).unwrap();
+
+        let result = report(root.path());
+        assert_eq!(result.totals.input_total, 140);
+        assert_eq!(result.totals.estimated_cost_usd, 0.0);
+        assert_eq!(result.totals.cost_known_records, 0);
+        assert_eq!(result.totals.plan_records, 2);
+        assert_eq!(result.totals.unpriced_records, 1);
+        let plan_row = result
+            .sessions
+            .items
+            .iter()
+            .find(|item| item.session_id == "session")
+            .unwrap();
+        assert_eq!(plan_row.billing_mode, "subscription");
+        assert_eq!(plan_row.plan_records, 1);
+        assert_eq!(plan_row.unpriced_records, 0);
+        assert_eq!(plan_row.estimated_cost_usd, None);
+    }
+
+    #[test]
+    fn session_rows_and_breakdowns_sum_the_same_partial_values_as_the_header() {
+        let root = TempDir::new().unwrap();
+        let mut first = event("first", "first", Some(100));
+        first.estimated_cost_usd = Some(0.10);
+        record_usage_observation(root.path(), &first).unwrap();
+        let mut second = event("second", "second", Some(50));
+        second.estimated_cost_usd = Some(0.20);
+        record_usage_observation(root.path(), &second).unwrap();
+        let mut unpriced = event("third", "third", None);
+        unpriced.output_tokens = None;
+        unpriced.cache_read_tokens = None;
+        unpriced.cache_write_tokens = None;
+        unpriced.estimated_cost_usd = None;
+        unpriced.price_version = None;
+        unpriced.measurement = "unavailable".into();
+        record_usage_observation(root.path(), &unpriced).unwrap();
+
+        let result = report(root.path());
+        assert!((result.totals.estimated_cost_usd - 0.30).abs() < 1e-9);
+        assert_eq!(result.totals.unpriced_records, 1);
+        assert_eq!(result.sessions.total, 1);
+        let session = &result.sessions.items[0];
+        assert!((session.estimated_cost_usd.unwrap() - 0.30).abs() < 1e-9);
+        assert_eq!(session.input_total, Some(150));
+        assert_eq!(session.output_total, Some(40));
+        assert_eq!(session.record_count, 3);
+        assert_eq!(session.unmeasured_records, 1);
+        assert_eq!(session.unpriced_records, 1);
+        assert_eq!(session.scope, "session");
+        let project = &result.by_project[0];
+        assert!((project.estimated_cost_usd.unwrap() - 0.30).abs() < 1e-9);
+        assert_eq!(project.input_total, Some(150));
+        assert_eq!(project.unmeasured_records, 1);
+        assert_eq!(result.daily[0].input_total, Some(150));
+        assert_eq!(result.daily[0].unmeasured_records, 1);
+        assert_eq!(result.heatmap[0].token_total, Some(190));
+    }
+
+    #[test]
+    fn sessions_count_top_level_chats_and_children_separately() {
+        let root = TempDir::new().unwrap();
+        let chat = event("chat", "chat", Some(10));
+        record_usage_observation(root.path(), &chat).unwrap();
+        let mut child = event("child", "child", Some(10));
+        child.session_id = "child-thread".into();
+        child.parent_session_id = Some("session".into());
+        record_usage_observation(root.path(), &child).unwrap();
+        let mut task = event("task", "task", Some(10));
+        task.session_id = "task-session".into();
+        task.task_id = Some("task-1".into());
+        record_usage_observation(root.path(), &task).unwrap();
+        let mut helper = event("helper", "helper", Some(10));
+        helper.session_id = "helper".into();
+        helper.runtime_id = "built-in:helper".into();
+        record_usage_observation(root.path(), &helper).unwrap();
+        let mut acp = event("acp", "acp", Some(10));
+        acp.session_id = "acp-session".into();
+        acp.runtime_id = "acp:codex".into();
+        acp.provider_id = Some("codex".into());
+        record_usage_observation(root.path(), &acp).unwrap();
+
+        let result = report(root.path());
+        assert_eq!(result.totals.record_count, 5);
+        assert_eq!(result.totals.session_count, 2);
+        assert_eq!(result.totals.child_run_count, 3);
+        assert_eq!(result.sessions.total, 5);
+        let scopes: Vec<(String, String)> = result
+            .sessions
+            .items
+            .iter()
+            .map(|item| (item.session_id.clone(), item.scope.clone()))
+            .collect();
+        assert!(scopes.contains(&("child-thread".into(), "child".into())));
+        assert!(scopes.contains(&("task-session".into(), "task".into())));
+        assert!(scopes.contains(&("helper".into(), "helper".into())));
+        assert!(scopes.contains(&("acp-session".into(), "session".into())));
+        let project = &result.by_project[0];
+        assert_eq!(project.session_count, 2);
+        assert_eq!(project.record_count, 5);
+
+        let family = query_report(
+            root.path(),
+            UsageReportFilter {
+                start_ms: Some(0),
+                end_ms: Some(DAY_MS),
+                runtime_ids: vec!["acp".into()],
+                ..UsageReportFilter::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(family.totals.record_count, 1);
+        assert_eq!(family.by_runtime[0].key, "acp:codex");
+        assert_eq!(family.by_provider[0].key, "codex");
+        let builtin = query_report(
+            root.path(),
+            UsageReportFilter {
+                start_ms: Some(0),
+                end_ms: Some(DAY_MS),
+                runtime_ids: vec!["built-in".into()],
+                ..UsageReportFilter::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(builtin.totals.record_count, 4);
+        let exact = query_report(
+            root.path(),
+            UsageReportFilter {
+                start_ms: Some(0),
+                end_ms: Some(DAY_MS),
+                runtime_ids: vec!["built-in:helper".into()],
+                ..UsageReportFilter::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(exact.totals.record_count, 1);
     }
 
     #[test]
@@ -1601,6 +1803,16 @@ mod tests {
         assert_eq!(unknown.sessions.items[0].cache_read_total, None);
         assert_eq!(unknown.sessions.items[0].estimated_cost_usd, None);
         assert_eq!(unknown.sessions.items[0].billing_mode, "unknown");
+
+        observation.provider_id = Some("openai".into());
+        observation.model_id = Some("gpt-4.1".into());
+        observation.input_semantics = "inclusive".into();
+        observation.billing_mode = "api".into();
+        assert!(apply_model_metadata_cost(&snapshot, &mut observation));
+        record_usage_observation(root.path(), &observation).unwrap();
+        let priced_without_cache = report(root.path());
+        assert_eq!(priced_without_cache.totals.cache_unknown_records, 1);
+        assert_eq!(priced_without_cache.totals.cost_known_records, 1);
 
         observation.provider_id = Some("openai".into());
         observation.model_id = Some("gpt-4.1".into());

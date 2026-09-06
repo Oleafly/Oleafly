@@ -62,7 +62,15 @@ async fn start_inner(
     }
     let root = execution_root.unwrap_or(project_root);
     let files = files::FileScope::open(&root, allowed_paths)?;
-    let linked_roots = crate::research_workspace::get_research_workspace(project_id.clone())?.roots;
+    let linked_roots = match crate::research_workspace::get_research_workspace(project_id.clone()) {
+        Ok(workspace) => workspace.roots,
+        Err(error) => {
+            let _ = crate::project::append_app_log(format!(
+                "Research session started without linked folders: {error}"
+            ));
+            Vec::new()
+        }
+    };
     transport::serve(
         project_id,
         files,

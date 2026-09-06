@@ -54,10 +54,12 @@ pub fn runtime_reads(root: &Path, definition: &AgentDefinition, launch: &Launch)
                 break;
             }
         }
-        if candidate
+        let interpreter = candidate
             .file_name()
-            .is_some_and(|name| name == "node" || name == "node.exe")
-        {
+            .and_then(|name| name.to_str())
+            .map(|name| name.to_ascii_lowercase())
+            .is_some_and(|name| name == "node" || name == "node.exe" || name.starts_with("python"));
+        if interpreter {
             if let Some(prefix) = candidate
                 .parent()
                 .filter(|parent| parent.file_name().is_some_and(|name| name == "bin"))

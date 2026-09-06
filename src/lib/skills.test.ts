@@ -4,6 +4,7 @@ import {
   createLoadSkillTools,
   draftSkillFromChat,
   enabledSkills,
+  isSkillAvailable,
   loadSkills,
   mergeToggledSkillRecord,
   parseSkillCommand,
@@ -14,6 +15,9 @@ import {
   setSkillProjectEnabled,
   skillCatalogPrompt,
   skillDirectiveLine,
+  skillPayload,
+  skillProjectOverride,
+  skillScriptCommands,
   skillsQueryKey,
   steeredSkillText,
   updateBuiltinSkill,
@@ -141,7 +145,7 @@ describe("skills client", () => {
     expect(mockInvoke).toHaveBeenCalledWith("skills_set_project_enabled", {
       projectId: "proj-1",
       id: "project-on",
-      enabled: false,
+      enabled: null,
     });
     expect(mockInvoke).not.toHaveBeenCalledWith("skills_set_enabled", {
       id: "untouched",
@@ -169,7 +173,7 @@ describe("skills client", () => {
     ]);
     expect(
       mergeToggledSkillRecord([cached], { ...projectBlind, enabled: false }, "project"),
-    ).toEqual([{ ...cached, projectEnabled: false }]);
+    ).toEqual([{ ...cached, projectEnabled: false, projectDisabled: false }]);
     expect(mergeToggledSkillRecord(undefined, projectBlind, "device")).toEqual([projectBlind]);
   });
 
@@ -191,12 +195,86 @@ describe("skills client", () => {
   });
 });
 
+describe("project overrides", () => {
+  const mockInvoke = vi.mocked(invoke);
+
+  beforeEach(() => {
+    mockInvoke.mockReset();
+  });
+
+  it("inherits the device setting until the project overrides it", () => {
+    const inherited = skill({ id: "inherited", enabled: true });
+    const turnedOffHere = skill({ id: "off-here", enabled: true, projectDisabled: true });
+    const turnedOnHere = skill({ id: "on-here", enabled: false, projectEnabled: true });
+
+    expect(skillProjectOverride(inherited)).toBeNull();
+    expect(skillProjectOverride(turnedOffHere)).toBe(false);
+    expect(skillProjectOverride(turnedOnHere)).toBe(true);
+
+    expect(isSkillAvailable(inherited)).toBe(true);
+    expect(isSkillAvailable(turnedOffHere)).toBe(false);
+    expect(isSkillAvailable(turnedOnHere)).toBe(true);
+    expect(isSkillAvailable(skill({ id: "off-everywhere" }))).toBe(false);
+  });
+
+  it("clears an override by writing a null project state", async () => {
+    mockInvoke.mockResolvedValue({
+      ...DISABLED_SKILL,
+      projectEnabled: false,
+      projectDisabled: false,
+    });
+
+    await setSkillProjectEnabled("proj-1", "citation-audit", null);
+
+    expect(mockInvoke).toHaveBeenCalledWith("skills_set_project_enabled", {
+      projectId: "proj-1",
+      id: "citation-audit",
+      enabled: null,
+    });
+  });
+
+  it("names a runnable command for every bundled script", () => {
+    const withScripts = skill({
+      id: "literature-review",
+      dir: "/skills/literature-review",
+      files: [
+        { path: "references/checklist.md", bytes: 400 },
+        { path: "scripts/verify_citations.py", bytes: 2048 },
+        { path: "scripts/collect.sh", bytes: 512 },
+      ],
+    });
+
+    expect(skillScriptCommands(withScripts)).toEqual([
+      {
+        path: "scripts/verify_citations.py",
+        command: 'python3 "/skills/literature-review/scripts/verify_citations.py"',
+      },
+      {
+        path: "scripts/collect.sh",
+        command: 'bash "/skills/literature-review/scripts/collect.sh"',
+      },
+    ]);
+
+    expect(skillPayload(withScripts)).toContain(
+      'scripts/verify_citations.py: python3 "/skills/literature-review/scripts/verify_citations.py"',
+    );
+    expect(skillScriptCommands(skill({ id: "no-dir", dir: "" }))).toEqual([]);
+  });
+});
+
 describe("progressive skill disclosure", () => {
   it("selects valid skills enabled for the device or for the project", () => {
     const projectSkill = skill({ id: "project-only", projectEnabled: true });
+    const blockedHere = skill({ id: "blocked", enabled: true, projectDisabled: true });
 
     expect(
-      enabledSkills([ENABLED_SKILL, DISABLED_SKILL, INVALID_SKILL, projectSkill]),
+      enabledSkills([
+        ENABLED_SKILL,
+        DISABLED_SKILL,
+        INVALID_SKILL,
+        projectSkill,
+        blockedHere,
+      ]),
     ).toEqual([ENABLED_SKILL, projectSkill]);
   });
 
@@ -297,7 +375,9 @@ describe("progressive skill disclosure", () => {
     expect(payload).toContain("scripts/arxiv_atom.py (2 KB)");
     expect(payload).toContain("Pick the authoritative database first.");
     expect(payload).toContain("read_skill_file");
-    expect(payload).toContain('python3 "/home/me/.oleafly/skills/paper-lookup/scripts/example.py"');
+    expect(payload).toContain(
+      'scripts/arxiv_atom.py: python3 "/home/me/.oleafly/skills/paper-lookup/scripts/arxiv_atom.py"',
+    );
     expect(payload).toContain("Python 3.11 or newer");
   });
 

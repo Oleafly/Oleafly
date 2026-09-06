@@ -54,9 +54,22 @@ export interface SkillEntry {
   packVersion?: string | null;
   updateAvailable: boolean;
   projectEnabled: boolean;
+  projectDisabled?: boolean;
   enabled: boolean;
   removable: boolean;
   validation: SkillValidation;
+}
+
+export type SkillProjectOverride = boolean | null;
+
+export function skillProjectOverride(skill: SkillEntry): SkillProjectOverride {
+  if (skill.projectDisabled) return false;
+  if (skill.projectEnabled) return true;
+  return null;
+}
+
+export function isSkillAvailable(skill: SkillEntry): boolean {
+  return skillProjectOverride(skill) ?? skill.enabled;
 }
 
 export interface CreateSkillInput {
@@ -119,7 +132,7 @@ export function setSkillEnabled(id: string, enabled: boolean): Promise<SkillEntr
 export function setSkillProjectEnabled(
   projectId: string,
   id: string,
-  enabled: boolean,
+  enabled: SkillProjectOverride,
 ): Promise<SkillEntry> {
   return invoke<SkillEntry>("skills_set_project_enabled", { projectId, id, enabled });
 }
@@ -143,14 +156,16 @@ export async function resetSkillPreferences(
         await setSkillEnabled(skill.id, false);
         cleared.add(skill.id);
       }
-      if (projectId && skill.projectEnabled) {
-        await setSkillProjectEnabled(projectId, skill.id, false);
+      if (projectId && skillProjectOverride(skill) !== null) {
+        await setSkillProjectEnabled(projectId, skill.id, null);
         cleared.add(skill.id);
       }
     }),
   );
   return skills.map((skill) =>
-    cleared.has(skill.id) ? { ...skill, enabled: false, projectEnabled: false } : skill,
+    cleared.has(skill.id)
+      ? { ...skill, enabled: false, projectEnabled: false, projectDisabled: false }
+      : skill,
   );
 }
 
@@ -172,7 +187,7 @@ export function validSkills(skills: readonly SkillEntry[]): SkillEntry[] {
 }
 
 export function enabledSkills(skills: readonly SkillEntry[]): SkillEntry[] {
-  return validSkills(skills).filter((skill) => skill.enabled || skill.projectEnabled);
+  return validSkills(skills).filter(isSkillAvailable);
 }
 
 const PHASE_ORDER = [
@@ -309,7 +324,11 @@ export function mergeToggledSkillRecord(
   const merged: SkillEntry =
     scope === "device"
       ? { ...previous, enabled: next.enabled }
-      : { ...previous, projectEnabled: next.projectEnabled };
+      : {
+          ...previous,
+          projectEnabled: next.projectEnabled,
+          projectDisabled: next.projectDisabled ?? false,
+        };
   return upsertSkillRecord(records, merged);
 }
 
@@ -320,6 +339,36 @@ function kilobytes(bytes: number): number {
 function skillAttribute(name: string, value: string | null | undefined): string {
   const trimmed = (value ?? "").trim();
   return trimmed ? ` ${name}=${JSON.stringify(trimmed)}` : "";
+}
+
+const SCRIPT_PROGRAMS: Record<string, string> = {
+  py: "python3",
+  sh: "bash",
+  bash: "bash",
+  mjs: "node",
+  js: "node",
+  R: "Rscript",
+  r: "Rscript",
+};
+
+export interface SkillScriptCommand {
+  path: string;
+  command: string;
+}
+
+export function skillScriptCommands(skill: SkillEntry): SkillScriptCommand[] {
+  const dir = skill.dir.trim().replace(/[/\\]+$/u, "");
+  if (!dir) return [];
+  return skill.files
+    .filter((file) => file.path.startsWith("scripts/"))
+    .map((file) => {
+      const absolute = JSON.stringify(`${dir}/${file.path}`);
+      const program = SCRIPT_PROGRAMS[file.path.split(".").pop() ?? ""];
+      return {
+        path: file.path,
+        command: program ? `${program} ${absolute}` : absolute,
+      };
+    });
 }
 
 export function skillPayload(skill: SkillEntry): string {
@@ -335,10 +384,18 @@ ${skill.files.map((file) => `${file.path} (${kilobytes(file.bytes)} KB)`).join("
 `
       : "";
   const dir = skill.dir.trim();
+  const scripts = dir ? skillScriptCommands(skill) : [];
+  const scriptBlock =
+    scripts.length > 0
+      ? `<scripts>
+${scripts.map((script) => `${script.path}: ${script.command}`).join("\n")}
+</scripts>
+`
+      : "";
   const usage = dir
     ? `Usage:
 - Read any file listed above with read_skill_file, for example read_skill_file({"id": ${JSON.stringify(skill.id)}, "path": "references/overview.md"}).
-- Run a bundled script through run_command, for example: python3 "${dir}/scripts/example.py" --help
+- Run a bundled script through run_command using the command listed for it above.
 - Scripts need Python 3.11 or newer on PATH. Check once with python3 --version before you rely on them.
 - Every path in the instructions is relative to ${dir}.
 `
@@ -346,7 +403,7 @@ ${skill.files.map((file) => `${file.path} (${kilobytes(file.bytes)} KB)`).join("
   return `${header}
 Name: ${skill.name}
 Description: ${skill.description}
-${files}<instructions>
+${files}${scriptBlock}<instructions>
 ${skill.instructions}
 </instructions>
 ${usage}</skill>`;

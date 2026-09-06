@@ -1,7 +1,8 @@
 use super::model::{
-    AddResearchRootRequest, LinkedResearchRoot, ResearchRootAccess, ResearchRootCapability,
-    ResearchRootConsumer, ResearchRootFileContent, ResearchRootFileEntry, ResearchRootListing,
-    ResearchRootOperation, ResearchWorkspace, UpdateResearchRootRequest,
+    AddResearchRootRequest, LinkedResearchRoot, ResearchRootAccess, ResearchRootAvailability,
+    ResearchRootCapability, ResearchRootConsumer, ResearchRootFileContent, ResearchRootFileEntry,
+    ResearchRootHealth, ResearchRootListing, ResearchRootOperation, ResearchWorkspace,
+    UpdateResearchRootRequest,
 };
 use std::fs::File;
 use std::io::Read;
@@ -392,7 +393,7 @@ pub(crate) fn resolve_root_path(
         return Err("The linked folder was replaced. Unlink it, then add the new folder.".into());
     }
     validate_root_separation(project_id, &canonical)?;
-    let relative = validate_relative_path(relative_path, true)?;
+    let relative = validate_relative_path(relative_path, operation == ResearchRootOperation::Read)?;
     let mut current = canonical.clone();
     let components: Vec<_> = relative.components().collect();
     for (index, component) in components.iter().enumerate() {
@@ -424,6 +425,72 @@ pub(crate) fn resolve_root_path(
     Ok(current)
 }
 
+fn inspect_root(
+    project_id: &str,
+    root: &LinkedResearchRoot,
+) -> Result<PathBuf, ResearchRootHealth> {
+    let unhealthy = |availability: ResearchRootAvailability, detail: String| ResearchRootHealth {
+        root_id: root.id.clone(),
+        availability,
+        detail: Some(detail),
+    };
+    match std::fs::symlink_metadata(Path::new(&root.canonical_path)) {
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {}
+        Ok(_) => {
+            return Err(unhealthy(
+                ResearchRootAvailability::Unreadable,
+                "This path is no longer a real folder.".into(),
+            ));
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Err(unhealthy(
+                ResearchRootAvailability::Missing,
+                "This folder is missing or its drive is not mounted.".into(),
+            ));
+        }
+        Err(error) => {
+            return Err(unhealthy(
+                ResearchRootAvailability::Unreadable,
+                format!("could not inspect linked folder: {error}"),
+            ));
+        }
+    }
+    let canonical = canonical_root(&root.canonical_path)
+        .map_err(|error| unhealthy(ResearchRootAvailability::Unreadable, error))?;
+    validate_root_separation(project_id, &canonical)
+        .map_err(|error| unhealthy(ResearchRootAvailability::Unreadable, error))?;
+    let identity = directory_identity(&canonical)
+        .map_err(|error| unhealthy(ResearchRootAvailability::Unreadable, error))?;
+    if identity != root.identity {
+        return Err(unhealthy(
+            ResearchRootAvailability::Unreadable,
+            "The linked folder was replaced. Unlink it, then add the new folder.".into(),
+        ));
+    }
+    std::fs::read_dir(&canonical).map_err(|error| {
+        unhealthy(
+            ResearchRootAvailability::Unreadable,
+            format!("could not read linked folder: {error}"),
+        )
+    })?;
+    Ok(canonical)
+}
+
+pub fn health(project_id: &str) -> Result<Vec<ResearchRootHealth>, String> {
+    Ok(get_workspace(project_id)?
+        .roots
+        .iter()
+        .map(|root| match inspect_root(project_id, root) {
+            Ok(_) => ResearchRootHealth {
+                root_id: root.id.clone(),
+                availability: ResearchRootAvailability::Available,
+                detail: None,
+            },
+            Err(health) => health,
+        })
+        .collect())
+}
+
 pub fn capabilities(
     project_id: &str,
     consumer: ResearchRootConsumer,
@@ -433,15 +500,17 @@ pub fn capabilities(
         .roots
         .iter()
         .map(|root| {
-            let canonical = canonical_root(&root.canonical_path)?;
-            validate_root_separation(project_id, &canonical)?;
-            if directory_identity(&canonical)? != root.identity {
-                return Err(
-                    "The linked folder was replaced. Unlink it, then add the new folder.".into(),
-                );
-            }
-            let effective = effective_access(root, consumer);
+            let inspected = inspect_root(project_id, root);
+            let availability = match &inspected {
+                Ok(_) => ResearchRootAvailability::Available,
+                Err(health) => health.availability,
+            };
+            let effective = match &inspected {
+                Ok(_) => effective_access(root, consumer),
+                Err(_) => ResearchRootAccess::ReadOnly,
+            };
             let exposure = match consumer {
+                _ if availability != ResearchRootAvailability::Available => "context_only",
                 ResearchRootConsumer::Native => "native_capability",
                 ResearchRootConsumer::Task => "native_read_context",
                 ResearchRootConsumer::Acp if effective == ResearchRootAccess::ReadOnly => {
@@ -449,12 +518,14 @@ pub fn capabilities(
                 }
                 ResearchRootConsumer::Acp => "native_capability",
             };
-            let canonical_path = match consumer {
-                ResearchRootConsumer::Task => None,
-                ResearchRootConsumer::Acp if effective == ResearchRootAccess::ReadOnly => None,
-                ResearchRootConsumer::Native | ResearchRootConsumer::Acp => {
-                    Some(portable_path(&canonical)?)
+            let canonical_path = match (&inspected, consumer) {
+                (Ok(canonical), ResearchRootConsumer::Native) => Some(portable_path(canonical)?),
+                (Ok(canonical), ResearchRootConsumer::Acp)
+                    if effective == ResearchRootAccess::ReadWrite =>
+                {
+                    Some(portable_path(canonical)?)
                 }
+                _ => None,
             };
             Ok(ResearchRootCapability {
                 root_id: root.id.clone(),
@@ -464,6 +535,7 @@ pub fn capabilities(
                 effective_access: effective,
                 canonical_path,
                 exposure: exposure.to_string(),
+                availability,
             })
         })
         .collect()
@@ -623,6 +695,24 @@ pub fn read_root_file(
     })
 }
 
+pub fn forget_project(project_id: &str) {
+    if crate::paths::validate_project_id(project_id).is_err() {
+        return;
+    }
+    let Ok(root) = workspace_store_root() else {
+        return;
+    };
+    let path = root.join(format!("{project_id}.json"));
+    if path.parent() != Some(root.as_path()) {
+        return;
+    }
+    if let Ok(metadata) = std::fs::symlink_metadata(&path) {
+        if metadata.is_file() && !metadata.file_type().is_symlink() {
+            let _ = std::fs::remove_file(&path);
+        }
+    }
+}
+
 pub(crate) fn write_root_file(
     project_id: &str,
     root_id: &str,
@@ -630,6 +720,9 @@ pub(crate) fn write_root_file(
     bytes: &[u8],
     consumer: ResearchRootConsumer,
 ) -> Result<(), String> {
+    if relative_path.trim().is_empty() {
+        return Err("Choose a file inside the linked folder.".into());
+    }
     if bytes.len() > MAX_WRITE_BYTES {
         return Err("Linked-folder writes are limited to 8 MiB.".into());
     }

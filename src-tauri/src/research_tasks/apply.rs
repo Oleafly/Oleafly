@@ -359,6 +359,13 @@ fn rollback(project_root: &Path, journal: &Path, plan: &ApplyPlan) -> Result<(),
     retire_journal(journal, "recovered")
 }
 
+pub(super) fn current_project_hash(
+    project_root: &Path,
+    relative: &Path,
+) -> Result<Option<String>, String> {
+    RootFiles::open(project_root)?.hash(relative)
+}
+
 struct RootFiles {
     directory: Dir,
 }

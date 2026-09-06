@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  coalesceTranscriptEvents,
   createResearchArtifactAction,
   projectToolEntry,
   safeWebUrl,
@@ -170,5 +171,74 @@ describe("research chat activity", () => {
       relativePath: "notes.md",
     });
     expect(openProject).not.toHaveBeenCalled();
+  });
+});
+
+describe("delegation tool cards", () => {
+  it("only exposes a session route when the output names a session", () => {
+    const spawned = projectToolEntry({
+      id: "spawn-1",
+      name: "spawn_agent",
+      status: "done",
+      output: JSON.stringify({ id: "agent-1", taskPath: "/root/review", status: "running" }),
+    });
+    expect(spawned.kind).toBe("delegation");
+    expect(spawned.threadId).toBeUndefined();
+
+    const listed = projectToolEntry({
+      id: "list-1",
+      name: "wait_agent",
+      status: "done",
+      output: JSON.stringify({ id: "agent-1", sessionId: "thread-agent-1", status: "done" }),
+    });
+    expect(listed.threadId).toBe("thread-agent-1");
+  });
+});
+
+describe("coalesceTranscriptEvents", () => {
+  const entry = (sequence: number, event: { kind: string; text?: string; name?: string }) => ({
+    sequence,
+    event,
+  });
+
+  it("merges consecutive streamed text deltas into one entry per segment", () => {
+    const merged = coalesceTranscriptEvents([
+      entry(1, { kind: "status", text: "Starting" }),
+      entry(2, { kind: "text", text: "The " }),
+      entry(3, { kind: "text", text: "manuscript " }),
+      entry(4, { kind: "text", text: "is ready." }),
+      entry(5, { kind: "tool", name: "read_file" }),
+      entry(6, { kind: "text", text: "Done." }),
+    ]);
+
+    expect(merged.map((item) => item.sequence)).toEqual([1, 2, 5, 6]);
+    expect(merged[1].event).toEqual({ kind: "text", text: "The manuscript is ready." });
+    expect(merged[3].event).toEqual({ kind: "text", text: "Done." });
+  });
+
+  it("keeps reasoning and text segments apart and leaves other kinds untouched", () => {
+    const merged = coalesceTranscriptEvents([
+      entry(1, { kind: "reasoning", text: "Think " }),
+      entry(2, { kind: "reasoning", text: "harder." }),
+      entry(3, { kind: "text", text: "Answer" }),
+      entry(4, { kind: "status", text: "a" }),
+      entry(5, { kind: "status", text: "b" }),
+    ]);
+
+    expect(merged.map((item) => item.event)).toEqual([
+      { kind: "reasoning", text: "Think harder." },
+      { kind: "text", text: "Answer" },
+      { kind: "status", text: "a" },
+      { kind: "status", text: "b" },
+    ]);
+  });
+
+  it("does not mutate the input entries", () => {
+    const first = entry(1, { kind: "text", text: "a" });
+    const second = entry(2, { kind: "text", text: "b" });
+    const merged = coalesceTranscriptEvents([first, second]);
+    expect(first.event.text).toBe("a");
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).not.toBe(first);
   });
 });

@@ -702,7 +702,6 @@ export interface BackendPort {
   approvalsList: (projectId: string) => Promise<Record<string, ToolDecision>>;
   approvalsSet: (projectId: string, tool: string, decision: ToolDecision | null) => Promise<void>;
   chatsSearch: (query: string) => Promise<ChatSearchHit[]>;
-  usageRecord: (projectId: string, chatId: string, provider: string, model: string, inputTokens: number, outputTokens: number, costUsd: number) => Promise<void>;
   usageSummary: (projectId: string) => Promise<UsageTotals>;
   budgetGet: (projectId: string) => Promise<number | null>;
   budgetSet: (projectId: string, budgetUsd: number | null) => Promise<void>;

@@ -22,7 +22,7 @@ let catalog: AcpAgentStatus[];
 beforeEach(() => {
   vi.resetAllMocks();
   catalog = [];
-  useAcpSessionsStore.setState({ catalog: [], sessions: { saved: session() }, activeByProject: {}, events: {}, permissions: {} });
+  useAcpSessionsStore.setState({ catalog: [], sessions: { saved: session() }, activeByProject: {}, events: {}, permissions: {}, composers: {} });
   useSettingsStore.setState({ terminalOpen: false });
   useTerminalsStore.setState({ projectId: null, tabs: [], activeId: null, counters: {} });
   vi.mocked(acpCatalog).mockImplementation(async () => catalog);
@@ -35,18 +35,34 @@ beforeEach(() => {
 afterEach(cleanup);
 afterAll(restore);
 
+type Ui = ReturnType<typeof render>;
+
+function openSection(ui: Ui, id: string) {
+  fireEvent.click(ui.getByTestId(`acp-section-${id}`));
+}
+
+async function expandAgent(ui: Ui, id = "fixture") {
+  const card = await ui.findByTestId(`acp-agent-card-${id}`);
+  fireEvent.click(within(card).getByRole("button", { expanded: false }));
+  return card;
+}
+
+function fill(input: HTMLElement, value: string) {
+  fireEvent.focusIn(input);
+  fireEvent.change(input, { target: { value } });
+  fireEvent.keyUp(input, { key: "a" });
+}
+
 describe("ACP agent setup acceptance", () => {
   it("registers exactly the reviewed custom definition without installing or launching it", async () => {
     const ui = render(<AcpAgentsTab projectId="paper" />);
+    openSection(ui, "custom");
     expect(ui.getByRole("button", { name: "Register definition" })).toBeDisabled();
     fireEvent.click(ui.getByRole("button", { name: "Use example" }));
     expect((ui.getByLabelText("Register a custom agent") as HTMLTextAreaElement).value).toContain('"my-agent"');
     const definition = agent().definition;
     const json = JSON.stringify(definition);
-    const input = ui.getByLabelText("Register a custom agent");
-    fireEvent.focusIn(input);
-    fireEvent.change(input, { target: { value: json } });
-    fireEvent.keyUp(input, { key: "a" });
+    fill(ui.getByLabelText("Register a custom agent"), json);
     fireEvent.click(ui.getByRole("button", { name: "Register definition" }));
     expect(await ui.findByRole("status")).toHaveTextContent("Research CLI is registered");
     expect(acpRegister).toHaveBeenCalledExactlyOnceWith(json);
@@ -58,11 +74,10 @@ describe("ACP agent setup acceptance", () => {
   it("keeps a rejected definition editable and clears its error after a successful retry", async () => {
     vi.mocked(acpRegister).mockRejectedValueOnce(new Error("The package version must be pinned."));
     const ui = render(<AcpAgentsTab />);
+    openSection(ui, "custom");
     const input = ui.getByLabelText("Register a custom agent");
     const json = JSON.stringify(agent().definition);
-    fireEvent.focusIn(input);
-    fireEvent.change(input, { target: { value: json } });
-    fireEvent.keyUp(input, { key: "a" });
+    fill(input, json);
     fireEvent.click(ui.getByRole("button", { name: "Register definition" }));
     expect(await ui.findByRole("alert")).toHaveTextContent("The package version must be pinned.");
     expect(input).toHaveValue(json);
@@ -76,19 +91,21 @@ describe("ACP agent setup acceptance", () => {
     const install = deferred<AcpAgentStatus>();
     vi.mocked(acpInstall).mockReturnValueOnce(install.promise).mockResolvedValue(agent("fixture", { managed: true }));
     const ui = render(<AcpAgentsTab />);
-    fireEvent.click(await ui.findByRole("button", { name: "Review installation" }));
-    expect(ui.getByRole("group", { name: "Review agent installation" })).toHaveTextContent("research-fixture@1.2.3");
+    await expandAgent(ui);
+    fireEvent.click(ui.getByTestId("acp-agent-install-fixture"));
+    const dialog = await ui.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Install Research CLI bridge 1.2.3");
+    expect(dialog).toHaveTextContent("research-fixture@1.2.3");
     expect(acpInstall).not.toHaveBeenCalled();
-    fireEvent.click(ui.getByRole("button", { name: "Cancel" }));
-    expect(ui.queryByRole("group", { name: "Review agent installation" })).not.toBeInTheDocument();
-    fireEvent.click(ui.getByRole("button", { name: "Review installation" }));
-    fireEvent.click(ui.getByRole("button", { name: "Install pinned version" }));
-    expect(ui.getByRole("button", { name: "Installing…" })).toBeDisabled();
-    expect(ui.getByRole("button", { name: "Remove definition" })).toBeDisabled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(ui.queryByRole("dialog")).not.toBeInTheDocument());
+    fireEvent.click(ui.getByTestId("acp-agent-install-fixture"));
+    fireEvent.click(within(await ui.findByRole("dialog")).getByRole("button", { name: "Install" }));
+    expect(ui.getByRole("button", { name: "Installing" })).toBeDisabled();
     await act(async () => install.reject(new Error("Download interrupted")));
     expect(ui.getByRole("alert")).toHaveTextContent("Download interrupted");
-    expect(ui.getByRole("group", { name: "Review agent installation" })).toBeInTheDocument();
-    fireEvent.click(ui.getByRole("button", { name: "Install pinned version" }));
+    expect(ui.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.click(within(ui.getByRole("dialog")).getByRole("button", { name: "Install" }));
     expect(await ui.findByRole("status")).toHaveTextContent("Research CLI is installed");
     expect(acpInstall).toHaveBeenCalledTimes(2);
     expect(acpInstall).toHaveBeenLastCalledWith("fixture");
@@ -103,14 +120,15 @@ describe("ACP agent setup acceptance", () => {
       { id: definition.id, name: definition.name, description: definition.description, version: definition.version, definition, reason: null },
     ]);
     const ui = render(<AcpAgentsTab />);
-    const query = ui.getByLabelText("Find an ACP agent");
-    fireEvent.focusIn(query);
-    fireEvent.change(query, { target: { value: "research" } });
-    fireEvent.keyUp(query, { key: "h" });
+    openSection(ui, "registry");
+    fill(ui.getByLabelText("Find an ACP agent"), "research");
     fireEvent.click(ui.getByRole("button", { name: "Search" }));
     await ui.findByText("Unverified binary");
     const buttons = ui.getAllByRole("button", { name: "Register agent" });
     expect(buttons[0]).toBeDisabled();
+    expect(ui.queryByText(/"research-fixture@1.2.3"/)).not.toBeInTheDocument();
+    fireEvent.click(ui.getByRole("button", { name: "Show distribution" }));
+    expect(ui.getByRole("button", { name: "Hide distribution" })).toBeInTheDocument();
     fireEvent.click(buttons[1]);
     expect(await ui.findByRole("button", { name: "Registered" })).toBeDisabled();
     expect(acpRegistrySearch).toHaveBeenCalledExactlyOnceWith("research");
@@ -122,7 +140,8 @@ describe("ACP agent setup acceptance", () => {
     catalog = [agent(), agent("builtin", { definition: { ...agent().definition, id: "builtin", name: "Built-in CLI", builtin: true } })];
     vi.mocked(acpRemoveAgent).mockRejectedValueOnce("Disconnect its sessions first.").mockImplementation(async (id) => { catalog = catalog.filter((entry) => entry.definition.id !== id); });
     const ui = render(<AcpAgentsTab />);
-    const remove = await ui.findByRole("button", { name: "Remove definition" });
+    const card = await expandAgent(ui);
+    const remove = within(card).getByRole("button", { name: "Remove" });
     fireEvent.click(remove);
     expect(await ui.findByRole("alert")).toHaveTextContent("Disconnect its sessions first.");
     fireEvent.click(remove);
@@ -144,5 +163,45 @@ describe("ACP agent setup acceptance", () => {
     expect(acpStart).not.toHaveBeenCalled();
     ui.rerender(<AcpAgentsTab />);
     expect(within(ui.container).queryByRole("button", { name: "Open sign-in terminal" })).not.toBeInTheDocument();
+  });
+
+  it("names the vendor CLI it found instead of reporting the agent as not installed", async () => {
+    catalog = [
+      agent("claude", {
+        definition: { ...agent().definition, id: "claude", name: "Claude Code", version: "0.74.0", builtin: true },
+        installed: false,
+        executable: null,
+        canInstall: true,
+        cli: { command: "claude", displayName: "Claude Code", path: "/Users/researcher/.local/bin/claude", version: "2.1.258", signInCommand: "claude auth login" },
+      }),
+    ];
+    const ui = render(<AcpAgentsTab projectId="paper" />);
+    const card = await ui.findByTestId("acp-agent-card-claude");
+    expect(card).toHaveTextContent("Bridge needed");
+    expect(card).toHaveTextContent("Claude Code 2.1.258 found at /Users/researcher/.local/bin/claude");
+    expect(card).not.toHaveTextContent("Not installed");
+    fireEvent.click(within(card).getByRole("button", { expanded: false }));
+    expect(card).toHaveTextContent("claude auth login");
+    expect(within(card).getByTestId("acp-agent-install-claude")).toHaveTextContent("Install bridge");
+    expect(acpCatalog).toHaveBeenCalledWith(true);
+  });
+
+  it("marks an agent unavailable when neither its CLI nor an install route exists", async () => {
+    catalog = [
+      agent("codex", {
+        definition: { ...agent().definition, id: "codex", name: "Codex", builtin: true },
+        installed: false,
+        executable: null,
+        canInstall: false,
+        reason: "Install Node.js 22 or newer to run this agent.",
+        cli: { command: "codex", displayName: "Codex", path: null, version: null, signInCommand: "codex login" },
+      }),
+    ];
+    const ui = render(<AcpAgentsTab />);
+    const card = await ui.findByTestId("acp-agent-card-codex");
+    expect(card).toHaveTextContent("CLI not found");
+    expect(card).toHaveTextContent("Codex is not on your PATH");
+    fireEvent.click(within(card).getByRole("button", { expanded: false }));
+    expect(within(card).getByTestId("acp-agent-install-codex")).toBeDisabled();
   });
 });

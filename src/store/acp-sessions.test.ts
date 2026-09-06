@@ -1,27 +1,31 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
-const { dom, originalGlobals } = await vi.hoisted(async () => {
+const { dom, restore } = await vi.hoisted(async () => {
   vi.resetModules();
-  const { JSDOM } = await import("jsdom");
-  const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "http://localhost" });
-  const originalGlobals = new Map<string, PropertyDescriptor | undefined>();
-  const globals = { window: dom.window, document: dom.window.document, navigator: dom.window.navigator, HTMLElement: dom.window.HTMLElement, Element: dom.window.Element, Node: dom.window.Node, MutationObserver: dom.window.MutationObserver, FileReader: dom.window.FileReader, getComputedStyle: dom.window.getComputedStyle.bind(dom.window) };
-  for (const [key, value] of Object.entries(globals)) {
-    originalGlobals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
-    Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
-  }
-  Object.defineProperties(dom.window.HTMLElement.prototype, { attachEvent: { configurable: true, value: () => {} }, detachEvent: { configurable: true, value: () => {} } });
-  return { dom, originalGlobals };
+  const { installUiDom } = await import("@/components/ai/acp/tests/ui-fixtures");
+  return installUiDom();
 });
-vi.mock("@/lib/acp", () => ({ acpCatalog: vi.fn(), acpEvents: vi.fn(), acpSessions: vi.fn(), acpSnapshot: vi.fn(), onAcpEvent: vi.fn(), onAcpResync: vi.fn(), acpDisconnect: vi.fn(), acpSetModel: vi.fn(), acpPrompt: vi.fn(), acpError: (error: unknown) => String(error) }));
+vi.mock("@/lib/acp", async (original) => ({
+  ...await original<typeof import("@/lib/acp")>(),
+  acpCatalog: vi.fn(), acpEvents: vi.fn(), acpSessions: vi.fn(), acpSnapshot: vi.fn(), onAcpEvent: vi.fn(), onAcpResync: vi.fn(), acpDisconnect: vi.fn(), acpSetModel: vi.fn(), acpPrompt: vi.fn(), acpError: (error: unknown) => String(error),
+}));
 vi.mock("@/components/ai/MessageList", () => ({ MessageList: () => null }));
-vi.mock("@/components/settings/ai/AcpAgentsTab", () => ({ AcpAgentsTab: () => null }));
 vi.mock("@/components/ai/use-research-chat-actions", () => ({ useResearchChatActions: () => ({}) }));
-import { mergeAcpEvents, useAcpSessionsStore } from "./acp-sessions";
+vi.mock("@/components/usage/UsageReport", () => ({ UsageReportDialog: () => null }));
+import { isDelegatedSession, mergeAcpEvents, useAcpSessionsStore } from "./acp-sessions";
 import { acpCatalog, acpDisconnect, acpEvents, acpPrompt, acpSessions, acpSetModel, acpSnapshot, onAcpEvent, onAcpResync, type AcpAgentStatus, type AcpEvent, type AcpSession } from "@/lib/acp";
+import { AssistantShellAcpActions } from "@/components/ai/AssistantShellAcpActions";
 import { AcpWorkspaceAssistant } from "@/components/ai/acp/AcpWorkspaceAssistant";
-import { agent, deferred } from "@/components/ai/acp/tests/ui-fixtures";
+import { agent, chooseMenuItem, chooseOption, deferred } from "@/components/ai/acp/tests/ui-fixtures";
+
+const workspace = (projectId: string) =>
+  createElement(
+    "div",
+    null,
+    createElement(AssistantShellAcpActions, { projectId }),
+    createElement(AcpWorkspaceAssistant, { projectId }),
+  );
 const event = (sequence: number, kind = "agent_message_chunk", data = {}): AcpEvent => ({ sessionId: "s", projectId: "p", agentId: "a", modelId: null, taskId: null, turnId: "turn", sequence, timestamp: sequence, kind, data });
 
 describe("ACP session event recovery", () => {
@@ -44,6 +48,25 @@ describe("ACP session event recovery", () => {
   it("clears pending permissions on disconnection", () => {
     useAcpSessionsStore.getState().ingest([event(1, "permission", { id: "permission", expiresAt: Date.now() + 10000 }), event(2, "status", { status: "disconnected" })]);
     expect(useAcpSessionsStore.getState().permissions.s).toEqual([]);
+  });
+  it("returns a cancelled turn to ready because the agent stays connected", () => {
+    useAcpSessionsStore.setState({ sessions: { s: { id: "s", lastSequence: 0, status: "running" } as AcpSession } });
+    useAcpSessionsStore.getState().ingest([event(1, "turn_complete", { stopReason: "cancelled" })]);
+    expect(useAcpSessionsStore.getState().sessions.s.status).toBe("ready");
+  });
+  it("keeps each project's composer separate", () => {
+    useAcpSessionsStore.setState({ composers: {} });
+    useAcpSessionsStore.getState().setComposer("p", { draft: "First draft" });
+    useAcpSessionsStore.getState().setComposer("q", { agentId: "claude" });
+    useAcpSessionsStore.getState().setComposer("p", { agentId: "codex" });
+    expect(useAcpSessionsStore.getState().composers.p).toEqual({ agentId: "codex", draft: "First draft", images: [] });
+    expect(useAcpSessionsStore.getState().composers.q).toEqual({ agentId: "claude", draft: "", images: [] });
+  });
+  it("treats task and child conversations as delegated", () => {
+    const base = { id: "s", taskId: null, parentSessionId: null } as AcpSession;
+    expect(isDelegatedSession(base)).toBe(false);
+    expect(isDelegatedSession({ ...base, taskId: "task-1" })).toBe(true);
+    expect(isDelegatedSession({ ...base, parentSessionId: "chat-1" })).toBe(true);
   });
 });
 
@@ -139,17 +162,13 @@ describe("ACP controlled conversation selectors", () => {
   afterEach(cleanup);
   afterAll(() => {
     cleanup();
-    dom.window.close();
-    for (const [key, descriptor] of originalGlobals) {
-      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-      else Reflect.deleteProperty(globalThis, key);
-    }
+    restore();
   });
   beforeEach(() => {
     vi.clearAllMocks();
     const first = savedSession("first");
     const second = savedSession("second", "disconnected");
-    useAcpSessionsStore.setState({ catalog: [], sessions: { first, second }, events: {}, permissions: {}, activeByProject: { p: "first" } });
+    useAcpSessionsStore.setState({ catalog: [], sessions: { first, second }, events: {}, permissions: {}, activeByProject: { p: "first" }, composers: {}, errors: {} });
     vi.mocked(acpCatalog).mockResolvedValue([]);
     vi.mocked(acpSessions).mockResolvedValue([first, second]);
     vi.mocked(acpSnapshot).mockImplementation(async (_project, id) => ({ session: id === "first" ? first : second, permissions: [] }));
@@ -158,22 +177,21 @@ describe("ACP controlled conversation selectors", () => {
     vi.mocked(onAcpResync).mockResolvedValue(() => {});
   });
 
-  it("opens the chosen saved conversation after its controlled select resets during disconnect", async () => {
+  it("opens the chosen saved conversation only after the current one finishes disconnecting", async () => {
     let finishDisconnect: (() => void) | undefined;
     vi.mocked(acpDisconnect).mockImplementation(() => new Promise<void>((resolve) => { finishDisconnect = resolve; }));
-    const ui = render(createElement(AcpWorkspaceAssistant, { projectId: "p" }));
+    const ui = render(workspace("p"));
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("p", "first", 0));
     vi.mocked(acpSnapshot).mockClear();
-    const select = ui.getByLabelText("Saved conversations") as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "second" } });
+    await chooseMenuItem(ui.getByRole("button", { name: "Saved conversations" }), "second · fixture");
     expect(acpDisconnect).toHaveBeenCalledWith("p", "first");
-    expect(select.disabled).toBe(true);
-    expect(select.value).toBe("first");
+    await waitFor(() => expect(ui.getByRole("button", { name: "Saved conversations" })).toBeDisabled());
+    expect(useAcpSessionsStore.getState().activeByProject.p).toBe("first");
     expect(acpSnapshot).not.toHaveBeenCalled();
     await act(async () => { finishDisconnect?.(); });
     await waitFor(() => expect(acpSnapshot).toHaveBeenCalledWith("p", "second"));
     expect(useAcpSessionsStore.getState().activeByProject.p).toBe("second");
-    expect(select.value).toBe("second");
+    await waitFor(() => expect(ui.getByRole("button", { name: "Saved conversations" })).toBeEnabled());
   });
 
   it("keeps the chosen model while its update is pending", async () => {
@@ -183,13 +201,12 @@ describe("ACP controlled conversation selectors", () => {
     }));
     const ui = render(createElement(AcpWorkspaceAssistant, { projectId: "p" }));
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("p", "first", 0));
-    const select = ui.getByLabelText("Agent model") as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "second-model" } });
+    await chooseOption(ui.getByRole("combobox", { name: "Agent model" }), "Second model");
     expect(acpSetModel).toHaveBeenCalledWith("p", "first", "second-model");
-    expect(select.disabled).toBe(true);
-    expect(select.value).toBe("first-model");
+    await waitFor(() => expect(ui.getByRole("combobox", { name: "Agent model" })).toBeDisabled());
+    expect(ui.getByRole("combobox", { name: "Agent model" })).toHaveTextContent("First model");
     await act(async () => { finishModel?.(); });
-    await waitFor(() => expect(select.value).toBe("second-model"));
+    await waitFor(() => expect(ui.getByRole("combobox", { name: "Agent model" })).toHaveTextContent("Second model"));
   });
 
   it("keeps unsent text and images when native validation rejects the prompt", async () => {
@@ -205,7 +222,7 @@ describe("ACP controlled conversation selectors", () => {
     const input = ui.container.querySelector<HTMLInputElement>('input[type="file"]');
     if (!input) throw new Error("The image picker is missing.");
     fireEvent.change(input, { target: { files: [new dom.window.File(["image data"], "figure.png", { type: "image/png" })] } });
-    await waitFor(() => expect(ui.getByRole("button", { name: "figure.png ×" })).toBeInTheDocument());
+    await waitFor(() => expect(ui.getByRole("button", { name: "Remove figure.png" })).toBeInTheDocument());
     const form = message.closest("form");
     if (!form) throw new Error("The message form is missing.");
     fireEvent.submit(form);
@@ -213,7 +230,7 @@ describe("ACP controlled conversation selectors", () => {
     await waitFor(() => expect(acpEvents).toHaveBeenCalledTimes(2));
     expect(acpPrompt).toHaveBeenCalledWith("p", "first", "Keep this unsent question", [expect.objectContaining({ mimeType: "image/png" })]);
     expect(message.value).toBe("Keep this unsent question");
-    expect(ui.getByRole("button", { name: "figure.png ×" })).toBeInTheDocument();
+    expect(ui.getByRole("button", { name: "Remove figure.png" })).toBeInTheDocument();
   });
 
   it("clears an accepted prompt after a later agent error instead of offering it again", async () => {
@@ -248,7 +265,7 @@ describe("ACP controlled conversation selectors", () => {
     if (!input) throw new Error("The image picker is missing.");
     for (const name of ["first.png", "second.png"]) {
       fireEvent.change(input, { target: { files: [new dom.window.File([new Uint8Array(470 * 1024)], name, { type: "image/png" })] } });
-      await waitFor(() => expect(ui.getByRole("button", { name: `${name} ×` })).toBeInTheDocument());
+      await waitFor(() => expect(ui.getByRole("button", { name: `Remove ${name}` })).toBeInTheDocument());
     }
     const form = message.closest("form");
     if (!form) throw new Error("The message form is missing.");
@@ -256,8 +273,8 @@ describe("ACP controlled conversation selectors", () => {
     expect(ui.getByRole("alert")).toHaveTextContent("This message and its images are too large.");
     expect(acpPrompt).not.toHaveBeenCalled();
     expect(message.value).toBe("Compare these figures");
-    expect(ui.getByRole("button", { name: "first.png ×" })).toBeInTheDocument();
-    expect(ui.getByRole("button", { name: "second.png ×" })).toBeInTheDocument();
+    expect(ui.getByRole("button", { name: "Remove first.png" })).toBeInTheDocument();
+    expect(ui.getByRole("button", { name: "Remove second.png" })).toBeInTheDocument();
   });
 
 });

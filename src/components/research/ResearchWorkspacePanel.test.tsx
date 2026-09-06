@@ -81,6 +81,15 @@ function page() {
   return within(document.body);
 }
 
+function openSelect(label: string) {
+  fireEvent.keyDown(page().getByLabelText(label), { key: "ArrowDown" });
+}
+
+function choose(label: string, option: string) {
+  openSelect(label);
+  fireEvent.click(page().getByRole("option", { name: option }));
+}
+
 function mount() {
   return render(<QueryClientProvider client={queryClient}><ResearchWorkspacePanel /></QueryClientProvider>);
 }
@@ -145,10 +154,12 @@ describe("ResearchWorkspacePanel integration", () => {
     mount();
     await waitFor(() => expect(page().getByRole("button", { name: "New task" })).toBeEnabled());
     fireEvent.click(page().getByRole("button", { name: "New task" }));
+    openSelect("Agent and model");
     await waitFor(() => expect(page().getByRole("option", { name: /Research model/ })).toBeInTheDocument());
-    expect(page().getByRole("option", { name: /Restricted CLI/ })).toBeDisabled();
+    expect(page().getByRole("option", { name: /Restricted CLI/ })).toHaveAttribute("data-disabled");
     expect(page().queryByRole("option", { name: /Missing CLI|Disabled model/ })).not.toBeInTheDocument();
-    fireEvent.change(page().getByLabelText("Start from"), { target: { value: "evidence-audit" } });
+    fireEvent.click(page().getByRole("option", { name: /Research model/ }));
+    choose("Start from", "Evidence audit");
     const user = userEvent.setup({ document });
     await user.clear(page().getByLabelText("Title"));
     await user.type(page().getByLabelText("Title"), "Check the cohort evidence");
@@ -176,7 +187,8 @@ describe("ResearchWorkspacePanel integration", () => {
     await waitFor(() => expect(page().getByText("Assistant settings could not be loaded.")).toBeInTheDocument());
     await waitFor(() => expect(page().getByRole("button", { name: "New task" })).toBeEnabled());
     fireEvent.click(page().getByRole("button", { name: "New task" }));
-    expect(page().getByRole("option", { name: /Ready CLI/ })).toBeEnabled();
+    openSelect("Agent and model");
+    expect(page().getByRole("option", { name: /Ready CLI/ })).not.toHaveAttribute("data-disabled");
   });
 
   it("rejects old folder loads and file previews after switching the open project", async () => {
@@ -186,6 +198,7 @@ describe("ResearchWorkspacePanel integration", () => {
       if (command === "get_config") return {};
       if (command === "acp_catalog" || command === "research_task_list") return [];
       if (command === "get_research_workspace") return args.projectId === "first" ? firstLoad.promise : workspace(args.projectId);
+      if (command === "research_root_health") return [{ rootId: `${args.projectId}-root`, availability: "available", detail: null }];
       if (command === "list_research_root_files") return { entries: [{ relativePath: "measurements.csv", name: "measurements.csv", isDirectory: false, isSymlink: false, size: 10 }], truncated: false };
       if (command === "read_research_root_file") return secondRead.promise;
       throw new Error(`Unexpected command: ${command}`);
@@ -195,18 +208,18 @@ describe("ResearchWorkspacePanel integration", () => {
     await userEvent.setup({ document }).click(page().getByRole("tab", { name: "Linked folders" }));
     await waitFor(() => expect(native.invoke).toHaveBeenCalledWith("get_research_workspace", { projectId: "first" }));
     await act(async () => useFilesStore.setState({ projectId: "second" }));
-    await waitFor(() => expect(page().getByLabelText("second data role")).toBeInTheDocument());
+    await waitFor(() => expect(page().getByText("second data")).toBeInTheDocument());
     await act(async () => firstLoad.resolve(workspace("first")));
-    expect(page().queryByLabelText("first data role")).not.toBeInTheDocument();
+    expect(page().queryByText("first data")).not.toBeInTheDocument();
     fireEvent.click(page().getByRole("button", { name: "Browse files" }));
     await waitFor(() => expect(page().getByRole("button", { name: "measurements.csv" })).toBeInTheDocument());
     fireEvent.click(page().getByRole("button", { name: "measurements.csv" }));
     expect(native.invoke).toHaveBeenCalledWith("read_research_root_file", { projectId: "second", rootId: "second-root", relativePath: "measurements.csv", maxBytes: 256 * 1024 });
     await act(async () => useFilesStore.setState({ projectId: "third" }));
-    await waitFor(() => expect(page().getByLabelText("third data role")).toBeInTheDocument());
+    await waitFor(() => expect(page().getByText("third data")).toBeInTheDocument());
     await act(async () => secondRead.resolve({ rootId: "second-root", relativePath: "measurements.csv", content: "private second-project data", bytesRead: 27, truncated: false, isBinary: false }));
     expect(page().queryByText("private second-project data")).not.toBeInTheDocument();
-    expect(page().queryByLabelText("second data role")).not.toBeInTheDocument();
-    expect(page().getByLabelText("third data access")).toHaveTextContent("Read only");
+    expect(page().queryByText("second data")).not.toBeInTheDocument();
+    expect(within(page().getByRole("article")).getByText("Read only")).toBeInTheDocument();
   });
 });

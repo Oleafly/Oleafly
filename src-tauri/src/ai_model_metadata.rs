@@ -27,6 +27,55 @@ pub struct ModelCost {
     pub output: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cache_read: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_write: Option<f64>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BillingMode {
+    Api,
+    Subscription,
+    Local,
+}
+
+impl BillingMode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            BillingMode::Api => "api",
+            BillingMode::Subscription => "subscription",
+            BillingMode::Local => "local",
+        }
+    }
+}
+
+fn is_loopback_url(base_url: &str) -> bool {
+    reqwest::Url::parse(base_url)
+        .ok()
+        .and_then(|url| url.host_str().map(str::to_owned))
+        .is_some_and(|host| {
+            host.eq_ignore_ascii_case("localhost")
+                || host.ends_with(".localhost")
+                || host
+                    .parse::<std::net::IpAddr>()
+                    .is_ok_and(|ip| ip.is_loopback())
+        })
+}
+
+fn is_plan_endpoint(provider_id: &str, base_url: &str) -> bool {
+    let path = reqwest::Url::parse(base_url)
+        .map(|url| url.path().to_ascii_lowercase())
+        .unwrap_or_default();
+    provider_id == "zai" && path.contains("/coding/")
+}
+
+pub fn classify_billing(provider_id: &str, base_url: &str) -> BillingMode {
+    if provider_id == "ollama" || is_loopback_url(base_url) {
+        BillingMode::Local
+    } else if is_plan_endpoint(provider_id, base_url) {
+        BillingMode::Subscription
+    } else {
+        BillingMode::Api
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -437,6 +486,35 @@ mod tests {
         if let Some(stamp) = stamp {
             std::fs::write(dir.join(CACHE_STAMP_FILE), stamp.to_string()).unwrap();
         }
+    }
+
+    #[test]
+    fn plan_and_local_endpoints_are_not_billed_per_token() {
+        assert_eq!(
+            classify_billing("zai", "https://api.z.ai/api/coding/paas/v4"),
+            BillingMode::Subscription
+        );
+        assert_eq!(
+            classify_billing("zai", "https://api.z.ai/api/paas/v4"),
+            BillingMode::Api
+        );
+        assert_eq!(
+            classify_billing("ollama", "https://example.test/v1"),
+            BillingMode::Local
+        );
+        assert_eq!(
+            classify_billing("custom", "http://127.0.0.1:8080/v1"),
+            BillingMode::Local
+        );
+        assert_eq!(
+            classify_billing("custom", "http://localhost:11434"),
+            BillingMode::Local
+        );
+        assert_eq!(
+            classify_billing("openai", "https://api.openai.com/v1"),
+            BillingMode::Api
+        );
+        assert_eq!(BillingMode::Subscription.as_str(), "subscription");
     }
 
     #[test]

@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { test, expect } from "../fixtures";
 import {
+  chooseAppSelectOption,
   createBlankProject,
   fillTextarea,
   listProjectEntries,
@@ -47,10 +48,7 @@ async function activeProjectId(page: Page) {
 }
 
 async function chooseSelectOption(page: Page, trigger: string, option: string) {
-  await page.click(trigger);
-  const selector = `[role="option"][data-label=${JSON.stringify(option)}]`;
-  await page.waitForFunction(`!!document.querySelector(${JSON.stringify(selector)})`, 5_000);
-  await page.click(selector);
+  await chooseAppSelectOption(page, trigger, { attribute: "data-label", value: option });
 }
 
 test("a research task runs in Rust, reaches review, and records the same native turn", async ({
@@ -77,17 +75,7 @@ test("a research task runs in Rust, reaches review, and records the same native 
     "#research-task-prompt",
     "Review the manuscript structure and return a concise readiness note. Do not change any files.",
   );
-  const targetAgent = ["builtin", "ollama", "llama3.2"].join("\u0000");
-  await tauriPage.waitForFunction(`(() => {
-    const select = document.querySelector('#research-task-agent');
-    return !!select && [...select.options].some((option) => option.value === ${JSON.stringify(targetAgent)});
-  })()`, 20_000);
-  await tauriPage.evaluate(`(() => {
-    const select = document.querySelector('#research-task-agent');
-    select.value = ${JSON.stringify(targetAgent)};
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-    return select.value;
-  })()`);
+  await chooseAppSelectOption(tauriPage, "#research-task-agent", { attribute: "data-model-id", value: "llama3.2" });
   server.resetRequests();
   server.setToolCall(null);
   server.setReply(reply);
@@ -134,13 +122,17 @@ test("a research task runs in Rust, reaches review, and records the same native 
 
   await openRailTab(tauriPage, "Research Assistant");
   await tauriPage.click('[aria-label="Usage report"]');
-  const reportDialog = tauriPage.locator('[role="dialog"]:has(input[placeholder="All projects"])');
+  const reportDialog = tauriPage.locator('[role="dialog"]:has([aria-label="Refresh usage report"])');
   await expect(reportDialog).toBeVisible({ timeout: 20_000 });
-  await reportDialog.locator('input[placeholder="All projects"]').fill(projectId);
-  await reportDialog.locator('input[placeholder="All agents"]').fill("built-in");
-  await reportDialog
-    .locator('input[placeholder="All sessions"]')
-    .fill(task.nativeSessionId as string);
+  const pickUsageFilter = async (label: string, value: string) => {
+    await reportDialog.getByRole("combobox", { name: label }).click();
+    await tauriPage
+      .locator(`[role="option"][data-value=${JSON.stringify(value)}]`)
+      .click({ timeout: 20_000 });
+  };
+  await pickUsageFilter("Project", projectId);
+  await pickUsageFilter("Agent", "built-in");
+  await pickUsageFilter("Session", task.nativeSessionId as string);
   await reportDialog.getByText("Apply", { exact: true }).click();
 
   await waitLong(
@@ -148,13 +140,13 @@ test("a research task runs in Rust, reaches review, and records the same native 
     `(() => {
       const report = document.querySelector('[data-testid="usage-report"]');
       return !!report &&
-        !!report.querySelector(${JSON.stringify(`[title="${task.nativeSessionId}"]`)}) &&
-        !!report.querySelector(${JSON.stringify(`[title="${projectId}"]`)});
+        !!report.querySelector(${JSON.stringify(`[data-session-id="${task.nativeSessionId}"]`)}) &&
+        !!report.querySelector(${JSON.stringify(`[data-project-id="${projectId}"]`)});
     })()`,
     30_000,
   );
   const report = tauriPage.getByTestId("usage-report");
-  await expect(report.locator(`[title="${task.nativeSessionId}"]`)).toBeVisible();
+  await expect(report.locator(`[data-session-id="${task.nativeSessionId}"]`)).toBeVisible();
   await expect(report).toContainText(projectName);
   await expect(report).toContainText("Oleafly assistant");
   await expect(report).toContainText("13");
@@ -193,27 +185,66 @@ test("a linked folder keeps its access profile, previews a source, and unlinks w
       timeout: 20_000,
     });
 
+    await tauriPage.waitForFunction(`(() => {
+      const button = document.querySelector('[data-testid="research-root-link"]');
+      return !!button && !button.disabled;
+    })()`, 20_000);
+    await tauriPage.evaluate(`(() => {
+      document.querySelector('[data-testid="research-root-link"]').click();
+      return true;
+    })()`);
+    const linkDialog = tauriPage.locator('[role="dialog"]:has(#new-research-root-path)');
+    try {
+      await expect(linkDialog).toBeVisible({ timeout: 20_000 });
+    } catch (error) {
+      const diagnostic = await tauriPage.evaluate(`(() => {
+        const button = document.querySelector('[data-testid="research-root-link"]');
+        return {
+          button: button ? { disabled: button.disabled, text: (button.textContent ?? "").trim() } : null,
+          dialogs: [...document.querySelectorAll('[role="dialog"]')].map((entry) => ({
+            testId: entry.getAttribute("data-testid"), state: entry.getAttribute("data-state"), hasPath: !!entry.querySelector("#new-research-root-path"),
+          })),
+          alerts: [...document.querySelectorAll('[role="alert"]')].map((entry) => (entry.textContent ?? "").trim().slice(0, 200)),
+        };
+      })()`).catch((failure: unknown) => ({ unavailable: String(failure) }));
+      console.error("Link folder dialog timeout", JSON.stringify(diagnostic));
+      throw error;
+    }
     await setNextImportPaths(tauriPage, [fixtureRoot]);
     await tauriPage.click('[aria-label="Choose folder"]');
     await expect(tauriPage.locator("#new-research-root-path")).toHaveValue(fixtureRoot);
     await tauriPage.fill("#new-research-root-label", "Study evidence");
     await chooseSelectOption(tauriPage, "#new-research-root-role", "References");
-    await chooseSelectOption(tauriPage, "#new-research-root-access", "Read and write");
-    await tauriPage.getByText("Link folder", { exact: true }).click();
+    await tauriPage.click('[data-testid="research-root-submit"]');
 
     const root = tauriPage.locator("article[data-root-id]");
     await expect(root).toBeVisible({ timeout: 20_000 });
-    await expect(root.locator('input[id^="research-root-label-"]')).toHaveValue("Study evidence");
-    await expect(root.locator('[aria-label="Study evidence role"]')).toContainText("References");
-    await expect(root.locator('[aria-label="Study evidence access"]')).toContainText(
-      "Read and write",
-    );
+    await expect(root).toContainText("Study evidence");
+    await expect(root).toContainText("References");
+    await expect(root).toContainText("Read only");
+    await expect(root).toContainText("Available");
     await expect(root).toContainText(basename(fixtureRoot));
 
     await root.getByText("Browse files", { exact: true }).click();
     await root.getByText(sourceName, { exact: true }).click();
     await expect(root).toContainText(sourceText.trim(), { timeout: 20_000 });
-    await root.getByText("Unlink", { exact: true }).click();
+    await tauriPage.evaluate(`(() => {
+      const trigger = document.querySelector('[aria-label="More actions for Study evidence"]');
+      trigger.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse", pointerId: 1 }));
+      return true;
+    })()`);
+    const unlinkItem = `[...document.querySelectorAll('[role="menuitem"]')].find((entry) => (entry.textContent ?? "").trim() === "Unlink")`;
+    await tauriPage.waitForFunction(`!!(${unlinkItem})`, 20_000);
+    await tauriPage.evaluate(`(() => {
+      (${unlinkItem}).dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+      return true;
+    })()`);
+    const confirmUnlink = `[...document.querySelectorAll('[role="alertdialog"] button')].find((entry) => (entry.textContent ?? "").trim() === "Unlink")`;
+    await tauriPage.waitForFunction(`!!(${confirmUnlink})`, 20_000);
+    await tauriPage.evaluate(`(() => {
+      (${confirmUnlink}).click();
+      return true;
+    })()`);
     await expect(root).toHaveCount(0);
     await expect(
       tauriPage.getByText("No research folders are linked to this manuscript.", { exact: true }),

@@ -1,4 +1,6 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
+import { pickSavePath } from "@/lib/native-file-dialog";
+import { uint8ToBase64, writeBytesFile } from "@/lib/tauri";
 
 export type UsageInputSemantics = "inclusive" | "exclusive" | "unknown";
 export type UsageCounterSemantics = "delta" | "cumulative";
@@ -14,44 +16,7 @@ export type UsageTurnStatus =
   | "failed"
   | "cancelled"
   | "interrupted";
-
-export type UsageEventInput = {
-  eventId: string;
-  sourceId: string;
-  sourceTurnId: string;
-  projectId: string;
-  taskId?: string | null;
-  sessionId: string;
-  parentSessionId?: string | null;
-  parentRecordKey?: string | null;
-  runtimeId: string;
-  providerId?: string | null;
-  modelId?: string | null;
-  occurredAtMs: number;
-  inputTokens?: number | null;
-  outputTokens?: number | null;
-  cacheReadTokens?: number | null;
-  cacheWriteTokens?: number | null;
-  inputSemantics: UsageInputSemantics;
-  counterSemantics: UsageCounterSemantics;
-  measurement: UsageMeasurement;
-  billingMode: UsageBillingMode;
-  estimatedCostUsd?: number | null;
-  priceVersion?: string | null;
-  durationMs?: number | null;
-  status: UsageTurnStatus;
-  aggregationScope?: "self" | "includes_children";
-};
-
-export type UsageRecordResult = {
-  recordKey: string;
-  inserted: boolean;
-};
-
-export type UsageEstimateInput = {
-  sourceId: string;
-  sourceTurnId: string;
-};
+export type UsageSessionScope = "session" | "child" | "task" | "helper";
 
 export type UsageReportFilter = {
   startMs: number;
@@ -68,6 +33,7 @@ export type UsageReportFilter = {
 export type UsageReportTotals = {
   recordCount: number;
   sessionCount: number;
+  childRunCount: number;
   inputTotal: number;
   inputKnownRecords: number;
   inputUnknownRecords: number;
@@ -84,6 +50,8 @@ export type UsageReportTotals = {
   estimatedCostUsd: number;
   costKnownRecords: number;
   costUnknownRecords: number;
+  unpricedRecords: number;
+  planRecords: number;
   reportedRecords: number;
   estimatedRecords: number;
   unavailableRecords: number;
@@ -97,6 +65,7 @@ export type UsageTrendPoint = {
   cacheReadTotal: number | null;
   estimatedCostUsd: number | null;
   recordCount: number;
+  unmeasuredRecords: number;
 };
 
 export type UsageHeatmapCell = {
@@ -114,6 +83,9 @@ export type UsageBreakdown = {
   estimatedCostUsd: number | null;
   recordCount: number;
   sessionCount: number;
+  unmeasuredRecords: number;
+  unpricedRecords: number;
+  planRecords: number;
 };
 
 export type UsageSessionDetail = {
@@ -130,6 +102,10 @@ export type UsageSessionDetail = {
   estimatedCostUsd: number | null;
   priceVersion: string | null;
   recordCount: number;
+  unmeasuredRecords: number;
+  unpricedRecords: number;
+  planRecords: number;
+  scope: UsageSessionScope | string;
   status: string;
   measurement: string;
   billingMode: string;
@@ -157,13 +133,60 @@ export type UsageReport = {
   sessions: UsageSessionPage;
 };
 
+export type UsageQuickRange = "7d" | "30d" | "90d" | "month";
+
+export const DAY_MS = 86_400_000;
+export const USAGE_QUICK_RANGES: ReadonlyArray<{ id: UsageQuickRange; label: string }> = [
+  { id: "7d", label: "7d" },
+  { id: "30d", label: "30d" },
+  { id: "90d", label: "90d" },
+  { id: "month", label: "This month" },
+];
+
+export function utcDayStart(ms: number): number {
+  return Math.floor(ms / DAY_MS) * DAY_MS;
+}
+
+export function isoDay(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+export function msFromIsoDay(day: string): number | null {
+  const parsed = Date.parse(`${day}T00:00:00.000Z`);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function usageQuickRange(
+  range: UsageQuickRange,
+  now = Date.now(),
+): { startMs: number; endMs: number } {
+  const today = utcDayStart(now);
+  const endMs = today + DAY_MS;
+  if (range === "month") {
+    const date = new Date(today);
+    return { startMs: Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1), endMs };
+  }
+  const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+  return { startMs: today - (days - 1) * DAY_MS, endMs };
+}
+
+export function activeQuickRange(
+  filter: Pick<UsageReportFilter, "startMs" | "endMs">,
+  now = Date.now(),
+): UsageQuickRange | null {
+  for (const { id } of USAGE_QUICK_RANGES) {
+    const range = usageQuickRange(id, now);
+    if (range.startMs === filter.startMs && range.endMs === filter.endMs) return id;
+  }
+  return null;
+}
+
 export function createUsageReportFilter(
   overrides: Partial<UsageReportFilter> = {},
   now = Date.now(),
 ): UsageReportFilter {
   return {
-    startMs: now - 30 * 86_400_000,
-    endMs: now + 1,
+    ...usageQuickRange("30d", now),
     projectIds: [],
     runtimeIds: [],
     providerIds: [],
@@ -175,17 +198,31 @@ export function createUsageReportFilter(
   };
 }
 
-export const recordUsageEvent = (event: UsageEventInput) =>
-  invoke<UsageRecordResult>("record_usage_event", { event });
-
 export const queryUsageReport = (filter: UsageReportFilter) =>
   invoke<UsageReport>("usage_report_query", { filter });
 
-export const updateUsageEstimate = (estimate: UsageEstimateInput) =>
-  invoke<boolean>("usage_estimate_update", { estimate });
-
-export function parseUsageFilterValues(value: string): string[] {
-  return [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
+export function fillDailySeries(
+  report: Pick<UsageReport, "startMs" | "endMs" | "daily">,
+): UsageTrendPoint[] {
+  const known = new Map(report.daily.map((point) => [point.day, point]));
+  const first = utcDayStart(report.startMs);
+  const last = utcDayStart(Math.max(report.startMs, report.endMs - 1));
+  const series: UsageTrendPoint[] = [];
+  for (let ms = first; ms <= last; ms += DAY_MS) {
+    const day = isoDay(ms);
+    series.push(
+      known.get(day) ?? {
+        day,
+        inputTotal: 0,
+        outputTotal: 0,
+        cacheReadTotal: 0,
+        estimatedCostUsd: 0,
+        recordCount: 0,
+        unmeasuredRecords: 0,
+      },
+    );
+  }
+  return series;
 }
 
 function csvCell(value: string | number): string {
@@ -194,10 +231,55 @@ function csvCell(value: string | number): string {
   return literal || /[",\n\r]/u.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
+function breakdownRows(title: string, rows: UsageBreakdown[]): Array<Array<string | number>> {
+  return [
+    [],
+    [title],
+    [
+      "Name",
+      "Input tokens",
+      "Output tokens",
+      "Cache read tokens",
+      "Estimated cost USD",
+      "Records",
+      "Sessions",
+      "Unmeasured records",
+      "Unpriced records",
+      "Plan records",
+    ],
+    ...rows.map((row) => [
+      row.key,
+      row.inputTotal ?? "",
+      row.outputTotal ?? "",
+      row.cacheReadTotal ?? "",
+      row.estimatedCostUsd ?? "",
+      row.recordCount,
+      row.sessionCount,
+      row.unmeasuredRecords,
+      row.unpricedRecords,
+      row.planRecords,
+    ]),
+  ];
+}
+
 export function usageReportCsv(report: UsageReport): string {
+  const totals = report.totals;
   const rows: Array<Array<string | number>> = [
     ["Usage report", `${new Date(report.startMs).toISOString()} to ${new Date(report.endMs).toISOString()}`],
     ["Timezone", report.timezone],
+    [],
+    ["Totals"],
+    ["Input tokens", totals.inputTotal],
+    ["Output tokens", totals.outputTotal],
+    ["Cache read tokens", totals.cacheReadTotal],
+    ["Cache write tokens", totals.cacheWriteTotal],
+    ["Estimated cost USD", totals.estimatedCostUsd],
+    ["Priced records", totals.costKnownRecords],
+    ["Unpriced records", totals.unpricedRecords],
+    ["Plan or local records", totals.planRecords],
+    ["Sessions", totals.sessionCount],
+    ["Child runs", totals.childRunCount],
+    ["Records", totals.recordCount],
     [],
     ["Day", "Input tokens", "Output tokens", "Cache read tokens", "Estimated cost USD", "Records"],
     ...report.daily.map((point) => [
@@ -208,6 +290,10 @@ export function usageReportCsv(report: UsageReport): string {
       point.estimatedCostUsd ?? "",
       point.recordCount,
     ]),
+    ...breakdownRows("Projects", report.byProject),
+    ...breakdownRows("Agents", report.byRuntime),
+    ...breakdownRows("Providers", report.byProvider),
+    ...breakdownRows("Models", report.byModel),
     [],
     [
       "Session detail",
@@ -251,12 +337,32 @@ export function usageReportCsv(report: UsageReport): string {
   return `${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`;
 }
 
-export function downloadUsageReportCsv(report: UsageReport): void {
-  const blob = new Blob([usageReportCsv(report)], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `oleafly-usage-${new Date(report.startMs).toISOString().slice(0, 10)}-${new Date(report.endMs).toISOString().slice(0, 10)}.csv`;
-  anchor.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+export function usageReportCsvFilename(report: Pick<UsageReport, "startMs" | "endMs">): string {
+  const lastDay = isoDay(Math.max(report.startMs, report.endMs - 1));
+  return `oleafly-usage-${isoDay(report.startMs)}-${lastDay}.csv`;
+}
+
+export async function saveUsageReportCsv(report: UsageReport): Promise<string | null> {
+  const csv = usageReportCsv(report);
+  const filename = usageReportCsvFilename(report);
+  if (!isTauri()) {
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    try {
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.rel = "noopener";
+      anchor.click();
+    } finally {
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
+    return null;
+  }
+  const destination = await pickSavePath({
+    defaultPath: filename,
+    filters: [{ name: "CSV", extensions: ["csv"] }],
+  });
+  if (!destination) return null;
+  await writeBytesFile(destination, uint8ToBase64(new TextEncoder().encode(csv)));
+  return destination;
 }

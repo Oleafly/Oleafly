@@ -127,9 +127,30 @@ pub struct SkillRecord {
     pub pack_version: Option<String>,
     pub update_available: bool,
     pub project_enabled: bool,
+    pub project_disabled: bool,
     pub enabled: bool,
     pub removable: bool,
     pub validation: SkillValidation,
+}
+
+impl SkillRecord {
+    pub fn is_valid(&self) -> bool {
+        matches!(self.validation, SkillValidation::Valid)
+    }
+
+    pub fn project_override(&self) -> Option<bool> {
+        if self.project_disabled {
+            Some(false)
+        } else if self.project_enabled {
+            Some(true)
+        } else {
+            None
+        }
+    }
+
+    pub fn is_available(&self) -> bool {
+        self.is_valid() && self.project_override().unwrap_or(self.enabled)
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -202,6 +223,8 @@ struct SkillsState {
     seen: BTreeSet<String>,
     #[serde(default)]
     project_enabled: BTreeMap<String, BTreeSet<String>>,
+    #[serde(default)]
+    project_disabled: BTreeMap<String, BTreeSet<String>>,
 }
 
 impl Default for SkillsState {
@@ -211,8 +234,38 @@ impl Default for SkillsState {
             enabled: BTreeSet::new(),
             seen: BTreeSet::new(),
             project_enabled: BTreeMap::new(),
+            project_disabled: BTreeMap::new(),
         }
     }
+}
+
+fn project_scope(
+    map: &BTreeMap<String, BTreeSet<String>>,
+    project: Option<&str>,
+    id: &str,
+) -> bool {
+    project
+        .and_then(|project| map.get(project))
+        .map(|ids| ids.contains(id))
+        .unwrap_or(false)
+}
+
+fn prune_project_scope(
+    map: &BTreeMap<String, BTreeSet<String>>,
+    valid_ids: &BTreeSet<String>,
+) -> BTreeMap<String, BTreeSet<String>> {
+    let mut kept_map: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for (project, ids) in map.iter() {
+        let kept: BTreeSet<String> = ids
+            .iter()
+            .filter(|id| valid_ids.contains(*id))
+            .cloned()
+            .collect();
+        if !kept.is_empty() {
+            kept_map.insert(project.clone(), kept);
+        }
+    }
+    kept_map
 }
 
 #[derive(Default)]
@@ -841,6 +894,7 @@ fn invalid_record(
         pack_version: None,
         update_available,
         project_enabled: false,
+        project_disabled: false,
         enabled: false,
         removable: source != SkillSource::Bundled,
         validation: SkillValidation::Invalid {
@@ -895,11 +949,8 @@ fn inspect_real_skill(directory: &Path, id: &str, context: &RecordContext<'_>) -
             SkillSource::Catalog => SkillTier::Shelf,
             SkillSource::User => SkillTier::User,
         });
-    let project_enabled = context
-        .project_id
-        .and_then(|project| context.state.project_enabled.get(project))
-        .map(|ids| ids.contains(id))
-        .unwrap_or(false);
+    let project_enabled = project_scope(&context.state.project_enabled, context.project_id, id);
+    let project_disabled = project_scope(&context.state.project_disabled, context.project_id, id);
     SkillRecord {
         id: id.to_string(),
         name: document.name,
@@ -927,6 +978,7 @@ fn inspect_real_skill(directory: &Path, id: &str, context: &RecordContext<'_>) -
         pack_version,
         update_available,
         project_enabled,
+        project_disabled,
         enabled: context.state.enabled.contains(id),
         removable: source != SkillSource::Bundled,
         validation: SkillValidation::Valid,
@@ -988,8 +1040,10 @@ fn write_state(root: &Path, state: &SkillsState) -> Result<(), String> {
         enabled: state.enabled.clone(),
         seen: state.seen.clone(),
         project_enabled: state.project_enabled.clone(),
+        project_disabled: state.project_disabled.clone(),
     };
     state.project_enabled.retain(|_, ids| !ids.is_empty());
+    state.project_disabled.retain(|_, ids| !ids.is_empty());
     let raw = serde_json::to_vec_pretty(&state)
         .map_err(|error| format!("Could not encode skill settings: {error}"))?;
     crate::sandbox::atomic_write(&state_path(root), &raw)
@@ -1103,36 +1157,28 @@ fn list_unlocked(
             normalized_enabled.insert(record.id.clone());
         }
     }
-    let mut normalized_projects: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-    for (project, ids) in state.project_enabled.iter() {
-        let kept: BTreeSet<String> = ids
-            .iter()
-            .filter(|id| valid_ids.contains(*id))
-            .cloned()
-            .collect();
-        if !kept.is_empty() {
-            normalized_projects.insert(project.clone(), kept);
-        }
-    }
+    let normalized_projects = prune_project_scope(&state.project_enabled, &valid_ids);
+    let normalized_project_off = prune_project_scope(&state.project_disabled, &valid_ids);
     if upgraded
         || normalized_enabled != state.enabled
         || normalized_seen != state.seen
         || normalized_projects != state.project_enabled
+        || normalized_project_off != state.project_disabled
     {
         state.version = STATE_VERSION;
         state.enabled = normalized_enabled;
         state.seen = normalized_seen;
         state.project_enabled = normalized_projects;
+        state.project_disabled = normalized_project_off;
         write_state(root, &state)?;
     }
     for record in &mut records {
-        record.enabled = matches!(&record.validation, SkillValidation::Valid)
-            && state.enabled.contains(&record.id);
-        record.project_enabled = matches!(&record.validation, SkillValidation::Valid)
-            && project_id
-                .and_then(|project| state.project_enabled.get(project))
-                .map(|ids| ids.contains(&record.id))
-                .unwrap_or(false);
+        let valid = matches!(&record.validation, SkillValidation::Valid);
+        record.enabled = valid && state.enabled.contains(&record.id);
+        record.project_enabled =
+            valid && project_scope(&state.project_enabled, project_id, &record.id);
+        record.project_disabled =
+            valid && project_scope(&state.project_disabled, project_id, &record.id);
     }
     Ok(records)
 }
@@ -1602,12 +1648,21 @@ pub fn set_enabled(
     listed_record(root, pack_root, project_id, id)
 }
 
+fn clear_project_scope(map: &mut BTreeMap<String, BTreeSet<String>>, project_id: &str, id: &str) {
+    if let Some(ids) = map.get_mut(project_id) {
+        ids.remove(id);
+        if ids.is_empty() {
+            map.remove(project_id);
+        }
+    }
+}
+
 pub fn set_project_enabled(
     root: &Path,
     pack_root: Option<&Path>,
     project_id: &str,
     id: &str,
-    enabled: bool,
+    enabled: Option<bool>,
 ) -> Result<SkillRecord, String> {
     let _guard = SKILLS_WRITE_LOCK
         .lock()
@@ -1624,20 +1679,29 @@ pub fn set_project_enabled(
         pack_ids: &BTreeSet::new(),
     };
     let current = inspect_real_skill(&directory, id, &context);
-    if enabled {
+    if enabled == Some(true) {
         if let SkillValidation::Invalid { message, .. } = &current.validation {
             return Err(message.clone());
         }
-        state
-            .project_enabled
-            .entry(project_id.to_string())
-            .or_default()
-            .insert(id.to_string());
-    } else if let Some(ids) = state.project_enabled.get_mut(project_id) {
-        ids.remove(id);
-        if ids.is_empty() {
-            state.project_enabled.remove(project_id);
+    }
+    clear_project_scope(&mut state.project_enabled, project_id, id);
+    clear_project_scope(&mut state.project_disabled, project_id, id);
+    match enabled {
+        Some(true) => {
+            state
+                .project_enabled
+                .entry(project_id.to_string())
+                .or_default()
+                .insert(id.to_string());
         }
+        Some(false) => {
+            state
+                .project_disabled
+                .entry(project_id.to_string())
+                .or_default()
+                .insert(id.to_string());
+        }
+        None => {}
     }
     state.seen.insert(id.to_string());
     write_state(root, &state)?;
@@ -1677,7 +1741,11 @@ fn remove_unlocked_with_writer(
         .map_err(|error| format!("Could not unregister skill \"{id}\": {error}"))?;
     let removed_enabled = state.enabled.remove(id);
     let mut removed_project = false;
-    for ids in state.project_enabled.values_mut() {
+    for ids in state
+        .project_enabled
+        .values_mut()
+        .chain(state.project_disabled.values_mut())
+    {
         removed_project |= ids.remove(id);
     }
     if removed_enabled || removed_project {
@@ -1831,6 +1899,93 @@ pub fn read_skill_file(root: &Path, id: &str, relative: &str) -> Result<SkillFil
     })
 }
 
+const SCRIPT_PROGRAM_DIRECTORIES: [&str; 4] =
+    ["/usr/bin", "/bin", "/usr/local/bin", "/opt/homebrew/bin"];
+
+fn script_program(relative: &str) -> Option<&'static str> {
+    match Path::new(relative)
+        .extension()
+        .and_then(|extension| extension.to_str())
+    {
+        Some("py") => Some("python3"),
+        Some("sh" | "bash") => Some("bash"),
+        Some("mjs" | "js") => Some("node"),
+        Some("R" | "r") => Some("Rscript"),
+        _ => None,
+    }
+}
+
+fn resolved_program(name: &str) -> String {
+    SCRIPT_PROGRAM_DIRECTORIES
+        .iter()
+        .map(|directory| Path::new(directory).join(name))
+        .find(|candidate| candidate.is_file())
+        .map(|candidate| candidate.to_string_lossy().into_owned())
+        .unwrap_or_else(|| name.to_string())
+}
+
+fn quoted(value: &str) -> String {
+    serde_json::to_string(value).unwrap_or_else(|_| format!("\"{value}\""))
+}
+
+pub struct SkillScript {
+    pub path: String,
+    pub command: String,
+}
+
+pub fn skill_scripts(record: &SkillRecord) -> Vec<SkillScript> {
+    if record.dir.is_empty() {
+        return Vec::new();
+    }
+    record
+        .files
+        .iter()
+        .filter(|file| file.path.starts_with("scripts/"))
+        .map(|file| {
+            let absolute = Path::new(&record.dir).join(&file.path);
+            let absolute = absolute.to_string_lossy().into_owned();
+            let command = match script_program(&file.path) {
+                Some(program) => format!("{} {}", resolved_program(program), quoted(&absolute)),
+                None => quoted(&absolute),
+            };
+            SkillScript {
+                path: file.path.clone(),
+                command,
+            }
+        })
+        .collect()
+}
+
+pub fn skill_tool_summary(record: &SkillRecord) -> serde_json::Value {
+    serde_json::json!({
+        "id": record.id,
+        "name": record.name,
+        "description": record.description,
+        "phase": record.phase,
+        "tier": record.tier,
+        "enabled": record.is_available(),
+    })
+}
+
+pub fn skill_tool_payload(record: &SkillRecord) -> serde_json::Value {
+    serde_json::json!({
+        "id": record.id,
+        "name": record.name,
+        "description": record.description,
+        "dir": record.dir,
+        "files": record
+            .files
+            .iter()
+            .map(|file| serde_json::json!({"path": file.path, "bytes": file.bytes}))
+            .collect::<Vec<_>>(),
+        "scripts": skill_scripts(record)
+            .into_iter()
+            .map(|script| serde_json::json!({"path": script.path, "command": script.command}))
+            .collect::<Vec<_>>(),
+        "instructions": record.instructions,
+    })
+}
+
 fn app_pack_root(app: &tauri::AppHandle) -> Option<PathBuf> {
     crate::skills_pack::pack_root(app)
 }
@@ -1901,7 +2056,7 @@ pub fn skills_set_project_enabled(
     app: tauri::AppHandle,
     project_id: String,
     id: String,
-    enabled: bool,
+    enabled: Option<bool>,
 ) -> Result<SkillRecord, String> {
     let pack_root = app_pack_root(&app);
     set_project_enabled(
@@ -2310,9 +2465,11 @@ mod tests {
         set_enabled(root.path(), None, None, "draft", false).unwrap();
 
         let scoped =
-            set_project_enabled(root.path(), None, "swift-violet-fox", "draft", true).unwrap();
+            set_project_enabled(root.path(), None, "swift-violet-fox", "draft", Some(true))
+                .unwrap();
         assert!(scoped.project_enabled);
         assert!(!scoped.enabled);
+        assert!(scoped.is_available());
 
         let for_project = list_with(root.path(), None, Some("swift-violet-fox")).unwrap();
         assert!(record(&for_project, "draft").project_enabled);
@@ -2321,10 +2478,104 @@ mod tests {
         let for_other = list_with(root.path(), None, Some("other-project")).unwrap();
         assert!(!record(&for_other, "draft").project_enabled);
 
-        set_project_enabled(root.path(), None, "swift-violet-fox", "draft", false).unwrap();
+        set_project_enabled(root.path(), None, "swift-violet-fox", "draft", None).unwrap();
         let cleared = list_with(root.path(), None, Some("swift-violet-fox")).unwrap();
         assert!(!record(&cleared, "draft").project_enabled);
+        assert!(!record(&cleared, "draft").project_disabled);
+        assert_eq!(record(&cleared, "draft").project_override(), None);
         assert!(read_state(root.path()).unwrap().project_enabled.is_empty());
+        assert!(read_state(root.path()).unwrap().project_disabled.is_empty());
+    }
+
+    #[test]
+    fn a_project_inherits_the_device_setting_until_it_overrides_it() {
+        let root = tempfile::tempdir().unwrap();
+        write_skill(
+            root.path(),
+            "draft",
+            &valid_skill("Draft", "Review a draft.", "Review the draft."),
+        );
+
+        let inherited = list_with(root.path(), None, Some("swift-violet-fox")).unwrap();
+        let inherited = record(&inherited, "draft");
+        assert!(inherited.enabled);
+        assert!(!inherited.project_enabled);
+        assert!(!inherited.project_disabled);
+        assert_eq!(inherited.project_override(), None);
+        assert!(inherited.is_available());
+
+        let scoped_off =
+            set_project_enabled(root.path(), None, "swift-violet-fox", "draft", Some(false))
+                .unwrap();
+        assert!(scoped_off.enabled);
+        assert!(scoped_off.project_disabled);
+        assert_eq!(scoped_off.project_override(), Some(false));
+        assert!(!scoped_off.is_available());
+
+        let elsewhere = list_with(root.path(), None, Some("other-project")).unwrap();
+        assert!(record(&elsewhere, "draft").is_available());
+
+        set_project_enabled(root.path(), None, "swift-violet-fox", "draft", None).unwrap();
+        let restored = list_with(root.path(), None, Some("swift-violet-fox")).unwrap();
+        assert!(record(&restored, "draft").is_available());
+        assert!(read_state(root.path()).unwrap().project_disabled.is_empty());
+    }
+
+    #[test]
+    fn an_invalid_skill_is_never_available() {
+        let root = tempfile::tempdir().unwrap();
+        write_skill(
+            root.path(),
+            "broken",
+            "---\nname: broken\n---\n\nNo description.\n",
+        );
+
+        let records = list_with(root.path(), None, Some("swift-violet-fox")).unwrap();
+        let broken = record(&records, "broken");
+        assert!(!broken.is_valid());
+        assert!(!broken.is_available());
+    }
+
+    #[test]
+    fn the_shared_tool_payload_carries_the_folder_and_a_command_per_script() {
+        let root = tempfile::tempdir().unwrap();
+        write_skill(
+            root.path(),
+            "draft",
+            &valid_skill("Draft", "Review a draft.", "Review the draft."),
+        );
+        let directory = skills_root(root.path()).join("draft");
+        std::fs::create_dir_all(directory.join("scripts")).unwrap();
+        std::fs::write(directory.join("scripts").join("check.py"), "print('ok')\n").unwrap();
+        std::fs::write(directory.join("scripts").join("collect.sh"), "echo ok\n").unwrap();
+        std::fs::write(directory.join("references.md"), "# Reference\n").unwrap();
+
+        let records = list_with(root.path(), None, None).unwrap();
+        let draft = record(&records, "draft");
+        let scripts = skill_scripts(draft);
+
+        assert_eq!(
+            scripts
+                .iter()
+                .map(|script| script.path.as_str())
+                .collect::<Vec<_>>(),
+            vec!["scripts/check.py", "scripts/collect.sh"]
+        );
+        assert!(scripts[0].command.contains("python3"));
+        assert!(scripts[0].command.contains(&draft.dir));
+        assert!(scripts[0].command.ends_with("scripts/check.py\""));
+        assert!(scripts[1].command.contains("bash"));
+
+        let payload = skill_tool_payload(draft);
+        assert_eq!(payload["id"], "draft");
+        assert_eq!(payload["dir"], draft.dir);
+        assert_eq!(payload["scripts"][0]["path"], "scripts/check.py");
+        assert_eq!(payload["files"][0]["path"], "references.md");
+        assert!(payload["instructions"]
+            .as_str()
+            .unwrap()
+            .contains("Review the draft."));
+        assert_eq!(skill_tool_summary(draft)["enabled"], true);
     }
 
     #[test]
@@ -2336,8 +2587,8 @@ mod tests {
             &valid_skill("Draft", "Review a draft.", "Review the draft."),
         );
 
-        assert!(set_project_enabled(root.path(), None, "../escape", "draft", true).is_err());
-        assert!(set_project_enabled(root.path(), None, "", "draft", true).is_err());
+        assert!(set_project_enabled(root.path(), None, "../escape", "draft", Some(true)).is_err());
+        assert!(set_project_enabled(root.path(), None, "", "draft", Some(true)).is_err());
     }
 
     #[test]
@@ -2808,7 +3059,14 @@ mod tests {
         )
         .unwrap();
         set_enabled(root.path(), None, None, "methods-coach", true).unwrap();
-        set_project_enabled(root.path(), None, "swift-violet-fox", "methods-coach", true).unwrap();
+        set_project_enabled(
+            root.path(),
+            None,
+            "swift-violet-fox",
+            "methods-coach",
+            Some(true),
+        )
+        .unwrap();
 
         remove(root.path(), "methods-coach").unwrap();
 
@@ -2980,7 +3238,7 @@ mod tests {
                 "enable accepted {id}"
             );
             assert!(
-                set_project_enabled(root.path(), None, "swift-violet-fox", id, true).is_err(),
+                set_project_enabled(root.path(), None, "swift-violet-fox", id, Some(true)).is_err(),
                 "project enable accepted {id}"
             );
             assert!(remove(root.path(), id).is_err(), "remove accepted {id}");
@@ -3203,7 +3461,7 @@ mod tests {
             Some(pack.path()),
             "swift-violet-fox",
             "paper-lookup",
-            true,
+            Some(true),
         )
         .unwrap();
         let device_off = set_enabled(
@@ -3224,11 +3482,13 @@ mod tests {
             Some(pack.path()),
             "swift-violet-fox",
             "paper-lookup",
-            false,
+            Some(false),
         )
         .unwrap();
 
         assert!(!scoped_off.project_enabled);
+        assert!(scoped_off.project_disabled);
+        assert!(!scoped_off.is_available());
         assert!(scoped_off.update_available);
     }
 }

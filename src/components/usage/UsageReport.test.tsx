@@ -1,65 +1,48 @@
+// @vitest-environment jsdom
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { JSDOM } from "jsdom";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { ProjectInfo } from "@/lib/tauri";
-import type {
-  UsageReport as UsageReportData,
-  UsageReportFilter,
+import {
+  usageQuickRange,
+  type UsageReport as UsageReportData,
+  type UsageReportFilter,
 } from "@/lib/usage-report";
 import { useFilesStore } from "@/store/files";
+import { UsageReport, UsageReportDialog } from "./UsageReport";
 
-let UsageReport: typeof import("./UsageReport").UsageReport;
-let UsageReportDialog: typeof import("./UsageReport").UsageReportDialog;
-let act: typeof import("@testing-library/react").act;
-let cleanup: typeof import("@testing-library/react").cleanup;
-let fireEvent: typeof import("@testing-library/react").fireEvent;
-let render: typeof import("@testing-library/react").render;
-let waitFor: typeof import("@testing-library/react").waitFor;
-let within: typeof import("@testing-library/react").within;
-let userEvent: typeof import("@testing-library/user-event").default;
+const toastSuccess = vi.fn();
+vi.mock("@/lib/toast", () => ({
+  toast: {
+    success: (...args: unknown[]) => toastSuccess(...args),
+    error: vi.fn(),
+    info: vi.fn(),
+  },
+  notifyError: vi.fn(),
+}));
 
-beforeAll(async () => {
-  const dom = new JSDOM("<!doctype html><html><body></body></html>", {
-    url: "https://oleafly.test",
-  });
-  vi.stubGlobal("window", dom.window);
-  vi.stubGlobal("document", dom.window.document);
-  vi.stubGlobal("navigator", dom.window.navigator);
-  vi.stubGlobal("HTMLElement", dom.window.HTMLElement);
-  vi.stubGlobal("HTMLInputElement", dom.window.HTMLInputElement);
-  vi.stubGlobal("Element", dom.window.Element);
-  vi.stubGlobal("Node", dom.window.Node);
-  vi.stubGlobal("NodeFilter", dom.window.NodeFilter);
-  vi.stubGlobal("Event", dom.window.Event);
-  vi.stubGlobal("CustomEvent", dom.window.CustomEvent);
-  vi.stubGlobal("MutationObserver", dom.window.MutationObserver);
-  vi.stubGlobal("getComputedStyle", dom.window.getComputedStyle.bind(dom.window));
-  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  Object.defineProperty(dom.window.HTMLElement.prototype, "hasPointerCapture", {
+beforeAll(() => {
+  Object.defineProperty(HTMLElement.prototype, "hasPointerCapture", {
     configurable: true,
     value: () => false,
   });
-  Object.defineProperty(dom.window.HTMLElement.prototype, "scrollIntoView", {
+  Object.defineProperty(HTMLElement.prototype, "releasePointerCapture", {
+    configurable: true,
+    value: () => {},
+  });
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
     configurable: true,
     value: vi.fn(),
   });
-  Object.defineProperties(dom.window.HTMLElement.prototype, {
-    attachEvent: { configurable: true, value: () => {} },
-    detachEvent: { configurable: true, value: () => {} },
-  });
-  ({ act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react"));
-  ({ default: userEvent } = await import("@testing-library/user-event"));
-  ({ UsageReport, UsageReportDialog } = await import("./UsageReport"));
 });
 
 afterEach(() => {
   cleanup();
+  toastSuccess.mockClear();
   useFilesStore.setState({ projects: [] });
 });
-
-function page() {
-  return within(document.body);
-}
 
 function report(recordCount = 1): UsageReportData {
   return {
@@ -70,6 +53,7 @@ function report(recordCount = 1): UsageReportData {
     totals: {
       recordCount,
       sessionCount: recordCount === 0 ? 0 : 1,
+      childRunCount: 0,
       inputTotal: recordCount === 0 ? 0 : 100,
       inputKnownRecords: recordCount,
       inputUnknownRecords: 0,
@@ -86,6 +70,8 @@ function report(recordCount = 1): UsageReportData {
       estimatedCostUsd: 0,
       costKnownRecords: 0,
       costUnknownRecords: recordCount,
+      unpricedRecords: recordCount,
+      planRecords: 0,
       reportedRecords: recordCount,
       estimatedRecords: 0,
       unavailableRecords: 0,
@@ -100,8 +86,9 @@ function report(recordCount = 1): UsageReportData {
               inputTotal: 100,
               outputTotal: 20,
               cacheReadTotal: 0,
-              estimatedCostUsd: 0,
+              estimatedCostUsd: null,
               recordCount: 1,
+              unmeasuredRecords: 0,
             },
           ],
     heatmap: recordCount === 0 ? [] : [{ weekday: 6, hour: 12, tokenTotal: 120, recordCount: 1 }],
@@ -114,9 +101,12 @@ function report(recordCount = 1): UsageReportData {
               inputTotal: 100,
               outputTotal: 20,
               cacheReadTotal: 0,
-              estimatedCostUsd: 0,
+              estimatedCostUsd: null,
               recordCount: 1,
               sessionCount: 1,
+              unmeasuredRecords: 0,
+              unpricedRecords: 1,
+              planRecords: 0,
             },
           ],
     byRuntime: [],
@@ -141,9 +131,13 @@ function report(recordCount = 1): UsageReportData {
                 outputTotal: 20,
                 cacheReadTotal: 0,
                 cacheWriteTotal: 0,
-                estimatedCostUsd: 0,
-                priceVersion: "model-metadata:test",
+                estimatedCostUsd: null,
+                priceVersion: null,
                 recordCount: 1,
+                unmeasuredRecords: 0,
+                unpricedRecords: 1,
+                planRecords: 0,
+                scope: "session",
                 status: "completed",
                 measurement: "provider_reported",
                 billingMode: "api",
@@ -177,14 +171,40 @@ function renderDialog(query: (filter: UsageReportFilter) => Promise<UsageReportD
   );
 }
 
+function sectionByHeading(name: string): HTMLElement {
+  const section = screen.getByRole("heading", { name }).closest("section");
+  expect(section).not.toBeNull();
+  return section as HTMLElement;
+}
+
+async function pickOption(user: ReturnType<typeof userEvent.setup>, label: string, option: string) {
+  await user.click(screen.getByRole("combobox", { name: label }));
+  await user.click(await screen.findByRole("option", { name: option }));
+}
+
 describe("UsageReport", () => {
   it("shows unknown cache and cost states without turning them into zero", () => {
     render(<UsageReport report={report()} />);
-    expect(page().getByText("Cache rate").parentElement).toHaveTextContent("Unknown");
-    expect(page().getByText("Recorded cost estimate").parentElement).toHaveTextContent("Unknown");
-    expect(page().getByText("1 usage record")).toBeVisible();
-    expect(page().getByRole("img", { name: /daily input and output token trend/iu })).toBeVisible();
-    expect(page().getByRole("img", { name: /token activity by UTC weekday and hour/iu })).toBeVisible();
+    expect(screen.getByText("Cache reads").parentElement).toHaveTextContent("Unknown");
+    expect(screen.getByText("Cost estimate").parentElement).toHaveTextContent("No estimate");
+    expect(screen.getByText("Cost estimate").parentElement).toHaveTextContent("1 record unpriced");
+    expect(screen.getByText("Sessions", { selector: "dt" }).parentElement).toHaveTextContent(
+      "0 child runs, 1 usage record",
+    );
+    expect(screen.getByText("Aug 1 to Aug 31, 2026 (UTC)")).toBeVisible();
+    expect(screen.getByRole("img", { name: /daily input and output token trend/iu })).toBeVisible();
+    expect(screen.getByRole("img", { name: /token activity by UTC weekday and hour/iu })).toBeVisible();
+  });
+
+  it("zero-fills the daily trend across the whole range with a date axis", () => {
+    render(<UsageReport report={report()} />);
+    const trend = sectionByHeading("Daily tokens");
+    const rows = within(trend).getAllByRole("row").slice(1);
+    expect(rows).toHaveLength(31);
+    expect(rows[14]).toHaveTextContent("2026-08-15");
+    expect(rows[14]).toHaveTextContent("0");
+    expect(within(trend).getByText("Aug 8")).toBeInTheDocument();
+    expect(within(trend).getByText("Aug 29")).toBeInTheDocument();
   });
 
   it("keeps missing chart and table counters visibly unknown", () => {
@@ -199,107 +219,153 @@ describe("UsageReport", () => {
 
     render(<UsageReport report={unknown} />);
 
-    expect(page().getByTitle("Sat 12:00 UTC: Token count unavailable")).toBeVisible();
-    const projects = page().getByRole("heading", { name: "Projects" }).closest("section");
-    expect(projects).not.toBeNull();
-    const projectRow = within(projects as HTMLElement).getByText("project").closest("tr");
+    expect(screen.getByTitle("Sat 12:00 UTC: Token count unavailable")).toBeInTheDocument();
+    const projectRow = within(sectionByHeading("Projects")).getByText("project").closest("tr");
     expect(projectRow).not.toBeNull();
     expect(within(projectRow as HTMLTableRowElement).getByText("Unknown")).toBeVisible();
-    const sessions = page().getByRole("heading", { name: "Sessions" }).closest("section");
-    expect(sessions).not.toBeNull();
-    const sessionRow = within(sessions as HTMLElement).getByText("session").closest("tr");
+    const sessionRow = within(sectionByHeading("Sessions")).getByText("session").closest("tr");
     expect(sessionRow).not.toBeNull();
     expect(within(sessionRow as HTMLTableRowElement).getAllByText("Unknown")).toHaveLength(2);
+    expect(within(sessionRow as HTMLTableRowElement).getByText("No estimate")).toBeVisible();
   });
 
-  it("exports the selected report", () => {
-    const onExport = vi.fn();
+  it("labels plan billing and partial costs instead of inventing dollar amounts", () => {
+    const mixed = report();
+    const planSession = {
+      ...mixed.sessions.items[0],
+      sessionId: "plan-session",
+      billingMode: "subscription",
+      planRecords: 1,
+      unpricedRecords: 0,
+    };
+    const partialSession = {
+      ...mixed.sessions.items[0],
+      sessionId: "partial-session",
+      estimatedCostUsd: 0.3,
+      priceVersion: "model-metadata:test",
+      recordCount: 3,
+      unpricedRecords: 1,
+      scope: "task",
+    };
+    mixed.sessions.items = [planSession, partialSession];
+    mixed.sessions.total = 2;
+    mixed.totals.estimatedCostUsd = 0.3;
+    mixed.totals.costKnownRecords = 2;
+    mixed.totals.unpricedRecords = 1;
+    mixed.totals.planRecords = 1;
+    mixed.totals.recordCount = 4;
+
+    render(<UsageReport report={mixed} />);
+
+    expect(screen.getByText("Cost estimate").parentElement).toHaveTextContent("$0.30");
+    expect(screen.getByText("Cost estimate").parentElement).toHaveTextContent(
+      "1 record unpriced, 1 record on a plan or local",
+    );
+    const sessions = sectionByHeading("Sessions");
+    const planRow = within(sessions).getByText("plan-session").closest("tr") as HTMLTableRowElement;
+    expect(within(planRow).getAllByText("Plan")).toHaveLength(2);
+    const partialRow = within(sessions)
+      .getByText("partial-session")
+      .closest("tr") as HTMLTableRowElement;
+    expect(partialRow).toHaveTextContent("$0.30*");
+    expect(within(partialRow).getByText("Task")).toBeVisible();
+    expect(within(partialRow).getByText("API")).toBeVisible();
+  });
+
+  it("exports the selected report and confirms where it was saved", async () => {
     const selected = report();
+    const onExport = vi.fn(async (_report: UsageReportData) => "/tmp/usage.csv");
     render(<UsageReport report={selected} onExport={onExport} />);
-    fireEvent.click(page().getByRole("button", { name: "Export CSV" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
     expect(onExport).toHaveBeenCalledWith(selected);
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Saved /tmp/usage.csv"));
   });
 });
 
 describe("UsageReportDialog", () => {
-  it("offers friendly recorded choices while keeping exact identifiers", async () => {
+  it("offers recorded choices in app selects and applies them", async () => {
     const result = report();
     result.byRuntime = [{ ...result.byProject[0], key: "built-in" }];
     result.byProvider = [{ ...result.byProject[0], key: "openai" }];
     result.byModel = [{ ...result.byProject[0], key: "model" }];
     const query = vi.fn(async (_filter: UsageReportFilter) => result);
     renderDialog(query);
-    fireEvent.click(page().getByRole("button", { name: "Open usage" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open usage" }));
     await waitFor(() => expect(query).toHaveBeenCalledTimes(1));
 
-    expect(page().getByLabelText("From (UTC)")).toBeVisible();
-    expect(page().getByLabelText("Through (UTC)")).toBeVisible();
-    await page().findByRole("button", { name: "project" });
+    expect(screen.getByRole("button", { name: "From" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Through" })).toBeVisible();
+    expect(screen.getByRole("combobox", { name: "Project" })).toHaveTextContent("All projects");
+    await screen.findByRole("button", { name: "project" });
     act(() => useFilesStore.setState({ projects: [project("project", "Research notes")] }));
-    await page().findByRole("button", { name: "Research notes" });
-    act(() =>
-      useFilesStore.setState({ projects: [project("project", "Renamed research notes")] }),
-    );
-    await page().findByRole("button", { name: "Renamed research notes" });
-    expect(page().getByRole("option", { name: "Oleafly assistant" })).toBeVisible();
-    expect(page().getByRole("option", { name: "OpenAI" })).toBeVisible();
-    expect(page().getByRole("option", { name: "model" })).toBeVisible();
-    expect(page().getByRole("option", { name: "session" })).toBeVisible();
+    await screen.findByRole("button", { name: "Research notes" });
+
     const user = userEvent.setup();
-    await user.selectOptions(page().getByLabelText("Choose a recorded project"), "project");
+    await pickOption(user, "Project", "Research notes");
+    expect(screen.getByRole("combobox", { name: "Project" })).toHaveTextContent("Research notes");
+    expect(query).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    await waitFor(() =>
+      expect(query.mock.calls.at(-1)?.[0]).toMatchObject({ projectIds: ["project"], page: 0 }),
+    );
+
+    await user.click(screen.getByRole("combobox", { name: "Agent" }));
+    expect(await screen.findByRole("option", { name: "Oleafly assistant" })).toBeVisible();
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("combobox", { name: "Provider" }));
+    expect(await screen.findByRole("option", { name: "OpenAI" })).toBeVisible();
+    await user.keyboard("{Escape}");
+
+    const agents = sectionByHeading("Agents");
+    await user.click(within(agents).getByRole("button", { name: "Oleafly assistant" }));
     await waitFor(() =>
       expect(query.mock.calls.at(-1)?.[0]).toMatchObject({
         projectIds: ["project"],
-        page: 0,
-      }),
-    );
-    expect(page().getByLabelText("Project")).toHaveValue("project");
-
-    const projectChoice = page().getByRole("button", { name: "Renamed research notes" });
-    expect(projectChoice.closest("td")).toHaveAttribute("title", "project");
-    await user.click(page().getByRole("button", { name: "Oleafly assistant" }));
-    await waitFor(() =>
-      expect(query.mock.calls.at(-1)?.[0]).toMatchObject({
         runtimeIds: ["built-in"],
         page: 0,
       }),
     );
+    expect(screen.getByRole("combobox", { name: "Agent" })).toHaveTextContent("Oleafly assistant");
   });
 
-  it("applies agent filters and requests the next bounded page", async () => {
+  it("applies quick ranges immediately and marks the active one", async () => {
+    const query = vi.fn(async (_filter: UsageReportFilter) => report());
+    renderDialog(query);
+    fireEvent.click(screen.getByRole("button", { name: "Open usage" }));
+    await waitFor(() => expect(query).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("button", { name: "30d" })).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "7d" }));
+    const expected = usageQuickRange("7d");
+    await waitFor(() => expect(query.mock.calls.at(-1)?.[0]).toMatchObject(expected));
+    expect(screen.getByRole("button", { name: "7d" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "30d" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("pages sessions with buttons and a page-size select", async () => {
     const result = report();
     result.sessions.total = 30;
     const query = vi.fn(async (_filter: UsageReportFilter) => result);
     renderDialog(query);
-    fireEvent.click(page().getByRole("button", { name: "Open usage" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open usage" }));
     await waitFor(() => expect(query).toHaveBeenCalledTimes(1));
 
     const user = userEvent.setup();
-    const agentFilter = page().getByLabelText("Agent");
-    await user.type(agentFilter, "built-in, acp");
-    expect(agentFilter).toHaveValue("built-in, acp");
-    await user.click(page().getByRole("button", { name: "Apply" }));
-    await waitFor(() =>
-      expect(query.mock.calls.at(-1)?.[0]).toMatchObject({
-        runtimeIds: ["built-in", "acp"],
-        page: 0,
-      }),
-    );
+    expect(await screen.findByText("Page 1 of 2")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => expect(query.mock.calls.at(-1)?.[0]).toMatchObject({ page: 1 }));
 
-    await user.click(page().getByRole("button", { name: "Next" }));
+    await pickOption(user, "Rows per page", "50");
     await waitFor(() =>
-      expect(query.mock.calls.at(-1)?.[0]).toMatchObject({
-        runtimeIds: ["built-in", "acp"],
-        page: 1,
-      }),
+      expect(query.mock.calls.at(-1)?.[0]).toMatchObject({ page: 0, pageSize: 50 }),
     );
   });
 
   it("shows an empty result", async () => {
     const query = vi.fn(async () => report(0));
     renderDialog(query);
-    fireEvent.click(page().getByRole("button", { name: "Open usage" }));
-    expect(await page().findByText("No usage was recorded for these filters.")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Open usage" }));
+    expect(await screen.findByText("No usage was recorded for these filters.")).toBeVisible();
     expect(query).toHaveBeenCalledTimes(1);
   });
 
@@ -308,9 +374,9 @@ describe("UsageReportDialog", () => {
       throw new Error("database unavailable");
     });
     renderDialog(query);
-    fireEvent.click(page().getByRole("button", { name: "Open usage" }));
-    expect(await page().findByRole("alert")).toHaveTextContent("database unavailable");
-    fireEvent.click(page().getByRole("button", { name: "Try again" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open usage" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("database unavailable");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(query).toHaveBeenCalledTimes(2));
   });
 });

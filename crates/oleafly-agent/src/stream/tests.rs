@@ -761,3 +761,48 @@ fn streaming_usage_preserves_presence_and_anthropic_zero_updates() {
     assert_eq!(anthropic.usage().reported_input(), Some(4));
     assert_eq!(anthropic.usage().reported_output(), Some(0));
 }
+
+#[test]
+fn google_streams_count_thinking_tokens_as_output_and_default_absent_cache_to_zero() {
+    let raw = concat!(
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"plan\",\"thought\":true}]}}],\"usageMetadata\":{\"promptTokenCount\":3,\"thoughtsTokenCount\":7}}\n\n",
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"Hi\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":3,\"candidatesTokenCount\":2,\"thoughtsTokenCount\":7}}\n\n"
+    );
+    let (events, translator) = run(WireKind::Google, raw);
+    assert_eq!(text_of(&events), "Hi");
+    assert_eq!(
+        translator.usage(),
+        Usage {
+            input: 3,
+            output: 9,
+            input_known: Some(true),
+            output_known: Some(true),
+            cache_read: Some(0),
+            cache_write: Some(0),
+            input_semantics: crate::complete::InputTokenSemantics::Inclusive,
+        }
+    );
+    let usage_events: Vec<Usage> = events
+        .iter()
+        .filter_map(|event| match event {
+            AgentEvent::Usage { usage } => Some(*usage),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(usage_events[0].reported_output(), Some(7));
+}
+
+#[test]
+fn openai_compatible_streams_leave_unreported_cache_reads_unknown() {
+    let (_, groq) = run(
+        WireKind::OpenAi,
+        "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":11,\"completion_tokens\":4}}\n\ndata: [DONE]\n\n",
+    );
+    assert_eq!(groq.usage().cache_read, None);
+    assert_eq!(groq.usage().cache_write, Some(0));
+    let (_, deepseek) = run(
+        WireKind::OpenAi,
+        "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":11,\"completion_tokens\":4,\"prompt_cache_hit_tokens\":6}}\n\ndata: [DONE]\n\n",
+    );
+    assert_eq!(deepseek.usage().cache_read, Some(6));
+}

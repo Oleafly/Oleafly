@@ -427,3 +427,67 @@ fn invalid_json_rpc_shapes_are_rejected() {
         &json!({"jsonrpc":"2.0","method":"notifications/initialized"})
     ));
 }
+
+fn write_skill(storage: &Path, id: &str, name: &str) {
+    let directory = storage.join("skills").join(id);
+    std::fs::create_dir_all(directory.join("scripts")).unwrap();
+    std::fs::write(
+        directory.join("SKILL.md"),
+        format!("---\nname: {name}\ndescription: Review the sources.\n---\n\nStart with the claim audit.\n"),
+    )
+    .unwrap();
+    std::fs::write(
+        directory.join("scripts").join("verify_citations.py"),
+        "print('ok')\n",
+    )
+    .unwrap();
+}
+
+#[tokio::test]
+async fn a_device_enabled_skill_loads_with_its_folder_and_script_commands() {
+    let root = tempfile::tempdir().unwrap();
+    let storage = root.path().join("skills-storage");
+    write_skill(&storage, "literature-review", "Literature Review");
+    let bridge = bridge(root.path(), None).await;
+
+    let listed = decode(&bridge.call_tool("list_skills", &json!({})).await.unwrap());
+    assert_eq!(listed["skills"][0]["id"], "literature-review");
+    assert_eq!(listed["skills"][0]["enabled"], true);
+
+    let loaded = decode(
+        &bridge
+            .call_tool("load_skill", &json!({"id":"literature-review"}))
+            .await
+            .unwrap(),
+    );
+    assert_eq!(loaded["id"], "literature-review");
+    assert_eq!(loaded["name"], "Literature Review");
+    assert!(loaded["instructions"]
+        .as_str()
+        .unwrap()
+        .contains("Start with the claim audit."));
+    assert!(loaded["dir"]
+        .as_str()
+        .unwrap()
+        .ends_with("literature-review"));
+    assert_eq!(loaded["scripts"][0]["path"], "scripts/verify_citations.py");
+    assert!(loaded["scripts"][0]["command"]
+        .as_str()
+        .unwrap()
+        .contains("scripts/verify_citations.py"));
+
+    crate::skills::set_project_enabled(
+        &storage,
+        None,
+        "project-a",
+        "literature-review",
+        Some(false),
+    )
+    .unwrap();
+    let refused = bridge
+        .call_tool("load_skill", &json!({"id":"literature-review"}))
+        .await
+        .unwrap_err();
+    assert!(refused.contains("literature-review"));
+    bridge.shutdown().await;
+}

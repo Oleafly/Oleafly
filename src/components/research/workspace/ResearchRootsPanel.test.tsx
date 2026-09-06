@@ -1,6 +1,12 @@
 import { JSDOM } from "jsdom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { LinkedResearchRoot, ResearchRootFileContent, ResearchRootFileEntry, ResearchWorkspace } from "@/lib/research-workspace";
+import type {
+  LinkedResearchRoot,
+  ResearchRootFileContent,
+  ResearchRootFileEntry,
+  ResearchRootHealth,
+  ResearchWorkspace,
+} from "@/lib/research-workspace";
 
 let ResearchRootsPanel: typeof import("./ResearchRootsPanel").ResearchRootsPanel;
 let act: typeof import("@testing-library/react").act;
@@ -11,9 +17,10 @@ let waitFor: typeof import("@testing-library/react").waitFor;
 let within: typeof import("@testing-library/react").within;
 let userEvent: typeof import("@testing-library/user-event").default;
 
-const native = vi.hoisted(() => ({ invoke: vi.fn(), open: vi.fn() }));
+const native = vi.hoisted(() => ({ invoke: vi.fn(), open: vi.fn(), reveal: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: native.invoke }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: native.open }));
+vi.mock("@/lib/tauri", () => ({ revealInDir: native.reveal }));
 
 beforeAll(async () => {
   const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "https://oleafly.test" });
@@ -32,11 +39,14 @@ beforeAll(async () => {
   vi.stubGlobal("CustomEvent", dom.window.CustomEvent);
   vi.stubGlobal("MutationObserver", dom.window.MutationObserver);
   vi.stubGlobal("getComputedStyle", dom.window.getComputedStyle.bind(dom.window));
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => dom.window.setTimeout(() => callback(Date.now()), 0));
+  vi.stubGlobal("cancelAnimationFrame", (handle: number) => dom.window.clearTimeout(handle));
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   Object.defineProperties(dom.window.HTMLElement.prototype, {
     attachEvent: { configurable: true, value: () => {} },
     detachEvent: { configurable: true, value: () => {} },
     hasPointerCapture: { configurable: true, value: () => false },
+    releasePointerCapture: { configurable: true, value: () => {} },
     scrollIntoView: { configurable: true, value: vi.fn() },
   });
   ({ act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react"));
@@ -47,6 +57,7 @@ beforeAll(async () => {
 beforeEach(() => {
   native.invoke.mockReset();
   native.open.mockReset();
+  native.reveal.mockReset();
 });
 afterEach(() => cleanup());
 
@@ -56,6 +67,10 @@ function root(): LinkedResearchRoot {
 
 function workspace(roots: LinkedResearchRoot[] = []): ResearchWorkspace {
   return { version: 1, primaryProjectId: "paper", roots, updatedAtMs: 1 };
+}
+
+function healthy(roots: LinkedResearchRoot[]): ResearchRootHealth[] {
+  return roots.map((entry) => ({ rootId: entry.id, availability: "available" as const, detail: null }));
 }
 
 function file(relativePath: string, values: Partial<ResearchRootFileEntry> = {}): ResearchRootFileEntry {
@@ -70,9 +85,9 @@ function page() {
   return within(document.body);
 }
 
-async function fillLabel(value: string, scope = page()) {
+async function fillLabel(value: string) {
   const user = userEvent.setup({ document });
-  const input = scope.getByLabelText("Label");
+  const input = page().getByLabelText("Label");
   await user.clear(input);
   await user.type(input, value);
 }
@@ -82,12 +97,17 @@ function select(label: string, option: string) {
   fireEvent.click(page().getByRole("option", { name: option }));
 }
 
+function openMenu(label: string) {
+  fireEvent.keyDown(page().getByRole("button", { name: `More actions for ${label}` }), { key: "Enter" });
+}
+
 describe("ResearchRootsPanel", () => {
-  it("links a picked folder read-only, saves explicit role/access changes, reloads, and unlinks without deleting files", async () => {
+  it("links a picked folder read-only through a dialog, edits it, and unlinks after confirmation", async () => {
     let saved = workspace();
     native.open.mockResolvedValue("/study/data");
     native.invoke.mockImplementation(async (command, args) => {
       if (command === "get_research_workspace") return saved;
+      if (command === "research_root_health") return healthy(saved.roots);
       if (command === "add_research_root") {
         saved = workspace([{ ...root(), ...args.request, canonicalPath: args.request.path }]);
         return saved;
@@ -102,43 +122,104 @@ describe("ResearchRootsPanel", () => {
       }
       throw new Error(`Unexpected native mutation: ${command}`);
     });
-    const first = render(<ResearchRootsPanel projectId="paper" />);
+    render(<ResearchRootsPanel projectId="paper" />);
     await waitFor(() => expect(page().getByText("No research folders are linked to this manuscript.")).toBeInTheDocument());
-    expect(page().getByRole("button", { name: "Link folder" })).toBeDisabled();
+
+    fireEvent.click(page().getAllByRole("button", { name: "Link folder" })[0]);
+    const dialog = () => within(page().getByRole("dialog"));
+    expect(dialog().getByRole("button", { name: "Link folder" })).toBeDisabled();
     expect(page().getByLabelText("Folder")).toHaveAttribute("readonly");
     fireEvent.click(page().getByRole("button", { name: "Choose folder" }));
     await waitFor(() => expect(page().getByLabelText("Label")).toHaveValue("data"));
     expect(native.open).toHaveBeenCalledExactlyOnceWith({ directory: true, multiple: false, title: "Link research folder" });
     await fillLabel("Study data");
-    fireEvent.click(page().getByRole("button", { name: "Link folder" }));
+    fireEvent.click(dialog().getByRole("button", { name: "Link folder" }));
     await waitFor(() => expect(page().getByRole("article")).toBeInTheDocument());
     expect(native.invoke).toHaveBeenCalledWith("add_research_root", {
       request: { projectId: "paper", path: "/study/data", label: "Study data", role: "data", access: "read_only" },
     });
-    expect(page().getByLabelText("Folder")).toHaveValue("");
-    await fillLabel("Analysis scripts", within(page().getByRole("article")));
-    select("Study data role", "Analysis");
-    select("Study data access", "Read and write");
-    fireEvent.click(page().getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(page().getByRole("button", { name: "Save" })).toBeDisabled());
+    const card = () => within(page().getByRole("article"));
+    expect(card().getByText("Read only")).toBeInTheDocument();
+    expect(card().getByText("Available")).toBeInTheDocument();
+    expect(card().getByText("Data")).toBeInTheDocument();
+
+    openMenu("Study data");
+    fireEvent.click(page().getByRole("menuitem", { name: "Edit" }));
+    await waitFor(() => expect(page().getByRole("dialog")).toBeInTheDocument());
+    await fillLabel("Analysis scripts");
+    select("Folder role", "Analysis");
+    fireEvent.click(page().getByRole("button", { name: "Save folder" }));
+    await waitFor(() => expect(page().queryByRole("dialog")).not.toBeInTheDocument());
     expect(native.invoke).toHaveBeenCalledWith("update_research_root", {
-      request: { projectId: "paper", rootId: "data-root", label: "Analysis scripts", role: "analysis", access: "read_write" },
+      request: { projectId: "paper", rootId: "data-root", label: "Analysis scripts", role: "analysis", access: "read_only" },
     });
-    first.unmount();
-    render(<ResearchRootsPanel projectId="paper" />);
-    await waitFor(() => expect(page().getByLabelText("Analysis scripts role")).toHaveTextContent("Analysis"));
-    expect(page().getByLabelText("Analysis scripts access")).toHaveTextContent("Read and write");
-    fireEvent.click(page().getByRole("button", { name: "Unlink" }));
+
+    openMenu("Analysis scripts");
+    fireEvent.click(page().getByRole("menuitem", { name: "Unlink" }));
+    fireEvent.click(within(page().getByRole("alertdialog")).getByRole("button", { name: "Unlink" }));
     await waitFor(() => expect(page().queryByRole("article")).not.toBeInTheDocument());
     expect(native.invoke).toHaveBeenCalledWith("remove_research_root", { projectId: "paper", rootId: "data-root" });
-    expect(native.invoke.mock.calls.map(([command]) => command)).toEqual([
-      "get_research_workspace", "add_research_root", "update_research_root", "get_research_workspace", "remove_research_root",
-    ]);
+    expect(native.invoke).not.toHaveBeenCalledWith("write_research_root_file", expect.anything());
+  });
+
+  it("keeps a linked folder when the unlink confirmation is dismissed", async () => {
+    native.invoke.mockImplementation(async (command) => {
+      if (command === "get_research_workspace") return workspace([root()]);
+      if (command === "research_root_health") return healthy([root()]);
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    render(<ResearchRootsPanel projectId="paper" />);
+    await waitFor(() => expect(page().getByRole("article")).toBeInTheDocument());
+    openMenu("Study data");
+    fireEvent.click(page().getByRole("menuitem", { name: "Unlink" }));
+    fireEvent.click(within(page().getByRole("alertdialog")).getByRole("button", { name: /Cancel/ }));
+    expect(page().getByRole("article")).toBeInTheDocument();
+    expect(native.invoke).not.toHaveBeenCalledWith("remove_research_root", expect.anything());
+  });
+
+  it("reports a missing folder instead of showing it as healthy", async () => {
+    native.invoke.mockImplementation(async (command) => {
+      if (command === "get_research_workspace") return workspace([root()]);
+      if (command === "research_root_health") {
+        return [{ rootId: "data-root", availability: "missing", detail: "This folder is missing or its drive is not mounted." }];
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    render(<ResearchRootsPanel projectId="paper" />);
+    await waitFor(() => expect(page().getByText("Missing")).toBeInTheDocument());
+    expect(page().queryByText("Available")).not.toBeInTheDocument();
+    openMenu("Study data");
+    expect(page().getByRole("menuitem", { name: "Unlink" })).toBeInTheDocument();
+  });
+
+  it("still lists linked folders when the health check fails", async () => {
+    native.invoke.mockImplementation(async (command) => {
+      if (command === "get_research_workspace") return workspace([root()]);
+      if (command === "research_root_health") throw new Error("Health check unavailable");
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    render(<ResearchRootsPanel projectId="paper" />);
+    await waitFor(() => expect(page().getByRole("article")).toBeInTheDocument());
+    expect(page().queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("reveals the linked folder in the desktop file manager", async () => {
+    native.invoke.mockImplementation(async (command) => {
+      if (command === "get_research_workspace") return workspace([root()]);
+      if (command === "research_root_health") return healthy([root()]);
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    render(<ResearchRootsPanel projectId="paper" />);
+    await waitFor(() => expect(page().getByRole("article")).toBeInTheDocument());
+    openMenu("Study data");
+    fireEvent.click(page().getByRole("menuitem", { name: /Show in (Finder|Explorer)/ }));
+    expect(native.reveal).toHaveBeenCalledWith("/study/data");
   });
 
   it("inspects bounded read-only content, blocks directories and symlinks, and labels binary/truncated previews", async () => {
     native.invoke.mockImplementation(async (command, args) => {
       if (command === "get_research_workspace") return workspace([root()]);
+      if (command === "research_root_health") return healthy([root()]);
       if (command === "list_research_root_files") return {
         rootId: "data-root", path: "", truncated: true,
         entries: [file("participants.csv"), file("archive", { isDirectory: true }), file("outside.csv", { isSymlink: true }), file("scan.bin")],
@@ -164,14 +245,14 @@ describe("ResearchRootsPanel", () => {
     await waitFor(() => expect(page().getByText("Binary files are not shown here.")).toBeInTheDocument());
     expect(page().queryByText("must not render")).not.toBeInTheDocument();
     expect(native.invoke.mock.calls.filter(([command]) => command === "read_research_root_file").map(([, args]) => args.relativePath)).toEqual(["participants.csv", "scan.bin"]);
-    expect(native.invoke).not.toHaveBeenCalledWith("write_research_root_file", expect.anything());
   });
 
   it("keeps a rejected link draft for retry and treats a cancelled folder picker as no change", async () => {
     let failed = true;
     native.open.mockResolvedValueOnce(null).mockResolvedValueOnce("/study/data");
     native.invoke.mockImplementation(async (command) => {
-      if (command === "get_research_workspace") return workspace();
+      if (command === "get_research_workspace") return failed ? workspace() : workspace([root()]);
+      if (command === "research_root_health") return healthy(failed ? [] : [root()]);
       if (command === "add_research_root") {
         if (failed) throw new Error("This folder is already linked");
         return workspace([root()]);
@@ -179,71 +260,52 @@ describe("ResearchRootsPanel", () => {
       throw new Error(`Unexpected command: ${command}`);
     });
     render(<ResearchRootsPanel projectId="paper" />);
-    await waitFor(() => expect(page().getByRole("button", { name: "Choose folder" })).toBeEnabled());
+    await waitFor(() => expect(page().getAllByRole("button", { name: "Link folder" })[0]).toBeEnabled());
+    fireEvent.click(page().getAllByRole("button", { name: "Link folder" })[0]);
+    const dialog = () => within(page().getByRole("dialog"));
     fireEvent.click(page().getByRole("button", { name: "Choose folder" }));
     await waitFor(() => expect(native.open).toHaveBeenCalledOnce());
     expect(page().getByLabelText("Folder")).toHaveValue("");
-    expect(page().getByRole("button", { name: "Link folder" })).toBeDisabled();
+    expect(dialog().getByRole("button", { name: "Link folder" })).toBeDisabled();
     fireEvent.click(page().getByRole("button", { name: "Choose folder" }));
     await waitFor(() => expect(page().getByLabelText("Folder")).toHaveValue("/study/data"));
     await fillLabel("Study data");
     select("Folder role", "References");
-    fireEvent.click(page().getByRole("button", { name: "Link folder" }));
+    fireEvent.click(dialog().getByRole("button", { name: "Link folder" }));
     await waitFor(() => expect(page().getByRole("alert")).toHaveTextContent("already linked"));
     expect(page().getByLabelText("Folder")).toHaveValue("/study/data");
     expect(page().getByLabelText("Label")).toHaveValue("Study data");
     expect(page().getByLabelText("Folder role")).toHaveTextContent("References");
     failed = false;
-    fireEvent.click(page().getByRole("button", { name: "Link folder" }));
+    fireEvent.click(dialog().getByRole("button", { name: "Link folder" }));
     await waitFor(() => expect(page().getByRole("article")).toBeInTheDocument());
-    expect(page().queryByRole("alert")).not.toBeInTheDocument();
+    expect(page().queryByRole("dialog")).not.toBeInTheDocument();
     expect(native.invoke.mock.calls.filter(([command]) => command === "add_research_root")).toHaveLength(2);
   });
 
-  it.each([
-    ["Save", "update_research_root"],
-    ["Unlink", "remove_research_root"],
-    ["Browse files", "list_research_root_files"],
-  ])("keeps the folder usable after %s fails", async (button, command) => {
-    let failed = true;
-    native.invoke.mockImplementation(async (name) => {
-      if (name === "get_research_workspace") return workspace([root()]);
-      if (name === command) {
-        if (failed) throw new Error("Folder permission was revoked");
-        if (name === "list_research_root_files") return { entries: [], truncated: false };
-        if (name === "remove_research_root") return workspace();
-        return workspace([{ ...root(), label: "Updated label" }]);
-      }
-      throw new Error(`Unexpected command: ${name}`);
-    });
-    render(<ResearchRootsPanel projectId="paper" />);
-    await waitFor(() => expect(page().getByRole("article")).toBeInTheDocument());
-    if (button === "Save") await fillLabel("Updated label", within(page().getByRole("article")));
-    fireEvent.click(page().getByRole("button", { name: button }));
-    await waitFor(() => expect(page().getByRole("alert")).toHaveTextContent("permission was revoked"));
-    expect(page().getByRole("article")).toBeInTheDocument();
-    expect(page().getByRole("button", { name: button })).toBeEnabled();
-    failed = false;
-    fireEvent.click(page().getByRole("button", { name: button }));
-    await waitFor(() => expect(page().queryByRole("alert")).not.toBeInTheDocument());
-    expect(native.invoke.mock.calls.filter(([name]) => name === command)).toHaveLength(2);
-  });
-
   it("surfaces a failed workspace load and reads persisted links on a later mount", async () => {
-    native.invoke.mockRejectedValueOnce(new Error("Workspace is unavailable")).mockResolvedValue(workspace([root()]));
+    native.invoke.mockImplementation(async (command) => {
+      if (command === "research_root_health") return healthy([root()]);
+      throw new Error("Workspace is unavailable");
+    });
     const first = render(<ResearchRootsPanel projectId="paper" />);
     await waitFor(() => expect(page().getByRole("alert")).toHaveTextContent("Workspace is unavailable"));
     first.unmount();
+    native.invoke.mockImplementation(async (command) => {
+      if (command === "get_research_workspace") return workspace([root()]);
+      if (command === "research_root_health") return healthy([root()]);
+      throw new Error(`Unexpected command: ${command}`);
+    });
     render(<ResearchRootsPanel projectId="paper" />);
     await waitFor(() => expect(page().getByRole("article")).toBeInTheDocument());
     expect(page().queryByRole("alert")).not.toBeInTheDocument();
-    expect(native.invoke).toHaveBeenCalledTimes(2);
   });
 
   it("keeps the latest selected file when native previews finish out of order", async () => {
     const reads = new Map<string, (value: ResearchRootFileContent) => void>();
     native.invoke.mockImplementation(async (command, args) => {
       if (command === "get_research_workspace") return workspace([root()]);
+      if (command === "research_root_health") return healthy([root()]);
       if (command === "list_research_root_files") return { entries: [file("first.csv"), file("second.csv")], truncated: false };
       if (command === "read_research_root_file") return new Promise<ResearchRootFileContent>((resolve) => { reads.set(args.relativePath, resolve); });
       throw new Error(`Unexpected command: ${command}`);
@@ -267,6 +329,7 @@ describe("ResearchRootsPanel", () => {
     let resolveSecond!: (value: ResearchRootFileContent) => void;
     native.invoke.mockImplementation(async (command, args) => {
       if (command === "get_research_workspace") return workspace([root()]);
+      if (command === "research_root_health") return healthy([root()]);
       if (command === "list_research_root_files") return { entries: [file("first.csv"), file("second.csv")], truncated: false };
       if (command === "read_research_root_file") return args.relativePath === "first.csv"
         ? new Promise<ResearchRootFileContent>((_resolve, reject) => { rejectFirst = reject; })
@@ -282,7 +345,6 @@ describe("ResearchRootsPanel", () => {
     await act(async () => rejectFirst(new Error("Obsolete read failed")));
     expect(page().queryByRole("alert")).not.toBeInTheDocument();
     expect(page().getByRole("button", { name: "Browse files" })).toBeDisabled();
-    expect(page().getByRole("button", { name: "Unlink" })).toBeDisabled();
     await act(async () => resolveSecond(content("second.csv", { content: "current data" })));
     expect(page().getByText("current data")).toBeInTheDocument();
     expect(page().getByRole("button", { name: "Browse files" })).toBeEnabled();

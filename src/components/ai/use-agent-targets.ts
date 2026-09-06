@@ -1,13 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { acpCatalog } from "@/lib/acp";
 import type { DelegationTarget } from "@/lib/agent-mentions";
-
-interface CatalogAgent {
-  definition: { id: string; name: string };
-  installed: boolean;
-  taskUnavailableReason?: string | null;
-}
 
 interface ProviderGroup {
   id: string;
@@ -24,7 +18,7 @@ export function useAgentTargets(projectId: string | null, groups: readonly Provi
   }, [queryClient]);
   const catalog = useQuery({
     queryKey: ["acp", "catalog"],
-    queryFn: () => invoke<CatalogAgent[]>("acp_catalog", { probe: false }),
+    queryFn: () => acpCatalog(false),
     enabled: !!projectId,
     staleTime: 30_000,
     retry: false,

@@ -1,6 +1,6 @@
 use serde_json::{json, Value};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     process::Stdio,
     sync::{
         atomic::{AtomicU64, Ordering},
@@ -15,7 +15,60 @@ use tokio::{
 
 pub const MAX_FRAME: usize = 1024 * 1024;
 const MAX_PENDING: usize = 32;
+const MAX_STDERR_TAIL: usize = 8 * 1024;
+const MAX_TAIL_LINES: usize = 20;
+const MAX_TAIL_CHARS: usize = 1000;
+const MAX_RPC_MESSAGE_CHARS: usize = 600;
 type Pending = Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, RpcError>>>>>;
+type StderrTail = Arc<Mutex<VecDeque<u8>>>;
+
+fn tail_text(tail: &StderrTail) -> String {
+    let bytes: Vec<u8> = tail
+        .lock()
+        .map(|value| value.iter().copied().collect())
+        .unwrap_or_default();
+    let text = String::from_utf8_lossy(&bytes);
+    let lines: Vec<&str> = text
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect();
+    lines[lines.len().saturating_sub(MAX_TAIL_LINES)..]
+        .join(" ")
+        .chars()
+        .filter(|value| !value.is_control() && *value != '\u{fffd}')
+        .take(MAX_TAIL_CHARS)
+        .collect::<String>()
+        .trim()
+        .to_owned()
+}
+
+pub fn rpc_error_message(error: &Value) -> String {
+    let message: String = error["message"]
+        .as_str()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("The agent could not complete this request.")
+        .chars()
+        .filter(|value| !value.is_control())
+        .take(MAX_RPC_MESSAGE_CHARS)
+        .collect();
+    let message = message.trim();
+    if message.is_empty() {
+        "The agent could not complete this request.".to_owned()
+    } else {
+        message.to_owned()
+    }
+}
+
+fn disconnect_message(prefix: &str, tail: &StderrTail) -> String {
+    let tail = tail_text(tail);
+    if tail.is_empty() {
+        prefix.to_owned()
+    } else {
+        format!("{prefix} It reported: {tail}")
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct RpcError {
@@ -54,6 +107,7 @@ pub struct Connection {
     next_id: AtomicU64,
     stop: watch::Sender<bool>,
     closed: watch::Receiver<bool>,
+    stderr: StderrTail,
 }
 
 pub async fn read_frame<R: AsyncBufRead + Unpin>(
@@ -156,7 +210,10 @@ impl Connection {
                                 break;
                             }
                             let response = if value.get("error").is_some() {
-                                Err(RpcError { code: value["error"]["code"].as_i64().unwrap_or(-32603), message: "The agent could not complete this request. Check the CLI sign-in and selected model.".into() })
+                                Err(RpcError {
+                                    code: value["error"]["code"].as_i64().unwrap_or(-32603),
+                                    message: rpc_error_message(&value["error"]),
+                                })
                             } else if let Some(result) = value.get("result") {
                                 Ok(result.clone())
                             } else {
@@ -202,16 +259,26 @@ impl Connection {
             }
             let _ = writer_stop.send(true);
         });
+        let stderr_tail: StderrTail = Arc::new(Mutex::new(VecDeque::new()));
+        let stderr_writer = stderr_tail.clone();
         let diagnostics = tokio::spawn(async move {
             let mut buffer = [0u8; 8192];
             loop {
                 match stderr.read(&mut buffer).await {
                     Ok(0) | Err(_) => break,
-                    Ok(_) => {}
+                    Ok(count) => {
+                        if let Ok(mut tail) = stderr_writer.lock() {
+                            tail.extend(&buffer[..count]);
+                            while tail.len() > MAX_STDERR_TAIL {
+                                tail.pop_front();
+                            }
+                        }
+                    }
                 }
             }
         });
         let cleanup_pending = pending.clone();
+        let cleanup_tail = stderr_tail.clone();
         tokio::spawn(async move {
             tokio::select! { _ = stop_rx.changed() => {}, _ = child.wait() => { let _ = tokio::time::timeout(Duration::from_millis(500), &mut reader).await; } }
             drop(guard);
@@ -220,9 +287,10 @@ impl Connection {
             reader.abort();
             writer.abort();
             diagnostics.abort();
+            let message = disconnect_message("The agent disconnected.", &cleanup_tail);
             if let Ok(mut entries) = cleanup_pending.lock() {
                 for (_, sender) in entries.drain() {
-                    let _ = sender.send(Err(RpcError::local("The agent disconnected.")));
+                    let _ = sender.send(Err(RpcError::local(&message)));
                 }
             }
             let _ = closed_tx.send(true);
@@ -235,6 +303,7 @@ impl Connection {
                 next_id: AtomicU64::new(1),
                 stop,
                 closed,
+                stderr: stderr_tail,
             }),
             incoming_rx,
         ))
@@ -280,7 +349,10 @@ impl Connection {
             .await?;
         match tokio::time::timeout(deadline, receiver).await {
             Ok(Ok(result)) => result,
-            Ok(Err(_)) => Err(RpcError::local("The agent disconnected before replying.")),
+            Ok(Err(_)) => Err(RpcError::local(&disconnect_message(
+                "The agent disconnected before replying.",
+                &self.stderr,
+            ))),
             Err(_) => {
                 let _ = self.stop.send(true);
                 Err(RpcError::local(
@@ -317,6 +389,10 @@ impl Connection {
 
     pub fn is_closed(&self) -> bool {
         *self.closed.borrow()
+    }
+
+    pub fn stderr_tail(&self) -> String {
+        tail_text(&self.stderr)
     }
 }
 

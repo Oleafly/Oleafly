@@ -1175,3 +1175,82 @@ if (settings.fail) process.exit(2);
         }
     }
 }
+
+#[test]
+fn cli_version_parses_vendor_output_shapes() {
+    use super::super::catalog::parse_cli_version;
+    assert_eq!(
+        parse_cli_version("2.1.258 (Claude Code)").as_deref(),
+        Some("2.1.258")
+    );
+    assert_eq!(
+        parse_cli_version("codex-cli 0.104.0\n").as_deref(),
+        Some("0.104.0")
+    );
+    assert_eq!(parse_cli_version("v0.19.4").as_deref(), Some("0.19.4"));
+    assert_eq!(parse_cli_version("no version here"), None);
+    assert_eq!(parse_cli_version(""), None);
+}
+
+#[test]
+fn npm_global_roots_cover_the_real_prefix_layouts() {
+    let roots = npm_roots_from(
+        [PathBuf::from("/opt/tools/bin")],
+        Some(PathBuf::from("/usr/local/nvm/v22/bin/node")),
+        Some(PathBuf::from("/home/researcher")),
+        Some(PathBuf::from("C:\\Users\\researcher\\AppData\\Roaming")),
+    );
+    for expected in [
+        "/opt/tools/lib/node_modules",
+        "/usr/local/nvm/v22/lib/node_modules",
+        "/usr/local/nvm/v22/bin/node_modules",
+        "/home/researcher/.npm-global/lib/node_modules",
+        "/opt/homebrew/lib/node_modules",
+        "/usr/local/lib/node_modules",
+    ] {
+        assert!(roots.contains(&PathBuf::from(expected)), "{expected}");
+    }
+    assert!(roots.contains(
+        &PathBuf::from("C:\\Users\\researcher\\AppData\\Roaming")
+            .join("npm")
+            .join("node_modules")
+    ));
+    let deduplicated = npm_roots_from(
+        [
+            PathBuf::from("/opt/tools/bin"),
+            PathBuf::from("/opt/tools/bin"),
+        ],
+        None,
+        None,
+        None,
+    );
+    assert_eq!(
+        deduplicated
+            .iter()
+            .filter(|path| *path == &PathBuf::from("/opt/tools/lib/node_modules"))
+            .count(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn an_agent_pinning_a_newer_node_cannot_be_installed() {
+    let temp = tempfile::tempdir().unwrap();
+    let mut definition = binary_definition();
+    definition.distribution = Distribution {
+        npx: Some(PackageDistribution {
+            package: "@oleafly-fixture/agent@1.2.3".into(),
+            cmd: Some("oleafly-fixture-agent".into()),
+            args: Vec::new(),
+            node_major: Some(999),
+            env: BTreeMap::new(),
+        }),
+        ..Distribution::default()
+    };
+    let blocked = status(temp.path(), definition.clone(), false).await;
+    assert!(!blocked.can_install);
+    assert!(blocked.reason.unwrap().contains("Node.js 999"));
+    definition.distribution.npx.as_mut().unwrap().node_major = Some(1);
+    let allowed = status(temp.path(), definition, false).await;
+    assert!(allowed.can_install);
+}

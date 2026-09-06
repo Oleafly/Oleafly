@@ -35,11 +35,18 @@ pub(crate) fn file_preview(
     let execution = PreviewRoot::open(Path::new(&isolation.execution_root))?;
     let before = read_expected(&baseline, &relative, change.before_sha256.as_deref())?;
     let after = read_expected(&execution, &relative, change.after_sha256.as_deref())?;
+    let project_sha256 = crate::paths::project_dir(&task.project_id)
+        .ok()
+        .and_then(|root| super::apply::current_project_hash(&root, &relative).ok())
+        .flatten();
+    let base_is_current = project_sha256.as_deref() == change.before_sha256.as_deref();
     Ok(TaskFilePreview {
         path: path.to_string(),
         change: change.kind,
         before,
         after,
+        project_sha256,
+        base_is_current,
     })
 }
 

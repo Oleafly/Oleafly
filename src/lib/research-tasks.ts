@@ -143,6 +143,8 @@ export interface TaskFilePreview {
   change: TaskFileChangeKind;
   before: TaskPreviewContent;
   after: TaskPreviewContent;
+  projectSha256: string | null;
+  baseIsCurrent: boolean;
 }
 
 export interface TaskArtifactPreview {
@@ -171,6 +173,9 @@ export const retryResearchTask = (taskId: string) =>
 export const acceptResearchTaskResult = (taskId: string) =>
   invoke<ResearchTask>("research_task_accept_result", { taskId });
 
+export const deleteResearchTask = (taskId: string) =>
+  invoke<void>("research_task_delete", { taskId });
+
 export const applyResearchTask = (
   taskId: string,
   expectedProjectGeneration: number,
@@ -198,9 +203,6 @@ export const previewResearchTaskFile = (taskId: string, path: string) =>
 
 export const previewResearchTaskArtifact = (taskId: string, path: string) =>
   invoke<TaskArtifactPreview>("research_task_artifact_preview", { taskId, path });
-
-export const readProjectMutationGeneration = (projectId: string) =>
-  invoke<number>("project_mutation_generation", { projectId });
 
 export const listenForResearchTaskChanges = (
   onTask: (task: ResearchTask) => void,

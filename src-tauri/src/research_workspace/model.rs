@@ -74,6 +74,22 @@ pub enum ResearchRootOperation {
     Write,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResearchRootAvailability {
+    Available,
+    Missing,
+    Unreadable,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResearchRootHealth {
+    pub root_id: String,
+    pub availability: ResearchRootAvailability,
+    pub detail: Option<String>,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ResearchRootCapability {
@@ -84,6 +100,7 @@ pub struct ResearchRootCapability {
     pub effective_access: ResearchRootAccess,
     pub canonical_path: Option<String>,
     pub exposure: String,
+    pub availability: ResearchRootAvailability,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

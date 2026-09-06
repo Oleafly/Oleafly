@@ -120,6 +120,8 @@ function preview(after: string): TaskFilePreview {
     change: "modified",
     before: content("before"),
     after: content(after),
+    projectSha256: "before",
+    baseIsCurrent: true,
   };
 }
 
@@ -137,6 +139,7 @@ function props(current: ResearchTask, onCancel = vi.fn(async () => {})) {
     onEdit: vi.fn(),
     onApply: vi.fn(async () => {}),
     onAccept: vi.fn(async () => {}),
+    onDelete: vi.fn(),
     onLoadMoreEvents: vi.fn(async () => {}),
   };
 }
@@ -290,28 +293,61 @@ describe("TaskDetail", () => {
       { kind: "artifact", artifact: { path: "report.md", label: "Evidence report", mediaType: "text/markdown" } },
       { kind: "usage", inputTokens: null, outputTokens: 0 },
     ];
+    const cliTask = { ...current, runtimeId: "acp", nativeSessionId: "native-session" };
     const input = {
-      ...props(current), canLoadMoreEvents: true, onOpenSession: vi.fn(),
+      ...props(current), task: cliTask, tasks: [cliTask], canLoadMoreEvents: true, onOpenSession: vi.fn(),
       events: payloads.map((event, index) => ({ taskId: current.id, executionGeneration: 1, sequence: index + 1, event, createdAt: index })),
     };
     const view = render(<TaskDetail {...input} />);
     expect(page().getByText("Session connected.")).toBeInTheDocument();
     expect(page().getByText("Reading sources")).toBeInTheDocument();
     expect(page().getByText("Partial result")).toBeInTheDocument();
-    expect(page().getByText("Reported reasoning")).toBeInTheDocument();
+    expect(page().queryByText("Compare the source measurements")).toBeNull();
+    fireEvent.click(page().getByRole("button", { name: "Reported reasoning" }));
+    expect(page().getByText("Compare the source measurements")).toBeInTheDocument();
     expect(page().getByText("read_file").parentElement).toHaveTextContent("main.tex");
     expect(page().getByText("Saved Evidence report.")).toBeInTheDocument();
     expect(page().getByText("Usage: unknown input, 0 output tokens.")).toBeInTheDocument();
     fireEvent.click(page().getByRole("button", { name: "Open session" }));
     fireEvent.click(page().getByRole("button", { name: "Load more" }));
-    expect(input.onOpenSession).toHaveBeenCalledWith(current);
+    expect(input.onOpenSession).toHaveBeenCalledWith(cliTask);
     expect(input.onLoadMoreEvents).toHaveBeenCalledOnce();
     view.rerender(<TaskDetail {...input} eventsLoading />);
     expect(page().getByRole("button", { name: "Load more" })).toBeDisabled();
     expect(page().getByRole("status")).toHaveTextContent("Loading activity");
   });
 
-  it.each(["text", "image", "binary"] as const)("previews a %s artifact and opens the selected artifact elsewhere", async (kind) => {
+  it("joins consecutive text and reasoning rows into one activity entry", () => {
+    const current = task("streamed");
+    const payloads: TaskRuntimeEvent[] = [
+      { kind: "reasoning", text: "Checking " },
+      { kind: "reasoning", text: "the sources." },
+      { kind: "text", text: "The sample " },
+      { kind: "text", text: "sizes match." },
+      { kind: "tool", name: "read_file", detail: "main.tex" },
+      { kind: "text", text: "Recorded the check." },
+    ];
+    render(
+      <TaskDetail
+        {...props(current)}
+        events={payloads.map((event, index) => ({
+          taskId: current.id,
+          executionGeneration: 1,
+          sequence: index + 1,
+          event,
+          createdAt: index,
+        }))}
+      />,
+    );
+    const rows = page().getAllByRole("listitem");
+    expect(rows).toHaveLength(4);
+    fireEvent.click(page().getByRole("button", { name: "Reported reasoning" }));
+    expect(page().getByText("Checking the sources.")).toBeInTheDocument();
+    expect(page().getByText("The sample sizes match.")).toBeInTheDocument();
+    expect(page().getByText("Recorded the check.")).toBeInTheDocument();
+  });
+
+  it.each(["text", "image", "binary"] as const)("previews a %s artifact without offering a dead open action", async (kind) => {
     const current = task("artifact");
     if (!current.result) throw new Error("Missing review fixture");
     const artifact = { path: "report.bin", label: "Evidence artifact", mediaType: null };
@@ -323,15 +359,58 @@ describe("TaskDetail", () => {
       binary: kind !== "text", truncated: false, size: 32, sha256: "artifact-sha",
     };
     previewMocks.artifact.mockResolvedValue({ artifact, content });
-    const input = { ...props(current), onOpenArtifact: vi.fn() };
-    render(<TaskDetail {...input} />);
+    render(<TaskDetail {...props(current)} />);
     fireEvent.click(page().getByRole("button", { name: "Evidence artifactreport.bin" }));
-    await page().findByRole("button", { name: "Open elsewhere" });
+    await waitFor(() => expect(page().getByText("Evidence artifact", { selector: "p" })).toBeInTheDocument());
     if (kind === "text") expect(page().getByText("Evidence from the saved task")).toBeInTheDocument();
     if (kind === "image") expect(page().getByRole("img", { name: artifact.label })).toHaveAttribute("src", "data:image/png;base64,aW1hZ2U=");
     if (kind === "binary") expect(page().getByText(/Binary file · 32 bytes/)).toBeInTheDocument();
-    fireEvent.click(page().getByRole("button", { name: "Open elsewhere" }));
+    expect(page().queryByRole("button", { name: "Open elsewhere" })).not.toBeInTheDocument();
     expect(previewMocks.artifact).toHaveBeenCalledWith(current.id, artifact.path);
-    expect(input.onOpenArtifact).toHaveBeenCalledWith(current, artifact);
+  });
+
+  it("warns and blocks a file that changed in the project after the task started", async () => {
+    const current = task("drifted");
+    previewMocks.file.mockResolvedValue({
+      ...preview("after"),
+      projectSha256: "someone-else-edited-it",
+      baseIsCurrent: false,
+    });
+    render(<TaskDetail {...props(current)} />);
+    expect(page().getByRole("checkbox", { name: "Apply main.tex" })).toBeChecked();
+    fireEvent.click(page().getByRole("button", { name: "Preview" }));
+    await waitFor(() =>
+      expect(page().getByRole("alert")).toHaveTextContent("changed in your project after this task started"),
+    );
+    const checkbox = page().getByRole("checkbox", { name: "Apply main.tex" });
+    expect(checkbox).not.toBeChecked();
+    expect(checkbox).toBeDisabled();
+    expect(page().getByRole("button", { name: "Apply 0 selected" })).toBeDisabled();
+  });
+
+  it("keeps loaded previews and the reviewer's selection when the same run is refreshed", async () => {
+    const current = task("refresh");
+    previewMocks.file.mockResolvedValue(preview("after"));
+    const input = props(current);
+    const view = render(<TaskDetail {...input} />);
+    fireEvent.click(page().getByRole("checkbox", { name: "Apply main.tex" }));
+    fireEvent.click(page().getByRole("button", { name: "Preview" }));
+    await page().findByRole("button", { name: "Refresh preview" });
+
+    const refreshed = JSON.parse(JSON.stringify(current)) as ResearchTask;
+    view.rerender(<TaskDetail {...input} task={refreshed} tasks={[refreshed]} />);
+
+    expect(page().getByRole("button", { name: "Refresh preview" })).toBeInTheDocument();
+    expect(page().getByRole("checkbox", { name: "Apply main.tex" })).not.toBeChecked();
+  });
+
+  it("offers deletion for a settled task and hides it while the task runs", () => {
+    const current = task("removable");
+    const input = props(current);
+    const view = render(<TaskDetail {...input} />);
+    fireEvent.click(page().getByRole("button", { name: `Delete ${current.title}` }));
+    expect(input.onDelete).toHaveBeenCalledOnce();
+    view.rerender(<TaskDetail {...input} task={{ ...current, status: "running" }} />);
+    expect(page().queryByRole("button", { name: `Delete ${current.title}` })).not.toBeInTheDocument();
   });
 });

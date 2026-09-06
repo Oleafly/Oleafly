@@ -47,7 +47,7 @@ pub fn tool_definitions() -> Vec<ToolMeta> {
         tool("fetch_arxiv", "Fetch an arXiv entry by ID as Atom XML.", json!({"id": id}), &["id"]),
         tool("crossref_search", "Search Crossref for citation metadata using the supplied bibliographic query.", json!({"query": query}), &["query"]),
         tool("list_skills", "List valid research skills installed in Oleafly and their enabled state.", json!({}), &[]),
-        tool("load_skill", "Load an enabled skill's instructions and file list.", json!({"id": id}), &["id"]),
+        tool("load_skill", "Load one skill: its full instructions, the absolute folder path, the list of supporting files, and a ready to run command for each bundled script.", json!({"id": id}), &["id"]),
         tool("read_skill_file", "Read a support file from an enabled skill by ID and relative path.", json!({"id": id, "path": path}), &["id", "path"]),
     ]
 }
@@ -202,15 +202,15 @@ fn skill_records(context: &Context) -> Result<Vec<crate::skills::SkillRecord>, S
         Some(&context.project_id),
     )?
     .into_iter()
-    .filter(|skill| matches!(skill.validation, crate::skills::SkillValidation::Valid))
+    .filter(crate::skills::SkillRecord::is_valid)
     .collect())
 }
 
 fn enabled_skill(context: &Context, id: &str) -> Result<crate::skills::SkillRecord, String> {
     skill_records(context)?
         .into_iter()
-        .find(|skill| skill.id == id && (skill.enabled || skill.project_enabled))
-        .ok_or_else(|| "This skill is unavailable or disabled for the project.".to_string())
+        .find(|skill| skill.id == id && skill.is_available())
+        .ok_or_else(|| format!("The skill {id} is turned off. Enable it in Settings, AI, Skills."))
 }
 
 fn execute_local(context: &Context, name: &str, arguments: &Value) -> Result<Value, String> {
@@ -252,16 +252,13 @@ fn execute_local(context: &Context, name: &str, arguments: &Value) -> Result<Val
                 .read(relative_path, number(arguments, "max_bytes", 32 * 1024))?;
             linked_file_result(result, root_id, relative_path)
         }
-        "list_skills" => json!({"skills": skill_records(context)?.into_iter().map(|skill| json!({
-            "id": skill.id,
-            "name": skill.name,
-            "description": skill.description,
-            "enabled": skill.enabled || skill.project_enabled,
-            "phase": skill.phase,
-        })).collect::<Vec<_>>()}),
+        "list_skills" => json!({"skills": skill_records(context)?
+            .iter()
+            .map(crate::skills::skill_tool_summary)
+            .collect::<Vec<_>>()}),
         "load_skill" => {
             let skill = enabled_skill(context, string(arguments, "id"))?;
-            json!({"id": skill.id, "name": skill.name, "instructions": skill.instructions, "files": skill.files})
+            crate::skills::skill_tool_payload(&skill)
         }
         "read_skill_file" => {
             let skill = enabled_skill(context, string(arguments, "id"))?;

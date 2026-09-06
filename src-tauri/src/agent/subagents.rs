@@ -8,6 +8,7 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use oleafly_agent::items::TurnRecorder;
 use oleafly_agent::{
@@ -54,6 +55,7 @@ impl RunContext {
 pub struct ActivitySink {
     channel: tauri::ipc::Channel<AgentEvent>,
     recorder: Option<Arc<Mutex<TurnRecorder>>>,
+    coalescer: Arc<Mutex<ActivityCoalescer>>,
 }
 
 impl ActivitySink {
@@ -61,14 +63,127 @@ impl ActivitySink {
         channel: tauri::ipc::Channel<AgentEvent>,
         recorder: Option<Arc<Mutex<TurnRecorder>>>,
     ) -> Self {
-        Self { channel, recorder }
+        Self {
+            channel,
+            recorder,
+            coalescer: Arc::default(),
+        }
     }
 
     pub fn send(&self, event: AgentEvent) -> tauri::Result<()> {
-        if let Some(recorder) = &self.recorder {
-            lock(recorder).record(&event);
+        let Some(delivery) = lock(&self.coalescer).fold(event, Instant::now()) else {
+            return Ok(());
+        };
+        if delivery.record {
+            if let Some(recorder) = &self.recorder {
+                lock(recorder).record(&delivery.event);
+            }
         }
-        self.channel.send(event)
+        self.channel.send(delivery.event)
+    }
+}
+
+const ACTIVITY_TEXT_TAIL_CHARS: usize = 240;
+const ACTIVITY_TEXT_FLUSH_INTERVAL: Duration = Duration::from_millis(250);
+
+struct ActivityDelivery {
+    event: AgentEvent,
+    record: bool,
+}
+
+struct AgentTextStream {
+    tail: String,
+    last_emit: Instant,
+}
+
+#[derive(Default)]
+struct ActivityCoalescer {
+    streams: HashMap<String, AgentTextStream>,
+}
+
+impl ActivityCoalescer {
+    fn fold(&mut self, event: AgentEvent, now: Instant) -> Option<ActivityDelivery> {
+        let AgentEvent::SubagentUpdate {
+            id, state, detail, ..
+        } = &event
+        else {
+            return Some(ActivityDelivery {
+                event,
+                record: true,
+            });
+        };
+        if state != "thinking" {
+            self.streams.remove(id);
+            return Some(ActivityDelivery {
+                event,
+                record: true,
+            });
+        }
+        let Some(stream) = self.streams.get_mut(id) else {
+            let tail = detail.as_deref().map(tail_chars).unwrap_or_default();
+            self.streams.insert(
+                id.clone(),
+                AgentTextStream {
+                    tail,
+                    last_emit: now,
+                },
+            );
+            return Some(ActivityDelivery {
+                event,
+                record: true,
+            });
+        };
+        let Some(text) = detail else {
+            return None;
+        };
+        stream.tail.push_str(text);
+        stream.tail = tail_chars(&stream.tail);
+        if now.duration_since(stream.last_emit) < ACTIVITY_TEXT_FLUSH_INTERVAL {
+            return None;
+        }
+        stream.last_emit = now;
+        let tail = stream.tail.clone();
+        Some(ActivityDelivery {
+            event: with_detail(event, tail),
+            record: false,
+        })
+    }
+}
+
+fn tail_chars(text: &str) -> String {
+    let count = text.chars().count();
+    if count <= ACTIVITY_TEXT_TAIL_CHARS {
+        return text.to_string();
+    }
+    text.chars()
+        .skip(count - ACTIVITY_TEXT_TAIL_CHARS)
+        .collect()
+}
+
+fn with_detail(event: AgentEvent, detail: String) -> AgentEvent {
+    match event {
+        AgentEvent::SubagentUpdate {
+            id,
+            label,
+            state,
+            runtime,
+            session_id,
+            provider_id,
+            model_id,
+            agent_id,
+            ..
+        } => AgentEvent::SubagentUpdate {
+            id,
+            label,
+            state,
+            detail: Some(detail),
+            runtime,
+            session_id,
+            provider_id,
+            model_id,
+            agent_id,
+        },
+        other => other,
     }
 }
 
@@ -1684,5 +1799,125 @@ mod tests {
         assert_eq!(clamped(None), 2_000);
         assert_eq!(clamped(Some(1)), 1_000);
         assert_eq!(clamped(Some(60_000)), 5_000);
+    }
+
+    fn update(id: &str, state: &str, detail: Option<&str>) -> AgentEvent {
+        AgentEvent::SubagentUpdate {
+            id: id.into(),
+            label: "survey".into(),
+            state: state.into(),
+            detail: detail.map(str::to_owned),
+            runtime: Some("acp".into()),
+            session_id: Some("acp-session".into()),
+            provider_id: None,
+            model_id: None,
+            agent_id: Some("codex".into()),
+        }
+    }
+
+    fn detail_of(event: &AgentEvent) -> Option<&str> {
+        match event {
+            AgentEvent::SubagentUpdate { detail, .. } => detail.as_deref(),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn streamed_text_chunks_coalesce_into_one_recorded_segment() {
+        let mut coalescer = ActivityCoalescer::default();
+        let start = Instant::now();
+        let first = coalescer
+            .fold(update("a", "thinking", Some("The ")), start)
+            .expect("the first chunk opens the segment");
+        assert!(first.record);
+        assert_eq!(detail_of(&first.event), Some("The "));
+        assert!(coalescer
+            .fold(
+                update("a", "thinking", Some("manuscript ")),
+                start + Duration::from_millis(10)
+            )
+            .is_none());
+        assert!(coalescer
+            .fold(
+                update("a", "thinking", Some("is ")),
+                start + Duration::from_millis(20)
+            )
+            .is_none());
+        let flushed = coalescer
+            .fold(
+                update("a", "thinking", Some("ready.")),
+                start + Duration::from_millis(400),
+            )
+            .expect("the flush interval forwards the accumulated tail");
+        assert!(!flushed.record);
+        assert_eq!(detail_of(&flushed.event), Some("The manuscript is ready."));
+        let tool = coalescer
+            .fold(
+                update("a", "tool", Some("read_file")),
+                start + Duration::from_millis(410),
+            )
+            .expect("state changes always pass through");
+        assert!(tool.record);
+        let reopened = coalescer
+            .fold(
+                update("a", "thinking", Some("Next ")),
+                start + Duration::from_millis(420),
+            )
+            .expect("text after a tool call opens a new segment");
+        assert!(reopened.record);
+        assert_eq!(detail_of(&reopened.event), Some("Next "));
+    }
+
+    #[test]
+    fn bare_thinking_updates_repeat_once_per_segment_and_agents_stay_independent() {
+        let mut coalescer = ActivityCoalescer::default();
+        let start = Instant::now();
+        assert!(coalescer
+            .fold(update("a", "thinking", None), start)
+            .is_some());
+        assert!(coalescer
+            .fold(
+                update("a", "thinking", None),
+                start + Duration::from_secs(1)
+            )
+            .is_none());
+        assert!(coalescer
+            .fold(
+                update("b", "thinking", None),
+                start + Duration::from_secs(1)
+            )
+            .is_some());
+        assert!(coalescer
+            .fold(update("a", "done", Some("answer")), start)
+            .is_some());
+        assert!(coalescer
+            .fold(update("a", "thinking", None), start)
+            .is_some());
+        let other = coalescer
+            .fold(
+                AgentEvent::TextDelta {
+                    text: "parent".into(),
+                },
+                start,
+            )
+            .expect("non-subagent events pass through untouched");
+        assert!(other.record);
+    }
+
+    #[test]
+    fn the_rolling_tail_keeps_only_the_latest_characters() {
+        let mut coalescer = ActivityCoalescer::default();
+        let start = Instant::now();
+        coalescer.fold(update("a", "thinking", Some("x")), start);
+        let long = "y".repeat(ACTIVITY_TEXT_TAIL_CHARS * 2);
+        let flushed = coalescer
+            .fold(
+                update("a", "thinking", Some(&long)),
+                start + Duration::from_secs(1),
+            )
+            .expect("a flush after the interval");
+        let detail = detail_of(&flushed.event).unwrap();
+        assert_eq!(detail.chars().count(), ACTIVITY_TEXT_TAIL_CHARS);
+        assert!(detail.chars().all(|c| c == 'y'));
     }
 }

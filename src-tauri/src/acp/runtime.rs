@@ -17,6 +17,7 @@ use tokio::sync::{broadcast, watch, Mutex as AsyncMutex};
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 const PROMPT_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 const PERMISSION_TIMEOUT_MS: u64 = 120_000;
+const CANCEL_GRACE: Duration = Duration::from_secs(10);
 const MAX_SESSION_BYTES: usize = 64 * 1024 * 1024;
 
 struct PendingPermission {
@@ -38,6 +39,14 @@ impl Drop for TaskTemp {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum PermissionDelegate {
+    #[default]
+    None,
+    AutoAllow,
+    ParentChat,
+}
+
 struct LiveSession {
     state: Mutex<LiveState>,
     connection: Arc<Connection>,
@@ -46,6 +55,7 @@ struct LiveSession {
     mcp_servers: Vec<Value>,
     redactor: Redactor,
     task_temp: Option<TaskTemp>,
+    delegate: Mutex<PermissionDelegate>,
 }
 
 impl Drop for LiveSession {
@@ -527,19 +537,21 @@ impl AcpRuntime {
             redactor,
             mcp_servers,
             task_temp,
+            delegate: Mutex::new(PermissionDelegate::None),
         });
         sessions.insert(id.clone(), session.clone());
         drop(sessions);
         self.spawn_reader(session.clone(), incoming);
         let result = self.initialize(&session).await;
         if let Err(error) = result {
+            self.emit_diagnostics(&session);
             let _ = self.fail(&session, &error);
             session.connection.shutdown().await;
             self.release_live(&session).await;
             return Err(session.redactor.text(&error));
         }
         if !self.owner_is_current(session.owner.as_deref(), generation) {
-            self.cancel(&id).await?;
+            self.close(&id).await?;
             return Err("The window or task closed while the agent was starting.".into());
         }
         self.snapshot(&id).await
@@ -725,7 +737,7 @@ impl AcpRuntime {
             .connection
             .request(method, params, REQUEST_TIMEOUT)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|error| session.redactor.text(&error.to_string()))?;
         if let Err(error) = session.redactor.validate_metadata_ids(&result) {
             let _ = self.fail(&session, &error);
             session.connection.shutdown().await;
@@ -830,6 +842,12 @@ impl AcpRuntime {
             .request("session/prompt", params, PROMPT_TIMEOUT)
             .await;
         self.expire_permissions(&session).await;
+        let closed = session.connection.is_closed();
+        let live_status = if closed {
+            SessionStatus::Disconnected
+        } else {
+            SessionStatus::Ready
+        };
         let error;
         {
             let mut state = session
@@ -841,29 +859,29 @@ impl AcpRuntime {
                     .as_str()
                     .filter(|reason| !reason.trim().is_empty())
                 {
-                    Some(reason) => (
-                        if session.connection.is_closed() {
-                            SessionStatus::Disconnected
-                        } else {
-                            SessionStatus::Ready
-                        },
-                        reason.to_owned(),
-                        None,
-                    ),
+                    Some(reason) => (live_status.clone(), reason.to_owned(), None),
                     None => (
-                        SessionStatus::Failed,
+                        live_status.clone(),
                         "error".into(),
                         Some("The agent did not report how this turn ended.".into()),
                     ),
                 },
-                _ if state.cancelled => (SessionStatus::Cancelled, "cancelled".into(), None),
+                _ if state.cancelled => (
+                    if closed {
+                        SessionStatus::Cancelled
+                    } else {
+                        live_status.clone()
+                    },
+                    "cancelled".into(),
+                    None,
+                ),
                 Err(error) => (
-                    SessionStatus::Failed,
+                    live_status.clone(),
                     "error".into(),
                     Some(session.redactor.text(&error.to_string())),
                 ),
                 _ => (
-                    SessionStatus::Failed,
+                    live_status.clone(),
                     "error".into(),
                     Some("The agent stopped before completing this turn.".into()),
                 ),
@@ -889,8 +907,10 @@ impl AcpRuntime {
             )?;
         }
         if let Some(error) = error {
-            session.connection.shutdown().await;
-            self.release_live(&session).await;
+            if closed || session.connection.is_closed() {
+                session.connection.shutdown().await;
+                self.release_live(&session).await;
+            }
             return Err(error);
         }
         self.snapshot(id).await
@@ -901,6 +921,9 @@ impl AcpRuntime {
             Ok(session) => session,
             Err(_) => return Ok(()),
         };
+        let running = self
+            .copy_record(&session)
+            .is_ok_and(|record| record.status == SessionStatus::Running);
         let cancelling = (|| {
             let mut state = session
                 .state
@@ -921,7 +944,16 @@ impl AcpRuntime {
                 let _ = session.connection.send(json!({"jsonrpc":"2.0","method":"session/cancel","params":{"sessionId":native}})).await;
             }
         }
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        let settled = running
+            && cancelling.is_ok()
+            && tokio::time::timeout(CANCEL_GRACE, async {
+                let _turn = session.operation.lock().await;
+            })
+            .await
+            .is_ok();
+        if settled && !session.connection.is_closed() {
+            return Ok(());
+        }
         session.connection.shutdown().await;
         let cancelled = (|| {
             let mut state = session
@@ -946,7 +978,10 @@ impl AcpRuntime {
             Err(_) => return Ok(()),
         };
         if self.copy_record(&session)?.status == SessionStatus::Running {
-            return self.cancel(id).await;
+            self.cancel(id).await?;
+            if self.get_live(id).await.is_err() {
+                return Ok(());
+            }
         }
         self.expire_permissions(&session).await;
         session.connection.shutdown().await;
@@ -1029,6 +1064,53 @@ impl AcpRuntime {
             return Err("This window does not own the ACP session.".into());
         }
         Ok(())
+    }
+
+    pub async fn set_permission_delegate(
+        &self,
+        id: &str,
+        delegate: PermissionDelegate,
+    ) -> Result<(), String> {
+        let session = self.get_live(id).await?;
+        let mut current = session
+            .delegate
+            .lock()
+            .map_err(|_| "The ACP session is unavailable.")?;
+        *current = delegate;
+        Ok(())
+    }
+
+    pub async fn permission_delegate(&self, id: &str) -> PermissionDelegate {
+        match self.get_live(id).await {
+            Ok(session) => session
+                .delegate
+                .lock()
+                .map(|value| *value)
+                .unwrap_or_default(),
+            Err(_) => PermissionDelegate::None,
+        }
+    }
+
+    pub async fn resolve_delegated_permission(
+        &self,
+        id: &str,
+        permission_id: &str,
+        option_id: Option<String>,
+    ) -> Result<(), String> {
+        if self.permission_delegate(id).await != PermissionDelegate::ParentChat {
+            return Err("This ACP session does not take answers from the assistant.".into());
+        }
+        self.resolve_permission(id, permission_id, option_id).await
+    }
+
+    fn emit_diagnostics(&self, session: &Arc<LiveSession>) {
+        let tail = session.connection.stderr_tail();
+        if tail.is_empty() {
+            return;
+        }
+        if let Ok(mut state) = session.state.lock() {
+            let _ = self.emit_locked(session, &mut state, "diagnostics", json!({"stderr": tail}));
+        }
     }
 
     pub async fn snapshot(&self, id: &str) -> Result<SessionSnapshot, String> {
@@ -1250,7 +1332,13 @@ impl AcpRuntime {
                 .unwrap_or_default(),
             expires_at: now_ms() + PERMISSION_TIMEOUT_MS,
         };
-        let auto_option = if session.task_temp.is_some() {
+        let delegate = session
+            .delegate
+            .lock()
+            .map(|value| *value)
+            .unwrap_or_default();
+        let automatic = session.task_temp.is_some() || delegate == PermissionDelegate::AutoAllow;
+        let auto_option = if automatic {
             request
                 .options
                 .iter()
@@ -1287,9 +1375,14 @@ impl AcpRuntime {
                 },
             );
         }
-        if session.task_temp.is_some() {
+        if automatic {
             return self
                 .resolve_permission(&record.id, &permission_id, auto_option)
+                .await;
+        }
+        if delegate == PermissionDelegate::None && record.parent_session_id.is_some() {
+            return self
+                .resolve_permission(&record.id, &permission_id, None)
                 .await;
         }
         let weak = Arc::downgrade(self);

@@ -1,8 +1,13 @@
 import { create } from "zustand";
 import {
   acpCatalog, acpEvents, acpSessions, acpSnapshot, onAcpEvent, onAcpResync,
-  type AcpAgentStatus, type AcpEvent, type AcpPermission, type AcpSession, type AcpSnapshot,
+  type AcpAgentStatus, type AcpEvent, type AcpImage, type AcpPermission, type AcpSession, type AcpSnapshot,
 } from "@/lib/acp";
+
+export interface AcpAttachment { id: string; name: string; image: AcpImage }
+export interface AcpComposer { agentId: string | null; draft: string; images: AcpAttachment[] }
+
+export const EMPTY_COMPOSER: AcpComposer = { agentId: null, draft: "", images: [] };
 
 interface AcpState {
   catalog: AcpAgentStatus[];
@@ -10,6 +15,9 @@ interface AcpState {
   activeByProject: Record<string, string | null>;
   events: Record<string, AcpEvent[]>;
   permissions: Record<string, AcpPermission[]>;
+  composers: Record<string, AcpComposer>;
+  errors: Record<string, string | null>;
+  setError: (projectId: string, message: string | null) => void;
   refreshCatalog: (probe?: boolean) => Promise<void>;
   loadProject: (projectId: string) => Promise<void>;
   open: (projectId: string, id: string) => Promise<void>;
@@ -17,7 +25,12 @@ interface AcpState {
   resync: (projectId: string, id: string) => Promise<void>;
   setSnapshot: (snapshot: AcpSnapshot) => void;
   setActive: (projectId: string, id: string | null) => void;
+  setComposer: (projectId: string, patch: Partial<AcpComposer>) => void;
   ingest: (events: AcpEvent[]) => void;
+}
+
+export function isDelegatedSession(session: AcpSession): boolean {
+  return !!session.taskId || !!session.parentSessionId;
 }
 
 export function mergeAcpEvents(current: readonly AcpEvent[], incoming: readonly AcpEvent[]): AcpEvent[] {
@@ -29,7 +42,8 @@ export function mergeAcpEvents(current: readonly AcpEvent[], incoming: readonly 
 let catalogRequest = 0;
 
 export const useAcpSessionsStore = create<AcpState>((set, get) => ({
-  catalog: [], sessions: {}, activeByProject: {}, events: {}, permissions: {},
+  catalog: [], sessions: {}, activeByProject: {}, events: {}, permissions: {}, composers: {}, errors: {},
+  setError: (projectId, message) => set((state) => state.errors[projectId] === message ? state : ({ errors: { ...state.errors, [projectId]: message } })),
   refreshCatalog: async (probe = false) => {
     const request = ++catalogRequest;
     try {
@@ -48,6 +62,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     permissions: { ...state.permissions, [snapshot.session.id]: snapshot.permissions },
   })),
   setActive: (projectId, id) => set((state) => ({ activeByProject: { ...state.activeByProject, [projectId]: id } })),
+  setComposer: (projectId, patch) => set((state) => ({ composers: { ...state.composers, [projectId]: { ...EMPTY_COMPOSER, ...state.composers[projectId], ...patch } } })),
   open: async (projectId, id) => {
     get().setActive(projectId, id);
     const snapshot = await acpSnapshot(projectId, id);
@@ -85,7 +100,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
       const session = sessions[event.sessionId];
       if (session && event.sequence > session.lastSequence) {
         const status = event.kind === "user_message" ? "running"
-          : event.kind === "turn_complete" ? event.data.stopReason === "cancelled" ? "cancelled" : event.data.error ? "failed" : "ready"
+          : event.kind === "turn_complete" ? "ready"
           : event.kind === "status" && typeof event.data.status === "string" ? event.data.status as AcpSession["status"] : session.status;
         sessions[event.sessionId] = { ...session, status, turnId: event.turnId, updatedAt: event.timestamp, lastSequence: event.sequence };
       }

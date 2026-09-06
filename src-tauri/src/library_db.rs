@@ -14,6 +14,8 @@ fn db_path(root: &Path) -> PathBuf {
     root.join("library.db")
 }
 
+const SCHEMA_VERSION: i64 = 2;
+
 pub fn open(root: &Path) -> Result<Connection, String> {
     std::fs::create_dir_all(root).map_err(|e| format!("failed to create data dir: {e}"))?;
     let conn =
@@ -22,6 +24,18 @@ pub fn open(root: &Path) -> Result<Connection, String> {
         .map_err(|e| format!("failed to set library database timeout: {e}"))?;
     conn.pragma_update(None, "journal_mode", "WAL")
         .map_err(|e| format!("failed to enable WAL: {e}"))?;
+    let version: i64 = conn
+        .pragma_query_value(None, "user_version", |row| row.get(0))
+        .map_err(|e| format!("failed to read library schema version: {e}"))?;
+    if version < SCHEMA_VERSION {
+        ensure_schema(&conn)?;
+        conn.pragma_update(None, "user_version", SCHEMA_VERSION)
+            .map_err(|e| format!("failed to record library schema version: {e}"))?;
+    }
+    Ok(conn)
+}
+
+fn ensure_schema(conn: &Connection) -> Result<(), String> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS chats (
             project_id TEXT NOT NULL,
@@ -115,14 +129,27 @@ pub fn open(root: &Path) -> Result<Connection, String> {
             'legacy-usage:' || id, project_id, NULL, chat_id, NULL, NULL,
             'built-in', provider, model, ts_ms, input_tokens, output_tokens,
             NULL, NULL, 'unknown', 'delta', 'runtime_reported', 'unknown',
-            cost_usd, NULL, NULL, 'completed', 'self', ts_ms
+            CASE WHEN cost_usd > 0 THEN cost_usd END,
+            CASE WHEN cost_usd > 0 THEN 'legacy-frontend' END,
+            NULL, 'completed', 'self', ts_ms
         FROM usage
         WHERE NOT EXISTS (
             SELECT 1 FROM library_migrations WHERE name = 'usage-records-v1'
         );
         INSERT OR IGNORE INTO library_migrations (name, applied_at_ms)
         VALUES ('usage-records-v1', CAST(strftime('%s', 'now') AS INTEGER) * 1000);
-        CREATE TRIGGER IF NOT EXISTS usage_legacy_mirror
+        UPDATE usage_records
+        SET estimated_cost_usd = CASE WHEN estimated_cost_usd > 0 THEN estimated_cost_usd END,
+            price_version = CASE WHEN estimated_cost_usd > 0 THEN 'legacy-frontend' END
+        WHERE source_id = 'legacy-frontend'
+          AND price_version IS NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM library_migrations WHERE name = 'usage-records-v2'
+          );
+        INSERT OR IGNORE INTO library_migrations (name, applied_at_ms)
+        VALUES ('usage-records-v2', CAST(strftime('%s', 'now') AS INTEGER) * 1000);
+        DROP TRIGGER IF EXISTS usage_legacy_mirror;
+        CREATE TRIGGER usage_legacy_mirror
         AFTER INSERT ON usage
         BEGIN
             INSERT OR IGNORE INTO usage_records (
@@ -139,7 +166,9 @@ pub fn open(root: &Path) -> Result<Connection, String> {
                 NULL, NEW.chat_id, NULL, NULL, 'built-in', NEW.provider,
                 NEW.model, NEW.ts_ms, NEW.input_tokens, NEW.output_tokens,
                 NULL, NULL, 'unknown', 'delta', 'runtime_reported', 'unknown',
-                NEW.cost_usd, NULL, NULL, 'completed', 'self', NEW.ts_ms
+                CASE WHEN NEW.cost_usd > 0 THEN NEW.cost_usd END,
+                CASE WHEN NEW.cost_usd > 0 THEN 'legacy-frontend' END,
+                NULL, 'completed', 'self', NEW.ts_ms
             );
         END;
         CREATE TABLE IF NOT EXISTS budgets (
@@ -164,18 +193,18 @@ pub fn open(root: &Path) -> Result<Connection, String> {
         );",
     )
     .map_err(|e| format!("failed to create library schema: {e}"))?;
-    if !has_usage_observation_sequence(&conn)? {
+    if !has_usage_observation_sequence(conn)? {
         let migration = conn.execute(
             "ALTER TABLE usage_records ADD COLUMN observation_sequence INTEGER",
             [],
         );
         if let Err(error) = migration {
-            if !has_usage_observation_sequence(&conn)? {
+            if !has_usage_observation_sequence(conn)? {
                 return Err(format!("Usage schema migration failed: {error}"));
             }
         }
     }
-    Ok(conn)
+    Ok(())
 }
 
 fn has_usage_observation_sequence(conn: &Connection) -> Result<bool, String> {
@@ -348,6 +377,7 @@ pub struct UsageTotals {
     pub cost_usd: f64,
 }
 
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 pub fn record_usage(
     root: &Path,
@@ -683,33 +713,6 @@ pub async fn chats_search(query: String) -> Result<Vec<ChatSearchHit>, String> {
     })
     .await
     .map_err(|e| format!("chat search task failed: {e}"))?
-}
-
-#[tauri::command]
-pub async fn usage_record(
-    project_id: String,
-    chat_id: String,
-    provider: String,
-    model: String,
-    input_tokens: i64,
-    output_tokens: i64,
-    cost_usd: f64,
-) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let root = crate::paths::oleafly_root()?;
-        record_usage(
-            &root,
-            &project_id,
-            &chat_id,
-            &provider,
-            &model,
-            input_tokens,
-            output_tokens,
-            cost_usd,
-        )
-    })
-    .await
-    .map_err(|e| format!("usage record task failed: {e}"))?
 }
 
 #[tauri::command]

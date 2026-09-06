@@ -4,7 +4,15 @@
 // Stop-all affordance that interrupts the children without stopping the run.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, CheckCircle2, Loader2, MessageSquareText, Square, XCircle } from "lucide-react";
+import {
+  Bot,
+  CheckCircle2,
+  Loader2,
+  MessageSquareText,
+  ShieldAlert,
+  Square,
+  XCircle,
+} from "lucide-react";
 import { subagentDisplayStatus } from "@oleafly/ai-core";
 import type { TurnRecord } from "@oleafly/ai-core";
 import { useAgentTurnsStore } from "@/store/agent-turns";
@@ -30,11 +38,22 @@ interface AgentState {
   runtimeAgentId: string | null;
 }
 
-type AgentDisplayStatus = "active" | "updated" | "interrupted" | "completed" | "failed";
+type AgentDisplayStatus =
+  | "active"
+  | "awaiting"
+  | "updated"
+  | "interrupted"
+  | "completed"
+  | "failed";
 
 function agentStatus(kind: string): AgentDisplayStatus {
   if (kind === "error" || kind === "failed") return "failed";
+  if (kind === "permission") return "awaiting";
   return subagentDisplayStatus(kind);
+}
+
+function isRunning(status: AgentDisplayStatus): boolean {
+  return status === "active" || status === "awaiting";
 }
 
 /** Latest state per agent across the chat's turn records. */
@@ -73,6 +92,8 @@ function avatarHue(id: string): number {
 
 function StatusIcon({ status }: { status: AgentDisplayStatus }) {
   if (status === "active") return <Loader2 className="size-3 shrink-0 animate-spin" />;
+  if (status === "awaiting")
+    return <ShieldAlert className="size-3 shrink-0 text-amber-500" />;
   if (status === "completed") return <CheckCircle2 className="size-3 shrink-0 text-emerald-500" />;
   if (status === "interrupted")
     return <Square className="size-3 shrink-0 text-muted-foreground" />;
@@ -82,6 +103,7 @@ function StatusIcon({ status }: { status: AgentDisplayStatus }) {
 
 const STATUS_LABELS: Record<string, string> = {
   active: "working",
+  awaiting: "needs permission",
   updated: "updated",
   interrupted: "stopped",
   completed: "done",
@@ -138,9 +160,8 @@ export function SubagentActivity({
   }, [chatId]);
 
   if (agents.length === 0) return null;
-  const anyRunning = agents.some(
-    (agent) => agentStatus(agent.kind) === "active",
-  );
+  const anyRunning = agents.some((agent) => isRunning(agentStatus(agent.kind)));
+  const anyAwaiting = agents.some((agent) => agentStatus(agent.kind) === "awaiting");
 
   const openTranscript = async (agent: AgentState) => {
     const request = ++transcriptRequestRef.current;
@@ -160,7 +181,7 @@ export function SubagentActivity({
         setTranscript({
           agent: agent.id,
           type: "acp",
-          rows: projectAcpEvents(result.events, agentStatus(agent.kind) === "active"),
+          rows: projectAcpEvents(result.events, isRunning(agentStatus(agent.kind))),
           truncated: result.truncated,
         });
       } catch {
@@ -177,7 +198,7 @@ export function SubagentActivity({
     // read while it is still active would fail. Show its live progress (the
     // expanded panel already renders "Latest: …") and the accurate status
     // instead of a spurious load error.
-    if (agentStatus(agent.kind) === "active") {
+    if (isRunning(agentStatus(agent.kind))) {
       setTranscript({
         agent: agent.id,
         type: "text",
@@ -273,7 +294,14 @@ export function SubagentActivity({
               </span>
               <span className="max-w-40 truncate">{agent.label}</span>
               <StatusIcon status={status} />
-              <span className="text-muted-foreground">{STATUS_LABELS[status]}</span>
+              <span
+                className={cn(
+                  "text-muted-foreground",
+                  status === "awaiting" && "font-medium text-amber-600 dark:text-amber-400",
+                )}
+              >
+                {STATUS_LABELS[status]}
+              </span>
             </button>
           );
         })}
@@ -328,6 +356,12 @@ export function SubagentActivity({
               Open task
             </button>
           )}
+        </div>
+      )}
+      {anyAwaiting && (
+        <div className="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+          <ShieldAlert className="size-3" />
+          A delegated agent is waiting for permission.
         </div>
       )}
       {agents.some((agent) => agentStatus(agent.kind) === "failed") && (

@@ -200,9 +200,15 @@ function resetHarness() {
         : undefined;
     }
     if (command === "skills_set_project_enabled") {
-      const input = args as { id?: string; enabled?: boolean } | undefined;
+      const input = args as { id?: string; enabled?: boolean | null } | undefined;
       const skill = skillsFixture.find((entry) => entry.id === input?.id);
-      return skill ? { ...skill, projectEnabled: input?.enabled } : undefined;
+      return skill
+        ? {
+            ...skill,
+            projectEnabled: input?.enabled === true,
+            projectDisabled: input?.enabled === false,
+          }
+        : undefined;
     }
     if (command === "budget_set_cmd") return undefined;
     throw new Error(`Unexpected command: ${command}`);
@@ -251,7 +257,7 @@ describe("AISection", () => {
       expect(mockInvoke).toHaveBeenCalledWith("skills_set_project_enabled", {
         projectId: "proj-1",
         id: "peer-review",
-        enabled: false,
+        enabled: null,
       }),
     );
     expect(mockInvoke).toHaveBeenCalledWith("skills_list", { projectId: "proj-1" });

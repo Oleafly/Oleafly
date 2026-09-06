@@ -4,6 +4,7 @@ import {
   applyResearchTask,
   cancelResearchTask,
   createResearchTask,
+  deleteResearchTask,
   editResearchTask,
   listResearchTasks,
   listenForResearchTaskChanges,
@@ -18,6 +19,15 @@ import {
 } from "@/lib/research-tasks";
 import { useFilesStore } from "@/store/files";
 
+export interface ResearchTaskComposerDraft {
+  starterId: string;
+  title: string;
+  prompt: string;
+  agentKey: string;
+  skillIds: string[];
+  dependencyIds: string[];
+}
+
 interface ResearchTasksState {
   projectId: string | null;
   tasks: ResearchTask[];
@@ -28,6 +38,10 @@ interface ResearchTasksState {
   eventsLoading: boolean;
   action: string | null;
   error: string | null;
+  composerDrafts: Record<string, ResearchTaskComposerDraft>;
+  saveComposerDraft: (key: string, draft: ResearchTaskComposerDraft) => void;
+  clearComposerDraft: (key: string) => void;
+  deleteTask: (taskId: string) => Promise<void>;
   bindProject: (projectId: string | null) => Promise<void>;
   refresh: () => Promise<void>;
   selectTask: (taskId: string | null) => Promise<void>;
@@ -109,6 +123,40 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
   eventsLoading: false,
   action: null,
   error: null,
+  composerDrafts: {},
+
+  saveComposerDraft: (key, draft) =>
+    set((state) => ({ composerDrafts: { ...state.composerDrafts, [key]: draft } })),
+
+  clearComposerDraft: (key) =>
+    set((state) => {
+      if (!(key in state.composerDrafts)) return state;
+      const composerDrafts = { ...state.composerDrafts };
+      delete composerDrafts[key];
+      return { composerDrafts };
+    }),
+
+  deleteTask: async (taskId) => {
+    const isCurrent = beginTaskAction();
+    set({ action: taskId, error: null });
+    try {
+      await deleteResearchTask(taskId);
+      if (!isCurrent()) return;
+      set((state) => {
+        const tasks = state.tasks.filter((task) => task.id !== taskId);
+        return {
+          action: null,
+          tasks,
+          ...(state.selectedTaskId === taskId
+            ? { selectedTaskId: null, events: [], eventsNextSequence: null, eventsLoading: false }
+            : {}),
+        };
+      });
+    } catch (error) {
+      if (isCurrent()) set({ action: null, error: message(error) });
+      throw error;
+    }
+  },
 
   bindProject: async (projectId) => {
     projectBinding += 1;
@@ -349,7 +397,15 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
       return;
     }
     set((state) => {
-      if (state.events.some((candidate) => candidate.executionGeneration === event.executionGeneration && candidate.sequence === event.sequence)) return state;
+      const index = state.events.findIndex(
+        (candidate) =>
+          candidate.executionGeneration === event.executionGeneration && candidate.sequence === event.sequence,
+      );
+      if (index >= 0) {
+        const events = state.events.slice();
+        events[index] = event;
+        return { events };
+      }
       return { events: [...state.events, event].sort((a, b) => a.sequence - b.sequence) };
     });
   },

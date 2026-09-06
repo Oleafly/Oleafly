@@ -2,10 +2,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ResearchTask, TaskFilePreview } from "../../src/lib/research-tasks";
 import { test, expect } from "../fixtures";
-import { createBlankProject, editorSource, fillTextarea, openRailTab, type Page } from "../helpers";
+import { chooseAppSelectOption, createBlankProject, editorSource, fillTextarea, openRailTab, type Page } from "../helpers";
 import { startMockAiServer, type MockAiServer } from "../mock-ai-server";
 
 const detailSelector = 'article[aria-labelledby="research-task-detail-title"]';
+
 let server: MockAiServer;
 
 test.beforeAll(async () => {
@@ -76,7 +77,7 @@ async function reportCreationState(page: Page, projectId: string) {
       const ui = {
         titleLength: document.querySelector('#research-task-title')?.value.length ?? null,
         promptLength: document.querySelector('#research-task-prompt')?.value.length ?? null,
-        agent: document.querySelector('#research-task-agent')?.value.slice(0, 300) ?? null,
+        agent: document.querySelector('#research-task-agent')?.textContent?.slice(0, 300) ?? null,
         error: panel?.querySelector('[role="alert"]')?.textContent.slice(0, 500) ?? null,
         buttons: [...(panel?.querySelectorAll('button') ?? [])].slice(0, 20).map((button) => ({ label: button.textContent.trim().slice(0, 80), disabled: button.disabled })),
       };
@@ -107,17 +108,7 @@ async function runRevision(page: Page, projectId: string, title: string, propose
   await page.getByText("New task", { exact: true }).click();
   await page.fill("#research-task-title", title);
   await fillTextarea(page, "#research-task-prompt", "Revise main.tex and leave the change ready for review.");
-  const agentValue = ["builtin", "ollama", "llama3.2"].join("\u0000");
-  await page.waitForFunction(`(() => {
-    const select = document.querySelector('#research-task-agent');
-    return !!select && !select.disabled && [...select.options].some((option) => option.value === ${JSON.stringify(agentValue)});
-  })()`, 20_000);
-  await page.evaluate(`(() => {
-    const select = document.querySelector('#research-task-agent');
-    select.value = ${JSON.stringify(agentValue)};
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-    return select.value;
-  })()`);
+  await chooseAppSelectOption(page, "#research-task-agent", { attribute: "data-model-id", value: "llama3.2" });
   server.resetRequests();
   server.setToolCall({ name: "write_file", args: { path: "main.tex", content: proposed }, then: `Revision ready: ${title}` });
   await page.getByText("Create task", { exact: true }).click();

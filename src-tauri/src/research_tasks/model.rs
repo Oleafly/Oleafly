@@ -272,6 +272,8 @@ pub struct TaskFilePreview {
     pub change: TaskFileChangeKind,
     pub before: TaskPreviewContent,
     pub after: TaskPreviewContent,
+    pub project_sha256: Option<String>,
+    pub base_is_current: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

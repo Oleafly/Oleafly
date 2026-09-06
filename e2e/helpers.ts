@@ -1666,3 +1666,66 @@ export async function currentTheme(page: Page): Promise<"light" | "dark"> {
     `document.documentElement.classList.contains('dark') ? 'dark' : 'light'`,
   );
 }
+
+export async function chooseAppSelectOption(
+  page: Page,
+  trigger: string,
+  option: { attribute: string; value: string },
+  timeoutMs = 20_000,
+) {
+  const triggerJs = JSON.stringify(trigger);
+  const optionSelector = `[role="option"][${option.attribute}=${JSON.stringify(option.value)}]`;
+  const optionJs = JSON.stringify(optionSelector);
+  await page.waitForFunction(
+    `(() => {
+      const control = document.querySelector(${triggerJs});
+      return !!control && !control.disabled && control.getAttribute("data-disabled") === null;
+    })()`,
+    timeoutMs,
+  );
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.evaluate(`(() => {
+      const control = document.querySelector(${triggerJs});
+      if (!control) return false;
+      control.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse", pointerId: 1 }));
+      return true;
+    })()`);
+    try {
+      await page.waitForFunction(`!!document.querySelector(${optionJs})`, attempt === 2 ? timeoutMs : 4_000);
+      break;
+    } catch (error) {
+      if (attempt === 2) {
+        const diagnostic = await page
+          .evaluate(`(() => {
+            const control = document.querySelector(${triggerJs});
+            const options = [...document.querySelectorAll('[role="option"]')].map((entry) => ({
+              text: (entry.textContent ?? "").trim().slice(0, 80),
+              attributes: [...entry.attributes].filter((a) => a.name.startsWith("data-")).map((a) => a.name + "=" + a.value),
+            }));
+            return {
+              present: !!control,
+              disabled: control?.disabled ?? null,
+              state: control?.getAttribute("data-state") ?? null,
+              shown: (control?.textContent ?? "").trim().slice(0, 120),
+              options,
+            };
+          })()`)
+          .catch((failure: unknown) => ({ unavailable: String(failure) }));
+        console.error("App select timeout", JSON.stringify({ trigger, option, diagnostic }));
+        throw error;
+      }
+      await page.evaluate(`(() => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        return true;
+      })()`);
+    }
+  }
+  await page.evaluate(`(() => {
+    const entry = document.querySelector(${optionJs});
+    if (!entry) return false;
+    entry.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, button: 0, pointerType: "mouse", pointerId: 1 }));
+    entry.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+    return true;
+  })()`);
+  await page.waitForFunction(`!document.querySelector(${optionJs})`, timeoutMs);
+}

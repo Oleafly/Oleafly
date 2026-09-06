@@ -7,7 +7,7 @@ mod store;
 mod task_launch;
 pub mod types;
 
-pub use runtime::AcpRuntime;
+pub use runtime::{AcpRuntime, PermissionDelegate};
 pub use types::*;
 
 use std::sync::Arc;

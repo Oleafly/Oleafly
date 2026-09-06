@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FlaskConical, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +8,9 @@ import { knownProviderConfig, loadProviderConfig, subscribeProviderConfig, deriv
 import { useAgentTargets } from "@/components/ai/use-agent-targets";
 import { mergeCustomProviders } from "@/lib/ai-providers";
 import { enabledModels } from "@/lib/ai-model-state";
+import type { ResearchTask } from "@/lib/research-tasks";
+import { useAcpSessionsStore } from "@/store/acp-sessions";
+import { useAssistantRuntimeStore } from "@/store/assistant-runtime";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
@@ -47,6 +50,13 @@ export function ResearchWorkspacePanel() {
     available: !target.taskUnavailableReason,
     unavailableReason: target.taskUnavailableReason ?? undefined,
   })), [targets]);
+  const openSession = useCallback((task: ResearchTask) => {
+    if (!projectId || task.runtimeId !== "acp" || !task.nativeSessionId) return;
+    useAssistantRuntimeStore.getState().setRuntime("acp");
+    useAcpSessionsStore.getState().setActive(projectId, task.nativeSessionId);
+    void useAcpSessionsStore.getState().open(projectId, task.nativeSessionId).catch(() => {});
+    useSettingsStore.getState().setAssistantOpen(true);
+  }, [projectId]);
   const openSettings = () => {
     const settings = useSettingsStore.getState();
     settings.setSettingsInitialSection("ai");
@@ -66,7 +76,7 @@ export function ResearchWorkspacePanel() {
           <TabsTrigger value="folders">Linked folders</TabsTrigger>
         </TabsList>
         <TabsContent value="tasks" className="min-h-0 flex-1 overflow-auto">
-          <ResearchTasksPanel projectId={projectId} agents={agents} />
+          <ResearchTasksPanel projectId={projectId} agents={agents} onOpenSession={openSession} />
         </TabsContent>
         <TabsContent value="folders" className="min-h-0 flex-1 overflow-auto">
           {projectId ? <ResearchRootsPanel key={projectId} projectId={projectId} /> : <p className="p-4 text-sm text-muted-foreground">Open a project to link its research folders.</p>}

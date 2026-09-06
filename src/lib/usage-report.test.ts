@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  activeQuickRange,
   createUsageReportFilter,
-  parseUsageFilterValues,
+  DAY_MS,
+  fillDailySeries,
+  usageQuickRange,
   usageReportCsv,
+  usageReportCsvFilename,
   type UsageReport,
 } from "./usage-report";
 
@@ -15,6 +19,7 @@ function report(): UsageReport {
     totals: {
       recordCount: 1,
       sessionCount: 1,
+      childRunCount: 0,
       inputTotal: 10,
       inputKnownRecords: 1,
       inputUnknownRecords: 0,
@@ -31,6 +36,8 @@ function report(): UsageReport {
       estimatedCostUsd: 0.01,
       costKnownRecords: 1,
       costUnknownRecords: 0,
+      unpricedRecords: 0,
+      planRecords: 0,
       reportedRecords: 1,
       estimatedRecords: 0,
       unavailableRecords: 0,
@@ -44,10 +51,24 @@ function report(): UsageReport {
         cacheReadTotal: 2,
         estimatedCostUsd: 0.01,
         recordCount: 1,
+        unmeasuredRecords: 0,
       },
     ],
     heatmap: [],
-    byProject: [],
+    byProject: [
+      {
+        key: "project",
+        inputTotal: 10,
+        outputTotal: 4,
+        cacheReadTotal: 2,
+        estimatedCostUsd: 0.01,
+        recordCount: 1,
+        sessionCount: 1,
+        unmeasuredRecords: 0,
+        unpricedRecords: 0,
+        planRecords: 0,
+      },
+    ],
     byRuntime: [],
     byProvider: [],
     byModel: [],
@@ -70,6 +91,10 @@ function report(): UsageReport {
           estimatedCostUsd: 0.01,
           priceVersion: "model-metadata:test",
           recordCount: 1,
+          unmeasuredRecords: 0,
+          unpricedRecords: 0,
+          planRecords: 0,
+          scope: "session",
           status: "completed",
           measurement: "provider_reported",
           billingMode: "api",
@@ -80,16 +105,81 @@ function report(): UsageReport {
 }
 
 describe("usage report client", () => {
-  it("creates a bounded default filter", () => {
-    const filter = createUsageReportFilter({}, 40 * 86_400_000);
-    expect(filter.startMs).toBe(10 * 86_400_000);
-    expect(filter.endMs).toBe(40 * 86_400_000 + 1);
+  it("creates a default filter aligned to whole UTC days", () => {
+    const now = 40 * DAY_MS + 16 * 3_600_000;
+    const filter = createUsageReportFilter({}, now);
+    expect(filter.startMs).toBe(11 * DAY_MS);
+    expect(filter.endMs).toBe(41 * DAY_MS);
     expect(filter.pageSize).toBe(25);
+    expect(activeQuickRange(filter, now)).toBe("30d");
   });
 
-  it("exports counters and session metadata without conversation text", () => {
+  it("computes quick ranges that end at the next UTC midnight", () => {
+    const now = Date.UTC(2026, 8, 5, 16, 3);
+    expect(usageQuickRange("7d", now)).toEqual({
+      startMs: Date.UTC(2026, 7, 30),
+      endMs: Date.UTC(2026, 8, 6),
+    });
+    expect(usageQuickRange("90d", now).startMs).toBe(Date.UTC(2026, 8, 6) - 90 * DAY_MS);
+    expect(usageQuickRange("month", now)).toEqual({
+      startMs: Date.UTC(2026, 8, 1),
+      endMs: Date.UTC(2026, 8, 6),
+    });
+    expect(
+      activeQuickRange({ startMs: Date.UTC(2026, 7, 1), endMs: Date.UTC(2026, 8, 6) }, now),
+    ).toBeNull();
+  });
+
+  it("fills missing days with zero-count points across the whole range", () => {
+    const series = fillDailySeries({
+      startMs: Date.UTC(2026, 7, 30, 5),
+      endMs: Date.UTC(2026, 8, 3),
+      daily: [
+        {
+          day: "2026-08-31",
+          inputTotal: 5,
+          outputTotal: 1,
+          cacheReadTotal: 0,
+          estimatedCostUsd: null,
+          recordCount: 1,
+          unmeasuredRecords: 0,
+        },
+        {
+          day: "2026-09-02",
+          inputTotal: null,
+          outputTotal: null,
+          cacheReadTotal: null,
+          estimatedCostUsd: null,
+          recordCount: 2,
+          unmeasuredRecords: 2,
+        },
+      ],
+    });
+    expect(series.map((point) => point.day)).toEqual([
+      "2026-08-30",
+      "2026-08-31",
+      "2026-09-01",
+      "2026-09-02",
+    ]);
+    expect(series[0]).toMatchObject({ inputTotal: 0, outputTotal: 0, recordCount: 0 });
+    expect(series[1].inputTotal).toBe(5);
+    expect(series[3].inputTotal).toBeNull();
+    expect(fillDailySeries({ startMs: 0, endMs: 1, daily: [] })).toHaveLength(1);
+  });
+
+  it("names the export after the inclusive UTC day range", () => {
+    expect(
+      usageReportCsvFilename({ startMs: Date.UTC(2026, 7, 6), endMs: Date.UTC(2026, 8, 6) }),
+    ).toBe("oleafly-usage-2026-08-06-2026-09-05.csv");
+  });
+
+  it("exports totals, breakdowns, counters and session metadata without conversation text", () => {
     const csv = usageReportCsv(report());
     expect(csv).toContain('"session,one"');
+    expect(csv).toContain("Totals\r\nInput tokens,10\r\n");
+    expect(csv).toContain("Child runs,0");
+    expect(csv).toContain("Projects\r\nName,Input tokens");
+    expect(csv).toContain("project,10,4,2,0.01,1,1,0,0,0");
     expect(csv).toContain("Cache read tokens");
     expect(csv).toContain("Current page 1; 1 of 1 matching sessions");
     expect(csv).toContain("provider_reported");
@@ -175,9 +265,5 @@ describe("usage report client", () => {
     expect(usageReportCsv(ordinary)).toContain(
       '"session,one",project,built-in,,family/model-1+variant@latest,1970-01-01T00:00:00.000Z,10,4,2,0,0.01,,completed,provider_reported,api\r\n',
     );
-  });
-
-  it("parses distinct comma-separated filter values", () => {
-    expect(parseUsageFilterValues(" one, two,one,  ")).toEqual(["one", "two"]);
   });
 });

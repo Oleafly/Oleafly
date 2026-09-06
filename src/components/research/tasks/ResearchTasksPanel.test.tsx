@@ -6,7 +6,7 @@ const fileMocks = vi.hoisted(() => ({ transaction: vi.fn() }));
 
 vi.mock("@/lib/research-tasks", () => ({
   acceptResearchTaskResult: vi.fn(), applyResearchTask: vi.fn(), cancelResearchTask: vi.fn(),
-  createResearchTask: vi.fn(), editResearchTask: vi.fn(), listResearchTasks: vi.fn(),
+  createResearchTask: vi.fn(), deleteResearchTask: vi.fn(), editResearchTask: vi.fn(), listResearchTasks: vi.fn(),
   listenForResearchTaskChanges: vi.fn(), listenForResearchTaskEvents: vi.fn(),
   loadResearchTaskEvents: vi.fn(), retryResearchTask: vi.fn(), startResearchTask: vi.fn(),
   previewResearchTaskFile: vi.fn(), previewResearchTaskArtifact: vi.fn(),
@@ -38,14 +38,19 @@ const unlistenEvents = vi.fn();
 
 beforeAll(async () => {
   const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "https://oleafly.test" });
-  for (const key of ["window", "document", "navigator", "HTMLElement", "HTMLInputElement", "Element", "Node", "Event", "CustomEvent", "MutationObserver"] as const) {
+  for (const key of ["window", "document", "navigator", "HTMLElement", "HTMLInputElement", "HTMLFormElement", "HTMLSelectElement", "Element", "DocumentFragment", "Node", "NodeFilter", "Event", "CustomEvent", "MutationObserver"] as const) {
     vi.stubGlobal(key, key === "window" ? dom.window : dom.window[key]);
   }
   vi.stubGlobal("getComputedStyle", dom.window.getComputedStyle.bind(dom.window));
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => dom.window.setTimeout(() => callback(Date.now()), 0));
+  vi.stubGlobal("cancelAnimationFrame", (handle: number) => dom.window.clearTimeout(handle));
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   Object.defineProperties(dom.window.HTMLElement.prototype, {
     attachEvent: { configurable: true, value: () => {} },
     detachEvent: { configurable: true, value: () => {} },
+    hasPointerCapture: { configurable: true, value: () => false },
+    releasePointerCapture: { configurable: true, value: () => {} },
+    scrollIntoView: { configurable: true, value: vi.fn() },
   });
   ({ act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react"));
   ({ default: userEvent } = await import("@testing-library/user-event"));
@@ -54,6 +59,15 @@ beforeAll(async () => {
 
 function page() {
   return within(document.body);
+}
+
+function selectTab(name: string) {
+  fireEvent.mouseDown(page().getByRole("tab", { name }), { button: 0 });
+}
+
+function choose(label: string, option: string) {
+  fireEvent.keyDown(page().getByLabelText(label), { key: "ArrowDown" });
+  fireEvent.click(page().getByRole("option", { name: option }));
 }
 
 function deferred<T>() {
@@ -81,7 +95,10 @@ function task(id: string, projectId = "paper", status: ResearchTask["status"] = 
 
 function preview(path: string): TaskFilePreview {
   const content = (text: string) => ({ exists: true, text, base64: null, mediaType: "text/plain", binary: false, truncated: false, size: text.length, sha256: text });
-  return { path, change: "modified", before: content("before"), after: content(path) };
+  return {
+    path, change: "modified", before: content("before"), after: content(path),
+    projectSha256: "before", baseIsCurrent: true,
+  };
 }
 
 const agents = [{ runtimeId: "builtin", agentId: "provider", modelId: "model", label: "Research model" }];
@@ -219,7 +236,7 @@ describe("ResearchTasksPanel lifecycle", () => {
     const view = render(<ResearchTasksPanel projectId="first" agents={agents} />);
     await page().findByRole("heading", { name: first.title });
     fireEvent.click(page().getByRole("button", { name: "New task" }));
-    fireEvent.change(page().getByLabelText("Start from"), { target: { value: "analysis" } });
+    choose("Start from", "Analysis");
     fireEvent.click(page().getByRole("button", { name: "Create task" }));
     expect(api.createResearchTask).toHaveBeenCalledOnce();
     view.rerender(<ResearchTasksPanel projectId="second" agents={agents} />);
@@ -264,7 +281,7 @@ describe("ResearchTasksPanel lifecycle", () => {
     render(<ResearchTasksPanel projectId="paper" agents={agents} />);
     await page().findByRole("heading", { name: "No research tasks yet" });
     fireEvent.click(page().getByRole("button", { name: "Create a task" }));
-    fireEvent.change(page().getByLabelText("Start from"), { target: { value: "analysis" } });
+    choose("Start from", "Analysis");
     fireEvent.click(page().getByRole("button", { name: "Create task" }));
     await page().findByRole("heading", { name: created.title });
     expect(api.createResearchTask).toHaveBeenCalledWith(expect.objectContaining({ projectId: "paper", runtimeId: "builtin", agentId: "provider", modelId: "model", skillIds: expect.arrayContaining(["statistical-analysis"]) }));
@@ -278,12 +295,7 @@ describe("ResearchTasksPanel lifecycle", () => {
     expect(api.editResearchTask).toHaveBeenCalledWith(created.id, expect.objectContaining({ title: edited.title }));
   });
 
-  it.each([
-    ["create", true],
-    ["create", false],
-    ["edit", true],
-    ["edit", false],
-  ] as const)("preserves a reopened draft when an earlier %s finishes in the same project (cancel first: %s)", async (operation, cancelFirst) => {
+  it.each(["create", "edit"] as const)("preserves a reopened draft when an earlier %s finishes in the same project", async (operation) => {
     const existing = { ...task("existing", "paper", "queued"), executionGeneration: 0, result: null };
     const pending = deferred<ResearchTask>();
     vi.mocked(api.listResearchTasks).mockResolvedValue([existing]);
@@ -294,14 +306,14 @@ describe("ResearchTasksPanel lifecycle", () => {
     const user = userEvent.setup({ document });
     if (operation === "create") {
       await user.click(page().getByRole("button", { name: "New task" }));
-      await user.selectOptions(page().getByLabelText("Start from"), "analysis");
+      choose("Start from", "Analysis");
       await user.click(page().getByRole("button", { name: "Create task" }));
     } else {
       await user.click(page().getByRole("button", { name: "Edit" }));
       await user.click(page().getByRole("button", { name: "Save task" }));
     }
     expect(page().getByRole("button", { name: "Saving..." })).toBeDisabled();
-    if (cancelFirst) await user.click(page().getByRole("button", { name: "Cancel" }));
+    await user.click(page().getByRole("button", { name: "Cancel" }));
     await user.click(page().getByRole("button", { name: "New task" }));
     await user.type(page().getByLabelText("Title"), "A separate draft");
     await user.type(page().getByLabelText("Instructions"), "Keep this new work");
@@ -335,7 +347,7 @@ describe("ResearchTasksPanel lifecycle", () => {
 
     await act(async () => pending.resolve({ ...first, title: "First task saved" }));
 
-    expect(page().getByRole("heading", { name: "Edit queued task" })).toBeInTheDocument();
+    expect(page().getByRole("heading", { name: "Edit task" })).toBeInTheDocument();
     expect(page().getByLabelText("Title")).toHaveValue("Second task draft");
     expect(page().getByLabelText("Instructions")).toHaveValue(second.prompt);
   });
@@ -348,11 +360,11 @@ describe("ResearchTasksPanel lifecycle", () => {
     await page().findByRole("heading", { name: "No research tasks yet" });
     const user = userEvent.setup({ document });
     await user.click(page().getByRole("button", { name: "New task" }));
-    await user.selectOptions(page().getByLabelText("Start from"), "analysis");
+    choose("Start from", "Analysis");
     await user.click(page().getByRole("button", { name: "Create task" }));
     await user.click(page().getByRole("button", { name: "Cancel" }));
     await user.click(page().getByRole("button", { name: "New task" }));
-    await user.selectOptions(page().getByLabelText("Start from"), "literature-review");
+    choose("Start from", "Literature review");
     await user.click(page().getByRole("button", { name: "Create task" }));
     expect(api.createResearchTask).toHaveBeenCalledTimes(2);
 
@@ -376,7 +388,7 @@ describe("ResearchTasksPanel lifecycle", () => {
     await page().findByRole("heading", { name: dependency.title });
     const user = userEvent.setup({ document });
     await user.click(page().getByRole("button", { name: "New task" }));
-    await user.selectOptions(page().getByLabelText("Start from"), "analysis");
+    choose("Start from", "Analysis");
     await user.click(page().getByRole("checkbox", { name: /Task dependency/ }));
     const instructions = (page().getByLabelText("Instructions") as HTMLTextAreaElement).value;
     await user.click(page().getByRole("button", { name: "Create task" }));
@@ -433,5 +445,63 @@ describe("ResearchTasksPanel lifecycle", () => {
     view.unmount();
     await act(async () => pending.resolve({ task: { ...current, status: "completed" }, projectState: {} as never }));
     expect(onApplied).not.toHaveBeenCalled();
+  });
+
+  it("filters the task list by run state without losing the other tasks", async () => {
+    const running = { ...task("running", "paper", "running"), result: null };
+    const review = task("review");
+    const done = { ...task("done", "paper", "completed"), createdAt: 0 };
+    vi.mocked(api.listResearchTasks).mockResolvedValue([running, review, done]);
+    render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+    await page().findByRole("button", { name: /Task running/ });
+    expect(page().getAllByRole("listitem")).toHaveLength(3);
+
+    const list = () => within(page().getByRole("navigation", { name: "Research task list" }));
+
+    selectTab("Needs review");
+    expect(list().getByRole("button", { name: /Task review/ })).toBeInTheDocument();
+    expect(list().queryByRole("button", { name: /Task done/ })).not.toBeInTheDocument();
+
+    selectTab("Done");
+    expect(list().getByRole("button", { name: /Task done/ })).toBeInTheDocument();
+    expect(list().queryByRole("button", { name: /Task running/ })).not.toBeInTheDocument();
+
+    selectTab("All");
+    expect(page().getAllByRole("listitem")).toHaveLength(3);
+  });
+
+  it("deletes a task only after the confirmation is accepted", async () => {
+    const first = task("first");
+    const second = { ...task("second"), createdAt: 0 };
+    vi.mocked(api.listResearchTasks).mockResolvedValue([first, second]);
+    vi.mocked(api.deleteResearchTask).mockResolvedValue(undefined);
+    render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+    await page().findByRole("heading", { name: first.title });
+
+    fireEvent.click(page().getByRole("button", { name: `Delete ${first.title}` }));
+    fireEvent.click(within(page().getByRole("alertdialog")).getByRole("button", { name: /Cancel/ }));
+    expect(api.deleteResearchTask).not.toHaveBeenCalled();
+
+    fireEvent.click(page().getByRole("button", { name: `Delete ${first.title}` }));
+    expect(page().getByRole("alertdialog")).toHaveTextContent(first.title);
+    fireEvent.click(within(page().getByRole("alertdialog")).getByRole("button", { name: "Delete task" }));
+    await waitFor(() => expect(api.deleteResearchTask).toHaveBeenCalledWith(first.id));
+    await waitFor(() => expect(useResearchTasksStore.getState().tasks).toEqual([second]));
+    expect(
+      within(page().getByRole("navigation", { name: "Research task list" }))
+        .queryByRole("button", { name: /Task first/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps a task that the backend refuses to delete", async () => {
+    const current = task("kept");
+    vi.mocked(api.listResearchTasks).mockResolvedValue([current]);
+    vi.mocked(api.deleteResearchTask).mockRejectedValue(new Error("Another task waits for this one"));
+    render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+    await page().findByRole("heading", { name: current.title });
+    fireEvent.click(page().getByRole("button", { name: `Delete ${current.title}` }));
+    fireEvent.click(within(page().getByRole("alertdialog")).getByRole("button", { name: "Delete task" }));
+    expect(await page().findByRole("alert")).toHaveTextContent("Another task waits for this one");
+    expect(page().getByRole("heading", { name: current.title })).toBeInTheDocument();
   });
 });

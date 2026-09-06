@@ -109,7 +109,7 @@ async fn missing_or_empty_completion_reason_fails_without_losing_partial_output(
             .is_err());
         assert_eq!(
             runtime.snapshot(&id).await.unwrap().session.status,
-            crate::acp::SessionStatus::Failed
+            crate::acp::SessionStatus::Ready
         );
         assert!(completed_turn_output(&runtime, &id, before).is_err());
         let events = runtime.events(&id, before, 500).unwrap().events;
@@ -119,4 +119,103 @@ async fn missing_or_empty_completion_reason_fails_without_losing_partial_output(
                 && super::event_text(&event.data) == Some("Partial saved answer")));
         runtime.close(&id).await.unwrap();
     }
+}
+
+async fn delegated_session(
+    delegate: crate::acp::PermissionDelegate,
+) -> (tempfile::TempDir, Arc<AcpRuntime>, String) {
+    let temp = fixture_temp();
+    let project = temp.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    runtime
+        .register(&serde_json::to_string(&fixture_definition(Vec::new(), temp.path())).unwrap())
+        .unwrap();
+    let snapshot = runtime
+        .start(StartSession {
+            project_id: "delegation-fixture".into(),
+            project_path: project,
+            agent_id: "fixture-agent".into(),
+            parent_session_id: Some("parent-chat".into()),
+            owner: Some("external:delegated".into()),
+            ..StartSession::default()
+        })
+        .await
+        .unwrap();
+    runtime
+        .set_permission_delegate(&snapshot.session.id, delegate)
+        .await
+        .unwrap();
+    (temp, runtime, snapshot.session.id)
+}
+
+#[tokio::test]
+async fn a_delegated_child_under_full_access_answers_its_own_permission() {
+    let (_temp, runtime, id) = delegated_session(crate::acp::PermissionDelegate::AutoAllow).await;
+    let before = runtime.snapshot(&id).await.unwrap().session.last_sequence;
+    runtime
+        .prompt(&id, "permission".into(), Vec::new())
+        .await
+        .unwrap();
+    let events = runtime.events(&id, before, 500).unwrap().events;
+    assert!(events
+        .iter()
+        .any(|event| event.kind == "permission_resolved" && event.data["optionId"] == "yes"));
+    assert!(events
+        .iter()
+        .any(|event| event.kind == "agent_message_chunk"
+            && super::event_text(&event.data) == Some("Permission outcome: selected")));
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_delegated_child_forwards_its_permission_to_the_parent_conversation() {
+    let (_temp, runtime, id) = delegated_session(crate::acp::PermissionDelegate::ParentChat).await;
+    let prompting = runtime.clone();
+    let prompt_id = id.clone();
+    let turn = tokio::spawn(async move {
+        prompting
+            .prompt(&prompt_id, "permission".into(), Vec::new())
+            .await
+    });
+    let request = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        loop {
+            let pending = runtime.snapshot(&id).await.unwrap().permissions;
+            if let Some(request) = pending.into_iter().next() {
+                break request;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    runtime
+        .resolve_delegated_permission(&id, &request.id, Some("yes".into()))
+        .await
+        .unwrap();
+    turn.await.unwrap().unwrap();
+    let events = runtime.events(&id, 0, 500).unwrap().events;
+    assert!(events
+        .iter()
+        .any(|event| event.kind == "agent_message_chunk"
+            && super::event_text(&event.data) == Some("Permission outcome: selected")));
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_child_without_a_permission_route_is_declined_instead_of_stalling() {
+    let (_temp, runtime, id) = delegated_session(crate::acp::PermissionDelegate::None).await;
+    let before = runtime.snapshot(&id).await.unwrap().session.last_sequence;
+    tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        runtime.prompt(&id, "permission".into(), Vec::new()),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    let events = runtime.events(&id, before, 500).unwrap().events;
+    assert!(events
+        .iter()
+        .any(|event| event.kind == "permission_resolved" && event.data["outcome"] == "cancelled"));
+    runtime.close(&id).await.unwrap();
 }

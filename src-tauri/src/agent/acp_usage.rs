@@ -54,8 +54,8 @@ impl TurnUsage {
             session_id: event.session_id.clone(),
             parent_session_id: session.parent_session_id.clone(),
             parent_record_key: None,
-            runtime_id: "acp".into(),
-            provider_id: None,
+            runtime_id: acp_runtime_id(&event.agent_id),
+            provider_id: acp_provider_id(&event.agent_id),
             model_id: self.model_id.clone(),
             occurred_at_ms: signed(self.started_at_ms),
             observation_sequence: Some(signed(event.sequence.saturating_mul(2))),
@@ -83,6 +83,22 @@ impl TurnUsage {
 
 fn signed(value: u64) -> i64 {
     value.min(i64::MAX as u64) as i64
+}
+
+pub const ACP_RUNTIME: &str = "acp";
+
+pub fn acp_runtime_id(agent_id: &str) -> String {
+    let agent = agent_id.trim();
+    if agent.is_empty() {
+        ACP_RUNTIME.into()
+    } else {
+        format!("{ACP_RUNTIME}:{agent}")
+    }
+}
+
+fn acp_provider_id(agent_id: &str) -> Option<String> {
+    let agent = agent_id.trim();
+    (!agent.is_empty()).then(|| agent.to_string())
 }
 
 fn merge_counter(current: &mut Option<i64>, data: &serde_json::Value, key: &str) {
@@ -381,6 +397,8 @@ mod tests {
         assert_eq!(measured.cache_read_tokens, None);
         assert_eq!(measured.billing_mode, "unknown");
         assert_eq!(measured.estimated_cost_usd, None);
+        assert_eq!(measured.runtime_id, "acp:codex");
+        assert_eq!(measured.provider_id.as_deref(), Some("codex"));
         let completed = consume(
             &mut state,
             &event(
@@ -446,10 +464,17 @@ mod tests {
         replay_session(root.path(), &runtime, &session).unwrap();
         replay_session(root.path(), &runtime, &session).unwrap();
         let library = crate::library_db::open(root.path()).unwrap();
-        let row:(i64,i64,Option<i64>,String) = library.query_row(
-            "SELECT COUNT(*), SUM(input_tokens), MAX(cache_read_tokens), MIN(status) FROM usage_records",[],
-            |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?)),
+        let row:(i64,i64,Option<i64>,String,String) = library.query_row(
+            "SELECT COUNT(*), SUM(input_tokens), MAX(cache_read_tokens), MIN(status), MIN(runtime_id) FROM usage_records",[],
+            |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?)),
         ).unwrap();
-        assert_eq!(row, (1, 100, None, "completed".into()));
+        assert_eq!(row, (1, 100, None, "completed".into(), "acp:codex".into()));
+    }
+
+    #[test]
+    fn acp_runtime_ids_carry_the_agent_and_fall_back_to_the_family() {
+        assert_eq!(acp_runtime_id("claude"), "acp:claude");
+        assert_eq!(acp_runtime_id("  "), "acp");
+        assert_eq!(acp_provider_id(""), None);
     }
 }

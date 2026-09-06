@@ -13,7 +13,8 @@ use super::model::{
 };
 
 const MAX_TASKS_PER_PROJECT: usize = 500;
-const MAX_EVENTS_PER_RUN: u64 = 5_000;
+pub(super) const MAX_EVENTS_PER_RUN: u64 = 5_000;
+const TEXT_EVENT_KINDS: [&str; 2] = ["text", "reasoning"];
 
 #[derive(Clone)]
 pub(crate) struct TaskStore {
@@ -63,6 +64,21 @@ impl TaskStore {
 
     pub(crate) fn root(&self) -> &Path {
         &self.root
+    }
+
+    #[cfg(test)]
+    pub(crate) fn text_event_count(&self, id: &str, generation: u64) -> Result<i64, String> {
+        let connection = self.open()?;
+        let kinds = encode_json(&TEXT_EVENT_KINDS)?;
+        connection
+            .query_row(
+                "SELECT COUNT(*) FROM research_task_events
+                 WHERE task_id = ?1 AND execution_generation = ?2
+                   AND json_extract(event_json, '$.kind') IN (SELECT value FROM json_each(?3))",
+                params![id, generation as i64, kinds],
+                |row| row.get(0),
+            )
+            .map_err(store_error)
     }
 
     fn open(&self) -> Result<Connection, String> {
@@ -419,21 +435,70 @@ impl TaskStore {
                 params![id, generation as i64, sequence, encoded, created_at],
             )
             .map_err(store_error)?;
-        if sequence as u64 > MAX_EVENTS_PER_RUN {
-            transaction
-                .execute(
-                    "DELETE FROM research_task_events
-                     WHERE task_id = ?1 AND execution_generation = ?2
-                       AND sequence <= ?3",
-                    params![id, generation as i64, sequence - MAX_EVENTS_PER_RUN as i64],
-                )
-                .map_err(store_error)?;
-        }
+        prune_text_events(&transaction, id, generation, sequence)?;
         transaction.commit().map_err(store_error)?;
         Ok(Some(TaskTranscriptEvent {
             task_id: id.to_string(),
             execution_generation: generation,
             sequence: sequence as u64,
+            event: event.clone(),
+            created_at,
+        }))
+    }
+
+    pub(crate) fn replace_event(
+        &self,
+        id: &str,
+        generation: u64,
+        sequence: u64,
+        event: &TaskRuntimeEvent,
+    ) -> Result<Option<TaskTranscriptEvent>, String> {
+        let encoded = encode_json(event)?;
+        if encoded.len() > 128 * 1024 {
+            return Err("A research task event exceeded the 128 KiB limit.".into());
+        }
+        let mut connection = self.open()?;
+        let transaction = connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(store_error)?;
+        let current: Option<i64> = transaction
+            .query_row(
+                "SELECT execution_generation FROM research_tasks
+                 WHERE id = ?1 AND status = 'running'",
+                [id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(store_error)?;
+        if current != Some(generation as i64) {
+            transaction.commit().map_err(store_error)?;
+            return Ok(None);
+        }
+        let created_at: Option<i64> = transaction
+            .query_row(
+                "SELECT created_at FROM research_task_events
+                 WHERE task_id = ?1 AND execution_generation = ?2 AND sequence = ?3",
+                params![id, generation as i64, sequence as i64],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(store_error)?;
+        let Some(created_at) = created_at else {
+            transaction.commit().map_err(store_error)?;
+            return Ok(None);
+        };
+        transaction
+            .execute(
+                "UPDATE research_task_events SET event_json = ?4
+                 WHERE task_id = ?1 AND execution_generation = ?2 AND sequence = ?3",
+                params![id, generation as i64, sequence as i64, encoded],
+            )
+            .map_err(store_error)?;
+        transaction.commit().map_err(store_error)?;
+        Ok(Some(TaskTranscriptEvent {
+            task_id: id.to_string(),
+            execution_generation: generation,
+            sequence,
             event: event.clone(),
             created_at,
         }))
@@ -566,6 +631,60 @@ impl TaskStore {
             return Err("Only a failed or cancelled task can be retried.".into());
         }
         self.require(id)
+    }
+
+    pub(crate) fn delete(&self, id: &str) -> Result<(), String> {
+        let mut connection = self.open()?;
+        let transaction = connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(store_error)?;
+        let status: Option<String> = transaction
+            .query_row(
+                "SELECT status FROM research_tasks WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(store_error)?;
+        let status = status.ok_or_else(|| "Research task not found.".to_string())?;
+        if status == "running" {
+            return Err("Stop this task before deleting it.".into());
+        }
+        let applying: Option<String> = transaction
+            .query_row(
+                "SELECT apply_state FROM research_tasks WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(store_error)?
+            .flatten();
+        if applying.is_some() {
+            return Err("This task is applying its result. Try again in a moment.".into());
+        }
+        let dependents: i64 = transaction
+            .query_row(
+                "SELECT COUNT(*) FROM research_task_dependencies WHERE dependency_id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .map_err(store_error)?;
+        if dependents > 0 {
+            return Err("Another task waits for this one. Remove that dependency first.".into());
+        }
+        transaction
+            .execute(
+                "DELETE FROM research_task_dependencies WHERE task_id = ?1",
+                [id],
+            )
+            .map_err(store_error)?;
+        transaction
+            .execute("DELETE FROM research_task_events WHERE task_id = ?1", [id])
+            .map_err(store_error)?;
+        transaction
+            .execute("DELETE FROM research_tasks WHERE id = ?1", [id])
+            .map_err(store_error)?;
+        transaction.commit().map_err(store_error)
     }
 
     pub(crate) fn recover_interrupted(&self) -> Result<Vec<ResearchTask>, String> {
@@ -990,6 +1109,44 @@ fn encode_json<T: serde::Serialize + ?Sized>(value: &T) -> Result<String, String
     serde_json::to_string(value).map_err(|error| format!("could not encode task data: {error}"))
 }
 
+fn prune_text_events(
+    transaction: &Transaction<'_>,
+    id: &str,
+    generation: u64,
+    sequence: i64,
+) -> Result<(), String> {
+    if sequence as u64 <= MAX_EVENTS_PER_RUN {
+        return Ok(());
+    }
+    let kinds = encode_json(&TEXT_EVENT_KINDS)?;
+    let stored: i64 = transaction
+        .query_row(
+            "SELECT COUNT(*) FROM research_task_events
+             WHERE task_id = ?1 AND execution_generation = ?2
+               AND json_extract(event_json, '$.kind') IN (SELECT value FROM json_each(?3))",
+            params![id, generation as i64, kinds],
+            |row| row.get(0),
+        )
+        .map_err(store_error)?;
+    let excess = stored - MAX_EVENTS_PER_RUN as i64;
+    if excess <= 0 {
+        return Ok(());
+    }
+    transaction
+        .execute(
+            "DELETE FROM research_task_events
+             WHERE task_id = ?1 AND execution_generation = ?2
+               AND sequence IN (
+                 SELECT sequence FROM research_task_events
+                 WHERE task_id = ?1 AND execution_generation = ?2
+                   AND json_extract(event_json, '$.kind') IN (SELECT value FROM json_each(?3))
+                 ORDER BY sequence ASC LIMIT ?4)",
+            params![id, generation as i64, kinds, excess],
+        )
+        .map_err(store_error)?;
+    Ok(())
+}
+
 fn decode_json<T: DeserializeOwned>(value: &str, label: &str) -> Result<T, String> {
     serde_json::from_str(value).map_err(|error| format!("could not decode {label}: {error}"))
 }
@@ -1138,6 +1295,59 @@ mod tests {
             .finish_success(&task.id, running.execution_generation, &result)
             .unwrap());
         store.require(&task.id).unwrap()
+    }
+
+    #[test]
+    fn deleting_a_task_drops_its_transcript_and_spares_tasks_that_depend_on_it() {
+        let (_temp, store) = store();
+        let dependency = store.create(draft("paper", "Collect evidence")).unwrap();
+        let mut dependent = draft("paper", "Write the summary");
+        dependent.dependency_ids = vec![dependency.id.clone()];
+        let dependent = store.create(dependent).unwrap();
+        store
+            .append_event(
+                &dependency.id,
+                0,
+                &TaskRuntimeEvent::Text {
+                    text: "Collected sources.".into(),
+                },
+            )
+            .unwrap();
+
+        let error = store.delete(&dependency.id).unwrap_err();
+        assert!(error.contains("Another task waits for this one"));
+        assert!(store.require(&dependency.id).is_ok());
+
+        store.delete(&dependent.id).unwrap();
+        assert!(store.require(&dependent.id).is_err());
+        store.delete(&dependency.id).unwrap();
+        assert!(store.require(&dependency.id).is_err());
+        assert!(store.list("paper").unwrap().is_empty());
+        let connection = store.open().unwrap();
+        let events: i64 = connection
+            .query_row(
+                "SELECT COUNT(*) FROM research_task_events WHERE task_id = ?1",
+                [&dependency.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(events, 0);
+        assert!(store.delete(&dependency.id).is_err());
+    }
+
+    #[test]
+    fn a_running_task_cannot_be_deleted_until_it_settles() {
+        let (_temp, store) = store();
+        let task = store.create(draft("paper", "Long run")).unwrap();
+        store.request_start(&task.id).unwrap();
+        let running = store.claim_next().unwrap().unwrap();
+        let error = store.delete(&task.id).unwrap_err();
+        assert!(error.contains("Stop this task before deleting it."));
+        assert!(store
+            .finish_failure(&task.id, running.execution_generation, "stopped")
+            .unwrap());
+        store.delete(&task.id).unwrap();
+        assert!(store.require(&task.id).is_err());
     }
 
     #[test]

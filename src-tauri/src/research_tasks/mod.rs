@@ -131,44 +131,22 @@ impl ResearchTaskState {
 
     pub async fn recover(&self, app_state: &crate::state::AppState) -> Result<(), String> {
         let store = self.store()?;
+        let mut failures = Vec::new();
+        let mut unresolved = 0usize;
         for pending in store.pending_applies()? {
-            let task = store.require(&pending.task_id)?;
-            let recover_store = store.clone();
-            let recover_task = task.clone();
-            let selected_paths = pending.selected_paths.clone();
-            let mutation = crate::project::mutate_project_worktree(
-                app_state,
-                pending.project_id.clone(),
-                None,
-                move |project_root| {
-                    let fully_applied = apply::recover_pending_apply(
-                        &recover_store,
-                        &recover_task,
-                        project_root,
-                        &selected_paths,
-                    )?;
-                    Ok((fully_applied, !fully_applied))
-                },
-            )
-            .await?;
-            match mutation.value {
-                Ok(true) => {
-                    let review = TaskReviewResult {
-                        selected_paths: pending.selected_paths,
-                        applied_at: now_ms(),
-                        project_mutation_generation: mutation.generation,
-                    };
-                    let task = store.complete_apply(&pending.task_id, &review)?;
-                    self.emit_task(&task);
+            if let Err(error) = self
+                .recover_pending(app_state, &store, pending.clone())
+                .await
+            {
+                if project_is_missing(&pending.project_id) {
+                    let _ = store.clear_apply(&pending.task_id, Some(&error));
+                    if let Ok(task) = store.require(&pending.task_id) {
+                        self.emit_task(&task);
+                    }
+                } else {
+                    unresolved += 1;
                 }
-                Ok(false) => {
-                    store.clear_apply(
-                        &pending.task_id,
-                        Some("An interrupted apply was rolled back. Review the result, then apply it again."),
-                    )?;
-                    self.emit_task(&store.require(&pending.task_id)?);
-                }
-                Err(error) => return Err(error),
+                failures.push(format!("{}: {error}", pending.task_id));
             }
         }
         for task in store.recover_interrupted()? {
@@ -176,7 +154,65 @@ impl ResearchTaskState {
                 self.emit_task(&task);
             }
         }
-        self.launch_ready().await
+        if unresolved == 0 {
+            self.launch_ready().await?;
+        }
+        if failures.is_empty() {
+            Ok(())
+        } else {
+            Err(format!(
+                "Some interrupted task applies could not be recovered: {}",
+                failures.join("; ")
+            ))
+        }
+    }
+
+    async fn recover_pending(
+        &self,
+        app_state: &crate::state::AppState,
+        store: &TaskStore,
+        pending: store::PendingApply,
+    ) -> Result<(), String> {
+        let task = store.require(&pending.task_id)?;
+        let recover_store = store.clone();
+        let recover_task = task.clone();
+        let selected_paths = pending.selected_paths.clone();
+        let mutation = crate::project::mutate_project_worktree(
+            app_state,
+            pending.project_id.clone(),
+            None,
+            move |project_root| {
+                let fully_applied = apply::recover_pending_apply(
+                    &recover_store,
+                    &recover_task,
+                    project_root,
+                    &selected_paths,
+                )?;
+                Ok((fully_applied, !fully_applied))
+            },
+        )
+        .await?;
+        match mutation.value {
+            Ok(true) => {
+                let review = TaskReviewResult {
+                    selected_paths: pending.selected_paths,
+                    applied_at: now_ms(),
+                    project_mutation_generation: mutation.generation,
+                };
+                let task = store.complete_apply(&pending.task_id, &review)?;
+                self.emit_task(&task);
+                Ok(())
+            }
+            Ok(false) => {
+                store.clear_apply(
+                    &pending.task_id,
+                    Some("An interrupted apply was rolled back. Review the result, then apply it again."),
+                )?;
+                self.emit_task(&store.require(&pending.task_id)?);
+                Ok(())
+            }
+            Err(error) => Err(error),
+        }
     }
 
     fn store(&self) -> Result<TaskStore, String> {
@@ -323,24 +359,14 @@ impl ResearchTaskState {
             self.kick();
             return;
         }
-        let event_store = store.clone();
-        let event_state = self.clone();
-        let event_task_id = task.id.clone();
-        let event_generation = task.execution_generation;
-        let events: TaskEventSink = Arc::new(move |event| {
-            if let TaskRuntimeEvent::SessionBound { native_session_id } = &event {
-                let _ = event_store.set_native_session(
-                    &event_task_id,
-                    event_generation,
-                    native_session_id,
-                );
-            }
-            if let Ok(Some(saved)) =
-                event_store.append_event(&event_task_id, event_generation, &event)
-            {
-                event_state.emit_event(&saved);
-            }
-        });
+        let recorder = Arc::new(TranscriptRecorder::new(
+            store.clone(),
+            self.clone(),
+            task.id.clone(),
+            task.execution_generation,
+        ));
+        let sink_recorder = recorder.clone();
+        let events: TaskEventSink = Arc::new(move |event| sink_recorder.record(event));
         let context = TaskRunContext {
             task_id: task.id.clone(),
             execution_generation: task.execution_generation,
@@ -358,6 +384,7 @@ impl ResearchTaskState {
         };
         active.runtime_started.store(true, Ordering::Release);
         let outcome = adapter.run(context, cancel.clone(), events).await;
+        recorder.close();
         if cancel.is_cancelled() {
             self.settle_active(&store, &task.id, task.execution_generation, &active);
             if let Ok(task) = store.require(&task.id) {
@@ -489,6 +516,170 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
+const MAX_TEXT_SEGMENT_BYTES: usize = 32 * 1024;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TextSegmentKind {
+    Text,
+    Reasoning,
+}
+
+struct OpenSegment {
+    kind: TextSegmentKind,
+    sequence: u64,
+    text: String,
+}
+
+impl OpenSegment {
+    fn event(&self) -> TaskRuntimeEvent {
+        match self.kind {
+            TextSegmentKind::Text => TaskRuntimeEvent::Text {
+                text: self.text.clone(),
+            },
+            TextSegmentKind::Reasoning => TaskRuntimeEvent::Reasoning {
+                text: self.text.clone(),
+            },
+        }
+    }
+}
+
+fn text_delta(event: &TaskRuntimeEvent) -> Option<(TextSegmentKind, &str)> {
+    match event {
+        TaskRuntimeEvent::Text { text } => Some((TextSegmentKind::Text, text)),
+        TaskRuntimeEvent::Reasoning { text } => Some((TextSegmentKind::Reasoning, text)),
+        _ => None,
+    }
+}
+
+pub(crate) struct TranscriptRecorder {
+    store: TaskStore,
+    state: ResearchTaskState,
+    task_id: String,
+    generation: u64,
+    open: Mutex<Option<OpenSegment>>,
+}
+
+impl TranscriptRecorder {
+    fn new(store: TaskStore, state: ResearchTaskState, task_id: String, generation: u64) -> Self {
+        Self {
+            store,
+            state,
+            task_id,
+            generation,
+            open: Mutex::new(None),
+        }
+    }
+
+    fn record(&self, event: TaskRuntimeEvent) {
+        let Some((kind, delta)) = text_delta(&event) else {
+            *lock(&self.open) = None;
+            self.append(event);
+            return;
+        };
+        let extended = {
+            let mut open = lock(&self.open);
+            match open.as_mut() {
+                Some(segment)
+                    if segment.kind == kind
+                        && segment.text.len() + delta.len() <= MAX_TEXT_SEGMENT_BYTES =>
+                {
+                    segment.text.push_str(delta);
+                    Some((segment.sequence, segment.event()))
+                }
+                _ => {
+                    *open = None;
+                    None
+                }
+            }
+        };
+        let Some((sequence, merged)) = extended else {
+            self.open_segment(kind, event);
+            return;
+        };
+        match self
+            .store
+            .replace_event(&self.task_id, self.generation, sequence, &merged)
+        {
+            Ok(Some(saved)) => self.state.emit_event(&saved),
+            Ok(None) => {
+                *lock(&self.open) = None;
+                self.open_segment(kind, event);
+            }
+            Err(_) => *lock(&self.open) = None,
+        }
+    }
+
+    fn open_segment(&self, kind: TextSegmentKind, event: TaskRuntimeEvent) {
+        let Some(saved) = self.append(event) else {
+            return;
+        };
+        let Some((_, text)) = text_delta(&saved.event) else {
+            return;
+        };
+        *lock(&self.open) = Some(OpenSegment {
+            kind,
+            sequence: saved.sequence,
+            text: text.to_string(),
+        });
+    }
+
+    fn append(&self, event: TaskRuntimeEvent) -> Option<TaskTranscriptEvent> {
+        if let TaskRuntimeEvent::SessionBound { native_session_id } = &event {
+            let _ =
+                self.store
+                    .set_native_session(&self.task_id, self.generation, native_session_id);
+        }
+        match self
+            .store
+            .append_event(&self.task_id, self.generation, &event)
+        {
+            Ok(Some(saved)) => {
+                self.state.emit_event(&saved);
+                Some(saved)
+            }
+            _ => None,
+        }
+    }
+
+    fn close(&self) {
+        *lock(&self.open) = None;
+    }
+}
+
+fn unavailable_skill(
+    records: &[crate::skills::SkillRecord],
+    skill_ids: &[String],
+) -> Option<String> {
+    skill_ids
+        .iter()
+        .find_map(|id| match records.iter().find(|record| record.id == *id) {
+            Some(record) if record.is_available() => None,
+            Some(_) => Some(format!(
+                "The skill {id} is turned off. Enable it in Settings, AI, Skills."
+            )),
+            None => Some(format!("The skill {id} is not installed.")),
+        })
+}
+
+fn ensure_skills_available(project_id: &str, skill_ids: &[String]) -> Result<(), String> {
+    if skill_ids.is_empty() {
+        return Ok(());
+    }
+    let root = crate::paths::oleafly_root()?;
+    let pack = crate::skills_pack::cached_pack_root();
+    let records = crate::skills::list_with(&root, pack.as_deref(), Some(project_id))?;
+    match unavailable_skill(&records, skill_ids) {
+        Some(error) => Err(error),
+        None => Ok(()),
+    }
+}
+
+fn project_is_missing(project_id: &str) -> bool {
+    !crate::paths::project_dir(project_id)
+        .map(|directory| directory.is_dir())
+        .unwrap_or(false)
+}
+
 fn validated_artifacts(
     artifacts: Vec<TaskArtifact>,
     changes: &[TaskFileChange],
@@ -543,6 +734,7 @@ pub fn research_task_create(
 ) -> Result<ResearchTask, String> {
     crate::paths::validate_project_id(&draft.project_id)?;
     crate::paths::project_dir(&draft.project_id)?;
+    ensure_skills_available(&draft.project_id, &draft.skill_ids)?;
     let task = state.store()?.create(draft)?;
     state.emit_task(&task);
     Ok(task)
@@ -742,6 +934,26 @@ pub async fn research_task_apply(
         task,
         project_state,
     })
+}
+
+#[tauri::command]
+pub async fn research_task_delete(
+    state: tauri::State<'_, ResearchTaskState>,
+    task_id: String,
+) -> Result<(), String> {
+    let store = state.store()?;
+    let task = store.require(&task_id)?;
+    if task.status == ResearchTaskStatus::Running {
+        return Err("Stop this task before deleting it.".into());
+    }
+    store.delete(&task_id)?;
+    let workspace_root = isolation::task_workspace_root(store.root(), &task_id);
+    let project_root = crate::paths::project_dir(&task.project_id).ok();
+    tauri::async_runtime::spawn_blocking(move || {
+        isolation::purge_task_workspaces(project_root.as_deref(), &workspace_root);
+    })
+    .await
+    .map_err(|error| format!("The task workspace cleanup stopped: {error}"))
 }
 
 #[tauri::command]

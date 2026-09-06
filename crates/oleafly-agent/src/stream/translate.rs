@@ -182,7 +182,7 @@ impl Translator {
                 output: u32_at(usage, "completion_tokens"),
                 input_known: Some(optional_u32_at(usage, "prompt_tokens").is_some()),
                 output_known: Some(optional_u32_at(usage, "completion_tokens").is_some()),
-                cache_read: optional_u32_at_path(usage, "/prompt_tokens_details/cached_tokens"),
+                cache_read: crate::complete::openai_cached_tokens(usage),
                 cache_write: (optional_u32_at(usage, "prompt_tokens").is_some()
                     || optional_u32_at(usage, "completion_tokens").is_some())
                 .then_some(0),
@@ -529,15 +529,16 @@ impl Translator {
         let mut out = Vec::new();
 
         if let Some(meta) = value.get("usageMetadata").filter(|value| value.is_object()) {
+            let output = crate::complete::google_output_tokens(meta);
+            let counted = optional_u32_at(meta, "promptTokenCount").is_some() || output.is_some();
             self.usage.merge_snapshot(Usage {
                 input: u32_at(meta, "promptTokenCount"),
-                output: u32_at(meta, "candidatesTokenCount"),
+                output: output.unwrap_or(0),
                 input_known: Some(optional_u32_at(meta, "promptTokenCount").is_some()),
-                output_known: Some(optional_u32_at(meta, "candidatesTokenCount").is_some()),
-                cache_read: optional_u32_at(meta, "cachedContentTokenCount"),
-                cache_write: (optional_u32_at(meta, "promptTokenCount").is_some()
-                    || optional_u32_at(meta, "candidatesTokenCount").is_some())
-                .then_some(0),
+                output_known: Some(output.is_some()),
+                cache_read: optional_u32_at(meta, "cachedContentTokenCount")
+                    .or(counted.then_some(0)),
+                cache_write: counted.then_some(0),
                 input_semantics: InputTokenSemantics::Inclusive,
             });
             out.push(AgentEvent::Usage { usage: self.usage });

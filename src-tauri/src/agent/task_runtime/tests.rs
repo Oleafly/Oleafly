@@ -1163,3 +1163,111 @@ async fn acp_adapter_cancel_during_bridge_preparation_prevents_native_start() {
     assert!(lock(&adapter.tokens).is_empty());
     host.bridge.assert_closed().await;
 }
+
+fn skill_root(id: &str, name: &str) -> tempfile::TempDir {
+    let data = tempfile::tempdir().unwrap();
+    let directory = data.path().join("skills").join(id);
+    std::fs::create_dir_all(directory.join("scripts")).unwrap();
+    std::fs::write(
+        directory.join("SKILL.md"),
+        format!("---\nname: {name}\ndescription: Review the sources for this task.\n---\n\nStart with the claim audit.\n"),
+    )
+    .unwrap();
+    std::fs::write(
+        directory.join("scripts").join("verify_citations.py"),
+        "print('ok')\n",
+    )
+    .unwrap();
+    std::fs::write(directory.join("references.md"), "# Reference\n").unwrap();
+    data
+}
+
+#[test]
+fn a_device_enabled_skill_reaches_the_task_prompt_without_a_project_record() {
+    let data = skill_root("literature-review", "Literature Review");
+    let root = tempfile::tempdir().unwrap();
+    let mut task = context(root.path());
+    task.skill_ids = vec!["literature-review".into()];
+
+    let prompt = skill_prompt_in(data.path(), None, &task).unwrap();
+
+    assert!(prompt.contains("Selected skill: Literature Review"));
+    assert!(prompt.contains("Start with the claim audit."));
+    assert!(prompt.contains("Skill folder: "));
+    assert!(prompt.contains("scripts/verify_citations.py"));
+    assert!(prompt.contains("references.md"));
+    assert!(crate::skills::list_with(data.path(), None, Some("project"))
+        .unwrap()
+        .iter()
+        .all(|skill| !skill.project_enabled));
+}
+
+#[test]
+fn a_project_that_turns_a_skill_off_stops_the_task_and_a_cleared_override_restores_it() {
+    let data = skill_root("literature-review", "Literature Review");
+    let root = tempfile::tempdir().unwrap();
+    let mut task = context(root.path());
+    task.skill_ids = vec!["literature-review".into()];
+
+    crate::skills::set_project_enabled(
+        data.path(),
+        None,
+        &task.project_id,
+        "literature-review",
+        Some(false),
+    )
+    .unwrap();
+    let blocked = skill_prompt_in(data.path(), None, &task).unwrap_err();
+    assert!(blocked.contains("literature-review"));
+    assert!(skill_read_paths_in(data.path(), None, &task).is_empty());
+
+    crate::skills::set_project_enabled(
+        data.path(),
+        None,
+        &task.project_id,
+        "literature-review",
+        None,
+    )
+    .unwrap();
+    assert!(skill_prompt_in(data.path(), None, &task)
+        .unwrap()
+        .contains("Selected skill: Literature Review"));
+}
+
+#[test]
+fn a_task_command_can_read_the_selected_skill_directory() {
+    let data = skill_root("literature-review", "Literature Review");
+    let root = tempfile::tempdir().unwrap();
+    let mut task = context(root.path());
+    task.skill_ids = vec!["literature-review".into()];
+    let expected = data
+        .path()
+        .join("skills")
+        .join("literature-review")
+        .canonicalize()
+        .unwrap();
+
+    let reads = skill_read_paths_in(data.path(), None, &task);
+    assert_eq!(reads, vec![expected.clone()]);
+
+    let temp = tempfile::tempdir().unwrap();
+    let program = std::env::current_exe().unwrap();
+    let Ok(command) = sandbox_task_command_with_reads(
+        &program,
+        &[],
+        root.path(),
+        &["analysis".into()],
+        temp.path(),
+        false,
+        &reads,
+    ) else {
+        return;
+    };
+    let arguments = command
+        .as_std()
+        .get_args()
+        .map(|argument| argument.to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(arguments.contains(&expected.to_string_lossy().into_owned()));
+}

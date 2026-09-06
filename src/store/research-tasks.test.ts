@@ -15,7 +15,6 @@ vi.mock("@/lib/research-tasks", () => ({
   listenForResearchTaskChanges: vi.fn(),
   listenForResearchTaskEvents: vi.fn(),
   loadResearchTaskEvents: vi.fn(),
-  readProjectMutationGeneration: vi.fn(),
   retryResearchTask: vi.fn(),
   startResearchTask: vi.fn(),
 }));
@@ -131,6 +130,30 @@ describe("research task store", () => {
     useResearchTasksStore.getState().receiveEvent(event(2));
 
     expect(useResearchTasksStore.getState().events.map((value) => value.sequence)).toEqual([1, 2]);
+  });
+
+  it("replaces a transcript row in place when a growing text segment is re-sent", () => {
+    const selected = task("selected", "paper");
+    useResearchTasksStore.setState({
+      projectId: "paper",
+      tasks: [selected],
+      selectedTaskId: selected.id,
+    });
+    const segment = (text: string): TaskTranscriptEvent => ({
+      taskId: selected.id,
+      executionGeneration: selected.executionGeneration,
+      sequence: 3,
+      event: { kind: "text", text },
+      createdAt: 3,
+    });
+
+    useResearchTasksStore.getState().receiveEvent(segment("Read"));
+    useResearchTasksStore.getState().receiveEvent(segment("Reading the"));
+    useResearchTasksStore.getState().receiveEvent(segment("Reading the sources"));
+
+    const events = useResearchTasksStore.getState().events;
+    expect(events).toHaveLength(1);
+    expect(events[0].event).toEqual({ kind: "text", text: "Reading the sources" });
   });
 
   it("runs native apply inside the external project mutation transaction", async () => {

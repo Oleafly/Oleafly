@@ -20,6 +20,8 @@ use crate::research_tasks::{
     TaskRuntimeFuture, TaskRuntimeOutcome,
 };
 
+const TASK_TURN_FAILED: &str = "The agent could not complete this request.";
+
 const MAX_FILE_BYTES: usize = 1024 * 1024;
 const MAX_OUTPUT_BYTES: usize = 48 * 1024;
 const MAX_FILES: usize = 5_000;
@@ -304,6 +306,7 @@ fn bounded(text: &str, max_bytes: usize) -> String {
     format!("{}\n[output truncated]", &text[..end])
 }
 
+#[cfg(test)]
 pub fn sandbox_task_command(
     program: &Path,
     args: &[String],
@@ -616,13 +619,14 @@ async fn execute_command(
         return Err("Use a command between 1 and 16384 bytes.".into());
     }
     let temp = CommandTemp::new()?;
-    let mut command = sandbox_task_command(
+    let mut command = sandbox_task_command_with_reads(
         Path::new("/bin/sh"),
         &["-c".into(), text.into()],
         Path::new(&context.execution_root),
         &context.allowed_paths,
         &temp.0,
         false,
+        &skill_read_paths(context),
     )?;
     command
         .stdin(Stdio::null())
@@ -699,25 +703,95 @@ fn text_argument<'a>(args: &'a Value, name: &str) -> Result<&'a str, String> {
         .ok_or_else(|| format!("Provide a text value for {name}."))
 }
 
-fn skill_prompt(app: &tauri::AppHandle, context: &TaskRunContext) -> Result<String, String> {
+fn selected_skills(
+    root: &Path,
+    pack: Option<&Path>,
+    context: &TaskRunContext,
+) -> Result<Vec<crate::skills::SkillRecord>, String> {
     if context.skill_ids.is_empty() {
-        return Ok(String::new());
+        return Ok(Vec::new());
     }
-    let root = crate::paths::oleafly_root()?;
-    let pack = crate::skills_pack::pack_root(app);
-    let records = crate::skills::list_with(&root, pack.as_deref(), Some(&context.project_id))?;
-    let mut prompt = String::new();
-    for id in &context.skill_ids {
-        let skill = records
-            .iter()
-            .find(|skill| skill.id == *id && skill.enabled && skill.project_enabled)
-            .ok_or_else(|| {
-                format!("The selected skill {id} is unavailable or disabled for this project.")
-            })?;
-        prompt.push_str(&format!(
-            "\n\nSelected skill: {}\n{}",
-            skill.name, skill.instructions
+    let records = crate::skills::list_with(root, pack, Some(&context.project_id))?;
+    context
+        .skill_ids
+        .iter()
+        .map(|id| {
+            records
+                .iter()
+                .find(|skill| skill.id == *id && skill.is_available())
+                .cloned()
+                .ok_or_else(|| {
+                    format!("The skill {id} is turned off. Enable it in Settings, AI, Skills.")
+                })
+        })
+        .collect()
+}
+
+fn skill_read_paths_in(root: &Path, pack: Option<&Path>, context: &TaskRunContext) -> Vec<PathBuf> {
+    let Ok(records) = selected_skills(root, pack, context) else {
+        return Vec::new();
+    };
+    let mut paths: Vec<PathBuf> = records
+        .iter()
+        .filter(|record| !record.dir.is_empty())
+        .filter_map(|record| Path::new(&record.dir).canonicalize().ok())
+        .filter(|path| path.is_dir())
+        .collect();
+    paths.sort();
+    paths.dedup();
+    paths
+}
+
+fn skill_read_paths(context: &TaskRunContext) -> Vec<PathBuf> {
+    if context.skill_ids.is_empty() {
+        return Vec::new();
+    }
+    let Ok(root) = crate::paths::oleafly_root() else {
+        return Vec::new();
+    };
+    let pack = crate::skills_pack::cached_pack_root();
+    skill_read_paths_in(&root, pack.as_deref(), context)
+}
+
+fn skill_section(record: &crate::skills::SkillRecord) -> String {
+    let mut section = format!("\n\nSelected skill: {}\n", record.name);
+    if !record.dir.is_empty() {
+        section.push_str(&format!(
+            "Skill folder: {}\nEvery relative path in the instructions below is inside that folder, which is readable from run_command.\n",
+            record.dir
         ));
+    }
+    let scripts = crate::skills::skill_scripts(record);
+    if !scripts.is_empty() {
+        section.push_str("Bundled scripts, run one with run_command:\n");
+        for script in scripts {
+            section.push_str(&format!("- {}: {}\n", script.path, script.command));
+        }
+    }
+    let references: Vec<&str> = record
+        .files
+        .iter()
+        .filter(|file| !file.path.starts_with("scripts/"))
+        .map(|file| file.path.as_str())
+        .collect();
+    if !references.is_empty() {
+        section.push_str(&format!(
+            "Supporting files, read one with read_skill_file: {}\n",
+            references.join(", ")
+        ));
+    }
+    section.push_str(&record.instructions);
+    section
+}
+
+fn skill_prompt_in(
+    root: &Path,
+    pack: Option<&Path>,
+    context: &TaskRunContext,
+) -> Result<String, String> {
+    let mut prompt = String::new();
+    for skill in selected_skills(root, pack, context)? {
+        prompt.push_str(&skill_section(&skill));
         if prompt.len() > MAX_SKILL_BYTES {
             return Err(
                 "The selected skills exceed this task's context limit. Select fewer skills.".into(),
@@ -725,6 +799,15 @@ fn skill_prompt(app: &tauri::AppHandle, context: &TaskRunContext) -> Result<Stri
         }
     }
     Ok(prompt)
+}
+
+fn skill_prompt(app: &tauri::AppHandle, context: &TaskRunContext) -> Result<String, String> {
+    if context.skill_ids.is_empty() {
+        return Ok(String::new());
+    }
+    let root = crate::paths::oleafly_root()?;
+    let pack = crate::skills_pack::pack_root(app);
+    skill_prompt_in(&root, pack.as_deref(), context)
 }
 
 fn task_prompt(context: &TaskRunContext, skills: &str) -> String {
@@ -1269,7 +1352,7 @@ impl AcpTaskAdapter {
                     self.runtime.cancel(id).await?;
                     return Err("The task was cancelled.".into());
                 }
-                completed = &mut prompt => break completed?,
+                completed = &mut prompt => break completed.map_err(|_| TASK_TURN_FAILED.to_string())?,
                 event = receiver.recv() => match event {
                     Ok(event) if event.session_id == id => { self.catch_up(id,&mut sequence,&mut result,&mut stop_reason,events)?; }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => { self.catch_up(id,&mut sequence,&mut result,&mut stop_reason,events)?; }
