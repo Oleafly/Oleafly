@@ -719,9 +719,15 @@ describe("document context", () => {
       parseTikz(String.raw`\pagecolor{white}\begin{tikzpicture}\node[draw] (a) at (0,0) {A};\end{tikzpicture}`)
         ?.background,
     ).toBe("#ffffff");
+    // A whole document with no page colour is transparent on purpose.
+    expect(
+      parseTikz(String.raw`\begin{document}\begin{tikzpicture}\node[draw] (a) at (0,0) {A};\end{tikzpicture}\end{document}`)
+        ?.background,
+    ).toBe("");
+    // A bare snippet says nothing about the page, so the caller keeps its own.
     expect(
       parseTikz(String.raw`\begin{tikzpicture}\node[draw] (a) at (0,0) {A};\end{tikzpicture}`)?.background,
-    ).toBe("");
+    ).toBeUndefined();
   });
 });
 
@@ -883,5 +889,97 @@ describe("option details", () => {
     parseTikz(`\\node[draw, minimum width=${long}!, font=\\fontsize{${long}!}{12}] (a) at (0,0) {A};`);
     parseTikz(`\\node[draw] (a) at (${long}!:${long}!) {A};`);
     expect(Date.now() - started).toBeLessThan(1000);
+  });
+});
+
+describe("option and shape details the emitter depends on", () => {
+  it("paints stroke and text from a bare colour name", () => {
+    const model = parseTikz(String.raw`\node[draw, red] (a) at (0,0) {A};`);
+    expect(model?.nodes[0]).toMatchObject({ stroke: "#ff0000", textColor: "#ff0000" });
+  });
+
+  it("defaults a plain draw to black", () => {
+    expect(parseTikz(String.raw`\node[draw] (a) at (0,0) {A};`)?.nodes[0].stroke).toBe("#000000");
+  });
+
+  it("lets a later option override an earlier one", () => {
+    expect(parseTikz(String.raw`\node[draw, dashed, solid] (a) at (0,0) {A};`)?.nodes[0].strokeStyle).toBe("solid");
+    expect(parseTikz(String.raw`\node[draw, solid, dashed] (a) at (0,0) {A};`)?.nodes[0].strokeStyle).toBe("dashed");
+  });
+
+  it("replaces a style on redefinition and appends only on request", () => {
+    const replaced = parseTikz(String.raw`\begin{tikzpicture}[box/.style={draw, fill=red}, box/.style={draw, fill=blue}]
+      \node[box] (a) at (0,0) {A};
+    \end{tikzpicture}`);
+    expect(replaced?.nodes[0].fill).toBe("#0000ff");
+    const appended = parseTikz(String.raw`\begin{tikzpicture}[box/.style={draw, fill=red}, box/.append style={dashed}]
+      \node[box] (a) at (0,0) {A};
+    \end{tikzpicture}`);
+    expect(appended?.nodes[0]).toMatchObject({ fill: "#ff0000", strokeStyle: "dashed" });
+  });
+
+  it("reads the shape key form", () => {
+    expect(parseTikz(String.raw`\node[draw, shape=diamond] (a) at (0,0) {A};`)?.nodes[0].shape).toBe("diamond");
+  });
+
+  it("keeps a circle round", () => {
+    const model = parseTikz(String.raw`\node[draw, circle] (a) at (0,0) {A wide label};`);
+    expect(model?.nodes[0].w).toBe(model?.nodes[0].h);
+  });
+
+  it("reads a font size that carries a unit", () => {
+    expect(
+      parseTikz(String.raw`\node[draw, font=\fontsize{16pt}{19pt}\selectfont] (a) at (0,0) {A};`)?.nodes[0]
+        .fontSize,
+    ).toBe(16);
+  });
+
+  it("accepts an explicitly signed coordinate", () => {
+    const model = parseTikz(String.raw`\node[draw] (a) at (+2,+1) {A};\node[draw] (b) at (0,0) {B};`);
+    if (!model) throw new Error("no model");
+    expect(node(model, "a").x).toBeGreaterThan(node(model, "b").x);
+  });
+
+  it("positions a node at another node", () => {
+    const model = parseTikz(String.raw`
+      \node[draw, minimum width=2cm, minimum height=1cm] (a) at (0,0) {A};
+      \node[draw] (b) at (a.east) {B};
+    `);
+    if (!model) throw new Error("no model");
+    const a = node(model, "a");
+    expect(node(model, "b").x + node(model, "b").w / 2).toBe(a.x + a.w);
+  });
+
+  it("keeps a node name that contains spaces", () => {
+    const model = parseTikz(String.raw`
+      \node[draw] (first step) at (0,0) {A};
+      \node[draw] (second step) at (4,0) {B};
+      \draw[->] (first step) -- (second step);
+    `);
+    expect(model?.edges).toHaveLength(1);
+    expect(model?.edges[0]).toMatchObject({ source: "first step", target: "second step" });
+  });
+
+  it("keeps explicit sizes exactly when the source sets no padding", () => {
+    const source = String.raw`\node (a) at (0,0) [draw, inner sep=0pt, outer sep=0pt, minimum width=1cm, minimum height=0.5cm] {A very long label indeed};`;
+    const once = parseTikz(source);
+    expect(once?.nodes[0]).toMatchObject({ w: 40, h: 20 });
+    const twice = parseTikz(modelToTikz(once as DiagramModel));
+    expect(twice?.nodes[0]).toMatchObject({ w: 40, h: 20 });
+  });
+
+  it("leaves a picture that already sits in positive space where it is", () => {
+    const model = parseTikz(String.raw`\node[draw, minimum width=1cm, minimum height=1cm] (a) at (5,-5) {A};`);
+    expect(model?.nodes[0]).toMatchObject({ x: 180, y: 180 });
+  });
+
+  it("does not steal a standalone annotation that merely sits near a connector", () => {
+    const model = parseTikz(String.raw`
+      \node[draw, minimum width=1cm, minimum height=1cm] (a) at (0,0) {A};
+      \node[draw, minimum width=1cm, minimum height=1cm] (b) at (0,-4) {B};
+      \node at (1,-2) {Annotation};
+      \draw[->] (a) -- (b);
+    `);
+    expect(model?.nodes.map((n) => n.label)).toContain("Annotation");
   });
 });

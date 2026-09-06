@@ -22,12 +22,12 @@ const ORIGIN_MARGIN = 40;
 const HANDLE_TOLERANCE = 6;
 // Unambiguous: a digit run can be matched exactly one way, so no input makes
 // the engine backtrack over it.
-const NUMBER = String.raw`-?(?:\d+(?:\.\d+)?|\.\d+)`;
+const NUMBER = String.raw`[+-]?(?:\d+(?:\.\d+)?|\.\d+)`;
 const DIMENSION = new RegExp(`^(${NUMBER})([a-z]{0,4})$`, "i");
 const POLAR = new RegExp(`^(${NUMBER})\\s*:\\s*(${NUMBER})([a-z]{0,4})$`, "i");
 const DASH_ON = new RegExp(`on\\s+(${NUMBER})\\s*([a-z]{0,4})`, "i");
-const FONT_SIZE = new RegExp(`\\\\fontsize\\{\\s*(${NUMBER})\\s*\\}`);
-const LABEL_TOLERANCE = 40;
+const FONT_SIZE = new RegExp(`\\\\fontsize\\{\\s*(${NUMBER})\\s*[a-z]{0,4}\\s*\\}`);
+const LABEL_TOLERANCE = 8;
 
 export interface TikzImport {
   model: DiagramModel;
@@ -52,6 +52,7 @@ interface RawNode {
   label: string;
   options: OptionPair[];
   at: { x: number; y: number } | null;
+  atRef: string | null;
   placement: Placement | null;
   midpoint: [string, string] | null;
   order: number;
@@ -330,10 +331,13 @@ function unescapeLabel(text: string): string {
     .trim();
 }
 
-function styleName(key: string): string | null {
+function styleName(key: string): { name: string; append: boolean } | null {
   const trimmed = key.trim();
-  for (const suffix of ["/.style", "/.append style"]) {
-    if (trimmed.endsWith(suffix)) return trimmed.slice(0, -suffix.length).trim();
+  if (trimmed.endsWith("/.append style")) {
+    return { name: trimmed.slice(0, -"/.append style".length).trim(), append: true };
+  }
+  if (trimmed.endsWith("/.style")) {
+    return { name: trimmed.slice(0, -"/.style".length).trim(), append: false };
   }
   return null;
 }
@@ -343,10 +347,10 @@ class StyleTable {
 
   define(pairs: OptionPair[]): void {
     for (const [key, value] of pairs) {
-      const name = styleName(key);
-      if (name === null || value === null) continue;
-      const existing = this.styles.get(name) ?? [];
-      this.styles.set(name, [...existing, ...parseOptions(value)]);
+      const style = styleName(key);
+      if (style === null || value === null) continue;
+      const existing = style.append ? (this.styles.get(style.name) ?? []) : [];
+      this.styles.set(style.name, [...existing, ...parseOptions(value)]);
     }
   }
 
@@ -374,11 +378,13 @@ class StyleTable {
 }
 
 function shapeOf(options: OptionPair[]): NodeShape {
-  if (has(options, "circle")) return "circle";
-  if (has(options, "ellipse")) return "ellipse";
-  if (has(options, "diamond")) return "diamond";
-  if (has(options, "trapezium")) return "parallelogram";
-  if (has(options, "regular polygon")) return "circle";
+  const named = lookup(options, "shape");
+  const declares = (name: string) => has(options, name) || named === name;
+  if (declares("circle")) return "circle";
+  if (declares("ellipse")) return "ellipse";
+  if (declares("diamond")) return "diamond";
+  if (declares("trapezium")) return "parallelogram";
+  if (declares("regular polygon")) return "circle";
   const rounded = has(options, "rounded corners") || lookup(options, "rounded corners") !== undefined;
   if (rounded) return "roundrect";
   const drawn = has(options, "draw") || lookup(options, "draw") !== undefined;
@@ -387,16 +393,27 @@ function shapeOf(options: OptionPair[]): NodeShape {
   return "rectangle";
 }
 
+const DOTTED_KEYS = new Set(["dotted", "densely dotted", "loosely dotted"]);
+const DASHED_KEYS = new Set([
+  "dashed",
+  "densely dashed",
+  "loosely dashed",
+  "dash dot",
+  "densely dash dot",
+  "loosely dash dot",
+  "dash dot dot",
+  "dashdotted",
+]);
+
 function strokeStyleOf(options: OptionPair[]): StrokeStyle {
-  if (has(options, "dotted") || has(options, "densely dotted") || has(options, "loosely dotted")) {
-    return "dotted";
-  }
-  if (has(options, "dashed") || has(options, "densely dashed") || has(options, "loosely dashed")) {
-    return "dashed";
-  }
-  const pattern = lookup(options, "dash pattern");
-  if (typeof pattern === "string") {
-    const on = DASH_ON.exec(pattern);
+  for (let i = options.length - 1; i >= 0; i--) {
+    const [rawKey, value] = options[i];
+    const key = rawKey.trim();
+    if (DOTTED_KEYS.has(key)) return "dotted";
+    if (DASHED_KEYS.has(key)) return "dashed";
+    if (key === "solid") return "solid";
+    if (key !== "dash pattern" || typeof value !== "string") continue;
+    const on = DASH_ON.exec(value);
     const onCm = on ? (toCm(`${on[1]}${on[2]}`, 0) ?? 0) : 0;
     return onCm > 0 && onCm < 0.06 ? "dotted" : "dashed";
   }
@@ -676,6 +693,7 @@ function readNodeStatement(statement: string, order: number, state: ScanState): 
   const options: OptionPair[] = [];
   let name: string | null = null;
   let at: { x: number; y: number } | null = null;
+  let atRef: string | null = null;
   let label = "";
   let index = statement.indexOf("\\node") >= 0 ? statement.indexOf("\\node") + 5 : statement.indexOf("\\coordinate") + 11;
   let expectPosition = false;
@@ -697,6 +715,7 @@ function readNodeStatement(statement: string, order: number, state: ScanState): 
       if (!balanced) break;
       if (expectPosition) {
         at = parseCoordinate(balanced.body);
+        if (!at) atRef = balanced.body.trim();
         expectPosition = false;
       } else if (name === null) {
         name = balanced.body.trim();
@@ -719,11 +738,12 @@ function readNodeStatement(statement: string, order: number, state: ScanState): 
     index += 1;
   }
   const expanded = state.styles.expand([...state.styles.everyNode(), ...options]);
-  const usable = name !== null && /^[\w:.-]+$/.test(name);
+  const usable = name !== null && /^[\w :.-]+$/.test(name) && name.trim().length > 0;
   return {
     id: usable && name ? name : freshId(state),
     named: usable,
     midpoint: null,
+    atRef,
     label: unescapeLabel(label),
     options: expanded,
     at,
@@ -893,6 +913,7 @@ function collectPathNodes(path: RawPath, state: ScanState): void {
       id: item.name,
       named: true,
       midpoint: [before, after],
+      atRef: null,
       label: item.text,
       options: state.styles.expand([...state.styles.everyNode(), ...item.options]),
       at: null,
@@ -906,7 +927,7 @@ function collectNodeNames(body: string): Set<string> {
   const names = new Set<string>();
   for (const match of body.matchAll(/\\(?:node|coordinate)\b[^;{]{0,200}?\(([^)]{1,120})\)/g)) {
     const name = match[1].trim();
-    if (/^[\w:.-]+$/.test(name)) names.add(name);
+    if (/^[\w :.-]+$/.test(name)) names.add(name);
   }
   return names;
 }
@@ -1103,19 +1124,28 @@ function sizeOf(node: RawNode): { w: number; h: number } {
   const minHeight = toCm(lookup(node.options, "minimum height"), null);
   const minSize = toCm(lookup(node.options, "minimum size"), null);
   const innerSep = toCm(lookup(node.options, "inner sep"), 0.117) ?? 0.117;
+  if (innerSep === 0 && minWidth !== null && minHeight !== null) {
+    return { w: Math.round(minWidth * PX_PER_CM), h: Math.round(minHeight * PX_PER_CM) };
+  }
   const textWidth = toCm(lookup(node.options, "text width"), null);
   const padding = innerSep * 2 * PX_PER_CM;
   const contentWidth = textWidth !== null ? textWidth * PX_PER_CM : labelWidthPx(node.label, size);
+  const askedWidth = minWidth ?? minSize;
+  const askedHeight = minHeight ?? minSize;
   const width = Math.max(
-    (minWidth ?? minSize ?? 0) * PX_PER_CM,
+    (askedWidth ?? 0) * PX_PER_CM,
     contentWidth + padding,
-    MIN_NODE_W,
+    askedWidth === null || askedWidth === undefined ? MIN_NODE_W : 0,
   );
   const height = Math.max(
-    (minHeight ?? minSize ?? 0) * PX_PER_CM,
+    (askedHeight ?? 0) * PX_PER_CM,
     labelHeightPx(node.label, size) + padding,
-    MIN_NODE_H,
+    askedHeight === null || askedHeight === undefined ? MIN_NODE_H : 0,
   );
+  if (shapeOf(node.options) === "circle" && minWidth === null && minHeight === null) {
+    const side = Math.round(Math.max(width, height));
+    return { w: side, h: side };
+  }
   return { w: Math.round(width), h: Math.round(height) };
 }
 
@@ -1149,6 +1179,24 @@ function resolveRound(nodes: PlacedNode[], byId: Map<string, PlacedNode>, anchor
   let progress = false;
   for (const node of nodes) {
     if (node.placed) continue;
+    if (node.atRef) {
+      const [refName, ...anchorParts] = node.atRef.split(".");
+      const reference = byId.get(refName.trim());
+      const point = anchors.get(refName.trim());
+      if (reference?.placed) {
+        const offset = anchorOffset(reference, anchorParts.join(".") || null);
+        node.cx = reference.cx + offset.x;
+        node.cy = reference.cy + offset.y;
+        node.placed = true;
+        progress = true;
+      } else if (point) {
+        node.cx = point.x;
+        node.cy = point.y;
+        node.placed = true;
+        progress = true;
+      }
+      continue;
+    }
     if (node.midpoint) {
       const from = byId.get(node.midpoint[0]);
       const to = byId.get(node.midpoint[1]);
@@ -1557,13 +1605,26 @@ function applyPathLabel(walk: PathWalk, item: { text: string; name: string | nul
   else if (item.text) walk.segment.label = item.text;
 }
 
+function bareColor(options: OptionPair[], colors: Map<string, string>): string | null {
+  for (let i = options.length - 1; i >= 0; i--) {
+    const [key, value] = options[i];
+    if (value !== null) continue;
+    const name = key.trim();
+    if (!colors.has(name) && !NAMED_COLORS[name.split("!")[0].toLowerCase()]) continue;
+    const resolved = resolveColor(name, colors);
+    if (resolved) return resolved;
+  }
+  return null;
+}
+
 function strokeColor(
   options: OptionPair[],
   spec: string | null | undefined,
   colors: Map<string, string>,
 ): string | null {
   if (typeof spec === "string") return resolveColor(spec, colors);
-  return has(options, "draw") ? "#0f172a" : null;
+  if (!has(options, "draw")) return null;
+  return bareColor(options, colors) ?? "#000000";
 }
 
 function toModelNodes(nodes: PlacedNode[], colors: Map<string, string>): DiagNode[] {
@@ -1575,7 +1636,10 @@ function toModelNodes(nodes: PlacedNode[], colors: Map<string, string>): DiagNod
     const shape = shapeOf(node.options);
     const fill = typeof fillSpec === "string" ? resolveColor(fillSpec, colors) : null;
     const stroke = strokeColor(node.options, drawSpec, colors);
-    const textColor = typeof textSpec === "string" ? resolveColor(textSpec, colors) : null;
+    const textColor =
+      typeof textSpec === "string"
+        ? resolveColor(textSpec, colors)
+        : bareColor(node.options, colors);
     const radius = toCm(lookup(node.options, "rounded corners"), null);
     const model: DiagNode = {
       id: node.id,
@@ -1606,12 +1670,20 @@ function normalizeOrigin(nodes: DiagNode[]): void {
   if (nodes.length === 0) return;
   const minX = Math.min(...nodes.map((node) => node.x));
   const minY = Math.min(...nodes.map((node) => node.y));
-  const shiftX = ORIGIN_MARGIN - minX;
-  const shiftY = ORIGIN_MARGIN - minY;
+  const shiftX = minX < 0 ? ORIGIN_MARGIN - minX : 0;
+  const shiftY = minY < 0 ? ORIGIN_MARGIN - minY : 0;
+  if (shiftX === 0 && shiftY === 0) return;
   for (const node of nodes) {
     node.x += shiftX;
     node.y += shiftY;
   }
+}
+
+function boundSource(source: string): string {
+  if (source.length <= MAX_SOURCE) return source;
+  const cut = source.slice(0, MAX_SOURCE);
+  const lastStatement = cut.lastIndexOf(";");
+  return lastStatement > 0 ? cut.slice(0, lastStatement + 1) : cut;
 }
 
 export function importTikz(source: string): TikzImport {
@@ -1619,7 +1691,8 @@ export function importTikz(source: string): TikzImport {
   if (typeof source !== "string" || source.length === 0) {
     return { model: { version: 1, nodes: [], edges: [] }, unsupported: [] };
   }
-  const bounded = source.length > MAX_SOURCE ? source.slice(0, MAX_SOURCE) : source;
+  const bounded = boundSource(source);
+  if (source.length > MAX_SOURCE) unsupported.add("truncated");
   const clean = stripComments(normalize(bounded));
   const picture = extractPictureBody(clean);
   const body = picture ? picture.body : clean;
@@ -1652,11 +1725,16 @@ export function importTikz(source: string): TikzImport {
   normalizeOrigin(modelNodes);
   const known = new Set(modelNodes.map((node) => node.id));
   const pageColor = /\\pagecolor\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/.exec(clean);
+  const standalone = clean.includes("\\begin{document}");
   const model: DiagramModel = {
     version: 1,
     nodes: modelNodes,
     edges: edges.filter((edge) => known.has(edge.source) && known.has(edge.target)),
-    background: pageColor ? (resolveColor(pageColor[1], colors) ?? "") : "",
+    ...(pageColor
+      ? { background: resolveColor(pageColor[1], colors) ?? "" }
+      : standalone
+        ? { background: "" }
+        : {}),
   };
   return { model, unsupported: [...unsupported] };
 }

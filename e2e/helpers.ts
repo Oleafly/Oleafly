@@ -540,7 +540,10 @@ export async function finishProjectCreation(page: Page) {
           && rect.width > 0
           && rect.height > 0;
       };
-      const editor = document.querySelector(".cm-content");
+      // A diagram project opens on its canvas, not on a text editor, so the
+      // shell is the readiness signal rather than CodeMirror's content node.
+      const editor = document.querySelector(".cm-content")
+        ?? document.querySelector('[data-tour="project-editor"]');
       const dialog = document.querySelector('[data-testid="template-gallery"]');
       const create = document.querySelector('[data-testid="create-project"]');
       const notice = Array.from(document.querySelectorAll('[role="alert"]'))

@@ -345,8 +345,9 @@ export function DiagramComposer({
     // regenerates over it until the canvas itself is edited.
     syncRef.current = readSync(content, m);
     setModel(m);
-    // Keep "" (transparent) if the snippet stored it; only missing → white default.
-    setBackground(m.background !== undefined ? m.background : "#ffffff");
+    // Keep "" (transparent) if the source stored it; a snippet that says
+    // nothing about the page leaves the current background alone.
+    if (m.background !== undefined) setBackground(m.background);
     setMode("draw");
     return true;
   }, []);
@@ -634,7 +635,7 @@ export function DiagramComposer({
       syncRef.current = readSync(code, parsed);
       setModel(parsed ?? emptyModel());
       if (parsed) {
-        setBackground(parsed.background !== undefined ? parsed.background : "#ffffff");
+        if (parsed.background !== undefined) setBackground(parsed.background);
       } else {
         toast.info("Nothing in this code could be drawn. The code is untouched.");
       }
