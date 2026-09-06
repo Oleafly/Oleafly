@@ -204,6 +204,65 @@ describe("McpServersManager", () => {
     });
   });
 
+  it("keeps registry discovery review-only until the existing add form is confirmed", async () => {
+    const user = userEvent.setup();
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === "mcp_servers_list") return records;
+      if (command === "mcp_server_validate") {
+        return connectedValidation((args as { name: string }).name);
+      }
+      if (command === "mcp_registry_search") {
+        return {
+          servers: [
+            {
+              name: "io.example/papers",
+              description: "Search a local paper collection.",
+              version: "1.2.3",
+              status: "active",
+              reviews: [
+                {
+                  label: "npm: @example/papers@1.2.3",
+                  transport: "stdio",
+                  commandOrUrl: "npx",
+                  arguments: ["-y", "@example/papers@1.2.3"],
+                  environmentVariableNames: ["PAPERS_TOKEN"],
+                  config: {
+                    name: "papers",
+                    enabled: true,
+                    transport: "stdio",
+                    command: "npx",
+                    args: ["-y", "@example/papers@1.2.3"],
+                    env: {},
+                  },
+                  unsupportedReason: null,
+                },
+              ],
+            },
+          ],
+          nextCursor: null,
+          warnings: ["1 registry entry was ignored because its metadata was invalid."],
+        };
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    renderManager();
+    await screen.findByText("files");
+
+    await user.click(screen.getByRole("button", { name: "Browse registry" }));
+    await user.type(screen.getByLabelText("Search the official MCP registry"), "papers");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+
+    expect(await screen.findByText("io.example/papers")).toBeInTheDocument();
+    expect(screen.getByText("Environment: PAPERS_TOKEN")).toBeInTheDocument();
+    expect(screen.getByText("1 registry entry was ignored because its metadata was invalid.")).toBeInTheDocument();
+    expect(mockInvoke).not.toHaveBeenCalledWith("mcp_server_add", expect.anything());
+
+    await user.click(screen.getByRole("button", { name: "Review before adding" }));
+    expect(screen.getByRole("dialog", { name: "Add MCP server" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Server name")).toHaveValue("papers");
+    expect(mockInvoke).not.toHaveBeenCalledWith("mcp_server_add", expect.anything());
+  });
+
   it("checks enabled servers on load and shows status, tools, and disabled state", async () => {
     renderManager();
 

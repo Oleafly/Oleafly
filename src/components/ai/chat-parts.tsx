@@ -4,20 +4,18 @@ import {
   Brain,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Circle,
-  Code2,
+  CircleSlash,
   Copy,
-  FolderDown,
-  Image as ImageIcon,
   Info,
   Loader2,
   Paperclip,
   Terminal,
-  Wrench,
   XCircle,
 } from "lucide-react";
-import type { ChatMessage, ToolEntry } from "@/store/chats";
+import type { ChatMessage, SubagentEntry, ToolEntry } from "@/store/chats";
 import { agentTodoProgress, type AgentTodo } from "@/store/agent-todos";
 import {
   agentFileChangeTotals,
@@ -26,13 +24,19 @@ import {
 } from "@/store/agent-file-changes";
 import { Markdown } from "@/components/ui/markdown";
 import { Popover } from "@/components/ui/popover";
-import { Tooltip } from "@/components/ui/tooltip";
-import { TikzSourceView } from "@/components/ai/TikzSourceView";
+import { AgentLogo } from "@/components/ai/acp/AgentLogo";
+import { ProviderLogo } from "@/components/ai/ProviderLogo";
+import { ResearchToolCard } from "@/components/ai/activity/ResearchToolCard";
+import { lastFinishedPicture, ToolPicture } from "@/components/ai/activity/ToolPicture";
+import { usePersistentExpansion } from "@/components/ai/activity/expansion-state";
+import {
+  projectToolEntry,
+  splitAgentNotices,
+  stripAnsi,
+  type ResearchChatActions,
+} from "@/lib/chat-activity";
 import { tokenizeComposer } from "@/lib/composer-tokens";
-import { writeFileContent, writeProjectBytes } from "@/lib/tauri";
-import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { useFilesStore } from "@/store/files";
 
 const USER_SKILL_CHIP_CLASS =
   "rounded bg-blue-300/35 px-1 py-px font-medium text-white";
@@ -609,8 +613,8 @@ function parseExecView(
 // Command card for run_command results: `$ command`, aggregated output, and a
 // status pill (Success / Failed with exit code N / Stopped / Declined / an
 // error), per the reference exec item.
-export function ExecCard({ tc }: { tc: ToolEntry }) {
-  const [expanded, setExpanded] = useState(false);
+export function ExecCard({ tc, expansionKey }: { tc: ToolEntry; expansionKey?: string }) {
+  const [expanded, setExpanded] = usePersistentExpansion(expansionKey, false);
   const view = parseExecView(tc.output, tc.status);
   const running = view.kind === "pending";
   // A finished command succeeds only on a clean exit code 0. A null exit
@@ -621,7 +625,7 @@ export function ExecCard({ tc }: { tc: ToolEntry }) {
     (view.kind === "exec" && (view.timedOut || view.exitCode !== 0));
   const command =
     view.kind === "exec" || view.kind === "declined" ? view.command : "";
-  const body = view.kind === "exec" ? view.body : "";
+  const body = view.kind === "exec" ? stripAnsi(view.body) : "";
   const statusLine =
     view.kind === "exec"
       ? view.status
@@ -691,8 +695,16 @@ export function ExecCard({ tc }: { tc: ToolEntry }) {
 // A collapsed run of read-only tool calls: "Explored 3 files, 2 searches",
 // expandable to the individual tool badges. Mirrors the reference exploration
 // grouping so a long read-heavy turn stays scannable.
-export function ExplorationGroup({ tools }: { tools: ToolEntry[] }) {
-  const [open, setOpen] = useState(false);
+export function ExplorationGroup({
+  tools,
+  actions,
+  expansionKey,
+}: {
+  tools: ToolEntry[];
+  actions?: ResearchChatActions;
+  expansionKey?: string;
+}) {
+  const [open, setOpen] = usePersistentExpansion(expansionKey, false);
   const listId = useId();
   return (
     <div className="max-w-[85%]" data-testid="exploration-group">
@@ -712,7 +724,12 @@ export function ExplorationGroup({ tools }: { tools: ToolEntry[] }) {
       {open && (
         <div id={listId} className="mt-1.5 flex animate-in fade-in flex-col gap-1.5 border-l pl-2.5 duration-150 motion-reduce:animate-none">
           {tools.map((tool, index) => (
-            <ToolBadge key={tool.id ?? `explore-${index}`} tc={tool} />
+            <ToolBadge
+              key={tool.id ?? `explore-${index}`}
+              tc={tool}
+              actions={actions}
+              expansionKey={expansionKey ? `${expansionKey}:${tool.id ?? index}` : undefined}
+            />
           ))}
         </div>
       )}
@@ -720,219 +737,20 @@ export function ExplorationGroup({ tools }: { tools: ToolEntry[] }) {
   );
 }
 
-function lastFinishedPicture(tools: readonly ToolEntry[]): ToolEntry[] {
-  for (let i = tools.length - 1; i >= 0; i--) {
-    const tool = tools[i];
-    if (tool.image && tool.status === "done") return [tool];
-  }
-  return [];
-}
+export { freeFigurePath, ToolPicture } from "@/components/ai/activity/ToolPicture";
 
-export function freeFigurePath(
-  existing: readonly string[],
-  extension: string,
-  base = "figure",
-): string {
-  const taken = new Set(existing.map((path) => path.toLowerCase()));
-  const first = `figures/${base}.${extension}`;
-  if (!taken.has(first.toLowerCase())) return first;
-  for (let n = 2; n < 10_000; n++) {
-    const candidate = `figures/${base}-${n}.${extension}`;
-    if (!taken.has(candidate.toLowerCase())) return candidate;
-  }
-  return `figures/${base}-${Date.now()}.${extension}`;
-}
-
-async function saveToolPicture(tc: ToolEntry): Promise<string | null> {
-  const files = useFilesStore.getState();
-  const projectId = files.projectId;
-  if (!projectId) return null;
-  const existing = files.tree.map((entry) => entry.path);
-  if (tc.code) {
-    const path = freeFigurePath(existing, "tex");
-    await writeFileContent(projectId, path, tc.code.endsWith("\n") ? tc.code : `${tc.code}\n`);
-    await files.refreshTree();
-    return path;
-  }
-  if (tc.image) {
-    const path = freeFigurePath(existing, "png");
-    const base64 = tc.image.split(",")[1] ?? "";
-    await writeProjectBytes(projectId, path, base64);
-    await files.refreshTree();
-    return path;
-  }
-  return null;
-}
-
-export function ToolPicture({ tc }: { tc: ToolEntry }) {
-  const [view, setView] = useState<"image" | "code">("image");
-  const [copied, setCopied] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const hasCode = Boolean(tc.code);
-  const label = tc.name === "preview_figure" ? "Rendered figure preview" : "Image from the tool";
-  const copyCode = async () => {
-    if (!tc.code) return;
-    try {
-      await navigator.clipboard.writeText(tc.code);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
-  };
-  const saveToProject = async () => {
-    if (saving) return;
-    setSaving(true);
-    try {
-      const path = await saveToolPicture(tc);
-      if (path) toast.success(`Saved ${path}`);
-      else toast.error("Open a project to save this figure.");
-    } catch (error) {
-      toast.error(`Could not save the figure: ${String(error)}`);
-    } finally {
-      setSaving(false);
-    }
-  };
-  const pill = (active: boolean) =>
-    cn(
-      "flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors",
-      active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-    );
-  const iconButton =
-    "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-60";
-  return (
-    <div data-testid="tool-picture-body" className="bg-background">
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center border-b px-2 py-1">
-        <span />
-        {hasCode ? (
-          <div className="flex h-7 items-center rounded-full bg-muted p-0.5 text-[11px] font-medium">
-            <button
-              type="button"
-              data-testid="tool-picture-view-image"
-              aria-label="Show the rendered figure"
-              aria-pressed={view === "image"}
-              onClick={() => setView("image")}
-              className={pill(view === "image")}
-            >
-              <ImageIcon className="size-3.5" />
-              Figure
-            </button>
-            <button
-              type="button"
-              data-testid="tool-picture-view-code"
-              aria-label="Show the TikZ source"
-              aria-pressed={view === "code"}
-              onClick={() => setView("code")}
-              className={pill(view === "code")}
-            >
-              <Code2 className="size-3.5" />
-              TikZ
-            </button>
-          </div>
-        ) : (
-          <span />
-        )}
-        <div className="flex items-center justify-end gap-0.5">
-          <Tooltip label={saving ? "Saving" : "Save to project"}>
-            <button
-              type="button"
-              data-testid="tool-picture-save"
-              aria-label="Save to project"
-              disabled={saving}
-              onClick={() => void saveToProject()}
-              className={iconButton}
-            >
-              <FolderDown className="size-3.5" />
-            </button>
-          </Tooltip>
-          {hasCode && (
-            <Tooltip label={copied ? "Copied" : "Copy code"}>
-              <button
-                type="button"
-                data-testid="tool-picture-copy"
-                aria-label="Copy code"
-                onClick={() => void copyCode()}
-                className={iconButton}
-              >
-                {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-              </button>
-            </Tooltip>
-          )}
-        </div>
-      </div>
-      {view === "image" || !hasCode ? (
-        <div className="p-2">
-          <img
-            src={tc.image}
-            alt={label}
-            data-testid="tool-image"
-            className="mx-auto max-h-80 max-w-full rounded object-contain"
-          />
-        </div>
-      ) : (
-        <TikzSourceView source={tc.code ?? ""} />
-      )}
-    </div>
-  );
-}
-
-export function ToolBadge({ tc, live = false }: { tc: ToolEntry; live?: boolean }) {
-  const [expanded, setExpanded] = useState(false);
-  const result = tc.output?.includes('"success": true')
-    ? "success"
-    : tc.output?.includes('"error"')
-      ? "error"
-      : undefined;
-  return (
-    <div
-      data-tool-name={tc.name}
-      data-tool-status={tc.status}
-      data-tool-result={result}
-      className="max-w-[85%] rounded-md border bg-muted text-xs"
-    >
-      <button type="button"
-        onClick={() => (tc.output || tc.image) && setExpanded(!expanded)}
-        className={cn("flex w-full items-center gap-2 px-2.5 py-1.5", (tc.output || tc.image) && "cursor-pointer hover:bg-accent/50")}
-      >
-        <Wrench className="size-3.5 text-muted-foreground" />
-        <span className="font-mono">{tc.name}</span>
-        {tc.approval === "rejected" ? (
-          <XCircle className="size-3 text-destructive" />
-        ) : (
-          <>
-            {tc.status === "running" && <Loader2 className="size-3 animate-spin" />}
-            {tc.status === "done" && <CheckCircle2 className="size-3 text-emerald-500" />}
-            {tc.status === "error" && <XCircle className="size-3 text-destructive" />}
-          </>
-        )}
-        <span className="ml-auto flex items-center gap-1.5">
-          {tc.approval === "approved" && (
-            <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-              Approved
-            </span>
-          )}
-          {tc.approval === "rejected" && (
-            <span className="rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
-              Rejected
-            </span>
-          )}
-          {(tc.output || tc.image) && (
-            <ChevronRight className={cn("size-3 text-muted-foreground transition-transform", expanded && "rotate-90")} />
-          )}
-        </span>
-      </button>
-      {tc.image && (live || expanded) && (
-        <div className="border-t">
-          <ToolPicture tc={tc} />
-        </div>
-      )}
-      {expanded && tc.output && (
-        <pre className="max-h-96 animate-in fade-in overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words border-t px-2.5 py-1.5 font-mono text-[10px] text-muted-foreground duration-150 motion-reduce:animate-none">
-          {tc.output}
-        </pre>
-      )}
-    </div>
-  );
+export function ToolBadge({
+  tc,
+  actions,
+  expansionKey,
+  live = false,
+}: {
+  tc: ToolEntry;
+  actions?: ResearchChatActions;
+  expansionKey?: string;
+  live?: boolean;
+}) {
+  return <ResearchToolCard tc={tc} actions={actions} expansionKey={expansionKey} live={live} />;
 }
 
 export function formatToolOutput(output: unknown): string {
@@ -1020,13 +838,14 @@ export function ReasoningBlock({
   text,
   active,
   durationMs,
+  expansionKey,
 }: {
   text: string;
   active?: boolean;
   durationMs?: number;
+  expansionKey?: string;
 }) {
-  const [userToggled, setUserToggled] = useState<boolean | null>(null);
-  const open = userToggled ?? false;
+  const [open, setOpen] = usePersistentExpansion(expansionKey, false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -1047,20 +866,31 @@ export function ReasoningBlock({
   if (!active && !text.trim()) return null;
 
   return (
-    <div className="max-w-[85%] rounded-md border bg-muted text-xs">
+    <div
+      data-reasoning-block
+      data-reasoning-status={active ? "running" : "completed"}
+      className="max-w-[85%] text-xs"
+    >
       <button
         type="button"
-        onClick={() => setUserToggled(!open)}
-        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-muted-foreground hover:bg-accent/50"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="group flex w-full items-center gap-2 py-1 text-left text-sm text-muted-foreground"
       >
-        <Brain className={cn("size-3.5", active && "ai-shimmer-icon")} />
+        {open ? (
+          <ChevronDown className="size-3.5 shrink-0" />
+        ) : (
+          <span className="flex size-3.5 shrink-0 items-center justify-center">
+            <Brain className={cn("size-3.5 group-hover:hidden", active && "ai-shimmer-icon")} />
+            <ChevronRight className="hidden size-3.5 group-hover:block" />
+          </span>
+        )}
         {active ? <Shimmer text={label} /> : <span>{label}</span>}
-        <ChevronRight className={cn("ml-auto size-3 transition-transform", open && "rotate-90")} />
       </button>
       {open && (
         <div
           ref={scrollRef}
-          className="max-h-56 overflow-x-hidden overflow-y-auto break-words border-t px-2.5 py-1.5 text-[11px] leading-relaxed text-muted-foreground"
+          className="ml-[0.4375rem] max-h-56 overflow-x-hidden overflow-y-auto break-words border-l pl-3 py-1 text-[11px] leading-relaxed text-muted-foreground"
         >
           {/* The reasoning trace is rendered as plain text, not Markdown. It is
               a raw thinking dump, often dense with partial LaTeX and long: the
@@ -1074,38 +904,168 @@ export function ReasoningBlock({
   );
 }
 
+const SUBAGENT_PREVIEW_HEIGHT = 176;
+
+function SubagentIdentity({ entry }: { entry: SubagentEntry }) {
+  if (entry.runtime === "acp" && entry.agentId) {
+    return <AgentLogo agentId={entry.agentId} size={14} />;
+  }
+  if (entry.providerId) return <ProviderLogo providerId={entry.providerId} size={14} />;
+  return <Bot aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />;
+}
+
+function SubagentStatusIcon({ state }: { state: string }) {
+  if (state === "done") return <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />;
+  if (state === "error") return <XCircle className="size-3.5 shrink-0 text-destructive" />;
+  if (state === "interrupted") {
+    return <CircleSlash className="size-3.5 shrink-0 text-muted-foreground" />;
+  }
+  return <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />;
+}
+
 // Delegated child run, in the multi-agent-action card shape: what it was
-// asked, where it is, and a preview of what came back.
+// asked, where it is, and what came back.
 export function SubagentCard({
   entry,
+  actions,
 }: {
-  entry: { id: string; label: string; state: string; detail?: string };
+  entry: SubagentEntry;
+  actions?: ResearchChatActions;
 }) {
-  const running = entry.state !== "done" && entry.state !== "error";
+  const settled =
+    entry.state === "done" || entry.state === "error" || entry.state === "interrupted";
+  const running = !settled;
+  const detail = splitAgentNotices(entry.detail ?? "");
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const bodyId = useId();
+
+  useEffect(() => {
+    const node = bodyRef.current;
+    if (!node || running) {
+      setOverflows(false);
+      return;
+    }
+    const measure = () => setOverflows(node.scrollHeight > SUBAGENT_PREVIEW_HEIGHT + 8);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [running]);
+
+  const openSession =
+    entry.sessionId && actions?.openSession
+      ? () => {
+          if (entry.sessionId) {
+            actions.openSession?.({ threadId: entry.sessionId, runtime: entry.runtime });
+          }
+        }
+      : null;
+  const statusLabel =
+    entry.state === "done"
+      ? "Finished"
+      : entry.state === "error"
+        ? "Failed"
+        : entry.state === "interrupted"
+          ? "Stopped"
+          : entry.state === "tool" && detail.text
+            ? `Using ${detail.text}`
+            : "Working on it";
+
   return (
     <div
       data-testid="subagent-card"
       data-subagent-state={entry.state}
-      className="max-w-[85%] rounded-md border bg-muted text-xs"
+      className="max-w-[85%] overflow-hidden rounded-lg border bg-muted/60 text-xs"
     >
-      <div className="flex items-center gap-2 px-2.5 py-1.5">
-        <Bot className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate font-medium">{entry.label}</span>
-        {running && <Loader2 className="size-3 shrink-0 animate-spin" />}
-        {entry.state === "done" && (
-          <CheckCircle2 className="size-3 shrink-0 text-emerald-500" />
+      <div className="flex items-center gap-2 px-2.5 py-2">
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-md border bg-background">
+          <SubagentIdentity entry={entry} />
+        </span>
+        <span className="min-w-0 flex-1 truncate font-medium text-foreground">{entry.label}</span>
+        {entry.modelId && (
+          <span
+            data-testid="subagent-model"
+            className="hidden max-w-[10rem] shrink-0 truncate rounded-full border bg-background px-1.5 py-px font-mono text-[10px] text-muted-foreground sm:inline"
+          >
+            {entry.modelId}
+          </span>
         )}
-        {entry.state === "error" && (
-          <XCircle className="size-3 shrink-0 text-destructive" />
-        )}
+        <SubagentStatusIcon state={entry.state} />
+        {settled && <span className="sr-only">{statusLabel}</span>}
       </div>
-      {(running || entry.detail) && (
+      {running && (
         <div className="border-t px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground">
-          {running
-            ? entry.state === "tool" && entry.detail
-              ? `Using ${entry.detail}`
-              : "Working on it"
-            : entry.detail}
+          <Shimmer text={statusLabel} />
+        </div>
+      )}
+      {!running && (detail.text || entry.state !== "done") && (
+        <div className="relative border-t">
+          <div
+            id={bodyId}
+            ref={bodyRef}
+            data-testid="subagent-output"
+            data-expanded={expanded ? "true" : "false"}
+            className={cn(
+              "px-2.5 py-2 text-[11px] leading-relaxed text-foreground/90",
+              !expanded && "max-h-44 overflow-hidden",
+            )}
+          >
+            {detail.text ? (
+              <Markdown className="chat-markdown">{detail.text}</Markdown>
+            ) : (
+              <span className="text-muted-foreground">
+                {entry.state === "error"
+                  ? "The agent could not complete this task."
+                  : "The task was stopped before it answered."}
+              </span>
+            )}
+          </div>
+          {overflows && !expanded && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-muted to-transparent"
+            />
+          )}
+        </div>
+      )}
+      {detail.notices.map((notice) => (
+        <p
+          key={notice}
+          data-testid="agent-notice"
+          className="flex items-start gap-1.5 border-t bg-amber-500/5 px-2.5 py-1.5 text-[10px] leading-snug text-muted-foreground"
+        >
+          <Info aria-hidden="true" className="mt-px size-3 shrink-0 text-amber-500" />
+          <span className="min-w-0">{notice}</span>
+        </p>
+      ))}
+      {(overflows || openSession) && (
+        <div className="flex items-center justify-between gap-2 border-t px-1.5 py-1">
+          <span>
+            {overflows && (
+              <button
+                type="button"
+                aria-expanded={expanded}
+                aria-controls={bodyId}
+                className="rounded px-1.5 py-1 text-[10px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                onClick={() => setExpanded((value) => !value)}
+              >
+                {expanded ? "Show less" : "Show more"}
+              </button>
+            )}
+          </span>
+          {openSession && (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-foreground hover:bg-accent"
+              onClick={openSession}
+            >
+              Open task
+              <ChevronRight aria-hidden="true" className="size-3" />
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -1118,14 +1078,18 @@ export function SubagentCard({
 function WorkedSteps({
   rows,
   totalMs,
+  expansionKey,
 }: {
   rows: React.ReactNode[];
   totalMs: number;
+  expansionKey?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = usePersistentExpansion(expansionKey, false);
   const listId = useId();
   const seconds = Math.max(1, Math.round(totalMs / 1000));
-  const label = totalMs > 0 ? `Worked for ${seconds}s` : `Worked through ${rows.length} steps`;
+  const label = totalMs > 0
+    ? `Worked for ${seconds}s`
+    : `Worked through ${rows.length} ${rows.length === 1 ? "step" : "steps"}`;
   return (
     <div className="max-w-[85%]">
       <button
@@ -1158,9 +1122,13 @@ function WorkedSteps({
 export const MessageItem = memo(function MessageItem({
   msg,
   live,
+  actions,
+  expansionScope,
 }: {
   msg: ChatMessage;
   live?: boolean;
+  actions?: ResearchChatActions;
+  expansionScope?: string;
 }) {
   const tools = msg.toolCalls ?? [];
   const attachmentOccurrences = new Map<string, number>();
@@ -1181,6 +1149,7 @@ export const MessageItem = memo(function MessageItem({
             text={b.text}
             active={!!live && b.ms === undefined}
             durationMs={b.ms}
+            expansionKey={expansionScope ? `${expansionScope}:reasoning:${b.id ?? blockIndex}` : undefined}
           />,
         );
       }
@@ -1204,6 +1173,8 @@ export const MessageItem = memo(function MessageItem({
             <ExplorationGroup
               key={tools[i].id ?? `explore-group-${i}`}
               tools={tools.slice(i, j + 1)}
+              actions={actions}
+              expansionKey={expansionScope ? `${expansionScope}:exploration:${tools[i].id ?? i}` : undefined}
             />,
           );
           i = j;
@@ -1213,18 +1184,50 @@ export const MessageItem = memo(function MessageItem({
       const tool = tools[i];
       const key = tool.id ?? `legacy-tool-${i}`;
       if (tool.name === "run_command") {
-        rows.push(<ExecCard key={key} tc={tool} />);
+        rows.push(
+          <ExecCard
+            key={key}
+            tc={tool}
+            expansionKey={expansionScope ? `${expansionScope}:tool:${key}` : undefined}
+          />,
+        );
       } else {
-        rows.push(<ToolBadge key={key} tc={tool} live={live} />);
+        rows.push(
+          <ToolBadge
+            key={key}
+            tc={tool}
+            actions={actions}
+            expansionKey={expansionScope ? `${expansionScope}:tool:${key}` : undefined}
+            live={live}
+          />,
+        );
       }
     }
   }
   for (const entry of msg.subagents ?? []) {
-    rows.push(<SubagentCard key={entry.id} entry={entry} />);
+    rows.push(<SubagentCard key={entry.id} entry={entry} actions={actions} />);
   }
   const totalMs = blocks.reduce((sum, block) => sum + (block.ms ?? 0), 0);
-  const foldSteps = !live && rows.length > 0 && msg.role === "assistant";
-  const pictures = foldSteps ? lastFinishedPicture(msg.toolCalls ?? []) : [];
+  const hasVisibleOutcome = tools.some((tool) => {
+    const view = projectToolEntry(tool);
+    return (
+      view.status === "failed" ||
+      view.status === "cancelled" ||
+      view.status === "declined" ||
+      view.kind === "literature" ||
+      view.kind === "citation" ||
+      view.kind === "compile" ||
+      view.kind === "artifact" ||
+      view.kind === "delegation"
+    );
+  });
+  const foldSteps =
+    !live &&
+    rows.length > 0 &&
+    msg.role === "assistant" &&
+    !hasVisibleOutcome &&
+    !(msg.subagents?.length);
+  const pictures = !live && msg.role === "assistant" ? lastFinishedPicture(msg.toolCalls ?? []) : [];
   const tokenizedUserText = msg.role === "user" ? userTokenChips(msg) : null;
   const createdAt = msg.createdAt === undefined ? null : new Date(msg.createdAt);
   const validCreatedAt = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : null;
@@ -1235,7 +1238,13 @@ export const MessageItem = memo(function MessageItem({
   });
   return (
     <div className={cn("flex flex-col gap-1.5", msg.role === "user" && "items-end")}>
-      {foldSteps ? <WorkedSteps rows={rows} totalMs={totalMs} /> : rows}
+      {foldSteps ? (
+        <WorkedSteps
+          rows={rows}
+          totalMs={totalMs}
+          expansionKey={expansionScope ? `${expansionScope}:steps` : undefined}
+        />
+      ) : rows}
       {pictures.map((tool, index) => (
         <div
           key={tool.id ?? `picture-${index}`}
@@ -1271,6 +1280,15 @@ export const MessageItem = memo(function MessageItem({
           })}
         </div>
       )}
+      {msg.notices?.map((notice) => (
+        <p
+          key={notice}
+          data-testid="agent-notice"
+          className="max-w-[85%] rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground"
+        >
+          {notice}
+        </p>
+      ))}
       {msg.content ? (
         <div
           className={cn(
@@ -1283,7 +1301,7 @@ export const MessageItem = memo(function MessageItem({
               "overflow-hidden rounded-lg px-3 py-2 text-sm",
               msg.role === "user"
                 ? "max-w-[85%] bg-primary text-white"
-                : "w-full bg-muted text-foreground",
+                : "w-full bg-background text-foreground ring-1 ring-border/60 dark:bg-muted dark:ring-0",
             )}
           >
             {tokenizedUserText ?? (

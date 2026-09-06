@@ -140,6 +140,7 @@ const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
 const TOUR_LABELS = {
   home: "Home and project creation",
   workspace: "Project workspace",
+  research: "Research workspace",
   settings: "Settings",
   "ai-settings": "AI Assistant settings",
   ai: "AI Assistant",
@@ -767,7 +768,7 @@ export function SettingsModal() {
                       Calculating storage usage…
                     </div>
                   ) : storageSummary ? (
-                    <dl className="grid grid-cols-2 divide-x divide-y text-xs sm:grid-cols-4">
+                    <dl className="grid grid-cols-2 gap-px border-t bg-border text-xs sm:grid-cols-4">
                       {[
                         {
                           label: "Projects",
@@ -810,7 +811,7 @@ export function SettingsModal() {
                           detail: "Assets and settings",
                         },
                       ].map((item) => (
-                        <div key={item.label} className="min-w-0 px-3 py-3">
+                        <div key={item.label} className="min-w-0 bg-card px-3 py-3">
                           <dt className="text-muted-foreground">{item.label}</dt>
                           <dd className="mt-1 truncate text-sm font-semibold text-foreground">
                             {item.value}

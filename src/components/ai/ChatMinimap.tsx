@@ -9,6 +9,7 @@ import {
 import type { RefObject } from "react";
 import type { ChatMessage } from "@/store/chats";
 import { cn } from "@/lib/utils";
+import { CHAT_SCROLL_TO_INDEX_EVENT } from "./MessageList";
 
 function tickWidth(length: number): number {
   return Math.round(8 + Math.min(20, Math.log2(length + 1) * 2.6));
@@ -65,6 +66,12 @@ export function ChatMinimap({
   const updateActive = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
+    const virtualIndex = Number(el.dataset.chatVisibleIndex);
+    if (Number.isInteger(virtualIndex)) {
+      const active = [...prompts].reverse().find((entry) => entry.index <= virtualIndex);
+      setActiveIndex(active?.index ?? prompts[0]?.index ?? null);
+      return;
+    }
     const marker = el.scrollTop + el.clientHeight / 2;
     let active: number | null = null;
     for (const { index } of prompts) {
@@ -86,8 +93,10 @@ export function ChatMinimap({
       rafRef.current = requestAnimationFrame(updateActive);
     };
     el.addEventListener("scroll", schedule, { passive: true });
+    el.addEventListener("oleafly:chat-visible-index", schedule);
     return () => {
       el.removeEventListener("scroll", schedule);
+      el.removeEventListener("oleafly:chat-visible-index", schedule);
       cancelAnimationFrame(rafRef.current);
     };
   }, [scrollRef, updateActive, visible]);
@@ -97,13 +106,22 @@ export function ChatMinimap({
   const scrollTo = (index: number) => {
     const el = scrollRef.current;
     const node = el?.querySelector<HTMLElement>(`[data-mm-index="${index}"]`);
-    if (el && node) el.scrollTo({ top: Math.max(0, node.offsetTop - 12), behavior: "smooth" });
+    if (!el) return;
+    if (node) {
+      el.scrollTo({ top: Math.max(0, node.offsetTop - 12), behavior: "smooth" });
+      return;
+    }
+    el.dispatchEvent(
+      new CustomEvent(CHAT_SCROLL_TO_INDEX_EVENT, {
+        detail: { index, behavior: "smooth" },
+      }),
+    );
   };
 
   const preview = hover ? turnPreview(messages, hover.index) : null;
 
   return (
-    <div className="pointer-events-none absolute inset-y-0 left-0 z-20" aria-hidden>
+    <nav className="pointer-events-none absolute inset-y-0 left-0 z-20" aria-label="Conversation turns">
       <div className="pointer-events-auto absolute inset-y-0 left-1.5 flex flex-col items-start justify-center gap-2">
         {prompts.map(({ message, index }) => {
           const active = index === activeIndex;
@@ -124,6 +142,7 @@ export function ChatMinimap({
               onMouseLeave={() =>
                 setHover((current) => (current?.index === index ? null : current))
               }
+              aria-label={`Jump to: ${firstLine(message.content)}`}
               className="group flex h-3 items-center"
               title={firstLine(message.content)}
             >
@@ -155,6 +174,6 @@ export function ChatMinimap({
           </div>
         )}
       </div>
-    </div>
+    </nav>
   );
 }

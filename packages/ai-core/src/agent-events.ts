@@ -1,9 +1,9 @@
+import type { AgentUsage } from "./usage";
+
 // The agent event wire union (mirrors crates/oleafly-agent/src/event.rs,
 // serde tag "kind", camelCase fields). The app's transport layer
 // (src/lib/agent-backend.ts) re-exports this; the package owns the shape so
 // folds stay framework-free.
-
-export type AgentUsage = { input: number; output: number };
 
 export type AgentEvent =
   | { kind: "stepStart"; step: number }
@@ -18,6 +18,11 @@ export type AgentEvent =
   | { kind: "usage"; usage: AgentUsage }
   | {
       kind: "subagentUpdate";
+      runtime?: "built-in" | "acp" | null;
+      sessionId?: string | null;
+      providerId?: string | null;
+      modelId?: string | null;
+      agentId?: string | null;
       id: string;
       label: string;
       state: string;

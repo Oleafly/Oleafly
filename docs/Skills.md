@@ -89,14 +89,21 @@ on `oleafly-research-loop` first and follow the handoff it names, and that it
 should never say it is using a skill before it has actually loaded one.
 
 `load_skill({"id": "..."})` returns the skill's full instructions, its
-absolute directory on disk, and the list of files inside it with their sizes.
-`read_skill_file({"id": "...", "path": "references/handoffs.md"})` reads one
-of those files. A vendored skill's bundled scripts are run with
-`run_command` and the absolute directory `load_skill` returned, for example
-`python3 "<skill dir>/scripts/search_openalex.py" --help`; they need Python
-3.11 or newer on the login shell's `PATH`, which the assistant checks once per
-session before relying on them and falls back to the native project tools
-when it is missing.
+absolute directory on disk, the list of files inside it with their sizes, and
+one ready to run command per bundled script, with the interpreter resolved to
+an absolute path from `/usr/bin`, `/bin`, `/usr/local/bin`, or
+`/opt/homebrew/bin`. `read_skill_file({"id": "...", "path":
+"references/handoffs.md"})` reads one of those files. A bundled script is run
+with `run_command` and the command `load_skill` listed for it, for example
+`python3 "<skill dir>/scripts/search_openalex.py" --help`. Python scripts need
+Python 3.11 or newer, which the assistant checks once per session before
+relying on them and falls back to the native project tools when it is missing.
+
+The MCP server in Settings and the research bridge that CLI agents and
+research tasks talk to build that payload from the same function in
+`src-tauri/src/skills.rs`, so a skill loads the same way whichever one asked
+for it. The assistant's own `load_skill` puts the same fields in its answer as
+text rather than JSON.
 
 ## Invoking a skill directly
 
@@ -146,13 +153,23 @@ Which of the plots in @figures/ are referenced from the text
 
 ## Device-wide and per-project
 
-The switch next to a skill's name in Settings turns it on for every project
-on this device. Open a project and a second, smaller switch appears under it,
-"Use in this project", which turns the skill on for that project alone
-without touching the device-wide setting. A skill is available to the
-assistant when either one is on. A skill you have never seen before (one just
-installed, or one that shipped with an app update) starts turned on. Settings
-remembers only the ones you switch off.
+The switch next to a skill's name in Settings turns it on for every project on
+this device. Open a project and a second, smaller switch appears under it,
+"Use in this project". That one is an override rather than a separate setting.
+Until you touch it the line under it reads "Inherits device setting" and the
+project follows the device-wide switch. Flip it and the project keeps its own
+answer, on or off, whatever the device switch says later; the line then reads
+"On for this project" or "Off for this project", and a **Use device setting**
+button beside it drops the override again.
+
+So a skill you turn on once is on everywhere, and a project has to say no
+before it stops being available there. The chat assistant, research tasks, and
+the tools CLI agents get all read the same two settings in the same order:
+the project's override if it has one, the device switch otherwise.
+
+A skill you have never seen before (one just installed, or one that shipped
+with an app update) starts turned on. Settings remembers only the ones you
+switch off.
 
 ## Updates for edited built-ins
 
@@ -192,6 +209,43 @@ removed. On Windows, creating a symlink can require Developer Mode or an
 administrator session; when it is not permitted the card marks that agent
 "Not supported on this system" rather than falling back to copying files.
 
+## How a CLI agent gets to your skills
+
+Switch the assistant to a CLI agent and your skills reach it two ways.
+
+The symlinks above are one. They are on by default and they cover every valid
+skill whatever its switches say. Because they land in the folder that agent
+already reads, Claude Code or Codex picks a skill up through its own
+machinery, with no help from Oleafly.
+
+The research MCP bridge is the other. Every CLI agent session Oleafly starts
+gets it, and it carries three tools. `list_skills` returns each installed
+skill with its id, name, description, phase, tier, and whether it is available
+in this project. `load_skill` returns one skill's instructions, folder, files,
+and script commands, and refuses a skill the project has turned off.
+`read_skill_file` reads one file out of a skill folder. The bridge is the route
+that knows which project you have open, so it is the one that respects the
+switches.
+
+There is no slash command in the CLI agent composer. Typing `/some-skill`
+there sends those characters to the agent as text. Ask for the skill by name
+instead, or leave the agent to find it through `list_skills`.
+
+## Skills in research tasks
+
+A research task carries whichever skills were picked for it, and it checks
+them when it starts. Each one has to be available in the project, which means
+the project turned it on or the project is inheriting a device switch that is
+on. If the project has turned one off the task stops there, before any model
+call, and says which skill.
+
+Each selected skill goes into the task prompt with its name, its folder, the
+command for every bundled script, the list of supporting files, and the full
+instructions. The folders are mounted read-only in the task command sandbox
+too, so a script runs where it lives, by absolute path, and the task cannot
+write back into it. Supporting files come through the bridge's
+`read_skill_file`, the same as anywhere else.
+
 ## Where skills live on disk
 
 - `~/.oleafly/skills/<id>/`: one folder per skill, containing its `SKILL.md`
@@ -200,10 +254,11 @@ administrator session; when it is not permitted the card marks that agent
   shelf-installed skill. It records the skill's source, its pack and pack
   version, a hash of its file tree, its license and tier, and where it came
   from.
-- `~/.oleafly/skills-state.json`: which skills are on device-wide, which are
-  on for which project, and which ids have already been seen once (so a
-  newly discovered skill can start enabled without re-enabling everything on
-  every launch).
+- `~/.oleafly/skills-state.json`: which skills are on device-wide, which
+  projects have overridden a skill on, which have overridden one off, and
+  which ids have already been seen once (so a newly discovered skill can start
+  enabled without re-enabling everything on every launch). A project with no
+  entry in either override map inherits the device-wide answer.
 - `~/.oleafly/catalogs/skills.json`: the cached domain-shelf catalog.
 
 ## The show_location preview tool
@@ -229,6 +284,13 @@ telling you to go find it.
   `load_skill` is called before any file is read or written.
 - Install a skill from the Domain shelf card and confirm it appears in its
   phase group above once installed.
+- With a project open, confirm every skill's per-project line reads "Inherits
+  device setting", turn one off for that project, and confirm the assistant
+  stops offering it there while a second project still has it.
+- Press **Use device setting** on that skill and confirm the line goes back to
+  "Inherits device setting" and the switch follows the device-wide one again.
+- Create a research task from one of the starters and confirm it reaches
+  Running instead of failing with a message about the skill.
 - With Claude Code, Codex, Cursor, or Gemini's folder present on this
   machine, turn on skill sharing and check `~/.claude/skills` (or the
   matching folder) for a symlink per skill.

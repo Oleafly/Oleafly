@@ -14,6 +14,7 @@ import { useMcpActivityStore } from "@/store/mcp-activity";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useTheme } from "@/lib/theme";
 import { toggleBrowser } from "@/lib/browser-window";
+import { BetaBadge } from "@/components/ui/beta-badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ThemeMenu } from "@/components/layout/ThemeControls";
@@ -48,16 +49,21 @@ function ViewButton({
 }) {
   const badge = tab.useBadge?.() ?? 0;
   const Icon = tab.icon;
+  const tooltip = tab.beta ? `${tab.label} (beta)` : tab.label;
   return (
-    <Tooltip label={tab.label} side="bottom">
+    <Tooltip label={tooltip} side="bottom">
       <button
         type="button"
+        data-tour={`rail-${tab.id}`}
         aria-label={tab.label}
         aria-current={active ? "page" : undefined}
         onClick={onSelect}
         className={cn("relative", ctrlBtn(active))}
       >
         <Icon className="size-4" aria-hidden />
+        {tab.beta ? (
+          <BetaBadge className="pointer-events-none absolute -right-5 -top-1 border-background bg-primary px-1 text-[8px] leading-[13px] text-primary-foreground" />
+        ) : null}
         {badge > 0 && (
           <span
             role="status"

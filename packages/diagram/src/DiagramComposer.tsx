@@ -33,10 +33,21 @@ import {
   newId,
   modelToTikz,
   serializeDiagram,
-  parseEmbeddedModel,
+  diagramFromSource,
   buildStandaloneDoc,
   DIAGRAM_LIBS,
 } from "@oleafly/latex";
+import {
+  drawnSync,
+  emptySync,
+  readSync,
+  shouldPublishModel,
+  shouldReadCode,
+  shouldWriteCode,
+  sourceToCompile,
+  typedSync,
+  type ComposerSync,
+} from "./sync";
 import { useDiagramKit } from "./kit";
 import type { DiagramHost } from "./host";
 import { cn } from "./cn";
@@ -293,7 +304,9 @@ export function DiagramComposer({
   // True while the code buffer holds hand-written content the drawing model
   // does not describe. While set, nothing may regenerate code from the model:
   // that is how pasted TikZ used to be silently replaced on a tab switch.
-  const codeDirtyRef = useRef(false);
+  // Which side owns the buffer, and what the model was last read out of, so a
+  // Draw/Code round trip neither re-parses needlessly nor loses canvas edits.
+  const syncRef = useRef<ComposerSync>(emptySync());
   const savePickerRef = useRef<HTMLDivElement>(null);
   const downloadPickerRef = useRef<HTMLDivElement>(null);
 
@@ -302,10 +315,12 @@ export function DiagramComposer({
 
   // Model -> code (debounced), so the Code tab and compile reflect the drawing.
   const onModelChange = useCallback((m: DiagramModel) => {
+    if (!shouldPublishModel(syncRef.current, m)) return;
+    syncRef.current = drawnSync(syncRef.current);
     setModel(m);
     if (codeTimerRef.current) clearTimeout(codeTimerRef.current);
     codeTimerRef.current = setTimeout(() => {
-      codeDirtyRef.current = false;
+      syncRef.current = emptySync();
       setCode(modelToTikz(m));
     }, 200);
   }, []);
@@ -318,25 +333,33 @@ export function DiagramComposer({
       clearTimeout(codeTimerRef.current);
       codeTimerRef.current = null;
     }
-    const m = parseEmbeddedModel(content);
-    if (m) {
-      codeDirtyRef.current = false;
-      setModel(m);
-      setCode(modelToTikz(m));
-      // Keep "" (transparent) if the snippet stored it; only missing → white default.
-      setBackground(m.background !== undefined ? m.background : "#ffffff");
-      setMode("draw");
-    } else {
-      codeDirtyRef.current = true;
-      setCode(content);
-      setMode("code");
-    }
+    const m = diagramFromSource(content);
+    setCode(content);
     setPng(null);
-    return Boolean(m);
+    if (!m) {
+      syncRef.current = readSync(content, null);
+      setMode("code");
+      return false;
+    }
+    // The buffer stays exactly as written: the model describes it, so nothing
+    // regenerates over it until the canvas itself is edited.
+    syncRef.current = readSync(content, m);
+    setModel(m);
+    // Keep "" (transparent) if the source stored it; a snippet that says
+    // nothing about the page leaves the current background alone.
+    if (m.background !== undefined) setBackground(m.background);
+    setMode("draw");
+    return true;
   }, []);
 
   const handleCodeChange = useCallback((next: string) => {
-    codeDirtyRef.current = true;
+    // Typing takes the buffer back, so a pending regeneration must not land on
+    // top of the keystrokes that follow it.
+    if (codeTimerRef.current) {
+      clearTimeout(codeTimerRef.current);
+      codeTimerRef.current = null;
+    }
+    syncRef.current = typedSync(syncRef.current);
     setCode(next);
   }, []);
 
@@ -360,7 +383,7 @@ export function DiagramComposer({
   const compile = useCallback(async (overrideCode?: string, overrideBackground?: string) => {
     if (!projectId || busy) return;
     // In draw mode the code is debounced; compile the freshest generated TikZ.
-    const raw = overrideCode ?? (hasDrawing && mode === "draw" ? modelToTikz(model) : code);
+    const raw = overrideCode ?? sourceToCompile(syncRef.current, mode, model, code);
     const nextBackground = overrideBackground !== undefined ? overrideBackground : background;
     const source = buildStandaloneDoc({
       code: raw,
@@ -425,7 +448,7 @@ export function DiagramComposer({
   );
 
   const snippetCode =
-    hasDrawing && !codeDirtyRef.current ? serializeDiagram({ ...model, background }) : code;
+    shouldWriteCode(syncRef.current, hasDrawing) ? serializeDiagram({ ...model, background }) : code;
 
   const [savePickerOpen, setSavePickerOpen] = useState(false);
   const [saveToProjectHover, setSaveToProjectHover] = useState(false);
@@ -456,7 +479,7 @@ export function DiagramComposer({
 
   const saveAsNewProject = useCallback(async () => {
     const src = buildStandaloneDoc({
-      code: hasDrawing && !codeDirtyRef.current ? serializeDiagram({ ...model, background }) : code,
+      code: shouldWriteCode(syncRef.current, hasDrawing) ? serializeDiagram({ ...model, background }) : code,
       libraries: DIAGRAM_LIBS,
       background,
     });
@@ -527,13 +550,13 @@ export function DiagramComposer({
     if (fixing || !host.fixWithAi) return;
     setFixing(true);
     try {
-      const cur = hasDrawing && mode === "draw" ? modelToTikz(model) : code;
+      const cur = sourceToCompile(syncRef.current, mode, model, code);
       const fixed = await host.fixWithAi(cur, log.slice(-3000));
       if (!fixed) {
         toast.error("The AI did not return a fix.");
         return;
       }
-      codeDirtyRef.current = true;
+      syncRef.current = readSync(fixed, null);
       setCode(fixed);
       setMode("code");
       toast.success("Applied an AI fix. Recompiling…");
@@ -595,27 +618,27 @@ export function DiagramComposer({
 
   const switchMode = (m: Mode) => {
     // Entering Code: flush debounced generation so Code mirrors the canvas,
-    // but never over hand-written code the model does not describe.
-    if (m === "code" && hasDrawing && !codeDirtyRef.current) {
+    // but never over hand-written code the model does describe.
+    if (m === "code" && shouldWriteCode(syncRef.current, hasDrawing)) {
       if (codeTimerRef.current) clearTimeout(codeTimerRef.current);
       setCode(modelToTikz(model));
     }
-    // Entering Draw with hand-written code: adopt it when it embeds a model;
-    // otherwise the canvas empties instead of showing a stale drawing the
-    // code no longer matches (and instead of clobbering the code on return).
-    if (m === "draw" && codeDirtyRef.current) {
+    // Entering Draw with hand-written code: read the TikZ into a model so the
+    // canvas shows what the code says. Re-reading the same buffer is skipped so
+    // canvas edits made since the last adoption survive the round trip.
+    if (m === "draw" && shouldReadCode(syncRef.current, code)) {
       if (codeTimerRef.current) {
         clearTimeout(codeTimerRef.current);
         codeTimerRef.current = null;
       }
-      const parsed = parseEmbeddedModel(code);
+      const parsed = diagramFromSource(code);
+      syncRef.current = readSync(code, parsed);
+      setModel(parsed ?? emptyModel());
       if (parsed) {
-        setModel(parsed);
-        setBackground(parsed.background !== undefined ? parsed.background : "#ffffff");
+        if (parsed.background !== undefined) setBackground(parsed.background);
       } else {
-        setModel(emptyModel());
+        toast.info("Nothing in this code could be drawn. The code is untouched.");
       }
-      codeDirtyRef.current = false;
     }
     setMode(m);
   };

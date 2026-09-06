@@ -131,6 +131,8 @@ vi.mock("react-resizable-panels", async () => {
 vi.mock("@/lib/theme", () => ({
   ThemeProvider: ({ children }: { children?: unknown }) => children,
   useAppTheme: () => "dark",
+  currentTheme: () => "dark",
+  subscribeTheme: () => () => {},
 }));
 vi.mock("@/components/ErrorBoundary", () => ({
   ErrorBoundary: ({ children }: { children?: unknown }) => children,
@@ -215,6 +217,7 @@ vi.mock("@/lib/agent-item-effects", () => ({
   },
 }));
 vi.mock("@/lib/open-compile", () => ({
+  openCompileHydrated: () => false,
   resetOpenCompileMarker: () => null,
   shouldCompileOnOpen: () => false,
 }));

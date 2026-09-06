@@ -287,12 +287,16 @@ test("welcome is modal and Home creates a real project before Workspace starts",
 
   await tauriPage.getByText("Next", { exact: true }).click();
   await tauriPage.click('[data-tour="new-project"]');
-  await expect(tauriPage.getByText("Find your starting point", { exact: true })).toBeVisible();
-  await expectTourTooltipInsideViewport(tauriPage, "home-gallery");
+  await expect(tauriPage.getByText("Three ways to begin", { exact: true })).toBeVisible();
+  await expectTourTooltipInsideViewport(tauriPage, "home-kind");
   await tauriPage.click('[data-testid="tour-back"]');
   await expect(tauriPage.getByText("Choose a template", { exact: true })).toHaveCount(0);
   await expect(tauriPage.getByText("Create a real project", { exact: true })).toBeVisible();
   await tauriPage.click('[data-tour="new-project"]');
+  await expect(tauriPage.getByText("Three ways to begin", { exact: true })).toBeVisible();
+  await tauriPage.getByText("Next", { exact: true }).click();
+  await expectTourTooltipInsideViewport(tauriPage, "home-kind-template");
+  await tauriPage.click('[data-tour="project-kind-template"]');
   await expect(tauriPage.getByText("Find your starting point", { exact: true })).toBeVisible();
   await expectTourTooltipInsideViewport(tauriPage, "home-gallery");
   await tauriPage.getByText("Next", { exact: true }).click();

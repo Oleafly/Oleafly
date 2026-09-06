@@ -93,10 +93,8 @@ function createMarkdownComponents(inverted: boolean): Components {
     return (
       <code
         className={cn(
-          "rounded-md border px-1.5 py-0.5 font-mono text-[0.8em] font-medium",
-          inverted
-            ? "border-white/20 bg-white/10 text-white"
-            : "border-primary/20 bg-primary/10 text-primary",
+          "rounded-md px-1.5 py-0.5 font-mono text-[0.8em] font-medium",
+          inverted ? "bg-white/15 text-white" : "bg-primary/10 text-primary",
         )}
       >
         {children}

@@ -22,6 +22,7 @@ const TRANSCRIPT = [
 const mocks = vi.hoisted(() => ({
   stop: vi.fn(),
   read: vi.fn(),
+  acpEvents: vi.fn(),
 }));
 
 vi.mock("@/lib/agent-backend", () => ({
@@ -33,6 +34,10 @@ vi.mock("@/lib/agent-backend", () => ({
     mocks.read(id);
     return Promise.resolve(TRANSCRIPT);
   },
+}));
+
+vi.mock("@/lib/acp", () => ({
+  acpEvents: (...args: unknown[]) => mocks.acpEvents(...args),
 }));
 
 function seedChat(chatId: string, events: AgentEvent[]) {
@@ -47,6 +52,7 @@ describe("SubagentActivity", () => {
     useAgentTurnsStore.getState().reset();
     mocks.stop.mockClear();
     mocks.read.mockClear();
+    mocks.acpEvents.mockReset();
   });
 
   it("renders nothing until a turn records subagent activity", () => {
@@ -54,6 +60,109 @@ describe("SubagentActivity", () => {
       <SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("flags a child waiting for permission and keeps a resolved one as a plain tool line", () => {
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "agent-1", label: "sources", state: "started", detail: null },
+      {
+        kind: "subagentUpdate",
+        id: "agent-1",
+        label: "sources",
+        state: "permission",
+        detail: "Waiting for permission: Read the linked evidence?",
+      },
+    ]);
+    const view = render(
+      <SubagentActivity chatId="chat-1" streaming={true} activeRunId={() => null} />,
+    );
+
+    const chip = screen.getByTestId("subagent-chip-agent-1");
+    expect(chip).toHaveAttribute("data-subagent-status", "awaiting");
+    expect(screen.getByText("needs permission")).toBeTruthy();
+    expect(screen.getByText("A delegated agent is waiting for permission.")).toBeTruthy();
+    expect(screen.getByTestId("subagent-stop-all")).toBeTruthy();
+
+    fireEvent.click(chip);
+    expect(
+      screen.getByText(
+        "This subagent is still working. Its full transcript opens when it finishes.",
+      ),
+    ).toBeTruthy();
+    expect(mocks.read).not.toHaveBeenCalled();
+
+    view.unmount();
+    useAgentTurnsStore.getState().reset();
+    seedChat("chat-2", [
+      { kind: "subagentUpdate", id: "agent-1", label: "sources", state: "started", detail: null },
+      {
+        kind: "subagentUpdate",
+        id: "agent-1",
+        label: "sources",
+        state: "tool",
+        detail: "Permission granted",
+      },
+    ]);
+    render(<SubagentActivity chatId="chat-2" streaming={true} activeRunId={() => null} />);
+    expect(screen.getByTestId("subagent-chip-agent-1")).toHaveAttribute(
+      "data-subagent-status",
+      "active",
+    );
+    expect(screen.queryByText("needs permission")).toBeNull();
+    expect(screen.queryByText("A delegated agent is waiting for permission.")).toBeNull();
+  });
+
+  it("moves the Codex skills budget warning into a notice row", async () => {
+    mocks.acpEvents.mockResolvedValue({
+      events: [
+        {
+          sequence: 1,
+          kind: "agent_message_chunk",
+          data: {
+            content: {
+              type: "text",
+              text: "Warning: Exceeded skills context budget of 4000 tokens.\nThe sources are ready.",
+            },
+          },
+          turnId: "turn-1",
+          sessionId: "session-1",
+          projectId: "project-1",
+          agentId: "codex",
+          modelId: null,
+          taskId: null,
+          timestamp: 1,
+        },
+      ],
+      hasMore: false,
+    });
+    seedChat("chat-1", [
+      {
+        kind: "subagentUpdate",
+        id: "agent-1",
+        label: "sources",
+        state: "done",
+        detail: "finished",
+        runtime: "acp",
+        sessionId: "session-1",
+      },
+    ]);
+    render(
+      <SubagentActivity
+        chatId="chat-1"
+        streaming={false}
+        activeRunId={() => null}
+        projectId="project-1"
+      />,
+    );
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("agent-notice")).toHaveTextContent(
+        "Codex could not list all of its skills.",
+      ),
+    );
+    expect(screen.getByText("The sources are ready.")).toBeTruthy();
+    expect(screen.queryByText(/Exceeded skills context budget/)).toBeNull();
   });
 
   it("shows a chip per agent with its latest status and avatar", () => {
@@ -110,5 +219,130 @@ describe("SubagentActivity", () => {
     render(<SubagentActivity chatId="chat-1" streaming={true} activeRunId={() => null} />);
     expect(screen.getByTestId("subagent-chip-agent-1")).toBeTruthy();
     expect(screen.getByTestId("subagent-chip-agent-2")).toBeTruthy();
+  });
+
+  it("loads an ACP child transcript from its recorded project and session", async () => {
+    const openSession = vi.fn();
+    mocks.acpEvents.mockResolvedValue({
+      hasMore: false,
+      events: [
+        {
+          sessionId: "acp-session",
+          projectId: "project-1",
+          agentId: "codex",
+          modelId: "research-model",
+          taskId: null,
+          turnId: "turn-1",
+          sequence: 1,
+          timestamp: 1,
+          kind: "agent_message_chunk",
+          data: { content: { type: "text", text: "I found the reported result." } },
+        },
+        {
+          sessionId: "acp-session",
+          projectId: "project-1",
+          agentId: "codex",
+          modelId: "research-model",
+          taskId: null,
+          turnId: "turn-1",
+          sequence: 2,
+          timestamp: 2,
+          kind: "tool_call",
+          data: { toolCallId: "read-1", title: "Read source", status: "in_progress" },
+        },
+        {
+          sessionId: "acp-session",
+          projectId: "project-1",
+          agentId: "codex",
+          modelId: "research-model",
+          taskId: null,
+          turnId: "turn-1",
+          sequence: 3,
+          timestamp: 3,
+          kind: "tool_call_update",
+          data: {
+            toolCallId: "read-1",
+            title: "Read source",
+            status: "completed",
+            content: [{ type: "content", content: { type: "text", text: "Page 4 excerpt" } }],
+          },
+        },
+      ],
+    });
+    seedChat("chat-1", [{
+      kind: "subagentUpdate",
+      id: "agent-1",
+      label: "survey",
+      state: "done",
+      detail: "finished",
+      runtime: "acp",
+      sessionId: "acp-session",
+      providerId: "acp",
+      modelId: "research-model",
+      agentId: "codex",
+    }]);
+
+    render(
+      <SubagentActivity
+        chatId="chat-1"
+        projectId="project-1"
+        streaming={false}
+        activeRunId={() => null}
+        onOpenSession={openSession}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+
+    await waitFor(() => expect(mocks.acpEvents).toHaveBeenCalledWith(
+      "project-1",
+      "acp-session",
+      0,
+      300,
+    ));
+    await waitFor(() => expect(screen.getByText("I found the reported result.")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: /Worked through 1 step/ }));
+    expect(document.querySelector('[data-tool-name="Read source"]')).not.toBeNull();
+    expect(screen.getByText("codex · acp · research-model")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Open task" }));
+    expect(openSession).toHaveBeenCalledWith("acp-session", "acp");
+    expect(mocks.read).not.toHaveBeenCalled();
+  });
+
+  it("uses a recorded built-in session instead of constructing one", async () => {
+    const openSession = vi.fn();
+    seedChat("chat-1", [{
+      kind: "subagentUpdate",
+      id: "agent-1",
+      label: "survey",
+      state: "done",
+      detail: "finished",
+      runtime: "built-in",
+      sessionId: "thread-recorded",
+      providerId: null,
+      modelId: null,
+      agentId: null,
+    }]);
+    render(
+      <SubagentActivity
+        chatId="chat-1"
+        streaming={false}
+        activeRunId={() => null}
+        onOpenSession={openSession}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+    await waitFor(() => expect(mocks.read).toHaveBeenCalledWith("thread-recorded"));
+    fireEvent.click(screen.getByRole("button", { name: "Open task" }));
+    expect(openSession).toHaveBeenCalledWith("thread-recorded", "built-in");
+  });
+
+  it("hides the open affordance when no session route is wired", async () => {
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "agent-1", label: "survey", state: "done", detail: "3 papers" },
+    ]);
+    render(<SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} />);
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+    await waitFor(() => expect(mocks.read).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Open task" })).toBeNull();
   });
 });

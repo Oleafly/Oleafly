@@ -197,10 +197,52 @@ test("the Download picker offers PNG and disables SVG", async ({ tauriPage }) =>
 // Import replaces the default draft; it never forces a project save (that
 // stays a separate, explicit "Save to project" action - see the "saving to
 // a new project" test above).
-test("importing a plain (non-composer) TikZ file loads it as code-only", async ({ tauriPage }) => {
+test("importing hand-written TikZ draws it on the canvas", async ({ tauriPage }) => {
   await openDiagramComposer(tauriPage);
 
-  const importedTikz = "\\node (imported) [draw] {Imported Content};";
+  const importedTikz = [
+    "\\begin{tikzpicture}[",
+    "  node distance=1.5cm,",
+    "  box/.style={rectangle, draw, rounded corners, minimum width=2cm, minimum height=1cm, fill=blue!10},",
+    "  arrow/.style={-Stealth, thick}",
+    "]",
+    "\\node[box] (input) {Input};",
+    "\\node[box, right=of input] (process) {Process};",
+    "\\node[box, right=of process] (output) {Output};",
+    "\\draw[arrow] (input) -- (process);",
+    "\\draw[arrow] (process) -- (output);",
+    "\\end{tikzpicture}",
+  ].join("\n");
+  await tauriPage.evaluate(
+    `window.__setNextTikzImport(${JSON.stringify("flowchart.tikz")}, ${JSON.stringify(importedTikz)})`,
+  );
+  await tauriPage.click('[aria-label="Import TikZ file"]');
+
+  await tauriPage.waitForFunction(
+    `document.body.innerText.includes('Imported flowchart.tikz for editing.')`,
+    10_000,
+  );
+  // Drawable content lands on the Draw tab with one canvas node per TikZ node.
+  await tauriPage.waitForFunction(
+    `document.querySelectorAll('.react-flow__node').length === 3`,
+    10_000,
+  );
+  for (const label of ["Input", "Process", "Output"]) {
+    await expect(tauriPage.locator(".react-flow")).toContainText(label);
+  }
+
+  // Returning to Code must hand back the imported source, not a regenerated
+  // approximation of it: nothing has been drawn on the canvas yet.
+  await tauriPage.click('[data-testid="diagram-tab-code"]');
+  await expect(tauriPage.locator(".cm-content")).toContainText("node distance=1.5cm");
+
+  await closeDiagramComposer(tauriPage);
+});
+
+test("importing TikZ with no shapes stays code-only", async ({ tauriPage }) => {
+  await openDiagramComposer(tauriPage);
+
+  const importedTikz = "\\draw[thick] (0,0) circle (1cm);";
   await tauriPage.evaluate(
     `window.__setNextTikzImport(${JSON.stringify("hand-written.tikz")}, ${JSON.stringify(importedTikz)})`,
   );
@@ -210,12 +252,11 @@ test("importing a plain (non-composer) TikZ file loads it as code-only", async (
     `document.body.innerText.includes('Imported hand-written.tikz (code only, not drawable).')`,
     10_000,
   );
-  // Non-drawable content switches to the Code tab automatically.
   await tauriPage.waitForFunction(
     `document.querySelector('[data-testid="diagram-tab-code"]').className.includes('bg-accent')`,
     5_000,
   );
-  await expect(tauriPage.locator(".cm-content")).toContainText("Imported Content");
+  await expect(tauriPage.locator(".cm-content")).toContainText("circle");
   // The draft's display name picks up the imported file's basename.
   await expect(tauriPage.locator('[data-testid="diagram-name-display"]')).toContainText(
     "hand-written",

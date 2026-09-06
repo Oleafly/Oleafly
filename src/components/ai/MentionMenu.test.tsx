@@ -3,9 +3,11 @@
 import { createRef } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { agentDelegationPrompt, type DelegationTarget } from "@/lib/agent-mentions";
 import { mentionInsertText } from "@/lib/composer-tokens";
 import {
   buildMentionEntries,
+  filterAgentTargets,
   filterMentionEntries,
   MentionMenu,
   type MentionEntry,
@@ -127,7 +129,7 @@ describe("MentionMenu", () => {
     act(() => void ref.current?.handleKeyDown(keyEvent("Enter")));
 
     expect(selected).toHaveLength(1);
-    expect(selected[0].path).toBe(entries[1].path);
+    expect(selected[0]).toMatchObject({ kind: "file", path: entries[1].path });
     expect(selected[0].text).toBe(mentionInsertText(entries[1].path, entries[1].isDir));
   });
 
@@ -182,5 +184,107 @@ describe("MentionMenu", () => {
     };
     expect(ref.current?.handleKeyDown(composing)).toBe(false);
     expect(onSelect).not.toHaveBeenCalled();
+  });
+});
+
+const AGENTS: DelegationTarget[] = [
+  { id: "local", label: "Local researcher", detail: "Ollama model llama", runtime: "built-in", providerId: "ollama", modelId: "llama" },
+  { id: "reviewer", label: "CLI reviewer", detail: "Research CLI model chosen", runtime: "acp", agentId: "research-cli", modelId: "chosen" },
+  { id: "writer", label: "Manuscript writer", detail: "Remote model draft", runtime: "built-in", providerId: "configured-provider", modelId: "draft" },
+];
+
+describe("filterAgentTargets", () => {
+  it("matches across ids, labels and details, case-insensitively", () => {
+    expect(filterAgentTargets(AGENTS, "CHOSEN").map((target) => target.id)).toEqual(["reviewer"]);
+    expect(filterAgentTargets(AGENTS, "").map((target) => target.id)).toEqual(["local", "reviewer", "writer"]);
+    expect(filterAgentTargets(AGENTS, "missing")).toEqual([]);
+  });
+});
+
+describe("MentionMenu with agents", () => {
+  const files = filterMentionEntries(buildMentionEntries(TREE), "");
+
+  it("lists agents ahead of files under headings and reports the active key", () => {
+    const onActive = vi.fn();
+    render(
+      <MentionMenu
+        entries={files}
+        agents={AGENTS}
+        onSelect={() => {}}
+        onClose={() => {}}
+        onActiveEntryChange={onActive}
+      />,
+    );
+
+    expect(screen.getByRole("listbox", { name: "Agents and project files" })).toBeInTheDocument();
+    expect(screen.getByText("Delegate to an agent")).toBeInTheDocument();
+    expect(screen.getByText("Project files")).toBeInTheDocument();
+    const options = screen.getAllByRole("option");
+    expect(options[0]).toHaveTextContent("Local researcher");
+    expect(options[0]).toHaveAttribute("id", "ai-mention-agent:local");
+    expect(options[AGENTS.length]).toHaveTextContent("main.tex");
+    expect(onActive).toHaveBeenLastCalledWith("agent:local");
+  });
+
+  it("selects an agent with the keyboard and produces a delegation token", () => {
+    const selected: MentionSelection[] = [];
+    const ref = createRef<MentionMenuHandle>();
+    render(
+      <MentionMenu
+        ref={ref}
+        entries={files}
+        agents={filterAgentTargets(AGENTS, "chosen")}
+        onSelect={(selection) => selected.push(selection)}
+        onClose={() => {}}
+      />,
+    );
+
+    act(() => void ref.current?.handleKeyDown(keyEvent("Enter")));
+    expect(selected[0]).toMatchObject({ kind: "agent", text: "@reviewer " });
+    const target = selected[0].kind === "agent" ? selected[0].target : null;
+    expect(target).toEqual(AGENTS[1]);
+    const prompt = agentDelegationPrompt("@reviewer review the methods", target ? [target] : []);
+    expect(prompt).toContain('"runtime":"acp"');
+    expect(prompt).toContain('"agentId":"research-cli"');
+    expect(prompt).not.toContain('"providerId"');
+  });
+
+  it("wraps arrow navigation across agents and files", () => {
+    const onActive = vi.fn();
+    const ref = createRef<MentionMenuHandle>();
+    render(
+      <MentionMenu
+        ref={ref}
+        entries={files.slice(0, 1)}
+        agents={AGENTS}
+        onSelect={() => {}}
+        onClose={() => {}}
+        onActiveEntryChange={onActive}
+      />,
+    );
+
+    act(() => void ref.current?.handleKeyDown(keyEvent("ArrowUp")));
+    expect(onActive).toHaveBeenLastCalledWith("main.tex");
+    act(() => void ref.current?.handleKeyDown(keyEvent("ArrowDown")));
+    expect(onActive).toHaveBeenLastCalledWith("agent:local");
+    act(() => void ref.current?.handleKeyDown(keyEvent("ArrowDown")));
+    expect(onActive).toHaveBeenLastCalledWith("agent:reviewer");
+  });
+
+  it("selects an agent by mouse without stealing focus from the composer", () => {
+    const onSelect = vi.fn();
+    render(
+      <>
+        <textarea aria-label="Composer" />
+        <MentionMenu entries={[]} agents={AGENTS} onSelect={onSelect} onClose={() => {}} />
+      </>,
+    );
+    const composer = screen.getByLabelText("Composer");
+    composer.focus();
+    const option = screen.getByRole("option", { name: /CLI reviewer/ });
+    expect(fireEvent.mouseDown(option)).toBe(false);
+    expect(document.activeElement).toBe(composer);
+    fireEvent.click(option);
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith({ kind: "agent", target: AGENTS[1], text: "@reviewer " });
   });
 });

@@ -3,9 +3,11 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useState,
 } from "react";
-import { File, Folder } from "lucide-react";
+import { Bot, File, Folder } from "lucide-react";
+import type { DelegationTarget } from "@/lib/agent-mentions";
 import { mentionInsertText, normalizeMentionPath } from "@/lib/composer-tokens";
 import { cn } from "@/lib/utils";
 
@@ -14,8 +16,25 @@ export interface MentionEntry {
   isDir: boolean;
 }
 
-export interface MentionSelection extends MentionEntry {
+export interface FileMentionSelection extends MentionEntry {
+  kind: "file";
   text: string;
+}
+
+export interface AgentMentionSelection {
+  kind: "agent";
+  target: DelegationTarget;
+  text: string;
+}
+
+export type MentionSelection = FileMentionSelection | AgentMentionSelection;
+
+type MentionItem =
+  | { kind: "file"; key: string; entry: MentionEntry }
+  | { kind: "agent"; key: string; target: DelegationTarget };
+
+export function agentMentionKey(target: DelegationTarget): string {
+  return `agent:${target.id}`;
 }
 
 interface MentionKeyEvent {
@@ -31,12 +50,14 @@ export interface MentionMenuHandle {
 
 interface MentionMenuProps {
   entries: readonly MentionEntry[];
+  agents?: readonly DelegationTarget[];
   onSelect: (selection: MentionSelection) => void;
   onClose: () => void;
-  onActiveEntryChange?: (path: string | null) => void;
+  onActiveEntryChange?: (key: string | null) => void;
 }
 
 export const MENTION_MENU_LIMIT = 12;
+export const AGENT_MENTION_LIMIT = 8;
 
 const SKIPPED_SEGMENTS = new Set([".git", ".oleafly", "node_modules", ".DS_Store"]);
 
@@ -98,22 +119,50 @@ export function filterMentionEntries(
   return ranked.slice(0, limit).map((item) => item.entry);
 }
 
+export function filterAgentTargets(
+  targets: readonly DelegationTarget[],
+  query: string,
+  limit = AGENT_MENTION_LIMIT,
+): DelegationTarget[] {
+  const needle = query.trim().toLocaleLowerCase();
+  const matches = needle
+    ? targets.filter((target) =>
+        `${target.id} ${target.label} ${target.detail}`.toLocaleLowerCase().includes(needle),
+      )
+    : [...targets];
+  return matches.slice(0, limit);
+}
+
 export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
-  ({ entries, onSelect, onClose, onActiveEntryChange }, ref) => {
-    const [activePath, setActivePath] = useState<string | null>(null);
-    const selectedIndex = activePath
-      ? entries.findIndex((entry) => entry.path === activePath)
-      : 0;
+  ({ entries, agents = [], onSelect, onClose, onActiveEntryChange }, ref) => {
+    const items = useMemo<MentionItem[]>(
+      () => [
+        ...agents.map((target) => ({ kind: "agent" as const, key: agentMentionKey(target), target })),
+        ...entries.map((entry) => ({ kind: "file" as const, key: entry.path, entry })),
+      ],
+      [agents, entries],
+    );
+    const [activeKey, setActiveKey] = useState<string | null>(null);
+    const selectedIndex = activeKey ? items.findIndex((item) => item.key === activeKey) : 0;
     const activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
-    const activeEntry = entries[activeIndex] ?? null;
+    const activeItem = items[activeIndex] ?? null;
+    const activeItemKey = activeItem?.key ?? null;
 
     useEffect(() => {
-      onActiveEntryChange?.(activeEntry?.path ?? null);
-    }, [activeEntry?.path, onActiveEntryChange]);
+      onActiveEntryChange?.(activeItemKey);
+    }, [activeItemKey, onActiveEntryChange]);
 
     const select = useCallback(
-      (entry: MentionEntry) => {
-        onSelect({ ...entry, text: mentionInsertText(entry.path, entry.isDir) });
+      (item: MentionItem) => {
+        if (item.kind === "agent") {
+          onSelect({ kind: "agent", target: item.target, text: `@${item.target.id} ` });
+          return;
+        }
+        onSelect({
+          kind: "file",
+          ...item.entry,
+          text: mentionInsertText(item.entry.path, item.entry.isDir),
+        });
       },
       [onSelect],
     );
@@ -122,7 +171,7 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
       ref,
       () => ({
         handleKeyDown: (event) => {
-          if (entries.length === 0) return false;
+          if (items.length === 0) return false;
           if (
             event.nativeEvent?.isComposing ||
             (event.key === "Enter" && event.shiftKey)
@@ -137,61 +186,101 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
           if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
             const direction = event.key === "ArrowDown" ? 1 : -1;
-            const nextIndex = (activeIndex + direction + entries.length) % entries.length;
-            setActivePath(entries[nextIndex]?.path ?? null);
+            const nextIndex = (activeIndex + direction + items.length) % items.length;
+            setActiveKey(items[nextIndex]?.key ?? null);
             return true;
           }
           if (event.key === "Enter" || event.key === "Tab") {
-            if (!activeEntry) return false;
+            if (!activeItem) return false;
             event.preventDefault();
-            select(activeEntry);
+            select(activeItem);
             return true;
           }
           return false;
         },
       }),
-      [activeEntry, activeIndex, entries, onClose, select],
+      [activeItem, activeIndex, items, onClose, select],
     );
 
-    if (entries.length === 0) return null;
+    if (items.length === 0) return null;
+
+    const optionClass = (selected: boolean) =>
+      cn(
+        "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors",
+        selected && "bg-accent text-accent-foreground",
+      );
+    const showHeadings = agents.length > 0 && entries.length > 0;
 
     return (
       <div
         id="ai-mention-menu"
         role="listbox"
-        aria-label="Project files"
+        aria-label={agents.length > 0 ? "Agents and project files" : "Project files"}
         className="absolute bottom-full left-0 z-50 mb-2 max-h-72 w-full overflow-y-auto rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
       >
-        {entries.map((entry, index) => {
+        {items.map((item, index) => {
           const selected = index === activeIndex;
+          if (item.kind === "agent") {
+            const { target } = item;
+            return (
+              <div key={item.key}>
+                {showHeadings && index === 0 && (
+                  <p className="px-2.5 pb-1 pt-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Delegate to an agent
+                  </p>
+                )}
+                <button
+                  id={`ai-mention-${item.key}`}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  tabIndex={-1}
+                  onMouseEnter={() => setActiveKey(item.key)}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => select(item)}
+                  className={optionClass(selected)}
+                >
+                  <Bot className="size-4 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1 truncate text-xs leading-snug">
+                    <span className="font-medium">{target.label}</span>
+                    <span className="text-muted-foreground"> · {target.detail}</span>
+                  </span>
+                </button>
+              </div>
+            );
+          }
+          const { entry } = item;
           const basename = mentionBasename(entry.path);
           const directory = entry.path.slice(0, entry.path.length - basename.length);
           const Icon = entry.isDir ? Folder : File;
           return (
-            <button
-              id={`ai-mention-${entry.path}`}
-              key={entry.path}
-              type="button"
-              role="option"
-              aria-selected={selected}
-              tabIndex={-1}
-              onMouseEnter={() => setActivePath(entry.path)}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => select(entry)}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors",
-                selected && "bg-accent text-accent-foreground",
+            <div key={item.key}>
+              {showHeadings && index === agents.length && (
+                <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Project files
+                </p>
               )}
-            >
-              <Icon className="size-4 shrink-0 text-primary" />
-              <span className="min-w-0 flex-1 truncate text-xs leading-snug">
-                {directory && (
-                  <span className="text-muted-foreground">{directory}</span>
-                )}
-                <span className="font-medium">{basename}</span>
-                {entry.isDir && <span className="text-muted-foreground">/</span>}
-              </span>
-            </button>
+              <button
+                id={`ai-mention-${entry.path}`}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                tabIndex={-1}
+                onMouseEnter={() => setActiveKey(item.key)}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => select(item)}
+                className={optionClass(selected)}
+              >
+                <Icon className="size-4 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 truncate text-xs leading-snug">
+                  {directory && (
+                    <span className="text-muted-foreground">{directory}</span>
+                  )}
+                  <span className="font-medium">{basename}</span>
+                  {entry.isDir && <span className="text-muted-foreground">/</span>}
+                </span>
+              </button>
+            </div>
           );
         })}
       </div>

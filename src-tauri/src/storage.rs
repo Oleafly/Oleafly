@@ -1364,6 +1364,7 @@ fn permanently_delete_recycled_project_sync(recycle_id: &str) -> Result<(), Stri
     // A crash or later Store::destroy failure therefore remains retryable.
     let cleanup_path = write_cleanup_job(&cleanup)?;
     remove_cleanup_target_if_present(&cleanup)?;
+    crate::research_workspace::roots::forget_project(&manifest.project_id);
     complete_cleanup_job_locked(&cleanup_path, &cleanup).map_err(|error| {
         format!("the project was deleted, but its Checkpoints cleanup failed: {error}")
     })

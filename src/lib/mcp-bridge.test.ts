@@ -85,7 +85,33 @@ import {
   validateToolInput,
 } from "@/lib/mcp-bridge";
 import { registerCuaSurface } from "@/lib/cua-sandbox";
+import { invoke } from "@tauri-apps/api/core";
+import type { SkillEntry } from "@/lib/skills";
 import { useSettingsStore } from "@/store/settings";
+
+function skillFixture(overrides: Partial<SkillEntry> = {}): SkillEntry {
+  return {
+    id: "evidence-audit",
+    name: "Evidence audit",
+    description: "Check claims against sources",
+    instructions: "Read the manuscript first.",
+    dir: "/library/skills/evidence-audit",
+    files: [
+      { path: "scripts/collect.py", bytes: 200 },
+      { path: "reference.md", bytes: 120 },
+    ],
+    allowedTools: [],
+    tier: "user",
+    tools: [],
+    source: "user",
+    updateAvailable: false,
+    projectEnabled: false,
+    enabled: true,
+    removable: true,
+    validation: { status: "valid" },
+    ...overrides,
+  };
+}
 
 // The registry is built at collection time and computer_use is only exposed
 // when the experimental web browser is on, so enable it before the describe.
@@ -138,6 +164,35 @@ describe("mcp tool registry", () => {
     expect(ro.list_skills).toBeDefined();
     expect(ro.load_skill).toBeDefined();
     expect(ro.read_skill_file).toBeDefined();
+  });
+
+  it("reports a project override as disabled and hands load_skill its script commands", async () => {
+    const overridden = skillFixture({ projectDisabled: true });
+    vi.mocked(invoke).mockResolvedValueOnce([overridden]);
+    expect(await registry.list_skills.execute({})).toEqual({
+      skills: [
+        {
+          id: "evidence-audit",
+          name: "Evidence audit",
+          description: "Check claims against sources",
+          phase: null,
+          tier: "user",
+          enabled: false,
+        },
+      ],
+    });
+
+    vi.mocked(invoke).mockResolvedValueOnce([skillFixture()]);
+    expect(await registry.load_skill.execute({ id: "evidence-audit" })).toMatchObject({
+      id: "evidence-audit",
+      dir: "/library/skills/evidence-audit",
+      scripts: [
+        {
+          path: "scripts/collect.py",
+          command: 'python3 "/library/skills/evidence-audit/scripts/collect.py"',
+        },
+      ],
+    });
   });
 
   it("adds the MCP-only orientation tools", () => {

@@ -184,23 +184,14 @@ fn skill_records() -> Result<Vec<crate::skills::SkillRecord>, String> {
 }
 
 fn valid_skill(record: &crate::skills::SkillRecord) -> bool {
-    matches!(record.validation, crate::skills::SkillValidation::Valid)
+    record.is_valid()
 }
 
 fn list_skills() -> Result<Value, String> {
     let skills: Vec<Value> = skill_records()?
-        .into_iter()
-        .filter(valid_skill)
-        .map(|record| {
-            json!({
-                "id": record.id,
-                "name": record.name,
-                "description": record.description,
-                "phase": record.phase,
-                "tier": record.tier,
-                "enabled": record.enabled,
-            })
-        })
+        .iter()
+        .filter(|record| valid_skill(record))
+        .map(crate::skills::skill_tool_summary)
         .collect();
     Ok(payload(json!({ "skills": skills })))
 }
@@ -212,19 +203,7 @@ fn load_skill(arguments: &Value) -> Result<Value, String> {
         .filter(valid_skill)
         .find(|record| record.id == id)
         .ok_or_else(|| format!("no skill named {id} is installed"))?;
-    let files: Vec<Value> = record
-        .files
-        .iter()
-        .map(|file| json!({ "path": file.path, "bytes": file.bytes }))
-        .collect();
-    Ok(payload(json!({
-        "id": record.id,
-        "name": record.name,
-        "description": record.description,
-        "dir": record.dir,
-        "files": files,
-        "instructions": record.instructions,
-    })))
+    Ok(payload(crate::skills::skill_tool_payload(&record)))
 }
 
 fn read_skill_file(arguments: &Value) -> Result<Value, String> {

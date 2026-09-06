@@ -8,6 +8,11 @@ use tauri::{AppHandle, Manager, Runtime, Webview};
 use crate::commands::{Command, CommandEnvelope, Response, WindowInfo};
 use crate::native_capture::RecordingSession;
 
+// A cold start on a loaded CI runner (software GL on Linux, a first-launch
+// webview on Windows) can take well over two seconds to register its window.
+// The budget is a wait for readiness, not a hot loop, so it is generous.
+const WINDOW_RESOLVE_ATTEMPTS: u32 = 300;
+
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
 pub type PendingResults = Arc<Mutex<HashMap<String, oneshot::Sender<String>>>>;
@@ -621,7 +626,7 @@ async fn eval_js<R: Runtime>(
                 break w;
             }
             attempts += 1;
-            if attempts >= 20 {
+            if attempts >= WINDOW_RESOLVE_ATTEMPTS {
                 pending.lock().await.remove(&id);
                 let mut available: Vec<String> = app.windows().keys().cloned().collect();
                 available.sort();

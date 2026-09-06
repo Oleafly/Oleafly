@@ -41,6 +41,8 @@ import {
 import { useFilesStore } from "@/store/files";
 import { fileTreePathIsHidden, useSettingsStore } from "@/store/settings";
 import { FileIcon } from "@/components/files/fileIcon";
+import { LinkedFoldersSection } from "@/components/research/LinkedFoldersSection";
+import { TaskOutputsSection } from "@/components/research/TaskOutputsSection";
 import { isFileConflictError } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -478,6 +480,10 @@ export function FileTree() {
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+
+      <LinkedFoldersSection />
+
+      <TaskOutputsSection />
 
       {conflict && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">

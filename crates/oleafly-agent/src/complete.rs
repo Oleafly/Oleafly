@@ -60,9 +60,82 @@ fn completion_timeout(req: &CompletionRequest) -> Duration {
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum InputTokenSemantics {
+    Inclusive,
+    Exclusive,
+    #[default]
+    Unknown,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct Usage {
     pub input: u32,
     pub output: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_known: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_known: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_read: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_write: Option<u32>,
+    #[serde(default, skip_serializing_if = "is_unknown_input_semantics")]
+    pub input_semantics: InputTokenSemantics,
+}
+
+impl Usage {
+    pub fn reported_input(&self) -> Option<u32> {
+        self.input_known
+            .unwrap_or_else(|| self.has_legacy_observation())
+            .then_some(self.input)
+    }
+
+    pub fn reported_output(&self) -> Option<u32> {
+        self.output_known
+            .unwrap_or_else(|| self.has_legacy_observation())
+            .then_some(self.output)
+    }
+
+    fn has_legacy_observation(&self) -> bool {
+        self.input != 0
+            || self.output != 0
+            || self.cache_read.is_some()
+            || self.cache_write.is_some()
+            || self.input_semantics != InputTokenSemantics::Unknown
+    }
+
+    pub fn is_observed(&self) -> bool {
+        self.reported_input().is_some()
+            || self.reported_output().is_some()
+            || self.cache_read.is_some()
+            || self.cache_write.is_some()
+    }
+
+    pub(crate) fn merge_snapshot(&mut self, next: Self) {
+        if let Some(input) = next.reported_input() {
+            self.input = input;
+            self.input_known = Some(true);
+        } else if self.input_known.is_none() {
+            self.input_known = Some(false);
+        }
+        if let Some(output) = next.reported_output() {
+            self.output = output;
+            self.output_known = Some(true);
+        } else if self.output_known.is_none() {
+            self.output_known = Some(false);
+        }
+        self.cache_read = next.cache_read.or(self.cache_read);
+        self.cache_write = next.cache_write.or(self.cache_write);
+        if next.input_semantics != InputTokenSemantics::Unknown {
+            self.input_semantics = next.input_semantics;
+        }
+    }
+}
+
+fn is_unknown_input_semantics(value: &InputTokenSemantics) -> bool {
+    *value == InputTokenSemantics::Unknown
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,6 +153,30 @@ fn as_u32(value: Option<&Value>) -> u32 {
         .unwrap_or(0)
 }
 
+fn as_optional_u32(value: Option<&Value>) -> Option<u32> {
+    value
+        .and_then(|value| value.as_u64())
+        .map(|number| u32::try_from(number).unwrap_or(u32::MAX))
+}
+
+pub(crate) fn openai_cached_tokens(usage: &Value) -> Option<u32> {
+    as_optional_u32(usage.pointer("/prompt_tokens_details/cached_tokens"))
+        .or_else(|| as_optional_u32(usage.get("prompt_cache_hit_tokens")))
+}
+
+pub(crate) fn google_output_tokens(meta: &Value) -> Option<u32> {
+    let candidates = as_optional_u32(meta.get("candidatesTokenCount"));
+    let thoughts = as_optional_u32(meta.get("thoughtsTokenCount"));
+    match (candidates, thoughts) {
+        (None, None) => None,
+        (candidates, thoughts) => Some(
+            candidates
+                .unwrap_or(0)
+                .saturating_add(thoughts.unwrap_or(0)),
+        ),
+    }
+}
+
 pub(crate) fn parse_openai(body: &Value) -> Result<(String, Usage)> {
     let message = body
         .pointer("/choices/0/message")
@@ -92,8 +189,22 @@ pub(crate) fn parse_openai(body: &Value) -> Result<(String, Usage)> {
     let usage = Usage {
         input: as_u32(body.pointer("/usage/prompt_tokens")),
         output: as_u32(body.pointer("/usage/completion_tokens")),
+        input_known: Some(as_optional_u32(body.pointer("/usage/prompt_tokens")).is_some()),
+        output_known: Some(as_optional_u32(body.pointer("/usage/completion_tokens")).is_some()),
+        cache_read: body.get("usage").and_then(openai_cached_tokens),
+        cache_write: (as_optional_u32(body.pointer("/usage/prompt_tokens")).is_some()
+            || as_optional_u32(body.pointer("/usage/completion_tokens")).is_some())
+        .then_some(0),
+        input_semantics: InputTokenSemantics::Inclusive,
     };
-    Ok((text, usage))
+    Ok((
+        text,
+        if body.get("usage").is_some_and(Value::is_object) {
+            usage
+        } else {
+            Usage::default()
+        },
+    ))
 }
 
 pub(crate) fn parse_openai_responses(body: &Value) -> Result<(String, Usage)> {
@@ -118,8 +229,22 @@ pub(crate) fn parse_openai_responses(body: &Value) -> Result<(String, Usage)> {
     let usage = Usage {
         input: as_u32(body.pointer("/usage/input_tokens")),
         output: as_u32(body.pointer("/usage/output_tokens")),
+        input_known: Some(as_optional_u32(body.pointer("/usage/input_tokens")).is_some()),
+        output_known: Some(as_optional_u32(body.pointer("/usage/output_tokens")).is_some()),
+        cache_read: as_optional_u32(body.pointer("/usage/input_tokens_details/cached_tokens")),
+        cache_write: (as_optional_u32(body.pointer("/usage/input_tokens")).is_some()
+            || as_optional_u32(body.pointer("/usage/output_tokens")).is_some())
+        .then_some(0),
+        input_semantics: InputTokenSemantics::Inclusive,
     };
-    Ok((text, usage))
+    Ok((
+        text,
+        if body.get("usage").is_some_and(Value::is_object) {
+            usage
+        } else {
+            Usage::default()
+        },
+    ))
 }
 
 pub(crate) fn parse_anthropic(body: &Value) -> Result<(String, Usage)> {
@@ -136,8 +261,20 @@ pub(crate) fn parse_anthropic(body: &Value) -> Result<(String, Usage)> {
     let usage = Usage {
         input: as_u32(body.pointer("/usage/input_tokens")),
         output: as_u32(body.pointer("/usage/output_tokens")),
+        input_known: Some(as_optional_u32(body.pointer("/usage/input_tokens")).is_some()),
+        output_known: Some(as_optional_u32(body.pointer("/usage/output_tokens")).is_some()),
+        cache_read: as_optional_u32(body.pointer("/usage/cache_read_input_tokens")),
+        cache_write: as_optional_u32(body.pointer("/usage/cache_creation_input_tokens")),
+        input_semantics: InputTokenSemantics::Exclusive,
     };
-    Ok((text, usage))
+    Ok((
+        text,
+        if body.get("usage").is_some_and(Value::is_object) {
+            usage
+        } else {
+            Usage::default()
+        },
+    ))
 }
 
 pub(crate) fn parse_google(body: &Value) -> Result<(String, Usage)> {
@@ -151,11 +288,26 @@ pub(crate) fn parse_google(body: &Value) -> Result<(String, Usage)> {
         .filter_map(|p| p.get("text").and_then(|t| t.as_str()))
         .collect::<Vec<_>>()
         .join("");
+    let meta = body.get("usageMetadata").unwrap_or(&Value::Null);
+    let output = google_output_tokens(meta);
+    let counted = as_optional_u32(meta.get("promptTokenCount")).is_some() || output.is_some();
     let usage = Usage {
-        input: as_u32(body.pointer("/usageMetadata/promptTokenCount")),
-        output: as_u32(body.pointer("/usageMetadata/candidatesTokenCount")),
+        input: as_u32(meta.get("promptTokenCount")),
+        output: output.unwrap_or(0),
+        input_known: Some(as_optional_u32(meta.get("promptTokenCount")).is_some()),
+        output_known: Some(output.is_some()),
+        cache_read: as_optional_u32(meta.get("cachedContentTokenCount")).or(counted.then_some(0)),
+        cache_write: counted.then_some(0),
+        input_semantics: InputTokenSemantics::Inclusive,
     };
-    Ok((text, usage))
+    Ok((
+        text,
+        if body.get("usageMetadata").is_some_and(Value::is_object) {
+            usage
+        } else {
+            Usage::default()
+        },
+    ))
 }
 
 pub(crate) fn request_error(error: reqwest::Error) -> AgentError {
@@ -315,10 +467,72 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn missing_usage_and_partial_counters_do_not_become_reported_zero() {
+        let samples = [
+            (
+                parse_openai as fn(&Value) -> Result<(String, Usage)>,
+                json!({"choices":[{"message":{"content":"answer"}}]}),
+                "usage",
+                "prompt_tokens",
+                "completion_tokens",
+            ),
+            (
+                parse_openai_responses,
+                json!({"output":[]}),
+                "usage",
+                "input_tokens",
+                "output_tokens",
+            ),
+            (
+                parse_anthropic,
+                json!({"content":[]}),
+                "usage",
+                "input_tokens",
+                "output_tokens",
+            ),
+            (
+                parse_google,
+                json!({"candidates":[{"content":{"parts":[]}}]}),
+                "usageMetadata",
+                "promptTokenCount",
+                "candidatesTokenCount",
+            ),
+        ];
+        for (parse, mut body, key, input_key, output_key) in samples {
+            let absent = parse(&body).unwrap().1;
+            assert_eq!(absent, Usage::default());
+            assert_eq!(absent.reported_input(), None);
+            assert_eq!(absent.reported_output(), None);
+            body[key] = json!({});
+            let empty = parse(&body).unwrap().1;
+            assert_eq!(empty.reported_input(), None);
+            assert_eq!(empty.reported_output(), None);
+            assert_eq!(empty.cache_read, None);
+            assert_eq!(empty.cache_write, None);
+            body[key] = json!({input_key: 0});
+            let input_only = parse(&body).unwrap().1;
+            assert_eq!(input_only.reported_input(), Some(0));
+            assert_eq!(input_only.reported_output(), None);
+            body[key] = json!({output_key: 0});
+            let output_only = parse(&body).unwrap().1;
+            assert_eq!(output_only.reported_input(), None);
+            assert_eq!(output_only.reported_output(), Some(0));
+            body[key] = json!({input_key: 0, output_key: 0});
+            let zero = parse(&body).unwrap().1;
+            assert_eq!(zero.reported_input(), Some(0));
+            assert_eq!(zero.reported_output(), Some(0));
+        }
+    }
+
+    #[test]
     fn openai_reply_and_usage_are_read_from_the_documented_shape() {
         let body = json!({
             "choices": [{ "message": { "role": "assistant", "content": "x^2" } }],
-            "usage": { "prompt_tokens": 12, "completion_tokens": 3 }
+            "usage": {
+                "prompt_tokens": 12,
+                "completion_tokens": 3,
+                "prompt_tokens_details": { "cached_tokens": 4 }
+            }
         });
         let (text, usage) = parse_openai(&body).unwrap();
         assert_eq!(text, "x^2");
@@ -326,7 +540,12 @@ mod tests {
             usage,
             Usage {
                 input: 12,
-                output: 3
+                output: 3,
+                input_known: Some(true),
+                output_known: Some(true),
+                cache_read: Some(4),
+                cache_write: Some(0),
+                input_semantics: InputTokenSemantics::Inclusive,
             }
         );
     }
@@ -345,7 +564,11 @@ mod tests {
                     ]
                 }
             ],
-            "usage": { "input_tokens": 17, "output_tokens": 5 }
+            "usage": {
+                "input_tokens": 17,
+                "output_tokens": 5,
+                "input_tokens_details": { "cached_tokens": 6 }
+            }
         });
         let (text, usage) = parse_openai_responses(&body).unwrap();
         assert_eq!(text, "part one part two");
@@ -353,7 +576,12 @@ mod tests {
             usage,
             Usage {
                 input: 17,
-                output: 5
+                output: 5,
+                input_known: Some(true),
+                output_known: Some(true),
+                cache_read: Some(6),
+                cache_write: Some(0),
+                input_semantics: InputTokenSemantics::Inclusive,
             }
         );
     }
@@ -417,7 +645,12 @@ mod tests {
                 { "type": "text", "text": "part one " },
                 { "type": "text", "text": "part two" }
             ],
-            "usage": { "input_tokens": 5, "output_tokens": 7 }
+            "usage": {
+                "input_tokens": 5,
+                "output_tokens": 7,
+                "cache_read_input_tokens": 2,
+                "cache_creation_input_tokens": 3
+            }
         });
         let (text, usage) = parse_anthropic(&body).unwrap();
         assert_eq!(text, "part one part two");
@@ -425,7 +658,12 @@ mod tests {
             usage,
             Usage {
                 input: 5,
-                output: 7
+                output: 7,
+                input_known: Some(true),
+                output_known: Some(true),
+                cache_read: Some(2),
+                cache_write: Some(3),
+                input_semantics: InputTokenSemantics::Exclusive,
             }
         );
     }
@@ -438,7 +676,11 @@ mod tests {
                 { "text": "a" },
                 { "text": "b" }
             ] } }],
-            "usageMetadata": { "promptTokenCount": 9, "candidatesTokenCount": 2 }
+            "usageMetadata": {
+                "promptTokenCount": 9,
+                "candidatesTokenCount": 2,
+                "cachedContentTokenCount": 4
+            }
         });
         let (text, usage) = parse_google(&body).unwrap();
         assert_eq!(text, "ab");
@@ -446,9 +688,74 @@ mod tests {
             usage,
             Usage {
                 input: 9,
-                output: 2
+                output: 2,
+                input_known: Some(true),
+                output_known: Some(true),
+                cache_read: Some(4),
+                cache_write: Some(0),
+                input_semantics: InputTokenSemantics::Inclusive,
             }
         );
+    }
+
+    #[test]
+    fn google_thinking_tokens_count_as_output_and_absent_cache_reads_as_zero() {
+        let body = json!({
+            "candidates": [{ "content": { "parts": [{ "text": "a" }] } }],
+            "usageMetadata": {
+                "promptTokenCount": 9,
+                "candidatesTokenCount": 2,
+                "thoughtsTokenCount": 30
+            }
+        });
+        let (_, usage) = parse_google(&body).unwrap();
+        assert_eq!(usage.reported_output(), Some(32));
+        assert_eq!(usage.cache_read, Some(0));
+        assert_eq!(usage.cache_write, Some(0));
+
+        let thoughts_only = json!({
+            "candidates": [{ "content": { "parts": [] } }],
+            "usageMetadata": { "promptTokenCount": 9, "thoughtsTokenCount": 5 }
+        });
+        assert_eq!(
+            parse_google(&thoughts_only).unwrap().1.reported_output(),
+            Some(5)
+        );
+    }
+
+    #[test]
+    fn openai_compatible_cache_hits_are_read_from_either_documented_key() {
+        let deepseek = json!({
+            "choices": [{ "message": { "content": "x" } }],
+            "usage": { "prompt_tokens": 12, "completion_tokens": 3, "prompt_cache_hit_tokens": 8 }
+        });
+        assert_eq!(parse_openai(&deepseek).unwrap().1.cache_read, Some(8));
+        let unreported = json!({
+            "choices": [{ "message": { "content": "x" } }],
+            "usage": { "prompt_tokens": 12, "completion_tokens": 3 }
+        });
+        assert_eq!(parse_openai(&unreported).unwrap().1.cache_read, None);
+    }
+
+    #[test]
+    fn usage_observation_presence_ignores_unreported_zero_counters() {
+        assert!(!Usage::default().is_observed());
+        assert!(!Usage {
+            input_known: Some(false),
+            output_known: Some(false),
+            ..Usage::default()
+        }
+        .is_observed());
+        assert!(Usage {
+            input_known: Some(true),
+            ..Usage::default()
+        }
+        .is_observed());
+        assert!(Usage {
+            cache_read: Some(0),
+            ..Usage::default()
+        }
+        .is_observed());
     }
 
     #[test]

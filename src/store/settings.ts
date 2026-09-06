@@ -53,6 +53,7 @@ export type RailTab =
   | "review"
   | "preflight"
   | "refs"
+  | "research"
   | "mcp";
 
 export type DockPlacement = "left" | "right" | "bottom";

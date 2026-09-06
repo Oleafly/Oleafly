@@ -64,6 +64,7 @@ zeroize = "=1.8.1"
 libc = "0.2"
 serde_yaml = "0.9"
 same-file = "1"
+tempfile = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 security-framework = "=2.11.1"
@@ -91,4 +92,3 @@ e2e-testing = ["dep:tauri-plugin-playwright"]
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }
-tempfile = { workspace = true }

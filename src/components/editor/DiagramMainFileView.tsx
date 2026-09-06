@@ -1,14 +1,17 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DiagramCanvas, DiagramKitContext } from "@oleafly/diagram";
 import {
   buildStandaloneDoc,
   DIAGRAM_LIBS,
-  parseEmbeddedModel,
+  diagramFromSource,
+  sameDiagramModel,
   serializeDiagram,
   type DiagramModel,
 } from "@oleafly/latex";
 import { KIT } from "@/components/diagram/diagram-kit";
-import { readFileContent, writeFileContent } from "@/lib/tauri";
+import { readFileContent } from "@/lib/tauri";
+import { useFilesStore } from "@/store/files";
+import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 
 // Lazy-loaded from Editor.tsx (React.lazy): this is the only place the
 // always-mounted editor would otherwise pull in @oleafly/diagram (and its
@@ -24,39 +27,54 @@ export default function DiagramMainFileView({
   const [notDrawable, setNotDrawable] = useState(false);
   const [background, setBackground] = useState("#ffffff");
 
+  const loadGeneration = useRef(0);
+  // React Flow emits a model on its first measurement pass, with no user
+  // action behind it. Writing that back would rewrite hand-written TikZ into
+  // generated form the moment the file is opened.
+  const loadedModel = useRef<DiagramModel | null>(null);
+  const reload = useCallback(async () => {
+    const generation = ++loadGeneration.current;
+    setModel(null);
+    const content = useFilesStore.getState().files[path]?.content ?? await readFileContent(projectId, path);
+    if (generation !== loadGeneration.current || useFilesStore.getState().projectId !== projectId) return;
+    const model = diagramFromSource(content);
+    loadedModel.current = model;
+    setModel(model);
+    setNotDrawable(!model);
+    setBackground(model?.background ?? "#ffffff");
+  }, [projectId, path]);
   useEffect(() => {
-    let cancelled = false;
     setModel(null);
     setNotDrawable(false);
-    readFileContent(projectId, path).then((content) => {
-      if (cancelled) return;
-      const m = parseEmbeddedModel(content);
-      if (m) {
-        setModel(m);
-        setBackground(m.background !== undefined ? m.background : "#ffffff");
-      } else {
-        setNotDrawable(true);
-      }
+    void reload().catch(() => setNotDrawable(true));
+    const unregister = registerEditorMutationOwner({
+      projectId: () => projectId,
+      reconcile: reload,
     });
     return () => {
-      cancelled = true;
+      loadGeneration.current++;
+      unregister();
     };
-  }, [projectId, path]);
+  }, [projectId, reload]);
 
   const onModelChange = (m: DiagramModel) => {
+    const files = useFilesStore.getState();
+    if (isEditorMutationLocked(projectId) || files.projectId !== projectId || files.activePath !== path) return;
+    if (sameDiagramModel(loadedModel.current, m)) return;
+    loadedModel.current = null;
     setModel(m);
     const doc = buildStandaloneDoc({
       code: serializeDiagram({ ...m, background }),
       libraries: DIAGRAM_LIBS,
       background,
     });
-    void writeFileContent(projectId, path, doc);
+    useFilesStore.getState().setContent(path, doc);
   };
 
   if (notDrawable) {
     return (
       <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
-        This diagram's TikZ wasn't authored in the composer, so it can't be shown as a canvas. Use the code view instead.
+        No shapes could be read out of this file's TikZ, so there is nothing to draw. Use the code view instead.
       </div>
     );
   }

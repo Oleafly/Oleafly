@@ -5,6 +5,7 @@ import {
   openProject,
   openSettings,
   pressGlobal,
+  chooseProjectKind,
 } from "../helpers";
 
 test.beforeEach(async ({ tauriPage }) => {
@@ -22,6 +23,24 @@ test("settings and template modals close through user interactions and restore f
   await tauriPage.focus('[data-testid="new-project"]');
   await expect(tauriPage.locator('[data-testid="new-project"]')).toBeFocused();
   await tauriPage.click('[data-testid="new-project"]');
+  // Creating a project opens the chooser first.
+  await expect(tauriPage.getByTestId("project-kind-chooser")).toBeVisible();
+  // The bridge's synthetic Escape never reaches this dialog's own keydown
+  // listener, so close it the way a reader would: with its Close button.
+  await tauriPage.evaluate(
+    `[...document.querySelectorAll('[data-testid="project-kind-chooser"] button')]
+      .find((button) => button.textContent?.trim() === "Close")?.click()`,
+  );
+  // Radix keeps the content mounted through its exit animation, so wait for the
+  // state it reports rather than for the node to disappear. Focus restore is
+  // asserted on the gallery below, which closes from a real key press.
+  await tauriPage.waitForFunction(
+    `document.querySelector('[data-testid="project-kind-chooser"]')?.getAttribute("data-state") !== "open"`,
+    5_000,
+  );
+
+  await tauriPage.click('[data-testid="new-project"]');
+  await chooseProjectKind(tauriPage, "template");
   await expect(tauriPage.getByTestId("template-gallery")).toBeVisible();
   await tauriPage.press("body", "Escape");
   await expect(tauriPage.getByTestId("template-gallery")).not.toBeVisible();

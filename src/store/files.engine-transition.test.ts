@@ -75,6 +75,7 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
 }));
 
 import { useFilesStore } from "./files";
+import { acquireEditorMutationLease, isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import { useMcpApprovalStore } from "./mcp-approvals";
 import { useSettingsStore } from "./settings";
 
@@ -1633,4 +1634,135 @@ describe("project engine transition", () => {
     expect(mocks.resetCompile).toHaveBeenCalledOnce();
     expect(useFilesStore.getState().engine.allow_shell_escape).toBe(true);
   });
+});
+
+
+describe("external project mutation lease", () => {
+  it("locks synchronously, flushes visual and source edits, and reconciles before unlocking", async () => {
+    seedProjectMetadata();
+    useFilesStore.setState({ files: { "main.tex": { content: "Before", dirty: false } }, activePath: "main.tex" });
+    const native = deferred<{ projectState: Awaited<ReturnType<typeof mocks.gitRestore>> }>();
+    const order: string[] = [];
+    const unregister = registerEditorMutationOwner({
+      projectId: () => "project",
+      setLocked: (locked) => order.push(locked ? "lock" : "unlock"),
+      reconcile: () => {
+        expect(isEditorMutationLocked("project")).toBe(true);
+        expect(useFilesStore.getState().files["main.tex"].content).toBe("Applied");
+        order.push("reconcile");
+      },
+    });
+    mocks.flushWysiwygPendingEdits.mockImplementationOnce(() => {
+      expect(isEditorMutationLocked("project")).toBe(true);
+      useFilesStore.getState().setContent("main.tex", "Unsaved visual edit");
+    });
+    const action = vi.fn(async () => {
+      expect(mocks.writeFileContent).toHaveBeenCalledWith("project", "main.tex", "Unsaved visual edit", 0);
+      expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+      order.push("apply");
+      return native.promise;
+    });
+    try {
+      const applying = useFilesStore.getState().runExternalProjectMutation("project", action);
+      expect(isEditorMutationLocked("project")).toBe(true);
+      await vi.waitFor(() => expect(action).toHaveBeenCalledOnce());
+      const closing = useFilesStore.getState().closeProject();
+      expect(useFilesStore.getState().projectId).toBe("project");
+      mocks.readFileContent.mockResolvedValue("Applied");
+      native.resolve({ projectState: await mocks.gitRestore() });
+      await applying;
+      await closing;
+      expect(order).toEqual(["lock", "apply", "reconcile", "unlock"]);
+      expect(isEditorMutationLocked("project")).toBe(false);
+    } finally {
+      unregister();
+    }
+  });
+
+  it("keeps failed saves dirty and never invokes the native mutation", async () => {
+    seedProjectMetadata();
+    useFilesStore.setState({ files: { "main.tex": { content: "Unsaved", dirty: true } } });
+    mocks.writeFileContent.mockRejectedValue(new Error("disk full"));
+    const action = vi.fn();
+    await expect(useFilesStore.getState().runExternalProjectMutation("project", action)).rejects.toThrow("disk full");
+    expect(action).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().files["main.tex"]).toEqual({ content: "Unsaved", dirty: true });
+    expect(isEditorMutationLocked("project")).toBe(false);
+    mocks.writeFileContent.mockResolvedValue(undefined);
+  });
+
+  it("times out preparation without allowing its late completion to apply", async () => {
+    seedProjectMetadata();
+    useFilesStore.setState({ files: {} });
+    const pending = deferred<number>();
+    mocks.projectMutationGeneration.mockReturnValue(pending.promise);
+    const action = vi.fn();
+    vi.useFakeTimers();
+    try {
+      const applying = useFilesStore.getState().runExternalProjectMutation("project", action);
+      const rejected = expect(applying).rejects.toThrow("took too long");
+      await vi.advanceTimersByTimeAsync(15_001);
+      await rejected;
+      expect(isEditorMutationLocked("project")).toBe(false);
+      pending.resolve(0);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(action).not.toHaveBeenCalled();
+    } finally {
+      pending.resolve(0);
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not release the lease on the preparation deadline after native admission", async () => {
+    seedProjectMetadata();
+    useFilesStore.setState({ files: {} });
+    const pending = deferred<{ projectState: Awaited<ReturnType<typeof mocks.gitRestore>> }>();
+    const action = vi.fn(() => pending.promise);
+    vi.useFakeTimers();
+    try {
+      const applying = useFilesStore.getState().runExternalProjectMutation("project", action);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(action).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(isEditorMutationLocked("project")).toBe(true);
+      pending.resolve({ projectState: await mocks.gitRestore() });
+      await applying;
+      expect(isEditorMutationLocked("project")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("allows owner synchronization but excludes a second concurrent lease", () => {
+    const lease = acquireEditorMutationLease("project");
+    try {
+      expect(() => acquireEditorMutationLease("project")).toThrow("still in progress");
+    } finally {
+      lease.release();
+    }
+  });
+});
+
+
+it("releases every owner even if one cleanup callback fails", () => {
+  const first = registerEditorMutationOwner({ projectId: () => "project", setLocked: (locked) => { if (!locked) throw new Error("stale view"); } });
+  const states: boolean[] = [];
+  const second = registerEditorMutationOwner({ projectId: () => "project", setLocked: (locked) => { states.push(locked); } });
+  const lease = acquireEditorMutationLease("project");
+  expect(() => lease.release()).not.toThrow();
+  expect(states).toEqual([true, false]);
+  first();
+  second();
+});
+
+it("removes stale clean buffers after an applied file cannot be reloaded", async () => {
+  seedProjectMetadata();
+  useFilesStore.setState({ files: { "main.tex": { content: "Before", dirty: false } }, activePath: "main.tex", openTabs: ["main.tex"] });
+  mocks.readFileContent.mockRejectedValue(new Error("read failed"));
+  const action = vi.fn(async () => ({ projectState: await mocks.gitRestore() }));
+  await expect(useFilesStore.getState().runExternalProjectMutation("project", action)).rejects.toThrow("could not be reloaded");
+  expect(action).toHaveBeenCalledOnce();
+  expect(useFilesStore.getState().activePath).toBeNull();
+  expect(useFilesStore.getState().files).toEqual({});
+  expect(isEditorMutationLocked("project")).toBe(false);
 });

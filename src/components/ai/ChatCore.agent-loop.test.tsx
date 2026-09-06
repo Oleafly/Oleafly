@@ -43,7 +43,9 @@ const mocks = vi.hoisted(() => ({
   runAgentHarness: vi.fn(),
   agentProbeModel: vi.fn(),
   agentSteer: vi.fn(),
+  agentThreadRead: vi.fn(),
   agentThreadArchive: vi.fn(),
+  acpOpen: vi.fn(),
   agentThreadFork: vi.fn(),
   claimPrewarmed: vi.fn(),
   approvalsList: vi.fn(),
@@ -56,7 +58,6 @@ const mocks = vi.hoisted(() => ({
   gitLog: vi.fn(),
   gitShow: vi.fn(),
   gitStatus: vi.fn(),
-  usageRecord: vi.fn(),
   checkProjectBudget: vi.fn(),
   buildWorkspaceContext: vi.fn(),
   retrieveProjectChunks: vi.fn(),
@@ -110,6 +111,7 @@ vi.mock("./agent-turn", async (importOriginal) => ({
 
 vi.mock("@/lib/agent-backend", () => ({
   agentSteer: (...args: unknown[]) => mocks.agentSteer(...args),
+  agentThreadRead: (...args: unknown[]) => mocks.agentThreadRead(...args),
   agentThreadArchive: (...args: unknown[]) => mocks.agentThreadArchive(...args),
   agentThreadFork: (...args: unknown[]) => mocks.agentThreadFork(...args),
   agentThreadClaimPrewarmed: (...args: unknown[]) => mocks.claimPrewarmed(...args),
@@ -128,7 +130,6 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   gitLog: (...args: unknown[]) => mocks.gitLog(...args),
   gitShow: (...args: unknown[]) => mocks.gitShow(...args),
   gitStatus: (...args: unknown[]) => mocks.gitStatus(...args),
-  usageRecord: (...args: unknown[]) => mocks.usageRecord(...args),
   readFileContent: (...args: unknown[]) => mocks.readFileContent(...args),
   mcpAgentToolsList: (...args: unknown[]) => mocks.mcpAgentToolsList(...args),
   mcpAgentToolAuthorize: (...args: unknown[]) => mocks.mcpAgentToolAuthorize(...args),
@@ -266,9 +267,48 @@ vi.mock("@/components/ai/ModelSelector", async () => {
   };
 });
 
-vi.mock("@/components/ai/SubagentActivity", () => ({
-  SubagentActivity: () => null,
-}));
+vi.mock("@/components/ai/SubagentActivity", async () => {
+  const React = await import("react");
+  return {
+    SubagentActivity: (props: {
+      onOpenSession?: (sessionId: string, runtime?: "built-in" | "acp" | null) => void;
+    }) =>
+      React.createElement(
+        "div",
+        null,
+        React.createElement(
+          "button",
+          {
+            type: "button",
+            "aria-label": "Open built-in child",
+            onClick: () => props.onOpenSession?.("thread-child", "built-in"),
+          },
+          "built-in",
+        ),
+        React.createElement(
+          "button",
+          {
+            type: "button",
+            "aria-label": "Open CLI child",
+            onClick: () => props.onOpenSession?.("acp-child", "acp"),
+          },
+          "acp",
+        ),
+      ),
+  };
+});
+
+vi.mock("@/store/acp-sessions", () => {
+  const state = {
+    open: (...args: unknown[]) => mocks.acpOpen(...args),
+    permissions: {} as Record<string, unknown[]>,
+  };
+  const useAcpSessionsStore = Object.assign(
+    <T,>(selector: (value: typeof state) => T) => selector(state),
+    { getState: () => state },
+  );
+  return { useAcpSessionsStore, attachAcpListeners: async () => () => {} };
+});
 
 vi.mock("@/components/branding/OleaflyAssistantMascot", () => ({
   OleaflyAssistantMascot: () => null,
@@ -371,6 +411,7 @@ let PLAN_MODE_PLANNING_PROMPT: typeof import("./ChatCore").PLAN_MODE_PLANNING_PR
 let PLAN_MODE_REVISION_LINE: typeof import("./ChatCore").PLAN_MODE_REVISION_LINE;
 let useChatGoalStore: typeof import("@/store/chat-goal").useChatGoalStore;
 let useAiToolSettingsStore: typeof import("@/store/ai-tool-settings").useAiToolSettingsStore;
+let useAssistantRuntimeStore: typeof import("@/store/assistant-runtime").useAssistantRuntimeStore;
 let activeChatRun: typeof import("./chat-run-registry").activeChatRun;
 let endChatRun: typeof import("./chat-run-registry").endChatRun;
 let act: typeof import("@testing-library/react").act;
@@ -453,6 +494,7 @@ beforeAll(async () => {
   ({ usePlanApprovalStore } = await import("@/store/plan-approval"));
   ({ useChatGoalStore } = await import("@/store/chat-goal"));
   ({ useAiToolSettingsStore } = await import("@/store/ai-tool-settings"));
+  ({ useAssistantRuntimeStore } = await import("@/store/assistant-runtime"));
   ({ activeChatRun, endChatRun } = await import("./chat-run-registry"));
 });
 
@@ -472,6 +514,9 @@ beforeEach(() => {
     .mockReset()
     .mockResolvedValue({ verdict: "verified", reason: "", probedAt: 1 });
   mocks.agentSteer.mockReset().mockResolvedValue({ status: "delivered" });
+  mocks.agentThreadRead.mockReset().mockResolvedValue([]);
+  mocks.acpOpen.mockReset().mockResolvedValue(undefined);
+  useAssistantRuntimeStore.setState({ runtime: "built-in", handoffRuntime: null });
   mocks.agentThreadArchive.mockReset().mockResolvedValue(true);
   mocks.agentThreadFork.mockReset().mockResolvedValue("thread-forked");
   mocks.claimPrewarmed.mockReset().mockResolvedValue(null);
@@ -494,7 +539,6 @@ beforeEach(() => {
   mocks.gitLog.mockReset().mockResolvedValue([]);
   mocks.gitShow.mockReset().mockResolvedValue("");
   mocks.gitStatus.mockReset().mockResolvedValue([]);
-  mocks.usageRecord.mockReset().mockResolvedValue(undefined);
   mocks.checkProjectBudget.mockReset().mockResolvedValue("ok");
   mocks.buildWorkspaceContext.mockReset().mockResolvedValue("");
   mocks.retrieveProjectChunks.mockReset().mockResolvedValue([]);
@@ -763,6 +807,43 @@ describe("ChatCore agent turns", () => {
     ).toBeChecked();
   });
 
+  it("opens a delegated built-in transcript in a dialog", async () => {
+    mocks.agentThreadRead.mockResolvedValue([
+      {
+        turnId: "child-turn",
+        clientTurnId: null,
+        status: "completed",
+        usage: { input: 1, output: 1 },
+        error: null,
+        stoppedAtCap: false,
+        items: [
+          { id: "u", item: { type: "userMessage", text: "verify the claim" }, completed: true },
+          { id: "a", item: { type: "agentMessage", text: "Verified." }, completed: true },
+        ],
+      },
+    ]);
+    const rendered = await renderChat();
+
+    fireEvent.click(rendered.getByRole("button", { name: "Open built-in child" }));
+    await waitFor(() => expect(mocks.agentThreadRead).toHaveBeenCalledWith("thread-child"));
+    await waitFor(() =>
+      expect(document.querySelector('[data-testid="session-transcript-dialog"]')).not.toBeNull(),
+    );
+    expect(document.body.textContent).toContain("Delegated task transcript");
+    expect(mocks.acpOpen).not.toHaveBeenCalled();
+  }, 20_000);
+
+  it("routes a delegated CLI child to the CLI agent view", async () => {
+    const rendered = await renderChat();
+
+    fireEvent.click(rendered.getByRole("button", { name: "Open CLI child" }));
+
+    expect(useAssistantRuntimeStore.getState().runtime).toBe("acp");
+    expect(mocks.acpOpen).toHaveBeenCalledWith(useFilesStore.getState().projectId, "acp-child");
+    expect(mocks.agentThreadRead).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-testid="session-transcript-dialog"]')).toBeNull();
+  });
+
   it("opens assistant MCP settings from the chat header chip", async () => {
     const rendered = await renderChat();
     const header = rendered.container.querySelector('[data-tour="ai-assistant-header"]');
@@ -770,6 +851,13 @@ describe("ChatCore agent turns", () => {
 
     const chip = within(header).getByRole("button", { name: "Assistant MCP settings" });
     expect(within(header).getByRole("button", { name: "Manage agent tools" })).toBeTruthy();
+    expect(within(header).getByRole("button", { name: "Assistant settings" })).toBeTruthy();
+    expect(await within(header).findByRole("button", { name: "Usage report" })).toBeTruthy();
+    expect(within(header).getByRole("button", { name: "New chat" })).toBeTruthy();
+    expect(within(header).getByRole("button", { name: "Chat history" })).toBeTruthy();
+    expect(within(header).getByTestId("ai-chat-float")).toBeTruthy();
+    expect(header.dataset.tourReady).toBe("true");
+    expect(rendered.container.querySelectorAll('[data-tour="ai-assistant-header"]')).toHaveLength(1);
     fireEvent.click(chip);
 
     expect(useSettingsStore.getState()).toMatchObject({
@@ -904,6 +992,63 @@ describe("ChatCore agent turns", () => {
     );
   });
 
+  it("marks the running step done once the turn ends cleanly", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "Review the manuscript");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    act(() => {
+      useAgentTodoStore.getState().setTodos([
+        { id: "1", content: "Inspect", status: "completed" },
+        { id: "2", content: "Synthesize", status: "in_progress" },
+      ]);
+    });
+    expect(rendered.getByTestId("agent-status-pill")).toBeInTheDocument();
+    expect(mocks.planProps.at(-1)?.todos).toHaveLength(2);
+
+    await act(async () => finishRun(0, "Here is the synthesis."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    await waitFor(() =>
+      expect(useAgentTodoStore.getState().todos.map((todo) => todo.status)).toEqual([
+        "completed",
+        "completed",
+      ]),
+    );
+    expect(rendered.queryByTestId("agent-status-pill")).toBeNull();
+    await waitFor(() => expect(rendered.getByTestId("agent-run-summary")).toBeInTheDocument());
+    const summaryTodos = (mocks.runSummaryProps.at(-1)?.todos ?? []) as Array<{ status: string }>;
+    expect(summaryTodos).toHaveLength(2);
+    expect(summaryTodos.every((todo) => todo.status === "completed")).toBe(true);
+  });
+
+  it("returns the running step to pending when the turn is stopped", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "Review the manuscript");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    act(() => {
+      useAgentTodoStore.getState().setTodos([
+        { id: "1", content: "Inspect", status: "completed" },
+        { id: "2", content: "Edit", status: "in_progress" },
+        { id: "3", content: "Verify", status: "pending" },
+      ]);
+    });
+
+    fireEvent.click(rendered.getByRole("button", { name: "Stop" }));
+    await act(async () => finishRun(0, ""));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    await waitFor(() =>
+      expect(useAgentTodoStore.getState().todos.map((todo) => todo.status)).toEqual([
+        "completed",
+        "pending",
+        "pending",
+      ]),
+    );
+    expect(rendered.getByTestId("agent-status-pill")).toBeInTheDocument();
+    const pillTodos = (mocks.planProps.at(-1)?.todos ?? []) as Array<{ status: string }>;
+    expect(pillTodos.map((todo) => todo.status)).toEqual(["completed", "pending", "pending"]);
+  });
+
   it("clears the previous checklist when starting a new chat", async () => {
     const rendered = await renderChat();
     submit(rendered, "Finish a planned turn");
@@ -947,19 +1092,23 @@ describe("ChatCore agent turns", () => {
     try {
       submit(rendered, "Timestamp this turn");
       await waitFor(() => expect(mocks.runs).toHaveLength(1));
-      expect(useChatsStore.getState().byId("chat-1")?.messages).toEqual([
-        expect.objectContaining({ role: "user", createdAt: 1_000 }),
-        expect.objectContaining({ role: "assistant", createdAt: 1_000 }),
-      ]);
+      await waitFor(() =>
+        expect(useChatsStore.getState().byId("chat-1")?.messages).toEqual([
+          expect.objectContaining({ role: "user", createdAt: 1_000 }),
+          expect.objectContaining({ role: "assistant", createdAt: 1_000 }),
+        ]),
+      );
 
       now = 2_000;
       await act(async () => finishRun(0, "Timestamped response"));
       await waitFor(() => expect(activeChatRun()).toBeNull());
 
-      expect(useChatsStore.getState().byId("chat-1")?.messages).toEqual([
-        expect.objectContaining({ role: "user", createdAt: 1_000 }),
-        expect.objectContaining({ role: "assistant", createdAt: 2_000 }),
-      ]);
+      await waitFor(() =>
+        expect(useChatsStore.getState().byId("chat-1")?.messages).toEqual([
+          expect.objectContaining({ role: "user", createdAt: 1_000 }),
+          expect.objectContaining({ role: "assistant", createdAt: 2_000 }),
+        ]),
+      );
     } finally {
       dateNow.mockRestore();
     }
@@ -987,16 +1136,18 @@ describe("ChatCore agent turns", () => {
       { role: "user", content: "First follow-up" },
     ]);
 
-    expect(
-      useChatsStore.getState().byId("chat-1")?.messages.map(
-        (message: ChatMessage) => ({ role: message.role, content: message.content }),
-      ),
-    ).toEqual([
-      { role: "user", content: "First request" },
-      { role: "assistant", content: "First response" },
-      { role: "user", content: "First follow-up" },
-      { role: "assistant", content: "" },
-    ]);
+    await waitFor(() =>
+      expect(
+        useChatsStore.getState().byId("chat-1")?.messages.map(
+          (message: ChatMessage) => ({ role: message.role, content: message.content }),
+        ),
+      ).toEqual([
+        { role: "user", content: "First request" },
+        { role: "assistant", content: "First response" },
+        { role: "user", content: "First follow-up" },
+        { role: "assistant", content: "" },
+      ]),
+    );
 
     await act(async () => finishRun(1, "First follow-up response"));
     await waitFor(() => expect(mocks.runs).toHaveLength(3));
@@ -1094,14 +1245,16 @@ describe("ChatCore agent turns", () => {
         attachments: [expect.objectContaining({ name: "retry.txt" })],
       }),
     ]);
-    expect(
-      useChatsStore.getState().byId("chat-1")?.messages.map(
-        (message: ChatMessage) => ({ role: message.role, content: message.content }),
-      ),
-    ).toEqual([
-      { role: "user", content: "First request" },
-      { role: "assistant", content: "First response" },
-    ]);
+    await waitFor(() =>
+      expect(
+        useChatsStore.getState().byId("chat-1")?.messages.map(
+          (message: ChatMessage) => ({ role: message.role, content: message.content }),
+        ),
+      ).toEqual([
+        { role: "user", content: "First request" },
+        { role: "assistant", content: "First response" },
+      ]),
+    );
     expect(useAgentTurnsStore.getState().recordsByChat["chat-1"]).toHaveLength(1);
 
     submit(rendered, "Recovery request");
@@ -1508,6 +1661,7 @@ describe("ChatCore agent turns", () => {
     });
     const originalRequestFrame = globalThis.requestAnimationFrame;
     const originalCancelFrame = globalThis.cancelAnimationFrame;
+    let unsubscribe = () => {};
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
       value: "visible",
@@ -1525,6 +1679,17 @@ describe("ChatCore agent turns", () => {
       const rendered = await renderChat();
       submit(rendered, "Stream a burst");
       await waitFor(() => expect(mocks.runs).toHaveLength(1));
+      const publishedLengths: number[] = [];
+      unsubscribe = useChatsStore.subscribe((state, previous) => {
+        const length = state.live["chat-1"]?.at(-1)?.content.length ?? 0;
+        const previousLength = previous.live["chat-1"]?.at(-1)?.content.length ?? 0;
+        if (length !== previousLength) publishedLengths.push(length);
+      });
+      const flushFrame = (timestamp: number) => {
+        const scheduled = [...callbacks.values()];
+        callbacks.clear();
+        act(() => { for (const callback of scheduled) callback(timestamp); });
+      };
 
       act(() => {
         for (let index = 0; index < 600; index += 1) {
@@ -1532,20 +1697,15 @@ describe("ChatCore agent turns", () => {
         }
       });
 
-      expect(requestFrame).toHaveBeenCalledTimes(1);
-      expect(callbacks).toHaveLength(1);
-      const first = callbacks.entries().next().value as [number, FrameRequestCallback];
-      callbacks.delete(first[0]);
-      act(() => first[1](0));
-      expect(requestFrame).toHaveBeenCalledTimes(2);
-      expect(callbacks).toHaveLength(1);
+      expect(publishedLengths).toEqual([]);
+      flushFrame(0);
+      expect(publishedLengths).toEqual([512]);
       expect(useChatsStore.getState().live["chat-1"].at(-1)?.content).toHaveLength(512);
 
-      const second = callbacks.entries().next().value as [number, FrameRequestCallback];
-      callbacks.delete(second[0]);
-      act(() => second[1](16));
-      expect(callbacks).toHaveLength(0);
+      flushFrame(16);
+      expect(publishedLengths).toEqual([512, 600]);
       expect(useChatsStore.getState().live["chat-1"].at(-1)?.content).toHaveLength(600);
+      unsubscribe();
 
       await act(async () => {
         mocks.runs[0].resolve({
@@ -1558,6 +1718,7 @@ describe("ChatCore agent turns", () => {
       });
       await waitFor(() => expect(activeChatRun()).toBeNull());
     } finally {
+      unsubscribe();
       Reflect.deleteProperty(document, "visibilityState");
       Object.defineProperties(globalThis, {
         requestAnimationFrame: { configurable: true, value: originalRequestFrame },
@@ -1841,6 +2002,9 @@ describe("ChatCore agent turns", () => {
         write_file: false,
         run_command: false,
         literature_search: false,
+        list_research_roots: false,
+        list_research_root_files: false,
+        read_research_root_file: false,
         mcp__papers__search_papers: false,
         preview_figure: false,
         insert_figure: false,
@@ -2356,9 +2520,12 @@ describe("ChatCore agent turns", () => {
     const planning = await planFirstTurn(rendered, "Rename the intro and tighten the abstract");
 
     expect(Object.keys(planning.tools).sort()).toEqual([
+      "list_research_root_files",
+      "list_research_roots",
       "literature_search",
       "load_image",
       "read_file",
+      "read_research_root_file",
       "update_todos",
     ]);
     for (const name of ["write_file", "run_command", "mcp__papers__search_papers"]) {
@@ -2454,9 +2621,12 @@ describe("ChatCore agent turns", () => {
     await waitFor(() => expect(mocks.runs).toHaveLength(2));
     const revision = mocks.runs[1].options;
     expect(Object.keys(revision.tools).sort()).toEqual([
+      "list_research_root_files",
+      "list_research_roots",
       "literature_search",
       "load_image",
       "read_file",
+      "read_research_root_file",
       "update_todos",
     ]);
     expect(revision.system).toContain(PLAN_MODE_PLANNING_PROMPT);
@@ -3606,6 +3776,9 @@ describe("ChatCore model trust", () => {
         write_file: false,
         run_command: false,
         literature_search: false,
+        list_research_roots: false,
+        list_research_root_files: false,
+        read_research_root_file: false,
         mcp__papers__search_papers: false,
         preview_figure: false,
         insert_figure: false,

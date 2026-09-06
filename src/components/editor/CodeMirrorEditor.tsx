@@ -1,3 +1,4 @@
+import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import { useEffect } from "react";
 import type { Extension } from "@codemirror/state";
 import type { KeyBinding } from "@codemirror/view";
@@ -154,6 +155,11 @@ const HOST: EditorHost = {
   },
   getContent: (path) => useFilesStore.getState().files[path]?.content ?? "",
   setContent: (path, content) => useFilesStore.getState().setContent(path, content),
+  isEditLocked: () => isEditorMutationLocked(useFilesStore.getState().projectId),
+  registerMutationOwner: (owner) => registerEditorMutationOwner({
+    ...owner,
+    projectId: () => useFilesStore.getState().projectId,
+  }),
   useSettings: () => ({
     vim: useSettingsStore((s) => s.vim),
     spellcheck: useSettingsStore((s) => s.spellcheck),

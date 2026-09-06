@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
 import { act, fireEvent, getByRole, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { clearExpansionState } from "./activity/expansion-state";
+import { ResearchToolCard } from "./activity/ResearchToolCard";
 import { useFilesStore } from "@/store/files";
 
 const tauriMocks = vi.hoisted(() => ({
@@ -151,7 +153,7 @@ describe("ToolPicture", () => {
     };
     const finished = render(<ToolBadge tc={tc} />);
     expect(finished.queryByTestId("tool-image")).toBeNull();
-    fireEvent.click(finished.getByRole("button", { name: /preview_figure/ }));
+    fireEvent.click(finished.getByRole("button", { name: /Preview figure/ }));
     expect(finished.getByTestId("tool-image")).toBeInTheDocument();
     finished.unmount();
 
@@ -210,6 +212,215 @@ describe("SubagentCard", () => {
       container.querySelector('[data-subagent-state="done"] .animate-spin'),
     ).toBeNull();
     expect(getByText("Found 3 papers.")).toBeInTheDocument();
+  });
+
+  it("splits the Codex skills budget warning into a notice row", () => {
+    const { getByTestId, getByText, queryByText } = render(
+      <SubagentCard
+        entry={{
+          id: "s1",
+          label: "Survey diffusion",
+          state: "done",
+          detail: "Warning: Exceeded skills context budget of 4000 tokens.\nFound 3 papers.",
+        }}
+      />,
+    );
+    expect(getByTestId("agent-notice")).toHaveTextContent(
+      "Codex could not list all of its skills.",
+    );
+    expect(getByText("Found 3 papers.")).toBeInTheDocument();
+    expect(queryByText(/Exceeded skills context budget/)).toBeNull();
+  });
+
+  it("shows a stopped icon instead of a spinner for an interrupted subagent", () => {
+    const { container, getByText } = render(
+      <SubagentCard
+        entry={{ id: "s1", label: "Survey diffusion", state: "interrupted", detail: "" }}
+      />,
+    );
+    expect(container.querySelector(".animate-spin")).toBeNull();
+    expect(getByText("Stopped")).toBeInTheDocument();
+    expect(getByText("The task was stopped before it answered.")).toBeInTheDocument();
+  });
+
+  it("shows the model badge and offers to expand a long answer", () => {
+    const originalScrollHeight = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "scrollHeight",
+    );
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+      configurable: true,
+      get: () => 800,
+    });
+    try {
+      const { getByTestId, getByRole } = render(
+        <SubagentCard
+          entry={{
+            id: "s1",
+            label: "Codex: review main.tex",
+            state: "done",
+            detail: "1) Severity: nitpick.\n\n2) Severity: major.",
+            runtime: "acp",
+            agentId: "codex",
+            modelId: "gpt-5.3-codex-spark",
+          }}
+        />,
+      );
+      expect(getByTestId("subagent-model")).toHaveTextContent("gpt-5.3-codex-spark");
+      expect(getByTestId("subagent-output")).toHaveAttribute("data-expanded", "false");
+      fireEvent.click(getByRole("button", { name: "Show more" }));
+      expect(getByTestId("subagent-output")).toHaveAttribute("data-expanded", "true");
+      expect(getByRole("button", { name: "Show less" })).toBeInTheDocument();
+    } finally {
+      if (originalScrollHeight) {
+        Object.defineProperty(HTMLElement.prototype, "scrollHeight", originalScrollHeight);
+      }
+    }
+  });
+
+  it("opens the recorded delegated session through the supplied boundary", () => {
+    const openSession = vi.fn();
+    render(
+      <SubagentCard
+        entry={{
+          id: "s1",
+          label: "Survey diffusion",
+          state: "done",
+          sessionId: "acp-session",
+          runtime: "acp",
+        }}
+        actions={{ openSession }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open task" }));
+    expect(openSession).toHaveBeenCalledWith({ threadId: "acp-session", runtime: "acp" });
+  });
+});
+
+describe("ResearchToolCard", () => {
+  beforeEach(clearExpansionState);
+
+  it("renders papers and opens a typed source target", () => {
+    const openSource = vi.fn();
+    render(
+      <ResearchToolCard
+        expansionKey="chat:search"
+        actions={{ openSource }}
+        tc={{
+          name: "literature_search",
+          status: "done",
+          output: JSON.stringify({
+            results: [{
+              id: "https://openalex.org/W1",
+              title: "Useful paper",
+              doi: "https://doi.org/10.1000/useful",
+              publication_year: 2024,
+              authorships: [{ author: { display_name: "A. Rivera" } }],
+              primary_location: { landing_page_url: "https://example.org/useful" },
+            }],
+          }),
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Search literature/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Open source: Useful paper" }));
+    expect(openSource).toHaveBeenCalledWith({
+      sourceId: "https://openalex.org/W1",
+      url: "https://example.org/useful",
+      doi: "10.1000/useful",
+    });
+  });
+
+  it("bounds long output and keeps expansion after an unmount", () => {
+    const output = JSON.stringify({ content: "x".repeat(8_000) });
+    const first = render(
+      <ResearchToolCard
+        expansionKey="chat:read"
+        tc={{ name: "read_file", status: "done", output }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Read file/ }));
+    expect(screen.getByText(/Show all 8,000 characters/)).toBeInTheDocument();
+    first.unmount();
+
+    render(
+      <ResearchToolCard
+        expansionKey="chat:read"
+        tc={{ name: "read_file", status: "done", output }}
+      />,
+    );
+    expect(screen.getByText(/Show all 8,000 characters/)).toBeInTheDocument();
+  });
+
+  it("does not call navigation for an unsafe source URL", () => {
+    const openSource = vi.fn();
+    render(
+      <ResearchToolCard
+        actions={{ openSource }}
+        tc={{
+          name: "alphaxiv_paper_content",
+          status: "done",
+          output: JSON.stringify({ url: "javascript:alert(1)", content: "text" }),
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Read paper/ }));
+    expect(screen.queryByRole("button", { name: "Open source" })).toBeNull();
+    expect(openSource).not.toHaveBeenCalled();
+  });
+
+  it("does not offer manuscript navigation for an unscoped linked result", () => {
+    const openArtifact = vi.fn();
+    render(
+      <ResearchToolCard
+        actions={{ openArtifact }}
+        tc={{
+          name: "Read linked file",
+          status: "done",
+          output: JSON.stringify({ path: "notes.md", content: "linked notes" }),
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Read linked file/ }));
+    expect(screen.queryByRole("button", { name: "Open file" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Inspect source" })).toBeNull();
+    expect(openArtifact).not.toHaveBeenCalled();
+  });
+
+  it("previews a linked file through its root-scoped action", async () => {
+    const openArtifact = vi.fn().mockResolvedValue({
+      relativePath: "notes.md",
+      content: "fresh linked content",
+      truncated: false,
+      isBinary: false,
+    });
+    render(
+      <ResearchToolCard
+        actions={{ openArtifact }}
+        tc={{
+          name: "read_research_root_file",
+          status: "done",
+          output: JSON.stringify({
+            rootId: "references",
+            relativePath: "notes.md",
+            content: "saved linked content",
+          }),
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Read linked file/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Inspect source" }));
+
+    expect(openArtifact).toHaveBeenCalledWith({
+      scope: "linked",
+      rootId: "references",
+      relativePath: "notes.md",
+    });
+    expect(await screen.findByText("fresh linked content")).toBeInTheDocument();
   });
 });
 
@@ -874,6 +1085,65 @@ describe("MessageItem step grouping", () => {
       container.querySelector('[data-testid="worked-steps-toggle"]'),
     ).toBeNull();
   });
+
+  it("keeps a realistic research run in recorded order", () => {
+    const { container } = render(
+      <MessageItem
+        msg={{
+          id: "research-turn",
+          role: "assistant",
+          content: "The sources and compile result are ready.",
+          reasoningBlocks: [
+            { id: "r1", text: "Find primary sources", ms: 900, beforeTool: 0 },
+            { id: "r2", text: "Check the selected record", ms: 500, beforeTool: 1 },
+          ],
+          toolCalls: [
+            {
+              id: "search",
+              name: "literature_search",
+              status: "done",
+              output: JSON.stringify({ results: [{ title: "Primary study", id: "https://openalex.org/W1" }] }),
+            },
+            {
+              id: "verify",
+              name: "verify_citation",
+              status: "done",
+              output: JSON.stringify({ verified: true, source: "crossref-doi", doi: "10.1000/study" }),
+            },
+            {
+              id: "compile",
+              name: "compile",
+              status: "done",
+              output: JSON.stringify({ success: true, errors: [], has_pdf: true }),
+            },
+          ],
+        }}
+      />,
+    );
+
+    const ordered = Array.from(
+      container.querySelectorAll("[data-reasoning-block], [data-tool-name]"),
+    ).map((element) => element.hasAttribute("data-reasoning-block")
+      ? "reasoning"
+      : element.getAttribute("data-tool-name"));
+    expect(ordered).toEqual([
+      "reasoning",
+      "literature_search",
+      "reasoning",
+      "verify_citation",
+      "compile",
+    ]);
+    expect(container.querySelector('[data-testid="worked-steps-toggle"]')).toBeNull();
+    expect(container).toHaveTextContent("Verified by the citation service");
+    expect(container).toHaveTextContent("Compiled successfully");
+  });
+
+  it("does not render reasoning when none was recorded", () => {
+    const { container } = render(
+      <MessageItem msg={{ role: "assistant", content: "A direct answer." }} />,
+    );
+    expect(container.querySelector("[data-reasoning-block]")).toBeNull();
+  });
 });
 
 describe("MessageItem streaming render", () => {
@@ -931,11 +1201,19 @@ describe("MessageItem streaming render", () => {
 
     await waitFor(() => expect(container.querySelector("a")).toHaveTextContent("the guide"));
     expect(container.querySelector("a")).toHaveClass("text-white");
-    expect(container.querySelector("code")).toHaveClass(
-      "border-white/20",
-      "bg-white/10",
-      "text-white",
+    expect(container.querySelector("code")).toHaveClass("bg-white/15", "text-white");
+    expect(container.querySelector("code")).not.toHaveClass("border");
+  });
+
+  it("gives assistant bubbles a white surface in light theme and soft chips for inline code", async () => {
+    const { container } = render(
+      <MessageItem msg={{ role: "assistant", content: "Main document is back on `main.tex`." }} />,
     );
+    await waitFor(() => expect(container.querySelector("code")).toHaveTextContent("main.tex"));
+    expect(container.querySelector("code")).toHaveClass("bg-primary/10", "text-primary", "rounded-md");
+    expect(container.querySelector("code")).not.toHaveClass("border");
+    const bubble = container.querySelector(".chat-markdown")?.parentElement;
+    expect(bubble).toHaveClass("bg-background", "dark:bg-muted");
   });
 
   it("renders closed math while the assistant message streams", async () => {

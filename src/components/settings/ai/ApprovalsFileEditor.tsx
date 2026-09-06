@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { ChevronRight } from "lucide-react";
 import { StreamLanguage } from "@codemirror/language";
 import { toml } from "@codemirror/legacy-modes/mode/toml";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { editorTheme } from "@/components/editor/cm/theme";
+import { cn } from "@/lib/utils";
 import { approvalsReadRaw, approvalsWriteRaw } from "@/lib/tauri";
 import { useApprovalModeStore } from "@/store/approval-mode";
 import { useFilesStore } from "@/store/files";
@@ -45,6 +47,7 @@ export function ApprovalsFileEditor() {
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -130,9 +133,17 @@ export function ApprovalsFileEditor() {
         The Custom approval mode reads this file. It lives at ~/.oleafly/approvals.toml
         and applies to every project on this device.
       </div>
-      <details className="mb-2 rounded-md border bg-background px-2.5 py-2 text-xs">
-        <summary className="cursor-pointer font-medium">How the file works</summary>
-        <div className="mt-2 space-y-2 text-muted-foreground">
+      <div className="mb-2 rounded-md border bg-background px-2.5 py-2 text-xs">
+        <button
+          type="button"
+          aria-expanded={helpOpen}
+          onClick={() => setHelpOpen((current) => !current)}
+          className="flex w-full items-center gap-1 text-left font-medium"
+        >
+          <ChevronRight className={cn("size-3 transition-transform", helpOpen && "rotate-90")} />
+          How the file works
+        </button>
+        <div className={cn("mt-2 min-w-0 space-y-2 break-words text-muted-foreground", !helpOpen && "hidden")}>
           <p>
             The first table, <code className="font-mono">["$approval_modes"]</code>, sets the
             approval mode per project: <code className="font-mono">"ask-for-approval"</code>,{" "}
@@ -158,11 +169,12 @@ export function ApprovalsFileEditor() {
               </>
             ) : null}
           </p>
-          <p>
-            Tool names you can use: {TOOL_NAMES.map((name) => (
-              <code key={name} className="mr-1 font-mono">
-                {name}
-              </code>
+          <p className="break-words">
+            Tool names you can use:{" "}
+            {TOOL_NAMES.map((name) => (
+              <Fragment key={name}>
+                <code className="font-mono">{name}</code>{" "}
+              </Fragment>
             ))}
             and any MCP tool by its full name from the Tools list.
           </p>
@@ -171,7 +183,7 @@ export function ApprovalsFileEditor() {
             project" choice on an approval card rewrites the file without them.
           </p>
         </div>
-      </details>
+      </div>
       <div
         ref={hostRef}
         data-testid="approvals-file-source"

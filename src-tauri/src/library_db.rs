@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use rusqlite::Connection;
 use serde::Serialize;
@@ -13,12 +14,28 @@ fn db_path(root: &Path) -> PathBuf {
     root.join("library.db")
 }
 
+const SCHEMA_VERSION: i64 = 2;
+
 pub fn open(root: &Path) -> Result<Connection, String> {
     std::fs::create_dir_all(root).map_err(|e| format!("failed to create data dir: {e}"))?;
     let conn =
         Connection::open(db_path(root)).map_err(|e| format!("failed to open library.db: {e}"))?;
+    conn.busy_timeout(Duration::from_secs(5))
+        .map_err(|e| format!("failed to set library database timeout: {e}"))?;
     conn.pragma_update(None, "journal_mode", "WAL")
         .map_err(|e| format!("failed to enable WAL: {e}"))?;
+    let version: i64 = conn
+        .pragma_query_value(None, "user_version", |row| row.get(0))
+        .map_err(|e| format!("failed to read library schema version: {e}"))?;
+    if version < SCHEMA_VERSION {
+        ensure_schema(&conn)?;
+        conn.pragma_update(None, "user_version", SCHEMA_VERSION)
+            .map_err(|e| format!("failed to record library schema version: {e}"))?;
+    }
+    Ok(conn)
+}
+
+fn ensure_schema(conn: &Connection) -> Result<(), String> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS chats (
             project_id TEXT NOT NULL,
@@ -46,6 +63,114 @@ pub fn open(root: &Path) -> Result<Connection, String> {
             cost_usd REAL NOT NULL
         );
         CREATE INDEX IF NOT EXISTS usage_project ON usage(project_id);
+        CREATE TABLE IF NOT EXISTS usage_records (
+            record_key TEXT PRIMARY KEY,
+            event_id TEXT NOT NULL,
+            source_id TEXT NOT NULL,
+            source_turn_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            task_id TEXT,
+            session_id TEXT NOT NULL,
+            parent_session_id TEXT,
+            parent_record_key TEXT,
+            runtime_id TEXT NOT NULL,
+            provider_id TEXT,
+            model_id TEXT,
+            occurred_at_ms INTEGER NOT NULL,
+            input_tokens INTEGER,
+            output_tokens INTEGER,
+            cache_read_tokens INTEGER,
+            cache_write_tokens INTEGER,
+            input_semantics TEXT NOT NULL,
+            counter_semantics TEXT NOT NULL,
+            measurement TEXT NOT NULL,
+            billing_mode TEXT NOT NULL,
+            estimated_cost_usd REAL,
+            price_version TEXT,
+            duration_ms INTEGER,
+            status TEXT NOT NULL,
+            aggregation_scope TEXT NOT NULL,
+            observation_sequence INTEGER,
+            updated_at_ms INTEGER NOT NULL,
+            CHECK (input_tokens IS NULL OR input_tokens >= 0),
+            CHECK (output_tokens IS NULL OR output_tokens >= 0),
+            CHECK (cache_read_tokens IS NULL OR cache_read_tokens >= 0),
+            CHECK (cache_write_tokens IS NULL OR cache_write_tokens >= 0),
+            CHECK (estimated_cost_usd IS NULL OR estimated_cost_usd >= 0),
+            CHECK (duration_ms IS NULL OR duration_ms >= 0),
+            CHECK (input_semantics IN ('inclusive', 'exclusive', 'unknown')),
+            CHECK (counter_semantics IN ('delta', 'cumulative')),
+            CHECK (measurement IN ('provider_reported', 'runtime_reported', 'estimated', 'unavailable')),
+            CHECK (billing_mode IN ('api', 'subscription', 'local', 'unknown')),
+            CHECK (status IN ('in_progress', 'completed', 'failed', 'cancelled', 'interrupted')),
+            CHECK (aggregation_scope IN ('self', 'includes_children'))
+        );
+        CREATE INDEX IF NOT EXISTS usage_records_time ON usage_records(occurred_at_ms);
+        CREATE INDEX IF NOT EXISTS usage_records_project_time ON usage_records(project_id, occurred_at_ms);
+        CREATE INDEX IF NOT EXISTS usage_records_runtime_time ON usage_records(runtime_id, occurred_at_ms);
+        CREATE INDEX IF NOT EXISTS usage_records_provider_time ON usage_records(provider_id, occurred_at_ms);
+        CREATE INDEX IF NOT EXISTS usage_records_model_time ON usage_records(model_id, occurred_at_ms);
+        CREATE INDEX IF NOT EXISTS usage_records_session_time ON usage_records(session_id, occurred_at_ms);
+        CREATE TABLE IF NOT EXISTS library_migrations (
+            name TEXT PRIMARY KEY,
+            applied_at_ms INTEGER NOT NULL
+        );
+        INSERT OR IGNORE INTO usage_records (
+            record_key, event_id, source_id, source_turn_id, project_id,
+            task_id, session_id, parent_session_id, parent_record_key,
+            runtime_id, provider_id, model_id, occurred_at_ms,
+            input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
+            input_semantics, counter_semantics, measurement, billing_mode,
+            estimated_cost_usd, price_version, duration_ms, status,
+            aggregation_scope, updated_at_ms
+        )
+        SELECT
+            'legacy-usage:' || id, 'legacy-usage:' || id, 'legacy-frontend',
+            'legacy-usage:' || id, project_id, NULL, chat_id, NULL, NULL,
+            'built-in', provider, model, ts_ms, input_tokens, output_tokens,
+            NULL, NULL, 'unknown', 'delta', 'runtime_reported', 'unknown',
+            CASE WHEN cost_usd > 0 THEN cost_usd END,
+            CASE WHEN cost_usd > 0 THEN 'legacy-frontend' END,
+            NULL, 'completed', 'self', ts_ms
+        FROM usage
+        WHERE NOT EXISTS (
+            SELECT 1 FROM library_migrations WHERE name = 'usage-records-v1'
+        );
+        INSERT OR IGNORE INTO library_migrations (name, applied_at_ms)
+        VALUES ('usage-records-v1', CAST(strftime('%s', 'now') AS INTEGER) * 1000);
+        UPDATE usage_records
+        SET estimated_cost_usd = CASE WHEN estimated_cost_usd > 0 THEN estimated_cost_usd END,
+            price_version = CASE WHEN estimated_cost_usd > 0 THEN 'legacy-frontend' END
+        WHERE source_id = 'legacy-frontend'
+          AND price_version IS NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM library_migrations WHERE name = 'usage-records-v2'
+          );
+        INSERT OR IGNORE INTO library_migrations (name, applied_at_ms)
+        VALUES ('usage-records-v2', CAST(strftime('%s', 'now') AS INTEGER) * 1000);
+        DROP TRIGGER IF EXISTS usage_legacy_mirror;
+        CREATE TRIGGER usage_legacy_mirror
+        AFTER INSERT ON usage
+        BEGIN
+            INSERT OR IGNORE INTO usage_records (
+                record_key, event_id, source_id, source_turn_id, project_id,
+                task_id, session_id, parent_session_id, parent_record_key,
+                runtime_id, provider_id, model_id, occurred_at_ms,
+                input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
+                input_semantics, counter_semantics, measurement, billing_mode,
+                estimated_cost_usd, price_version, duration_ms, status,
+                aggregation_scope, updated_at_ms
+            ) VALUES (
+                'legacy-usage:' || NEW.id, 'legacy-usage:' || NEW.id,
+                'legacy-frontend', 'legacy-usage:' || NEW.id, NEW.project_id,
+                NULL, NEW.chat_id, NULL, NULL, 'built-in', NEW.provider,
+                NEW.model, NEW.ts_ms, NEW.input_tokens, NEW.output_tokens,
+                NULL, NULL, 'unknown', 'delta', 'runtime_reported', 'unknown',
+                CASE WHEN NEW.cost_usd > 0 THEN NEW.cost_usd END,
+                CASE WHEN NEW.cost_usd > 0 THEN 'legacy-frontend' END,
+                NULL, 'completed', 'self', NEW.ts_ms
+            );
+        END;
         CREATE TABLE IF NOT EXISTS budgets (
             project_id TEXT PRIMARY KEY,
             budget_usd REAL NOT NULL
@@ -68,7 +193,33 @@ pub fn open(root: &Path) -> Result<Connection, String> {
         );",
     )
     .map_err(|e| format!("failed to create library schema: {e}"))?;
-    Ok(conn)
+    if !has_usage_observation_sequence(conn)? {
+        let migration = conn.execute(
+            "ALTER TABLE usage_records ADD COLUMN observation_sequence INTEGER",
+            [],
+        );
+        if let Err(error) = migration {
+            if !has_usage_observation_sequence(conn)? {
+                return Err(format!("Usage schema migration failed: {error}"));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn has_usage_observation_sequence(conn: &Connection) -> Result<bool, String> {
+    let mut statement = conn
+        .prepare("PRAGMA table_info(usage_records)")
+        .map_err(|error| error.to_string())?;
+    let names = statement
+        .query_map([], |row| row.get::<_, String>(1))
+        .map_err(|error| error.to_string())?;
+    for name in names {
+        if name.map_err(|error| error.to_string())? == "observation_sequence" {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn now_ms() -> i64 {
@@ -226,6 +377,7 @@ pub struct UsageTotals {
     pub cost_usd: f64,
 }
 
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 pub fn record_usage(
     root: &Path,
@@ -237,6 +389,12 @@ pub fn record_usage(
     output_tokens: i64,
     cost_usd: f64,
 ) -> Result<(), String> {
+    if input_tokens < 0 || output_tokens < 0 {
+        return Err("usage counters must be nonnegative".into());
+    }
+    if !cost_usd.is_finite() || cost_usd < 0.0 {
+        return Err("usage cost must be a finite nonnegative number".into());
+    }
     let conn = open(root)?;
     conn.execute(
         "INSERT INTO usage (ts_ms, project_id, chat_id, provider, model,
@@ -260,9 +418,23 @@ pub fn record_usage(
 pub fn usage_totals(root: &Path, project_id: &str) -> Result<UsageTotals, String> {
     let conn = open(root)?;
     conn.query_row(
-        "SELECT COALESCE(SUM(input_tokens), 0), COALESCE(SUM(output_tokens), 0),
-                COALESCE(SUM(cost_usd), 0)
-         FROM usage WHERE project_id = ?1",
+        "SELECT COALESCE(SUM(CASE
+                    WHEN input_semantics = 'exclusive'
+                         AND cache_read_tokens IS NOT NULL
+                         AND cache_write_tokens IS NOT NULL
+                        THEN input_tokens + cache_read_tokens + cache_write_tokens
+                    WHEN input_semantics = 'exclusive' THEN NULL
+                    ELSE input_tokens
+                END), 0),
+                COALESCE(SUM(output_tokens), 0),
+                COALESCE(SUM(estimated_cost_usd), 0)
+         FROM usage_records u
+         WHERE project_id = ?1
+           AND NOT EXISTS (
+               SELECT 1 FROM usage_records parent
+               WHERE parent.record_key = u.parent_record_key
+                 AND parent.aggregation_scope = 'includes_children'
+           )",
         [project_id],
         |row| {
             Ok(UsageTotals {
@@ -544,33 +716,6 @@ pub async fn chats_search(query: String) -> Result<Vec<ChatSearchHit>, String> {
 }
 
 #[tauri::command]
-pub async fn usage_record(
-    project_id: String,
-    chat_id: String,
-    provider: String,
-    model: String,
-    input_tokens: i64,
-    output_tokens: i64,
-    cost_usd: f64,
-) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let root = crate::paths::oleafly_root()?;
-        record_usage(
-            &root,
-            &project_id,
-            &chat_id,
-            &provider,
-            &model,
-            input_tokens,
-            output_tokens,
-            cost_usd,
-        )
-    })
-    .await
-    .map_err(|e| format!("usage record task failed: {e}"))?
-}
-
-#[tauri::command]
 pub async fn usage_summary(project_id: String) -> Result<UsageTotals, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let root = crate::paths::oleafly_root()?;
@@ -719,7 +864,11 @@ mod tests {
         let mut recorder = oleafly_agent::items::TurnRecorder::new(turn_id);
         recorder.record(&AgentEvent::TextDelta { text: text.into() });
         recorder.record(&AgentEvent::Usage {
-            usage: oleafly_agent::Usage { input, output },
+            usage: oleafly_agent::Usage {
+                input,
+                output,
+                ..oleafly_agent::Usage::default()
+            },
         });
         recorder.finish(false);
         recorder.into_record()

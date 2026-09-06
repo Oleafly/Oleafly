@@ -5,6 +5,7 @@
 // stores, no Tauri, no React.
 
 import type { AgentEvent } from "./agent-events";
+import type { AgentUsage } from "./usage";
 
 export type PlanTodo = { step: string; status: string };
 
@@ -43,6 +44,11 @@ export type StoreItem =
   | { type: "collabAgentToolCall"; tool: string; arguments: unknown; result: unknown }
   | {
       type: "subAgentActivity";
+      runtime?: "built-in" | "acp" | null;
+      sessionId?: string | null;
+      providerId?: string | null;
+      modelId?: string | null;
+      runtimeAgentId?: string | null;
       agentId: string;
       label: string;
       kind: string;
@@ -115,7 +121,7 @@ export type TurnRecord = {
   clientTurnId: string | null;
   status: TurnRecordStatus;
   items: RecordedStoreItem[];
-  usage: { input: number; output: number };
+  usage: AgentUsage;
   error: string | null;
   stoppedAtCap: boolean;
 };
@@ -321,12 +327,17 @@ export class TurnFold {
         push(
           {
             type: "subAgentActivity",
+            runtime: event.runtime,
+            sessionId: event.sessionId,
+            providerId: event.providerId,
+            modelId: event.modelId,
+            runtimeAgentId: event.agentId,
             agentId: event.id,
             label: event.label,
             kind: event.state,
             detail: event.detail,
           },
-          event.state === "done" || event.state === "error",
+          event.state === "done" || event.state === "error" || event.state === "interrupted",
         );
         break;
       }

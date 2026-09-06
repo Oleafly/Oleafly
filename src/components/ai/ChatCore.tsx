@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { lazy, Suspense, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
 import { runAgentHarness, toAgentMessages } from "./agent-turn";
-import { DeltaQueues, MAX_BATCH } from "@oleafly/ai-core";
+import { DeltaQueues, MAX_BATCH, normalizeAgentUsage } from "@oleafly/ai-core";
 import {
   DEFAULT_APPROVAL_MODE,
   PLAN_MODE_TOOL_ERROR,
@@ -17,6 +17,15 @@ import { useAgentTurnsStore, type QueuedFollowUp } from "@/store/agent-turns";
 import { useAssistantOutputsStore } from "@/store/assistant-outputs";
 import { SubagentActivity } from "./SubagentActivity";
 import {
+  AssistantFloatButton,
+  AssistantShellHeader,
+  useAssistantShellLeading,
+} from "./AssistantShellHeader";
+import { useAgentTargets } from "./use-agent-targets";
+import { useResearchChatActions } from "./use-research-chat-actions";
+import { agentDelegationPrompt, type DelegationTarget } from "@/lib/agent-mentions";
+import { createResearchWorkspaceTools } from "@/lib/research-workspace-tools";
+import {
   agentSteer,
   agentThreadArchive,
   agentThreadClaimPrewarmed,
@@ -26,6 +35,7 @@ import { launchBrowser } from "@/lib/browser-window";
 import {
   ArrowUp,
   BadgeDollarSign,
+  BarChart3,
   BookOpen,
   Brain,
   Check,
@@ -36,8 +46,6 @@ import {
   Info,
   Lightbulb,
   Loader2,
-  MessageSquareQuote,
-  PanelRightOpen,
   Plus,
   Presentation,
   RotateCcw,
@@ -54,7 +62,7 @@ import {
   X,
 } from "lucide-react";
 import { useFilesStore } from "@/store/files";
-import { agentProbeModel, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, usageRecord, type AppConfig, type CustomProvider, type McpAgentServer, type ModelProbe, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
+import { agentProbeModel, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, type AppConfig, type CustomProvider, type McpAgentServer, type ModelProbe, type Persona, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
@@ -66,6 +74,7 @@ import {
 import { supportsFigureTools } from "@/lib/document-engine";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { ToolConfirm } from "@/components/ai/ToolConfirm";
+import { DelegatedPermissions } from "@/components/ai/DelegatedPermissions";
 import { ApprovalModeSelector } from "@/components/ai/ApprovalModeSelector";
 import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
 import { AiToolManager } from "@/components/ai/AiToolManager";
@@ -88,6 +97,7 @@ import {
   buildMentionEntries,
   filterMentionEntries,
   MentionMenu,
+  filterAgentTargets,
   type MentionMenuHandle,
 } from "@/components/ai/MentionMenu";
 import {
@@ -127,6 +137,8 @@ import { useChatsStore, type ChatMessage, type StoredChat } from "@/store/chats"
 import { objectKey } from "@/lib/react-key";
 import { registerAiToolsets } from "@/contributions/ai-toolsets";
 import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
+import { AssistantHome } from "@/components/ai/home/AssistantHome";
+import { RecentChats } from "@/components/ai/home/RecentChats";
 import { useAutoSizeTextarea } from "@/components/ai/use-auto-size-textarea";
 import {
   approvalModeForProject,
@@ -159,10 +171,12 @@ registerAiToolsets();
 import { useAgentTodoStore, type AgentTodo } from "@/store/agent-todos";
 import { useAgentMemoryStore } from "@/store/agent-memory";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
+import { useAssistantRuntimeStore } from "@/store/assistant-runtime";
+import { useAcpSessionsStore } from "@/store/acp-sessions";
+import { SessionTranscriptDialog } from "@/components/ai/activity/SessionTranscriptDialog";
 import { isToolEnabled, useAiToolSettingsStore } from "@/store/ai-tool-settings";
 import { buildWorkspaceContext } from "@/lib/ai-context";
 import { packChatHistory } from "@/lib/ai-context-pack";
-import { estimateUsd, formatUsd } from "@/lib/ai-pricing";
 import { formatRagContext, retrieveProjectChunks } from "@/lib/ai-rag";
 import { ChatHistoryModal } from "@/components/ai/ChatHistoryModal";
 import { PROMPT_CATEGORIES } from "@/components/ai/prompt-shortcuts";
@@ -566,8 +580,33 @@ export function modelNoticeText(
   return chatOnly ? CHAT_ONLY_MODEL_HINT : "";
 }
 
+const UsageReportDialog = lazy(() =>
+  import("@/components/usage/UsageReport").then((module) => ({ default: module.UsageReportDialog })),
+);
+
 export function ChatCore() {
   const projectId = useFilesStore((s) => s.projectId);
+  const researchChatActions = useResearchChatActions(projectId);
+  const [transcriptThreadId, setTranscriptThreadId] = useState<string | null>(null);
+  const openSession = useCallback(
+    (target: { threadId: string; runtime?: string | null }) => {
+      if (target.runtime === "acp") {
+        if (!projectId) return;
+        useAssistantRuntimeStore.getState().setRuntime("acp");
+        void useAcpSessionsStore
+          .getState()
+          .open(projectId, target.threadId)
+          .catch(() => toast.error("The agent session could not be opened."));
+        return;
+      }
+      setTranscriptThreadId(target.threadId);
+    },
+    [projectId],
+  );
+  const chatActions = useMemo(
+    () => ({ ...researchChatActions, openSession }),
+    [researchChatActions, openSession],
+  );
   const projectName = useFilesStore((s) => s.projectName);
   const documentEngine = useFilesStore((s) => s.engine);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
@@ -590,9 +629,8 @@ export function ChatCore() {
   const setGoal = useChatGoalStore((s) => s.setGoal);
   const clearGoal = useChatGoalStore((s) => s.clearGoal);
   const goal = goalForProject(goals, projectId);
-  const chatFloating = useSettingsStore((s) => s.chatFloating);
+  const shellLeading = useAssistantShellLeading();
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
-  const setChatFloating = useSettingsStore((s) => s.setChatFloating);
   const chats = useChatsStore((s) => s.chats);
   const chatsProjectId = useChatsStore((s) => s.projectId);
   const activeChatId = useChatsStore((s) => s.activeId);
@@ -699,6 +737,13 @@ export function ChatCore() {
     },
     [],
   );
+  const delegatedSubagents = useMemo(
+    () => messages.flatMap((message) => message.subagents ?? []),
+    [messages],
+  );
+  const agentThreadId = useAgentTurnsStore((s) =>
+    activeChatId ? s.threadByChat[activeChatId] : undefined,
+  );
   const [input, setInputState] = useState(() => savedDraft(useFilesStore.getState().projectId));
   const inputRef = useRef(input);
   inputRef.current = input;
@@ -777,10 +822,9 @@ export function ChatCore() {
   }, [goalDraft, projectId, setGoal]);
   const agentTodos = useAgentTodoStore((s) => s.todos);
   const [runUsage, setRunUsage] = useState<{
-    input: number;
-    output: number;
+    input: number | null;
+    output: number | null;
     steps: number;
-    usd: number;
   } | null>(null);
   const [restoringCheckpoint, setRestoringCheckpoint] = useState<string | null>(null);
   const handoffPending = useAgentHandoffStore((s) => s.pendingPrompt);
@@ -904,6 +948,7 @@ export function ChatCore() {
   );
   const toolManagerAvailability = useMemo(() => {
     const additions: RuntimeToolset[] = [
+      { id: "research-workspace", source: { kind: "project" }, tools: createResearchWorkspaceTools(projectId) },
       ...availableMcpToolsets,
       ...(Object.keys(availableSkillTools).length > 0
         ? [{ id: "skills", source: { kind: "skills" } as const, tools: availableSkillTools }]
@@ -924,6 +969,7 @@ export function ChatCore() {
       ),
     });
   }, [
+    projectId,
     availableMcpToolsets,
     availableSkillTools,
     documentEngine.capabilities.features,
@@ -946,10 +992,6 @@ export function ChatCore() {
       mentionQuery === null ? [] : filterMentionEntries(mentionEntries, mentionQuery),
     [mentionEntries, mentionQuery],
   );
-  const mentionMenuOpen =
-    mentionToken !== null &&
-    mentionMatches.length > 0 &&
-    mentionMenuDismissedInput !== input;
   const composerSkillToken = parseSkillCommand(input, invocableSkills);
   const composerSkillTokenClosed =
     composerSkillToken !== null && input.length > composerSkillToken.skill.id.length + 1;
@@ -1192,6 +1234,22 @@ export function ChatCore() {
       models: available,
     };
   });
+  const delegationTargets = useAgentTargets(projectId, modelGroups);
+  const delegationTargetsRef = useRef<DelegationTarget[]>(delegationTargets);
+  delegationTargetsRef.current = delegationTargets;
+  const agentMatches = useMemo(
+    () => (mentionQuery === null ? [] : filterAgentTargets(delegationTargets, mentionQuery)),
+    [delegationTargets, mentionQuery],
+  );
+  const composerMentionTargets = useMemo(
+    () => new Set([...mentionPaths, ...delegationTargets.map((target) => target.id)]),
+    [mentionPaths, delegationTargets],
+  );
+  const mentionMenuOpen =
+    mentionToken !== null &&
+    mentionMatches.length + agentMatches.length > 0 &&
+    mentionMenuDismissedInput !== input;
+
   // Load sticky agent memory when the project changes. Also drop the in-run
   // todo checklist, which is not project-scoped, so project A's plan does not
   // linger under project B.
@@ -1206,10 +1264,7 @@ export function ChatCore() {
     if (approval.load(activeChatId) === "approved" && !activeChatRun()) {
       approval.setStatus(activeChatId, "planning");
     }
-    const todoState = useAgentTodoStore.getState();
-    if (todoState.activeChatId === null && todoState.todosByChat[activeChatId] === undefined) {
-      todoState.selectChat(activeChatId);
-    }
+    useAgentTodoStore.getState().selectChat(activeChatId);
   }, [activeChatId]);
 
   // The panel unmounts whenever the sidebar collapses or another rail tab is
@@ -1375,6 +1430,23 @@ export function ChatCore() {
   const slashMenuOpen =
     slashCommandTriggered &&
     filterSlashCommands(slashCommands, slashCommandQuery(input)).length > 0;
+
+  const pickHomeSkill = useCallback(
+    (skill: SkillEntry) => {
+      const next = `/${skill.id} `;
+      setInput(next);
+      setComposerCaret(next.length);
+      setSlashMenuDismissedInput(next);
+      setActiveSlashCommandId(null);
+      requestAnimationFrame(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+        textarea.focus({ preventScroll: true });
+        textarea.setSelectionRange(next.length, next.length);
+      });
+    },
+    [setInput],
+  );
 
   const insertMention = useCallback(
     (start: number, text: string) => {
@@ -1568,10 +1640,10 @@ export function ChatCore() {
       ? `${skillDirectiveLine(skillCommand.skill)}\n${skillCommand.text}`.trim()
       : text;
     const runTree = useFilesStore.getState().tree;
-    const mentionedPaths = composerMentionPaths(
-      text,
-      runTree.map((entry) => normalizeMentionPath(entry.path)),
-    );
+    const mentionedPaths = composerMentionPaths(text, [
+      ...runTree.map((entry) => normalizeMentionPath(entry.path)),
+      ...delegationTargetsRef.current.map((target) => target.id),
+    ]);
     const runAttachments = [
       ...outgoing,
       ...(await mentionAttachments(projectId, text, runTree)),
@@ -1816,6 +1888,8 @@ export function ChatCore() {
     if (runIsCurrent()) setRunUsage(null);
     let usageIn = 0;
     let usageOut = 0;
+    let displayedUsageIn: number | null = null;
+    let displayedUsageOut: number | null = null;
     let usageSteps = 0;
     let runRequestId: string | null = null;
 
@@ -1956,6 +2030,7 @@ USER_CUSTOM_INSTRUCTIONS`
     const activeGoalLine = goalPromptLine(useChatGoalStore.getState().goal(projectId));
     const runSkillTools = createLoadSkillTools(runSkills, requestedSkillIds);
     const runToolAdditions: RuntimeToolset[] = [
+      { id: "research-workspace", source: { kind: "project" }, tools: createResearchWorkspaceTools(runProjectId) },
       ...createMcpRuntimeToolsets(runMcpServers, {
         confirm,
         isActive: () =>
@@ -2054,7 +2129,7 @@ Research rules:
 ${workspaceCtx}
 ${sandboxedCustom}`;
 
-    const effectiveSystem = `${systemPrompt}${
+    const effectiveSystem = `${systemPrompt}${agentDelegationPrompt(runText, delegationTargetsRef.current)}${
       runSkillCatalog ? `\n\n${runSkillCatalog}` : ""
     }${requestedSkillBlock ? `\n\n${requestedSkillBlock}` : ""}\n\n${approvalPostureLine(runApprovalMode)}${
       planTurn
@@ -2423,12 +2498,14 @@ ${sandboxedCustom}`;
           onUsage: (usage) => {
             usageIn = usage.input;
             usageOut = usage.output;
+            const normalized = normalizeAgentUsage(usage);
+            displayedUsageIn = normalized.inputTotal;
+            displayedUsageOut = normalized.outputTotal;
             if (runIsCurrent())
               setRunUsage({
-                input: usageIn,
-                output: usageOut,
+                input: displayedUsageIn,
+                output: displayedUsageOut,
                 steps: usageSteps,
-                usd: estimateUsd(model, usageIn, usageOut).usd,
               });
           },
           onSteered: (steeredText) => appendSteeredTurn(steeredText),
@@ -2441,6 +2518,11 @@ ${sandboxedCustom}`;
                 label: update.label,
                 state: update.state,
                 detail: update.detail ?? undefined,
+                runtime: update.runtime ?? undefined,
+                sessionId: update.sessionId ?? undefined,
+                providerId: update.providerId ?? undefined,
+                modelId: update.modelId ?? undefined,
+                agentId: update.agentId ?? undefined,
               };
               if (index >= 0) list[index] = entry;
               else list.push(entry);
@@ -2501,7 +2583,16 @@ ${sandboxedCustom}`;
       if (runChatId && trackedTurnId) {
         useAgentFileChangesStore.getState().finishTurn(runChatId, trackedTurnId);
       }
-      if (runChatId) useAgentTodoStore.getState().finishTurn(runChatId);
+      if (runChatId) {
+        useAgentTodoStore
+          .getState()
+          .finishTurn(
+            runChatId,
+            runEndedCleanly && planTurn !== "planning" && planTurn !== "revision"
+              ? "completed"
+              : "paused",
+          );
+      }
       if (runChatId && planTurn) {
         const approval = usePlanApprovalStore.getState();
         if (planTurn === "execution") {
@@ -2514,18 +2605,12 @@ ${sandboxedCustom}`;
       }
       if (abortRef.current === ac) abortRef.current = null;
       if (projectId && runChatId && (usageIn > 0 || usageOut > 0 || usageSteps > 0)) {
-        const { usd } = estimateUsd(model, usageIn, usageOut);
         void useChatsStore.getState().addUsageForProject(projectId, runChatId, {
           inputTokens: usageIn,
           outputTokens: usageOut,
           steps: usageSteps,
-          estimatedUsd: usd,
         });
-        // Durable per-provider/model ledger (library.db); drives the budget gate.
-        void usageRecord(projectId, runChatId, provider, model, usageIn, usageOut, usd).catch(
-          () => {},
-        );
-        if (runIsCurrent()) setRunUsage({ input: usageIn, output: usageOut, steps: usageSteps, usd });
+        if (runIsCurrent()) setRunUsage({ input: displayedUsageIn, output: displayedUsageOut, steps: usageSteps });
       }
       if (runIsCurrent()) {
         const completedAt = Date.now();
@@ -2584,6 +2669,17 @@ ${sandboxedCustom}`;
     if (!activeChatId || streaming || activeChatRun()) return;
     void send(PLAN_APPROVED_MESSAGE, undefined, { approvedPlan: true });
   }, [activeChatId, send, streaming]);
+
+  const homeQuickStarts = useMemo(
+    () =>
+      availableSuggestions(SUGGESTIONS, skillsQuery.data).map((suggestion) => ({
+        id: suggestion.label,
+        label: suggestion.label,
+        icon: suggestion.icon,
+        onSelect: () => void send(suggestion.send),
+      })),
+    [skillsQuery.data, send],
+  );
 
   const revisePlan = useCallback(() => {
     requestAnimationFrame(() => textareaRef.current?.focus({ preventScroll: true }));
@@ -2775,7 +2871,7 @@ ${sandboxedCustom}`;
           chatUsage.steps > 0)),
   );
   const usageSummary = runUsage
-    ? `Last run: ${runUsage.steps} step${runUsage.steps === 1 ? "" : "s"}, ${(runUsage.input + runUsage.output).toLocaleString()} tokens${runUsage.usd > 0 ? `, about ${formatUsd(runUsage.usd)}` : ""}`
+    ? `Last run: ${runUsage.steps} step${runUsage.steps === 1 ? "" : "s"}, ${runUsage.input === null || runUsage.output === null ? "token total unavailable" : `${(runUsage.input + runUsage.output).toLocaleString()} reported tokens`}`
     : chatUsage
       ? `This chat: ${chatUsage.steps} steps, ${chatTotal.toLocaleString()} tokens`
       : "AI usage";
@@ -2796,16 +2892,12 @@ ${sandboxedCustom}`;
       }
       className="ai-chat-shell flex h-full flex-col bg-sidebar"
     >
-      <div
+      <AssistantShellHeader
         data-tour="ai-assistant-header"
         data-tour-ready={providerConfigReady ? "true" : "false"}
-        className="flex h-9 shrink-0 items-center gap-1.5 border-b px-2"
-      >
-        {apiKey && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
-          <InfoHint message="This chat started from an older version of the project. File contents may differ from what the AI saw." />
-        )}
-        <div className="ml-auto flex items-center gap-0.5">
-          <div className="flex shrink-0 items-center gap-1">
+        leading={shellLeading}
+        actions={
+          <>
             <Tooltip label="Configure assistant MCP servers">
               <Button
                 type="button"
@@ -2834,12 +2926,8 @@ ${sandboxedCustom}`;
                 <Settings2 className="size-4" />
               </Button>
             </Tooltip>
-          </div>
-          {configuredProviders.length > 0 && (
-            <>
-
-              {hasUsage && (
-                <div data-tour="ai-usage">
+            {configuredProviders.length > 0 && hasUsage && (
+              <div data-tour="ai-usage">
                 <Tooltip label={usageSummary}>
                   <Popover
                     align="right"
@@ -2855,19 +2943,14 @@ ${sandboxedCustom}`;
                         <section data-testid="ai-run-usage">
                           <div className="mb-1.5 flex items-center justify-between">
                             <span className="font-medium text-foreground">Last run</span>
-                            {runUsage.usd > 0 && (
-                              <span className="font-medium tabular-nums text-emerald-600 dark:text-emerald-400">
-                                {formatUsd(runUsage.usd)}
-                              </span>
-                            )}
                           </div>
                           <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
                             <dt>Steps</dt>
                             <dd className="text-right tabular-nums">{runUsage.steps}</dd>
                             <dt>Input</dt>
-                            <dd className="text-right tabular-nums">{runUsage.input.toLocaleString()}</dd>
+                            <dd className="text-right tabular-nums">{runUsage.input?.toLocaleString() ?? "Unknown"}</dd>
                             <dt>Output</dt>
-                            <dd className="text-right tabular-nums">{runUsage.output.toLocaleString()}</dd>
+                            <dd className="text-right tabular-nums">{runUsage.output?.toLocaleString() ?? "Unknown"}</dd>
                           </dl>
                         </section>
                       )}
@@ -2878,11 +2961,6 @@ ${sandboxedCustom}`;
                         >
                           <div className="mb-1.5 flex items-center justify-between">
                             <span className="font-medium text-foreground">This chat</span>
-                            {(chatUsage.estimatedUsd ?? 0) > 0 && (
-                              <span className="font-medium tabular-nums text-emerald-600 dark:text-emerald-400">
-                                {formatUsd(chatUsage.estimatedUsd ?? 0)}
-                              </span>
-                            )}
                           </div>
                           <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
                             <dt>Runs</dt>
@@ -2895,55 +2973,62 @@ ${sandboxedCustom}`;
                         </section>
                       )}
                       <p className="border-t pt-2 text-[10px] leading-relaxed text-muted-foreground">
-                        Costs are estimates based on public model pricing, not billing totals.
+                        Cache usage and cost estimates are in the usage report.
                       </p>
                     </div>
                   </Popover>
                 </Tooltip>
-                </div>
-              )}
-
-              <Tooltip label="New chat">
-                <button type="button"
-                  onClick={newChat}
-                  disabled={streaming}
-                  aria-label="New chat"
-                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
-                >
-                  <Plus className="size-4" />
-                </button>
+              </div>
+            )}
+            <Suspense fallback={null}>
+              <Tooltip label="Usage report">
+                <UsageReportDialog
+                  trigger={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      aria-label="Usage report"
+                      className="size-7 shrink-0 p-0 text-muted-foreground hover:text-foreground"
+                    >
+                      <BarChart3 className="size-4" />
+                    </Button>
+                  }
+                />
               </Tooltip>
-
+            </Suspense>
+            {configuredProviders.length > 0 && (
+              <>
+                <Tooltip label="New chat">
+                  <button type="button"
+                    onClick={newChat}
+                    disabled={streaming}
+                    aria-label="New chat"
+                    className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
+                  >
+                    <Plus className="size-4" />
+                  </button>
+                </Tooltip>
                 <Tooltip label="Chat history">
-                <button type="button"
-                  data-tour="ai-history"
-                  onClick={() => setHistoryOpen(true)}
-                  aria-label="Chat history"
-                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <History className="size-4" />
-                </button>
-              </Tooltip>
-            </>
-          )}
-
-          {!chatFloating && (
-            <Tooltip label="Float the assistant">
-              <button
-                type="button"
-                aria-label="Float the assistant over the app"
-                data-testid="ai-chat-float"
-                disabled={streaming}
-                onClick={() => setChatFloating(true)}
-                className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
-              >
-                <PanelRightOpen className="size-3.5" />
-              </button>
-            </Tooltip>
-          )}
-
-        </div>
-      </div>
+                  <button type="button"
+                    data-tour="ai-history"
+                    onClick={() => setHistoryOpen(true)}
+                    aria-label="Chat history"
+                    className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    <History className="size-4" />
+                  </button>
+                </Tooltip>
+              </>
+            )}
+            <AssistantFloatButton disabled={streaming} />
+          </>
+        }
+      >
+        {apiKey && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
+          <InfoHint message="This chat started from an older version of the project. File contents may differ from what the AI saw." />
+        )}
+      </AssistantShellHeader>
 
       {quotaWarning && (
         <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600 dark:text-amber-400">
@@ -2993,64 +3078,22 @@ ${sandboxedCustom}`;
             )}
           >
             {messages.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center gap-3 px-2">
-                <OleaflyAssistantMascot />
-                <div className="space-y-1 text-center">
-                  <p className="text-base font-semibold text-foreground">How can I help with your research?</p>
-                  {projectName && (
-                    <p className="text-xs text-muted-foreground">Working on "{projectName}"</p>
-                  )}
-                </div>
-                <div className="flex w-full flex-wrap items-center justify-center gap-1.5">
-                  {availableSuggestions(SUGGESTIONS, skillsQuery.data).map((suggestion) => {
-                    const Icon = suggestion.icon;
-                    return (
-                      <button
-                        type="button"
-                        key={suggestion.label}
-                        title={suggestion.label}
-                        data-testid="chat-suggestion"
-                        onClick={() => void send(suggestion.send)}
-                        className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-left text-xs text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/70"
-                      >
-                        {Icon && <Icon className="size-3.5 shrink-0" />}
-                        <span className="min-w-0 truncate">{suggestion.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {chats.length > 0 && (
-                  <div className="mt-2 flex w-full max-w-[300px] flex-col gap-0.5">
-                    <span className="px-1 pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">Recent chats</span>
-                    {chats.slice(0, 3).map((chat) => {
-                      const stale = chat.headOid && currentHead && chat.headOid !== currentHead;
-                      return (
-                        <button type="button"
-                          key={chat.id}
-                          onClick={() => openChat(chat)}
-                          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
-                        >
-                          <MessageSquareQuote className="size-3.5 shrink-0 text-muted-foreground" />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-xs font-medium">{chat.title || "New chat"}</span>
-                            <span className="block truncate text-[10px] text-muted-foreground">
-                              {new Date(chat.updatedAt).toLocaleDateString()} · {chat.messages.length} msgs
-                            </span>
-                          </span>
-                          {stale && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" title="Older version" />}
-                        </button>
-                      );
-                    })}
-                    <button type="button"
-                      onClick={() => setHistoryOpen(true)}
-                      className="mt-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                    >
-                      <History className="size-3.5" />
-                      Show all history ({chats.length})
-                    </button>
-                  </div>
-                )}
+              <div className="flex min-h-full flex-col items-center justify-center px-1">
+                <AssistantHome
+                  before={<OleaflyAssistantMascot />}
+                  subtitle={projectName ? `Working on "${projectName}"` : undefined}
+                  skills={skills}
+                  onPickSkill={pickHomeSkill}
+                  onOpenSkills={openSkillsSettings}
+                  quickStarts={homeQuickStarts}
+                >
+                  <RecentChats
+                    chats={chats}
+                    currentHead={currentHead}
+                    onOpen={openChat}
+                    onShowAll={() => setHistoryOpen(true)}
+                  />
+                </AssistantHome>
               </div>
             ) : (
               <ErrorBoundary
@@ -3063,6 +3106,7 @@ ${sandboxedCustom}`;
                 <div className="flex flex-col gap-3">
                   <MessageList
                     messages={renderedMessages}
+                    actions={chatActions}
                     chatId={activeChatId}
                     scrollRef={scrollRef}
                     nearBottomRef={nearBottomRef}
@@ -3141,11 +3185,17 @@ ${sandboxedCustom}`;
             {activeChatId && (
               <SubagentActivity
                 chatId={activeChatId}
+                projectId={projectId}
                 streaming={streaming}
                 activeRunId={() => activeRunRequestIdRef.current}
                 onError={(message) => toast.error(message)}
+                onOpenSession={(sessionId, runtime) => openSession({ threadId: sessionId, runtime })}
               />
             )}
+            <SessionTranscriptDialog
+              threadId={transcriptThreadId}
+              onClose={() => setTranscriptThreadId(null)}
+            />
           </div>
             {agentStatusPillVisible && (
               <div className="pointer-events-none absolute inset-x-3 bottom-2 z-20">
@@ -3304,6 +3354,12 @@ ${sandboxedCustom}`;
                     }
                   />
                 )}
+                <DelegatedPermissions
+                  projectId={projectId}
+                  parentSessionId={agentThreadId}
+                  subagents={delegatedSubagents}
+                  onError={(message) => toast.error(message)}
+                />
 
                 <div className="px-3 pb-3 pt-1.5">
             {goal && (
@@ -3409,6 +3465,7 @@ ${sandboxedCustom}`;
                 <MentionMenu
                   ref={mentionMenuRef}
                   entries={mentionMatches}
+                  agents={agentMatches}
                   onActiveEntryChange={setActiveMentionPath}
                   onClose={() => {
                     setMentionMenuDismissedInput(input);
@@ -3424,7 +3481,7 @@ ${sandboxedCustom}`;
                 ref={highlightRef}
                 text={input}
                 skillIds={invocableSkillIds}
-                paths={mentionPaths}
+                paths={composerMentionTargets}
                 className="max-h-56 rounded-md px-0.5 py-2 text-sm"
               />
               <Textarea

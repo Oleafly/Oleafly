@@ -108,7 +108,7 @@ test("trims a model to the snapshot shape", () => {
     status: "active",
     releaseDate: "2024-05-13",
     lastUpdated: "2024-08-06",
-    cost: { input: 2.5, output: 10, cacheRead: 1.25 },
+    cost: { input: 2.5, output: 10, cacheRead: 1.25, cacheWrite: 3.75 },
   });
 });
 

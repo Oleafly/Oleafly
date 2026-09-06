@@ -217,10 +217,14 @@ describe("SkillsTab", () => {
         return next;
       }
       if (command === "skills_set_project_enabled") {
-        const input = args as { projectId: string; id: string; enabled: boolean };
+        const input = args as { projectId: string; id: string; enabled: boolean | null };
         const current = records.find((skill) => skill.id === input.id);
         if (!current) throw new Error(`Unknown skill: ${input.id}`);
-        const next = { ...current, projectEnabled: input.enabled };
+        const next = {
+          ...current,
+          projectEnabled: input.enabled === true,
+          projectDisabled: input.enabled === false,
+        };
         records = records.map((skill) => (skill.id === input.id ? next : skill));
         return next;
       }
@@ -374,17 +378,55 @@ describe("SkillsTab", () => {
   it("shows a per-project toggle only when a project is open", async () => {
     mocks.projectId = "proj-1";
     renderTab();
-    await screen.findByText("Paper Lookup");
+    await screen.findByText("Methods Coach");
 
-    const toggle = screen.getByTestId("skill-project-toggle-paper-lookup");
+    const toggle = screen.getByTestId("skill-project-toggle-methods-coach");
     fireEvent.click(toggle);
 
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith("skills_set_project_enabled", {
         projectId: "proj-1",
-        id: "paper-lookup",
+        id: "methods-coach",
         enabled: true,
       }),
+    );
+  });
+
+  it("inherits the device setting until the project overrides it", async () => {
+    mocks.projectId = "proj-1";
+    renderTab();
+    await screen.findByText("Paper Lookup");
+
+    const row = screen.getByTestId("skill-row-paper-lookup");
+    expect(screen.getByTestId("skill-project-toggle-paper-lookup")).toBeChecked();
+    expect(within(row).getByText("Inherits device setting")).toBeInTheDocument();
+    expect(screen.queryByTestId("skill-project-reset-paper-lookup")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("skill-project-toggle-paper-lookup"));
+
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith("skills_set_project_enabled", {
+        projectId: "proj-1",
+        id: "paper-lookup",
+        enabled: false,
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("skill-project-toggle-paper-lookup")).not.toBeChecked(),
+    );
+    expect(within(row).getByText("Off for this project")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("skill-project-reset-paper-lookup"));
+
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith("skills_set_project_enabled", {
+        projectId: "proj-1",
+        id: "paper-lookup",
+        enabled: null,
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("skill-project-toggle-paper-lookup")).toBeChecked(),
     );
   });
 
@@ -562,6 +604,9 @@ describe("SkillsTab", () => {
 
   it("turns on skill sharing with other agents", async () => {
     renderTab();
+    await waitFor(() => expect(screen.getByTestId("skills-share-toggle")).toBeEnabled());
+    expect(screen.queryByTestId("skills-share-target-claude")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("skills-share-card-toggle"));
     await screen.findByTestId("skills-share-target-claude");
 
     fireEvent.click(screen.getByTestId("skills-share-toggle"));

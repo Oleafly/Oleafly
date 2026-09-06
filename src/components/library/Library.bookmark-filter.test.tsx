@@ -100,8 +100,8 @@ describe("Library bookmark filters", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByTestId("import-project-button")).not.toBeInTheDocument();
     expect(
-      screen.getAllByRole("button", { name: "Import an existing project" }),
-    ).toHaveLength(1);
+      screen.queryByRole("button", { name: "Import an existing project" }),
+    ).not.toBeInTheDocument();
   });
 
   it("filters projects from the library header search", () => {

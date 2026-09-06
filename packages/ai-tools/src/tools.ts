@@ -254,7 +254,7 @@ export function createOleaflyTools(
   const tools: Record<string, RawToolDef> = {
     spawn_agent: {
       description:
-        "Spawn a subagent that works on one delegated task in the background. Task names are canonical: spawning task_3 while your task is /root/task1 gives the agent the path /root/task1/task_3 (list_agents filters by that path). The agent inherits your current model unless the user asks for a different one. It shares your project tools and approval gates but cannot spawn further agents. Returns { id, taskPath, status } immediately; use wait_agent to collect its answer.",
+        "Delegate a task to a background agent. Task names form paths such as /root/task1/task_3. Built-in agents inherit your provider and model. Set providerId or modelId when a different selection is requested. For an ACP agent, set runtime to acp and use its configured agentId. ACP modelId must be offered by that agent. Built-in children share project tools and approval gates. ACP agents receive scoped research tools and request their own permissions. Delegation follows the configured depth limit. Use wait_agent to collect the answer.",
       inputSchema: {
         type: "object",
         properties: {
@@ -270,6 +270,23 @@ export function createOleaflyTools(
             type: "string",
             description: "Optional display name shown while it works",
           },
+          runtime: {
+            type: "string",
+            enum: ["built-in", "acp"],
+            description: "Agent runtime. Defaults to built-in",
+          },
+          providerId: {
+            type: "string",
+            description: "Configured provider for a built-in agent",
+          },
+          modelId: {
+            type: "string",
+            description: "Enabled provider model or a model offered by the ACP agent",
+          },
+          agentId: {
+            type: "string",
+            description: "Configured ACP agent ID. Required when runtime is acp",
+          },
         },
         required: ["task_name", "prompt"],
         additionalProperties: false,
@@ -280,7 +297,7 @@ export function createOleaflyTools(
     },
     send_message: {
       description:
-        "Send a message to a running agent without triggering a new turn; it is delivered at the agent's next message boundary. Use either message or items, not both.",
+        "Send a message to a running built-in agent at its next message boundary. ACP agents must finish their current turn before receiving a followup_task.",
       inputSchema: {
         type: "object",
         properties: {
@@ -294,7 +311,7 @@ export function createOleaflyTools(
     },
     followup_task: {
       description:
-        "Give an agent a new task and trigger a turn: a running agent receives it at its next boundary; a finished agent starts fresh work in its own thread with its prior answer as context.",
+        "Continue an agent with a new task in the same session, keeping its runtime, provider and model. A running built-in agent receives the message at its next boundary. Wait for a running ACP agent to finish before continuing it.",
       inputSchema: {
         type: "object",
         properties: {

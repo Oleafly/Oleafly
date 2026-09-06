@@ -129,10 +129,41 @@ export async function openGallery(page: Page) {
     `!!document.querySelector('[data-testid="create-first-project"]')`,
   );
   await page.click(hasWelcome ? '[data-testid="create-first-project"]' : '[data-testid="new-project"]');
+  await chooseProjectKind(page, "template");
   const gallery = page.locator(
     '[data-testid="template-gallery"]',
   ) as unknown as LocatorLike;
   await expect(gallery).toBeVisible({ timeout: SHELL_READY_TIMEOUT_MS });
+}
+
+export async function openNewProject(page: Page) {
+  const library = page.locator(
+    '[data-testid="library"][data-projects-loaded="true"]',
+  ) as unknown as LocatorLike;
+  await expect(library).toBeVisible({ timeout: SHELL_READY_TIMEOUT_MS });
+  const hasWelcome = await page.evaluate<boolean>(
+    `!!document.querySelector('[data-testid="create-first-project"]')`,
+  );
+  await page.click(hasWelcome ? '[data-testid="create-first-project"]' : '[data-testid="new-project"]');
+}
+
+// The bridge's press dispatches its synthetic key on window, and Radix listens
+// on document, so a window-only Escape never reaches a Radix dialog. Dispatch
+// on document, which is where a real key event passes on its way up.
+export async function pressEscape(page: Page) {
+  await page.evaluate(
+    `document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }))`,
+  );
+}
+
+// Creating a project now starts on a chooser: research, import or template.
+export async function chooseProjectKind(
+  page: Page,
+  kind: "research" | "import" | "template",
+) {
+  const card = `[data-testid="project-kind-${kind}"]`;
+  await page.waitForFunction(`!!document.querySelector('${card}')`, SHELL_READY_TIMEOUT_MS);
+  await page.click(card);
 }
 
 // Insert through CodeMirror's authoritative state rather than searching its
@@ -509,7 +540,11 @@ export async function finishProjectCreation(page: Page) {
           && rect.width > 0
           && rect.height > 0;
       };
-      const editor = document.querySelector(".cm-content");
+      // A diagram project opens on its canvas, not on a text editor. Both are
+      // content surfaces inside the editor shell; the shell itself mounts
+      // before either of them, so it is not the readiness signal.
+      const editor = document.querySelector('[data-tour="project-editor"] .cm-content')
+        ?? document.querySelector('[data-tour="project-editor"] .react-flow');
       const dialog = document.querySelector('[data-testid="template-gallery"]');
       const create = document.querySelector('[data-testid="create-project"]');
       const notice = Array.from(document.querySelectorAll('[role="alert"]'))
@@ -1665,4 +1700,80 @@ export async function currentTheme(page: Page): Promise<"light" | "dark"> {
   return page.evaluate<"light" | "dark">(
     `document.documentElement.classList.contains('dark') ? 'dark' : 'light'`,
   );
+}
+
+export async function chooseAppSelectOption(
+  page: Page,
+  trigger: string,
+  option: { attribute: string; value: string },
+  timeoutMs = 20_000,
+) {
+  const triggerJs = JSON.stringify(trigger);
+  const optionSelector = `[role="option"][${option.attribute}=${JSON.stringify(option.value)}]`;
+  const optionJs = JSON.stringify(optionSelector);
+  await page.waitForFunction(
+    `(() => {
+      const control = document.querySelector(${triggerJs});
+      return !!control && !control.disabled && control.getAttribute("data-disabled") === null;
+    })()`,
+    timeoutMs,
+  );
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.evaluate(`(() => {
+      const control = document.querySelector(${triggerJs});
+      if (!control) return false;
+      control.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse", pointerId: 1 }));
+      return true;
+    })()`);
+    try {
+      await page.waitForFunction(`!!document.querySelector(${optionJs})`, attempt === 2 ? timeoutMs : 4_000);
+      break;
+    } catch (error) {
+      if (attempt === 2) {
+        const diagnostic = await page
+          .evaluate(`(() => {
+            const control = document.querySelector(${triggerJs});
+            const options = [...document.querySelectorAll('[role="option"]')].map((entry) => ({
+              text: (entry.textContent ?? "").trim().slice(0, 80),
+              attributes: [...entry.attributes].filter((a) => a.name.startsWith("data-")).map((a) => a.name + "=" + a.value),
+            }));
+            return {
+              present: !!control,
+              disabled: control?.disabled ?? null,
+              state: control?.getAttribute("data-state") ?? null,
+              shown: (control?.textContent ?? "").trim().slice(0, 120),
+              options,
+            };
+          })()`)
+          .catch((failure: unknown) => ({ unavailable: String(failure) }));
+        console.error("App select timeout", JSON.stringify({ trigger, option, diagnostic }));
+        throw error;
+      }
+      await page.evaluate(`(() => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        return true;
+      })()`);
+    }
+  }
+  await page.evaluate(`(() => {
+    const entry = document.querySelector(${optionJs});
+    if (!entry) return false;
+    entry.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, button: 0, pointerType: "mouse", pointerId: 1 }));
+    entry.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+    return true;
+  })()`);
+  await page.waitForFunction(`!document.querySelector(${optionJs})`, timeoutMs);
+}
+
+export async function clickTabByText(page: Page, scope: string, name: string, timeoutMs = 20_000) {
+  const match = `[...document.querySelectorAll(${JSON.stringify(`${scope} [role="tab"]`)})].find((tab) => (tab.textContent ?? "").trim() === ${JSON.stringify(name)})`;
+  await page.waitForFunction(`!!(${match})`, timeoutMs);
+  await page.evaluate(`(() => {
+    const tab = ${match};
+    for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
+      tab.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: 0 }));
+    }
+    return true;
+  })()`);
+  await page.waitForFunction(`(${match})?.getAttribute("aria-selected") === "true"`, timeoutMs);
 }

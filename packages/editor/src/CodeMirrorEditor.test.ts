@@ -126,3 +126,40 @@ describe("CodeMirrorEditor measurement", () => {
     expect(asyncPopupSource).not.toHaveBeenCalled();
   });
 });
+
+
+it("blocks document commands during a mutation while allowing authoritative synchronization", async () => {
+  let locked = false;
+  let content = "Before";
+  let owner: { setLocked: (locked: boolean) => void; reconcile: () => void } | undefined;
+  const setContent = vi.fn();
+  const host: EditorHost = {
+    useActivePath: () => "notes.txt",
+    getActivePath: () => "notes.txt",
+    useDocVersion: () => 0,
+    useCompletionSyntax: () => "generic",
+    getContent: () => content,
+    setContent,
+    isEditLocked: () => locked,
+    registerMutationOwner: (value) => { owner = value; return () => {}; },
+    useSettings: () => ({ vim: false, spellcheck: false, harper: false, editorTheme: "system", autocomplete: false, autoCloseBrackets: false, nonBlinkingCursor: false, ghostCompletion: false, stickyScroll: false }),
+    useLintRefreshDeps: () => [],
+  };
+  const mounted = render(createElement(CodeMirrorEditor, { host }));
+  const view = getEditorView();
+  expect(view).not.toBeNull();
+  locked = true;
+  owner?.setLocked(true);
+  view!.dispatch({ changes: { from: 0, insert: "Blocked" } });
+  expect(view!.state.doc.toString()).toBe("Before");
+  expect(setContent).not.toHaveBeenCalled();
+  content = "Applied";
+  owner?.reconcile();
+  expect(view!.state.doc.toString()).toBe("Applied");
+  await Promise.resolve();
+  locked = false;
+  owner?.setLocked(false);
+  view!.dispatch({ changes: { from: 7, insert: " edit" } });
+  expect(setContent).toHaveBeenLastCalledWith("notes.txt", "Applied edit");
+  mounted.unmount();
+});

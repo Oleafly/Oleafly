@@ -13,8 +13,12 @@ use tauri::{Manager, State};
 
 use crate::config::{AppConfig, ModelProbe, ProbeVerdict};
 
+mod acp_usage;
+mod child_acp;
 mod registry;
 mod subagents;
+pub mod task_runtime;
+pub mod usage;
 use registry::{acquire_request_slot, cancel_all_requests, cancel_request, run_registered};
 #[cfg(test)]
 use registry::{begin_request, finish_request};
@@ -270,23 +274,34 @@ pub async fn agent_complete(
     provider_override: Option<ProviderOverride>,
 ) -> Result<CompletionResponse, String> {
     let agent_state = state.inner();
+    let usage_id = request_id.clone();
     run_registered(agent_state, &request_id, |_| async move {
         oleafly_agent::validate_completion_request(&request).map_err(tagged)?;
         let resolved = resolve_off_thread(provider_override).await?;
         let client = agent_state.client()?;
-        oleafly_agent::complete(&client, &resolved, &request)
-            .await
-            .map_err(tagged)
+        let usage = standalone_usage(&usage_id, &resolved)?;
+        let result = oleafly_agent::complete(&client, &resolved, &request).await;
+        if let Ok(response) = &result {
+            usage.observe(&AgentEvent::Usage {
+                usage: response.usage,
+            });
+        }
+        usage.finish(if result.is_ok() {
+            "completed"
+        } else {
+            "failed"
+        });
+        result.map_err(tagged)
     })
     .await
 }
 
 #[tauri::command]
-pub fn agent_cancel_all(
+pub async fn agent_cancel_all(
     state: State<'_, AgentState>,
     exec_state: State<'_, crate::agent_exec::AgentExecState>,
     session_id: String,
-) {
+) -> Result<(), String> {
     crate::agent_exec::cancel_all(exec_state.inner());
     // Cancel every run token first so in-flight tools (including subagent
     // children sharing the token) wind down before their futures drop.
@@ -304,21 +319,34 @@ pub fn agent_cancel_all(
         .drain()
         .map(|(_, manager)| manager.value)
         .collect();
-    for manager in managers {
+    for manager in &managers {
         manager.interrupt_all();
     }
     cancel_all_requests(state.inner(), &session_id);
     lock_or_recover(&state.pending_tools).clear();
+    for manager in managers {
+        manager.cancel_descendants("/root").await;
+    }
+    crate::agent_exec::cancel_all_and_wait(exec_state.inner()).await;
+    Ok(())
 }
 
 #[tauri::command]
-pub fn agent_cancel(
+pub async fn agent_cancel(
     state: State<'_, AgentState>,
     exec_state: State<'_, crate::agent_exec::AgentExecState>,
     request_id: String,
-) {
+) -> Result<(), String> {
+    let manager = lock_or_recover(&state.subagent_managers)
+        .get(&request_id)
+        .map(|resource| resource.value.clone());
     crate::agent_exec::cancel_run(exec_state.inner(), &request_id);
     cancel_run(state.inner(), &request_id);
+    if let Some(manager) = manager {
+        manager.cancel_descendants("/root").await;
+    }
+    crate::agent_exec::cancel_run_and_wait(exec_state.inner(), &request_id).await;
+    Ok(())
 }
 
 fn cancel_run(state: &AgentState, request_id: &str) {
@@ -476,13 +504,18 @@ pub async fn agent_steer(
 
 /// Stop every running subagent of a run without stopping the run itself.
 #[tauri::command]
-pub fn agent_subagents_stop(
+pub async fn agent_subagents_stop(
     state: State<'_, AgentState>,
     request_id: String,
 ) -> Result<u32, String> {
-    subagents_stop(state.inner(), &request_id)
+    let manager = lock_or_recover(&state.subagent_managers)
+        .get(&request_id)
+        .map(|resource| resource.value.clone())
+        .ok_or_else(|| format!("no active run {request_id}"))?;
+    Ok(u32::try_from(manager.interrupt_all_and_wait().await).unwrap_or(u32::MAX))
 }
 
+#[cfg(test)]
 fn subagents_stop(state: &AgentState, request_id: &str) -> Result<u32, String> {
     let manager = {
         let managers = lock_or_recover(&state.subagent_managers);
@@ -569,18 +602,42 @@ pub async fn agent_stream(
     on_event: tauri::ipc::Channel<oleafly_agent::AgentEvent>,
 ) -> Result<(), String> {
     let agent_state = state.inner();
+    let usage_id = request_id.clone();
     run_registered(agent_state, &request_id, |_| async move {
         oleafly_agent::validate_completion_request(&request).map_err(tagged)?;
         let resolved = resolve_off_thread(provider_override).await?;
         let client = agent_state.client()?;
-        oleafly_agent::stream_completion(&client, &resolved, &request, |event| {
+        let usage = standalone_usage(&usage_id, &resolved)?;
+        let result = oleafly_agent::stream_completion(&client, &resolved, &request, |event| {
+            usage.observe(&event);
             let _ = on_event.send(event);
         })
-        .await
-        .map(|_| ())
-        .map_err(tagged)
+        .await;
+        usage.finish(if result.is_ok() {
+            "completed"
+        } else {
+            "failed"
+        });
+        result.map(|_| ()).map_err(tagged)
     })
     .await
+}
+
+fn standalone_usage(
+    request_id: &str,
+    resolved: &oleafly_agent::Resolved,
+) -> Result<usage::NativeUsageGuard, String> {
+    Ok(usage::NativeUsageGuard::new(
+        crate::paths::oleafly_root()?,
+        usage::UsageScope {
+            session_id: request_id.into(),
+            turn_id: request_id.into(),
+            project_id: None,
+            task_id: None,
+            parent_session_id: None,
+        },
+        resolved,
+    ))
 }
 
 #[tauri::command]
@@ -619,7 +676,7 @@ pub async fn agent_run(
             request.tools.iter().map(|tool| tool.name.clone()).collect();
         let app_for_exec_cancel = app.clone();
         let base_tool = composite_tool_runner(
-            app,
+            app.clone(),
             run_id,
             generation,
             on_event.clone(),
@@ -638,6 +695,10 @@ pub async fn agent_run(
         let multi_agent = crate::agent_config::MultiAgentConfig::load(
             &crate::paths::oleafly_root().unwrap_or_default(),
         );
+        let record_sink = record_scope.map(|(thread_id, turn_id, client_turn_id)| {
+            let recorder = turn_recorder_for_request(turn_id, client_turn_id, &request);
+            (thread_id, std::sync::Arc::new(Mutex::new(recorder)))
+        });
         let subagent_manager = std::sync::Arc::new(SubagentManager::with_exec_canceller(
             std::sync::Arc::new(move |owner: &str| {
                 let exec_state = app_for_exec_cancel.state::<crate::agent_exec::AgentExecState>();
@@ -645,6 +706,12 @@ pub async fn agent_run(
             }),
         ));
         let run_context = subagents::RunContext {
+            app: Some(app),
+            data_root: crate::paths::oleafly_root()?,
+            session_id: thread_id
+                .clone()
+                .unwrap_or_else(|| run_registration_id.clone()),
+            parent_session_id: None,
             client: client.clone(),
             resolved: resolved.clone(),
             request_template: request.clone(),
@@ -653,7 +720,10 @@ pub async fn agent_run(
             gate: pipeline.gate.clone(),
             parent_token: pipeline.token.clone(),
             tool_runner: classified_tool.clone(),
-            parent_sink: sink.clone(),
+            parent_sink: subagents::ActivitySink::new(
+                sink.clone(),
+                record_sink.as_ref().map(|(_, recorder)| recorder.clone()),
+            ),
             project_id: pinned_project.clone().unwrap_or_default(),
             depth: 0,
             task_path: subagents::RunContext::root_task_path(),
@@ -676,7 +746,7 @@ pub async fn agent_run(
             generation,
             steer_handle,
             pipeline.token.clone(),
-            subagent_manager_for_registry,
+            subagent_manager_for_registry.clone(),
             pinned_project.clone(),
             allowed_tools,
         );
@@ -684,10 +754,6 @@ pub async fn agent_run(
 
         // A run scoped to a thread records its items into that thread's
         // rollout as it completes.
-        let record_sink = record_scope.map(|(thread_id, turn_id, client_turn_id)| {
-            let recorder = turn_recorder_for_request(turn_id, client_turn_id, &request);
-            (thread_id, std::sync::Arc::new(Mutex::new(recorder)))
-        });
         let mut persist_guard = InterruptedRunPersist {
             thread_id: record_sink.as_ref().map(|(id, _)| id.clone()),
             recorder: record_sink.as_ref().map(|(_, shared)| shared.clone()),
@@ -695,6 +761,22 @@ pub async fn agent_run(
             project: pinned_project.clone().unwrap_or_default(),
             settled: false,
         };
+        let usage = usage::NativeUsageGuard::new(
+            crate::paths::oleafly_root()?,
+            usage::UsageScope {
+                session_id: thread_id
+                    .clone()
+                    .unwrap_or_else(|| run_registration_id.clone()),
+                turn_id: client_turn_id
+                    .clone()
+                    .unwrap_or_else(|| run_registration_id.clone()),
+                project_id: pinned_project.clone(),
+                task_id: None,
+                parent_session_id: None,
+            },
+            &resolved,
+        );
+        let run_token = pipeline.token.clone();
         let outcome = oleafly_agent::run_agent_with_pipeline(
             &client,
             &resolved,
@@ -704,6 +786,7 @@ pub async fn agent_run(
             Some(steer_rx),
             run_tool,
             |event| {
+                usage.observe(&event);
                 if let Some((_, shared)) = &record_sink {
                     if let Ok(mut recorder) = shared.lock() {
                         recorder.record(&event);
@@ -713,6 +796,16 @@ pub async fn agent_run(
             },
         )
         .await;
+        subagent_manager_for_registry
+            .cancel_descendants("/root")
+            .await;
+        usage.finish(if run_token.is_cancelled() {
+            "cancelled"
+        } else if matches!(&outcome, Ok(outcome) if outcome.error.is_none()) {
+            "completed"
+        } else {
+            "failed"
+        });
         persist_guard.settled = true;
         if let Some((thread_id, shared)) = &record_sink {
             // The guard must drop before the persist await keeps this future
@@ -753,7 +846,7 @@ pub const SUBAGENT_TOOL: &str = "spawn_subagents";
 /// everything else confirms, and unknown tools classify as write so nothing
 /// new runs silently. Read-class tools also run concurrently unless they are
 /// listed in SERIAL_READ_TOOLS.
-const READ_RISK_TOOLS: [&str; 27] = [
+const READ_RISK_TOOLS: [&str; 30] = [
     "read_file",
     "read_skill_file",
     "load_skill",
@@ -762,6 +855,9 @@ const READ_RISK_TOOLS: [&str; 27] = [
     "project_map",
     "search_project",
     "project_library_search",
+    "list_research_roots",
+    "list_research_root_files",
+    "read_research_root_file",
     "get_pdf_text",
     "get_log",
     "get_todos",

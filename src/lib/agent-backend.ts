@@ -1,4 +1,5 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
+import type { AgentUsage } from "@oleafly/ai-core";
 
 export type AgentContentPart =
   | { type: "text"; text: string }
@@ -40,7 +41,7 @@ export interface AgentCompletionRequest {
 
 export interface AgentCompletionResponse {
   text: string;
-  usage: { input: number; output: number };
+  usage: AgentUsage;
   provider_id: string;
   model_id: string;
 }
@@ -171,7 +172,7 @@ export async function streamViaBackend(
 
 export interface AgentRunOutcome {
   text: string;
-  usage: { input: number; output: number };
+  usage: AgentUsage;
   steps: number;
   stopped_at_cap: boolean;
   error: string | null;
@@ -286,7 +287,7 @@ export const agentThreadRead = (threadId: string) =>
       clientTurnId: string | null;
       status: string;
       items: Array<{ id: string; item: { type: string } & Record<string, unknown>; completed: boolean }>;
-      usage: { input: number; output: number };
+      usage: AgentUsage;
       error: string | null;
       stoppedAtCap: boolean;
     }>

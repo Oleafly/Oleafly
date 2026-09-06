@@ -141,7 +141,10 @@ function edgeToTikz(e: DiagEdge, nodes: Map<string, DiagNode>): string {
         sourceHandle,
         targetHandle,
       );
-      const path = route.points.map(pointToTikz).join(" -- ");
+      const points = route.points.map(pointToTikz);
+      points[0] = `(${source})`;
+      points[points.length - 1] = `(${target})`;
+      const path = points.join(" -- ");
       const label = e.label
         ? `\n    \\node[fill=white, font=\\small] at ${pointToTikz(route.label)} {${escapeLatex(e.label)}};`
         : "";

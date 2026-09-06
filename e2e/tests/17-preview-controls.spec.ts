@@ -266,6 +266,7 @@ test("one-page documents hide the layout toggles and bound page navigation", asy
   }
   const moreControls = tauriPage.locator('[aria-label="More preview controls"]');
   await expect(moreControls).toBeVisible();
+  await moreControls.focus();
   await moreControls.press("Enter");
   await expect(tauriPage.getByRole("menu")).toBeVisible();
   await expect(tauriPage.getByText("Page 1 of 1", { exact: true })).toBeVisible();

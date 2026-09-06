@@ -29,11 +29,13 @@ import { useFilesStore } from "@/store/files";
 import {
   addSkill,
   createSkill,
+  isSkillAvailable,
   mergeToggledSkillRecord,
   removeSkill,
   setSkillEnabled,
   setSkillProjectEnabled,
   SKILLS_QUERY_KEY,
+  skillProjectOverride,
   skillsQueryKey,
   updateBuiltinSkill,
   updateSkill,
@@ -45,6 +47,7 @@ import {
   type SkillToggleScope,
   type UpdateSkillInput,
 } from "@/lib/skills";
+import { SKILL_PHASE_LABELS, groupSkills } from "@/lib/skill-groups";
 import { SkillCatalogList } from "./SkillCatalogList";
 import { SkillShareCard } from "./SkillShareCard";
 
@@ -61,62 +64,6 @@ const EMPTY_FORM: EditorForm = {
   description: "",
   instructions: "",
 };
-
-const PHASE_ORDER = [
-  "research",
-  "authoring",
-  "figures",
-  "review",
-  "submission",
-  "communication",
-  "tooling",
-] as const;
-
-const PHASE_LABELS: Record<string, string> = {
-  research: "Research",
-  authoring: "Authoring",
-  figures: "Figures",
-  review: "Review",
-  submission: "Submission",
-  communication: "Communication",
-  tooling: "Tooling",
-};
-
-interface SkillGroup {
-  key: string;
-  label: string;
-  skills: SkillEntry[];
-}
-
-function groupSkills(skills: readonly SkillEntry[]): SkillGroup[] {
-  const byPhase = new Map<string, SkillEntry[]>();
-  const yours: SkillEntry[] = [];
-  const shelf: SkillEntry[] = [];
-  for (const skill of skills) {
-    if (skill.tier === "shelf") {
-      shelf.push(skill);
-      continue;
-    }
-    if (skill.phase && PHASE_LABELS[skill.phase]) {
-      const list = byPhase.get(skill.phase) ?? [];
-      list.push(skill);
-      byPhase.set(skill.phase, list);
-      continue;
-    }
-    yours.push(skill);
-  }
-  const byName = (list: SkillEntry[]) => [...list].sort((a, b) => a.name.localeCompare(b.name));
-  const groups: SkillGroup[] = [];
-  for (const phase of PHASE_ORDER) {
-    const list = byPhase.get(phase);
-    if (list && list.length > 0) {
-      groups.push({ key: phase, label: PHASE_LABELS[phase], skills: byName(list) });
-    }
-  }
-  if (yours.length > 0) groups.push({ key: "user", label: "Your skills", skills: byName(yours) });
-  if (shelf.length > 0) groups.push({ key: "shelf", label: "Domain shelf", skills: byName(shelf) });
-  return groups;
-}
 
 function sourceBadge(source: SkillEntry["source"]): string {
   if (source === "bundled") return "Built in";
@@ -292,7 +239,13 @@ export function SkillsTab() {
       const previous = (current ?? []).find((skill) => skill.id === record.id);
       return upsertSkillRecord(
         current,
-        previous ? { ...record, projectEnabled: previous.projectEnabled } : record,
+        previous
+          ? {
+              ...record,
+              projectEnabled: previous.projectEnabled,
+              projectDisabled: previous.projectDisabled,
+            }
+          : record,
       );
     });
     void queryClient.invalidateQueries({ queryKey: SKILLS_QUERY_KEY });
@@ -408,7 +361,8 @@ export function SkillsTab() {
           <p className="font-medium">Skills</p>
           <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
             The assistant loads a skill's full instructions only when it decides it needs one, or
-            right away if you type /skill-id in the chat.
+            right away if you type /skill-id in the chat. A skill you turn on here is on in every
+            project until a project overrides it.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -462,9 +416,11 @@ export function SkillsTab() {
                   const metaBits = [
                     tierLine(skill),
                     skill.version ? `v${skill.version}` : null,
-                    skill.phase ? PHASE_LABELS[skill.phase] ?? skill.phase : null,
+                    skill.phase ? SKILL_PHASE_LABELS[skill.phase] ?? skill.phase : null,
                   ].filter((value): value is string => Boolean(value));
                   const isUserSkill = skill.source === "user";
+                  const projectOverride = skillProjectOverride(skill);
+                  const projectAvailable = isSkillAvailable(skill);
                   return (
                     <div
                       key={skill.id}
@@ -537,23 +493,52 @@ export function SkillsTab() {
                             }
                           />
                           {projectId ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] text-muted-foreground">
-                                Use in this project
-                              </span>
-                              <Switch
-                                data-testid={`skill-project-toggle-${skill.id}`}
-                                checked={skill.projectEnabled}
-                                disabled={invalid || busy}
-                                aria-label={`Use ${skill.name} in this project`}
-                                onCheckedChange={(enabled) =>
-                                  void runRecordMutation(
-                                    skill.id,
-                                    () => setSkillProjectEnabled(projectId, skill.id, enabled),
-                                    "project",
-                                  )
-                                }
-                              />
+                            <div className="flex flex-col items-end gap-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-muted-foreground">
+                                  Use in this project
+                                </span>
+                                <Switch
+                                  data-testid={`skill-project-toggle-${skill.id}`}
+                                  checked={projectAvailable}
+                                  disabled={invalid || busy}
+                                  aria-label={`Use ${skill.name} in this project`}
+                                  onCheckedChange={(enabled) =>
+                                    void runRecordMutation(
+                                      skill.id,
+                                      () => setSkillProjectEnabled(projectId, skill.id, enabled),
+                                      "project",
+                                    )
+                                  }
+                                />
+                              </div>
+                              {projectOverride === null ? (
+                                <span className="text-[10px] text-muted-foreground/80">
+                                  Inherits device setting
+                                </span>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] text-muted-foreground/80">
+                                    {projectOverride ? "On for this project" : "Off for this project"}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    data-testid={`skill-project-reset-${skill.id}`}
+                                    disabled={busy}
+                                    aria-label={`Use the device setting for ${skill.name}`}
+                                    onClick={() =>
+                                      void runRecordMutation(
+                                        skill.id,
+                                        () => setSkillProjectEnabled(projectId, skill.id, null),
+                                        "project",
+                                      )
+                                    }
+                                    className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
+                                  >
+                                    Use device setting
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           ) : null}
                         </div>

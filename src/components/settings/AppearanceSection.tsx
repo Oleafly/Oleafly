@@ -33,6 +33,7 @@ import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { BrowserCookieImport } from "@/components/settings/BrowserCookieImport";
 import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+import { ThemeCustomization } from "@/components/settings/ThemeCustomization";
 
 const APPEARANCE_TABS = [
   { id: "app", label: "App" },
@@ -250,6 +251,7 @@ function AppAppearanceTab() {
           </SelectContent>
         </Select>
       </div>
+      <ThemeCustomization />
     </div>
   );
 }

@@ -29,6 +29,11 @@ export interface SubagentEntry {
   label: string;
   state: string;
   detail?: string;
+  runtime?: string;
+  sessionId?: string;
+  providerId?: string;
+  modelId?: string;
+  agentId?: string;
 }
 
 export interface ChatMessage {
@@ -44,6 +49,7 @@ export interface ChatMessage {
   steered?: boolean;
   skillId?: string;
   mentions?: string[];
+  notices?: string[];
   // Legacy single-block chain-of-thought; still read for chats persisted
   // before reasoningBlocks existed.
   reasoning?: string;

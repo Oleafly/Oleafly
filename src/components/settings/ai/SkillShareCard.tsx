@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { Switch } from "@/components/ui/switch";
 import { skillsShareSync, skillsShareTargets, type SkillShareTarget } from "@/lib/tauri";
 
@@ -53,29 +54,38 @@ export function SkillShareCard() {
     return `${target.linked} of ${target.total} linked`;
   };
 
-  return (
-    <div className="space-y-2 rounded-md border bg-card p-3" data-testid="skills-share-card">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-medium">Share skills with other agents on this computer</p>
-          <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
-            Link your skills into the folders other coding agents on this computer already read,
-            so you write a skill once and every agent can use it.
-          </p>
-        </div>
-        {loading ? (
-          <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
-        ) : (
-          <Switch
-            data-testid="skills-share-toggle"
-            checked={enabled}
-            disabled={busy || !loaded}
-            aria-label="Share skills with other agents on this computer"
-            onCheckedChange={(checked) => void toggle(checked)}
-          />
-        )}
-      </div>
+  const linkedCount = targets.filter((target) => target.detected && target.linked > 0).length;
+  const summary = loading
+    ? "Checking agent folders"
+    : targets.length === 0
+      ? "No other agent folders were found"
+      : `${linkedCount} of ${targets.length} agents linked`;
 
+  return (
+    <CollapsibleSection
+      id="skills-share-card"
+      headingLevel="h4"
+      title="Share skills with other agents on this computer"
+      description="Link your skills into the folders other coding agents on this computer already read, so you write a skill once and every agent can use it."
+      trailing={
+        <>
+          <span data-testid="skills-share-summary" className="hidden text-[11px] text-muted-foreground sm:inline">
+            {summary}
+          </span>
+          {loading ? (
+            <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
+          ) : (
+            <Switch
+              data-testid="skills-share-toggle"
+              checked={enabled}
+              disabled={busy || !loaded}
+              aria-label="Share skills with other agents on this computer"
+              onCheckedChange={(checked) => void toggle(checked)}
+            />
+          )}
+        </>
+      }
+    >
       {!loading && targets.length > 0 ? (
         <ul className="space-y-1">
           {targets.map((target) => (
@@ -103,6 +113,6 @@ export function SkillShareCard() {
           {error}
         </p>
       ) : null}
-    </div>
+    </CollapsibleSection>
   );
 }
