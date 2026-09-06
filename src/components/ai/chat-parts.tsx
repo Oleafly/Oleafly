@@ -4,6 +4,7 @@ import {
   Brain,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Circle,
   Copy,
@@ -865,22 +866,28 @@ export function ReasoningBlock({
     <div
       data-reasoning-block
       data-reasoning-status={active ? "running" : "completed"}
-      className="max-w-[85%] rounded-md border bg-muted text-xs"
+      className="max-w-[85%] text-xs"
     >
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-muted-foreground hover:bg-accent/50"
+        className="group flex w-full items-center gap-2 py-1 text-left text-sm text-muted-foreground"
       >
-        <Brain className={cn("size-3.5", active && "ai-shimmer-icon")} />
+        {open ? (
+          <ChevronDown className="size-3.5 shrink-0" />
+        ) : (
+          <span className="relative flex size-3.5 shrink-0 items-center justify-center">
+            <Brain className={cn("size-3.5 transition-opacity group-hover:opacity-0", active && "ai-shimmer-icon")} />
+            <ChevronRight className="absolute inset-0 size-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
+          </span>
+        )}
         {active ? <Shimmer text={label} /> : <span>{label}</span>}
-        <ChevronRight className={cn("ml-auto size-3 transition-transform", open && "rotate-90")} />
       </button>
       {open && (
         <div
           ref={scrollRef}
-          className="max-h-56 overflow-x-hidden overflow-y-auto break-words border-t px-2.5 py-1.5 text-[11px] leading-relaxed text-muted-foreground"
+          className="ml-[0.4375rem] max-h-56 overflow-x-hidden overflow-y-auto break-words border-l pl-3 py-1 text-[11px] leading-relaxed text-muted-foreground"
         >
           {/* The reasoning trace is rendered as plain text, not Markdown. It is
               a raw thinking dump, often dense with partial LaTeX and long: the
