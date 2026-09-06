@@ -67,13 +67,16 @@ for line in sys.stdin:
         if "--initialize-barrier" in sys.argv:
             write_pid(os.getpid())
             time.sleep(300)
-        result(request, {"protocolVersion": 1, "agentInfo": {"name": "fixture", "version": "1.2.3"}, "agentCapabilities": {"loadSession": True, "promptCapabilities": {"image": True}, "mcpCapabilities": {"http": True}}, "authMethods": [{"id": "fixture-login", "name": "Fixture sign-in"}]})
+        mcp_capabilities = {} if "--no-http-mcp" in sys.argv else {"http": True}
+        result(request, {"protocolVersion": 1, "agentInfo": {"name": "fixture", "version": "1.2.3"}, "agentCapabilities": {"loadSession": True, "promptCapabilities": {"image": True}, "mcpCapabilities": mcp_capabilities}, "authMethods": [{"id": "fixture-login", "name": "Fixture sign-in"}]})
     elif method == "authenticate":
         authenticated = True
         result(request, {})
     elif method == "session/new":
         servers = params.get("mcpServers", [])
-        if servers:
+        if "--record-mcp-servers" in sys.argv:
+            (declared_root / "mcp-servers.json").write_text(json.dumps(servers))
+        if servers and servers[0].get("headers"):
             credential = servers[0]["headers"][0]["value"].removeprefix("Bearer ")
         if not authenticated:
             send({"id": request["id"], "error": {"code": -32000, "message": "Authentication required"}})

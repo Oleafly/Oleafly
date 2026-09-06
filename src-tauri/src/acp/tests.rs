@@ -5,7 +5,7 @@ use super::{
     store::Store,
     types::*,
 };
-use serde_json::json;
+use serde_json::{json, Value};
 use std::{path::Path, sync::Arc, time::Duration};
 
 pub(crate) fn fixture_temp() -> tempfile::TempDir {
@@ -1112,4 +1112,89 @@ async fn fixture_pid_paths_reject_symlink_escapes() {
         .expect("The fixture followed the PID symlink")
         .is_err());
     assert!(!outside_pid.exists());
+}
+
+#[tokio::test]
+async fn an_agent_without_http_mcp_receives_the_workspace_tools_over_stdio() {
+    let token = "stdio-bridge-fixture-token-1234";
+    let (temp, runtime, options) = pending_runtime(vec![
+        "".into(),
+        "--no-http-mcp".into(),
+        "--record-mcp-servers".into(),
+    ]);
+    let started = runtime
+        .start_with_mcp(
+            options,
+            vec![json!({
+                "type": "http",
+                "name": "oleafly-research",
+                "url": "http://127.0.0.1:1/mcp",
+                "headers": [{"name": "Authorization", "value": format!("Bearer {token}")}],
+            })],
+        )
+        .await
+        .expect("the session starts instead of refusing the tool server");
+    assert_eq!(started.session.status, SessionStatus::Ready);
+    assert!(!started.session.capabilities.mcp_http);
+
+    let received: Value = serde_json::from_str(
+        &std::fs::read_to_string(temp.path().join("mcp-servers.json")).unwrap(),
+    )
+    .unwrap();
+    let servers = received.as_array().unwrap();
+    assert_eq!(servers.len(), 1);
+    let server = &servers[0];
+    assert_eq!(server["name"], "oleafly-research");
+    assert!(server.get("type").is_none(), "stdio entries carry no type");
+    assert!(server.get("url").is_none());
+    assert!(server.get("headers").is_none());
+    assert_eq!(
+        server["command"].as_str().unwrap(),
+        std::env::current_exe().unwrap().to_string_lossy()
+    );
+    assert_eq!(server["args"], json!(["--oleafly-mcp-stdio"]));
+    let env = server["env"].as_array().unwrap();
+    let value = |name: &str| {
+        env.iter()
+            .find(|entry| entry["name"] == name)
+            .map(|entry| entry["value"].as_str().unwrap().to_owned())
+    };
+    assert_eq!(
+        value("OLEAFLY_MCP_URL").as_deref(),
+        Some("http://127.0.0.1:1/mcp")
+    );
+    assert_eq!(
+        value("OLEAFLY_MCP_TOKEN").as_deref(),
+        Some(format!("Bearer {token}").as_str())
+    );
+
+    let snapshot = runtime.snapshot(&started.session.id).await.unwrap();
+    assert!(!serde_json::to_string(&snapshot).unwrap().contains(token));
+    runtime.close(&started.session.id).await.unwrap();
+}
+
+#[tokio::test]
+async fn an_agent_with_http_mcp_still_receives_the_http_tool_server() {
+    let token = "http-passthrough-fixture-token-12";
+    let (temp, runtime, options) = pending_runtime(vec!["".into(), "--record-mcp-servers".into()]);
+    let started = runtime
+        .start_with_mcp(
+            options,
+            vec![json!({
+                "type": "http",
+                "name": "oleafly-research",
+                "url": "http://127.0.0.1:1/mcp",
+                "headers": [{"name": "Authorization", "value": format!("Bearer {token}")}],
+            })],
+        )
+        .await
+        .unwrap();
+    assert!(started.session.capabilities.mcp_http);
+    let received: Value = serde_json::from_str(
+        &std::fs::read_to_string(temp.path().join("mcp-servers.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(received[0]["type"], "http");
+    assert_eq!(received[0]["url"], "http://127.0.0.1:1/mcp");
+    runtime.close(&started.session.id).await.unwrap();
 }
