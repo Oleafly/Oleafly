@@ -45,7 +45,8 @@ export type ThemeCustomization = {
 type JsonRecord = Record<string, unknown>;
 
 const tokenNameSet = new Set<string>(THEME_TOKEN_NAMES);
-const cssValuePattern = /^(?:#[0-9a-f]{3,8}|(?:rgb|hsl|hwb|lab|lch|oklab|oklch|color)\([\d.\s,%/a-z+-]+\)|(?:transparent|currentcolor|black|white|red|blue|green|yellow|orange|purple|gray|grey))$/i;
+const cssValuePattern = /^(?:#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgb|hsl|hwb|lab|lch|oklab|oklch|color)\([\d.\s,%/a-z+-]+\)|(?:transparent|currentcolor|black|white|red|blue|green|yellow|orange|purple|gray|grey))$/i;
+const MAX_IMPORT_TOKEN_KEYS = 256;
 const radiusPattern = /^(?:0|(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem|em|%))$/;
 const customPropertyPattern = /^--oleafly-[a-z][a-z0-9-]{0,62}$/;
 const scopedPropertyPattern = /^(?:color|background-color|border-color|outline-color|box-shadow|font-family|font-size|font-weight|letter-spacing|line-height)$/;
@@ -78,12 +79,28 @@ export function normalizeThemeTokenName(value: string): ThemeTokenName | null {
   return tokenNameSet.has(normalized) ? (normalized as ThemeTokenName) : null;
 }
 
-export function validateThemeTokenOverrides(value: unknown): ThemeTokenOverrides {
-  if (!isRecord(value)) throw new Error("Theme tokens must be an object.");
+export function validateThemeTokenOverrides(
+  value: unknown,
+  options: { skipUnknown?: boolean; skipped?: string[]; label?: string } = {},
+): ThemeTokenOverrides {
+  const label = options.label ?? "Theme tokens";
+  if (!isRecord(value)) throw new Error(`${label} must be an object.`);
+  const entries = Object.entries(value);
+  if (entries.length > MAX_IMPORT_TOKEN_KEYS) {
+    throw new Error(`${label} list more than ${MAX_IMPORT_TOKEN_KEYS} entries.`);
+  }
   const output: ThemeTokenOverrides = {};
-  for (const [key, rawValue] of Object.entries(value)) {
-    const token = normalizeThemeTokenName(key);
-    if (!token) throw new Error(`Unsupported theme token: ${key}.`);
+  for (const [key, rawValue] of entries) {
+    if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
+    const token = typeof key === "string" && key.length <= 64 ? normalizeThemeTokenName(key) : null;
+    if (!token) {
+      if (options.skipUnknown) {
+        options.skipped?.push(key.slice(0, 64));
+        continue;
+      }
+      throw new Error(`Unsupported theme token: ${key.slice(0, 64)}.`);
+    }
+    if (rawValue === null || rawValue === undefined || rawValue === "") continue;
     if (!validColorValue(rawValue)) throw new Error(`Theme token ${token} has an invalid color value.`);
     output[token] = rawValue.trim();
   }
@@ -150,14 +167,23 @@ export function validateThemeCustomization(value: unknown): ThemeCustomization {
   };
 }
 
-function importThemeTokens(value: JsonRecord, mode: Theme) {
-  const cssVars = isRecord(value.cssVars) ? value.cssVars : null;
-  if (!cssVars) return null;
-  const modeTokens = cssVars[mode];
-  return validateThemeTokenOverrides(modeTokens ?? {});
+export interface ThemeImportResult {
+  customization: ThemeCustomization;
+  skippedTokens: string[];
 }
 
-export function parseThemeCustomizationJson(text: string): ThemeCustomization {
+function importThemeTokens(cssVars: JsonRecord, mode: Theme, skipped: string[]) {
+  const modeTokens = cssVars[mode];
+  if (modeTokens === undefined || modeTokens === null) return {};
+  return validateThemeTokenOverrides(modeTokens, {
+    skipUnknown: true,
+    skipped,
+    label: `The ${mode} CSS variables`,
+  });
+}
+
+export function parseThemeCustomizationImport(text: unknown): ThemeImportResult {
+  if (typeof text !== "string") throw new Error("Theme file must be text.");
   if (bytes(text) > MAX_THEME_IMPORT_BYTES) throw new Error("Theme file is larger than 128 KiB.");
   let parsed: unknown;
   try {
@@ -167,22 +193,32 @@ export function parseThemeCustomizationJson(text: string): ThemeCustomization {
   }
   if (!isRecord(parsed)) throw new Error("Theme file must contain an object.");
   if ("light" in parsed || "dark" in parsed || "version" in parsed) {
-    return validateThemeCustomization(parsed);
+    return { customization: validateThemeCustomization(parsed), skippedTokens: [] };
   }
-  const light = importThemeTokens(parsed, "light");
-  const dark = importThemeTokens(parsed, "dark");
-  if (!light || !dark) {
+  const cssVars = isRecord(parsed.cssVars) ? parsed.cssVars : null;
+  if (!cssVars) throw new Error("Theme file must include cssVars with light and dark entries.");
+  if (!("light" in cssVars) && !("dark" in cssVars)) {
     throw new Error("Theme file must include light and dark CSS variables.");
   }
-  const radius = validateRadius(parsed.radius ?? (isRecord(parsed.cssVars) ? parsed.cssVars.radius : null));
+  const skippedTokens: string[] = [];
+  const light = importThemeTokens(cssVars, "light", skippedTokens);
+  const dark = importThemeTokens(cssVars, "dark", skippedTokens);
+  const radius = validateRadius(parsed.radius ?? cssVars.radius ?? (isRecord(cssVars.theme) ? cssVars.theme.radius : null));
   const oleafly = isRecord(parsed.oleafly) ? parsed.oleafly : {};
   return {
-    version: THEME_CUSTOMIZATION_VERSION,
-    light,
-    dark,
-    radius,
-    customCss: validateCustomCss(oleafly.customCss),
+    customization: {
+      version: THEME_CUSTOMIZATION_VERSION,
+      light,
+      dark,
+      radius,
+      customCss: validateCustomCss(oleafly.customCss),
+    },
+    skippedTokens: [...new Set(skippedTokens)],
   };
+}
+
+export function parseThemeCustomizationJson(text: string): ThemeCustomization {
+  return parseThemeCustomizationImport(text).customization;
 }
 
 export function serializeThemeCustomization(customization: ThemeCustomization): string {

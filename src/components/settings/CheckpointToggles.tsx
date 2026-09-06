@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { History } from "lucide-react";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
 
@@ -42,7 +42,7 @@ export function CheckpointToggles() {
     >
       <div className="flex items-center gap-3 border-b px-4 py-3">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <ShieldCheck aria-hidden className="size-4" />
+          <History aria-hidden className="size-4" />
         </span>
         <div className="min-w-0">
           <h3 id="checkpoint-toggles-title" className="font-medium">

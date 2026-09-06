@@ -54,6 +54,11 @@ test("theme customization imports, exports, applies, and resets theme tokens", a
       `document.documentElement.classList.contains("dark")`,
       5_000,
     );
+    await tauriPage.click('[data-testid="theme-customization-toggle"]');
+    await tauriPage.waitForFunction(
+      `document.querySelector('[data-testid="theme-customization"]')?.getAttribute("data-state") === "open"`,
+      5_000,
+    );
     await tauriPage.getByText("Dark mode", { exact: true }).click();
     await tauriPage.waitForFunction(
       `Array.from(document.querySelectorAll('[aria-label="Theme mode to edit"] button')).some((button) => button.textContent.trim() === "Dark mode" && button.getAttribute("aria-pressed") === "true")`,

@@ -14,11 +14,13 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useResearchChatActions } from "@/components/ai/use-research-chat-actions";
 import { MessageList } from "@/components/ai/MessageList";
 import {
-  acpAuthenticate, acpCancel, acpDisconnect, acpError, acpPermission, acpPrompt, acpReadiness,
+  acpAuthenticate, acpCancel, acpDisconnect, acpError, acpLogoId, acpPermission, acpPrompt, acpReadiness,
   acpReconnect, acpSetModel, type AcpAgentStatus, type AcpImage, type AcpReadiness, type AcpSession,
 } from "@/lib/acp";
 import { cn } from "@/lib/utils";
 import { attachAcpListeners, isDelegatedSession, useAcpSessionsStore, type AcpAttachment } from "@/store/acp-sessions";
+import { PROVIDERS } from "@oleafly/ai-core";
+import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { AgentLogo } from "./AgentLogo";
 import { BridgeInstallCard, ReadinessBadge } from "./AgentReadiness";
 import { PermissionCard } from "./PermissionCard";
@@ -318,6 +320,23 @@ function SessionStatusPill({ session, busy }: { session: AcpSession; busy: boole
   );
 }
 
+function emptyStateLogos(catalog: AcpAgentStatus[]) {
+  const logos: { kind: "agent" | "provider"; id: string; title: string }[] = [];
+  const seen = new Set<string>();
+  for (const agent of catalog) {
+    const key = acpLogoId(agent.definition.id) ?? `agent:${agent.definition.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    logos.push({ kind: "agent", id: agent.definition.id, title: agent.definition.name });
+  }
+  for (const provider of PROVIDERS) {
+    if (seen.has(provider.id)) continue;
+    seen.add(provider.id);
+    logos.push({ kind: "provider", id: provider.id, title: provider.name });
+  }
+  return logos;
+}
+
 const EMPTY_STATE_POINTS = [
   { icon: KeyRound, tone: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", text: "Uses the agent's own account and plan" },
   { icon: ShieldCheck, tone: "bg-amber-500/10 text-amber-600 dark:text-amber-400", text: "Asks before actions that need permission" },
@@ -355,16 +374,26 @@ function AcpEmptyState({
       </div>
     );
   }
-  const logos = catalog.slice(0, 3);
+  const logos = emptyStateLogos(catalog);
   return (
     <div data-testid="acp-empty-intro" className="mx-auto flex max-w-sm flex-col items-center gap-5 py-10 text-center">
-      <div className="flex items-center -space-x-2">
-        {(logos.length > 0 ? logos : [null]).map((agent, index) => (
+      <div data-testid="acp-empty-logos" className="flex max-w-xs flex-wrap items-center justify-center -space-x-2">
+        {logos.length === 0 ? (
+          <span className="flex size-10 items-center justify-center rounded-full border bg-background shadow-sm">
+            <Bot aria-hidden className="size-4.5 text-muted-foreground" />
+          </span>
+        ) : null}
+        {logos.map((logo) => (
           <span
-            key={agent?.definition.id ?? index}
-            className="flex size-10 items-center justify-center rounded-full border bg-background shadow-sm"
+            key={`${logo.kind}:${logo.id}`}
+            title={logo.title}
+            className="flex size-9 items-center justify-center rounded-full border bg-background shadow-sm"
           >
-            {agent ? <AgentLogo agentId={agent.definition.id} size={18} /> : <Bot aria-hidden className="size-4.5 text-muted-foreground" />}
+            {logo.kind === "agent" ? (
+              <AgentLogo agentId={logo.id} size={16} />
+            ) : (
+              <ProviderLogo providerId={logo.id} size={16} />
+            )}
           </span>
         ))}
       </div>

@@ -1,14 +1,17 @@
 import { useRef, useState } from "react";
-import { Download, RotateCcw, Upload } from "lucide-react";
+import { Download, Palette, RotateCcw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cssColorToHex, readCssVariable } from "@/lib/css-color";
 import { useTheme, type Theme } from "@/lib/theme";
 import {
   MAX_THEME_IMPORT_BYTES,
   THEME_TOKEN_NAMES,
   applyThemeCustomization,
-  parseThemeCustomizationJson,
+  parseThemeCustomizationImport,
   readThemeCustomization,
   resetThemeCustomization,
   serializeThemeCustomization,
@@ -106,8 +109,12 @@ export function ThemeCustomization() {
       return;
     }
     try {
-      const imported = parseThemeCustomizationJson(await file.text());
-      save(imported, "Theme imported and applied.");
+      const { customization: imported, skippedTokens } = parseThemeCustomizationImport(await file.text());
+      const skippedNote =
+        skippedTokens.length > 0
+          ? ` Skipped ${skippedTokens.length} ${skippedTokens.length === 1 ? "token" : "tokens"} Oleafly does not use: ${skippedTokens.slice(0, 6).join(", ")}${skippedTokens.length > 6 ? ", and more" : ""}.`
+          : "";
+      save(imported, `Theme imported and applied.${skippedNote}`);
       setTokenDrafts({ light: {}, dark: {} });
       setRadiusDraft(null);
       setCustomCssDraft(null);
@@ -118,15 +125,19 @@ export function ThemeCustomization() {
     }
   };
 
-  return (
-    <section className="space-y-3 rounded-lg border bg-card p-3" aria-labelledby="theme-customization-heading">
-      <div className="space-y-1">
-        <h3 id="theme-customization-heading" className="text-sm font-medium">Theme customization</h3>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Change app color tokens for each mode. Changes are saved locally and take effect straight away.
-        </p>
-      </div>
+  const effectiveColor = (token: ThemeTokenName): string => {
+    const override = (tokenDrafts[editMode][token] ?? tokens[token] ?? "").trim();
+    if (override) return override;
+    return editMode === theme ? readCssVariable(`--${token}`) : "";
+  };
 
+  return (
+    <CollapsibleSection
+      id="theme-customization"
+      icon={Palette}
+      title="Theme customization"
+      description="Change app color tokens for each mode. Changes are saved locally and take effect straight away."
+    >
       <fieldset className="flex flex-wrap items-center gap-2" aria-label="Theme mode to edit">
         {(["light", "dark"] as const).map((mode) => (
           <Button
@@ -147,19 +158,30 @@ export function ThemeCustomization() {
       </fieldset>
 
       <div className="grid gap-2 sm:grid-cols-2">
-        {THEME_TOKEN_NAMES.map((token) => (
-          <div key={token} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-2 text-xs">
-            <span className="truncate text-muted-foreground" title={token}>{TOKEN_LABELS[token]}</span>
-            <Input
-              aria-label={`${TOKEN_LABELS[token]} token for ${editMode} mode`}
-              value={tokenDrafts[editMode][token] ?? tokens[token] ?? ""}
-              onChange={(event) => updateToken(token, event.target.value)}
-              onBlur={(event) => updateToken(token, event.target.value, true)}
-              placeholder="Default"
-              className="h-8 font-mono text-[11px]"
-            />
-          </div>
-        ))}
+        {THEME_TOKEN_NAMES.map((token) => {
+          const current = effectiveColor(token);
+          return (
+            <div
+              key={token}
+              className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1.4fr)] items-center gap-2 text-xs"
+            >
+              <span className="truncate text-muted-foreground" title={token}>{TOKEN_LABELS[token]}</span>
+              <ColorPicker
+                ariaLabel={`Pick ${TOKEN_LABELS[token]} color for ${editMode} mode`}
+                value={cssColorToHex(current) ?? current}
+                onChange={(value) => updateToken(token, value, true)}
+              />
+              <Input
+                aria-label={`${TOKEN_LABELS[token]} token for ${editMode} mode`}
+                value={tokenDrafts[editMode][token] ?? tokens[token] ?? ""}
+                onChange={(event) => updateToken(token, event.target.value)}
+                onBlur={(event) => updateToken(token, event.target.value, true)}
+                placeholder="Default"
+                className="h-8 font-mono text-[11px]"
+              />
+            </div>
+          );
+        })}
       </div>
 
       <div className="space-y-1 text-xs">
@@ -239,6 +261,6 @@ export function ThemeCustomization() {
         />
       </div>
       {message ? <p role="status" className="text-xs text-muted-foreground">{message}</p> : null}
-    </section>
+    </CollapsibleSection>
   );
 }

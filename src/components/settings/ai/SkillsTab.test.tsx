@@ -604,6 +604,9 @@ describe("SkillsTab", () => {
 
   it("turns on skill sharing with other agents", async () => {
     renderTab();
+    await waitFor(() => expect(screen.getByTestId("skills-share-toggle")).toBeEnabled());
+    expect(screen.queryByTestId("skills-share-target-claude")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("skills-share-card-toggle"));
     await screen.findByTestId("skills-share-target-claude");
 
     fireEvent.click(screen.getByTestId("skills-share-toggle"));

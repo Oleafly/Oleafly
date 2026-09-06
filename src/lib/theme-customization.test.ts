@@ -6,6 +6,7 @@ import {
   themeTokenOverride,
   clearThemeCustomization,
   emptyThemeCustomization,
+  parseThemeCustomizationImport,
   parseThemeCustomizationJson,
   readThemeCustomization,
   resetThemeCustomization,
@@ -44,6 +45,39 @@ describe("theme customization schema", () => {
     expect(imported.dark.background).toBe("oklch(0.2 0 0)");
     expect(imported.radius).toBe("8px");
     expect(imported.customCss).toBe("color: #111111");
+  });
+
+  it("skips tokens Oleafly does not use when importing a shadcn theme and reports them", () => {
+    const imported = parseThemeCustomizationImport(
+      `{"cssVars":{"light":{"primary":"#2563eb","chart-1":"#f00","sidebar-ring":"#0f0","__proto__":{"polluted":true},"constructor":"#000"},"dark":{"primary":"#6ea8ff","chart-1":"#f00","ring":""}},"radius":"10px"}`,
+    );
+    expect(imported.customization.light).toEqual({ primary: "#2563eb" });
+    expect(imported.customization.dark).toEqual({ primary: "#6ea8ff" });
+    expect(imported.skippedTokens).toEqual(["chart-1", "sidebar-ring"]);
+    expect(Object.getPrototypeOf(imported.customization.light)).toBe(Object.prototype);
+    expect("polluted" in imported.customization.light).toBe(false);
+    expect(imported.customization.radius).toBe("10px");
+  });
+
+  it("rejects malformed imports with a clear message", () => {
+    expect(() => parseThemeCustomizationImport("[]")).toThrow("must contain an object");
+    expect(() => parseThemeCustomizationImport("{not json")).toThrow("not valid JSON");
+    expect(() => parseThemeCustomizationImport(JSON.stringify({ name: "x" }))).toThrow("cssVars");
+    expect(() => parseThemeCustomizationImport(JSON.stringify({ cssVars: { theme: {} } })))
+      .toThrow("light and dark CSS variables");
+    expect(() => parseThemeCustomizationImport(JSON.stringify({ cssVars: { light: ["#fff"], dark: {} } })))
+      .toThrow("The light CSS variables must be an object");
+    expect(() => parseThemeCustomizationImport(JSON.stringify({ cssVars: { light: { primary: "#12345" }, dark: {} } })))
+      .toThrow("invalid color value");
+    expect(() => parseThemeCustomizationImport(JSON.stringify({ cssVars: { light: { primary: "url(x)" }, dark: {} } })))
+      .toThrow("invalid color value");
+    expect(() => parseThemeCustomizationImport(JSON.stringify({ cssVars: { light: {}, dark: {} }, radius: "calc(1px)" })))
+      .toThrow("Corner radius");
+    expect(() => parseThemeCustomizationImport(JSON.stringify({ version: 2, light: {}, dark: {} })))
+      .toThrow("unsupported version");
+    expect(() => parseThemeCustomizationImport(42 as unknown as string)).toThrow("must be text");
+    expect(() => parseThemeCustomizationImport(`{"cssVars":{"light":{},"dark":{}},"pad":"${"x".repeat(130 * 1024)}"}`))
+      .toThrow("larger than 128 KiB");
   });
 
   it("rejects unknown tokens and executable stylesheet features", () => {

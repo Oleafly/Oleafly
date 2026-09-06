@@ -260,6 +260,11 @@ describe("ACP assistant acceptance", () => {
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
     const start = await ui.findByTestId("acp-start-conversation");
     expect(ui.getByTestId("acp-empty-intro")).toHaveTextContent("Work with a CLI agent in this project");
+    const logoTitles = [...ui.getByTestId("acp-empty-logos").querySelectorAll("[title]")].map((node) => node.getAttribute("title"));
+    expect(logoTitles[0]).toBe("Research CLI");
+    expect(logoTitles).toEqual(expect.arrayContaining(["OpenAI", "Anthropic", "Google Gemini", "Ollama (local)"]));
+    expect(logoTitles).toHaveLength(12);
+    expect(new Set(logoTitles).size).toBe(logoTitles.length);
     expect(ui.queryByTestId("acp-session-status")).not.toBeInTheDocument();
     expect(ui.container).not.toHaveTextContent("CLI account limits apply");
     await waitFor(() => expect(start).toBeEnabled());
