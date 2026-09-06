@@ -93,6 +93,9 @@ where
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    if research_mcp::stdio_bridge_requested() {
+        std::process::exit(research_mcp::serve_stdio_bridge());
+    }
     let mut builder = tauri::Builder::default()
         .on_page_load(|webview, payload| {
             browser::on_page_load(webview, payload);

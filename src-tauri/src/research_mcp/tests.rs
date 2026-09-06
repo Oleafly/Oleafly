@@ -491,3 +491,137 @@ async fn a_device_enabled_skill_loads_with_its_folder_and_script_commands() {
     assert!(refused.contains("literature-review"));
     bridge.shutdown().await;
 }
+
+#[test]
+fn stdio_server_rewrites_an_http_entry_into_a_bridge_command() {
+    let http = serde_json::json!({
+        "type": "http",
+        "name": "oleafly-research",
+        "url": "http://127.0.0.1:54321/mcp",
+        "headers": [{ "name": "Authorization", "value": "Bearer secret-token" }],
+    });
+    let stdio = super::stdio_server(&http).unwrap();
+    assert_eq!(stdio["name"], "oleafly-research");
+    assert!(stdio.get("type").is_none());
+    assert!(stdio.get("url").is_none());
+    assert!(stdio.get("headers").is_none());
+    assert_eq!(
+        stdio["command"].as_str().unwrap(),
+        std::env::current_exe().unwrap().to_string_lossy()
+    );
+    assert_eq!(stdio["args"], serde_json::json!(["--oleafly-mcp-stdio"]));
+    let env = stdio["env"].as_array().unwrap();
+    let value = |name: &str| {
+        env.iter()
+            .find(|entry| entry["name"] == name)
+            .map(|entry| entry["value"].as_str().unwrap().to_owned())
+    };
+    assert_eq!(
+        value("OLEAFLY_MCP_URL").as_deref(),
+        Some("http://127.0.0.1:54321/mcp")
+    );
+    assert_eq!(
+        value("OLEAFLY_MCP_TOKEN").as_deref(),
+        Some("Bearer secret-token")
+    );
+}
+
+#[test]
+fn stdio_server_refuses_an_entry_without_an_address_or_credential() {
+    let missing_url = serde_json::json!({
+        "type": "http",
+        "name": "oleafly-research",
+        "headers": [{ "name": "Authorization", "value": "Bearer token" }],
+    });
+    assert!(super::stdio_server(&missing_url)
+        .unwrap_err()
+        .contains("address"));
+    let missing_token = serde_json::json!({
+        "type": "http",
+        "name": "oleafly-research",
+        "url": "http://127.0.0.1:1/mcp",
+        "headers": [{ "name": "X-Other", "value": "value" }],
+    });
+    assert!(super::stdio_server(&missing_token)
+        .unwrap_err()
+        .contains("credential"));
+}
+
+#[test]
+fn the_stdio_bridge_carries_real_tool_calls_and_reports_an_unreachable_server() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::write(temp.path().join("main.tex"), "\\section{Intro}\n").unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let served = runtime.block_on(bridge(temp.path(), None));
+    let entry = super::stdio_server(&served.mcp_server()).unwrap();
+    let value = |name: &str| {
+        entry["env"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|item| item["name"] == name)
+            .map(|item| item["value"].as_str().unwrap().to_owned())
+            .unwrap()
+    };
+    let url = value("OLEAFLY_MCP_URL");
+    let token = value("OLEAFLY_MCP_TOKEN");
+
+    let requests = concat!(
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"agent","version":"1"}}}"#,
+        "\n",
+        r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#,
+        "\n",
+        "\n",
+        r#"not json at all"#,
+        "\n",
+        r#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"main.tex"}}}"#,
+        "\n",
+    );
+    let mut written = Vec::new();
+    super::stdio::pump(
+        &runtime,
+        &url,
+        &token,
+        std::io::Cursor::new(requests),
+        &mut written,
+    )
+    .unwrap();
+    let replies: Vec<Value> = String::from_utf8(written)
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(replies.len(), 2, "one reply per request with an id");
+    assert_eq!(replies[0]["id"], 1);
+    assert_eq!(replies[0]["result"]["serverInfo"]["name"], "oleafly");
+    assert_eq!(replies[1]["id"], 2);
+    assert!(replies[1]["result"]["content"][0]["text"]
+        .as_str()
+        .unwrap()
+        .contains("Intro"));
+
+    runtime.block_on(served.shutdown());
+    let mut after = Vec::new();
+    super::stdio::pump(
+        &runtime,
+        &url,
+        &token,
+        std::io::Cursor::new(
+            "{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"tools/list\",\"params\":{}}\n",
+        ),
+        &mut after,
+    )
+    .unwrap();
+    let reply: Value = serde_json::from_str(String::from_utf8(after).unwrap().trim()).unwrap();
+    assert_eq!(reply["id"], 9);
+    assert!(
+        reply["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("unavailable")
+            || reply["error"]["code"].is_number()
+    );
+}

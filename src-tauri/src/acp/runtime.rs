@@ -52,7 +52,7 @@ struct LiveSession {
     connection: Arc<Connection>,
     operation: AsyncMutex<()>,
     owner: Option<String>,
-    mcp_servers: Vec<Value>,
+    mcp_servers: Mutex<Vec<Value>>,
     redactor: Redactor,
     task_temp: Option<TaskTemp>,
     delegate: Mutex<PermissionDelegate>,
@@ -77,8 +77,10 @@ impl Drop for LiveSession {
                 _ => {}
             }
         }
-        for server in &mut self.mcp_servers {
-            clear(server);
+        if let Ok(servers) = self.mcp_servers.get_mut() {
+            for server in servers {
+                clear(server);
+            }
         }
     }
 }
@@ -535,7 +537,7 @@ impl AcpRuntime {
             operation: AsyncMutex::new(()),
             owner,
             redactor,
-            mcp_servers,
+            mcp_servers: Mutex::new(mcp_servers),
             task_temp,
             delegate: Mutex::new(PermissionDelegate::None),
         });
@@ -563,11 +565,21 @@ impl AcpRuntime {
         session
             .redactor
             .validate_metadata_ids(&response["authMethods"])?;
-        if session.mcp_servers.iter().any(|v| v["type"] == "http") && !capabilities.mcp_http {
-            return Err("This agent does not support the workspace's HTTP tool connection.".into());
-        }
-        if session.mcp_servers.iter().any(|v| v["type"] == "sse") {
-            return Err("SSE tool connections are not supported by this ACP runtime.".into());
+        {
+            let mut servers = session
+                .mcp_servers
+                .lock()
+                .map_err(|_| "The ACP session is unavailable.")?;
+            if servers.iter().any(|v| v["type"] == "sse") {
+                return Err("SSE tool connections are not supported by this ACP runtime.".into());
+            }
+            if !capabilities.mcp_http {
+                for server in servers.iter_mut() {
+                    if server["type"] == "http" {
+                        *server = crate::research_mcp::stdio_server(server)?;
+                    }
+                }
+            }
         }
         {
             let mut state = session
@@ -596,6 +608,11 @@ impl AcpRuntime {
 
     async fn establish(&self, session: &Arc<LiveSession>) -> Result<(), String> {
         let record = self.copy_record(session)?;
+        let mcp_servers = session
+            .mcp_servers
+            .lock()
+            .map_err(|_| "The ACP session is unavailable.")?
+            .clone();
         let (method, params) = if let Some(native) = &record.native_session_id {
             let method = if record.capabilities.resume {
                 "session/resume"
@@ -606,12 +623,12 @@ impl AcpRuntime {
             };
             (
                 method,
-                json!({"sessionId":native,"cwd":record.project_path,"mcpServers":session.mcp_servers}),
+                json!({"sessionId":native,"cwd":record.project_path,"mcpServers":mcp_servers}),
             )
         } else {
             (
                 "session/new",
-                json!({"cwd":record.project_path,"mcpServers":session.mcp_servers}),
+                json!({"cwd":record.project_path,"mcpServers":mcp_servers}),
             )
         };
         let result = session
