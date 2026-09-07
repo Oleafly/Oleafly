@@ -37,8 +37,10 @@ vi.mock("@/lib/theme", () => ({
 }));
 
 import { measureTourPlacement, TourGuide } from "./TourGuide";
+import { START_TOUR_EVENT } from "@/lib/tour";
 import { tourRegistry, type TourStepDefinition } from "@/lib/tours/registry";
 import { useFilesStore } from "@/store/files";
+import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
 
@@ -360,6 +362,61 @@ describe("TourGuide overlay reachability", () => {
       mountTourTarget("project-template-list", TEMPLATE_LIST_BOX);
     });
     expect(joyridePlacement("home-template")).toBe("bottom");
+  });
+
+  it("stays clickable while a modal dialog has switched the body off", () => {
+    joyrideMocks.render = true;
+    useSettingsStore.setState({ newProjectOpen: true });
+    mountTourTarget("new-project", { top: 40, left: 40, width: 120, height: 32 });
+    useTourStore.setState({ activeTourId: "home", activeStepIndex: homeStepIndex("home-create") });
+
+    render(<TourGuide />);
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    // Radix marks the body inert while a modal dialog is open. The tour renders
+    // in its own portal outside that dialog, so it inherits the dead body
+    // unless it opts back in.
+    document.body.style.pointerEvents = "none";
+    const tooltip = document.querySelector<HTMLElement>("[data-tour-tooltip]");
+    expect(tooltip).not.toBeNull();
+    expect(tooltip?.style.pointerEvents).toBe("auto");
+    document.body.style.pointerEvents = "";
+  });
+
+  it("starts the AI settings walkthrough when it is asked for by name", () => {
+    joyrideMocks.render = true;
+    useSettingsStore.setState({ settingsOpen: true });
+    mountTourTarget("ai-settings-tabs", { top: 40, left: 40, width: 240, height: 32 });
+
+    render(<TourGuide />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(START_TOUR_EVENT, { detail: "ai-settings" }));
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(tourStep().activeTourId).toBe("ai-settings");
+    expect(document.querySelector("[data-tour-tooltip]")).not.toBeNull();
+  });
+
+  it("still starts a named tour with a diagram open behind Settings", () => {
+    joyrideMocks.render = true;
+    useSettingsStore.setState({ settingsOpen: true });
+    useHomeViewStore.setState({ page: "diagram-composer" });
+    mountTourTarget("ai-settings-tabs", { top: 40, left: 40, width: 240, height: 32 });
+
+    render(<TourGuide />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(START_TOUR_EVENT, { detail: "ai-settings" }));
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(tourStep().activeTourId).toBe("ai-settings");
   });
 
   it("keeps dimming the whole grid on the step that only describes it", () => {

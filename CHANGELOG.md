@@ -62,6 +62,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   available to any connected external client, not only the built-in
   assistant.
 
+- A Research workspace tab in the left rail, in beta. Describe a piece of work,
+  choose the agent and model that should do it, and start from a blank task or
+  from Literature review, Evidence audit, Analysis, Manuscript revision or
+  Response to reviewers. Each task runs on its own copy of the project, so
+  nothing reaches your manuscript until you have read the result. A queued task
+  can be edited, cancelled, retried or deleted.
+- Opening a research task shows the run in order under Activity, with messages,
+  reasoning and each tool call beside its result. Review lists a diff per
+  changed file with a checkbox on each, so you apply the ones you want and
+  discard the rest. Files still waiting appear under Task outputs in the Source
+  Tree with a Review button.
+- Linked folders. Point a project at a dataset, a reading folder or an analysis
+  folder that lives elsewhere on disk and it stays where it is. Each link takes
+  a label and a role of References, Data, Analysis or Manuscript. Links are read
+  only, so Oleafly never writes to them, and the assistant can list, search and
+  read them.
+- The assistant can run on a coding agent already installed on your computer
+  instead of your own model keys, through that agent's account. A switch in its
+  header chooses between them, and the CLI Agent side is in beta. Fourteen
+  agents are in the catalog, including Claude Code, Codex CLI, Gemini CLI,
+  Cursor and OpenCode.
+- Settings, AI has an Agents tab. Each agent says whether its command line tool
+  is present, shows the path and version found, gives the command to sign in,
+  and installs what it needs in one click. You can also search the agent
+  registry or paste a definition for one Oleafly does not ship.
+- Typing @ in the chat composer lists your models and installed agents as well
+  as files. Mentioning one hands that part of the work to it, and its card
+  carries the whole answer and opens its own transcript.
+- A usage report behind the chart button in the assistant header. Pick a date
+  range, filter by project, agent, provider, model and session, and read daily
+  token use, tables per project and model, and session rows with a cost
+  estimate. The report exports to CSV, and subscription or local providers
+  count as plan use rather than API list price.
+- A per project spend limit under Settings, AI. The card shows what has been
+  spent so far, warns at 80 percent, and pauses runs once the limit is reached.
+- The Draw tab reads the TikZ that is actually in the file, so a picture you
+  pasted, imported or wrote by hand appears on the canvas as nodes and edges
+  you can move. Editing the code and returning to Draw keeps what you wrote.
+- Typst files get the same formatting toolbar LaTeX and Markdown have, with
+  bold, italic, headings, lists, links, images, math and search.
+- An in app browser, off by default under Settings, Experimentation. Turning it
+  on adds the browser and lets the assistant click and type in it. You can
+  choose the search engine and home page, and import cookies from a browser you
+  are already signed in to.
+- Chat history is searchable by title and message text.
+- Reset to defaults, per settings section, so one area can be restored without
+  touching the rest.
+
 ### Changed
 
 - Typing a slash word that matches no command or skill no longer shows an
@@ -82,12 +130,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the assistant draws it, looks at the render, and inserts it at your cursor.
   This works in any LaTeX project whose engine can compile a figure by itself.
 
+- New project asks how the work begins before anything else, with three cards:
+  a research project, a manuscript you already have, or a template. Choosing a
+  research project previews the files and the first task before writing
+  anything. Importing has its own dialog, with local sources kept apart from
+  GitHub.
+- Tool calls and reasoning in the chat are plain rows rather than boxes, with
+  the output under a left rail and an Approved or Rejected badge once you have
+  decided. Research task activity uses the same rows.
+- Skills turned on for the device are available to research tasks and to agents
+  connected over MCP, unless a project turns them off.
+- The MCP import button says what it reads, the server definitions already on
+  this machine, and an empty server list explains how to add one.
+
 ### Removed
 
 - The six built-in one-paragraph skills research-authoring, research-review,
   research-citation, research-publish, conduct-research, and ai-figure.
   What they covered is now part of the assistant's always-on research rules
   and the bundled skill pack, not a skill you had to remember to turn on.
+
+- Version labels in Git History. They lived in a file Oleafly maintained beside
+  the repository and took an exclusive lock to write. The tab is a plain commit
+  list now, with the commit subject as the title.
 
 ### Fixed
 
@@ -125,6 +190,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Editing a custom provider's base URL no longer demands the API key back
   first. The saved key stays in place, and the dialog notes when it will be
   sent to the new address.
+
+- Leaving a project for the library no longer freezes the app on Windows.
+  Closing the project shut its shell down on the thread that draws the window.
+- The library no longer freezes while a project is busy. Listing projects waited
+  on each project's lock with no time limit, so one project saving a checkpoint
+  stopped every later action, on unrelated projects too.
+- The PDF builds when a project opens even when no editor tab holds the main
+  document. In a preview only layout, and after clicking any other file in the
+  Source Tree in split view, the preview used to sit on "Waiting to compile the
+  current revision" and never move.
+- The Getting started tour can be finished. The template step swallowed every
+  click on the template grid, leaving Skip as the only way on, and its tooltip
+  sat on top of the templates it had just asked you to choose from.
+- A dialog that has just closed no longer swallows the next click. After you
+  created a project the chooser left an invisible layer over the workspace, so
+  the first click at the editor, the tree or the toolbar went nowhere.
+- A guide shown over a dialog is usable. Its Next, Back and Skip buttons did
+  nothing while the card sat over the dialog it was describing.
+- Opening a hand written .tikz file no longer rewrites it on the way in.
+- Keystrokes typed while a terminal is still opening are held and sent once the
+  shell is live. On Windows this also fixes a terminal that started with no
+  prompt at all.
+- Dragging the terminal divider to the bottom of the window and back up reopens
+  the terminal, instead of leaving a tall empty panel with no way back.
+- Reading settings, seeding the starter personas, exporting a PDF and setting a
+  project colour no longer pause the window while they run.
+- Reopening a chat with a long reply, or switching theme with one open, no
+  longer locks the interface for a second or more.
+- A Mermaid diagram whose labels contain a line break renders instead of showing
+  "Unable to render diagram."
+- Saving one provider in Settings, AI keeps the keys of providers that changed
+  while the page was open. If the settings cannot be read, the key you typed
+  stays in the box and nothing is written.
+- The accent colour picked in Appearance survives a switch between light and
+  dark.
+
 
 ## [0.3.13] - 2026-08-29
 

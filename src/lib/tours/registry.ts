@@ -70,7 +70,7 @@ export const tourRegistry = {
         title: "Three ways to begin",
         content: "Start a research project, bring in a manuscript you already have, or work from a prepared template.",
         waitForTarget: true,
-        placement: "center",
+        placement: "bottom",
       },
       {
         id: "home-kind-template",
@@ -232,7 +232,7 @@ export const tourRegistry = {
         target: '[data-tour="rail-research"]',
         kind: "required-click",
         title: "Research workspace",
-        content: "Open the research workspace. It is in beta, so expect it to keep changing.",
+        content: "Open it to hand research tasks to an agent and to link reading folders and datasets you keep elsewhere. This is new and in beta, so please report anything that breaks.",
         waitForTarget: true,
         placement: "bottom",
       },
@@ -392,7 +392,6 @@ export const tourRegistry = {
     version: 2,
     contexts: ["settings"],
     priority: 35,
-    autoStart: false,
     steps: [
       {
         id: "ai-settings-tabs",
