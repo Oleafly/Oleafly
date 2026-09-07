@@ -7,7 +7,7 @@ import { AlertTriangle, CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Markdown } from "@/components/ui/markdown";
-import { findUpdate, installUpdate } from "@/lib/updater";
+import { findUpdate, installUpdate, isDownloadStalled } from "@/lib/updater";
 import { Progress } from "@/components/ui/progress";
 import { logError } from "@/lib/log";
 import { appVersion } from "@/lib/tauri";
@@ -15,7 +15,7 @@ import { celebrate } from "@/lib/confetti";
 
 const RELEASES_URL = "https://github.com/Oleafly/Oleafly/releases/latest";
 
-type Phase = "checking" | "available" | "upToDate" | "downloading" | "error";
+type Phase = "checking" | "available" | "upToDate" | "downloading" | "stalled" | "error";
 
 // Runs its own update check on mount, because a separate window is a separate
 // JS context and cannot share the main window's `Update` handle. `?manual=1`
@@ -84,7 +84,7 @@ export function UpdateWindow() {
       // installUpdate relaunches the app on success; unreachable afterward.
     } catch (e) {
       await logError("updater", e);
-      setPhase("error");
+      setPhase(isDownloadStalled(e) ? "stalled" : "error");
     }
   };
 
@@ -93,9 +93,11 @@ export function UpdateWindow() {
       ? "Checking for updates…"
       : phase === "upToDate"
         ? "You're up to date"
-        : update
-          ? `Update available · v${update.version}`
-          : "Oleafly";
+        : phase === "stalled"
+          ? "Download stalled"
+          : update
+            ? `Update available · v${update.version}`
+            : "Oleafly";
 
   const notes = update?.body?.trim();
 
@@ -144,6 +146,15 @@ export function UpdateWindow() {
             </div>
           </div>
         )}
+        {phase === "stalled" && (
+          <p className="inline-flex items-start gap-1.5 text-sm text-destructive">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <span>
+              The download stopped responding. Check your connection and try again later, or
+              get this version from the releases page.
+            </span>
+          </p>
+        )}
         {phase === "error" && (
           <p className="inline-flex items-center gap-1.5 text-sm text-destructive">
             <AlertTriangle className="size-4" />
@@ -188,6 +199,15 @@ export function UpdateWindow() {
             </Button>
             <Button size="sm" onClick={install}>
               Update now
+            </Button>
+          </div>
+        ) : phase === "stalled" ? (
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={close}>
+              Close
+            </Button>
+            <Button size="sm" onClick={() => void openUrl(RELEASES_URL)}>
+              View release
             </Button>
           </div>
         ) : phase === "upToDate" || phase === "error" ? (

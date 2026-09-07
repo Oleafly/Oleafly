@@ -34,6 +34,20 @@ export async function findUpdate(): Promise<Update | null> {
   return update ?? null;
 }
 
+export const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 60 * 1000;
+export const DOWNLOAD_STALL_TIMEOUT_MS = 60_000;
+
+export class UpdateDownloadStalledError extends Error {
+  constructor() {
+    super("The update download stopped responding.");
+    this.name = "UpdateDownloadStalledError";
+  }
+}
+
+export function isDownloadStalled(e: unknown): boolean {
+  return e instanceof UpdateDownloadStalledError;
+}
+
 // When the release doesn't advertise a content length, `onProgress` stays at
 // 0 until the download finishes (then jumps to 100).
 export async function installUpdate(
@@ -42,21 +56,49 @@ export async function installUpdate(
 ): Promise<void> {
   let total = 0;
   let downloaded = 0;
-  await update.downloadAndInstall((event) => {
-    switch (event.event) {
-      case "Started":
-        total = event.data.contentLength ?? 0;
-        onProgress?.(0);
-        break;
-      case "Progress":
-        downloaded += event.data.chunkLength;
-        if (total > 0) onProgress?.(Math.min(100, Math.round((downloaded / total) * 100)));
-        break;
-      case "Finished":
-        onProgress?.(100);
-        break;
-    }
+  let stallTimer: ReturnType<typeof setTimeout> | undefined;
+  let reportStall: (() => void) | undefined;
+  const stalled = new Promise<never>((_, reject) => {
+    reportStall = () => reject(new UpdateDownloadStalledError());
   });
+  const disarm = () => {
+    if (stallTimer !== undefined) clearTimeout(stallTimer);
+    stallTimer = undefined;
+  };
+  const arm = () => {
+    disarm();
+    stallTimer = setTimeout(() => reportStall?.(), DOWNLOAD_STALL_TIMEOUT_MS);
+  };
+
+  arm();
+  try {
+    await Promise.race([
+      update.downloadAndInstall(
+        (event) => {
+          switch (event.event) {
+            case "Started":
+              total = event.data.contentLength ?? 0;
+              arm();
+              onProgress?.(0);
+              break;
+            case "Progress":
+              downloaded += event.data.chunkLength;
+              arm();
+              if (total > 0) onProgress?.(Math.min(100, Math.round((downloaded / total) * 100)));
+              break;
+            case "Finished":
+              disarm();
+              onProgress?.(100);
+              break;
+          }
+        },
+        { timeout: DOWNLOAD_TIMEOUT_MS },
+      ),
+      stalled,
+    ]);
+  } finally {
+    disarm();
+  }
   // Relaunch tears the webview down exactly like a quit, so it must go
   // through the same durable flush as window close, Cmd+Q, and Restart. A
   // failed save blocks the relaunch (the installed update simply applies on
