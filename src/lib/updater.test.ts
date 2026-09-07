@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 
 // Mock the Tauri surface the updater primitives touch. isTauri is toggled per
 // test via the exported ref so we can exercise the browser (no-updater) path.
@@ -32,7 +32,14 @@ vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ flushForQuit }) },
 }));
 
-import { findUpdate, installUpdate, openUpdateWindow } from "./updater";
+import {
+  DOWNLOAD_STALL_TIMEOUT_MS,
+  DOWNLOAD_TIMEOUT_MS,
+  findUpdate,
+  installUpdate,
+  isDownloadStalled,
+  openUpdateWindow,
+} from "./updater";
 
 beforeEach(() => {
   flushForQuit.mockReset().mockResolvedValue(undefined);
@@ -142,6 +149,102 @@ describe("installUpdate", () => {
     // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
     await expect(installUpdate(update as any)).rejects.toThrow("network down");
     expect(relaunch).not.toHaveBeenCalled();
+  });
+
+  it("caps the request itself so an abandoned download can't run forever", async () => {
+    const update = {
+      downloadAndInstall: vi.fn(async (cb: (e: unknown) => void) => {
+        cb({ event: "Finished", data: {} });
+      }),
+    };
+    // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
+    await installUpdate(update as any);
+    expect(update.downloadAndInstall).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ timeout: DOWNLOAD_TIMEOUT_MS }),
+    );
+  });
+});
+
+describe("installUpdate stall detection", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("gives up when no byte arrives at all", async () => {
+    const update = { downloadAndInstall: vi.fn(() => new Promise<void>(() => {})) };
+    // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
+    const installing = installUpdate(update as any);
+    const settled = expect(installing).rejects.toSatisfy(isDownloadStalled);
+    await vi.advanceTimersByTimeAsync(DOWNLOAD_STALL_TIMEOUT_MS);
+    await settled;
+    expect(relaunch).not.toHaveBeenCalled();
+  });
+
+  it("gives up when the bytes stop mid-download", async () => {
+    let emit!: (e: unknown) => void;
+    const update = {
+      downloadAndInstall: vi.fn((cb: (e: unknown) => void) => {
+        emit = cb;
+        return new Promise<void>(() => {});
+      }),
+    };
+    // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
+    const installing = installUpdate(update as any);
+    const settled = expect(installing).rejects.toSatisfy(isDownloadStalled);
+    emit({ event: "Started", data: { contentLength: 1000 } });
+    emit({ event: "Progress", data: { chunkLength: 100 } });
+    await vi.advanceTimersByTimeAsync(DOWNLOAD_STALL_TIMEOUT_MS);
+    await settled;
+  });
+
+  it("keeps waiting while chunks keep arriving", async () => {
+    let emit!: (e: unknown) => void;
+    let finish!: () => void;
+    const update = {
+      downloadAndInstall: vi.fn((cb: (e: unknown) => void) => {
+        emit = cb;
+        return new Promise<void>((resolve) => {
+          finish = resolve;
+        });
+      }),
+    };
+    // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
+    const installing = installUpdate(update as any);
+    emit({ event: "Started", data: { contentLength: 1000 } });
+    for (let i = 0; i < 5; i++) {
+      await vi.advanceTimersByTimeAsync(DOWNLOAD_STALL_TIMEOUT_MS - 1000);
+      emit({ event: "Progress", data: { chunkLength: 100 } });
+    }
+    emit({ event: "Finished", data: {} });
+    finish();
+    await installing;
+    expect(relaunch).toHaveBeenCalledOnce();
+  });
+
+  it("stops watching once the bytes are in, so a slow install is not a stall", async () => {
+    let emit!: (e: unknown) => void;
+    let finish!: () => void;
+    const update = {
+      downloadAndInstall: vi.fn((cb: (e: unknown) => void) => {
+        emit = cb;
+        return new Promise<void>((resolve) => {
+          finish = resolve;
+        });
+      }),
+    };
+    // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
+    const installing = installUpdate(update as any);
+    emit({ event: "Started", data: { contentLength: 1000 } });
+    emit({ event: "Finished", data: {} });
+    await vi.advanceTimersByTimeAsync(DOWNLOAD_STALL_TIMEOUT_MS * 10);
+    finish();
+    await installing;
+    expect(relaunch).toHaveBeenCalledOnce();
   });
 });
 

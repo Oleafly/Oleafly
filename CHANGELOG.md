@@ -156,6 +156,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A stalled update download no longer freezes the update window. If a
+  minute goes by with no data arriving, the download gives up and the
+  window says so, with a close button and a link to the releases page.
+  Before, it sat on a progress bar that never moved and could not be
+  dismissed.
 - Steer now on a queued message waits until the run has actually started.
   A quick click used to fail with "The running turn could not be steered"
   and the message went out as a separate turn once the run ended.
