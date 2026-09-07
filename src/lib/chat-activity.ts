@@ -224,8 +224,7 @@ function readableOutput(raw: string | undefined, value: unknown): string {
   if (!raw) return "";
   if (typeof value === "string") return stripAnsi(value);
   const data = record(value);
-  const commandOutput = stringValue(data?.output);
-  if (commandOutput !== undefined) return stripAnsi(commandOutput);
+  if (typeof data?.output === "string") return stripAnsi(data.output);
   const content = stringValue(data?.content);
   if (content !== undefined) return stripAnsi(content);
   const log = stringValue(data?.log) ?? stringValue(data?.log_tail);

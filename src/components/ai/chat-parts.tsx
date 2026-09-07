@@ -12,7 +12,6 @@ import {
   Info,
   Loader2,
   Paperclip,
-  Terminal,
   XCircle,
 } from "lucide-react";
 import type { ChatMessage, SubagentEntry, ToolEntry } from "@/store/chats";
@@ -32,7 +31,6 @@ import { usePersistentExpansion } from "@/components/ai/activity/expansion-state
 import {
   projectToolEntry,
   splitAgentNotices,
-  stripAnsi,
   type ResearchChatActions,
 } from "@/lib/chat-activity";
 import { tokenizeComposer } from "@/lib/composer-tokens";
@@ -550,148 +548,6 @@ export function explorationSummary(tools: ToolEntry[]): string {
   return parts.length === 0 ? "Explored" : `Explored ${parts.join(", ")}`;
 }
 
-// The terminal result of a run_command tool call, derived from both the
-// entry status and the envelope. A finished call whose envelope is a decline
-// or an error must resolve to a terminal state, never a perpetual spinner.
-type ExecView =
-  | {
-      kind: "exec";
-      command: string;
-      body: string;
-      status: string;
-      exitCode: number | null;
-      timedOut: boolean;
-    }
-  | { kind: "declined"; command: string }
-  | { kind: "error"; message: string }
-  | { kind: "pending" };
-
-function parseExecView(
-  output: string | undefined,
-  entryStatus: ToolEntry["status"],
-): ExecView {
-  const settled = entryStatus !== "running";
-  if (!output) {
-    return settled ? { kind: "error", message: "No result was returned." } : { kind: "pending" };
-  }
-  let parsed: {
-    exec?: boolean;
-    command?: string;
-    output?: string;
-    status?: string;
-    exit_code?: number | null;
-    timed_out?: boolean;
-    declined?: boolean;
-    error?: unknown;
-  };
-  try {
-    parsed = JSON.parse(output);
-  } catch {
-    // A partial envelope mid-stream is still pending; a finished call whose
-    // output will not parse is a genuine error worth surfacing.
-    return settled ? { kind: "error", message: output.slice(0, 300) } : { kind: "pending" };
-  }
-  if (parsed.exec && typeof parsed.command === "string") {
-    return {
-      kind: "exec",
-      command: parsed.command,
-      body: parsed.output ?? "",
-      status: parsed.status ?? (settled ? "Done" : "Running"),
-      exitCode: parsed.exit_code ?? null,
-      timedOut: Boolean(parsed.timed_out),
-    };
-  }
-  if (parsed.declined) {
-    return { kind: "declined", command: typeof parsed.command === "string" ? parsed.command : "" };
-  }
-  if (parsed.error != null) return { kind: "error", message: String(parsed.error) };
-  return settled
-    ? { kind: "error", message: "The command returned an unrecognized result." }
-    : { kind: "pending" };
-}
-
-// Command card for run_command results: `$ command`, aggregated output, and a
-// status pill (Success / Failed with exit code N / Stopped / Declined / an
-// error), per the reference exec item.
-export function ExecCard({ tc, expansionKey }: { tc: ToolEntry; expansionKey?: string }) {
-  const [expanded, setExpanded] = usePersistentExpansion(expansionKey, false);
-  const view = parseExecView(tc.output, tc.status);
-  const running = view.kind === "pending";
-  // A finished command succeeds only on a clean exit code 0. A null exit
-  // (stopped or killed) or a timeout is a failure, not a green check.
-  const failed =
-    view.kind === "error" ||
-    view.kind === "declined" ||
-    (view.kind === "exec" && (view.timedOut || view.exitCode !== 0));
-  const command =
-    view.kind === "exec" || view.kind === "declined" ? view.command : "";
-  const body = view.kind === "exec" ? stripAnsi(view.body) : "";
-  const statusLine =
-    view.kind === "exec"
-      ? view.status
-      : view.kind === "declined"
-        ? "Declined"
-        : view.kind === "error"
-          ? view.message
-          : null;
-  const dataStatus =
-    view.kind === "exec"
-      ? view.status
-      : view.kind === "declined"
-        ? "declined"
-        : view.kind === "error"
-          ? "error"
-          : "running";
-  return (
-    <div
-      data-testid="exec-card"
-      data-exec-status={dataStatus}
-      className="max-w-[85%] overflow-hidden rounded-md border bg-muted text-xs"
-    >
-      <button
-        type="button"
-        onClick={() => body && setExpanded((v) => !v)}
-        className={cn(
-          "flex w-full items-center gap-2 px-2.5 py-1.5 text-left",
-          body && "cursor-pointer hover:bg-accent/50",
-        )}
-      >
-        <Terminal className="size-3.5 shrink-0 text-muted-foreground" />
-        <code className="min-w-0 flex-1 truncate font-mono text-[11px]">
-          $ {command || tc.name}
-        </code>
-        {running ? (
-          <Loader2 className="size-3 shrink-0 animate-spin" />
-        ) : failed ? (
-          <XCircle className="size-3 shrink-0 text-destructive" />
-        ) : (
-          <CheckCircle2 className="size-3 shrink-0 text-emerald-500" />
-        )}
-        {body && (
-          <ChevronRight
-            className={cn("size-3 shrink-0 text-muted-foreground transition-transform", expanded && "rotate-90")}
-          />
-        )}
-      </button>
-      {statusLine && !running && (
-        <div
-          className={cn(
-            "border-t px-2.5 py-1 text-[10px] text-muted-foreground",
-            failed && "text-destructive",
-          )}
-        >
-          {statusLine}
-        </div>
-      )}
-      {expanded && body && (
-        <pre className="max-h-56 animate-in fade-in overflow-auto whitespace-pre-wrap break-words border-t px-2.5 py-1.5 font-mono text-[10px] text-muted-foreground duration-150 motion-reduce:animate-none">
-          {body}
-        </pre>
-      )}
-    </div>
-  );
-}
-
 // A collapsed run of read-only tool calls: "Explored 3 files, 2 searches",
 // expandable to the individual tool badges. Mirrors the reference exploration
 // grouping so a long read-heavy turn stays scannable.
@@ -1183,25 +1039,15 @@ export const MessageItem = memo(function MessageItem({
       }
       const tool = tools[i];
       const key = tool.id ?? `legacy-tool-${i}`;
-      if (tool.name === "run_command") {
-        rows.push(
-          <ExecCard
-            key={key}
-            tc={tool}
-            expansionKey={expansionScope ? `${expansionScope}:tool:${key}` : undefined}
-          />,
-        );
-      } else {
-        rows.push(
-          <ToolBadge
-            key={key}
-            tc={tool}
-            actions={actions}
-            expansionKey={expansionScope ? `${expansionScope}:tool:${key}` : undefined}
-            live={live}
-          />,
-        );
-      }
+      rows.push(
+        <ToolBadge
+          key={key}
+          tc={tool}
+          actions={actions}
+          expansionKey={expansionScope ? `${expansionScope}:tool:${key}` : undefined}
+          live={live}
+        />,
+      );
     }
   }
   for (const entry of msg.subagents ?? []) {
