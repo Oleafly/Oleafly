@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 
 // Mock the Tauri surface the updater primitives touch. isTauri is toggled per
 // test via the exported ref so we can exercise the browser (no-updater) path.
-const state = vi.hoisted(() => ({ tauri: true }));
+const state = vi.hoisted(() => ({ tauri: true, e2e: false }));
 const { check } = vi.hoisted(() => ({ check: vi.fn() }));
 const { relaunch } = vi.hoisted(() => ({ relaunch: vi.fn() }));
 
@@ -11,6 +11,11 @@ vi.mock("@tauri-apps/plugin-updater", () => ({ check }));
 vi.mock("@tauri-apps/plugin-process", () => ({ relaunch }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ ask: vi.fn(), message: vi.fn() }));
 vi.mock("@/lib/log", () => ({ logError }));
+vi.mock("@/lib/e2e-flags", () => ({
+  get E2E_HOOKS() {
+    return state.e2e;
+  },
+}));
 
 const { logError } = vi.hoisted(() => ({ logError: vi.fn() }));
 const { WebviewWindow, getByLabel, once, setFocus } = vi.hoisted(() => {
@@ -33,6 +38,7 @@ vi.mock("@/store/files", () => ({
 }));
 
 import {
+  checkForUpdatesOnStartup,
   findUpdate,
   installUpdate,
   openUpdateWindow,
@@ -44,6 +50,7 @@ import tauriConfig from "../../src-tauri/tauri.conf.json";
 beforeEach(() => {
   flushForQuit.mockReset().mockResolvedValue(undefined);
   state.tauri = true;
+  state.e2e = false;
   check.mockReset();
   relaunch.mockReset();
   logError.mockReset();
@@ -342,5 +349,28 @@ describe("updater endpoints configuration", () => {
 
   it("keeps every endpoint on https", () => {
     for (const endpoint of endpoints) expect(endpoint.startsWith("https://")).toBe(true);
+  });
+});
+
+describe("checkForUpdatesOnStartup", () => {
+  it("makes no request in dev and packaged e2e builds", async () => {
+    state.e2e = true;
+    checkForUpdatesOnStartup();
+    await vi.waitFor(() => expect(check).not.toHaveBeenCalled());
+    expect(WebviewWindow).not.toHaveBeenCalled();
+  });
+
+  it("opens the update window when a release build finds one", async () => {
+    getByLabel.mockResolvedValue(null);
+    check.mockResolvedValue({ version: "0.4.0", currentVersion: "0.3.13" });
+    checkForUpdatesOnStartup();
+    await vi.waitFor(() => expect(WebviewWindow).toHaveBeenCalledTimes(1));
+  });
+
+  it("stays quiet when a release build is already current", async () => {
+    check.mockResolvedValue(null);
+    checkForUpdatesOnStartup();
+    await vi.waitFor(() => expect(check).toHaveBeenCalledTimes(1));
+    expect(WebviewWindow).not.toHaveBeenCalled();
   });
 });
