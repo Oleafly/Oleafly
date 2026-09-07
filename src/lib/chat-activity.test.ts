@@ -138,6 +138,17 @@ describe("research chat activity", () => {
     expect(command.output).toBe("failed");
   });
 
+  it("reads a command that printed nothing as empty, not as its own envelope", () => {
+    const quiet = projectToolEntry({
+      name: "run_command",
+      status: "done",
+      output: JSON.stringify({ exec: true, command: "touch notes.tex", output: "", exit_code: 0 }),
+    });
+
+    expect(quiet.status).toBe("completed");
+    expect(quiet.output).toBe("");
+  });
+
   it("accepts only web links and strips terminal control sequences", () => {
     expect(safeWebUrl("javascript:alert(1)")).toBeUndefined();
     expect(safeWebUrl("file:///tmp/paper.pdf")).toBeUndefined();

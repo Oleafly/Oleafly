@@ -23,7 +23,6 @@ vi.mock("@/lib/tauri", async (importOriginal) => {
 import {
   AgentRunSummary,
   AgentStatusPill,
-  ExecCard,
   MessageItem,
   ReasoningBlock,
   SubagentCard,
@@ -922,10 +921,12 @@ describe("AI chat overflow surfaces", () => {
   });
 });
 
-describe("ExecCard run_command contract", () => {
+describe("ResearchToolCard run_command contract", () => {
+  beforeEach(clearExpansionState);
+
   it("renders the command, output, status, and exit code from the exec envelope", () => {
     const { container, getByText, queryByText } = render(
-      <ExecCard
+      <ResearchToolCard
         tc={{
           name: "run_command",
           status: "done",
@@ -941,7 +942,7 @@ describe("ExecCard run_command contract", () => {
     );
 
     const card = container.querySelector('[data-testid="exec-card"]');
-    expect(card).toHaveAttribute("data-exec-status", "Failed with exit code 7");
+    expect(card).toHaveAttribute("data-exec-status", "failed with exit code 7");
     expect(getByText("$ pnpm test")).toBeInTheDocument();
     expect(getByText("Failed with exit code 7")).toBeInTheDocument();
     expect(card?.querySelector(".text-destructive")).not.toBeNull();
@@ -952,9 +953,35 @@ describe("ExecCard run_command contract", () => {
     expect(getByText("one test failed")).toBeInTheDocument();
   });
 
+  it("marks a clean exit as done and leaves an empty-output command unexpandable", () => {
+    const { container, getByText } = render(
+      <ResearchToolCard
+        tc={{
+          name: "run_command",
+          status: "done",
+          output: JSON.stringify({
+            exec: true,
+            command: "touch notes.tex",
+            output: "",
+            status: "Done",
+            exit_code: 0,
+          }),
+        }}
+      />,
+    );
+
+    const card = container.querySelector('[data-testid="exec-card"]');
+    expect(card).toHaveAttribute("data-exec-status", "Done");
+    expect(getByText("$ touch notes.tex")).toBeInTheDocument();
+    expect(getByText("Done")).toBeInTheDocument();
+    expect(card?.querySelector(".text-emerald-500")).not.toBeNull();
+    expect(card?.querySelector(".animate-spin")).toBeNull();
+    expect(getByRole(container, "button")).not.toHaveAttribute("aria-expanded");
+  });
+
   it("renders a declined command as a terminal declined state, not a spinner", () => {
     const { container, getByText } = render(
-      <ExecCard
+      <ResearchToolCard
         tc={{
           name: "run_command",
           status: "done",
@@ -975,9 +1002,28 @@ describe("ExecCard run_command contract", () => {
     expect(card?.querySelector(".text-destructive")).not.toBeNull();
   });
 
+  it("treats a rejected approval as declined even when the envelope looks clean", () => {
+    const { container, getByText } = render(
+      <ResearchToolCard
+        tc={{
+          name: "run_command",
+          status: "done",
+          approval: "rejected",
+          output: JSON.stringify({ exec: true, command: "rm -rf build", output: "", exit_code: 0 }),
+        }}
+      />,
+    );
+    const card = container.querySelector('[data-testid="exec-card"]');
+    expect(card).toHaveAttribute("data-exec-status", "declined");
+    expect(getByText("Declined")).toBeInTheDocument();
+    expect(getByText("Rejected")).toBeInTheDocument();
+    expect(card?.querySelector(".animate-spin")).toBeNull();
+    expect(card?.querySelector(".text-emerald-500")).toBeNull();
+  });
+
   it("renders a caught error as a terminal error state, not a spinner", () => {
     const { container, getByText } = render(
-      <ExecCard
+      <ResearchToolCard
         tc={{
           name: "run_command",
           status: "done",
@@ -986,14 +1032,18 @@ describe("ExecCard run_command contract", () => {
       />,
     );
     const card = container.querySelector('[data-testid="exec-card"]');
-    expect(card).toHaveAttribute("data-exec-status", "error");
-    expect(getByText("Project changed before mutation.")).toBeInTheDocument();
+    expect(card).toHaveAttribute("data-exec-status", "failed");
     expect(card?.querySelector(".animate-spin")).toBeNull();
+    expect(card?.querySelector(".text-destructive")).not.toBeNull();
+
+    fireEvent.click(getByRole(container, "button"));
+
+    expect(getByText("Project changed before mutation.")).toBeInTheDocument();
   });
 
   it("treats a timed-out command as a failure", () => {
     const { container, getByText } = render(
-      <ExecCard
+      <ResearchToolCard
         tc={{
           name: "run_command",
           status: "done",
@@ -1009,15 +1059,15 @@ describe("ExecCard run_command contract", () => {
       />,
     );
     const card = container.querySelector('[data-testid="exec-card"]');
-    expect(card).toHaveAttribute("data-exec-status", "Timed out");
+    expect(card).toHaveAttribute("data-exec-status", "timed out");
     expect(getByText("Timed out")).toBeInTheDocument();
     expect(card?.querySelector(".animate-spin")).toBeNull();
     expect(card?.querySelector(".text-destructive")).not.toBeNull();
   });
 
-  it("treats a stopped command (null exit) as a failure, not a green check", () => {
+  it("treats a stopped command (null exit) as terminal, not a green check", () => {
     const { container, getByText } = render(
-      <ExecCard
+      <ResearchToolCard
         tc={{
           name: "run_command",
           status: "done",
@@ -1032,15 +1082,15 @@ describe("ExecCard run_command contract", () => {
       />,
     );
     const card = container.querySelector('[data-testid="exec-card"]');
-    expect(card).toHaveAttribute("data-exec-status", "Stopped");
+    expect(card).toHaveAttribute("data-exec-status", "stopped");
     expect(getByText("Stopped")).toBeInTheDocument();
-    expect(card?.querySelector(".text-destructive")).not.toBeNull();
+    expect(card?.querySelector(".animate-spin")).toBeNull();
     expect(card?.querySelector(".text-emerald-500")).toBeNull();
   });
 
   it("still spins while the call is running and its envelope is not yet parseable", () => {
     const { container } = render(
-      <ExecCard tc={{ name: "run_command", status: "running", output: "" }} />,
+      <ResearchToolCard tc={{ name: "run_command", status: "running", output: "" }} />,
     );
     const card = container.querySelector('[data-testid="exec-card"]');
     expect(card).toHaveAttribute("data-exec-status", "running");
