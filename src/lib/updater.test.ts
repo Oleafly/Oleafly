@@ -259,6 +259,42 @@ describe("installUpdate stall detection", () => {
     }
   });
 
+  it("passes a total ceiling so an abandoned request cannot outlive the app", async () => {
+    const downloadAndInstall = vi.fn(async (cb: (e: unknown) => void) => {
+      cb({ event: "Finished", data: {} });
+    });
+    // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
+    await installUpdate({ downloadAndInstall } as any);
+    const [, options] = downloadAndInstall.mock.calls[0] as unknown as [
+      unknown,
+      { timeout: number },
+    ];
+    expect(options.timeout).toBeGreaterThan(60 * 60 * 1000);
+  });
+
+  it("does not treat a slow install after the last byte as a stall", async () => {
+    vi.useFakeTimers();
+    try {
+      let finish!: () => void;
+      const update = {
+        downloadAndInstall: vi.fn((cb: (e: unknown) => void) => {
+          cb({ event: "Started", data: { contentLength: 10 } });
+          cb({ event: "Progress", data: { chunkLength: 10 } });
+          cb({ event: "Finished", data: {} });
+          return new Promise<void>((resolve) => { finish = resolve; });
+        }),
+      };
+      // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
+      const installing = installUpdate(update as any);
+      await vi.advanceTimersByTimeAsync(10 * 60_000);
+      finish();
+      await installing;
+      expect(relaunch).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("keeps waiting while chunks are still arriving", async () => {
     vi.useFakeTimers();
     try {

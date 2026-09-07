@@ -21,6 +21,7 @@ const UPDATE_WINDOW_LABEL = "update";
 // server (`isTauri()` is false) every entry point is a no-op so nothing
 // throws.
 
+const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 const DOWNLOAD_STALL_MS = 60_000;
 
 export class UpdateDownloadStalledError extends Error {
@@ -74,24 +75,27 @@ export async function installUpdate(
   });
 
   armStall();
-  const transfer = update.downloadAndInstall((event) => {
-    switch (event.event) {
-      case "Started":
-        total = event.data.contentLength ?? 0;
-        armStall();
-        onProgress?.(0);
-        break;
-      case "Progress":
-        downloaded += event.data.chunkLength;
-        armStall();
-        if (total > 0) onProgress?.(Math.min(100, Math.round((downloaded / total) * 100)));
-        break;
-      case "Finished":
-        clearStall();
-        onProgress?.(100);
-        break;
-    }
-  });
+  const transfer = update.downloadAndInstall(
+    (event) => {
+      switch (event.event) {
+        case "Started":
+          total = event.data.contentLength ?? 0;
+          armStall();
+          onProgress?.(0);
+          break;
+        case "Progress":
+          downloaded += event.data.chunkLength;
+          armStall();
+          if (total > 0) onProgress?.(Math.min(100, Math.round((downloaded / total) * 100)));
+          break;
+        case "Finished":
+          clearStall();
+          onProgress?.(100);
+          break;
+      }
+    },
+    { timeout: DOWNLOAD_TIMEOUT_MS },
+  );
 
   try {
     await Promise.race([transfer, stalled]);
