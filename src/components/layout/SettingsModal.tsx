@@ -80,7 +80,7 @@ import { cn } from "@/lib/utils";
 import { notifyError, toast } from "@/lib/toast";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
 import { startTour } from "@/lib/tour";
-import { TOUR_IDS, type TourId } from "@/lib/tours/registry";
+import { TOUR_IDS } from "@/lib/tours/registry";
 import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
@@ -146,9 +146,6 @@ const TOUR_LABELS = {
   ai: "AI Assistant",
   diagram: "Diagram Composer",
 } as const;
-// A tour the coordinator will not start on its own needs somewhere to be
-// started from, and somewhere its first step can actually find its target.
-const TOUR_START_SECTION: Partial<Record<TourId, Section>> = { "ai-settings": "ai" };
 
 function formatStorageSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -635,33 +632,18 @@ export function SettingsModal() {
                               <p className="text-sm font-medium">{TOUR_LABELS[id]}</p>
                               <p className="text-xs capitalize text-muted-foreground">{status}</p>
                             </div>
-                            <div className="flex shrink-0 items-center gap-2">
-                              {TOUR_START_SECTION[id] && checked && toursEnabled && (
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  onClick={() => {
-                                    const target = TOUR_START_SECTION[id];
-                                    if (target) setSection(target);
-                                    startTour(id);
-                                  }}
-                                >
-                                  Start
-                                </Button>
-                              )}
-                              <button
-                                type="button"
-                                role="switch"
-                                aria-checked={checked}
-                                aria-label={`Enable ${TOUR_LABELS[id]} tour`}
-                                onClick={() =>
-                                  useTourStore.getState().setTourEnabled(id, !checked)
-                                }
-                                className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                              >
-                                <SettingsSwitchIndicator checked={checked} />
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={checked}
+                              aria-label={`Enable ${TOUR_LABELS[id]} tour`}
+                              onClick={() =>
+                                useTourStore.getState().setTourEnabled(id, !checked)
+                              }
+                              className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              <SettingsSwitchIndicator checked={checked} />
+                            </button>
                           </div>
                         );
                       })}

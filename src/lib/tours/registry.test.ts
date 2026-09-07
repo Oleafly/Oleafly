@@ -101,8 +101,17 @@ describe("tour registry", () => {
 
   it("keeps the detailed AI settings walkthrough separate from the Settings overview", () => {
     expect("autoStart" in tourRegistry.settings).toBe(false);
-    expect(tourRegistry["ai-settings"].autoStart).toBe(false);
     expect(tourRegistry["ai-settings"].contexts).toEqual(["settings"]);
+    // Order keeps the overview first and the walkthrough's own first target
+    // keeps it off every other settings page. Opting out of auto-start as well
+    // left it with no way to run at all.
+    expect("autoStart" in tourRegistry["ai-settings"]).toBe(false);
+    expect(tourRegistry["ai-settings"].priority).toBeGreaterThan(
+      tourRegistry.settings.priority,
+    );
+    expect(tourRegistry["ai-settings"].steps[0].target).toBe(
+      '[data-tour="ai-settings-tabs"]',
+    );
   });
 
   it("covers diagram authoring without compiling or saving", () => {

@@ -392,7 +392,6 @@ export const tourRegistry = {
     version: 2,
     contexts: ["settings"],
     priority: 35,
-    autoStart: false,
     steps: [
       {
         id: "ai-settings-tabs",
