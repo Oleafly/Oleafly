@@ -1042,6 +1042,7 @@ export function ChatCore() {
   }, [openSkillsSettings, queryClient]);
   // Trailing-debounce timer for persisting the streaming conversation.
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persistPendingRef = useRef<{ chatId: string; msgs: ChatMessage[] } | null>(null);
   // Two-tier stream flushing: text deltas ride the frame cadence (rAF while
   // visible, a timer otherwise), structural output rides a 50 ms interval,
   // and terminal events drain both before applying. Patches batch into one
@@ -1310,17 +1311,42 @@ export function ChatCore() {
   // Coalesce to ~1 write/400ms (disk via Tauri, or localStorage in browser).
   const persistDebounced = useCallback(
     (chatId: string | null, msgs: ChatMessage[]) => {
+      persistPendingRef.current = chatId ? { chatId, msgs } : null;
       persistTimerRef.current = scheduleChatPersistence(
         persistTimerRef.current,
         chatId,
         msgs,
         (id, value) => {
           persistTimerRef.current = null;
+          persistPendingRef.current = null;
           persist(id, value);
         },
       );
     },
     [persist]
+  );
+
+  const dropPendingPersist = useCallback(() => {
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = null;
+    persistPendingRef.current = null;
+  }, []);
+
+  const flushPendingPersist = useCallback(() => {
+    const pending = persistPendingRef.current;
+    dropPendingPersist();
+    if (pending) persist(pending.chatId, pending.msgs);
+  }, [dropPendingPersist, persist]);
+
+  useEffect(
+    () => () => {
+      streamQueuesRef.current?.dispose();
+      streamQueuesRef.current = null;
+      streamPatchesRef.current = { text: [], output: [] };
+      streamDrainQueuedRef.current = { text: false, output: false };
+      flushPendingPersist();
+    },
+    [flushPendingPersist],
   );
 
   // Open an existing chat from history. Guarded by `streaming` (like newChat)
@@ -2621,10 +2647,7 @@ ${sandboxedCustom}`;
         if (runIsCurrent()) {
           setStreaming(false);
           setRunThinking(null);
-          if (persistTimerRef.current) {
-            clearTimeout(persistTimerRef.current);
-            persistTimerRef.current = null;
-          }
+          dropPendingPersist();
           if (runChatId) {
             useChatsStore.getState().saveMessages(runChatId, messagesRef.current);
           }
@@ -2658,7 +2681,7 @@ ${sandboxedCustom}`;
         }
       }
     }
-  }, [streaming, apiKey, provider, model, providerModelsMap, projectId, projectName, currentHead, figureToolsAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId, trackRunRequestId, markRunSteerable, persistDebounced]);
+  }, [streaming, apiKey, provider, model, providerModelsMap, projectId, projectName, currentHead, figureToolsAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId, trackRunRequestId, markRunSteerable, persistDebounced, dropPendingPersist]);
 
   const stop = useCallback(() => {
     pendingImagesRef.current = [];
@@ -2799,7 +2822,7 @@ ${sandboxedCustom}`;
         streamPatchesRef.current = { text: [], output: [] };
         streamDrainQueuedRef.current = { text: false, output: false };
       });
-      persistTimerRef.current = null;
+      dropPendingPersist();
       trackRunRequestId(null);
       runOwnerRef.current = false;
       endChatRun(run);
@@ -2814,7 +2837,7 @@ ${sandboxedCustom}`;
     setGoalEditorProjectId(null);
     setGoalDraft("");
     setInputState(savedDraft(projectId));
-  }, [projectId, trackRunRequestId]);
+  }, [projectId, trackRunRequestId, dropPendingPersist]);
 
   useEffect(() => {
     const sync = () => {
