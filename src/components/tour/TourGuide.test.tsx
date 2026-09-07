@@ -362,6 +362,27 @@ describe("TourGuide overlay reachability", () => {
     expect(joyridePlacement("home-template")).toBe("bottom");
   });
 
+  it("stays clickable while a modal dialog has switched the body off", () => {
+    joyrideMocks.render = true;
+    useSettingsStore.setState({ newProjectOpen: true });
+    mountTourTarget("new-project", { top: 40, left: 40, width: 120, height: 32 });
+    useTourStore.setState({ activeTourId: "home", activeStepIndex: homeStepIndex("home-create") });
+
+    render(<TourGuide />);
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    // Radix marks the body inert while a modal dialog is open. The tour renders
+    // in its own portal outside that dialog, so it inherits the dead body
+    // unless it opts back in.
+    document.body.style.pointerEvents = "none";
+    const tooltip = document.querySelector<HTMLElement>("[data-tour-tooltip]");
+    expect(tooltip).not.toBeNull();
+    expect(tooltip?.style.pointerEvents).toBe("auto");
+    document.body.style.pointerEvents = "";
+  });
+
   it("keeps dimming the whole grid on the step that only describes it", () => {
     mountTourTarget("project-template-list", TEMPLATE_LIST_BOX);
 

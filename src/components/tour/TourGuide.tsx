@@ -200,7 +200,7 @@ function TourTooltip(props: Readonly<TourTooltipProps>) {
         cardRef.current = element;
       }}
       data-tour-tooltip={definition.id}
-      style={{ maxHeight: definition.maxTooltipHeight ?? undefined }}
+      style={{ maxHeight: definition.maxTooltipHeight ?? undefined, pointerEvents: "auto" }}
       className="flex w-[min(24rem,calc(100vw-2rem))] flex-col rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none"
     >
       {isWelcome ? (

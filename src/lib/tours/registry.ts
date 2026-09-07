@@ -70,7 +70,7 @@ export const tourRegistry = {
         title: "Three ways to begin",
         content: "Start a research project, bring in a manuscript you already have, or work from a prepared template.",
         waitForTarget: true,
-        placement: "center",
+        placement: "bottom",
       },
       {
         id: "home-kind-template",
