@@ -293,7 +293,7 @@ describe("LanguageServiceStatus", () => {
     );
     expect(
       await screen.findByText(
-        `Setup failed: ${LANGUAGE_SERVICE_SETUP_FAILURE_REASON}. You can retry.`,
+        LANGUAGE_SERVICE_SETUP_FAILURE_REASON,
       ),
     ).toBeInTheDocument();
     expect(
@@ -394,7 +394,7 @@ describe("LanguageServiceStatus", () => {
     });
     expect(
       await screen.findByText(
-        `Setup failed: ${LANGUAGE_SERVICE_SETUP_FAILURE_REASON}. You can retry.`,
+        LANGUAGE_SERVICE_SETUP_FAILURE_REASON,
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBeInTheDocument();

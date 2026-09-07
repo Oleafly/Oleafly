@@ -239,7 +239,7 @@ function LanguageServiceFailureStatus({
                 className="text-sm text-destructive"
                 role="status"
               >
-                Setup failed: {installFailure}. You can retry.
+                {installFailure}
               </p>
             ) : null}
 
