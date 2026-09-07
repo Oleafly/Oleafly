@@ -232,7 +232,7 @@ export const tourRegistry = {
         target: '[data-tour="rail-research"]',
         kind: "required-click",
         title: "Research workspace",
-        content: "Open the research workspace. It is in beta, so expect it to keep changing.",
+        content: "Open it to hand research tasks to an agent and to link reading folders and datasets you keep elsewhere. This is new and in beta, so please report anything that breaks.",
         waitForTarget: true,
         placement: "bottom",
       },
