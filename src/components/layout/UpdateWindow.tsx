@@ -7,7 +7,7 @@ import { AlertTriangle, CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Markdown } from "@/components/ui/markdown";
-import { findUpdate, installUpdate } from "@/lib/updater";
+import { findUpdate, installUpdate, UpdateDownloadStalledError } from "@/lib/updater";
 import { Progress } from "@/components/ui/progress";
 import { logError } from "@/lib/log";
 import { appVersion } from "@/lib/tauri";
@@ -26,6 +26,7 @@ export function UpdateWindow() {
   const [phase, setPhase] = useState<Phase>("checking");
   const [update, setUpdate] = useState<Update | null>(null);
   const [percent, setPercent] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [version, setVersion] = useState("");
   const celebratedRef = useRef(false);
   // Linux .deb/.rpm can't self-update (only AppImage can); when false we link
@@ -79,11 +80,17 @@ export function UpdateWindow() {
     if (!update) return;
     setPhase("downloading");
     setPercent(0);
+    setErrorMessage(null);
     try {
       await installUpdate(update, setPercent);
       // installUpdate relaunches the app on success; unreachable afterward.
     } catch (e) {
       await logError("updater", e);
+      setErrorMessage(
+        e instanceof UpdateDownloadStalledError
+          ? "The download stopped responding. Check your connection and try again."
+          : null,
+      );
       setPhase("error");
     }
   };
@@ -147,7 +154,7 @@ export function UpdateWindow() {
         {phase === "error" && (
           <p className="inline-flex items-center gap-1.5 text-sm text-destructive">
             <AlertTriangle className="size-4" />
-            Something went wrong. Please try again later.
+            {errorMessage ?? "Something went wrong. Please try again later."}
           </p>
         )}
         {(phase === "available" || phase === "downloading") &&

@@ -32,7 +32,14 @@ vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ flushForQuit }) },
 }));
 
-import { findUpdate, installUpdate, openUpdateWindow } from "./updater";
+import {
+  findUpdate,
+  installUpdate,
+  openUpdateWindow,
+  runUpdateCheck,
+  UpdateDownloadStalledError,
+} from "./updater";
+import tauriConfig from "../../src-tauri/tauri.conf.json";
 
 beforeEach(() => {
   flushForQuit.mockReset().mockResolvedValue(undefined);
@@ -192,3 +199,112 @@ describe("openUpdateWindow", () => {
   });
 });
 
+describe("runUpdateCheck", () => {
+  it("gives a joiner the shared result instead of an ambiguous null", async () => {
+    let resolveCheck!: (u: unknown) => void;
+    check.mockImplementation(() => new Promise((resolve) => { resolveCheck = resolve; }));
+
+    const startup = runUpdateCheck();
+    const manual = runUpdateCheck({ rethrow: true });
+    const update = { version: "9.9.9", currentVersion: "0.1.1" };
+    resolveCheck(update);
+
+    expect(await startup).toBe(update);
+    expect(await manual).toBe(update);
+    expect(check).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports up to date as null only when a check actually completed", async () => {
+    check.mockResolvedValue(null);
+    expect(await runUpdateCheck()).toBeNull();
+    expect(check).toHaveBeenCalledTimes(1);
+  });
+
+  it("propagates a shared failure to a joiner that asked to rethrow", async () => {
+    let rejectCheck!: (e: unknown) => void;
+    check.mockImplementation(() => new Promise((_r, reject) => { rejectCheck = reject; }));
+
+    const startup = runUpdateCheck();
+    const manual = runUpdateCheck({ rethrow: true });
+    rejectCheck(new Error("offline"));
+
+    await expect(startup).resolves.toBeNull();
+    await expect(manual).rejects.toThrow("offline");
+    expect(logError).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts a fresh check once the previous one has settled", async () => {
+    check.mockResolvedValue(null);
+    await runUpdateCheck();
+    await runUpdateCheck();
+    expect(check).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("installUpdate stall detection", () => {
+  it("fails a download that produces no progress instead of hanging forever", async () => {
+    vi.useFakeTimers();
+    try {
+      const update = {
+        downloadAndInstall: vi.fn(() => new Promise<void>(() => {})),
+      };
+      // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
+      const installing = installUpdate(update as any);
+      const assertion = expect(installing).rejects.toBeInstanceOf(UpdateDownloadStalledError);
+      await vi.advanceTimersByTimeAsync(60_000);
+      await assertion;
+      expect(relaunch).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps waiting while chunks are still arriving", async () => {
+    vi.useFakeTimers();
+    try {
+      let emit!: (e: unknown) => void;
+      let finish!: () => void;
+      const update = {
+        downloadAndInstall: vi.fn((cb: (e: unknown) => void) => {
+          emit = cb;
+          return new Promise<void>((resolve) => { finish = resolve; });
+        }),
+      };
+      // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
+      const installing = installUpdate(update as any);
+
+      emit({ event: "Started", data: { contentLength: 100 } });
+      for (let i = 0; i < 4; i += 1) {
+        await vi.advanceTimersByTimeAsync(50_000);
+        emit({ event: "Progress", data: { chunkLength: 10 } });
+      }
+      emit({ event: "Finished", data: {} });
+      finish();
+
+      await installing;
+      expect(relaunch).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("updater endpoints configuration", () => {
+  const endpoints = tauriConfig.plugins.updater.endpoints;
+
+  it("asks the Oleafly feed first and keeps GitHub as the fallback", () => {
+    expect(endpoints).toHaveLength(2);
+    expect(endpoints[0]).toContain("updates.oleafly.com");
+    expect(endpoints[1]).toContain("github.com/Oleafly/Oleafly/releases");
+  });
+
+  it("spells the placeholders the way the plugin interpolates them", () => {
+    expect(endpoints[0]).toBe(
+      "https://updates.oleafly.com/{{target}}/{{arch}}/{{current_version}}",
+    );
+  });
+
+  it("keeps every endpoint on https", () => {
+    for (const endpoint of endpoints) expect(endpoint.startsWith("https://")).toBe(true);
+  });
+});

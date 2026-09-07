@@ -68,6 +68,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
+        "https://updates.oleafly.com/{{target}}/{{arch}}/{{current_version}}",
         "https://github.com/Oleafly/Oleafly/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZFODU2Q0Q0QTZFMjA1NjgKUldSb0JlS20xR3lGYm5uQlNsYml5VWhrQUhYSXV0NnFVc0xINmNjWGgzM3pza3pWMXJWei9EbFYK",

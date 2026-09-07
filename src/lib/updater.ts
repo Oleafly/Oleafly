@@ -3,13 +3,14 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { isTauri } from "@tauri-apps/api/core";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { logError } from "@/lib/log";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { useUpdatesStore } from "@/store/updates";
 
 const UPDATE_WINDOW_LABEL = "update";
 
-// Talks to the GitHub Releases `latest.json` (configured in tauri.conf.json),
-// verifies the download's minisign signature against the embedded public
-// key, installs, and restarts.
+// Talks to the update feed configured in tauri.conf.json (updates.oleafly.com,
+// with GitHub Releases as the fallback endpoint), verifies the download's
+// minisign signature against the embedded public key, installs, and restarts.
 //
 // The prompt is fully in-app: the startup check records its result in the
 // updates store (for the About indicator) and, when an update exists, opens
@@ -20,8 +21,18 @@ const UPDATE_WINDOW_LABEL = "update";
 // server (`isTauri()` is false) every entry point is a no-op so nothing
 // throws.
 
-// Guard against overlapping checks (startup tick racing a manual click).
-let inFlight = false;
+const DOWNLOAD_STALL_MS = 60_000;
+
+export class UpdateDownloadStalledError extends Error {
+  constructor() {
+    super("The update download stopped responding");
+    this.name = "UpdateDownloadStalledError";
+  }
+}
+
+// Shared with overlapping callers (startup tick racing a manual click) so a
+// joiner gets the real result rather than an ambiguous null.
+let inFlight: Promise<Update | null> | null = null;
 
 // In the browser dev server (`!isTauri()`) there is no updater, so this
 // resolves to `null` just like "already up to date" - callers that need to
@@ -42,21 +53,51 @@ export async function installUpdate(
 ): Promise<void> {
   let total = 0;
   let downloaded = 0;
-  await update.downloadAndInstall((event) => {
+  let stallTimer: ReturnType<typeof setTimeout> | undefined;
+  let reportStall: ((error: Error) => void) | undefined;
+
+  const clearStall = () => {
+    if (stallTimer !== undefined) {
+      clearTimeout(stallTimer);
+      stallTimer = undefined;
+    }
+  };
+  const armStall = () => {
+    clearStall();
+    stallTimer = setTimeout(() => {
+      reportStall?.(new UpdateDownloadStalledError());
+    }, DOWNLOAD_STALL_MS);
+  };
+
+  const stalled = new Promise<never>((_resolve, reject) => {
+    reportStall = reject;
+  });
+
+  armStall();
+  const transfer = update.downloadAndInstall((event) => {
     switch (event.event) {
       case "Started":
         total = event.data.contentLength ?? 0;
+        armStall();
         onProgress?.(0);
         break;
       case "Progress":
         downloaded += event.data.chunkLength;
+        armStall();
         if (total > 0) onProgress?.(Math.min(100, Math.round((downloaded / total) * 100)));
         break;
       case "Finished":
+        clearStall();
         onProgress?.(100);
         break;
     }
   });
+
+  try {
+    await Promise.race([transfer, stalled]);
+  } finally {
+    clearStall();
+  }
   // Relaunch tears the webview down exactly like a quit, so it must go
   // through the same durable flush as window close, Cmd+Q, and Restart. A
   // failed save blocks the relaunch (the installed update simply applies on
@@ -66,13 +107,7 @@ export async function installUpdate(
   await relaunch();
 }
 
-// Records the outcome in the updates store so the in-app prompt
-// (`UpdateNotice`) and the About "last check failed" indicator stay in sync.
-// Failures are rethrown only when `rethrow` is set, which the manual checker
-// uses to render its own inline error state.
-export async function runUpdateCheck({ rethrow = false }: { rethrow?: boolean } = {}): Promise<Update | null> {
-  if (inFlight) return null;
-  inFlight = true;
+async function performUpdateCheck(): Promise<Update | null> {
   const store = useUpdatesStore.getState();
   try {
     const update = await findUpdate();
@@ -82,10 +117,25 @@ export async function runUpdateCheck({ rethrow = false }: { rethrow?: boolean } 
   } catch (e) {
     await logError("updater", e);
     store.setFailed();
+    throw e;
+  }
+}
+
+// Records the outcome in the updates store so the in-app prompt
+// (`UpdateNotice`) and the About "last check failed" indicator stay in sync.
+// Failures are rethrown only when `rethrow` is set, which the manual checker
+// uses to render its own inline error state.
+export async function runUpdateCheck({ rethrow = false }: { rethrow?: boolean } = {}): Promise<Update | null> {
+  if (!inFlight) {
+    inFlight = performUpdateCheck().finally(() => {
+      inFlight = null;
+    });
+  }
+  try {
+    return await inFlight;
+  } catch (e) {
     if (rethrow) throw e;
     return null;
-  } finally {
-    inFlight = false;
   }
 }
 
@@ -118,6 +168,7 @@ export async function openUpdateWindow(opts: { manual?: boolean } = {}): Promise
 }
 
 export function checkForUpdatesOnStartup(): void {
+  if (E2E_HOOKS) return;
   void (async () => {
     const update = await runUpdateCheck();
     if (update) await openUpdateWindow();

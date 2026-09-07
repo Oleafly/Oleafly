@@ -5,7 +5,7 @@ import { open } from "@tauri-apps/plugin-shell";
 import { AlertTriangle, ArrowUpCircle, CheckCircle2, ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
-import { installUpdate, runUpdateCheck } from "@/lib/updater";
+import { installUpdate, runUpdateCheck, UpdateDownloadStalledError } from "@/lib/updater";
 import { logError } from "@/lib/log";
 import { useUpdatesStore } from "@/store/updates";
 import { Progress } from "@/components/ui/progress";
@@ -29,7 +29,7 @@ type State =
   | { kind: "upToDate" }
   | { kind: "available"; update: Update }
   | { kind: "downloading"; percent: number }
-  | { kind: "error" };
+  | { kind: "error"; message?: string };
 
 export function UpdateChecker({ className }: { className?: string }) {
   // Snapshot once: in the browser dev server there is no updater at all, so we
@@ -60,7 +60,13 @@ export function UpdateChecker({ className }: { className?: string }) {
       // installUpdate relaunches on success; this line is unreachable in the app.
     } catch (e) {
       await logError("updater", e);
-      setState({ kind: "error" });
+      setState({
+        kind: "error",
+        message:
+          e instanceof UpdateDownloadStalledError
+            ? "The download stopped responding. Check your connection and try again."
+            : undefined,
+      });
     }
   };
 
@@ -162,7 +168,7 @@ export function UpdateChecker({ className }: { className?: string }) {
         <div className="space-y-2">
           <p className="inline-flex items-center gap-1.5 text-xs text-destructive">
             <AlertTriangle className="size-4" />
-            Couldn't check for updates.
+            {state.message ?? "Couldn't check for updates."}
           </p>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={check}>
