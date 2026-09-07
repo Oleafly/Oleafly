@@ -130,11 +130,9 @@ async function performUpdateCheck(): Promise<Update | null> {
 // Failures are rethrown only when `rethrow` is set, which the manual checker
 // uses to render its own inline error state.
 export async function runUpdateCheck({ rethrow = false }: { rethrow?: boolean } = {}): Promise<Update | null> {
-  if (!inFlight) {
-    inFlight = performUpdateCheck().finally(() => {
-      inFlight = null;
-    });
-  }
+  inFlight ??= performUpdateCheck().finally(() => {
+    inFlight = null;
+  });
   try {
     return await inFlight;
   } catch (e) {
