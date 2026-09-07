@@ -37,8 +37,10 @@ vi.mock("@/lib/theme", () => ({
 }));
 
 import { measureTourPlacement, TourGuide } from "./TourGuide";
+import { START_TOUR_EVENT } from "@/lib/tour";
 import { tourRegistry, type TourStepDefinition } from "@/lib/tours/registry";
 import { useFilesStore } from "@/store/files";
+import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
 
@@ -381,6 +383,40 @@ describe("TourGuide overlay reachability", () => {
     expect(tooltip).not.toBeNull();
     expect(tooltip?.style.pointerEvents).toBe("auto");
     document.body.style.pointerEvents = "";
+  });
+
+  it("starts the AI settings walkthrough when it is asked for by name", () => {
+    joyrideMocks.render = true;
+    useSettingsStore.setState({ settingsOpen: true });
+    mountTourTarget("ai-settings-tabs", { top: 40, left: 40, width: 240, height: 32 });
+
+    render(<TourGuide />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(START_TOUR_EVENT, { detail: "ai-settings" }));
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(tourStep().activeTourId).toBe("ai-settings");
+    expect(document.querySelector("[data-tour-tooltip]")).not.toBeNull();
+  });
+
+  it("still starts a named tour with a diagram open behind Settings", () => {
+    joyrideMocks.render = true;
+    useSettingsStore.setState({ settingsOpen: true });
+    useHomeViewStore.setState({ page: "diagram-composer" });
+    mountTourTarget("ai-settings-tabs", { top: 40, left: 40, width: 240, height: 32 });
+
+    render(<TourGuide />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(START_TOUR_EVENT, { detail: "ai-settings" }));
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(tourStep().activeTourId).toBe("ai-settings");
   });
 
   it("keeps dimming the whole grid on the step that only describes it", () => {

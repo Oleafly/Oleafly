@@ -1256,9 +1256,11 @@ export function TourGuide() {
   useEffect(() => {
     let pendingFrame: number | null = null;
     const manualStart = (event: Event) => {
-      if (diagramOpen && settingsOpen) return;
       const requestedId =
         event instanceof CustomEvent ? (event.detail as keyof typeof tourRegistry | undefined) : undefined;
+      // Guessing which tour was meant is hopeless with a diagram open behind
+      // Settings, but a caller that names one has already answered that.
+      if (!requestedId && diagramOpen && settingsOpen) return;
       const id =
         requestedId ??
         (diagramOpen
