@@ -3165,9 +3165,9 @@ ${sandboxedCustom}`;
                     !messages[messages.length - 1]?.reasoningBlocks?.some(
                       (b) => b.ms === undefined,
                     ) && (
-                      <div className="max-w-[85%] rounded-md border bg-muted text-xs">
-                        <div className="flex w-full items-center gap-2 px-2.5 py-1.5 text-muted-foreground">
-                          <Brain className="ai-shimmer-icon size-3.5" />
+                      <div className="max-w-[85%] text-xs">
+                        <div className="flex w-full items-center gap-2 py-1 text-sm text-muted-foreground">
+                          <Brain className="ai-shimmer-icon size-3.5 shrink-0" />
                           <Shimmer text={thinkingText || "Thinking…"} />
                         </div>
                       </div>

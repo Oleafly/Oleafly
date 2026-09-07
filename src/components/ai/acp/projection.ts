@@ -18,6 +18,22 @@ function noticed(message: ChatMessage, raw: string, prefix = ""): ChatMessage {
   };
 }
 
+function bareFailure(value: string): string {
+  return value.replace(/^\s*(?:internal error|error)\s*:\s*/i, "").trim().toLowerCase();
+}
+
+function alreadySaid(rows: readonly Row[], turn: string | null, failure: string): boolean {
+  const bare = bareFailure(failure);
+  if (!bare) return false;
+  for (let index = rows.length - 1; index >= 0; index--) {
+    const row = rows[index];
+    if (row.turn !== turn || row.msg.role !== "assistant") continue;
+    if (bareFailure(row.raw ?? row.msg.content) === bare) return true;
+    if (row.kind === "agent_message_chunk" || row.kind === "error") return false;
+  }
+  return false;
+}
+
 function toolOutput(data: Data): string {
   if (!Array.isArray(data.content)) return "";
   return data.content.map((entry: unknown) => {
@@ -88,7 +104,7 @@ export function createAcpProjector() {
             if (row.msg.reasoningBlocks?.some((block) => block.ms === undefined)) row.msg = { ...row.msg, reasoningBlocks: row.msg.reasoningBlocks.map((block) => ({ ...block, ms: block.ms ?? 0 })) };
             if (row.msg.toolCalls?.some((tool) => tool.status === "running")) row.msg = { ...row.msg, toolCalls: row.msg.toolCalls.map((tool) => tool.status === "running" ? { ...tool, status: "error" } : tool) };
           }
-          if (data.error) append("error", noticed({ role: "assistant", content: "" }, text(data.error)));
+          if (data.error && !alreadySaid(rows, event.turnId, text(data.error))) append("error", noticed({ role: "assistant", content: "" }, text(data.error)));
         }
       }
       lastKind = event.kind;

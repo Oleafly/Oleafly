@@ -61,13 +61,42 @@ pub fn rpc_error_message(error: &Value) -> String {
     }
 }
 
+pub fn reads_as_command_help(tail: &str) -> bool {
+    tail.contains("--help") || tail.contains("Options:") || tail.starts_with("Usage:")
+}
+
 fn disconnect_message(prefix: &str, tail: &StderrTail) -> String {
     let tail = tail_text(tail);
     if tail.is_empty() {
         prefix.to_owned()
+    } else if reads_as_command_help(&tail) {
+        format!("{prefix} It answered with its command-line help, so this version does not accept the options Oleafly started it with.")
     } else {
         format!("{prefix} It reported: {tail}")
     }
+}
+
+const AUTH_FAILURE_PHRASES: &[&str] = &[
+    "failed to authenticate",
+    "authentication failed",
+    "not authenticated",
+    "oauth",
+    "unauthorized",
+    "invalid api key",
+    "expired credentials",
+    "credentials have expired",
+    "session expired",
+    "please log in",
+    "please sign in",
+    "log in again",
+    "sign in again",
+];
+
+pub fn reads_as_auth_failure(message: &str) -> bool {
+    let message = message.to_lowercase();
+    AUTH_FAILURE_PHRASES
+        .iter()
+        .any(|phrase| message.contains(phrase))
 }
 
 #[derive(Clone, Debug)]
@@ -84,7 +113,7 @@ impl RpcError {
         }
     }
     pub fn auth_required(&self) -> bool {
-        self.code == -32000
+        self.code == -32000 || reads_as_auth_failure(&self.message)
     }
 }
 

@@ -106,7 +106,10 @@ for line in sys.stdin:
             update("config_option_update", configOptions=[{"id": "model-selector", "type": "select", "category": "model", "currentValue": credential, "options": []}])
             result(request, {"stopReason": "end_turn"})
         elif prompt == "leak-error":
-            send({"id": request["id"], "error": {"code": -32000, "message": "Agent failure " + credential}})
+            send({"id": request["id"], "error": {"code": -32603, "message": "Agent failure " + credential}})
+        elif prompt == "auth-expired":
+            update("agent_message_chunk", content={"type": "text", "text": "Failed to authenticate: OAuth session expired and could not be refreshed"})
+            send({"id": request["id"], "error": {"code": -32603, "message": "Internal error: Failed to authenticate: OAuth session expired and could not be refreshed"}})
         elif prompt in ("permission", "outside-permission", "leak-permission-tool", "leak-permission-option"):
             pending_prompt = request
             path = "/etc/passwd" if prompt == "outside-permission" else os.path.join(params.get("cwd", os.getcwd()), "paper.tex")

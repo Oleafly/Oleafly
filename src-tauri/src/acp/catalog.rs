@@ -94,7 +94,7 @@ const BUILTINS: &[Builtin] = &[
         dist: BuiltinDist::Bridge {
             package: "@google/gemini-cli@0.57.0",
             cmd: "gemini",
-            args: &["--acp"],
+            args: &["--experimental-acp"],
             node: 20,
         },
     },

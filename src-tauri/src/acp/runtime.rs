@@ -892,6 +892,11 @@ impl AcpRuntime {
                     "cancelled".into(),
                     None,
                 ),
+                Err(error) if !closed && error.auth_required() => (
+                    SessionStatus::AuthRequired,
+                    "error".into(),
+                    Some(session.redactor.text(&error.to_string())),
+                ),
                 Err(error) => (
                     live_status.clone(),
                     "error".into(),
@@ -913,6 +918,7 @@ impl AcpRuntime {
                     )?;
                 }
             }
+            let authenticating = status == SessionStatus::AuthRequired;
             state.record.status = status;
             state.record.error = message.clone();
             error = message;
@@ -922,6 +928,14 @@ impl AcpRuntime {
                 "turn_complete",
                 json!({"stopReason":stop,"error":error}),
             )?;
+            if authenticating {
+                self.emit_locked(
+                    &session,
+                    &mut state,
+                    "status",
+                    json!({"status":"auth_required"}),
+                )?;
+            }
         }
         if let Some(error) = error {
             if closed || session.connection.is_closed() {

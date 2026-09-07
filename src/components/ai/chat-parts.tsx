@@ -1183,25 +1183,15 @@ export const MessageItem = memo(function MessageItem({
       }
       const tool = tools[i];
       const key = tool.id ?? `legacy-tool-${i}`;
-      if (tool.name === "run_command") {
-        rows.push(
-          <ExecCard
-            key={key}
-            tc={tool}
-            expansionKey={expansionScope ? `${expansionScope}:tool:${key}` : undefined}
-          />,
-        );
-      } else {
-        rows.push(
-          <ToolBadge
-            key={key}
-            tc={tool}
-            actions={actions}
-            expansionKey={expansionScope ? `${expansionScope}:tool:${key}` : undefined}
-            live={live}
-          />,
-        );
-      }
+      rows.push(
+        <ToolBadge
+          key={key}
+          tc={tool}
+          actions={actions}
+          expansionKey={expansionScope ? `${expansionScope}:tool:${key}` : undefined}
+          live={live}
+        />,
+      );
     }
   }
   for (const entry of msg.subagents ?? []) {

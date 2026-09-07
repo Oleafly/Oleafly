@@ -397,6 +397,58 @@ async fn a_failed_turn_keeps_the_agent_connected_and_reports_its_message() {
     runtime.close(&id).await.unwrap();
 }
 
+#[test]
+fn a_cli_that_prints_its_usage_is_not_quoted_back_at_the_reader() {
+    assert!(protocol::reads_as_command_help(
+        "-d, --debug Run in debug mode? [boolean] Options: --experimental-acp Starts the agent in ACP mode"
+    ));
+    assert!(protocol::reads_as_command_help(
+        "Usage: gemini [options] Run --help for the full list"
+    ));
+    assert!(!protocol::reads_as_command_help(
+        "Traceback: the agent could not open paper.tex"
+    ));
+}
+
+#[test]
+fn an_agents_wording_decides_whether_a_failure_needs_a_sign_in() {
+    assert!(protocol::RpcError {
+        code: -32000,
+        message: "Authentication required".into(),
+    }
+    .auth_required());
+    assert!(protocol::RpcError::local(
+        "Internal error: Failed to authenticate: OAuth session expired and could not be refreshed"
+    )
+    .auth_required());
+    assert!(!protocol::RpcError::local("Agent failure sk-fixture-credential").auth_required());
+    assert!(!protocol::RpcError::local("The agent could not read paper.tex").auth_required());
+}
+
+#[tokio::test]
+async fn a_login_that_expires_mid_turn_asks_for_sign_in_rather_than_staying_ready() {
+    let (_temp, runtime, snapshot) = runtime(Vec::new()).await;
+    let id = snapshot.session.id;
+    let error = runtime
+        .prompt(&id, "auth-expired".into(), Vec::new())
+        .await
+        .unwrap_err();
+    assert!(error.contains("Failed to authenticate"), "{error}");
+    assert_eq!(
+        runtime.snapshot(&id).await.unwrap().session.status,
+        SessionStatus::AuthRequired
+    );
+    let events = runtime.events(&id, 0, 500).unwrap().events;
+    assert!(events
+        .iter()
+        .any(|event| event.kind == "status" && event.data["status"] == "auth_required"));
+    assert!(runtime
+        .prompt(&id, "retry before signing in".into(), Vec::new())
+        .await
+        .is_err());
+    runtime.close(&id).await.unwrap();
+}
+
 #[tokio::test]
 async fn startup_failures_carry_the_agent_stderr() {
     let temp = fixture_temp();

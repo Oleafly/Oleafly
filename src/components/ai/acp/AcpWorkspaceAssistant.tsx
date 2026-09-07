@@ -103,7 +103,12 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
     );
     void perform(async () => {
       if (ready) {
-        await useAcpSessionsStore.getState().start(projectId, nextAgentId);
+        try {
+          await useAcpSessionsStore.getState().start(projectId, nextAgentId);
+        } catch (value) {
+          setComposer(projectId, { agentId: open.agentId });
+          throw value;
+        }
         return;
       }
       if (["ready", "auth_required"].includes(open.status)) {
@@ -178,9 +183,10 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
       useAcpSessionsStore.getState().setSnapshot(await acpPrompt(projectId, activeId, message, attachments.map((value) => value.image)));
       clearComposer();
     } catch (value) {
-      setError(acpError(value));
       await useAcpSessionsStore.getState().resync(projectId, activeId).catch(() => {});
-      if (useAcpSessionsStore.getState().events[activeId]?.some((event) => event.kind === "user_message" && event.sequence > beforeSequence)) clearComposer();
+      const state = useAcpSessionsStore.getState();
+      if (state.sessions[activeId]?.status !== "auth_required") setError(acpError(value));
+      if (state.events[activeId]?.some((event) => event.kind === "user_message" && event.sequence > beforeSequence)) clearComposer();
     } finally { setSending(false); }
   };
   const choosePermission = async (id: string, option: string | null) => {
@@ -264,7 +270,7 @@ export function AcpWorkspaceAssistant({ projectId }: { projectId: string }) {
         />
       )}
     </div>
-    {(error || session?.error) && <div role="alert" className="mx-3 my-2 rounded-md border border-destructive/40 p-2 text-xs text-destructive">{error ?? session?.error}</div>}
+    {(error || (session?.error && session.status !== "auth_required")) && <div role="alert" className="mx-3 my-2 rounded-md border border-destructive/40 p-2 text-xs text-destructive">{error ?? session?.error}</div>}
     {session?.status === "auth_required" && <div className="space-y-2 border-t border-border p-3 text-xs">
       <p>{catalog.find((agent) => agent.definition.id === session.agentId)?.signInHint ?? "Sign in using this agent's CLI, then reconnect."}</p>
       <div className="flex flex-wrap gap-2">
