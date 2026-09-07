@@ -32,7 +32,7 @@ vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ flushForQuit }) },
 }));
 
-import { findUpdate, installUpdate, openUpdateWindow } from "./updater";
+import { findUpdate, installUpdate, openUpdateWindow, runUpdateCheck } from "./updater";
 
 beforeEach(() => {
   flushForQuit.mockReset().mockResolvedValue(undefined);
@@ -142,6 +142,42 @@ describe("installUpdate", () => {
     // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
     await expect(installUpdate(update as any)).rejects.toThrow("network down");
     expect(relaunch).not.toHaveBeenCalled();
+  });
+});
+
+describe("runUpdateCheck", () => {
+  it("hands a caller that arrives mid-check the real result, not a false 'up to date'", async () => {
+    let resolveCheck!: (u: unknown) => void;
+    check.mockImplementation(() => new Promise((resolve) => { resolveCheck = resolve; }));
+
+    const startup = runUpdateCheck();
+    await vi.waitFor(() => expect(check).toHaveBeenCalledTimes(1));
+    const manual = runUpdateCheck({ rethrow: true });
+
+    const update = { version: "0.2.0", currentVersion: "0.1.1" };
+    resolveCheck(update);
+
+    expect(await startup).toBe(update);
+    expect(await manual).toBe(update);
+    expect(check).toHaveBeenCalledTimes(1);
+  });
+
+  it("surfaces a failing in-flight check to the joining manual caller", async () => {
+    check.mockRejectedValue(new Error("network down"));
+
+    const startup = runUpdateCheck();
+    const manual = runUpdateCheck({ rethrow: true });
+
+    expect(await startup).toBeNull();
+    await expect(manual).rejects.toThrow("network down");
+    expect(check).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases the guard so a later check runs for real", async () => {
+    check.mockResolvedValue(null);
+    expect(await runUpdateCheck()).toBeNull();
+    expect(await runUpdateCheck()).toBeNull();
+    expect(check).toHaveBeenCalledTimes(2);
   });
 });
 

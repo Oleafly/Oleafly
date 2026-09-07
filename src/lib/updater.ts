@@ -20,8 +20,10 @@ const UPDATE_WINDOW_LABEL = "update";
 // server (`isTauri()` is false) every entry point is a no-op so nothing
 // throws.
 
-// Guard against overlapping checks (startup tick racing a manual click).
-let inFlight = false;
+// Single-flight: overlapping checks (startup tick racing a manual click) join
+// the running one instead of being dropped, so every caller gets the real
+// result rather than a bare `null` it would read as "up to date".
+let inFlight: Promise<Update | null> | null = null;
 
 // In the browser dev server (`!isTauri()`) there is no updater, so this
 // resolves to `null` just like "already up to date" - callers that need to
@@ -68,11 +70,9 @@ export async function installUpdate(
 
 // Records the outcome in the updates store so the in-app prompt
 // (`UpdateNotice`) and the About "last check failed" indicator stay in sync.
-// Failures are rethrown only when `rethrow` is set, which the manual checker
-// uses to render its own inline error state.
-export async function runUpdateCheck({ rethrow = false }: { rethrow?: boolean } = {}): Promise<Update | null> {
-  if (inFlight) return null;
-  inFlight = true;
+// Runs at most once per overlapping burst; the outcome is shared, and each
+// caller applies its own `rethrow` policy to it.
+async function performUpdateCheck(): Promise<Update | null> {
   const store = useUpdatesStore.getState();
   try {
     const update = await findUpdate();
@@ -82,10 +82,23 @@ export async function runUpdateCheck({ rethrow = false }: { rethrow?: boolean } 
   } catch (e) {
     await logError("updater", e);
     store.setFailed();
+    throw e;
+  }
+}
+
+// Failures are rethrown only when `rethrow` is set, which the manual checker
+// uses to render its own inline error state.
+export async function runUpdateCheck({ rethrow = false }: { rethrow?: boolean } = {}): Promise<Update | null> {
+  if (!inFlight) {
+    inFlight = performUpdateCheck().finally(() => {
+      inFlight = null;
+    });
+  }
+  try {
+    return await inFlight;
+  } catch (e) {
     if (rethrow) throw e;
     return null;
-  } finally {
-    inFlight = false;
   }
 }
 
