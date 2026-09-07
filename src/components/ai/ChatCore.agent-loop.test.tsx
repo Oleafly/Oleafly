@@ -1226,6 +1226,31 @@ describe("ChatCore agent turns", () => {
     expect(rendered.queryByText("Queued for the next turn: Reserve this follow-up")).toBeNull();
   });
 
+  it("flushes a debounced chat save on unmount instead of leaving it on a timer", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    act(() => mocks.runs[0].options.handlers.onText("Streamed so far"));
+    await waitFor(() =>
+      expect(
+        useChatsStore.getState().live["chat-1"]?.at(-1)?.content,
+      ).toBe("Streamed so far"),
+    );
+    expect(useChatsStore.getState().byId("chat-1")?.messages.at(-1)?.content).toBe("");
+
+    rendered.unmount();
+    expect(useChatsStore.getState().byId("chat-1")?.messages.at(-1)?.content).toBe(
+      "Streamed so far",
+    );
+
+    const sentinel: ChatMessage[] = [
+      { id: "sentinel", role: "user", content: "written after unmount", createdAt: 2 },
+    ];
+    useChatsStore.getState().saveMessages("chat-1", sentinel);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(useChatsStore.getState().byId("chat-1")?.messages).toEqual(sentinel);
+  });
+
   it("keeps a queued follow-up when backend startup fails before acceptance", async () => {
     const rendered = await renderChat();
     submit(rendered, "First request");
