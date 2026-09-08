@@ -1029,7 +1029,13 @@ fn parse_pandoc_diagnostics(log: &str) -> Vec<CompileError> {
                 return None;
             }
             let lower = trimmed.to_ascii_lowercase();
-            let kind = if lower.contains("warning") {
+            // Tectonic on Windows can emit this Fontconfig initialization
+            // message and still successfully resolve bundled fonts and write
+            // the PDF. Pandoc forwards it verbatim. Keep it visible without
+            // rejecting valid output; a nonzero exit still fails compilation.
+            let kind = if lower.contains("warning")
+                || lower.starts_with("fontconfig error: cannot load default config file:")
+            {
                 "warning"
             } else if lower.contains("error") || lower.starts_with("pandoc:") {
                 "error"
@@ -3908,6 +3914,18 @@ mod tests {
         assert_eq!(errors[0].kind, "warning");
         assert_eq!(errors[1].kind, "error");
         assert_eq!(errors[1].line, None);
+    }
+
+    #[test]
+    fn markdown_fontconfig_fallback_is_a_warning_but_pdf_errors_remain_errors() {
+        let diagnostics = MARKDOWN_ENGINE.parse_errors(
+            "Fontconfig error: Cannot load default config file: No such file: (null)\n\
+             Error producing PDF.\npandoc: PDF creation failed\n",
+        );
+        assert_eq!(diagnostics.len(), 3);
+        assert_eq!(diagnostics[0].kind, "warning");
+        assert_eq!(diagnostics[1].kind, "error");
+        assert_eq!(diagnostics[2].kind, "error");
     }
 
     #[test]

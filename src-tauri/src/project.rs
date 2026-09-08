@@ -2970,7 +2970,13 @@ fn create_markdown_project_in(
 }
 
 #[tauri::command]
-pub fn rename_project(project_id: String, name: String) -> Result<ProjectMeta, String> {
+pub async fn rename_project(project_id: String, name: String) -> Result<ProjectMeta, String> {
+    tauri::async_runtime::spawn_blocking(move || rename_project_blocking(project_id, name))
+        .await
+        .map_err(|error| format!("project rename task failed: {error}"))?
+}
+
+fn rename_project_blocking(project_id: String, name: String) -> Result<ProjectMeta, String> {
     with_project_metadata(&project_id, || {
         let trimmed = name.trim();
         if trimmed.is_empty() {
@@ -8444,7 +8450,12 @@ mod tests {
         assert!(trusted.allow_shell_escape);
         assert!(read_meta(&project_id).unwrap().allow_shell_escape);
 
-        let renamed = super::rename_project(project_id.clone(), "Trusted Paper".into()).unwrap();
+        let renamed = tauri::async_runtime::block_on(super::rename_project(
+            project_id.clone(),
+            "Trusted Paper".into(),
+        ))
+        .unwrap();
+        assert_eq!(renamed.name, "Trusted Paper");
         assert!(renamed.allow_shell_escape);
         assert!(!std::fs::read_to_string(project.join("project.json"))
             .unwrap()

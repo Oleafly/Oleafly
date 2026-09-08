@@ -1419,7 +1419,11 @@ mod tests {
         let root = test_root("approval-replay");
         let cwd = root.join("projects/proj");
         let state = AgentExecState::default();
-        let command = "touch approved-once";
+        let command = if cfg!(windows) {
+            "type nul > approved-once"
+        } else {
+            "touch approved-once"
+        };
         let token = state.authorize("proj", command, "run-once").unwrap();
 
         let first = execute_command(
@@ -1445,7 +1449,7 @@ mod tests {
         let marker_exists = cwd.join("approved-once").exists();
 
         std::fs::remove_dir_all(&root).ok();
-        assert!(first.is_ok());
+        assert_eq!(first.unwrap().exit_code, Some(0));
         assert_eq!(
             second.err().as_deref(),
             Some("run_command approval is invalid or already used")

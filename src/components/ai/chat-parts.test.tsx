@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, fireEvent, getByRole, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearExpansionState } from "./activity/expansion-state";
 import { ResearchToolCard } from "./activity/ResearchToolCard";
 import { useFilesStore } from "@/store/files";
@@ -30,6 +30,11 @@ import {
   ToolPicture,
   freeFigurePath,
 } from "./chat-parts";
+
+beforeAll(async () => {
+  // Keep cold loading of the lazy renderer outside interaction deadlines.
+  await import("@/components/ui/markdown-renderer");
+});
 
 describe("ToolPicture", () => {
   const png = "data:image/png;base64,iVBORw0KGgo=";
@@ -1309,7 +1314,11 @@ describe("MessageItem footer", () => {
       const copyButton = getByRole("button", { name: "Copy message" });
       const footer = time?.parentElement;
 
-      expect(time).toHaveTextContent("5:41 PM");
+      expect(time).toHaveTextContent(new Date(createdAt).toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }));
       expect(copyButton.parentElement).toBe(footer);
       expect(footer?.previousElementSibling).toHaveTextContent("Timestamped message");
     },

@@ -84,6 +84,11 @@ type ProjectActionToken = {
   session: number;
 };
 
+type PendingRefresh = ProjectActionToken & {
+  queued: boolean;
+  promise: Promise<void>;
+};
+
 export function SourceControl() {
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
@@ -122,6 +127,8 @@ export function SourceControl() {
   const previousProjectId = useRef(projectId);
   const refreshRequestId = useRef(0);
   const projectSession = useRef(0);
+  const pendingRefresh = useRef<PendingRefresh | null>(null);
+  const pendingMutation = useRef<ProjectActionToken | null>(null);
   const openDiff = useDiffStore((s) => s.openDiff);
   const clearActiveDiff = useDiffStore((s) => s.clearActiveDiff);
   const openFile = useFilesStore((s) => s.openFile);
@@ -131,6 +138,8 @@ export function SourceControl() {
     previousProjectId.current = projectId;
     projectSession.current += 1;
     refreshRequestId.current += 1;
+    pendingRefresh.current = null;
+    pendingMutation.current = null;
     setChanges([]);
     setInitialized(null);
     setBranch("");
@@ -159,7 +168,7 @@ export function SourceControl() {
     clearActiveDiff();
   };
 
-  const refresh = useCallback(async () => {
+  const refreshOnce = useCallback(async () => {
     if (!projectId || useFilesStore.getState().projectId !== projectId) return;
     const targetProjectId = projectId;
     const requestId = ++refreshRequestId.current;
@@ -207,6 +216,34 @@ export function SourceControl() {
       /* ignore */
     }
   }, [projectId]);
+
+  // A slow Git process must not turn repeated refreshes into an unbounded
+  // queue of readers ahead of a stage/commit waiting for the worktree lock.
+  const refresh = useCallback(async () => {
+    if (!projectId || useFilesStore.getState().projectId !== projectId) return;
+    const current = pendingRefresh.current;
+    if (current?.projectId === projectId && current.session === projectSession.current) {
+      current.queued = true;
+      refreshRequestId.current += 1;
+      return current.promise;
+    }
+    const operation: PendingRefresh = {
+      projectId,
+      session: projectSession.current,
+      queued: false,
+      promise: Promise.resolve(),
+    };
+    pendingRefresh.current = operation;
+    operation.promise = (async () => {
+      do {
+        operation.queued = false;
+        await refreshOnce();
+      } while (operation.queued && pendingRefresh.current === operation);
+    })().finally(() => {
+      if (pendingRefresh.current === operation) pendingRefresh.current = null;
+    });
+    return operation.promise;
+  }, [projectId, refreshOnce]);
 
   const initialize = async () => {
     const action = beginProjectAction();
@@ -314,13 +351,22 @@ export function SourceControl() {
     window.dispatchEvent(new CustomEvent("oleafly:git-changed"));
 
   const runGit = async (action: ProjectActionToken, op: () => Promise<unknown>) => {
+    if (busy || pendingMutation.current) return;
+    pendingMutation.current = action;
+    setBusy(true);
     try {
       await op();
       if (!isCurrentProjectAction(action)) return;
       notifyGitChanged(); // the listener refreshes this panel; an open diff reloads too
+      await pendingRefresh.current?.promise;
     } catch (e) {
       if (!isCurrentProjectAction(action)) return;
       setStatus({ ok: false, text: String(e) });
+    } finally {
+      if (pendingMutation.current === action) {
+        pendingMutation.current = null;
+        if (isCurrentProjectAction(action)) setBusy(false);
+      }
     }
   };
   const stageFile = (path: string) => {
@@ -474,6 +520,7 @@ export function SourceControl() {
           ))}
         <button type="button"
           onClick={() => void (c.staged ? unstageFile(c.path) : stageFile(c.path))}
+          disabled={busy}
           aria-label={c.staged ? "Unstage" : "Stage"}
           title={c.staged ? "Unstage" : "Stage"}
           className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
@@ -778,6 +825,7 @@ export function SourceControl() {
                   </span>
                   <button type="button"
                     onClick={() => void unstageAll()}
+                    disabled={busy}
                     title="Unstage all"
                     aria-label="Unstage all"
                     className="ml-auto flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 hover:bg-accent hover:text-foreground group-hover/hdr:opacity-100"
@@ -799,6 +847,7 @@ export function SourceControl() {
                   </span>
                   <button type="button"
                     onClick={() => void stageAll()}
+                    disabled={busy}
                     title="Stage all"
                     aria-label="Stage all"
                     className="ml-auto flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 hover:bg-accent hover:text-foreground group-hover/hdr:opacity-100"

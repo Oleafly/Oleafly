@@ -28,6 +28,7 @@ const TEX_TEMPLATES = [
   "thesis",
 ];
 const NETWORK_TEMPLATES = ["modern-resume"];
+const OTHER_TEMPLATES = ["blank-typst", "typst-report", "typst-resume", "blank-markdown"];
 
 async function createFromTemplate(page: import("../helpers").Page, id: string, name: string) {
   await createProjectFromTemplate(page, id, name);
@@ -36,7 +37,10 @@ async function createFromTemplate(page: import("../helpers").Page, id: string, n
 async function compileClean(page: import("../helpers").Page) {
   await page.click('[data-testid="compile-button"]');
   await expect(page.locator(".pdf-canvas")).toBeVisible({ timeout: 150_000 });
-  await expect(page.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok");
+  await page.waitForFunction(
+    `["ok", "warning"].includes(document.querySelector('[data-testid="compile-status"]')?.getAttribute('data-severity'))`,
+    10_000,
+  );
 }
 
 async function exportMenuItems(page: import("../helpers").Page): Promise<string> {
@@ -49,7 +53,7 @@ async function exportMenuItems(page: import("../helpers").Page): Promise<string>
   return page.evaluate<string>(`document.body.innerText`);
 }
 
-for (const id of TEX_TEMPLATES) {
+for (const id of [...TEX_TEMPLATES, ...OTHER_TEMPLATES]) {
   test(`template ${id}: create and compile with zero errors`, async ({ tauriPage }) => {
     test.setTimeout(240_000);
     await createFromTemplate(tauriPage, id, `E2E T ${id} ${RUN}`);

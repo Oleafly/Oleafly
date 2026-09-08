@@ -239,7 +239,7 @@ describe("project dock layout", () => {
   let dom: JSDOM;
   let root: import("react-dom/client").Root | null = null;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     dom = new JSDOM("<!doctype html><html><body><div id='root'></div></body></html>", {
       url: "https://oleafly.test",
     });
@@ -263,6 +263,8 @@ describe("project dock layout", () => {
       return 1;
     };
     window.cancelAnimationFrame = vi.fn();
+    // Account for cold module loading in setup, outside the interaction budget.
+    await import("./App");
   });
 
   beforeEach(async () => {

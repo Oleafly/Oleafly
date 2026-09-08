@@ -3,6 +3,7 @@ import {
   createBlankProject,
   fillCommandPalette,
   openRailTab,
+  stageAllGitChanges,
   pressGlobal,
   typeInEditorAfter,
 } from "../helpers";
@@ -35,25 +36,7 @@ async function initializeRepository(page: import("../helpers").Page) {
 
 async function commitAll(page: import("../helpers").Page, message: string) {
   await openRailTab(page, "Source Control");
-  // Stage all is hover-revealed (opacity-0): the plugin's own click waits for
-  // visibility and never fires, so click the real button via the DOM. Keep
-  // refreshing + staging until the STAGED section is actually visible.
-  let stagedVisible = false;
-  for (let i = 0; i < 25 && !stagedVisible; i++) {
-    await page.evaluate(
-      `(() => {
-        const b = document.querySelector('[aria-label="Stage all"]');
-        if (b) b.click();
-        return 1;
-      })()`,
-    );
-    await new Promise((r) => setTimeout(r, 800));
-    stagedVisible = await page.evaluate<boolean>(
-      `!!document.querySelector('[aria-label="Unstage all"]')`,
-    );
-    if (!stagedVisible) await page.click('[aria-label="Refresh"]');
-  }
-  if (!stagedVisible) throw new Error("commitAll: staging never became visible");
+  await stageAllGitChanges(page);
   await expect(page.locator('[data-testid="commit-title"]')).toBeVisible({ timeout: 10_000 });
   await page.fill('[data-testid="commit-title"]', message);
   const commit = page.locator('[data-testid="commit-button"]');

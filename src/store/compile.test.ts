@@ -193,6 +193,9 @@ beforeEach(() => {
 
 describe("compile output lifecycle", () => {
   it("coalesces bursty compiler output so WebKit gets a paint frame", async () => {
+    // This case measures log buffering; syntax validation has separate cases
+    // below and lazily loads the language service on the first compile.
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false });
     const compile = deferred<{
       ok: boolean;
       has_pdf: boolean;

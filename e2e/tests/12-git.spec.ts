@@ -4,6 +4,7 @@ import {
   ensureGithubConnected,
   openProject,
   openRailTab,
+  stageAllGitChanges,
   pressGlobal,
   typeInEditorAfter,
   type Page,
@@ -35,22 +36,7 @@ async function initializeRepository(page: Page) {
 
 async function stageAllAndCommit(page: Page, message: string) {
   await openRailTab(page, "Source Control");
-  let stagedVisible = false;
-  for (let i = 0; i < 25 && !stagedVisible; i++) {
-    await page.evaluate(
-      `(() => {
-        const b = document.querySelector('[aria-label="Stage all"]');
-        if (b) b.click();
-        return 1;
-      })()`,
-    );
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    stagedVisible = await page.evaluate<boolean>(
-      `!!document.querySelector('[aria-label="Unstage all"]')`,
-    );
-    if (!stagedVisible) await page.click('[aria-label="Refresh"]');
-  }
-  if (!stagedVisible) throw new Error("stageAllAndCommit: staging never became visible");
+  await stageAllGitChanges(page);
   await expect(page.locator('[data-testid="commit-title"]')).toBeVisible({ timeout: 10_000 });
   await page.fill('[data-testid="commit-title"]', message);
   const commit = page.locator('[data-testid="commit-button"]');
@@ -163,6 +149,22 @@ test("stage, diff, and commit without requiring a connected account", async ({ t
   await tauriPage.click('[data-testid="git-change-main.tex"]', { timeout: 5_000 });
   await tauriPage.waitForFunction(
     `!!document.querySelector('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText, .cm-merge-a, .cm-merge-b, .cm-mergeView')`,
+    15_000,
+  );
+
+  // Keep the working diff open while its INDEX baseline changes. The editor
+  // must remove staged additions and show them again after unstaging.
+  await tauriPage.click('[aria-label="Stage all"]');
+  await tauriPage.waitForFunction(
+    `!!document.querySelector('[aria-label="Unstage all"]') &&
+      !!document.querySelector('.cm-mergeView') &&
+      !document.querySelector('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')`,
+    15_000,
+  );
+  await tauriPage.click('[aria-label="Unstage all"]');
+  await tauriPage.waitForFunction(
+    `!!document.querySelector('[aria-label="Stage all"]') &&
+      !!document.querySelector('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')`,
     15_000,
   );
 

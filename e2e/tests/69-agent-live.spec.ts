@@ -104,7 +104,7 @@ test.describe("live provider", () => {
     await ask(tauriPage, "Reply with exactly this token and nothing else: LIVEPROVIDER7");
     await waitLong(
       tauriPage,
-      `document.body.innerText.includes("LIVEPROVIDER7") && !document.querySelector('[aria-label="Stop"]')`,
+      `Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1)?.textContent.includes("LIVEPROVIDER7") && !document.querySelector('[aria-label="Stop"]')`,
       REPLY_TIMEOUT,
     );
 
@@ -127,13 +127,21 @@ test.describe("live provider", () => {
     await ask(tauriPage, "Think step by step, then answer: what is 17 times 23?");
     await waitForRun(tauriPage);
 
+    // Finished turns fold reasoning behind the Worked header.
+    await tauriPage.evaluate(`(() => {
+      const message = Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1);
+      const worked = Array.from(message?.querySelectorAll('button') ?? [])
+        .find((button) => /^Worked (for|through)/.test(button.textContent.trim()));
+      if (worked?.getAttribute('aria-expanded') === 'false') worked.click();
+    })()`);
+
     const sawReasoning = await tauriPage.evaluate<boolean>(
-      `/Thought for|Reasoning/i.test(document.body.innerText)`,
+      `/Thought for|Reasoning/i.test(Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1)?.innerText ?? '')`,
     );
     expect(sawReasoning, "no thinking phase was rendered").toBe(true);
 
     const answered = await tauriPage.evaluate<boolean>(
-      `document.body.innerText.includes("391")`,
+      `Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1)?.textContent.includes("391") ?? false`,
     );
     expect(answered, "the answer should survive the thinking phase").toBe(true);
   });
@@ -155,6 +163,29 @@ test.describe("live provider", () => {
     expect(transcript, "the model should report what it read").toMatch(/article/i);
   });
 
+  test("a real delegated agent completes and exposes its recorded conversation", async ({ tauriPage }) => {
+    test.setTimeout(240_000);
+    await openLiveProject(tauriPage);
+    await connectLive(tauriPage, PROVIDER);
+    await openChat(tauriPage);
+
+    await ask(
+      tauriPage,
+      "Use spawn_agent to create exactly one helper named manuscript_check. " +
+        "Tell it to read main.tex with read_file and report the documentclass. " +
+        "Wait for the helper to finish with wait_agent, then report its answer. " +
+        "Do not edit any files. This request explicitly requires delegation.",
+    );
+    await waitForRun(tauriPage, 180_000);
+    const card = tauriPage.locator('[data-testid="subagent-card"][data-subagent-state="done"]');
+    await expect(card).toBeVisible({ timeout: 20_000 });
+    expect(await card.textContent()).toMatch(/article/i);
+    await tauriPage.getByText("Open task", { exact: true }).click();
+    await expect(tauriPage.getByTestId("session-transcript-dialog")).toBeVisible({ timeout: 15_000 });
+    await waitLong(tauriPage, `document.querySelector('[data-testid="session-transcript-dialog"]')?.textContent.includes('main.tex')`, 15_000);
+    expect(await tauriPage.getByTestId("session-transcript-dialog").textContent()).toMatch(/read_file|main\.tex/i);
+  });
+
   test("the same key works through a custom provider entry", async ({ tauriPage }) => {
     test.skip(
       !OPENAI_COMPATIBLE,
@@ -171,7 +202,7 @@ test.describe("live provider", () => {
     await ask(tauriPage, "Reply with exactly this token and nothing else: LIVECUSTOM9");
     await waitLong(
       tauriPage,
-      `document.body.innerText.includes("LIVECUSTOM9") && !document.querySelector('[aria-label="Stop"]')`,
+      `Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1)?.textContent.includes("LIVECUSTOM9") && !document.querySelector('[aria-label="Stop"]')`,
       REPLY_TIMEOUT,
     );
   });

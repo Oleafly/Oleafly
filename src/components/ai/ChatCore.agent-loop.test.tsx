@@ -496,6 +496,8 @@ beforeAll(async () => {
   ({ useAiToolSettingsStore } = await import("@/store/ai-tool-settings"));
   ({ useAssistantRuntimeStore } = await import("@/store/assistant-runtime"));
   ({ activeChatRun, endChatRun } = await import("./chat-run-registry"));
+  // Load the lazy dialog before timing interactions with its trigger.
+  await import("@/components/usage/UsageReport");
 });
 
 afterEach(() => cleanup());

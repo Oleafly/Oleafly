@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
+import { VITE_CLIENT_WITHOUT_TRANSPORT } from "./e2e/vite-client-without-transport";
 import {
   assertNoProductionDevHookTokens,
   assertNoTauriStyleNonceTriggers,
@@ -9,6 +10,21 @@ import {
 
 // Tauri expects a fixed port; if that's not available it will attempt the next one.
 const host = process.env.TAURI_DEV_HOST;
+
+const staticE2eClient = (): Plugin => ({
+  name: "static-e2e-vite-client",
+  apply: "serve",
+  configureServer(server) {
+    if (process.env.OLEAFLY_E2E_DISABLE_HMR !== "1") return;
+    // Vite 6 still connects its client socket with server.hmr=false. Serve
+    // the static client to module workers too, beyond Playwright page routes.
+    server.middlewares.use((request, response, next) => {
+      if (request.url?.split("?")[0] !== "/@vite/client") return next();
+      response.setHeader("Content-Type", "application/javascript");
+      response.end(VITE_CLIENT_WITHOUT_TRANSPORT);
+    });
+  },
+});
 
 // Keep only comments that carry distribution/licensing instructions. Terser
 // receives the comment body without `/*`/`//`, so a leading `!` covers `/*!`.
@@ -62,7 +78,7 @@ export const rejectProductionDevHooks = (): Plugin => ({
 });
 
 export default defineConfig(async () => ({
-  plugins: [react(), tailwindcss(), rejectProductionDevHooks()],
+  plugins: [react(), tailwindcss(), rejectProductionDevHooks(), staticE2eClient()],
   optimizeDeps: {
     exclude: ["harper.js"],
     include: [
@@ -144,7 +160,11 @@ export default defineConfig(async () => ({
     port: 1420,
     strictPort: true,
     host: host || false,
-    hmr: host
+    // Browser evidence also loads module workers, whose HMR sockets cannot be
+    // intercepted by page routes and can trip Playwright's Firefox adapter.
+    hmr: process.env.OLEAFLY_E2E_DISABLE_HMR === "1"
+      ? false
+      : host
       ? {
           protocol: "ws",
           host,

@@ -106,7 +106,7 @@ test.describe("local Ollama", () => {
     await ask(tauriPage, "Reply with exactly this token and nothing else: OLLAMALOCAL5");
     await waitLong(
       tauriPage,
-      `document.body.innerText.includes("OLLAMALOCAL5") && !document.querySelector('[aria-label="Stop"]')`,
+      `Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1)?.textContent.includes("OLLAMALOCAL5") && !document.querySelector('[aria-label="Stop"]')`,
       REPLY_TIMEOUT,
     );
   });

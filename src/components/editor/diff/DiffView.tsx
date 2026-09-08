@@ -46,10 +46,11 @@ export function DiffView() {
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Rebuild only the staged diff on git changes; working diffs already update live.
+  // Both views depend on INDEX. Working edits update live, but staging,
+  // unstaging, and committing also change the comparison baseline.
   useEffect(() => {
     const onChanged = () => {
-      if (activeDiff(useDiffStore.getState())?.side === "staged") setReloadKey((k) => k + 1);
+      if (activeDiff(useDiffStore.getState())) setReloadKey((k) => k + 1);
     };
     window.addEventListener("oleafly:git-changed", onChanged);
     return () => window.removeEventListener("oleafly:git-changed", onChanged);

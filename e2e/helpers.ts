@@ -1777,3 +1777,23 @@ export async function clickTabByText(page: Page, scope: string, name: string, ti
   })()`);
   await page.waitForFunction(`(${match})?.getAttribute("aria-selected") === "true"`, timeoutMs);
 }
+
+export async function stageAllGitChanges(page: Page) {
+  // The control is hover-revealed. Wait for Git's initial status, then invoke
+  // the real button once; polling must not enqueue more stage/refresh work.
+  await page.waitForFunction(
+    `(() => {
+      const button = document.querySelector('[aria-label="Stage all"]');
+      return button instanceof HTMLButtonElement && !button.disabled;
+    })()`,
+    30_000,
+  );
+  await page.evaluate(`document.querySelector('[aria-label="Stage all"]').click()`);
+  await page.waitForFunction(
+    `(() => {
+      const button = document.querySelector('[aria-label="Unstage all"]');
+      return button instanceof HTMLButtonElement && !button.disabled;
+    })()`,
+    60_000,
+  );
+}

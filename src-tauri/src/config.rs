@@ -904,7 +904,13 @@ fn drop_probes_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig) {
 }
 
 #[tauri::command]
-pub fn set_config(mut config: AppConfig) -> Result<(), String> {
+pub async fn set_config(config: AppConfig) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || set_config_blocking(config))
+        .await
+        .map_err(|error| format!("configuration worker failed: {error}"))?
+}
+
+fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     let _guard = lock_config_writes()?;
     let stored = read_config_unlocked()?;
     if config.github_token.is_empty() {
@@ -2016,7 +2022,7 @@ mod tests {
         incoming.github_user = "octocat".to_string();
         incoming.mcp_servers.clear();
 
-        set_config(incoming).unwrap();
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
 
         let persisted = read_config().unwrap();
         assert_eq!(persisted.github_user, "octocat");
@@ -2038,7 +2044,7 @@ mod tests {
         incoming.checkpoints_enabled = false;
         incoming.checkpoint_notifications = false;
 
-        set_config(incoming).unwrap();
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
 
         let persisted = read_config().unwrap();
         assert_eq!(persisted.github_user, "octocat");
@@ -2069,7 +2075,7 @@ mod tests {
             .insert("groq".to_string(), 41);
         incoming.ai_model_probes.clear();
 
-        set_config(incoming).unwrap();
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
 
         let persisted = read_config().unwrap();
         assert_eq!(
@@ -2108,7 +2114,7 @@ mod tests {
         assert_eq!(incoming.ai_model_probes.len(), 2);
         incoming.ai_custom_providers[0].base_url = "http://other.test/v1".into();
 
-        set_config(incoming).unwrap();
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
 
         let persisted = read_config().unwrap();
         assert!(!persisted
@@ -2134,7 +2140,7 @@ mod tests {
         incoming.github_user = "octocat".to_string();
         incoming.git_auto_init = false;
 
-        set_config(incoming).unwrap();
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
 
         let persisted = read_config().unwrap();
         assert_eq!(persisted.github_user, "octocat");
