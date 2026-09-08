@@ -71,37 +71,72 @@ fn portable_relative(relative: &Path) -> Option<String> {
 }
 
 pub fn walk_project(project_root: &Path) -> Result<ProjectWalk, String> {
+    walk_project_with(project_root, |_| {}).map_err(|error| error.to_string())
+}
+
+fn walk_project_with(
+    project_root: &Path,
+    mut before_read: impl FnMut(&Path),
+) -> std::io::Result<ProjectWalk> {
+    match walk_project_once(project_root, &mut before_read) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            walk_project_once(project_root, &mut before_read)
+        }
+        result => result,
+    }
+}
+
+fn walk_project_once(
+    project_root: &Path,
+    before_read: &mut impl FnMut(&Path),
+) -> std::io::Result<ProjectWalk> {
     let mut walk = ProjectWalk::default();
     let mut pending = vec![project_root.to_path_buf()];
     while let Some(directory) = pending.pop() {
-        let entries = std::fs::read_dir(&directory)
-            .map_err(|error| format!("Could not read {}: {error}", directory.display()))?;
+        before_read(&directory);
+        let entries = std::fs::read_dir(&directory).map_err(|error| {
+            std::io::Error::new(
+                error.kind(),
+                format!("Could not read {}: {error}", directory.display()),
+            )
+        })?;
         for entry in entries {
-            let entry =
-                entry.map_err(|error| format!("Could not read a directory entry: {error}"))?;
+            let entry = entry.map_err(|error| {
+                std::io::Error::new(
+                    error.kind(),
+                    format!("Could not read a directory entry: {error}"),
+                )
+            })?;
             let path = entry.path();
             let relative = path
                 .strip_prefix(project_root)
-                .map_err(|error| error.to_string())?;
+                .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidInput, error))?;
             let name = entry.file_name();
             if name.to_str().is_some_and(is_excluded_component) {
                 continue;
             }
-            let portable = portable_relative(relative)
-                .ok_or_else(|| format!("Unsupported checkpoint path: {}", relative.display()))?;
-            CaptureInput::explicit(portable.clone()).map_err(|error| error.to_string())?;
-            let metadata = entry
-                .metadata()
-                .map_err(|error| format!("Could not inspect {portable}: {error}"))?;
+            let portable = portable_relative(relative).ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!("Unsupported checkpoint path: {}", relative.display()),
+                )
+            })?;
+            CaptureInput::explicit(portable.clone()).map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("The name {portable} cannot be stored in a checkpoint. Use a name that works on macOS, Windows and Linux.")))?;
+            before_read(&path);
+            let metadata = entry.metadata().map_err(|error| {
+                std::io::Error::new(
+                    error.kind(),
+                    format!("Could not inspect {portable}: {error}"),
+                )
+            })?;
             if metadata.is_dir() {
                 pending.push(path);
                 continue;
             }
             if !metadata.is_file() {
-                return Err(format!("{portable} is not a regular file. Checkpoints cannot capture symbolic links or special files."));
+                return Err(std::io::Error::new(std::io::ErrorKind::Unsupported, format!("{portable} is not a regular file. Checkpoints cannot capture symbolic links or special files.")));
             }
-            let content_hash = ContentHash::digest_file(&path)
-                .map_err(|error| format!("Could not read {portable}: {error}"))?;
+            let content_hash = capture_hash(&path, &portable)?;
             walk.captured.push(CapturedFile {
                 relative_path: portable,
                 content_hash,
@@ -111,6 +146,16 @@ pub fn walk_project(project_root: &Path) -> Result<ProjectWalk, String> {
     walk.captured
         .sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     Ok(walk)
+}
+
+fn capture_hash(path: &Path, relative: &str) -> std::io::Result<ContentHash> {
+    ContentHash::digest_file(path).map_err(|error| {
+        let kind = match &error {
+            oleafly_history::HistoryError::Io(error) => error.kind(),
+            _ => std::io::ErrorKind::Other,
+        };
+        std::io::Error::new(kind, format!("Could not read {relative}: {error}"))
+    })
 }
 
 #[cfg(test)]
@@ -130,6 +175,54 @@ mod tests {
             .iter()
             .map(|file| file.relative_path.as_str())
             .collect()
+    }
+
+    #[test]
+    fn retries_disappearing_entries_without_omitting_remaining_files() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        write(root, "main.tex", b"keep");
+        write(root, "transient.tex", b"delete");
+        let mut removed = false;
+        let walk = walk_project_with(root, |path| {
+            if path.ends_with("transient.tex") && !removed {
+                std::fs::remove_file(path).unwrap();
+                removed = true;
+            }
+        })
+        .unwrap();
+        assert!(removed);
+        assert_eq!(captured_paths(&walk), vec!["main.tex"]);
+    }
+
+    #[test]
+    fn retries_a_directory_removed_after_it_was_queued() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        write(root, "main.tex", b"keep");
+        write(root, "transient/file.tex", b"delete");
+        let mut visits = 0;
+        let walk = walk_project_with(root, |path| {
+            if path.ends_with("transient") {
+                visits += 1;
+                if visits == 2 {
+                    std::fs::remove_dir_all(path).unwrap();
+                }
+            }
+        })
+        .unwrap();
+        assert_eq!(visits, 2);
+        assert_eq!(captured_paths(&walk), vec!["main.tex"]);
+    }
+
+    #[test]
+    fn stops_after_one_rewalk_when_the_directory_remains_missing() {
+        let directory = tempfile::tempdir().unwrap();
+        let missing = directory.path().join("missing");
+        let mut attempts = 0;
+        let result = walk_project_with(&missing, |_| attempts += 1);
+        assert_eq!(attempts, 2);
+        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::NotFound);
     }
 
     #[test]
