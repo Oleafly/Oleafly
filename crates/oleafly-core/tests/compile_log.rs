@@ -338,8 +338,16 @@ fn assert_golden(log_path: &Path, expected_path: &Path) {
     )
     .unwrap();
     let root_file = expected["rootFile"].as_str();
+    let unix_log = log.replace("\r\n", "\n");
+    let windows_log = unix_log.replace('\n', "\r\n");
     let started = Instant::now();
     let diagnostics = parse_latex_log(&log, root_file);
+    assert_eq!(
+        parse_latex_log(&unix_log, root_file),
+        parse_latex_log(&windows_log, root_file),
+        "{}: LF and CRLF diagnostics differ",
+        log_path.display()
+    );
     eprintln!(
         "{}: {} bytes, {} diagnostics in {:?}",
         log_path.display(),

@@ -242,7 +242,9 @@ pub fn parse_latex_log(log: &str, root_file: Option<&str>) -> Vec<LogDiagnostic>
         out: Vec::new(),
     };
     for line in head(log).split('\n') {
-        parser.parse_line(line);
+        // Windows compiler pipes use CRLF. Keep the line terminator out of
+        // anchored patterns and diagnostic context, matching the LF path.
+        parser.parse_line(line.strip_suffix('\r').unwrap_or(line));
     }
     if let Some(current) = parser.current.take() {
         if !patterns().bib_empty.is_match(&current.text) {

@@ -28,6 +28,9 @@ is Windows x64, build 26200, with Node 22.23.1 and WebView2.
   still fail compilation.
 - An open working-tree diff retained its old INDEX baseline after staging or
   committing. Both working and staged diffs now refresh when Git changes.
+- CRLF compiler output missed anchored diagnostic patterns in the Rust log
+  parser. It now removes the carriage-return line terminator before parsing;
+  every golden log is checked with both LF and CRLF endings.
 
 Windows test corrections cover CRLF fixture offsets, platform-specific
 shortcuts and shell commands, Python executable discovery, locale-dependent
@@ -52,6 +55,8 @@ a packaged test binary instead of rebuilding the development app per spec.
 | Command-line integration | 11 passed, including build output contracts and watch recovery |
 | Language services | TexLab 5.26.0 and Tinymist 0.15.2 passed seven rapid document revisions with no stale diagnostic regression |
 | Other Rust workspace crates | 312 passed: agent 237, CLI 23, core 28, history 24 |
+| Checkpoint storage integration | 41 passed, including atomic archive import/export, duplicate imports, corruption rejection, retention, and cancellation |
+| Compiler log integration | 22 passed after fixing CRLF diagnostic parsing; golden logs now check both line-ending forms |
 | Live Z.AI assistant | Nine passed: model discovery, real streamed replies, usage, reasoning, file tools, delegated task and transcript, custom gateway, selection persistence, catalog refresh, and rejected key handling |
 | Local Ollama | Six passed using `llama3.2:3b`: discovery, real response, usage, file tool, trailing slash, and host persistence |
 | Manual native UI | Visual LaTeX edit, undo/redo, source round trip, compile and PDF text; detached preview fit, rotation, inversion, reader mode and close; project fork, staging, local commit and Git history; terminal pane startup |
