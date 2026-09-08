@@ -100,11 +100,18 @@ pub fn cancel_quit_flush() {
 }
 
 #[cfg(test)]
+pub(crate) fn test_lock() -> &'static tokio::sync::Mutex<()> {
+    static LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+    &LOCK
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn the_cancel_command_re_arms_both_flags() {
+        let _lock = test_lock().blocking_lock();
         mark_flush_confirmed();
         mark_restart_pending();
 
@@ -116,6 +123,7 @@ mod tests {
 
     #[test]
     fn confirmed_quits_resolve_to_defer_restart_or_exit() {
+        let _lock = test_lock().blocking_lock();
         clear_flush_confirmed();
         assert_eq!(
             resolve_quit_action(true),
@@ -132,6 +140,7 @@ mod tests {
 
     #[test]
     fn restart_intent_survives_a_deferred_confirm_and_cancel_clears_it() {
+        let _lock = test_lock().blocking_lock();
         clear_flush_confirmed();
         assert!(!restart_pending(), "no restart intent by default");
 
@@ -151,6 +160,7 @@ mod tests {
 
     #[test]
     fn flush_gate_starts_closed_then_follows_confirm_and_cancel() {
+        let _lock = test_lock().blocking_lock();
         clear_flush_confirmed();
         assert!(!flush_confirmed(), "gate must start closed");
 

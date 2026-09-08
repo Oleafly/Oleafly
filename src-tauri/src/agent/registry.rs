@@ -11,6 +11,9 @@ pub(super) fn begin_request(
     let (handle, registration) = AbortHandle::new_pair();
     let (generation, previous) = {
         let mut registry = lock_or_recover(&state.requests);
+        if registry.paused_for_update {
+            return None;
+        }
         match (
             registry.session_id.as_deref(),
             request_session_id(request_id),
@@ -80,10 +83,17 @@ pub(super) fn cancel_request(state: &AgentState, request_id: &str) -> Option<u64
     generation
 }
 
+#[cfg(test)]
 pub(super) fn cancel_all_requests(state: &AgentState, session_id: &str) {
+    cancel_requests(state, Some(session_id));
+}
+
+pub(super) fn cancel_requests(state: &AgentState, session_id: Option<&str>) {
     let handles: Vec<AbortHandle> = {
         let mut registry = lock_or_recover(&state.requests);
-        registry.session_id = Some(session_id.to_string());
+        if let Some(session_id) = session_id {
+            registry.session_id = Some(session_id.to_string());
+        }
         registry.early_cancellations.clear();
         registry
             .active

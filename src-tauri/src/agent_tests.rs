@@ -845,3 +845,28 @@ async fn stopping_subagents_targets_the_registered_run_only() {
     // No children yet: zero interrupted, no error.
     assert_eq!(crate::agent::subagents_stop(&state, "run-1").unwrap(), 0);
 }
+
+#[tokio::test]
+async fn failed_update_preserves_the_renderer_session_after_cancelling_active_requests() {
+    let state = AgentState::default();
+    let exec = crate::agent_exec::AgentExecState::default();
+    let (_, registration) = begin_request(&state, "agent:renderer-a:1").unwrap();
+    pause_for_update(&state);
+    assert!(begin_request(&state, "agent:renderer-a:2").is_none());
+    cancel_for_update(&state, &exec).await;
+    assert!(Abortable::new(std::future::pending::<()>(), registration)
+        .await
+        .is_err());
+    assert!(begin_request(&state, "agent:renderer-a:3").is_none());
+    resume_after_failed_update(&state);
+    assert!(
+        run_registered(&state, "agent:renderer-a:4", |_| async { Ok(()) })
+            .await
+            .is_ok()
+    );
+    assert!(
+        run_registered(&state, "agent:renderer-b:1", |_| async { Ok(()) })
+            .await
+            .is_err()
+    );
+}

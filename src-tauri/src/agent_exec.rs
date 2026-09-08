@@ -634,6 +634,19 @@ async fn execute_command(
     .await
 }
 
+fn shell_command(command: &str) -> tokio::process::Command {
+    if cfg!(windows) {
+        let mut c = tokio::process::Command::new("cmd");
+        c.arg("/C").arg(command);
+        c
+    } else {
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
+        let mut c = tokio::process::Command::new(shell);
+        c.arg("-lc").arg(command);
+        c
+    }
+}
+
 async fn execute_command_with_timeout(
     state: &AgentExecState,
     request: ExecRequest<'_>,
@@ -665,16 +678,7 @@ async fn execute_command_with_timeout(
         return Err("run_command is denied for this project".to_string());
     }
 
-    let mut cmd = if cfg!(windows) {
-        let mut c = tokio::process::Command::new("cmd");
-        c.arg("/C").arg(command);
-        c
-    } else {
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
-        let mut c = tokio::process::Command::new(shell);
-        c.arg("-lc").arg(command);
-        c
-    };
+    let mut cmd = shell_command(command);
     cmd.no_console()
         .current_dir(cwd)
         .stdin(Stdio::null())
