@@ -207,6 +207,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
 - A large paste into a busy terminal no longer blocks the app. Pending input is
   bounded and ordered, and shutdown keeps draining output on macOS, Windows,
   and Linux, including when a paste is still being written.
+- Windows terminals can start while hidden and close without waiting for a
+  cursor-position reply from the interface.
 - Assistant command timeouts still apply when a command closes its output streams
   before it finishes.
 - Files in unsupported text encodings are kept out of editable buffers. Opening

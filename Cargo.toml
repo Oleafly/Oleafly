@@ -17,3 +17,4 @@ strip = true
 # vendored copy resolves through the webview map instead.
 [patch.crates-io]
 tauri-plugin-playwright = { path = "vendor/tauri-plugin-playwright" }
+portable-pty = { path = "vendor/portable-pty" }

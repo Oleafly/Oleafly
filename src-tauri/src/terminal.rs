@@ -1101,48 +1101,142 @@ mod tests {
         assert_eq!(received, "hello from the owner");
     }
 
+    struct TerminalTestSession {
+        owner: SessionOwner,
+        id: String,
+    }
+
+    impl Drop for TerminalTestSession {
+        fn drop(&mut self) {
+            let _ = kill_terminal(&self.owner, &self.id);
+        }
+    }
+
+    fn nonreading_terminal_fixture() -> CommandBuilder {
+        #[cfg(unix)]
+        {
+            let mut shell = CommandBuilder::new("/bin/sh");
+            shell.args(["-c", "printf READY; while :; do sleep 0.1; printf .; done"]);
+            shell
+        }
+        #[cfg(windows)]
+        {
+            let mut shell = CommandBuilder::new("powershell.exe");
+            shell.args([
+                "-NoProfile",
+                "-Command",
+                "[Console]::Out.Write('READY'); while ($true) { Start-Sleep -Milliseconds 100; [Console]::Out.Write('.') }",
+            ]);
+            shell
+        }
+    }
+
+    async fn wait_for_terminal_ready(
+        events: &mut tokio::sync::mpsc::UnboundedReceiver<serde_json::Value>,
+    ) {
+        let mut output = String::new();
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            while let Some(event) = events.recv().await {
+                if let Some(data) = event["data"].as_str() {
+                    output.push_str(data);
+                    if output.contains("READY") {
+                        return;
+                    }
+                }
+            }
+            panic!("terminal event stream closed before the shell was ready");
+        })
+        .await
+        .unwrap_or_else(|_| panic!("shell did not become ready; terminal output: {output:?}"));
+    }
+
+    #[tokio::test]
+    async fn hidden_terminal_starts_and_closes_without_a_cursor_response() {
+        let project = tempfile::tempdir().unwrap();
+        let (events, mut received) = tokio::sync::mpsc::unbounded_channel();
+        let channel = Channel::new(move |body| {
+            let _ = events.send(body.deserialize::<serde_json::Value>().unwrap());
+            Ok(())
+        });
+        let owner = SessionOwner::new("main", "hidden-terminal");
+        let id = open_terminal(
+            project.path(),
+            owner.clone(),
+            80,
+            24,
+            channel,
+            nonreading_terminal_fixture(),
+        )
+        .unwrap();
+        let session = TerminalTestSession { owner, id };
+        wait_for_terminal_ready(&mut received).await;
+        kill_terminal(&session.owner, &session.id).unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            while let Some(event) = received.recv().await {
+                if event["event"] == "exit" {
+                    return;
+                }
+            }
+            panic!("terminal event stream closed without an exit event");
+        })
+        .await
+        .expect("hidden terminal did not finish native teardown");
+    }
+
     #[tokio::test]
     async fn disconnecting_output_during_a_large_paste_reaps_the_shell() {
         let project = tempfile::tempdir().unwrap();
         let disconnect = Arc::new(AtomicBool::new(false));
         let close_channel = Arc::clone(&disconnect);
-        let (ready, ready_rx) = std::sync::mpsc::channel();
-        let channel = Channel::new(move |_| {
+        let rejected = Arc::new(AtomicBool::new(false));
+        let observed_rejection = Arc::clone(&rejected);
+        let (events, mut received) = tokio::sync::mpsc::unbounded_channel();
+        let channel = Channel::new(move |body| {
             if close_channel.load(Ordering::Acquire) {
+                observed_rejection.store(true, Ordering::Release);
                 return Err(tauri::Error::AssetNotFound("closed".into()));
             }
-            let _ = ready.send(());
+            let _ = events.send(body.deserialize::<serde_json::Value>().unwrap());
             Ok(())
         });
-        #[cfg(unix)]
-        let shell = {
-            let mut shell = CommandBuilder::new("/bin/sh");
-            shell.args(["-c", "printf READY; sleep 10"]);
-            shell
-        };
-        #[cfg(windows)]
-        let shell = {
-            let mut shell = CommandBuilder::new("powershell.exe");
-            shell.args([
-                "-NoProfile",
-                "-Command",
-                "[Console]::Out.Write('READY'); Start-Sleep -Seconds 10",
-            ]);
-            shell
-        };
         let owner = SessionOwner::new("main", "paste-disconnect");
-        let id = open_terminal(project.path(), owner.clone(), 80, 24, channel, shell).unwrap();
-        ready_rx
-            .recv_timeout(std::time::Duration::from_secs(5))
-            .unwrap();
+        let id = open_terminal(
+            project.path(),
+            owner.clone(),
+            80,
+            24,
+            channel,
+            nonreading_terminal_fixture(),
+        )
+        .unwrap();
+        let session = TerminalTestSession { owner, id };
+        wait_for_terminal_ready(&mut received).await;
         let child = {
             let sessions = SESSIONS.lock().unwrap();
-            Arc::clone(&sessions.as_ref().unwrap().get(&id, &owner).unwrap().child)
+            Arc::clone(
+                &sessions
+                    .as_ref()
+                    .unwrap()
+                    .get(&session.id, &session.owner)
+                    .unwrap()
+                    .child,
+            )
         };
+        let receipt =
+            write_terminal(&session.owner, &session.id, &"paste\n".repeat(80_000)).unwrap();
         disconnect.store(true, Ordering::Release);
-        let receipt = write_terminal(&owner, &id, &"paste\n".repeat(80_000)).unwrap();
-        tokio::time::timeout(std::time::Duration::from_secs(5), async {
-            let _ = receipt.await;
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+        tokio::time::timeout_at(deadline, async {
+            while !rejected.load(Ordering::Acquire) {
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("terminal never observed the disconnected output channel");
+        let _ = tokio::time::timeout_at(deadline, receipt)
+            .await
+            .expect("terminal input did not settle after disconnect");
+        tokio::time::timeout_at(deadline, async {
             loop {
                 let exited = child
                     .try_lock()
@@ -1156,8 +1250,8 @@ mod tests {
             }
         })
         .await
-        .expect("terminal teardown hung with a blocked paste");
-        assert!(write_terminal(&owner, &id, "more").is_err());
+        .expect("terminal shell did not exit after disconnect");
+        assert!(write_terminal(&session.owner, &session.id, "more").is_err());
     }
 
     #[cfg(unix)]
