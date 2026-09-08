@@ -1137,23 +1137,39 @@ mod tests {
         }
     }
 
-    fn nonreading_terminal_fixture() -> CommandBuilder {
-        #[cfg(unix)]
-        {
-            let mut shell = CommandBuilder::new("/bin/sh");
-            shell.args(["-c", "printf READY; while :; do sleep 0.1; printf .; done"]);
-            shell
+    #[test]
+    fn nonreading_terminal_child() {
+        if std::env::var("OLEAFLY_TERMINAL_TEST_CHILD").as_deref() != Ok("1") {
+            return;
         }
         #[cfg(windows)]
-        {
-            let mut shell = CommandBuilder::new("powershell.exe");
-            shell.args([
-                "-NoProfile",
-                "-Command",
-                "[Console]::Out.Write('READY'); while ($true) { Start-Sleep -Milliseconds 100; [Console]::Out.Write('.') }",
-            ]);
-            shell
+        let mut output = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open("CONOUT$")
+            .unwrap();
+        #[cfg(unix)]
+        let mut output = std::io::stdout().lock();
+        output.write_all(b"READY").unwrap();
+        output.flush().unwrap();
+        let deadline = Instant::now() + std::time::Duration::from_secs(30);
+        while Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            if output.write_all(b".").and_then(|_| output.flush()).is_err() {
+                return;
+            }
         }
+    }
+
+    fn nonreading_terminal_fixture() -> CommandBuilder {
+        let mut process = CommandBuilder::new(std::env::current_exe().unwrap());
+        process.args([
+            "--exact",
+            "terminal::tests::nonreading_terminal_child",
+            "--nocapture",
+        ]);
+        process.env("OLEAFLY_TERMINAL_TEST_CHILD", "1");
+        process
     }
 
     async fn wait_for_terminal_ready(
