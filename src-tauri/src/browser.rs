@@ -10,6 +10,9 @@ use tauri::{
     Webview, WebviewUrl, Window, WindowEvent,
 };
 
+#[cfg(windows)]
+mod windows_shortcuts;
+
 pub const CHROME_HEIGHT_LOGICAL: f64 = 88.0;
 
 const WINDOW_TITLE: &str = "Oleafly Browser";
@@ -491,6 +494,11 @@ fn open_tab<R: Runtime>(
     let webview = window
         .add_child(builder, position, pane_size)
         .map_err(|e| format!("could not open the tab: {e}"))?;
+    #[cfg(windows)]
+    windows_shortcuts::install(
+        &webview,
+        with_window_state(&window_label, |state| state.chrome.clone())?,
+    );
     let _ = webview.hide();
     with_window_state(&window_label, |state| {
         state.tabs.push(BrowserTabInfo {
