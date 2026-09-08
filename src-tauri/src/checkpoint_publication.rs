@@ -12,11 +12,11 @@ const PUBLICATION_DRAIN_TIMEOUT: std::time::Duration = std::time::Duration::from
 const PUBLICATION_DRAIN_POLL: std::time::Duration = std::time::Duration::from_millis(50);
 const PUBLICATION_START_DELAY: std::time::Duration = std::time::Duration::from_millis(1500);
 
-/// The one publication failure a writer can act on.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CheckpointSkipReason {
     StorageUnavailable,
+    IncompleteCapture,
 }
 
 /// Publication is supplementary to compilation. A skipped outcome never
@@ -62,6 +62,13 @@ struct AdapterFailure {
 }
 
 impl AdapterFailure {
+    fn incomplete(detail: impl Into<String>) -> Self {
+        Self {
+            reason: Some(CheckpointSkipReason::IncompleteCapture),
+            detail: detail.into(),
+        }
+    }
+
     fn silent(detail: impl Into<String>) -> Self {
         Self {
             reason: None,
@@ -105,6 +112,11 @@ impl Drop for CheckpointCancelScope<'_> {
 fn outcome_from_failure(failure: AdapterFailure) -> CheckpointPublicationOutcome {
     match failure.reason {
         None => CheckpointPublicationOutcome::Failed,
+        Some(CheckpointSkipReason::IncompleteCapture) => CheckpointPublicationOutcome::skipped(
+            CheckpointSkipReason::IncompleteCapture,
+            format!("Checkpoint not saved. {}", failure.detail),
+            "Check the affected files and folder permissions, then compile again.",
+        ),
         Some(reason) => CheckpointPublicationOutcome::skipped(
             reason,
             "Checkpoint not saved. Checkpoint storage is full or not writable.",
@@ -137,6 +149,15 @@ fn history_failure(context: &str, error: oleafly_history::HistoryError) -> Adapt
         reason: storage_reason(&error),
         detail: format!("{context}: {error}"),
     }
+}
+
+fn capture_failure(error: oleafly_history::HistoryError) -> AdapterFailure {
+    let cancelled = matches!(error, oleafly_history::HistoryError::PublicationCancelled);
+    let mut failure = history_failure("inputs could not be sealed", error);
+    if failure.reason.is_none() && !cancelled {
+        failure.reason = Some(CheckpointSkipReason::IncompleteCapture);
+    }
+    failure
 }
 
 fn storage_reason(error: &oleafly_history::HistoryError) -> Option<CheckpointSkipReason> {
@@ -492,11 +513,13 @@ fn stage_with_one_rewalk(
         Ok(candidate) => Ok(candidate),
         Err(error) if is_missing_file(&error) => {
             ensure_checkpoint_not_cancelled(cancel)?;
-            let remaining = crate::checkpoint_capture::walk_project(project_root).capture_inputs();
-            stage_inputs(store, project_root, &remaining, cancel)
-                .map_err(|error| history_failure("inputs could not be sealed", error))
+            let remaining = crate::checkpoint_capture::walk_project(project_root)
+                .map_err(AdapterFailure::incomplete)?
+                .capture_inputs()
+                .map_err(AdapterFailure::incomplete)?;
+            stage_inputs(store, project_root, &remaining, cancel).map_err(capture_failure)
         }
-        Err(error) => Err(history_failure("inputs could not be sealed", error)),
+        Err(error) => Err(capture_failure(error)),
     }
 }
 
@@ -525,7 +548,8 @@ async fn walk_if_changed(
     tokio::task::spawn_blocking(move || {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&walk_project_id)
             .map_err(AdapterFailure::silent)?;
-        let walk = crate::checkpoint_capture::walk_project(&walk_project_root);
+        let walk = crate::checkpoint_capture::walk_project(&walk_project_root)
+            .map_err(AdapterFailure::incomplete)?;
         if newest_checkpoint_matches(&walk_project_id, &walk) {
             return Ok(None);
         }
@@ -602,7 +626,7 @@ async fn attempt_publication(
         return Ok(CheckpointPublicationOutcome::Unchanged);
     };
     trace_lane(project_id, "sources differ from the newest checkpoint");
-    let inputs = walk.capture_inputs();
+    let inputs = walk.capture_inputs().map_err(AdapterFailure::incomplete)?;
     let completed_at_unix_ms = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|duration| duration.as_millis().min(i64::MAX as u128) as i64)
@@ -714,6 +738,26 @@ mod tests {
         )
         .unwrap();
         (candidate, evidence)
+    }
+
+    #[test]
+    fn cancellation_stays_silent_but_incomplete_capture_is_actionable() {
+        let cancelled = super::capture_failure(oleafly_history::HistoryError::PublicationCancelled);
+        assert_eq!(cancelled.reason, None);
+        let incomplete = super::capture_failure(oleafly_history::HistoryError::InvalidInput(
+            "name collision".into(),
+        ));
+        assert_eq!(
+            incomplete.reason,
+            Some(CheckpointSkipReason::IncompleteCapture)
+        );
+        assert!(matches!(
+            outcome_from_failure(incomplete),
+            CheckpointPublicationOutcome::Skipped {
+                reason: CheckpointSkipReason::IncompleteCapture,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -1087,7 +1131,7 @@ mod tests {
         fs::write(project.join("project.json"), b"{}").unwrap();
         fs::write(project.join("main.typ"), b"main").unwrap();
         fs::write(project.join("chapters/one.typ"), b"chapter").unwrap();
-        let walk_now = || crate::checkpoint_capture::walk_project(&project);
+        let walk_now = || crate::checkpoint_capture::walk_project(&project).unwrap();
 
         assert!(
             !newest_checkpoint_matches("snapshot", &walk_now()),
@@ -1096,7 +1140,7 @@ mod tests {
 
         let store = Store::open(crate::paths::checkpoint_store_dir("snapshot").unwrap()).unwrap();
         let candidate = store
-            .stage_candidate(&project, &walk_now().capture_inputs())
+            .stage_candidate(&project, &walk_now().capture_inputs().unwrap())
             .unwrap();
         let request = publication_request("snapshot", &project, "typst", "main.typ");
         let evidence = super::snapshot_evidence(&request, 1).unwrap();
@@ -1354,7 +1398,10 @@ mod tests {
             b"deleted while the checkpoint is sealed",
         )
         .unwrap();
-        let inputs = crate::checkpoint_capture::walk_project(&project).capture_inputs();
+        let inputs = crate::checkpoint_capture::walk_project(&project)
+            .unwrap()
+            .capture_inputs()
+            .unwrap();
         assert_eq!(inputs.len(), 3, "the walk must see the file it will lose");
 
         fs::remove_file(project.join("notes.md")).unwrap();

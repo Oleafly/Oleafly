@@ -54,6 +54,7 @@ mod research_lifecycle;
 mod research_mcp;
 mod research_tasks;
 mod research_workspace;
+mod updater;
 mod usage_report;
 // Thread persistence; the thread-store commands land on top of it next.
 #[allow(dead_code)]
@@ -105,6 +106,7 @@ pub fn run() {
         .plugin(language_service::lifecycle_plugin())
         .plugin(terminal::lifecycle_plugin())
         .plugin(acp::lifecycle_plugin())
+        .plugin(updater::lifecycle_plugin())
         .plugin(research_lifecycle::lifecycle_plugin())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_os::init())
@@ -155,6 +157,7 @@ pub fn run() {
 
     builder
         .manage(AppState::default())
+        .manage(updater::UpdateState::default())
         .manage(research_tasks::ResearchTaskState::default())
         .manage(agent::AgentState::default())
         .manage(agent_exec::AgentExecState::default())
@@ -166,7 +169,11 @@ pub fn run() {
         // close through after `confirm_quit_during_install`.
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                use tauri::Emitter;
+                use tauri::{Emitter, Manager};
+                if window.state::<updater::UpdateState>().installing() {
+                    api.prevent_close();
+                    return;
+                }
                 // Secondary windows (PDF preview) hold no editor buffers and
                 // must close freely; the quit gates guard the main window only.
                 if window.label() != "main" {
@@ -435,6 +442,10 @@ pub fn run() {
             language_service::language_service_install,
             language_service::language_service_install_status,
             commands::updater_self_installable,
+            updater::download_update,
+            updater::install_update,
+            updater::confirm_update_install,
+            updater::settle_update_work,
             commands::compile_project,
             commands::cancel_compile,
             commands::clear_build_dir,

@@ -19,9 +19,9 @@ mod registry;
 mod subagents;
 pub mod task_runtime;
 pub mod usage;
-use registry::{acquire_request_slot, cancel_all_requests, cancel_request, run_registered};
+use registry::{acquire_request_slot, cancel_request, run_registered};
 #[cfg(test)]
-use registry::{begin_request, finish_request};
+use registry::{begin_request, cancel_all_requests, finish_request};
 pub use subagents::SubagentManager;
 
 const MAX_EARLY_CANCELLATIONS: usize = 256;
@@ -59,6 +59,7 @@ struct RequestRegistry {
     early_cancellations: VecDeque<String>,
     next_generation: u64,
     session_id: Option<String>,
+    paused_for_update: bool,
 }
 
 pub struct AgentState {
@@ -302,7 +303,37 @@ pub async fn agent_cancel_all(
     exec_state: State<'_, crate::agent_exec::AgentExecState>,
     session_id: String,
 ) -> Result<(), String> {
-    crate::agent_exec::cancel_all(exec_state.inner());
+    cancel_all_work(state.inner(), exec_state.inner(), Some(&session_id)).await;
+    Ok(())
+}
+
+pub(crate) fn pause_for_update(state: &AgentState) {
+    lock_or_recover(&state.requests).paused_for_update = true;
+}
+
+#[cfg(test)]
+pub(crate) fn paused_for_update(state: &AgentState) -> bool {
+    lock_or_recover(&state.requests).paused_for_update
+}
+
+pub(crate) fn resume_after_failed_update(state: &AgentState) {
+    lock_or_recover(&state.requests).paused_for_update = false;
+}
+
+pub(crate) async fn cancel_for_update(
+    state: &AgentState,
+    exec_state: &crate::agent_exec::AgentExecState,
+) {
+    pause_for_update(state);
+    cancel_all_work(state, exec_state, None).await;
+}
+
+async fn cancel_all_work(
+    state: &AgentState,
+    exec_state: &crate::agent_exec::AgentExecState,
+    session_id: Option<&str>,
+) {
+    crate::agent_exec::cancel_all(exec_state);
     // Cancel every run token first so in-flight tools (including subagent
     // children sharing the token) wind down before their futures drop.
     let tokens: Vec<_> = {
@@ -322,13 +353,12 @@ pub async fn agent_cancel_all(
     for manager in &managers {
         manager.interrupt_all();
     }
-    cancel_all_requests(state.inner(), &session_id);
+    registry::cancel_requests(state, session_id);
     lock_or_recover(&state.pending_tools).clear();
     for manager in managers {
         manager.cancel_descendants("/root").await;
     }
-    crate::agent_exec::cancel_all_and_wait(exec_state.inner()).await;
-    Ok(())
+    crate::agent_exec::cancel_all_and_wait(exec_state).await;
 }
 
 #[tauri::command]

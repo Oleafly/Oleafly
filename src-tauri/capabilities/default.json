@@ -30,7 +30,7 @@
     "dialog:allow-save",
     "dialog:allow-ask",
     "dialog:allow-message",
-    "updater:default",
+    "updater:allow-check",
     "process:allow-restart"
   ]
 }

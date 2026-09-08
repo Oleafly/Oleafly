@@ -114,9 +114,26 @@ pub fn set_dock_shortcut_accelerators(
     }
 }
 
+fn reload_views<R: Runtime>(app: &AppHandle<R>) {
+    // Iterate windows and their webviews, not `webview_windows()`:
+    // that map drops a window the moment it hosts a second webview
+    // (the browser dock), which made Reload Views a silent no-op.
+    for window in app.windows().values() {
+        for webview in window.webviews() {
+            let _ = webview.eval("window.location.reload()");
+        }
+    }
+}
+
 /// Route a menu click to the webview. The frontend listens for these events and
 /// opens the matching in-app surface.
 pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
+    if app
+        .try_state::<crate::updater::UpdateState>()
+        .is_some_and(|state| state.installing())
+    {
+        return;
+    }
     if let Some(event) = frontend_event(id) {
         let _ = app.emit(event, ());
         return;
@@ -129,14 +146,7 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
             let _ = app.emit("menu://check-updates", ());
         }
         "reload_views" => {
-            // Iterate windows and their webviews, not `webview_windows()`:
-            // that map drops a window the moment it hosts a second webview
-            // (the browser dock), which made Reload Views a silent no-op.
-            for window in app.windows().values() {
-                for webview in window.webviews() {
-                    let _ = webview.eval("window.location.reload()");
-                }
-            }
+            reload_views(app);
         }
         "restart_app" => {
             // A restart tears the webview down exactly like a quit, so it

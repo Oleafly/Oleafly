@@ -325,8 +325,8 @@ export const saveProjectChats = (projectId: string, json: string) =>
 export const listFiles = (projectId: string) =>
   invoke<FileEntry[]>("list_files", { projectId });
 
-export const readFileContent = (projectId: string, path: string) =>
-  invoke<string>("read_file", { projectId, path });
+export const readFileContent = (projectId: string, path: string, allowMissing = false) =>
+  invoke<string>("read_file", { projectId, path, ...(allowMissing ? { allowMissing: true } : {}) });
 
 export const readProjectSourcesBatch = (
   projectId: string,

@@ -7,7 +7,7 @@ import { AlertTriangle, CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { Markdown } from "@/components/ui/markdown";
-import { findUpdate, installUpdate, UpdateDownloadStalledError } from "@/lib/updater";
+import { findUpdate, installUpdate } from "@/lib/updater";
 import { Progress } from "@/components/ui/progress";
 import { logError } from "@/lib/log";
 import { appVersion } from "@/lib/tauri";
@@ -26,7 +26,8 @@ export function UpdateWindow() {
   const [phase, setPhase] = useState<Phase>("checking");
   const [update, setUpdate] = useState<Update | null>(null);
   const [percent, setPercent] = useState(0);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
+  const installingRef = useRef(false);
   const [version, setVersion] = useState("");
   const celebratedRef = useRef(false);
   // Linux .deb/.rpm can't self-update (only AppImage can); when false we link
@@ -68,7 +69,7 @@ export function UpdateWindow() {
         }
       } catch (e) {
         await logError("updater", e);
-        if (!cancelled) setPhase("error");
+        if (!cancelled) { setErrorMessage(String(e)); setPhase("error"); }
       }
     })();
     return () => {
@@ -77,21 +78,18 @@ export function UpdateWindow() {
   }, [manual]);
 
   const install = async () => {
-    if (!update) return;
+    if (!update || installingRef.current) return;
+    installingRef.current = true;
     setPhase("downloading");
     setPercent(0);
-    setErrorMessage(null);
     try {
       await installUpdate(update, setPercent);
       // installUpdate relaunches the app on success; unreachable afterward.
     } catch (e) {
       await logError("updater", e);
-      setErrorMessage(
-        e instanceof UpdateDownloadStalledError
-          ? "The download stopped responding. Check your connection and try again."
-          : null,
-      );
+      setErrorMessage(String(e));
       setPhase("error");
+      installingRef.current = false;
     }
   };
 
@@ -154,7 +152,7 @@ export function UpdateWindow() {
         {phase === "error" && (
           <p className="inline-flex items-center gap-1.5 text-sm text-destructive">
             <AlertTriangle className="size-4" />
-            {errorMessage ?? "Something went wrong. Please try again later."}
+            {errorMessage || "The update could not finish. Please try again later."}
           </p>
         )}
         {(phase === "available" || phase === "downloading") &&
@@ -198,7 +196,8 @@ export function UpdateWindow() {
             </Button>
           </div>
         ) : phase === "upToDate" || phase === "error" ? (
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-end gap-2">
+            {phase === "error" && <Button size="sm" onClick={() => void openUrl(RELEASES_URL)}>View release</Button>}
             <Button variant="secondary" size="sm" onClick={close}>
               Close
             </Button>

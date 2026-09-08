@@ -4,11 +4,14 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 // test via the exported ref so we can exercise the browser (no-updater) path.
 const state = vi.hoisted(() => ({ tauri: true, e2e: false }));
 const { check } = vi.hoisted(() => ({ check: vi.fn() }));
-const { relaunch } = vi.hoisted(() => ({ relaunch: vi.fn() }));
+const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
 
-vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => state.tauri }));
+vi.mock("@tauri-apps/api/core", () => ({
+  isTauri: () => state.tauri,
+  invoke,
+  Channel: class { onmessage = (_event: unknown) => {}; },
+}));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check }));
-vi.mock("@tauri-apps/plugin-process", () => ({ relaunch }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ ask: vi.fn(), message: vi.fn() }));
 vi.mock("@/lib/log", () => ({ logError }));
 vi.mock("@/lib/e2e-flags", () => ({
@@ -37,13 +40,13 @@ vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ flushForQuit }) },
 }));
 
+import type { Update } from "@tauri-apps/plugin-updater";
 import {
   checkForUpdatesOnStartup,
   findUpdate,
   installUpdate,
   openUpdateWindow,
   runUpdateCheck,
-  UpdateDownloadStalledError,
 } from "./updater";
 import tauriConfig from "../../src-tauri/tauri.conf.json";
 
@@ -52,8 +55,8 @@ beforeEach(() => {
   state.tauri = true;
   state.e2e = false;
   check.mockReset();
-  relaunch.mockReset();
-  logError.mockReset();
+  invoke.mockReset();
+  logError.mockReset().mockResolvedValue(undefined);
   WebviewWindow.mockClear();
   getByLabel.mockReset();
   once.mockReset();
@@ -86,76 +89,79 @@ describe("findUpdate", () => {
 });
 
 describe("installUpdate", () => {
-  it("reports 0→100 progress from download events, then relaunches", async () => {
+  const update = { rid: 5 } as Update;
+
+  it("downloads and verifies before requesting a guarded native install", async () => {
     const percents: number[] = [];
-    const update = {
-      downloadAndInstall: vi.fn(async (cb: (e: unknown) => void) => {
-        cb({ event: "Started", data: { contentLength: 100 } });
-        cb({ event: "Progress", data: { chunkLength: 40 } });
-        cb({ event: "Progress", data: { chunkLength: 60 } });
-        cb({ event: "Finished", data: {} });
-      }),
-    };
-    // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
-    await installUpdate(update as any, (p) => percents.push(p));
+    invoke.mockImplementation(async (command, options) => {
+      if (command === "download_update") {
+        expect(options.rid).toBe(5);
+        options.onEvent.onmessage({ event: "Started", data: { contentLength: 100 } });
+        options.onEvent.onmessage({ event: "Progress", data: { chunkLength: 40 } });
+        options.onEvent.onmessage({ event: "Progress", data: { chunkLength: 60 } });
+        options.onEvent.onmessage({ event: "Finished" });
+        return 8;
+      }
+    });
+    await installUpdate(update, (p) => percents.push(p));
     expect(percents).toEqual([0, 40, 100, 100]);
-    expect(relaunch).toHaveBeenCalledOnce();
+    expect(invoke.mock.calls.map(([command]) => command)).toEqual(["download_update", "install_update"]);
+    expect(invoke).toHaveBeenLastCalledWith("install_update", { rid: 8 });
+    expect(flushForQuit).not.toHaveBeenCalled();
   });
 
-  it("stays at 0% until finish when no content length is advertised", async () => {
-    const percents: number[] = [];
-    const update = {
-      downloadAndInstall: vi.fn(async (cb: (e: unknown) => void) => {
-        cb({ event: "Started", data: {} });
-        cb({ event: "Progress", data: { chunkLength: 50 } });
-        cb({ event: "Finished", data: {} });
-      }),
-    };
-    // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
-    await installUpdate(update as any, (p) => percents.push(p));
-    expect(percents).toEqual([0, 100]);
-    expect(relaunch).toHaveBeenCalledOnce();
+  it("does not install if the download stalls or fails verification", async () => {
+    invoke.mockRejectedValue(new Error("download stopped making progress"));
+    await expect(installUpdate(update)).rejects.toThrow("stopped making progress");
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(flushForQuit).not.toHaveBeenCalled();
   });
 
-  it("flushes dirty buffers durably before relaunching", async () => {
-    let resolveFlush!: () => void;
-    flushForQuit.mockImplementation(
-      () => new Promise<void>((resolve) => { resolveFlush = resolve; }),
-    );
-    const update = {
-      downloadAndInstall: vi.fn(async (cb: (e: unknown) => void) => {
-        cb({ event: "Finished", data: {} });
-      }),
-    };
-    // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
-    const installing = installUpdate(update as any);
-    await vi.waitFor(() => expect(flushForQuit).toHaveBeenCalledTimes(1));
-    expect(relaunch).not.toHaveBeenCalled();
-
-    resolveFlush();
+  it("waits for the entire verified download even after progress reaches 100", async () => {
+    let downloaded!: (rid: number) => void;
+    invoke.mockImplementation((command, options) => {
+      if (command === "download_update") {
+        options.onEvent.onmessage({ event: "Finished" });
+        return new Promise<number>((resolve) => { downloaded = resolve; });
+      }
+      return Promise.resolve();
+    });
+    const installing = installUpdate(update);
+    expect(invoke).toHaveBeenCalledTimes(1);
+    downloaded(8);
     await installing;
-    expect(relaunch).toHaveBeenCalledOnce();
+    expect(invoke).toHaveBeenLastCalledWith("install_update", { rid: 8 });
   });
 
-  it("blocks the relaunch when the pre-restart flush fails", async () => {
-    flushForQuit.mockRejectedValue(new Error("disk full"));
-    const update = {
-      downloadAndInstall: vi.fn(async () => {}),
-    };
-    // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
-    await expect(installUpdate(update as any)).rejects.toThrow("disk full");
-    expect(relaunch).not.toHaveBeenCalled();
+  it("surfaces a main-window save failure without falling back to an unguarded install", async () => {
+    invoke.mockResolvedValueOnce(8).mockRejectedValueOnce(new Error("disk full"));
+    await expect(installUpdate(update)).rejects.toThrow("disk full");
+    expect(invoke).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("concurrent checks", () => {
+  it("shares the actual result with every caller", async () => {
+    let finish!: (update: Update) => void;
+    check.mockImplementation(() => new Promise<Update>((resolve) => { finish = resolve; }));
+    const automatic = runUpdateCheck();
+    const manual = runUpdateCheck({ rethrow: true });
+    const direct = findUpdate();
+    const update = { version: "0.4.0" } as Update;
+    finish(update);
+    expect(await Promise.all([automatic, manual, direct])).toEqual([update, update, update]);
+    expect(check).toHaveBeenCalledTimes(1);
   });
 
-  it("propagates a download failure and does not relaunch", async () => {
-    const update = {
-      downloadAndInstall: vi.fn(async () => {
-        throw new Error("network down");
-      }),
-    };
-    // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
-    await expect(installUpdate(update as any)).rejects.toThrow("network down");
-    expect(relaunch).not.toHaveBeenCalled();
+  it("preserves each caller's error policy and allows another check after failure", async () => {
+    check.mockRejectedValue(new Error("offline"));
+    const automatic = runUpdateCheck();
+    const manual = runUpdateCheck({ rethrow: true });
+    await expect(manual).rejects.toThrow("offline");
+    expect(await automatic).toBeNull();
+    check.mockResolvedValue(null);
+    expect(await runUpdateCheck({ rethrow: true })).toBeNull();
+    expect(check).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -206,129 +212,26 @@ describe("openUpdateWindow", () => {
   });
 });
 
-describe("runUpdateCheck", () => {
-  it("gives a joiner the shared result instead of an ambiguous null", async () => {
-    let resolveCheck!: (u: unknown) => void;
-    check.mockImplementation(() => new Promise((resolve) => { resolveCheck = resolve; }));
-
-    const startup = runUpdateCheck();
-    const manual = runUpdateCheck({ rethrow: true });
-    const update = { version: "9.9.9", currentVersion: "0.1.1" };
-    resolveCheck(update);
-
-    expect(await startup).toBe(update);
-    expect(await manual).toBe(update);
-    expect(check).toHaveBeenCalledTimes(1);
+describe("checkForUpdatesOnStartup", () => {
+  it("makes no request in dev and packaged e2e builds", async () => {
+    state.e2e = true;
+    checkForUpdatesOnStartup();
+    await vi.waitFor(() => expect(check).not.toHaveBeenCalled());
+    expect(WebviewWindow).not.toHaveBeenCalled();
   });
 
-  it("reports up to date as null only when a check actually completed", async () => {
+  it("opens the update window when a release build finds one", async () => {
+    getByLabel.mockResolvedValue(null);
+    check.mockResolvedValue({ version: "0.5.0", currentVersion: "0.4.0" });
+    checkForUpdatesOnStartup();
+    await vi.waitFor(() => expect(WebviewWindow).toHaveBeenCalledTimes(1));
+  });
+
+  it("stays quiet when a release build is already current", async () => {
     check.mockResolvedValue(null);
-    expect(await runUpdateCheck()).toBeNull();
-    expect(check).toHaveBeenCalledTimes(1);
-  });
-
-  it("propagates a shared failure to a joiner that asked to rethrow", async () => {
-    let rejectCheck!: (e: unknown) => void;
-    check.mockImplementation(() => new Promise((_r, reject) => { rejectCheck = reject; }));
-
-    const startup = runUpdateCheck();
-    const manual = runUpdateCheck({ rethrow: true });
-    rejectCheck(new Error("offline"));
-
-    await expect(startup).resolves.toBeNull();
-    await expect(manual).rejects.toThrow("offline");
-    expect(logError).toHaveBeenCalledTimes(1);
-  });
-
-  it("starts a fresh check once the previous one has settled", async () => {
-    check.mockResolvedValue(null);
-    await runUpdateCheck();
-    await runUpdateCheck();
-    expect(check).toHaveBeenCalledTimes(2);
-  });
-});
-
-describe("installUpdate stall detection", () => {
-  it("fails a download that produces no progress instead of hanging forever", async () => {
-    vi.useFakeTimers();
-    try {
-      const update = {
-        downloadAndInstall: vi.fn(() => new Promise<void>(() => {})),
-      };
-      // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
-      const installing = installUpdate(update as any);
-      const assertion = expect(installing).rejects.toBeInstanceOf(UpdateDownloadStalledError);
-      await vi.advanceTimersByTimeAsync(60_000);
-      await assertion;
-      expect(relaunch).not.toHaveBeenCalled();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("passes a total ceiling so an abandoned request cannot outlive the app", async () => {
-    const downloadAndInstall = vi.fn(async (cb: (e: unknown) => void) => {
-      cb({ event: "Finished", data: {} });
-    });
-    // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
-    await installUpdate({ downloadAndInstall } as any);
-    const [, options] = downloadAndInstall.mock.calls[0] as unknown as [
-      unknown,
-      { timeout: number },
-    ];
-    expect(options.timeout).toBeGreaterThan(60 * 60 * 1000);
-  });
-
-  it("does not treat a slow install after the last byte as a stall", async () => {
-    vi.useFakeTimers();
-    try {
-      let finish!: () => void;
-      const update = {
-        downloadAndInstall: vi.fn((cb: (e: unknown) => void) => {
-          cb({ event: "Started", data: { contentLength: 10 } });
-          cb({ event: "Progress", data: { chunkLength: 10 } });
-          cb({ event: "Finished", data: {} });
-          return new Promise<void>((resolve) => { finish = resolve; });
-        }),
-      };
-      // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
-      const installing = installUpdate(update as any);
-      await vi.advanceTimersByTimeAsync(10 * 60_000);
-      finish();
-      await installing;
-      expect(relaunch).toHaveBeenCalledOnce();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("keeps waiting while chunks are still arriving", async () => {
-    vi.useFakeTimers();
-    try {
-      let emit!: (e: unknown) => void;
-      let finish!: () => void;
-      const update = {
-        downloadAndInstall: vi.fn((cb: (e: unknown) => void) => {
-          emit = cb;
-          return new Promise<void>((resolve) => { finish = resolve; });
-        }),
-      };
-      // biome-ignore lint/suspicious/noExplicitAny: test double for the Update type
-      const installing = installUpdate(update as any);
-
-      emit({ event: "Started", data: { contentLength: 100 } });
-      for (let i = 0; i < 4; i += 1) {
-        await vi.advanceTimersByTimeAsync(50_000);
-        emit({ event: "Progress", data: { chunkLength: 10 } });
-      }
-      emit({ event: "Finished", data: {} });
-      finish();
-
-      await installing;
-      expect(relaunch).toHaveBeenCalledOnce();
-    } finally {
-      vi.useRealTimers();
-    }
+    checkForUpdatesOnStartup();
+    await vi.waitFor(() => expect(check).toHaveBeenCalledTimes(1));
+    expect(WebviewWindow).not.toHaveBeenCalled();
   });
 });
 
@@ -349,28 +252,5 @@ describe("updater endpoints configuration", () => {
 
   it("keeps every endpoint on https", () => {
     for (const endpoint of endpoints) expect(endpoint.startsWith("https://")).toBe(true);
-  });
-});
-
-describe("checkForUpdatesOnStartup", () => {
-  it("makes no request in dev and packaged e2e builds", async () => {
-    state.e2e = true;
-    checkForUpdatesOnStartup();
-    await vi.waitFor(() => expect(check).not.toHaveBeenCalled());
-    expect(WebviewWindow).not.toHaveBeenCalled();
-  });
-
-  it("opens the update window when a release build finds one", async () => {
-    getByLabel.mockResolvedValue(null);
-    check.mockResolvedValue({ version: "0.4.0", currentVersion: "0.3.13" });
-    checkForUpdatesOnStartup();
-    await vi.waitFor(() => expect(WebviewWindow).toHaveBeenCalledTimes(1));
-  });
-
-  it("stays quiet when a release build is already current", async () => {
-    check.mockResolvedValue(null);
-    checkForUpdatesOnStartup();
-    await vi.waitFor(() => expect(check).toHaveBeenCalledTimes(1));
-    expect(WebviewWindow).not.toHaveBeenCalled();
   });
 });

@@ -4270,11 +4270,6 @@ fn validate_portable_relative_path(path: &str) -> Result<()> {
             "{path:?} is not a portable project-relative path"
         )));
     }
-    if path.nfc().collect::<String>() != path {
-        return Err(HistoryError::InvalidInput(format!(
-            "{path:?} is not normalized as portable Unicode NFC"
-        )));
-    }
     let components = path.split('/').collect::<Vec<_>>();
     if components.iter().any(|component| {
         component.is_empty()
@@ -5279,6 +5274,59 @@ mod tests {
     }
 
     #[test]
+    fn decomposed_unicode_paths_survive_capture_restore_and_archive_transfer() {
+        let temp = tempdir().unwrap();
+        let project = temp.path().join("project");
+        fs::create_dir(&project).unwrap();
+        let name = "cafe\u{301}.tex";
+        fs::write(project.join("project.json"), b"{}").unwrap();
+        fs::write(project.join(name), b"unicode source").unwrap();
+        let store = Store::open(temp.path().join("history")).unwrap();
+        let candidate = store
+            .stage_candidate(
+                &project,
+                &[
+                    CaptureInput::explicit(name).unwrap(),
+                    CaptureInput::explicit("project.json").unwrap(),
+                ],
+            )
+            .unwrap();
+        let root = *candidate.snapshot_root();
+        let evidence = CompileEvidence::new(
+            "tectonic",
+            "tectonic-test@1",
+            name,
+            ContentHash::digest(b"output"),
+            1,
+        )
+        .unwrap();
+        store.publish(candidate, evidence).unwrap();
+        let recorded = store.checkpoint_files(&root).unwrap().unwrap();
+        assert!(recorded.iter().any(|file| file.relative_path == name));
+        let restored = temp.path().join("restored");
+        store.materialize(&root, &restored).unwrap();
+        assert_eq!(fs::read(restored.join(name)).unwrap(), b"unicode source");
+        let mut archive = Vec::new();
+        store.export_history(&mut archive).unwrap();
+        let imported = Store::open(temp.path().join("imported")).unwrap();
+        assert_eq!(
+            imported
+                .import_history(archive.as_slice())
+                .unwrap()
+                .created_checkpoints,
+            1
+        );
+        let imported_files = imported.checkpoint_files(&root).unwrap().unwrap();
+        assert_eq!(imported_files[0].relative_path, name);
+        let restored_import = temp.path().join("restored-import");
+        imported.materialize(&root, &restored_import).unwrap();
+        assert_eq!(
+            fs::read(restored_import.join(name)).unwrap(),
+            b"unicode source"
+        );
+    }
+
+    #[test]
     fn portable_paths_reject_parent_and_platform_prefixes() {
         for invalid in [
             "",
@@ -5294,7 +5342,6 @@ mod tests {
             "chapters/Lpt9.log",
             "trailing-dot./main.tex",
             "trailing-space /main.tex",
-            "cafe\u{301}.tex",
         ] {
             assert!(
                 CaptureInput::explicit(invalid).is_err(),
@@ -5308,6 +5355,8 @@ mod tests {
             "chapters/one.tex"
         );
         assert!(CaptureInput::explicit("caf\u{e9}.tex").is_ok());
+        assert!(CaptureInput::explicit("cafe\u{301}.tex").is_ok());
+        assert!(validate_portable_path_set(["caf\u{e9}.tex", "cafe\u{301}.tex"]).is_err());
     }
 
     #[test]

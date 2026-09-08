@@ -6,566 +6,185 @@
 
 [Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | **Français** | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md) | [العربية](README.ar.md)
 
-<h2>Un environnement de recherche complet, repensé pour l'ère de l'IA.</h2>
-
-Rédigez, compilez et relisez vos textes, recherchez des publications, gérez
-vos références, créez des figures, examinez vos PDF et suivez chaque
-modification dans Git. Utilisez une IA hébergée, un point de terminaison
-personnalisé, Ollama en local ou aucune IA. Oleafly conserve vos projets dans
-des dossiers ordinaires sur votre ordinateur.
-
-[![Issues ouvertes](https://img.shields.io/github/issues/Oleafly/Oleafly?label=Issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues)
-[![Download](https://img.shields.io/github/v/release/Oleafly/Oleafly?label=Download&color=22c55e)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases)
+[![Problèmes ouverts](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues)
+[![Télécharger](https://img.shields.io/github/v/release/Oleafly/Oleafly?label=Download&color=22c55e)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Téléchargements](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases)
 [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml)
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
+[![Licence : AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE)
 <br/>
 [![macOS · Windows · Linux](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-blue)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
-[![GitGem](https://gitgem.org/api/badge/github/Oleafly/Oleafly.svg)](https://gitgem.org/github/Oleafly/Oleafly)
-**[Télécharger Oleafly](https://github.com/Oleafly/Oleafly/releases/latest) ·
-[Lire la documentation du produit](https://oleafly.com/docs/overview/) ·
-[Compiler depuis les sources](../development.md)**
+[![Étoiles](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
+
+**Écrivez votre prochain article avec moins de tâches répétitives.**
+
+Oleafly est un espace de travail de bureau gratuit pour écrire des articles en LaTeX, Typst et Markdown. Trouvez des sources, gérez les citations et voyez votre article prendre forme au même endroit. Faites appel à un assistant IA pour réviser une section, créer une figure ou corriger une compilation défaillante, puis examinez les modifications. Votre projet reste dans des fichiers ordinaires qui vous appartiennent, et vous pouvez utiliser l'éditeur avec ou sans IA.
+
+**[Télécharger Oleafly, gratuitement et sans compte.](https://github.com/Oleafly/Oleafly/releases/latest) · [Lire la documentation du produit](https://oleafly.com/docs/) · [Compiler depuis les sources](../development.md)**
 
 </div>
 
 <div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-editor-v0.3.10-r2.png" alt="Oleafly modifiant l'article de recherche LLaMA en LaTeX, avec l'arborescence des sources, le plan du document et le PDF compilé ouverts ensemble" width="100%" />
+  <img src="https://cdn.oleafly.com/images/screenshots/desktop/hero-light-bg.png" alt="Oleafly modifiant l'article de recherche LLaMA en LaTeX, avec l'arborescence des sources, le plan du document et le PDF compilé ouverts ensemble" width="100%" />
 </div>
 
-<!--
-Recording placeholder: the stacked hero stands in until a 45–60 second
-workspace walkthrough is ready. Keep the same framing and replace the sources
-above with https://cdn.oleafly.com/videos/workspace-tour.webp.
--->
+## Fonctionnalités
 
-## La recherche a déjà bien assez de pièces mobiles
+Rédigez une thèse, un article de conférence, un rapport de laboratoire ou un CV pour votre prochaine candidature. Choisissez LaTeX, Typst ou Markdown et rassemblez l'ensemble du document dans un même espace de travail.
 
-Un document technique finit généralement éparpillé entre un éditeur, un
-compilateur, un lecteur PDF, un outil de bibliographie, Git et une conversation
-IA qui ne voit pas le projet réel. Oleafly réunit tout ce travail dans une
-seule application de bureau, tout en laissant la source lisible dans d'autres
-éditeurs et outils en ligne de commande.
-
-La même vue de projet convient aussi bien à un rapport de cours, un article de
-revue ou une thèse de cent pages :
-
-| Votre travail | Ce dont Oleafly s'occupe |
+| Fonctionnalité | Ce que vous pouvez faire |
 | --- | --- |
-| Rédiger | Édition du source et édition visuelle, autocomplétion, symboles, citations, figures, tableaux et intelligence de code à l'échelle du projet |
-| Compiler | Moteurs LaTeX et Typst intégrés, Markdown via Pandoc, erreurs analysées, journaux et compilations hors ligne à partir du cache |
-| Inspecter | Un aperçu PDF rapide, contrôles de page et de zoom, affichage sur deux pages, inversion des couleurs et SyncTeX bidirectionnel |
-| Réviser | Enregistrement automatique, un véritable historique Git, diffs, restauration et synchronisation GitHub |
-| Soumettre | Vérifications préliminaires ATS et d'accessibilité, contrôle des références, extraction en vue lecteur et plusieurs formats d'export |
-| Obtenir de l'aide | Un assistant IA optionnel conscient du projet, des modèles locaux Ollama, des fournisseurs hébergés et des clients MCP |
-
-Si vous aimez la boucle écriture-aperçu d'Overleaf mais souhaitez garder la
-compilation, les fichiers, Git et le choix du modèle sur votre propre machine,
-Oleafly est fait pour ce flux de travail. Il peut aussi remplacer une bonne
-partie de la configuration autour d'un éditeur local, d'une chaîne TeX, d'un
-lecteur PDF et d'un client Git.
-
-Oleafly ne propose pas aujourd'hui d'édition collaborative en temps réel dans
-le navigateur. Git et GitHub constituent la voie de collaboration actuelle.
-
-## Ce que vous pouvez faire
-
-### Écrire avec la source à portée de main
-
-- Travaillez sur des projets LaTeX, Typst et Markdown, y compris de grands
-  documents multi-fichiers avec images, inclusions et bibliographies.
-- Basculez LaTeX et Markdown entre les vues Code et Visuelle. Les blocs riches
-  non pris en charge restent visibles sous forme de source éditable au lieu de
-  disparaître.
-- Insérez titres, listes, liens, citations, références croisées, équations,
-  fractions, figures, tableaux et symboles depuis la barre d'outils de
-  l'éditeur.
-- Profitez de l'autocomplétion des commandes, citations, labels, fichiers et
-  commandes slash.
-- Recherchez et remplacez, repliez sections et environnements, activez les
-  raccourcis Vim et lancez des vérifications orthographiques et grammaticales
-  hors ligne.
-- Accédez aux définitions, trouvez les références, renommez labels ou clés de
-  citation dans tout le projet et inspectez les définitions au survol.
-
-La carte du projet indexe chaque section, label, clé de citation et
-environnement du projet et les garde adressables par `fichier:ligne`, si bien
-que la navigation et les renommages fonctionnent à l'échelle d'un document
-multi-fichiers plutôt qu'un tampon à la fois.
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/project-structure.png" alt="L'arborescence des sources d'Oleafly à côté de la carte du projet, listant les sections et les labels avec leur fichier et leur ligne (thème sombre)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/project-structure-light.png" alt="L'arborescence des sources d'Oleafly à côté de la carte du projet, listant les sections et les labels avec leur fichier et leur ligne (thème clair)" /></td>
-  </tr>
-</table>
-
-</div>
-
-Le sélecteur de citations lit directement les fichiers `.bib` du projet, si
-bien que chaque clé s'accompagne de son auteur, de son année, de son titre et
-de la ligne où elle a été définie.
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/citation-picker.png" alt="Choix d'une clé de citation parmi des entrées BibTeX analysées, chacune affichant les auteurs, l'année et la ligne source (thème sombre)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/citation-picker-light.png" alt="Choix d'une clé de citation parmi des entrées BibTeX analysées, chacune affichant les auteurs, l'année et la ligne source (thème clair)" /></td>
-  </tr>
-</table>
-
-</div>
-
-Un compteur de mots conscient de LaTeX ignore le balisage et ne compte que ce
-que voit le lecteur.
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/word-count.png" alt="La fenêtre de comptage indiquant les mots, caractères et lignes du document ouvert (thème sombre)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/word-count-light.png" alt="La fenêtre de comptage indiquant les mots, caractères et lignes du document ouvert (thème clair)" /></td>
-  </tr>
-</table>
-
-</div>
-
-### Compiler et lire sans quitter le projet
-
-- Compilez LaTeX avec le sidecar Tectonic intégré et Typst avec son moteur
-  intégré. Une installation TeX complète n'est pas nécessaire pour le flux de
-  travail par défaut.
-- Consultez les échecs du compilateur sous forme de diagnostics dans l'éditeur
-  et de cartes d'erreur lisibles, plutôt que de fouiller un journal brut.
-- Lisez le PDF à côté de la source avec défilement continu, pages
-  virtualisées, affichage sur une ou deux pages, contrôles d'ajustement,
-  navigation par page, plein écran et une fenêtre d'aperçu détachable en
-  option.
-- Utilisez SyncTeX dans les deux sens : passez de la source au PDF, ou faites
-  Cmd/Ctrl-clic sur le texte du PDF pour revenir à la source correspondante.
-- Enregistrez le PDF dans le projet ou exportez la source sous forme d'archive
-  portable.
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/settings-latex-engine.png" alt="La page de réglages du moteur LaTeX montrant les moteurs intégrés et leurs options (thème sombre)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/settings-latex-engine-light.png" alt="La page de réglages du moteur LaTeX montrant les moteurs intégrés et leurs options (thème clair)" /></td>
-  </tr>
-</table>
-
-</div>
-
-Dézoomez et le document entier tient à l'écran d'un seul coup, ce qui est
-souvent le moyen le plus rapide de vérifier que flottants, figures et tableaux
-ont atterri là où vous le vouliez.
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/pdf-preview-spread.png" alt="Un document de trois pages disposé dans l'aperçu avec toutes les figures et tous les tableaux visibles (thème sombre)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/pdf-preview-spread-light.png" alt="Un document de trois pages disposé dans l'aperçu avec toutes les figures et tous les tableaux visibles (thème clair)" /></td>
-  </tr>
-</table>
-
-</div>
-
-### Garder un historique que vous pouvez inspecter
-
-Chaque projet est un véritable dépôt Git. Oleafly effectue un commit après
-chaque compilation réussie et après les périodes d'édition calmes, puis expose
-les parties utiles de cet historique dans l'application.
-
-- Parcourez une chronologie des commits et des diffs côte à côte.
-- Restaurez un fichier antérieur sans remplacer le reste du projet.
-- Indexez, annulez, validez, poussez et tirez depuis le panneau de contrôle de
-  version.
-- Publiez un projet sur GitHub ou connectez un dépôt existant.
-- Continuez à travailler depuis le terminal ou un autre éditeur ; il n'y a
-  aucun format de document propriétaire à déballer.
-
-<div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/git-diff.png" alt="Un diff de source côte à côte dans l'historique Git d'Oleafly" width="84%" />
-</div>
-
-### Partir de quelque chose d'utile
-
-La galerie de projets propose des modèles éditables pour articles, thèses,
-rapports, livres, présentations, posters, devoirs, lettres, bibliographies, CV
-et diagrammes. Filtrez par moteur de document, disponibilité hors ligne ou
-compatibilité ATS. Les packs de modèles et polices optionnels ne se
-téléchargent que lorsque vous les choisissez.
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/project-templates.png" alt="La galerie de modèles de projets d'Oleafly, avec recherche, vignettes en direct, compteurs par catégorie et filtres par moteur (thème sombre)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/project-templates-light.png" alt="La galerie de modèles de projets d'Oleafly, avec recherche, vignettes en direct, compteurs par catégorie et filtres par moteur (thème clair)" /></td>
-  </tr>
-</table>
-
-</div>
-
-### Passer des tâches de recherche aux tâches de publication
-
-- Ajoutez une citation à partir d'un DOI, d'un identifiant arXiv, d'une URL ou
-  d'une recherche par titre. Oleafly écrit une entrée BibTeX dédupliquée et
-  insère la citation au curseur.
-- Dessinez un diagramme sur un canevas visuel ou éditez son TikZ directement,
-  puis insérez-le comme source vectorielle ou comme image. Le TikZ enregistré
-  peut être rouvert et modifié.
-- Importez des documents Word via Pandoc, reconstruisez localement un projet
-  LaTeX éditable à partir d'un PDF, ou transcrivez l'image d'une équation avec
-  un modèle de vision.
-- Exportez le PDF et des archives de sources, ainsi que Word, HTML, Markdown,
-  texte, PowerPoint ou EPUB lorsque le moteur de document et le type de projet
-  le permettent.
-- Parcourez les échéances de conférences et utilisez les recherches
-  bibliographiques optionnelles sans transformer le dossier du projet en
-  document cloud.
-
-La recherche de citations interroge à la fois arXiv, Semantic Scholar,
-Crossref, PubMed, OpenAlex et Google Scholar, fusionne les doublons et
-enregistre ou exporte ce que vous conservez au format BibTeX. Elle peut aussi
-analyser le document ouvert paragraphe par paragraphe et suggérer des citations
-pour les affirmations qui n'en ont pas encore.
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/literature-search.png" alt="Recherche de citations renvoyant des résultats dédupliqués issus de plusieurs index, chacun avec une action d'enregistrement et de copie BibTeX (thème sombre)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/literature-search-light.png" alt="Recherche de citations renvoyant des résultats dédupliqués issus de plusieurs index, chacun avec une action d'enregistrement et de copie BibTeX (thème clair)" /></td>
-  </tr>
-</table>
-
-</div>
-
-Le compositeur de diagrammes dessine sur un canevas et compile le TikZ à côté,
-si bien que la figure que vous insérez est une véritable source vectorielle que
-vous pouvez continuer à modifier.
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/diagram-composer.png" alt="Le compositeur de diagrammes avec une architecture transformer sur le canevas et son aperçu TikZ compilé à côté (thème sombre)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/diagram-composer-light.png" alt="Le compositeur de diagrammes avec une architecture transformer sur le canevas et son aperçu TikZ compilé à côté (thème clair)" /></td>
-  </tr>
-</table>
-
-</div>
-
-### Vérifier le document avant que quelqu'un d'autre ne le fasse
-
-Le contrôle préliminaire (Preflight) examine à la fois la source et le résultat
-compilé. Il détecte les références cassées, les ressources manquantes, les
-labels en double, les problèmes d'ordre de lecture, les métadonnées absentes,
-les figures inaccessibles et les mises en page de CV difficiles à analyser pour
-les ATS (systèmes de suivi des candidatures).
-
-Il montre aussi le texte qu'un analyseur ou un lecteur d'écran peut extraire.
-Ces vérifications sont des conseils pratiques pour la soumission, pas une
-certification formelle d'accessibilité.
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/preflight-ats.png" alt="Le contrôle préliminaire affichant un score d'accessibilité avec des constats précis sur la source et le résultat compilé (thème sombre)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/preflight-ats-light.png" alt="Le contrôle préliminaire affichant un score d'accessibilité avec des constats précis sur la source et le résultat compilé (thème clair)" /></td>
-  </tr>
-</table>
-
-</div>
-
-Références et citations disposent de leur propre panneau : la bibliographie,
-chaque citation utilisée dans le document et les symboles définis par le
-projet.
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/references-panel.png" alt="Le panneau des références listant les entrées bibliographiques par clé et par année, à côté de la source et du PDF compilé (thème sombre)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/references-panel-light.png" alt="Le panneau des références listant les entrées bibliographiques par clé et par année, à côté de la source et du PDF compilé (thème clair)" /></td>
-  </tr>
-</table>
-
-</div>
-
-### Laisser l'IA travailler sur le projet, si vous le souhaitez
-
-L'assistant peut lire et modifier des fichiers, chercher dans le projet,
-compiler, inspecter le journal et extraire le texte du PDF pour vérifier son
-propre résultat. Il peut aussi vous aider avec les citations, les documents
-importés et les figures TikZ éditables.
-
-C'est vous qui choisissez le modèle :
-
-- Connectez un fournisseur hébergé pris en charge avec votre propre clé API.
-- Exécutez un modèle local via Ollama.
-- Laissez l'IA non configurée et utilisez le reste de l'application
-  normalement.
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/ai-assistant-start.png" alt="Le panneau de l'assistant proposant des points de départ comme trouver des articles à citer, rédiger une revue de littérature et corriger des erreurs de source (thème sombre)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/ai-assistant-start-light.png" alt="Le panneau de l'assistant proposant des points de départ comme trouver des articles à citer, rédiger une revue de littérature et corriger des erreurs de source (thème clair)" /></td>
-  </tr>
-</table>
-
-</div>
-
-Chaque modification de fichier s'accompagne d'un diff et de boutons Approuver
-ou Rejeter. « Toujours autoriser » peut approuver les écritures ordinaires pour
-la session en cours, tandis que les suppressions continuent de demander
-confirmation.
-
-<div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/ai-approval-diff.png" alt="Une modification de fichier de l'assistant affichée comme un diff rouge et vert avec les boutons Rejeter, Toujours autoriser et Approuver" width="88%" />
-</div>
-
-Une fois approuvée, la modification atterrit dans le fichier et le document se
-recompile. Chaque réponse conserve une action « Restaurer le code tel qu'avant
-cette réponse ».
-
-<div align="center">
-  <img src="https://cdn.oleafly.com/images/screenshots/desktop/ai-chat-applied.png" alt="Une modification approuvée de l'assistant appliquée au document et reflétée dans le PDF recompilé" width="88%" />
-</div>
-
-Les fournisseurs se configurent dans les Réglages. Les clés restent sur la
-machine, et un modèle Ollama local fonctionne sans aucune clé.
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/settings-ai.png" alt="La page de réglages de l'assistant IA avec plusieurs fournisseurs connectés et un modèle Ollama local sélectionné (thème sombre)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/settings-ai-light.png" alt="La page de réglages de l'assistant IA avec plusieurs fournisseurs connectés et un modèle Ollama local sélectionné (thème clair)" /></td>
-  </tr>
-</table>
-
-</div>
-
-Oleafly peut aussi exposer ses outils de projet à Claude Desktop, Claude Code,
-Cursor et d'autres clients MCP. Les connexions MCP prennent en charge un mode
-lecture seule et trois politiques d'approbation : confirmer chaque
-modification, approuver automatiquement les écritures tout en confirmant les
-suppressions, ou faire confiance au mécanisme d'approbation du client
-lui-même.
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/settings-mcp.png" alt="Les réglages MCP montrant le serveur local, ses instructions pour les clients et les politiques d'approbation disponibles (thème sombre)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/settings-mcp-light.png" alt="Les réglages MCP montrant le serveur local, ses instructions pour les clients et les politiques d'approbation disponibles (thème clair)" /></td>
-  </tr>
-</table>
-
-</div>
-
-Consultez la [référence des fonctionnalités](../features.md) et la
-[configuration MCP](../mcp.md) pour les fournisseurs, outils et le modèle de
-sécurité actuels.
-
-Tout est accessible depuis un seul endroit : l'omnibarre recherche projets et
-documents, et taper `/` la transforme en palette de commandes.
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/search-omnibar.png" alt="L'omnibarre listant les commandes et les projets récemment modifiés (thème sombre)" /></td>
-    <td width="50%"><img src="https://cdn.oleafly.com/images/screenshots/desktop/search-omnibar-light.png" alt="L'omnibarre listant les commandes et les projets récemment modifiés (thème clair)" /></td>
-  </tr>
-</table>
-
-</div>
-
-## Priorité au local, avec une frontière réseau claire
-
-Aucun compte ni aucune télémétrie ne sont requis. Les données essentielles du
-projet restent sur votre machine.
-
-| S'exécute ou reste en local | N'utilise le réseau qu'à votre demande |
+| **LaTeX, Typst et Markdown** | Écrivez et compilez avec un aperçu PDF à côté de votre source. |
+| **Modèles et importations** | Commencez un article, une thèse, un rapport, une présentation ou un CV ; importez un projet existant. |
+| **Outils d'écriture** | Complétez les commandes, naviguez entre les chapitres, renommez les références et vérifiez l'orthographe et la grammaire en local. |
+| **Recherche bibliographique** | Recherchez dans plusieurs index scientifiques et découvrez des références pour les paragraphes que vous rédigez. |
+| **Citations et bibliothèques** | Importez votre bibliothèque de références, ajoutez des articles par DOI ou par titre et insérez des citations pendant que vous écrivez. |
+| **Assistance IA** | Révisez une section, corrigez une compilation ou créez une figure à partir des fichiers de votre projet. |
+| **Tâches de recherche · bêta** | Exécutez le travail sur une copie séparée, examinez les résultats et choisissez les fichiers à appliquer. |
+| **Compétences de recherche** | Réalisez des revues de littérature, vérifiez des affirmations, analysez des données et préparez des réponses aux évaluateurs. |
+| **Figures et diagrammes** | Dessinez sur un canevas, modifiez du TikZ et prévisualisez une figure compilée avant de l'insérer. |
+| **Vérifications de soumission** | Vérifiez les références, la mise en page, les détails de l'évaluation anonyme, l'accessibilité et l'analyse des CV. |
+| **Points de restauration et Git** | Récupérez des états de projet enregistrés et gérez les commits, les diffs et la synchronisation GitHub. |
+| **Dossiers liés** | Donnez à l'assistant un accès en lecture seule à des articles ou des données stockés ailleurs sur votre ordinateur. |
+| **Exportation** | Enregistrez le PDF et des ZIP des sources, ainsi que des exportations de documents, présentations et ebooks pour les types de projet pris en charge. |
+
+### Commencez avec le document dont vous avez besoin
+
+Choisissez un article de revue, une thèse, un exposé Beamer ou un CV à adapter à votre travail. La galerie de modèles propose des points de départ en LaTeX, Typst et Markdown, avec des aperçus qui vous aident à choisir une mise en page avant d'écrire.
+
+Vous avez déjà un manuscrit ? Importez un ZIP de projet ou un dépôt GitHub, ajoutez un document Word, ou utilisez un PDF comme point de départ pour du LaTeX modifiable. Votre prochain projet peut partir d'un travail déjà accompli.
+
+<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/document-starters-dark-window-v1.png" alt="La galerie de modèles Oleafly avec des aperçus de documents et des projets de départ" width="100%" />
+
+### Écrivez en gardant tout le document sous les yeux
+
+Gardez ensemble votre source, le plan des chapitres et le PDF compilé. Passez d'une section à l'autre, suivez une référence jusqu'à sa définition et renommez une clé de citation dans tout le projet. En LaTeX, les suggestions de commandes suivent les paquets que vous utilisez, et les vérifications d'orthographe et de grammaire se concentrent sur votre prose.
+
+Écrivez directement dans la source ou utilisez l'éditeur visuel pour LaTeX et Markdown. Équations, citations et figures restent à portée de main à mesure que le document s'étoffe.
+
+<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/manuscript-writing-dark-window-v1.png" alt="Oleafly affichant un article de recherche avec sa source LaTeX et son PDF compilé" width="100%" />
+
+### Trouvez les sources dont votre argumentation a besoin
+
+Recherchez ensemble dans arXiv, Semantic Scholar, Crossref, PubMed et OpenAlex. Oleafly regroupe les résultats en double et enregistre les articles que vous choisissez dans votre bibliographie. Lancez une recherche depuis un paragraphe de votre brouillon pour trouver des travaux pertinents que vous n'avez pas encore cités.
+
+Importez votre bibliothèque existante depuis Zotero RDF, EndNote XML, RIS ou BibTeX. Ajoutez ensuite une référence par DOI ou par titre et insérez sa citation sans quitter la phrase.
+
+<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/literature-discovery-dark-window-v1.png" alt="Résultats de recherche dans les bases de publications scientifiques d’Oleafly" width="100%" />
+
+### Donnez à votre assistant le vrai projet
+
+Demandez-lui de resserrer une section, d'expliquer une équation ou de corriger une compilation. L'assistant peut lire vos fichiers, modifier la source, compiler le document et examiner le résultat. Mentionnez un fichier dans votre demande pour cibler le travail, ou demandez un plan avant qu'il ne commence.
+
+Gardez le modèle que vous préférez : connectez un fournisseur hébergé, utilisez Ollama en local ou choisissez l'un des agents CLI ci-dessous. L'éditeur reste entièrement utilisable sans IA.
+
+<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/assistant-at-work-dark-window-v1.png" alt="L'assistant IA travaillant avec le projet de recherche ouvert" width="100%" />
+
+<details>
+<summary>Examinez une modification proposée avant de l'appliquer</summary>
+
+En mode Ask for approval, lisez le diff de fichier proposé et choisissez de l'appliquer ou non. Vous pouvez aussi autoriser les écritures ordinaires pendant la session ou choisir une autre politique d'approbation dans Settings.
+
+<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/review-an-edit-dark-window-v1.png" alt="Les contrôles d'approbation pour examiner les modifications proposées par l'assistant" width="100%" />
+
+</details>
+
+### Transformez une idée en figure
+
+Décrivez un diagramme à l'assistant ou construisez-le sur le canevas. Modifiez la source TikZ, compilez la figure séparément et voyez le rendu à côté. Un modèle doté de vision peut examiner ce rendu et aider à affiner la mise en page.
+
+Insérez le résultat avec une légende et une étiquette. Conservez la source vectorielle modifiable dans le projet, prête pour la prochaine révision ou les modifications d'un coauteur.
+
+<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/figure-workshop-dark-window-v1.png" alt="L'espace de travail des diagrammes avec une source modifiable et une figure rendue" width="100%" />
+
+### Continuez à écrire pendant que la recherche avance
+
+Confiez à une tâche de recherche une revue de littérature, une analyse ou une section à réviser. Elle travaille sur une copie séparée du projet pendant que vous continuez le manuscrit. Une fois les résultats prêts, examinez-les fichier par fichier et appliquez les modifications que vous souhaitez conserver.
+
+Les compétences de recherche vont plus loin : constituez une liste de lecture, vérifiez des affirmations avec les sources, préparez un exposé à partir de l'article ou rédigez une réponse aux évaluateurs. Enregistrez votre propre procédure pour la réutiliser dans le prochain projet.
+
+<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/research-review-dark-window-v1.png" alt="L'espace de travail de recherche pour les tâches exécutées à côté du manuscrit" width="100%" />
+
+### Préparez l'article que vous souhaitez soumettre
+
+Vérifiez le manuscrit et son PDF compilé avant l'exportation. Les vérifications préalables réunissent les références non résolues, les problèmes de mise en page, le balisage de brouillon et les détails d'évaluation anonyme au même endroit, avec des résultats qui renvoient à la source.
+
+Pour un CV, vérifiez comment le texte du PDF est lu par un analyseur. Pour un article, choisissez un profil de publication et examinez ses vérifications de soumission. Exportez le PDF ou empaquetez la source lorsque vous êtes prêt à l'envoyer.
+
+<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/submission-checks-dark-window-v1.png" alt="Vérifications préalables d'un article de recherche avant sa soumission" width="100%" />
+
+### Gardez chaque projet à vous
+
+Votre travail reste dans des fichiers ordinaires sur votre ordinateur. Modifiez-les avec un autre outil, partagez-les avec un coauteur ou mettez-les dans Git. Vous n'avez pas besoin d'un abonnement Oleafly pour continuer à ouvrir votre propre travail.
+
+Les compilations réussies enregistrent automatiquement des points de restauration afin que vous puissiez revenir à un état antérieur du projet. Utilisez Git lorsque vous souhaitez des commits et un historique partagé. Vous décidez de ce que vous gardez et du moment où vous le publiez.
+
+<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-history-dark-window-v1.png" alt="Points de restauration de projet enregistrés dans Oleafly" width="100%" />
+
+## Agents CLI pris en charge
+
+Ajoutez à l'assistant un agent que vous utilisez déjà et utilisez-le avec son propre compte. Choisissez-le dans Settings, connectez-vous et faites-le travailler sur le projet ouvert. Le catalogue intégré d'Oleafly comprend ces 14 agents :
+
+| Agent | Commande CLI |
 | --- | --- |
-| Fichiers de projet et tampons de l'éditeur | Un fournisseur d'IA hébergé que vous connectez |
-| Dépôts Git et historique | Publication, push et pull GitHub |
-| Compilation avec packages en cache | Packages TeX nécessaires à la première compilation |
-| Rendu PDF et extraction de texte | Téléchargements optionnels de modèles, polices, Pandoc ou TinyTeX |
-| Orthographe, grammaire et contrôle préliminaire | Recherches de citations, de littérature, d'échéances de conférences et de mises à jour |
-| IA locale via Ollama |  |
+| Claude Code | `claude` |
+| Codex CLI | `codex` |
+| Gemini CLI | `gemini` |
+| Cursor | `agent` |
+| OpenCode | `opencode` |
+| Pi | `pi` |
+| Cline | `cline` |
+| OpenClaw | `openclaw` |
+| Hermes Agent | `hermes` |
+| CodeBuddy | `codebuddy` |
+| Kimi Code | `kimi` |
+| Grok Build | `grok` |
+| DeepSeek Harness | `dsh` |
+| Qoder | `qodercli` |
 
-Les clés API sont stockées localement. Vos fichiers de document ordinaires
-restent utilisables même si vous cessez d'utiliser Oleafly.
+La prise en charge des agents CLI est en bêta. Découvrez d'autres agents compatibles dans le registre de Settings. Vous pouvez aussi connecter un assistant externe via [MCP](../mcp.md).
 
-## Bientôt disponible
+<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/cli-agents-dark-window-v1.png" alt="Claude Code et les autres agents CLI dans l’assistant Oleafly" width="100%" />
 
-La feuille de route maintient Oleafly ouvert, local-first et utile tout au long
-du travail de recherche.
+## Un espace de travail qui évolue avec vos travaux
 
-- **Localisation de l'application.** Utilisez Oleafly dans davantage de langues
-  et travaillez dans l'interface qui vous semble la plus naturelle.
-- **Compétences et plugins pour agents.** Ajoutez des flux d'IA ciblés et
-  réutilisables qui renvoient moins de contexte et utilisent moins de tokens.
-- **Agents de recherche autonomes.** Transformez une question de recherche et
-  un ensemble de sources en un premier brouillon structuré.
-- **Collaboration en temps réel et commentaires.** Travaillez en équipe avec
-  une collaboration illimitée et auto-hébergée.
-- **Oleafly CLI.** Utilisez un paquet en ligne de commande léger et installable
-  pour les flux de recherche qui n'ont pas besoin d'interface graphique.
-- **Meilleure prise en charge de Typst et Markdown.** Retrouvez davantage de
-  fonctions d'édition, d'aperçu et de publication dans les deux formats.
-- **Plus d'intégrations de recherche.** Connectez Mendeley et d'autres services
-  de références, de bibliothèque et de recherche.
-- **Synchronisation cloud auto-hébergée.** Synchronisez les projets entre vos
-  appareils et profitez d'une meilleure synchronisation GitHub automatique.
+Oleafly vise à relier les éléments de votre recherche : les lectures qui façonnent une question, l'analyse derrière un résultat, l'article qui l'explique et l'exposé qui le partage.
 
-## Installation
+La feuille de route prévoit ensuite la collaboration en direct et les commentaires, une interface multilingue, une prise en charge plus poussée de Typst et Markdown, ainsi qu'une synchronisation facultative entre appareils. Suivez le [journal des modifications](../../CHANGELOG.md) au fil de ces avancées.
 
-Téléchargez la dernière version depuis
-[GitHub Releases](https://github.com/Oleafly/Oleafly/releases/latest).
+<img src="https://cdn.oleafly.com/images/screenshots/desktop/readme/project-library-dark-window-v1.png" alt="Des articles de recherche organisés en projets dans la bibliothèque Oleafly" width="100%" />
 
-| Plateforme | Installateur |
+## Télécharger Oleafly
+
+Gratuit et open source. Aucun compte nécessaire.
+
+| Plateforme | Télécharger |
 | --- | --- |
-| macOS, Apple Silicon | `.dmg` |
-| Windows, x86_64 | `.msi` ou `-setup.exe` |
-| Linux, x86_64 | `.AppImage`, `.deb` ou `.rpm` |
+| macOS · Apple Silicon | [DMG](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Windows · x86_64 | [MSI ou EXE](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 ou ARM64 | [AppImage ou DEB](https://github.com/Oleafly/Oleafly/releases/latest) |
 
-La première compilation LaTeX peut télécharger les packages requis par le
-document. Tectonic les met en cache pour les compilations suivantes, et le mode
-hors ligne restreint la compilation à ce cache.
+LaTeX utilise Tectonic intégré, avec des paquets mis en cache pour les compilations hors ligne. Typst a un compilateur intégré ; Markdown utilise Pandoc, disponible dans Settings. Les paquets Linux demandent glibc 2.39 ou une version ultérieure.
 
-Pour lancer depuis les sources :
+Ce README suit le développement du projet. Les [notes de version](https://github.com/Oleafly/Oleafly/releases/latest) indiquent le contenu du dernier installateur.
 
-```bash
-git clone https://github.com/Oleafly/Oleafly.git
-cd Oleafly
-pnpm install
-host_target="$(rustc -vV | sed -n 's/^host: //p')"
-./scripts/fetch-tectonic.sh "$host_target"
-./scripts/fetch-biber.sh "$host_target"
-./scripts/fetch-typst.sh "$host_target"
-pnpm tauri dev
-```
-
-Consultez le [guide de développement](../development.md) pour les
-prérequis, la configuration par plateforme et les builds de production.
-
-Ces scripts téléchargent dans `src-tauri/binaries` les exécutables auxiliaires
-du compilateur, verrouillés par somme de contrôle, pour votre plateforme. Le
-paramètre `all` sert à la CI et aux paquets de publication, qui doivent préparer
-toutes les plateformes prises en charge.
-
-L'intelligence de l'éditeur fournie par TexLab et Tinymist reste facultative en
-développement local. Téléchargez ces serveurs de langage avec
-`pnpm language-servers:fetch`. Consultez la
-[chaîne d'outils des serveurs de langage](../language-server-toolchain.md) pour
-les règles d'intégrité, de licence et de distribution.
-
-### Ligne de commande
-
-`oleaflyc` gère les projets Oleafly sans lancer l'application de bureau. Il est
-compilé depuis les sources de ce dépôt et n'est pas encore publié sous forme de
-paquet autonome.
-
-```bash
-cargo run -p oleafly-cli --bin oleaflyc -- init
-cargo run -p oleafly-cli --bin oleaflyc -- doctor
-cargo run -p oleafly-cli --bin oleaflyc -- build
-cargo run -p oleafly-cli --bin oleaflyc -- watch
-cargo run -p oleafly-cli --bin oleaflyc -- project info --json
-```
-
-Les commandes utilisent le répertoire courant. Passez `-C <path>` pour choisir
-un autre projet. Exécutez `oleaflyc --help` pour obtenir la liste complète.
-
-## Documentation pour les développeurs
-
-Les guides utilisateur se trouvent dans la
-[documentation produit d'Oleafly](https://oleafly.com/docs/overview/). Les
-références ci-dessous s'adressent aux contributeurs, intégrateurs et responsables des versions.
-
-| Référence | Contenu |
-| --- | --- |
-| [Catalogue produit-ingénierie](../README.md) | Inventaires des fonctionnalités et contrats d'ingénierie |
-| [Référence des fonctionnalités](../features.md) | La surface produit et les flux de travail pris en charge |
-| [Moteurs de document](../document-engines.md) | Capacités LaTeX, Typst et Markdown |
-| [Architecture produit](../architecture.md) | Frontières du système, responsabilité des packages et points d'extension |
-| [Développement](../development.md) | Installation locale, tests et flux de contribution |
-| [Chaîne d'outils du serveur de langage](../language-server-toolchain.md) | Politique de récupération, d'intégrité et de distribution |
-| [Intégration MCP](../mcp.md) | Clients externes, jetons d'accès et politiques d'approbation |
-| [Publication de versions](../releasing.md) | Flux de publication et vérification des artefacts |
-| [Signature du code](../signing.md) | Exigences de signature par plateforme |
-| [Mises à jour automatiques](../updates.md) | Manifestes de mise à jour, signatures et retour arrière |
-
-## Contribuer
-
-<table>
-  <tr>
-    <td width="38%" valign="top"><img src="../assets/oleafly-club.png" alt="Le Club Oleafly : une communauté de recherche ouverte qui célèbre les brouillons, les révisions, les tests et les soumissions réussies" width="100%" /></td>
-    <td width="62%" valign="top"><h3>Les chercheurs méritent des outils qu'ils peuvent examiner, étendre et utiliser en toute confiance.</h3><p>Oleafly est développé au grand jour par <a href="https://github.com/prajwal-svm">Prajwal Murthy</a> et ses contributeurs. Rapports de bugs, correctifs, modèles, documentation et retours produit réfléchis sont les bienvenus.</p></td>
-  </tr>
-</table>
-
-1. Lisez [CONTRIBUTING.md](../../CONTRIBUTING.md).
-2. Ouvrez une issue avant tout changement d'ampleur ; les correctifs petits et
-   ciblés peuvent aller directement en pull request.
-3. Lancez les vérifications pertinentes avant de soumettre :
-
-   ```bash
-   pnpm build
-   pnpm test
-   cargo test --workspace --all-targets
-   ```
-
-Merci de signaler les problèmes de sécurité en privé, comme décrit dans
-[SECURITY.md](../../SECURITY.md). La participation est régie par le
-[code de conduite](../../CODE_OF_CONDUCT.md).
-
-## Communauté et assistance
-
-- Posez vos questions et partagez vos idées dans [GitHub Discussions](https://github.com/Oleafly/Oleafly/discussions).
-- Signalez les bugs et proposez des fonctionnalités dans [GitHub Issues](https://github.com/Oleafly/Oleafly/issues).
-- 🔔 Suivez [@OleaflyHQ sur X](https://x.com/OleaflyHQ) pour les actualités du produit et des versions.
-
-⭐ Si Oleafly vous aide, pensez à [ajouter une étoile au dépôt](https://github.com/Oleafly/Oleafly).
-Ce petit geste aide d'autres chercheurs à découvrir le projet et soutient son développement.
+[Guides produit](https://oleafly.com/docs/) · [Documentation développeur](../developer/README.md) · [Compiler depuis les sources](../development.md)
 
 ## Historique des étoiles
 
 <a href="https://www.star-history.com/?repos=Oleafly%2FOleafly&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&theme=dark&legend=top-left&sealed_token=ZRIr-1jiqjn35WhaqiDqKsmeII-LmnrILQdxzg5v_RX8-PFtlYa4d5IY7U2-Mcn1_D2-0k4e440BGXMhRskNzn-mZUGI59rpIErWId2F600cSJDgZqwcQ3BxV6zC3m5peZz6s_P_Mla0ZW06zikSg5LHLCIALEzrFnLqag7R_rQ7haTYEGHvSdgx76__" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&legend=top-left&sealed_token=ZRIr-1jiqjn35WhaqiDqKsmeII-LmnrILQdxzg5v_RX8-PFtlYa4d5IY7U2-Mcn1_D2-0k4e440BGXMhRskNzn-mZUGI59rpIErWId2F600cSJDgZqwcQ3BxV6zC3m5peZz6s_P_Mla0ZW06zikSg5LHLCIALEzrFnLqag7R_rQ7haTYEGHvSdgx76__" />
-   <img alt="Graphique de l'historique des étoiles" src="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&legend=top-left&sealed_token=ZRIr-1jiqjn35WhaqiDqKsmeII-LmnrILQdxzg5v_RX8-PFtlYa4d5IY7U2-Mcn1_D2-0k4e440BGXMhRskNzn-mZUGI59rpIErWId2F600cSJDgZqwcQ3BxV6zC3m5peZz6s_P_Mla0ZW06zikSg5LHLCIALEzrFnLqag7R_rQ7haTYEGHvSdgx76__" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&theme=dark&legend=top-left&sealed_token=aHz2JA-SBvmD73PyT7aCcCqMyAUvCPtidSAAvsQQxR8-1xdB-RZ-oXHKRnqIJUfSICl6Dd3_XPcHgb5Menvk_FfalfMb1GRbJC_TdeTMBVDi3jVUIXBBdovZ4dufhj4JWF3UXptJhw8pGmB6lqQ-X7gDOWu_bkPTQ7k-Q0VeBiq_jNgwRb7RSMgrSb-P" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&legend=top-left&sealed_token=aHz2JA-SBvmD73PyT7aCcCqMyAUvCPtidSAAvsQQxR8-1xdB-RZ-oXHKRnqIJUfSICl6Dd3_XPcHgb5Menvk_FfalfMb1GRbJC_TdeTMBVDi3jVUIXBBdovZ4dufhj4JWF3UXptJhw8pGmB6lqQ-X7gDOWu_bkPTQ7k-Q0VeBiq_jNgwRb7RSMgrSb-P" />
+   <img alt="Graphique de l'historique des étoiles" src="https://api.star-history.com/chart?repos=Oleafly/Oleafly&type=date&legend=top-left&sealed_token=aHz2JA-SBvmD73PyT7aCcCqMyAUvCPtidSAAvsQQxR8-1xdB-RZ-oXHKRnqIJUfSICl6Dd3_XPcHgb5Menvk_FfalfMb1GRbJC_TdeTMBVDi3jVUIXBBdovZ4dufhj4JWF3UXptJhw8pGmB6lqQ-X7gDOWu_bkPTQ7k-Q0VeBiq_jNgwRb7RSMgrSb-P" />
  </picture>
 </a>
 
-## Crédits
+## Communauté et assistance
 
-Oleafly s'appuie sur
-[Tauri](https://tauri.app/),
-[React](https://react.dev/),
-[CodeMirror](https://codemirror.net/),
-[Tectonic](https://tectonic-typesetting.github.io/),
-[Typst](https://typst.app/),
-[pdf.js](https://mozilla.github.io/pdf.js/),
-[Zustand](https://github.com/pmndrs/zustand),
-[Tailwind CSS](https://tailwindcss.com/),
-[Harper](https://writewithharper.com/) et
-[Hunspell](https://hunspell.github.io/).
+Partagez vos questions, idées et méthodes de recherche dans les [Discussions GitHub](https://github.com/Oleafly/Oleafly/discussions). Signalez un bug ou demandez une fonctionnalité dans les [Issues GitHub](https://github.com/Oleafly/Oleafly/issues).
 
-Oleafly est distribué sous licence
-[AGPL-3.0-or-later](../../LICENSE). Les mentions relatives aux composants tiers sont
-listées dans [THIRD_PARTY_LICENSES.md](../../THIRD_PARTY_LICENSES.md).
+Oleafly est développé par [Prajwal Murthy](https://github.com/prajwal-svm) et ses contributeurs. Les modèles, le code, la documentation et les retours issus de votre propre écriture façonnent aussi le projet. Lisez le [guide de contribution](../../CONTRIBUTING.md) pour participer.
+
+Si Oleafly vous facilite la rédaction, [donnez-lui une ⭐ sur GitHub](https://github.com/Oleafly/Oleafly) pour aider d'autres chercheurs à le découvrir.
+
+[Sécurité](../../SECURITY.md) · [Code de conduite](../../CODE_OF_CONDUCT.md) · [AGPL-3.0-or-later](../../LICENSE)
