@@ -717,11 +717,10 @@ function CanvasInner({
     [selEdge, edges],
   );
 
-  const canvasHint = readOnly ? "Read-only preview · Drag to pan" : pending
-    ? "Click and Drag on the Canvas to Draw the Shape (Esc to Cancel)"
-    : spacePressed
-      ? "Drag to Pan the Canvas"
-      : "Drag Shapes to Move · Drag Handles to Connect · Space + Drag to Pan · Double-Click to Edit Text";
+  let canvasHint = "Drag Shapes to Move · Drag Handles to Connect · Space + Drag to Pan · Double-Click to Edit Text";
+  if (readOnly) canvasHint = "Read-only preview · Drag to pan";
+  else if (pending) canvasHint = "Click and Drag on the Canvas to Draw the Shape (Esc to Cancel)";
+  else if (spacePressed) canvasHint = "Drag to Pan the Canvas";
 
   return (
     <div className="flex h-full min-h-0 flex-col">

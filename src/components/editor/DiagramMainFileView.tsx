@@ -93,9 +93,9 @@ export default function DiagramMainFileView({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {readOnly && (
-        <div role="status" className="border-b px-4 py-2 text-sm text-muted-foreground">
+        <output className="border-b px-4 py-2 text-sm text-muted-foreground">
           This file contains source that Draw cannot preserve. The canvas is a partial, read-only preview. Use Code to edit the original file.
-        </div>
+        </output>
       )}
       <DiagramKitContext.Provider value={KIT}>
         <DiagramCanvas model={model} onChange={onModelChange} readOnly={readOnly || mutationLocked} />
