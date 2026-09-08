@@ -22,22 +22,25 @@ pub fn lifecycle_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             let settled = settled.clone();
             let code = code.unwrap_or(0);
             tauri::async_runtime::spawn(async move {
-                if let Some(tasks) = app.try_state::<crate::research_tasks::ResearchTaskState>() {
-                    tasks.shutdown().await;
-                }
-                if let (Some(agent), Some(exec)) = (
-                    app.try_state::<crate::agent::AgentState>(),
-                    app.try_state::<crate::agent_exec::AgentExecState>(),
-                ) {
-                    let _ =
-                        crate::agent::agent_cancel_all(agent, exec, "app-shutdown".into()).await;
-                }
-                if let Some(runtime) = app.try_state::<Arc<crate::acp::AcpRuntime>>() {
-                    runtime.inner().shutdown_all().await;
-                }
+                shutdown(&app).await;
                 settled.store(true, Ordering::Release);
                 app.exit(code);
             });
         })
         .build()
+}
+
+pub(crate) async fn shutdown<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    if let Some(tasks) = app.try_state::<crate::research_tasks::ResearchTaskState>() {
+        tasks.shutdown().await;
+    }
+    if let (Some(agent), Some(exec)) = (
+        app.try_state::<crate::agent::AgentState>(),
+        app.try_state::<crate::agent_exec::AgentExecState>(),
+    ) {
+        let _ = crate::agent::agent_cancel_all(agent, exec, "app-shutdown".into()).await;
+    }
+    if let Some(runtime) = app.try_state::<Arc<crate::acp::AcpRuntime>>() {
+        runtime.inner().shutdown_all().await;
+    }
 }

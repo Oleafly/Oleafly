@@ -1,6 +1,5 @@
-import { check, type Update } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
-import { isTauri } from "@tauri-apps/api/core";
+import { check, type DownloadEvent, type Update } from "@tauri-apps/plugin-updater";
+import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { logError } from "@/lib/log";
 import { useUpdatesStore } from "@/store/updates";
@@ -21,17 +20,16 @@ const UPDATE_WINDOW_LABEL = "update";
 // throws.
 
 // Guard against overlapping checks (startup tick racing a manual click).
-let inFlight = false;
+let inFlight: Promise<Update | null> | null = null;
+let checking: Promise<Update | null> | null = null;
 
 // In the browser dev server (`!isTauri()`) there is no updater, so this
 // resolves to `null` just like "already up to date" - callers that need to
 // tell the two apart should check `isTauri()` themselves.
 export async function findUpdate(): Promise<Update | null> {
   if (!isTauri()) return null;
-  // Bound the check so a hung request can't latch `inFlight` forever (see
-  // runUpdateCheck). The updater plugin's check() accepts a `timeout` in ms.
-  const update = await check({ timeout: 15000 });
-  return update ?? null;
+  checking ??= check({ timeout: 15000 }).then((update) => update ?? null).finally(() => { checking = null; });
+  return checking;
 }
 
 // When the release doesn't advertise a content length, `onProgress` stays at
@@ -42,7 +40,8 @@ export async function installUpdate(
 ): Promise<void> {
   let total = 0;
   let downloaded = 0;
-  await update.downloadAndInstall((event) => {
+  const channel = new Channel<DownloadEvent>();
+  channel.onmessage = (event) => {
     switch (event.event) {
       case "Started":
         total = event.data.contentLength ?? 0;
@@ -56,14 +55,9 @@ export async function installUpdate(
         onProgress?.(100);
         break;
     }
-  });
-  // Relaunch tears the webview down exactly like a quit, so it must go
-  // through the same durable flush as window close, Cmd+Q, and Restart. A
-  // failed save blocks the relaunch (the installed update simply applies on
-  // the next start) instead of discarding the user's last edits.
-  const { useFilesStore } = await import("@/store/files");
-  await useFilesStore.getState().flushForQuit();
-  await relaunch();
+  };
+  const rid = await invoke<number>("download_update", { rid: update.rid, onEvent: channel });
+  await invoke("install_update", { rid });
 }
 
 // Records the outcome in the updates store so the in-app prompt
@@ -71,21 +65,24 @@ export async function installUpdate(
 // Failures are rethrown only when `rethrow` is set, which the manual checker
 // uses to render its own inline error state.
 export async function runUpdateCheck({ rethrow = false }: { rethrow?: boolean } = {}): Promise<Update | null> {
-  if (inFlight) return null;
-  inFlight = true;
-  const store = useUpdatesStore.getState();
+  inFlight ??= (async () => {
+    const store = useUpdatesStore.getState();
+    try {
+      const update = await findUpdate();
+      if (update) store.setAvailable(update);
+      else store.setUpToDate();
+      return update;
+    } catch (error) {
+      store.setFailed();
+      void logError("updater", error).catch(() => {});
+      throw error;
+    }
+  })().finally(() => { inFlight = null; });
   try {
-    const update = await findUpdate();
-    if (update) store.setAvailable(update);
-    else store.setUpToDate();
-    return update;
-  } catch (e) {
-    await logError("updater", e);
-    store.setFailed();
-    if (rethrow) throw e;
+    return await inFlight;
+  } catch (error) {
+    if (rethrow) throw error;
     return null;
-  } finally {
-    inFlight = false;
   }
 }
 
@@ -118,6 +115,7 @@ export async function openUpdateWindow(opts: { manual?: boolean } = {}): Promise
 }
 
 export function checkForUpdatesOnStartup(): void {
+  if (import.meta.env.DEV || import.meta.env.VITE_E2E_HOOKS === "1") return;
   void (async () => {
     const update = await runUpdateCheck();
     if (update) await openUpdateWindow();

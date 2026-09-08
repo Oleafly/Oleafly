@@ -6,8 +6,9 @@ repository, create a commit, or change a branch.
 
 ## When Oleafly saves one
 
-Two conditions, and nothing else. The compile succeeded, and the project folder
-differs from the newest checkpoint on record.
+Oleafly attempts a checkpoint when a compile succeeds and the project folder
+differs from the newest checkpoint on record. It publishes the snapshot only
+when the included files can all be read and stored.
 
 The save runs on its own background task. Starting it costs the compile nothing,
 because no file is read and no store is opened until after the compile has
@@ -21,7 +22,7 @@ succession and you end up with one checkpoint, holding the last state.
 ## What a checkpoint holds
 
 The project folder as it stands after the compile. Everything under the project
-root, whatever its type, whether or not the document refers to it. Oleafly does
+root, whether or not the document refers to it. Oleafly does
 not work out which files the compiler read and keep only those.
 
 Left out: `.git`, `.oleafly`, `node_modules`, and any directory named
@@ -37,14 +38,19 @@ was built.
 
 ## When it fails
 
-Oleafly does not refuse to save a checkpoint. There is no toolchain check and no
-second compile to prove the first one. Nothing is judged too uncertain to
-record. Compile succeeded, folder changed, snapshot taken.
+A failed checkpoint does not change a successful compile into a failure.
+Oleafly reports storage problems and files it could not capture, with the
+reason and a suggested next step. It does not publish an incomplete snapshot
+as though every file had been saved. Settings can hide these notices.
 
-One message can reach you, and only one: checkpoint storage is full or not
-writable. It says what went wrong and what to do about it, and Settings can turn
-it off. Everything else that goes wrong goes to the app log and stays there,
-because there is nothing for you to act on.
+Unicode filenames keep their original spelling, including decomposed names
+created on macOS. Paths that collide after Unicode normalization or case
+folding cannot share a portable checkpoint. Symbolic links, special files,
+and filenames that cannot be restored across platforms also prevent capture;
+rename or move the affected entries before compiling again.
+
+Starting a newer compile cancels the older capture without an error notice.
+Other internal failures are recorded in the app log.
 
 ## The Versioning window
 
@@ -86,8 +92,8 @@ tab and "Checkpoints" opens the Saved Checkpoints tab.
 ## Settings
 
 Settings has two checkpoint switches, under Data Storage in the Local store
-tab. One turns automatic checkpoints off. The other hides the notice shown when
-checkpoint storage is full or not writable. The storage location and the
+tab. One turns automatic checkpoints off. The other hides notices about
+checkpoint storage or files that could not be captured. The storage location and the
 catalog inspector are no longer in Settings. They are in the Advanced section
 of the Versioning window.
 

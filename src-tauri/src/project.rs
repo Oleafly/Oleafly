@@ -829,13 +829,15 @@ pub async fn read_file(project_id: String, path: String) -> Result<String, Strin
 pub(crate) fn read_file_blocking(project_id: &str, path: &str) -> Result<String, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
     let p = resolve(project_id, path)?;
-    // Legacy encodings (Latin-1 .bib exports are common) must read, not
-    // error: decode lossily so odd bytes surface as U+FFFD instead of a
-    // hard failure. Genuine binaries still carry NUL bytes downstream,
-    // which the viewers detect.
     std::fs::read(&p)
-        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
         .map_err(|e| format!("failed to read {path}: {e}"))
+        .and_then(decode_editable_text)
+}
+
+fn decode_editable_text(bytes: Vec<u8>) -> Result<String, String> {
+    String::from_utf8(bytes).map_err(|_| {
+        "This file uses an unsupported text encoding. Save a copy as UTF-8 before editing it in Oleafly. The original file has not been changed.".into()
+    })
 }
 
 pub(crate) fn read_file_limited(
@@ -860,9 +862,7 @@ fn read_utf8_limited(path: &Path, max_bytes: usize) -> Result<String, String> {
     if bytes.len() > max_bytes {
         return Err(format!("file exceeds the {max_bytes}-byte read limit"));
     }
-    // Same lossy policy as read_file: a stray Latin-1 accent must not make
-    // the whole file unreadable.
-    Ok(String::from_utf8_lossy(&bytes).into_owned())
+    decode_editable_text(bytes)
 }
 
 #[cfg(test)]
@@ -883,15 +883,16 @@ mod bounded_read_tests {
     }
 
     #[test]
-    fn legacy_encoded_text_reads_lossily_instead_of_failing() {
+    fn legacy_encoded_text_cannot_enter_an_editable_buffer_lossily() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("IEEEfull.bib");
-        // Latin-1 "Müller" — the ü byte (0xFC) is invalid UTF-8.
         std::fs::write(&path, b"author = {M\xFCller}").unwrap();
 
-        let text = read_utf8_limited(&path, 1024).unwrap();
-        assert!(text.starts_with("author = {M"));
-        assert!(text.contains('\u{FFFD}'));
+        assert!(read_utf8_limited(&path, 1024)
+            .unwrap_err()
+            .contains("UTF-8"));
+        assert!(super::decode_editable_text(std::fs::read(&path).unwrap()).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), b"author = {M\xFCller}");
         let _ = std::fs::remove_file(path);
     }
 }

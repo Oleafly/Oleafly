@@ -102,7 +102,7 @@ export interface LogDiagnostic {
     readonly category: LogCategory;
     readonly errorContext?: string;
 }
-export type CheckpointSkipReason = "storage_unavailable";
+export type CheckpointSkipReason = "storage_unavailable" | "incomplete_capture";
 export type CheckpointPublicationOutcome =
     | { status: "unchanged" }
     | { status: "failed" }

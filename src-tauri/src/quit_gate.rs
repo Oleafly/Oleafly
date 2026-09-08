@@ -70,6 +70,13 @@ pub fn resolve_quit_action(install_gate_pending: bool) -> QuitAction {
 /// required; `restart` relaunches instead of exiting.
 #[tauri::command]
 pub fn confirm_quit_flush(app: tauri::AppHandle, restart: Option<bool>) {
+    use tauri::Manager;
+    if app
+        .try_state::<crate::updater::UpdateState>()
+        .is_some_and(|state| state.installing())
+    {
+        return;
+    }
     mark_flush_confirmed();
     if restart.unwrap_or(false) {
         mark_restart_pending();

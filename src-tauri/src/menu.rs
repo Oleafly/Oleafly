@@ -117,6 +117,12 @@ pub fn set_dock_shortcut_accelerators(
 /// Route a menu click to the webview. The frontend listens for these events and
 /// opens the matching in-app surface.
 pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
+    if app
+        .try_state::<crate::updater::UpdateState>()
+        .is_some_and(|state| state.installing())
+    {
+        return;
+    }
     if let Some(event) = frontend_event(id) {
         let _ = app.emit(event, ());
         return;

@@ -109,7 +109,7 @@ function pointToTikz(point: DiagramPoint): string {
   return `(${px2cm(point.x)},${px2cm(-point.y)})`;
 }
 
-function edgeToTikz(e: DiagEdge, nodes: Map<string, DiagNode>): string {
+function edgeToTikz(e: DiagEdge, nodes: Map<string, DiagNode>, legacyCoordinates: boolean): string {
   const opts: string[] = [];
   const a = ARROW_OPT[e.arrow];
   if (a) opts.push(a);
@@ -142,8 +142,10 @@ function edgeToTikz(e: DiagEdge, nodes: Map<string, DiagNode>): string {
         targetHandle,
       );
       const points = route.points.map(pointToTikz);
-      points[0] = `(${source})`;
-      points[points.length - 1] = `(${target})`;
+      if (!legacyCoordinates) {
+        points[0] = `(${source})`;
+        points[points.length - 1] = `(${target})`;
+      }
       const path = points.join(" -- ");
       const label = e.label
         ? `\n    \\node[fill=white, font=\\small] at ${pointToTikz(route.label)} {${escapeLatex(e.label)}};`
@@ -177,14 +179,14 @@ function isGroupContainer(n: DiagNode): boolean {
   return n.shape === "roundrect" && !n.label;
 }
 
-export function modelToTikz(model: DiagramModel): string {
+export function modelToTikz(model: DiagramModel, sourceVersion: "current" | "0.3.13" = "current"): string {
   const defs = new Set<string>();
   const containerNodes = model.nodes.filter(isGroupContainer);
   const regularNodes = model.nodes.filter((n) => !isGroupContainer(n));
   const nodes = regularNodes.map((n) => nodeToTikz(n, defs));
   const containers = containerNodes.map((n) => nodeToTikz(n, defs));
   const nodesById = new Map(model.nodes.map((node) => [node.id, node]));
-  const edges = model.edges.map((edge) => edgeToTikz(edge, nodesById));
+  const edges = model.edges.map((edge) => edgeToTikz(edge, nodesById, sourceVersion === "0.3.13"));
   const defLines = [...defs].sort((a, b) => Number(a > b) - Number(a < b));
   const nodeBody = nodes.map((l) => `  ${l}`).join("\n");
   const backgroundLines = [...containers, ...edges];
@@ -210,8 +212,8 @@ function b64decode(b64: string): unknown {
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 
-export function serializeDiagram(model: DiagramModel): string {
-  return `${modelToTikz(model)}\n${MARK} ${b64encode(model)}`;
+export function serializeDiagram(model: DiagramModel, sourceVersion: "current" | "0.3.13" = "current"): string {
+  return `${modelToTikz(model, sourceVersion)}\n${MARK} ${b64encode(model)}`;
 }
 
 export function parseEmbeddedModel(tikz: string): DiagramModel | null {

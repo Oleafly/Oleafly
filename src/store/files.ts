@@ -1036,6 +1036,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     if (!projectId) return;
     flushWysiwygPendingEdits();
     await flushDirtyBuffers(projectId, get);
+    await drainProjectWrites(projectId);
   }),
 
   createProject: async (name) => {

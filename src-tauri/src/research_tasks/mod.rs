@@ -283,6 +283,22 @@ impl ResearchTaskState {
         }
     }
 
+    pub(crate) async fn resume_after_failed_update(&self) -> Result<(), String> {
+        let _scheduling = self.inner.scheduling.lock().await;
+        if lock(&self.inner.active)
+            .values()
+            .any(|task| !task.settled.load(Ordering::Acquire))
+        {
+            return Err("Background work is still stopping.".into());
+        }
+        for task in self.store()?.recover_after_failed_update()? {
+            self.emit_task(&task);
+        }
+        self.inner.stopping.store(false, Ordering::Release);
+        self.kick();
+        Ok(())
+    }
+
     pub async fn shutdown(&self) {
         self.inner.stopping.store(true, Ordering::Release);
         let scheduling = self.inner.scheduling.lock().await;
@@ -1153,8 +1169,17 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
     async fn shutdown_stops_admitted_work_and_waits_for_runtime_settlement() {
+        verify_shutdown_recovery(false).await;
+    }
+
+    #[tokio::test]
+    async fn failed_update_recovers_settled_tasks_and_resumes_queued_work() {
+        verify_shutdown_recovery(true).await;
+    }
+
+    #[allow(clippy::await_holding_lock)]
+    async fn verify_shutdown_recovery(resume: bool) {
         let _env = crate::paths::data_dir_env_lock();
         let temp = tempfile::tempdir().unwrap();
         std::env::set_var("OLEAFLY_DATA_DIR", temp.path());
@@ -1218,6 +1243,21 @@ mod tests {
             store.require(&later.id).unwrap().status,
             ResearchTaskStatus::Queued
         );
+        if resume {
+            state.resume_after_failed_update().await.unwrap();
+            let recovered = store.require(&task.id).unwrap();
+            assert_eq!(recovered.status, ResearchTaskStatus::Failed);
+            assert!(recovered.error.unwrap().contains("update"));
+            store.retry(&task.id).unwrap();
+            tokio::time::timeout(Duration::from_secs(2), async {
+                while runtime.runs.load(Ordering::SeqCst) < 2 {
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            state.shutdown().await;
+        }
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 }

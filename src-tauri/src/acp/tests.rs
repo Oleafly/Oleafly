@@ -903,6 +903,27 @@ async fn shutdown_waits_for_pending_starts_and_rejects_later_starts() {
 }
 
 #[tokio::test]
+async fn failed_update_reopens_agent_startup_only_after_shutdown_settles() {
+    let (_temp, runtime, options) = pending_runtime(Vec::new());
+    let pending = runtime.begin_startup().unwrap();
+    let closing = runtime.clone();
+    let shutdown = tokio::spawn(async move { closing.shutdown_all().await });
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while runtime.begin_startup().is_ok() {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    assert!(runtime.resume_after_failed_update().is_err());
+    drop(pending);
+    shutdown.await.unwrap();
+    runtime.resume_after_failed_update().unwrap();
+    let session = runtime.start(options).await.unwrap();
+    runtime.close(&session.session.id).await.unwrap();
+}
+
+#[tokio::test]
 async fn shutdown_reaps_an_agent_waiting_for_initialization() {
     let (temp, runtime, options) =
         pending_runtime(vec!["agent.pid".into(), "--initialize-barrier".into()]);

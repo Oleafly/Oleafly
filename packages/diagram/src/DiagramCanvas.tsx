@@ -303,11 +303,13 @@ function CanvasInner({
   onChange,
   showPreviewAction,
   onShowPreview,
+  readOnly = false,
 }: {
   model: DiagramModel;
   onChange: (m: DiagramModel) => void;
   showPreviewAction?: boolean;
   onShowPreview?: () => void;
+  readOnly?: boolean;
 }) {
   const { Tooltip, useThemeMode } = useDiagramKit();
   const themeMode = useThemeMode();
@@ -383,6 +385,7 @@ function CanvasInner({
       hydratingRef.current = false;
       return;
     }
+    if (readOnly) return;
     const m: DiagramModel = {
       version: 1,
       nodes: nodes.map(rfNodeToModel),
@@ -397,17 +400,18 @@ function CanvasInner({
       historyRef.current = hist;
       historyIdxRef.current = hist.length - 1;
     }, 400);
-  }, [nodes, edges]);
+  }, [nodes, edges, readOnly]);
 
   const restore = useCallback(
     (m: DiagramModel) => {
+      if (readOnly) return;
       hydratingRef.current = true;
       setNodes(m.nodes.map(modelNodeToRf));
       setEdges(m.edges.map(modelEdgeToRf));
       lastEmittedRef.current = m;
       onChangeRef.current(m);
     },
-    [setNodes, setEdges],
+    [setNodes, setEdges, readOnly],
   );
   const undo = useCallback(() => {
     if (historyIdxRef.current <= 0) return;
@@ -693,14 +697,15 @@ function CanvasInner({
   const editApi = useMemo(
     () => ({
       editingId,
-      beginEdit: (edId: string) => setEditingId(edId),
+      beginEdit: (edId: string) => { if (!readOnly) setEditingId(edId); },
       cancelEdit: () => setEditingId(null),
       commitLabel: (edId: string, label: string) => {
+        if (readOnly) return;
         setNodes((ns) => ns.map((n) => (n.id === edId ? { ...n, data: { ...n.data, label } } : n)));
         setEditingId(null);
       },
     }),
-    [editingId, setNodes],
+    [editingId, setNodes, readOnly],
   );
 
   const selectedNode = useMemo(
@@ -712,7 +717,7 @@ function CanvasInner({
     [selEdge, edges],
   );
 
-  const canvasHint = pending
+  const canvasHint = readOnly ? "Read-only preview · Drag to pan" : pending
     ? "Click and Drag on the Canvas to Draw the Shape (Esc to Cancel)"
     : spacePressed
       ? "Drag to Pan the Canvas"
@@ -733,12 +738,12 @@ function CanvasInner({
         style={{ background: canvasDark ? "#121212" : "#ffffff", color: canvasDark ? "#e5e7eb" : "#0f172a" }}
         // Block the app-wide dev context menu on the canvas.
         onContextMenu={(e) => e.preventDefault()}
-        onPointerDown={onFlowPointerDown}
-        onPointerMove={onFlowPointerMove}
-        onPointerUp={onFlowPointerUp}
-        onPointerCancel={onFlowPointerUp}
+        onPointerDown={readOnly ? undefined : onFlowPointerDown}
+        onPointerMove={readOnly ? undefined : onFlowPointerMove}
+        onPointerUp={readOnly ? undefined : onFlowPointerUp}
+        onPointerCancel={readOnly ? undefined : onFlowPointerUp}
       >
-        <div
+        {!readOnly && <div
           data-tour="diagram-palette"
           role="toolbar"
           aria-label="Shape tools"
@@ -767,7 +772,7 @@ function CanvasInner({
               </button>
             </Tooltip>
           ))}
-        </div>
+        </div>}
 
         <div
           style={chromeStyle}
@@ -829,7 +834,7 @@ function CanvasInner({
           </Tooltip>
         </div>
 
-        {(selectedNode || selectedEdge) && (
+        {!readOnly && (selectedNode || selectedEdge) && (
           <div
             data-tour="diagram-inspector"
             role="complementary"
@@ -857,10 +862,13 @@ function CanvasInner({
             connectionMode={ConnectionMode.Loose}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onReconnect={onReconnect}
-            edgesReconnectable
-            panOnDrag={spacePressed}
+            onConnect={readOnly ? undefined : onConnect}
+            onReconnect={readOnly ? undefined : onReconnect}
+            edgesReconnectable={!readOnly}
+            nodesDraggable={!readOnly}
+            nodesConnectable={!readOnly}
+            elementsSelectable={!readOnly}
+            panOnDrag={readOnly || spacePressed}
             panActivationKeyCode={null}
             onMoveStart={() => setIsPanning(true)}
             onMoveEnd={() => setIsPanning(false)}
@@ -880,9 +888,9 @@ function CanvasInner({
             // Larger snap radius so arrow heads/tails stick to shape handles more easily.
             connectionRadius={28}
             fitView
-            deleteKeyCode={["Backspace", "Delete"]}
+            deleteKeyCode={readOnly ? null : ["Backspace", "Delete"]}
             proOptions={{ hideAttribution: true }}
-            defaultEdgeOptions={{ reconnectable: true }}
+            defaultEdgeOptions={{ reconnectable: !readOnly }}
           >
             <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
             <Controls
@@ -914,6 +922,7 @@ export function DiagramCanvas(props: {
   onChange: (m: DiagramModel) => void;
   showPreviewAction?: boolean;
   onShowPreview?: () => void;
+  readOnly?: boolean;
 }) {
   return (
     <ReactFlowProvider>

@@ -1,0 +1,17 @@
+\documentclass[tikz,border=4pt]{standalone}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{lmodern}
+\usetikzlibrary{shapes.geometric,arrows.meta,positioning,calc,backgrounds}
+\begin{document}
+\definecolor{obgcolor}{HTML}{FFFFFF}
+\pagecolor{obgcolor}
+\begin{tikzpicture}[>={Triangle[length=0.313cm,width=0.313cm]}]
+  \node (a) at (1,-0.5) [font=\rmfamily\fontsize{10}{12}\selectfont, inner sep=0pt, outer sep=0pt, minimum width=2cm, minimum height=1cm] {A};
+  \node (b) at (6,-3) [font=\rmfamily\fontsize{10}{12}\selectfont, inner sep=0pt, outer sep=0pt, minimum width=2cm, minimum height=1cm] {B};
+  \begin{scope}[on background layer]
+    \draw[->, line width=0.05cm, rounded corners=0.125cm] (1,-1) -- (1,-1.5) -- (1,-1.75) -- (6,-1.75) -- (6,-2) -- (6,-2.5);
+  \end{scope}
+\end{tikzpicture}
+% oleafly-diagram-v1: eyJ2ZXJzaW9uIjoxLCJub2RlcyI6W3siaWQiOiJhIiwic2hhcGUiOiJyZWN0YW5nbGUiLCJ4IjowLCJ5IjowLCJ3Ijo4MCwiaCI6NDAsImxhYmVsIjoiQSJ9LHsiaWQiOiJiIiwic2hhcGUiOiJyZWN0YW5nbGUiLCJ4IjoyMDAsInkiOjEwMCwidyI6ODAsImgiOjQwLCJsYWJlbCI6IkIifV0sImVkZ2VzIjpbeyJpZCI6ImUiLCJzb3VyY2UiOiJhIiwidGFyZ2V0IjoiYiIsInJvdXRpbmciOiJvcnRob2dvbmFsIiwiYXJyb3ciOiJmb3J3YXJkIiwic3R5bGUiOiJzb2xpZCJ9XSwiYmFja2dyb3VuZCI6IiNmZmZmZmYifQ==
+\end{document}

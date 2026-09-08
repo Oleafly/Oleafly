@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-07
+
+Before updating from 0.3.13, save your work and close any open projects. The
+safer update workflow in this release takes effect after 0.4.0 is installed.
+
 ### Added
+
+- An agentic assistant that can inspect project files, make edits, run approved
+  commands, and delegate work to subagents. Approval modes control which actions
+  need your consent.
+- Plan mode lets you review and revise a plan before the assistant starts work.
+  Step status stays visible during the run, followed by a completion summary.
+- Saved Checkpoints capture changed project files after a successful compile,
+  in the background and separately from Git. The Versioning window brings Git
+  History and Saved Checkpoints together, with file inspection, restore, labels,
+  deletion, storage details, and password-encrypted history export and import.
+- A project terminal that starts when the project opens, with up to ten shell
+  sessions. Tabs can be renamed, coloured, and closed individually or in groups.
+- Model capability badges and trust states, plus a first-use tool check. Models
+  that cannot use tools remain available for ordinary chat.
+- Ollama status in Settings, with an action to start it when it is installed
+  but not running.
+- System appearance mode follows the computer's light or dark setting. The
+  appearance control uses the same choices throughout the app.
+- Separate title and description fields for Git commits, with clearer guidance
+  for connecting a remote or GitHub repository.
 
 - Settings, AI Assistant now has an editor for approvals.toml, the file
   behind the Custom approval mode, with TOML highlighting, a plain
@@ -97,9 +122,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   count as plan use rather than API list price.
 - A per project spend limit under Settings, AI. The card shows what has been
   spent so far, warns at 80 percent, and pauses runs once the limit is reached.
-- The Draw tab reads the TikZ that is actually in the file, so a picture you
-  pasted, imported or wrote by hand appears on the canvas as nodes and edges
-  you can move. Editing the code and returning to Draw keeps what you wrote.
+- The Draw tab reads the TikZ in the file. Drawings created by Oleafly remain
+  editable, including those saved in 0.3.13. Imported or hand-written files
+  that Draw cannot preserve get a partial, read-only canvas preview; Code
+  remains available for editing the full source.
 - Typst files get the same formatting toolbar LaTeX and Markdown have, with
   bold, italic, headings, lists, links, images, math and search.
 - An in app browser, off by default under Settings, Experimentation. Turning it
@@ -111,6 +137,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   touching the rest.
 
 ### Changed
+
+- New projects initialize a Git repository in the background by default, with
+  a local commit identity ready to use. This can be turned off in Settings;
+  commits remain under your control.
+- Project source reads, document statistics, and assistant context retrieval
+  use fewer calls to the native backend. Bibliography indexing does less work
+  up front, and word diffs handle large changes more efficiently.
+- Split diffs have a visible, draggable divider. PDF preview opens at fit to
+  width, and the editor's fold gutter takes less space.
+- Dock buttons and the References panel use shared layout controls. The toolbar
+  shows the active appearance setting.
+- Newly discovered skills are enabled when first found.
 
 - Typing a slash word that matches no command or skill no longer shows an
   empty "No matching commands" menu; the text is sent as written.
@@ -155,6 +193,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   list now, with the commit subject as the title.
 
 ### Fixed
+
+- Updated text-editing and URL-decoding dependencies to address two security
+  advisories involving untrusted attributes and malformed URLs.
+- Updates finish downloading and verifying before the main window saves your
+  files. Installation waits for active work to stop and saves to finish, including
+  on Windows, where the installer can exit the app immediately. Failed saves
+  prevent installation; stalled downloads stop with an error and a release link.
+  If installation fails, interrupted research tasks can be retried and CLI
+  agents remain available after shutdown finishes.
+- Concurrent update checks share their result instead of reporting a pending
+  check as “up to date”. Test and development builds skip automatic checks.
+- A large paste into a busy terminal no longer blocks the app. Pending input is
+  bounded and ordered, and shutdown keeps draining output on macOS, Windows,
+  and Linux, including when a paste is still being written.
+- Assistant command timeouts still apply when a command closes its output streams
+  before it finishes.
+- Files in unsupported text encodings are kept out of editable buffers. Opening
+  a legacy bibliography can no longer replace accented characters and autosave
+  the damaged text; the message explains how to prepare a UTF-8 copy.
+- Checkpoints preserve decomposed Unicode filenames used on macOS. Unreadable
+  files, unsupported paths, and incomplete captures produce a notice instead of
+  a checkpoint that silently omits them. Normal cancellation stays quiet.
+- Terminal output is retained while its pane is hidden, and the terminal waits
+  for a visible pane before initializing its display.
+- Windows caption buttons remain visible at narrow window widths.
+- Math-preview errors stay inside the preview instead of disrupting the editor.
+- Tooltips open on keyboard focus and describe the control they belong to.
+- The appearance picker handles clicks reliably, including clicks without
+  pointer events. Model refresh stops spinning once it has finished.
+- An expired CLI-agent login now shows sign-in guidance.
+- Closing or leaving the assistant flushes its pending chat save.
 
 - Steer now on a queued message waits until the run has actually started.
   A quick click used to fail with "The running turn could not be steered"
@@ -225,6 +294,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stays in the box and nothing is written.
 - The accent colour picked in Appearance survives a switch between light and
   dark.
+- Starting a terminal or assistant process no longer leaves a project briefly
+  locked after an operation has finished.
 
 
 ## [0.3.13] - 2026-08-29
@@ -1767,7 +1838,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.3.13...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Oleafly/Oleafly/compare/v0.3.13...v0.4.0
 [0.3.13]: https://github.com/Oleafly/Oleafly/compare/v0.3.12...v0.3.13
 [0.3.12]: https://github.com/Oleafly/Oleafly/compare/v0.3.11...v0.3.12
 [0.3.11]: https://github.com/Oleafly/Oleafly/compare/v0.3.10...v0.3.11

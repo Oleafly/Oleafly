@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DiagramCanvas, DiagramKitContext } from "@oleafly/diagram";
 import {
-  buildStandaloneDoc,
-  DIAGRAM_LIBS,
   diagramFromSource,
   sameDiagramModel,
-  serializeDiagram,
   type DiagramModel,
 } from "@oleafly/latex";
+import { editableStandaloneDiagram, standaloneDiagramSource } from "@/lib/diagram-source";
 import { KIT } from "@/components/diagram/diagram-kit";
 import { readFileContent } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
@@ -25,7 +23,10 @@ export default function DiagramMainFileView({
 }) {
   const [model, setModel] = useState<DiagramModel | null>(null);
   const [notDrawable, setNotDrawable] = useState(false);
-  const [background, setBackground] = useState("#ffffff");
+  const [readOnly, setReadOnly] = useState(true);
+  const [mutationLocked, setMutationLocked] = useState(false);
+  const loadedSource = useRef<string | null>(null);
+  const background = useRef<string | undefined>(undefined);
 
   const loadGeneration = useRef(0);
   // React Flow emits a model on its first measurement pass, with no user
@@ -37,11 +38,15 @@ export default function DiagramMainFileView({
     setModel(null);
     const content = useFilesStore.getState().files[path]?.content ?? await readFileContent(projectId, path);
     if (generation !== loadGeneration.current || useFilesStore.getState().projectId !== projectId) return;
-    const model = diagramFromSource(content);
+    const editable = editableStandaloneDiagram(content);
+    const model = editable ?? diagramFromSource(content);
+    loadedSource.current = content;
+    background.current = model?.background;
+    setReadOnly(!editable);
     loadedModel.current = model;
     setModel(model);
     setNotDrawable(!model);
-    setBackground(model?.background ?? "#ffffff");
+
   }, [projectId, path]);
   useEffect(() => {
     setModel(null);
@@ -50,6 +55,7 @@ export default function DiagramMainFileView({
     const unregister = registerEditorMutationOwner({
       projectId: () => projectId,
       reconcile: reload,
+      setLocked: setMutationLocked,
     });
     return () => {
       loadGeneration.current++;
@@ -59,15 +65,18 @@ export default function DiagramMainFileView({
 
   const onModelChange = (m: DiagramModel) => {
     const files = useFilesStore.getState();
-    if (isEditorMutationLocked(projectId) || files.projectId !== projectId || files.activePath !== path) return;
+    if (readOnly || isEditorMutationLocked(projectId) || files.projectId !== projectId || files.activePath !== path) return;
+    if (files.files[path]?.content !== loadedSource.current) {
+      setReadOnly(true);
+      void reload().catch(() => setNotDrawable(true));
+      return;
+    }
     if (sameDiagramModel(loadedModel.current, m)) return;
-    loadedModel.current = null;
+    const next = { ...m, background: background.current };
+    loadedModel.current = m;
     setModel(m);
-    const doc = buildStandaloneDoc({
-      code: serializeDiagram({ ...m, background }),
-      libraries: DIAGRAM_LIBS,
-      background,
-    });
+    const doc = standaloneDiagramSource(next);
+    loadedSource.current = doc;
     useFilesStore.getState().setContent(path, doc);
   };
 
@@ -82,9 +91,14 @@ export default function DiagramMainFileView({
     return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
   }
   return (
-    <div className="h-full min-h-0">
+    <div className="flex h-full min-h-0 flex-col">
+      {readOnly && (
+        <div role="status" className="border-b px-4 py-2 text-sm text-muted-foreground">
+          This file contains source that Draw cannot preserve. The canvas is a partial, read-only preview. Use Code to edit the original file.
+        </div>
+      )}
       <DiagramKitContext.Provider value={KIT}>
-        <DiagramCanvas model={model} onChange={onModelChange} />
+        <DiagramCanvas model={model} onChange={onModelChange} readOnly={readOnly || mutationLocked} />
       </DiagramKitContext.Provider>
     </div>
   );
