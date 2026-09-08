@@ -5,6 +5,7 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use crate::paths;
 use crate::secrets;
+use oleafly_core::locking::{lock_file, lock_mutex, STORAGE_LOCK_TIMEOUT};
 
 static CONFIG_WRITE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
@@ -230,10 +231,11 @@ pub fn read_config() -> Result<AppConfig, String> {
 }
 
 fn lock_config_writes() -> Result<ConfigTransactionLock, String> {
-    let guard = CONFIG_WRITE_LOCK
-        .get_or_init(|| Mutex::new(()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let guard = lock_mutex(
+        CONFIG_WRITE_LOCK.get_or_init(|| Mutex::new(())),
+        STORAGE_LOCK_TIMEOUT,
+    )
+    .map_err(|error| format!("failed to lock config transaction: {error}"))?;
     let root = paths::oleafly_root()?;
     std::fs::create_dir_all(&root)
         .map_err(|error| format!("failed to create config directory: {error}"))?;
@@ -255,7 +257,7 @@ fn lock_config_writes() -> Result<ConfigTransactionLock, String> {
         .open(&path)
         .map_err(|error| format!("failed to open config transaction lock: {error}"))?;
     crate::fsperm::harden_file(&path);
-    fs4::FileExt::lock(&file)
+    lock_file(&file, true, STORAGE_LOCK_TIMEOUT)
         .map_err(|error| format!("failed to lock config transaction: {error}"))?;
     Ok(ConfigTransactionLock {
         _file: file,
@@ -598,7 +600,7 @@ fn write_config_at(path: &std::path::Path, config: &AppConfig) -> Result<(), Str
     }
     crate::fsperm::harden_file(&tmp);
 
-    std::fs::rename(&tmp, path).map_err(|e| {
+    crate::sandbox::replace_file(&tmp, path).map_err(|e| {
         let _ = std::fs::remove_file(&tmp);
         format!("failed to replace config: {e}")
     })

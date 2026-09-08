@@ -22,7 +22,7 @@ pub(crate) enum TerminalEvent {
 }
 
 struct TermSession {
-    master: Box<dyn MasterPty + Send>,
+    master: Arc<Mutex<Box<dyn MasterPty + Send>>>,
     writer: TerminalWriter,
     child: Arc<Mutex<Box<dyn portable_pty::Child + Send + Sync>>>,
     _containment: crate::proc::ProcessTreeGuard,
@@ -194,17 +194,26 @@ struct OwnedSession<T> {
 
 struct SessionRegistry<T> {
     sessions: HashMap<String, OwnedSession<T>>,
+    window_generations: HashMap<String, u64>,
 }
 
 impl<T> Default for SessionRegistry<T> {
     fn default() -> Self {
         Self {
             sessions: HashMap::new(),
+            window_generations: HashMap::new(),
         }
     }
 }
 
 impl<T> SessionRegistry<T> {
+    fn generation(&mut self, window_label: &str) -> u64 {
+        *self
+            .window_generations
+            .entry(window_label.to_string())
+            .or_default()
+    }
+
     fn insert(&mut self, owner: SessionOwner, session: T) -> String {
         let mut id = random_session_id();
         while self.sessions.contains_key(&id) {
@@ -241,6 +250,11 @@ impl<T> SessionRegistry<T> {
     }
 
     fn drain_window(&mut self, window_label: &str) -> Vec<T> {
+        let generation = self
+            .window_generations
+            .entry(window_label.to_string())
+            .or_default();
+        *generation = generation.wrapping_add(1);
         let ids: Vec<String> = self
             .sessions
             .iter()
@@ -253,6 +267,9 @@ impl<T> SessionRegistry<T> {
     }
 
     fn drain_all(&mut self) -> Vec<T> {
+        for generation in self.window_generations.values_mut() {
+            *generation = generation.wrapping_add(1);
+        }
         self.sessions
             .drain()
             .map(|(_, record)| record.session)
@@ -424,16 +441,43 @@ pub async fn term_open<R: Runtime>(
 ) -> Result<String, String> {
     let owner = webview_command_owner(&webview, &project_id)?;
     let cwd = crate::paths::project_dir(&project_id)?;
+    let ticket = terminal_open_ticket(owner);
     tauri::async_runtime::spawn_blocking(move || {
-        open_terminal(&cwd, owner, cols, rows, channel, default_shell())
+        open_terminal_with_ticket(&cwd, ticket, cols, rows, channel, default_shell())
     })
     .await
     .map_err(|e| format!("failed to start shell: {e}"))?
 }
 
+struct TerminalOpenTicket {
+    owner: SessionOwner,
+    generation: u64,
+}
+
+fn terminal_open_ticket(owner: SessionOwner) -> TerminalOpenTicket {
+    let generation = SESSIONS
+        .lock()
+        .expect("terminal registry poisoned")
+        .get_or_insert_with(SessionRegistry::default)
+        .generation(&owner.window_label);
+    TerminalOpenTicket { owner, generation }
+}
+
+#[cfg(test)]
 fn open_terminal(
     cwd: &Path,
     owner: SessionOwner,
+    cols: u16,
+    rows: u16,
+    channel: Channel<TerminalEvent>,
+    cmd: CommandBuilder,
+) -> Result<String, String> {
+    open_terminal_with_ticket(cwd, terminal_open_ticket(owner), cols, rows, channel, cmd)
+}
+
+fn open_terminal_with_ticket(
+    cwd: &Path,
+    ticket: TerminalOpenTicket,
     cols: u16,
     rows: u16,
     channel: Channel<TerminalEvent>,
@@ -511,19 +555,22 @@ fn open_terminal(
     let writer = TerminalWriter::start(writer, Some(channel.clone()))?;
 
     let child = Arc::new(Mutex::new(child));
+    let session = TermSession {
+        master: Arc::new(Mutex::new(pty.master)),
+        writer,
+        child: Arc::clone(&child),
+        _containment: containment,
+    };
     let id = {
         let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
-        sessions
-            .get_or_insert_with(SessionRegistry::default)
-            .insert(
-                owner,
-                TermSession {
-                    master: pty.master,
-                    writer,
-                    child: Arc::clone(&child),
-                    _containment: containment,
-                },
-            )
+        let registry = sessions.get_or_insert_with(SessionRegistry::default);
+        if registry.generation(&ticket.owner.window_label) != ticket.generation {
+            drop(sessions);
+            drop(reader);
+            stop_session(session);
+            return Err("terminal window was reloaded while the shell was starting".into());
+        }
+        registry.insert(ticket.owner, session)
     };
     println!(
         "term: session {id} opened pty={:.1}ms spawn={:.1}ms contain={:.1}ms",
@@ -658,7 +705,7 @@ fn write_terminal(owner: &SessionOwner, id: &str, data: &str) -> Result<WriteRec
 }
 
 #[tauri::command]
-pub fn term_resize<R: Runtime>(
+pub async fn term_resize<R: Runtime>(
     webview: Webview<R>,
     project_id: String,
     id: String,
@@ -666,17 +713,28 @@ pub fn term_resize<R: Runtime>(
     rows: u16,
 ) -> Result<(), String> {
     let owner = webview_command_owner(&webview, &project_id)?;
-    resize_terminal(&owner, &id, cols, rows)
+    tauri::async_runtime::spawn_blocking(move || resize_terminal(&owner, &id, cols, rows))
+        .await
+        .map_err(|error| format!("failed to resize terminal: {error}"))?
 }
 
 fn resize_terminal(owner: &SessionOwner, id: &str, cols: u16, rows: u16) -> Result<(), String> {
-    let sessions = SESSIONS.lock().expect("terminal registry poisoned");
-    let session = sessions
-        .as_ref()
-        .ok_or_else(|| "terminal session is not open".to_string())?
-        .get(id, owner)?;
-    session
-        .master
+    // ResizePseudoConsole can wait on ConPTY. Never keep the global registry
+    // locked while resizing, or even input/close for other terminals stalls.
+    let master = {
+        let sessions = SESSIONS.lock().expect("terminal registry poisoned");
+        Arc::clone(
+            &sessions
+                .as_ref()
+                .ok_or_else(|| "terminal session is not open".to_string())?
+                .get(id, owner)?
+                .master,
+        )
+    };
+    let master = master
+        .lock()
+        .map_err(|_| "terminal resize is unavailable")?;
+    master
         .resize(PtySize {
             rows,
             cols,
@@ -711,6 +769,69 @@ fn kill_terminal(owner: &SessionOwner, id: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn reload_rejects_an_in_flight_terminal_open() {
+        let directory = tempfile::tempdir().unwrap();
+        let owner = SessionOwner::new("audit-stale-open", "proj");
+        let ticket = terminal_open_ticket(owner.clone());
+        kill_window_sessions(&owner.window_label);
+        let result = open_terminal_with_ticket(
+            directory.path(),
+            ticket,
+            80,
+            24,
+            Channel::new(|_| Ok(())),
+            nonreading_terminal_fixture(),
+        );
+        assert!(result.unwrap_err().contains("reloaded"));
+        let sessions = SESSIONS.lock().unwrap();
+        assert!(!sessions
+            .as_ref()
+            .unwrap()
+            .sessions
+            .values()
+            .any(|record| record.owner == owner));
+    }
+
+    #[test]
+    fn slow_resize_does_not_hold_the_global_session_registry() {
+        let directory = tempfile::tempdir().unwrap();
+        let owner = SessionOwner::new("audit-resize-lock", "proj");
+        let id = open_terminal(
+            directory.path(),
+            owner.clone(),
+            80,
+            24,
+            Channel::new(|_| Ok(())),
+            nonreading_terminal_fixture(),
+        )
+        .unwrap();
+        let master = {
+            let sessions = SESSIONS.lock().unwrap();
+            Arc::clone(&sessions.as_ref().unwrap().get(&id, &owner).unwrap().master)
+        };
+        let locked = master.lock().unwrap();
+        let resize_owner = owner.clone();
+        let resize_id = id.clone();
+        let (started, ready) = std::sync::mpsc::channel();
+        let resize = std::thread::spawn(move || {
+            started.send(()).unwrap();
+            resize_terminal(&resize_owner, &resize_id, 100, 30)
+        });
+        ready
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        let registry_available = SESSIONS.try_lock().is_ok();
+        drop(locked);
+        resize.join().unwrap().unwrap();
+        kill_terminal(&owner, &id).unwrap();
+        assert!(
+            registry_available,
+            "resize blocked input/close for every terminal"
+        );
+    }
+
     #[tokio::test]
     async fn oversized_pastes_are_rejected_whole_and_leave_the_terminal_usable() {
         let writer = TerminalWriter::start(Box::new(std::io::sink()), None).unwrap();

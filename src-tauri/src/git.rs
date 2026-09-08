@@ -51,7 +51,7 @@ fn run_configured_git(
         .env_remove("GIT_INDEX_FILE")
         .env("GIT_OPTIONAL_LOCKS", if optional_locks { "1" } else { "0" });
     configure(&mut command);
-    output_contained(&mut command).map_err(|e| format!("failed to run git: {e}"))
+    output_contained(command).map_err(|e| format!("failed to run git: {e}"))
 }
 
 pub(crate) fn ensure_repository(project_dir: &Path) -> Result<bool, String> {
@@ -476,7 +476,8 @@ fn run_git_authed(
         .env_remove("GIT_DIR")
         .env_remove("GIT_WORK_TREE")
         .env_remove("GIT_INDEX_FILE");
-    output_contained(&mut command).map_err(|e| format!("failed to run git: {e}"))
+    crate::proc::output_contained_with_timeout(command, std::time::Duration::from_secs(300))
+        .map_err(|e| format!("failed to run git: {e}"))
 }
 
 /// Attach the authenticated repository history to content imported through the

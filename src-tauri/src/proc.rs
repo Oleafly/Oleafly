@@ -11,7 +11,10 @@
 //! `no_console()` is a no-op on macOS and Linux, where a spawned child has no
 //! console window to hide; those platforms compile the trivial branch.
 
-use std::process::{Command, Stdio};
+use std::process::Command;
+
+mod output;
+pub use output::{output_contained, output_contained_with_timeout};
 
 /// `CREATE_NO_WINDOW` (winbase.h): the child runs without allocating a console.
 #[cfg(windows)]
@@ -51,39 +54,6 @@ impl NoConsole for tokio::process::Command {
     #[cfg(not(windows))]
     fn no_console(&mut self) -> &mut Self {
         self
-    }
-}
-
-/// Run a synchronous command while applying the same Windows Job Object
-/// containment used by async compiler and language-server children.
-pub fn output_contained(command: &mut Command) -> std::io::Result<std::process::Output> {
-    // `Command::output` configures these streams for the caller, but the
-    // Windows path has to use `spawn` so the suspended child can be assigned
-    // to its Job Object before it starts. Reproduce `output` semantics before
-    // spawning or `wait_with_output` has no pipes to collect.
-    command
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        command.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED);
-        let mut child = command.spawn()?;
-        let pid = child.id();
-        let _containment = match contain_process_tree(pid) {
-            Ok(containment) => containment,
-            Err(error) => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(error);
-            }
-        };
-        child.wait_with_output()
-    }
-    #[cfg(not(windows))]
-    {
-        command.output()
     }
 }
 
@@ -361,17 +331,22 @@ pub async fn terminate_process_tree(pid: u32) {
     }
     #[cfg(windows)]
     {
-        let _ = tokio::process::Command::new("taskkill")
+        let mut command = tokio::process::Command::new("taskkill");
+        command
             .no_console()
             .args(["/PID", &pid.to_string(), "/T", "/F"])
-            .status()
-            .await;
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .kill_on_drop(true);
+        let _ = tokio::time::timeout(std::time::Duration::from_secs(2), command.status()).await;
     }
 }
 
 #[cfg(all(test, windows))]
 mod windows_tests {
     use super::*;
+    use std::process::Stdio;
     use std::time::Duration;
 
     #[tokio::test]
@@ -421,13 +396,14 @@ mod windows_tests {
 
     #[test]
     fn synchronous_commands_run_inside_a_job_object() {
-        let output = output_contained(Command::new("cmd.exe").args([
+        let mut command = Command::new("cmd.exe");
+        command.args([
             "/D",
             "/S",
             "/C",
             "echo contained-out & echo contained-err 1>&2",
-        ]))
-        .expect("run contained synchronous child");
+        ]);
+        let output = output_contained(command).expect("run contained synchronous child");
 
         assert!(output.status.success());
         assert!(String::from_utf8_lossy(&output.stdout).contains("contained-out"));

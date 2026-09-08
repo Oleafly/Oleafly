@@ -20,6 +20,13 @@ pub fn harden_file(path: &Path) {
     }
 }
 
+/// Discovery files must fail before writing credentials if ACL installation
+/// fails; other existing callers deliberately use best-effort hardening.
+#[cfg(windows)]
+pub fn harden_file_checked(path: &Path) -> std::io::Result<()> {
+    windows::harden(path)
+}
+
 #[cfg(windows)]
 mod windows {
     use std::io;

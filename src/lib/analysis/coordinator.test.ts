@@ -16,6 +16,7 @@ import {
 import { createProjectAnalysisStore } from "@/store/project-analysis";
 import {
   ProjectAnalysisCoordinator,
+  StaleProjectAnalysisResultError,
 } from "./coordinator";
 
 interface Sent {
@@ -150,6 +151,24 @@ async function openDocument(client: LanguageServiceClient) {
 }
 
 describe("ProjectAnalysisCoordinator", () => {
+  it("does not publish late results or start indexing after disposal", async () => {
+    const transport = new CoordinatorTransport();
+    const client = await readyClient(transport);
+    const store = createProjectAnalysisStore();
+    const coordinator = new ProjectAnalysisCoordinator(client, store);
+    coordinator.activateProject({ projectId: "project-a", projectRevision: 1 });
+    const pending = coordinator.requestWorkspaceSymbols({ query: "" });
+    const request = await requestAt(transport, "workspace/symbol");
+    const rejected = expect(pending).rejects.toBeInstanceOf(StaleProjectAnalysisResultError);
+    coordinator.dispose();
+    const snapshot = store.getState().snapshot;
+    transport.respond(request, []);
+    await rejected;
+    expect(store.getState().snapshot).toBe(snapshot);
+    expect(() => coordinator.beginIndex()).toThrow(StaleProjectAnalysisResultError);
+    expect(store.getState().snapshot).toBe(snapshot);
+  });
+
   it("normalizes diagnostics and exposes advertised/unsupported placeholders", async () => {
     const transport = new CoordinatorTransport();
     const client = await readyClient(transport);

@@ -5,7 +5,6 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
 use crate::paths;
-use crate::proc::NoConsole;
 use crate::sandbox::{atomic_write, guard_export_dest, resolve, AtomicFile};
 
 /// Public path resolver (sandbox). Re-exported so call sites keep importing
@@ -4342,11 +4341,11 @@ fn canonical_supported_pandoc(candidate: &Path) -> Option<PathBuf> {
     if !candidate.is_file() {
         return None;
     }
-    let output = Command::new(&candidate)
-        .no_console()
-        .arg("--version")
-        .output()
-        .ok()?;
+    let mut command = Command::new(&candidate);
+    command.arg("--version");
+    let output =
+        crate::proc::output_contained_with_timeout(command, std::time::Duration::from_secs(5))
+            .ok()?;
     (output.status.success() && pandoc_version_supported(&output.stdout)).then_some(candidate)
 }
 
@@ -4905,11 +4904,11 @@ async fn download_pandoc_impl(
         .map_err(|e| e.to_string())?;
     staging_file.sync_all().map_err(|e| e.to_string())?;
     drop(staging_file);
-    let version = std::process::Command::new(&staging)
-        .no_console()
-        .arg("--version")
-        .output()
-        .map_err(|e| format!("Downloaded Pandoc failed to run: {e}"))?;
+    let mut command = std::process::Command::new(&staging);
+    command.arg("--version");
+    let version =
+        crate::proc::output_contained_with_timeout(command, std::time::Duration::from_secs(5))
+            .map_err(|e| format!("Downloaded Pandoc failed to run: {e}"))?;
     if !version.status.success()
         || !String::from_utf8_lossy(&version.stdout).starts_with("pandoc 3.9.0.2")
     {

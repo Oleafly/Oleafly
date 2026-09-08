@@ -2894,6 +2894,7 @@ dependencies = [
 name = "oleafly-core"
 version = "0.1.0"
 dependencies = [
+ "fs4",
  "regex",
  "serde",
  "serde_json",
@@ -2908,6 +2909,7 @@ dependencies = [
  "fastcdc",
  "fs4",
  "libc",
+ "oleafly-core",
  "rand 0.8.7",
  "rusqlite",
  "same-file",

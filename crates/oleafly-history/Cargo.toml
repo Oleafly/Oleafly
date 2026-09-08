@@ -8,6 +8,7 @@ edition = "2021"
 rust-version = "1.77"
 
 [dependencies]
+oleafly-core = { path = "../oleafly-core" }
 blake3 = "=1.5.5"
 fastcdc = "3"
 fs4 = "1.1"

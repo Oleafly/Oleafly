@@ -691,6 +691,7 @@ async fn run_command(
         .env("openout_any", "p")
         .env("openin_any", "p")
         .env("shell_escape", "f")
+        .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
@@ -711,7 +712,7 @@ async fn run_command(
         Ok(containment) => containment,
         Err(error) => {
             let _ = child.start_kill();
-            let _ = child.wait().await;
+            let _ = tokio::time::timeout(Duration::from_secs(2), child.wait()).await;
             return Err(Error::new(
                 ErrorKind::Build,
                 format!("failed to contain compiler process: {error}"),
@@ -726,32 +727,36 @@ async fn run_command(
         .stderr
         .take()
         .ok_or_else(|| Error::new(ErrorKind::Build, "compiler stderr was not captured"))?;
-    let out_sink = sink.clone();
-    let err_sink = sink.clone();
-    let stdout_task = tokio::spawn(read_stream(stdout, out_sink));
-    let stderr_task = tokio::spawn(read_stream(stderr, err_sink));
-    let status = match tokio::time::timeout(timeout, child.wait()).await {
-        Ok(result) => result.map_err(|error| Error::new(ErrorKind::Build, error.to_string()))?,
-        Err(_) => {
-            drop(containment);
-            let _ = child.wait().await;
-            let _ = stdout_task.await;
-            let _ = stderr_task.await;
-            return Err(Error::new(
-                ErrorKind::Build,
-                format!("compiler timed out after {} seconds", timeout.as_secs()),
-            ));
+    let mut containment = Some(containment);
+    // Readers belong to this future, so cancellation closes them rather than
+    // leaving detached log tasks and pipe handles behind.
+    let result = tokio::time::timeout(timeout, async {
+        let wait = async {
+            let status = child.wait().await?;
+            drop(containment.take());
+            Ok::<_, std::io::Error>(status)
+        };
+        tokio::try_join!(
+            wait,
+            read_stream(stdout, sink.clone()),
+            read_stream(stderr, sink.clone())
+        )
+    })
+    .await;
+    drop(containment);
+    let (status, mut log, stderr) = match result {
+        Ok(Ok(output)) => output,
+        error => {
+            let _ = child.start_kill();
+            let _ = tokio::time::timeout(Duration::from_secs(2), child.wait()).await;
+            let message = match error {
+                Ok(Err(error)) => error.to_string(),
+                Err(_) => format!("compiler timed out after {} seconds", timeout.as_secs()),
+                Ok(Ok(_)) => unreachable!(),
+            };
+            return Err(Error::new(ErrorKind::Build, message));
         }
     };
-    drop(containment);
-    let mut log = stdout_task
-        .await
-        .map_err(|error| Error::new(ErrorKind::Build, error.to_string()))?
-        .map_err(|error| Error::new(ErrorKind::Build, error.to_string()))?;
-    let stderr = stderr_task
-        .await
-        .map_err(|error| Error::new(ErrorKind::Build, error.to_string()))?
-        .map_err(|error| Error::new(ErrorKind::Build, error.to_string()))?;
     append_bounded(&mut log, stderr.as_bytes());
     Ok((log, status.code()))
 }
@@ -1384,6 +1389,47 @@ mod tests {
     #[test]
     fn contained_command_child() {
         print!("core-ok");
+    }
+
+    #[tokio::test]
+    async fn compiler_deadline_covers_a_process_with_closed_output_on_windows_too() {
+        let directory = TempDir::new().unwrap();
+        let started = Instant::now();
+        let arguments = [
+            OsString::from("-e"),
+            OsString::from(
+                "require('fs').closeSync(1);require('fs').closeSync(2);setInterval(()=>{},1000)",
+            ),
+        ];
+        let error = run_command(
+            Path::new("node"),
+            &arguments,
+            directory.path(),
+            Duration::from_millis(250),
+            &CompilerLog::default(),
+        )
+        .await
+        .unwrap_err();
+        assert!(error.to_string().contains("timed out"));
+        assert!(started.elapsed() < Duration::from_secs(5));
+    }
+
+    #[tokio::test]
+    async fn compiler_completion_stops_descendants_holding_log_pipes() {
+        let directory = TempDir::new().unwrap();
+        let arguments = [OsString::from("-e"), OsString::from(
+            "require('child_process').spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:['ignore',1,2]});process.stdout.write('compiled');process.exit(0)")];
+        let (output, status) = run_command(
+            Path::new("node"),
+            &arguments,
+            directory.path(),
+            Duration::from_secs(5),
+            &CompilerLog::default(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(status, Some(0));
+        assert_eq!(output, "compiled");
     }
 
     #[cfg(unix)]

@@ -4,6 +4,7 @@
 //! tree. Restores can therefore replace portable project files while readers
 //! and writers continue to coordinate on one stable inode.
 
+use oleafly_core::locking::{lock_file, STORAGE_LOCK_TIMEOUT};
 use std::fs::{File, OpenOptions};
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -34,7 +35,7 @@ impl ProjectWorktreeLock {
         {
             let _waiting =
                 crate::stall_trace::watch(|| format!("worktree shared wait on {project_id}"));
-            fs4::FileExt::lock_shared(&file)
+            lock_file(&file, false, STORAGE_LOCK_TIMEOUT)
                 .map_err(|error| format!("could not acquire project read lock: {error}"))?;
         }
         let _held = held(project_id, "shared");
@@ -63,7 +64,7 @@ impl ProjectWorktreeLock {
         {
             let _waiting =
                 crate::stall_trace::watch(|| format!("worktree exclusive wait on {project_id}"));
-            fs4::FileExt::lock(&file)
+            lock_file(&file, true, STORAGE_LOCK_TIMEOUT)
                 .map_err(|error| format!("could not acquire project write lock: {error}"))?;
         }
         let _held = held(project_id, "exclusive");
@@ -128,7 +129,7 @@ impl ProjectWorktreeLock {
         {
             let _waiting =
                 crate::stall_trace::watch(|| format!("worktree identity wait on {project_id}"));
-            fs4::FileExt::lock(&file)
+            lock_file(&file, true, STORAGE_LOCK_TIMEOUT)
                 .map_err(|error| format!("could not acquire project identity lock: {error}"))?;
         }
         let _held = held(project_id, "identity");
@@ -143,7 +144,7 @@ impl ProjectWorktreeLock {
         {
             let _waiting =
                 crate::stall_trace::watch(|| format!("worktree recovery wait on {project_id}"));
-            fs4::FileExt::lock(&file)
+            lock_file(&file, true, STORAGE_LOCK_TIMEOUT)
                 .map_err(|error| format!("could not acquire project recovery lock: {error}"))?;
         }
         let _held = held(project_id, "recovery");
