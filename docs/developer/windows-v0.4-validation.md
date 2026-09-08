@@ -45,7 +45,10 @@ a packaged test binary instead of rebuilding the development app per spec.
 | Settings persistence | 66 native tests passed, including encrypted-secret retention and endpoint changes |
 | Browser preview | Nine checks passed across Chromium, Firefox, and WebKit for PDF selection, Markdown math/fonts, and detached preview |
 | Source Control concurrency | 31 frontend tests passed, including 20 rapid refresh and staging clicks |
+| Native regression sweep | 41 cases passed across create/compile, Git, editor toolbar, preview controls, library, SyncTeX, file collisions, and Git restore, including isolated reruns of two corrected Git waits; one remote-publish case skipped |
+| Template compilation | All 26 cases passed across the gallery and image/export checks, including the Markdown regression rerun |
 | Research task storage and recovery | 42 passed after the worker change, including a regression that checks execution leaves the calling thread and preserves errors |
+| Research command boundary | Task create/list/edit/cancel-retry, transcript reads, and preview error preservation passed through the asynchronous commands |
 | Command-line integration | 11 passed, including build output contracts and watch recovery |
 | Language services | TexLab 5.26.0 and Tinymist 0.15.2 passed seven rapid document revisions with no stale diagnostic regression |
 | Other Rust workspace crates | 312 passed: agent 237, CLI 23, core 28, history 24 |

@@ -136,17 +136,17 @@ test("stage, diff, and commit without requiring a connected account", async ({ t
   await typeInEditorAfter(tauriPage, "here.", ` ${marker}`);
 
   await openRailTab(tauriPage, "Source Control");
-  // The autosave may still be landing and the panel refreshes on mount, not
-  // on file saves, so refresh until the change shows.
-  for (let i = 0; i < 20; i++) {
-    await tauriPage.click('[aria-label="Refresh"]');
-    const ready = await tauriPage.evaluate<boolean>(
-      `!!document.querySelector('[data-testid="git-change-main.tex"]')`,
-    );
-    if (ready) break;
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-  await tauriPage.click('[data-testid="git-change-main.tex"]', { timeout: 5_000 });
+  // Observe autosave before requesting one final Git snapshot. Repeated
+  // refresh clicks invalidate in-flight snapshots on a slow Windows host.
+  await tauriPage.waitForFunction(
+    `import("/src/store/files.ts").then(({ useFilesStore }) =>
+      useFilesStore.getState().files["main.tex"]?.dirty === false)`,
+    60_000,
+  );
+  await tauriPage.click('[aria-label="Refresh"]');
+  await expect(tauriPage.getByTestId("git-change-main.tex")).toBeVisible({ timeout: 30_000 });
+  await tauriPage.click('[data-testid="git-change-main.tex"]');
+  await tauriPage.click('[aria-label="Split view"]');
   await tauriPage.waitForFunction(
     `!!document.querySelector('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText, .cm-merge-a, .cm-merge-b, .cm-mergeView')`,
     15_000,
@@ -154,18 +154,18 @@ test("stage, diff, and commit without requiring a connected account", async ({ t
 
   // Keep the working diff open while its INDEX baseline changes. The editor
   // must remove staged additions and show them again after unstaging.
-  await tauriPage.click('[aria-label="Stage all"]');
+  await stageAllGitChanges(tauriPage);
   await tauriPage.waitForFunction(
     `!!document.querySelector('[aria-label="Unstage all"]') &&
       !!document.querySelector('.cm-mergeView') &&
       !document.querySelector('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')`,
-    15_000,
+    30_000,
   );
-  await tauriPage.click('[aria-label="Unstage all"]');
+  await tauriPage.evaluate(`document.querySelector('[aria-label="Unstage all"]').click()`);
   await tauriPage.waitForFunction(
     `!!document.querySelector('[aria-label="Stage all"]') &&
       !!document.querySelector('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')`,
-    15_000,
+    30_000,
   );
 
   const message = `e2e: commit ${marker}`;

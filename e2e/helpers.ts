@@ -1779,6 +1779,14 @@ export async function clickTabByText(page: Page, scope: string, name: string, ti
 }
 
 export async function stageAllGitChanges(page: Page) {
+  await page.waitForFunction(
+    `import("/src/store/files.ts").then(({ useFilesStore }) =>
+      Object.values(useFilesStore.getState().files).every((file) => !file.dirty))`,
+    60_000,
+  );
+  // The rail may already be open from a previous commit. Request the current
+  // saved working tree instead of relying on a mount-time status snapshot.
+  await page.click('[aria-label="Refresh"]');
   // The control is hover-revealed. Wait for Git's initial status, then invoke
   // the real button once; polling must not enqueue more stage/refresh work.
   await page.waitForFunction(

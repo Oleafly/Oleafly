@@ -1041,6 +1041,98 @@ mod tests {
         assert_eq!(error, "storage failed");
     }
 
+    #[test]
+    fn async_storage_commands_preserve_task_lifecycle_and_preview_errors() {
+        use tauri::Manager as _;
+
+        let _env = crate::paths::data_dir_env_lock();
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", temp.path());
+        let project = crate::paths::create_project_dir("command-paper").unwrap();
+        std::fs::write(project.join("main.tex"), "original source").unwrap();
+        let app = tauri::test::mock_builder()
+            .manage(ResearchTaskState::for_test(temp.path().join("tasks"), 1))
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        tauri::async_runtime::block_on(async {
+            let state = || app.state::<ResearchTaskState>();
+            assert!(research_task_list(state(), "../outside".into())
+                .await
+                .is_err());
+            let draft = ResearchTaskDraft {
+                project_id: "command-paper".into(),
+                title: "Review source".into(),
+                prompt: "Check the manuscript".into(),
+                runtime_id: "fixture".into(),
+                agent_id: "fixture-agent".into(),
+                model_id: "fixture-model".into(),
+                skill_ids: Vec::new(),
+                dependency_ids: Vec::new(),
+            };
+            let task = research_task_create(state(), draft.clone()).await.unwrap();
+            assert_eq!(task.status, ResearchTaskStatus::Queued);
+            assert_eq!(
+                research_task_list(state(), draft.project_id.clone())
+                    .await
+                    .unwrap(),
+                vec![task.clone()]
+            );
+            let edited = research_task_edit(
+                state(),
+                task.id.clone(),
+                ResearchTaskEdit {
+                    title: "Revised review".into(),
+                    prompt: draft.prompt,
+                    runtime_id: draft.runtime_id,
+                    agent_id: draft.agent_id,
+                    model_id: draft.model_id,
+                    skill_ids: Vec::new(),
+                    dependency_ids: Vec::new(),
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(edited.title, "Revised review");
+            assert!(research_task_retry(state(), task.id.clone())
+                .await
+                .unwrap_err()
+                .contains("failed or cancelled"));
+            state().store().unwrap().request_cancel(&task.id).unwrap();
+            let retried = research_task_retry(state(), task.id.clone()).await.unwrap();
+            assert_eq!(retried.status, ResearchTaskStatus::Queued);
+            assert_eq!(retried.title, edited.title);
+            let transcript = research_task_events(state(), task.id.clone(), 0, None, None)
+                .await
+                .unwrap();
+            assert!(transcript.events.is_empty());
+            assert_eq!(transcript.next_sequence, None);
+            for path in ["main.tex", "../outside"] {
+                let expected_file =
+                    preview::file_preview(&state().store().unwrap(), &task.id, path).unwrap_err();
+                assert_eq!(
+                    research_task_file_preview(state(), task.id.clone(), path.into())
+                        .await
+                        .unwrap_err(),
+                    expected_file
+                );
+                let expected_artifact =
+                    preview::artifact_preview(&state().store().unwrap(), &task.id, path)
+                        .unwrap_err();
+                assert_eq!(
+                    research_task_artifact_preview(state(), task.id.clone(), path.into())
+                        .await
+                        .unwrap_err(),
+                    expected_artifact
+                );
+            }
+            assert_eq!(
+                std::fs::read_to_string(project.join("main.tex")).unwrap(),
+                "original source"
+            );
+        });
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
     struct FixtureRuntime {
         runs: AtomicUsize,
     }

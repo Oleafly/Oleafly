@@ -8,11 +8,11 @@ import { spawnSync } from "node:child_process";
 
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
 const suffix = process.platform === "win32" ? ".exe" : "";
-const target = process.env.OLEAFLY_SIDECAR_TARGET ?? (
-  process.platform === "win32" ? "x86_64-pc-windows-msvc" :
-  process.platform === "darwin" ? `${process.arch === "arm64" ? "aarch64" : "x86_64"}-apple-darwin` :
-  `${process.arch === "arm64" ? "aarch64" : "x86_64"}-unknown-linux-gnu`
-);
+const architecture = process.arch === "arm64" ? "aarch64" : "x86_64";
+let defaultTarget = `${architecture}-unknown-linux-gnu`;
+if (process.platform === "win32") defaultTarget = "x86_64-pc-windows-msvc";
+if (process.platform === "darwin") defaultTarget = `${architecture}-apple-darwin`;
+const target = process.env.OLEAFLY_SIDECAR_TARGET ?? defaultTarget;
 const sidecar = (name) => join(repo, "src-tauri", "binaries", `${name}-${target}${suffix}`);
 const root = mkdtempSync(join(tmpdir(), "oleafly-engine-smoke-"));
 const texBin = process.env.OLEAFLY_TEX_BIN_DIR;
@@ -42,7 +42,8 @@ See @smoke.
 #table(columns: 2, [Case], [Result], [Base], [42])
 `;
 const cases = [];
-for (const [name, source] of [["base", latex()], ["fontspec", latex(fontspec)], ["invalid", "\\documentclass{article}\\begin{document}\\unknownsmokecommand\\end{document}"]]) {
+const invalidLatex = String.raw`\documentclass{article}\begin{document}\unknownsmokecommand\end{document}`;
+for (const [name, source] of [["base", latex()], ["fontspec", latex(fontspec)], ["invalid", invalidLatex]]) {
   cases.push({ name: `tectonic-${name}`, executable: sidecar("tectonic"), args: ["--keep-logs", "--synctex", "main.tex"], source, extension: "tex", invalid: name === "invalid" });
 }
 const typstCases = [["base", typst()], ["font", typst('#set text(font: "Libertinus Serif")')], ["invalid", "#unknownsmokecommand()"]];
@@ -52,8 +53,9 @@ for (const [name, source] of typstCases) {
 }
 if (texBin) {
   for (const [engine, flag] of [["pdflatex", "-pdf"], ["xelatex", "-xelatex"], ["lualatex", "-lualatex"]]) {
+    const validSource = latex(engine === "pdflatex" ? "" : fontspec);
     for (const invalid of [false, true]) {
-      cases.push({ name: `${engine}-${invalid ? "invalid" : "base"}`, executable: join(texBin, `latexmk${suffix}`), args: [flag, "-interaction=nonstopmode", "-halt-on-error", "-synctex=1", "main.tex"], source: invalid ? "\\documentclass{article}\\begin{document}\\unknownsmokecommand\\end{document}" : latex(engine === "pdflatex" ? "" : fontspec), extension: "tex", invalid });
+      cases.push({ name: `${engine}-${invalid ? "invalid" : "base"}`, executable: join(texBin, `latexmk${suffix}`), args: [flag, "-interaction=nonstopmode", "-halt-on-error", "-synctex=1", "main.tex"], source: invalid ? invalidLatex : validSource, extension: "tex", invalid });
     }
   }
 }
