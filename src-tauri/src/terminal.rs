@@ -138,6 +138,9 @@ impl TerminalWriter {
         if self.closed.load(Ordering::Acquire) {
             return Err("terminal session is closed".into());
         }
+        if data.len() > MAX_PENDING_INPUT_BYTES {
+            return Err("This paste is too large. Paste 4 MiB or less at a time.".into());
+        }
         self.pending_bytes
             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |pending| {
                 pending
@@ -708,6 +711,28 @@ fn kill_terminal(owner: &SessionOwner, id: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    async fn oversized_pastes_are_rejected_whole_and_leave_the_terminal_usable() {
+        let writer = TerminalWriter::start(Box::new(std::io::sink()), None).unwrap();
+        let error = writer
+            .enqueue(&"x".repeat(MAX_PENDING_INPUT_BYTES + 1))
+            .unwrap_err();
+        assert!(error.contains("Paste 4 MiB or less"));
+        assert_eq!(writer.pending_bytes.load(Ordering::Acquire), 0);
+        writer
+            .enqueue("echo ready\n")
+            .unwrap()
+            .await
+            .unwrap()
+            .unwrap();
+        writer
+            .enqueue(&"x".repeat(MAX_PENDING_INPUT_BYTES))
+            .unwrap()
+            .await
+            .unwrap()
+            .unwrap();
+    }
+
     #[tokio::test]
     async fn blocked_terminal_input_is_bounded_ordered_and_does_not_block_the_caller() {
         struct BlockedWriter {
