@@ -40,6 +40,7 @@ possible driver, filesystem, external tool, and network failures are absent.
 | Agent/task cleanup waits indefinitely after cancellation or timeout | Cleanup closes the owned tree before a bounded child wait |
 | CLI cancellation detaches compiler log readers | Both readers belong to the command future; its deadline covers output collection and child execution, with bounded cleanup |
 | Disposed project analysis publishes a late result | Disposal clears pending diagnostic references and prevents late result/error publication and new indexing |
+| Returning focus from a toolbar overwrites a source navigation with the old browser selection | Source navigation uses CodeMirror's focus API to synchronize the DOM selection while preventing ancestor scrolling |
 
 Explicitly detached user-requested services and successful background agent
 commands retain their established behavior. Cleanup targets processes owned
@@ -55,6 +56,12 @@ A renderer regression sends 220 intervening resize sizes while the first
 request is stalled and observes only the first and final sizes reaching IPC.
 Editor analysis tests reject a late response after disposal without changing
 the store snapshot.
+
+A Windows CI failure in toolbar definition navigation reproduced locally. The
+analysis and caret were correct before the action, but direct content-DOM focus
+restored the old browser selection after navigation. A regression reproduces the
+DOM/state mismatch before the fix; all 11 core and application editor-controller
+tests pass after using CodeMirror's synchronized, scroll-preserving focus API.
 
 The native application inventory contains 1,330 passing tests across the broad
 run and clean reruns, with five existing ignored cases. The broad run passed
