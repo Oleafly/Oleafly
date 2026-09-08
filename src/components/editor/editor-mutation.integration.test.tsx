@@ -1,4 +1,5 @@
 import { JSDOM } from "jsdom";
+import { standaloneDiagramSource } from "@/lib/diagram-source";
 import { beforeAll, beforeEach, afterEach, expect, it, vi } from "vitest";
 import type { ProjectStateChanged } from "@/lib/tauri";
 import { LATEX_ENGINE } from "@/lib/document-engine";
@@ -30,12 +31,7 @@ vi.mock("@oleafly/diagram", async () => {
     },
   };
 });
-vi.mock("@oleafly/latex", async (original) => ({
-  ...await original<typeof import("@oleafly/latex")>(),
-  diagramFromSource: () => ({ version: 1, nodes: [], edges: [] }),
-  serializeDiagram: () => "Diagram edit",
-  buildStandaloneDoc: ({ code }: { code: string }) => code,
-}));
+
 
 let act: typeof import("@testing-library/react").act;
 let render: typeof import("@testing-library/react").render;
@@ -120,10 +116,12 @@ const EDITED = {
 };
 
 it("queues diagram edits immediately and rejects stale-project and leased callbacks", async () => {
+  const source = standaloneDiagramSource({ version: 1, nodes: [], edges: [] });
+  useFilesStore.setState({ files: { "notes.txt": { content: source, dirty: false } } });
   const mounted = render(<DiagramMainFileView projectId="project" path="notes.txt" />);
   await waitFor(() => expect(mounted.container.querySelector('[data-testid="diagram-canvas"]')).not.toBeNull());
   act(() => mocks.diagramChange?.(EDITED));
-  expect(useFilesStore.getState().files["notes.txt"]).toEqual({ content: "Diagram edit", dirty: true });
+  expect(useFilesStore.getState().files["notes.txt"]).toEqual({ content: standaloneDiagramSource(EDITED), dirty: true });
   expect(mocks.write).not.toHaveBeenCalled();
   useFilesStore.setState({ files: { "notes.txt": { content: "Saved", dirty: false } } });
   const lease = acquireEditorMutationLease("project");

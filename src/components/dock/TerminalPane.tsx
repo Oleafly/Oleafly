@@ -17,7 +17,8 @@ import "@xterm/xterm/css/xterm.css";
 
 type TerminalChannelMessage =
   | { event: "output"; data: string }
-  | { event: "exit" };
+  | { event: "exit" }
+  | { event: "input_error"; message: string };
 
 function terminalBufferText(terminal: Terminal): string {
   const buffer = terminal.buffer.active;
@@ -259,6 +260,10 @@ export function TerminalPane({
       if (message.event === "output") {
         setBooted(true);
         writeOutput(message.data);
+        return;
+      }
+      if (message.event === "input_error") {
+        writeTerminalErrorOnce(terminal, surfacedErrorsRef.current, "The shell could not accept input", message.message, outputWritten);
         return;
       }
       sessionExited = true;

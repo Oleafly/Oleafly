@@ -16,6 +16,12 @@ pub(crate) struct ProjectWorktreeLock {
     _held: crate::stall_trace::Guard,
 }
 
+impl Drop for ProjectWorktreeLock {
+    fn drop(&mut self) {
+        let _ = fs4::FileExt::unlock(&self._file);
+    }
+}
+
 fn held(project_id: &str, mode: &str) -> crate::stall_trace::Guard {
     let project_id = project_id.to_string();
     let mode = mode.to_string();
@@ -32,8 +38,9 @@ impl ProjectWorktreeLock {
                 .map_err(|error| format!("could not acquire project read lock: {error}"))?;
         }
         let _held = held(project_id, "shared");
+        let lock = Self { _file: file, _held };
         reject_pending_restore(project_id)?;
-        Ok(Self { _file: file, _held })
+        Ok(lock)
     }
 
     pub(crate) fn try_shared(project_id: &str) -> Result<Option<Self>, String> {
@@ -46,8 +53,9 @@ impl ProjectWorktreeLock {
             }
         }
         let _held = held(project_id, "shared-try");
+        let lock = Self { _file: file, _held };
         reject_pending_restore(project_id)?;
-        Ok(Some(Self { _file: file, _held }))
+        Ok(Some(lock))
     }
 
     pub(crate) fn exclusive(project_id: &str) -> Result<Self, String> {
@@ -59,8 +67,9 @@ impl ProjectWorktreeLock {
                 .map_err(|error| format!("could not acquire project write lock: {error}"))?;
         }
         let _held = held(project_id, "exclusive");
+        let lock = Self { _file: file, _held };
         reject_pending_restore(project_id)?;
-        Ok(Self { _file: file, _held })
+        Ok(lock)
     }
 
     /// Acquire the read lock, but give up instead of waiting forever. Project
@@ -88,8 +97,9 @@ impl ProjectWorktreeLock {
             }
         }
         let _held = held(project_id, "shared-bounded");
+        let lock = Self { _file: file, _held };
         reject_pending_restore(project_id)?;
-        Ok(Self { _file: file, _held })
+        Ok(lock)
     }
 
     /// Take the write lock only when it is free. Background maintenance that
@@ -105,8 +115,9 @@ impl ProjectWorktreeLock {
             }
         }
         let _held = held(project_id, "try-exclusive");
+        let lock = Self { _file: file, _held };
         reject_pending_restore(project_id)?;
-        Ok(Some(Self { _file: file, _held }))
+        Ok(Some(lock))
     }
 
     /// Identity allocation must serialize on the same stable lock, but an
@@ -292,6 +303,28 @@ mod tests {
 
     use super::ProjectWorktreeLock;
 
+    #[cfg(unix)]
+    #[test]
+    fn dropping_a_guard_releases_the_lock_while_a_duplicated_descriptor_remains() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+
+        let held = ProjectWorktreeLock::exclusive("paper").unwrap();
+        let inherited = held._file.try_clone().unwrap();
+        drop(held);
+        let reacquired = ProjectWorktreeLock::try_exclusive("paper")
+            .unwrap()
+            .is_some();
+        drop(inherited);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert!(
+            reacquired,
+            "a duplicated descriptor retained the released lock"
+        );
+    }
+
     #[test]
     fn exclusive_lock_serializes_other_process_equivalent_handles() {
         let _env_guard = crate::paths::data_dir_env_lock();
@@ -385,5 +418,6 @@ mod tests {
         assert!(ProjectWorktreeLock::try_exclusive("busy-project")
             .unwrap()
             .is_some());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 }

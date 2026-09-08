@@ -688,15 +688,25 @@ impl TaskStore {
     }
 
     pub(crate) fn recover_interrupted(&self) -> Result<Vec<ResearchTask>, String> {
+        self.recover_stopped("Oleafly closed before this run finished. Review its saved workspace or retry the task.")
+    }
+
+    pub(crate) fn recover_after_failed_update(&self) -> Result<Vec<ResearchTask>, String> {
+        self.recover_stopped(
+            "This run stopped to install an update. Review its saved workspace or retry the task.",
+        )
+    }
+
+    fn recover_stopped(&self, reason: &str) -> Result<Vec<ResearchTask>, String> {
         let connection = self.open()?;
         connection
             .execute(
                 "UPDATE research_tasks SET status = 'failed', start_requested = 0,
                    cancel_requested = 0,
-                   error = 'Oleafly closed before this run finished. Review its saved workspace or retry the task.',
+                   error = ?2,
                    updated_at = ?1, finished_at = ?1
                  WHERE status = 'running'",
-                [now_ms()],
+                params![now_ms(), reason],
             )
             .map_err(store_error)?;
         let project_ids = connection

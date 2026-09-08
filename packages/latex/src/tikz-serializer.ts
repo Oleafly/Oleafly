@@ -109,13 +109,22 @@ function pointToTikz(point: DiagramPoint): string {
   return `(${px2cm(point.x)},${px2cm(-point.y)})`;
 }
 
-function edgeToTikz(e: DiagEdge, nodes: Map<string, DiagNode>): string {
+function orthogonalPointsToTikz(points: DiagramPoint[], source: string, target: string, legacyCoordinates: boolean): string[] {
+  const coordinates = points.map(pointToTikz);
+  if (!legacyCoordinates) {
+    coordinates[0] = `(${source})`;
+    coordinates[coordinates.length - 1] = `(${target})`;
+  }
+  return coordinates;
+}
+
+function edgeToTikz(e: DiagEdge, nodes: Map<string, DiagNode>, sourceVersion: DiagramSourceVersion): string {
   const opts: string[] = [];
   const a = ARROW_OPT[e.arrow];
   if (a) opts.push(a);
   const edgeDash = dash(e.style);
   if (edgeDash) opts.push(edgeDash);
-  opts.push(`line width=${px2cm(2)}cm`);
+  opts.push(`line width=${px2cm(sourceVersion === "0.2.6" ? 1 : 2)}cm`);
   const sourceHandle = (e.sourceHandle ?? "b") as DiagramHandle;
   const targetHandle = (e.targetHandle ?? "t") as DiagramHandle;
   if (e.routing === "orthogonal") opts.push(`rounded corners=${px2cm(5)}cm`);
@@ -141,9 +150,7 @@ function edgeToTikz(e: DiagEdge, nodes: Map<string, DiagNode>): string {
         sourceHandle,
         targetHandle,
       );
-      const points = route.points.map(pointToTikz);
-      points[0] = `(${source})`;
-      points[points.length - 1] = `(${target})`;
+      const points = orthogonalPointsToTikz(route.points, source, target, sourceVersion !== "current");
       const path = points.join(" -- ");
       const label = e.label
         ? `\n    \\node[fill=white, font=\\small] at ${pointToTikz(route.label)} {${escapeLatex(e.label)}};`
@@ -177,14 +184,16 @@ function isGroupContainer(n: DiagNode): boolean {
   return n.shape === "roundrect" && !n.label;
 }
 
-export function modelToTikz(model: DiagramModel): string {
+export type DiagramSourceVersion = "current" | "0.3.13" | "0.2.6";
+
+export function modelToTikz(model: DiagramModel, sourceVersion: DiagramSourceVersion = "current"): string {
   const defs = new Set<string>();
-  const containerNodes = model.nodes.filter(isGroupContainer);
-  const regularNodes = model.nodes.filter((n) => !isGroupContainer(n));
+  const containerNodes = sourceVersion === "0.2.6" ? [] : model.nodes.filter(isGroupContainer);
+  const regularNodes = sourceVersion === "0.2.6" ? model.nodes : model.nodes.filter((n) => !isGroupContainer(n));
   const nodes = regularNodes.map((n) => nodeToTikz(n, defs));
   const containers = containerNodes.map((n) => nodeToTikz(n, defs));
   const nodesById = new Map(model.nodes.map((node) => [node.id, node]));
-  const edges = model.edges.map((edge) => edgeToTikz(edge, nodesById));
+  const edges = model.edges.map((edge) => edgeToTikz(edge, nodesById, sourceVersion));
   const defLines = [...defs].sort((a, b) => Number(a > b) - Number(a < b));
   const nodeBody = nodes.map((l) => `  ${l}`).join("\n");
   const backgroundLines = [...containers, ...edges];
@@ -210,8 +219,8 @@ function b64decode(b64: string): unknown {
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 
-export function serializeDiagram(model: DiagramModel): string {
-  return `${modelToTikz(model)}\n${MARK} ${b64encode(model)}`;
+export function serializeDiagram(model: DiagramModel, sourceVersion: DiagramSourceVersion = "current"): string {
+  return `${modelToTikz(model, sourceVersion)}\n${MARK} ${b64encode(model)}`;
 }
 
 export function parseEmbeddedModel(tikz: string): DiagramModel | null {

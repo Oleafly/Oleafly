@@ -17,10 +17,13 @@ pub struct ProjectWalk {
 }
 
 impl ProjectWalk {
-    pub fn capture_inputs(&self) -> Vec<CaptureInput> {
+    pub fn capture_inputs(&self) -> Result<Vec<CaptureInput>, String> {
         self.captured
             .iter()
-            .filter_map(|file| CaptureInput::explicit(file.relative_path.clone()).ok())
+            .map(|file| {
+                CaptureInput::explicit(file.relative_path.clone())
+                    .map_err(|error| error.to_string())
+            })
             .collect()
     }
 
@@ -67,43 +70,73 @@ fn portable_relative(relative: &Path) -> Option<String> {
     (!portable.is_empty()).then_some(portable)
 }
 
-pub fn walk_project(project_root: &Path) -> ProjectWalk {
+pub fn walk_project(project_root: &Path) -> Result<ProjectWalk, String> {
+    walk_project_with(project_root, |_| {}).map_err(|error| error.to_string())
+}
+
+fn walk_project_with(
+    project_root: &Path,
+    mut before_read: impl FnMut(&Path),
+) -> std::io::Result<ProjectWalk> {
+    match walk_project_once(project_root, &mut before_read) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            walk_project_once(project_root, &mut before_read)
+        }
+        result => result,
+    }
+}
+
+fn walk_project_once(
+    project_root: &Path,
+    before_read: &mut impl FnMut(&Path),
+) -> std::io::Result<ProjectWalk> {
     let mut walk = ProjectWalk::default();
     let mut pending = vec![project_root.to_path_buf()];
     while let Some(directory) = pending.pop() {
-        let Ok(entries) = std::fs::read_dir(&directory) else {
-            continue;
-        };
-        for entry in entries.flatten() {
+        before_read(&directory);
+        let entries = std::fs::read_dir(&directory).map_err(|error| {
+            std::io::Error::new(
+                error.kind(),
+                format!("Could not read {}: {error}", directory.display()),
+            )
+        })?;
+        for entry in entries {
+            let entry = entry.map_err(|error| {
+                std::io::Error::new(
+                    error.kind(),
+                    format!("Could not read a directory entry: {error}"),
+                )
+            })?;
             let path = entry.path();
-            let Ok(relative) = path.strip_prefix(project_root) else {
-                continue;
-            };
-            let Some(portable) = portable_relative(relative) else {
-                continue;
-            };
-            let Some(name) = path.file_name().and_then(std::ffi::OsStr::to_str) else {
-                continue;
-            };
-            if is_excluded_component(name) {
+            let relative = path
+                .strip_prefix(project_root)
+                .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidInput, error))?;
+            let name = entry.file_name();
+            if name.to_str().is_some_and(is_excluded_component) {
                 continue;
             }
-            let Ok(metadata) = entry.metadata() else {
-                continue;
-            };
+            let portable = portable_relative(relative).ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!("Unsupported checkpoint path: {}", relative.display()),
+                )
+            })?;
+            CaptureInput::explicit(portable.clone()).map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("The name {portable} cannot be stored in a checkpoint. Use a name that works on macOS, Windows and Linux.")))?;
+            before_read(&path);
+            let metadata = entry.metadata().map_err(|error| {
+                std::io::Error::new(
+                    error.kind(),
+                    format!("Could not inspect {portable}: {error}"),
+                )
+            })?;
             if metadata.is_dir() {
                 pending.push(path);
                 continue;
             }
             if !metadata.is_file() {
-                continue;
+                return Err(std::io::Error::new(std::io::ErrorKind::Unsupported, format!("{portable} is not a regular file. Checkpoints cannot capture symbolic links or special files.")));
             }
-            if CaptureInput::explicit(portable.clone()).is_err() {
-                continue;
-            }
-            let Ok(content_hash) = ContentHash::digest_file(&path) else {
-                continue;
-            };
+            let content_hash = capture_hash(&path, &portable)?;
             walk.captured.push(CapturedFile {
                 relative_path: portable,
                 content_hash,
@@ -112,7 +145,17 @@ pub fn walk_project(project_root: &Path) -> ProjectWalk {
     }
     walk.captured
         .sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
-    walk
+    Ok(walk)
+}
+
+fn capture_hash(path: &Path, relative: &str) -> std::io::Result<ContentHash> {
+    ContentHash::digest_file(path).map_err(|error| {
+        let kind = match &error {
+            oleafly_history::HistoryError::Io(error) => error.kind(),
+            _ => std::io::ErrorKind::Other,
+        };
+        std::io::Error::new(kind, format!("Could not read {relative}: {error}"))
+    })
 }
 
 #[cfg(test)]
@@ -135,6 +178,54 @@ mod tests {
     }
 
     #[test]
+    fn retries_disappearing_entries_without_omitting_remaining_files() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        write(root, "main.tex", b"keep");
+        write(root, "transient.tex", b"delete");
+        let mut removed = false;
+        let walk = walk_project_with(root, |path| {
+            if path.ends_with("transient.tex") && !removed {
+                std::fs::remove_file(path).unwrap();
+                removed = true;
+            }
+        })
+        .unwrap();
+        assert!(removed);
+        assert_eq!(captured_paths(&walk), vec!["main.tex"]);
+    }
+
+    #[test]
+    fn retries_a_directory_removed_after_it_was_queued() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        write(root, "main.tex", b"keep");
+        write(root, "transient/file.tex", b"delete");
+        let mut visits = 0;
+        let walk = walk_project_with(root, |path| {
+            if path.ends_with("transient") {
+                visits += 1;
+                if visits == 2 {
+                    std::fs::remove_dir_all(path).unwrap();
+                }
+            }
+        })
+        .unwrap();
+        assert_eq!(visits, 2);
+        assert_eq!(captured_paths(&walk), vec!["main.tex"]);
+    }
+
+    #[test]
+    fn stops_after_one_rewalk_when_the_directory_remains_missing() {
+        let directory = tempfile::tempdir().unwrap();
+        let missing = directory.path().join("missing");
+        let mut attempts = 0;
+        let result = walk_project_with(&missing, |_| attempts += 1);
+        assert_eq!(attempts, 2);
+        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::NotFound);
+    }
+
+    #[test]
     fn captures_every_source_file_including_ones_the_compiler_never_reads() {
         let directory = tempfile::tempdir().unwrap();
         let root = directory.path();
@@ -143,7 +234,7 @@ mod tests {
         write(root, "README.md", b"notes nobody compiles");
         write(root, "figures/plot.pdf", b"%PDF-1.4");
 
-        let walk = walk_project(root);
+        let walk = walk_project(root).unwrap();
 
         assert_eq!(
             captured_paths(&walk),
@@ -163,7 +254,7 @@ mod tests {
         write(root, "_minted-main/abc.pygtex", b"highlight");
         write(root, "pythontex-files-main/py.out", b"generated");
 
-        let walk = walk_project(root);
+        let walk = walk_project(root).unwrap();
 
         assert_eq!(captured_paths(&walk), vec!["main.tex"]);
     }
@@ -174,7 +265,7 @@ mod tests {
         let root = directory.path();
         write(root, "main.tex", b"source");
         write(root, "notes.md", b"notes");
-        let walk = walk_project(root);
+        let walk = walk_project(root).unwrap();
         let files = walk
             .captured
             .iter()
@@ -190,7 +281,7 @@ mod tests {
         assert!(walk.matches_checkpoint(&files));
 
         write(root, "notes.md", b"notes, revised");
-        let changed = walk_project(root);
+        let changed = walk_project(root).unwrap();
         assert!(!changed.matches_checkpoint(&files));
     }
 
@@ -199,7 +290,7 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let root = directory.path();
         write(root, "main.tex", b"source");
-        let before = walk_project(root);
+        let before = walk_project(root).unwrap();
         let files = before
             .captured
             .iter()
@@ -213,7 +304,7 @@ mod tests {
             .collect::<Vec<_>>();
 
         write(root, "README.md", b"added later");
-        let after = walk_project(root);
+        let after = walk_project(root).unwrap();
 
         assert!(!after.matches_checkpoint(&files));
     }
@@ -225,7 +316,7 @@ mod tests {
         write(root, "main.tex", b"source");
         write(root, "chapters/one.tex", b"chapter");
 
-        let inputs = walk_project(root).capture_inputs();
+        let inputs = walk_project(root).unwrap().capture_inputs().unwrap();
 
         assert_eq!(
             inputs
@@ -261,7 +352,7 @@ mod tests {
         write(root, "fig\u{fc}res/plot.pdf", b"%PDF-1.4");
         write(root, "_minted-main/abc.pygtex", b"highlight");
 
-        let walk = walk_project(root);
+        let walk = walk_project(root).unwrap();
 
         assert_eq!(
             captured_paths(&walk),
@@ -275,16 +366,38 @@ mod tests {
     }
 
     #[test]
-    fn a_path_the_store_cannot_represent_is_skipped_instead_of_ending_the_capture() {
+    fn decomposed_unicode_paths_are_captured_without_renaming() {
         let directory = tempfile::tempdir().unwrap();
         let root = directory.path();
         write(root, "main.tex", b"source");
         write(root, "cafe\u{301}.tex", b"a name that is not Unicode NFC");
         write(root, "chapters/one.tex", b"chapter");
 
-        let walk = walk_project(root);
+        let walk = walk_project(root).unwrap();
 
-        assert_eq!(captured_paths(&walk), vec!["chapters/one.tex", "main.tex"]);
-        assert_eq!(walk.capture_inputs().len(), 2);
+        assert_eq!(
+            captured_paths(&walk),
+            vec!["cafe\u{301}.tex", "chapters/one.tex", "main.tex"]
+        );
+        assert_eq!(walk.capture_inputs().unwrap().len(), 3);
+    }
+    #[test]
+    fn an_unreadable_root_cannot_look_like_an_empty_snapshot() {
+        let directory = tempfile::tempdir().unwrap();
+        let missing = directory.path().join("missing");
+        assert!(walk_project(&missing).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unsupported_paths_and_symlinks_cannot_produce_partial_snapshots() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        write(root, "main.tex", b"source");
+        write(root, "CON.tex", b"cannot restore on Windows");
+        assert!(walk_project(root).unwrap_err().contains("CON.tex"));
+        std::fs::remove_file(root.join("CON.tex")).unwrap();
+        std::os::unix::fs::symlink("main.tex", root.join("linked.tex")).unwrap();
+        assert!(walk_project(root).unwrap_err().contains("linked.tex"));
     }
 }

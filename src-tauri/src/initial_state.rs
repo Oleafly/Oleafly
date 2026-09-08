@@ -30,15 +30,28 @@ pub async fn initial_state() -> Result<InitialState, String> {
 mod tests {
     use super::*;
 
+    fn isolated_snapshot() -> InitialState {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let state = compute();
+        match previous {
+            Some(previous) => std::env::set_var("OLEAFLY_DATA_DIR", previous),
+            None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+        }
+        state
+    }
+
     #[test]
     fn snapshot_never_fails() {
-        let state = compute();
-        assert!(state.projects.len() < usize::MAX);
+        let state = isolated_snapshot();
+        assert!(state.projects.is_empty());
     }
 
     #[test]
     fn snapshot_config_is_redacted() {
-        if let Some(cfg) = compute().config {
+        if let Some(cfg) = isolated_snapshot().config {
             assert!(cfg.github_token.is_empty());
         }
     }

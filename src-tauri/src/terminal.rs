@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::mpsc::{sync_channel, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -16,13 +18,158 @@ use tauri::{ipc::Channel, RunEvent, Runtime, Webview};
 pub(crate) enum TerminalEvent {
     Output { data: String },
     Exit,
+    InputError { message: String },
 }
 
 struct TermSession {
     master: Box<dyn MasterPty + Send>,
-    writer: Arc<Mutex<Box<dyn Write + Send>>>,
+    writer: TerminalWriter,
     child: Arc<Mutex<Box<dyn portable_pty::Child + Send + Sync>>>,
     _containment: crate::proc::ProcessTreeGuard,
+}
+
+const MAX_PENDING_INPUT_BYTES: usize = 4 * 1024 * 1024;
+const MAX_PENDING_INPUT_WRITES: usize = 256;
+
+type WriteReceipt = tokio::sync::oneshot::Receiver<Result<(), String>>;
+
+struct PendingWrite {
+    bytes: Vec<u8>,
+    completion: tokio::sync::oneshot::Sender<Result<(), String>>,
+}
+
+struct TerminalWriter {
+    sender: SyncSender<PendingWrite>,
+    pending_bytes: Arc<AtomicUsize>,
+    closed: Arc<AtomicBool>,
+}
+
+#[cfg(unix)]
+struct TerminalReader(std::fs::File);
+
+#[cfg(unix)]
+impl Read for TerminalReader {
+    fn read(&mut self, bytes: &mut [u8]) -> std::io::Result<usize> {
+        use std::os::fd::AsRawFd;
+        loop {
+            match self.0.read(bytes) {
+                Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                    let mut descriptor = libc::pollfd {
+                        fd: self.0.as_raw_fd(),
+                        events: libc::POLLIN,
+                        revents: 0,
+                    };
+                    if unsafe { libc::poll(&mut descriptor, 1, -1) } < 0 {
+                        let error = std::io::Error::last_os_error();
+                        if error.kind() != std::io::ErrorKind::Interrupted {
+                            return Err(error);
+                        }
+                    }
+                }
+                result => return result,
+            }
+        }
+    }
+}
+
+fn write_terminal_input(
+    writer: &mut dyn Write,
+    mut bytes: &[u8],
+    closed: &AtomicBool,
+) -> Result<(), String> {
+    while !bytes.is_empty() {
+        if closed.load(Ordering::Acquire) {
+            return Err("terminal session is closed".into());
+        }
+        match writer.write(bytes) {
+            Ok(0) => return Err("failed to write to shell: no input was accepted".into()),
+            Ok(written) => bytes = &bytes[written..],
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            Err(error) => return Err(format!("failed to write to shell: {error}")),
+        }
+    }
+    Ok(())
+}
+
+impl TerminalWriter {
+    fn start(
+        mut writer: Box<dyn Write + Send>,
+        channel: Option<Channel<TerminalEvent>>,
+    ) -> Result<Self, String> {
+        let (sender, receiver) = sync_channel::<PendingWrite>(MAX_PENDING_INPUT_WRITES);
+        let pending_bytes = Arc::new(AtomicUsize::new(0));
+        let closed = Arc::new(AtomicBool::new(false));
+        let worker_pending = Arc::clone(&pending_bytes);
+        let worker_closed = Arc::clone(&closed);
+        std::thread::Builder::new()
+            .name("oleafly-terminal-input".into())
+            .spawn(move || {
+                for pending in receiver {
+                    let result = if worker_closed.load(Ordering::Acquire) {
+                        Err("terminal session is closed".into())
+                    } else {
+                        write_terminal_input(&mut writer, &pending.bytes, &worker_closed)
+                    };
+                    worker_pending.fetch_sub(pending.bytes.len(), Ordering::AcqRel);
+                    let failed = result.is_err();
+                    if failed && !worker_closed.swap(true, Ordering::AcqRel) {
+                        if let (Some(channel), Err(message)) = (&channel, &result) {
+                            let _ = channel.send(TerminalEvent::InputError {
+                                message: message.clone(),
+                            });
+                        }
+                    }
+                    let _ = pending.completion.send(result);
+                }
+            })
+            .map_err(|error| format!("failed to start terminal input: {error}"))?;
+        Ok(Self {
+            sender,
+            pending_bytes,
+            closed,
+        })
+    }
+
+    fn enqueue(&self, data: &str) -> Result<WriteReceipt, String> {
+        if self.closed.load(Ordering::Acquire) {
+            return Err("terminal session is closed".into());
+        }
+        if data.len() > MAX_PENDING_INPUT_BYTES {
+            return Err("This paste is too large. Paste 4 MiB or less at a time.".into());
+        }
+        self.pending_bytes
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |pending| {
+                pending
+                    .checked_add(data.len())
+                    .filter(|total| *total <= MAX_PENDING_INPUT_BYTES)
+            })
+            .map_err(|_| "The shell is not accepting input. Wait or restart the terminal.")?;
+        let (completion, receipt) = tokio::sync::oneshot::channel();
+        if let Err(error) = self.sender.try_send(PendingWrite {
+            bytes: data.as_bytes().to_vec(),
+            completion,
+        }) {
+            self.pending_bytes.fetch_sub(data.len(), Ordering::AcqRel);
+            return Err(match error {
+                std::sync::mpsc::TrySendError::Full(_) => {
+                    "The shell is not accepting input. Wait or restart the terminal."
+                }
+                std::sync::mpsc::TrySendError::Disconnected(_) => "terminal session is closed",
+            }
+            .into());
+        }
+        Ok(receipt)
+    }
+}
+
+impl Drop for TerminalWriter {
+    fn drop(&mut self) {
+        self.closed.store(true, Ordering::Release);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -324,14 +471,44 @@ fn open_terminal(
     let contained = started.elapsed();
     drop(pty.slave);
 
+    #[cfg(unix)]
+    let (mut reader, writer): (Box<dyn Read + Send>, Box<dyn Write + Send>) = {
+        use std::os::fd::{AsRawFd, BorrowedFd};
+        let fd = pty
+            .master
+            .as_raw_fd()
+            .ok_or("terminal input is unavailable")?;
+        let fd = unsafe { BorrowedFd::borrow_raw(fd) }
+            .try_clone_to_owned()
+            .map_err(|error| format!("failed to open terminal input: {error}"))?;
+        let flags = unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_GETFL) };
+        if flags < 0
+            || unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_SETFL, flags | libc::O_NONBLOCK) } < 0
+        {
+            return Err(format!(
+                "failed to configure terminal input: {}",
+                std::io::Error::last_os_error()
+            ));
+        }
+        let reader = fd
+            .try_clone()
+            .map_err(|error| format!("failed to open terminal output: {error}"))?;
+        (
+            Box::new(TerminalReader(std::fs::File::from(reader))),
+            Box::new(std::fs::File::from(fd)),
+        )
+    };
+    #[cfg(not(unix))]
     let mut reader = pty
         .master
         .try_clone_reader()
         .map_err(|e| format!("failed to read pty: {e}"))?;
+    #[cfg(not(unix))]
     let writer = pty
         .master
         .take_writer()
-        .map_err(|e| format!("failed to write pty: {e}"))?;
+        .map_err(|error| format!("failed to write pty: {error}"))?;
+    let writer = TerminalWriter::start(writer, Some(channel.clone()))?;
 
     let child = Arc::new(Mutex::new(child));
     let id = {
@@ -342,7 +519,7 @@ fn open_terminal(
                 owner,
                 TermSession {
                     master: pty.master,
-                    writer: Arc::new(Mutex::new(writer)),
+                    writer,
                     child: Arc::clone(&child),
                     _containment: containment,
                 },
@@ -396,6 +573,9 @@ fn open_terminal(
             match reader.read(&mut buffer) {
                 Ok(0) | Err(_) => break,
                 Ok(n) => {
+                    if !channel_open {
+                        continue;
+                    }
                     pending.extend_from_slice(&buffer[..n]);
                     let data = drain_utf8_lossy(&mut pending);
                     if data.is_empty() {
@@ -403,7 +583,14 @@ fn open_terminal(
                     }
                     if channel.send(TerminalEvent::Output { data }).is_err() {
                         channel_open = false;
-                        break;
+                        pending.clear();
+                        let session = {
+                            let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
+                            sessions
+                                .as_mut()
+                                .and_then(|registry| registry.remove_unchecked(&session_id))
+                        };
+                        stop_sessions_in_background(session.into_iter().collect());
                     }
                 }
             }
@@ -435,11 +622,14 @@ fn open_terminal(
 
 fn stop_session(session: TermSession) {
     let TermSession {
+        master,
+        writer,
         child,
         _containment,
-        ..
     } = session;
+    drop(writer);
     drop(_containment);
+    drop(master);
     if let Ok(mut guard) = child.lock() {
         let _ = guard.kill();
         let _ = guard.wait();
@@ -454,24 +644,17 @@ pub fn term_write<R: Runtime>(
     data: String,
 ) -> Result<(), String> {
     let owner = webview_command_owner(&webview, &project_id)?;
-    write_terminal(&owner, &id, &data)
+    let _receipt = write_terminal(&owner, &id, &data)?;
+    Ok(())
 }
 
-fn write_terminal(owner: &SessionOwner, id: &str, data: &str) -> Result<(), String> {
-    let writer = {
-        let sessions = SESSIONS.lock().expect("terminal registry poisoned");
-        let session = sessions
-            .as_ref()
-            .ok_or_else(|| "terminal session is not open".to_string())?
-            .get(id, owner)?;
-        Arc::clone(&session.writer)
-    };
-    let result = writer
-        .lock()
-        .expect("terminal writer poisoned")
-        .write_all(data.as_bytes())
-        .map_err(|e| format!("failed to write to shell: {e}"));
-    result
+fn write_terminal(owner: &SessionOwner, id: &str, data: &str) -> Result<WriteReceipt, String> {
+    let sessions = SESSIONS.lock().expect("terminal registry poisoned");
+    let session = sessions
+        .as_ref()
+        .ok_or_else(|| "terminal session is not open".to_string())?
+        .get(id, owner)?;
+    session.writer.enqueue(data)
 }
 
 #[tauri::command]
@@ -528,6 +711,94 @@ fn kill_terminal(owner: &SessionOwner, id: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    async fn oversized_pastes_are_rejected_whole_and_leave_the_terminal_usable() {
+        let writer = TerminalWriter::start(Box::new(std::io::sink()), None).unwrap();
+        let error = writer
+            .enqueue(&"x".repeat(MAX_PENDING_INPUT_BYTES + 1))
+            .unwrap_err();
+        assert!(error.contains("Paste 4 MiB or less"));
+        assert_eq!(writer.pending_bytes.load(Ordering::Acquire), 0);
+        writer
+            .enqueue("echo ready\n")
+            .unwrap()
+            .await
+            .unwrap()
+            .unwrap();
+        writer
+            .enqueue(&"x".repeat(MAX_PENDING_INPUT_BYTES))
+            .unwrap()
+            .await
+            .unwrap()
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn blocked_terminal_input_is_bounded_ordered_and_does_not_block_the_caller() {
+        struct BlockedWriter {
+            started: std::sync::mpsc::Sender<()>,
+            resume: std::sync::mpsc::Receiver<()>,
+            output: Arc<Mutex<Vec<u8>>>,
+        }
+        impl Write for BlockedWriter {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                self.started.send(()).unwrap();
+                self.resume.recv().unwrap();
+                self.output.lock().unwrap().extend_from_slice(bytes);
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let (started, started_rx) = std::sync::mpsc::channel();
+        let (resume, resume_rx) = std::sync::mpsc::channel();
+        let output = Arc::new(Mutex::new(Vec::new()));
+        let writer = TerminalWriter::start(
+            Box::new(BlockedWriter {
+                started,
+                resume: resume_rx,
+                output: Arc::clone(&output),
+            }),
+            None,
+        )
+        .unwrap();
+        let first = writer.enqueue("first").unwrap();
+        started_rx
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .unwrap();
+        let second = writer.enqueue("second").unwrap();
+        assert!(writer
+            .enqueue(&"x".repeat(MAX_PENDING_INPUT_BYTES))
+            .is_err());
+        assert_eq!(writer.pending_bytes.load(Ordering::Acquire), 11);
+        resume.send(()).unwrap();
+        first.await.unwrap().unwrap();
+        started_rx
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .unwrap();
+        resume.send(()).unwrap();
+        second.await.unwrap().unwrap();
+        assert_eq!(*output.lock().unwrap(), b"firstsecond");
+        assert_eq!(writer.pending_bytes.load(Ordering::Acquire), 0);
+    }
+
+    #[tokio::test]
+    async fn terminal_writer_reports_io_failure_and_rejects_more_input() {
+        struct FailedWriter;
+        impl Write for FailedWriter {
+            fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+                Err(std::io::Error::from(std::io::ErrorKind::BrokenPipe))
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let writer = TerminalWriter::start(Box::new(FailedWriter), None).unwrap();
+        assert!(writer.enqueue("hello").unwrap().await.unwrap().is_err());
+        assert!(writer.enqueue("again").is_err());
+    }
+
     #[test]
     fn terminal_env_advertises_truecolor_and_identity() {
         let mut cmd = super::CommandBuilder::new("sh");
@@ -853,6 +1124,175 @@ mod tests {
         kill_terminal(&owner, &session_id).unwrap();
         std::fs::remove_dir_all(&root).ok();
         assert_eq!(received, "hello from the owner");
+    }
+
+    struct TerminalTestSession {
+        owner: SessionOwner,
+        id: String,
+    }
+
+    impl Drop for TerminalTestSession {
+        fn drop(&mut self) {
+            let _ = kill_terminal(&self.owner, &self.id);
+        }
+    }
+
+    #[test]
+    fn nonreading_terminal_child() {
+        if std::env::var("OLEAFLY_TERMINAL_TEST_CHILD").as_deref() != Ok("1") {
+            return;
+        }
+        #[cfg(windows)]
+        let mut output = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open("CONOUT$")
+            .unwrap();
+        #[cfg(unix)]
+        let mut output = std::io::stdout().lock();
+        output.write_all(b"READY").unwrap();
+        output.flush().unwrap();
+        let deadline = Instant::now() + std::time::Duration::from_secs(30);
+        while Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            if output.write_all(b".").and_then(|_| output.flush()).is_err() {
+                return;
+            }
+        }
+    }
+
+    fn nonreading_terminal_fixture() -> CommandBuilder {
+        let mut process = CommandBuilder::new(std::env::current_exe().unwrap());
+        process.args([
+            "--exact",
+            "terminal::tests::nonreading_terminal_child",
+            "--nocapture",
+        ]);
+        process.env("OLEAFLY_TERMINAL_TEST_CHILD", "1");
+        process
+    }
+
+    async fn wait_for_terminal_ready(
+        events: &mut tokio::sync::mpsc::UnboundedReceiver<serde_json::Value>,
+    ) {
+        let mut output = String::new();
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            while let Some(event) = events.recv().await {
+                if let Some(data) = event["data"].as_str() {
+                    output.push_str(data);
+                    if output.contains("READY") {
+                        return;
+                    }
+                }
+            }
+            panic!("terminal event stream closed before the shell was ready");
+        })
+        .await
+        .unwrap_or_else(|_| panic!("shell did not become ready; terminal output: {output:?}"));
+    }
+
+    #[tokio::test]
+    async fn hidden_terminal_starts_and_closes_without_a_cursor_response() {
+        let project = tempfile::tempdir().unwrap();
+        let (events, mut received) = tokio::sync::mpsc::unbounded_channel();
+        let channel = Channel::new(move |body| {
+            let _ = events.send(body.deserialize::<serde_json::Value>().unwrap());
+            Ok(())
+        });
+        let owner = SessionOwner::new("main", "hidden-terminal");
+        let id = open_terminal(
+            project.path(),
+            owner.clone(),
+            80,
+            24,
+            channel,
+            nonreading_terminal_fixture(),
+        )
+        .unwrap();
+        let session = TerminalTestSession { owner, id };
+        wait_for_terminal_ready(&mut received).await;
+        kill_terminal(&session.owner, &session.id).unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            while let Some(event) = received.recv().await {
+                if event["event"] == "exit" {
+                    return;
+                }
+            }
+            panic!("terminal event stream closed without an exit event");
+        })
+        .await
+        .expect("hidden terminal did not finish native teardown");
+    }
+
+    #[tokio::test]
+    async fn disconnecting_output_during_a_large_paste_reaps_the_shell() {
+        let project = tempfile::tempdir().unwrap();
+        let disconnect = Arc::new(AtomicBool::new(false));
+        let close_channel = Arc::clone(&disconnect);
+        let rejected = Arc::new(AtomicBool::new(false));
+        let observed_rejection = Arc::clone(&rejected);
+        let (events, mut received) = tokio::sync::mpsc::unbounded_channel();
+        let channel = Channel::new(move |body| {
+            if close_channel.load(Ordering::Acquire) {
+                observed_rejection.store(true, Ordering::Release);
+                return Err(tauri::Error::AssetNotFound("closed".into()));
+            }
+            let _ = events.send(body.deserialize::<serde_json::Value>().unwrap());
+            Ok(())
+        });
+        let owner = SessionOwner::new("main", "paste-disconnect");
+        let id = open_terminal(
+            project.path(),
+            owner.clone(),
+            80,
+            24,
+            channel,
+            nonreading_terminal_fixture(),
+        )
+        .unwrap();
+        let session = TerminalTestSession { owner, id };
+        wait_for_terminal_ready(&mut received).await;
+        let child = {
+            let sessions = SESSIONS.lock().unwrap();
+            Arc::clone(
+                &sessions
+                    .as_ref()
+                    .unwrap()
+                    .get(&session.id, &session.owner)
+                    .unwrap()
+                    .child,
+            )
+        };
+        let receipt =
+            write_terminal(&session.owner, &session.id, &"paste\n".repeat(80_000)).unwrap();
+        disconnect.store(true, Ordering::Release);
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+        tokio::time::timeout_at(deadline, async {
+            while !rejected.load(Ordering::Acquire) {
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("terminal never observed the disconnected output channel");
+        let _ = tokio::time::timeout_at(deadline, receipt)
+            .await
+            .expect("terminal input did not settle after disconnect");
+        tokio::time::timeout_at(deadline, async {
+            loop {
+                let exited = child
+                    .try_lock()
+                    .ok()
+                    .and_then(|mut child| child.try_wait().ok().flatten())
+                    .is_some();
+                if exited {
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("terminal shell did not exit after disconnect");
+        assert!(write_terminal(&session.owner, &session.id, "more").is_err());
     }
 
     #[cfg(unix)]

@@ -1089,6 +1089,18 @@ impl AcpRuntime {
         let _ = settled.wait_for(|count| *count == 0).await;
     }
 
+    pub(crate) fn resume_after_failed_update(&self) -> Result<(), String> {
+        let mut state = self
+            .startup
+            .lock()
+            .map_err(|_| "The ACP runtime is unavailable.")?;
+        if state.pending != 0 {
+            return Err("Background agents are still stopping.".into());
+        }
+        state.stopping = false;
+        Ok(())
+    }
+
     pub async fn assert_owner(&self, id: &str, owner: &str) -> Result<(), String> {
         let session = self.get_live(id).await?;
         if session.owner.as_deref() != Some(owner) {

@@ -497,9 +497,20 @@ mod tests {
         std::thread::spawn(move || {
             for response in responses {
                 let (mut stream, _) = listener.accept().unwrap();
-                let _ = stream.set_read_timeout(Some(std::time::Duration::from_secs(2)));
-                let mut request = [0_u8; 4096];
-                let _ = stream.read(&mut request);
+                stream
+                    .set_read_timeout(Some(std::time::Duration::from_secs(2)))
+                    .unwrap();
+                let mut request = Vec::new();
+                let mut buffer = [0_u8; 4096];
+                while !request.windows(4).any(|bytes| bytes == b"\r\n\r\n") {
+                    let read = match stream.read(&mut buffer) {
+                        Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+                        result => result.unwrap(),
+                    };
+                    assert!(read > 0, "request ended before its headers");
+                    request.extend_from_slice(&buffer[..read]);
+                    assert!(request.len() <= 16 * 1024, "request headers are too large");
+                }
                 stream.write_all(&response).unwrap();
             }
         });

@@ -4,6 +4,8 @@ import { isTauri } from "@tauri-apps/api/core";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { cancelQuitFlush, confirmQuitFlush } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { registerUpdateInstallGuard } from "@/lib/update-install-guard";
 import { useFilesStore } from "@/store/files";
 
 const QUIT_FLUSH_TIMEOUT_MS = 5_000;
@@ -31,6 +33,21 @@ function flushForQuitWithDeadline(): Promise<void> {
 export function QuitGuard() {
   const [failure, setFailure] = useState<{ message: string; restart: boolean } | null>(null);
   const flushing = useRef(false);
+  const [installing, setInstalling] = useState(false);
+  const installingRef = useRef(false);
+  useEffect(() => {
+    if (!isTauri()) return;
+    let disposed = false;
+    let stop: (() => void) | undefined;
+    void registerUpdateInstallGuard((busy) => {
+      installingRef.current = busy;
+      if (!disposed) setInstalling(busy);
+    }).then((cleanup) => {
+      if (disposed) cleanup();
+      else stop = cleanup;
+    }).catch((error) => notifyError("prepare updates", error));
+    return () => { disposed = true; stop?.(); };
+  }, []);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -40,7 +57,7 @@ export function QuitGuard() {
       const restart = event.payload === true;
       // Repeated Cmd+Q while a flush runs must not start a second flush or
       // stack dialogs; the running flush decides the outcome.
-      if (flushing.current) return;
+      if (flushing.current || installingRef.current) return;
       flushing.current = true;
       flushForQuitWithDeadline()
         .then(() => confirmQuitFlush(restart))
@@ -64,6 +81,13 @@ export function QuitGuard() {
   }, []);
 
   return (
+    <>
+    <Dialog open={installing}>
+      <DialogContent closeDisabled onEscapeKeyDown={(event) => event.preventDefault()} onInteractOutside={(event) => event.preventDefault()}>
+        <DialogTitle>Preparing to restart</DialogTitle>
+        <DialogDescription>Saving your files and installing the update. Oleafly will restart when it is ready.</DialogDescription>
+      </DialogContent>
+    </Dialog>
     <ConfirmationDialog
       open={failure !== null}
       title="Some files could not be saved"
@@ -81,5 +105,6 @@ export function QuitGuard() {
         void cancelQuitFlush().catch((error) => notifyError("stay after failed save", error));
       }}
     />
+    </>
   );
 }

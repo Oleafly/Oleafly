@@ -619,11 +619,52 @@ async fn execute_command(
     run_id: &str,
     approval_token: &str,
 ) -> Result<ExecResult, String> {
+    execute_command_with_timeout(
+        state,
+        ExecRequest {
+            root,
+            project_id,
+            cwd,
+            command: &command,
+            run_id,
+        },
+        approval_token,
+        EXEC_TIMEOUT,
+    )
+    .await
+}
+
+fn shell_command(command: &str) -> tokio::process::Command {
+    if cfg!(windows) {
+        let mut c = tokio::process::Command::new("cmd");
+        c.arg("/C").arg(command);
+        c
+    } else {
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
+        let mut c = tokio::process::Command::new(shell);
+        c.arg("-lc").arg(command);
+        c
+    }
+}
+
+async fn execute_command_with_timeout(
+    state: &AgentExecState,
+    request: ExecRequest<'_>,
+    approval_token: &str,
+    timeout: Duration,
+) -> Result<ExecResult, String> {
+    let ExecRequest {
+        root,
+        project_id,
+        cwd,
+        command,
+        run_id,
+    } = request;
     if command.trim().is_empty() {
         return Err("the command was empty".to_string());
     }
     let mut lease = state
-        .begin_execution(project_id, &command, run_id, approval_token)
+        .begin_execution(project_id, command, run_id, approval_token)
         .map_err(|error| {
             if approval_token.is_empty() {
                 "run_command approval is required".to_string()
@@ -637,16 +678,7 @@ async fn execute_command(
         return Err("run_command is denied for this project".to_string());
     }
 
-    let mut cmd = if cfg!(windows) {
-        let mut c = tokio::process::Command::new("cmd");
-        c.arg("/C").arg(&command);
-        c
-    } else {
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
-        let mut c = tokio::process::Command::new(shell);
-        c.arg("-lc").arg(&command);
-        c
-    };
+    let mut cmd = shell_command(command);
     cmd.no_console()
         .current_dir(cwd)
         .stdin(Stdio::null())
@@ -694,11 +726,15 @@ async fn execute_command(
         tokio::join!(read_stdout, read_stderr);
     };
 
-    let mut timed_out = false;
-    let status = tokio::select! {
-        _ = read_streams => child.wait().await.ok(),
-        _ = tokio::time::sleep(EXEC_TIMEOUT) => {
-            timed_out = true;
+    let completion = tokio::time::timeout(timeout, async {
+        let (_, status) = tokio::join!(read_streams, child.wait());
+        status.ok()
+    })
+    .await;
+    let timed_out = completion.is_err();
+    let status = match completion {
+        Ok(status) => status,
+        Err(_) => {
             terminate_process(pid);
             child.wait().await.ok()
         }
@@ -722,7 +758,7 @@ async fn execute_command(
     }
 
     Ok(ExecResult {
-        command,
+        command: command.to_string(),
         output,
         exit_code,
         status: status_line(exit_code, timed_out),
@@ -775,6 +811,35 @@ mod tests {
             command,
             run_id,
         }
+    }
+
+    #[tokio::test]
+    async fn commands_that_close_output_still_hit_the_execution_deadline() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        let cwd = root.join("projects/proj");
+        std::fs::create_dir_all(&cwd).unwrap();
+        let state = AgentExecState::default();
+        #[cfg(unix)]
+        let command = "exec >/dev/null 2>&1; sleep 10; touch finished";
+        #[cfg(windows)]
+        let command = "powershell -NoProfile -Command \"[Console]::Out.Close(); [Console]::Error.Close(); Start-Sleep -Seconds 10; New-Item finished\" >NUL 2>&1";
+        let token = state.authorize("proj", command, "run-deadline").unwrap();
+        let result = tokio::time::timeout(
+            Duration::from_secs(5),
+            execute_command_with_timeout(
+                &state,
+                exec_request(root, &cwd, command, "run-deadline"),
+                &token,
+                Duration::from_millis(250),
+            ),
+        )
+        .await
+        .expect("command exceeded its deadline")
+        .unwrap();
+        assert!(result.timed_out);
+        assert_eq!(result.status, "Stopped: timed out");
+        assert!(!cwd.join("finished").exists());
     }
 
     #[test]
