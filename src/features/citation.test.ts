@@ -31,7 +31,7 @@ const filesState = {
 };
 
 vi.mock("@/store/files", () => ({
-  useFilesStore: { getState: () => filesState },
+  useFilesStore: { getState: () => ({ ...filesState }) },
 }));
 
 vi.mock("@/store/settings", () => ({
@@ -404,4 +404,93 @@ describe("parseCitationFile", () => {
     expect(parseCitationFile("library.txt", "anything")).toBeNull();
     expect(parseCitationFile("library", "anything")).toBeNull();
   });
+});
+
+describe("citation read failures", () => {
+  const entry: ParsedBib = { type: "article", key: "new", fields: { title: "New reference" } };
+
+  for (const batch of [false, true]) {
+    for (const path of ["refs.bib", "paper.md"]) {
+      it(`preserves unreadable ${path} during ${batch ? "bulk" : "single"} import`, async () => {
+        filesState.tree = [{ path: "refs.bib", is_dir: false }];
+        filesState.files = path === "refs.bib"
+          ? { "paper.md": { content: "# Existing paper\n" } }
+          : { "refs.bib": { content: "@book{old,title={Original}}\n" } };
+        mocks.readFileContent.mockRejectedValue(new Error("unsupported text encoding"));
+        const result = batch ? await addCitations([entry]) : await addCitation(BIBTEX);
+        expect(JSON.stringify(result)).toContain(`Could not read ${path}`);
+        expect(mocks.writeFileContent).not.toHaveBeenCalled();
+        expect(mocks.setContent).not.toHaveBeenCalled();
+        expect(mocks.saveFile).not.toHaveBeenCalled();
+        expect(mocks.insertAtCursor).not.toHaveBeenCalled();
+      });
+    }
+  }
+
+  it("allows an absent bibliography without masking other read errors", async () => {
+    filesState.files = { "paper.md": { content: "# Paper\n" } };
+    mocks.readFileContent.mockResolvedValue("");
+    expect(await addCitation(BIBTEX)).toEqual({ key: "lovelace2024edge" });
+    expect(mocks.readFileContent).toHaveBeenCalledWith("project-1", "references.bib", true);
+    expect(mocks.writeFileContent).toHaveBeenCalledWith("project-1", "references.bib", expect.stringContaining("Edge Sensing"));
+  });
+});
+
+it("abandons citation import if the project changes during a main-document read", async () => {
+  let finish!: (content: string) => void;
+  filesState.files = { "refs.bib": { content: "@book{old,title={Original}}" } };
+  filesState.tree = [{ path: "refs.bib", is_dir: false }];
+  mocks.readFileContent.mockImplementation(() => new Promise<string>((resolve) => { finish = resolve; }));
+  const adding = addCitation(BIBTEX);
+  filesState.projectId = "project-2";
+  filesState.files = { "other.bib": { content: "@book{keep,title={Second project}}" } };
+  filesState.tree = [{ path: "other.bib", is_dir: false }];
+  finish("# First project\n");
+  expect(await adding).toHaveProperty("error", expect.stringContaining("project changed"));
+  expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  expect(mocks.saveFile).not.toHaveBeenCalled();
+  expect(mocks.setContent).not.toHaveBeenCalled();
+  expect(mocks.insertAtCursor).not.toHaveBeenCalled();
+});
+
+it("does not edit another project's main document when a bibliography save finishes late", async () => {
+  let finish!: () => void;
+  let entered!: () => void;
+  const saving = new Promise<void>((resolve) => { entered = resolve; });
+  filesState.files = { "paper.md": { content: "# First\n" }, "refs.bib": { content: "" } };
+  filesState.tree = [{ path: "refs.bib", is_dir: false }];
+  mocks.saveFile.mockImplementation(() => { entered(); return new Promise<void>((resolve) => { finish = resolve; }); });
+  const adding = addCitation(BIBTEX);
+  await saving;
+  filesState.projectId = "project-2";
+  filesState.files = { "paper.md": { content: "# Second\n" } };
+  finish();
+  expect(await adding).toHaveProperty("error", expect.stringContaining("project changed"));
+  expect(filesState.files["paper.md"].content).toBe("# Second\n");
+  expect(mocks.saveFile).toHaveBeenCalledTimes(1);
+  expect(mocks.insertAtCursor).not.toHaveBeenCalled();
+});
+
+it("checks the project again when preflight resolves immediately before a queued switch", async () => {
+  filesState.files = { "paper.md": { content: "# First\n" }, "refs.bib": { content: "@book{a,title={First}}" } };
+  filesState.tree = [{ path: "refs.bib", is_dir: false }];
+  const adding = addCitation(BIBTEX);
+  queueMicrotask(() => queueMicrotask(() => {
+    filesState.projectId = "project-2";
+    filesState.files = { "refs.bib": { content: "@book{b,title={Second}}" } };
+  }));
+  expect(await adding).toHaveProperty("error", expect.stringContaining("project changed"));
+  expect(filesState.files["refs.bib"].content).toBe("@book{b,title={Second}}");
+  expect(mocks.setContent).not.toHaveBeenCalled();
+  expect(mocks.saveFile).not.toHaveBeenCalled();
+});
+
+it("preserves main-document edits made while the bibliography is saving", async () => {
+  filesState.files = { "paper.md": { content: "# First\n" }, "refs.bib": { content: "" } };
+  filesState.tree = [{ path: "refs.bib", is_dir: false }];
+  mocks.saveFile.mockImplementation(async (path: string) => {
+    if (path === "refs.bib") filesState.files = { ...filesState.files, "paper.md": { content: "# Revised\n" } };
+  });
+  expect(await addCitation(BIBTEX)).toHaveProperty("key");
+  expect(filesState.files["paper.md"].content).toContain("# Revised\n");
 });

@@ -168,12 +168,11 @@ export function selectCitationBibliography(
   return bibPaths[0] ?? "references.bib";
 }
 
-function pickTargetBib(): { path: string; content: string } {
-  const files = useFilesStore.getState();
+function pickTargetBib(files: ReturnType<typeof useFilesStore.getState>, source?: string): { path: string; content: string } {
   // Look for \bibliography in the document that actually compiles, which a
   // `% !TEX root` comment in the active file may redirect.
   const mainContent =
-    files.files[resolveEffectiveMainDoc().mainDoc]?.content ?? "";
+    source ?? files.files[resolveEffectiveMainDoc().mainDoc]?.content ?? "";
   const bibPaths = files.tree.filter((f) => !f.is_dir && f.path.endsWith(".bib")).map((f) => f.path);
 
   const path = selectCitationBibliography(
@@ -184,17 +183,55 @@ function pickTargetBib(): { path: string; content: string } {
   return { path, content: files.files[path]?.content ?? "" };
 }
 
+function assertCitationProject(projectId: string | null): void {
+  if (useFilesStore.getState().projectId !== projectId) {
+    throw new Error("The project changed during citation import. Try again in the original project.");
+  }
+}
+
+function validateCitationFiles(files: ReturnType<typeof useFilesStore.getState>, targetPath: string): void {
+  assertCitationProject(files.projectId);
+  const current = useFilesStore.getState();
+  for (const path of [targetPath, files.mainDoc]) {
+    if (current.files[path]?.content !== files.files[path]?.content) {
+      throw new Error(`${path} changed during citation import. Try again.`);
+    }
+  }
+}
+
+async function loadCitationFiles(files: ReturnType<typeof useFilesStore.getState>) {
+  const id = files.projectId;
+  const profile = files.engine.capabilities.formatting_profile;
+  const read = async (path: string, allowMissing = false) => {
+    try {
+      return files.files[path]?.content ?? (id ? await readFileContent(id, path, allowMissing) : "");
+    } catch (error) {
+      throw new Error(`Could not read ${path}: ${error}`);
+    }
+  };
+  const main = id && (profile === "typst" || profile === "markdown")
+    ? await read(files.mainDoc)
+    : undefined;
+  const target = pickTargetBib(files, main);
+  const content = await read(target.path, true);
+
+  return { target, content, main };
+}
+
 export async function addCitation(bibtex: string): Promise<{ key: string } | { error: string }> {
   const parsed = parseEntry(bibtex);
   if (!parsed) return { error: "Could not parse the citation." };
 
   const files = useFilesStore.getState();
   const id = files.projectId;
-  const target = pickTargetBib();
-  let content = target.content;
-  if (!content && id && files.files[target.path] === undefined) {
-    content = await readFileContent(id, target.path).catch(() => "");
+  let loaded: Awaited<ReturnType<typeof loadCitationFiles>>;
+  try {
+    loaded = await loadCitationFiles(files);
+    validateCitationFiles(files, loaded.target.path);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
   }
+  const { target, content } = loaded;
 
   const doi = parsed.fields.doi;
   if (doi) {
@@ -219,26 +256,29 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
     // (which reads from disk) resolves the new \cite immediately.
     try {
       await useFilesStore.getState().saveFile(target.path);
+      assertCitationProject(id);
     } catch (e) {
       return { error: `Could not write ${target.path}: ${e}` };
     }
   } else if (id) {
     try {
       await writeFileContent(id, target.path, newContent);
+      assertCitationProject(id);
     } catch (e) {
       return { error: `Could not write ${target.path}: ${e}` };
     }
   }
 
   const profile = files.engine.capabilities.formatting_profile;
-  if ((profile === "typst" || profile === "markdown") && id) {
+  if ((profile === "typst" || profile === "markdown") && id && loaded.main !== undefined) {
     const mainPath = files.mainDoc;
-    const main = files.files[mainPath]?.content ?? await readFileContent(id, mainPath).catch(() => "");
+    const currentMain = useFilesStore.getState().files[mainPath];
+    const main = currentMain?.content ?? loaded.main;
     const next = profile === "typst"
       ? ensureTypstBibliography(main, target.path)
       : ensureMarkdownBibliography(main, target.path);
     if (next !== main) {
-      if (files.files[mainPath] !== undefined) {
+      if (currentMain !== undefined) {
         files.setContent(mainPath, next);
         await useFilesStore.getState().saveFile(mainPath);
       } else {
@@ -247,6 +287,9 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
     }
   }
 
+  if (useFilesStore.getState().projectId !== id) {
+    return { error: "The project changed during citation import. The citation was not inserted." };
+  }
   insertCite(key);
   void useIndexStore.getState().rebuildFromDisk();
   return { key };
@@ -267,11 +310,14 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
 
   const files = useFilesStore.getState();
   const id = files.projectId;
-  const target = pickTargetBib();
-  let content = target.content;
-  if (!content && id && files.files[target.path] === undefined) {
-    content = await readFileContent(id, target.path).catch(() => "");
+  let loaded: Awaited<ReturnType<typeof loadCitationFiles>>;
+  try {
+    loaded = await loadCitationFiles(files);
+    validateCitationFiles(files, loaded.target.path);
+  } catch (error) {
+    return { imported: 0, duplicates: 0, errors: [error instanceof Error ? error.message : String(error)] };
   }
+  const { target, content } = loaded;
 
   const idx = useIndexStore.getState().index;
   const existingKeys = new Set<string>(idx ? idx.defs.filter((d) => d.kind === "bibentry").map((d) => d.name) : []);
@@ -303,26 +349,29 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
     files.setContent(target.path, newContent);
     try {
       await useFilesStore.getState().saveFile(target.path);
+      assertCitationProject(id);
     } catch (e) {
       errors.push(`Could not write ${target.path}: ${e}`);
     }
   } else if (id) {
     try {
       await writeFileContent(id, target.path, newContent);
+      assertCitationProject(id);
     } catch (e) {
       errors.push(`Could not write ${target.path}: ${e}`);
     }
   }
 
   const profile = files.engine.capabilities.formatting_profile;
-  if (!errors.length && (profile === "typst" || profile === "markdown") && id) {
+  if (!errors.length && (profile === "typst" || profile === "markdown") && id && loaded.main !== undefined) {
     const mainPath = files.mainDoc;
-    const main = files.files[mainPath]?.content ?? (await readFileContent(id, mainPath).catch(() => ""));
+    const currentMain = useFilesStore.getState().files[mainPath];
+    const main = currentMain?.content ?? loaded.main;
     const next = profile === "typst"
       ? ensureTypstBibliography(main, target.path)
       : ensureMarkdownBibliography(main, target.path);
     if (next !== main) {
-      if (files.files[mainPath] !== undefined) {
+      if (currentMain !== undefined) {
         files.setContent(mainPath, next);
         await useFilesStore.getState().saveFile(mainPath);
       } else {
@@ -331,6 +380,9 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
     }
   }
 
+  if (useFilesStore.getState().projectId !== id) {
+    errors.push("The project changed during citation import.");
+  }
   if (!errors.length) void useIndexStore.getState().rebuildFromDisk();
   return { imported: newBlocks.length, duplicates, errors };
 }

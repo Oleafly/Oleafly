@@ -820,18 +820,36 @@ pub(crate) async fn list_files_bounded(project_id: String) -> Result<BoundedFile
 }
 
 #[tauri::command]
-pub async fn read_file(project_id: String, path: String) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || read_file_blocking(&project_id, &path))
-        .await
-        .map_err(|error| format!("failed to read file: {error}"))?
+pub async fn read_file(
+    project_id: String,
+    path: String,
+    allow_missing: Option<bool>,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        if !allow_missing.unwrap_or(false) {
+            return read_file_blocking(&project_id, &path);
+        }
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
+        read_text_file(&resolve(&project_id, &path)?, true)
+    })
+    .await
+    .map_err(|error| format!("failed to read file: {error}"))?
 }
 
 pub(crate) fn read_file_blocking(project_id: &str, path: &str) -> Result<String, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
     let p = resolve(project_id, path)?;
-    std::fs::read(&p)
-        .map_err(|e| format!("failed to read {path}: {e}"))
-        .and_then(decode_editable_text)
+    read_text_file(&p, false)
+}
+
+fn read_text_file(path: &Path, allow_missing: bool) -> Result<String, String> {
+    match std::fs::read(path) {
+        Ok(bytes) => decode_editable_text(bytes),
+        Err(error) if allow_missing && error.kind() == std::io::ErrorKind::NotFound => {
+            Ok(String::new())
+        }
+        Err(error) => Err(format!("Could not read {}: {error}", path.display())),
+    }
 }
 
 fn decode_editable_text(bytes: Vec<u8>) -> Result<String, String> {
@@ -868,6 +886,23 @@ fn read_utf8_limited(path: &Path, max_bytes: usize) -> Result<String, String> {
 #[cfg(test)]
 mod bounded_read_tests {
     use super::read_utf8_limited;
+
+    #[test]
+    fn optional_text_reads_only_treat_absent_files_as_empty() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("references.bib");
+        assert!(super::read_text_file(&path, false).is_err());
+        assert_eq!(super::read_text_file(&path, true).unwrap(), "");
+        std::fs::write(&path, b"@book{old,title={caf\xe9}}").unwrap();
+        assert!(super::read_text_file(&path, true).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), b"@book{old,title={caf\xe9}}");
+        assert!(super::read_text_file(directory.path(), true).is_err());
+        std::fs::write(&path, "@book{old,title={Original}}").unwrap();
+        assert_eq!(
+            super::read_text_file(&path, true).unwrap(),
+            "@book{old,title={Original}}"
+        );
+    }
 
     #[test]
     fn limited_reads_reject_oversized_files_before_returning_content() {
