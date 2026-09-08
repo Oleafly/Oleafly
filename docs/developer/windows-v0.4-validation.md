@@ -36,6 +36,10 @@ Windows test corrections cover CRLF fixture offsets, platform-specific
 shortcuts and shell commands, Python executable discovery, locale-dependent
 timestamps, and cold lazy-module imports. The native runner can also exercise
 a packaged test binary instead of rebuilding the development app per spec.
+The vendored native test bridge also returned early for asynchronous predicates:
+it treated a Promise as truthy before the result arrived. It now awaits the
+predicate before deciding whether to poll again. A real-app regression checks
+false results, rejected promises, eventual success, and timeout behavior.
 
 ## Completed checks
 
@@ -61,10 +65,20 @@ a packaged test binary instead of rebuilding the development app per spec.
 | Local Ollama | Six passed using `llama3.2:3b`: discovery, real response, usage, file tool, trailing slash, and host persistence |
 | Manual native UI | Visual LaTeX edit, undo/redo, source round trip, compile and PDF text; detached preview fit, rotation, inversion, reader mode and close; project fork, staging, local commit and Git history; terminal pane startup |
 | Focused frontend regressions | 79 chat/Markdown/diagram/project-setup tests, 118 assistant-loop tests, six dock tests, and 37 compile-store tests passed |
+| Frontend suite | The broad Windows run passed 3,737 tests but encountered worker startup failures and platform/test-fixture failures. All 60 affected files passed in a clean 358-test rerun after corrections; CI passed all 4,027 tests on the preceding product revision |
+| Git diff reload | A real CodeMirror component regression passed for staging and unstaging with a fast asynchronous Git backend |
+| Checkpoint UI and archives | Tectonic, Typst, and Markdown passed compile deduplication, labels, source restore/recompile, encrypted export/import, password validation, and keep-latest retention; archive import preserved the working document |
+| Compiler selection | Six native UI checks passed for Tectonic, explicit pdfLaTeX/XeLaTeX/LuaLaTeX, Auto, and project reopen persistence |
+| Complete native flow coverage | 350 distinct cases passed across the broad sweep and corrected reruns. The final 20-case set passed with asynchronous bridge waits, including Git, assistant settings/history/instructions, live file tools, and all five ACP cases |
+| Terminal | Six passed: real shell output and exit, multiple tabs, rename, close-others, ten-session limit, and configured shortcut routes |
+| Research and ACP | Task execution/review, linked-folder access and unlink, project setup, conflict-preserving apply, ACP sign-in/model/permissions, history/reconnect, cooperative stop, and forced child-process termination passed |
 
 The live checks assert assistant output rather than matching text in the user
 prompt. Credentials stay outside the repository and are not included in test
 artifacts or this report.
+The Ollama file-tool check uses the app's tool picker to expose `read_file`
+alone. An unconstrained repeat with the small local model selected a shell
+command and waited for approval; this was model behavior, not an app hang.
 
 ## Compiler matrix
 
@@ -87,11 +101,30 @@ false pass. These are representative font and engine cases, not every font
 installed on every Windows machine. Build and test contention makes timings
 from the functional matrix unsuitable as performance benchmarks.
 
-## Remaining validation record
+## Editor performance
 
-The packaged full-flow sweep, browser-only harness checks, final frontend and
-workspace totals, and production/performance gates are recorded here when
-their runs finish.
+The existing performance gate passed all three tests with no concurrent local
+build or native test sweep. Each measurement uses three warmups and 20 measured
+runs. These are synchronous editor-operation timings on this host, not total
+application startup or compiler timings.
+
+| Operation | P95 | Existing budget |
+| --- | ---: | ---: |
+| 6,200-line document analysis | 69.71 ms | 750 ms |
+| Syntax lint | 3.50 ms | 50 ms |
+| Proofreading extraction | 95.29 ms | 2,000 ms |
+| Inline math scan | 30.91 ms | 500 ms |
+| 200-file project analysis | 52.44 ms | 750 ms |
+| Citation completion | 0.033 ms | 250 ms |
+| End-of-book command completion | 4.85 ms | 100 ms |
+
+## Scope and exclusions
+
+Three browser-only specs were run separately across Chromium, Firefox, and
+WebKit. Native keyboard accelerators and the separate browser window cannot
+be inspected through the app bridge and need computer-use checks. The native
+sweep leaves those two bridge-only cases explicitly skipped, along with remote
+GitHub publishing without its dedicated test credentials.
 
 The test binary deliberately includes E2E hooks and must not be distributed.
 Windows symlink-creation tests require Developer Mode or the relevant privilege;

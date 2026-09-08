@@ -164,11 +164,12 @@ test("stage, diff, and commit without requiring a connected account", async ({ t
     );
   } catch (error) {
     const snapshot = await tauriPage.evaluate<string>(`(async () => {
-      const { useFilesStore } = await import('/src/store/files.ts');
-      const { gitShow } = await import('/src/lib/tauri.ts');
+      const { useFilesStore } = await import("/src/store/files.ts");
+      const { gitShow } = await import("/src/lib/tauri.ts");
       const files = useFilesStore.getState();
       return JSON.stringify({
         mode: localStorage.getItem('oleafly.diffMode'),
+        workingDiff: document.body.innerText.includes('Working ↔ Index'),
         unstage: !!document.querySelector('[aria-label="Unstage all"]'),
         mergeViews: document.querySelectorAll('.cm-mergeView').length,
         changes: Array.from(document.querySelectorAll('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')).map(el => ({ className: el.className, text: el.textContent })),

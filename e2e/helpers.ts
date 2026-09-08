@@ -1093,6 +1093,15 @@ export async function ensureGithubConnected(page: Page) {
 // switched the active provider (HTTP 401s).
 export async function expandProviderCard(page: Page) {
   const provider = process.env.E2E_AI_PROVIDER || "Z.AI";
+  const providers = page.locator('[data-testid="ai-settings-tab-providers"]');
+  await expect(providers).toBeVisible({ timeout: 15_000 });
+  await providers.focus();
+  await providers.press("Enter");
+  await page.waitForFunction(
+    `Array.from(document.querySelectorAll('button[aria-expanded]')).some(
+      button => (button.textContent || '').includes(${JSON.stringify(provider)}))`,
+    15_000,
+  );
   await page.evaluate(
     `(() => {
       const modal = document.querySelector('[aria-label="Close settings"]')?.closest('.fixed');
@@ -1123,10 +1132,8 @@ export async function ensureAiConnected(page: Page) {
   const token = process.env.E2E_AI_TOKEN;
   if (!token) throw new Error("ensureAiConnected: E2E_AI_TOKEN not set");
   await openRailTab(page, "Research Assistant");
-  const ready = await page.evaluate<boolean>(
-    `!!document.querySelector('textarea[placeholder*="Ask AI"], textarea[placeholder*="Describe a figure"]')`,
-  );
-  if (ready) return;
+  // A composer can belong to a previous spec's mock provider. Reconnect the
+  // requested provider through settings before sending a live request.
   await openSettings(page, "ai");
   await expandProviderCard(page);
   await page.evaluate(
@@ -1180,6 +1187,15 @@ export async function ensureAiConnected(page: Page) {
     );
   }
   await page.click('[aria-label="Close settings"]');
+  const model = process.env.E2E_AI_MODEL;
+  if (model) {
+    await page.evaluate(`(async () => {
+      const { getConfig, setConfig } = await import("/src/lib/tauri.ts");
+      const config = await getConfig();
+      await setConfig({ ...config, ai_model: ${JSON.stringify(model)} });
+      window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed"));
+    })()`);
+  }
   await openRailTab(page, "Research Assistant");
   await page.waitForFunction(
     `!!document.querySelector('textarea[placeholder*="Ask AI"], textarea[placeholder*="Describe a figure"]')`,
@@ -1804,4 +1820,15 @@ export async function stageAllGitChanges(page: Page) {
     })()`,
     60_000,
   );
+}
+
+/** Inspect a completed tool card, never a tool name echoed in the user prompt. */
+export async function expectCompletedReadFile(page: Page) {
+  await page.waitForFunction(`(() => {
+    const message = Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1);
+    const worked = Array.from(message?.querySelectorAll('button') ?? [])
+      .find(button => /^Worked (for|through)/.test(button.textContent.trim()));
+    if (worked?.getAttribute('aria-expanded') === 'false') worked.click();
+    return !!message?.querySelector('[data-tool-name="read_file"][data-tool-status="done"]');
+  })()`, 20_000);
 }

@@ -1,6 +1,7 @@
 import { test, expect } from "../fixtures";
 import {
   createBlankProject,
+  expectCompletedReadFile,
   fillTextarea,
   openProject,
   openRailTab,
@@ -158,9 +159,11 @@ test.describe("live provider", () => {
     );
     await waitForRun(tauriPage);
 
-    const transcript = await tauriPage.evaluate<string>(`document.body.innerText`);
-    expect(transcript, "the tool call should appear in the transcript").toContain("read_file");
-    expect(transcript, "the model should report what it read").toMatch(/article/i);
+    await expectCompletedReadFile(tauriPage);
+    const answer = await tauriPage.evaluate<string>(
+      `Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1)?.textContent ?? ''`,
+    );
+    expect(answer, "the model should report what it read").toMatch(/article/i);
   });
 
   test("a real delegated agent completes and exposes its recorded conversation", async ({ tauriPage }) => {

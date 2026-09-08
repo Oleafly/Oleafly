@@ -1,5 +1,8 @@
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test, expect } from "../fixtures";
-import { compileAndWait, createProjectFromTemplate, typeInEditorAfter } from "../helpers";
+import { compileAndWait, createProjectFromTemplate, setNextImportPaths, setNextSavePath, typeInEditorAfter } from "../helpers";
 
 const RUN = Date.now().toString(36);
 const EDIT = `chkedit${RUN}`;
@@ -50,6 +53,41 @@ async function clickHoverRevealed(page: Page, selector: string) {
 
 async function waitUntilIdle(page: Page) {
   await expect(page.getByTestId("checkpoint-publishing")).toHaveCount(0, { timeout: 150_000 });
+}
+
+async function archiveRoundTrip(page: Page, template: string) {
+  await page.getByTestId("checkpoints-advanced").click();
+  const password = "checkpoint-regression-password";
+  const archive = join(mkdtempSync(join(tmpdir(), "oleafly-checkpoint-e2e-")), `${template}.oleafly-checkpoints`);
+  await page.getByText("Export", { exact: true }).click();
+  await expect(page.getByText("Password needs at least 8 characters.", { exact: true })).toBeVisible();
+  await page.fill("#checkpoint-archive-password", password);
+  await setNextSavePath(page, archive);
+  await page.getByText("Export", { exact: true }).click();
+  await page.waitForFunction(
+    `document.querySelector('#checkpoint-archive-password')?.value === ''`,
+    60_000,
+  );
+  const bytes = readFileSync(archive);
+  expect(bytes.subarray(0, 16).toString("ascii")).toBe("OLEAFLYCPARCHIVE");
+  expect(bytes.length).toBeGreaterThan(100);
+
+  await page.getByText("Keep latest", { exact: true }).click();
+  await page.getByText("Delete older checkpoints", { exact: true }).click();
+  await expect(page.getByTestId("checkpoint-entry")).toHaveCount(1, { timeout: 60_000 });
+  await page.fill("#checkpoint-archive-password", password);
+  await setNextImportPaths(page, [archive]);
+  await page.getByText("Import", { exact: true }).click();
+  await page.waitForFunction(
+    `document.querySelector('#checkpoint-archive-password')?.value === ''`,
+    60_000,
+  );
+  await expect(page.getByTestId("checkpoint-entry")).toHaveCount(2, { timeout: 30_000 });
+  // Import restores history, while the working document stays on the V1
+  // revision restored above. Archive import must never apply sources.
+  const source = await page.locator(".cm-content").textContent();
+  expect(source).toContain("here.");
+  expect(source).not.toContain(EDIT);
 }
 
 for (const template of ["blank", "blank-typst", "blank-markdown"]) {
@@ -156,6 +194,7 @@ for (const template of ["blank", "blank-typst", "blank-markdown"]) {
     await openCheckpoints(tauriPage);
     await waitUntilIdle(tauriPage);
     await expect(tauriPage.getByTestId("checkpoint-entry")).toHaveCount(2);
+    await archiveRoundTrip(tauriPage, template);
     await closeCheckpoints(tauriPage);
   });
 }
