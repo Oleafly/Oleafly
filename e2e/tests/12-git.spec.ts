@@ -155,12 +155,30 @@ test("stage, diff, and commit without requiring a connected account", async ({ t
   // Keep the working diff open while its INDEX baseline changes. The editor
   // must remove staged additions and show them again after unstaging.
   await stageAllGitChanges(tauriPage);
-  await tauriPage.waitForFunction(
-    `!!document.querySelector('[aria-label="Unstage all"]') &&
-      !!document.querySelector('.cm-mergeView') &&
-      !document.querySelector('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')`,
-    30_000,
-  );
+  try {
+    await tauriPage.waitForFunction(
+      `!!document.querySelector('[aria-label="Unstage all"]') &&
+        !!document.querySelector('.cm-mergeView') &&
+        !document.querySelector('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')`,
+      30_000,
+    );
+  } catch (error) {
+    const snapshot = await tauriPage.evaluate<string>(`(async () => {
+      const { useFilesStore } = await import('/src/store/files.ts');
+      const { gitShow } = await import('/src/lib/tauri.ts');
+      const files = useFilesStore.getState();
+      return JSON.stringify({
+        mode: localStorage.getItem('oleafly.diffMode'),
+        unstage: !!document.querySelector('[aria-label="Unstage all"]'),
+        mergeViews: document.querySelectorAll('.cm-mergeView').length,
+        changes: Array.from(document.querySelectorAll('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')).map(el => ({ className: el.className, text: el.textContent })),
+        sides: Array.from(document.querySelectorAll('.cm-merge-a, .cm-merge-b')).map(el => el.textContent),
+        file: files.files['main.tex'],
+        index: await gitShow(files.projectId, 'INDEX', 'main.tex'),
+      });
+    })()`);
+    throw new Error(`Working diff remained changed after staging: ${snapshot}`, { cause: error });
+  }
   await tauriPage.evaluate(`document.querySelector('[aria-label="Unstage all"]').click()`);
   await tauriPage.waitForFunction(
     `!!document.querySelector('[aria-label="Stage all"]') &&
