@@ -4,7 +4,20 @@ use std::process::Command;
 
 use crate::config;
 use crate::paths;
-use crate::proc::{output_contained, NoConsole};
+use crate::proc::{output_contained, NoConsole, OutputBounds};
+
+/// A transfer over someone's own uplink can legitimately take many minutes, so
+/// judge it by silence rather than by elapsed time: a push that is slow but
+/// still moving must finish. `--progress` at every remote call site is what
+/// makes that measurable, because Git reports progress once stderr is a pipe
+/// only when it is asked to. The total is a backstop for a process that hangs
+/// while still dribbling output, not a policy on how long a push may take.
+const REMOTE_IDLE: std::time::Duration = std::time::Duration::from_secs(120);
+const REMOTE_TOTAL: std::time::Duration = std::time::Duration::from_secs(60 * 60);
+
+fn remote_bounds() -> OutputBounds {
+    OutputBounds::stalled_after(REMOTE_IDLE, REMOTE_TOTAL)
+}
 
 fn project_root(project_id: &str) -> Result<PathBuf, String> {
     paths::project_dir(project_id)
@@ -35,6 +48,16 @@ fn run_configured_git(
     optional_locks: bool,
     configure: impl FnOnce(&mut Command),
 ) -> Result<std::process::Output, String> {
+    run_configured_git_bounded(root, args, optional_locks, None, configure)
+}
+
+fn run_configured_git_bounded(
+    root: &PathBuf,
+    args: &[&str],
+    optional_locks: bool,
+    bounds: Option<OutputBounds>,
+    configure: impl FnOnce(&mut Command),
+) -> Result<std::process::Output, String> {
     let mut command = Command::new("git");
     command
         .no_console()
@@ -51,7 +74,17 @@ fn run_configured_git(
         .env_remove("GIT_INDEX_FILE")
         .env("GIT_OPTIONAL_LOCKS", if optional_locks { "1" } else { "0" });
     configure(&mut command);
-    output_contained(command).map_err(|e| format!("failed to run git: {e}"))
+    match bounds {
+        Some(bounds) => crate::proc::output_contained_with_bounds(command, bounds),
+        None => output_contained(command),
+    }
+    .map_err(|e| format!("failed to run git: {e}"))
+}
+
+/// Reach a remote without a token: public clones and pulls still transfer over
+/// the same uplink, so they get the same silence-based bound.
+fn run_git_remote(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String> {
+    run_configured_git_bounded(root, args, true, Some(remote_bounds()), |_| {})
 }
 
 pub(crate) fn ensure_repository(project_dir: &Path) -> Result<bool, String> {
@@ -323,6 +356,17 @@ fn restore_worktree(root: &PathBuf, oid: &str) -> Result<(), String> {
     ok_or_err(run_git(root, &["read-tree", "--reset", "-u", oid])?)
 }
 
+/// Collapse a progress line to the last frame it drew. `--progress` redraws in
+/// place with carriage returns, so a failed transfer would otherwise report
+/// every percentage it passed through instead of where it stopped.
+fn last_progress_frame(line: &str) -> &str {
+    let line = line.strip_suffix('\r').unwrap_or(line);
+    match line.rfind('\r') {
+        Some(index) => &line[index + 1..],
+        None => line,
+    }
+}
+
 fn out_to_string(out: &std::process::Output) -> String {
     let mut s = String::new();
     s.push_str(&String::from_utf8_lossy(&out.stdout));
@@ -332,7 +376,12 @@ fn out_to_string(out: &std::process::Output) -> String {
         }
         s.push_str(&String::from_utf8_lossy(&out.stderr));
     }
-    s.trim().to_string()
+    s.split('\n')
+        .map(last_progress_frame)
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string()
 }
 
 /// Strip any embedded credentials from a remote URL for display.
@@ -476,7 +525,7 @@ fn run_git_authed(
         .env_remove("GIT_DIR")
         .env_remove("GIT_WORK_TREE")
         .env_remove("GIT_INDEX_FILE");
-    crate::proc::output_contained_with_timeout(command, std::time::Duration::from_secs(300))
+    crate::proc::output_contained_with_bounds(command, remote_bounds())
         .map_err(|e| format!("failed to run git: {e}"))
 }
 
@@ -499,7 +548,7 @@ pub(crate) fn attach_imported_repository_history_lock_held(
         ok_or_err(run_git_authed(
             root,
             token,
-            &["fetch", "--no-tags", "origin", refspec],
+            &["fetch", "--no-tags", "--progress", "origin", refspec],
         )?)
     })
 }
@@ -730,7 +779,11 @@ fn git_push_sync(project_id: String) -> Result<String, String> {
     let branch = current_branch(&root)?;
     // Push to the named `origin` remote (credentials come from the env-backed
     // helper), so git updates the `origin/<branch>` tracking ref itself.
-    let out = run_git_authed(&root, &cfg.github_token, &["push", "-u", "origin", &branch])?;
+    let out = run_git_authed(
+        &root,
+        &cfg.github_token,
+        &["push", "--progress", "-u", "origin", &branch],
+    )?;
     if !out.status.success() {
         return Err(out_to_string(&out));
     }
@@ -782,9 +835,15 @@ fn pull_origin(root: &PathBuf, token: &str) -> Result<String, String> {
         return Err("No remote 'origin' set for this project.".into());
     }
     let branch = current_branch(root)?;
-    let pull_args = ["pull", "--no-rebase", "origin", branch.as_str()];
+    let pull_args = [
+        "pull",
+        "--no-rebase",
+        "--progress",
+        "origin",
+        branch.as_str(),
+    ];
     let output = if token.is_empty() {
-        run_git(root, &pull_args)?
+        run_git_remote(root, &pull_args)?
     } else {
         run_git_authed(root, token, &pull_args)?
     };
@@ -1127,9 +1186,10 @@ mod tests {
     use super::{
         attach_imported_repository_history_at, clean_remote_credentials, commit_index,
         current_branch, ensure_repository, ensure_repository_with, initialize_repo,
-        is_allowed_remote_url, ok_or_err, parse_status_porcelain, remote_credentials_need_cleanup,
-        restore_worktree, run_configured_git, run_git, run_git_read_only, sanitize_url, show,
-        stage, stage_all, unstage, unstage_all, validate_git_oid, Command,
+        is_allowed_remote_url, ok_or_err, out_to_string, parse_status_porcelain,
+        remote_credentials_need_cleanup, restore_worktree, run_configured_git, run_git,
+        run_git_read_only, sanitize_url, show, stage, stage_all, unstage, unstage_all,
+        validate_git_oid, Command,
     };
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -1137,6 +1197,21 @@ mod tests {
     use std::time::Duration;
 
     static COUNTER: AtomicU32 = AtomicU32::new(0);
+
+    #[test]
+    fn a_failed_transfer_reports_where_it_stopped_not_every_percentage() {
+        let out = std::process::Output {
+            status: std::process::Command::new("false").status().unwrap(),
+            stdout: Vec::new(),
+            stderr: b"Writing objects:  10% (1/10)\rWriting objects:  90% (9/10)\r\n\
+                      error: failed to push some refs\r\n"
+                .to_vec(),
+        };
+        assert_eq!(
+            out_to_string(&out),
+            "Writing objects:  90% (9/10)\nerror: failed to push some refs"
+        );
+    }
 
     /// Create a throwaway git repo in a temp dir with a fixed identity.
     fn temp_repo() -> PathBuf {

@@ -1,11 +1,38 @@
 use std::io;
 use std::process::{Command, Output, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 const OUTPUT_LIMIT: usize = 64 * 1024 * 1024;
 const CLEANUP_TIMEOUT: Duration = Duration::from_secs(2);
+
+/// How long a command may run, and how it is judged.
+#[derive(Clone, Copy, Debug)]
+pub struct OutputBounds {
+    idle: Option<Duration>,
+    total: Duration,
+}
+
+impl OutputBounds {
+    /// One wall-clock deadline that progress does not extend. Correct only
+    /// where the worst case is known and short, or where the command reports
+    /// nothing while it works.
+    pub fn total(total: Duration) -> Self {
+        Self { idle: None, total }
+    }
+
+    /// Stop after `idle` with no bytes on either pipe, keeping `total` as a
+    /// backstop. Work that is slow but still moving must survive, so this only
+    /// bounds a command that reports progress while it runs.
+    pub fn stalled_after(idle: Duration, total: Duration) -> Self {
+        Self {
+            idle: Some(idle),
+            total,
+        }
+    }
+}
 
 /// Synchronous callers must run on blocking workers. A single shared reactor
 /// drains both pipes without creating reader threads for every Git refresh.
@@ -14,6 +41,10 @@ pub fn output_contained(command: Command) -> io::Result<Output> {
 }
 
 pub fn output_contained_with_timeout(command: Command, timeout: Duration) -> io::Result<Output> {
+    output_contained_with_bounds(command, OutputBounds::total(timeout))
+}
+
+pub fn output_contained_with_bounds(command: Command, bounds: OutputBounds) -> io::Result<Output> {
     static RUNTIME: OnceLock<Result<tokio::runtime::Runtime, String>> = OnceLock::new();
     let runtime = RUNTIME
         .get_or_init(|| {
@@ -28,18 +59,26 @@ pub fn output_contained_with_timeout(command: Command, timeout: Duration) -> io:
         .map_err(|error| io::Error::other(error.clone()))?;
     let (sender, receiver) = std::sync::mpsc::sync_channel(1);
     runtime.spawn(async move {
-        let _ = sender.send(collect_output(command, timeout, OUTPUT_LIMIT).await);
+        let _ = sender.send(collect_output(command, bounds, OUTPUT_LIMIT).await);
     });
     receiver
         .recv()
         .map_err(|_| io::Error::other("process output worker stopped"))?
 }
 
-async fn read_output(mut pipe: impl AsyncRead + Unpin, limit: usize) -> io::Result<Vec<u8>> {
+async fn read_output(
+    mut pipe: impl AsyncRead + Unpin,
+    limit: usize,
+    started: Instant,
+    activity: &AtomicU64,
+) -> io::Result<Vec<u8>> {
     let mut output = Vec::new();
     let mut bytes = [0; 8192];
     loop {
         let count = pipe.read(&mut bytes).await?;
+        // Both pipes share one clock, so a command that reports only on stderr
+        // still counts as making progress.
+        activity.store(started.elapsed().as_millis() as u64, Ordering::Relaxed);
         if count == 0 {
             return Ok(output);
         }
@@ -49,6 +88,18 @@ async fn read_output(mut pipe: impl AsyncRead + Unpin, limit: usize) -> io::Resu
             )));
         }
         output.extend_from_slice(&bytes[..count]);
+    }
+}
+
+/// Resolves once neither pipe has delivered anything for `idle`.
+async fn stalled(started: Instant, activity: &AtomicU64, idle: Duration) {
+    loop {
+        let last = Duration::from_millis(activity.load(Ordering::Relaxed));
+        let quiet = started.elapsed().saturating_sub(last);
+        if quiet >= idle {
+            return;
+        }
+        tokio::time::sleep(idle - quiet).await;
     }
 }
 
@@ -69,13 +120,17 @@ fn spawn_output(command: Command) -> io::Result<(tokio::process::Child, super::P
     Ok((child, containment))
 }
 
-async fn collect_output(command: Command, timeout: Duration, limit: usize) -> io::Result<Output> {
+async fn collect_output(
+    command: Command,
+    bounds: OutputBounds,
+    limit: usize,
+) -> io::Result<Output> {
     let started = Instant::now();
     // CreateProcess and Job Object setup must not park the shared I/O reactor.
     // If admission times out, the blocking task still owns the child/guard;
     // dropping its eventual result closes that tree without publishing it.
     let launched = tokio::time::timeout(
-        timeout,
+        bounds.total,
         tokio::task::spawn_blocking(move || spawn_output(command)),
     )
     .await
@@ -90,23 +145,39 @@ async fn collect_output(command: Command, timeout: Duration, limit: usize) -> io
         .stderr
         .take()
         .ok_or_else(|| io::Error::other("missing stderr"))?;
+    let activity = AtomicU64::new(started.elapsed().as_millis() as u64);
     // Keep reads in this future: cancellation closes the pipes immediately,
     // rather than detaching tasks that can outlive the command indefinitely.
-    let result = tokio::time::timeout(timeout.saturating_sub(started.elapsed()), async {
-        let wait = async {
-            let status = child.wait().await?;
-            // A hook/helper may leave a descendant holding either pipe open.
-            // Stop the owned tree as soon as its leader finishes.
-            drop(containment.take());
-            Ok::<_, io::Error>(status)
+    let result = tokio::time::timeout(bounds.total.saturating_sub(started.elapsed()), async {
+        let collect = async {
+            let wait = async {
+                let status = child.wait().await?;
+                // A hook/helper may leave a descendant holding either pipe open.
+                // Stop the owned tree as soon as its leader finishes.
+                drop(containment.take());
+                Ok::<_, io::Error>(status)
+            };
+            let (status, stdout, stderr) = tokio::try_join!(
+                wait,
+                read_output(stdout, limit, started, &activity),
+                read_output(stderr, limit, started, &activity)
+            )?;
+            Ok(Output {
+                status,
+                stdout,
+                stderr,
+            })
         };
-        let (status, stdout, stderr) =
-            tokio::try_join!(wait, read_output(stdout, limit), read_output(stderr, limit))?;
-        Ok(Output {
-            status,
-            stdout,
-            stderr,
-        })
+        match bounds.idle {
+            None => collect.await,
+            Some(idle) => tokio::select! {
+                collected = collect => collected,
+                () = stalled(started, &activity, idle) => Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "command stopped reporting progress and was stopped",
+                )),
+            },
+        }
     })
     .await
     .unwrap_or_else(|_| {
@@ -168,11 +239,41 @@ mod tests {
         assert!(start.elapsed() < Duration::from_secs(4));
     }
 
+    #[test]
+    fn steady_progress_outlives_a_deadline_that_would_have_killed_it() {
+        // Five reports at 100ms cross an idle budget of 250ms many times over.
+        // A total cap of the same size would stop this transfer mid-flight.
+        let output = output_contained_with_bounds(
+            node(
+                "let n=0;const t=setInterval(()=>{process.stderr.write('sending ');\
+                 if(++n===5){clearInterval(t);process.stdout.write('done');process.exit(0)}},100)",
+            ),
+            OutputBounds::stalled_after(Duration::from_millis(250), Duration::from_secs(30)),
+        )
+        .unwrap();
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"done");
+        assert_eq!(output.stderr, b"sending sending sending sending sending ");
+    }
+
+    #[test]
+    fn a_command_that_goes_quiet_stops_without_waiting_for_the_backstop() {
+        let start = Instant::now();
+        let error = output_contained_with_bounds(
+            node("process.stderr.write('sending ');setInterval(()=>{},1000)"),
+            OutputBounds::stalled_after(Duration::from_millis(250), Duration::from_secs(300)),
+        )
+        .unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::TimedOut);
+        assert!(error.to_string().contains("stopped reporting progress"));
+        assert!(start.elapsed() < Duration::from_secs(30));
+    }
+
     #[tokio::test]
     async fn excessive_output_fails_instead_of_silently_truncating() {
         let error = collect_output(
             node("process.stdout.write('x'.repeat(16384));setInterval(()=>{},1000)"),
-            Duration::from_secs(5),
+            OutputBounds::total(Duration::from_secs(5)),
             1024,
         )
         .await

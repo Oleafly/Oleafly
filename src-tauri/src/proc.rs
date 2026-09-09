@@ -14,7 +14,9 @@
 use std::process::Command;
 
 mod output;
-pub use output::{output_contained, output_contained_with_timeout};
+pub use output::{
+    output_contained, output_contained_with_bounds, output_contained_with_timeout, OutputBounds,
+};
 
 /// `CREATE_NO_WINDOW` (winbase.h): the child runs without allocating a console.
 #[cfg(windows)]
