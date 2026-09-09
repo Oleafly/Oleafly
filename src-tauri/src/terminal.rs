@@ -33,6 +33,9 @@ const MAX_PENDING_INPUT_WRITES: usize = 256;
 
 type WriteReceipt = tokio::sync::oneshot::Receiver<Result<(), String>>;
 
+/// The pair of handles a session reads from and writes to.
+type TerminalStreams = (Box<dyn Read + Send>, Box<dyn Write + Send>);
+
 struct PendingWrite {
     bytes: Vec<u8>,
     completion: tokio::sync::oneshot::Sender<Result<(), String>>,
@@ -515,43 +518,7 @@ fn open_terminal_with_ticket(
     let contained = started.elapsed();
     drop(pty.slave);
 
-    #[cfg(unix)]
-    let (mut reader, writer): (Box<dyn Read + Send>, Box<dyn Write + Send>) = {
-        use std::os::fd::{AsRawFd, BorrowedFd};
-        let fd = pty
-            .master
-            .as_raw_fd()
-            .ok_or("terminal input is unavailable")?;
-        let fd = unsafe { BorrowedFd::borrow_raw(fd) }
-            .try_clone_to_owned()
-            .map_err(|error| format!("failed to open terminal input: {error}"))?;
-        let flags = unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_GETFL) };
-        if flags < 0
-            || unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_SETFL, flags | libc::O_NONBLOCK) } < 0
-        {
-            return Err(format!(
-                "failed to configure terminal input: {}",
-                std::io::Error::last_os_error()
-            ));
-        }
-        let reader = fd
-            .try_clone()
-            .map_err(|error| format!("failed to open terminal output: {error}"))?;
-        (
-            Box::new(TerminalReader(std::fs::File::from(reader))),
-            Box::new(std::fs::File::from(fd)),
-        )
-    };
-    #[cfg(not(unix))]
-    let mut reader = pty
-        .master
-        .try_clone_reader()
-        .map_err(|e| format!("failed to read pty: {e}"))?;
-    #[cfg(not(unix))]
-    let writer = pty
-        .master
-        .take_writer()
-        .map_err(|error| format!("failed to write pty: {error}"))?;
+    let (reader, writer) = terminal_streams(&*pty.master)?;
     let writer = TerminalWriter::start(writer, Some(channel.clone()))?;
 
     let child = Arc::new(Mutex::new(child));
@@ -579,12 +546,61 @@ fn open_terminal_with_ticket(
         (contained - spawned).as_secs_f64() * 1000.0
     );
 
-    // ConPTY keeps the reader blocked until the pseudo console closes, so a
-    // shell that exits on its own never EOFs the reader on Windows. Poll for
-    // the exit and drop the session; closing the master unblocks the reader,
-    // which then delivers the exit event. The poller ends when the session is
-    // torn down elsewhere and its registry clone of the child goes away.
-    let poll_id = id.clone();
+    spawn_exit_poller(id.clone(), child);
+    spawn_output_reader(id.clone(), reader, channel);
+
+    Ok(id)
+}
+
+/// Open the pair of handles the session reads from and writes to. Unix needs a
+/// non-blocking duplicate of the master descriptor; Windows takes the reader
+/// and writer the pty exposes.
+fn terminal_streams(master: &(dyn MasterPty + Send)) -> Result<TerminalStreams, String> {
+    #[cfg(unix)]
+    {
+        use std::os::fd::{AsRawFd, BorrowedFd};
+        let fd = master.as_raw_fd().ok_or("terminal input is unavailable")?;
+        let fd = unsafe { BorrowedFd::borrow_raw(fd) }
+            .try_clone_to_owned()
+            .map_err(|error| format!("failed to open terminal input: {error}"))?;
+        let flags = unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_GETFL) };
+        if flags < 0
+            || unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_SETFL, flags | libc::O_NONBLOCK) } < 0
+        {
+            return Err(format!(
+                "failed to configure terminal input: {}",
+                std::io::Error::last_os_error()
+            ));
+        }
+        let reader = fd
+            .try_clone()
+            .map_err(|error| format!("failed to open terminal output: {error}"))?;
+        Ok((
+            Box::new(TerminalReader(std::fs::File::from(reader))),
+            Box::new(std::fs::File::from(fd)),
+        ))
+    }
+    #[cfg(not(unix))]
+    {
+        let reader = master
+            .try_clone_reader()
+            .map_err(|e| format!("failed to read pty: {e}"))?;
+        let writer = master
+            .take_writer()
+            .map_err(|error| format!("failed to write pty: {error}"))?;
+        Ok((reader, writer))
+    }
+}
+
+/// ConPTY keeps the reader blocked until the pseudo console closes, so a shell
+/// that exits on its own never EOFs the reader on Windows. Poll for the exit
+/// and drop the session; closing the master unblocks the reader, which then
+/// delivers the exit event. The poller ends when the session is torn down
+/// elsewhere and its registry clone of the child goes away.
+fn spawn_exit_poller(
+    poll_id: String,
+    child: Arc<Mutex<Box<dyn portable_pty::Child + Send + Sync>>>,
+) {
     std::thread::spawn(move || loop {
         std::thread::sleep(std::time::Duration::from_millis(250));
         if Arc::strong_count(&child) == 1 {
@@ -610,8 +626,13 @@ fn open_terminal_with_ticket(
         }
         break;
     });
+}
 
-    let session_id = id.clone();
+fn spawn_output_reader(
+    session_id: String,
+    mut reader: Box<dyn Read + Send>,
+    channel: Channel<TerminalEvent>,
+) {
     std::thread::spawn(move || {
         let mut buffer = [0u8; 8192];
         let mut pending: Vec<u8> = Vec::new();
@@ -663,8 +684,6 @@ fn open_terminal_with_ticket(
             println!("term: session {session_id} exit event delivered={delivered}");
         }
     });
-
-    Ok(id)
 }
 
 fn stop_session(session: TermSession) {
