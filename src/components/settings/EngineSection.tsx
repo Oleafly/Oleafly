@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Check, Cpu, Download, HardDrive, Info, Loader2, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, Cpu, Download, HardDrive, Info, Loader2, Trash2 } from "lucide-react";
 import { installPhaseLabel, useEngineStore } from "@/store/engine";
 import { useSettingsStore, type DefaultLatexEngine } from "@/store/settings";
-import { LATEX_PACKAGES, type TaggingStatus } from "@/lib/latex-packages";
+import { TexPackagesSection } from "./TexPackagesSection";
 import { hasPandoc, texDistributions, type TexDistribution } from "@/lib/tauri";
 import { ensurePandoc } from "@/features/pandoc";
 import { Button } from "@/components/ui/button";
 import { isTauri } from "@tauri-apps/api/core";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Input } from "@/components/ui/input";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -44,12 +43,6 @@ function distroTooltip(distro: TexDistribution): string {
       : "No latexmk or tlmgr was found in this install.";
   return `${bundled} Oleafly runs its TeX tools from ${distro.bin_dir}.`;
 }
-
-const TAG_BADGE: Record<TaggingStatus, { label: string; className: string } | null> = {
-  ok: null,
-  caution: { label: "tagging: caution", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-  breaks: { label: "breaks tagging", className: "bg-red-500/10 text-red-600 dark:text-red-400" },
-};
 
 /**
  * Markdown projects compile through pandoc into LaTeX and then the bundled
@@ -130,14 +123,13 @@ function MarkdownEngineTab() {
 }
 
 export function EngineSection() {
-  const { info, installing, progress, installed, busyPkg, refresh, refreshPackages, install, remove, addPackage, removePackage } =
+  const { info, installing, progress, refresh, refreshPackages, install, remove } =
     useEngineStore();
   const defaultLatexEngine = useSettingsStore((s) => s.defaultLatexEngine);
   const setDefaultLatexEngine = useSettingsStore((s) => s.setDefaultLatexEngine);
   const resetEnginePreferences = useSettingsStore((s) => s.resetEnginePreferences);
   const installPhase = useEngineStore((s) => s.installPhase);
   const partialDownloadBytes = useEngineStore((s) => s.partialDownloadBytes);
-  const [query, setQuery] = useState("");
   const [distros, setDistros] = useState<TexDistribution[]>([]);
   const [tab, setTab] = useState<"latex" | "typst" | "markdown">("latex");
 
@@ -156,10 +148,7 @@ export function EngineSection() {
   }, [installing, info]);
 
   const kind = info?.kind ?? "none";
-  const hasEngine = kind !== "none";
-  const filtered = LATEX_PACKAGES.filter(
-    (p) => p.name.includes(query.toLowerCase()) || p.description.toLowerCase().includes(query.toLowerCase()),
-  );
+
 
   return (
     <Tabs
@@ -370,53 +359,7 @@ export function EngineSection() {
         </div>
       </div>
 
-      <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Packages</h3>
-        {!hasEngine && (
-          <p className="mb-2 text-xs text-muted-foreground">Install an engine above to add or remove LaTeX packages.</p>
-        )}
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filter packages…"
-          className="mb-2 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
-        />
-        <div className="max-h-72 overflow-auto rounded-md border">
-          {filtered.map((p) => {
-            const on = installed.includes(p.name);
-            const badge = TAG_BADGE[p.tagging];
-            const busy = busyPkg === p.name;
-            return (
-              <div key={p.name} className="flex items-center gap-2 border-b px-2.5 py-2 last:border-b-0">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs">{p.name}</span>
-                    {on && <Check className="size-3 text-emerald-500" />}
-                    {badge && (
-                      <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px]", badge.className)}>
-                        {p.tagging === "breaks" && <AlertTriangle className="size-2.5" />}
-                        {badge.label}
-                      </span>
-                    )}
-                  </div>
-                  <p className="truncate text-[11px] text-muted-foreground">{p.description}</p>
-                </div>
-                <button type="button"
-                  onClick={() => void (on ? removePackage(p.name) : addPackage(p.name))}
-                  disabled={!hasEngine || !!busyPkg}
-                  className={cn(
-                    "inline-flex w-16 items-center justify-center gap-1 rounded border px-2 py-1 text-xs disabled:opacity-40",
-                    "border-input hover:bg-accent",
-                  )}
-                >
-                  {busy ? <Loader2 className="size-3 animate-spin" /> : on ? <X className="size-3" /> : null}
-                  {busy ? "" : on ? "Remove" : "Add"}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <TexPackagesSection />
       </TabsContent>
       <ResetToDefaults
         sectionName="Engines"

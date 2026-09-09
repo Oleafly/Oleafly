@@ -4,7 +4,7 @@ import {
   importCompatFinding,
   latexmkFixesFinding,
   loadsPackage,
-  missingLatexPackages,
+  missingLatexFiles,
   scanImportCompatibility,
   stripLineComments,
 } from "./import-compat";
@@ -176,17 +176,17 @@ describe("taxonomy catalog", () => {
   });
 });
 
-describe("missingLatexPackages", () => {
-  it("extracts package stems from missing .sty and .cls errors", () => {
+describe("missingLatexFiles", () => {
+  it("extracts filenames from missing .sty and .cls errors", () => {
     const log = [
       "! LaTeX Error: File `siunitx.sty' not found.",
       "! LaTeX Error: File `sn-jnl.cls' not found.",
       "! I can't find file `algorithmic.sty'.",
     ].join("\n");
-    expect(missingLatexPackages(log).sort()).toEqual([
-      "algorithmic",
-      "siunitx",
-      "sn-jnl",
+    expect(missingLatexFiles(log).sort()).toEqual([
+      "algorithmic.sty",
+      "siunitx.sty",
+      "sn-jnl.cls",
     ]);
   });
 
@@ -195,7 +195,7 @@ describe("missingLatexPackages", () => {
       "! LaTeX Error: File `figure1.pdf' not found.",
       "! I can't find file `chapters/intro.tex'.",
     ].join("\n");
-    expect(missingLatexPackages(log)).toEqual([]);
+    expect(missingLatexFiles(log)).toEqual([]);
   });
 
   it("deduplicates repeated misses and rejects unsafe names", () => {
@@ -204,6 +204,15 @@ describe("missingLatexPackages", () => {
       "! LaTeX Error: File `siunitx.sty' not found.",
       "! LaTeX Error: File `bad name$.sty' not found.",
     ].join("\n");
-    expect(missingLatexPackages(log)).toEqual(["siunitx"]);
+    expect(missingLatexFiles(log)).toEqual(["siunitx.sty"]);
   });
+  it("preserves filenames and recognizes quote variants without treating project paths as packages", () => {
+    const log = [
+      "! LaTeX Error: File 'tikz.sty' not found.",
+      '! LaTeX Error: File "university_thesis.cls" not found.',
+      "! LaTeX Error: File `styles/custom.sty' not found.",
+    ].join("\n");
+    expect(missingLatexFiles(log)).toEqual(["tikz.sty", "university_thesis.cls"]);
+  });
+
 });

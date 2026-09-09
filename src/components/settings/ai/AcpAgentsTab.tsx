@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -197,7 +198,7 @@ function AgentCard({
   agent: AcpAgentStatus;
   projectId?: string | null;
   busy: string | null;
-  onInstall: (definition: AcpDefinition) => void;
+  onInstall: (definition: AcpDefinition, opener: HTMLButtonElement) => void;
   onRemove: (agentId: string) => void;
   onOpenTerminal: () => void;
 }) {
@@ -288,7 +289,7 @@ function AgentCard({
                 size="sm"
                 data-testid={`acp-agent-install-${agent.definition.id}`}
                 disabled={!!busy || !agent.canInstall}
-                onClick={() => onInstall(agent.definition)}
+                onClick={(event) => onInstall(agent.definition, event.currentTarget)}
               >
                 {installing ? (
                   <Loader2 className="size-3.5 animate-spin" />
@@ -326,6 +327,13 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
   const [results, setResults] = useState<AcpRegistryEntry[]>([]);
   const [definition, setDefinition] = useState("");
   const [review, setReview] = useState<AcpDefinition | null>(null);
+  const reviewOpener = useRef<HTMLElement | null>(null);
+  const reviewing = review !== null;
+  useEffect(() => {
+    if (!reviewing) return;
+    const id = appModalCoordinator.add(reviewOpener.current);
+    return () => { appModalCoordinator.remove(id)?.focus({ preventScroll: true }); };
+  }, [reviewing]);
 
   useEffect(() => {
     void useAcpSessionsStore
@@ -425,7 +433,11 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
             agent={agent}
             projectId={projectId}
             busy={busy}
-            onInstall={setReview}
+            onInstall={(definition, opener) => {
+              reviewOpener.current = opener;
+              setError(null);
+              setReview(definition);
+            }}
             onOpenTerminal={openTerminal}
             onRemove={(agentId) =>
               void action(agentId, async () => {
@@ -533,8 +545,15 @@ export function AcpAgentsTab({ projectId }: { projectId?: string | null }) {
         </form>
       </Section>
 
-      <Dialog open={review !== null} onOpenChange={(open) => !open && setReview(null)}>
-        <DialogContent className="max-w-md">
+      <Dialog open={reviewing} onOpenChange={(open) => { if (!open && !busy) setReview(null); }}>
+        <DialogContent
+          className="z-[100] max-w-md"
+          overlayClassName="z-[100]"
+          closeDisabled={!!busy}
+          onCloseAutoFocus={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => { if (busy) event.preventDefault(); }}
+          onPointerDownOutside={(event) => { if (busy) event.preventDefault(); }}
+        >
           <DialogHeader>
             <DialogTitle>
               Install {review?.name} bridge {review?.version}

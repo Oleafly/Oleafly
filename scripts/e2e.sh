@@ -394,6 +394,7 @@ else
     "e2e/tests/24-pdf-selection-browser.spec.ts"
     "e2e/tests/27-markdown-rendering-browser.spec.ts"
     "e2e/tests/56-preview-window-browser.spec.ts"
+    "e2e/tests/84-settings-install-browser.spec.ts"
   )
   if [ -n "$APP_BINARY" ]; then
     filtered=()

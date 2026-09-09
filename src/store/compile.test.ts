@@ -3,6 +3,10 @@ import { LATEX_ENGINE } from "@/lib/document-engine";
 import type { CompileResult, LogDiagnostic } from "@oleafly/backend-port";
 
 const mocks = vi.hoisted(() => ({
+  latexEngineInfo: vi.fn(),
+  tlmgrInstallMissing: vi.fn(),
+  toastInfo: vi.fn(),
+  refreshPackages: vi.fn(),
   events: new Map<string, (event: { payload: string }) => void>(),
   listen: vi.fn(
     async (name: string, handler: (event: { payload: string }) => void) => {
@@ -59,6 +63,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/tauri", () => ({
+  latexEngineInfo: mocks.latexEngineInfo,
+  tlmgrInstallMissing: mocks.tlmgrInstallMissing,
   compileProject: mocks.compileProject,
   readCompiledPdf: mocks.readCompiledPdf,
   validateCompileFingerprint: mocks.validateCompileFingerprint,
@@ -87,8 +93,9 @@ vi.mock("@/store/project-index", () => ({
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => mocks.settings } }));
 vi.mock("@/lib/toast", () => ({
   notifyError: vi.fn(),
-  toast: { errorUnique: vi.fn() },
+  toast: { errorUnique: vi.fn(), info: mocks.toastInfo },
 }));
+vi.mock("@/store/engine", () => ({ useEngineStore: { getState: () => ({ refreshPackages: mocks.refreshPackages }) } }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/preview-window", () => ({
   refreshPreviewWindow: mocks.refreshPreviewWindow,
@@ -921,5 +928,62 @@ describe("compile log diagnostics", () => {
     useCompileStore.setState({ diagnostics: [diagnostic] });
     useCompileStore.getState().reset();
     expect(useCompileStore.getState().diagnostics).toBeNull();
+  });
+});
+
+describe("missing TeX file installation", () => {
+  let project = 0;
+  beforeEach(() => {
+    mocks.files.projectId = `missing-packages-${++project}`;
+    mocks.files.engine = { ...LATEX_ENGINE, id: "latexmk" };
+    mocks.latexEngineInfo.mockReset().mockResolvedValue({ tlmgr: "/tex/tlmgr" });
+    mocks.tlmgrInstallMissing.mockReset().mockResolvedValue("installed");
+    mocks.refreshPackages.mockReset().mockResolvedValue(undefined);
+    mocks.toastInfo.mockReset();
+    mocks.compileProject.mockResolvedValue({ ok: false, has_pdf: false, output_id: null, output_revision: null, log: "! LaTeX Error: File `tikz.sty' not found.", errors: [], synctex_path: null, out_dir: null, compile_time_ms: 1 });
+  });
+
+  async function offer() {
+    await useCompileStore.getState().recompile();
+    await vi.waitFor(() => expect(mocks.toastInfo).toHaveBeenCalled());
+    return mocks.toastInfo.mock.calls.find((call) => call[1]?.onClick)?.[1] as { onClick: () => void };
+  }
+
+  it("sends filenames to the resolver and recompiles only after installation", async () => {
+    const action = await offer();
+    const install = deferred<string>();
+    mocks.tlmgrInstallMissing.mockReturnValue(install.promise);
+    action.onClick();
+    action.onClick();
+    expect(mocks.tlmgrInstallMissing).toHaveBeenCalledExactlyOnceWith(["tikz.sty"]);
+    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
+    install.resolve("installed");
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
+  });
+
+  it("does not compile a different project after an installation finishes", async () => {
+    const action = await offer();
+    const install = deferred<string>();
+    mocks.tlmgrInstallMissing.mockReturnValue(install.promise);
+    action.onClick();
+    mocks.files.projectId = "other-project";
+    install.resolve("installed");
+    await vi.waitFor(() => expect(mocks.refreshPackages).toHaveBeenCalled());
+    await vi.dynamicImportSettled();
+    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers a retry after failure and ignores an action from another project", async () => {
+    const action = await offer();
+    mocks.tlmgrInstallMissing.mockRejectedValueOnce("Repository unavailable");
+    action.onClick();
+    await vi.waitFor(() => expect(mocks.tlmgrInstallMissing).toHaveBeenCalled());
+    await vi.dynamicImportSettled();
+    mocks.toastInfo.mockClear();
+    const retry = await offer();
+    expect(retry).toBeDefined();
+    mocks.files.projectId = "another-project";
+    retry.onClick();
+    expect(mocks.tlmgrInstallMissing).toHaveBeenCalledTimes(1);
   });
 });

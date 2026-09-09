@@ -14,6 +14,13 @@ import {
 import { toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
 
+function packageErrorMessage(error: unknown, fallback: string): string {
+  const detail = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  return detail.trim() ? `${fallback} ${detail.trim()}` : fallback;
+}
+
+let packageReadRequest = 0;
+
 export type InstallPhase = "download" | "extract" | "packages";
 
 interface EngineStore {
@@ -31,6 +38,7 @@ interface EngineStore {
   installWaitNoticeOpen: boolean;
   installed: string[];
   busyPkg: string | null;
+  packageError: string | null;
   loaded: boolean;
   refresh: () => Promise<void>;
   ensureLoaded: () => Promise<void>;
@@ -53,6 +61,7 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
   installWaitNoticeOpen: false,
   installed: [],
   busyPkg: null,
+  packageError: null,
   loaded: false,
 
   refresh: async () => {
@@ -79,10 +88,21 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
 
   refreshPackages: async () => {
     if (!isTauri()) return;
+    const request = ++packageReadRequest;
+    const manager = get().info?.tlmgr;
+    if (!manager) {
+      set({ installed: [], packageError: null });
+      return;
+    }
     try {
-      set({ installed: await tlmgrInstalled() });
-    } catch {
-      // tlmgr may be unavailable (no engine); leave the list empty
+      const installed = await tlmgrInstalled();
+      if (request === packageReadRequest && get().info?.tlmgr === manager) {
+        set({ installed, packageError: null });
+      }
+    } catch (error) {
+      if (request === packageReadRequest && get().info?.tlmgr === manager) {
+        set({ installed: [], packageError: packageErrorMessage(error, "Could not read the installed packages.") });
+      }
     }
   },
 
@@ -161,13 +181,16 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
 
   addPackage: async (name) => {
     if (!isTauri() || get().busyPkg) return;
-    set({ busyPkg: name });
+    packageReadRequest += 1;
+    set({ busyPkg: name, packageError: null });
     try {
       await tlmgrInstall([name]);
-      set((s) => ({ installed: [...s.installed, name] }));
+      await get().refreshPackages();
     } catch (e) {
       void logError("tlmgr install", e);
-      toast.error(`Could not install ${name}`);
+      const message = packageErrorMessage(e, `Could not install ${name}.`);
+      set({ packageError: message });
+      toast.error(message);
     } finally {
       set({ busyPkg: null });
     }
@@ -175,13 +198,16 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
 
   removePackage: async (name) => {
     if (!isTauri() || get().busyPkg) return;
-    set({ busyPkg: name });
+    packageReadRequest += 1;
+    set({ busyPkg: name, packageError: null });
     try {
       await tlmgrRemove([name]);
-      set((s) => ({ installed: s.installed.filter((p) => p !== name) }));
+      await get().refreshPackages();
     } catch (e) {
       void logError("tlmgr remove", e);
-      toast.error(`Could not remove ${name}`);
+      const message = packageErrorMessage(e, `Could not remove ${name}.`);
+      set({ packageError: message });
+      toast.error(message);
     } finally {
       set({ busyPkg: null });
     }
