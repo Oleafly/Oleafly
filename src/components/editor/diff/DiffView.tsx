@@ -45,12 +45,32 @@ export function DiffView() {
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+  const baselineRef = useRef<string | null>(null);
 
   // Both views depend on INDEX. Working edits update live, but staging,
-  // unstaging, and committing also change the comparison baseline.
+  // unstaging, and committing also change the comparison baseline. A working
+  // diff is editable, so rebuild it only when that baseline really moved: an
+  // unrelated git change must not discard the caret, scroll, and undo history
+  // of someone typing in it.
   useEffect(() => {
     const onChanged = () => {
-      if (activeDiff(useDiffStore.getState())) setReloadKey((k) => k + 1);
+      const current = activeDiff(useDiffStore.getState());
+      if (!current) return;
+      if (current.side === "staged") {
+        setReloadKey((k) => k + 1);
+        return;
+      }
+      const activeProject = useFilesStore.getState().projectId;
+      if (!activeProject) return;
+      const baseline = baselineRef.current;
+      void gitShow(activeProject, diffSides(current.side).oldRev, current.path)
+        .then((next) => {
+          const still = activeDiff(useDiffStore.getState());
+          if (still?.path !== current.path || still.side !== current.side) return;
+          if (baselineRef.current !== baseline || next === baseline) return;
+          setReloadKey((k) => k + 1);
+        })
+        .catch(() => setReloadKey((k) => k + 1));
     };
     window.addEventListener("oleafly:git-changed", onChanged);
     return () => window.removeEventListener("oleafly:git-changed", onChanged);
@@ -66,6 +86,7 @@ export function DiffView() {
     setLoading(true);
     setError(null);
     setNotice(null);
+    baselineRef.current = null;
     const { oldRev, newRev, editable } = diffSides(side);
 
     let synchronizing = false;
@@ -114,6 +135,7 @@ export function DiffView() {
     const build = async () => {
       try {
         const oldText = await gitShow(projectId, oldRev, path);
+        baselineRef.current = oldText;
         const newText =
           newRev === "WORKTREE"
             ? useFilesStore.getState().files[path]?.content ?? await readFileContent(projectId, path).catch(() => "")

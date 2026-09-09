@@ -160,7 +160,11 @@ describe("ProjectAnalysisCoordinator", () => {
     const pending = coordinator.requestWorkspaceSymbols({ query: "" });
     const request = await requestAt(transport, "workspace/symbol");
     const rejected = expect(pending).rejects.toBeInstanceOf(StaleProjectAnalysisResultError);
+    expect(store.getState().snapshot.features.workspaceSymbols.status).toBe("running");
     coordinator.dispose();
+    // Nothing can answer the in-flight request now, so its slot must not keep
+    // claiming that analysis is running.
+    expect(store.getState().snapshot.features.workspaceSymbols.status).toBe("not_run");
     const snapshot = store.getState().snapshot;
     transport.respond(request, []);
     await rejected;

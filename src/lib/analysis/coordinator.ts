@@ -224,6 +224,20 @@ export class ProjectAnalysisCoordinator {
     if (this.disposed) return;
     this.disposed = true;
     this.pendingDiagnostics.clear();
+    // Requests in flight now reject without reaching resolveFeature or
+    // failFeature, so release their slots here. Detaching a runtime without a
+    // project or revision change (an engine unloading, a forced restart) would
+    // otherwise leave those features reporting "running" with nothing left to
+    // answer them.
+    const actions = this.store.getState();
+    for (const feature of PROJECT_ANALYSIS_FEATURES) {
+      if (actions.snapshot.features[feature].status === "running") {
+        actions.markFeatureNotRun(
+          feature,
+          "The language service was detached. Analysis did not finish.",
+        );
+      }
+    }
     this.unsubscribe();
   }
 

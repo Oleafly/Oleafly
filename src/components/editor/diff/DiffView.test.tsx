@@ -30,6 +30,13 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+function editableView(): EditorView {
+  const content = document.querySelector(".cm-merge-b .cm-content");
+  const view = content ? EditorView.findFromDOM(content as HTMLElement) : null;
+  if (!view) throw new Error("the editable side of the diff is not mounted");
+  return view;
+}
+
 function sideText(side: "a" | "b") {
   const content = document.querySelector(`.cm-merge-${side} .cm-content`);
   return content ? EditorView.findFromDOM(content as HTMLElement)?.state.doc.toString() : undefined;
@@ -53,4 +60,22 @@ it("reloads a working diff after staging and unstaging with a fast Git backend",
   act(() => window.dispatchEvent(new CustomEvent("oleafly:git-changed")));
   await waitFor(() => expect(sideText("a")).toBe(index));
   expect(sideText("b")).toBe(source);
+});
+
+it("keeps the editable working view when a git change leaves the baseline alone", async () => {
+  mocks.gitShow.mockImplementation(async () => "Original line\n");
+  useDiffStore.getState().openDiff("main.tex", "working");
+  render(<DiffView />);
+  await waitFor(() => expect(sideText("a")).toBe("Original line\n"));
+
+  const editable = editableView();
+  editable.dispatch({ selection: { anchor: 5 } });
+  const calls = mocks.gitShow.mock.calls.length;
+
+  act(() => window.dispatchEvent(new CustomEvent("oleafly:git-changed")));
+  await waitFor(() => expect(mocks.gitShow.mock.calls.length).toBeGreaterThan(calls));
+  await act(() => Promise.resolve());
+
+  expect(editableView()).toBe(editable);
+  expect(editable.state.selection.main.anchor).toBe(5);
 });

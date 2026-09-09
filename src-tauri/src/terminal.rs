@@ -731,9 +731,11 @@ fn resize_terminal(owner: &SessionOwner, id: &str, cols: u16, rows: u16) -> Resu
                 .master,
         )
     };
+    // Recover a poisoned master the way storage locks do. A panic in one
+    // resize must not make every later resize of that terminal fail.
     let master = master
         .lock()
-        .map_err(|_| "terminal resize is unavailable")?;
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     master
         .resize(PtySize {
             rows,

@@ -73,9 +73,9 @@ impl ProjectWorktreeLock {
         Ok(lock)
     }
 
-    /// Acquire the read lock, but give up instead of waiting forever. Project
-    /// enumeration runs on every visit to the library and must never be able
-    /// to park its caller: one holder of the write lock would otherwise stall
+    /// Acquire the read lock under the caller's own budget, which is far
+    /// shorter than the storage default. Project enumeration runs on every
+    /// visit to the library, so one holder of the write lock must not stall
     /// the whole listing, and every action that triggers one after it.
     pub(crate) fn shared_bounded(project_id: &str, budget: Duration) -> Result<Self, String> {
         let file = open_lock_file(project_id)?;
@@ -104,8 +104,9 @@ impl ProjectWorktreeLock {
     }
 
     /// Take the write lock only when it is free. Background maintenance that
-    /// can safely run later must never queue readers behind itself: the file
-    /// lock has no timeout, so one slow holder stalls every project listing.
+    /// can safely run later must never queue readers behind itself: waiting
+    /// callers spend the full storage budget before failing, so one slow
+    /// holder stalls every project listing for that long.
     pub(crate) fn try_exclusive(project_id: &str) -> Result<Option<Self>, String> {
         let file = open_lock_file(project_id)?;
         match fs4::FileExt::try_lock(&file) {

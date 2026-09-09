@@ -34,11 +34,17 @@ async function createFromTemplate(page: import("../helpers").Page, id: string, n
   await createProjectFromTemplate(page, id, name);
 }
 
-async function compileClean(page: import("../helpers").Page) {
+// TeX templates must still land on "ok". Only the Typst and Markdown ones
+// legitimately report warnings, so widen the accepted severity per template
+// rather than for the whole matrix.
+async function compileClean(
+  page: import("../helpers").Page,
+  severities: readonly string[] = ["ok"],
+) {
   await page.click('[data-testid="compile-button"]');
   await expect(page.locator(".pdf-canvas")).toBeVisible({ timeout: 150_000 });
   await page.waitForFunction(
-    `["ok", "warning"].includes(document.querySelector('[data-testid="compile-status"]')?.getAttribute('data-severity'))`,
+    `${JSON.stringify(severities)}.includes(document.querySelector('[data-testid="compile-status"]')?.getAttribute('data-severity'))`,
     10_000,
   );
 }
@@ -57,7 +63,10 @@ for (const id of [...TEX_TEMPLATES, ...OTHER_TEMPLATES]) {
   test(`template ${id}: create and compile with zero errors`, async ({ tauriPage }) => {
     test.setTimeout(240_000);
     await createFromTemplate(tauriPage, id, `E2E T ${id} ${RUN}`);
-    await compileClean(tauriPage);
+    await compileClean(
+      tauriPage,
+      OTHER_TEMPLATES.includes(id) ? ["ok", "warning"] : ["ok"],
+    );
   });
 }
 
