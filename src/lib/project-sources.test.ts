@@ -384,26 +384,33 @@ describe("readProjectSourcesBatch without the batch command", () => {
 });
 
 describe("parity with the per-file implementation", () => {
-  it("produces identical texts and unreadable sets on the seed thesis, cold and warm", async () => {
-    const seed = loadSeedThesis();
+  it.each(["LF", "CRLF"])("preserves cold and warm seed-thesis parity with %s input", async (lineEnding) => {
+    const seed = Object.fromEntries(
+      Object.entries(loadSeedThesis()).map(([name, bytes]) => {
+        const text = normalizeSourceText(decodeLossy(bytes));
+        const source = lineEnding === "CRLF" ? text.replace(/\n/gu, "\r\n") : text;
+        return [name, new TextEncoder().encode(source)];
+      }),
+    );
     const paths = Object.keys(seed).sort();
     expect(paths.length).toBeGreaterThanOrEqual(10);
-    for (const bytes of Object.values(seed)) {
-      expect(decodeLossy(bytes)).not.toContain("\r");
-    }
     const disk = fakeDisk({ ...seed, "phantom.tex": "" });
     disk.files.delete("phantom.tex");
     const requested = [...paths, "phantom.tex"];
     mountFallback(disk);
     const legacy = await legacyReadProjectSources("p", requested);
+    const expectedTexts = Object.fromEntries(
+      Object.entries(legacy.texts).map(([name, text]) => [name, normalizeSourceText(text)]),
+    );
 
     bridge.batch = simulateCommand(disk);
     const cold = await readProjectSourcesBatch("p", requested);
-    expect(cold.texts).toEqual(legacy.texts);
+    expect(cold.texts).toEqual(expectedTexts);
+    expect(Object.values(cold.texts).every((text) => !text.includes("\r"))).toBe(true);
     expect([...cold.unreadable]).toEqual([...legacy.unreadable]);
 
     const warm = await readProjectSourcesBatch("p", requested);
-    expect(warm.texts).toEqual(legacy.texts);
+    expect(warm.texts).toEqual(expectedTexts);
     expect([...warm.unreadable]).toEqual([...legacy.unreadable]);
     expect(disk.calls[1].known).toHaveLength(paths.length);
   });

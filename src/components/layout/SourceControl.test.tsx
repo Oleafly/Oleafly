@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSettingsStore } from "@/store/settings";
@@ -148,6 +148,39 @@ function withRepository(changes = MIXED_CHANGES) {
 }
 
 describe("SourceControl", () => {
+  it("coalesces repeated refreshes while Git is slow and fetches one final snapshot", async () => {
+    withRepository();
+    render(<SourceControl />);
+    await screen.findByTestId("git-change-src/main.tex");
+    const slowStatus = deferred<typeof MIXED_CHANGES>();
+    mocks.gitStatus.mockImplementationOnce(() => slowStatus.promise);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    await waitFor(() => expect(mocks.gitStatus).toHaveBeenCalledTimes(2));
+    for (let index = 0; index < 20; index++) {
+      fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    }
+    expect(mocks.gitStatus).toHaveBeenCalledTimes(2);
+    await act(async () => slowStatus.resolve(MIXED_CHANGES));
+    await waitFor(() => expect(mocks.gitStatus).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(mocks.refreshGitCount).toHaveBeenCalledTimes(2));
+  });
+
+  it("admits one staging action until its refreshed status is visible", async () => {
+    withRepository([{ path: "main.tex", status: "M", staged: false }]);
+    const staged = deferred<void>();
+    mocks.gitStageAll.mockImplementationOnce(() => staged.promise);
+    render(<SourceControl />);
+    const stageAll = await screen.findByRole("button", { name: "Stage all" });
+    fireEvent.click(stageAll);
+    for (let index = 0; index < 20; index++) fireEvent.click(stageAll);
+    expect(mocks.gitStageAll).toHaveBeenCalledTimes(1);
+    expect(stageAll).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Stage" })).toBeDisabled();
+    mocks.gitStatus.mockResolvedValue([{ path: "main.tex", status: "M", staged: true }]);
+    await act(async () => staged.resolve());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Unstage all" })).toBeEnabled());
+  });
+
   it("keeps the current project's status when an older project refresh finishes last", async () => {
     const user = userEvent.setup();
     const slowOlderProjectStatus = deferred<
@@ -526,7 +559,7 @@ describe("SourceControl", () => {
     expect(screen.queryByText(/Older Oleafly versions/)).toBeNull();
   });
 
-  it("drops a refresh that a newer one has already superseded", async () => {
+  it("queues a fresh snapshot and drops the superseded response", async () => {
     const user = userEvent.setup();
     const firstInitializedRead = deferred<boolean>();
     let reads = 0;
@@ -539,14 +572,15 @@ describe("SourceControl", () => {
     render(<SourceControl />);
 
     await user.click(screen.getByRole("button", { name: "Refresh" }));
-    expect(await screen.findByText("second.tex")).toBeInTheDocument();
+    expect(reads).toBe(1);
 
     await act(async () => {
       firstInitializedRead.resolve(false);
       await firstInitializedRead.promise;
     });
 
-    expect(screen.getByText("second.tex")).toBeInTheDocument();
+    expect(await screen.findByText("second.tex")).toBeInTheDocument();
+    expect(reads).toBe(2);
     expect(screen.queryByRole("button", { name: "Initialize Repository" })).toBeNull();
   });
 

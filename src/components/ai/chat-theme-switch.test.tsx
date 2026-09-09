@@ -2,7 +2,7 @@
 
 import { Profiler, type ProfilerOnRenderCallback } from "react";
 import { act, render, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { applyTheme, ThemeProvider } from "@/lib/theme";
 import { clearDiagramCache } from "@/components/ui/mermaid-diagram";
 import {
@@ -50,6 +50,10 @@ async function settle(ms = 80) {
 
 describe("theme switch with a rendered chat", () => {
   let intersection: IntersectionObserverStub;
+
+  beforeAll(async () => {
+    await import("@/components/ui/markdown-renderer");
+  });
 
   beforeEach(() => {
     window.localStorage.setItem("oleafly.theme", "dark");

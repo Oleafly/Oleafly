@@ -4,6 +4,7 @@ import {
   ensureGithubConnected,
   openProject,
   openRailTab,
+  stageAllGitChanges,
   pressGlobal,
   typeInEditorAfter,
   type Page,
@@ -35,22 +36,7 @@ async function initializeRepository(page: Page) {
 
 async function stageAllAndCommit(page: Page, message: string) {
   await openRailTab(page, "Source Control");
-  let stagedVisible = false;
-  for (let i = 0; i < 25 && !stagedVisible; i++) {
-    await page.evaluate(
-      `(() => {
-        const b = document.querySelector('[aria-label="Stage all"]');
-        if (b) b.click();
-        return 1;
-      })()`,
-    );
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    stagedVisible = await page.evaluate<boolean>(
-      `!!document.querySelector('[aria-label="Unstage all"]')`,
-    );
-    if (!stagedVisible) await page.click('[aria-label="Refresh"]');
-  }
-  if (!stagedVisible) throw new Error("stageAllAndCommit: staging never became visible");
+  await stageAllGitChanges(page);
   await expect(page.locator('[data-testid="commit-title"]')).toBeVisible({ timeout: 10_000 });
   await page.fill('[data-testid="commit-title"]', message);
   const commit = page.locator('[data-testid="commit-button"]');
@@ -150,20 +136,55 @@ test("stage, diff, and commit without requiring a connected account", async ({ t
   await typeInEditorAfter(tauriPage, "here.", ` ${marker}`);
 
   await openRailTab(tauriPage, "Source Control");
-  // The autosave may still be landing and the panel refreshes on mount, not
-  // on file saves, so refresh until the change shows.
-  for (let i = 0; i < 20; i++) {
-    await tauriPage.click('[aria-label="Refresh"]');
-    const ready = await tauriPage.evaluate<boolean>(
-      `!!document.querySelector('[data-testid="git-change-main.tex"]')`,
-    );
-    if (ready) break;
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-  await tauriPage.click('[data-testid="git-change-main.tex"]', { timeout: 5_000 });
+  // Observe autosave before requesting one final Git snapshot. Repeated
+  // refresh clicks invalidate in-flight snapshots on a slow Windows host.
+  await tauriPage.waitForFunction(
+    `import("/src/store/files.ts").then(({ useFilesStore }) =>
+      useFilesStore.getState().files["main.tex"]?.dirty === false)`,
+    60_000,
+  );
+  await tauriPage.click('[aria-label="Refresh"]');
+  await expect(tauriPage.getByTestId("git-change-main.tex")).toBeVisible({ timeout: 30_000 });
+  await tauriPage.click('[data-testid="git-change-main.tex"]');
+  await tauriPage.click('[aria-label="Split view"]');
   await tauriPage.waitForFunction(
     `!!document.querySelector('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText, .cm-merge-a, .cm-merge-b, .cm-mergeView')`,
     15_000,
+  );
+
+  // Keep the working diff open while its INDEX baseline changes. The editor
+  // must remove staged additions and show them again after unstaging.
+  await stageAllGitChanges(tauriPage);
+  try {
+    await tauriPage.waitForFunction(
+      `!!document.querySelector('[aria-label="Unstage all"]') &&
+        !!document.querySelector('.cm-mergeView') &&
+        !document.querySelector('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')`,
+      30_000,
+    );
+  } catch (error) {
+    const snapshot = await tauriPage.evaluate<string>(`(async () => {
+      const { useFilesStore } = await import("/src/store/files.ts");
+      const { gitShow } = await import("/src/lib/tauri.ts");
+      const files = useFilesStore.getState();
+      return JSON.stringify({
+        mode: localStorage.getItem('oleafly.diffMode'),
+        workingDiff: document.body.innerText.includes('Working ↔ Index'),
+        unstage: !!document.querySelector('[aria-label="Unstage all"]'),
+        mergeViews: document.querySelectorAll('.cm-mergeView').length,
+        changes: Array.from(document.querySelectorAll('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')).map(el => ({ className: el.className, text: el.textContent })),
+        sides: Array.from(document.querySelectorAll('.cm-merge-a, .cm-merge-b')).map(el => el.textContent),
+        file: files.files['main.tex'],
+        index: await gitShow(files.projectId, 'INDEX', 'main.tex'),
+      });
+    })()`);
+    throw new Error(`Working diff remained changed after staging: ${snapshot}`, { cause: error });
+  }
+  await tauriPage.evaluate(`document.querySelector('[aria-label="Unstage all"]').click()`);
+  await tauriPage.waitForFunction(
+    `!!document.querySelector('[aria-label="Stage all"]') &&
+      !!document.querySelector('.cm-changedLine, .cm-insertedLine, .cm-deletedChunk, .cm-changedText')`,
+    30_000,
   );
 
   const message = `e2e: commit ${marker}`;

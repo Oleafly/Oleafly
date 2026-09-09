@@ -8,6 +8,7 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import { Loader2 } from "lucide-react";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { useAppTheme } from "@/lib/theme";
+import { createTerminalResizer } from "@/lib/terminal-resize";
 import {
   resolveTerminalTheme,
   useSettingsStore,
@@ -113,6 +114,7 @@ export function TerminalPane({
   const hiddenOutputLengthRef = useRef(0);
   const sessionIdRef = useRef<string | null>(null);
   const sessionLiveRef = useRef(false);
+  const resizerRef = useRef<ReturnType<typeof createTerminalResizer> | null>(null);
   const surfacedErrorsRef = useRef(new Set<string>());
   const outputWrittenRef = useRef<(() => void) | undefined>(undefined);
   const visibleRef = useRef(visible);
@@ -216,6 +218,7 @@ export function TerminalPane({
     let sessionLive = false;
     let sessionExited = false;
     let disposed = false;
+    let resizer: ReturnType<typeof createTerminalResizer> | null = null;
     const pendingInput: string[] = [];
     const writeInput = (id: string, data: string) => {
       void invoke("term_write", { id, projectId, data }).catch((error) => {
@@ -267,6 +270,8 @@ export function TerminalPane({
         return;
       }
       sessionExited = true;
+      resizer?.dispose();
+      resizerRef.current = null;
       sessionLive = false;
       sessionLiveRef.current = false;
       sessionId = null;
@@ -294,25 +299,20 @@ export function TerminalPane({
         sessionIdRef.current = id;
         sessionLive = true;
         sessionLiveRef.current = true;
+        resizer = createTerminalResizer(
+          (cols, rows) => invoke("term_resize", { id, projectId, cols, rows }),
+          (error) => {
+            if (!disposed && sessionLive) {
+              writeTerminalErrorOnce(terminal, surfacedErrorsRef.current,
+                "The terminal could not resize", error, outputWritten);
+            }
+          },
+        );
+        resizerRef.current = resizer;
         for (const data of pendingInput.splice(0)) writeInput(id, data);
         setBooted(true);
         if (visibleRef.current || terminal.cols !== openedCols || terminal.rows !== openedRows) {
-          void invoke("term_resize", {
-            id,
-            projectId,
-            cols: terminal.cols,
-            rows: terminal.rows,
-          }).catch((error) => {
-            if (!disposed && sessionLive) {
-              writeTerminalErrorOnce(
-                terminal,
-                surfacedErrorsRef.current,
-                "The terminal could not resize",
-                error,
-                outputWritten,
-              );
-            }
-          });
+          resizer.request(terminal.cols, terminal.rows);
         }
         if (visibleRef.current) terminal.focus();
       })
@@ -336,28 +336,15 @@ export function TerminalPane({
       if (!visibleRef.current || !openedRef.current) return;
       fit.fit();
       if (sessionLive && sessionId) {
-        void invoke("term_resize", {
-          id: sessionId,
-          projectId,
-          cols: terminal.cols,
-          rows: terminal.rows,
-        }).catch((error) => {
-          if (!disposed && sessionLive) {
-            writeTerminalErrorOnce(
-              terminal,
-              surfacedErrorsRef.current,
-              "The terminal could not resize",
-              error,
-              outputWritten,
-            );
-          }
-        });
+        resizer?.request(terminal.cols, terminal.rows);
       }
     });
     observer.observe(host);
 
     return () => {
       disposed = true;
+      resizer?.dispose();
+      if (resizerRef.current === resizer) resizerRef.current = null;
       if (openTimer !== null) {
         window.clearTimeout(openTimer);
         openTimer = null;
@@ -397,30 +384,10 @@ export function TerminalPane({
     fitRef.current?.fit();
     const id = sessionIdRef.current;
     if (id && sessionLiveRef.current) {
-      void invoke("term_resize", {
-        id,
-        projectId,
-        cols: terminal.cols,
-        rows: terminal.rows,
-      }).catch((error) => {
-        if (
-          sessionLiveRef.current &&
-          sessionIdRef.current === id &&
-          terminalRef.current === terminal
-        ) {
-          writeTerminalErrorOnce(
-            terminal,
-            surfacedErrorsRef.current,
-            "The terminal could not resize",
-            error,
-            outputWrittenRef.current,
-          );
-        }
-      });
+      resizerRef.current?.request(terminal.cols, terminal.rows);
     }
   }, [
     appTheme,
-    projectId,
     terminalBackground,
     terminalColorTheme,
     terminalCursorBlink,
@@ -463,30 +430,11 @@ export function TerminalPane({
       terminal?.focus();
       const id = sessionIdRef.current;
       if (terminal && id && sessionLiveRef.current) {
-        void invoke("term_resize", {
-          id,
-          projectId,
-          cols: terminal.cols,
-          rows: terminal.rows,
-        }).catch((error) => {
-          if (
-            sessionLiveRef.current &&
-            sessionIdRef.current === id &&
-            terminalRef.current === terminal
-          ) {
-            writeTerminalErrorOnce(
-              terminal,
-              surfacedErrorsRef.current,
-              "The terminal could not resize",
-              error,
-              outputWrittenRef.current,
-            );
-          }
-        });
+        resizerRef.current?.request(terminal.cols, terminal.rows);
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [projectId, visible]);
+  }, [visible]);
 
   const paneBackground = resolveTerminalTheme(
     { terminalColorTheme, terminalBackground, terminalForeground, terminalCursorColor },

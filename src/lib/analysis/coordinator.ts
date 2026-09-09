@@ -196,6 +196,7 @@ function workspaceDiagnosticsFromResult(
  * existing index store. Callers push ProjectIndex snapshots through syncIndex.
  */
 export class ProjectAnalysisCoordinator {
+  private disposed = false;
   private requestGeneration = 0;
   private readonly unsubscribe: () => void;
   private readonly pendingDiagnostics = new Map<
@@ -220,6 +221,23 @@ export class ProjectAnalysisCoordinator {
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.pendingDiagnostics.clear();
+    // Requests in flight now reject without reaching resolveFeature or
+    // failFeature, so release their slots here. Detaching a runtime without a
+    // project or revision change (an engine unloading, a forced restart) would
+    // otherwise leave those features reporting "running" with nothing left to
+    // answer them.
+    const actions = this.store.getState();
+    for (const feature of PROJECT_ANALYSIS_FEATURES) {
+      if (actions.snapshot.features[feature].status === "running") {
+        actions.markFeatureNotRun(
+          feature,
+          "The language service was detached. Analysis did not finish.",
+        );
+      }
+    }
     this.unsubscribe();
   }
 
@@ -251,7 +269,7 @@ export class ProjectAnalysisCoordinator {
 
   beginIndex(): ProjectAnalysisRequestIdentity {
     const request = this.createRequest();
-    if (!this.store.getState().beginProjectIndex(request)) {
+    if (this.disposed || !this.store.getState().beginProjectIndex(request)) {
       throw new StaleProjectAnalysisResultError(request);
     }
     return request;
@@ -475,11 +493,12 @@ export class ProjectAnalysisCoordinator {
   ): Promise<T> {
     this.syncDocumentFromClient(documentUri);
     const request = this.createRequest(documentUri);
-    if (!this.store.getState().beginFeature(feature, request)) {
+    if (this.disposed || !this.store.getState().beginFeature(feature, request)) {
       throw new StaleProjectAnalysisResultError(request);
     }
     try {
       const raw = await operation();
+      if (this.disposed) throw new StaleProjectAnalysisResultError(request);
       const data = transform(raw, request);
       if (
         !this.store
@@ -490,6 +509,7 @@ export class ProjectAnalysisCoordinator {
       }
       return data;
     } catch (error) {
+      if (this.disposed) throw error;
       if (
         error instanceof UnsupportedLanguageServiceCapabilityError
       ) {

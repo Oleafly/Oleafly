@@ -31,7 +31,9 @@ export function loadSeedSources(slug: string): Record<string, string> {
   for (const full of paths.sort(byCodePoint)) {
     const relative = path.relative(root, full).split(path.sep).join("/");
     if (!isProjectIntelligencePath(relative)) continue;
-    sources[relative] = fs.readFileSync(full, "utf8");
+    // The editor and project-source bridge normalize line endings before
+    // indexing. Keep golden offsets independent of Git's checkout settings.
+    sources[relative] = fs.readFileSync(full, "utf8").replace(/\r\n?/gu, "\n");
   }
   return sources;
 }

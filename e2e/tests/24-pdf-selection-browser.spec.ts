@@ -8,44 +8,15 @@ import {
   webkit,
 } from "@playwright/test";
 
-const VITE_CLIENT_WITHOUT_TRANSPORT = String.raw`
-const styles = new Map();
-export class ErrorOverlay extends HTMLElement {}
-export function createHotContext() {
-  return {
-    accept() {},
-    acceptExports() {},
-    decline() {},
-    dispose() {},
-    invalidate() {},
-    on() {},
-    off() {},
-    prune() {},
-    send() {},
-  };
-}
-export function updateStyle(id, content) {
-  let style = styles.get(id);
-  if (!style) {
-    style = document.createElement("style");
-    style.dataset.viteDevId = id;
-    document.head.appendChild(style);
-    styles.set(id, style);
-  }
-  style.textContent = content;
-}
-export function removeStyle(id) {
-  styles.get(id)?.remove();
-  styles.delete(id);
-}
-export function injectQuery(url) { return url; }
-`;
+import { VITE_CLIENT_WITHOUT_TRANSPORT } from "../vite-client-without-transport";
 
 async function dragAcrossProductionPdf(page: Page) {
   // This fixture verifies Oleafly's production PDF renderer, not Vite's
   // development transport. Playwright Firefox can receive Vite's HMR socket
   // events out of order and abort inside its adapter. Keep Vite's CSS module
   // contract while removing only that unrelated WebSocket.
+  // Start Vite with OLEAFLY_E2E_DISABLE_HMR=1 to cover module-worker sockets
+  // as well; page routes cannot intercept the worker's Vite client.
   await page.context().route("**/@vite/client", (route) =>
     route.fulfill({
       status: 200,

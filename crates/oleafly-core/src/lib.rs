@@ -1,6 +1,7 @@
 mod build;
 mod compile_log;
 mod error;
+pub mod locking;
 mod manifest;
 mod tree;
 mod workspace;

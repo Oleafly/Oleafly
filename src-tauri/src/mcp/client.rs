@@ -159,8 +159,19 @@ struct StdioTransport {
     stdout: BufReader<tokio::process::ChildStdout>,
     stderr: Option<tokio::task::JoinHandle<()>>,
     stderr_output: std::sync::Arc<tokio::sync::Mutex<Vec<u8>>>,
-    pid: u32,
     containment: Option<crate::proc::ProcessTreeGuard>,
+}
+
+impl Drop for StdioTransport {
+    fn drop(&mut self) {
+        // Dropping a JoinHandle detaches it. Cancellation must also stop the
+        // pipe reader, including when discovery or a tool request is aborted.
+        if let Some(stderr) = self.stderr.take() {
+            stderr.abort();
+        }
+        self.containment.take();
+        let _ = self.child.start_kill();
+    }
 }
 
 impl StdioTransport {
@@ -252,7 +263,6 @@ impl StdioTransport {
             stdout: BufReader::new(stdout),
             stderr: Some(stderr),
             stderr_output,
-            pid,
             containment: Some(containment),
         })
     }
@@ -260,14 +270,21 @@ impl StdioTransport {
     async fn shutdown(mut self) {
         self.stdin.take();
         let exited = tokio::time::timeout(Duration::from_millis(500), self.child.wait()).await;
-        if !matches!(exited, Ok(Ok(_))) {
-            crate::proc::terminate_process_tree(self.pid).await;
-            let _ = self.child.kill().await;
-            let _ = self.child.wait().await;
-        }
+        // Close the Job Object before waiting on cleanup: this also closes
+        // inherited pipes owned by grandchildren after the server exits.
         self.containment.take();
-        if let Some(stderr) = self.stderr.take() {
-            let _ = tokio::time::timeout(Duration::from_millis(500), stderr).await;
+        if !matches!(exited, Ok(Ok(_))) {
+            let _ = self.child.start_kill();
+            let _ = tokio::time::timeout(Duration::from_secs(2), self.child.wait()).await;
+        }
+        if let Some(mut stderr) = self.stderr.take() {
+            if tokio::time::timeout(Duration::from_millis(500), &mut stderr)
+                .await
+                .is_err()
+            {
+                stderr.abort();
+                let _ = stderr.await;
+            }
         }
     }
 
@@ -4970,6 +4987,45 @@ mod tests {
 
         assert_eq!(tools[0].name, "graceful");
         assert_eq!(std::fs::read_to_string(marker).unwrap(), "closed");
+    }
+
+    #[tokio::test]
+    async fn dropping_stdio_transport_aborts_its_diagnostics_reader() {
+        let transport = StdioTransport::spawn(
+            "node",
+            &["-e".into(), "setInterval(()=>{},1000)".into()],
+            &BTreeMap::new(),
+        )
+        .await
+        .unwrap();
+        let diagnostics = transport.stderr.as_ref().unwrap().abort_handle();
+        drop(transport);
+        tokio::time::timeout(Duration::from_secs(2), async {
+            while !diagnostics.is_finished() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("diagnostics task survived transport cancellation");
+    }
+
+    #[tokio::test]
+    async fn uncooperative_stdio_shutdown_is_bounded() {
+        let transport = StdioTransport::spawn(
+            "node",
+            &[
+                "-e".into(),
+                "process.stdin.resume();setInterval(()=>{},1000)".into(),
+            ],
+            &BTreeMap::new(),
+        )
+        .await
+        .unwrap();
+        let diagnostics = transport.stderr.as_ref().unwrap().abort_handle();
+        tokio::time::timeout(Duration::from_secs(4), transport.shutdown())
+            .await
+            .expect("uncooperative MCP server blocked shutdown");
+        assert!(diagnostics.is_finished());
     }
 
     #[tokio::test]
