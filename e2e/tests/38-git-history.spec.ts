@@ -4,6 +4,7 @@ import {
   createBlankProject,
   fillCommandPalette,
   openRailTab,
+  stageAllGitChanges,
   pressGlobal,
   typeInEditorAfter,
   type Page,
@@ -39,22 +40,7 @@ async function initializeRepository(page: Page) {
 
 async function commitAll(page: Page, message: string) {
   await openRailTab(page, "Source Control");
-  let stagedVisible = false;
-  for (let i = 0; i < 25 && !stagedVisible; i++) {
-    await page.evaluate(
-      `(() => {
-        const b = document.querySelector('[aria-label="Stage all"]');
-        if (b) b.click();
-        return 1;
-      })()`,
-    );
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    stagedVisible = await page.evaluate<boolean>(
-      `!!document.querySelector('[aria-label="Unstage all"]')`,
-    );
-    if (!stagedVisible) await page.click('[aria-label="Refresh"]');
-  }
-  if (!stagedVisible) throw new Error("commitAll: staging never became visible");
+  await stageAllGitChanges(page);
   await expect(page.locator('[data-testid="commit-title"]')).toBeVisible({ timeout: 10_000 });
   await page.fill('[data-testid="commit-title"]', message);
   const commit = page.locator('[data-testid="commit-button"]');

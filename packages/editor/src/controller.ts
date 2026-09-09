@@ -142,10 +142,11 @@ export function revealEditorRange(
 
   scrollEditorPositionLocally(v, a);
 
-  // Focusing the content DOM directly lets us request the platform's
-  // prevent-scroll behavior. The selection and editor-local scroll have
-  // already been handled above.
-  v.contentDOM.focus({ preventScroll: true });
+  // CodeMirror prevents scrolling and synchronizes the DOM selection while
+  // suppressing its observer. Focusing contentDOM directly can restore the
+  // old browser selection and overwrite this navigation when focus returns
+  // from a toolbar or another editor on Windows.
+  v.focus();
 }
 
 export function gotoLine(line: number) {

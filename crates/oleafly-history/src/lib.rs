@@ -618,7 +618,11 @@ impl PublicationStore {
 
         let parent = store_parent(&self.target_root)?;
         let namespace_lock = open_namespace_lock(parent, true)?;
-        fs4::FileExt::lock(&namespace_lock)?;
+        oleafly_core::locking::lock_file(
+            &namespace_lock,
+            true,
+            oleafly_core::locking::STORAGE_LOCK_TIMEOUT,
+        )?;
         if self.target_root.try_exists()? {
             return Err(HistoryError::Corrupt(format!(
                 "checkpoint store appeared while its first publication was being installed: {}",
@@ -711,7 +715,11 @@ impl Store {
         })?;
         let root = parent.join(name);
         let namespace_lock = open_namespace_lock(&parent, true)?;
-        fs4::FileExt::lock_shared(&namespace_lock)?;
+        oleafly_core::locking::lock_file(
+            &namespace_lock,
+            false,
+            oleafly_core::locking::STORAGE_LOCK_TIMEOUT,
+        )?;
         fs::create_dir_all(&root)?;
         validate_real_directory(&root, "checkpoint store root")?;
         set_private_directory_permissions(&root)?;
@@ -722,7 +730,11 @@ impl Store {
         let operation_lock = open_with_no_follow(&mut operation_options, &operation_lock_path)?;
         validate_regular_file(&operation_lock_path, "checkpoint operation lock")?;
         set_private_file_permissions(&root.join(OPERATION_LOCK_FILE))?;
-        fs4::FileExt::lock(&operation_lock)?;
+        oleafly_core::locking::lock_file(
+            &operation_lock,
+            true,
+            oleafly_core::locking::STORAGE_LOCK_TIMEOUT,
+        )?;
         initialize_format(&root)?;
         fs::create_dir_all(root.join("packs"))?;
         fs::create_dir_all(root.join("staging"))?;
@@ -822,7 +834,11 @@ impl Store {
             )));
         }
         let namespace_lock = open_namespace_lock(&parent, false)?;
-        fs4::FileExt::lock_shared(&namespace_lock)?;
+        oleafly_core::locking::lock_file(
+            &namespace_lock,
+            false,
+            oleafly_core::locking::STORAGE_LOCK_TIMEOUT,
+        )?;
         if !root.try_exists()? {
             return Ok(None);
         }
@@ -895,7 +911,11 @@ impl Store {
         };
         let namespace_lock = open_namespace_lock(&parent, true)?;
         if wait_for_namespace {
-            fs4::FileExt::lock(&namespace_lock)?;
+            oleafly_core::locking::lock_file(
+                &namespace_lock,
+                true,
+                oleafly_core::locking::STORAGE_LOCK_TIMEOUT,
+            )?;
         } else {
             match fs4::FileExt::try_lock(&namespace_lock) {
                 Ok(()) => {}
@@ -2675,7 +2695,11 @@ impl Store {
         options.read(true).write(true);
         let file = open_with_no_follow(&mut options, &path)?;
         validate_regular_file(&path, "checkpoint operation lock")?;
-        fs4::FileExt::lock_shared(&file)?;
+        oleafly_core::locking::lock_file(
+            &file,
+            false,
+            oleafly_core::locking::STORAGE_LOCK_TIMEOUT,
+        )?;
         Ok(file)
     }
 
@@ -2685,13 +2709,17 @@ impl Store {
         options.read(true).write(true);
         let file = open_with_no_follow(&mut options, &path)?;
         validate_regular_file(&path, "checkpoint operation lock")?;
-        fs4::FileExt::lock(&file)?;
+        oleafly_core::locking::lock_file(&file, true, oleafly_core::locking::STORAGE_LOCK_TIMEOUT)?;
         Ok(file)
     }
 
     fn acquire_shared_locks(&self) -> Result<StoreLocks> {
         let namespace = open_namespace_lock(store_parent(&self.root)?, false)?;
-        fs4::FileExt::lock_shared(&namespace)?;
+        oleafly_core::locking::lock_file(
+            &namespace,
+            false,
+            oleafly_core::locking::STORAGE_LOCK_TIMEOUT,
+        )?;
         let operation = self.acquire_shared_operation_lock()?;
         Ok(StoreLocks {
             _namespace: namespace,
@@ -2701,7 +2729,11 @@ impl Store {
 
     fn acquire_exclusive_locks(&self) -> Result<StoreLocks> {
         let namespace = open_namespace_lock(store_parent(&self.root)?, false)?;
-        fs4::FileExt::lock_shared(&namespace)?;
+        oleafly_core::locking::lock_file(
+            &namespace,
+            false,
+            oleafly_core::locking::STORAGE_LOCK_TIMEOUT,
+        )?;
         let operation = self.acquire_exclusive_operation_lock()?;
         Ok(StoreLocks {
             _namespace: namespace,
@@ -3793,7 +3825,7 @@ fn lock_initialization(parent: &Path, name: &std::ffi::OsStr, wait: bool) -> Res
         )));
     }
     if wait {
-        fs4::FileExt::lock(&file)?;
+        oleafly_core::locking::lock_file(&file, true, oleafly_core::locking::STORAGE_LOCK_TIMEOUT)?;
     } else {
         match fs4::FileExt::try_lock(&file) {
             Ok(()) => {}

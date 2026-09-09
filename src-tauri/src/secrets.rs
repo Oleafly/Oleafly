@@ -20,14 +20,16 @@ struct SecretLock {
 }
 
 fn lock_file(file: &std::fs::File) -> Result<(), String> {
-    fs4::FileExt::lock(file).map_err(|error| format!("failed to lock secret store: {error}"))
+    oleafly_core::locking::lock_file(file, true, oleafly_core::locking::STORAGE_LOCK_TIMEOUT)
+        .map_err(|error| format!("failed to lock secret store: {error}"))
 }
 
 fn lock_secrets(parent: &Path) -> Result<SecretLock, String> {
-    let guard = SECRET_LOCK
-        .get_or_init(|| Mutex::new(()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let guard = oleafly_core::locking::lock_mutex(
+        SECRET_LOCK.get_or_init(|| Mutex::new(())),
+        oleafly_core::locking::STORAGE_LOCK_TIMEOUT,
+    )
+    .map_err(|error| format!("failed to lock secret store: {error}"))?;
     std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     let path = parent.join(".secret-store.lock");
     let mut options = std::fs::OpenOptions::new();

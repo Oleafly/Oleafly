@@ -1,6 +1,7 @@
 import { test, expect } from "../fixtures";
 import {
   createBlankProject,
+  expectCompletedReadFile,
   fillTextarea,
   openProject,
   openRailTab,
@@ -106,7 +107,7 @@ test.describe("local Ollama", () => {
     await ask(tauriPage, "Reply with exactly this token and nothing else: OLLAMALOCAL5");
     await waitLong(
       tauriPage,
-      `document.body.innerText.includes("OLLAMALOCAL5") && !document.querySelector('[aria-label="Stop"]')`,
+      `Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1)?.textContent.includes("OLLAMALOCAL5") && !document.querySelector('[aria-label="Stop"]')`,
       REPLY_TIMEOUT,
     );
   });
@@ -134,11 +135,18 @@ test.describe("local Ollama", () => {
     await connectOllama(tauriPage);
     await openChat(tauriPage);
 
+    // Small local models can choose a command instead and wait for command
+    // approval. Exercise the actual user tool picker to isolate file reading.
+    await tauriPage.click('[aria-label="Manage agent tools"]');
+    await tauriPage.getByText("Disable all", { exact: true }).click();
+    await tauriPage.click('[aria-label="Enable read_file"]');
+    await tauriPage.click('[aria-label="Manage agent tools"]');
     await ask(tauriPage, "Use the read_file tool to read main.tex. Then say DONE.");
     await waitForRun(tauriPage);
-
-    const transcript = await tauriPage.evaluate<string>(`document.body.innerText`);
-    expect(transcript, "the tool call should appear in the transcript").toContain("read_file");
+    await expectCompletedReadFile(tauriPage);
+    await tauriPage.click('[aria-label="Manage agent tools"]');
+    await tauriPage.getByText("Enable all", { exact: true }).click();
+    await tauriPage.click('[aria-label="Manage agent tools"]');
   });
 
   test("a host pasted with a trailing slash still reaches the daemon", async ({ tauriPage }) => {

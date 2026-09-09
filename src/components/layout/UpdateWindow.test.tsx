@@ -51,7 +51,8 @@ it("reports an up-to-date manual check without closing the window", async () => 
   render(<UpdateWindow />);
   expect(await screen.findByText("Oleafly v0.4.0 is the latest version")).toBeInTheDocument();
   expect(mocks.close).not.toHaveBeenCalled();
-  expect(mocks.celebrate).toHaveBeenCalledOnce();
+  // The status text commits before the passive celebration effect runs.
+  await waitFor(() => expect(mocks.celebrate).toHaveBeenCalledOnce());
 });
 
 it("closes an automatic check when no update is available", async () => {

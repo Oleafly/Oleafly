@@ -93,7 +93,7 @@ fn publish_discovery_contents(
     file.sync_all()
         .map_err(|e| format!("failed to sync MCP discovery file: {e}"))?;
     drop(file);
-    atomicwrites::replace_atomic(temp_path, path)
+    crate::sandbox::replace_file(temp_path, path)
         .map_err(|e| format!("failed to publish MCP discovery file: {e}"))?;
     if let Ok(directory) = std::fs::File::open(parent) {
         let _ = directory.sync_all();
@@ -122,46 +122,8 @@ fn harden_empty_discovery_file(path: &std::path::Path) -> Result<(), String> {
 
 #[cfg(windows)]
 fn harden_empty_discovery_file(path: &std::path::Path) -> Result<(), String> {
-    use crate::proc::NoConsole as _;
-    use std::process::Stdio;
-
-    let name = std::env::var("USERNAME")
-        .ok()
-        .filter(|name| !name.is_empty())
-        .ok_or_else(|| "cannot determine the current Windows user for MCP ACLs".to_string())?;
-    let principal = std::env::var("USERDOMAIN")
-        .ok()
-        .filter(|domain| !domain.is_empty())
-        .map_or_else(|| name.clone(), |domain| format!("{domain}\\{name}"));
-    let system_root = std::env::var_os("SystemRoot")
-        .filter(|root| !root.is_empty())
-        .ok_or_else(|| "cannot locate the Windows system directory for MCP ACLs".to_string())?;
-    let icacls = std::path::PathBuf::from(system_root)
-        .join("System32")
-        .join("icacls.exe");
-    if !icacls.is_file() {
-        return Err(format!(
-            "cannot locate the Windows ACL utility at {}",
-            icacls.display()
-        ));
-    }
-    let status = std::process::Command::new(&icacls)
-        .no_console()
-        .arg(path)
-        .arg("/inheritance:r")
-        .arg("/grant:r")
-        .arg(format!("{principal}:(F)"))
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map_err(|e| format!("failed to harden MCP discovery file ACL: {e}"))?;
-    if !status.success() {
-        return Err(format!(
-            "failed to harden MCP discovery file ACL (icacls exited with {status})"
-        ));
-    }
-    Ok(())
+    crate::fsperm::harden_file_checked(path)
+        .map_err(|error| format!("failed to harden MCP discovery file ACL: {error}"))
 }
 
 #[cfg(not(any(unix, windows)))]

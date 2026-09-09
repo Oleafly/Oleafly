@@ -734,37 +734,58 @@ fn validated_artifacts(
     Ok(artifacts)
 }
 
+// Store initialization, SQLite queries, and preview file reads can block on
+// disk or another connection. Keep them off the main WebView event loop.
+async fn blocking_task_command<T: Send + 'static>(
+    state: &ResearchTaskState,
+    operation: impl FnOnce(&ResearchTaskState) -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    let state = state.clone();
+    tauri::async_runtime::spawn_blocking(move || operation(&state))
+        .await
+        .map_err(|error| format!("task storage worker failed: {error}"))?
+}
+
 #[tauri::command]
-pub fn research_task_list(
+pub async fn research_task_list(
     state: tauri::State<'_, ResearchTaskState>,
     project_id: String,
 ) -> Result<Vec<ResearchTask>, String> {
-    crate::paths::validate_project_id(&project_id)?;
-    state.store()?.list(&project_id)
+    blocking_task_command(&state, move |state| {
+        crate::paths::validate_project_id(&project_id)?;
+        state.store()?.list(&project_id)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn research_task_create(
+pub async fn research_task_create(
     state: tauri::State<'_, ResearchTaskState>,
     draft: ResearchTaskDraft,
 ) -> Result<ResearchTask, String> {
-    crate::paths::validate_project_id(&draft.project_id)?;
-    crate::paths::project_dir(&draft.project_id)?;
-    ensure_skills_available(&draft.project_id, &draft.skill_ids)?;
-    let task = state.store()?.create(draft)?;
-    state.emit_task(&task);
-    Ok(task)
+    blocking_task_command(&state, move |state| {
+        crate::paths::validate_project_id(&draft.project_id)?;
+        crate::paths::project_dir(&draft.project_id)?;
+        ensure_skills_available(&draft.project_id, &draft.skill_ids)?;
+        let task = state.store()?.create(draft)?;
+        state.emit_task(&task);
+        Ok(task)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn research_task_edit(
+pub async fn research_task_edit(
     state: tauri::State<'_, ResearchTaskState>,
     task_id: String,
     edit: ResearchTaskEdit,
 ) -> Result<ResearchTask, String> {
-    let task = state.store()?.edit(&task_id, edit)?;
-    state.emit_task(&task);
-    Ok(task)
+    blocking_task_command(&state, move |state| {
+        let task = state.store()?.edit(&task_id, edit)?;
+        state.emit_task(&task);
+        Ok(task)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -839,47 +860,59 @@ async fn cancel_task(state: &ResearchTaskState, task_id: String) -> Result<Resea
 }
 
 #[tauri::command]
-pub fn research_task_retry(
+pub async fn research_task_retry(
     state: tauri::State<'_, ResearchTaskState>,
     task_id: String,
 ) -> Result<ResearchTask, String> {
-    let task = state.store()?.retry(&task_id)?;
-    state.emit_task(&task);
-    Ok(task)
+    blocking_task_command(&state, move |state| {
+        let task = state.store()?.retry(&task_id)?;
+        state.emit_task(&task);
+        Ok(task)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn research_task_events(
+pub async fn research_task_events(
     state: tauri::State<'_, ResearchTaskState>,
     task_id: String,
     execution_generation: u64,
     after_sequence: Option<u64>,
     limit: Option<usize>,
 ) -> Result<TaskTranscriptPage, String> {
-    state.store()?.events(
-        &task_id,
-        execution_generation,
-        after_sequence,
-        limit.unwrap_or(100),
-    )
+    blocking_task_command(&state, move |state| {
+        state.store()?.events(
+            &task_id,
+            execution_generation,
+            after_sequence,
+            limit.unwrap_or(100),
+        )
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn research_task_file_preview(
+pub async fn research_task_file_preview(
     state: tauri::State<'_, ResearchTaskState>,
     task_id: String,
     path: String,
 ) -> Result<TaskFilePreview, String> {
-    preview::file_preview(&state.store()?, &task_id, &path)
+    blocking_task_command(&state, move |state| {
+        preview::file_preview(&state.store()?, &task_id, &path)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn research_task_artifact_preview(
+pub async fn research_task_artifact_preview(
     state: tauri::State<'_, ResearchTaskState>,
     task_id: String,
     path: String,
 ) -> Result<TaskArtifactPreview, String> {
-    preview::artifact_preview(&state.store()?, &task_id, &path)
+    blocking_task_command(&state, move |state| {
+        preview::artifact_preview(&state.store()?, &task_id, &path)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -989,6 +1022,116 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn task_storage_queries_leave_the_calling_thread_and_preserve_errors() {
+        let temp = tempfile::tempdir().unwrap();
+        let state = ResearchTaskState::for_test(temp.path().join("tasks"), 1);
+        let caller = std::thread::current().id();
+        let (worker, tasks) = blocking_task_command(&state, |state| {
+            Ok((std::thread::current().id(), state.store()?.list("paper")?))
+        })
+        .await
+        .unwrap();
+        assert_ne!(worker, caller);
+        assert!(tasks.is_empty());
+        let error = blocking_task_command::<()>(&state, |_| Err("storage failed".into()))
+            .await
+            .unwrap_err();
+        assert_eq!(error, "storage failed");
+    }
+
+    #[test]
+    fn async_storage_commands_preserve_task_lifecycle_and_preview_errors() {
+        use tauri::Manager as _;
+
+        let _env = crate::paths::data_dir_env_lock();
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", temp.path());
+        let project = crate::paths::create_project_dir("command-paper").unwrap();
+        std::fs::write(project.join("main.tex"), "original source").unwrap();
+        let app = tauri::test::mock_builder()
+            .manage(ResearchTaskState::for_test(temp.path().join("tasks"), 1))
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        tauri::async_runtime::block_on(async {
+            let state = || app.state::<ResearchTaskState>();
+            assert!(research_task_list(state(), "../outside".into())
+                .await
+                .is_err());
+            let draft = ResearchTaskDraft {
+                project_id: "command-paper".into(),
+                title: "Review source".into(),
+                prompt: "Check the manuscript".into(),
+                runtime_id: "fixture".into(),
+                agent_id: "fixture-agent".into(),
+                model_id: "fixture-model".into(),
+                skill_ids: Vec::new(),
+                dependency_ids: Vec::new(),
+            };
+            let task = research_task_create(state(), draft.clone()).await.unwrap();
+            assert_eq!(task.status, ResearchTaskStatus::Queued);
+            assert_eq!(
+                research_task_list(state(), draft.project_id.clone())
+                    .await
+                    .unwrap(),
+                vec![task.clone()]
+            );
+            let edited = research_task_edit(
+                state(),
+                task.id.clone(),
+                ResearchTaskEdit {
+                    title: "Revised review".into(),
+                    prompt: draft.prompt,
+                    runtime_id: draft.runtime_id,
+                    agent_id: draft.agent_id,
+                    model_id: draft.model_id,
+                    skill_ids: Vec::new(),
+                    dependency_ids: Vec::new(),
+                },
+            )
+            .await
+            .unwrap();
+            assert_eq!(edited.title, "Revised review");
+            assert!(research_task_retry(state(), task.id.clone())
+                .await
+                .unwrap_err()
+                .contains("failed or cancelled"));
+            state().store().unwrap().request_cancel(&task.id).unwrap();
+            let retried = research_task_retry(state(), task.id.clone()).await.unwrap();
+            assert_eq!(retried.status, ResearchTaskStatus::Queued);
+            assert_eq!(retried.title, edited.title);
+            let transcript = research_task_events(state(), task.id.clone(), 0, None, None)
+                .await
+                .unwrap();
+            assert!(transcript.events.is_empty());
+            assert_eq!(transcript.next_sequence, None);
+            for path in ["main.tex", "../outside"] {
+                let expected_file =
+                    preview::file_preview(&state().store().unwrap(), &task.id, path).unwrap_err();
+                assert_eq!(
+                    research_task_file_preview(state(), task.id.clone(), path.into())
+                        .await
+                        .unwrap_err(),
+                    expected_file
+                );
+                let expected_artifact =
+                    preview::artifact_preview(&state().store().unwrap(), &task.id, path)
+                        .unwrap_err();
+                assert_eq!(
+                    research_task_artifact_preview(state(), task.id.clone(), path.into())
+                        .await
+                        .unwrap_err(),
+                    expected_artifact
+                );
+            }
+            assert_eq!(
+                std::fs::read_to_string(project.join("main.tex")).unwrap(),
+                "original source"
+            );
+        });
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
 
     struct FixtureRuntime {
         runs: AtomicUsize,

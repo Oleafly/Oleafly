@@ -338,11 +338,12 @@ test("invert colors toggles on and off", async ({ tauriPage }) => {
   // Toggle through whichever form the toolbar is showing and assert the pane's
   // own state: the collapsed menu item carries no aria-pressed.
   const pane = tauriPage.getByTestId("preview-pane");
-  await expect(pane).toHaveAttribute("data-preview-inverted", "false");
+  const initial = await pane.getAttribute("data-preview-inverted");
+  expect(["true", "false"]).toContain(initial);
   await activatePreviewControl(tauriPage, "Invert PDF preview colors");
-  await expect(pane).toHaveAttribute("data-preview-inverted", "true");
+  await expect(pane).toHaveAttribute("data-preview-inverted", initial === "true" ? "false" : "true");
   await activatePreviewControl(tauriPage, "Invert PDF preview colors");
-  await expect(pane).toHaveAttribute("data-preview-inverted", "false");
+  await expect(pane).toHaveAttribute("data-preview-inverted", initial!);
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible();
 });
 

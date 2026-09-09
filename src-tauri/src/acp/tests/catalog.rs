@@ -824,7 +824,7 @@ fn malformed_and_truncated_archives_fail() {
 
 #[tokio::test]
 async fn local_install_commands_bound_output_and_hide_failed_command_details() {
-    let python = discover("python3").expect("Python 3 is required for ACP protocol fixtures");
+    let python = crate::acp::tests::fixture_python();
     let mut command = tokio::process::Command::new(&python);
     command.args(["-c", "import sys; sys.stdout.write('x' * 100000)"]);
     let output = bounded_command(command, Duration::from_secs(5))
@@ -851,7 +851,7 @@ async fn local_install_commands_handle_spawn_failure_and_timeout() {
         .await
         .unwrap_err()
         .contains("could not be started"));
-    let python = discover("python3").expect("Python 3 is required for ACP protocol fixtures");
+    let python = crate::acp::tests::fixture_python();
     let mut command = tokio::process::Command::new(python);
     command.args(["-c", "import time; time.sleep(30)"]);
     assert!(bounded_command(command, Duration::from_millis(100))

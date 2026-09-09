@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, render, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@/lib/theme";
 import { Markdown } from "./markdown";
 import { clearDiagramCache } from "./mermaid-diagram";
@@ -21,6 +21,10 @@ vi.mock("mermaid", () => ({
 
 describe("Mermaid render failures", () => {
   let intersection: IntersectionObserverStub | null = null;
+
+  beforeAll(async () => {
+    await import("./markdown-renderer");
+  });
 
   beforeEach(() => {
     clearDiagramCache();
