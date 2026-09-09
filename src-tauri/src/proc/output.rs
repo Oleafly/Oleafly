@@ -241,19 +241,19 @@ mod tests {
 
     #[test]
     fn steady_progress_outlives_a_deadline_that_would_have_killed_it() {
-        // Five reports at 100ms cross an idle budget of 250ms many times over.
-        // A total cap of the same size would stop this transfer mid-flight.
+        // The idle budget includes Node startup, which is slower under emulation.
+        // Twenty reports at 100ms must keep the command alive beyond that budget.
         let output = output_contained_with_bounds(
             node(
                 "let n=0;const t=setInterval(()=>{process.stderr.write('sending ');\
-                 if(++n===5){clearInterval(t);process.stdout.write('done');process.exit(0)}},100)",
+                 if(++n===20){clearInterval(t);process.stdout.write('done');process.exit(0)}},100)",
             ),
-            OutputBounds::stalled_after(Duration::from_millis(250), Duration::from_secs(30)),
+            OutputBounds::stalled_after(Duration::from_secs(1), Duration::from_secs(30)),
         )
         .unwrap();
         assert!(output.status.success());
         assert_eq!(output.stdout, b"done");
-        assert_eq!(output.stderr, b"sending sending sending sending sending ");
+        assert_eq!(output.stderr, b"sending ".repeat(20));
     }
 
     #[test]
