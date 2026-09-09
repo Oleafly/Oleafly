@@ -615,17 +615,52 @@ fn spawn_exit_poller(
             continue;
         }
         println!("term: session {poll_id} shell exited");
-        let session = {
-            let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
-            sessions
-                .as_mut()
-                .and_then(|registry| registry.remove_unchecked(&poll_id))
-        };
-        if let Some(session) = session {
+        if let Some(session) = take_session(&poll_id) {
             stop_session(session);
         }
         break;
     });
+}
+
+/// Remove a session from the registry by id. The reader and the exit poller
+/// race to tear the same session down, so whichever arrives second gets None.
+fn take_session(session_id: &str) -> Option<TermSession> {
+    let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
+    sessions
+        .as_mut()
+        .and_then(|registry| registry.remove_unchecked(session_id))
+}
+
+/// Forward shell output until the pty closes. Returns whether the channel still
+/// accepts events, and any bytes left after the last complete character.
+fn stream_terminal_output(
+    session_id: &str,
+    reader: &mut dyn Read,
+    channel: &Channel<TerminalEvent>,
+) -> (bool, Vec<u8>) {
+    let mut buffer = [0u8; 8192];
+    let mut pending: Vec<u8> = Vec::new();
+    let mut channel_open = true;
+    while let Ok(count) = reader.read(&mut buffer) {
+        if count == 0 {
+            break;
+        }
+        if !channel_open {
+            continue;
+        }
+        pending.extend_from_slice(&buffer[..count]);
+        let data = drain_utf8_lossy(&mut pending);
+        if data.is_empty() {
+            continue;
+        }
+        if channel.send(TerminalEvent::Output { data }).is_ok() {
+            continue;
+        }
+        channel_open = false;
+        pending.clear();
+        stop_sessions_in_background(take_session(session_id).into_iter().collect());
+    }
+    (channel_open, pending)
 }
 
 fn spawn_output_reader(
@@ -634,49 +669,14 @@ fn spawn_output_reader(
     channel: Channel<TerminalEvent>,
 ) {
     std::thread::spawn(move || {
-        let mut buffer = [0u8; 8192];
-        let mut pending: Vec<u8> = Vec::new();
-        let mut channel_open = true;
-        loop {
-            match reader.read(&mut buffer) {
-                Ok(0) | Err(_) => break,
-                Ok(n) => {
-                    if !channel_open {
-                        continue;
-                    }
-                    pending.extend_from_slice(&buffer[..n]);
-                    let data = drain_utf8_lossy(&mut pending);
-                    if data.is_empty() {
-                        continue;
-                    }
-                    if channel.send(TerminalEvent::Output { data }).is_err() {
-                        channel_open = false;
-                        pending.clear();
-                        let session = {
-                            let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
-                            sessions
-                                .as_mut()
-                                .and_then(|registry| registry.remove_unchecked(&session_id))
-                        };
-                        stop_sessions_in_background(session.into_iter().collect());
-                    }
-                }
-            }
-        }
+        let (mut channel_open, pending) =
+            stream_terminal_output(&session_id, reader.as_mut(), &channel);
         println!("term: session {session_id} reader eof (channel_open={channel_open})");
         if channel_open && !pending.is_empty() {
             let data = String::from_utf8_lossy(&pending).to_string();
-            if channel.send(TerminalEvent::Output { data }).is_err() {
-                channel_open = false;
-            }
+            channel_open = channel.send(TerminalEvent::Output { data }).is_ok();
         }
-        let session = {
-            let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
-            sessions
-                .as_mut()
-                .and_then(|registry| registry.remove_unchecked(&session_id))
-        };
-        if let Some(session) = session {
+        if let Some(session) = take_session(&session_id) {
             stop_session(session);
         }
         if channel_open {
