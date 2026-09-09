@@ -4,7 +4,7 @@ use std::process::Command;
 
 use crate::config;
 use crate::paths;
-use crate::proc::{output_contained, NoConsole, OutputBounds};
+use crate::proc::{NoConsole, OutputBounds};
 
 /// A transfer over someone's own uplink can legitimately take many minutes, so
 /// judge it by silence rather than by elapsed time: a push that is slow but
@@ -17,6 +17,39 @@ const REMOTE_TOTAL: std::time::Duration = std::time::Duration::from_secs(60 * 60
 
 fn remote_bounds() -> OutputBounds {
     OutputBounds::stalled_after(REMOTE_IDLE, REMOTE_TOTAL)
+}
+
+/// Local commands report nothing while they work, so silence cannot tell a slow
+/// one from a wedged one and only the deadline separates them. Most finish in
+/// milliseconds. The ones that walk the whole working tree do not: staging a
+/// large project while a virus scanner opens every file is slow but healthy, so
+/// give that group room rather than failing an ordinary commit.
+const LOCAL_DEADLINE: std::time::Duration = std::time::Duration::from_secs(120);
+const WORKTREE_SCALE_DEADLINE: std::time::Duration = std::time::Duration::from_secs(600);
+
+fn walks_the_working_tree(subcommand: Option<&str>) -> bool {
+    matches!(
+        subcommand,
+        Some(
+            "add"
+                | "checkout"
+                | "clean"
+                | "commit"
+                | "gc"
+                | "reset"
+                | "restore"
+                | "stash"
+                | "status"
+        )
+    )
+}
+
+fn local_bounds(args: &[&str]) -> OutputBounds {
+    OutputBounds::total(if walks_the_working_tree(args.first().copied()) {
+        WORKTREE_SCALE_DEADLINE
+    } else {
+        LOCAL_DEADLINE
+    })
 }
 
 fn project_root(project_id: &str) -> Result<PathBuf, String> {
@@ -48,14 +81,14 @@ fn run_configured_git(
     optional_locks: bool,
     configure: impl FnOnce(&mut Command),
 ) -> Result<std::process::Output, String> {
-    run_configured_git_bounded(root, args, optional_locks, None, configure)
+    run_configured_git_bounded(root, args, optional_locks, local_bounds(args), configure)
 }
 
 fn run_configured_git_bounded(
     root: &PathBuf,
     args: &[&str],
     optional_locks: bool,
-    bounds: Option<OutputBounds>,
+    bounds: OutputBounds,
     configure: impl FnOnce(&mut Command),
 ) -> Result<std::process::Output, String> {
     let mut command = Command::new("git");
@@ -74,17 +107,14 @@ fn run_configured_git_bounded(
         .env_remove("GIT_INDEX_FILE")
         .env("GIT_OPTIONAL_LOCKS", if optional_locks { "1" } else { "0" });
     configure(&mut command);
-    match bounds {
-        Some(bounds) => crate::proc::output_contained_with_bounds(command, bounds),
-        None => output_contained(command),
-    }
-    .map_err(|e| format!("failed to run git: {e}"))
+    crate::proc::output_contained_with_bounds(command, bounds)
+        .map_err(|e| format!("failed to run git: {e}"))
 }
 
 /// Reach a remote without a token: public clones and pulls still transfer over
 /// the same uplink, so they get the same silence-based bound.
 fn run_git_remote(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String> {
-    run_configured_git_bounded(root, args, true, Some(remote_bounds()), |_| {})
+    run_configured_git_bounded(root, args, true, remote_bounds(), |_| {})
 }
 
 pub(crate) fn ensure_repository(project_dir: &Path) -> Result<bool, String> {
@@ -1186,7 +1216,7 @@ mod tests {
     use super::{
         attach_imported_repository_history_at, clean_remote_credentials, commit_index,
         current_branch, ensure_repository, ensure_repository_with, initialize_repo,
-        is_allowed_remote_url, ok_or_err, out_to_string, parse_status_porcelain,
+        is_allowed_remote_url, local_bounds, ok_or_err, out_to_string, parse_status_porcelain,
         remote_credentials_need_cleanup, restore_worktree, run_configured_git, run_git,
         run_git_read_only, sanitize_url, show, stage, stage_all, unstage, unstage_all,
         validate_git_oid, Command,
@@ -1211,6 +1241,31 @@ mod tests {
             out_to_string(&out),
             "Writing objects:  90% (9/10)\nerror: failed to push some refs"
         );
+    }
+
+    #[test]
+    fn only_tree_walking_subcommands_get_the_longer_local_deadline() {
+        let long = super::WORKTREE_SCALE_DEADLINE;
+        let short = super::LOCAL_DEADLINE;
+        assert!(long > short);
+        for args in [
+            vec!["add", "-A"],
+            vec!["commit", "-m", "message"],
+            vec!["status", "--porcelain"],
+            vec!["checkout", "--", "main.tex"],
+            vec!["restore", "--staged", "main.tex"],
+        ] {
+            assert_eq!(local_bounds(&args).total_for_test(), long, "{args:?}");
+        }
+        for args in [
+            vec!["log", "-1"],
+            vec!["diff", "--cached"],
+            vec!["show", "HEAD:main.tex"],
+            vec!["rev-parse", "HEAD"],
+            vec!["remote", "get-url", "origin"],
+        ] {
+            assert_eq!(local_bounds(&args).total_for_test(), short, "{args:?}");
+        }
     }
 
     /// Create a throwaway git repo in a temp dir with a fixed identity.

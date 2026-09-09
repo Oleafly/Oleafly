@@ -140,8 +140,11 @@ records.
 - Tectonic, Typst, TexLab, and Tinymist versions are pinned by manifests or
   release metadata.
 - Fetch scripts and runtime installers verify SHA-256 before extraction and
-  reject unexpected archive members. TinyTeX pins a canonical manifest for
-  Windows x64, macOS universal, Linux x64, and Linux ARM64 release assets.
+  reject unexpected archive members. TinyTeX pins a canonical manifest naming
+  the upstream assets it accepts: Windows x64, a universal macOS archive,
+  Linux x64, and Linux ARM64. Those names describe TinyTeX's own downloads,
+  not Oleafly's build targets. Oleafly releases macOS on Apple Silicon only,
+  alongside Windows x64, Linux x64, and Linux ARM64.
 - Language servers are not silently packaged as Tauri external binaries.
   installation is consent-gated and license-aware.
 
