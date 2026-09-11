@@ -380,4 +380,48 @@ describe("createGrammarSuppressionKeyer", () => {
     expect(new Set(keys).size).toBe(1);
     expect(elapsed).toBeLessThan(100);
   });
+
+  it("keys a thousand findings that alternate between two long sentences quickly", () => {
+    const opening = "word ".repeat(47_500);
+    const closing = "term ".repeat(47_500);
+    const text = `${opening}. ${closing}.`;
+    expect(text.length).toBeGreaterThan(450_000);
+    const first = Array.from(
+      { length: 500 },
+      (_value, index) => index * 400,
+    );
+    const secondStart = opening.length + 2;
+    const second = Array.from(
+      { length: 500 },
+      (_value, index) => secondStart + index * 400,
+    );
+    const findings = first.flatMap((from, index) => [
+      { rule: `Rule${index % 5}`, from },
+      { rule: `Rule${index % 5}`, from: second[index] },
+    ]);
+    findings.sort((left, right) => left.rule.localeCompare(right.rule));
+    const started = performance.now();
+    const keyer = createGrammarSuppressionKeyer(text);
+    const keys = findings.map((finding) =>
+      keyer(finding.rule, finding.from),
+    );
+    const elapsed = performance.now() - started;
+    expect(keys).toHaveLength(1_000);
+    expect(new Set(keys).size).toBe(10);
+    expect(elapsed).toBeLessThan(100);
+  });
+
+  it("reuses an earlier sentence when findings arrive out of order", () => {
+    const text = "First one here. Second one follows. Third one ends.";
+    const keyer = createGrammarSuppressionKeyer(text);
+    const third = keyer("R", text.indexOf("Third"));
+    const first = keyer("R", 0);
+    expect(keyer("R", text.indexOf("Third") + 2)).toBe(third);
+    expect(keyer("R", 2)).toBe(first);
+    expect(first).toBe(grammarSuppressionKey("R", text, 0));
+    expect(third).toBe(
+      grammarSuppressionKey("R", text, text.indexOf("Third")),
+    );
+    expect(first).not.toBe(third);
+  });
 });

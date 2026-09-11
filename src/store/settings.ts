@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { sanitizeLintRuleNames } from "@/lib/proofreading/lint-profile";
+import { forgetRuleSuppressedHere } from "@/lib/proofreading/ignored";
 
 const SETTINGS_SECTIONS = new Set([
   "general",
@@ -1046,6 +1047,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   ),
   setHarperDisabledRules: (v) => {
     const harperDisabledRules = sanitizeLintRuleNames(v);
+    const stillDisabled = new Set(harperDisabledRules);
+    for (const rule of get().harperDisabledRules) {
+      if (!stillDisabled.has(rule)) forgetRuleSuppressedHere(rule);
+    }
     saveLs(
       "oleafly.harper.disabledRules",
       JSON.stringify(harperDisabledRules),
@@ -1426,6 +1431,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ defaultLatexEngine: v });
   },
   resetGeneralPreferences: () => {
+    for (const rule of get().harperDisabledRules) {
+      forgetRuleSuppressedHere(rule);
+    }
     saveLs("oleafly.spellcheck", PREF_DEFAULTS.spellcheck ? "1" : "0");
     saveLs("oleafly.harper", PREF_DEFAULTS.harper ? "1" : "0");
     saveLs("oleafly.harper.dialect", PREF_DEFAULTS.grammarDialect);

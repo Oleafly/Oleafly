@@ -104,6 +104,35 @@ export function isFindingSuppressedHere(
   return suppressedHere.get(scopeKey(projectId, path))?.has(key) ?? false;
 }
 
+function forget(
+  store: Map<string, Set<string>>,
+  matches: (value: string) => boolean,
+): void {
+  for (const [scope, values] of store) {
+    for (const value of [...values]) {
+      if (matches(value)) values.delete(value);
+    }
+    if (values.size === 0) store.delete(scope);
+  }
+}
+
+export function forgetWordIgnoredHere(word: string): void {
+  const key = hereKey(word);
+  if (!key) return;
+  forget(ignoredHere, (value) => value === key);
+}
+
+export function forgetFindingSuppressedHere(key: string): void {
+  if (!key) return;
+  forget(suppressedHere, (value) => value === key);
+}
+
+export function forgetRuleSuppressedHere(rule: string): void {
+  if (!rule) return;
+  const prefix = `${rule}:`;
+  forget(suppressedHere, (value) => value.startsWith(prefix));
+}
+
 export function clearWordsIgnoredHere(
   projectId?: string | null,
   path?: string,

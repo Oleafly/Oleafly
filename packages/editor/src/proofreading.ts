@@ -339,19 +339,47 @@ export type GrammarSuppressionKeyer = (
 export function createGrammarSuppressionKeyer(
   text: string,
 ): GrammarSuppressionKeyer {
-  let cachedStart = -1;
-  let cachedEnd = -1;
-  let cachedDigest = "";
-  return (rule, from) => {
-    if (cachedStart < 0 || from < cachedStart || from >= cachedEnd) {
-      const { start, end } = sentenceRange(text, from);
-      cachedStart = start;
-      cachedEnd = end;
-      cachedDigest = proofreadingSuppressionDigest(
-        normalizeSentence(text.slice(start, end)),
-      );
+  const starts: number[] = [];
+  const ends: number[] = [];
+  const digests: string[] = [];
+  const lastAtOrBefore = (anchor: number): number => {
+    let low = 0;
+    let high = starts.length - 1;
+    let found = -1;
+    while (low <= high) {
+      const mid = (low + high) >> 1;
+      if (starts[mid] <= anchor) {
+        found = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
     }
-    return `${rule || "*"}:${cachedDigest}`;
+    return found;
+  };
+  return (rule, from) => {
+    const anchor =
+      text.length === 0
+        ? 0
+        : Math.max(0, Math.min(from, text.length - 1));
+    const at = lastAtOrBefore(anchor);
+    if (at >= 0 && anchor < ends[at]) {
+      return `${rule || "*"}:${digests[at]}`;
+    }
+    const { start, end } = sentenceRange(text, from);
+    const digest = proofreadingSuppressionDigest(
+      normalizeSentence(text.slice(start, end)),
+    );
+    const covered = Math.max(end, anchor + 1);
+    if (at >= 0 && starts[at] === start) {
+      ends[at] = Math.max(ends[at], covered);
+      digests[at] = digest;
+    } else {
+      starts.splice(at + 1, 0, start);
+      ends.splice(at + 1, 0, covered);
+      digests.splice(at + 1, 0, digest);
+    }
+    return `${rule || "*"}:${digest}`;
   };
 }
 

@@ -11,6 +11,13 @@ import {
   useDictionary,
 } from "@/lib/dictionary";
 import { dictionaryWordFromSelection } from "@/lib/dictionary";
+import {
+  clearWordsIgnoredHere,
+  ignoreWordHere,
+  isFindingSuppressedHere,
+  isWordIgnoredHere,
+  suppressFindingHere,
+} from "@/lib/proofreading/ignored";
 
 describe("dictionary (ignore list)", () => {
   beforeEach(() => {
@@ -207,5 +214,101 @@ describe("dictionaryWordFromSelection", () => {
     ignoreWordForProject("p", "Spanner,");
     expect(useDictionary.getState().ignored.p).toEqual(["Spanner"]);
     expect(isWordIgnored("p", "Spanner")).toBe(true);
+  });
+});
+
+describe("restoring a decision clears the session entry", () => {
+  beforeEach(() => {
+    useDictionary.setState({
+      ignored: {},
+      global: [],
+      suppressed: {},
+      revision: 0,
+    });
+    clearWordsIgnoredHere();
+  });
+
+  afterEach(() => clearWordsIgnoredHere());
+
+  it("clears the session entry for a word removed from a project", () => {
+    ignoreWordHere("p", "main.tex", "Spanner");
+    ignoreWordHere("q", "intro.tex", "Spanner");
+    ignoreWordHere("p", "main.tex", "Plurdled");
+    ignoreWordForProject("p", "Spanner");
+
+    useDictionary.getState().unignore("p", "Spanner");
+
+    expect(isWordIgnoredHere("p", "main.tex", "Spanner")).toBe(false);
+    expect(isWordIgnoredHere("q", "intro.tex", "Spanner")).toBe(false);
+    expect(isWordIgnoredHere("p", "main.tex", "Plurdled")).toBe(true);
+  });
+
+  it("clears the session entry for a word removed from the personal list", () => {
+    ignoreWordHere("p", "main.tex", "Spanner");
+    ignoreWordGlobally("Spanner");
+
+    useDictionary.getState().unignoreGlobal("Spanner");
+
+    expect(isWordIgnoredHere("p", "main.tex", "Spanner")).toBe(false);
+  });
+
+  it("clears the session entry behind a restored finding", () => {
+    suppressFindingHere("p", "main.tex", "Rule:abcd1234");
+    suppressFindingHere("p", "main.tex", "Rule:99887766");
+
+    useDictionary.getState().unsuppress("p", "Rule:abcd1234");
+
+    expect(isFindingSuppressedHere("p", "main.tex", "Rule:abcd1234")).toBe(
+      false,
+    );
+    expect(isFindingSuppressedHere("p", "main.tex", "Rule:99887766")).toBe(
+      true,
+    );
+  });
+
+  it("clears every session entry behind the findings shown again", () => {
+    suppressGrammarFinding("p", "Rule:abcd1234");
+    suppressGrammarFinding("p", "Rule:99887766");
+    suppressFindingHere("p", "main.tex", "Rule:abcd1234");
+    suppressFindingHere("q", "intro.tex", "Rule:99887766");
+    suppressFindingHere("p", "main.tex", "Other:55443322");
+
+    useDictionary.getState().clearSuppressed("p");
+
+    expect(isFindingSuppressedHere("p", "main.tex", "Rule:abcd1234")).toBe(
+      false,
+    );
+    expect(isFindingSuppressedHere("q", "intro.tex", "Rule:99887766")).toBe(
+      false,
+    );
+    expect(isFindingSuppressedHere("p", "main.tex", "Other:55443322")).toBe(
+      true,
+    );
+  });
+
+  it("clears every session entry when the dictionary is reset", () => {
+    ignoreWordHere("p", "main.tex", "Spanner");
+    suppressFindingHere("p", "main.tex", "Rule:abcd1234");
+
+    useDictionary.getState().clearAll();
+
+    expect(isWordIgnoredHere("p", "main.tex", "Spanner")).toBe(false);
+    expect(isFindingSuppressedHere("p", "main.tex", "Rule:abcd1234")).toBe(
+      false,
+    );
+  });
+
+  it("clears the session entries for a whole project or personal list", () => {
+    ignoreWordHere("p", "main.tex", "Spanner");
+    ignoreWordHere("p", "main.tex", "Plurdled");
+    ignoreWordForProject("p", "Spanner");
+    ignoreWordGlobally("Plurdled");
+
+    useDictionary.getState().clear("p");
+    expect(isWordIgnoredHere("p", "main.tex", "Spanner")).toBe(false);
+    expect(isWordIgnoredHere("p", "main.tex", "Plurdled")).toBe(true);
+
+    useDictionary.getState().clearGlobal();
+    expect(isWordIgnoredHere("p", "main.tex", "Plurdled")).toBe(false);
   });
 });

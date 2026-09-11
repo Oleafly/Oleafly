@@ -9,6 +9,11 @@ import {
   useSettingsStore,
   withTerminalGlyphFallbacks,
 } from "./settings";
+import {
+  clearWordsIgnoredHere,
+  isFindingSuppressedHere,
+  suppressFindingHere,
+} from "@/lib/proofreading/ignored";
 
 const lsValues = new Map<string, string>();
 
@@ -541,5 +546,30 @@ describe("harper rule preferences", () => {
     expect(useSettingsStore.getState().harperEnabledRules).toEqual([]);
     expect(localStorage.getItem("oleafly.harper.disabledRules")).toBe("[]");
     expect(localStorage.getItem("oleafly.harper.enabledRules")).toBe("[]");
+  });
+
+  it("forgets the session dismissals behind a rule it turns back on", () => {
+    suppressFindingHere("p", "main.tex", "AnA:abcd1234");
+    suppressFindingHere("q", "intro.tex", "AnA:99887766");
+    suppressFindingHere("p", "main.tex", "Hedging:abcd1234");
+    useSettingsStore.getState().setHarperDisabledRules(["AnA", "Hedging"]);
+
+    useSettingsStore.getState().enableHarperRule("AnA");
+
+    expect(isFindingSuppressedHere("p", "main.tex", "AnA:abcd1234")).toBe(
+      false,
+    );
+    expect(isFindingSuppressedHere("q", "intro.tex", "AnA:99887766")).toBe(
+      false,
+    );
+    expect(
+      isFindingSuppressedHere("p", "main.tex", "Hedging:abcd1234"),
+    ).toBe(true);
+
+    useSettingsStore.getState().resetGeneralPreferences();
+    expect(
+      isFindingSuppressedHere("p", "main.tex", "Hedging:abcd1234"),
+    ).toBe(false);
+    clearWordsIgnoredHere();
   });
 });

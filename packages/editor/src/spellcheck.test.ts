@@ -842,6 +842,145 @@ describe("proofreading actions by kind", () => {
     expect(diagnosticCardSource(editor, at)).toBeNull();
   });
 
+  it("keeps every dismissed misspelling hidden when the dictionary write throws", async () => {
+    const actions = stubActionHost({
+      addToPersonalDictionary: () => {
+        const error = new Error("storage quota exceeded");
+        error.name = "QuotaExceededError";
+        throw error;
+      },
+    });
+    const text = "The qwertzuiopz result and a second one.";
+    const at = text.indexOf("qwertzuiopz");
+    const other = text.indexOf("second");
+    const findings: ProofreadingResult["diagnostics"] = [
+      {
+        from: at,
+        to: at + 11,
+        message: "Possible misspelling",
+        kind: "Spelling",
+        source: "hunspell",
+        word: "qwertzuiopz",
+        suggestions: [],
+        rule: null,
+      },
+      {
+        from: at + 3,
+        to: at + 8,
+        message: "Another view of the same text",
+        kind: "Spelling",
+        source: "harper",
+        word: "rtzui",
+        suggestions: [],
+        rule: null,
+      },
+    ];
+    const box = { findings };
+    const editor = await mountLinted(text, findings, {
+      proofread: async () => workerResult(box.findings),
+    });
+    press(cardAt(editor, at), "Add to my dictionary");
+    expect([...actions.here].sort()).toEqual([
+      "project:main.tex:qwertzuiopz",
+      "project:main.tex:rtzui",
+    ]);
+    expect(actions.personalWords).toEqual([]);
+    expect(actions.notices).toEqual([
+      "That word could not be saved, so it is hidden for now.",
+    ]);
+
+    box.findings = [
+      ...findings,
+      {
+        from: other,
+        to: other + 6,
+        message: "A later finding",
+        kind: "Spelling",
+        source: "hunspell",
+        word: "second",
+        suggestions: [],
+        rule: null,
+      },
+    ];
+    refreshEditorLints(editor);
+    forceLinting(editor);
+    await vi.waitFor(() =>
+      expect(diagnosticCardSource(editor, other)).not.toBeNull(),
+    );
+    expect(diagnosticCardSource(editor, at)).toBeNull();
+    expect(diagnosticCardSource(editor, at + 4)).toBeNull();
+  });
+
+  it("keeps every dismissed grammar finding hidden when the suppression write throws", async () => {
+    const actions = stubActionHost({
+      suppressFinding: () => {
+        const error = new Error("storage quota exceeded");
+        error.name = "QuotaExceededError";
+        throw error;
+      },
+    });
+    const text = "We compare the the results. A later sentence follows.";
+    const at = text.indexOf("the the");
+    const other = text.indexOf("later");
+    const findings: ProofreadingResult["diagnostics"] = [
+      {
+        from: at,
+        to: at + 7,
+        message: "Did you mean to repeat this word?",
+        kind: "Repetition",
+        source: "harper",
+        word: "the the",
+        suggestions: [],
+        rule: "RepeatedWords",
+      },
+      {
+        from: at + 4,
+        to: at + 11,
+        message: "Another view of the same span",
+        kind: "WordChoice",
+        source: "harper",
+        word: "the res",
+        suggestions: [],
+        rule: "OverlappingRule",
+      },
+    ];
+    const box = { findings };
+    const editor = await mountLinted(text, findings, {
+      proofread: async () => workerResult(box.findings),
+    });
+    press(cardAt(editor, at), "Ignore this");
+    expect(actions.notices).toEqual([
+      "This finding could not be saved, so it is hidden for now.",
+    ]);
+    expect([...actions.suppressedHere].sort()).toEqual(
+      [
+        `project:main.tex:${grammarSuppressionKey("RepeatedWords", text, at)}`,
+        `project:main.tex:${grammarSuppressionKey("OverlappingRule", text, at + 4)}`,
+      ].sort(),
+    );
+
+    box.findings = [
+      ...findings,
+      {
+        from: other,
+        to: other + 5,
+        message: "A later finding",
+        kind: "Repetition",
+        source: "harper",
+        word: "later",
+        suggestions: [],
+        rule: "OtherRule",
+      },
+    ];
+    refreshEditorLints(editor);
+    forceLinting(editor);
+    await vi.waitFor(() =>
+      expect(diagnosticCardSource(editor, other)).not.toBeNull(),
+    );
+    expect(diagnosticCardSource(editor, at)).toBeNull();
+    expect(diagnosticCardSource(editor, at + 8)).toBeNull();
+  });
+
   it("hides a finding the writer already dismissed", async () => {
     const actions = stubActionHost();
     const text0 = "We compare the the results.";

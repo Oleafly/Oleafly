@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import { useToastStore } from "@/store/toast";
+import {
+  clearWordsIgnoredHere,
+  forgetFindingSuppressedHere,
+  forgetWordIgnoredHere,
+} from "@/lib/proofreading/ignored";
 
 // In-memory fallback so the store also works where localStorage is absent
 // (e.g. Node during tests) without changing behavior in the browser.
@@ -212,7 +217,7 @@ function sanitizeProjectWords(value: unknown): Record<string, string[]> {
 
 export const useDictionary = create<DictionaryState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ignored: {},
       global: [],
       suppressed: {},
@@ -257,7 +262,8 @@ export const useDictionary = create<DictionaryState>()(
           }
           return { global: [...s.global, w], revision: s.revision + 1 };
         }),
-      unignore: (projectId, word) =>
+      unignore: (projectId, word) => {
+        forgetWordIgnoredHere(word);
         set((s) => ({
           ignored: {
             ...s.ignored,
@@ -266,14 +272,17 @@ export const useDictionary = create<DictionaryState>()(
             ),
           },
           revision: s.revision + 1,
-        })),
-      unignoreGlobal: (word) =>
+        }));
+      },
+      unignoreGlobal: (word) => {
+        forgetWordIgnoredHere(word);
         set((s) => ({
           global: s.global.filter(
             (item) => dictionaryKey(item) !== dictionaryKey(word),
           ),
           revision: s.revision + 1,
-        })),
+        }));
+      },
       suppress: (projectId, key) =>
         set((s) => {
           if (!canStoreProjectId(projectId) || !canStoreSuppression(key)) {
@@ -295,6 +304,7 @@ export const useDictionary = create<DictionaryState>()(
           };
         }),
       unsuppress: (projectId, key) => {
+        forgetFindingSuppressedHere(key);
         set((s) => ({
           suppressed: {
             ...s.suppressed,
@@ -307,6 +317,9 @@ export const useDictionary = create<DictionaryState>()(
         announceProofreadingChange();
       },
       clearSuppressed: (projectId) => {
+        for (const key of get().suppressed[projectId] ?? EMPTY_WORDS) {
+          forgetFindingSuppressedHere(key);
+        }
         set((s) => {
           const next = { ...s.suppressed };
           delete next[projectId];
@@ -314,21 +327,29 @@ export const useDictionary = create<DictionaryState>()(
         });
         announceProofreadingChange();
       },
-      clear: (projectId) =>
+      clear: (projectId) => {
+        for (const word of get().ignored[projectId] ?? EMPTY_WORDS) {
+          forgetWordIgnoredHere(word);
+        }
         set((s) => {
           const next = { ...s.ignored };
           delete next[projectId];
           return { ignored: next, revision: s.revision + 1 };
-        }),
-      clearGlobal: () =>
-        set((s) => ({ global: [], revision: s.revision + 1 })),
-      clearAll: () =>
+        });
+      },
+      clearGlobal: () => {
+        for (const word of get().global) forgetWordIgnoredHere(word);
+        set((s) => ({ global: [], revision: s.revision + 1 }));
+      },
+      clearAll: () => {
+        clearWordsIgnoredHere();
         set((s) => ({
           ignored: {},
           global: [],
           suppressed: {},
           revision: s.revision + 1,
-        })),
+        }));
+      },
     }),
     {
       name: "oleafly.dictionary",

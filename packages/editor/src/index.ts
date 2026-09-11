@@ -109,6 +109,7 @@ export {
   type ProofreadingWorkerResponse,
   type GrammarSuppressionKeyer,
 } from "./proofreading";
+export { diagnosticCardSource } from "./diagnostic-card";
 export { vscodeSearch } from "./search-panel";
 export {
   diagnosticPresentationExtensions,

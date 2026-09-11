@@ -354,6 +354,9 @@ function elide(word: string, limit = 22): string {
   return word.length > limit ? `${word.slice(0, limit - 1)}…` : word;
 }
 
+const DICTIONARY_WRITE_FAILED =
+  "That word could not be saved, so it is hidden for now.";
+
 function spellingDismissEntries(
   h: SpellHost,
   actions: ProofreadingActionHost,
@@ -371,7 +374,14 @@ function spellingDismissEntries(
         apply: (view, from, to) => {
           const active = h.getProjectId();
           if (!active) return;
-          actions.addToProjectDictionary(active, word);
+          rememberDismissedFindings(view, from, to);
+          if (
+            attemptDismissalWrite(() =>
+              actions.addToProjectDictionary(active, word),
+            ) === "failed"
+          ) {
+            actions.notify(DICTIONARY_WRITE_FAILED);
+          }
           dismissRange(view, from, to);
         },
       },
@@ -382,7 +392,14 @@ function spellingDismissEntries(
     action: {
       name: `Add “${short}” to my dictionary`,
       apply: (view, from, to) => {
-        actions.addToPersonalDictionary(word);
+        rememberDismissedFindings(view, from, to);
+        if (
+          attemptDismissalWrite(() =>
+            actions.addToPersonalDictionary(word),
+          ) === "failed"
+        ) {
+          actions.notify(DICTIONARY_WRITE_FAILED);
+        }
         dismissRange(view, from, to);
       },
     },
@@ -392,6 +409,7 @@ function spellingDismissEntries(
     action: {
       name: `Ignore “${short}” in this document`,
       apply: (view, from, to) => {
+        rememberDismissedFindings(view, from, to);
         actions.ignoreHere(
           h.getProjectId(),
           h.getActivePath() ?? path,
@@ -417,7 +435,12 @@ function grammarDismissEntries(
         name: "Ignore this finding",
         apply: (view, start, end) => {
           const active = h.getProjectId();
-          if (!actions.suppressFinding(active, key)) {
+          rememberDismissedFindings(view, start, end);
+          if (
+            attemptDismissalWrite(() =>
+              actions.suppressFinding(active, key),
+            ) !== "stored"
+          ) {
             actions.notify(
               active
                 ? "This finding could not be saved, so it is hidden for now."
@@ -435,7 +458,17 @@ function grammarDismissEntries(
       action: {
         name: `Turn off the “${rule}” rule`,
         apply: (view, start, end) => {
-          actions.disableRule(rule);
+          rememberDismissedFindings(view, start, end);
+          if (
+            attemptDismissalWrite(() => {
+              actions.disableRule(rule);
+              return true;
+            }) === "failed"
+          ) {
+            actions.notify(
+              "That rule could not be turned off, so this finding is hidden for now.",
+            );
+          }
           dismissRange(view, start, end);
         },
       },
@@ -468,24 +501,44 @@ function rememberDismissal(
   }
 }
 
-function dismissRange(
+function rememberDismissedFindings(
   view: Parameters<Action["apply"]>[0],
   from: number,
   to: number,
 ): void {
   const actions = actionHost;
+  if (!actions) return;
   const projectId = host?.getProjectId() ?? null;
   const path = host?.getActivePath() ?? "";
+  forEachDiagnostic(view.state, (diagnostic, start, end) => {
+    if (!hasProofreadingCard(diagnostic)) return;
+    if (start >= to || end <= from) return;
+    rememberDismissal(actions, projectId, path, diagnostic);
+  });
+}
+
+type DismissalWriteOutcome = "stored" | "rejected" | "failed";
+
+function attemptDismissalWrite(
+  write: () => boolean,
+): DismissalWriteOutcome {
+  try {
+    return write() ? "stored" : "rejected";
+  } catch {
+    return "failed";
+  }
+}
+
+function dismissRange(
+  view: Parameters<Action["apply"]>[0],
+  from: number,
+  to: number,
+): void {
   const remaining: Diagnostic[] = [];
   forEachDiagnostic(view.state, (diagnostic, start, end) => {
     const overlaps =
       hasProofreadingCard(diagnostic) && start < to && end > from;
-    if (overlaps) {
-      if (actions) {
-        rememberDismissal(actions, projectId, path, diagnostic);
-      }
-      return;
-    }
+    if (overlaps) return;
     remaining.push({ ...diagnostic, from: start, to: end });
   });
   view.dispatch(setDiagnostics(view.state, remaining));
