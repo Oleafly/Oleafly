@@ -8,6 +8,8 @@
 //! admin rights and manages packages with `tlmgr`). Everything here is opt-in
 //! and deletable from Settings.
 
+pub(crate) mod packages;
+
 use crate::paths;
 use crate::proc::NoConsole;
 use crate::state::AppState;
@@ -365,7 +367,10 @@ async fn find_engine() -> EngineInfo {
 
 #[tauri::command]
 pub async fn latex_engine_info() -> EngineInfo {
-    find_engine().await
+    let mut info = find_engine().await;
+    info.tlmgr = crate::tex_distro::active_latexmk_distribution()
+        .and_then(|distribution| distribution.tlmgr);
+    info
 }
 
 #[tauri::command]
@@ -1520,7 +1525,10 @@ async fn tlmgr_run_at(tlmgr: &str, action: &str, packages: Vec<String>) -> Resul
     let output = run_tex_utility(Path::new(tlmgr), &args, TLMGR_MUTATION_TIMEOUT).await?;
     let log = format!("{}{}", output.stdout, output.stderr);
     if !output.success {
-        return Err(log.trim().to_string());
+        return Err(packages::package_command_error(
+            &output,
+            "TeX Live could not complete the package operation.",
+        ));
     }
     Ok(log)
 }

@@ -725,6 +725,13 @@ export const confirmQuitFlush = (restart: boolean) =>
 // The user chose to stay after a blocked quit; the next quit flushes again.
 export const cancelQuitFlush = () => invoke<void>("cancel_quit_flush");
 export const deleteTinytex = () => invoke<void>("delete_tinytex");
+export interface TexPackage {
+  name: string;
+  description: string;
+}
+
+export const tlmgrSearch = (query: string) => invoke<TexPackage[]>("tlmgr_search", { query });
+export const tlmgrInstallMissing = (files: string[]) => invoke<string>("tlmgr_install_missing", { files });
 export const tlmgrInstalled = () => invoke<string[]>("tlmgr_installed");
 export const tlmgrInstall = (packages: string[]) => invoke<string>("tlmgr_install", { packages });
 export const tlmgrRemove = (packages: string[]) => invoke<string>("tlmgr_remove", { packages });

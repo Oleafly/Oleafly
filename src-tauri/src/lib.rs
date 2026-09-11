@@ -499,6 +499,8 @@ pub fn run() {
             latex_engine::install_tinytex,
             latex_engine::delete_tinytex,
             latex_engine::tlmgr_installed,
+            latex_engine::packages::tlmgr_search,
+            latex_engine::packages::tlmgr_install_missing,
             latex_engine::tlmgr_install,
             latex_engine::tlmgr_remove,
             latex_engine::compile_tagged,

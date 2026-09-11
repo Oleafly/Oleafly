@@ -16,7 +16,7 @@ import { engineHintDismissed, useEnginePickerStore } from "@/store/engine-picker
 import {
   classifyCompileFailure,
   importCompatFinding,
-  missingLatexPackages,
+  missingLatexFiles,
 } from "@oleafly/latex";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
@@ -406,25 +406,29 @@ function maybeSuggestMissingPackages(log: string): void {
   const files = useFilesStore.getState();
   const projectId = files.projectId;
   if (files.engine.id !== "latexmk" || !projectId) return;
-  const packages = missingLatexPackages(log);
+  const packages = missingLatexFiles(log);
   if (packages.length === 0) return;
   const signature = packageSuggestionSignature(packages);
   if (suggestedPackagesByProject.get(projectId) === signature) return;
-  suggestedPackagesByProject.set(projectId, signature);
   void (async () => {
     const tauri = await import("@/lib/tauri");
     const info = await tauri.latexEngineInfo().catch(() => null);
-    if (!info?.tlmgr) return; // MiKTeX installs on the fly; nothing to offer
-    const label = packages.length === 1 ? `Install ${packages[0]}` : `Install all ${packages.length}`;
+    if (!info?.tlmgr || useFilesStore.getState().projectId !== projectId || useFilesStore.getState().engine.id !== "latexmk") return;
+    if (suggestedPackagesByProject.get(projectId) === signature) return;
+    suggestedPackagesByProject.set(projectId, signature);
+    const label = packages.length === 1 ? `Find and install ${packages[0]}` : `Find and install ${packages.length} files`;
     const summary =
       packages.length === 1
-        ? `The compile needs the LaTeX package "${packages[0]}", which is not installed.`
-        : `The compile needs ${packages.length} LaTeX packages that are not installed (${packages.join(", ")}).`;
+        ? `The compile could not find "${packages[0]}". Look for the package that provides it in TeX Live.`
+        : `The compile could not find ${packages.join(", ")}. Look for their packages in TeX Live.`;
+    let installing = false;
     toast.info(
       summary,
       {
         label,
         onClick: () => {
+          if (installing || useFilesStore.getState().projectId !== projectId || useFilesStore.getState().engine.id !== "latexmk") return;
+          installing = true;
           void (async () => {
             toast.info(
               packages.length === 1
@@ -432,15 +436,18 @@ function maybeSuggestMissingPackages(log: string): void {
                 : `Installing ${packages.length} packages. The compile restarts when they finish.`,
             );
             try {
-              await tauri.tlmgrInstall(packages);
+              await tauri.tlmgrInstallMissing(packages);
+              const engineStore = await import("@/store/engine");
+              await engineStore.useEngineStore.getState().refreshPackages();
               suggestedPackagesByProject.delete(projectId);
-              void useCompileStore.getState().recompile();
+              if (useFilesStore.getState().projectId === projectId && useFilesStore.getState().engine.id === "latexmk") {
+                void useCompileStore.getState().recompile();
+              }
             } catch (error) {
-              notifyError(
-                "install missing packages",
-                error,
-                "The packages could not be installed. See Settings, LaTeX Engine for details.",
-              );
+              suggestedPackagesByProject.delete(projectId);
+              notifyError("install missing packages", error);
+            } finally {
+              installing = false;
             }
           })();
         },
