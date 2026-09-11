@@ -67,6 +67,50 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   prose mask, so math bodies, verbatim blocks, and machine arguments are not
   counted; a non-empty selection adds a selection count.
 
+## Proofreading
+
+- Two checkers share one worker pass. Hunspell owns spelling against the
+  selected dictionary pack. Harper owns grammar and style.
+- LaTeX reaches Harper through a prose mask the same length as the source, so
+  a lint span is already a document offset. Markup that reads as a noun in the
+  sentence, such as a citation, a reference, a `\gls` term or inline math,
+  becomes a placeholder noun padded with spaces. Markup that prints nothing,
+  such as an opaque environment, display math, a comment or a preamble
+  command, becomes spaces. Prose arguments stay: `\section{}`, `\emph{}`,
+  `\textbf{}`, `\caption{}`, `\footnote{}` and `\item[]` keep their text
+  while the command name and braces go.
+  Deleting markup instead of replacing it used to join the words on either
+  side and manufacture findings that were not in the document.
+- A finding is shown only when it sits entirely in prose the mask kept. One
+  that reaches across a masked construct or a placeholder is dropped, because
+  its suggestion would rewrite the markup underneath.
+- Typst goes through Harper's own Typst parser. Markdown and plain text use
+  the existing masks.
+- Harper ships tuned for chat. The academic profile in
+  `src/lib/proofreading/lint-profile.ts` turns off the rules that fight
+  scholarly prose: sentence length, hedging, contractions, shorthand
+  expansion, comma style, dash style, and the whitespace rules that a masked
+  document always trips. Settings keeps two lists on top of it, one of rules
+  the writer turned off and one of profile rules they turned back on.
+- A finding is only ever as wide as the thing it is about. A spelling finding
+  wider than 40 characters, or one that crosses a line, is dropped. A grammar
+  finding stops at the end of its sentence and at 300 characters. The same
+  word cannot be reported more than 20 times in one document.
+- The card names what was found. Spelling says "Not in dictionary" or offers a
+  replacement; everything else shows the checker's own message with the rule
+  name under it.
+- Dismissing. A misspelling can go to the project dictionary, to the personal
+  dictionary, or be ignored in this document until the app restarts. A grammar
+  finding can be dismissed on its own, which the project remembers by rule
+  plus a digest of the sentence, or its rule can be turned off everywhere.
+  Dismissing clears every finding over the same text, since removing one can
+  reveal another underneath. Those cleared findings stay hidden for the rest
+  of the session, so the next pass does not bring them back.
+  A selection too long or too strange to store as a word is hidden for the
+  session instead, with a toast saying so. Nothing is ever a silent no-op.
+- Settings > Dictionary lists the rules that are turned off and the number of
+  findings dismissed in the open project, and takes either back.
+
 ## Engineering boundaries
 
 - `packages/editor/` contains parser, proofing, highlighting, and editor-port

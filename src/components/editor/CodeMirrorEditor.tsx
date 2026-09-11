@@ -55,6 +55,9 @@ function sourceProofreadingContextKey(
     settings.dictionaryLocale,
     settings.showRegionalism,
     settings.showWordChoice,
+    [...settings.harperDisabledRules].sort((a, b) => Number(a > b) - Number(a < b)),
+    [...settings.harperEnabledRules].sort((a, b) => Number(a > b) - Number(a < b)),
+    dictionary.revision,
     [...dictionary.global].sort((a, b) => Number(a > b) - Number(a < b)),
     projectId
       ? [...(dictionary.ignored[projectId] ?? [])].sort((a, b) => Number(a > b) - Number(a < b))

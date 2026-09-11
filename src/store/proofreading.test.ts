@@ -40,6 +40,7 @@ function result(
       source: "harper" as const,
       word: "x",
       suggestions: [],
+      rule: null,
     })),
   };
 }

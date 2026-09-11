@@ -84,7 +84,14 @@ export {
 export {
   PROOFREADING_LIMITS,
   PROOFREADING_PROTOCOL_VERSION,
+  PROOFREADING_RENDER_LIMITS,
+  createGrammarSuppressionKeyer,
+  grammarSuppressionKey,
+  guardProofreadingDiagnostics,
   isProofreadingWorkerResponse,
+  isSpellingDiagnosticKind,
+  proofreadingContextSentence,
+  proofreadingSuppressionDigest,
   sameProofreadingIdentity,
   type ProofreadingDiagnostic,
   type ProofreadingDialect,
@@ -100,6 +107,7 @@ export {
   type ProofreadingSurface,
   type ProofreadingWorkerRequest,
   type ProofreadingWorkerResponse,
+  type GrammarSuppressionKeyer,
 } from "./proofreading";
 export { vscodeSearch } from "./search-panel";
 export {
@@ -112,6 +120,8 @@ export {
   createSpellLinter,
   createHarperLinter,
   setSpellHost,
+  setProofreadingActionHost,
   type GrammarDiag,
   type GrammarSuggestion,
+  type ProofreadingActionHost,
 } from "./spellcheck";

@@ -2,6 +2,7 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   PROOFREADING_PROTOCOL_VERSION,
+  grammarSuppressionKey,
   type ProofreadingRequest,
   type ProofreadingWorkerResponse,
 } from "@oleafly/editor";
@@ -12,6 +13,12 @@ const mocks = vi.hoisted(() => ({
   dictionaryAvailable: false,
   spell: vi.fn<(word: string) => boolean>(),
   suggest: vi.fn<(word: string) => string[]>(),
+  setLintConfig: vi.fn<(config: Record<string, boolean>) => void>(),
+  importWords: vi.fn<(words: string[]) => void>(),
+  lintLanguage: vi.fn<(language: string) => void>(),
+  lints: null as
+    | null
+    | ((text: string) => ReturnType<typeof fakeLint>[]),
 }));
 
 function fakeLint(
@@ -19,10 +26,13 @@ function fakeLint(
   message: string,
   start: number,
   end: number,
+  rule = "FakeRule",
 ) {
   return {
+    rule,
     span: () => ({ start, end, free: vi.fn() }),
     lint_kind: () => kind,
+    lint_kind_pretty: () => kind,
     message: () => message,
     suggestions: () => [],
     free: vi.fn(),
@@ -39,14 +49,23 @@ vi.mock("harper.js", () => ({
   },
   LocalLinter: class {
     async setup() {}
-    async setLintConfig() {}
+    async getDefaultLintConfig() {
+      return { Spaces: null, LongSentences: null, AnA: null, FakeRule: null };
+    }
+    async setLintConfig(config: Record<string, boolean>) {
+      mocks.setLintConfig(config);
+    }
     async setDialect() {}
     async clearWords() {}
-    async importWords() {}
-    async lint() {
+    async importWords(words: string[]) {
+      mocks.importWords(words);
+    }
+    async lint(text: string, options?: { language?: string }) {
+      mocks.lintLanguage(options?.language ?? "");
+      if (mocks.lints) return mocks.lints(text);
       return [
-        fakeLint("Spelling", "Harper spelling", 0, 5),
-        fakeLint("WordChoice", "Grammar finding", 6, 10),
+        fakeLint("Spelling", "Harper spelling", 0, 5, "SpellCheck"),
+        fakeLint("WordChoice", "Grammar finding", 6, 10, "WordChoiceRule"),
         ...(mocks.includeMalformed
           ? [
               {
@@ -58,6 +77,16 @@ vi.mock("harper.js", () => ({
             ]
           : []),
       ];
+    }
+    async organizedLints(text: string, options?: { language?: string }) {
+      const grouped: Record<string, unknown[]> = {};
+      for (const lint of await this.lint(text, options)) {
+        const rule = (lint as { rule?: string }).rule ?? "Unknown";
+        const bucket = grouped[rule] ?? [];
+        bucket.push(lint);
+        grouped[rule] = bucket;
+      }
+      return grouped;
     }
     async dispose() {}
   },
@@ -99,6 +128,7 @@ function request(
     mode,
     text: "alpha beta",
     ignoredWords: [],
+    suppressions: [],
     preferences: {
       showRegionalism: true,
       showWordChoice: true,
@@ -250,3 +280,238 @@ describe("ignored-word normalisation", () => {
   });
 });
 
+
+describe("harper lint configuration", () => {
+  it("applies the academic profile and the writer's rule choices", async () => {
+    mocks.setLintConfig.mockClear();
+    const configured = request(910, "grammar");
+    configured.preferences.disabledRules = ["AnA"];
+    configured.preferences.enabledRules = ["LongSentences"];
+    await analyze(configured);
+
+    const config = mocks.setLintConfig.mock.calls.at(-1)?.[0];
+    expect(config).toMatchObject({
+      Spaces: false,
+      AnA: false,
+      LongSentences: true,
+    });
+  });
+
+  it("imports the placeholder noun so masked markup is never a misspelling", async () => {
+    await analyze(request(911, "grammar"));
+    expect(mocks.importWords.mock.calls.at(-1)?.[0]).toContain("Dummy");
+  });
+
+  it("sends a Typst document through Harper's own Typst parser", async () => {
+    mocks.lintLanguage.mockClear();
+    const typst = request(912, "grammar");
+    typst.format = "typst";
+    typst.identity.path = "main.typ";
+    typst.text = "The the results.";
+    await analyze(typst);
+    expect(mocks.lintLanguage).toHaveBeenCalledWith("typst");
+  });
+
+  it("rejects a rule name that is not a rule name", async () => {
+    const bad = request(913, "grammar");
+    bad.preferences.disabledRules = ["not a rule"];
+    const response = await analyze(bad);
+    expect(response.type).toBe("error");
+    if (response.type !== "error") return;
+    expect(response.error.code).toBe("invalid_request");
+  });
+});
+
+describe("latex findings land on the document", () => {
+  const latexSource = (tag: string) =>
+    `We compare $a$ and $b$ in \\cite{smith2020} here, ${tag}.`;
+
+  it("maps a lint span straight onto the source text", async () => {
+    mocks.lints = (text) => {
+      const at = text.indexOf("compare");
+      return [
+        fakeLint("Repetition", "Did you mean to repeat this word?", at, at + 7, "RepeatedWords"),
+      ];
+    };
+    const text = latexSource("first");
+    const latex = request(920, "grammar");
+    latex.format = "latex";
+    latex.text = text;
+    const response = await analyze(latex);
+    mocks.lints = null;
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toHaveLength(1);
+    const diagnostic = response.diagnostics[0];
+    expect(text.slice(diagnostic.from, diagnostic.to)).toBe("compare");
+    expect(diagnostic.rule).toBe("RepeatedWords");
+  });
+
+  it("drops a finding that is only about masked markup", async () => {
+    mocks.lints = (text) => {
+      const at = text.indexOf("Dummy");
+      return [fakeLint("Miscellaneous", "About a placeholder", at, at + 5, "AnA")];
+    };
+    const latex = request(921, "grammar");
+    latex.format = "latex";
+    latex.text = latexSource("second");
+    const response = await analyze(latex);
+    mocks.lints = null;
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toEqual([]);
+  });
+
+  it("drops a finding that reaches across an inline equation", async () => {
+    const text = "We add and \\(c+d\\) and then stop.";
+    mocks.lints = () => [
+      fakeLint(
+        "Repetition",
+        "Did you mean to repeat this word?",
+        7,
+        22,
+        "RepeatedWords",
+      ),
+    ];
+    const latex = request(926, "grammar");
+    latex.format = "latex";
+    latex.text = text;
+    const response = await analyze(latex);
+    mocks.lints = null;
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toEqual([]);
+  });
+
+  it("drops a finding that reaches across a construct blanked over a newline", async () => {
+    const text = "We add and \\cite{\nkey\n} and then stop.";
+    const at = text.indexOf("and");
+    mocks.lints = () => [
+      fakeLint(
+        "Repetition",
+        "Did you mean to repeat this word?",
+        at,
+        text.indexOf("and then") + 3,
+        "RepeatedWords",
+      ),
+    ];
+    const latex = request(927, "grammar");
+    latex.format = "latex";
+    latex.text = text;
+    const response = await analyze(latex);
+    mocks.lints = null;
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toEqual([]);
+  });
+
+  it("keeps a finding that lies entirely in kept prose", async () => {
+    const text = "We compare the the results in \\cite{key} today.";
+    const at = text.indexOf("the the");
+    mocks.lints = () => [
+      fakeLint(
+        "Repetition",
+        "Did you mean to repeat this word?",
+        at,
+        at + 7,
+        "RepeatedWords",
+      ),
+    ];
+    const latex = request(928, "grammar");
+    latex.format = "latex";
+    latex.text = text;
+    const response = await analyze(latex);
+    mocks.lints = null;
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toHaveLength(1);
+    expect(
+      text.slice(
+        response.diagnostics[0].from,
+        response.diagnostics[0].to,
+      ),
+    ).toBe("the the");
+  });
+
+  it("marks a Hunspell finding with a null rule", async () => {
+    mocks.dictionaryAvailable = true;
+    mocks.spell.mockImplementation((word: string) => word !== "Qwertzuiopz");
+    mocks.suggest.mockReturnValue([]);
+    const spelling = request(929, "spelling");
+    spelling.format = "latex";
+    spelling.text = "A Qwertzuiopz remains here.";
+    const response = await analyze(spelling);
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toHaveLength(1);
+    expect(response.diagnostics[0].rule).toBeNull();
+  });
+
+  it("drops a wide finding rather than painting a pasted block", async () => {
+    const pasted = `${"\\begin{tabular}{lcc}\n"}${"Model & Accuracy & Latency \\\\\n".repeat(40)}\\end{tabular}`;
+    mocks.lints = () => [
+      fakeLint("Spelling", "Did you mean to spell this way?", 0, 300, "SpellCheck"),
+    ];
+    const latex = request(922, "grammar");
+    latex.format = "latex";
+    latex.text = pasted;
+    const response = await analyze(latex);
+    mocks.lints = null;
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toEqual([]);
+  });
+
+  it("clamps a grammar finding to its own sentence", async () => {
+    const text = "First sentence here. Second sentence follows it.";
+    mocks.lints = () => [
+      fakeLint("Readability", "This sentence is long.", 0, text.length, "LongSentences"),
+    ];
+    const latex = request(923, "grammar");
+    latex.format = "latex";
+    latex.text = text;
+    const response = await analyze(latex);
+    mocks.lints = null;
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toHaveLength(1);
+    expect(
+      text.slice(response.diagnostics[0].from, response.diagnostics[0].to),
+    ).toBe("First sentence here.");
+  });
+
+  it("drops a finding the writer already dismissed in this project", async () => {
+    const text = "We compare the the results here.";
+    mocks.lints = () => [
+      fakeLint("Repetition", "Did you mean to repeat this word?", 11, 18, "RepeatedWords"),
+    ];
+    const first = request(924, "grammar");
+    first.format = "latex";
+    first.text = text;
+    const before = await analyze(first);
+    expect(before.type).toBe("result");
+    if (before.type !== "result") return;
+    expect(before.diagnostics).toHaveLength(1);
+
+    const dismissed = request(925, "grammar");
+    dismissed.format = "latex";
+    dismissed.text = text;
+    dismissed.suppressions = [
+      grammarSuppressionKey("RepeatedWords", text, 11),
+    ];
+    const after = await analyze(dismissed);
+    mocks.lints = null;
+
+    expect(after.type).toBe("result");
+    if (after.type !== "result") return;
+    expect(after.diagnostics).toEqual([]);
+  });
+});

@@ -1,4 +1,5 @@
 import { forEachDiagnostic, type Action, type Diagnostic } from "@codemirror/lint";
+import { isSpellingDiagnosticKind } from "./proofreading";
 import {
   ViewPlugin,
   hoverTooltip,
@@ -31,11 +32,13 @@ export interface ProofreadingCard {
   word: string;
   /** Replacements, best first. */
   suggestions: readonly { label: string; action: Action }[];
-  /** Footer entries such as "Ignore" and "Ignore everywhere". */
   ignores: readonly { label: string; action: Action }[];
   /** Shown instead of "Did you mean…" when there is no spelling suggestion. */
   message?: string;
   severity?: Diagnostic["severity"];
+  kind?: string;
+  rule?: string | null;
+  suppressionKey?: string | null;
 }
 
 /**
@@ -76,6 +79,12 @@ export function hasProofreadingCard(diagnostic: Diagnostic): boolean {
   return cards.has(diagnostic);
 }
 
+export function proofreadingCardFor(
+  diagnostic: Diagnostic,
+): ProofreadingCard | null {
+  return cards.get(diagnostic) ?? null;
+}
+
 function button(label: string, className: string, onClick: () => void) {
   const element = document.createElement("button");
   element.type = "button";
@@ -109,14 +118,15 @@ function renderCard(
   // and loose text nodes would each become a gapped flex item.
   const headerText = document.createElement("span");
   headerText.className = "cm-proofread-header-text";
-  if (card.word && card.suggestions.length > 0) {
+  const spelling = isSpellingDiagnosticKind(card.kind);
+  if (spelling && card.word && card.suggestions.length > 0) {
     headerText.append("Did you mean ");
     const strong = document.createElement("strong");
     strong.textContent = card.suggestions[0].label;
     headerText.append(strong, "?");
-  } else if (card.message) {
+  } else if (!spelling || card.message) {
     headerText.classList.add("is-message");
-    headerText.textContent = card.message;
+    headerText.textContent = card.message ?? "";
   } else {
     headerText.append("Not in dictionary: ");
     const strong = document.createElement("strong");
@@ -125,6 +135,13 @@ function renderCard(
   }
   header.append(dot, headerText);
   root.append(header);
+
+  if (!spelling && card.rule) {
+    const rule = document.createElement("div");
+    rule.className = "cm-proofread-rule";
+    rule.textContent = card.rule;
+    root.append(rule);
+  }
 
   if (card.suggestions.length > 0) {
     const list = document.createElement("div");

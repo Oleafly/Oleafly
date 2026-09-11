@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { sanitizeLintRuleNames } from "@/lib/proofreading/lint-profile";
 
 const SETTINGS_SECTIONS = new Set([
   "general",
@@ -660,6 +661,14 @@ export const DEFAULT_HIDDEN_FILE_PATTERNS = [
   ".next",
 ] as const;
 
+function readLintRuleNames(raw: string): string[] {
+  try {
+    return sanitizeLintRuleNames(JSON.parse(raw));
+  } catch {
+    return [];
+  }
+}
+
 function readHiddenFilePatterns(raw: string): string[] {
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -742,6 +751,12 @@ interface SettingsState {
   setShowRegionalism: (v: boolean) => void;
   showWordChoice: boolean;
   setShowWordChoice: (v: boolean) => void;
+  harperDisabledRules: string[];
+  setHarperDisabledRules: (v: readonly string[]) => void;
+  disableHarperRule: (rule: string) => void;
+  harperEnabledRules: string[];
+  setHarperEnabledRules: (v: readonly string[]) => void;
+  enableHarperRule: (rule: string) => void;
   offline: boolean;
   setOffline: (v: boolean) => void;
   paletteOpen: boolean;
@@ -900,6 +915,8 @@ const PREF_DEFAULTS = {
   dictionaryLocale: "en_US" as DictionaryLocale,
   showRegionalism: true,
   showWordChoice: true,
+  harperDisabledRules: [] as readonly string[],
+  harperEnabledRules: [] as readonly string[],
   offline: false,
   editorFontSize: 13,
   appFontSize: 16,
@@ -1023,6 +1040,38 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.harper.wordchoice", v ? "1" : "0");
     set({ showWordChoice: v });
     notifyProofreadingSettingsChanged("wordChoice", get());
+  },
+  harperDisabledRules: readLintRuleNames(
+    ls("oleafly.harper.disabledRules", "[]"),
+  ),
+  setHarperDisabledRules: (v) => {
+    const harperDisabledRules = sanitizeLintRuleNames(v);
+    saveLs(
+      "oleafly.harper.disabledRules",
+      JSON.stringify(harperDisabledRules),
+    );
+    set({ harperDisabledRules });
+    notifyProofreadingSettingsChanged("harperDisabledRules", get());
+  },
+  disableHarperRule: (rule) => {
+    get().setHarperDisabledRules([...get().harperDisabledRules, rule]);
+  },
+  harperEnabledRules: readLintRuleNames(
+    ls("oleafly.harper.enabledRules", "[]"),
+  ),
+  setHarperEnabledRules: (v) => {
+    const harperEnabledRules = sanitizeLintRuleNames(v);
+    saveLs(
+      "oleafly.harper.enabledRules",
+      JSON.stringify(harperEnabledRules),
+    );
+    set({ harperEnabledRules });
+    notifyProofreadingSettingsChanged("harperEnabledRules", get());
+  },
+  enableHarperRule: (rule) => {
+    get().setHarperDisabledRules(
+      get().harperDisabledRules.filter((candidate) => candidate !== rule),
+    );
   },
   offline: false,
   setOffline: (v) => set({ offline: v }),
@@ -1389,6 +1438,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       "oleafly.harper.wordchoice",
       PREF_DEFAULTS.showWordChoice ? "1" : "0",
     );
+    saveLs(
+      "oleafly.harper.disabledRules",
+      JSON.stringify(PREF_DEFAULTS.harperDisabledRules),
+    );
+    saveLs(
+      "oleafly.harper.enabledRules",
+      JSON.stringify(PREF_DEFAULTS.harperEnabledRules),
+    );
     set({
       spellcheck: PREF_DEFAULTS.spellcheck,
       harper: PREF_DEFAULTS.harper,
@@ -1396,6 +1453,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       dictionaryLocale: PREF_DEFAULTS.dictionaryLocale,
       showRegionalism: PREF_DEFAULTS.showRegionalism,
       showWordChoice: PREF_DEFAULTS.showWordChoice,
+      harperDisabledRules: [...PREF_DEFAULTS.harperDisabledRules],
+      harperEnabledRules: [...PREF_DEFAULTS.harperEnabledRules],
       offline: PREF_DEFAULTS.offline,
     });
     notifyProofreadingSettingsChanged("reset", get());

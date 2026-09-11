@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { maskLatex, maskToProse, spellcheckRanges } from "./latex-mask";
+import {
+  intersectsMaskedRegion,
+  maskLatex,
+  maskLatexForProse,
+  maskLatexForProseRegions,
+  maskToProse,
+  spellcheckRanges,
+} from "./latex-mask";
 
 function words(tex: string): Set<string> {
   return new Set(spellcheckRanges(tex).map((r) => r.word));
@@ -181,5 +188,225 @@ describe("maskToProse (Harper input)", () => {
   it("map length matches prose length", () => {
     const { prose, map } = maskToProse("one \\cmd{x} two\n\\begin{equation}z\\end{equation} three");
     expect(map.length).toBe(prose.length);
+  });
+});
+
+describe("maskLatexForProse (Harper input)", () => {
+  const FIXTURES = [
+    "Plain prose with no macros.",
+    "\\section{Title} body \\cite{key} and $x^2$ done.",
+    "\\begin{equation}E = mc^2\\end{equation}\ntext",
+    "accented café naïve résumé",
+    "We compare $a$ and $b$ in \\cite{x}.",
+    "\\begin{tabular}{lc} Model & Result \\\\ Transformer & Best \\end{tabular}",
+    "% a comment line\nreal prose after it",
+    "\\documentclass{article}\n\\usepackage{amsmath}\n\\begin{document}\nBody.\n\\end{document}",
+    "🎉 emoji before \\cite{k} and after.",
+    "",
+  ];
+
+  it("returns a string of exactly the same length for every fixture", () => {
+    for (const source of FIXTURES) {
+      expect(maskLatexForProse(source), JSON.stringify(source)).toHaveLength(
+        source.length,
+      );
+    }
+  });
+
+  it("keeps the line count so document offsets stay line offsets", () => {
+    const source = "line one\n\\cite{x}\n\\begin{equation}a\\end{equation}\nline four";
+    expect(maskLatexForProse(source).split("\n")).toHaveLength(
+      source.split("\n").length,
+    );
+  });
+
+  it("replaces a citation with a padded placeholder at the same offset", () => {
+    const source = "A sentence with \\cite{a} in it.";
+    const at = source.indexOf("\\cite{a}");
+    const prose = maskLatexForProse(source);
+    expect(at).toBe(16);
+    expect(prose.slice(at, at + "\\cite{a}".length)).toBe("Dummy   ");
+    expect(prose).toBe("A sentence with Dummy    in it.");
+  });
+
+  it("keeps the sentence readable around inline math and citations", () => {
+    expect(maskLatexForProse("We compare $a$ and $b$ in \\cite{x}.")).toBe(
+      "We compare X   and X   in Dummy   .",
+    );
+  });
+
+  it("blanks block constructs instead of naming them", () => {
+    const prose = maskLatexForProse(
+      "Before.\n\\begin{equation}\nE = mc^2\n\\end{equation}\nAfter.",
+    );
+    expect(prose).toContain("Before.");
+    expect(prose).toContain("After.");
+    expect(prose).not.toContain("Dummy");
+    expect(prose).not.toContain("equation");
+  });
+
+  it("blanks comments, display math, and preamble commands", () => {
+    const prose = maskLatexForProse(
+      "\\documentclass{article}\nText $$x+y$$ more. % trailing note\n",
+    );
+    expect(prose).not.toContain("Dummy");
+    expect(prose).not.toContain("article");
+    expect(prose).not.toContain("trailing");
+    expect(prose).toContain("Text");
+    expect(prose).toContain("more.");
+  });
+
+  it("keeps the argument of prose-argument commands and blanks the markup", () => {
+    const prose = maskLatexForProse(
+      "\\section{Results} \\emph{clear} \\textbf{gains} \\caption{A plot} \\footnote{Note} \\item[Label] tail",
+    );
+    for (const kept of ["Results", "clear", "gains", "A plot", "Note", "Label", "tail"]) {
+      expect(prose).toContain(kept);
+    }
+    for (const gone of ["section", "emph", "textbf", "caption", "footnote", "item", "{", "}", "[", "]"]) {
+      expect(prose).not.toContain(gone);
+    }
+  });
+
+  it("uses the short placeholder when the construct cannot hold the long one", () => {
+    expect(maskLatexForProse("Let $n$ be large.")).toBe("Let X   be large.");
+  });
+
+  it("never starts a placeholder against an adjacent word character", () => {
+    const source = "transformer\\index{transformer} models and word\\cite{k}.";
+    const prose = maskLatexForProse(source);
+    expect(prose).toContain("transformer ");
+    expect(prose).not.toContain("transformerDummy");
+    expect(prose).not.toContain("wordDummy");
+  });
+
+  it("never writes a placeholder over a newline", () => {
+    const source = "A \\(\na\\) tail.";
+    const prose = maskLatexForProse(source);
+    expect(prose).toHaveLength(source.length);
+    expect(prose.split("\n")).toHaveLength(source.split("\n").length);
+    expect(prose).not.toContain("Dummy");
+  });
+
+  it("keeps every newline inside a multi-line construct", () => {
+    const source = "A \\cite{\nkey\n} tail.";
+    const prose = maskLatexForProse(source);
+    expect(prose).toHaveLength(source.length);
+    expect(prose.split("\n")).toHaveLength(source.split("\n").length);
+    expect(prose).toContain("Dummy");
+    expect(prose).not.toContain("key");
+  });
+
+  it("masks a bare URL as a placeholder noun rather than a hole", () => {
+    const prose = maskLatexForProse("See https://example.com/page for details.");
+    expect(prose).toContain("See Dummy");
+    expect(prose).not.toContain("example");
+    expect(prose).toContain("for details.");
+  });
+
+  it("leaves a pasted block with no wide run of real words", () => {
+    const source = String.raw`\begin{table}[t]
+\centering
+\caption{Results on the benchmark}
+\label{tab:results}
+\begin{tabular}{lcc}
+\toprule
+Model & Accuracy & Latency \\
+\midrule
+Baseline & 81.2 & 14 \\
+Ours & 88.7 & 12 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+  \item First point, see \cite{smith2020}.
+  \item Second point with $\alpha = 0.5$ and \ref{tab:results}.
+\end{itemize}`;
+    const prose = maskLatexForProse(source);
+    expect(prose).toHaveLength(source.length);
+    expect(prose).not.toContain("tabular");
+    expect(prose).not.toContain("toprule");
+    expect(prose).not.toContain("smith2020");
+    expect(prose).not.toContain("tab:results");
+    expect(prose).toContain("First point, see Dummy");
+  });
+
+  it("keeps the exact length when the source ends in a backslash", () => {
+    for (const source of ["a\\", "trailing backslash \\", "\\"]) {
+      expect(maskLatex(source)).toHaveLength(source.length);
+      expect(maskLatexForProse(source)).toHaveLength(source.length);
+    }
+  });
+
+  it("leaves a tab between a command and its argument untouched", () => {
+    for (const source of [
+      "\\cite\t{key} tail",
+      "\\begin\t{itemize}\nbody\n\\end\t{itemize}",
+      "\\\\\t[2pt] tail",
+      "\\href\t{http://a}{shown}",
+      "\\hyperref\t[key]{shown}",
+    ]) {
+      const masked = maskLatex(source);
+      expect(masked).toHaveLength(source.length);
+      for (let index = 0; index < source.length; index++) {
+        if (source[index] === "\t") expect(masked[index]).toBe("\t");
+      }
+    }
+  });
+});
+
+describe("maskLatexForProseRegions", () => {
+  it("reports every masked construct as a region", () => {
+    const source = "and \\(c+d\\) and";
+    const { prose, masked } = maskLatexForProseRegions(source);
+    expect(prose).toHaveLength(source.length);
+    const math = source.indexOf("\\(");
+    expect(
+      masked.some(
+        (span) => span.from <= math && span.to >= math + 7,
+      ),
+    ).toBe(true);
+  });
+
+  it("reports regions in ascending, non-overlapping order", () => {
+    const source = String.raw`\section{Head}
+Body with \cite{key} and $x$ and \emph{stress}.`;
+    const { masked } = maskLatexForProseRegions(source);
+    for (let index = 1; index < masked.length; index++) {
+      expect(masked[index].from).toBeGreaterThanOrEqual(
+        masked[index - 1].to,
+      );
+    }
+  });
+
+  it("leaves untouched prose out of the region list", () => {
+    const source = "We compare the the results here.";
+    const { masked } = maskLatexForProseRegions(source);
+    expect(masked).toEqual([]);
+    expect(
+      intersectsMaskedRegion(masked, 0, source.length),
+    ).toBe(false);
+  });
+});
+
+describe("intersectsMaskedRegion", () => {
+  const masked = [
+    { from: 10, to: 20 },
+    { from: 30, to: 40 },
+  ];
+
+  it("reports an overlap at either edge and in the middle", () => {
+    expect(intersectsMaskedRegion(masked, 5, 11)).toBe(true);
+    expect(intersectsMaskedRegion(masked, 19, 25)).toBe(true);
+    expect(intersectsMaskedRegion(masked, 12, 15)).toBe(true);
+    expect(intersectsMaskedRegion(masked, 5, 45)).toBe(true);
+  });
+
+  it("reports no overlap for a span between regions", () => {
+    expect(intersectsMaskedRegion(masked, 0, 10)).toBe(false);
+    expect(intersectsMaskedRegion(masked, 20, 30)).toBe(false);
+    expect(intersectsMaskedRegion(masked, 40, 50)).toBe(false);
+    expect(intersectsMaskedRegion([], 0, 10)).toBe(false);
   });
 });

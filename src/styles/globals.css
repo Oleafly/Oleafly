@@ -1290,6 +1290,12 @@ body[data-tour-active] [data-tour-hide] {
   color: var(--popover-foreground);
   font-weight: 600;
 }
+.cm-proofread-rule {
+  padding: 0 0.875rem 0.5rem;
+  color: color-mix(in srgb, var(--popover-foreground) 45%, transparent);
+  font-size: 0.6875rem;
+  letter-spacing: 0.01em;
+}
 .cm-proofread-suggestions {
   display: flex;
   flex-direction: column;

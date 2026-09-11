@@ -8,6 +8,8 @@ import type { Hunspell } from "hunspell-asm";
 import {
   PROOFREADING_LIMITS,
   PROOFREADING_PROTOCOL_VERSION,
+  createGrammarSuppressionKeyer,
+  guardProofreadingDiagnostics,
   type ProofreadingDialect,
   type ProofreadingDiagnostic,
   type ProofreadingError,
@@ -19,23 +21,28 @@ import {
   type ProofreadingWorkerResponse,
 } from "../../../packages/editor/src/proofreading";
 import {
-  maskToProse,
+  PROSE_PLACEHOLDER,
+  intersectsMaskedRegion,
+  maskLatexForProseRegions,
   spellcheckRanges,
+  type MaskSpan,
 } from "../../../packages/editor/src/latex-mask";
 import {
   markdownSpellcheckRanges,
   markdownToProse,
 } from "../../../packages/editor/src/markdown-mask";
-import {
-  typstSpellcheckRanges,
-  typstToProse,
-} from "../../../packages/editor/src/typst-mask";
+import { typstSpellcheckRanges } from "../../../packages/editor/src/typst-mask";
 import {
   BUILTIN_PROOFREADING_WORDS,
   isSessionIgnoredWord,
 } from "./ignored";
 import { harperDialectFor } from "./dialects";
 import { loadHunspellDictionary } from "./hunspell";
+import {
+  buildLintConfig,
+  isLintRuleName,
+  lintConfigFingerprint,
+} from "./lint-profile";
 
 interface WorkerScope {
   addEventListener(
@@ -66,6 +73,8 @@ let grammarPromise: Promise<LocalLinter> | null = null;
 let grammarDictionaryKey: string | null = null;
 let grammarDialect: ProofreadingDialect | null = null;
 let grammarDialectValues: typeof import("harper.js").Dialect | null = null;
+let grammarRuleNames: ReadonlySet<string> | null = null;
+let grammarLintConfigKey: string | null = null;
 let spellcheckerPromise: Promise<Hunspell> | null = null;
 let spellcheckerLocale = "en_US";
 const queuedRequests = new Map<string, ProofreadingRequest>();
@@ -82,7 +91,9 @@ function normalizeWord(word: string): string {
 }
 
 function isIgnoredToken(word: string, ignored: ReadonlySet<string>): boolean {
-  const normalized = normalizeWord(word.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, ""));
+  const normalized = normalizeWord(
+    word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""),
+  );
   if (!normalized) return true;
   return ignored.has(normalized) || isSessionIgnoredWord(word);
 }
@@ -138,6 +149,15 @@ function resultResponse(
   };
 }
 
+function validRuleList(value: unknown): boolean {
+  if (value === undefined) return true;
+  return (
+    Array.isArray(value) &&
+    value.length <= PROOFREADING_LIMITS.disabledRules &&
+    value.every(isLintRuleName)
+  );
+}
+
 function validateRequest(request: ProofreadingRequest): string | null {
   if (
     request.protocolVersion !== PROOFREADING_PROTOCOL_VERSION ||
@@ -176,8 +196,18 @@ function validateRequest(request: ProofreadingRequest): string | null {
         typeof word !== "string" ||
         word.length > PROOFREADING_LIMITS.wordCharacters,
     ) ||
+    (request.suppressions !== undefined &&
+      (!Array.isArray(request.suppressions) ||
+        request.suppressions.length > PROOFREADING_LIMITS.suppressions ||
+        request.suppressions.some(
+          (key) =>
+            typeof key !== "string" ||
+            key.length > PROOFREADING_LIMITS.suppressionCharacters,
+        ))) ||
     typeof request.preferences !== "object" ||
     request.preferences === null ||
+    !validRuleList(request.preferences.disabledRules) ||
+    !validRuleList(request.preferences.enabledRules) ||
     typeof request.preferences.showRegionalism !== "boolean" ||
     typeof request.preferences.showWordChoice !== "boolean" ||
     (request.preferences.dictionaryLocale !== undefined &&
@@ -245,16 +275,45 @@ function plaintextToProse(text: string): {
   return compactMasked(characters.join(""));
 }
 
-function proseFor(request: ProofreadingRequest): {
+interface GrammarInput {
   prose: string;
-  map: number[];
-} {
-  if (request.format === "latex") return maskToProse(request.text);
-  if (request.format === "typst") return typstToProse(request.text);
-  if (request.format === "markdown") {
-    return markdownToProse(request.text);
+  map: number[] | null;
+  language: "plaintext" | "markdown" | "typst";
+  masked: readonly MaskSpan[];
+}
+
+const NO_MASKED_REGIONS: readonly MaskSpan[] = [];
+
+function grammarInput(request: ProofreadingRequest): GrammarInput {
+  if (request.format === "latex") {
+    const { prose, masked } = maskLatexForProseRegions(request.text);
+    return {
+      prose,
+      map: null,
+      language: "plaintext",
+      masked,
+    };
   }
-  return plaintextToProse(request.text);
+  if (request.format === "typst") {
+    return {
+      prose: request.text,
+      map: null,
+      language: "typst",
+      masked: NO_MASKED_REGIONS,
+    };
+  }
+  if (request.format === "markdown") {
+    return {
+      ...markdownToProse(request.text),
+      language: "plaintext",
+      masked: NO_MASKED_REGIONS,
+    };
+  }
+  return {
+    ...plaintextToProse(request.text),
+    language: "plaintext",
+    masked: NO_MASKED_REGIONS,
+  };
 }
 
 function spellingRanges(request: ProofreadingRequest): WordRange[] {
@@ -288,11 +347,13 @@ async function getGrammarLinter(): Promise<LocalLinter> {
       grammarDialectValues = Dialect;
       const linter: LocalLinter = new LocalLinter({ binary });
       await linter.setup();
-      await linter.setLintConfig({
-        Spaces: false,
-        NoFrenchSpaces: false,
-        TransposedSpace: false,
-      });
+      try {
+        grammarRuleNames = new Set(
+          Object.keys(await linter.getDefaultLintConfig()),
+        );
+      } catch {
+        grammarRuleNames = null;
+      }
       await linter.setDialect(Dialect.American);
       grammarDialect = "american";
       return linter;
@@ -302,6 +363,8 @@ async function getGrammarLinter(): Promise<LocalLinter> {
       grammarDictionaryKey = null;
       grammarDialect = null;
       grammarDialectValues = null;
+      grammarRuleNames = null;
+      grammarLintConfigKey = null;
     });
   }
   return grammarPromise;
@@ -323,12 +386,31 @@ async function syncGrammarDialect(
   grammarDictionaryKey = null;
 }
 
+async function syncGrammarLintConfig(
+  linter: LocalLinter,
+  preferences: ProofreadingRequest["preferences"],
+) {
+  const config = buildLintConfig(
+    preferences.disabledRules ?? [],
+    preferences.enabledRules ?? [],
+    grammarRuleNames ? [...grammarRuleNames] : undefined,
+  );
+  const key = lintConfigFingerprint(config);
+  if (key === grammarLintConfigKey) return;
+  await linter.setLintConfig(config);
+  grammarLintConfigKey = key;
+}
+
 async function syncGrammarDictionary(
   linter: LocalLinter,
   ignored: ReadonlySet<string>,
 ) {
   const words = [
-    ...new Set([...BUILTIN_PROOFREADING_WORDS, ...ignored]),
+    ...new Set([
+      PROSE_PLACEHOLDER,
+      ...BUILTIN_PROOFREADING_WORDS,
+      ...ignored,
+    ]),
   ]
     .filter((word) => /^[\p{L}'’-]+$/u.test(word))
     .sort((a, b) => Number(a > b) - Number(a < b));
@@ -392,24 +474,43 @@ function freeHarperObjects(
   }
 }
 
+async function organizedGrammarLints(
+  linter: LocalLinter,
+  input: GrammarInput,
+): Promise<{ rule: string | null; lint: Lint }[]> {
+  const options = { language: input.language } as const;
+  if (typeof linter.organizedLints === "function") {
+    const organized = await linter.organizedLints(input.prose, options);
+    const rows: { rule: string | null; lint: Lint }[] = [];
+    for (const [rule, lints] of Object.entries(organized)) {
+      for (const lint of lints) rows.push({ rule, lint });
+    }
+    return rows;
+  }
+  const lints = await linter.lint(input.prose, options);
+  return lints.map((lint) => ({ rule: null, lint }));
+}
+
 async function grammarDiagnostics(
   request: ProofreadingRequest,
   ignored: ReadonlySet<string>,
+  suppressed: ReadonlySet<string>,
 ): Promise<{
   diagnostics: ProofreadingDiagnostic[];
   malformedLintCount: number;
 }> {
-  const { prose, map } = proseFor(request);
+  const input = grammarInput(request);
+  const { prose, map } = input;
   if (!prose) return { diagnostics: [], malformedLintCount: 0 };
   const linter = await getGrammarLinter();
   await syncGrammarDialect(linter, request.preferences.dialect);
+  await syncGrammarLintConfig(linter, request.preferences);
   await syncGrammarDictionary(linter, ignored);
-  const lints = await linter.lint(prose, {
-    language: "plaintext",
-  });
+  const rows = await organizedGrammarLints(linter, input);
+  const suppressionKey = createGrammarSuppressionKeyer(request.text);
   const diagnostics: ProofreadingDiagnostic[] = [];
   let malformedLintCount = 0;
-  for (const lint of lints) {
+  for (const { rule, lint } of rows) {
     let span: Span | null = null;
     let suggestions: Suggestion[] = [];
     try {
@@ -419,14 +520,30 @@ async function grammarDiagnostics(
         proseFrom + 1,
         Math.min(span.end, prose.length),
       );
-      if (proseFrom >= map.length) {
+      let from: number;
+      let to: number;
+      if (map) {
+        if (proseFrom >= map.length) {
+          malformedLintCount += 1;
+          continue;
+        }
+        from = map[proseFrom];
+        to = (map[Math.min(proseTo, map.length) - 1] ?? from) + 1;
+      } else {
+        from = proseFrom;
+        to = proseTo;
+      }
+      if (to <= from || to > request.text.length) {
         malformedLintCount += 1;
         continue;
       }
-      const from = map[proseFrom];
-      const to = (map[Math.min(proseTo, map.length) - 1] ?? from) + 1;
-      if (to <= from || to > request.text.length) {
-        malformedLintCount += 1;
+      if (
+        input.masked.length > 0 &&
+        intersectsMaskedRegion(input.masked, from, to)
+      ) {
+        continue;
+      }
+      if (suppressed.size > 0 && suppressed.has(suppressionKey(rule, from))) {
         continue;
       }
       const kind = lint.lint_kind();
@@ -468,6 +585,7 @@ async function grammarDiagnostics(
         source: "harper",
         word,
         suggestions: mappedSuggestions,
+        rule,
       });
     } catch {
       // Retain other valid diagnostics, but report the incomplete analysis to
@@ -477,6 +595,9 @@ async function grammarDiagnostics(
       freeHarperObjects(lint, span, suggestions);
     }
   }
+  diagnostics.sort(
+    (left, right) => left.from - right.from || left.to - right.to,
+  );
   return { diagnostics, malformedLintCount };
 }
 
@@ -533,6 +654,7 @@ async function spellingDiagnostics(
       source: "hunspell",
       word: range.word,
       suggestions: tokenResult.suggestions,
+      rule: null,
     });
   }
   return diagnostics;
@@ -547,7 +669,11 @@ function fingerprint(value: string): string {
   return (hash >>> 0).toString(36);
 }
 
-function cacheKey(request: ProofreadingRequest, ignored: string): string {
+function cacheKey(
+  request: ProofreadingRequest,
+  ignored: string,
+  suppressed: string,
+): string {
   return [
     request.mode,
     request.format,
@@ -558,6 +684,9 @@ function cacheKey(request: ProofreadingRequest, ignored: string): string {
     request.text.length,
     fingerprint(request.text),
     fingerprint(ignored),
+    fingerprint((request.preferences.disabledRules ?? []).join("\0")),
+    fingerprint((request.preferences.enabledRules ?? []).join("\0")),
+    fingerprint(suppressed),
   ].join(":");
 }
 
@@ -638,7 +767,11 @@ async function analyze(
     ...new Set(request.ignoredWords.map(normalizeWord).filter(Boolean)),
   ].sort((a, b) => Number(a > b) - Number(a < b));
   const ignoredKey = normalizedIgnored.join("\0");
-  const key = cacheKey(request, ignoredKey);
+  const suppressed = new Set(request.suppressions ?? []);
+  const suppressedKey = [...suppressed]
+    .sort((a, b) => Number(a > b) - Number(a < b))
+    .join("\0");
+  const key = cacheKey(request, ignoredKey, suppressedKey);
   const cached = readCache(key, request.text, ignoredKey);
   if (cached) {
     return resultResponse(request, "ready", cached, {
@@ -655,19 +788,22 @@ async function analyze(
   const ignored = new Set(normalizedIgnored);
   if (request.mode === "grammar") {
     try {
-      const grammar = await grammarDiagnostics(request, ignored);
+      const grammar = await grammarDiagnostics(
+        request,
+        ignored,
+        suppressed,
+      );
+      const guarded = guardProofreadingDiagnostics(
+        grammar.diagnostics,
+        request.text,
+      );
       if (grammar.malformedLintCount > 0) {
-        return resultResponse(request, "partial", grammar.diagnostics, {
+        return resultResponse(request, "partial", guarded, {
           message: `${grammar.malformedLintCount.toLocaleString()} malformed grammar finding${grammar.malformedLintCount === 1 ? " was" : "s were"} skipped. All valid findings are shown.`,
         });
       }
-      writeCache(
-        key,
-        request.text,
-        ignoredKey,
-        grammar.diagnostics,
-      );
-      return resultResponse(request, "ready", grammar.diagnostics);
+      writeCache(key, request.text, ignoredKey, guarded);
+      return resultResponse(request, "ready", guarded);
     } catch (error) {
       return errorResponse(
         request,
@@ -682,7 +818,10 @@ async function analyze(
 
   if (request.mode === "spelling") {
     try {
-      const diagnostics = await spellingDiagnostics(request, ignored);
+      const diagnostics = guardProofreadingDiagnostics(
+        await spellingDiagnostics(request, ignored),
+        request.text,
+      );
       writeCache(key, request.text, ignoredKey, diagnostics);
       return resultResponse(request, "ready", diagnostics, {
         activeDictionaryLocale:
@@ -704,7 +843,7 @@ async function analyze(
   }
 
   const [grammarResult, spellingResult] = await Promise.allSettled([
-    grammarDiagnostics(request, ignored),
+    grammarDiagnostics(request, ignored, suppressed),
     spellingDiagnostics(request, ignored),
   ]);
   if (
@@ -718,18 +857,21 @@ async function analyze(
       true,
     );
   }
-  const diagnostics = [
-    ...(grammarResult.status === "fulfilled"
-      ? grammarResult.value.diagnostics
-      : []),
-    ...(spellingResult.status === "fulfilled"
-      ? spellingResult.value
-      : []),
-  ].sort(
-    (left, right) =>
-      left.from - right.from ||
-      left.to - right.to ||
-      left.source.localeCompare(right.source),
+  const diagnostics = guardProofreadingDiagnostics(
+    [
+      ...(grammarResult.status === "fulfilled"
+        ? grammarResult.value.diagnostics
+        : []),
+      ...(spellingResult.status === "fulfilled"
+        ? spellingResult.value
+        : []),
+    ].sort(
+      (left, right) =>
+        left.from - right.from ||
+        left.to - right.to ||
+        left.source.localeCompare(right.source),
+    ),
+    request.text,
   );
   const malformedLintCount =
     grammarResult.status === "fulfilled"

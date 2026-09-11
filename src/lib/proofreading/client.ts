@@ -9,6 +9,8 @@ import {
 } from "@oleafly/editor";
 import { useProofreadingStore } from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
+import { grammarSuppressionsFor } from "@/lib/dictionary";
+import "./actions";
 
 type ProofreadingDocumentInput = Omit<
   ProofreadingInput,
@@ -136,8 +138,17 @@ class ProofreadingWorkerClient {
       requestId: ++this.requestId,
       ...workerInput,
       identity,
+      suppressions:
+        workerInput.suppressions ??
+        grammarSuppressionsFor(workerInput.identity.projectId),
       preferences: {
         ...workerInput.preferences,
+        disabledRules:
+          workerInput.preferences.disabledRules ??
+          useSettingsStore.getState().harperDisabledRules,
+        enabledRules:
+          workerInput.preferences.enabledRules ??
+          useSettingsStore.getState().harperEnabledRules,
         dialect:
           workerInput.preferences.dialect ??
           useSettingsStore.getState().grammarDialect,

@@ -118,7 +118,17 @@ test("misspellings get squiggles; ignore clears them; un-ignore brings them back
   const proofreadingCard = tauriPage.locator(".cm-proofread-card");
   await expect(proofreadingCard).toBeVisible({ timeout: 15_000 });
   const projectIgnore = proofreadingCard.locator(".cm-proofread-ignore").first();
-  await expect(projectIgnore).toHaveText("Ignore");
+  await expect(projectIgnore).toHaveText("Add to project dictionary");
+  const spellingFooter = await tauriPage.evaluate<string[]>(
+    `Array.from(
+      document.querySelectorAll('.cm-proofread-card .cm-proofread-ignore'),
+    ).map((entry) => entry.textContent ?? "")`,
+  );
+  expect(spellingFooter).toEqual([
+    "Add to project dictionary",
+    "Add to my dictionary",
+    "Ignore here",
+  ]);
   // The production card intentionally applies on mousedown so CodeMirror
   // cannot reclaim focus and remove the tooltip before a later click. The
   // Tauri bridge's locator click invokes HTMLElement.click() and therefore
@@ -181,5 +191,83 @@ test("misspellings get squiggles; ignore clears them; un-ignore brings them back
     )
     .toBe(true);
   await tauriPage.waitForFunction(`!!(${targetLint})`, 60_000);
+  await expectDesktopShellAnchored(tauriPage);
+});
+
+test("a dismissed grammar finding stays dismissed for the project", async ({
+  tauriPage,
+}) => {
+  const name = `${NAME} grammar`;
+  await createBlankProject(tauriPage, name);
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({
+    timeout: 20_000,
+  });
+  const projectId = await tauriPage.evaluate<string>(
+    `document.querySelector('[data-e2e-project-id]')?.dataset.e2eProjectId ?? ""`,
+  );
+  expect(projectId).not.toBe("");
+
+  await typeInEditorAfter(tauriPage, "here.", " We compare the the results.");
+  const repeated = `window.__e2eHasProofreadingDiagnostic?.("the the") === true`;
+  await expect
+    .poll(() => tauriPage.evaluate<boolean>(repeated), { timeout: 90_000 })
+    .toBe(true);
+
+  await tauriPage.waitForFunction(
+    `typeof window.__e2eMountProofreadingCard === "function"`,
+    20_000,
+  );
+  expect(
+    await tauriPage.evaluate<boolean>(
+      `window.__e2eMountProofreadingCard("the the")`,
+    ),
+  ).toBe(true);
+  const card = tauriPage.locator('[data-e2e-proofreading-card="true"]');
+  await expect(card).toBeVisible({ timeout: 15_000 });
+  const grammarFooter = await tauriPage.evaluate<string[]>(
+    `Array.from(
+      document.querySelectorAll('[data-e2e-proofreading-card="true"] .cm-proofread-ignore'),
+    ).map((entry) => entry.textContent ?? "")`,
+  );
+  expect(grammarFooter[0]).toBe("Ignore this");
+  expect(grammarFooter[1] ?? "").toContain("Turn off rule");
+
+  await tauriPage.evaluate(`(() => {
+    const button = document
+      .querySelector('[data-e2e-proofreading-card="true"]')
+      ?.querySelector('.cm-proofread-ignore');
+    if (!(button instanceof HTMLButtonElement)) {
+      throw new Error("Ignore this action is unavailable");
+    }
+    button.dispatchEvent(new MouseEvent("mousedown", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+    }));
+  })()`);
+  await tauriPage.evaluate(
+    `document.querySelector('[data-e2e-proofreading-card="true"]')?.remove()`,
+  );
+  await tauriPage.evaluate(`window.__e2eRefreshEditorLints()`);
+
+  await expect
+    .poll(() => tauriPage.evaluate<boolean>(`!(${repeated})`), {
+      timeout: 60_000,
+    })
+    .toBe(true);
+
+  const stored = await tauriPage.evaluate<string[]>(
+    `import("/src/lib/dictionary.ts").then(({ grammarSuppressionsFor }) =>
+      grammarSuppressionsFor(${JSON.stringify(projectId)}),
+    )`,
+  );
+  expect(stored).toHaveLength(1);
+  expect(stored[0]).toMatch(/^[A-Za-z][A-Za-z0-9_]*:[0-9a-f]{8}$/u);
+
+  await openSettings(tauriPage, "dictionary");
+  await expect(
+    tauriPage.locator('[data-testid="dictionary-suppressed-count"]'),
+  ).toHaveText("1 / 500");
+  await tauriPage.click('[aria-label="Close settings"]');
   await expectDesktopShellAnchored(tauriPage);
 });

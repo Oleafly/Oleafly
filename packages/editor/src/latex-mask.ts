@@ -51,6 +51,18 @@ const OPAQUE_ARG_CMDS = new Set([
   "institute", "affiliation",
 ]);
 
+const INLINE_ARG_CMDS = new Set([
+  "ref", "eqref", "pageref", "autoref", "cref", "Cref", "vref", "nameref",
+  "cite", "citep", "citet", "citeauthor", "citeyear", "citealt",
+  "url", "path", "email",
+  "SI", "SIrange", "qty", "qtyrange", "num", "numrange", "unit", "ang",
+  "ce", "ch", "chemfig",
+  "gls", "Gls", "glspl", "Glspl", "acrshort", "Acrshort", "acrlong",
+  "Acrlong", "acrfull", "Acrfull",
+]);
+
+const CITE_LIKE = /(?:^cite|cites?$)/iu;
+
 // Commands whose FIRST argument is opaque but the rest is prose, e.g.
 // \textcolor{red}{text}, \hyperref[key]{text}, \href{url}{shown prose}.
 const FIRST_ARG_OPAQUE_CMDS = new Set([
@@ -65,27 +77,23 @@ const OPAQUE_BRACE_PREFIX_COUNTS = new Map<string, number>([
 
 const LATEX_SPECIAL = new Set(["{", "}", "[", "]", "~", "&", "#", "^", "_"]);
 
-function blankRun(chars: string[], a: number, b: number): void {
-  for (let k = a; k < b; k++) if (chars[k] !== "\n") chars[k] = " ";
+const VERBATIM_CMDS = new Set(["verb", "Verb", "lstinline", "mintinline"]);
+
+export const PROSE_PLACEHOLDER = "Dummy";
+export const PROSE_SHORT_PLACEHOLDER = "X";
+
+export interface MaskSpan {
+  from: number;
+  to: number;
 }
 
-function matchGroup(chars: string[], open: number): number {
-  const o = chars[open];
-  const close = o === "{" ? "}" : "]";
-  let depth = 0;
-  for (let k = open; k < chars.length; k++) {
-    const ch = chars[k];
-    if (ch === "\\") {
-      k++; // skip the escaped character
-      continue;
-    }
-    if (ch === o) depth++;
-    else if (ch === close) {
-      depth--;
-      if (depth === 0) return k + 1;
-    }
-  }
-  return chars.length;
+type MaskKind = "block" | "inline";
+
+interface MaskRegion {
+  from: number;
+  to: number;
+  kind: MaskKind;
+  blanks: MaskSpan[];
 }
 
 function escapeRe(s: string): string {
@@ -104,190 +112,218 @@ function findEnvEnd(text: string, from: number, env: string): number {
   return text.length;
 }
 
-export function maskLatex(text: string): string {
+function collectLatexRegions(text: string): MaskRegion[] {
+  const regions: MaskRegion[] = [];
   const chars = text.split("");
   const n = chars.length;
-  let i = 0;
-  let inComment = false;
-  let math = 0; // 0 none | 1 $ | 2 $$ | 3 \( | 4 \[
 
-  // URLs and email addresses can appear without \url/\href. Blank them before
-  // parsing so URL punctuation cannot be mistaken for comments or commands.
+  const blankSource = (a: number, b: number) => {
+    for (let k = a; k < b; k++) if (chars[k] !== "\n") chars[k] = " ";
+  };
+  const clampSpans = (spans: MaskSpan[]): MaskSpan[] => {
+    const output: MaskSpan[] = [];
+    for (const span of spans) {
+      const from = Math.max(0, Math.min(span.from, n));
+      const to = Math.max(from, Math.min(span.to, n));
+      if (to > from) output.push({ from, to });
+    }
+    return output;
+  };
+  const push = (
+    rawFrom: number,
+    rawTo: number,
+    kind: MaskKind,
+    spans?: MaskSpan[],
+  ) => {
+    const from = Math.max(0, Math.min(rawFrom, n));
+    const to = Math.max(from, Math.min(rawTo, n));
+    if (to <= from) return;
+    regions.push({
+      from,
+      to,
+      kind,
+      blanks: spans ? clampSpans(spans) : [{ from, to }],
+    });
+  };
+
   for (const pattern of [
     /(?:https?:\/\/|www\.)[^\s<>{}\\]+/giu,
     /\b[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}\b/giu,
   ]) {
     for (const match of text.matchAll(pattern)) {
-      if (match.index !== undefined) {
-        blankRun(chars, match.index, match.index + match[0].length);
-      }
+      if (match.index === undefined) continue;
+      const to = match.index + match[0].length;
+      push(match.index, to, "inline");
+      blankSource(match.index, to);
     }
   }
+
+  const matchGroup = (open: number): number => {
+    const o = chars[open];
+    const close = o === "{" ? "}" : "]";
+    let depth = 0;
+    for (let k = open; k < n; k++) {
+      const ch = chars[k];
+      if (ch === "\\") {
+        k++;
+        continue;
+      }
+      if (ch === o) depth++;
+      else if (ch === close) {
+        depth--;
+        if (depth === 0) return k + 1;
+      }
+    }
+    return n;
+  };
 
   const skipInlineSpace = (k: number): number => {
     while (k < n && (chars[k] === " " || chars[k] === "\t")) k++;
     return k;
   };
 
-  // Consume the argument groups following a command name at `k`. In "all" mode
-  // every argument is blanked; in "first" mode only the first is blanked and the
-  // rest are left for normal prose scanning. Returns the new index.
-  const consumeArgs = (k: number, mode: "all" | "first"): number => {
+  const endOfArgs = (k: number): { end: number; spans: MaskSpan[] } => {
+    const spans: MaskSpan[] = [];
     if (chars[k] === "*") {
-      blankRun(chars, k, k + 1);
+      spans.push({ from: k, to: k + 1 });
       k++;
     }
-    let blanked = 0;
     for (;;) {
       const s = skipInlineSpace(k);
       const ch = chars[s];
       if (ch !== "{" && ch !== "[") break;
-      if (mode === "first" && blanked >= 1) break;
-      const end = matchGroup(chars, s);
-      blankRun(chars, s, end);
-      blanked++;
+      const end = matchGroup(s);
+      spans.push({ from: s, to: end });
       k = end;
     }
-    return k;
+    return { end: k, spans };
   };
 
-  const consumeOpaquePrefix = (k: number, name: string): number => {
+  const endOfOpaquePrefix = (
+    k: number,
+    name: string,
+  ): { end: number; spans: MaskSpan[] } => {
+    const spans: MaskSpan[] = [];
     if (chars[k] === "*") {
-      blankRun(chars, k, k + 1);
+      spans.push({ from: k, to: k + 1 });
       k++;
     }
-    // \hyperref[key]{visible prose}: the first group, regardless of bracket
-    // type, is the only opaque prefix.
     if (name === "hyperref") {
       const start = skipInlineSpace(k);
-      if (chars[start] !== "{" && chars[start] !== "[") return k;
-      const end = matchGroup(chars, start);
-      blankRun(chars, start, end);
-      return end;
+      if (chars[start] !== "{" && chars[start] !== "[") {
+        return { end: k, spans };
+      }
+      const end = matchGroup(start);
+      spans.push({ from: start, to: end });
+      return { end, spans };
     }
-    // Color/href commands may have leading optional configuration. Blank all
-    // option groups plus the command-specific number of identifier/URL braces,
-    // then leave the displayed prose argument intact.
     const braces = OPAQUE_BRACE_PREFIX_COUNTS.get(name) ?? 1;
-    let consumedBraces = 0;
+    let consumed = 0;
     for (;;) {
       const start = skipInlineSpace(k);
       if (chars[start] === "[") {
-        const end = matchGroup(chars, start);
-        blankRun(chars, start, end);
+        const end = matchGroup(start);
+        spans.push({ from: start, to: end });
         k = end;
         continue;
       }
-      if (chars[start] === "{" && consumedBraces < braces) {
-        const end = matchGroup(chars, start);
-        blankRun(chars, start, end);
-        consumedBraces++;
+      if (chars[start] === "{" && consumed < braces) {
+        const end = matchGroup(start);
+        spans.push({ from: start, to: end });
+        consumed++;
         k = end;
         continue;
       }
-      return k;
+      return { end: k, spans };
     }
   };
 
+  const endOfLine = (k: number): number => {
+    const at = chars.indexOf("\n", k);
+    return at === -1 ? n : at;
+  };
+
+  const endOfMath = (start: number, mode: 1 | 2 | 3 | 4): number => {
+    let k = start;
+    while (k < n) {
+      const ch = chars[k];
+      if (ch === "\n") {
+        if (mode === 1) return k;
+        k++;
+        continue;
+      }
+      if (ch === "%") {
+        k = endOfLine(k);
+        continue;
+      }
+      if (ch === "\\" && (chars[k + 1] === ")" || chars[k + 1] === "]")) {
+        return k + 2;
+      }
+      if (ch === "$") {
+        if (mode === 2 && chars[k + 1] === "$") return k + 2;
+        if (mode === 1) return k + 1;
+      }
+      k++;
+    }
+    return n;
+  };
+
+  let i = 0;
   while (i < n) {
     const c = chars[i];
     const next = chars[i + 1] ?? "";
 
     if (c === "\n") {
-      inComment = false;
-      if (math === 1) math = 0; // inline $…$ doesn't cross lines
-      i++;
-      continue;
-    }
-    if (inComment) {
-      blankRun(chars, i, i + 1);
       i++;
       continue;
     }
     if (c === "%") {
-      inComment = true;
-      blankRun(chars, i, i + 1);
-      i++;
-      continue;
-    }
-
-    if (math) {
-      if (c === "\\" && (next === ")" || next === "]")) {
-        blankRun(chars, i, i + 2);
-        math = 0;
-        i += 2;
-        continue;
-      }
-      if (c === "$") {
-        if (math === 2 && next === "$") {
-          blankRun(chars, i, i + 2);
-          math = 0;
-          i += 2;
-          continue;
-        }
-        if (math === 1) {
-          blankRun(chars, i, i + 1);
-          math = 0;
-          i++;
-          continue;
-        }
-      }
-      blankRun(chars, i, i + 1);
-      i++;
+      const stop = endOfLine(i);
+      push(i, stop, "block");
+      i = stop;
       continue;
     }
 
     if (c === "\\") {
-      // Math openers.
       if (next === "(" || next === "[") {
-        blankRun(chars, i, i + 2);
-        math = next === "(" ? 3 : 4;
-        i += 2;
+        const stop = endOfMath(i + 2, next === "(" ? 3 : 4);
+        push(i, stop, next === "(" ? "inline" : "block");
+        i = stop;
         continue;
       }
-      // Line break `\\`, optionally carrying a `[length]` spacing argument.
       if (next === "\\") {
-        blankRun(chars, i, i + 2);
+        const spans: MaskSpan[] = [{ from: i, to: i + 2 }];
         let k = skipInlineSpace(i + 2);
         if (chars[k] === "[") {
-          const end = matchGroup(chars, k);
-          blankRun(chars, k, end);
+          const end = matchGroup(k);
+          spans.push({ from: k, to: end });
           k = end;
         }
+        push(i, k, "block", spans);
         i = k;
         continue;
       }
-      // Any other escaped non-letter (`\%`, `\&`, `\{`, `\$`, …).
       if (!/[a-zA-Z@]/.test(next)) {
-        blankRun(chars, i, i + 2);
+        push(i, i + 2, "block");
         i += 2;
         continue;
       }
-      // A command `\name`.
       let j = i + 1;
       while (j < n && /[a-zA-Z@]/.test(chars[j])) j++;
       const name = text.slice(i + 1, j);
 
-      // Inline verbatim/code commands use an arbitrary delimiter and their
-      // payload is never prose. The starred/optional/language arguments are
-      // included in the same opaque run.
-      if (
-        name === "verb" ||
-        name === "Verb" ||
-        name === "lstinline" ||
-        name === "mintinline"
-      ) {
+      if (VERBATIM_CMDS.has(name)) {
         let k = j;
         if (chars[k] === "*") k++;
         k = skipInlineSpace(k);
-        if (chars[k] === "[") k = matchGroup(chars, k);
+        if (chars[k] === "[") k = matchGroup(k);
         k = skipInlineSpace(k);
         if (name === "mintinline" && chars[k] === "{") {
-          k = matchGroup(chars, k);
+          k = matchGroup(k);
           k = skipInlineSpace(k);
         }
         if (chars[k] === "{") {
-          k = matchGroup(chars, k);
+          k = matchGroup(k);
         } else {
           const delimiter = chars[k];
           if (delimiter && delimiter !== "\n") {
@@ -301,7 +337,7 @@ export function maskLatex(text: string): string {
             }
           }
         }
-        blankRun(chars, i, k);
+        push(i, k, "inline");
         i = Math.max(k, j);
         continue;
       }
@@ -309,72 +345,167 @@ export function maskLatex(text: string): string {
       if (name === "begin") {
         const s = skipInlineSpace(j);
         if (chars[s] === "{") {
-          const end = matchGroup(chars, s);
-          const env = text.slice(s + 1, end - 1).trim().replace(/\*$/, "");
+          const groupEnd = matchGroup(s);
+          const env = text
+            .slice(s + 1, groupEnd - 1)
+            .trim()
+            .replace(/\*$/, "");
           if (OPAQUE_ENVS.has(env)) {
-            const envEnd = findEnvEnd(text, end, env);
-            blankRun(chars, i, envEnd);
+            const envEnd = findEnvEnd(text, groupEnd, env);
+            push(i, envEnd, "block");
             i = envEnd;
             continue;
           }
-          // Non-opaque env: blank `\begin` + `{name}` (+ spec args like tabular's),
-          // keep the body prose.
-          blankRun(chars, i, j);
-          i = consumeArgs(j, "all");
+          const args = endOfArgs(j);
+          push(i, args.end, "block", [
+            { from: i, to: j },
+            ...args.spans,
+          ]);
+          i = args.end;
           continue;
         }
-        blankRun(chars, i, j);
+        push(i, j, "block");
         i = j;
         continue;
       }
       if (name === "end") {
-        blankRun(chars, i, j);
-        i = consumeArgs(j, "all");
+        const args = endOfArgs(j);
+        push(i, args.end, "block", [{ from: i, to: j }, ...args.spans]);
+        i = args.end;
         continue;
       }
 
-      // Blank the command token itself.
-      blankRun(chars, i, j);
-      if (
-        OPAQUE_ARG_CMDS.has(name) ||
-        /(?:^cite|cites?$)/iu.test(name)
-      ) {
-        i = consumeArgs(j, "all");
+      const opaqueArgs = OPAQUE_ARG_CMDS.has(name);
+      if (opaqueArgs || CITE_LIKE.test(name)) {
+        const args = endOfArgs(j);
+        const inline =
+          INLINE_ARG_CMDS.has(name) ||
+          (!opaqueArgs && CITE_LIKE.test(name));
+        push(i, args.end, inline ? "inline" : "block", [
+          { from: i, to: j },
+          ...args.spans,
+        ]);
+        i = args.end;
         continue;
       }
       if (FIRST_ARG_OPAQUE_CMDS.has(name)) {
-        i = consumeOpaquePrefix(j, name);
+        const prefix = endOfOpaquePrefix(j, name);
+        push(i, prefix.end, "block", [
+          { from: i, to: j },
+          ...prefix.spans,
+        ]);
+        i = prefix.end;
         continue;
       }
-      // Default: keep the (prose) arguments. Braces get blanked below; the text
-      // between them survives so section titles, \textbf{…}, custom macros, etc.
-      // are still checked.
+      push(i, j, "block");
       i = j;
       continue;
     }
 
     if (c === "$") {
-      if (next === "$") {
-        blankRun(chars, i, i + 2);
-        math = 2;
-        i += 2;
-      } else {
-        blankRun(chars, i, i + 1);
-        math = 1;
-        i++;
-      }
+      const mode = next === "$" ? 2 : 1;
+      const stop = endOfMath(i + mode, mode);
+      push(i, stop, mode === 2 ? "block" : "inline");
+      i = stop;
       continue;
     }
 
     if (LATEX_SPECIAL.has(c)) {
-      blankRun(chars, i, i + 1);
+      push(i, i + 1, "block");
       i++;
       continue;
     }
     i++;
   }
 
-  return chars.join("");
+  regions.sort((left, right) => left.from - right.from || right.to - left.to);
+  return regions;
+}
+
+function blankInto(out: string[], from: number, to: number): void {
+  for (let k = from; k < to && k < out.length; k++) {
+    if (out[k] !== "\n") out[k] = " ";
+  }
+}
+
+export function maskLatex(text: string): string {
+  const out = text.split("");
+  let applied = 0;
+  for (const region of collectLatexRegions(text)) {
+    if (region.to <= applied) continue;
+    for (const span of region.blanks) {
+      const from = Math.max(span.from, applied);
+      if (span.to > from) blankInto(out, from, span.to);
+    }
+    applied = region.to;
+  }
+  return out.join("");
+}
+
+export interface ProseMask {
+  prose: string;
+  masked: MaskSpan[];
+}
+
+export function maskLatexForProseRegions(text: string): ProseMask {
+  const out = text.split("");
+  const masked: MaskSpan[] = [];
+  let applied = 0;
+  for (const region of collectLatexRegions(text)) {
+    if (region.to <= applied) continue;
+    const from = Math.max(region.from, applied);
+    applied = region.to;
+    masked.push({ from, to: region.to });
+    if (region.kind === "block") {
+      for (const span of region.blanks) {
+        const start = Math.max(span.from, from);
+        if (span.to > start) blankInto(out, start, span.to);
+      }
+      continue;
+    }
+    const span = region.to - from;
+    blankInto(out, from, region.to);
+    const placeholder =
+      span >= PROSE_PLACEHOLDER.length
+        ? PROSE_PLACEHOLDER
+        : PROSE_SHORT_PLACEHOLDER;
+    const before = from > 0 ? text[from - 1] : " ";
+    const after =
+      span === placeholder.length ? (text[region.to] ?? " ") : " ";
+    if (
+      span < placeholder.length ||
+      /[\p{L}\p{N}]/u.test(before) ||
+      /[\p{L}\p{N}]/u.test(after) ||
+      text.slice(from, from + placeholder.length).includes("\n")
+    ) {
+      continue;
+    }
+    for (let k = 0; k < placeholder.length; k++) {
+      out[from + k] = placeholder[k];
+    }
+  }
+  return { prose: out.join(""), masked };
+}
+
+export function maskLatexForProse(text: string): string {
+  return maskLatexForProseRegions(text).prose;
+}
+
+export function intersectsMaskedRegion(
+  masked: readonly MaskSpan[],
+  from: number,
+  to: number,
+): boolean {
+  let low = 0;
+  let high = masked.length - 1;
+  while (low <= high) {
+    const middle = (low + high) >> 1;
+    const span = masked[middle];
+    if (span.to <= from) low = middle + 1;
+    else if (span.from >= to) high = middle - 1;
+    else return true;
+  }
+  return false;
 }
 
 const TRAILING_PUNCT = new Set([".", ",", ";", ":", "!", "?", ")", "]", "}", "'"]);

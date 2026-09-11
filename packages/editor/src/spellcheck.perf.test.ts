@@ -41,6 +41,7 @@ function buildResult(count: number, docLength: number): ProofreadingResult {
       source: "hunspell",
       word: "misspelledword",
       suggestions: [],
+      rule: null,
     };
   });
   return {
