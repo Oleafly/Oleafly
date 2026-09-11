@@ -17,6 +17,7 @@ describe("Dictionary reset", () => {
     useDictionary.getState().ignoreGlobal("Oleafly");
     useDictionary.getState().ignore("project-reset-test", "TeXLab");
     useSettingsStore.getState().setHarperDisabledRules(["AnA"]);
+    useSettingsStore.getState().setHarperEnabledRules(["Hedging"]);
 
     render(<ProofreadingDictionarySection />);
 
@@ -39,6 +40,7 @@ describe("Dictionary reset", () => {
 
     expect(useDictionary.getState()).toMatchObject({ global: [], ignored: {} });
     expect(useSettingsStore.getState().harperDisabledRules).toEqual([]);
+    expect(useSettingsStore.getState().harperEnabledRules).toEqual([]);
     const persisted = JSON.parse(
       localStorage.getItem("oleafly.dictionary") ?? "{}",
     ) as { state?: { global?: string[]; ignored?: Record<string, string[]> } };

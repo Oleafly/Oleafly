@@ -52,21 +52,38 @@ export const ACADEMIC_PROFILE_RULES: readonly LintProfileRule[] = [
   },
   {
     rule: "Hedging",
-    reason: "Flags cautious wording such as may and appears to.",
+    reason:
+      "Flags hedging phrases such as I would argue that and to a certain degree.",
   },
   { rule: "FillerWords", reason: "Flags words it counts as filler." },
   { rule: "BoringWords", reason: "Asks for a livelier word." },
   {
     rule: "DiscourseMarkers",
-    reason: "Flags connectives such as however and therefore.",
+    reason:
+      "Flags a sentence that opens with a marker such as however and leaves out the comma after it.",
   },
-  { rule: "ExplainLikeImFive", reason: "Asks for simpler vocabulary." },
-  { rule: "SplitWords", reason: "Joins two words it reads as one word." },
-  { rule: "MergeWords", reason: "Splits a word it reads as two words." },
-  { rule: "CompoundNouns", reason: "Joins or hyphenates a noun pair." },
+  {
+    rule: "ExplainLikeImFive",
+    reason: "Expands an initialism into its full words.",
+  },
+  {
+    rule: "SplitWords",
+    reason: "Splits a word that should be two, such as alot.",
+  },
+  {
+    rule: "MergeWords",
+    reason: "Joins a word that a stray space split in two, such as to gether.",
+  },
+  {
+    rule: "CompoundNouns",
+    reason: "Joins a compound noun that was written as two words.",
+  },
   { rule: "OxfordComma", reason: "Requires the serial comma." },
   { rule: "NoOxfordComma", reason: "Removes the serial comma." },
-  { rule: "Dashes", reason: "Rewrites one kind of dash as another." },
+  {
+    rule: "Dashes",
+    reason: "Replaces a typed -- or --- with the proper dash character.",
+  },
   {
     rule: "EllipsisLength",
     reason: "Fixes an ellipsis that is not three dots.",

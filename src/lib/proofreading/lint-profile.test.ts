@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { LocalLinter } from "harper.js";
+import { binaryInlined as binary } from "harper.js/binaryInlined";
 import {
   ACADEMIC_DISABLED_RULES,
+  ACADEMIC_PROFILE_RULES,
   buildLintConfig,
   isLintRuleName,
   lintConfigFingerprint,
@@ -78,5 +81,33 @@ describe("sanitizeLintRuleNames", () => {
     for (const rule of ACADEMIC_DISABLED_RULES) {
       expect(isLintRuleName(rule), rule).toBe(true);
     }
+  });
+});
+
+describe("the academic profile against the installed Harper", () => {
+  let linter: LocalLinter;
+
+  beforeAll(async () => {
+    linter = new LocalLinter({ binary });
+    await linter.setup();
+  });
+
+  afterAll(() => {
+    linter.dispose?.();
+  });
+
+  it("names only rules the installed Harper knows", async () => {
+    const descriptions = await linter.getLintDescriptions();
+    for (const { rule, reason } of ACADEMIC_PROFILE_RULES) {
+      expect(descriptions[rule], rule).toBeTruthy();
+      expect(reason.trim().length, rule).toBeGreaterThan(0);
+    }
+  });
+
+  it("describes the split and merge rules the way Harper applies them", async () => {
+    const split = await linter.lint("I like it alot.");
+    const merged = await linter.lint("We went to gether.");
+    expect(split.some((lint) => lint.lint_kind_pretty() === "SplitWords" || lint.get_problem_text() === "alot")).toBe(true);
+    expect(merged.some((lint) => lint.get_problem_text().includes("to gether"))).toBe(true);
   });
 });

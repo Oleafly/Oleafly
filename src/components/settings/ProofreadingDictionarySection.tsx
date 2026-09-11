@@ -341,6 +341,9 @@ export function ProofreadingDictionarySection() {
   const setHarperDisabledRules = useSettingsStore(
     (state) => state.setHarperDisabledRules,
   );
+  const setHarperEnabledRules = useSettingsStore(
+    (state) => state.setHarperEnabledRules,
+  );
   const activeProjectId = useFilesStore((state) => state.projectId);
   const projects = useFilesStore((state) => state.projects);
   const [query, setQuery] = useState("");
@@ -553,6 +556,7 @@ export function ProofreadingDictionarySection() {
         onReset={() => {
           clearAll();
           setHarperDisabledRules([]);
+          setHarperEnabledRules([]);
         }}
         confirmationDescription="This permanently removes every ignored word, global and per-project, and turns back on every grammar rule you turned off. The academic profile keeps its own rules off. Proofreading will flag those words again."
       />
