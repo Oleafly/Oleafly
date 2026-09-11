@@ -9,6 +9,7 @@ import {
 import {
   completionRequestIsCurrent,
   createCompletionRequestGuard,
+  environmentSnippet,
   latexReferenceCitationCompletions,
   type CompletionRequestGuard,
 } from "@oleafly/editor";
@@ -243,9 +244,15 @@ function definitionOptions(
         definition.kind === "environment" &&
         includeEnvironmentArguments &&
         argumentsSnippet.length > 0;
+      const environmentSkeleton =
+        definition.kind === "environment" &&
+        includeEnvironmentArguments &&
+        argumentsSnippet.length === 0;
       const insertion = environmentWithArguments
         ? `${definition.name}}${argumentsSnippet}`
-        : `${definition.name}${argumentsSnippet}`;
+        : environmentSkeleton
+          ? environmentSnippet(definition.name)
+          : `${definition.name}${argumentsSnippet}`;
       return {
         label: definition.name,
         type:
@@ -259,8 +266,8 @@ function definitionOptions(
         apply: guardedApply(
           guard,
           insertion,
-          argumentsSnippet.length > 0,
-          environmentWithArguments,
+          argumentsSnippet.length > 0 || environmentSkeleton,
+          environmentWithArguments || environmentSkeleton,
         ),
       };
     });
@@ -415,7 +422,10 @@ function latexCompletion(
           before.includes(`\\begin{${name}}`)
             ? 50
             : undefined,
-        apply: guardedApply(guard, name),
+        apply:
+          environment[1] === "begin"
+            ? guardedApply(guard, environmentSnippet(name), true, true)
+            : guardedApply(guard, name),
       } satisfies Completion));
     return completionResult(
       context.pos - query.length,

@@ -11,8 +11,10 @@ import {
 import {
   isLatexCompletionPosition,
   latexBalancedGroupEnd,
+  latexIgnoredRangesField,
   maskLatexIgnoredRegions,
 } from "./latex-lexical";
+import { environmentSnippet } from "./latex-environments";
 import {
   completionRequestIsCurrent,
   createCompletionRequestGuard,
@@ -45,8 +47,19 @@ export function setLatexCorpusProvider(
   corpusProvider = provider;
 }
 
+const latexLanguageData = {
+  closeBrackets: {
+    brackets: ["(", "[", "{", "'", '"'],
+    before: ")]}:;>$",
+  },
+  commentTokens: { line: "%" },
+};
+
 export const latexLanguage = () =>
-  new LanguageSupport(StreamLanguage.define(stex));
+  new LanguageSupport(
+    StreamLanguage.define({ ...stex, languageData: latexLanguageData }),
+    [latexIgnoredRangesField],
+  );
 
 /** For content that's bare math (no surrounding $...$ or \[...\]), e.g. the equation preview tool. */
 export const latexMathLanguage = () =>
@@ -644,6 +657,25 @@ function guardedLocalCompletion(
   };
 }
 
+function guardedEnvironmentCompletion(
+  guard: CompletionRequestGuard,
+  name: string,
+  detail: string,
+): Completion {
+  return {
+    label: name,
+    type: "type",
+    detail,
+    apply: (view, completion, from, to) => {
+      if (!completionRequestIsCurrent(guard, view.state)) {
+        closeCompletion(view);
+        return;
+      }
+      const end = view.state.sliceDoc(to, to + 1) === "}" ? to + 1 : to;
+      snippet(environmentSnippet(name))(view, completion, from, end);
+    },
+  };
+}
 function guardCompletionForSource(
   guard: CompletionRequestGuard,
   option: Completion,
@@ -810,25 +842,34 @@ function structuralArgumentCompletions(
     /\\(?:begin|end)\s*\{[^{}]{0,500}$/u,
   );
   if (environmentMatch) {
+    const opening = /^\\begin/u.test(environmentMatch.text);
     const query = currentArgumentQuery(environmentMatch.text);
     const local = latexCatalog(context.state).environments.map((name) =>
-      guardedLocalCompletion(
-        guard,
-        name,
-        "type",
-        "document environment",
-      ),
+      opening
+        ? guardedEnvironmentCompletion(guard, name, "document environment")
+        : guardedLocalCompletion(
+            guard,
+            name,
+            "type",
+            "document environment",
+          ),
     );
     return {
       from: context.pos - query.length,
       options: uniqueCompletions([
         ...local,
         ...STANDARD_ENVIRONMENTS.map((name) =>
-          guardCompletionForSource(guard, {
-            label: name,
-            type: "type",
-            detail: "standard LaTeX environment",
-          }),
+          opening
+            ? guardedEnvironmentCompletion(
+                guard,
+                name,
+                "standard LaTeX environment",
+              )
+            : guardCompletionForSource(guard, {
+                label: name,
+                type: "type",
+                detail: "standard LaTeX environment",
+              }),
         ),
       ]),
     };

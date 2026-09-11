@@ -1,5 +1,10 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { EditorState, Compartment, type Extension } from "@codemirror/state";
+import {
+  EditorState,
+  Compartment,
+  Prec,
+  type Extension,
+} from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -40,6 +45,8 @@ import {
   slashCompletions,
 } from "./latex";
 import { languageForPath } from "./languages";
+import { openEnvironmentCompletion } from "./latex-environments";
+import { latexPairInputHandler, latexPairKeymap } from "./latex-pairs";
 import { setEditorDocumentPath, setEditorView } from "./controller";
 import {
   cancelSourceProofreading,
@@ -80,6 +87,7 @@ export interface EditorHost {
     autocomplete: boolean;
     /** Auto-insert closing brackets, parentheses, and quotes. */
     autoCloseBrackets: boolean;
+    autoCloseMath?: boolean;
     /** Keep the cursor solid instead of blinking. */
     nonBlinkingCursor: boolean;
     /** Dim inline preview of the top completion, accepted with Tab. */
@@ -142,6 +150,7 @@ function sourceToolsForPath(
         activateOnTyping: autocompleteWhileTyping,
         closeOnBlur: true,
       }),
+      ...(autocompleteWhileTyping ? [openEnvironmentCompletion] : []),
       ...mathPreview,
       createLatexLinter(),
     ];
@@ -173,11 +182,21 @@ function stickyScrollFor(path: string | null, enabled: boolean): Extension[] {
 // Bracket auto-closing and cursor rendering, both user preferences that must
 // reconfigure without recreating the editor.
 function editorPrefExtensions(
+  path: string | null,
   autoCloseBrackets: boolean,
+  autoCloseMath: boolean,
   nonBlinkingCursor: boolean,
 ): Extension[] {
+  const math = autoCloseBrackets && autoCloseMath;
+  const latexPairs = isLatexSourcePath(path)
+    ? [
+        latexPairInputHandler({ math, brackets: autoCloseBrackets }),
+        ...(math ? [Prec.highest(keymap.of(latexPairKeymap))] : []),
+      ]
+    : [];
   return [
     autoCloseBrackets ? closeBrackets() : [],
+    ...latexPairs,
     // A zero blink cycle keeps the cursor permanently visible.
     drawSelection(nonBlinkingCursor ? { cursorBlinkRate: 0 } : {}),
   ];
@@ -231,6 +250,7 @@ export function CodeMirrorEditor({
     editorTheme: editorThemeId,
     autocomplete,
     autoCloseBrackets,
+    autoCloseMath = true,
     nonBlinkingCursor,
     ghostCompletion: ghostCompletionEnabled,
     stickyScroll: stickyScrollEnabled,
@@ -281,7 +301,12 @@ export function CodeMirrorEditor({
         foldGutter({ markerDOM: foldMarkerDOM }),
         foldMarkerTheme,
         editorPrefsCompartment.of(
-          editorPrefExtensions(autoCloseBrackets, nonBlinkingCursor),
+          editorPrefExtensions(
+            initialPath,
+            autoCloseBrackets,
+            autoCloseMath,
+            nonBlinkingCursor,
+          ),
         ),
         stickyCompartment.of(
           stickyScrollFor(initialPath, stickyScrollEnabled),
@@ -317,6 +342,7 @@ export function CodeMirrorEditor({
         ...(extraExtensions ?? []),
         hostToolsCompartment.of(extraExtensionsForPath?.(initialPath) ?? []),
         keymap.of([
+          ...completionKeymap,
           ...(extraKeymap ?? []),
           indentWithTab,
           ...closeBracketsKeymap,
@@ -324,7 +350,6 @@ export function CodeMirrorEditor({
           ...searchKeymap,
           ...historyKeymap,
           ...foldKeymap,
-          ...completionKeymap,
         ]),
         vimCompartment.of(vimEnabled ? vim() : []),
         spellCompartment.of(
@@ -514,10 +539,15 @@ export function CodeMirrorEditor({
     if (!view || !compartment) return;
     view.dispatch({
       effects: compartment.reconfigure(
-        editorPrefExtensions(autoCloseBrackets, nonBlinkingCursor),
+        editorPrefExtensions(
+          activePath,
+          autoCloseBrackets,
+          autoCloseMath,
+          nonBlinkingCursor,
+        ),
       ),
     });
-  }, [autoCloseBrackets, nonBlinkingCursor]);
+  }, [activePath, autoCloseBrackets, autoCloseMath, nonBlinkingCursor]);
 
   // Toggle completion-while-typing without recreating the editor. Completions
   // live inside the source-tools compartment, so rebuild it for the current

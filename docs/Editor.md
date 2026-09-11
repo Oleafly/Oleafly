@@ -40,11 +40,25 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   they do not infer behavior from a file extension alone.
 - Vim mode, find and replace, code folding, multi-file tabs, and slash-command
   insertion are application contributions rather than editor parser logic.
-- LaTeX structural helpers: Enter continues `\item` lists (an empty item
-  exits), `Mod-Alt-.` closes the innermost open environment, and
-  `Mod-Alt-e` surrounds the selection with an environment (both also in the
-  command palette). `@`-prefixed math shortcuts complete Greek letters and
-  symbols inside math contexts.
+- LaTeX structural helpers: Enter continues `\item` lists. A description item
+  comes out as `\item[] ` with the caret in the label. An empty item deletes
+  its marker. When the inner list closes right below it, the item moves out to
+  the enclosing list instead. Shift-Enter stays a plain newline, and Backspace
+  behind a marker blanks it before deleting it.
+  Enter at the end of a `\begin{...}` line writes the matching `\end`.
+  `Mod-Alt-.` closes the innermost open environment and `Mod-Alt-e` surrounds
+  the selection with an environment (both also in the command palette).
+  `@`-prefixed math shortcuts complete Greek letters and symbols inside math
+  contexts.
+- LaTeX input pairing: typing `$` writes the closing `$` too, and a second `$`
+  inside empty math opens a display block. `\(` and `\[` expand with their
+  closing delimiter, and Backspace between a fresh pair removes both halves.
+  Comments, verbatim blocks and an escaped `\$` are left as typed. Environment
+  completions insert the matching `\end`, with a first `\item`, caption or
+  column specification where the environment needs one. Two toggles in
+  Settings > Appearance > Editor control this: Auto-close math and Auto-close
+  environments. Both sit under Auto-close brackets: switch that one off and the
+  LaTeX pairing and the Enter `\end` go with it.
 - Rich hovers: references whose label sits in a math environment render the
   equation (KaTeX), `\includegraphics` targets show a thumbnail, and labels
   display their number and page from the last successful compile. Label

@@ -36,6 +36,22 @@ export {
 } from "./typst-mask";
 export { latexFolding } from "./latex-folding";
 export {
+  closeEnvironmentOnEnter,
+  environmentSnippet,
+  openEnvironmentCompletion,
+} from "./latex-environments";
+export {
+  inLatexIgnoredRegion,
+  latexIgnoredRangesField,
+  mathContextAt,
+} from "./latex-lexical";
+export {
+  latexPairChange,
+  latexPairInputHandler,
+  latexPairKeymap,
+  type LatexPairOptions,
+} from "./latex-pairs";
+export {
   continueListOnEnter,
   closeEnvironmentAtCursor,
   surroundSelectionWithEnvironment,

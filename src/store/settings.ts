@@ -717,6 +717,10 @@ interface SettingsState {
   /** Auto-insert closing brackets, parentheses, and quotes. */
   editorAutoCloseBrackets: boolean;
   setEditorAutoCloseBrackets: (v: boolean) => void;
+  editorAutoCloseMath: boolean;
+  setEditorAutoCloseMath: (v: boolean) => void;
+  editorAutoCloseEnvironments: boolean;
+  setEditorAutoCloseEnvironments: (v: boolean) => void;
   /** Dim inline preview of the most likely completion, accepted with Tab. */
   editorGhostCompletion: boolean;
   setEditorGhostCompletion: (v: boolean) => void;
@@ -885,6 +889,8 @@ const PREF_DEFAULTS = {
   vim: false,
   editorAutocomplete: true,
   editorAutoCloseBrackets: true,
+  editorAutoCloseMath: true,
+  editorAutoCloseEnvironments: true,
   editorGhostCompletion: true,
   editorNonBlinkingCursor: false,
   editorStickyScroll: true,
@@ -947,6 +953,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setEditorAutoCloseBrackets: (v) => {
     saveLs("oleafly.editor.closeBrackets", v ? "1" : "0");
     set({ editorAutoCloseBrackets: v });
+  },
+  editorAutoCloseMath: ls("oleafly.editor.closeMath", "1") !== "0",
+  setEditorAutoCloseMath: (v) => {
+    saveLs("oleafly.editor.closeMath", v ? "1" : "0");
+    set({ editorAutoCloseMath: v });
+  },
+  editorAutoCloseEnvironments:
+    ls("oleafly.editor.closeEnvironments", "1") !== "0",
+  setEditorAutoCloseEnvironments: (v) => {
+    saveLs("oleafly.editor.closeEnvironments", v ? "1" : "0");
+    set({ editorAutoCloseEnvironments: v });
   },
   editorGhostCompletion: ls("oleafly.editor.ghostCompletion", "1") !== "0",
   setEditorGhostCompletion: (v) => {
@@ -1394,6 +1411,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       PREF_DEFAULTS.editorAutoCloseBrackets ? "1" : "0",
     );
     saveLs(
+      "oleafly.editor.closeMath",
+      PREF_DEFAULTS.editorAutoCloseMath ? "1" : "0",
+    );
+    saveLs(
+      "oleafly.editor.closeEnvironments",
+      PREF_DEFAULTS.editorAutoCloseEnvironments ? "1" : "0",
+    );
+    saveLs(
       "oleafly.editor.ghostCompletion",
       PREF_DEFAULTS.editorGhostCompletion ? "1" : "0",
     );
@@ -1455,6 +1480,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       vim: PREF_DEFAULTS.vim,
       editorAutocomplete: PREF_DEFAULTS.editorAutocomplete,
       editorAutoCloseBrackets: PREF_DEFAULTS.editorAutoCloseBrackets,
+      editorAutoCloseMath: PREF_DEFAULTS.editorAutoCloseMath,
+      editorAutoCloseEnvironments: PREF_DEFAULTS.editorAutoCloseEnvironments,
       editorGhostCompletion: PREF_DEFAULTS.editorGhostCompletion,
       editorNonBlinkingCursor: PREF_DEFAULTS.editorNonBlinkingCursor,
       editorStickyScroll: PREF_DEFAULTS.editorStickyScroll,

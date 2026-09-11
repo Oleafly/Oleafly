@@ -305,19 +305,28 @@ describe("useSettingsStore reset", () => {
     const settings = useSettingsStore.getState();
     settings.setEditorAutocomplete(false);
     settings.setEditorAutoCloseBrackets(false);
+    settings.setEditorAutoCloseMath(false);
+    settings.setEditorAutoCloseEnvironments(false);
     settings.setEditorGhostCompletion(false);
     settings.setEditorNonBlinkingCursor(true);
+
+    expect(localStorage.getItem("oleafly.editor.closeMath")).toBe("0");
+    expect(localStorage.getItem("oleafly.editor.closeEnvironments")).toBe("0");
 
     settings.resetToDefaults();
 
     expect(useSettingsStore.getState()).toMatchObject({
       editorAutocomplete: true,
       editorAutoCloseBrackets: true,
+      editorAutoCloseMath: true,
+      editorAutoCloseEnvironments: true,
       editorGhostCompletion: true,
       editorNonBlinkingCursor: false,
     });
     expect(localStorage.getItem("oleafly.editor.autocomplete")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.closeBrackets")).toBe("1");
+    expect(localStorage.getItem("oleafly.editor.closeMath")).toBe("1");
+    expect(localStorage.getItem("oleafly.editor.closeEnvironments")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.ghostCompletion")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.solidCursor")).toBe("0");
   });

@@ -303,6 +303,63 @@ describe("recovery-oriented LaTeX completion", () => {
     expect(option(result, "equation").detail).toContain("standard");
   });
 
+  it("expands a begin environment completion into a skeleton", () => {
+    const source = "\\begin{enum}";
+    const cursor = source.length - 1;
+    const state = EditorState.create({ doc: source });
+    const result = latexCommandCompletions(
+      new CompletionContext(state, cursor, false),
+    );
+    const candidate = option(result, "enumerate");
+    const view = new EditorView({ state, parent: document.body });
+    (
+      candidate.apply as Exclude<Completion["apply"], string | undefined>
+    )(view, candidate, result?.from ?? cursor, cursor);
+    expect(view.state.doc.toString()).toBe(
+      "\\begin{enumerate}\n  \\item \n\\end{enumerate}",
+    );
+    expect(view.state.selection.main.head).toBe(
+      "\\begin{enumerate}\n  \\item ".length,
+    );
+    view.destroy();
+  });
+
+  it("expands a document-defined environment into a skeleton", () => {
+    const source = "\\newtheorem{lemma}{Lemma}\n\\begin{lem}";
+    const cursor = source.length - 1;
+    const state = EditorState.create({ doc: source });
+    const result = latexCommandCompletions(
+      new CompletionContext(state, cursor, false),
+    );
+    const candidate = option(result, "lemma");
+    const view = new EditorView({ state, parent: document.body });
+    (
+      candidate.apply as Exclude<Completion["apply"], string | undefined>
+    )(view, candidate, result?.from ?? cursor, cursor);
+    expect(view.state.doc.toString()).toBe(
+      "\\newtheorem{lemma}{Lemma}\n\\begin{lemma}\n  \n\\end{lemma}",
+    );
+    view.destroy();
+  });
+
+  it("inserts only the name when completing an end environment", () => {
+    const source = "\\begin{quote}\nx\n\\end{quo}";
+    const cursor = source.length - 1;
+    const state = EditorState.create({ doc: source });
+    const result = latexCommandCompletions(
+      new CompletionContext(state, cursor, false),
+    );
+    const candidate = option(result, "quote");
+    const view = new EditorView({ state, parent: document.body });
+    (
+      candidate.apply as Exclude<Completion["apply"], string | undefined>
+    )(view, candidate, result?.from ?? cursor, cursor);
+    expect(view.state.doc.toString()).toBe(
+      "\\begin{quote}\nx\n\\end{quote}",
+    );
+    view.destroy();
+  });
+
   it("completes document classes, packages, and loaded-package commands", () => {
     const classSource = "\\documentclass{scr";
     const classResult = completion(classSource);

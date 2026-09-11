@@ -1,3 +1,5 @@
+import { StateField, type EditorState, type Text } from "@codemirror/state";
+
 export type LatexIgnoredKind =
   | "comment"
   | "verbatim-environment"
@@ -263,11 +265,278 @@ export function isLatexCompletionPosition(
   text: string,
   position: number,
 ): boolean {
-  return !latexIgnoredRanges(text).some(
-    (range) =>
-      position > range.from &&
-      (position < range.to ||
-        position === range.to &&
-          (range.kind === "comment" || !range.complete)),
+  return !latexIgnoredRanges(text).some((range) =>
+    positionIsIgnored(range, position),
   );
+}
+
+function positionIsIgnored(
+  range: LatexIgnoredRange,
+  position: number,
+): boolean {
+  return (
+    position > range.from &&
+    (position < range.to ||
+      (position === range.to &&
+        (range.kind === "comment" || !range.complete)))
+  );
+}
+
+const documentIgnoredRanges = new WeakMap<Text, LatexIgnoredRange[]>();
+
+function shiftRanges(
+  ranges: LatexIgnoredRange[],
+  offset: number,
+): LatexIgnoredRange[] {
+  return ranges.map((range) => ({
+    ...range,
+    from: range.from + offset,
+    to: range.to + offset,
+  }));
+}
+
+export const latexIgnoredRangesField = StateField.define<LatexIgnoredRange[]>({
+  create: (state) => latexIgnoredRanges(state.doc.toString()),
+  update: (previous, transaction) => {
+    if (!transaction.docChanged) return previous;
+    let earliest = Number.POSITIVE_INFINITY;
+    transaction.changes.iterChangedRanges((fromA) => {
+      if (fromA < earliest) earliest = fromA;
+    });
+    if (!Number.isFinite(earliest)) return previous;
+
+    const startDoc = transaction.startState.doc;
+    let restart = startDoc.lineAt(Math.min(earliest, startDoc.length)).from;
+    for (let index = previous.length - 1; index >= 0; index -= 1) {
+      const range = previous[index];
+      if (range.to < restart) break;
+      if (range.to === restart && range.complete) break;
+      if (range.from < restart) restart = range.from;
+    }
+
+    const kept: LatexIgnoredRange[] = [];
+    for (const range of previous) {
+      if (range.to > restart) break;
+      kept.push(range);
+    }
+    return kept.concat(
+      shiftRanges(
+        latexIgnoredRanges(transaction.newDoc.sliceString(restart)),
+        restart,
+      ),
+    );
+  },
+});
+
+export function latexIgnoredRangesIn(
+  state: EditorState,
+): LatexIgnoredRange[] {
+  const tracked = state.field(latexIgnoredRangesField, false);
+  if (tracked) return tracked;
+  const cached = documentIgnoredRanges.get(state.doc);
+  if (cached) return cached;
+  const computed = latexIgnoredRanges(state.doc.toString());
+  documentIgnoredRanges.set(state.doc, computed);
+  return computed;
+}
+
+function firstRangeEndingAfter(
+  ranges: readonly LatexIgnoredRange[],
+  position: number,
+): number {
+  let low = 0;
+  let high = ranges.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (ranges[middle].to < position) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+export function inLatexIgnoredRegion(
+  state: EditorState,
+  position: number,
+): boolean {
+  const ranges = latexIgnoredRangesIn(state);
+  for (
+    let index = firstRangeEndingAfter(ranges, position);
+    index < ranges.length;
+    index += 1
+  ) {
+    const range = ranges[index];
+    if (range.from >= position) return false;
+    if (positionIsIgnored(range, position)) return true;
+  }
+  return false;
+}
+
+export function latexMaskedSlice(
+  state: EditorState,
+  from: number,
+  to: number,
+): string {
+  const text = state.sliceDoc(from, to);
+  const ranges = latexIgnoredRangesIn(state);
+  let characters: string[] | null = null;
+  for (
+    let index = firstRangeEndingAfter(ranges, from + 1);
+    index < ranges.length;
+    index += 1
+  ) {
+    const range = ranges[index];
+    if (range.from >= to) break;
+    characters ??= text.split("");
+    const start = Math.max(range.from, from);
+    const end = Math.min(range.to, to);
+    for (let at = start; at < end; at += 1) {
+      if (characters[at - from] !== "\n") characters[at - from] = " ";
+    }
+  }
+  return characters ? characters.join("") : text;
+}
+
+export type LatexMathDelimiter = "$" | "\\(" | "\\[" | "env";
+
+export interface LatexMathContext {
+  inMath: boolean;
+  delimiter: LatexMathDelimiter | null;
+  from: number | null;
+  width: number;
+}
+
+type MathToken = LatexMathDelimiter | "$$";
+
+interface OpenMath {
+  token: MathToken;
+  at: number;
+  width: number;
+}
+
+const MATH_CONTEXT_WINDOW = 2 * 1024;
+
+const MATH_ENVIRONMENTS = new Set([
+  "equation",
+  "equation*",
+  "displaymath",
+  "align",
+  "align*",
+  "alignat",
+  "alignat*",
+  "flalign",
+  "flalign*",
+  "gather",
+  "gather*",
+  "multline",
+  "multline*",
+  "eqnarray",
+  "eqnarray*",
+  "math",
+  "split",
+  "aligned",
+  "gathered",
+  "cases",
+  "array",
+  "matrix",
+  "pmatrix",
+  "bmatrix",
+  "Bmatrix",
+  "vmatrix",
+  "Vmatrix",
+  "smallmatrix",
+]);
+
+function openMathTokens(text: string): OpenMath[] {
+  const stack: OpenMath[] = [];
+  let cursor = 0;
+
+  while (cursor < text.length) {
+    const character = text[cursor];
+
+    if (character === "\\") {
+      const next = text[cursor + 1];
+      if (next === "(" || next === "[") {
+        stack.push({
+          token: next === "(" ? "\\(" : "\\[",
+          at: cursor,
+          width: 2,
+        });
+        cursor += 2;
+        continue;
+      }
+      if (next === ")" || next === "]") {
+        const opener = next === ")" ? "\\(" : "\\[";
+        if (stack[stack.length - 1]?.token === opener) stack.pop();
+        cursor += 2;
+        continue;
+      }
+      if (commandCharacter(next)) {
+        let commandEnd = cursor + 1;
+        while (commandCharacter(text[commandEnd])) commandEnd += 1;
+        const command = text.slice(cursor + 1, commandEnd);
+        if (command === "begin" || command === "end") {
+          const environment = simpleBracedValue(text, commandEnd);
+          if (environment && MATH_ENVIRONMENTS.has(environment.value)) {
+            if (command === "begin") {
+              stack.push({
+                token: "env",
+                at: cursor,
+                width: environment.to - cursor,
+              });
+            } else if (stack[stack.length - 1]?.token === "env") {
+              stack.pop();
+            }
+            cursor = environment.to;
+            continue;
+          }
+        }
+        cursor = commandEnd;
+        continue;
+      }
+      cursor += 2;
+      continue;
+    }
+
+    if (character === "$") {
+      const doubled = text[cursor + 1] === "$";
+      const open = stack[stack.length - 1];
+      if (open && (open.token === "$" || open.token === "$$")) {
+        stack.pop();
+        cursor += open.token === "$$" && doubled ? 2 : 1;
+        continue;
+      }
+      const token: MathToken = doubled ? "$$" : "$";
+      stack.push({ token, at: cursor, width: token.length });
+      cursor += token.length;
+      continue;
+    }
+
+    if (character === "\n") {
+      let scan = cursor + 1;
+      while (inlineWhitespace(text[scan])) scan += 1;
+      if (scan >= text.length || text[scan] === "\n") stack.length = 0;
+      cursor += 1;
+      continue;
+    }
+
+    cursor += 1;
+  }
+
+  return stack;
+}
+
+export function mathContextAt(
+  state: EditorState,
+  pos: number,
+): LatexMathContext {
+  const from = Math.max(0, pos - MATH_CONTEXT_WINDOW);
+  const stack = openMathTokens(latexMaskedSlice(state, from, pos));
+  const open = stack[stack.length - 1];
+  if (!open) return { inMath: false, delimiter: null, from: null, width: 0 };
+  return {
+    inMath: true,
+    delimiter: open.token === "$$" ? "$" : open.token,
+    from: open.at + from,
+    width: open.width,
+  };
 }
