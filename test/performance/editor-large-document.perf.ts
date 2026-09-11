@@ -242,6 +242,58 @@ describe("large-document editor performance", () => {
     });
   });
 
+  it("keeps input handling responsive wherever the caret sits in a 6,200-line document", () => {
+    const book = buildLargeLatexBook();
+    const options = { math: true, brackets: true };
+    const seed = EditorState.create({
+      doc: book.source,
+      extensions: [latexIgnoredRangesField],
+    });
+
+    const headAt = seed.doc.line(20).to;
+    const middleAt = seed.doc.line(Math.floor(seed.doc.lines / 2)).to;
+    const endAt = seed.doc.length;
+    expect(headAt).toBeLessThan(2_000);
+    expect(middleAt).toBeGreaterThan(200_000);
+    expect(endAt).toBe(book.characterCount);
+
+    const batch = (at: number): number => {
+      let state = seed.update({
+        selection: EditorSelection.cursor(at),
+      }).state;
+      const start = performance.now();
+      for (let stroke = 0; stroke < 200; stroke++) {
+        state = state.update({
+          ...state.replaceSelection("x"),
+          userEvent: "input.type",
+        }).state;
+        const spec = latexPairChange(state, "$", options);
+        state = state.update(
+          spec ?? { ...state.replaceSelection("$"), userEvent: "input.type" },
+        ).state;
+      }
+      const elapsed = performance.now() - start;
+      expect(state.doc.length).toBeGreaterThanOrEqual(
+        book.characterCount + 400,
+      );
+      return elapsed;
+    };
+
+    for (const at of [headAt, middleAt, endAt]) batch(at);
+    const headMs = batch(headAt);
+    const middleMs = batch(middleAt);
+    const endMs = batch(endAt);
+
+    console.info("[editor-performance] caret-position typing", {
+      headMs,
+      middleMs,
+      endMs,
+    });
+    expect(headMs).toBeLessThanOrEqual(100);
+    expect(middleMs).toBeLessThanOrEqual(100);
+    expect(endMs).toBeLessThanOrEqual(100);
+  });
+
   it("keeps completion responsive at the end of a 6,200-line document", () => {
     const book = buildLargeLatexBook();
     const source = `${book.source.slice(0, book.source.lastIndexOf("\\end{document}"))}\n\\tex`;
