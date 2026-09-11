@@ -527,6 +527,10 @@ export function ReferencesPanel() {
       <ImportReferenceLibraryDialog
         open={importOpen}
         onOpenChange={setImportOpen}
+        onImported={() => {
+          setView("citations");
+          setFilter("");
+        }}
       />
     </>
   );

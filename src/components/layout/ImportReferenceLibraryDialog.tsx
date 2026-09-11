@@ -56,13 +56,27 @@ function EndNoteLogo() {
 }
 
 function summarize(result: BatchImportResult): string {
-  const parts = [
-    `${result.imported} reference${result.imported === 1 ? "" : "s"} imported`,
-  ];
-  if (result.duplicates) {
-    parts.push(`${result.duplicates} already in the bibliography`);
+  const target = result.bibPath || "the bibliography";
+  if (!result.imported) {
+    if (result.duplicates === 1) return `That reference is already in ${target}.`;
+    if (result.duplicates) {
+      return `Those ${result.duplicates} references are already in ${target}.`;
+    }
+    return `Nothing new to add to ${target}.`;
   }
-  return parts.join(", ");
+  const added = `${result.imported} reference${result.imported === 1 ? "" : "s"} added to ${target}`;
+  return result.duplicates
+    ? `${added}, ${result.duplicates} already there.`
+    : `${added}.`;
+}
+
+function describeErrors(errors: readonly string[]): string {
+  const sentences = errors
+    .map((error) => error.trim())
+    .filter(Boolean)
+    .map((error) => (/[.!?]$/.test(error) ? error : `${error}.`));
+  if (sentences.length <= 1) return sentences[0] ?? "Could not import those references.";
+  return `${sentences.length} problems during import. ${sentences.join(" ")}`;
 }
 
 interface UploadCardProps {
@@ -124,9 +138,11 @@ function UploadCard({
 export function ImportReferenceLibraryDialog({
   open,
   onOpenChange,
+  onImported,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onImported?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -145,11 +161,12 @@ export function ImportReferenceLibraryDialog({
       }
       const result = await addCitations(entries);
       if (result.errors.length) {
-        toast.error(result.errors[0]);
+        toast.error(describeErrors(result.errors));
         return;
       }
       toast.success(summarize(result));
-      if (result.imported) onOpenChange(false);
+      onImported?.();
+      onOpenChange(false);
     } catch (error) {
       notifyError("import references", error, "Could not read that file.");
     } finally {

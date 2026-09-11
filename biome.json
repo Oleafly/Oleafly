@@ -24,7 +24,18 @@
       },
       "style": {
         "useTemplate": "warn",
-        "noNonNullAssertion": "warn"
+        "noNonNullAssertion": "warn",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "@/lib/tauri": {
+                "importNames": ["writeFileContent"],
+                "message": "Write project files with useFilesStore.getState().writeProjectFile so the file tree and the project index refresh."
+              }
+            }
+          }
+        }
       },
       "complexity": {
         "useOptionalChain": "warn",
@@ -37,5 +48,21 @@
   },
   "assist": {
     "enabled": false
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "src/store/files.ts",
+        "src/lib/ai-tools.ts",
+        "src/components/diagram/DiagramComposer.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    }
+  ]
 }

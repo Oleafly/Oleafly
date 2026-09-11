@@ -5,6 +5,7 @@ import {
   maskLatexIgnoredRegions,
   validateXparseArgumentSpecification,
 } from "@oleafly/editor/latex-analysis";
+import { type BibliographyEngine, bibliographyCandidatePaths } from "@oleafly/latex";
 import { astAugmentLatexFile } from "./latex-ast";
 import { bibliographyEntrySummary } from "./bibliography-summary";
 import { parseBibtexIntelligence } from "./parse-bibtex";
@@ -692,6 +693,7 @@ function addDefinition(
 function edgeForUse(
   use: ProjectUse,
   targetFile: string | null,
+  bibliographyEngine?: BibliographyEngine,
 ): ProjectEdge {
   const kind =
     use.kind === "include" ||
@@ -710,6 +712,7 @@ function edgeForUse(
     targetFile,
     resolution: targetFile ? "unresolved" : "external",
     candidateFiles: [],
+    ...(bibliographyEngine ? { bibliographyEngine } : {}),
   };
 }
 
@@ -1536,17 +1539,20 @@ function latexAdditionalSyntax(
   }
 
   const bibliographies =
-    /\\(?:bibliography|addbibresource)\*?(?:\s*\[[^\]]*\])?\s*\{([^}]*)\}/g;
+    /\\(bibliography|addbibresource)\*?(?:\s*\[[^\]]*\])?\s*\{([^}]*)\}/g;
   for (const match of masked.matchAll(bibliographies)) {
+    const bibliographyEngine: BibliographyEngine =
+      match[1] === "addbibresource" ? "biblatex" : "latex";
     const valueOffset =
       match.index + match[0].lastIndexOf("{") + 1;
-    for (const keyMatch of match[1].matchAll(/[^,]+/g)) {
+    for (const keyMatch of match[2].matchAll(/[^,]+/g)) {
       const rawSegment = keyMatch[0];
       const raw = rawSegment.trim();
       if (!raw) continue;
       const leading = rawSegment.length - rawSegment.trimStart().length;
       const nameOffset = valueOffset + keyMatch.index + leading;
-      const target = resolveProjectPath(file, raw, ".bib");
+      const target =
+        bibliographyCandidatePaths(raw, file, bibliographyEngine)[0] ?? null;
       const use = addUse(
         uses,
         "latex",
@@ -1558,7 +1564,13 @@ function latexAdditionalSyntax(
         nameOffset + raw.length,
         target ?? undefined,
       );
-      edges.push(edgeForUse(use, target));
+      edges.push(
+        edgeForUse(
+          use,
+          target,
+          bibliographyEngine === "biblatex" ? bibliographyEngine : undefined,
+        ),
+      );
     }
   }
 
@@ -1676,7 +1688,7 @@ function markdownAdditionalSyntax(
           if (!raw) continue;
           const nameOffset = offset + line.indexOf(value) +
             value.indexOf(raw);
-          const target = resolveProjectPath(file, raw, ".bib");
+          const target = bibliographyCandidatePaths(raw, file, "markdown")[0] ?? null;
           const use = addUse(
             uses,
             "markdown",
@@ -1696,7 +1708,7 @@ function markdownAdditionalSyntax(
           const raw = item[1].trim().replace(/^["']|["']$/g, "");
           const nameOffset = offset + line.lastIndexOf(item[1]) +
             item[1].indexOf(raw);
-          const target = resolveProjectPath(file, raw, ".bib");
+          const target = bibliographyCandidatePaths(raw, file, "markdown")[0] ?? null;
           const use = addUse(
             uses,
             "markdown",
@@ -2086,7 +2098,7 @@ function typstAdditionalSyntax(
       const raw = pathMatch[1];
       const nameOffset =
         argumentsOffset + pathMatch.index + pathMatch[0].indexOf(raw);
-      const target = resolveProjectPath(file, raw, ".bib");
+      const target = bibliographyCandidatePaths(raw, file, "typst")[0] ?? null;
       const use = addUse(
         uses,
         "typst",

@@ -88,7 +88,7 @@ it("flushes a just-edited working diff through the save queue and reconciles it 
   const view = EditorView.findFromDOM(mounted.container.querySelector(".cm-content") as HTMLElement);
   if (!view) throw new Error("The diff editor did not mount.");
   act(() => view.dispatch({ changes: { from: 6, insert: " edit" } }));
-  expect(useFilesStore.getState().files["notes.txt"]).toEqual({ content: "Before edit", dirty: true });
+  expect(useFilesStore.getState().files["notes.txt"]).toEqual({ content: "Before edit", dirty: true, edits: 1 });
   expect(mocks.write).not.toHaveBeenCalled();
   const action = vi.fn(async (): Promise<{ projectState: ProjectStateChanged }> => {
     expect(mocks.write).toHaveBeenCalledWith("project", "notes.txt", "Before edit", 0);
@@ -121,7 +121,7 @@ it("queues diagram edits immediately and rejects stale-project and leased callba
   const mounted = render(<DiagramMainFileView projectId="project" path="notes.txt" />);
   await waitFor(() => expect(mounted.container.querySelector('[data-testid="diagram-canvas"]')).not.toBeNull());
   act(() => mocks.diagramChange?.(EDITED));
-  expect(useFilesStore.getState().files["notes.txt"]).toEqual({ content: standaloneDiagramSource(EDITED), dirty: true });
+  expect(useFilesStore.getState().files["notes.txt"]).toEqual({ content: standaloneDiagramSource(EDITED), dirty: true, edits: 1 });
   expect(mocks.write).not.toHaveBeenCalled();
   useFilesStore.setState({ files: { "notes.txt": { content: "Saved", dirty: false } } });
   const lease = acquireEditorMutationLease("project");

@@ -1,4 +1,4 @@
-import { fetchDoiBibtex, fetchArxiv, crossrefSearch, readFileContent, writeFileContent } from "@/lib/tauri";
+import { fetchDoiBibtex, fetchArxiv, crossrefSearch, readFileContent } from "@/lib/tauri";
 import { detectInput } from "@/lib/citation/detect";
 import { parseEntry, generateCiteKey, setKey, stringifyBibEntry } from "@/lib/citation/bibtex";
 import type { ParsedBib } from "@/lib/citation/types";
@@ -262,7 +262,7 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
     }
   } else if (id) {
     try {
-      await writeFileContent(id, target.path, newContent);
+      await useFilesStore.getState().writeProjectFile(id, target.path, newContent);
       assertCitationProject(id);
     } catch (e) {
       return { error: `Could not write ${target.path}: ${e}` };
@@ -282,7 +282,7 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
         files.setContent(mainPath, next);
         await useFilesStore.getState().saveFile(mainPath);
       } else {
-        await writeFileContent(id, mainPath, next);
+        await useFilesStore.getState().writeProjectFile(id, mainPath, next);
       }
     }
   }
@@ -291,7 +291,7 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
     return { error: "The project changed during citation import. The citation was not inserted." };
   }
   insertCite(key);
-  void useIndexStore.getState().rebuildFromDisk();
+  await useIndexStore.getState().rebuildFromDisk();
   return { key };
 }
 
@@ -299,6 +299,7 @@ export interface BatchImportResult {
   imported: number;
   duplicates: number;
   errors: string[];
+  bibPath?: string;
 }
 
 // Imports a whole reference library (from Zotero/EndNote/RIS/BibTeX) into the
@@ -338,7 +339,7 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
     newBlocks.push(stringifyBibEntry({ ...entry, key }));
   }
 
-  if (!newBlocks.length) return { imported: 0, duplicates, errors: [] };
+  if (!newBlocks.length) return { imported: 0, duplicates, errors: [], bibPath: target.path };
 
   const newContent = content.trim()
     ? `${content.trimEnd()}\n\n${newBlocks.join("\n\n")}\n`
@@ -355,7 +356,7 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
     }
   } else if (id) {
     try {
-      await writeFileContent(id, target.path, newContent);
+      await useFilesStore.getState().writeProjectFile(id, target.path, newContent);
       assertCitationProject(id);
     } catch (e) {
       errors.push(`Could not write ${target.path}: ${e}`);
@@ -375,7 +376,7 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
         files.setContent(mainPath, next);
         await useFilesStore.getState().saveFile(mainPath);
       } else {
-        await writeFileContent(id, mainPath, next);
+        await useFilesStore.getState().writeProjectFile(id, mainPath, next);
       }
     }
   }
@@ -383,8 +384,8 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
   if (useFilesStore.getState().projectId !== id) {
     errors.push("The project changed during citation import.");
   }
-  if (!errors.length) void useIndexStore.getState().rebuildFromDisk();
-  return { imported: newBlocks.length, duplicates, errors };
+  if (!errors.length) await useIndexStore.getState().rebuildFromDisk();
+  return { imported: newBlocks.length, duplicates, errors, bibPath: target.path };
 }
 
 export function parseCitationFile(filename: string, text: string): ParsedBib[] | null {

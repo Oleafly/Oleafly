@@ -79,11 +79,11 @@ describe("ToolPicture", () => {
   });
 
   it("saves the TikZ source into the project's figures folder without clobbering", async () => {
-    const refreshTree = vi.fn(async () => undefined);
+    const writeProjectFile = vi.fn(async () => undefined);
     useFilesStore.setState({
       projectId: "proj-save",
       tree: [{ path: "figures", is_dir: true }, { path: "figures/figure.tex", is_dir: false }],
-      refreshTree,
+      writeProjectFile,
     });
     tauriMocks.writeFileContent.mockClear();
     render(
@@ -101,13 +101,13 @@ describe("ToolPicture", () => {
     fireEvent.click(screen.getByTestId("tool-picture-save"));
 
     await waitFor(() =>
-      expect(tauriMocks.writeFileContent).toHaveBeenCalledWith(
+      expect(writeProjectFile).toHaveBeenCalledWith(
         "proj-save",
         "figures/figure-2.tex",
         "\\begin{tikzpicture}\\end{tikzpicture}\n",
       ),
     );
-    await waitFor(() => expect(refreshTree).toHaveBeenCalled());
+    expect(tauriMocks.writeFileContent).not.toHaveBeenCalled();
   });
 
   it("shows only the last finished preview outside the folded steps", () => {

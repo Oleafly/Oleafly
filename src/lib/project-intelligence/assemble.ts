@@ -1,3 +1,8 @@
+import {
+  type BibliographyEngine,
+  bibliographyCandidatePaths,
+  bibliographyDisplayName,
+} from "@oleafly/latex";
 import { summarizeBibliographyEntry } from "./bibliography-summary";
 import {
   engineForPath,
@@ -157,7 +162,9 @@ function diagnosticForEdge(edge: ProjectEdge): ProjectDiagnostic {
     code: "unresolved-target",
     message: duplicate
       ? `${edge.kind} target "${edge.rawTarget}" matches ${edge.candidateFiles.length} project files.`
-      : `${edge.kind} target "${edge.rawTarget}" could not be resolved.`,
+      : edge.kind === "bibliography"
+        ? `Bibliography file "${bibliographyDisplayName(edge.rawTarget, bibliographyEngineFor(edge))}" was not found in the project.`
+        : `${edge.kind} target "${edge.rawTarget}" could not be resolved.`,
     location: edge.location,
     related: duplicate
       ? edge.candidateFiles.map((file) => ({
@@ -178,12 +185,43 @@ function diagnosticForEdge(edge: ProjectEdge): ProjectDiagnostic {
   };
 }
 
+function bibliographyEngineFor(edge: ProjectEdge): BibliographyEngine {
+  if (edge.bibliographyEngine) return edge.bibliographyEngine;
+  const engine = engineForPath(edge.fromFile);
+  if (engine === "markdown" || engine === "typst") return engine;
+  return "latex";
+}
+
+function matchingProjectFiles(
+  candidate: string,
+  known: ReadonlySet<string>,
+  knownByLower: ReadonlyMap<string, readonly string[]>,
+): readonly string[] {
+  const matches = new Set<string>();
+  if (known.has(candidate)) matches.add(candidate);
+  for (const match of knownByLower.get(candidate.toLowerCase()) ?? []) {
+    matches.add(match);
+  }
+  return [...matches].sort((a, b) => Number(a > b) - Number(a < b));
+}
+
 function candidateTargetFiles(
   edge: ProjectEdge,
   known: ReadonlySet<string>,
   knownByLower: ReadonlyMap<string, readonly string[]>,
 ): readonly string[] {
   if (!edge.targetFile) return [];
+  if (edge.kind === "bibliography") {
+    for (const candidate of bibliographyCandidatePaths(
+      edge.rawTarget,
+      edge.fromFile,
+      bibliographyEngineFor(edge),
+    )) {
+      const matches = matchingProjectFiles(candidate, known, knownByLower);
+      if (matches.length > 0) return matches;
+    }
+    return [];
+  }
   const candidates = new Set<string>();
   const normalized = normalizeProjectPath(edge.targetFile);
   if (!normalized) return [];
@@ -195,19 +233,17 @@ function candidateTargetFiles(
   const hasExtension = /\.[a-z0-9]+$/i.test(normalized);
   if (!hasExtension) {
     const extensions =
-      edge.kind === "bibliography"
-        ? [".bib"]
-        : edge.kind === "include" || edge.kind === "import"
-          ? [".tex", ".ltx", ".latex", ".typ", ".md", ".markdown"]
-          : [
-              ".png",
-              ".jpg",
-              ".jpeg",
-              ".svg",
-              ".pdf",
-              ".webp",
-              ".eps",
-            ];
+      edge.kind === "include" || edge.kind === "import"
+        ? [".tex", ".ltx", ".latex", ".typ", ".md", ".markdown"]
+        : [
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".svg",
+            ".pdf",
+            ".webp",
+            ".eps",
+          ];
     for (const extension of extensions) {
       const withExtension = `${normalized}${extension}`;
       if (known.has(withExtension)) candidates.add(withExtension);

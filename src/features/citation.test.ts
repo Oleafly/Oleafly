@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   rebuildFromDisk: vi.fn(),
   setContent: vi.fn(),
   saveFile: vi.fn(),
+  writeProjectFile: vi.fn(),
+  refreshTree: vi.fn(),
 }));
 
 type FileEntry = { content: string };
@@ -28,6 +30,8 @@ const filesState = {
   },
   setContent: mocks.setContent,
   saveFile: mocks.saveFile,
+  writeProjectFile: mocks.writeProjectFile,
+  refreshTree: mocks.refreshTree,
 };
 
 vi.mock("@/store/files", () => ({
@@ -71,11 +75,56 @@ function markdown(front: string): string {
   return `---\n${front}\n---\n\nBody\n`;
 }
 
+let nextGeneration = 0;
+let rememberedGeneration = 0;
+let pendingTreePaths: string[] = [];
+let refreshCompletions = 0;
+let treePathsAtRebuild: string[] = [];
+let refreshStateAtRebuild = { started: 0, completed: 0 };
+
 beforeEach(() => {
   for (const fn of Object.values(mocks)) fn.mockReset();
+  nextGeneration = 9;
+  rememberedGeneration = 3;
+  pendingTreePaths = [];
+  refreshCompletions = 0;
+  treePathsAtRebuild = [];
+  refreshStateAtRebuild = { started: 0, completed: 0 };
   mocks.saveFile.mockResolvedValue(undefined);
-  mocks.writeFileContent.mockResolvedValue(undefined);
-  mocks.rebuildFromDisk.mockResolvedValue(undefined);
+  mocks.writeFileContent.mockImplementation(async (_id: string, path: string) => ({
+    path,
+    generation: nextGeneration++,
+  }));
+  mocks.refreshTree.mockImplementation(async () => {
+    for (const path of pendingTreePaths.splice(0)) {
+      if (!filesState.tree.some((entry) => entry.path === path)) {
+        filesState.tree = [...filesState.tree, { path, is_dir: false }];
+      }
+    }
+    refreshCompletions++;
+  });
+  mocks.writeProjectFile.mockImplementation(
+    async (id: string, path: string, content: string) => {
+      const result = await mocks.writeFileContent(
+        id,
+        path,
+        content,
+        rememberedGeneration,
+      );
+      if (Number.isSafeInteger(result?.generation)) {
+        rememberedGeneration = result.generation;
+      }
+      pendingTreePaths.push(path);
+      await mocks.refreshTree();
+    },
+  );
+  mocks.rebuildFromDisk.mockImplementation(async () => {
+    treePathsAtRebuild = filesState.tree.map((entry) => entry.path);
+    refreshStateAtRebuild = {
+      started: mocks.refreshTree.mock.calls.length,
+      completed: refreshCompletions,
+    };
+  });
   mocks.getEditorView.mockReturnValue({});
   mocks.setContent.mockImplementation((path: string, content: string) => {
     filesState.files[path] = { content };
@@ -224,7 +273,7 @@ describe("addCitation", () => {
     const result = await addCitation(BIBTEX);
 
     expect(result).toEqual({ key: "lovelace2024edge" });
-    expect(mocks.writeFileContent).toHaveBeenCalledWith(
+    expect(mocks.writeProjectFile).toHaveBeenCalledWith(
       "project-1",
       "paper.typ",
       '= Paper\n\n#bibliography("refs.bib")\n',
@@ -247,7 +296,7 @@ describe("addCitation", () => {
 
     await addCitation(BIBTEX);
 
-    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+    expect(mocks.writeProjectFile).not.toHaveBeenCalled();
     expect(mocks.saveFile).not.toHaveBeenCalledWith("paper.typ");
   });
 
@@ -328,7 +377,7 @@ describe("addCitations", () => {
 
     const result = await addCitations(entries);
 
-    expect(result).toEqual({ imported: 2, duplicates: 1, errors: [] });
+    expect(result).toEqual({ imported: 2, duplicates: 1, errors: [], bibPath: "refs.bib" });
     expect(filesState.files["refs.bib"].content).toContain("@article{lovelace2024edge,");
     expect(filesState.files["refs.bib"].content).toContain("@book{hopper1959looms,");
     expect(filesState.files["paper.md"].content).toBe(
@@ -349,6 +398,7 @@ describe("addCitations", () => {
       imported: 0,
       duplicates: 2,
       errors: [],
+      bibPath: "refs.bib",
     });
     expect(mocks.saveFile).not.toHaveBeenCalled();
   });
@@ -383,16 +433,52 @@ describe("addCitations", () => {
     const result = await addCitations([entries[2]]);
 
     expect(result.imported).toBe(1);
-    expect(mocks.writeFileContent).toHaveBeenCalledWith(
+    expect(mocks.writeProjectFile).toHaveBeenCalledWith(
       "project-1",
       "references.bib",
       expect.stringContaining("@book{hopper1959looms,"),
     );
-    expect(mocks.writeFileContent).toHaveBeenCalledWith(
+    expect(mocks.writeProjectFile).toHaveBeenCalledWith(
       "project-1",
       "paper.typ",
       '= Paper\n\n#bibliography("references.bib")\n',
     );
+    expect(result.bibPath).toBe("references.bib");
+    expect(treePathsAtRebuild).toContain("references.bib");
+    expect(treePathsAtRebuild).toContain("paper.typ");
+    expect(refreshStateAtRebuild.started).toBe(2);
+    expect(refreshStateAtRebuild.completed).toBe(2);
+  });
+
+  it("waits for the index rebuild before it reports the import", async () => {
+    let releaseRebuild!: () => void;
+    let rebuilt = false;
+    mocks.rebuildFromDisk.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseRebuild = () => {
+            rebuilt = true;
+            resolve();
+          };
+        }),
+    );
+    filesState.files = { "paper.md": { content: "# Paper\n" } };
+    mocks.readFileContent.mockResolvedValue("");
+
+    const importing = addCitations([entries[0]]);
+    await vi.waitFor(() => expect(mocks.rebuildFromDisk).toHaveBeenCalled());
+    let settled = false;
+    void importing.then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    expect(rebuilt).toBe(false);
+    releaseRebuild();
+
+    const result = await importing;
+    expect(result.imported).toBe(1);
+    expect(rebuilt).toBe(true);
   });
 });
 
@@ -419,7 +505,7 @@ describe("citation read failures", () => {
         mocks.readFileContent.mockRejectedValue(new Error("unsupported text encoding"));
         const result = batch ? await addCitations([entry]) : await addCitation(BIBTEX);
         expect(JSON.stringify(result)).toContain(`Could not read ${path}`);
-        expect(mocks.writeFileContent).not.toHaveBeenCalled();
+        expect(mocks.writeProjectFile).not.toHaveBeenCalled();
         expect(mocks.setContent).not.toHaveBeenCalled();
         expect(mocks.saveFile).not.toHaveBeenCalled();
         expect(mocks.insertAtCursor).not.toHaveBeenCalled();
@@ -432,7 +518,7 @@ describe("citation read failures", () => {
     mocks.readFileContent.mockResolvedValue("");
     expect(await addCitation(BIBTEX)).toEqual({ key: "lovelace2024edge" });
     expect(mocks.readFileContent).toHaveBeenCalledWith("project-1", "references.bib", true);
-    expect(mocks.writeFileContent).toHaveBeenCalledWith("project-1", "references.bib", expect.stringContaining("Edge Sensing"));
+    expect(mocks.writeProjectFile).toHaveBeenCalledWith("project-1", "references.bib", expect.stringContaining("Edge Sensing"));
   });
 });
 
@@ -447,7 +533,7 @@ it("abandons citation import if the project changes during a main-document read"
   filesState.tree = [{ path: "other.bib", is_dir: false }];
   finish("# First project\n");
   expect(await adding).toHaveProperty("error", expect.stringContaining("project changed"));
-  expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  expect(mocks.writeProjectFile).not.toHaveBeenCalled();
   expect(mocks.saveFile).not.toHaveBeenCalled();
   expect(mocks.setContent).not.toHaveBeenCalled();
   expect(mocks.insertAtCursor).not.toHaveBeenCalled();

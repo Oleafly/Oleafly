@@ -1,3 +1,11 @@
+import {
+  type BibliographyEngine,
+  bibliographyCandidatePaths,
+  bibliographyDeclarations,
+  bibliographyDisplayName,
+  bibliographyEngineForCommand,
+  resolveBibliographyPath,
+} from "@oleafly/latex";
 import { maskComments } from "./mask";
 import type { Finding } from "./types";
 
@@ -6,6 +14,7 @@ export interface RefsContext {
   bibKeys: string[];
   bibLoaded: boolean;
   projectFiles: string[];
+  unresolvedBibliographies?: { file: string; name: string }[];
   duplicateDois: { doi: string; keys: string[] }[];
   bibEntries?: { key: string; type: string; fields: Record<string, string> }[];
   allCitedKeys?: string[];
@@ -164,10 +173,52 @@ function projectLabelQuality(ctx: RefsContext): Finding[] {
   return out;
 }
 
+function resolvableFromAnyDirectory(
+  rawTarget: string,
+  projectFiles: string[],
+  engine: BibliographyEngine,
+): boolean {
+  const spellings = bibliographyCandidatePaths(rawTarget, "", engine).map((spelling) =>
+    spelling.toLowerCase(),
+  );
+  if (spellings.length === 0) return false;
+  return projectFiles.some((file) => {
+    const candidate = file.toLowerCase();
+    return spellings.some(
+      (spelling) => candidate === spelling || candidate.endsWith(`/${spelling}`),
+    );
+  });
+}
+
+function missingBibliography(
+  rawTarget: string,
+  ctx: RefsContext,
+  fromFile: string | undefined,
+  engine: BibliographyEngine,
+): boolean {
+  const unresolved = ctx.unresolvedBibliographies;
+  if (unresolved) {
+    if (fromFile !== undefined) {
+      return unresolved.some(
+        (declaration) => declaration.file === fromFile && declaration.name === rawTarget,
+      );
+    }
+    return (
+      unresolved.some((declaration) => declaration.name === rawTarget) &&
+      !resolvableFromAnyDirectory(rawTarget, ctx.projectFiles, engine)
+    );
+  }
+  if (ctx.projectFiles.length === 0) return false;
+  return (
+    resolveBibliographyPath(rawTarget, fromFile ?? "", ctx.projectFiles, engine) ===
+    null
+  );
+}
+
 export function runRefsRules(
   rawSource: string,
   ctx: RefsContext,
-  options: { includeProjectQuality?: boolean } = {},
+  options: { includeProjectQuality?: boolean; file?: string } = {},
 ): Finding[] {
   const out: Finding[] = [];
   let m: RegExpExecArray | null;
@@ -272,6 +323,22 @@ export function runRefsRules(
         to: m.index + m[0].length,
       });
     }
+  }
+
+  for (const declaration of bibliographyDeclarations(source)) {
+    const engine = bibliographyEngineForCommand(declaration.command);
+    if (!missingBibliography(declaration.raw, ctx, options.file, engine)) continue;
+    out.push({
+      id: "refs-bib-missing",
+      lens: "refs",
+      severity: "error",
+      certainty: "verified",
+      title: `Bibliography file not found: ${bibliographyDisplayName(declaration.raw, engine)}`,
+      detail:
+        "This \\bibliography or \\addbibresource points to a file that is not in the project, so every citation will render as [?]. Check the filename, or import a reference library to create it.",
+      from: declaration.from,
+      to: declaration.to,
+    });
   }
 
   for (const dup of ctx.duplicateDois) {
