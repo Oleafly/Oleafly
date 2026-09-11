@@ -17,8 +17,8 @@ function finding(
 
 const REPORT_START = /^\s*Status\s+report\s+of\s+the\s+tagging\s+support\s*$/i;
 const REPORT_END = /^\s*End\s+of\s+status\s+report\s*$/i;
-const CLASS_LINE = /^\s*(\S+\.cls)\s+is\s+(.+?)\s*$/;
-const SECTION_LINE = /^\s*([1-6])\.\s+(\S.*?)\s*$/;
+const CLASS_LINE = /^\s*(\S+\.cls)\s+is\s(.*)$/;
+const SECTION_LINE = /^\s*([1-6])\.\s(.*)$/;
 const FILE_LINE = /^\s*(\S+\.(?:sty|def|ldf|cfg|tex|clo|cls))\s*$/;
 
 export type TaggingStatusGroup =
@@ -64,7 +64,7 @@ export function parseTaggingStatusReport(logLines: readonly string[]): TaggingSt
     const line = logLines[i];
     if (REPORT_END.test(line)) break;
     const section = SECTION_LINE.exec(line);
-    if (section) {
+    if (section?.[2].trim()) {
       group = GROUP_BY_SECTION[section[1]] ?? null;
       continue;
     }
@@ -118,7 +118,7 @@ function taggingStatusFinding(report: TaggingStatusReport): Finding[] {
 function taggingLogFindings(logLines: readonly string[]): Finding[] {
   const out: Finding[] = [];
   const warnings = logLines
-    .map((line) => /Package tagpdf Warning:\s*(.+?)\s*$/.exec(line)?.[1])
+    .map((line) => /Package tagpdf Warning:(.*)$/.exec(line)?.[1]?.trim())
     .filter((message): message is string => Boolean(message));
   const unique = [...new Set(warnings)];
   if (unique.length > 0) {

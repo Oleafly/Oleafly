@@ -141,7 +141,7 @@ describe("continueListOnEnter", () => {
     const doc = "\\begin{itemize}\n  \\item first\n  wrapped tail|";
     const state = stateAt(doc);
     const result = applied(state, continueListOnEnter(state)!);
-    expect(result.doc).toBe(`${doc.replace("|", "")}\n  `);
+    expect(result.doc).toBe(`${doc.replaceAll("|", "")}\n  `);
     expect(result.head).toBe(result.doc.length);
   });
 

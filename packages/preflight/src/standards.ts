@@ -42,9 +42,13 @@ const ua1 = (clause: string, label: string, verapdfRule?: string): StandardRef =
   url: UA1_URL,
 });
 
-const ua2 = (clause: string, label: string, verapdfRule?: string): StandardRef => ({
+const ua2 = (
+  clause: string | readonly number[],
+  label: string,
+  verapdfRule?: string,
+): StandardRef => ({
   standard: "PDF/UA-2",
-  clause,
+  clause: typeof clause === "string" ? clause : clause.join("."),
   label,
   ...(verapdfRule ? { verapdfRule } : {}),
   url: UA2_URL,
@@ -115,7 +119,7 @@ const READING_ORDER_REFS: StandardRef[] = [
 
 const ENCODING_REFS: StandardRef[] = [
   ua1("7.21.7", "Character encoding"),
-  ua2("8.4.5.8", "Character encoding"),
+  ua2([8, 4, 5, 8], "Character encoding"),
   matterhorn("10-001", "Character encoding"),
   wcag("1.4.5", "Images of Text", "PDF7"),
 ];
@@ -149,7 +153,7 @@ const TABLE: Record<string, StandardEntry> = {
   "output-figure-alt": machine(FIGURE_REFS),
   "output-formula-alt": machine([
     ua1("7.7", "Mathematical expressions"),
-    ua2("8.2.5.29", "Formula"),
+    ua2([8, 2, 5, 29], "Formula"),
     matterhorn("17-002", "Mathematical expressions"),
     wcag("1.1.1", "Non-text Content"),
   ]),

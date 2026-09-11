@@ -1,3 +1,4 @@
+import { trimToLetters } from "./word-edges";
 export const BUILTIN_PROOFREADING_WORDS = new Set([
   "api",
   "argv",
@@ -49,11 +50,7 @@ function scopeKey(projectId: string | null, path: string): string {
 }
 
 function hereKey(word: string): string {
-  return word
-    .normalize("NFKC")
-    .replace(/^[^\p{L}]+|[^\p{L}]+$/gu, "")
-    .trim()
-    .toLocaleLowerCase("en-US");
+  return trimToLetters(word.normalize("NFKC")).trim().toLocaleLowerCase("en-US");
 }
 
 function remember(

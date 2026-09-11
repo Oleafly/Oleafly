@@ -1,3 +1,4 @@
+import { trimToWordCharacters } from "./word-edges";
 import type {
   LocalLinter,
   Lint,
@@ -91,9 +92,7 @@ function normalizeWord(word: string): string {
 }
 
 function isIgnoredToken(word: string, ignored: ReadonlySet<string>): boolean {
-  const normalized = normalizeWord(
-    word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""),
-  );
+  const normalized = normalizeWord(trimToWordCharacters(word));
   if (!normalized) return true;
   return ignored.has(normalized) || isSessionIgnoredWord(word);
 }

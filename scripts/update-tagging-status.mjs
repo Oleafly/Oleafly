@@ -35,6 +35,16 @@ function unquote(value) {
   return text;
 }
 
+const ENTRY_FIELDS = ["name", "type", "status", "comments", "updated"];
+
+function entryFromFields(fields) {
+  const entry = {};
+  for (const field of ENTRY_FIELDS) {
+    if (fields.has(field)) entry[field] = unquote(fields.get(field));
+  }
+  return entry;
+}
+
 export function parseTaggingStatusYaml(text) {
   const entries = [];
   const lines = text.split("\n");
@@ -45,29 +55,27 @@ export function parseTaggingStatusYaml(text) {
     if (/^\s*#/.test(line) || !line.trim()) continue;
     const start = /^- name:\s*(.*)$/.exec(line);
     if (start) {
-      if (current) entries.push(current);
-      current = { name: start[1] };
+      if (current) entries.push(entryFromFields(current));
+      current = new Map([["name", start[1]]]);
       lastKey = "name";
       continue;
     }
     const field = /^ {2}([a-z-]+):\s*(.*)$/.exec(line);
     if (field && current) {
       const [, key, rest] = field;
-      current[key] = rest === ">" || rest === "|" ? "" : rest;
+      current.set(key, rest === ">" || rest === "|" ? "" : rest);
       lastKey = key;
       continue;
     }
     if (/^ {3,}\S/.test(line) && current && lastKey) {
-      const carried = current[lastKey];
-      current[lastKey] = carried ? `${carried} ${line.trim()}` : line.trim();
+      const carried = current.get(lastKey);
+      current.set(lastKey, carried ? `${carried} ${line.trim()}` : line.trim());
       continue;
     }
     throw new Error(`update-tagging-status: unparsed line ${i + 1}: ${line}`);
   }
-  if (current) entries.push(current);
-  return entries.map((entry) =>
-    Object.fromEntries(Object.entries(entry).map(([key, value]) => [key, unquote(value)])),
-  );
+  if (current) entries.push(entryFromFields(current));
+  return entries;
 }
 
 function trimNote(entry) {
@@ -207,7 +215,9 @@ async function main() {
   const catalog = validateCatalog(buildCatalog(entries, new Date().toISOString().slice(0, 10)), entries);
   await writeFile(OUT, `${serializeCatalog(catalog)}\n`, "utf8");
   process.stdout.write(`written to ${path.relative(process.cwd(), OUT)}\n`);
-  for (const [key, count] of Object.entries(catalog.counts).sort()) process.stdout.write(`  ${key}: ${count}\n`);
+  for (const [key, count] of Object.entries(catalog.counts).sort(([left], [right]) => byName(left, right))) {
+    process.stdout.write(`  ${key}: ${count}\n`);
+  }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -73,18 +73,57 @@ export function packageTaggingVerdict(name: string): TaggingStatusEntry {
   return { ...upstream, status: restriction.status, note: restriction.note, restricted: true };
 }
 
+const ARGUMENT_LIMIT = 512;
+
+function isSpace(char: string | undefined): boolean {
+  return char === " " || char === "\t" || char === "\n" || char === "\r";
+}
+
+function readCommandArgument(source: string, from: number): { value: string; end: number } | null {
+  let at = from;
+  while (isSpace(source[at])) at++;
+  if (source[at] === "[") {
+    const close = source.indexOf("]", at + 1);
+    if (close === -1 || close - at > ARGUMENT_LIMIT) return null;
+    at = close + 1;
+    while (isSpace(source[at])) at++;
+  }
+  if (source[at] !== "{") return null;
+  const close = source.indexOf("}", at + 1);
+  if (close === -1 || close - at > ARGUMENT_LIMIT) return null;
+  return { value: source.slice(at + 1, close), end: close + 1 };
+}
+
+function commandArguments(source: string, commands: readonly string[]): string[] {
+  const values: string[] = [];
+  let at = source.indexOf("\\");
+  while (at !== -1) {
+    const command = commands.find((candidate) => source.startsWith(candidate, at));
+    let next = at + 1;
+    if (command) {
+      const after = at + command.length;
+      const argument = /[A-Za-z]/.test(source[after] ?? "") ? null : readCommandArgument(source, after);
+      if (argument) {
+        values.push(argument.value);
+        next = argument.end;
+      } else {
+        next = after;
+      }
+    }
+    at = source.indexOf("\\", next);
+  }
+  return values;
+}
+
 export function documentClassOf(source: string): string | null {
-  const match = /\\documentclass\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/.exec(source);
-  const name = match?.[1]?.trim();
+  const name = commandArguments(source, ["\\documentclass"])[0]?.trim();
   return name ? name : null;
 }
 
 export function loadedPackagesOf(source: string): string[] {
   const names = new Set<string>();
-  const re = /\\(?:usepackage|RequirePackage)\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(source))) {
-    for (const raw of match[1].split(",")) {
+  for (const value of commandArguments(source, ["\\usepackage", "\\RequirePackage"])) {
+    for (const raw of value.split(",")) {
       const name = raw.trim();
       if (name) names.add(name);
     }

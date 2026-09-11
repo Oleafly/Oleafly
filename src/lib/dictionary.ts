@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { trimToWordCharacters } from "@/lib/proofreading/word-edges";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import { useToastStore } from "@/store/toast";
 import {
@@ -96,9 +97,7 @@ export function normalizeDictionaryWord(word: string): string {
 }
 
 export function dictionaryWordFromSelection(word: string): string {
-  return normalizeDictionaryWord(
-    word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""),
-  );
+  return normalizeDictionaryWord(trimToWordCharacters(word));
 }
 
 function dictionaryKey(word: string): string {

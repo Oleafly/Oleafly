@@ -572,7 +572,7 @@ pub fn discover(name: &str) -> Option<PathBuf> {
         PathBuf::from("/usr/bin"),
     ]);
     #[cfg(windows)]
-    directories.extend(windows_runtime_directories(std::env::var_os));
+    directories.extend(windows_runtime_directories(|name| std::env::var_os(name)));
     for directory in directories {
         if let Some(path) = executable_path(directory.join(name)) {
             return Some(path);
