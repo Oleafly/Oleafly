@@ -23,6 +23,7 @@ import {
   detectSubmissionProfile,
   findingAppliesTo,
   looksLikeResumeSource,
+  pdfUaCoverageLine,
   SUBMISSION_PROFILES,
   SUBMISSION_PROFILE_IDS,
 } from "@oleafly/preflight";
@@ -82,9 +83,9 @@ const CHECKS: {
     label: "Accessibility",
     icon: Accessibility,
     who: "For research, government, and published PDFs",
-    info: "Reading order, document metadata, tags, alt text, and selectable text.",
+    info: "Tagging, alt text, document language and title, viewer settings, structure, links, and reading order.",
     detail:
-      "Checks screen-reader readiness against Section 508 / WCAG: missing alt text, document language, reading order, and whether the PDF is tagged. Optional for resumes.",
+      "Checks the compiled PDF against the machine-checkable part of PDF/UA-1 (ISO 14289-1) and the WCAG 2.2 PDF techniques: tagging, alt text, document language and title, viewer settings, heading and table structure, link descriptions, reading order, and selectable text. Source checks flag likely problems before you compile.",
   },
   {
     id: "refs",
@@ -383,6 +384,21 @@ export function PreflightPanel() {
   );
 }
 
+const AccessibilityStandardsCard = memo(function AccessibilityStandardsCard({ report }: { report: PreflightReport }) {
+  const summary = useMemo(() => (report.pdfUa ? pdfUaCoverageLine(report.pdfUa) : null), [report.pdfUa]);
+  if (!summary) return null;
+  return (
+    <div className="mt-2 rounded-md border border-sidebar-border bg-black/[0.03] px-2.5 py-2 dark:bg-background">
+      <p className="text-[11px] font-medium">{summary}</p>
+      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+        Oleafly reads the part of PDF/UA and WCAG that can be checked in the file itself. It cannot tell whether alt
+        text is meaningful, whether the reading order makes sense, or whether color contrast is high enough. A person
+        has to judge those. For a formal conformance statement, validate with veraPDF or PAC 2024.
+      </p>
+    </div>
+  );
+});
+
 const CheckResults = memo(function CheckResults({ id, report }: { id: CheckId; report: PreflightReport }) {
   const coverage = report.coverage[id];
   const { findings, fixable, src, out } = useMemo(() => {
@@ -414,6 +430,8 @@ const CheckResults = memo(function CheckResults({ id, report }: { id: CheckId; r
           score={coverage === "not_run" || coverage === "unsupported" ? null : report.scores[id]}
         />
       </div>
+
+      {id === "a11y" && report.hasPdf && <AccessibilityStandardsCard report={report} />}
 
       {id === "ats" && report.atsParse?.isResume && <AtsCard parse={report.atsParse} />}
 

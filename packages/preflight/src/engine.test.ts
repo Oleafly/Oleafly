@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { runPreflight } from "./engine";
-import type { PositionedText } from "./types";
+import { pdfUaAvailability, runPreflight } from "./engine";
+import type { PdfExtractionStatus, PositionedText } from "./types";
 
 describe("runPreflight", () => {
   it("runs source rules and scores a clean-ish document at or near 100", () => {
@@ -122,5 +122,101 @@ describe("runPreflight", () => {
       id: "refs-undefined-cite",
       file: "sections/results.tex",
     }));
+  });
+
+  it("flags only the file whose bibliography declaration does not resolve, when two files share a name", () => {
+    const report = runPreflight({
+      source: "\\documentclass{article}",
+      project: {
+        mainFile: "main.tex",
+        files: [
+          { path: "main.tex", content: "\\documentclass{article}" },
+          { path: "one/one.tex", content: "\\bibliography{refs}" },
+          { path: "one/refs.bib", content: "" },
+          { path: "two/two.tex", content: "\\bibliography{refs}" },
+        ],
+      },
+      refs: {
+        definedLabels: [],
+        bibKeys: [],
+        bibLoaded: false,
+        projectFiles: ["main.tex", "one/one.tex", "one/refs.bib", "two/two.tex"],
+        unresolvedBibliographies: [{ file: "two/two.tex", name: "refs" }],
+        duplicateDois: [],
+      },
+    });
+    const missing = report.findings.filter((f) => f.id === "refs-bib-missing");
+    expect(missing).toHaveLength(1);
+    expect(missing[0]).toMatchObject({ file: "two/two.tex" });
+  });
+});
+
+describe("pdfUaAvailability", () => {
+  const ua = {
+    displayDocTitle: true,
+    suspects: false,
+    xmpTitle: "Title",
+    infoTitle: "Title",
+    uaPart: null,
+    uaRev: null,
+    taggedTextRuns: 10,
+    untaggedTextRuns: 0,
+    links: [],
+  };
+  const root = { role: "Document", alt: null, lang: "en", children: [] };
+  const read: PdfExtractionStatus = {
+    metadata: "ok",
+    markInfo: "ok",
+    structure: "ok",
+    structureFailedPages: [],
+  };
+
+  it("counts nothing as read when the PDF was never inspected", () => {
+    expect(pdfUaAvailability(undefined, undefined, undefined)).toMatchObject({
+      structure: false,
+      markedContent: false,
+      viewerPreferences: false,
+      annotations: false,
+      uaClaim: false,
+      tagged: null,
+    });
+  });
+
+  it("stops trusting the marked-content and structure evidence when extraction failed", () => {
+    const facts = pdfUaAvailability(
+      { metadata: "ok", markInfo: "ok", structure: "failed", structureFailedPages: [2] },
+      { root, tagged: true, ua },
+      undefined,
+    );
+    expect(facts.structure).toBe(false);
+    expect(facts.markedContent).toBe(false);
+  });
+
+  it("does not treat catalog rules as evaluated on an untagged PDF", () => {
+    const facts = pdfUaAvailability(read, { root: null, tagged: false, ua }, undefined);
+    expect(facts.viewerPreferences).toBe(false);
+    expect(facts.annotations).toBe(false);
+    expect(facts.markInfo).toBe(false);
+    expect(facts.uaClaim).toBe(true);
+  });
+
+  it("treats everything it read on a tagged file with a tag tree as evaluated", () => {
+    const facts = pdfUaAvailability(read, { root, tagged: true, ua }, undefined);
+    expect(facts).toEqual({
+      metadata: true,
+      markInfo: true,
+      structure: true,
+      viewerPreferences: true,
+      annotations: true,
+      markedContent: true,
+      uaClaim: true,
+      tagged: true,
+    });
+  });
+
+  it("keeps an unreadable viewer preference out of the evaluated set", () => {
+    const facts = pdfUaAvailability(read, { root, tagged: true, ua: { ...ua, displayDocTitle: null } }, undefined);
+    expect(facts.viewerPreferences).toBe(false);
+    expect(facts.annotations).toBe(true);
   });
 });

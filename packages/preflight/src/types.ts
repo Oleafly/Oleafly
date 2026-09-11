@@ -12,6 +12,21 @@ export type Lens = CheckId | "both";
 
 export type Severity = "error" | "warning" | "info";
 
+export type StandardName = "PDF/UA-1" | "PDF/UA-2" | "WCAG-2.2" | "Matterhorn-1.1";
+
+export interface StandardRef {
+  standard: StandardName;
+  clause: string;
+  label?: string;
+  technique?: string;
+  verapdfRule?: string;
+  url: string;
+}
+
+export type PreflightEngine = "bundled" | "pdflatex" | "lualatex" | "xelatex" | "unknown";
+
+export type FindingMethod = "pdf-object-model" | "source-heuristic" | "compile-log" | "layout-heuristic";
+
 export interface Finding {
   id: string;
   lens: Lens;
@@ -29,6 +44,9 @@ export interface Finding {
    * be proved from the source/PDF data available to the app.
    */
   certainty?: "verified" | "advisory" | "manual";
+  standards?: StandardRef[];
+  method?: FindingMethod;
+  machineCheckable?: boolean;
 }
 
 export type Coverage = "evaluated" | "partial" | "not_run" | "unsupported";
@@ -48,6 +66,7 @@ export interface PreflightReport {
   ranAt: number;
   hasPdf: boolean;
   atsParse?: import("./ats-parse").AtsParse;
+  pdfUa?: import("./standards").PdfUaCoverage;
 }
 
 export type PdfExtractionState = "ok" | "failed";

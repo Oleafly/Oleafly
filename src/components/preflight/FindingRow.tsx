@@ -1,6 +1,6 @@
 import { memo, useState } from "react";
 import { AlertCircle, AlertTriangle, ChevronRight, CornerDownLeft, Info, Sparkles } from "lucide-react";
-import type { Finding, Severity } from "@oleafly/preflight";
+import { standardChips, type Finding, type Severity } from "@oleafly/preflight";
 import { gotoRange } from "@/components/editor/cm/controller";
 import { revealSourceEditor } from "@/components/editor/wysiwyg/controller";
 import { askAiAboutFinding } from "@/features/ask-ai-preflight";
@@ -25,6 +25,7 @@ const LENS_LABEL: Record<Finding["lens"], string> = {
 
 export const FindingRow = memo(function FindingRow({ finding }: { finding: Finding }) {
   const [open, setOpen] = useState(false);
+  const citations = standardChips(finding.standards);
   const sev = SEV[finding.severity];
   const Icon = sev.icon;
   const sourceRange =
@@ -62,6 +63,29 @@ export const FindingRow = memo(function FindingRow({ finding }: { finding: Findi
       {open && (
         <div className="border-t border-sidebar-border px-2.5 py-2">
           <p className="text-xs leading-relaxed text-muted-foreground">{finding.detail}</p>
+          {citations.length > 0 && (
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-1 text-[10px] text-muted-foreground">
+              {citations.map((citation, index) => (
+                <span key={citation.label} className="inline-flex items-center gap-1">
+                  {index > 0 && <span aria-hidden="true">·</span>}
+                  <a
+                    href={citation.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={citation.detail}
+                    className="hover:text-foreground hover:underline"
+                  >
+                    {citation.label}
+                  </a>
+                </span>
+              ))}
+            </p>
+          )}
+          {finding.machineCheckable === false && (
+            <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+              Needs your judgment. No tool can decide this one from the file alone.
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             {sourceRange && (
               <button type="button"

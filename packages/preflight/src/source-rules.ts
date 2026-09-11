@@ -1,9 +1,15 @@
 import { maskComments } from "./mask";
+import { findDocumentMetadata, parseMetadataKeys } from "./document-metadata";
 import { containsContactToken } from "./contact";
 import { matchResumeSectionHeading } from "./resume-sections";
-import type { Finding, Lens, Severity } from "./types";
+import { annotate } from "./standards";
+import type { Finding, Lens, PreflightEngine, Severity } from "./types";
 
-type Rule = (text: string) => Finding[];
+export interface SourceRuleContext {
+  engine: PreflightEngine;
+}
+
+type Rule = (text: string, context: SourceRuleContext) => Finding[];
 
 const make = (
   id: string,
@@ -73,17 +79,20 @@ const multiColumn: Rule = (text) => {
   return [];
 };
 
-const noGlyphToUnicode: Rule = (text) => {
+const noGlyphToUnicode: Rule = (text, context) => {
   if (!documentClass(text)) return [];
   const ok = /\\pdfgentounicode|glyphtounicode|\\usepackage(?:\[[^\]]*\])?\{cmap\}/.test(text);
   if (ok) return [];
+  const engineNeedsMap = context.engine === "bundled" || context.engine === "xelatex";
   return [
     make(
       "no-glyphtounicode",
       "both",
-      "warning",
+      engineNeedsMap ? "warning" : "info",
       "Unicode extraction map is not declared",
-      "Some pdfTeX font workflows need a glyph-to-Unicode map for reliable extraction, while modern Unicode engines may not. Compile and verify the extracted reader text; for pdfTeX, add \\input{glyphtounicode} and \\pdfgentounicode=1 or load cmap.",
+      engineNeedsMap
+        ? "XeTeX, and the bundled engine that builds on it, do not generate the glyph-to-Unicode map automatically, so extracted text can come out unreadable. Compile and check the reader view, and prefer a font with a full Unicode mapping."
+        : "pdfLaTeX and LuaLaTeX have generated this map automatically since the LaTeX 2021-06-01 release, so no declaration is needed. Compile and confirm the extracted reader text. On XeTeX, load cmap or switch engine.",
       undefined,
       "advisory",
     ),
@@ -347,6 +356,79 @@ const readingOrderRisk: Rule = (text) => {
   ];
 };
 
+
+function uaStandardDeclaration(text: string): { body: string; from: number; to: number } | null {
+  const metadata = findDocumentMetadata(text);
+  if (!metadata) return null;
+  const standard = parseMetadataKeys(metadata.body).map.get("pdfstandard");
+  if (!standard || !/^\{?\s*ua/i.test(standard)) return null;
+  return { body: metadata.body, from: metadata.start, to: metadata.end };
+}
+
+const uaStandardWithoutTitle: Rule = (text) => {
+  const declaration = uaStandardDeclaration(text);
+  if (!declaration) return [];
+  const hasTitle = /pdftitle\s*=/.test(text);
+  const showsTitle = /pdfdisplaydoctitle\s*=\s*true/i.test(text);
+  if (hasTitle && showsTitle) return [];
+  const missing = [!hasTitle && "pdftitle", !showsTitle && "pdfdisplaydoctitle=true"].filter(Boolean).join(" and ");
+  return [
+    make(
+      "ua-standard-without-title",
+      "a11y",
+      "warning",
+      "PDF/UA is declared without a document title",
+      `This document declares pdfstandard=ua but sets no ${missing}. PDF/UA requires a title in the XMP metadata and a viewer preference that displays it, so the output would claim a standard it does not meet. Load hyperref and set \\hypersetup{pdftitle={Your title}, pdfdisplaydoctitle=true}.`,
+      { from: declaration.from, to: declaration.to },
+    ),
+  ];
+};
+
+const uaStandardOnBundledEngine: Rule = (text, context) => {
+  if (context.engine !== "bundled") return [];
+  const declaration = uaStandardDeclaration(text);
+  if (!declaration) return [];
+  return [
+    make(
+      "ua-standard-on-tectonic",
+      "a11y",
+      "error",
+      "The bundled engine cannot produce the declared PDF/UA output",
+      "This document declares pdfstandard=ua, but the bundled engine cannot write a tag tree, so the PDF would carry a PDF/UA claim it does not meet. Compile with pdfLaTeX or LuaLaTeX from TeX Live 2025 or newer, or remove the pdfstandard key.",
+      { from: declaration.from, to: declaration.to },
+    ),
+  ];
+};
+
+const HEADER_RULE = /^\s*(?:\[[^\]]*\]\s*)?(?:\\hline|\\midrule|\\cline\b)/;
+
+const tableHeaderRows: Rule = (text) => {
+  if (/table\/header-rows/.test(text)) return [];
+  const re = /\\begin\{(tabular\*?|tabularx|longtable)\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    const end = text.indexOf(`\\end{${m[1]}}`, m.index);
+    const body = text.slice(m.index + m[0].length, end === -1 ? text.length : end);
+    const firstRowEnd = body.indexOf("\\\\");
+    if (firstRowEnd === -1) continue;
+    const afterFirstRow = body.slice(firstRowEnd + 2);
+    const nextRowEnd = afterFirstRow.indexOf("\\\\");
+    const gap = nextRowEnd === -1 ? afterFirstRow : afterFirstRow.slice(0, nextRowEnd);
+    if (!HEADER_RULE.test(gap)) continue;
+    return [
+      make(
+        "table-header-rows",
+        "a11y",
+        "warning",
+        "Table header row is not marked as a header",
+        "This table rules off its first row, so it reads as a header, but LaTeX tags every cell as a data cell by default. A screen reader then cannot tie a value to its column. Declare the header row, for example \\DocumentMetadata{tagging-setup={table/header-rows={1}}}.",
+        { from: m.index, to: m.index + m[0].length },
+      ),
+    ];
+  }
+  return [];
+};
+
 const RULES: Rule[] = [
   multiColumn,
   noGlyphToUnicode,
@@ -361,11 +443,17 @@ const RULES: Rule[] = [
   nonstandardHeadings,
   colorOnly,
   readingOrderRisk,
+  uaStandardWithoutTitle,
+  uaStandardOnBundledEngine,
+  tableHeaderRows,
 ];
 
-export function runSourceRules(text: string): Finding[] {
+export function runSourceRules(text: string, context?: Partial<SourceRuleContext>): Finding[] {
   // Blank out commented-out LaTeX first so `% \usepackage{multicol}` does not
   // raise a false error. Offsets are preserved (comments become spaces).
   const masked = maskComments(text);
-  return RULES.flatMap((rule) => rule(masked)).sort((a, b) => (a.from ?? 0) - (b.from ?? 0));
+  const resolved: SourceRuleContext = { engine: context?.engine ?? "unknown" };
+  return RULES.flatMap((rule) => rule(masked, resolved))
+    .map((finding) => annotate(finding, "source-heuristic"))
+    .sort((a, b) => (a.from ?? 0) - (b.from ?? 0));
 }
