@@ -453,3 +453,73 @@ fn parses_a_megabyte_log_quickly() {
         "parsing 1 MiB took {elapsed:?}, ceiling {ceiling} ms"
     );
 }
+
+#[test]
+fn surfaces_biber_cannot_find_a_bibliography_file_as_an_error() {
+    let diags = parse(&[
+        "INFO - Reading '_oleafly_entry.bcf'",
+        "ERROR - Cannot find 'references.bib'!",
+        "INFO - ERRORS: 1",
+    ]);
+    assert_eq!(diags.len(), 1);
+    let d = &diags[0];
+    assert_eq!(d.severity, LogSeverity::Error);
+    assert_eq!(d.category, LogCategory::Biber);
+    assert_eq!(
+        d.message,
+        "Biber could not find references.bib. Check the file name in \\addbibresource and that the file is in the project."
+    );
+}
+
+#[test]
+fn surfaces_biber_biblatex_version_mismatch_as_an_error() {
+    let diags = parse(&[
+        "ERROR - Error: Found biblatex control file version 3.8, expected version 3.11.",
+        "This means that your biber (2.20) and biblatex (3.17) versions are incompatible.",
+    ]);
+    assert_eq!(diags.len(), 1);
+    assert_eq!(diags[0].severity, LogSeverity::Error);
+    assert_eq!(diags[0].category, LogCategory::Biber);
+    assert!(diags[0].message.contains("control file 3.8"));
+    assert!(diags[0].message.contains("expected 3.11"));
+}
+
+#[test]
+fn surfaces_raw_biber_missing_entry_warnings_without_the_tectonic_prefix() {
+    let diags =
+        parse(&["WARN - I didn't find a database entry for 'miles2004laddering' (section 0)"]);
+    assert_eq!(diags.len(), 1);
+    assert_eq!(diags[0].severity, LogSeverity::Warning);
+    assert_eq!(diags[0].category, LogCategory::Biber);
+    assert_eq!(
+        diags[0].message,
+        "No bib entry found for 'miles2004laddering'"
+    );
+}
+
+#[test]
+fn surfaces_biber_bibtex_syntax_errors_with_file_and_line() {
+    let diags = parse(&[
+        "ERROR - BibTeX subsystem: /tmp/p/references.bib, line 12, syntax error: found \"@\", expected end of entry",
+    ]);
+    assert_eq!(diags.len(), 1);
+    assert_eq!(diags[0].severity, LogSeverity::Error);
+    assert_eq!(diags[0].category, LogCategory::Biber);
+    assert_eq!(diags[0].file.as_deref(), Some("/tmp/p/references.bib"));
+    assert_eq!(diags[0].line, Some(12));
+    assert!(diags[0].message.starts_with("syntax error"));
+}
+
+#[test]
+fn surfaces_tectonic_missing_input_files_as_errors() {
+    let diags = parse(&[
+        "note: Running external tool /app/tectonic-biber ...",
+        "error: can't open path `missing.bib`",
+    ]);
+    assert_eq!(diags.len(), 1);
+    assert_eq!(diags[0].severity, LogSeverity::Error);
+    assert_eq!(
+        diags[0].message,
+        "The compile could not open missing.bib. Check the file name and that the file is in the project."
+    );
+}
