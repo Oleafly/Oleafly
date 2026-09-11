@@ -7,12 +7,13 @@ const mocks = vi.hoisted(() => ({
   dismissEngineHint: vi.fn(),
   ensureLoaded: vi.fn(async () => {}),
   install: vi.fn(async () => {}),
-  setEngine: vi.fn(async () => {}),
+  recompile: vi.fn(async () => {}),
+  setEngine: vi.fn(async (_engine: string, _flavor?: string | null) => {}),
   setShellEscape: vi.fn(async () => {}),
   picker: {
     open: true,
-    source: "project-open" as const,
-    findings: [],
+    source: "project-open" as "project-open" | "compile-failure",
+    findings: [] as { id: string; level: string; title: string; detail: string }[],
   },
   files: {
     projectId: "project-1" as string | null,
@@ -78,10 +79,15 @@ vi.mock("@/store/engine", () => ({
 }));
 vi.mock("@oleafly/latex", () => ({
   latexmkFixesFinding: () => false,
+  needsPdflatexFinding: (id: string) =>
+    ["hyperref-pdftex-driver", "eps-image", "pdftex-only"].includes(id),
 }));
 vi.mock("@/lib/toast", () => ({
   notifyError: vi.fn(),
   toast: { success: vi.fn() },
+}));
+vi.mock("@/store/compile", () => ({
+  useCompileStore: { getState: () => ({ recompile: mocks.recompile }) },
 }));
 
 import { EnginePickerModal } from "./EnginePickerModal";
@@ -89,10 +95,15 @@ import { EnginePickerModal } from "./EnginePickerModal";
 beforeEach(() => {
   mocks.close.mockClear();
   mocks.ensureLoaded.mockClear();
-  mocks.setEngine.mockClear();
+  mocks.recompile.mockClear();
   mocks.setShellEscape.mockClear();
+  mocks.setEngine.mockReset().mockImplementation(async (engine: string) => {
+    mocks.files.engine = { ...mocks.files.engine, id: engine };
+  });
   mocks.files.projectId = "project-1";
   mocks.files.engine = { id: "latex", allow_shell_escape: false };
+  mocks.picker.source = "project-open";
+  mocks.picker.findings = [];
   document.body.style.pointerEvents = "none";
 });
 
@@ -109,6 +120,40 @@ describe("EnginePickerModal", () => {
     expect(dialog.parentElement).toHaveClass("pointer-events-auto");
 
     fireEvent.click(screen.getByTestId("engine-picker-use-system"));
-    await waitFor(() => expect(mocks.setEngine).toHaveBeenCalledWith("latexmk"));
+    await waitFor(() => expect(mocks.setEngine).toHaveBeenCalledWith("latexmk", null));
+  });
+
+  it("pins the pdfLaTeX flavor in one click for a driver or EPS failure", async () => {
+    mocks.picker.source = "compile-failure";
+    mocks.picker.findings = [
+      {
+        id: "hyperref-pdftex-driver",
+        level: "blocker",
+        title: "hyperref is pinned to the pdfTeX driver",
+        detail: "detail",
+      },
+    ];
+    render(<EnginePickerModal />);
+
+    const button = screen.getByTestId("engine-picker-use-system");
+    expect(button).toHaveTextContent("Switch to pdfLaTeX and recompile");
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(mocks.setEngine).toHaveBeenCalledWith("latexmk", "pdflatex"),
+    );
+    await waitFor(() => expect(mocks.close).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.recompile).toHaveBeenCalled());
+    expect(mocks.files.engine.id).toBe("latexmk");
+  });
+
+  it("stops before recompiling when the engine did not change", async () => {
+    mocks.picker.source = "compile-failure";
+    mocks.setEngine.mockImplementation(async () => {});
+    render(<EnginePickerModal />);
+
+    fireEvent.click(screen.getByTestId("engine-picker-use-system"));
+    await waitFor(() => expect(mocks.setEngine).toHaveBeenCalled());
+    expect(mocks.close).not.toHaveBeenCalled();
+    expect(mocks.recompile).not.toHaveBeenCalled();
   });
 });

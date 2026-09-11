@@ -83,6 +83,44 @@ it("recognizes installed packages under their TeX Live names and removes the sha
   await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("tlmgr_remove", { packages: ["pgf"] }));
 });
 
+it("shows where a personal-tree installation landed", async () => {
+  const notice =
+    "[Oleafly] The system TeX tree is not writable, so the packages went into your personal tree at /Users/t/Library/texmf.";
+  mocks.invoke.mockImplementation(async (command: string) => {
+    if (command === "latex_engine_info") return engine;
+    if (command === "tlmgr_installed" || command === "tex_distributions") return [];
+    if (command === "tlmgr_install") return `${notice}\ntlmgr: installing pgf`;
+    return null;
+  });
+  render(<EngineSection />);
+  fireEvent.change(screen.getByPlaceholderText("Filter packages…"), { target: { value: "tikz" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add" }));
+  expect(await screen.findByText(/personal tree at \/Users\/t\/Library\/texmf/)).toBeInTheDocument();
+  expect(mocks.success.mock.calls.map((call) => String(call[0])).join("\n")).toContain(
+    "personal tree at /Users/t/Library/texmf",
+  );
+});
+
+it("lists personal-tree packages and removes them from that tree", async () => {
+  mocks.invoke.mockImplementation(async (command: string, args?: { userTree?: boolean }) => {
+    if (command === "latex_engine_info") return engine;
+    if (command === "tlmgr_installed") return args?.userTree ? ["pgf"] : ["tools"];
+    if (command === "tex_distributions") return [];
+    return null;
+  });
+  render(<EngineSection />);
+  fireEvent.change(screen.getByPlaceholderText("Filter packages…"), { target: { value: "tikz" } });
+  await screen.findByText("in your personal tree");
+  expect(useEngineStore.getState().installed).toEqual(["tools", "pgf"]);
+  fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+  await waitFor(() =>
+    expect(mocks.invoke).toHaveBeenCalledWith("tlmgr_remove", {
+      packages: ["pgf"],
+      userTree: true,
+    }),
+  );
+});
+
 it("disables package changes when the detected distribution has no tlmgr", async () => {
   const noManager = { ...engine, tlmgr: null };
   mocks.invoke.mockImplementation(async (command: string) =>

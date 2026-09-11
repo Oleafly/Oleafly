@@ -9,7 +9,11 @@ import {
 } from "@/store/engine-picker";
 import { installPhaseLabel, useEngineStore } from "@/store/engine";
 import { useFilesStore } from "@/store/files";
-import { latexmkFixesFinding, type ImportCompatFinding } from "@oleafly/latex";
+import {
+  latexmkFixesFinding,
+  needsPdflatexFinding,
+  type ImportCompatFinding,
+} from "@oleafly/latex";
 import { notifyError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -74,19 +78,20 @@ export function EnginePickerModal() {
   const needsShellEscape = findings.some((finding) =>
     ["minted", "pythontex", "shell-escape"].includes(finding.id),
   );
+  const needsPdflatex = findings.some((finding) => needsPdflatexFinding(finding.id));
 
   const pinLatexmk = async (afterInstall: boolean) => {
     setSwitching(true);
     try {
-      await setEngine("latexmk");
+      await setEngine("latexmk", needsPdflatex ? "pdflatex" : null);
       const selected = useFilesStore.getState();
       if (selected.projectId !== projectId || selected.engine.id !== "latexmk") return;
       if (shellEscapeConsent) await setShellEscape(true);
       if (useFilesStore.getState().projectId !== projectId) return;
       toast.success(
         afterInstall
-          ? "TinyTeX installed. This project now compiles with latexmk."
-          : "This project now compiles with latexmk.",
+          ? `TinyTeX installed. This project now compiles with ${needsPdflatex ? "pdfLaTeX through latexmk" : "latexmk"}.`
+          : `This project now compiles with ${needsPdflatex ? "pdfLaTeX through latexmk" : "latexmk"}.`,
       );
       close();
       if (source === "compile-failure") {
@@ -114,7 +119,7 @@ export function EnginePickerModal() {
       toast.success(
         allow
           ? "External commands are allowed for this project on this computer."
-          : "External commands are blocked for this project on this computer.",
+          : "Arbitrary external commands are blocked for this project. TeX Live's own helpers, like EPS conversion, still run.",
       );
     } catch (error) {
       setShellEscapeConsent(previous);
@@ -207,7 +212,11 @@ export function EnginePickerModal() {
           >
             <div className="flex items-center gap-2">
               <Cpu className="size-4 shrink-0 text-muted-foreground" />
-              <span className="text-sm font-medium">Use my system LaTeX (latexmk)</span>
+              <span className="text-sm font-medium">
+                {needsPdflatex
+                  ? "Use pdfLaTeX on my system LaTeX (latexmk)"
+                  : "Use my system LaTeX (latexmk)"}
+              </span>
               {hasSystemTex && (
                 <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                   Recommended
@@ -216,7 +225,7 @@ export function EnginePickerModal() {
             </div>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
               {hasSystemTex
-                ? "A TeX distribution was found on this machine. System TeX can read local files available to your account, so use it only with projects you trust. External commands remain blocked unless you allow them below."
+                ? "A TeX distribution was found on this machine. System TeX can read local files available to your account, so use it only with projects you trust. Arbitrary external commands stay blocked unless you allow them below. TeX Live still runs the helpers on its own allow list, like EPS conversion."
                 : "No TeX distribution (MacTeX, TeX Live, MiKTeX, TinyTeX) was found on this machine."}
             </p>
             {info?.latexmk && (
@@ -252,13 +261,15 @@ export function EnginePickerModal() {
                     className="mt-1 block leading-relaxed text-muted-foreground"
                   >
                     Required by minted and some PythonTeX documents. LaTeX can run programs with
-                    your user permissions, so enable this only for a project you trust.
+                    your user permissions, so enable this only for a project you trust. TeX Live's
+                    own helpers, like EPS conversion, run without it.
                   </span>
                 </span>
               </label>
               {needsShellEscape && !shellEscapeConsent && (
                 <p className="mt-2 text-[11px] font-medium text-amber-700 dark:text-amber-400">
-                  Shell-dependent features were detected and will stay blocked by default.
+                  This project uses features that need arbitrary external commands. They stay
+                  blocked until you allow them.
                 </p>
               )}
             </div>
@@ -275,7 +286,11 @@ export function EnginePickerModal() {
                 ) : alreadyLatexmk ? (
                   <Check className="size-3.5" />
                 ) : null}
-                {alreadyLatexmk ? "Already selected" : "Use system LaTeX"}
+                {alreadyLatexmk
+                  ? "Already selected"
+                  : needsPdflatex
+                    ? "Switch to pdfLaTeX and recompile"
+                    : "Use system LaTeX"}
               </Button>
             </div>
           </div>

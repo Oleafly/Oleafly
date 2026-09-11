@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   latexEngineInfo: vi.fn(),
   tlmgrInstallMissing: vi.fn(),
   toastInfo: vi.fn(),
+  toastError: vi.fn(),
   refreshPackages: vi.fn(),
   events: new Map<string, (event: { payload: string }) => void>(),
   listen: vi.fn(
@@ -93,7 +94,7 @@ vi.mock("@/store/project-index", () => ({
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => mocks.settings } }));
 vi.mock("@/lib/toast", () => ({
   notifyError: vi.fn(),
-  toast: { errorUnique: vi.fn(), info: mocks.toastInfo },
+  toast: { errorUnique: vi.fn(), error: mocks.toastError, info: mocks.toastInfo },
 }));
 vi.mock("@/store/engine", () => ({ useEngineStore: { getState: () => ({ refreshPackages: mocks.refreshPackages }) } }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
@@ -106,9 +107,11 @@ vi.mock("@/lib/cross-window", () => ({
 }));
 
 import {
+  installerNotices,
   isCompileCheckpointCurrent,
   useCompileStore,
 } from "./compile";
+import { useEnginePickerStore } from "@/store/engine-picker";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import {
   createCompileSuccessCheckpoint,
@@ -988,5 +991,111 @@ describe("missing TeX file installation", () => {
     mocks.files.projectId = "another-project";
     retry.onClick();
     expect(mocks.tlmgrInstallMissing).toHaveBeenCalledTimes(1);
+  });
+
+  it("repeats the backend notice when packages land in the personal TeX tree", async () => {
+    const action = await offer();
+    mocks.tlmgrInstallMissing.mockResolvedValue(
+      "[Oleafly] The system TeX tree is not writable, so the packages went into your personal tree at /home/u/texmf.\ntlmgr: installing pgf",
+    );
+    mocks.toastInfo.mockClear();
+    action.onClick();
+    await vi.waitFor(() =>
+      expect(
+        mocks.toastInfo.mock.calls.some((call) =>
+          String(call[0]).includes("personal tree at /home/u/texmf"),
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("reads only Oleafly notices out of the installer output", () => {
+    expect(installerNotices("tlmgr: installing pgf\nrunning mktexlsr")).toEqual([]);
+    expect(
+      installerNotices("[Oleafly] Packages went to the user tree.\ntlmgr: done"),
+    ).toEqual(["Packages went to the user tree."]);
+    expect(installerNotices(`[Oleafly] ${"x".repeat(500)}`)).toEqual([]);
+  });
+});
+
+describe("bundled-engine compile failures", () => {
+  let project = 0;
+  beforeEach(() => {
+    mocks.files.projectId = `bundled-engine-${++project}`;
+    mocks.files.engine = LATEX_ENGINE;
+    mocks.latexEngineInfo.mockReset().mockResolvedValue({ tlmgr: "/tex/tlmgr" });
+    mocks.toastInfo.mockReset();
+    mocks.toastError.mockReset();
+    useEnginePickerStore.setState({ open: false, source: "manual", findings: [] });
+  });
+
+  function failWith(log: string) {
+    mocks.compileProject.mockResolvedValue({
+      ok: false,
+      has_pdf: false,
+      output_id: null,
+      output_revision: null,
+      log,
+      errors: [],
+      synctex_path: null,
+      out_dir: null,
+      compile_time_ms: 1,
+    });
+  }
+
+  it("opens the picker with the pdfLaTeX findings a Tectonic template failure produces", async () => {
+    failWith(
+      [
+        "! Package hyperref Error: Wrong driver option `pdftex',",
+        'error: pdf: image inclusion failed for "images/MDHlogga.eps"',
+      ].join("\n"),
+    );
+    await useCompileStore.getState().recompile();
+    const picker = useEnginePickerStore.getState();
+    expect(picker.open).toBe(true);
+    expect(picker.source).toBe("compile-failure");
+    expect(picker.findings.map((f) => f.id)).toEqual([
+      "hyperref-pdftex-driver",
+      "eps-image",
+    ]);
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("offers a plain retry for a failed bundle download and never opens the picker", async () => {
+    failWith(
+      [
+        "error: this bundle isn't cached, and we couldn't get it from the internet",
+        "caused by: unexpected HTTP response code 503 for URL https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar",
+        "! LaTeX Error: File `amsmath.sty' not found.",
+      ].join("\n"),
+    );
+    await useCompileStore.getState().recompile();
+    expect(useEnginePickerStore.getState().open).toBe(false);
+    const call = mocks.toastError.mock.calls.at(-1);
+    expect(String(call?.[0])).toContain("HTTP 503");
+    expect(call?.[1]?.label).toBe("Compile again");
+    expect(mocks.compileProject).toHaveBeenCalledTimes(1);
+    call?.[1]?.onClick();
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
+  });
+
+  it("runs the missing-package offer on the first failure after the switch to latexmk", async () => {
+    failWith("! LaTeX Error: File `thesisMDU.cls' not found.");
+    await useCompileStore.getState().recompile();
+    expect(useEnginePickerStore.getState().findings.map((f) => f.id)).toContain(
+      "missing-sty-on-bundled-engine",
+    );
+    expect(mocks.toastInfo).not.toHaveBeenCalled();
+
+    mocks.files.engine = { ...LATEX_ENGINE, id: "latexmk" };
+    mocks.tlmgrInstallMissing.mockReset().mockResolvedValue("installed");
+    await useCompileStore.getState().recompile();
+    await vi.waitFor(() =>
+      expect(
+        mocks.toastInfo.mock.calls.some((call) =>
+          String(call[0]).includes("thesisMDU.cls"),
+        ),
+      ).toBe(true),
+    );
   });
 });

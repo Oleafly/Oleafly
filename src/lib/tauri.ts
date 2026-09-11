@@ -732,9 +732,11 @@ export interface TexPackage {
 
 export const tlmgrSearch = (query: string) => invoke<TexPackage[]>("tlmgr_search", { query });
 export const tlmgrInstallMissing = (files: string[]) => invoke<string>("tlmgr_install_missing", { files });
-export const tlmgrInstalled = () => invoke<string[]>("tlmgr_installed");
+export const tlmgrInstalled = (userTree = false) =>
+  invoke<string[]>("tlmgr_installed", userTree ? { userTree: true } : {});
 export const tlmgrInstall = (packages: string[]) => invoke<string>("tlmgr_install", { packages });
-export const tlmgrRemove = (packages: string[]) => invoke<string>("tlmgr_remove", { packages });
+export const tlmgrRemove = (packages: string[], userTree = false) =>
+  invoke<string>("tlmgr_remove", userTree ? { packages, userTree: true } : { packages });
 export const compileTagged = (projectId: string, mainDoc: string) =>
   invoke<TaggedCompileResult>("compile_tagged", { projectId, mainDoc });
 
