@@ -19,6 +19,7 @@ const REPORT_START = /^\s*Status\s+report\s+of\s+the\s+tagging\s+support\s*$/i;
 const REPORT_END = /^\s*End\s+of\s+status\s+report\s*$/i;
 const CLASS_LINE = /^\s*(\S+\.cls)\s+is\s(.*)$/;
 const SECTION_LINE = /^\s*([1-6])\.\s(.*)$/;
+const TAGPDF_WARNING = "Package tagpdf Warning:";
 const FILE_LINE = /^\s*(\S+\.(?:sty|def|ldf|cfg|tex|clo|cls))\s*$/;
 
 export type TaggingStatusGroup =
@@ -118,7 +119,10 @@ function taggingStatusFinding(report: TaggingStatusReport): Finding[] {
 function taggingLogFindings(logLines: readonly string[]): Finding[] {
   const out: Finding[] = [];
   const warnings = logLines
-    .map((line) => /Package tagpdf Warning:(.*)$/.exec(line)?.[1]?.trim())
+    .map((line) => {
+      const at = line.indexOf(TAGPDF_WARNING);
+      return at === -1 ? undefined : line.slice(at + TAGPDF_WARNING.length).trim();
+    })
     .filter((message): message is string => Boolean(message));
   const unique = [...new Set(warnings)];
   if (unique.length > 0) {
