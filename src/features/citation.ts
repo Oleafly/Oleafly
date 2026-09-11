@@ -7,6 +7,13 @@ import { arxivXmlToBibtex } from "@/lib/citation/arxiv";
 import { findKeyByDoi } from "@/lib/citation/dedup";
 import type { CitationHit } from "@/lib/citation/types";
 import { parseBib } from "@/lib/latex-tools";
+import {
+  type BibliographyEngine,
+  bibliographyDeclarations,
+  bibliographyEngineForCommand,
+  resolveBibliographyPath,
+} from "@oleafly/latex";
+import { maskComments } from "@/lib/index/parse-file";
 import { parseRis } from "@/lib/citation/ris";
 import { parseEndNoteXml } from "@/lib/citation/endnote-xml";
 import { parseZoteroRdf } from "@/lib/citation/zotero-rdf";
@@ -144,25 +151,44 @@ function resolveDeclaredBib(reference: string, bibPaths: string[], addExtension:
   return null;
 }
 
+function citationBibliographyDeclarations(
+  profile: string,
+  mainContent: string,
+): { raw: string; engine: BibliographyEngine }[] {
+  if (profile === "latex") {
+    return bibliographyDeclarations(maskComments(mainContent)).map((declaration) => ({
+      raw: declaration.raw,
+      engine: bibliographyEngineForCommand(declaration.command),
+    }));
+  }
+  if (profile === "typst") {
+    const match = /#bibliography\s*\(\s*["']([^"']+)["']/.exec(mainContent);
+    return match ? [{ raw: match[1], engine: "typst" as const }] : [];
+  }
+  if (profile === "markdown") {
+    return markdownBibliographyPaths(mainContent).map((raw) => ({ raw, engine: "markdown" as const }));
+  }
+  return [];
+}
+
 export function selectCitationBibliography(
   profile: string,
   mainContent: string,
   bibPaths: string[],
+  declaringFile = "",
 ): string {
-  let references: string[] = [];
-  let addExtension = false;
-  if (profile === "latex") {
-    const match = /\\(?:bibliography|addbibresource)\s*\{([^}]*)\}/.exec(mainContent);
-    references = match ? [match[1].split(",")[0].trim()] : [];
-    addExtension = true;
-  } else if (profile === "typst") {
-    const match = /#bibliography\s*\(\s*["']([^"']+)["']/.exec(mainContent);
-    references = match ? [match[1]] : [];
-  } else if (profile === "markdown") {
-    references = markdownBibliographyPaths(mainContent);
+  const declarations = citationBibliographyDeclarations(profile, mainContent);
+  for (const declaration of declarations) {
+    const shared = resolveBibliographyPath(
+      declaration.raw,
+      declaringFile,
+      bibPaths,
+      declaration.engine,
+    );
+    if (shared) return shared;
   }
-  for (const reference of references) {
-    const resolved = resolveDeclaredBib(reference, bibPaths, addExtension);
+  for (const declaration of declarations) {
+    const resolved = resolveDeclaredBib(declaration.raw, bibPaths, declaration.engine === "latex");
     if (resolved) return resolved;
   }
   return bibPaths[0] ?? "references.bib";
@@ -171,14 +197,16 @@ export function selectCitationBibliography(
 function pickTargetBib(files: ReturnType<typeof useFilesStore.getState>, source?: string): { path: string; content: string } {
   // Look for \bibliography in the document that actually compiles, which a
   // `% !TEX root` comment in the active file may redirect.
-  const mainContent =
-    source ?? files.files[resolveEffectiveMainDoc().mainDoc]?.content ?? "";
+  const effectiveMain = resolveEffectiveMainDoc().mainDoc;
+  const declaringFile = source !== undefined ? files.mainDoc : effectiveMain;
+  const mainContent = source ?? files.files[effectiveMain]?.content ?? "";
   const bibPaths = files.tree.filter((f) => !f.is_dir && f.path.endsWith(".bib")).map((f) => f.path);
 
   const path = selectCitationBibliography(
     files.engine.capabilities.formatting_profile,
     mainContent,
     bibPaths,
+    declaringFile,
   );
   return { path, content: files.files[path]?.content ?? "" };
 }

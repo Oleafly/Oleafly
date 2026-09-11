@@ -54,8 +54,11 @@ not be read out of this particular file, how many were left unchecked. A rule
 counts as verified only when Preflight read the evidence and the evidence was
 clean. A value Preflight could not read stays unchecked, and so does a rule that does
 not apply to an untagged file. A rule whose evidence lives in a structure tree that
-failed to load is unchecked too. None of those count as a pass. That is a subset
-check, not a conformance statement.
+failed to load is unchecked too. None of those count as a pass. The two
+identification rules work the same way: they count as verified only when the
+XMP metadata declares pdfuaid:part 1. Another part, or no declaration at all,
+leaves them unchecked. Preflight still reports a PDF/UA claim the file does not
+back up. That is a subset check, not a conformance statement.
 
 When the build log carries the report that `\DocumentMetadata{check-tagging-status}`
 writes, Preflight reads it and repeats what LaTeX said about the class and the

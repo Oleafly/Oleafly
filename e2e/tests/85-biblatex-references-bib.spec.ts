@@ -64,7 +64,7 @@ test("a citation imported into a fresh biblatex project resolves on the first co
   expect(log).not.toContain("Empty bibliography");
   expect(log).not.toContain("Please (re)run Biber");
   expect(log).not.toContain("Cannot find 'references.bib'");
-  await expectCompiledPdfContains(tauriPage, "Doing Social Psychology Research", 120_000);
+  await expectCompiledPdfContains(tauriPage, "Sarah Miles and Gene Rowe", 120_000);
 });
 
 test("a bibliography file that does not exist is named in the compile diagnostics", async ({

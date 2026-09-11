@@ -18,6 +18,7 @@ export function TexPackagesSection() {
     info,
     installed,
     userInstalled,
+    systemInstalled,
     packageNotice,
     busyPkg,
     packageError,
@@ -148,11 +149,15 @@ export function TexPackagesSection() {
         {rows.map((p) => {
           const packageName = p.texLivePackage ?? p.name;
           const on = installed.includes(packageName);
-          const tree = on
-            ? userInstalled.includes(packageName)
-              ? "your personal tree"
-              : "the system tree"
-            : null;
+          const inUserTree = userInstalled.includes(packageName);
+          const inSystemTree = systemInstalled.includes(packageName);
+          const tree = !on
+            ? null
+            : inUserTree && inSystemTree
+              ? "both trees"
+              : inUserTree
+                ? "your personal tree"
+                : "the system tree";
           const badge = p.tagging ? TAG_BADGE[p.tagging] : null;
           const busy = busyPkg === packageName;
           return (

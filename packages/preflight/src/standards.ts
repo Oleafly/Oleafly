@@ -268,7 +268,7 @@ export interface PdfUaAvailability {
   viewerPreferences: boolean;
   annotations: boolean;
   markedContent: boolean;
-  uaClaim: boolean;
+  identifiesAsPdfUa1: boolean;
   tagged: boolean | null;
 }
 
@@ -279,13 +279,13 @@ export const NOTHING_INSPECTED: PdfUaAvailability = {
   viewerPreferences: false,
   annotations: false,
   markedContent: false,
-  uaClaim: false,
+  identifiesAsPdfUa1: false,
   tagged: null,
 };
 
 const RULE_AVAILABILITY: Record<string, (facts: PdfUaAvailability) => boolean> = {
-  "5-1": (facts) => facts.metadata && facts.uaClaim,
-  "5-2": (facts) => facts.metadata && facts.uaClaim,
+  "5-1": (facts) => facts.metadata && facts.identifiesAsPdfUa1,
+  "5-2": (facts) => facts.metadata && facts.identifiesAsPdfUa1,
   "6.2-1": (facts) => facts.tagged !== null,
   "7.1-3": (facts) => facts.markedContent && facts.tagged === true,
   "7.1-4": (facts) => facts.markInfo && facts.tagged === true,

@@ -159,8 +159,8 @@ describe("deterministic PDF accessibility verdicts", () => {
         },
       },
     });
-    expect(report.pdfUa?.passed).toBe(report.pdfUa?.covered);
-    expect(report.pdfUa?.unavailable).toEqual([]);
+    expect(report.pdfUa?.unavailable).toEqual(["5-1", "5-2"]);
+    expect(report.pdfUa?.passed).toBe((report.pdfUa?.covered ?? 0) - 2);
     expect(report.pdfUa?.total).toBe(106);
   });
 
@@ -223,7 +223,7 @@ describe("deterministic PDF accessibility verdicts", () => {
   it("verifies every rule it read on a tagged PDF that comes back clean", () => {
     const report = runPreflight({
       ...base,
-      struct: { ...taggedDocument, ua: { ...cleanUa } },
+      struct: { ...taggedDocument, ua: { ...cleanUa, uaPart: 1 } },
       extraction: everythingRead,
     });
     expect(report.findings).toEqual([]);
@@ -240,8 +240,19 @@ describe("deterministic PDF accessibility verdicts", () => {
     });
     expect(report.findings.map((finding) => finding.id)).toEqual(["pdf-display-doc-title"]);
     expect(report.pdfUa?.failed).toEqual(["7.1-10"]);
-    expect(report.pdfUa?.unavailable).toEqual([]);
-    expect(report.pdfUa?.passed).toBe((report.pdfUa?.covered ?? 0) - 1);
+    expect(report.pdfUa?.unavailable).toEqual(["5-1", "5-2"]);
+    expect(report.pdfUa?.passed).toBe((report.pdfUa?.covered ?? 0) - 3);
+  });
+
+  it("leaves the identification rules unchecked when the file declares PDF/UA-2", () => {
+    const report = runPreflight({
+      ...base,
+      struct: { ...taggedDocument, ua: { ...cleanUa, uaPart: 2 } },
+      extraction: everythingRead,
+    });
+    expect(report.findings).toEqual([]);
+    expect(report.pdfUa?.outcomes["5-1"]).toBe("unavailable");
+    expect(report.pdfUa?.outcomes["5-2"]).toBe("unavailable");
   });
 
   it("keeps the untagged verdict as one informational finding with an honest remedy", () => {

@@ -244,3 +244,42 @@ describe("addCitations through the real writeProjectFile", () => {
     ]);
   });
 });
+
+describe("LaTeX bibliography targeting", () => {
+  const LATEX_TREE = [
+    { path: "main.tex", is_dir: false },
+    { path: "other.bib", is_dir: false },
+    { path: "refs.bib", is_dir: false },
+  ];
+
+  const useLatexProject = (source: string) => {
+    mocks.listFiles.mockImplementation(async () => LATEX_TREE);
+    useFilesStore.setState({
+      mainDoc: "main.tex",
+      engine: LATEX_ENGINE,
+      tree: LATEX_TREE,
+      files: { "main.tex": { content: source, dirty: false } },
+    });
+  };
+
+  it("writes into the declared bibliography, not the first one in the tree", async () => {
+    useLatexProject("\\addbibresource[location=local]{refs.bib}\n");
+
+    const result = await addCitations([ENTRY]);
+
+    expect(result.bibPath).toBe("refs.bib");
+    expect(mocks.writeFileContent.mock.calls.map((call) => call[1])).toEqual(["refs.bib"]);
+  });
+
+  it("writes into the bibliography a plain declaration names", async () => {
+    useLatexProject("\\bibliography{refs}\n");
+
+    expect((await addCitations([ENTRY])).bibPath).toBe("refs.bib");
+  });
+
+  it("falls back to the first bibliography when the project declares none", async () => {
+    useLatexProject("\\documentclass{article}\n");
+
+    expect((await addCitations([ENTRY])).bibPath).toBe("other.bib");
+  });
+});

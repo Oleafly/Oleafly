@@ -44,6 +44,7 @@ export function pdfUaAvailability(
   meta: PreflightInput["meta"],
 ): PdfUaAvailability {
   const ua = struct?.ua;
+  const readTheMetadata = extraction?.metadata === "ok";
   const structureRead = (extraction?.structure ?? "ok") === "ok";
   const tagged = struct?.tagged ?? meta?.tagged ?? null;
   const hasRoot = (struct?.root ?? null) !== null;
@@ -52,13 +53,13 @@ export function pdfUaAvailability(
   const readTheCatalogFacts = ua !== undefined && tagged === true && reachedTheTagTree;
   const checkedTheClaim = ua !== undefined && tagged !== null && (tagged === false || reachedTheTagTree);
   return {
-    metadata: extraction?.metadata === "ok",
+    metadata: readTheMetadata,
     markInfo: extraction?.markInfo === "ok" && readTheCatalogFacts,
     structure: walkedTheTagTree,
     viewerPreferences: readTheCatalogFacts && ua !== undefined && ua.displayDocTitle !== null,
     annotations: readTheCatalogFacts,
     markedContent: readTheCatalogFacts && walkedTheTagTree,
-    uaClaim: checkedTheClaim,
+    identifiesAsPdfUa1: readTheMetadata && checkedTheClaim && ua?.uaPart === 1,
     tagged,
   };
 }

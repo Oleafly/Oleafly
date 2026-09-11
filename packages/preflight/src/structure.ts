@@ -80,6 +80,20 @@ function claimMismatch(ua: PdfUaFacts, tagged: boolean): Finding[] {
   ];
 }
 
+function xmpTitleFindings(ua: PdfUaFacts): Finding[] {
+  if (ua.xmpTitle || !ua.infoTitle) return [];
+  return [
+    observed({
+      id: "pdf-xmp-title",
+      severity: "warning",
+      title: "The title is only in the Info dictionary",
+      detail:
+        "The document title is set in the Info dictionary but not as dc:title in the XMP metadata, which is where PDF/UA looks for it. Loading hyperref with pdftitle writes both.",
+      certainty: "verified",
+    }),
+  ];
+}
+
 function catalogUaFindings(ua: PdfUaFacts): Finding[] {
   const out: Finding[] = [];
   if (ua.displayDocTitle === false) {
@@ -102,18 +116,6 @@ function catalogUaFindings(ua: PdfUaFacts): Finding[] {
         title: "The PDF marks its own tagging as unreliable",
         detail:
           "MarkInfo sets Suspects to true, which is the producer saying the tag tree may not match the visible content. Recompile with a current engine, and check the tagging warnings in the log.",
-        certainty: "verified",
-      }),
-    );
-  }
-  if (!ua.xmpTitle && ua.infoTitle) {
-    out.push(
-      observed({
-        id: "pdf-xmp-title",
-        severity: "warning",
-        title: "The title is only in the Info dictionary",
-        detail:
-          "The document title is set in the Info dictionary but not as dc:title in the XMP metadata, which is where PDF/UA looks for it. Loading hyperref with pdftitle writes both.",
         certainty: "verified",
       }),
     );
@@ -165,8 +167,9 @@ export function verifyStructure(
           }),
         ]
       : [];
+  const titleFindings = doc.ua ? xmpTitleFindings(doc.ua) : [];
 
-  if (doc.tagged === null) return extractionFindings;
+  if (doc.tagged === null) return [...extractionFindings, ...titleFindings];
   if (!doc.tagged) {
     return [
       ...extractionFindings,
@@ -178,10 +181,11 @@ export function verifyStructure(
           "The compiled PDF carries no structure tree, so a screen reader gets no headings, lists, tables, or reading order, and the file cannot satisfy PDF/UA-1 clause 7.1. Tagged output needs pdfLaTeX or LuaLaTeX from TeX Live 2025 or newer with \\DocumentMetadata{tagging=on}. The bundled engine cannot produce tags. The source and output checks above still apply in the meantime.",
       }),
       ...(doc.ua ? claimMismatch(doc.ua, false) : []),
+      ...titleFindings,
     ];
   }
   if (!doc.root) {
-    if (structureFailedPages.length > 0) return extractionFindings;
+    if (structureFailedPages.length > 0) return [...extractionFindings, ...titleFindings];
     return [
       observed({
         id: "pdf-structure-missing",
@@ -190,7 +194,7 @@ export function verifyStructure(
         detail:
           "The PDF declares itself tagged, but Preflight found no document structure to navigate. Screen readers may not receive headings, lists, tables, or reading order. Tagging needs two compile passes, so compile again and re-check before treating this as final.",
       }),
-      ...(doc.ua ? [...claimMismatch(doc.ua, false), ...catalogUaFindings(doc.ua)] : []),
+      ...(doc.ua ? [...claimMismatch(doc.ua, false), ...titleFindings, ...catalogUaFindings(doc.ua)] : []),
       ...singlePassFinding(0),
     ];
   }
@@ -254,7 +258,7 @@ export function verifyStructure(
     }
   }
 
-  if (doc.ua) out.push(...claimMismatch(doc.ua, true), ...catalogUaFindings(doc.ua));
+  if (doc.ua) out.push(...claimMismatch(doc.ua, true), ...titleFindings, ...catalogUaFindings(doc.ua));
   out.push(...singlePassFinding(countNodes(doc.root) - 1));
 
   return out;

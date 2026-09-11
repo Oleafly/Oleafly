@@ -2828,10 +2828,20 @@ mod tests {
             Some(home.join("Library/texmf"))
         );
         assert_eq!(expand_tex_tree_path("~"), Some(home));
+        #[cfg(not(windows))]
         assert_eq!(
             expand_tex_tree_path("  /opt/texmf \n"),
             Some(PathBuf::from("/opt/texmf"))
         );
+        #[cfg(windows)]
+        assert_eq!(
+            expand_tex_tree_path("  C:\\texmf \n"),
+            Some(PathBuf::from("C:\\texmf"))
+        );
+        #[cfg(windows)]
+        assert_eq!(expand_tex_tree_path("\\texmf"), None);
+        #[cfg(windows)]
+        assert_eq!(expand_tex_tree_path("C:texmf"), None);
         assert_eq!(expand_tex_tree_path("texmf"), None);
         assert_eq!(expand_tex_tree_path("   "), None);
     }

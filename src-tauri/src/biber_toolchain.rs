@@ -103,7 +103,6 @@ fn path_is_within(path: &Path, root: &Path) -> bool {
     resolved_path == resolved_root || resolved_path.starts_with(&resolved_root)
 }
 
-/// Identity of the .bbl on disk: enough to tell whether a compile rewrote it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BblStamp {
     modified: Option<std::time::SystemTime>,
@@ -119,10 +118,6 @@ pub fn bbl_stamp(out_dir: &Path, entry_stem: &str) -> Option<BblStamp> {
     })
 }
 
-/// True when this compile produced the .bbl: either its stamp differs from the
-/// one taken before the run, or the .blg (cleared before every compile) says
-/// Biber wrote it. Filesystems with two-second timestamps can leave a rewritten
-/// .bbl with an unchanged stamp, which is what the .blg evidence covers.
 pub fn bbl_refreshed(out_dir: &Path, entry_stem: &str, before: Option<BblStamp>) -> bool {
     match bbl_stamp(out_dir, entry_stem) {
         Some(after) => {
@@ -142,9 +137,6 @@ fn biber_wrote_bbl(out_dir: &Path, entry_stem: &str) -> bool {
         .any(|line| line.trim_end_matches('\r') == marker)
 }
 
-/// Keep only Biber's warning and error lines for the user-facing log. The
-/// .blg file prefixes every line with `[ms] Module.pm:line> `; console output
-/// does not.
 pub fn biber_message_excerpt(log: &str) -> String {
     let mut excerpt = String::new();
     for line in log

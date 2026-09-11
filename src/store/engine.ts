@@ -43,6 +43,7 @@ interface EngineStore {
   installWaitNoticeOpen: boolean;
   installed: string[];
   userInstalled: string[];
+  systemInstalled: string[];
   packageNotice: string | null;
   busyPkg: string | null;
   packageError: string | null;
@@ -68,6 +69,7 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
   installWaitNoticeOpen: false,
   installed: [],
   userInstalled: [],
+  systemInstalled: [],
   packageNotice: null,
   busyPkg: null,
   packageError: null,
@@ -100,7 +102,7 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
     const request = ++packageReadRequest;
     const manager = get().info?.tlmgr;
     if (!manager) {
-      set({ installed: [], userInstalled: [], packageError: null });
+      set({ installed: [], userInstalled: [], systemInstalled: [], packageError: null });
       return;
     }
     try {
@@ -111,13 +113,19 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
       if (request === packageReadRequest && get().info?.tlmgr === manager) {
         set({
           installed: [...new Set([...system, ...user])],
-          userInstalled: user.filter((name) => !system.includes(name)),
+          userInstalled: [...new Set(user)],
+          systemInstalled: [...new Set(system)],
           packageError: null,
         });
       }
     } catch (error) {
       if (request === packageReadRequest && get().info?.tlmgr === manager) {
-        set({ installed: [], userInstalled: [], packageError: packageErrorMessage(error, "Could not read the installed packages.") });
+        set({
+          installed: [],
+          userInstalled: [],
+          systemInstalled: [],
+          packageError: packageErrorMessage(error, "Could not read the installed packages."),
+        });
       }
     }
   },
@@ -187,7 +195,7 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
     try {
       await deleteTinytex();
       toast.success("Removed TinyTeX");
-      set({ installed: [], userInstalled: [], partialDownloadBytes: 0 });
+      set({ installed: [], userInstalled: [], systemInstalled: [], partialDownloadBytes: 0 });
       void get().refresh();
     } catch (e) {
       void logError("delete tinytex", e);

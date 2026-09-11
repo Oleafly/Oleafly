@@ -23,7 +23,7 @@ const EVERYTHING_INSPECTED: PdfUaAvailability = {
   viewerPreferences: true,
   annotations: true,
   markedContent: true,
-  uaClaim: true,
+  identifiesAsPdfUa1: true,
   tagged: true,
 };
 
@@ -229,6 +229,13 @@ describe("pdfUaCoverage", () => {
     }
     expect(coverage.failed).toEqual([]);
     expect(coverage.passed).toBeLessThan(PDF_UA_1_COVERED_RULES.length);
+  });
+
+  it("leaves the identification rules unchecked when the file claims nothing", () => {
+    const coverage = pdfUaCoverage([], { ...EVERYTHING_INSPECTED, identifiesAsPdfUa1: false });
+    expect(coverage.outcomes["5-1"]).toBe("unavailable");
+    expect(coverage.outcomes["5-2"]).toBe("unavailable");
+    expect(coverage.passed).toBe(PDF_UA_1_COVERED_RULES.length - 2);
   });
 
   it("treats a viewer preference it could not read as unknown, not verified", () => {

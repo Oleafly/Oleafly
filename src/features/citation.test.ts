@@ -68,6 +68,7 @@ import {
   parseCitationFile,
   selectCitationBibliography,
 } from "./citation";
+import { resolveBibliographyPath } from "@oleafly/latex";
 
 const BIBTEX = "@article{placeholder,\n  title = {Edge Sensing},\n  author = {Ada Lovelace},\n  year = {2024}\n}";
 
@@ -181,6 +182,45 @@ describe("selectCitationBibliography", () => {
     expect(
       selectCitationBibliography("latex", "\\addbibresource{lib/refs.bib}\n", ["lib/refs.bib"]),
     ).toBe("lib/refs.bib");
+  });
+
+  it("follows a declaration that carries an options bracket", () => {
+    expect(
+      selectCitationBibliography(
+        "latex",
+        "\\addbibresource[location=local]{refs.bib}\n",
+        ["other.bib", "refs.bib"],
+        "main.tex",
+      ),
+    ).toBe("refs.bib");
+    expect(
+      selectCitationBibliography("latex", "\\bibliography*{refs}\n", ["other.bib", "refs.bib"], "main.tex"),
+    ).toBe("refs.bib");
+  });
+
+  it("resolves a declaration the same way the preflight resolver does", () => {
+    expect(
+      selectCitationBibliography(
+        "latex",
+        "\\addbibresource[location=local]{refs.bib}\n",
+        ["other.bib", "refs.bib"],
+        "main.tex",
+      ),
+    ).toBe(
+      resolveBibliographyPath("refs.bib", "main.tex", ["other.bib", "refs.bib"], "biblatex"),
+    );
+  });
+
+  it("prefers the bib file next to the declaring document over a root-level namesake", () => {
+    expect(
+      selectCitationBibliography("latex", "\\bibliography{refs}\n", ["paper/refs.bib"], "paper/main.tex"),
+    ).toBe("paper/refs.bib");
+  });
+
+  it("ignores a commented-out declaration", () => {
+    expect(
+      selectCitationBibliography("latex", "% \\bibliography{refs}\n", ["other.bib", "refs.bib"], "main.tex"),
+    ).toBe("other.bib");
   });
 
   it("takes only the first entry of a multi-file LaTeX declaration", () => {
