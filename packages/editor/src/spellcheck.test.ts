@@ -983,75 +983,72 @@ describe("proofreading actions by kind", () => {
 
   it("hides a finding the writer already dismissed", async () => {
     const actions = stubActionHost();
-    const text0 = "We compare the the results.";
-    actions.suppressFinding(
-      null,
-      grammarSuppressionKey("RepeatedWords", text0, text0.indexOf("the the")),
-    );
     const text = "We compare the the results.";
     const at = text.indexOf("the the");
-    setSpellHost(
-      proofreadingHost(
-        workerResult([
-          {
-            from: at,
-            to: at + 7,
-            message: "Did you mean to repeat this word?",
-            kind: "Repetition",
-            source: "harper",
-            word: "the the",
-            suggestions: [],
-            rule: "RepeatedWords",
-          },
-        ]),
-      ) as never,
+    const sentinel = text.indexOf("results");
+    actions.suppressFinding(
+      null,
+      grammarSuppressionKey("RepeatedWords", text, at),
     );
-    const editor = new EditorView({
-      state: EditorState.create({
-        doc: text,
-        extensions: [
-          diagnosticPresentationExtensions(),
-          createHarperLinter(true),
-        ],
-      }),
-      parent: document.body,
-    });
-    view = editor;
-    forceLinting(editor);
-    await vi.waitFor(() => expect(diagnosticCardSource(editor, at)).toBeNull());
+    const editor = await mountLinted(text, [
+      {
+        from: at,
+        to: at + 7,
+        message: "Did you mean to repeat this word?",
+        kind: "Repetition",
+        source: "harper",
+        word: "the the",
+        suggestions: [],
+        rule: "RepeatedWords",
+      },
+      {
+        from: sentinel,
+        to: sentinel + 7,
+        message: "Consider another word here",
+        kind: "WordChoice",
+        source: "harper",
+        word: "results",
+        suggestions: [],
+        rule: "KeptRule",
+      },
+    ]);
+
+    await vi.waitFor(() =>
+      expect(diagnosticCardSource(editor, sentinel)).not.toBeNull(),
+    );
+    expect(diagnosticCardSource(editor, at)).toBeNull();
   });
 
   it("drops a finding wider than a word before it reaches the editor", async () => {
     stubActionHost();
     const text = `A ${"long ".repeat(30)}tail.`;
-    setSpellHost(
-      proofreadingHost(
-        workerResult([
-          {
-            from: 0,
-            to: text.length - 1,
-            message: "Possible misspelling",
-            kind: "Spelling",
-            source: "hunspell",
-            word: text.slice(0, text.length - 1),
-            suggestions: [],
-            rule: null,
-          },
-        ]),
-      ) as never,
+    const sentinel = text.indexOf("tail");
+    const editor = await mountLinted(text, [
+      {
+        from: 0,
+        to: text.length - 1,
+        message: "Possible misspelling",
+        kind: "Spelling",
+        source: "hunspell",
+        word: text.slice(0, text.length - 1),
+        suggestions: [],
+        rule: null,
+      },
+      {
+        from: sentinel,
+        to: sentinel + 4,
+        message: "Possible misspelling",
+        kind: "Spelling",
+        source: "hunspell",
+        word: "tail",
+        suggestions: [],
+        rule: null,
+      },
+    ]);
+
+    await vi.waitFor(() =>
+      expect(diagnosticCardSource(editor, sentinel)).not.toBeNull(),
     );
-    const editor = new EditorView({
-      state: EditorState.create({
-        doc: text,
-        extensions: [
-          diagnosticPresentationExtensions(),
-          createHarperLinter(true),
-        ],
-      }),
-      parent: document.body,
-    });
-    view = editor;
-    forceLinting(editor);
-    await vi.waitFor(() => expect(diagnosticCardSource(editor, 5)).toBeNull());
+    expect(diagnosticCardSource(editor, 5)).toBeNull();
   });
 });

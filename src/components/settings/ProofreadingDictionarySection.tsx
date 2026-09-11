@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+import { Switch } from "@/components/ui/switch";
 import {
   Tabs,
   TabsContent,
@@ -23,6 +24,10 @@ import {
   normalizeDictionaryWord,
   useDictionary,
 } from "@/lib/dictionary";
+import {
+  ACADEMIC_PROFILE_RULES,
+  ACADEMIC_DISABLED_RULES,
+} from "@/lib/proofreading/lint-profile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
@@ -151,6 +156,79 @@ type ClearTarget =
   | { type: "project"; id: string; label: string }
   | { type: "suppressed"; id: string; label: string };
 
+const NOTHING_TURNED_OFF = `You have not turned off any rules yourself. The academic profile turns off ${ACADEMIC_DISABLED_RULES.length} rules by default. They are listed below.`;
+
+function ProfileRules() {
+  const enabledRules = useSettingsStore(
+    (state) => state.harperEnabledRules,
+  );
+  const disabledRules = useSettingsStore(
+    (state) => state.harperDisabledRules,
+  );
+  const setHarperEnabledRules = useSettingsStore(
+    (state) => state.setHarperEnabledRules,
+  );
+  const enableHarperRule = useSettingsStore(
+    (state) => state.enableHarperRule,
+  );
+
+  const overrides = useMemo(() => new Set(enabledRules), [enabledRules]);
+  const turnedOff = useMemo(() => new Set(disabledRules), [disabledRules]);
+
+  const toggle = (rule: string, on: boolean) => {
+    if (!on) {
+      setHarperEnabledRules(
+        enabledRules.filter((candidate) => candidate !== rule),
+      );
+      return;
+    }
+    if (turnedOff.has(rule)) enableHarperRule(rule);
+    if (!overrides.has(rule)) {
+      setHarperEnabledRules([...enabledRules, rule]);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <h5
+          id="proofreading-profile-rules"
+          className="text-xs font-medium text-foreground"
+        >
+          Turned off by the academic profile
+        </h5>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Harper ships tuned for chat, so these rules start off. Turn one on
+          to see its findings again.
+        </p>
+      </div>
+      <ul
+        className="m-0 max-h-64 list-none space-y-1 overflow-y-auto p-0"
+        aria-labelledby="proofreading-profile-rules"
+      >
+        {ACADEMIC_PROFILE_RULES.map(({ rule, reason }) => (
+          <li
+            key={rule}
+            className="flex items-start justify-between gap-3 rounded-md px-1 py-1.5 hover:bg-accent/50"
+          >
+            <div className="min-w-0">
+              <span className="font-mono text-xs text-foreground">
+                {rule}
+              </span>
+              <p className="text-xs text-muted-foreground">{reason}</p>
+            </div>
+            <Switch
+              aria-label={`Turn on ${rule}`}
+              checked={overrides.has(rule) && !turnedOff.has(rule)}
+              onCheckedChange={(value) => toggle(rule, value)}
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function TurnedOffFindings({
   projectId,
   projectName,
@@ -186,7 +264,7 @@ function TurnedOffFindings({
       </div>
       {disabledRules.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          No grammar rules are turned off.
+          {NOTHING_TURNED_OFF}
         </p>
       ) : (
         <ul
@@ -214,6 +292,7 @@ function TurnedOffFindings({
           ))}
         </ul>
       )}
+      <ProfileRules />
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground">
@@ -475,7 +554,7 @@ export function ProofreadingDictionarySection() {
           clearAll();
           setHarperDisabledRules([]);
         }}
-        confirmationDescription="This permanently removes every ignored word, global and per-project, and turns every grammar rule back on. Proofreading will flag those words again."
+        confirmationDescription="This permanently removes every ignored word, global and per-project, and turns back on every grammar rule you turned off. The academic profile keeps its own rules off. Proofreading will flag those words again."
       />
       <ConfirmationDialog
         open={clearTarget !== null}

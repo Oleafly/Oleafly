@@ -1,35 +1,89 @@
 export type LintConfigValue = boolean | null;
 export type LintConfig = Record<string, LintConfigValue>;
 
-export const ACADEMIC_DISABLED_RULES: readonly string[] = [
-  "Spaces",
-  "NoFrenchSpaces",
-  "TransposedSpace",
-  "ExpandMemoryShorthands",
-  "ExpandTimeShorthands",
-  "ExpandStandardInputAndOutput",
-  "ExpandAlgorithm",
-  "ExpandArgument",
-  "ExpandParameter",
-  "ExpandCoordinate",
-  "MoreAdjective",
-  "AvoidContractions",
-  "LongSentences",
-  "Hedging",
-  "FillerWords",
-  "BoringWords",
-  "DiscourseMarkers",
-  "ExplainLikeImFive",
-  "SplitWords",
-  "MergeWords",
-  "CompoundNouns",
-  "OxfordComma",
-  "NoOxfordComma",
-  "Dashes",
-  "EllipsisLength",
-  "NumericRangeEnDash",
-  "SentenceCapitalization",
+export interface LintProfileRule {
+  rule: string;
+  reason: string;
+}
+
+export const ACADEMIC_PROFILE_RULES: readonly LintProfileRule[] = [
+  {
+    rule: "Spaces",
+    reason:
+      "Collapses repeated spaces, which the prose mask leaves wherever markup was blanked out.",
+  },
+  {
+    rule: "NoFrenchSpaces",
+    reason:
+      "Removes the space before punctuation that French typography uses.",
+  },
+  {
+    rule: "TransposedSpace",
+    reason:
+      "Moves a space that sits on the wrong side of punctuation, which masking often produces.",
+  },
+  {
+    rule: "ExpandMemoryShorthands",
+    reason: "Wants KB and MB spelled out.",
+  },
+  {
+    rule: "ExpandTimeShorthands",
+    reason: "Wants min and sec spelled out.",
+  },
+  {
+    rule: "ExpandStandardInputAndOutput",
+    reason: "Wants stdin and stdout spelled out.",
+  },
+  { rule: "ExpandAlgorithm", reason: "Wants algo spelled out." },
+  { rule: "ExpandArgument", reason: "Wants arg spelled out." },
+  { rule: "ExpandParameter", reason: "Wants param spelled out." },
+  { rule: "ExpandCoordinate", reason: "Wants coord spelled out." },
+  {
+    rule: "MoreAdjective",
+    reason: "Prefers the comparative form over more plus an adjective.",
+  },
+  {
+    rule: "AvoidContractions",
+    reason: "Asks you to write out every contraction.",
+  },
+  {
+    rule: "LongSentences",
+    reason: "Flags any sentence past its length limit.",
+  },
+  {
+    rule: "Hedging",
+    reason: "Flags cautious wording such as may and appears to.",
+  },
+  { rule: "FillerWords", reason: "Flags words it counts as filler." },
+  { rule: "BoringWords", reason: "Asks for a livelier word." },
+  {
+    rule: "DiscourseMarkers",
+    reason: "Flags connectives such as however and therefore.",
+  },
+  { rule: "ExplainLikeImFive", reason: "Asks for simpler vocabulary." },
+  { rule: "SplitWords", reason: "Joins two words it reads as one word." },
+  { rule: "MergeWords", reason: "Splits a word it reads as two words." },
+  { rule: "CompoundNouns", reason: "Joins or hyphenates a noun pair." },
+  { rule: "OxfordComma", reason: "Requires the serial comma." },
+  { rule: "NoOxfordComma", reason: "Removes the serial comma." },
+  { rule: "Dashes", reason: "Rewrites one kind of dash as another." },
+  {
+    rule: "EllipsisLength",
+    reason: "Fixes an ellipsis that is not three dots.",
+  },
+  {
+    rule: "NumericRangeEnDash",
+    reason: "Wants an en dash between the ends of a number range.",
+  },
+  {
+    rule: "SentenceCapitalization",
+    reason:
+      "Capitalizes the first word of a sentence, including one that starts after masked markup.",
+  },
 ];
+
+export const ACADEMIC_DISABLED_RULES: readonly string[] =
+  ACADEMIC_PROFILE_RULES.map((entry) => entry.rule);
 
 export const LINT_RULE_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/u;
 

@@ -26,7 +26,7 @@ describe("Dictionary reset", () => {
       name: /Reset Dictionary settings/u,
     });
     expect(confirmation).toHaveTextContent(
-      "This permanently removes every ignored word, global and per-project, and turns every grammar rule back on.",
+      "This permanently removes every ignored word, global and per-project, and turns back on every grammar rule you turned off. The academic profile keeps its own rules off.",
     );
     expect(useDictionary.getState()).toMatchObject({
       global: ["Oleafly"],

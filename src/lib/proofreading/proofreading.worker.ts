@@ -384,6 +384,7 @@ async function syncGrammarDialect(
   grammarDialect = dialect;
   // Be conservative if Harper rebuilds its lexicon while changing dialect.
   grammarDictionaryKey = null;
+  grammarLintConfigKey = null;
 }
 
 async function syncGrammarLintConfig(

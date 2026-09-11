@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   spell: vi.fn<(word: string) => boolean>(),
   suggest: vi.fn<(word: string) => string[]>(),
   setLintConfig: vi.fn<(config: Record<string, boolean>) => void>(),
+  activeLintConfig: null as null | Record<string, boolean>,
+  activeDialect: "" as string,
   importWords: vi.fn<(words: string[]) => void>(),
   lintLanguage: vi.fn<(language: string) => void>(),
   lints: null as
@@ -53,9 +55,13 @@ vi.mock("harper.js", () => ({
       return { Spaces: null, LongSentences: null, AnA: null, FakeRule: null };
     }
     async setLintConfig(config: Record<string, boolean>) {
+      mocks.activeLintConfig = { ...config };
       mocks.setLintConfig(config);
     }
-    async setDialect() {}
+    async setDialect(dialect: string) {
+      mocks.activeDialect = dialect;
+      mocks.activeLintConfig = null;
+    }
     async clearWords() {}
     async importWords(words: string[]) {
       mocks.importWords(words);
@@ -310,6 +316,24 @@ describe("harper lint configuration", () => {
     typst.text = "The the results.";
     await analyze(typst);
     expect(mocks.lintLanguage).toHaveBeenCalledWith("typst");
+  });
+
+  it("keeps a disabled rule off after the writer changes dialect", async () => {
+    const american = request(914, "grammar");
+    american.preferences.dialect = "american";
+    american.preferences.disabledRules = ["AnA"];
+    american.text = "alpha beta delta";
+    await analyze(american);
+    expect(mocks.activeDialect).toBe("american");
+    expect(mocks.activeLintConfig).toMatchObject({ AnA: false });
+
+    const british = request(915, "grammar");
+    british.preferences.dialect = "british";
+    british.preferences.disabledRules = ["AnA"];
+    british.text = "alpha beta delta";
+    await analyze(british);
+    expect(mocks.activeDialect).toBe("british");
+    expect(mocks.activeLintConfig).toMatchObject({ AnA: false });
   });
 
   it("rejects a rule name that is not a rule name", async () => {

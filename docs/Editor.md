@@ -108,8 +108,10 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   of the session, so the next pass does not bring them back.
   A selection too long or too strange to store as a word is hidden for the
   session instead, with a toast saying so. Nothing is ever a silent no-op.
-- Settings > Dictionary lists the rules that are turned off and the number of
-  findings dismissed in the open project, and takes either back.
+- Settings > Dictionary lists the rules the writer turned off and the number
+  of findings dismissed in the open project, and takes either back. Under
+  them it lists every rule the academic profile turns off, each with a switch
+  that turns it back on.
 
 ## Engineering boundaries
 
