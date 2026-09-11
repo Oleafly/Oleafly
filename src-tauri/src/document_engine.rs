@@ -416,13 +416,57 @@ fn denied_shell_escape_feature(source: &str, log: &str) -> Option<&'static str> 
     if ["\\write18", "\\shellescape", "\\input{|", "includesvg"]
         .iter()
         .any(|needle| source.contains(needle))
-        || ["shell escape", "shell-escape", "runsystem"]
-            .iter()
-            .any(|needle| log.contains(needle))
+        || log_refused_a_shell_command(&log)
     {
         return Some("a LaTeX shell command");
     }
     None
+}
+
+fn log_refused_a_shell_command(log: &str) -> bool {
+    const REFUSALS: [&str; 4] = [
+        "shell escape feature is not enabled",
+        "shell-escape feature is not enabled",
+        "shell escape is disabled",
+        "-shell-escape flag",
+    ];
+    if REFUSALS.iter().any(|needle| log.contains(needle)) {
+        return true;
+    }
+    runsystem_statuses(log)
+        .iter()
+        .any(|status| status.starts_with("disabled"))
+}
+
+fn runsystem_statuses(log: &str) -> Vec<String> {
+    const MARKER: &str = "runsystem(";
+    const CLOSE: &str = ")...";
+    const RECORD_LIMIT: usize = 400;
+    let mut statuses = Vec::new();
+    let mut rest = log;
+    while let Some(at) = rest.find(MARKER) {
+        let tail = &rest[at + MARKER.len()..];
+        rest = tail;
+        let joined: String = tail
+            .chars()
+            .take(RECORD_LIMIT)
+            .filter(|ch| *ch != '\n' && *ch != '\r')
+            .collect();
+        let record = match joined.find(MARKER) {
+            Some(next) => &joined[..next],
+            None => &joined[..],
+        };
+        let Some(close) = record.find(CLOSE) else {
+            continue;
+        };
+        let status = &record[close + CLOSE.len()..];
+        let status = match status.find('.') {
+            Some(end) => &status[..end],
+            None => status,
+        };
+        statuses.push(status.trim().to_ascii_lowercase());
+    }
+    statuses
 }
 
 fn pythontex_job_present(log: &str, code_path: &Path) -> bool {
@@ -515,21 +559,26 @@ fn latexmk_relative_path_arg(path: &Path) -> Result<String, String> {
     Ok(format!("./{value}"))
 }
 
+fn shell_escape_arg(allow: bool, distribution_kind: &str) -> &'static str {
+    match (allow, distribution_kind) {
+        (true, _) => "-shell-escape",
+        (false, "miktex") => "-no-shell-escape",
+        (false, _) => "-shell-restricted",
+    }
+}
+
 fn latexmk_args(
     out_dir: &Path,
     entry: &Path,
     stem: &str,
     flavor: LatexmkFlavor,
     options: CompileOptions,
+    distribution_kind: &str,
 ) -> Result<Vec<String>, String> {
     let out_dir = latexmk_relative_path_arg(out_dir)?;
     let mut args: Vec<String> = vec![
         "-norc".into(),
-        if options.allow_shell_escape {
-            "-shell-escape".into()
-        } else {
-            "-no-shell-escape".into()
-        },
+        shell_escape_arg(options.allow_shell_escape, distribution_kind).into(),
         flavor.as_arg().into(),
         "-interaction=nonstopmode".into(),
         "-synctex=1".into(),
@@ -639,7 +688,14 @@ impl DocumentEngine for LatexmkEngine {
             .strip_prefix(project_dir)
             .map_err(|_| "latexmk output must stay inside the project directory".to_string())?;
         let artifacts = self.artifacts(out_dir, target);
-        let mut args = latexmk_args(relative_out_dir, entry_path, stem, flavor, options)?;
+        let mut args = latexmk_args(
+            relative_out_dir,
+            entry_path,
+            stem,
+            flavor,
+            options,
+            &crate::tex_distro::distribution_kind_for_tool(&latexmk),
+        )?;
         // latexmk's dependency database is not portable across TeX
         // distributions: after a distro switch it can report "Nothing to do"
         // while replaying the previous run's error. Force one full rebuild
@@ -1762,9 +1818,8 @@ fn append_shell_escape_error(
     let Some(feature) = denied_shell_escape_feature(&source_head, log) else {
         return;
     };
-    let message = format!(
-        "{feature} needs LaTeX shell escape, but host command execution is disabled for this project."
-    );
+    let message =
+        format!("{feature} needs to run an outside program, which this project does not allow.");
     let explanation = "Enable “Allow LaTeX shell commands” in this project's compiler settings only if you trust every project file. Enabling it permits arbitrary commands and persistent background programs to run on your computer. Cancellation cleanup is best-effort for programs that deliberately detach.".to_string();
     append_bounded(
         log,
@@ -4144,13 +4199,14 @@ mod tests {
             crate::paths::ENTRY_STEM,
             LatexmkFlavor::Pdflatex,
             CompileOptions::default(),
+            "texlive",
         )
         .unwrap();
         assert!(args.contains(&"-pdf".to_string()));
         assert!(args.contains(&"-outdir=./.oleafly/build".to_string()));
         assert!(args.contains(&format!("-jobname={}", crate::paths::ENTRY_STEM)));
         assert!(args.contains(&"-norc".to_string()));
-        assert!(args.contains(&"-no-shell-escape".to_string()));
+        assert!(args.contains(&"-shell-restricted".to_string()));
         assert!(!args.contains(&"-shell-escape".to_string()));
         assert!(!args.contains(&"-latexoption=--nosocket".to_string()));
         assert!(args.contains(&"-f".to_string()));
@@ -4165,6 +4221,7 @@ mod tests {
                 halt_on_error: true,
                 ..Default::default()
             },
+            "mactex",
         )
         .unwrap();
         assert!(halt.contains(&"-xelatex".to_string()));
@@ -4181,10 +4238,12 @@ mod tests {
                 allow_shell_escape: true,
                 ..Default::default()
             },
+            "texlive",
         )
         .unwrap();
         assert!(trusted.contains(&"-shell-escape".to_string()));
         assert!(!trusted.contains(&"-no-shell-escape".to_string()));
+        assert!(!trusted.contains(&"-shell-restricted".to_string()));
         assert!(!trusted.contains(&"-latexoption=--nosocket".to_string()));
         assert!(trusted.contains(&"-norc".to_string()));
 
@@ -4194,10 +4253,98 @@ mod tests {
             crate::paths::ENTRY_STEM,
             LatexmkFlavor::Lualatex,
             CompileOptions::default(),
+            "texlive",
         )
         .unwrap();
-        assert!(untrusted_lualatex.contains(&"-no-shell-escape".to_string()));
+        assert!(untrusted_lualatex.contains(&"-shell-restricted".to_string()));
         assert!(untrusted_lualatex.contains(&"-latexoption=--nosocket".to_string()));
+    }
+
+    #[test]
+    fn shell_escape_denials_come_from_refusals_not_from_allowed_helpers() {
+        for allowed in [
+            "runsystem(repstopdf --outfile=./logo-eps-converted-to.pdf ./logo.eps)...executed.\n! undefined control sequence.\nl.42 \\oops",
+            "runsystem(repstopdf disabled.eps)...executed.",
+            "runsystem(repstopdf a.eps)...executed safely (allowed).",
+        ] {
+            assert_eq!(
+                denied_shell_escape_feature("\\documentclass{article}", allowed),
+                None,
+                "{allowed}"
+            );
+        }
+
+        for denial in [
+            "runsystem(rm -rf /tmp/x)...disabled (restricted).",
+            "runsystem(bibtex --very-long-argument-list that-wraps-the-log-line-at-seventy-nine-c\nolumns)...disabled\n(restricted).",
+            "runsystem(mv executed.tex safe.tex)...disabled (restricted).",
+            "package epstopdf warning: shell escape feature is not enabled.",
+            "package svg error: you must invoke latex with the -shell-escape flag.",
+        ] {
+            assert_eq!(
+                denied_shell_escape_feature("\\documentclass{article}", denial),
+                Some("a LaTeX shell command"),
+                "{denial}"
+            );
+        }
+
+        let mixed =
+            "runsystem(repstopdf a.eps)...executed.\nrunsystem(inkscape)...disabled (restricted).";
+        assert!(log_refused_a_shell_command(mixed));
+        assert!(!log_refused_a_shell_command(
+            "restricted \\write18 enabled.\nrunsystem(repstopdf a.eps)...executed."
+        ));
+    }
+
+    #[test]
+    fn shell_command_status_is_read_after_the_command_text_never_inside_it() {
+        assert_eq!(
+            runsystem_statuses("runsystem(repstopdf disabled.eps)...executed."),
+            ["executed"]
+        );
+        assert_eq!(
+            runsystem_statuses("runsystem(mv executed.tex safe.tex)...disabled (restricted)."),
+            ["disabled (restricted)"]
+        );
+        assert_eq!(
+            runsystem_statuses("runsystem(inkscape logo.svg)...disa\nbled (restricted)."),
+            ["disabled (restricted)"]
+        );
+        assert_eq!(
+            runsystem_statuses(
+                "runsystem(a.eps)...executed.\nrunsystem(b.svg)...disabled.\nrunsystem(c.py)...failed."
+            ),
+            ["executed", "disabled", "failed"]
+        );
+        assert!(runsystem_statuses("runsystem(epstopdf a.eps)").is_empty());
+    }
+
+    #[test]
+    fn latexmk_keeps_restricted_shell_escape_off_miktex_and_out_of_trusted_runs() {
+        assert_eq!(shell_escape_arg(false, "texlive"), "-shell-restricted");
+        assert_eq!(shell_escape_arg(false, "mactex"), "-shell-restricted");
+        assert_eq!(shell_escape_arg(false, "tinytex"), "-shell-restricted");
+        assert_eq!(
+            shell_escape_arg(false, "oleafly-tinytex"),
+            "-shell-restricted"
+        );
+        assert_eq!(shell_escape_arg(false, "other"), "-shell-restricted");
+        assert_eq!(shell_escape_arg(false, "miktex"), "-no-shell-escape");
+        for kind in ["texlive", "miktex", "other"] {
+            assert_eq!(shell_escape_arg(true, kind), "-shell-escape");
+        }
+
+        let miktex = latexmk_args(
+            Path::new(".oleafly/build"),
+            Path::new("main.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            CompileOptions::default(),
+            "miktex",
+        )
+        .unwrap();
+        assert!(miktex.contains(&"-no-shell-escape".to_string()));
+        assert!(!miktex.contains(&"-shell-restricted".to_string()));
     }
 
     #[test]
@@ -4223,6 +4370,7 @@ mod tests {
             crate::paths::ENTRY_STEM,
             LatexmkFlavor::Pdflatex,
             CompileOptions::default(),
+            "texlive",
         )
         .unwrap();
         let entry = args.last().unwrap();
@@ -4234,6 +4382,7 @@ mod tests {
             crate::paths::ENTRY_STEM,
             LatexmkFlavor::Pdflatex,
             CompileOptions::default(),
+            "texlive",
         )
         .is_err());
         for hostile in [
@@ -4248,6 +4397,7 @@ mod tests {
                 crate::paths::ENTRY_STEM,
                 LatexmkFlavor::Pdflatex,
                 CompileOptions::default(),
+                "texlive",
             )
             .is_err());
         }
