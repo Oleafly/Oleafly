@@ -35,7 +35,6 @@ export type SourceFormat =
   | "pdf"
   | "image"
   | "csv"
-  | "xlsx"
   | "arxiv"
   | "doi"
   | "isbn"
@@ -692,12 +691,13 @@ export function exportRoutesFor(
   engineId: string,
   exports: readonly string[],
 ): readonly ConversionRoute[] {
-  const sources: SourceFormat[] | undefined = {
+  const sourcesByEngine: Record<string, SourceFormat[]> = {
     latex: ["latex"],
     latexmk: ["latex"],
     typst: ["typst"],
     markdown: ["markdown"],
-  }[engineId];
+  };
+  const sources = sourcesByEngine[engineId];
   if (!sources) {
     return [];
   }
@@ -716,9 +716,6 @@ export function exportRoutesFor(
     md: "markdown",
     typst: "typst",
     tex: "latex",
-    txt: "txt",
-    pptx: "pptx",
-    epub: "epub",
   };
   const routes: ConversionRoute[] = [];
   for (const format of order[engineId] ?? []) {
