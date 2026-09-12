@@ -27,6 +27,13 @@ describe("vision capability", () => {
     }
   });
 
+  it("checks long uncontrolled model ids in bounded linear work", () => {
+    expect(modelSupportsVision("ollama", "qwen".repeat(100_000))).toBe(false);
+    expect(modelSupportsVision("openrouter", `${"qwen".repeat(100_000)}/qwen3-vl:8b`)).toBe(
+      true,
+    );
+  });
+
   it("stays false for models with no image support", () => {
     expect(modelSupportsVision("deepseek", "deepseek-chat")).toBe(false);
     expect(modelSupportsVision("groq", "llama-3.3-70b-versatile")).toBe(false);

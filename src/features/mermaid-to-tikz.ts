@@ -15,6 +15,25 @@ interface MermaidEdge {
   style: "solid" | "dashed" | "heavy" | "plain";
 }
 
+const EDGE_ARROWS = ["-.->", "==>", "-->", "---"] as const;
+type EdgeArrow = (typeof EDGE_ARROWS)[number];
+
+function findEdgeArrows(line: string): Array<{ index: number; value: EdgeArrow }> {
+  const matches: Array<{ index: number; value: EdgeArrow }> = [];
+  let cursor = 0;
+  while (cursor < line.length) {
+    let next: { index: number; value: EdgeArrow } | null = null;
+    for (const value of EDGE_ARROWS) {
+      const index = line.indexOf(value, cursor);
+      if (index >= 0 && (!next || index < next.index)) next = { index, value };
+    }
+    if (!next) break;
+    matches.push(next);
+    cursor = next.index + next.value.length;
+  }
+  return matches;
+}
+
 function unquote(value: string): string {
   const trimmed = value.trim();
   if (
@@ -65,16 +84,18 @@ function parseNode(raw: string): { id: string; label: string; shape: NodeShape }
   return suffix ? null : { id, label: id, shape: "box" };
 }
 
-function splitEdge(line: string): {
+function splitEdge(
+  line: string,
+  arrow: { index: number; value: EdgeArrow } | undefined,
+): {
   left: string;
   right: string;
   label: string;
   style: MermaidEdge["style"];
 } | null {
-  const arrow = /(==>|-\.->|-->|---)/.exec(line);
-  if (!arrow || arrow.index === undefined) return null;
+  if (!arrow) return null;
   const left = line.slice(0, arrow.index).trim();
-  let right = line.slice(arrow.index + arrow[0].length).trim();
+  let right = line.slice(arrow.index + arrow.value.length).trim();
   let label = "";
   const pipeLabel = /^\|([^|]*)\|\s*(.*)$/s.exec(right);
   if (pipeLabel) {
@@ -82,11 +103,11 @@ function splitEdge(line: string): {
     right = pipeLabel[2].trim();
   }
   const style =
-    arrow[0] === "-.->"
+    arrow.value === "-.->"
       ? "dashed"
-      : arrow[0] === "==>"
+      : arrow.value === "==>"
         ? "heavy"
-        : arrow[0] === "---"
+        : arrow.value === "---"
           ? "plain"
           : "solid";
   return { left, right, label, style };
@@ -172,9 +193,9 @@ export function mermaidToTikz(source: string): string {
     if (/^(?:subgraph|end\b|direction\b|classDef\b|class\b|style\b|linkStyle\b)/i.test(line)) {
       throw new Error("This Mermaid feature needs rendered output.");
     }
-    const arrowCount = [...line.matchAll(/==>|-\.->|-->|---/g)].length;
-    if (arrowCount > 1) throw new Error("Chained Mermaid edges need rendered output.");
-    const edge = splitEdge(line);
+    const arrows = findEdgeArrows(line);
+    if (arrows.length > 1) throw new Error("Chained Mermaid edges need rendered output.");
+    const edge = splitEdge(line, arrows[0]);
     if (!edge) {
       addNode(parseNode(line));
       continue;

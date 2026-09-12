@@ -36,5 +36,6 @@ describe("mermaidToTikz", () => {
     expect(() => mermaidToTikz("flowchart LR\nA[/Input/] --> B")).toThrow(
       "could not be read",
     );
+    expect(() => mermaidToTikz("flowchart LR\nA --!> B")).toThrow("could not be read");
   });
 });
