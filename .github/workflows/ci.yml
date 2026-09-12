@@ -440,6 +440,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The packaged app depends only on the sources listed here. When none of
+      # them changed since a cached build, the packed app is restored and the
+      # compile is skipped, which turns a spec-only or scripts-only push into a
+      # download instead of a build.
+      - name: Compute the packaged app cache key
+        id: e2e-app-key
+        run: echo "key=e2e-app-macos-v1-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the packed app from the cache
+        id: e2e-app-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: oleafly-e2e-macos.tar.gz
+          key: ${{ steps.e2e-app-key.outputs.key }}
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
@@ -449,6 +464,7 @@ jobs:
           workspaces: . -> src-tauri/target
 
       - name: Cache Tectonic sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         id: cache-tectonic-e2e-build
         uses: actions/cache@v6
         with:
@@ -456,10 +472,11 @@ jobs:
           key: tectonic-${{ runner.os }}-${{ hashFiles('scripts/fetch-tectonic.sh') }}
 
       - name: Fetch Tectonic sidecar
-        if: steps.cache-tectonic-e2e-build.outputs.cache-hit != 'true'
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-tectonic-e2e-build.outputs.cache-hit != 'true'
         run: bash scripts/fetch-tectonic.sh aarch64-apple-darwin
 
       - name: Cache Biber sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         id: cache-biber-e2e-build
         uses: actions/cache@v6
         with:
@@ -467,10 +484,11 @@ jobs:
           key: biber-${{ runner.os }}-${{ hashFiles('scripts/fetch-biber.sh') }}
 
       - name: Fetch Biber sidecar
-        if: steps.cache-biber-e2e-build.outputs.cache-hit != 'true'
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-biber-e2e-build.outputs.cache-hit != 'true'
         run: bash scripts/fetch-biber.sh aarch64-apple-darwin
 
       - name: Cache Typst sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         id: cache-typst-e2e-build
         uses: actions/cache@v6
         with:
@@ -478,10 +496,11 @@ jobs:
           key: typst-${{ runner.os }}-${{ hashFiles('scripts/fetch-typst.sh') }}
 
       - name: Fetch Typst sidecar
-        if: steps.cache-typst-e2e-build.outputs.cache-hit != 'true'
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-typst-e2e-build.outputs.cache-hit != 'true'
         run: bash scripts/fetch-typst.sh aarch64-apple-darwin
 
       - name: Stage checksum-pinned Tinymist resource archive
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         run: node scripts/fetch-language-servers.mjs --server tinymist --target aarch64-apple-darwin --install-mode resource
 
       # Third-platform coverage for the shared crates, moved here from the
@@ -490,12 +509,21 @@ jobs:
         run: cargo test -p oleafly-core -p oleafly-cli --all-targets
 
       - name: Build the packaged e2e app
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         env:
           VITE_E2E_HOOKS: "1"
         run: pnpm tauri build --debug --features e2e-testing --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
       - name: Pack the app bundle
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         run: tar -czf oleafly-e2e-macos.tar.gz -C src-tauri/target/debug/bundle/macos Oleafly.app
+
+      - name: Save the packed app to the cache
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: oleafly-e2e-macos.tar.gz
+          key: ${{ steps.e2e-app-key.outputs.key }}
 
       - name: Upload the app bundle
         uses: actions/upload-artifact@v7
@@ -530,7 +558,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The packaged app depends only on the sources listed here. When none of
+      # them changed since a cached build, the packed app is restored and the
+      # compile is skipped, which turns a spec-only or scripts-only push into a
+      # download instead of a build.
+      - name: Compute the packaged app cache key
+        id: e2e-app-key
+        run: echo "key=e2e-app-linux-v1-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the packed app from the cache
+        id: e2e-app-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: oleafly-e2e-linux.deb
+          key: ${{ steps.e2e-app-key.outputs.key }}
+
       - name: Install Linux system dependencies (Tauri)
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -543,14 +587,17 @@ jobs:
             curl wget file
 
       - name: Install Rust toolchain
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Rust build
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: . -> src-tauri/target
 
       - name: Cache Tectonic sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         id: cache-tectonic-e2e-build-linux
         uses: actions/cache@v6
         with:
@@ -558,10 +605,11 @@ jobs:
           key: tectonic-${{ runner.os }}-${{ hashFiles('scripts/fetch-tectonic.sh') }}
 
       - name: Fetch Tectonic sidecar
-        if: steps.cache-tectonic-e2e-build-linux.outputs.cache-hit != 'true'
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-tectonic-e2e-build-linux.outputs.cache-hit != 'true'
         run: bash scripts/fetch-tectonic.sh x86_64-unknown-linux-gnu
 
       - name: Cache Biber sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         id: cache-biber-e2e-build-linux
         uses: actions/cache@v6
         with:
@@ -569,10 +617,11 @@ jobs:
           key: biber-${{ runner.os }}-${{ hashFiles('scripts/fetch-biber.sh') }}
 
       - name: Fetch Biber sidecar
-        if: steps.cache-biber-e2e-build-linux.outputs.cache-hit != 'true'
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-biber-e2e-build-linux.outputs.cache-hit != 'true'
         run: bash scripts/fetch-biber.sh x86_64-unknown-linux-gnu
 
       - name: Cache Typst sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         id: cache-typst-e2e-build-linux
         uses: actions/cache@v6
         with:
@@ -580,16 +629,19 @@ jobs:
           key: typst-${{ runner.os }}-${{ hashFiles('scripts/fetch-typst.sh') }}
 
       - name: Fetch Typst sidecar
-        if: steps.cache-typst-e2e-build-linux.outputs.cache-hit != 'true'
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-typst-e2e-build-linux.outputs.cache-hit != 'true'
         run: bash scripts/fetch-typst.sh x86_64-unknown-linux-gnu
 
       - name: Smoke-test Typst sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         run: bash scripts/smoke-typst.sh x86_64-unknown-linux-gnu
 
       - name: Stage checksum-pinned Tinymist resource archive
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         run: node scripts/fetch-language-servers.mjs --server tinymist --target x86_64-unknown-linux-gnu --install-mode resource
 
       - name: Build the packaged e2e app
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         env:
           VITE_E2E_HOOKS: "1"
         run: pnpm tauri build --debug --features e2e-testing --bundles deb --config '{"bundle":{"createUpdaterArtifacts":false}}'
@@ -598,6 +650,7 @@ jobs:
       # is cheap to read. If a future Tauri release moves the binary or the
       # sidecars, this listing is the first place that shows it.
       - name: Stage and describe the package
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           deb="$(find src-tauri/target/debug/bundle/deb -name '*.deb' -print -quit)"
@@ -617,6 +670,13 @@ jobs:
           echo "--- libexec, resources, sidecars (first 25) ---"
           grep -E '/lib/' deb-contents.txt | sed -n '1,25p' || echo "(none matched /lib/)"
           echo "--- $(wc -l < deb-contents.txt) entries total ---"
+
+      - name: Save the packed app to the cache
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: oleafly-e2e-linux.deb
+          key: ${{ steps.e2e-app-key.outputs.key }}
 
       - name: Upload the app package
         uses: actions/upload-artifact@v7
@@ -759,12 +819,12 @@ jobs:
     # platform-neutral; the app runs under xvfb.
     # Fast lane: this is the per-push e2e signal, split across four parallel
     # shards so a full sweep lands in ~15-20 minutes instead of ~50.
-    name: E2E (real app, Linux, shard ${{ matrix.shard }}/4)
+    name: E2E (real app, Linux, shard ${{ matrix.shard }}/8)
     needs: e2e-build-linux
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     # 24.04, not 22.04: the upstream Tectonic release binary needs glibc 2.39.
     # Must match e2e-build-linux, which produced the .deb this installs.
     runs-on: ubuntu-24.04
@@ -891,7 +951,7 @@ jobs:
           WEBKIT_DISABLE_COMPOSITING_MODE: "1"
           WEBKIT_DISABLE_DMABUF_RENDERER: "1"
           E2E_INTERACTION_SEED: ${{ github.event_name != 'schedule' && '62024' || '' }}
-        run: xvfb-run -a ./scripts/e2e.sh --shard=${{ matrix.shard }}/4 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
+        run: xvfb-run -a ./scripts/e2e.sh --shard=${{ matrix.shard }}/8 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
         # always(), not failure(): a shard killed by timeout-minutes ends as
@@ -913,19 +973,201 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  e2e-browser-harness:
+    # The four browser-harness specs drive Playwright's own Chromium against
+    # fixture pages that Vite serves from e2e/, with the Tauri bridge mocked
+    # inside the page. They need no app build, and every packaged shard skips
+    # them, so this lane is where they run now that Windows no longer runs the
+    # suite under `tauri dev`.
+    name: E2E (browser harness, Linux)
+    needs: frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browser
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run the browser-harness specs
+        env:
+          CI: 1
+        run: bash scripts/e2e-browser-harness.sh
+
+      - name: Upload failure artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-test-results-browser-harness
+          path: |
+            test-results/**/error-context.md
+            test-results/**/trace.zip
+            test-results/**/*.log
+          if-no-files-found: ignore
+          retention-days: 3
+
+  e2e-build-windows:
+    # Builds the Windows e2e app once. Until now every Windows shard ran
+    # `pnpm tauri dev`, which compiled the whole app before its first test, so
+    # four shards paid four compiles. The shards below download this build
+    # and hand it to scripts/e2e.ps1 through OLEAFLY_E2E_APP_BINARY, the path
+    # the runner already supports for a prebuilt binary.
+    name: E2E app build (Windows)
+    needs: [frontend, rust]
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The packaged app depends only on the sources listed here. When none of
+      # them changed since a cached build, the packed app is restored and the
+      # compile is skipped, which turns a spec-only or scripts-only push into a
+      # download instead of a build.
+      - name: Compute the packaged app cache key
+        id: e2e-app-key
+        shell: bash
+        run: echo "key=e2e-app-windows-v1-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-typst.sh', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the packed app from the cache
+        id: e2e-app-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: oleafly-e2e-windows.tar.gz
+          key: ${{ steps.e2e-app-key.outputs.key }}
+
+      - name: Install Rust toolchain
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> src-tauri/target
+
+      - name: Cache Tectonic sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        id: cache-tectonic-e2e-build-windows
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/tectonic-*
+          key: tectonic-${{ runner.os }}-${{ hashFiles('scripts/fetch-tectonic.sh') }}
+
+      - name: Fetch Tectonic sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-tectonic-e2e-build-windows.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash scripts/fetch-tectonic.sh x86_64-pc-windows-msvc
+
+      - name: Cache Biber sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        id: cache-biber-e2e-build-windows
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/tectonic-biber-*
+          key: biber-${{ runner.os }}-${{ hashFiles('scripts/fetch-biber.sh') }}
+
+      - name: Fetch Biber sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-biber-e2e-build-windows.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash scripts/fetch-biber.sh x86_64-pc-windows-msvc
+
+      - name: Cache Typst sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        id: cache-typst-e2e-build-windows
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/binaries/typst-*
+          key: typst-${{ runner.os }}-${{ hashFiles('scripts/fetch-typst.sh') }}
+
+      - name: Fetch Typst sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true' && steps.cache-typst-e2e-build-windows.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash scripts/fetch-typst.sh x86_64-pc-windows-msvc
+
+      - name: Stage checksum-pinned Tinymist resource archive
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: node scripts/fetch-language-servers.mjs --server tinymist --target x86_64-pc-windows-msvc --install-mode resource
+
+      - name: Smoke-test Typst sidecar
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash scripts/smoke-typst.sh x86_64-pc-windows-msvc
+
+      - name: Build the packaged e2e app
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        env:
+          VITE_E2E_HOOKS: "1"
+        run: pnpm tauri build --debug --features e2e-testing --no-bundle
+
+      # Pack everything the debug build placed beside the executable: the app,
+      # the sidecar executables, any DLLs, and the resources directory. Cargo's
+      # own directories and the debug symbols stay out. The listing is printed
+      # so a layout change in a future Tauri release shows up here first, and
+      # every diagnostic is guarded so it can never fail the step by itself.
+      - name: Pack the app build
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: bash scripts/ci/pack-windows-e2e-app.sh src-tauri/target/debug oleafly-e2e-windows.tar.gz
+
+      - name: Save the packed app to the cache
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: oleafly-e2e-windows.tar.gz
+          key: ${{ steps.e2e-app-key.outputs.key }}
+
+      - name: Upload the app build
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-app-windows
+          path: oleafly-e2e-windows.tar.gz
+          retention-days: 1
+
   e2e-windows:
     # The same suite on Windows (WebView2 + Rust + Tectonic). The plugin
     # serves TCP there (no unix sockets); e2e/fixtures.ts connects over TCP
     # via its own fixture, and scripts/e2e.ps1 is the launcher.
-    name: E2E (real app, Windows, shard ${{ matrix.shard }}/4)
-    needs: [frontend, rust]
+    name: E2E (real app, Windows, shard ${{ matrix.shard }}/8)
+    needs: e2e-build-windows
     runs-on: windows-2022
     # Sharded like the Linux lane: serially this suite passed 246 tests and was
     # still killed at the ceiling with specs unrun, so the result said nothing.
+    # Eight shards, each a pure test runner against the build above.
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -942,13 +1184,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
+      - name: Download the app build
+        uses: actions/download-artifact@v7
         with:
-          workspaces: . -> src-tauri/target
+          name: e2e-app-windows
+
+      - name: Unpack the app build
+        id: unpack-app
+        shell: bash
+        run: bash scripts/ci/unpack-windows-e2e-app.sh oleafly-e2e-windows.tar.gz e2e-app
 
       - name: Cache Tectonic sidecar
         id: cache-tectonic-e2e-windows
@@ -961,38 +1205,6 @@ jobs:
         if: steps.cache-tectonic-e2e-windows.outputs.cache-hit != 'true'
         shell: bash
         run: bash scripts/fetch-tectonic.sh x86_64-pc-windows-msvc
-
-      - name: Cache Biber sidecar
-        id: cache-biber-e2e-windows
-        uses: actions/cache@v6
-        with:
-          path: src-tauri/binaries/tectonic-biber-*
-          key: biber-${{ runner.os }}-${{ hashFiles('scripts/fetch-biber.sh') }}
-
-      - name: Fetch Biber sidecar
-        if: steps.cache-biber-e2e-windows.outputs.cache-hit != 'true'
-        shell: bash
-        run: bash scripts/fetch-biber.sh x86_64-pc-windows-msvc
-
-      - name: Cache Typst sidecar
-        id: cache-typst-e2e-windows
-        uses: actions/cache@v6
-        with:
-          path: src-tauri/binaries/typst-*
-          key: typst-${{ runner.os }}-${{ hashFiles('scripts/fetch-typst.sh') }}
-
-      - name: Fetch Typst sidecar
-        if: steps.cache-typst-e2e-windows.outputs.cache-hit != 'true'
-        shell: bash
-        run: bash scripts/fetch-typst.sh x86_64-pc-windows-msvc
-
-      - name: Stage checksum-pinned Tinymist resource archive
-        shell: bash
-        run: node scripts/fetch-language-servers.mjs --server tinymist --target x86_64-pc-windows-msvc --install-mode resource
-
-      - name: Smoke-test Typst sidecar
-        shell: bash
-        run: bash scripts/smoke-typst.sh x86_64-pc-windows-msvc
 
       - name: Restore Tectonic packages
         id: tectonic-pkgs-windows
@@ -1037,8 +1249,9 @@ jobs:
         # Same reasoning as the macOS lane: report every failing spec in one
         # run instead of one per round.
         env:
+          OLEAFLY_E2E_APP_BINARY: ${{ steps.unpack-app.outputs.binary }}
           E2E_INTERACTION_SEED: ${{ github.event_name != 'schedule' && '62024' || '' }}
-        run: powershell -File scripts/e2e.ps1 --shard=${{ matrix.shard }}/4 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
+        run: powershell -File scripts/e2e.ps1 --shard=${{ matrix.shard }}/8 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 
       - name: Upload failure artifacts
         # always(), not failure(): a shard killed by timeout-minutes ends as
