@@ -76,6 +76,9 @@ importers:
       '@oleafly/backend-port':
         specifier: workspace:*
         version: link:packages/backend-port
+      '@oleafly/conversion-registry':
+        specifier: workspace:*
+        version: link:packages/conversion-registry
       '@oleafly/diagram':
         specifier: workspace:*
         version: link:packages/diagram
@@ -363,6 +366,8 @@ importers:
         version: link:../latex
 
   packages/backend-port: {}
+
+  packages/conversion-registry: {}
 
   packages/diagram:
     dependencies:

@@ -11,6 +11,7 @@
   "license": "AGPL-3.0-or-later",
   "author": "Prajwal S Venkateshmurthy",
   "scripts": {
+    "gen:conversion-matrix": "node scripts/generate-conversion-matrix.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "check:performance": "node scripts/check-performance-budget.mjs",
@@ -60,6 +61,7 @@
     "@oleafly/ai-core": "workspace:*",
     "@oleafly/ai-tools": "workspace:*",
     "@oleafly/backend-port": "workspace:*",
+    "@oleafly/conversion-registry": "workspace:*",
     "@oleafly/diagram": "workspace:*",
     "@oleafly/editor": "workspace:*",
     "@oleafly/latex": "workspace:*",
