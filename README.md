@@ -36,7 +36,7 @@ into one workspace.
 | Feature | What you can do |
 | --- | --- |
 | **LaTeX, Typst, and Markdown** | Write and compile with a PDF preview beside your source. |
-| **Templates and imports** | Start a paper, thesis, report, presentation, or resume; bring an existing project across. |
+| **Templates and imports** | Start a paper, thesis, report, presentation, or resume; import a project, a Word or HTML file, a Typst document, or an arXiv paper's source. |
 | **Writing tools** | Complete commands, navigate chapters, rename references, and check spelling and grammar locally. |
 | **Literature search** | Search scholarly indexes together and discover references for the paragraphs you are writing. |
 | **Citations and libraries** | Import your reference library, add papers by DOI or title, and insert citations as you write. |
@@ -47,7 +47,7 @@ into one workspace.
 | **Submission checks** | Check references, layout, anonymous-review details, accessibility, and resume parsing. |
 | **Checkpoints and Git** | Recover saved project states and manage commits, diffs, and GitHub sync. |
 | **Linked folders** | Give the assistant read-only access to papers or data stored elsewhere on your computer. |
-| **Export** | Save PDF and source ZIPs, with document, presentation, and ebook exports for supported project types. |
+| **Export** | Save PDF and source ZIPs, and convert documents between LaTeX, Markdown, Typst, Word, and HTML. |
 
 ### Start with the document you need
 

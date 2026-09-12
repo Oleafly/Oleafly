@@ -44,6 +44,9 @@ at the pinned tag.
 | reqwest | MIT OR Apache-2.0 |
 | base64 | MIT OR Apache-2.0 |
 | flate2 | MIT OR Apache-2.0 |
+| biblatex | MIT OR Apache-2.0 |
+| statrs | MIT |
+| rapidfuzz | MIT |
 | zip | MIT |
 
 ## Frontend (JavaScript / npm, bundled into the app)
@@ -63,6 +66,8 @@ at the pinned tag.
 | zustand | MIT |
 | zod | MIT |
 | katex | MIT |
+| mathjax-full | Apache-2.0 |
+| xlsx (SheetJS) | Apache-2.0 |
 | harper.js | Apache-2.0 |
 | hunspell-asm | MIT |
 | pdfjs-dist | Apache-2.0 |

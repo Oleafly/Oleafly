@@ -68,6 +68,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - System TeX compiles run with TeX Live's restricted shell escape, so
   templates that convert EPS figures compile without granting full shell
   access.
+- A conversion registry now drives the Import and Export menus. Word, Markdown, HTML, and
+  Typst files can be imported as LaTeX, Markdown, or Typst projects; LaTeX and Markdown
+  projects export to Typst; Typst projects export to Word, HTML, Markdown, and LaTeX. The
+  full route table is generated into docs/conversion-matrix.md with
+  `pnpm gen:conversion-matrix`.
+- HTML exports carry MathML equations, and Preflight now suggests exporting an HTML copy
+  when a document contains math, since screen readers need MathML to read equations
+  reliably.
+- Equations can be saved as SVG or PNG images from the editor context menu and the
+  equation tool. MathJax renders them locally; no content leaves the machine.
+- Spreadsheets import as tables. A CSV, TSV, or XLSX file becomes a booktabs LaTeX table
+  or a Typst table, with every LaTeX- or Typst-special character escaped, inserted at the
+  cursor or copied to the clipboard.
+- The reference library gained a cleaner. It renames citation keys to the app's
+  firstauthorYEARfirstword scheme, removes duplicates matched by DOI or by similar
+  titles, lists entries with missing fields, and rewrites \cite commands that pointed at
+  renamed keys. A dry run shows the exact diff before anything is applied.
+- Add citation recognizes ISBNs (looked up on OpenLibrary) and PubMed ids (NCBI), alongside
+  DOIs, arXiv ids, and title searches. An arXiv paper's LaTeX source can be imported as a
+  new project from its id.
+- Statistics calculators for p-values, sample sizes, and confidence intervals are in the
+  Tools panel, computed locally.
+- A symbol reference browses the LaTeX completion corpus by category and search, inserting
+  symbols at the cursor.
+- Writing generators for abstracts, summaries, paraphrasing, and thesis outlines hand a
+  grounded prompt to the assistant, which reads the open document and is told not to add
+  claims the draft does not contain.
+- Settings, Citation Search has a field for an OpenAlex API key. OpenAlex made keys
+  mandatory in February 2026; without one, searches still work but from a small shared
+  daily pool.
 
 ## [0.4.0] - 2026-09-07
 

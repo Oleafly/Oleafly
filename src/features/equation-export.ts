@@ -7,6 +7,7 @@ import { enclosingMathEnvironment } from "@/components/editor/cm/hover-math";
 import { activeSelectionText } from "@/components/editor/selection-text";
 import { getEditorView } from "@oleafly/editor";
 import { writeBytesFile } from "@/lib/tauri";
+import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { notifyError, toast } from "@/lib/toast";
 
@@ -187,4 +188,11 @@ export async function saveEquationAsPng(scale = 3, background: string | null = "
   } catch (e) {
     notifyError("export equation png", e);
   }
+}
+
+if (E2E_HOOKS && typeof window !== "undefined") {
+  const w = window as unknown as Record<string, unknown>;
+  // Renders an equation through the real MathJax path for the
+  // conversion-matrix e2e spec.
+  w.__e2eEquationSvg = equationToSvgDocument;
 }

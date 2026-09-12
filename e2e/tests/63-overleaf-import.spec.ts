@@ -225,10 +225,12 @@ test("the unified import chooser exposes every supported project source", async 
   if (!opened) throw new Error("import trigger unavailable");
   await waitLong(
     tauriPage,
-    `['Existing project (.zip)', 'Word document', 'Markdown document', 'GitHub'].every(
+    `['Existing project (.zip)', 'GitHub'].every(
       (label) => [...document.querySelectorAll('[role="menuitem"]')].some(
         (element) => element.textContent?.trim() === label
       )
+    ) && ['import-kind-word', 'import-kind-markdown', 'import-kind-html', 'import-kind-typst'].every(
+      (testId) => document.querySelector(\'[data-testid="\' + testId + '"]\') !== null
     )`,
     10_000,
   );
